@@ -1,15 +1,27 @@
-use crate::StrError;
 use crate::{mat_gen_eigen, Matrix, Vector};
+use crate::{vec_norm, Norm, StrError};
+
+/// Tolerance to avoid division by zero and discard near-zero beta (the denominator of eigenvalue) values
+const TOL_BETA: f64 = 100.0 * f64::EPSILON;
+
+/// Tolerance to discard root values outside the [xa, xb] range
+const TOL_X_RANGE: f64 = 100.0 * f64::EPSILON;
 
 pub struct MultiRootSolverInterp {
     /// Number of grid points (= N + 1)
     npoint: usize,
+
+    /// Weights (aka, lambda)
+    w: Vector,
 
     /// Companion matrix A
     aa: Matrix,
 
     /// Companion matrix B
     bb: Matrix,
+
+    /// Balancing coefficients
+    balance: Vector,
 
     /// Real part of the denominator to calculate the eigenvalues
     alpha_real: Vector,
@@ -44,6 +56,7 @@ impl MultiRootSolverInterp {
         }
         let npoint = yy.dim();
         let nc = 1 + npoint; // companion matrix' dimension
+        let mut w = Vector::new(npoint);
         let mut aa = Matrix::new(nc, nc);
         let mut bb = Matrix::new(nc, nc);
         for j in 0..npoint {
@@ -56,15 +69,16 @@ impl MultiRootSolverInterp {
                     prod *= yy[j] - yy[k];
                 }
             }
-            let wj = 1.0 / prod;
-            aa.set(1 + j, 0, wj);
+            w[j] = 1.0 / prod;
             aa.set(1 + j, 1 + j, yy[j]);
             bb.set(1 + j, 1 + j, 1.0);
         }
         Ok(MultiRootSolverInterp {
             npoint,
+            w,
             aa,
             bb,
+            balance: Vector::new(nc),
             alpha_real: Vector::new(nc),
             alpha_imag: Vector::new(nc),
             beta: Vector::new(nc),
@@ -119,9 +133,33 @@ impl MultiRootSolverInterp {
             return Err("xb must be greater than xa");
         }
 
-        // companion matrix
+        // balancing coefficients
+        let nc = 1 + self.npoint;
+        self.balance[0] = 1.0;
+        for i in 0..self.npoint {
+            if uu[i] == 0.0 {
+                self.balance[1 + i] = 1.0;
+            } else {
+                self.balance[1 + i] = f64::sqrt(f64::abs(self.w[i]) / f64::abs(uu[i]));
+            }
+        }
+
+        // scaling coefficients
+        let mut row0 = Vector::new(nc);
+        let mut col0 = Vector::new(nc);
         for j in 0..self.npoint {
-            self.aa.set(0, 1 + j, -uu[j]);
+            let s = self.balance[1 + j];
+            let t = 1.0 / s;
+            row0[1 + j] = -uu[j] * s;
+            col0[1 + j] = t * self.w[j];
+        }
+        let sl = vec_norm(&row0, Norm::Euc);
+        let sr = vec_norm(&col0, Norm::Euc);
+
+        // (balanced) companion matrix
+        for k in 1..nc {
+            self.aa.set(0, k, sl * row0[k]);
+            self.aa.set(k, 0, col0[k] * sr);
         }
 
         // generalized eigenvalues
@@ -135,15 +173,21 @@ impl MultiRootSolverInterp {
         )?;
 
         // roots = real eigenvalues
-        let nc = 1 + self.npoint;
         let mut nroot = 0;
-        for i in 0..nc {
-            let imaginary = f64::abs(self.alpha_imag[i]) > f64::EPSILON;
-            let infinite = f64::abs(self.beta[i]) < 10.0 * f64::EPSILON;
+        for k in 0..nc {
+            let imaginary = f64::abs(self.alpha_imag[k]) > 0.0;
+            let infinite = f64::abs(self.beta[k]) < TOL_BETA;
             if !imaginary && !infinite {
-                let y_root = self.alpha_real[i] / self.beta[i];
-                self.roots[nroot] = (xb + xa + (xb - xa) * y_root) / 2.0;
-                nroot += 1;
+                let y_root = self.alpha_real[k] / self.beta[k];
+                let x_root = (xb + xa + (xb - xa) * y_root) / 2.0;
+                println!(
+                    "alpha = ({}, {}), beta = {:.e}, lambda = {}, x_root = {}",
+                    self.alpha_real[k], self.alpha_imag[k], self.beta[k], y_root, x_root,
+                );
+                if x_root >= xa - TOL_X_RANGE && x_root <= xb + TOL_X_RANGE {
+                    self.roots[nroot] = x_root;
+                    nroot += 1;
+                }
             }
         }
         for i in nroot..nc {
@@ -171,7 +215,8 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
 
         // grid points
-        let nn = 2;
+        let nn = 44;
+        // for nn in 2..128 {
         let yy = chebyshev_lobatto_points(nn);
 
         // evaluate the data over grid points
@@ -188,6 +233,8 @@ mod tests {
 
         // find roots
         let roots = solver.find(&uu, xa, xb).unwrap();
-        array_approx_eq(roots, &[-1.0, 1.0], 1e-15);
+        println!("N = {}, roots = {:?}", nn, roots);
+        array_approx_eq(roots, &[-1.0, 1.0], 1e-14);
+        // }
     }
 }

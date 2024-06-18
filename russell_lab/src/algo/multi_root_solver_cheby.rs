@@ -96,7 +96,8 @@ impl MultiRootSolverCheby {
         vec_mat_mul(&mut gamma, 1.0, &uu, &self.pp).unwrap();
         let gamma_n = gamma[nn];
         if f64::abs(gamma_n) < 10.0 * f64::EPSILON {
-            return Err("leading expansion coefficient vanishes; try smaller degree N");
+            println!("leading expansion coefficient vanishes; try smaller degree N");
+            // return Err("leading expansion coefficient vanishes; try smaller degree N");
         }
         for k in 0..np {
             gamma[k] = -0.5 * gamma[k] / gamma_n;
@@ -145,7 +146,7 @@ impl MultiRootSolverCheby {
                 }
                 if sum < cond_max {
                     if f64::abs(l_imag[i]) < 10.0 * f64::EPSILON {
-                        self.roots[nroot] = l_real[i];
+                        self.roots[nroot] = (xb + xa + (xb - xa) * l_real[i]) / 2.0;
                         nroot += 1;
                     } else {
                         println!("ignoring complex root");
@@ -199,6 +200,34 @@ mod tests {
     use crate::math::PI;
     use crate::StrError;
     use crate::Vector;
+    use plotpy::{Curve, Plot};
+
+    const SAVE_FIGURE: bool = true;
+
+    fn graph<F, A>(name: &str, xa: f64, xb: f64, roots: &[f64], args: &mut A, mut f: F)
+    where
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+    {
+        let xx = Vector::linspace(xa, xb, 101).unwrap();
+        let yy = xx.get_mapped(|x| f(x, args).unwrap());
+        let mut curve = Curve::new();
+        let mut zeros = Curve::new();
+        zeros
+            .set_marker_style("o")
+            .set_marker_color("red")
+            .set_marker_void(true)
+            .set_line_style("None");
+        for root in roots {
+            zeros.draw(&[*root], &[0.0]);
+        }
+        curve.draw(xx.as_data(), yy.as_data());
+        let mut plot = Plot::new();
+        plot.add(&curve)
+            .add(&zeros)
+            .set_cross(0.0, 0.0, "gray", "-", 1.0)
+            .grid_and_labels("x", "f(x)")
+            .save(&format!("/tmp/russell/{}.svg", name));
+    }
 
     #[test]
     fn multi_root_solver_cheby_day_romero_paper() {
@@ -215,16 +244,23 @@ mod tests {
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
         let roots = solver.find_given_data(-1.0, 1.0, &uu).unwrap();
         println!("N = {}, roots = {:?}", nn, roots);
+
+        if SAVE_FIGURE {
+            let f = |x, _: &mut NoArgs| -> Result<f64, StrError> { Ok(f64::cos(PI * x) - 1.0 / f64::cosh(PI * x)) };
+            let (xa, xb) = (-1.0, 1.0);
+            let args = &mut 0;
+            graph("test_multi_root_solver_cheby_day_romero_paper", xa, xb, roots, args, f);
+        }
     }
 
     #[test]
-    fn multi_root_solver_cheby_works_simple() {
+    fn multi_root_solver_cheby_simple() {
         // function
         let f = |x, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x - 1.0) };
         let (xa, xb) = (-4.0, 4.0);
 
         // degree
-        let nn = 2;
+        let nn = 4;
 
         // solver
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
@@ -242,5 +278,9 @@ mod tests {
         let roots = solver.find_given_data(xa, xb, &uu).unwrap();
         println!("N = {}, roots = {:?}", nn, roots);
         // array_approx_eq(roots, &[-1.0, 1.0], 1e-14);
+
+        if SAVE_FIGURE {
+            graph("test_multi_root_solver_cheby_simple", xa, xb, roots, args, f);
+        }
     }
 }

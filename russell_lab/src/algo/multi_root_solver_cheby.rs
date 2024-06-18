@@ -246,7 +246,10 @@ mod tests {
         println!("N = {}, roots = {:?}", nn, roots);
 
         if SAVE_FIGURE {
-            let f = |x, _: &mut NoArgs| -> Result<f64, StrError> { Ok(f64::cos(PI * x) - 1.0 / f64::cosh(PI * x)) };
+            let f = |x, _: &mut NoArgs| -> Result<f64, StrError> {
+                let w = 3.0 * x + 4.0;
+                Ok(f64::cos(PI * w) - 1.0 / f64::cosh(PI * w))
+            };
             let (xa, xb) = (-1.0, 1.0);
             let args = &mut 0;
             graph("test_multi_root_solver_cheby_day_romero_paper", xa, xb, roots, args, f);
@@ -260,7 +263,7 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
 
         // degree
-        let nn = 4;
+        let nn = 8; // 7 causes Inf and NaN which causes segmentation fault in LAPACK
 
         // solver
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();

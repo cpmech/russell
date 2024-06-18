@@ -209,6 +209,34 @@ mod tests {
     use crate::math::chebyshev_lobatto_points;
     use crate::StrError;
     use crate::{array_approx_eq, Vector};
+    use plotpy::{Curve, Plot};
+
+    const SAVE_FIGURE: bool = true;
+
+    fn graph<F, A>(name: &str, xa: f64, xb: f64, roots: &[f64], args: &mut A, mut f: F)
+    where
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+    {
+        let xx = Vector::linspace(xa, xb, 101).unwrap();
+        let yy = xx.get_mapped(|x| f(x, args).unwrap());
+        let mut curve = Curve::new();
+        let mut zeros = Curve::new();
+        zeros
+            .set_marker_style("o")
+            .set_marker_color("red")
+            .set_marker_void(true)
+            .set_line_style("None");
+        for root in roots {
+            zeros.draw(&[*root], &[0.0]);
+        }
+        curve.draw(xx.as_data(), yy.as_data());
+        let mut plot = Plot::new();
+        plot.add(&curve)
+            .add(&zeros)
+            .set_cross(0.0, 0.0, "gray", "-", 1.0)
+            .grid_and_labels("x", "f(x)")
+            .save(&format!("/tmp/russell/{}.svg", name));
+    }
 
     #[test]
     fn multi_root_solver_interp_works_simple() {
@@ -238,5 +266,9 @@ mod tests {
         println!("N = {}, roots = {:?}", nn, roots);
         // array_approx_eq(roots, &[-1.0, 1.0], 1e-14);
         // }
+
+        if SAVE_FIGURE {
+            graph("test_multi_root_solver_interp_simple", xa, xb, roots, args, f);
+        }
     }
 }

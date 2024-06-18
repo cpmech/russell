@@ -227,7 +227,7 @@ mod tests {
             .set_marker_void(true)
             .set_line_style("None");
         for root in roots {
-            zeros.draw(&[*root], &[0.0]);
+            zeros.draw(&[*root], &[f(*root, args).unwrap()]);
         }
         curve.draw(xx.as_data(), yy.as_data());
         let mut plot = Plot::new();

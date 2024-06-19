@@ -383,19 +383,20 @@ mod tests {
     #[test]
     fn multi_root_solver_cheby_works() {
         let tests = get_test_functions();
-        let id = 3;
+        let id = 4;
         let test = &tests[id];
         if test.root1.is_some() || test.root2.is_some() || test.root3.is_some() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             let (xa, xb) = test.range;
-            let nn = 4;
+            let nn = 20;
             let mut solver = MultiRootSolverCheby::new(nn).unwrap();
             let args = &mut 0;
             solver.set_data_from_function(xa, xb, args, test.f).unwrap();
             let roots_unpolished = Vec::from(solver.find().unwrap());
-            let mut roots_polished = vec![0.0; roots_unpolished.len()];
-            polish_roots(&mut roots_polished, &roots_unpolished, xa, xb, args, test.f).unwrap();
+            // let mut roots_polished = vec![0.0; roots_unpolished.len()];
+            // polish_roots(&mut roots_polished, &roots_unpolished, xa, xb, args, test.f).unwrap();
+            let roots_polished = roots_unpolished.clone();
             if SAVE_FIGURE {
                 graph(
                     &format!("test_multi_root_solver_cheby_{:0>3}", id),

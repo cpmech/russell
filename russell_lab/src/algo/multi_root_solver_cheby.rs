@@ -154,7 +154,7 @@ impl MultiRootSolverCheby {
         let nn = self.nn;
         let cn = self.c[nn];
         if f64::abs(cn) < TOL_EPS {
-            return Err("trailing Chebyshev coefficient vanishes; try smaller degree N");
+            return Err("trailing Chebyshev coefficient vanishes; try another degree N");
         }
 
         // last row of the companion matrix
@@ -227,20 +227,35 @@ mod tests {
     use super::MultiRootSolverCheby;
     use crate::algo::NoArgs;
     use crate::array_approx_eq;
+    use crate::get_test_functions;
     use crate::StrError;
     use crate::Vector;
+    use plotpy::Legend;
     use plotpy::{Curve, Plot};
 
     const SAVE_FIGURE: bool = true;
 
-    fn graph<F, A>(xa: f64, xb: f64, roots: &[f64], args: &mut A, mut f: F) -> Plot
+    fn graph<F, A>(
+        name: &str,
+        xa: f64,
+        xb: f64,
+        solver: &MultiRootSolverCheby,
+        roots: &[f64],
+        args: &mut A,
+        mut f: F,
+    ) -> Plot
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
         let xx = Vector::linspace(xa, xb, 101).unwrap();
-        let yy = xx.get_mapped(|x| f(x, args).unwrap());
-        let mut curve = Curve::new();
+        let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
+        let yy_int = xx.get_mapped(|x| solver.interp(x).unwrap());
+        let mut curve_ana = Curve::new();
+        let mut curve_int = Curve::new();
         let mut zeros = Curve::new();
+        curve_ana.set_label("analytical");
+        curve_int.set_label("interpolated");
+        curve_int.set_line_style("--").set_marker_style(".").set_marker_every(5);
         zeros
             .set_marker_style("o")
             .set_marker_void(true)
@@ -249,12 +264,21 @@ mod tests {
         for root in roots {
             zeros.draw(&[*root], &[f(*root, args).unwrap()]);
         }
-        curve.draw(xx.as_data(), yy.as_data());
+        curve_int.draw(xx.as_data(), yy_int.as_data());
+        curve_ana.draw(xx.as_data(), yy_ana.as_data());
         let mut plot = Plot::new();
-        plot.add(&curve)
+        let mut legend = Legend::new();
+        legend.set_num_col(2);
+        legend.set_outside(true);
+        legend.draw();
+        plot.add(&curve_ana)
+            .add(&curve_int)
             .add(&zeros)
-            .set_cross(0.0, 0.0, "gray", "-", 1.0)
-            .grid_and_labels("x", "f(x)");
+            .add(&legend)
+            .set_cross(0.0, 0.0, "gray", "-", 1.5)
+            .grid_and_labels("x", "f(x)")
+            .save(&format!("/tmp/russell/{}.svg", name))
+            .unwrap();
         plot
     }
 
@@ -281,18 +305,39 @@ mod tests {
 
         // figure
         if SAVE_FIGURE {
-            let mut curve = Curve::new();
-            curve.set_line_style("--").set_marker_style(".").set_marker_every(5);
-            let xx = Vector::linspace(xa, xb, 101).unwrap();
-            let yy = xx.get_mapped(|x| solver.interp(x).unwrap());
-            curve.draw(xx.as_data(), yy.as_data());
-            let mut plot = graph(xa, xb, &roots, args, f);
-            plot.add(&curve)
-                .save("/tmp/russell/test_multi_root_solver_cheby_simple.svg")
-                .unwrap();
+            graph("test_multi_root_solver_cheby_simple", xa, xb, &solver, &roots, args, f);
         }
 
         // check
         array_approx_eq(&roots, &[-1.0, 1.0], 1e-14);
+    }
+
+    #[test]
+    fn multi_root_solver_cheby_works() {
+        let tests = get_test_functions();
+        let id = 2;
+        let test = &tests[id];
+        if test.root1.is_some() || test.root2.is_some() || test.root3.is_some() {
+            println!("\n===================================================================");
+            println!("\n{}", test.name);
+            let (xa, xb) = test.range;
+            let nn = 10;
+            let mut solver = MultiRootSolverCheby::new(nn).unwrap();
+            let args = &mut 0;
+            solver.set_data_from_function(xa, xb, args, test.f).unwrap();
+            let roots = Vec::from(solver.find().unwrap());
+            println!("roots = {:?}", roots);
+            if SAVE_FIGURE {
+                graph(
+                    &format!("test_multi_root_solver_cheby_{:0>3}", id),
+                    xa,
+                    xb,
+                    &solver,
+                    &roots,
+                    args,
+                    test.f,
+                );
+            }
+        }
     }
 }

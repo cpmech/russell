@@ -5,6 +5,9 @@ use crate::{cpx, mat_eigen, mat_vec_mul, vec_mat_mul, StrError};
 use crate::{Matrix, Vector};
 use num_complex::{Complex64, ComplexFloat};
 
+const TOL_TAU: f64 = 1.0e-8; // discard roots with abs(Im(root)) > tau
+const TOL_SIGMA: f64 = 1.0e-6; // discard roots such that abs(Re(root)) > (1 + sigma)
+
 pub struct MultiRootSolverCheby {
     /// Degree N
     nn: usize,
@@ -39,7 +42,9 @@ impl MultiRootSolverCheby {
         // Chebyshev-Gauss-Lobatto coordinates
         let yy = standard_chebyshev_lobatto_points(nn);
 
-        // interpolation matrix
+        // println!("yy =\n{}", yy);
+
+        // interpolation matrix (Boyd's phia)
         let nf = nn as f64;
         let np = nn + 1;
         let mut pp = Matrix::new(np, np);
@@ -52,6 +57,7 @@ impl MultiRootSolverCheby {
                 pp.set(j, k, 2.0 / (qj * qk * nf) * f64::cos(PI * jf * kf / nf));
             }
         }
+        println!("P =\n{:.4}", pp);
 
         // companion matrix (except last row)
         let mut aa = Matrix::new(nn, nn);
@@ -60,6 +66,7 @@ impl MultiRootSolverCheby {
             aa.set(r, r + 1, 0.5); // upper diagonal
             aa.set(r, r - 1, 0.5); // lower diagonal
         }
+        println!("A =\n{:.4}", aa);
 
         // done
         Ok(MultiRootSolverCheby {
@@ -94,6 +101,7 @@ impl MultiRootSolverCheby {
         let np = nn + 1;
         let mut gamma = Vector::new(np);
         vec_mat_mul(&mut gamma, 1.0, &uu, &self.pp).unwrap();
+        println!("gamma =\n{}", gamma);
         let gamma_n = gamma[nn];
         if f64::abs(gamma_n) < 10.0 * f64::EPSILON {
             println!("leading expansion coefficient vanishes; try smaller degree N");
@@ -102,6 +110,7 @@ impl MultiRootSolverCheby {
         for k in 0..np {
             gamma[k] = -0.5 * gamma[k] / gamma_n;
         }
+        println!("gamma (normalized) =\n{}", gamma);
 
         // nonstandard companion matrix
         let mut cc = Matrix::new(nn, nn);
@@ -114,43 +123,30 @@ impl MultiRootSolverCheby {
             cc.add(nn - 1, i, gamma[i]); // last row
         }
 
+        // last row of the companion matrix
+        for i in 0..nn {
+            self.aa.set(nn - 1, i, gamma[i]); // last row
+        }
+        self.aa.add(nn - 1, nn - 2, 0.5);
+        println!("A =\n{:.4}", self.aa);
+
         // eigenvalues
         let mut l_real = Vector::new(nn);
         let mut l_imag = Vector::new(nn);
         let mut v_real = Matrix::new(nn, nn);
         let mut v_imag = Matrix::new(nn, nn);
-        mat_eigen(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut cc).unwrap();
+        mat_eigen(&mut l_real, &mut l_imag, &mut v_real, &mut v_imag, &mut self.aa).unwrap();
 
-        // filter the eigenvalues => roots
-        let cond_max = f64::min(f64::powi(2.0, (nn / 2) as i32), 1e6);
-        let overflow_factor = 100.0 / (nn as f64);
-        let overflow_root = cpx!(f64::exp(overflow_factor), 0.0);
+        println!("l_real =\n{}", l_real);
+        println!("l_imag =\n{}", l_imag);
+
+        // roots = real eigenvalues within the interval
         let mut nroot = 0;
-        let one = cpx!(1.0, 0.0);
         for i in 0..nn {
-            if f64::abs(l_real[i]) < 2.0 && f64::abs(l_imag[i]) < 0.2 {
-                let mut root = cpx!(l_real[i], l_imag[i]);
-                if root.abs().ln() >= overflow_factor {
-                    root = overflow_root;
-                }
-                let z2 = root * 2.0;
-                let mut v_j_minus_2 = one;
-                let mut v_j_minus_1 = root;
-                let mut v_j;
-                let mut sum = v_j_minus_2.abs() + v_j_minus_1.abs(); // sum of the row i-th of the generalized Vandermonde matrix
-                for j in 2..np {
-                    v_j = v_j_minus_1 * z2 - v_j_minus_2;
-                    v_j_minus_2 = v_j_minus_1;
-                    v_j_minus_1 = v_j;
-                    sum += v_j.abs();
-                }
-                if sum < cond_max {
-                    if f64::abs(l_imag[i]) < 10.0 * f64::EPSILON {
-                        self.roots[nroot] = (xb + xa + (xb - xa) * l_real[i]) / 2.0;
-                        nroot += 1;
-                    } else {
-                        println!("ignoring complex root");
-                    }
+            if f64::abs(l_imag[i]) < TOL_TAU * f64::abs(l_real[i]) {
+                if f64::abs(l_real[i]) <= (1.0 + TOL_SIGMA) {
+                    self.roots[nroot] = (xb + xa + (xb - xa) * l_real[i]) / 2.0;
+                    nroot += 1;
                 }
             }
         }
@@ -230,6 +226,39 @@ mod tests {
     }
 
     #[test]
+    fn multi_root_solver_cheby_simple() {
+        // function
+        let f = |x, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x - 1.0) };
+        let (xa, xb) = (-4.0, 4.0);
+
+        // degree
+        let nn = 2; // 7 causes Inf and NaN which causes segmentation fault in LAPACK
+
+        // solver
+        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
+
+        // data
+        let np = nn + 1;
+        let mut uu = Vector::new(np);
+        let args = &mut 0;
+        for i in 0..np {
+            let x = (xb + xa + (xb - xa) * solver.yy[i]) / 2.0;
+            // println!("x = {}", x);
+            uu[i] = f(x, args).unwrap();
+        }
+        println!("U =\n{}", uu);
+
+        // find roots
+        let roots = solver.find_given_data(xa, xb, &uu).unwrap();
+        println!("N = {}, roots = {:?}", nn, roots);
+        // array_approx_eq(roots, &[-1.0, 1.0], 1e-14);
+
+        if SAVE_FIGURE {
+            graph("test_multi_root_solver_cheby_simple", xa, xb, roots, args, f);
+        }
+    }
+
+    #[test]
     fn multi_root_solver_cheby_day_romero_paper() {
         let nn = 20;
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
@@ -253,37 +282,6 @@ mod tests {
             let (xa, xb) = (-1.0, 1.0);
             let args = &mut 0;
             graph("test_multi_root_solver_cheby_day_romero_paper", xa, xb, roots, args, f);
-        }
-    }
-
-    #[test]
-    fn multi_root_solver_cheby_simple() {
-        // function
-        let f = |x, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x - 1.0) };
-        let (xa, xb) = (-4.0, 4.0);
-
-        // degree
-        let nn = 8; // 7 causes Inf and NaN which causes segmentation fault in LAPACK
-
-        // solver
-        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
-
-        // data
-        let np = nn + 1;
-        let mut uu = Vector::new(np);
-        let args = &mut 0;
-        for i in 0..np {
-            let x = (xb + xa + (xb - xa) * solver.yy[i]) / 2.0;
-            uu[i] = f(x, args).unwrap();
-        }
-
-        // find roots
-        let roots = solver.find_given_data(xa, xb, &uu).unwrap();
-        println!("N = {}, roots = {:?}", nn, roots);
-        // array_approx_eq(roots, &[-1.0, 1.0], 1e-14);
-
-        if SAVE_FIGURE {
-            graph("test_multi_root_solver_cheby_simple", xa, xb, roots, args, f);
         }
     }
 }

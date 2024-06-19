@@ -1,16 +1,22 @@
-#![allow(unused)]
-
-use crate::math::PI;
-use crate::{cpx, mat_eigen, mat_vec_mul, vec_mat_mul, StrError};
+use crate::math::{chebyshev_tn, PI};
+use crate::{mat_eigen, mat_vec_mul, StrError};
 use crate::{Matrix, Vector};
-use num_complex::{Complex64, ComplexFloat};
 
-const TOL_TAU: f64 = 1.0e-8; // discard roots with abs(Im(root)) > tau
-const TOL_SIGMA: f64 = 1.0e-6; // discard roots such that abs(Re(root)) > (1 + sigma)
+/// Tolerance to avoid division by zero on the trailing Chebyshev coefficient
+const TOL_EPS: f64 = 1.0e-13;
+
+/// Tolerance to discard roots with abs(Im(root)) > tau
+const TOL_TAU: f64 = 1.0e-8;
+
+/// Tolerance to discard roots such that abs(Re(root)) > (1 + sigma)
+const TOL_SIGMA: f64 = 1.0e-6;
 
 pub struct MultiRootSolverCheby {
     /// Degree N
     nn: usize,
+
+    /// Number of grid points (= N + 1)
+    np: usize,
 
     /// Chebyshev-Gauss-Lobatto coordinates
     yy: Vector,
@@ -21,7 +27,7 @@ pub struct MultiRootSolverCheby {
     /// Companion matrix A
     aa: Matrix,
 
-    /// Function evaluations at the grid points (Chebyshev-Gauss-Lobatto)
+    /// Function evaluations at the (standard) Chebyshev-Gauss-Lobatto grid points
     u: Vector,
 
     /// Coefficients of interpolation: c = P u
@@ -29,6 +35,15 @@ pub struct MultiRootSolverCheby {
 
     /// Possible roots
     roots: Vector,
+
+    /// Indicates whether the data vector (u) has been set or not
+    all_data_set: bool,
+
+    /// Lower bound
+    xa: f64,
+
+    /// Upper bound
+    xb: f64,
 }
 
 impl MultiRootSolverCheby {
@@ -39,12 +54,10 @@ impl MultiRootSolverCheby {
             return Err("the degree N must be ≥ 2");
         }
 
-        // Chebyshev-Gauss-Lobatto coordinates
+        // standard Chebyshev-Gauss-Lobatto coordinates
         let yy = standard_chebyshev_lobatto_points(nn);
 
-        // println!("yy =\n{}", yy);
-
-        // interpolation matrix (Boyd's phia)
+        // interpolation matrix
         let nf = nn as f64;
         let np = nn + 1;
         let mut pp = Matrix::new(np, np);
@@ -57,7 +70,7 @@ impl MultiRootSolverCheby {
                 pp.set(j, k, 2.0 / (qj * qk * nf) * f64::cos(PI * jf * kf / nf));
             }
         }
-        println!("P =\n{:.4}", pp);
+        println!("P = \n{:.5}", pp);
 
         // companion matrix (except last row)
         let mut aa = Matrix::new(nn, nn);
@@ -66,66 +79,87 @@ impl MultiRootSolverCheby {
             aa.set(r, r + 1, 0.5); // upper diagonal
             aa.set(r, r - 1, 0.5); // lower diagonal
         }
-        println!("A =\n{:.4}", aa);
 
         // done
         Ok(MultiRootSolverCheby {
             nn,
+            np,
             yy,
             pp,
             aa,
             u: Vector::new(np),
             c: Vector::new(np),
             roots: Vector::new(nn),
+            all_data_set: false,
+            xa: -1.0,
+            xb: 1.0,
         })
     }
 
-    // pub fn interp<F, A>(&mut self, x: f64, args: &mut A, mut f: F) -> f64
-    // where
-    //     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
-    // {
-    //     // function evaluations at the grid points
-    //     let nf = self.nn as f64;
-    //     let np = self.nn + 1;
-    //     for k in 0..np {
-    //         let y = f64::cos(PI * (k as f64) / nf); // Chebyshev-Gauss-Lobatto
-    //         let x = (xb + xa + (xb - xa) * y) / 2.0;
-    //         self.u[k] = f(x, args).unwrap();
-    //     }
-    //     Err("STOP")
-    // }
+    /// Sets the data vector (u) from the function evaluated at the standard Chebyshev-Gauss-Lobatto points
+    pub fn set_data_from_function<F, A>(&mut self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(), StrError>
+    where
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+    {
+        // check
+        if xb <= xa + TOL_EPS {
+            return Err("xb must be greater than xa + ϵ");
+        }
 
-    pub fn find_given_data(&mut self, xa: f64, xb: f64, uu: &Vector) -> Result<&[f64], StrError> {
+        // set data vector
+        for k in 0..self.np {
+            let x = (xb + xa + (xb - xa) * self.yy[k]) / 2.0;
+            self.u[k] = f(x, args).unwrap();
+        }
+
+        // calculate the Chebyshev coefficients
+        mat_vec_mul(&mut self.c, 1.0, &self.pp, &self.u).unwrap();
+        println!("c = \n{:.5}", self.c);
+
+        // done
+        self.all_data_set = true;
+        self.xa = xa;
+        self.xb = xb;
+        Ok(())
+    }
+
+    /// Computes the interpolated function
+    ///
+    /// **Warning:** The data vector (u) must be set first.
+    pub fn interp(&self, x: f64) -> Result<f64, StrError> {
+        if !self.all_data_set {
+            return Err("The data vector (u) must be set first");
+        }
+        if x < self.xa || x > self.xb {
+            return Err("x must be in [xa, xb]");
+        }
+        let y = (2.0 * x - self.xb - self.xa) / (self.xb - self.xa);
+        let mut sum = 0.0;
+        for k in 0..self.np {
+            sum += self.c[k] * chebyshev_tn(k, y);
+        }
+        Ok(sum)
+    }
+
+    /// Find all roots in the interval
+    ///
+    /// **Warning:** The data vector (u) must be set first.
+    pub fn find(&mut self) -> Result<&[f64], StrError> {
+        // check
+        if !self.all_data_set {
+            return Err("The data vector (u) must be set first");
+        }
+
         // expansion coefficients
         let nn = self.nn;
-        let np = nn + 1;
-        let mut gamma = Vector::new(np);
-        vec_mat_mul(&mut gamma, 1.0, &uu, &self.pp).unwrap();
-        println!("gamma =\n{}", gamma);
-        let gamma_n = gamma[nn];
-        if f64::abs(gamma_n) < 10.0 * f64::EPSILON {
-            println!("leading expansion coefficient vanishes; try smaller degree N");
-            // return Err("leading expansion coefficient vanishes; try smaller degree N");
-        }
-        for k in 0..np {
-            gamma[k] = -0.5 * gamma[k] / gamma_n;
-        }
-        println!("gamma (normalized) =\n{}", gamma);
-
-        // nonstandard companion matrix
-        let mut cc = Matrix::new(nn, nn);
-        for i in 0..(nn - 1) {
-            cc.set(i, i + 1, 0.5);
-            cc.set(i + 1, i, 0.5);
-        }
-        cc.set(0, 1, 1.0);
-        for i in 0..nn {
-            cc.add(nn - 1, i, gamma[i]); // last row
+        let cn = self.c[nn];
+        if f64::abs(cn) < TOL_EPS {
+            return Err("trailing Chebyshev coefficient vanishes; try smaller degree N");
         }
 
         // last row of the companion matrix
-        for i in 0..nn {
-            self.aa.set(nn - 1, i, gamma[i]); // last row
+        for k in 0..nn {
+            self.aa.set(nn - 1, k, -0.5 * self.c[k] / cn);
         }
         self.aa.add(nn - 1, nn - 2, 0.5);
         println!("A =\n{:.4}", self.aa);
@@ -145,14 +179,14 @@ impl MultiRootSolverCheby {
         for i in 0..nn {
             if f64::abs(l_imag[i]) < TOL_TAU * f64::abs(l_real[i]) {
                 if f64::abs(l_real[i]) <= (1.0 + TOL_SIGMA) {
-                    self.roots[nroot] = (xb + xa + (xb - xa) * l_real[i]) / 2.0;
+                    self.roots[nroot] = (self.xb + self.xa + (self.xb - self.xa) * l_real[i]) / 2.0;
                     nroot += 1;
                 }
             }
         }
 
         // sort roots
-        for i in nroot..self.nn {
+        for i in nroot..nn {
             self.roots[i] = f64::MAX;
         }
         self.roots.as_mut_data().sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -193,14 +227,13 @@ mod tests {
     use super::MultiRootSolverCheby;
     use crate::algo::NoArgs;
     use crate::array_approx_eq;
-    use crate::math::PI;
     use crate::StrError;
     use crate::Vector;
     use plotpy::{Curve, Plot};
 
     const SAVE_FIGURE: bool = true;
 
-    fn graph<F, A>(name: &str, xa: f64, xb: f64, roots: &[f64], args: &mut A, mut f: F)
+    fn graph<F, A>(xa: f64, xb: f64, roots: &[f64], args: &mut A, mut f: F) -> Plot
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -210,8 +243,8 @@ mod tests {
         let mut zeros = Curve::new();
         zeros
             .set_marker_style("o")
-            .set_marker_color("red")
             .set_marker_void(true)
+            .set_marker_line_color("#00760F")
             .set_line_style("None");
         for root in roots {
             zeros.draw(&[*root], &[f(*root, args).unwrap()]);
@@ -221,8 +254,8 @@ mod tests {
         plot.add(&curve)
             .add(&zeros)
             .set_cross(0.0, 0.0, "gray", "-", 1.0)
-            .grid_and_labels("x", "f(x)")
-            .save(&format!("/tmp/russell/{}.svg", name));
+            .grid_and_labels("x", "f(x)");
+        plot
     }
 
     #[test]
@@ -232,56 +265,34 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
 
         // degree
-        let nn = 2; // 7 causes Inf and NaN which causes segmentation fault in LAPACK
+        let nn = 2;
 
         // solver
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
 
         // data
-        let np = nn + 1;
-        let mut uu = Vector::new(np);
         let args = &mut 0;
-        for i in 0..np {
-            let x = (xb + xa + (xb - xa) * solver.yy[i]) / 2.0;
-            // println!("x = {}", x);
-            uu[i] = f(x, args).unwrap();
-        }
-        println!("U =\n{}", uu);
+        solver.set_data_from_function(xa, xb, args, f).unwrap();
+        println!("U =\n{}", solver.u);
 
         // find roots
-        let roots = solver.find_given_data(xa, xb, &uu).unwrap();
-        println!("N = {}, roots = {:?}", nn, roots);
-        // array_approx_eq(roots, &[-1.0, 1.0], 1e-14);
-
-        if SAVE_FIGURE {
-            graph("test_multi_root_solver_cheby_simple", xa, xb, roots, args, f);
-        }
-    }
-
-    #[test]
-    fn multi_root_solver_cheby_day_romero_paper() {
-        let nn = 20;
-        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
-
-        let np = nn + 1;
-        let mut uu = Vector::new(np);
-        for i in 0..np {
-            let w = 3.0 * solver.yy[i] + 4.0;
-            uu[i] = f64::cos(PI * w) - 1.0 / f64::cosh(PI * w);
-        }
-
-        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
-        let roots = solver.find_given_data(-1.0, 1.0, &uu).unwrap();
+        let roots = Vec::from(solver.find().unwrap());
         println!("N = {}, roots = {:?}", nn, roots);
 
+        // figure
         if SAVE_FIGURE {
-            let f = |x, _: &mut NoArgs| -> Result<f64, StrError> {
-                let w = 3.0 * x + 4.0;
-                Ok(f64::cos(PI * w) - 1.0 / f64::cosh(PI * w))
-            };
-            let (xa, xb) = (-1.0, 1.0);
-            let args = &mut 0;
-            graph("test_multi_root_solver_cheby_day_romero_paper", xa, xb, roots, args, f);
+            let mut curve = Curve::new();
+            curve.set_line_style("--").set_marker_style(".").set_marker_every(5);
+            let xx = Vector::linspace(xa, xb, 101).unwrap();
+            let yy = xx.get_mapped(|x| solver.interp(x).unwrap());
+            curve.draw(xx.as_data(), yy.as_data());
+            let mut plot = graph(xa, xb, &roots, args, f);
+            plot.add(&curve)
+                .save("/tmp/russell/test_multi_root_solver_cheby_simple.svg")
+                .unwrap();
         }
+
+        // check
+        array_approx_eq(&roots, &[-1.0, 1.0], 1e-14);
     }
 }

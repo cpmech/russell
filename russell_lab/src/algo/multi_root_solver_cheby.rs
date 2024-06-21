@@ -1,8 +1,8 @@
 #![allow(unused)]
 
 use crate::math::{chebyshev_tn, PI};
-use crate::StrError;
-use crate::{mat_eigen, mat_vec_mul};
+use crate::{approx_eq, array_approx_eq, mat_eigen, mat_vec_mul, Stopwatch};
+use crate::{vec_approx_eq, StrError};
 use crate::{InterpGrid, InterpLagrange, InterpParams, RootSolverBrent};
 use crate::{Matrix, Vector};
 
@@ -50,41 +50,46 @@ pub struct MultiRootSolverCheby {
     xb: f64,
 }
 
-// returns `(yy, uu, cc)`
-fn chebyshev_coefficients<F, A>(nn: usize, xa: f64, xb: f64, args: &mut A, f: &mut F) -> (Vector, Vector, Vector)
-where
+// Chebyshev-Gauss-Lobatto
+fn chebyshev_coefficients<F, A>(
+    workspace_uu: &mut [f64],
+    workspace_cc: &mut [f64],
+    nn: usize,
+    xa: f64,
+    xb: f64,
+    args: &mut A,
+    f: &mut F,
+) where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
-    assert!(xb > xa);
-
-    // standard Chebyshev-Gauss-Lobatto coordinates
-    let yy = standard_chebyshev_lobatto_points(nn);
-
-    // interpolation matrix
-    let nf = nn as f64;
+    // check
     let np = nn + 1;
-    let mut pp = Matrix::new(np, np);
-    for j in 0..np {
-        let jf = j as f64;
-        let qj = if j == 0 || j == nn { 2.0 } else { 1.0 };
-        for k in 0..np {
-            let kf = k as f64;
-            let qk = if k == 0 || k == nn { 2.0 } else { 1.0 };
-            pp.set(j, k, 2.0 / (qj * qk * nf) * f64::cos(PI * jf * kf / nf));
-        }
-    }
+    assert!(nn > 0);
+    assert!(xb > xa);
+    assert!(workspace_uu.len() >= np);
+    assert!(workspace_cc.len() >= np);
 
     // data vector
-    let mut uu = Vector::new(np);
+    let nf = nn as f64;
+    let uu = &mut workspace_uu[0..np];
     for k in 0..np {
-        let x = (xb + xa + (xb - xa) * yy[k]) / 2.0;
+        let kf = k as f64;
+        let x = (xb + xa + (xb - xa) * f64::cos(PI * kf / nf)) / 2.0;
         uu[k] = (*f)(x, args).unwrap();
     }
 
-    // Chebyshev coefficients
-    let mut cc = Vector::new(np);
-    mat_vec_mul(&mut cc, 1.0, &pp, &uu).unwrap();
-    (yy, uu, cc)
+    // coefficients
+    let cc = &mut workspace_cc[0..np];
+    for j in 0..np {
+        let jf = j as f64;
+        let qj = if j == 0 || j == nn { 2.0 } else { 1.0 };
+        cc[j] = 0.0;
+        for k in 0..np {
+            let kf = k as f64;
+            let qk = if k == 0 || k == nn { 2.0 } else { 1.0 };
+            cc[j] += uu[k] * 2.0 * f64::cos(PI * jf * kf / nf) / (qj * qk * nf);
+        }
+    }
 }
 
 fn chebyshev_interpolation(x: f64, xa: f64, xb: f64, cc: &Vector) -> f64 {
@@ -108,15 +113,19 @@ pub fn adaptive_interpolation<F, A>(
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
-    if nn_max > 1000 {
-        return Err("max N must be ≤ 1000");
+    if nn_max > 2048 {
+        return Err("max N must be ≤ 2048");
     }
-    let (yy, uu, cc) = chebyshev_coefficients(1, xa, xb, args, &mut f);
-    let mut cn_prev = cc[1];
-    println!("N = 1, cn = {}", cn_prev);
+    let np_max = nn_max + 1;
+    let mut workspace_uu = vec![0.0; np_max];
+    let mut workspace_cc = vec![0.0; np_max];
+    let nn = 1;
+    chebyshev_coefficients(&mut workspace_uu, &mut workspace_cc, nn, xa, xb, args, &mut f);
+    let mut cn_prev = workspace_cc[nn];
+    println!("N = {}, cn = {}", nn, cn_prev);
     for nn in 2..nn_max {
-        let (yy, uu, cc) = chebyshev_coefficients(nn, xa, xb, args, &mut f);
-        let cn = cc[nn];
+        chebyshev_coefficients(&mut workspace_uu, &mut workspace_cc, nn, xa, xb, args, &mut f);
+        let cn = workspace_cc[nn];
         println!("N = {}, cn = {}", nn, cn);
         if f64::abs(cn_prev) < tolerance && f64::abs(cn) < tolerance {
             return Ok(nn - 2);
@@ -135,7 +144,8 @@ impl MultiRootSolverCheby {
         }
 
         // standard Chebyshev-Gauss-Lobatto coordinates
-        let yy = standard_chebyshev_lobatto_points(nn);
+        // let yy = standard_chebyshev_lobatto_points(nn);
+        let yy = Vector::new(nn + 1);
 
         // interpolation matrix
         let nf = nn as f64;
@@ -322,12 +332,11 @@ where
 }
 
 /// Returns the standard (from 1 to -1) Chebyshev-Gauss-Lobatto coordinates
-fn standard_chebyshev_lobatto_points(nn: usize) -> Vector {
-    let mut yy = Vector::new(nn + 1);
+fn standard_chebyshev_lobatto_points(yy: &mut [f64], nn: usize) {
     yy[0] = 1.0;
     yy[nn] = -1.0;
     if nn < 3 {
-        return yy;
+        return;
     }
     let nf = nn as f64;
     let d = 2.0 * nf;
@@ -342,15 +351,14 @@ fn standard_chebyshev_lobatto_points(nn: usize) -> Vector {
         yy[nn - i] = -f64::sin(PI * (nf - 2.0 * (i as f64)) / d);
         yy[i] = -yy[nn - i];
     }
-    yy
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{chebyshev_coefficients, chebyshev_interpolation, MultiRootSolverCheby};
-    use crate::adaptive_interpolation;
+    use super::adaptive_interpolation;
+    use super::{chebyshev_coefficients, MultiRootSolverCheby};
     use crate::algo::NoArgs;
     use crate::array_approx_eq;
     use crate::get_test_functions;
@@ -425,6 +433,18 @@ mod tests {
     }
 
     #[test]
+    fn todo_works() {
+        let mut f = |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x - 1.0) };
+        let (xa, xb) = (-1.0, 1.0);
+        let mut workspace_uu = vec![0.0; 2000];
+        let mut workspace_cc = vec![0.0; 2000];
+        let args = &mut 0;
+        for nn in 1000..1001 {
+            chebyshev_coefficients(&mut workspace_uu, &mut workspace_cc, nn, xa, xb, args, &mut f);
+        }
+    }
+
+    #[test]
     fn adaptive_interpolation_works() {
         let mut f = |x: f64, _: &mut NoArgs| -> Result<f64, StrError> {
             // Ok(0.0)
@@ -448,10 +468,20 @@ mod tests {
         println!("N = {}", nn);
 
         if SAVE_FIGURE {
-            let (yy, uu, cc) = chebyshev_coefficients(nn, xa, xb, args, &mut f);
+            let np = nn + 1;
+            let interp = InterpLagrange::new(nn, None).unwrap();
+            let mut uu = Vector::new(np);
+            for (i, y) in interp.get_points().into_iter().enumerate() {
+                let x = (xb + xa + (xb - xa) * y) / 2.0;
+                uu[i] = f(x, args).unwrap();
+            }
             let xx = Vector::linspace(xa, xb, 201).unwrap();
             let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
-            let yy_int = xx.get_mapped(|x| chebyshev_interpolation(x, xa, xb, &cc));
+            let yy_int = xx.get_mapped(|x| {
+                let y = (2.0 * x - xb - xa) / (xb - xa);
+                let yy = f64::max(-1.0, f64::min(1.0, y));
+                interp.eval(yy, &uu).unwrap()
+            });
             let mut curve_ana = Curve::new();
             let mut curve_int = Curve::new();
             curve_ana.set_label("analytical");

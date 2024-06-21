@@ -498,7 +498,7 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
+    /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ x ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
     ///
     /// # Examples

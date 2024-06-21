@@ -960,7 +960,7 @@ impl InterpLagrange {
     ///
     /// # Output
     ///
-    /// * `err_f` -- is the max interpolation in `[-1, 1]`
+    /// * `err_f` -- is the max interpolation error in `[-1, 1]`
     pub fn estimate_max_error<F, A>(&self, args: &mut A, mut f: F) -> Result<f64, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,

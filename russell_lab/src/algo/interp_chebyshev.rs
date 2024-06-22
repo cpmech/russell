@@ -233,7 +233,7 @@ mod tests {
     use crate::{NoArgs, Vector};
     use plotpy::{Curve, Legend, Plot};
 
-    const SAVE_FIGURE: bool = true;
+    const SAVE_FIGURE: bool = false;
 
     #[test]
     fn interp_chebyshev_new_adapt_works() {
@@ -261,6 +261,7 @@ mod tests {
             (-2.34567, 12.34567),
             (-0.995 * PI, 0.995 * PI),
         ];
+        let err_tols = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-6, 1e-6, 1e-6];
         let nn_max = 400;
         let tol = 1e-7;
         let args = &mut 0;
@@ -268,7 +269,9 @@ mod tests {
             let (xa, xb) = ranges[index];
             let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f).unwrap();
             let nn = interp.get_degree();
-            println!("{:0>3} : N = {}", index, nn);
+            let err = interp.estimate_max_error(1000, args, f).unwrap();
+            println!("{:0>3} : N = {:>3} : err = {:.2e}", index, nn, err);
+            assert!(err <= err_tols[index]);
             if SAVE_FIGURE {
                 let xx = Vector::linspace(xa, xb, 201).unwrap();
                 let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());

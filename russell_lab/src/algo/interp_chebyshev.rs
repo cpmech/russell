@@ -22,7 +22,7 @@ const TOL_RANGE: f64 = 1.0e-8;
 /// 1. Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
 ///    Single Domains. Springer. 563p
 pub struct InterpChebyshev {
-    /// Holds the polynomial degree
+    /// Holds the polynomial degree N
     nn: usize,
 
     /// Holds the number of points (= N + 1)
@@ -52,6 +52,10 @@ pub struct InterpChebyshev {
 
 impl InterpChebyshev {
     /// Returns the standard (from 1 to -1) Chebyshev-Gauss-Lobatto points
+    ///
+    /// # Input
+    ///
+    /// * `nn` -- polynomial degree N
     pub fn points(nn: usize) -> Vector {
         chebyshev_lobatto_points_standard(nn)
     }
@@ -60,6 +64,12 @@ impl InterpChebyshev {
     ///
     /// **Important:** Make sure to call [InterpChebyshev::set_uu_value()] before
     /// calling [InterpChebyshev::eval()] to evaluate the interpolated function.
+    ///
+    /// # Input
+    ///
+    /// * `nn` -- polynomial degree N
+    /// * `xa` -- lower bound
+    /// * `xb` -- upper bound (> xa + ϵ)
     pub fn new(nn: usize, xa: f64, xb: f64) -> Result<Self, StrError> {
         if xb <= xa + TOL_RANGE {
             return Err("xb must be greater than xa + ϵ");
@@ -130,7 +140,7 @@ impl InterpChebyshev {
     ///
     /// # Input
     ///
-    /// * `nn` -- polynomial degree
+    /// * `nn` -- polynomial degree N
     /// * `xa` -- lower bound
     /// * `xb` -- upper bound (> xa + ϵ)
     /// * `args` -- extra arguments for the f(x) function
@@ -225,7 +235,7 @@ impl InterpChebyshev {
     ///
     /// # Input
     ///
-    /// * `nn_max` -- maximum polynomial degree (≤ 2048)
+    /// * `nn_max` -- maximum polynomial degree N (≤ 2048)
     /// * `tol` -- tolerance to truncate the Chebyshev series (e.g., 1e-8)
     /// * `xa` -- lower bound
     /// * `xb` -- upper bound (> xa + ϵ)
@@ -330,6 +340,23 @@ impl InterpChebyshev {
     pub fn get_degree(&self) -> usize {
         self.nn
     }
+
+    /// Returns the range
+    ///
+    /// Returns `(xa, xb, dx)` with `dx = xb - xa`
+    pub fn get_range(&self) -> (f64, f64, f64) {
+        (self.xa, self.xb, self.dx)
+    }
+
+    /// Returns an access to the expansion coefficients (a)
+    pub fn get_coefficients(&self) -> &Vector {
+        &self.a
+    }
+
+    /// Returns the ready flag
+    pub fn is_ready(&self) -> bool {
+        self.ready
+    }
 }
 
 /// Computes the data vector (function evaluations at Chebyshev-Gauss-Lobatto points)
@@ -391,7 +418,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu: &[f64], nn: usize) {
 mod tests {
     use super::InterpChebyshev;
     use crate::math::PI;
-    use crate::{NoArgs, Vector};
+    use crate::{vec_approx_eq, NoArgs, Vector};
     use plotpy::{Curve, Legend, Plot};
 
     const SAVE_FIGURE: bool = false;
@@ -578,5 +605,18 @@ mod tests {
         let args = &mut 0;
         let err = interp.estimate_max_error(100, args, f).unwrap();
         assert!(err < 1e-14);
+    }
+
+    #[test]
+    fn getters_work() {
+        let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
+        let (xa, xb) = (-4.0, 4.0);
+        let nn = 2;
+        let args = &mut 0;
+        let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+        assert_eq!(interp.get_degree(), 2);
+        assert_eq!(interp.get_range(), (-4.0, 4.0, 8.0));
+        assert_eq!(interp.is_ready(), true);
+        vec_approx_eq(interp.get_coefficients(), &[7.0, 0.0, 8.0], 1e-15);
     }
 }

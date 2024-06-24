@@ -244,24 +244,24 @@ pub fn chebyshev_gauss_points(nn: usize) -> Vector {
     xx
 }
 
-/// Computes Chebyshev-Gauss-Lobatto points
+/// Returns the Chebyshev-Gauss-Lobatto points (from -1 to 1)
 ///
-/// The point coordinates are given by (using the sin(x) function by default):
-///
-/// ```text
-///           ⎛  π⋅(N-2j)  ⎞
-/// Xⱼ = -sin ⎜ —————————— ⎟
-///           ⎝    2⋅N     ⎠
-///
-/// j = 0 ... N
-/// ```
-///
-/// Another option is:
+/// The point coordinates are defined by:
 ///
 /// ```text
 ///           ⎛  j⋅π  ⎞
 /// Xⱼ = -cos ⎜ ————— ⎟
 ///           ⎝   N   ⎠
+///
+/// j = 0 ... N
+/// ```
+///
+/// Nonetheless, here, the coordinates are calculates by using the sin(x) function:
+///
+/// ```text
+///           ⎛  π⋅(N-2j)  ⎞
+/// Xⱼ = -sin ⎜ —————————— ⎟
+///           ⎝    2⋅N     ⎠
 ///
 /// j = 0 ... N
 /// ```
@@ -278,6 +278,10 @@ pub fn chebyshev_gauss_points(nn: usize) -> Vector {
 /// See also equation (1) of the Reference #2
 ///
 /// **Note:** This function enforces the symmetry of the sequence of points.
+///
+/// # Input
+///
+/// * `nn` -- the polynomial degree `N`; thus the number of points is `npoint = nn + 1`.
 ///
 /// # References
 ///
@@ -326,11 +330,114 @@ pub fn chebyshev_lobatto_points(nn: usize) -> Vector {
     xx
 }
 
+/// Returns the standard (from 1 to -1) Chebyshev-Gauss-Lobatto coordinates
+///
+/// The point coordinates are defined by:
+///
+/// ```text
+///          ⎛  j⋅π  ⎞
+/// Xⱼ = cos ⎜ ————— ⎟
+///          ⎝   N   ⎠
+///
+/// j = 0 ... N
+/// ```
+///
+/// Nonetheless, here, the coordinates are calculates by using the sin(x) function:
+///
+/// ```text
+///          ⎛  π⋅(N-2j)  ⎞
+/// Xⱼ = sin ⎜ —————————— ⎟
+///          ⎝    2⋅N     ⎠
+///
+/// j = 0 ... N
+/// ```
+///
+/// See equation (2.4.14) on page 86 of the Reference #1 (with the "standard" ordering of nodes from +1 to -1).
+/// See also equation (1) of the Reference #2
+///
+/// **Note:** This function enforces the symmetry of the sequence of points.
+///
+/// # Input
+///
+/// * `nn` -- the polynomial degree `N`; thus the number of points is `npoint = nn + 1`.
+///
+/// # Input
+///
+/// * The number of points will be equal to `npoint = yy.len()` and the
+///   polynomial degree will be equal to `nn = npoint - 1`
+///
+/// # Output
+///
+/// * `yy` -- is the array holding the coordinates (from 1 to -1). Its length is equal
+///   to `npoint = nn + 1` where `nn` is the polynomial degree. Requirement: `npoint ≥ 2`.
+///
+/// # Notes
+///
+/// See the note below from Reference # 1 (page 86):
+///
+/// "Note that the Chebyshev quadrature points as just defined are ordered
+/// from right to left. This violates our general convention that quadrature points
+/// are ordered from left to right (see Sect. 2.2.3). Virtually all of the classical
+/// literature on Chebyshev spectral methods uses this reversed order. Therefore,
+/// in the special case of the Chebyshev quadrature points we shall adhere to the
+/// ordering convention that is widely used in the literature (and implemented
+/// in the available software). We realize that our resolution of this dilemma
+/// imposes upon the reader the task of mentally reversing the ordering of the
+/// Chebyshev nodes whenever they are used in general formulas for orthogonal
+/// polynomials." (Canuto, Hussaini, Quarteroni, Zang)
+///
+/// # References
+///
+/// 1. Canuto C, Hussaini MY, Quarteroni A, Zang TA (2006) Spectral Methods: Fundamentals in
+///    Single Domains. Springer. 563p
+/// 2. Baltensperger R and Trummer MR (2003) Spectral differencing with a twist,
+///    SIAM Journal Scientific Computation 24(5):1465-1487
+///
+/// # Examples
+///
+/// ![Chebyshev points](https://raw.githubusercontent.com/cpmech/russell/main/russell_lab/data/figures/math_chebyshev_points.svg)
+///
+/// ```
+/// use russell_lab::math;
+///
+/// let xx = math::chebyshev_lobatto_points_standard(8);
+/// println!("\nChebyshev-Gauss-Lobatto points =\n{:.3?}\n", xx.as_data());
+/// ```
+///
+/// The output looks like:
+///
+/// ```text
+/// Chebyshev-Gauss-Lobatto points =
+/// [1.000, 0.924, 0.707, 0.383, 0.000, -0.383, -0.707, -0.924, -1.000]
+/// ```
+pub fn chebyshev_lobatto_points_standard(nn: usize) -> Vector {
+    let mut xx = Vector::new(nn + 1);
+    xx[0] = 1.0;
+    xx[nn] = -1.0;
+    if nn < 3 {
+        return xx;
+    }
+    let nf = nn as f64;
+    let d = 2.0 * nf;
+    let l = if (nn & 1) == 0 {
+        // even number of segments
+        nn / 2
+    } else {
+        // odd number of segments
+        (nn + 3) / 2 - 1
+    };
+    for i in 1..l {
+        xx[nn - i] = -f64::sin(PI * (nf - 2.0 * (i as f64)) / d);
+        xx[i] = -xx[nn - i];
+    }
+    return xx;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{chebyshev_gauss_points, chebyshev_lobatto_points};
+    use super::{chebyshev_gauss_points, chebyshev_lobatto_points, chebyshev_lobatto_points_standard};
     use super::{chebyshev_tn, chebyshev_tn_deriv1, chebyshev_tn_deriv2};
     use crate::math::{SQRT_2, SQRT_3};
     use crate::{approx_eq, vec_approx_eq, Vector};
@@ -427,6 +534,9 @@ mod tests {
 
     #[test]
     fn chebyshev_gauss_points_works() {
+        let xx = chebyshev_gauss_points(0);
+        assert_eq!(xx.as_data(), &[0.0]);
+
         let xx = chebyshev_gauss_points(1);
         let xx_ref = vec![-1.0 / SQRT_2, 1.0 / SQRT_2];
         vec_approx_eq(&xx, &xx_ref, 1e-15);
@@ -531,6 +641,9 @@ mod tests {
 
     #[test]
     fn chebyshev_lobatto_points_works() {
+        let xx = chebyshev_lobatto_points(0);
+        assert_eq!(xx.as_data(), &[1.0]);
+
         let xx = chebyshev_lobatto_points(1);
         let xx_ref = vec![-1.0, 1.0];
         vec_approx_eq(&xx, &xx_ref, 1e-15);
@@ -623,6 +736,108 @@ mod tests {
             7.660444431189779e-01,
             9.396926207859083e-01,
             1.000000000000000e+00,
+        ];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+    }
+
+    #[test]
+    fn chebyshev_lobatto_points_standard_works() {
+        let xx = chebyshev_lobatto_points_standard(0);
+        assert_eq!(xx.as_data(), &[-1.0]);
+
+        let xx = chebyshev_lobatto_points_standard(1);
+        let xx_ref = vec![1.0, -1.0];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(2);
+        let xx_ref = vec![1.0, 0.0, -1.0];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(3);
+        let xx_ref = vec![1.0, 0.5, -0.5, -1.0];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(4);
+        let xx_ref = vec![
+            1.000000000000000e+00,
+            7.071067811865476e-01,
+            0.0,
+            -7.071067811865475e-01,
+            -1.000000000000000e+00,
+        ];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(5);
+        let xx_ref = vec![
+            1.000000000000000e+00,
+            8.090169943749475e-01,
+            3.090169943749475e-01,
+            -3.090169943749473e-01,
+            -8.090169943749473e-01,
+            -1.000000000000000e+00,
+        ];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(6);
+        let xx_ref = vec![
+            1.000000000000000e+00,
+            8.660254037844387e-01,
+            5.000000000000001e-01,
+            0.0,
+            -4.999999999999998e-01,
+            -8.660254037844385e-01,
+            -1.000000000000000e+00,
+        ];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(7);
+        let xx_ref = vec![
+            1.000000000000000e+00,
+            9.009688679024191e-01,
+            6.234898018587336e-01,
+            2.225209339563144e-01,
+            -2.225209339563143e-01,
+            -6.234898018587335e-01,
+            -9.009688679024190e-01,
+            -1.000000000000000e+00,
+        ];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(8);
+        let xx_ref = vec![
+            1.000000000000000e+00,
+            9.238795325112867e-01,
+            7.071067811865476e-01,
+            3.826834323650898e-01,
+            0.0,
+            -3.826834323650897e-01,
+            -7.071067811865475e-01,
+            -9.238795325112867e-01,
+            -1.000000000000000e+00,
+        ];
+        vec_approx_eq(&xx, &xx_ref, 1e-15);
+        check_segment_symmetry(&xx);
+
+        let xx = chebyshev_lobatto_points_standard(9);
+        let xx_ref = vec![
+            1.000000000000000e+00,
+            9.396926207859084e-01,
+            7.660444431189780e-01,
+            5.000000000000001e-01,
+            1.736481776669304e-01,
+            -1.736481776669303e-01,
+            -4.999999999999998e-01,
+            -7.660444431189779e-01,
+            -9.396926207859083e-01,
+            -1.000000000000000e+00,
         ];
         vec_approx_eq(&xx, &xx_ref, 1e-15);
         check_segment_symmetry(&xx);

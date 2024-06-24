@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{mat_eigen, InterpChebyshev, RootSolverBrent};
+use crate::{mat_eigenvalues, InterpChebyshev, RootSolverBrent};
 use crate::{Matrix, Vector};
 
 /// Tolerance to avoid division by zero on the trailing Chebyshev coefficient
@@ -114,16 +114,7 @@ impl MultiRootSolverCheby {
         self.aa.add(nn - 1, nn - 2, 0.5);
 
         // eigenvalues
-        let mut v_real = Matrix::new(nn, nn);
-        let mut v_imag = Matrix::new(nn, nn);
-        mat_eigen(
-            &mut self.l_real,
-            &mut self.l_imag,
-            &mut v_real,
-            &mut v_imag,
-            &mut self.aa,
-        )
-        .unwrap();
+        mat_eigenvalues(&mut self.l_real, &mut self.l_imag, &mut self.aa).unwrap();
 
         // roots = real eigenvalues within the interval
         let (xa, xb, dx) = interp.get_range();

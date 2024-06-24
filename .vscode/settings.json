@@ -111,6 +111,8 @@
     "qzero",
     "Radau",
     "RINFOG",
+    "rootfinders",
+    "rootfinding",
     "rowcol",
     "rowcoliter",
     "rowcolrig",

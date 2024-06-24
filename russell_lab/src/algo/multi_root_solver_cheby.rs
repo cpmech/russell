@@ -11,6 +11,25 @@ const TOL_TAU: f64 = 1.0e-8;
 /// Tolerance to discard roots such that abs(Re(root)) > (1 + sigma)
 const TOL_SIGMA: f64 = 1.0e-6;
 
+/// Implements a root finding solver using Chebyshev interpolation
+///
+/// This struct depends on [InterpChebyshev], an interpolant using
+/// Chebyshev-Gauss-Lobatto points.
+///
+/// It is essential that the interpolant best approximates the
+/// data/function; otherwise, not all roots can be found.
+///
+/// The roots are the eigenvalues of the companion matrix.
+///
+/// # References
+///
+/// 1. Boyd JP (2002) Computing zeros on a real interval through Chebyshev expansion
+///    and polynomial rootfinding, SIAM Journal of Numerical Analysis, 40(5):1666-1682
+/// 2. Boyd JP (2013) Finding the zeros of a univariate equation: proxy rootfinders,
+///    Chebyshev interpolation, and the companion matrix, SIAM Journal of Numerical
+///    Analysis, 55(2):375-396.
+/// 3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
+///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
 pub struct MultiRootSolverCheby {
     /// Holds the polynomial degree N
     nn: usize,
@@ -64,6 +83,9 @@ impl MultiRootSolverCheby {
     ///
     /// * `interp` -- The Chebyshev-Gauss-Lobatto interpolant with the data vector U
     ///    already computed. The interpolant must have the same degree N as this struct.
+    ///
+    /// **Warning:** It is essential that the interpolant best approximates the
+    /// data/function; otherwise, not all roots can be found.
     ///
     /// # Output
     ///

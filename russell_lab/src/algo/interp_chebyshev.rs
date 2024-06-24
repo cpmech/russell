@@ -125,6 +125,28 @@ impl InterpChebyshev {
     /// * `xb` -- upper bound (> xa + ϵ)
     /// * `args` -- extra arguments for the f(x) function
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function
+    ///     let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
+    ///     let (xa, xb) = (-1.0, 1.0);
+    ///
+    ///     // interpolant
+    ///     let nn_max = 200;
+    ///     let tol = 1e-8;
+    ///     let args = &mut 0;
+    ///     let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f)?;
+    ///
+    ///     // check
+    ///     assert_eq!(interp.get_degree(), 2);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new_adapt<F, A>(nn_max: usize, tol: f64, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<Self, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,

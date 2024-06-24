@@ -22,8 +22,14 @@ const TOL_RANGE: f64 = 1.0e-8;
 
 /// Implements the Chebyshev interpolant and associated functions
 ///
-/// **Note:** Only Chebyshev-Gauss-Lobatto points are considered here.
-/// Also, the coordinates are sorted from +1 to -1.
+/// # Notes
+///
+/// 1. This structure is meant for interpolating data and finding (all) the roots of an equation.
+///    On the other hand, [crate::InterpLagrange] is meant for implementing spectral methods
+///    for solving partial differential equations. Therefore, [crate::InterpLagrange] implements
+///    the derivative matrices, whereas this structure does not.
+/// 2. Only Chebyshev-Gauss-Lobatto points are considered here.
+/// 3. The Chebyshev-Gauss-Lobatto coordinates are sorted from +1 to -1 (as in Reference # 1).
 ///
 /// # References
 ///

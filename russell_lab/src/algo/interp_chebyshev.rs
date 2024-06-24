@@ -257,7 +257,6 @@ where
 mod tests {
     use super::InterpChebyshev;
     use crate::math::PI;
-    use crate::StrError;
     use crate::{NoArgs, Vector};
     use plotpy::{Curve, Legend, Plot};
 
@@ -266,17 +265,15 @@ mod tests {
     #[test]
     fn interp_chebyshev_new_adapt_works() {
         let functions = [
-            |_: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(2.0) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x - 0.5) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x - 1.0) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x * x - 0.5) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x * x * x - 0.5) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(x * x * x * x * x - 0.5) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> {
-                Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x))
-            },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)) },
-            |x: f64, _: &mut NoArgs| -> Result<f64, StrError> { Ok(f64::ln(2.0 * f64::cos(x / 2.0))) },
+            |_: f64, _: &mut NoArgs| Ok(2.0),
+            |x: f64, _: &mut NoArgs| Ok(x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),
+            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x)),
+            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
+            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
         ];
         let ranges = [
             (-1.0, 1.0),

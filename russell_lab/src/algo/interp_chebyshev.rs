@@ -268,6 +268,18 @@ impl InterpChebyshev {
     /// * `args` -- extra arguments for the f(x) function
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
     ///
+    /// # Method
+    ///
+    /// A simple method is considered here, in which the polynomial degree N is increased
+    /// linearly until the two last expansion coefficients of the Chebyshev series are small
+    /// in absolute value. This termination strategy corresponds to the Battles and Trefethen
+    /// line in Table 3.3 (page 55) of Reference # 1.
+    ///
+    /// # References
+    ///
+    /// 1. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
+    ///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
+    ///
     /// # Examples
     ///
     /// ```

@@ -45,9 +45,87 @@ pub struct InterpChebyshev {
 
     /// Holds the constant y=c value for a zeroth-order function
     constant_fx: f64,
+
+    /// Indicates that `a` and `uu` are set and ready for `eval`
+    ready: bool,
 }
 
 impl InterpChebyshev {
+    /// Returns the standard (from 1 to -1) Chebyshev-Gauss-Lobatto points
+    pub fn points(nn: usize) -> Vector {
+        chebyshev_lobatto_points_standard(nn)
+    }
+
+    /// Allocates a new instance with uninitialized values
+    ///
+    /// **Important:** Make sure to call [InterpChebyshev::set_uu_value()] before
+    /// calling [InterpChebyshev::eval()] to evaluate the interpolated function.
+    pub fn new(nn: usize, xa: f64, xb: f64) -> Result<Self, StrError> {
+        if xb <= xa + TOL_RANGE {
+            return Err("xb must be greater than xa + ϵ");
+        }
+        let np = nn + 1;
+        Ok(InterpChebyshev {
+            nn,
+            np,
+            xa,
+            xb,
+            dx: xb - xa,
+            a: Vector::new(np),
+            uu: Vector::new(np),
+            constant_fx: 0.0,
+            ready: false,
+        })
+    }
+
+    /// Sets a component of the U vector and computes the expansion coefficients
+    ///
+    /// **Note:** This function will compute the expansion coefficients when
+    /// the last component is set; i.e., when `i == nn` (nn is the degree N).
+    /// Therefore, it is recommended to call this function sequentially
+    /// from 0 to N (N is available via [InterpChebyshev::get_degree()]).
+    ///
+    /// # Input
+    ///
+    /// * `i` -- the index of the Chebyshev-Gauss-Lobatto point in `[0, N]`
+    ///   with `N` being the polynomial degree. The grid points can be obtained
+    ///   using the [InterpChebyshev::points()] function.
+    /// * `uui` -- the i-th component of the `U` vector; i.e., `Uᵢ`
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if `i` is out of range (it must be in `[0, N]`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let nn = 2;
+    ///     let (xa, xb) = (-4.0, 4.0);
+    ///     let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+    ///     let yy = InterpChebyshev::points(nn);
+    ///     let dx = xb - xa;
+    ///     let np = nn + 1;
+    ///     for i in 0..np {
+    ///         let x = (xb + xa + dx * yy[i]) / 2.0;
+    ///         interp.set_uu_value(i, x * x - 1.0);
+    ///     }
+    ///     approx_eq(interp.eval(0.0)?, -1.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn set_uu_value(&mut self, i: usize, uui: f64) {
+        self.uu[i] = uui;
+        if i == self.nn {
+            chebyshev_coefficients(self.a.as_mut_data(), self.uu.as_mut_data(), self.nn);
+            self.ready = true;
+        } else {
+            self.ready = false;
+        }
+    }
+
     /// Allocates a new instance with given f(x) function
     ///
     /// # Input
@@ -95,6 +173,7 @@ impl InterpChebyshev {
             a: Vector::new(np),
             uu: Vector::new(np),
             constant_fx: 0.0,
+            ready: true,
         };
         if nn == 0 {
             interp.constant_fx = f((xa + xb) / 2.0, args)?;
@@ -113,7 +192,7 @@ impl InterpChebyshev {
     /// * `xb` -- upper bound (> xa + ϵ)
     /// * `uu` -- the data vector such that `Uᵢ = f(xᵢ)`; i.e., the function evaluated at the
     ///   **standard** (from 1 to -1) Chebyshev-Gauss-Lobatto coordinates. These coordinates
-    ///   are available via the [InterpChebyshev::get_points()] function.
+    ///   are available via the [InterpChebyshev::points()] function.
     pub fn new_with_uu(xa: f64, xb: f64, uu: &[f64]) -> Result<Self, StrError> {
         if xb <= xa + TOL_RANGE {
             return Err("xb must be greater than xa + ϵ");
@@ -132,6 +211,7 @@ impl InterpChebyshev {
             a: Vector::new(np),
             uu: Vector::from(&uu),
             constant_fx: 0.0,
+            ready: true,
         };
         if nn == 0 {
             interp.constant_fx = uu[0];
@@ -202,6 +282,9 @@ impl InterpChebyshev {
 
     /// Evaluates the interpolated f(x) function
     pub fn eval(&self, x: f64) -> Result<f64, StrError> {
+        if !self.ready {
+            return Err("all U components must be set first");
+        }
         if self.nn == 0 {
             return Ok(self.constant_fx);
         }
@@ -231,6 +314,9 @@ impl InterpChebyshev {
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        if !self.ready {
+            return Err("all U components must be set first");
+        }
         let mut err_f = 0.0;
         let stations = Vector::linspace(self.xa, self.xb, nstation).unwrap();
         for p in 0..nstation {
@@ -243,11 +329,6 @@ impl InterpChebyshev {
     /// Returns the polynomial degree N
     pub fn get_degree(&self) -> usize {
         self.nn
-    }
-
-    /// Returns the standard (from 1 to -1) Chebyshev-Gauss-Lobatto points
-    pub fn get_points(nn: usize) -> Vector {
-        chebyshev_lobatto_points_standard(nn)
     }
 }
 
@@ -316,7 +397,42 @@ mod tests {
     const SAVE_FIGURE: bool = false;
 
     #[test]
-    fn interp_chebyshev_new_with_f_works() {
+    fn new_captures_errors() {
+        assert_eq!(
+            InterpChebyshev::new(2, 0.0, 0.0).err(),
+            Some("xb must be greater than xa + ϵ")
+        );
+    }
+
+    #[test]
+    fn new_works() {
+        let nn = 2;
+        let (xa, xb) = (-4.0, 4.0);
+        let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        let np = nn + 1;
+        assert_eq!(interp.xa, xa);
+        assert_eq!(interp.xb, xb);
+        assert_eq!(interp.dx, 8.0);
+        assert_eq!(interp.nn, nn);
+        assert_eq!(interp.np, np);
+        assert_eq!(interp.a.dim(), np);
+        assert_eq!(interp.uu.dim(), np);
+        assert_eq!(interp.constant_fx, 0.0);
+        assert_eq!(interp.ready, false);
+    }
+
+    #[test]
+    fn new_with_f_captures_errors() {
+        let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
+        let args = &mut 0;
+        assert_eq!(
+            InterpChebyshev::new_with_f(2, 0.0, 0.0, args, f).err(),
+            Some("xb must be greater than xa + ϵ")
+        );
+    }
+
+    #[test]
+    fn new_with_f_works() {
         let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
         let (xa, xb) = (-4.0, 4.0);
         let nn = 2;
@@ -325,14 +441,27 @@ mod tests {
         let err = interp.estimate_max_error(100, args, f).unwrap();
         assert!(err < 1e-14);
     }
-    #[test]
 
-    fn interp_chebyshev_new_with_uu_works() {
+    #[test]
+    fn new_with_uu_captures_errors() {
+        let uu = Vector::new(0);
+        assert_eq!(
+            InterpChebyshev::new_with_uu(0.0, 0.0, uu.as_data()).err(),
+            Some("xb must be greater than xa + ϵ")
+        );
+        assert_eq!(
+            InterpChebyshev::new_with_uu(0.0, 1.0, uu.as_data()).err(),
+            Some("the number of points = uu.len() must be ≥ 1")
+        );
+    }
+
+    #[test]
+    fn new_with_uu_works() {
         let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
         let (xa, xb) = (-4.0, 4.0);
         let nn = 2;
         let args = &mut 0;
-        let yy = InterpChebyshev::get_points(nn);
+        let yy = InterpChebyshev::points(nn);
         let dx = xb - xa;
         let uu = yy.get_mapped(|y| {
             let x = (xb + xa + dx * y) / 2.0;
@@ -344,7 +473,7 @@ mod tests {
     }
 
     #[test]
-    fn interp_chebyshev_new_adapt_works() {
+    fn new_adapt_works() {
         let functions = [
             |_: f64, _: &mut NoArgs| Ok(2.0),
             |x: f64, _: &mut NoArgs| Ok(x - 0.5),
@@ -409,5 +538,45 @@ mod tests {
                     .unwrap();
             }
         }
+    }
+
+    #[test]
+    fn eval_captures_errors() {
+        let nn = 2;
+        let (xa, xb) = (-4.0, 4.0);
+        let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        assert_eq!(interp.eval(0.0).err(), Some("all U components must be set first"));
+    }
+
+    #[test]
+    fn estimate_max_error_captures_errors() {
+        let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
+        let args = &mut 0;
+        let nn = 2;
+        let (xa, xb) = (-4.0, 4.0);
+        let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        assert_eq!(
+            interp.estimate_max_error(100, args, f).err(),
+            Some("all U components must be set first")
+        );
+    }
+
+    #[test]
+    fn set_uu_value_works() {
+        let nn = 2;
+        let (xa, xb) = (-4.0, 4.0);
+        let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        let yy = InterpChebyshev::points(nn);
+        let dx = xb - xa;
+        let np = nn + 1;
+        for i in 0..np {
+            let x = (xb + xa + dx * yy[i]) / 2.0;
+            interp.set_uu_value(i, x * x - 1.0);
+        }
+        // check
+        let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
+        let args = &mut 0;
+        let err = interp.estimate_max_error(100, args, f).unwrap();
+        assert!(err < 1e-14);
     }
 }

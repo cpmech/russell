@@ -7,6 +7,32 @@ const TOL_RANGE: f64 = 1.0e-8;
 
 /// Implements the Chebyshev interpolant and associated functions
 ///
+/// The problem coordinates are `x ∈ [xa, xb]` and the grid coordinates are `z ∈ [-1, 1]`
+/// Thus, consider the mapping:
+///
+/// ```text
+///        2 x - xb - xa
+/// z(x) = —————————————
+///           xb - xa
+/// ```
+///
+/// And
+///
+/// ```text
+///        xb + xa + (xb - xa) z
+/// x(z) = —————————————————————
+///                 2
+/// ```
+///
+/// The interpolated values are:
+///
+/// ```text
+/// Uⱼ = f(Xⱼ(Zⱼ))
+///
+/// where xa ≤ Xⱼ ≤ xb
+/// and   -1 ≤ Zⱼ ≤ 1
+/// ```
+///
 /// # Notes
 ///
 /// 1. This structure is meant for interpolating data and finding (all) the roots of an equation.
@@ -115,11 +141,11 @@ impl InterpChebyshev {
     ///     let nn = 2;
     ///     let (xa, xb) = (-4.0, 4.0);
     ///     let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
-    ///     let yy = InterpChebyshev::points(nn);
+    ///     let zz = InterpChebyshev::points(nn);
     ///     let dx = xb - xa;
     ///     let np = nn + 1;
     ///     for i in 0..np {
-    ///         let x = (xb + xa + dx * yy[i]) / 2.0;
+    ///         let x = (xb + xa + dx * zz[i]) / 2.0;
     ///         interp.set_uu_value(i, x * x - 1.0);
     ///     }
     ///     approx_eq(interp.eval(0.0)?, -1.0, 1e-15);
@@ -488,9 +514,9 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
         let nn = 2;
         let args = &mut 0;
-        let yy = InterpChebyshev::points(nn);
+        let zz = InterpChebyshev::points(nn);
         let dx = xb - xa;
-        let uu = yy.get_mapped(|y| {
+        let uu = zz.get_mapped(|y| {
             let x = (xb + xa + dx * y) / 2.0;
             f(x, args).unwrap()
         });
@@ -593,11 +619,11 @@ mod tests {
         let nn = 2;
         let (xa, xb) = (-4.0, 4.0);
         let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
-        let yy = InterpChebyshev::points(nn);
+        let zz = InterpChebyshev::points(nn);
         let dx = xb - xa;
         let np = nn + 1;
         for i in 0..np {
-            let x = (xb + xa + dx * yy[i]) / 2.0;
+            let x = (xb + xa + dx * zz[i]) / 2.0;
             interp.set_uu_value(i, x * x - 1.0);
         }
         // check

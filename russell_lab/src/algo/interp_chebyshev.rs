@@ -28,8 +28,9 @@ const TOL_RANGE: f64 = 1.0e-8;
 ///    On the other hand, [crate::InterpLagrange] is meant for implementing spectral methods
 ///    for solving partial differential equations. Therefore, [crate::InterpLagrange] implements
 ///    the derivative matrices, whereas this structure does not.
-/// 2. Only Chebyshev-Gauss-Lobatto points are considered here.
-/// 3. The Chebyshev-Gauss-Lobatto coordinates are sorted from +1 to -1 (as in Reference # 1).
+/// 2. The [crate::InterpLagrange] renders the same results when using Chebyshev-Gauss-Lobatto points.
+/// 3. Only Chebyshev-Gauss-Lobatto points are considered here.
+/// 4. The Chebyshev-Gauss-Lobatto coordinates are sorted from +1 to -1 (as in Reference # 1).
 ///
 /// # References
 ///
@@ -71,6 +72,27 @@ impl InterpChebyshev {
     /// * `xb` -- upper bound (> xa + ϵ)
     /// * `args` -- extra arguments for the f(x) function
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function
+    ///     let f = |x, _: &mut NoArgs| Ok(1.0 / (1.0 + 16.0 * x * x));
+    ///     let (xa, xb) = (-1.0, 1.0);
+    ///
+    ///     // interpolant
+    ///     let degree = 10;
+    ///     let args = &mut 0;
+    ///     let interp = InterpChebyshev::new(degree, xa, xb, args, f)?;
+    ///
+    ///     // check
+    ///     approx_eq(interp.eval(0.0).unwrap(), 1.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new<F, A>(nn: usize, xa: f64, xb: f64, args: &mut A, f: F) -> Result<Self, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
@@ -303,7 +325,7 @@ mod tests {
                     .set_cross(0.0, 0.0, "gray", "-", 1.5)
                     .grid_and_labels("x", "f(x)")
                     .save(&format!(
-                        "/tmp/russell/test_interp_chebyshev_new_adapt_{:0>3}.svg",
+                        "/tmp/russell_lab/test_interp_chebyshev_new_adapt_{:0>3}.svg",
                         index
                     ))
                     .unwrap();

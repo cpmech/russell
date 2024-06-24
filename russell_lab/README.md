@@ -328,11 +328,11 @@ Results:
 
 This example illustrates the use of `InterpLagrange` with at Chebyshev-Gauss-Lobatto grid to interpolate Runge's equation.
 
-[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interpolation_lagrange.rs)
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_lagrange.rs)
 
 Results:
 
-![algo_interpolation_lagrange](data/figures/algo_interpolation_lagrange.svg)
+![algo_interp_lagrange](data/figures/algo_interp_lagrange.svg)
 
 
 

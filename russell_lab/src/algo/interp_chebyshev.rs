@@ -626,6 +626,17 @@ mod tests {
     }
 
     #[test]
+    fn eval_using_trig_captures_errors() {
+        let nn = 2;
+        let (xa, xb) = (-4.0, 4.0);
+        let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        assert_eq!(
+            interp.eval_using_trig(0.0).err(),
+            Some("all U components must be set first")
+        );
+    }
+
+    #[test]
     fn new_adapt_captures_errors() {
         struct Args {
             count: usize,

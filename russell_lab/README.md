@@ -24,6 +24,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Solution of a 1D PDE using spectral collocation](#solution-of-a-1d-pde-using-spectral-collocation)
   - [Numerical integration: perimeter of ellipse](#numerical-integration-perimeter-of-ellipse)
   - [Finding a local minimum and a root](#finding-a-local-minimum-and-a-root)
+  - [Finding all roots in an interval](#finding-all-roots-in-an-interval)
   - [Computing the pseudo-inverse matrix](#computing-the-pseudo-inverse-matrix)
   - [Matrix visualization](#matrix-visualization)
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
@@ -439,6 +440,66 @@ Number of iterations             = 9
 Error estimate                   = unavailable
 Total computation time           = 907ns
 ```
+
+
+### Finding all roots in an interval
+
+This example employs a Chebyshev interpolant to find all roots of a function in an interval. The method uses adaptive interpolation followed by calculating the eigenvalues of the companion matrix. These eigenvalues equal the roots of the polynomial. After that, a simple Newton polishing algorithm is applied.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_multi_root_solver_cheby.rs)
+
+The output looks like:
+
+```text
+N = 184
+roots =
+┌                     ┐
+│ 0.04109147217011577 │
+│  0.1530172326889439 │
+│ 0.25340124027487965 │
+│ 0.33978749525956276 │
+│ 0.47590538542276967 │
+│  0.5162732673126048 │
+└                     ┘
+f @ roots =
+  1.84e-8
+ -1.51e-8
+ -2.40e-8
+  9.53e-9
+ -1.16e-8
+ -5.80e-9
+
+polished roots =
+┌                     ┐
+│ 0.04109147155278252 │
+│ 0.15301723213859994 │
+│ 0.25340124149692184 │
+│   0.339787495774806 │
+│ 0.47590538689192813 │
+│  0.5162732665558162 │
+└                     ┘
+f @ polished roots =
+ 6.66e-16
+-2.22e-16
+-2.22e-16
+ 1.33e-15
+ 4.44e-16
+-2.22e-16
+```
+
+The function and the roots are illustrated in the figure below.
+
+![All roots in an interval](data/figures/algo_multi_root_solver_cheby.svg)
+
+**References**
+
+1. Boyd JP (2002) Computing zeros on a real interval through Chebyshev expansion
+   and polynomial rootfinding, SIAM Journal of Numerical Analysis, 40(5):1666-1682
+2. Boyd JP (2013) Finding the zeros of a univariate equation: proxy rootfinders,
+   Chebyshev interpolation, and the companion matrix, SIAM Journal of Numerical
+   Analysis, 55(2):375-396.
+3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
+   and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
 
 
 

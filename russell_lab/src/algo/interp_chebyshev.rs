@@ -553,6 +553,14 @@ mod tests {
     }
 
     #[test]
+    fn new_with_uu_works_n0() {
+        let (xa, xb) = (0.0, 1.0);
+        let uu = &[1.0];
+        let interp = InterpChebyshev::new_with_uu(xa, xb, uu).unwrap();
+        assert_eq!(interp.eval(3.0).unwrap(), 1.0);
+    }
+
+    #[test]
     fn new_with_uu_works() {
         let f = |x, _: &mut NoArgs| Ok(-1.0 + f64::sqrt(1.0 + 2.0 * x * 1200.0));
 

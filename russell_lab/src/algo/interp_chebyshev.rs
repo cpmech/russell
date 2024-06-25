@@ -3,7 +3,7 @@ use crate::StrError;
 use crate::Vector;
 
 /// Defines the tolerance to make sure that the range [xa, xb] is not zero
-pub(crate) const TOL_RANGE: f64 = 1.0e-5;
+pub const TOL_RANGE: f64 = 1.0e-5;
 
 /// Implements the Chebyshev interpolant and associated functions
 ///

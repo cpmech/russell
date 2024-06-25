@@ -392,9 +392,6 @@ impl InterpChebyshev {
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
-        if !self.ready {
-            return Err("all U components must be set first");
-        }
         let mut err_f = 0.0;
         let stations = Vector::linspace(self.xa, self.xb, nstation).unwrap();
         for p in 0..nstation {
@@ -768,7 +765,7 @@ mod tests {
     }
 
     #[test]
-    fn estimate_max_error_captures_errors() {
+    fn estimate_max_error_captures_errors_1() {
         let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
         let nn = 2;
@@ -777,6 +774,28 @@ mod tests {
         assert_eq!(
             interp.estimate_max_error(100, args, f).err(),
             Some("all U components must be set first")
+        );
+    }
+
+    #[test]
+    fn estimate_max_error_captures_errors_2() {
+        struct Args {
+            count: usize,
+        }
+        let f = move |x: f64, a: &mut Args| {
+            a.count += 1;
+            if a.count == 1 {
+                return Err("stop with count = 1");
+            }
+            Ok(x * x - 1.0)
+        };
+        let mut args = Args { count: 0 };
+        let (xa, xb) = (0.0, 1.0);
+        let uu = &[1.0];
+        let interp = InterpChebyshev::new_with_uu(xa, xb, uu).unwrap();
+        assert_eq!(
+            interp.estimate_max_error(2, &mut args, f).err(),
+            Some("stop with count = 1")
         );
     }
 

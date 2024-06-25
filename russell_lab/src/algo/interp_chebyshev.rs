@@ -486,7 +486,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu: &[f64], nn: usize) {
 mod tests {
     use super::InterpChebyshev;
     use crate::math::PI;
-    use crate::{approx_eq, vec_approx_eq, NoArgs, Vector};
+    use crate::{approx_eq, vec_approx_eq, NoArgs, Vector, TOL_RANGE};
     use plotpy::{Curve, Legend, Plot};
 
     const SAVE_FIGURE: bool = false;
@@ -623,6 +623,46 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
         let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
         assert_eq!(interp.eval(0.0).err(), Some("all U components must be set first"));
+    }
+
+    #[test]
+    fn new_adapt_captures_errors() {
+        struct Args {
+            count: usize,
+        }
+        let f = move |x: f64, a: &mut Args| {
+            a.count += 1;
+            if a.count == 3 {
+                return Err("stop with count = 3");
+            }
+            if a.count == 18 {
+                return Err("stop with count = 18");
+            }
+            Ok(x * x - 1.0)
+        };
+        let mut args = Args { count: 0 };
+        let (xa, xb) = (-4.0, 4.0);
+        let tol = 1e-3;
+        assert_eq!(
+            InterpChebyshev::new_adapt(2049, tol, xa, xb, &mut args, f).err(),
+            Some("the maximum degree N must be ≤ 2048")
+        );
+        assert_eq!(
+            InterpChebyshev::new_adapt(2, tol, xa, xa + TOL_RANGE, &mut args, f).err(),
+            Some("xb must be greater than xa + ϵ")
+        );
+        assert_eq!(
+            InterpChebyshev::new_adapt(1, tol, xa, xb, &mut args, f).err(),
+            Some("adaptive interpolation did not converge")
+        );
+        assert_eq!(
+            InterpChebyshev::new_adapt(2, tol, xa, xb, &mut args, f).err(),
+            Some("stop with count = 3")
+        );
+        assert_eq!(
+            InterpChebyshev::new_adapt(4, tol, xa, xb, &mut args, f).err(),
+            Some("stop with count = 18")
+        );
     }
 
     #[test]

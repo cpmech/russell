@@ -486,7 +486,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu: &[f64], nn: usize) {
 mod tests {
     use super::InterpChebyshev;
     use crate::math::PI;
-    use crate::{vec_approx_eq, NoArgs, Vector};
+    use crate::{approx_eq, vec_approx_eq, NoArgs, Vector};
     use plotpy::{Curve, Legend, Plot};
 
     const SAVE_FIGURE: bool = false;
@@ -554,19 +554,58 @@ mod tests {
 
     #[test]
     fn new_with_uu_works() {
-        let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
-        let (xa, xb) = (-4.0, 4.0);
-        let nn = 2;
-        let args = &mut 0;
+        let f = |x, _: &mut NoArgs| Ok(-1.0 + f64::sqrt(1.0 + 2.0 * x * 1200.0));
+
+        let (xa, xb) = (0.0, 1.0);
+        let nn = 10;
         let zz = InterpChebyshev::points(nn);
         let dx = xb - xa;
-        let uu = zz.get_mapped(|y| {
-            let x = (xb + xa + dx * y) / 2.0;
+        let args = &mut 0;
+        let uu = zz.get_mapped(|z| {
+            let x = (xb + xa + dx * z) / 2.0;
             f(x, args).unwrap()
         });
         let interp = InterpChebyshev::new_with_uu(xa, xb, uu.as_data()).unwrap();
+
+        // check
+        let np = nn + 1;
+        for i in 0..np {
+            let x = (xb + xa + dx * zz[i]) / 2.0;
+            let fxi = interp.eval(x).unwrap();
+            approx_eq(fxi, interp.uu[i], 1e-13);
+        }
         let err = interp.estimate_max_error(100, args, f).unwrap();
-        assert!(err < 1e-14);
+        println!("err = {}", err);
+        assert!(err < 0.73);
+
+        // plot f(x)
+        if SAVE_FIGURE {
+            let xx = Vector::linspace(xa, xb, 201).unwrap();
+            let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
+            let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+            let mut curve_ana = Curve::new();
+            let mut curve_int = Curve::new();
+            curve_ana.set_label("analytical");
+            curve_int
+                .set_label(&format!("interpolated,N={}", nn))
+                .set_line_style(":")
+                .set_marker_style(".")
+                .set_marker_every(5);
+            curve_ana.draw(xx.as_data(), yy_ana.as_data());
+            curve_int.draw(xx.as_data(), yy_int.as_data());
+            let mut plot = Plot::new();
+            let mut legend = Legend::new();
+            legend.set_num_col(4);
+            legend.set_outside(true);
+            legend.draw();
+            plot.add(&curve_ana)
+                .add(&curve_int)
+                .add(&legend)
+                .set_cross(0.0, 0.0, "gray", "-", 1.5)
+                .grid_and_labels("x", "f(x)")
+                .save("/tmp/russell_lab/test_new_with_uu.svg")
+                .unwrap();
+        }
     }
 
     #[test]

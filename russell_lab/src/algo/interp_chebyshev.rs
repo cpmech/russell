@@ -526,6 +526,7 @@ mod tests {
         );
         let f = |_: f64, _: &mut NoArgs| Err("stop");
         assert_eq!(InterpChebyshev::new_with_f(0, 0.0, 1.0, args, f).err(), Some("stop"));
+        assert_eq!(InterpChebyshev::new_with_f(1, 0.0, 1.0, args, f).err(), Some("stop"));
     }
 
     #[test]

@@ -484,9 +484,9 @@ mod tests {
     use super::InterpChebyshev;
     use crate::math::PI;
     use crate::{approx_eq, vec_approx_eq, NoArgs, Vector, TOL_RANGE};
-    use plotpy::{Curve, Legend, Plot};
 
-    const SAVE_FIGURE: bool = false;
+    #[allow(unused)]
+    use plotpy::{Curve, Legend, Plot};
 
     #[test]
     fn new_captures_errors() {
@@ -593,33 +593,33 @@ mod tests {
         assert!(err < 0.73);
 
         // plot f(x)
-        if SAVE_FIGURE {
-            let xx = Vector::linspace(xa, xb, 201).unwrap();
-            let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
-            let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
-            let mut curve_ana = Curve::new();
-            let mut curve_int = Curve::new();
-            curve_ana.set_label("analytical");
-            curve_int
-                .set_label(&format!("interpolated,N={}", nn))
-                .set_line_style(":")
-                .set_marker_style(".")
-                .set_marker_every(5);
-            curve_ana.draw(xx.as_data(), yy_ana.as_data());
-            curve_int.draw(xx.as_data(), yy_int.as_data());
-            let mut plot = Plot::new();
-            let mut legend = Legend::new();
-            legend.set_num_col(4);
-            legend.set_outside(true);
-            legend.draw();
-            plot.add(&curve_ana)
-                .add(&curve_int)
-                .add(&legend)
-                .set_cross(0.0, 0.0, "gray", "-", 1.5)
-                .grid_and_labels("x", "f(x)")
-                .save("/tmp/russell_lab/test_new_with_uu.svg")
-                .unwrap();
-        }
+        /*
+        let xx = Vector::linspace(xa, xb, 201).unwrap();
+        let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
+        let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+        let mut curve_ana = Curve::new();
+        let mut curve_int = Curve::new();
+        curve_ana.set_label("analytical");
+        curve_int
+            .set_label(&format!("interpolated,N={}", nn))
+            .set_line_style(":")
+            .set_marker_style(".")
+            .set_marker_every(5);
+        curve_ana.draw(xx.as_data(), yy_ana.as_data());
+        curve_int.draw(xx.as_data(), yy_int.as_data());
+        let mut plot = Plot::new();
+        let mut legend = Legend::new();
+        legend.set_num_col(4);
+        legend.set_outside(true);
+        legend.draw();
+        plot.add(&curve_ana)
+            .add(&curve_int)
+            .add(&legend)
+            .set_cross(0.0, 0.0, "gray", "-", 1.5)
+            .grid_and_labels("x", "f(x)")
+            .save("/tmp/russell_lab/test_new_with_uu.svg")
+            .unwrap();
+        */
     }
 
     #[test]
@@ -731,36 +731,36 @@ mod tests {
             }
 
             // plot f(x)
-            if SAVE_FIGURE {
-                let xx = Vector::linspace(xa, xb, 201).unwrap();
-                let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
-                let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
-                let mut curve_ana = Curve::new();
-                let mut curve_int = Curve::new();
-                curve_ana.set_label("analytical");
-                curve_int
-                    .set_label(&format!("interpolated,N={}", nn))
-                    .set_line_style(":")
-                    .set_marker_style(".")
-                    .set_marker_every(5);
-                curve_ana.draw(xx.as_data(), yy_ana.as_data());
-                curve_int.draw(xx.as_data(), yy_int.as_data());
-                let mut plot = Plot::new();
-                let mut legend = Legend::new();
-                legend.set_num_col(4);
-                legend.set_outside(true);
-                legend.draw();
-                plot.add(&curve_ana)
-                    .add(&curve_int)
-                    .add(&legend)
-                    .set_cross(0.0, 0.0, "gray", "-", 1.5)
-                    .grid_and_labels("x", "f(x)")
-                    .save(&format!(
-                        "/tmp/russell_lab/test_interp_chebyshev_new_adapt_{:0>3}.svg",
-                        index
-                    ))
-                    .unwrap();
-            }
+            /*
+            let xx = Vector::linspace(xa, xb, 201).unwrap();
+            let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
+            let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+            let mut curve_ana = Curve::new();
+            let mut curve_int = Curve::new();
+            curve_ana.set_label("analytical");
+            curve_int
+                .set_label(&format!("interpolated,N={}", nn))
+                .set_line_style(":")
+                .set_marker_style(".")
+                .set_marker_every(5);
+            curve_ana.draw(xx.as_data(), yy_ana.as_data());
+            curve_int.draw(xx.as_data(), yy_int.as_data());
+            let mut plot = Plot::new();
+            let mut legend = Legend::new();
+            legend.set_num_col(4);
+            legend.set_outside(true);
+            legend.draw();
+            plot.add(&curve_ana)
+                .add(&curve_int)
+                .add(&legend)
+                .set_cross(0.0, 0.0, "gray", "-", 1.5)
+                .grid_and_labels("x", "f(x)")
+                .save(&format!(
+                    "/tmp/russell_lab/test_interp_chebyshev_new_adapt_{:0>3}.svg",
+                    index
+                ))
+                .unwrap();
+            */
         }
     }
 

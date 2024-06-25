@@ -256,13 +256,17 @@ impl MultiRootSolverCheby {
 mod tests {
     use super::MultiRootSolverCheby;
     use crate::algo::NoArgs;
+    use crate::InterpChebyshev;
     use crate::{approx_eq, array_approx_eq, get_test_functions};
-    use crate::{mat_approx_eq, Matrix, StrError};
-    use crate::{InterpChebyshev, Vector};
+    use crate::{mat_approx_eq, Matrix};
+
+    #[allow(unused)]
+    use crate::{StrError, Vector};
+
+    #[allow(unused)]
     use plotpy::{Curve, Legend, Plot};
 
-    const SAVE_FIGURE: bool = false;
-
+    /*
     fn graph<F, A>(
         name: &str,
         interp: &InterpChebyshev,
@@ -324,6 +328,7 @@ mod tests {
             .save(&format!("/tmp/russell_lab/{}.svg", name))
             .unwrap();
     }
+    */
 
     #[test]
     fn new_captures_errors() {
@@ -394,18 +399,18 @@ mod tests {
         println!("roots_polished = {:?}", roots_polished);
 
         // figure
-        if SAVE_FIGURE {
-            graph(
-                "test_multi_root_solver_cheby_simple",
-                &interp,
-                &roots_unpolished,
-                &roots_polished,
-                args,
-                f,
-                101,
-                600.0,
-            );
-        }
+        /*
+        graph(
+            "test_multi_root_solver_cheby_simple",
+            &interp,
+            &roots_unpolished,
+            &roots_polished,
+            args,
+            f,
+            101,
+            600.0,
+        );
+        */
 
         // check
         array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-14);
@@ -434,18 +439,18 @@ mod tests {
         println!("roots_polished = {:?}", roots_polished);
 
         // figure
-        if SAVE_FIGURE {
-            graph(
-                "test_polish_roots_newton",
-                &interp,
-                &roots_unpolished,
-                &roots_polished,
-                args,
-                f,
-                101,
-                600.0,
-            );
-        }
+        /*
+        graph(
+            "test_polish_roots_newton",
+            &interp,
+            &roots_unpolished,
+            &roots_polished,
+            args,
+            f,
+            101,
+            600.0,
+        );
+        */
 
         // check
         array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-14);
@@ -493,19 +498,20 @@ mod tests {
             if *id == 9 {
                 assert_eq!(roots_unpolished.len(), 93);
             }
-            if SAVE_FIGURE {
-                let (nstation, fig_width) = if *id == 9 { (1001, 2048.0) } else { (101, 600.0) };
-                graph(
-                    &format!("test_multi_root_solver_cheby_{:0>3}", id),
-                    &interp,
-                    &roots_unpolished,
-                    &roots_polished,
-                    args,
-                    test.f,
-                    nstation,
-                    fig_width,
-                );
-            }
+            // figure
+            /*
+            let (nstation, fig_width) = if *id == 9 { (1001, 2048.0) } else { (101, 600.0) };
+            graph(
+                &format!("test_multi_root_solver_cheby_{:0>3}", id),
+                &interp,
+                &roots_unpolished,
+                &roots_polished,
+                args,
+                test.f,
+                nstation,
+                fig_width,
+            );
+            */
         }
     }
 }

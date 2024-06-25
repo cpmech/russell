@@ -518,7 +518,7 @@ mod tests {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             let (xa, xb) = test.range;
-            let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, test.f).unwrap();
+            let interp = InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, test.f).unwrap();
             let nn = interp.get_degree();
             let mut solver = MultiRootSolverCheby::new(nn).unwrap();
             let roots_unpolished = Vec::from(solver.find(&interp).unwrap());

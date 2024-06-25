@@ -10,7 +10,7 @@ fn main() -> Result<(), StrError> {
     let nn_max = 200;
     let tol = 1e-8;
     let args = &mut 0;
-    let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f)?;
+    let interp = InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, f)?;
     println!("N = {}", interp.get_degree());
 
     // plot

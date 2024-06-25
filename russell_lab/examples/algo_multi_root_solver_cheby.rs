@@ -12,7 +12,7 @@ fn main() -> Result<(), StrError> {
     // adaptive interpolation
     let nn_max = 200;
     let tol = 1e-8;
-    let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f)?;
+    let interp = InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, f)?;
     let nn = interp.get_degree();
     println!("N = {}", nn);
 

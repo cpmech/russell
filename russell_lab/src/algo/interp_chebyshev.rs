@@ -294,14 +294,21 @@ impl InterpChebyshev {
     ///     let nn_max = 200;
     ///     let tol = 1e-8;
     ///     let args = &mut 0;
-    ///     let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f)?;
+    ///     let interp = InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, f)?;
     ///
     ///     // check
     ///     assert_eq!(interp.get_degree(), 2);
     ///     Ok(())
     /// }
     /// ```
-    pub fn new_adapt<F, A>(nn_max: usize, tol: f64, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<Self, StrError>
+    pub fn new_adapt_f<F, A>(
+        nn_max: usize,
+        tol: f64,
+        xa: f64,
+        xb: f64,
+        args: &mut A,
+        mut f: F,
+    ) -> Result<Self, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -643,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn new_adapt_captures_errors() {
+    fn new_adapt_f_captures_errors() {
         struct Args {
             count: usize,
         }
@@ -661,29 +668,29 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
         let tol = 1e-3;
         assert_eq!(
-            InterpChebyshev::new_adapt(2049, tol, xa, xb, &mut args, f).err(),
+            InterpChebyshev::new_adapt_f(2049, tol, xa, xb, &mut args, f).err(),
             Some("the maximum degree N must be ≤ 2048")
         );
         assert_eq!(
-            InterpChebyshev::new_adapt(2, tol, xa, xa + TOL_RANGE, &mut args, f).err(),
+            InterpChebyshev::new_adapt_f(2, tol, xa, xa + TOL_RANGE, &mut args, f).err(),
             Some("xb must be greater than xa + ϵ")
         );
         assert_eq!(
-            InterpChebyshev::new_adapt(1, tol, xa, xb, &mut args, f).err(),
+            InterpChebyshev::new_adapt_f(1, tol, xa, xb, &mut args, f).err(),
             Some("adaptive interpolation did not converge")
         );
         assert_eq!(
-            InterpChebyshev::new_adapt(2, tol, xa, xb, &mut args, f).err(),
+            InterpChebyshev::new_adapt_f(2, tol, xa, xb, &mut args, f).err(),
             Some("stop with count = 3")
         );
         assert_eq!(
-            InterpChebyshev::new_adapt(4, tol, xa, xb, &mut args, f).err(),
+            InterpChebyshev::new_adapt_f(4, tol, xa, xb, &mut args, f).err(),
             Some("stop with count = 18")
         );
     }
 
     #[test]
-    fn new_adapt_and_eval_work() {
+    fn new_adapt_f_and_eval_work() {
         let functions = [
             |_: f64, _: &mut NoArgs| Ok(2.0),
             |x: f64, _: &mut NoArgs| Ok(x - 0.5),
@@ -714,7 +721,7 @@ mod tests {
         for (index, f) in functions.into_iter().enumerate() {
             // adaptive interpolation
             let (xa, xb) = ranges[index];
-            let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f).unwrap();
+            let interp = InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, f).unwrap();
             let nn = interp.get_degree();
 
             // check adaptive interpolation

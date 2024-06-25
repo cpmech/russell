@@ -5,9 +5,7 @@ use std::fmt::Write;
 
 fn main() -> Result<(), StrError> {
     // function
-    let f = |x: f64, _: &mut NoArgs| -> Result<f64, StrError> {
-        Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5)
-    };
+    let f = |x, _: &mut NoArgs| Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5);
     let (xa, xb) = (0.0, 1.0);
     let args = &mut 0;
 

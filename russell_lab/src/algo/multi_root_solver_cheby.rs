@@ -196,7 +196,7 @@ impl MultiRootSolverCheby {
         // check
         let nr = roots_in.len();
         if nr < 1 {
-            return Err("this function works with at least one root");
+            return Err("at least one root is required");
         }
         if roots_out.len() != roots_in.len() {
             return Err("root_in and root_out must have the same lengths");
@@ -513,5 +513,37 @@ mod tests {
             );
             */
         }
+    }
+
+    #[test]
+    fn polish_roots_newton_captures_errors() {
+        let f = |_, _: &mut NoArgs| Ok(0.0);
+        let args = &mut 0;
+        let _ = f(0.0, args);
+        let (xa, xb) = (-1.0, 1.0);
+        let mut solver = MultiRootSolverCheby::new(2).unwrap();
+        let roots_in = Vec::new();
+        let mut roots_out = [0.0];
+        assert_eq!(
+            solver
+                .polish_roots_newton(&mut roots_out, &roots_in, xa, xb, args, f)
+                .err(),
+            Some("at least one root is required")
+        );
+        let roots_in = [0.0, 1.0];
+        assert_eq!(
+            solver
+                .polish_roots_newton(&mut roots_out, &roots_in, xa, xb, args, f)
+                .err(),
+            Some("root_in and root_out must have the same lengths")
+        );
+        let roots_in = [0.0];
+        solver.newton_max_iterations = 0;
+        assert_eq!(
+            solver
+                .polish_roots_newton(&mut roots_out, &roots_in, xa, xb, args, f)
+                .err(),
+            Some("Newton's method did not converge")
+        );
     }
 }

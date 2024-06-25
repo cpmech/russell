@@ -131,6 +131,29 @@ impl MultiRootSolverCheby {
     /// # Output
     ///
     /// Returns a sorted list (from xa to xb) with the roots.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function
+    ///     let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
+    ///     let (xa, xb) = (-2.0, 2.0);
+    ///     let args = &mut 0;
+    ///
+    ///     // interpolant
+    ///     let nn = 2;
+    ///     let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f)?;
+    ///
+    ///     // find all roots in the interval
+    ///     let mut solver = MultiRootSolverCheby::new(nn)?;
+    ///     let roots = Vector::from(&solver.find(&interp)?);
+    ///     vec_approx_eq(&roots, &[-1.0, 1.0], 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn find(&mut self, interp: &InterpChebyshev) -> Result<&[f64], StrError> {
         // check
         let nn = interp.get_degree();
@@ -181,6 +204,34 @@ impl MultiRootSolverCheby {
     }
 
     /// Polishes the roots using Newton's method
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // function
+    ///     let f = |x, _: &mut NoArgs| Ok(x * x * x * x - 1.0);
+    ///     let (xa, xb) = (-2.0, 2.0);
+    ///     let args = &mut 0;
+    ///
+    ///     // interpolant
+    ///     let nn = 2;
+    ///     let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f)?;
+    ///
+    ///     // find all roots in the interval
+    ///     let mut solver = MultiRootSolverCheby::new(nn)?;
+    ///     let roots = Vector::from(&solver.find(&interp)?);
+    ///     vec_approx_eq(&roots, &[-0.5, 0.5], 1e-15); // inaccurate
+    ///
+    ///     // polish the roots
+    ///     let mut roots_polished = Vector::new(roots.dim());
+    ///     solver.polish_roots_newton(roots_polished.as_mut_data(), roots.as_data(), xa, xb, args, f)?;
+    ///     vec_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-15); // accurate
+    ///     Ok(())
+    /// }
+    ///```
     pub fn polish_roots_newton<F, A>(
         &self,
         roots_out: &mut [f64],

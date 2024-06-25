@@ -576,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_and_eval_using_trig_work() {
+    fn new_adapt_and_eval_work() {
         let functions = [
             |_: f64, _: &mut NoArgs| Ok(2.0),
             |x: f64, _: &mut NoArgs| Ok(x - 0.5),
@@ -599,58 +599,32 @@ mod tests {
             (-2.34567, 12.34567),
             (-0.995 * PI, 0.995 * PI),
         ];
-        let err_tols = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14];
+        let tols_adapt = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-6, 1e-6, 1e-6];
+        let tols_eval = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14];
         let nn_max = 400;
         let tol = 1e-7;
         let args = &mut 0;
         for (index, f) in functions.into_iter().enumerate() {
-            let (xa, xb) = ranges[index];
-            let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f).unwrap();
-            let stations = Vector::linspace(xa, xb, 100).unwrap();
-            for x in &stations {
-                let res1 = interp.eval(*x).unwrap();
-                let res2 = interp.eval_using_trig(*x).unwrap();
-                let err = f64::abs(res1 - res2);
-                assert!(err <= err_tols[index]);
-            }
-        }
-    }
-
-    #[test]
-    fn new_adapt_works() {
-        let functions = [
-            |_: f64, _: &mut NoArgs| Ok(2.0),
-            |x: f64, _: &mut NoArgs| Ok(x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),
-            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x)),
-            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
-            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
-        ];
-        let ranges = [
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-2.34567, 12.34567),
-            (-0.995 * PI, 0.995 * PI),
-        ];
-        let err_tols = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-6, 1e-6, 1e-6];
-        let nn_max = 400;
-        let tol = 1e-7;
-        let args = &mut 0;
-        for (index, f) in functions.into_iter().enumerate() {
+            // adaptive interpolation
             let (xa, xb) = ranges[index];
             let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f).unwrap();
             let nn = interp.get_degree();
+
+            // check adaptive interpolation
             let err = interp.estimate_max_error(1000, args, f).unwrap();
             println!("{:0>3} : N = {:>3} : err = {:.2e}", index, nn, err);
-            assert!(err <= err_tols[index]);
+            assert!(err <= tols_adapt[index]);
+
+            // check eval and eval_using_trig
+            let stations_for_eval = Vector::linspace(xa, xb, 100).unwrap();
+            for x in &stations_for_eval {
+                let res1 = interp.eval(*x).unwrap();
+                let res2 = interp.eval_using_trig(*x).unwrap();
+                let err = f64::abs(res1 - res2);
+                assert!(err <= tols_eval[index]);
+            }
+
+            // plot f(x)
             if SAVE_FIGURE {
                 let xx = Vector::linspace(xa, xb, 201).unwrap();
                 let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());

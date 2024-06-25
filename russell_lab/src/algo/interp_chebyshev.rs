@@ -329,6 +329,14 @@ impl InterpChebyshev {
     }
 
     /// Evaluates the interpolated f(x) function
+    ///
+    /// This function uses the Clenshaw algorithm (Reference # 1) to
+    /// avoid calling the trigonometric functions.
+    ///
+    /// # Reference
+    ///
+    /// 1. Clenshaw CW (1954) A note on the summation of Chebyshev series,
+    ///    Mathematics of Computation, 9:118-120
     pub fn eval(&self, x: f64) -> Result<f64, StrError> {
         if !self.ready {
             return Err("all U components must be set first");
@@ -336,10 +344,32 @@ impl InterpChebyshev {
         if self.nn == 0 {
             return Ok(self.constant_fx);
         }
+        let z = f64::max(-1.0, f64::min(1.0, (2.0 * x - self.xb - self.xa) / self.dx));
+        let z2 = z * 2.0;
+        let mut b_k = 0.0;
+        let mut b_k_plus_1 = 0.0;
+        let mut b_k_plus_2: f64;
+        for k in (1..self.np).rev() {
+            b_k_plus_2 = b_k_plus_1;
+            b_k_plus_1 = b_k;
+            b_k = z2 * b_k_plus_1 - b_k_plus_2 + self.a[k];
+        }
+        let res = b_k * z - b_k_plus_1 + self.a[0];
+        Ok(res)
+    }
+
+    /// Evaluates the interpolated f(x) function using the slower trigonometric functions
+    pub fn eval_using_trig(&self, x: f64) -> Result<f64, StrError> {
+        if !self.ready {
+            return Err("all U components must be set first");
+        }
+        if self.nn == 0 {
+            return Ok(self.constant_fx);
+        }
+        let z = f64::max(-1.0, f64::min(1.0, (2.0 * x - self.xb - self.xa) / self.dx));
         let mut sum = 0.0;
         for k in 0..self.np {
-            let y = f64::max(-1.0, f64::min(1.0, (2.0 * x - self.xb - self.xa) / self.dx));
-            sum += self.a[k] * chebyshev_tn(k, y);
+            sum += self.a[k] * chebyshev_tn(k, z);
         }
         Ok(sum)
     }
@@ -538,6 +568,55 @@ mod tests {
     }
 
     #[test]
+    fn eval_captures_errors() {
+        let nn = 2;
+        let (xa, xb) = (-4.0, 4.0);
+        let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        assert_eq!(interp.eval(0.0).err(), Some("all U components must be set first"));
+    }
+
+    #[test]
+    fn eval_and_eval_using_trig_work() {
+        let functions = [
+            |_: f64, _: &mut NoArgs| Ok(2.0),
+            |x: f64, _: &mut NoArgs| Ok(x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),
+            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5),
+            |x: f64, _: &mut NoArgs| Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x)),
+            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
+            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
+        ];
+        let ranges = [
+            (-1.0, 1.0),
+            (-1.0, 1.0),
+            (-1.0, 1.0),
+            (-1.0, 1.0),
+            (-1.0, 1.0),
+            (-1.0, 1.0),
+            (-1.0, 1.0),
+            (-2.34567, 12.34567),
+            (-0.995 * PI, 0.995 * PI),
+        ];
+        let err_tols = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14];
+        let nn_max = 400;
+        let tol = 1e-7;
+        let args = &mut 0;
+        for (index, f) in functions.into_iter().enumerate() {
+            let (xa, xb) = ranges[index];
+            let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, f).unwrap();
+            let stations = Vector::linspace(xa, xb, 100).unwrap();
+            for x in &stations {
+                let res1 = interp.eval(*x).unwrap();
+                let res2 = interp.eval_using_trig(*x).unwrap();
+                let err = f64::abs(res1 - res2);
+                assert!(err <= err_tols[index]);
+            }
+        }
+    }
+
+    #[test]
     fn new_adapt_works() {
         let functions = [
             |_: f64, _: &mut NoArgs| Ok(2.0),
@@ -603,14 +682,6 @@ mod tests {
                     .unwrap();
             }
         }
-    }
-
-    #[test]
-    fn eval_captures_errors() {
-        let nn = 2;
-        let (xa, xb) = (-4.0, 4.0);
-        let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
-        assert_eq!(interp.eval(0.0).err(), Some("all U components must be set first"));
     }
 
     #[test]

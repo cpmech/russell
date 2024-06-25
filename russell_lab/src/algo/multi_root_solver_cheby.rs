@@ -22,10 +22,10 @@ use crate::{Matrix, Vector};
 /// 3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
 ///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
 pub struct MultiRootSolverCheby {
-    /// Holds the tolerance to avoid division by zero (e.g., on the trailing Chebyshev coefficient)
+    /// Holds the tolerance to avoid division by zero with the trailing Chebyshev coefficient
     ///
-    /// Default = 10.0 * f64::EPSILON
-    pub tol_zero: f64,
+    /// Default = 1e-13
+    pub tol_zero_an: f64,
 
     /// Holds the tolerance to discard roots with imaginary part
     ///
@@ -42,6 +42,16 @@ pub struct MultiRootSolverCheby {
     ///
     /// The root will then be moved back to the lower or upper bound
     pub tol_abs_boundary: f64,
+
+    /// Holds the tolerance to stop Newton's iterations when dx ~ 0
+    ///
+    /// Default = 1e-13
+    pub newton_tol_zero_dx: f64,
+
+    /// Holds the tolerance to stop Newton's iterations when f(x) ~ 0
+    ///
+    /// Default = 1e-13
+    pub newton_tol_zero_fx: f64,
 
     /// Holds the maximum number of iterations for the Newton polishing
     ///
@@ -92,9 +102,11 @@ impl MultiRootSolverCheby {
 
         // done
         Ok(MultiRootSolverCheby {
-            tol_zero: 10.0 * f64::EPSILON,
+            tol_zero_an: 1e-13,
             tol_rel_imag: 1.0e-8,
             tol_abs_boundary: TOL_RANGE / 10.0,
+            newton_tol_zero_dx: 1e-13,
+            newton_tol_zero_fx: 1e-13,
             newton_max_iterations: 8,
             nn,
             aa,
@@ -132,7 +144,7 @@ impl MultiRootSolverCheby {
         // last expansion coefficient
         let a = interp.get_coefficients();
         let an = a[nn];
-        if f64::abs(an) < self.tol_zero {
+        if f64::abs(an) < self.tol_zero_an {
             return Err("the trailing Chebyshev coefficient vanishes; try a smaller degree N");
         }
 
@@ -198,7 +210,7 @@ impl MultiRootSolverCheby {
             for _ in 0..self.newton_max_iterations {
                 // check convergence on f(x)
                 let fx = f(x, args)?;
-                if f64::abs(fx) < self.tol_zero {
+                if f64::abs(fx) < self.newton_tol_zero_fx {
                     converged = true;
                     break;
                 }
@@ -216,14 +228,14 @@ impl MultiRootSolverCheby {
                 };
 
                 // skip zero Jacobian
-                if f64::abs(dfdx) < self.tol_zero {
+                if f64::abs(dfdx) < self.newton_tol_zero_fx {
                     converged = true;
                     break;
                 }
 
                 // update x
                 let dx = -f(x, args)? / dfdx;
-                if f64::abs(dx) < self.tol_zero {
+                if f64::abs(dx) < self.newton_tol_zero_dx {
                     converged = true;
                     break;
                 }
@@ -244,7 +256,7 @@ impl MultiRootSolverCheby {
 mod tests {
     use super::MultiRootSolverCheby;
     use crate::algo::NoArgs;
-    use crate::{array_approx_eq, get_test_functions};
+    use crate::{approx_eq, array_approx_eq, get_test_functions};
     use crate::{mat_approx_eq, Matrix, StrError};
     use crate::{InterpChebyshev, Vector};
     use plotpy::{Curve, Legend, Plot};
@@ -258,11 +270,13 @@ mod tests {
         roots_polished: &[f64],
         args: &mut A,
         mut f: F,
+        nstation: usize,
+        fig_width: f64,
     ) where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
         let (xa, xb, _) = interp.get_range();
-        let xx = Vector::linspace(xa, xb, 101).unwrap();
+        let xx = Vector::linspace(xa, xb, nstation).unwrap();
         let yy_ana = xx.get_mapped(|x| f(x, args).unwrap());
         let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
         let mut curve_ana = Curve::new();
@@ -306,6 +320,7 @@ mod tests {
             .add(&legend)
             .set_cross(0.0, 0.0, "gray", "-", 1.5)
             .grid_and_labels("x", "f(x)")
+            .set_figure_size_points(fig_width, 500.0)
             .save(&format!("/tmp/russell_lab/{}.svg", name))
             .unwrap();
     }
@@ -387,6 +402,8 @@ mod tests {
                 &roots_polished,
                 args,
                 f,
+                101,
+                600.0,
             );
         }
 
@@ -395,40 +412,59 @@ mod tests {
     }
 
     #[test]
-    fn find_works_1() {
+    fn find_works_with_test_functions() {
         let nn_max = 200;
         let tol = 1e-8;
         let args = &mut 0;
         let tests = get_test_functions();
-        for id in &[2, 3, 4, 5, 8] {
+        for id in &[2, 3, 4, 5, 6, 7, 8, 9, 10, 13] {
             let test = &tests[*id];
-            if test.root1.is_some() || test.root2.is_some() || test.root3.is_some() {
-                println!("\n===================================================================");
-                println!("\n{}", test.name);
-                let (xa, xb) = test.range;
-                let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, test.f).unwrap();
-                let nn = interp.get_degree();
-                let mut solver = MultiRootSolverCheby::new(nn).unwrap();
-                let roots_unpolished = Vec::from(solver.find(&interp).unwrap());
-                let mut roots_polished = vec![0.0; roots_unpolished.len()];
-                solver
-                    .polish_roots_newton(&mut roots_polished, &roots_unpolished, xa, xb, args, test.f)
-                    .unwrap();
-                for xr in &roots_polished {
-                    let fx = (test.f)(*xr, args).unwrap();
-                    println!("x = {}, f(x) = {:.2e}", xr, fx);
-                    assert!(fx < 1e-10);
+            println!("\n===================================================================");
+            println!("\n{}", test.name);
+            let (xa, xb) = test.range;
+            let interp = InterpChebyshev::new_adapt(nn_max, tol, xa, xb, args, test.f).unwrap();
+            let nn = interp.get_degree();
+            let mut solver = MultiRootSolverCheby::new(nn).unwrap();
+            let roots_unpolished = Vec::from(solver.find(&interp).unwrap());
+            let mut roots_polished = vec![0.0; roots_unpolished.len()];
+            solver
+                .polish_roots_newton(&mut roots_polished, &roots_unpolished, xa, xb, args, test.f)
+                .unwrap();
+            for xr in &roots_polished {
+                let fx = (test.f)(*xr, args).unwrap();
+                println!("x = {}, f(x) = {:.2e}", xr, fx);
+                assert!(fx < 1e-10);
+                if let Some(bracket) = test.root1 {
+                    if *xr >= bracket.a && *xr <= bracket.b {
+                        approx_eq(*xr, bracket.xo, 1e-14);
+                    }
                 }
-                if SAVE_FIGURE {
-                    graph(
-                        &format!("test_multi_root_solver_cheby_{:0>3}", id),
-                        &interp,
-                        &roots_unpolished,
-                        &roots_polished,
-                        args,
-                        test.f,
-                    );
+                if let Some(bracket) = test.root2 {
+                    if *xr >= bracket.a && *xr <= bracket.b {
+                        approx_eq(*xr, bracket.xo, 1e-14);
+                    }
                 }
+                if let Some(bracket) = test.root3 {
+                    if *xr >= bracket.a && *xr <= bracket.b {
+                        approx_eq(*xr, bracket.xo, 1e-14);
+                    }
+                }
+            }
+            if *id == 9 {
+                assert_eq!(roots_unpolished.len(), 93);
+            }
+            if SAVE_FIGURE {
+                let (nstation, fig_width) = if *id == 9 { (1001, 2048.0) } else { (101, 600.0) };
+                graph(
+                    &format!("test_multi_root_solver_cheby_{:0>3}", id),
+                    &interp,
+                    &roots_unpolished,
+                    &roots_polished,
+                    args,
+                    test.f,
+                    nstation,
+                    fig_width,
+                );
             }
         }
     }

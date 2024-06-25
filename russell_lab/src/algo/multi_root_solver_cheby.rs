@@ -1,15 +1,6 @@
 use crate::StrError;
-use crate::{mat_eigenvalues, InterpChebyshev, RootSolverBrent};
+use crate::{mat_eigenvalues, InterpChebyshev, TOL_RANGE};
 use crate::{Matrix, Vector};
-
-/// Tolerance to avoid division by zero on the trailing Chebyshev coefficient
-const TOL_EPS: f64 = 1.0e-13;
-
-/// Tolerance to discard roots with abs(Im(root)) > tau
-const TOL_TAU: f64 = 1.0e-8;
-
-/// Tolerance to discard roots such that abs(Re(root)) > (1 + sigma)
-const TOL_SIGMA: f64 = 1.0e-6;
 
 /// Implements a root finding solver using Chebyshev interpolation
 ///
@@ -31,6 +22,32 @@ const TOL_SIGMA: f64 = 1.0e-6;
 /// 3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
 ///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
 pub struct MultiRootSolverCheby {
+    /// Holds the tolerance to avoid division by zero (e.g., on the trailing Chebyshev coefficient)
+    ///
+    /// Default = 10.0 * f64::EPSILON
+    pub tol_zero: f64,
+
+    /// Holds the tolerance to discard roots with imaginary part
+    ///
+    /// Accepts only roots such that `abs(Im(root)) < tol_rel_imag * abs(Re(root))`
+    ///
+    /// Default = 1e-8
+    pub tol_rel_imag: f64,
+
+    /// Holds the tolerance to discard roots outside the boundaries
+    ///
+    /// Accepts only roots such that `abs(Re(root)) <= 1 + tol_abs_range`
+    ///
+    /// Default = [TOL_RANGE] / 10.0
+    ///
+    /// The root will then be moved back to the lower or upper bound
+    pub tol_abs_boundary: f64,
+
+    /// Holds the maximum number of iterations for the Newton polishing
+    ///
+    /// Default = 8
+    pub newton_max_iterations: usize,
+
     /// Holds the polynomial degree N
     nn: usize,
 
@@ -45,6 +62,12 @@ pub struct MultiRootSolverCheby {
 
     /// Holds all possible roots (dim == N)
     roots: Vector,
+
+    /// Stepsize for one-sided differences
+    h_osd: f64,
+
+    /// Stepsize for central differences
+    h_cen: f64,
 }
 
 impl MultiRootSolverCheby {
@@ -69,11 +92,17 @@ impl MultiRootSolverCheby {
 
         // done
         Ok(MultiRootSolverCheby {
+            tol_zero: 10.0 * f64::EPSILON,
+            tol_rel_imag: 1.0e-8,
+            tol_abs_boundary: TOL_RANGE / 10.0,
+            newton_max_iterations: 8,
             nn,
             aa,
             l_real: Vector::new(nn),
             l_imag: Vector::new(nn),
             roots: Vector::new(nn),
+            h_osd: f64::powf(f64::EPSILON, 1.0 / 2.0),
+            h_cen: f64::powf(f64::EPSILON, 1.0 / 3.0),
         })
     }
 
@@ -103,7 +132,7 @@ impl MultiRootSolverCheby {
         // last expansion coefficient
         let a = interp.get_coefficients();
         let an = a[nn];
-        if f64::abs(an) < TOL_EPS {
+        if f64::abs(an) < self.tol_zero {
             return Err("the trailing Chebyshev coefficient vanishes; try a smaller degree N");
         }
 
@@ -120,9 +149,10 @@ impl MultiRootSolverCheby {
         let (xa, xb, dx) = interp.get_range();
         let mut nroot = 0;
         for i in 0..nn {
-            if f64::abs(self.l_imag[i]) < TOL_TAU * f64::abs(self.l_real[i]) {
-                if f64::abs(self.l_real[i]) <= (1.0 + TOL_SIGMA) {
-                    self.roots[nroot] = (xb + xa + dx * self.l_real[i]) / 2.0;
+            if f64::abs(self.l_imag[i]) < self.tol_rel_imag * f64::abs(self.l_real[i]) {
+                if f64::abs(self.l_real[i]) <= 1.0 + self.tol_abs_boundary {
+                    let x = (xb + xa + dx * self.l_real[i]) / 2.0;
+                    self.roots[nroot] = f64::max(xa, f64::min(xb, x));
                     nroot += 1;
                 }
             }
@@ -137,81 +167,82 @@ impl MultiRootSolverCheby {
         // results
         Ok(&self.roots.as_data()[..nroot])
     }
-}
 
-/// Polishes the roots using Brent's method
-pub fn polish_roots_brent<F, A>(
-    roots_out: &mut [f64],
-    roots_in: &[f64],
-    xa: f64,
-    xb: f64,
-    args: &mut A,
-    mut f: F,
-) -> Result<(), StrError>
-where
-    F: FnMut(f64, &mut A) -> Result<f64, StrError>,
-{
-    // check
-    let nr = roots_in.len();
-    if nr < 1 {
-        return Err("this function works with at least one root");
-    }
-    if roots_out.len() != roots_in.len() {
-        return Err("root_in and root_out must have the same lengths");
-    }
+    /// Polishes the roots using Newton's method
+    pub fn polish_roots_newton<F, A>(
+        &self,
+        roots_out: &mut [f64],
+        roots_in: &[f64],
+        xa: f64,
+        xb: f64,
+        args: &mut A,
+        mut f: F,
+    ) -> Result<(), StrError>
+    where
+        F: FnMut(f64, &mut A) -> Result<f64, StrError>,
+    {
+        // check
+        let nr = roots_in.len();
+        if nr < 1 {
+            return Err("this function works with at least one root");
+        }
+        if roots_out.len() != roots_in.len() {
+            return Err("root_in and root_out must have the same lengths");
+        }
 
-    // handle single root
-    let solver = RootSolverBrent::new();
-    if nr == 1 {
-        let xr = roots_in[0];
-        if xr < xa || xr > xb {
-            return Err("a root is outside [xa, xb]");
-        }
-        let fa = f(xa, args)?;
-        let fb = f(xb, args)?;
-        if fa * fb < 0.0 {
-            let (xo, _) = solver.find(xa, xb, args, &mut f)?;
-            roots_out[0] = xo;
-        } else {
-            roots_out[0] = xr;
-        }
-        return Ok(());
-    }
+        // Newton's method with approximate Jacobian
+        let h_cen_2 = self.h_cen * 2.0;
+        for r in 0..nr {
+            let mut x = roots_in[r];
+            let mut converged = false;
+            for _ in 0..self.newton_max_iterations {
+                // check convergence on f(x)
+                let fx = f(x, args)?;
+                if f64::abs(fx) < self.tol_zero {
+                    converged = true;
+                    break;
+                }
 
-    // handle multiple roots
-    let l = nr - 1;
-    for i in 0..nr {
-        let xr = roots_in[i];
-        if xr < xa || xr > xb {
-            return Err("a root is outside [xa, xb]");
+                // calculate Jacobian
+                let dfdx = if x - self.h_cen <= xa {
+                    // forward difference
+                    (f(x + self.h_osd, args)? - f(x, args)?) / self.h_osd
+                } else if x + self.h_cen >= xb {
+                    // backward difference
+                    (f(x, args)? - f(x - self.h_osd, args)?) / self.h_osd
+                } else {
+                    // central difference
+                    (f(x + self.h_cen, args)? - f(x - self.h_cen, args)?) / h_cen_2
+                };
+
+                // skip zero Jacobian
+                if f64::abs(dfdx) < self.tol_zero {
+                    converged = true;
+                    break;
+                }
+
+                // update x
+                let dx = -f(x, args)? / dfdx;
+                if f64::abs(dx) < self.tol_zero {
+                    converged = true;
+                    break;
+                }
+                x += dx;
+            }
+            if !converged {
+                return Err("Newton's method did not converge");
+            }
+            roots_out[r] = x;
         }
-        let a = if i == 0 {
-            xa
-        } else {
-            (roots_in[i - 1] + roots_in[i]) / 2.0
-        };
-        let b = if i == l {
-            xb
-        } else {
-            (roots_in[i] + roots_in[i + 1]) / 2.0
-        };
-        let fa = f(a, args)?;
-        let fb = f(b, args)?;
-        if fa * fb < 0.0 {
-            let (xo, _) = solver.find(a, b, args, &mut f)?;
-            roots_out[i] = xo;
-        } else {
-            roots_out[i] = xr;
-        }
+        Ok(())
     }
-    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{polish_roots_brent, MultiRootSolverCheby};
+    use super::MultiRootSolverCheby;
     use crate::algo::NoArgs;
     use crate::{array_approx_eq, get_test_functions};
     use crate::{mat_approx_eq, Matrix, StrError};
@@ -340,7 +371,9 @@ mod tests {
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
         let roots_unpolished = Vec::from(solver.find(&interp).unwrap());
         let mut roots_polished = vec![0.0; roots_unpolished.len()];
-        polish_roots_brent(&mut roots_polished, &roots_unpolished, xa, xb, args, f).unwrap();
+        solver
+            .polish_roots_newton(&mut roots_polished, &roots_unpolished, xa, xb, args, f)
+            .unwrap();
         println!("n_roots = {}", roots_polished.len());
         println!("roots_unpolished = {:?}", roots_unpolished);
         println!("roots_polished = {:?}", roots_polished);
@@ -378,9 +411,13 @@ mod tests {
                 let mut solver = MultiRootSolverCheby::new(nn).unwrap();
                 let roots_unpolished = Vec::from(solver.find(&interp).unwrap());
                 let mut roots_polished = vec![0.0; roots_unpolished.len()];
-                polish_roots_brent(&mut roots_polished, &roots_unpolished, xa, xb, args, test.f).unwrap();
+                solver
+                    .polish_roots_newton(&mut roots_polished, &roots_unpolished, xa, xb, args, test.f)
+                    .unwrap();
                 for xr in &roots_polished {
-                    assert!((test.f)(*xr, args).unwrap() < 1e-10);
+                    let fx = (test.f)(*xr, args).unwrap();
+                    println!("x = {}, f(x) = {:.2e}", xr, fx);
+                    assert!(fx < 1e-10);
                 }
                 if SAVE_FIGURE {
                     graph(

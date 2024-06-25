@@ -517,6 +517,7 @@ mod tests {
     fn new_with_f_captures_errors() {
         let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
+        _ = f(0.0, args); // for coverage tool
         assert_eq!(
             InterpChebyshev::new_with_f(2, 0.0, 0.0, args, f).err(),
             Some("xb must be greater than xa + ϵ")
@@ -646,7 +647,7 @@ mod tests {
         struct Args {
             count: usize,
         }
-        let f = move |x: f64, a: &mut Args| {
+        let f = |x: f64, a: &mut Args| {
             a.count += 1;
             if a.count == 3 {
                 return Err("stop with count = 3");
@@ -768,6 +769,7 @@ mod tests {
     fn estimate_max_error_captures_errors_1() {
         let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
+        _ = f(0.0, args); // for coverage tool
         let nn = 2;
         let (xa, xb) = (-4.0, 4.0);
         let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
@@ -779,24 +781,12 @@ mod tests {
 
     #[test]
     fn estimate_max_error_captures_errors_2() {
-        struct Args {
-            count: usize,
-        }
-        let f = move |x: f64, a: &mut Args| {
-            a.count += 1;
-            if a.count == 1 {
-                return Err("stop with count = 1");
-            }
-            Ok(x * x - 1.0)
-        };
-        let mut args = Args { count: 0 };
+        let f = |_: f64, _: &mut NoArgs| Err("stop");
+        let args = &mut 0;
         let (xa, xb) = (0.0, 1.0);
         let uu = &[1.0];
         let interp = InterpChebyshev::new_with_uu(xa, xb, uu).unwrap();
-        assert_eq!(
-            interp.estimate_max_error(2, &mut args, f).err(),
-            Some("stop with count = 1")
-        );
+        assert_eq!(interp.estimate_max_error(2, args, f).err(), Some("stop"));
     }
 
     #[test]

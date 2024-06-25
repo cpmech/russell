@@ -530,14 +530,22 @@ mod tests {
     }
 
     #[test]
-    fn new_with_f_works() {
+    fn new_with_f_and_estimate_max_error_work() {
         let f = |x: f64, _: &mut NoArgs| Ok(x * x - 1.0);
         let (xa, xb) = (-4.0, 4.0);
-        let nn = 2;
         let args = &mut 0;
+        // N = 2
+        let nn = 2;
         let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
         let err = interp.estimate_max_error(100, args, f).unwrap();
+        println!("N = 2, err = {:e}", err);
         assert!(err < 1e-14);
+        // N = 1
+        let nn = 1;
+        let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+        let err = interp.estimate_max_error(100, args, f).unwrap();
+        println!("N = 1, err = {:e}", err);
+        assert!(err > 15.0);
     }
 
     #[test]

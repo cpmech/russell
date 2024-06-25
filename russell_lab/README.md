@@ -31,6 +31,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Read a table-formatted data file](#read-a-table-formatted-data-file)
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
+  - [Chebyshev polynomial evaluation](#chebyshev-polynomial-evaluation)
   - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
 - [Notes for developers](#notes-for-developers)
 
@@ -708,6 +709,13 @@ Run the benchmarks with:
 bash ./zscripts/benchmark.bash
 ```
 
+### Chebyshev polynomial evaluation
+
+Comparison of the performances of `InterpChebyshev::eval` implementing the Clenshaw algorithm and `InterpChebyshev::eval_using_trig` using the trigonometric functions.
+
+![Chebyshev evaluation (small)](data/figures/bench_chebyshev_eval_small.svg)
+
+![Chebyshev evaluation (large)](data/figures/bench_chebyshev_eval_large.svg)
 
 
 ### Jacobi Rotation versus LAPACK DSYEV

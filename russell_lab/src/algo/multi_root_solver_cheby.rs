@@ -55,7 +55,7 @@ pub struct MultiRootSolverCheby {
 
     /// Holds the maximum number of iterations for the Newton polishing
     ///
-    /// Default = 8
+    /// Default = 15
     pub newton_max_iterations: usize,
 
     /// Holds the polynomial degree N
@@ -107,7 +107,7 @@ impl MultiRootSolverCheby {
             tol_abs_boundary: TOL_RANGE / 10.0,
             newton_tol_zero_dx: 1e-13,
             newton_tol_zero_fx: 1e-13,
-            newton_max_iterations: 8,
+            newton_max_iterations: 15,
             nn,
             aa,
             l_real: Vector::new(nn),
@@ -408,7 +408,47 @@ mod tests {
         }
 
         // check
-        array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-12);
+        array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-14);
+    }
+
+    #[test]
+    fn polish_roots_newton_works() {
+        // function
+        let f = |x, _: &mut NoArgs| Ok(x * x * x * x - 1.0);
+        let (xa, xb) = (-2.0, 2.0);
+
+        // interpolant
+        let nn = 2;
+        let args = &mut 0;
+        let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+
+        // find roots
+        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
+        let roots_unpolished = Vec::from(solver.find(&interp).unwrap());
+        let mut roots_polished = vec![0.0; roots_unpolished.len()];
+        solver
+            .polish_roots_newton(&mut roots_polished, &roots_unpolished, xa, xb, args, f)
+            .unwrap();
+        println!("n_roots = {}", roots_polished.len());
+        println!("roots_unpolished = {:?}", roots_unpolished);
+        println!("roots_polished = {:?}", roots_polished);
+
+        // figure
+        if SAVE_FIGURE {
+            graph(
+                "test_polish_roots_newton",
+                &interp,
+                &roots_unpolished,
+                &roots_polished,
+                args,
+                f,
+                101,
+                600.0,
+            );
+        }
+
+        // check
+        array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-14);
     }
 
     #[test]

@@ -524,6 +524,8 @@ mod tests {
             InterpChebyshev::new_with_f(2, 0.0, 0.0, args, f).err(),
             Some("xb must be greater than xa + ϵ")
         );
+        let f = |_: f64, _: &mut NoArgs| Err("stop");
+        assert_eq!(InterpChebyshev::new_with_f(0, 0.0, 1.0, args, f).err(), Some("stop"));
     }
 
     #[test]

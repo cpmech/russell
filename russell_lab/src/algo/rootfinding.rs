@@ -21,7 +21,7 @@ use crate::{Matrix, Vector};
 ///    Analysis, 55(2):375-396.
 /// 3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
 ///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
-pub struct MultiRootSolverCheby {
+pub struct RootFinding {
     /// Holds the tolerance to avoid division by zero with the trailing Chebyshev coefficient
     ///
     /// Default = 1e-13
@@ -65,10 +65,10 @@ pub struct MultiRootSolverCheby {
     h_cen: f64,
 }
 
-impl MultiRootSolverCheby {
+impl RootFinding {
     /// Allocates a new instance
     pub fn new() -> Self {
-        MultiRootSolverCheby {
+        RootFinding {
             tol_zero_an: 1e-13,
             tol_rel_imag: 1.0e-8,
             tol_abs_boundary: TOL_RANGE / 10.0,
@@ -111,7 +111,7 @@ impl MultiRootSolverCheby {
     ///     interp.set_function(nn, args, f)?;
     ///
     ///     // find all roots in the interval
-    ///     let mut solver = MultiRootSolverCheby::new();
+    ///     let mut solver = RootFinding::new();
     ///     let roots = solver.find(&interp)?;
     ///     array_approx_eq(&roots, &[-1.0, 1.0], 1e-15);
     ///     Ok(())
@@ -202,7 +202,7 @@ impl MultiRootSolverCheby {
     ///     interp.set_function(nn, args, f)?;
     ///
     ///     // find all roots in the interval
-    ///     let mut solver = MultiRootSolverCheby::new();
+    ///     let mut solver = RootFinding::new();
     ///     let mut roots = solver.find(&interp)?;
     ///     array_approx_eq(&roots, &[-0.5, 0.5], 1e-15); // inaccurate
     ///
@@ -281,7 +281,7 @@ impl MultiRootSolverCheby {
 
 #[cfg(test)]
 mod tests {
-    use super::MultiRootSolverCheby;
+    use super::RootFinding;
     use crate::algo::NoArgs;
     use crate::InterpChebyshev;
     use crate::{approx_eq, array_approx_eq, get_test_functions};
@@ -361,7 +361,7 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
         let nn = 2;
         let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         assert_eq!(
             solver.find(&interp).err(),
             Some("the interpolant must initialized first")
@@ -376,7 +376,7 @@ mod tests {
         let args = &mut 0;
         let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
         interp.set_function(nn, args, f).unwrap();
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         assert_eq!(
             solver.find(&interp).err(),
             Some("the trailing Chebyshev coefficient vanishes; try a smaller degree N")
@@ -396,7 +396,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
 
         // find roots
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         let roots_unpolished = solver.find(&interp).unwrap();
         let mut roots_polished = roots_unpolished.clone();
         solver
@@ -430,7 +430,7 @@ mod tests {
         let args = &mut 0;
         let _ = f(0.0, args);
         let (xa, xb) = (-1.0, 1.0);
-        let mut solver = MultiRootSolverCheby::new();
+        let mut solver = RootFinding::new();
         let mut roots = Vec::new();
         assert_eq!(
             solver.polish_roots_newton(&mut roots, xa, xb, args, f).err(),
@@ -457,7 +457,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
 
         // find roots
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         let roots_unpolished = solver.find(&interp).unwrap();
         let mut roots_polished = roots_unpolished.clone();
         solver
@@ -498,7 +498,7 @@ mod tests {
             let (xa, xb) = test.range;
             let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
             interp.adapt_function(tol, args, test.f).unwrap();
-            let solver = MultiRootSolverCheby::new();
+            let solver = RootFinding::new();
             let roots_unpolished = solver.find(&interp).unwrap();
             let mut roots_polished = roots_unpolished.clone();
             solver
@@ -556,7 +556,7 @@ mod tests {
         interp.set_data(uu).unwrap();
 
         // find all roots in the interval
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         let roots = &solver.find(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
@@ -575,7 +575,7 @@ mod tests {
         interp.adapt_data(tol, uu).unwrap();
 
         // find all roots in the interval
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         let roots = &solver.find(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
@@ -602,7 +602,7 @@ mod tests {
         interp.adapt_data(tol, uu).unwrap();
 
         // find all roots in the interval
-        let solver = MultiRootSolverCheby::new();
+        let solver = RootFinding::new();
         let roots = solver.find(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 1);

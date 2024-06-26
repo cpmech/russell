@@ -1030,13 +1030,9 @@ mod tests {
 
             // check adapted degrees
             print!("{:0>3}: N = {}", index, nn);
-            if nn > 0 {
-                let mut a = Vector::new(nn + 1);
-                chebyshev_coefficients(a.as_mut_data(), uu.as_data(), nn);
-                println!(", an = {}", a[nn]);
-            } else {
-                println!();
-            }
+            let mut a = Vector::new(nn + 1);
+            chebyshev_coefficients(a.as_mut_data(), uu.as_data(), nn);
+            println!(", an = {}", a[nn]);
             assert_eq!(nn, degrees_answer[index]);
 
             // plot f(x)

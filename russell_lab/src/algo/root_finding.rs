@@ -53,7 +53,7 @@ pub struct RootFinding {
     /// Default = 1e-13
     pub newton_tol_zero_fx: f64,
 
-    /// Holds the maximum number of iterations for the Newton polishing
+    /// Holds the maximum number of iterations for the Newton refinement/polishing
     ///
     /// Default = 15
     pub newton_max_iterations: usize,
@@ -218,8 +218,8 @@ impl RootFinding {
     ///     let mut roots = solver.chebyshev(&interp)?;
     ///     array_approx_eq(&roots, &[-0.5, 0.5], 1e-15); // inaccurate
     ///
-    ///     // polish the roots
-    ///     solver.polish_roots_newton(&mut roots, xa, xb, args, f)?;
+    ///     // refine/polish the roots
+    ///     solver.refine(&mut roots, xa, xb, args, f)?;
     ///     array_approx_eq(&roots, &[-1.0, 1.0], 1e-15); // accurate
     ///     Ok(())
     /// }
@@ -428,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn polish_roots_newton_captures_errors() {
+    fn refine_captures_errors() {
         let f = |_, _: &mut NoArgs| Ok(0.0);
         let args = &mut 0;
         let _ = f(0.0, args);
@@ -448,7 +448,7 @@ mod tests {
     }
 
     #[test]
-    fn polish_roots_newton_works() {
+    fn refine_works() {
         // function
         let f = |x, _: &mut NoArgs| Ok(x * x * x * x - 1.0);
         let (xa, xb) = (-2.0, 2.0);
@@ -471,7 +471,7 @@ mod tests {
         // figure
         /*
         graph(
-            "test_polish_roots_newton",
+            "test_root_finding_refine",
             &interp,
             &roots,
             &roots_refined,

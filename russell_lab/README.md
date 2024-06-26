@@ -482,7 +482,7 @@ Total computation time           = 907ns
 
 ### Finding all roots in an interval
 
-This example employs a Chebyshev interpolant to find all roots of a function in an interval. The method uses adaptive interpolation followed by calculating the eigenvalues of the companion matrix. These eigenvalues equal the roots of the polynomial. After that, a simple Newton polishing algorithm is applied.
+This example employs a Chebyshev interpolant to find all roots of a function in an interval. The method uses adaptive interpolation followed by calculating the eigenvalues of the companion matrix. These eigenvalues equal the roots of the polynomial. After that, a simple Newton refining (polishing) algorithm is applied.
 
 [See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_multi_root_solver_cheby.rs)
 

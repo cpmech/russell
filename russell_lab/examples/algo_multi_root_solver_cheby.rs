@@ -23,7 +23,7 @@ fn main() -> Result<(), StrError> {
     println!("roots =\n{}", roots);
     println!("f @ roots =\n{}", vec_fmt_scientific(&f_at_roots, 2));
 
-    // polish the roots
+    // refine/polish the roots
     let mut roots_refined = roots.clone();
     solver.refine(roots_refined.as_mut_data(), xa, xb, args, f)?;
     let f_at_roots_refined = roots_refined.get_mapped(|x| f(x, args).unwrap());

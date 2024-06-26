@@ -831,6 +831,17 @@ mod tests {
     }
 
     #[test]
+    fn new_adapt_uu_captures_errors() {
+        let uu = [];
+        let nn_max = 4;
+        let tol = 1e-7;
+        assert_eq!(
+            InterpChebyshev::new_adapt_uu(nn_max, tol, 0.0, 1.0, &uu).err(),
+            Some("the number of points = uu.len() must be ≥ 1")
+        );
+    }
+
+    #[test]
     fn new_adapt_uu_works() {
         let data_generators = [
             |_: f64| 2.0,                                                                            // 0

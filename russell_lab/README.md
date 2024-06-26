@@ -20,6 +20,9 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Check first and second derivatives](#check-first-and-second-derivatives)
   - [Bessel functions](#bessel-functions)
   - [Linear fitting](#linear-fitting)
+  - [Chebyshev adaptive interpolation (given function)](#chebyshev-adaptive-interpolation-given-function)
+  - [Chebyshev adaptive interpolation (given data)](#chebyshev-adaptive-interpolation-given-data)
+  - [Chebyshev adaptive interpolation (given noisy data)](#chebyshev-adaptive-interpolation-given-noisy-data)
   - [Lagrange interpolation](#lagrange-interpolation)
   - [Solution of a 1D PDE using spectral collocation](#solution-of-a-1d-pde-using-spectral-collocation)
   - [Numerical integration: perimeter of ellipse](#numerical-integration-perimeter-of-ellipse)
@@ -323,6 +326,41 @@ Results:
 
 ![Linear fitting](data/figures/algo_linear_fitting_1.svg)
 
+
+
+### Chebyshev adaptive interpolation (given function)
+
+This example illustrates the use of `InterpChebyshev` to interpolate data given a function.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_chebyshev_adapt.rs)
+
+Results:
+
+![Chebyshev interpolation (given function)](data/figures/algo_interp_chebyshev_adapt.svg)
+
+
+
+### Chebyshev adaptive interpolation (given data)
+
+This example illustrates the use of `InterpChebyshev` to interpolate discrete data.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_chebyshev_data.rs)
+
+Results:
+
+![Chebyshev interpolation (given data)](data/figures/algo_interp_chebyshev_data.svg)
+
+
+
+### Chebyshev adaptive interpolation (given noisy data)
+
+This example illustrates the use of `InterpChebyshev` to interpolate noisy data.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_chebyshev_noisy_data.rs)
+
+Results:
+
+![Chebyshev interpolation (given noisy data)](data/figures/algo_interp_chebyshev_noisy_data.svg)
 
 
 

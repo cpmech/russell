@@ -4,6 +4,9 @@ use crate::StrError;
 
 /// Holds an f(x) function that is useful for testing
 pub struct TestFunction {
+    /// Holds the identifier of the function
+    pub id: usize,
+
     /// Holds the name of the function
     pub name: &'static str,
 
@@ -23,7 +26,7 @@ pub struct TestFunction {
     pub range: (f64, f64),
 
     /// Holds the number of roots in the specified range
-    pub n_root: usize,
+    pub nroot: usize,
 
     /// Holds a bracketed local minimum
     pub min1: Option<Bracket>,
@@ -92,12 +95,13 @@ pub struct TestFunction {
 pub fn get_test_functions() -> Vec<TestFunction> {
     vec![
         TestFunction {
+            id: 0,
             name: "0: f(x) = undefined",
             f: |_, _| Err("stop"),
             g: |_, _| Err("stop"),
             h: |_, _| Err("stop"),
             range: (-5.0, 5.0),
-            n_root: 0,
+            nroot: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -110,12 +114,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-10,
         },
         TestFunction {
+            id: 1,
             name: "1: f(x) = x² - 1",
             f: |x, _| Ok(x * x - 1.0),
             g: |x, _| Ok(2.0 * x),
             h: |_, _| Ok(2.0),
             range: (-5.0, 5.0),
-            n_root: 2,
+            nroot: 2,
             min1: Some(Bracket {
                 a: -5.0,
                 b: 5.0,
@@ -149,6 +154,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
+            id: 2,
             name: "2: f(x) = 1/2 - 1/(1 + 16 x²)", // (shifted) Runge equation
             f: |x, _| Ok(1.0 / 2.0 - 1.0 / (1.0 + 16.0 * x * x)),
             g: |x, _| Ok((32.0 * x) / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2)),
@@ -157,7 +163,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                     + 32.0 / f64::powi(1.0 + 16.0 * f64::powi(x, 2), 2))
             },
             range: (-2.0, 2.0),
-            n_root: 2,
+            nroot: 2,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
@@ -191,12 +197,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-13,
         },
         TestFunction {
+            id: 3,
             name: "3: f(x) = x⁵ + 3x⁴ - 2x³ + x - 1",
             f: |x, _| Ok(f64::powi(x, 5) + 3.0 * f64::powi(x, 4) - 2.0 * f64::powi(x, 3) + x - 1.0),
             g: |x, _| Ok(1.0 - 6.0 * f64::powi(x, 2) + 12.0 * f64::powi(x, 3) + 5.0 * f64::powi(x, 4)),
             h: |x, _| Ok(-12.0 * x + 36.0 * f64::powi(x, 2) + 20.0 * f64::powi(x, 3)),
             range: (-3.6, 2.0),
-            n_root: 3,
+            nroot: 3,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
@@ -237,12 +244,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-13,
         },
         TestFunction {
+            id: 4,
             name: "4: f(x) = (x - 1)² + 5 sin(x)",
             f: |x, _| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x)),
             g: |x, _| Ok(2.0 * (-1.0 + x) + 5.0 * f64::cos(x)),
             h: |x, _| Ok(2.0 - 5.0 * f64::sin(x)),
             range: (-2.8, 5.0),
-            n_root: 2,
+            nroot: 2,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 2.0,
@@ -283,6 +291,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
+            id: 5,
             name: "5: f(x) = 1/(1 - exp(-2 x) sin²(5 π x)) - 3/2",
             f: |x, _| Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5),
             g: |x, _| {
@@ -308,7 +317,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                 )
             },
             range: (0.0, 1.0),
-            n_root: 6,
+            nroot: 6,
             min1: Some(Bracket {
                 a: 0.1,
                 b: 0.3,
@@ -363,12 +372,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
+            id: 6,
             name: "6: f(x) = sin(x) in [0, π]",
             f: |x, _| Ok(f64::sin(x)),
             g: |x, _| Ok(f64::cos(x)),
             h: |x, _| Ok(-f64::sin(x)),
             range: (0.0, PI),
-            n_root: 2,
+            nroot: 2,
             min1: None,
             min2: None,
             min3: None,
@@ -381,12 +391,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-15,
         },
         TestFunction {
+            id: 7,
             name: "7: f(x) = sin(x) in [0, π/2]",
             f: |x, _| Ok(f64::sin(x)),
             g: |x, _| Ok(f64::cos(x)),
             h: |x, _| Ok(-f64::sin(x)),
             range: (0.0, PI / 2.0),
-            n_root: 1,
+            nroot: 1,
             min1: None,
             min2: None,
             min3: None,
@@ -399,12 +410,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-15,
         },
         TestFunction {
+            id: 8,
             name: "8: f(x) = sin(x) in [-1, 1]",
             f: |x, _| Ok(f64::sin(x)),
             g: |x, _| Ok(f64::cos(x)),
             h: |x, _| Ok(-f64::sin(x)),
             range: (-1.0, 1.0),
-            n_root: 1,
+            nroot: 1,
             min1: None,
             min2: None,
             min3: None,
@@ -424,12 +436,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-20,
         },
         TestFunction {
+            id: 9,
             name: "9: f(x) = 0.092834 sin(77.0001 + 19.87 x) in [-2.34567, 12.34567]",
             f: |x, _| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
             g: |x, _| Ok(1.84461158 * f64::cos(77.0001 + 19.87 * x)),
             h: |x, _| Ok(-36.6524320946 * f64::sin(77.0001 + 19.87 * x)),
             range: (-2.34567, 12.34567),
-            n_root: 93,
+            nroot: 93,
             min1: None,
             min2: None,
             min3: None,
@@ -442,12 +455,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-15,
         },
         TestFunction {
+            id: 10,
             name: "10: f(x) = 0.092834 sin[7.0001 + 1.87 x) in [-2.34567, 1.34567]",
             f: |x, _| Ok(0.092834 * f64::sin(7.0001 + 1.87 * x)),
             g: |x, _| Ok(0.17359958 * f64::cos(7.0001 + 1.87 * x)),
             h: |x, _| Ok(-0.32463121460000005 * f64::sin(7.0001 + 1.87 * x)),
             range: (-2.5, 1.5),
-            n_root: 3,
+            nroot: 3,
             min1: Some(Bracket {
                 a: -2.0,
                 b: 1.0,
@@ -488,6 +502,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-16,
         },
         TestFunction {
+            id: 11,
             name: "11: f(x) = (2 x⁵ - x + 3)/x²",
             f: |x, _| Ok((2.0 * f64::powi(x, 5) - x + 3.0) / (x * x)),
             g: |x, _| {
@@ -499,7 +514,7 @@ pub fn get_test_functions() -> Vec<TestFunction> {
                     + (6.0 * (3.0 - x + 2.0 * f64::powi(x, 5))) / f64::powi(x, 4))
             },
             range: (1.0, 2.0),
-            n_root: 0,
+            nroot: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -512,12 +527,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-13,
         },
         TestFunction {
+            id: 12,
             name: "12: f(x) = 3/exp(-x) - 1/(3x)",
             f: |x, _| Ok(3.0 / f64::exp(-x) - 1.0 / (3.0 * x)),
             g: |x, _| Ok(3.0 * f64::exp(x) + 1.0 / (3.0 * f64::powi(x, 2))),
             h: |x, _| Ok(3.0 * f64::exp(x) - 2.0 / (3.0 * f64::powi(x, 3))),
             range: (-20.0, -1.0),
-            n_root: 0,
+            nroot: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -530,12 +546,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-14,
         },
         TestFunction {
+            id: 13,
             name: "13: f(x) = log(2 f64::cos(x/2))",
             f: |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
             g: |x, _| Ok(-0.5 * f64::tan(x / 2.0)),
             h: |x, _| Ok(-0.25 * f64::powi(1.0 / f64::cos(x / 2.0), 2)),
             range: (-0.995 * PI, 0.995 * PI),
-            n_root: 2,
+            nroot: 2,
             min1: None,
             min2: None,
             min3: None,
@@ -562,12 +579,13 @@ pub fn get_test_functions() -> Vec<TestFunction> {
             tol_integral: 1e-10,
         },
         TestFunction {
+            id: 14,
             name: "14: f(x) = exp(x)",
             f: |x, _| Ok(f64::exp(x)),
             g: |x, _| Ok(f64::exp(x)),
             h: |x, _| Ok(f64::exp(x)),
             range: (0.0, 10.1),
-            n_root: 0,
+            nroot: 0,
             min1: None,
             min2: None,
             min3: None,
@@ -610,6 +628,7 @@ mod tests {
         let args = &mut 0;
         for (i, func) in get_test_functions().iter().enumerate() {
             println!("\n{}", func.name);
+            assert_eq!(i, func.id);
             if i == 0 {
                 assert_eq!((func.f)(0.0, args).err(), Some("stop"));
                 assert_eq!((func.g)(0.0, args).err(), Some("stop"));

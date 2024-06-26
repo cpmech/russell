@@ -573,9 +573,10 @@ mod tests {
         let nn_max = 200;
         let tol = 1e-8;
         let args = &mut 0;
-        let tests = get_test_functions();
-        for id in &[2, 3, 4, 5, 6, 7, 8, 9, 10, 13] {
-            let test = &tests[*id];
+        for test in get_test_functions() {
+            if test.id == 0 {
+                continue;
+            }
             println!("\n===================================================================");
             println!("\n{}", test.name);
             let (xa, xb) = test.range;
@@ -584,7 +585,9 @@ mod tests {
             let solver = RootFinding::new();
             let roots = solver.chebyshev(&interp).unwrap();
             let mut roots_refined = roots.clone();
-            solver.refine(&mut roots_refined, xa, xb, args, test.f).unwrap();
+            if roots.len() > 0 {
+                solver.refine(&mut roots_refined, xa, xb, args, test.f).unwrap();
+            }
             for xr in &roots_refined {
                 let fx = (test.f)(*xr, args).unwrap();
                 println!("x = {}, f(x) = {:.2e}", xr, fx);
@@ -605,14 +608,12 @@ mod tests {
                     }
                 }
             }
-            if *id == 9 {
-                assert_eq!(roots.len(), 93);
-            }
+            assert_eq!(roots.len(), test.nroot);
             // figure
             /*
-            let (nstation, fig_width) = if *id == 9 { (1001, 2048.0) } else { (101, 600.0) };
+            let (nstation, fig_width) = if test.id == 9 { (1001, 2048.0) } else { (101, 600.0) };
             graph(
-                &format!("test_root_finding_chebyshev_{:0>3}", id),
+                &format!("test_root_finding_chebyshev_{:0>3}", test.id),
                 &interp,
                 &roots,
                 &roots_refined,

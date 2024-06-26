@@ -85,19 +85,21 @@ impl MultiRootSolverCheby {
     ///
     /// # Input
     ///
-    /// * `nn` -- polynomial degree N (must be ≥ 2)
+    /// * `nn` -- polynomial degree N (must be ≥ 1)
     pub fn new(nn: usize) -> Result<Self, StrError> {
         // check
-        if nn < 2 {
-            return Err("the degree N must be ≥ 2");
+        if nn < 1 {
+            return Err("the degree N must be ≥ 1");
         }
 
         // companion matrix (except last row)
         let mut aa = Matrix::new(nn, nn);
-        aa.set(0, 1, 1.0);
-        for r in 1..(nn - 1) {
-            aa.set(r, r + 1, 0.5); // upper diagonal
-            aa.set(r, r - 1, 0.5); // lower diagonal
+        if nn > 1 {
+            aa.set(0, 1, 1.0);
+            for r in 1..(nn - 1) {
+                aa.set(r, r + 1, 0.5); // upper diagonal
+                aa.set(r, r - 1, 0.5); // lower diagonal
+            }
         }
 
         // done
@@ -171,6 +173,19 @@ impl MultiRootSolverCheby {
             return Err("the trailing Chebyshev coefficient vanishes; try a smaller degree N");
         }
 
+        // linear function
+        let (xa, xb, dx) = interp.get_range();
+        if nn == 1 {
+            let z = -a[0] / a[1];
+            let nr = if f64::abs(z) <= 1.0 + self.tol_abs_boundary {
+                self.roots[0] = (xb + xa + dx * z) / 2.0;
+                1
+            } else {
+                0
+            };
+            return Ok(&self.roots.as_data()[..nr]);
+        }
+
         // last row of the companion matrix
         for k in 0..nn {
             self.aa.set(nn - 1, k, -0.5 * a[k] / an);
@@ -181,7 +196,6 @@ impl MultiRootSolverCheby {
         mat_eigenvalues(&mut self.l_real, &mut self.l_imag, &mut self.aa).unwrap();
 
         // roots = real eigenvalues within the interval
-        let (xa, xb, dx) = interp.get_range();
         let mut nroot = 0;
         for i in 0..nn {
             if f64::abs(self.l_imag[i]) < self.tol_rel_imag * f64::abs(self.l_real[i]) {
@@ -383,8 +397,8 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        let nn = 1;
-        assert_eq!(MultiRootSolverCheby::new(nn).err(), Some("the degree N must be ≥ 2"));
+        let nn = 0;
+        assert_eq!(MultiRootSolverCheby::new(nn).err(), Some("the degree N must be ≥ 1"));
     }
 
     #[test]
@@ -549,8 +563,8 @@ mod tests {
             if *id == 9 {
                 assert_eq!(roots_unpolished.len(), 93);
             }
-            // figure
             /*
+            // figure
             let (nstation, fig_width) = if *id == 9 { (1001, 2048.0) } else { (101, 600.0) };
             graph(
                 &format!("test_multi_root_solver_cheby_{:0>3}", id),
@@ -596,5 +610,92 @@ mod tests {
                 .err(),
             Some("Newton's method did not converge")
         );
+    }
+
+    #[test]
+    fn linear_function_no_roots_works() {
+        // data
+        let (xa, xb) = (0.0, 1.0);
+        let uu = Vector::from(&[3.0, 0.5]);
+
+        // interpolant
+        let nn_max = 100;
+        let tol = 1e-8;
+        let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data()).unwrap();
+        let nn = interp.get_degree();
+
+        // find all roots in the interval
+        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
+        let roots = Vector::from(&solver.find(&interp).unwrap());
+        let nroot = roots.dim();
+        assert_eq!(nroot, 0)
+    }
+
+    #[test]
+    fn linear_function_works() {
+        // data
+        let (xa, xb) = (0.0, 1.0);
+        let dx = xb - xa;
+        let uu = Vector::from(&[3.0, 0.5, -4.5, -7.0]);
+        let np = uu.dim(); // number of points
+        let nn = np - 1; // degree
+        let mut xx_dat = Vector::new(np);
+        let zz = InterpChebyshev::points(nn);
+        for i in 0..np {
+            xx_dat[i] = (xb + xa + dx * zz[i]) / 2.0;
+        }
+
+        // interpolant
+        let nn_max = 100;
+        let tol = 1e-8;
+        let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data()).unwrap();
+        let nn = interp.get_degree();
+
+        // find all roots in the interval
+        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
+        let roots = Vector::from(&solver.find(&interp).unwrap());
+        let f_at_roots = roots.get_mapped(|x| interp.eval(x).unwrap());
+        let nroot = roots.dim();
+        println!("roots =\n{}", roots);
+        for i in 0..nroot {
+            println!("xr = {}, f(xr) = {:.2e}", roots[i], f_at_roots[i]);
+        }
+        assert_eq!(nroot, 1);
+        approx_eq(roots[0], 0.7, 1e-15);
+        approx_eq(f_at_roots[0], 0.0, 1e-15);
+
+        // plot
+        /*
+        let xx = Vector::linspace(xa, xb, 201).unwrap();
+        let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+        let mut curve_dat = Curve::new();
+        let mut curve_int = Curve::new();
+        let mut curve_xr = Curve::new();
+        curve_dat.set_label("data").set_line_style("None").set_marker_style(".");
+        curve_int
+            .set_label(&format!("interpolated,N={}", nn))
+            .set_marker_every(5);
+        curve_xr
+            .set_label("root")
+            .set_line_style("None")
+            .set_marker_style("o")
+            .set_marker_void(true);
+        curve_dat.draw(xx_dat.as_data(), uu.as_data());
+        curve_int.draw(xx.as_data(), yy_int.as_data());
+        curve_xr.draw(roots.as_data(), f_at_roots.as_data());
+        let mut plot = Plot::new();
+        let mut legend = Legend::new();
+        legend.set_num_col(4);
+        legend.set_outside(true);
+        legend.draw();
+        plot.add(&curve_int)
+            .add(&curve_dat)
+            .add(&curve_xr)
+            .add(&legend)
+            .set_cross(0.0, 0.0, "gray", "-", 1.5)
+            .grid_and_labels("x", "f(x)")
+            .save("/tmp/russell_lab/test_multi_root_solver_cheby_linear_function.svg")
+            .unwrap();
+        */
     }
 }

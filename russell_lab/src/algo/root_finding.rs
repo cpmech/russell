@@ -99,12 +99,16 @@ impl RootFinding {
     /// * `interp` -- The Chebyshev-Gauss-Lobatto interpolant with the data vector U
     ///    already computed. The interpolant must have the same degree N as this struct.
     ///
-    /// **Warning:** It is essential that the interpolant best approximates the
-    /// data/function; otherwise, not all roots can be found.
-    ///
     /// # Output
     ///
     /// Returns a sorted list (from xa to xb) with the roots.
+    ///
+    /// # Warnings
+    ///
+    /// 1. It is essential that the interpolant best approximates the data/function;
+    ///    otherwise, not all roots can be found.
+    /// 2. This function won't find roots with a multiplicity index greater than 1.
+    ///    For example, this function won't find the roots of a parabola touching y = 0.
     ///
     /// # Example
     ///

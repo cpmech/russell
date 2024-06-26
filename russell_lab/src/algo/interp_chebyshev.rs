@@ -1,6 +1,6 @@
 use crate::math::{chebyshev_lobatto_points_standard, chebyshev_tn, PI};
 use crate::StrError;
-use crate::Vector;
+use crate::{NoArgs, Vector};
 
 /// Defines the tolerance to make sure that the range [xa, xb] is not zero
 pub const TOL_RANGE: f64 = 1.0e-5;
@@ -335,6 +335,44 @@ impl InterpChebyshev {
         Err("adaptive interpolation did not converge")
     }
 
+    /// Allocates a new instance using adaptive interpolation on the data vector U
+    ///
+    /// # Input
+    ///
+    /// * `nn_max` -- maximum polynomial degree N (≤ 2048)
+    /// * `tol` -- tolerance to truncate the Chebyshev series (e.g., 1e-8)
+    /// * `xa` -- lower bound
+    /// * `xb` -- upper bound (> xa + ϵ)
+    /// * `uu` -- the data vector (len > 0)
+    ///
+    /// # Method
+    ///
+    /// See [InterpChebyshev::new_adapt_f()]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::*;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // data
+    ///     let uu = [3.0, 0.5, -4.5, -7.0];
+    ///     let (xa, xb) = (0.0, 1.0);
+    ///
+    ///     // interpolant
+    ///     let nn_max = 100;
+    ///     let tol = 1e-8;
+    ///     let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, &uu)?;
+    ///     let nn = interp.get_degree();
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn new_adapt_uu(nn_max: usize, tol: f64, xa: f64, xb: f64, uu: &[f64]) -> Result<Self, StrError> {
+        let fit = InterpChebyshev::new_with_uu(xa, xb, uu)?;
+        let args = &mut 0;
+        InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, |x, _: &mut NoArgs| fit.eval(x))
+    }
+
     /// Evaluates the interpolated f(x) function
     ///
     /// This function uses the Clenshaw algorithm (Reference # 1) to
@@ -488,7 +526,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu: &[f64], nn: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::InterpChebyshev;
+    use super::{chebyshev_coefficients, InterpChebyshev};
     use crate::math::PI;
     use crate::{approx_eq, vec_approx_eq, NoArgs, Vector, TOL_RANGE};
 
@@ -692,29 +730,49 @@ mod tests {
     #[test]
     fn new_adapt_f_and_eval_work() {
         let functions = [
-            |_: f64, _: &mut NoArgs| Ok(2.0),
-            |x: f64, _: &mut NoArgs| Ok(x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),
-            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5),
-            |x: f64, _: &mut NoArgs| Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x)),
-            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)),
-            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),
+            |_: f64, _: &mut NoArgs| Ok(2.0),                     // 0
+            |x: f64, _: &mut NoArgs| Ok(x - 0.5),                 // 1
+            |x: f64, _: &mut NoArgs| Ok(x * x - 1.0),             // 2
+            |x: f64, _: &mut NoArgs| Ok(x * x * x - 0.5),         // 3
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x - 0.5),     // 4
+            |x: f64, _: &mut NoArgs| Ok(x * x * x * x * x - 0.5), // 5
+            |x: f64, _: &mut NoArgs| Ok(f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x)), // 6
+            |x: f64, _: &mut NoArgs| Ok(0.092834 * f64::sin(77.0001 + 19.87 * x)), // 7
+            |x: f64, _: &mut NoArgs| Ok(f64::ln(2.0 * f64::cos(x / 2.0))),         // 8
         ];
         let ranges = [
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-1.0, 1.0),
-            (-2.34567, 12.34567),
-            (-0.995 * PI, 0.995 * PI),
+            (-1.0, 1.0),               // 0
+            (-1.0, 1.0),               // 1
+            (-1.0, 1.0),               // 2
+            (-1.0, 1.0),               // 3
+            (-1.0, 1.0),               // 4
+            (-1.0, 1.0),               // 5
+            (-1.0, 1.0),               // 6
+            (-2.34567, 12.34567),      // 7
+            (-0.995 * PI, 0.995 * PI), // 8
         ];
-        let tols_adapt = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-6, 1e-6, 1e-6];
-        let tols_eval = [0.0, 0.0, 1e-15, 1e-15, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14];
+        let tols_adapt = [
+            0.0,   // 0
+            0.0,   // 1
+            1e-15, // 2
+            1e-15, // 3
+            1e-15, // 4
+            1e-15, // 5
+            1e-6,  // 6
+            1e-6,  // 7
+            1e-6,  // 8
+        ];
+        let tols_eval = [
+            0.0,   // 0
+            0.0,   // 1
+            1e-15, // 2
+            1e-15, // 3
+            1e-15, // 4
+            1e-15, // 5
+            1e-14, // 6
+            1e-14, // 7
+            1e-14, // 8
+        ];
         let nn_max = 400;
         let tol = 1e-7;
         let args = &mut 0;
@@ -764,7 +822,248 @@ mod tests {
                 .set_cross(0.0, 0.0, "gray", "-", 1.5)
                 .grid_and_labels("x", "f(x)")
                 .save(&format!(
-                    "/tmp/russell_lab/test_interp_chebyshev_new_adapt_{:0>3}.svg",
+                    "/tmp/russell_lab/test_interp_chebyshev_new_adapt_f_{:0>3}.svg",
+                    index
+                ))
+                .unwrap();
+            */
+        }
+    }
+
+    #[test]
+    fn new_adapt_uu_works() {
+        let data_generators = [
+            |_: f64| 2.0,                                                                            // 0
+            |x: f64| x - 0.5,                                                                        // 1
+            |x: f64| x * x - 1.0,                                                                    // 2
+            |x: f64| x * x * x - 0.5,                                                                // 3
+            |x: f64| x * x * x * x - 0.5,                                                            // 4
+            |x: f64| x * x * x * x * x - 0.5,                                                        // 5
+            |x: f64| f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x), // 6
+            |x: f64| 0.092834 * f64::sin(77.0001 + 19.87 * x),                                       // 7
+            |x: f64| f64::ln(2.0 * f64::cos(x / 2.0)),                                               // 8
+        ];
+        let degrees_fit = [
+            10, // 0
+            10, // 1
+            10, // 2
+            10, // 3
+            10, // 4
+            10, // 5
+            25, // 6
+            99, // 7
+            11, // 8
+        ];
+        let degrees_answer = [
+            0,  // 0 (reduced)
+            1,  // 1 (reduced)
+            2,  // 2 (reduced)
+            3,  // 3 (reduced)
+            4,  // 4 (reduced)
+            5,  // 5 (reduced)
+            25, // 6 (won't go above 25)
+            99, // 7 (won't go above 99)
+            10, // 8 (reduced)
+        ];
+        let ranges = [
+            (-1.0, 1.0),               // 0
+            (-1.0, 1.0),               // 1
+            (-1.0, 1.0),               // 2
+            (-1.0, 1.0),               // 3
+            (-1.0, 1.0),               // 4
+            (-1.0, 1.0),               // 5
+            (-1.0, 1.0),               // 6
+            (-2.34567, 12.34567),      // 7
+            (-0.995 * PI, 0.995 * PI), // 8
+        ];
+        let nn_max = 400;
+        let tol = 1e-7;
+        for (index, f) in data_generators.into_iter().enumerate() {
+            // generate data
+            let (xa, xb) = ranges[index];
+            let dx = xb - xa;
+            let nn_fit = degrees_fit[index];
+            let np_fit = nn_fit + 1;
+            let zz = InterpChebyshev::points(nn_fit);
+            let mut xx_dat = Vector::new(np_fit);
+            let mut uu = Vector::new(np_fit);
+            for i in 0..np_fit {
+                let x = (xb + xa + dx * zz[i]) / 2.0;
+                xx_dat[i] = x;
+                uu[i] = f(x);
+            }
+
+            // adaptive interpolation
+            let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data()).unwrap();
+            let nn = interp.get_degree();
+
+            // check adapted degrees
+            print!("{:0>3}: N = {}", index, nn);
+            if nn > 0 {
+                let mut a = Vector::new(nn + 1);
+                chebyshev_coefficients(a.as_mut_data(), uu.as_data(), nn);
+                println!(", an = {}", a[nn]);
+            } else {
+                println!();
+            }
+            assert_eq!(nn, degrees_answer[index]);
+
+            // plot f(x)
+            /*
+            let (nstation, fig_width) = if index == 7 { (1201, 1200.0) } else { (201, 600.0) };
+            let xx = Vector::linspace(xa, xb, nstation).unwrap();
+            let yy_ana = xx.get_mapped(|x| f(x));
+            let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+            let mut curve_ana = Curve::new();
+            let mut curve_int = Curve::new();
+            let mut curve_dat = Curve::new();
+            curve_ana.set_label("generator");
+            curve_int
+                .set_label(&format!("interpolated,N={}", nn))
+                .set_line_style(":")
+                .set_marker_style(".")
+                .set_marker_every(5);
+            curve_dat.set_label("data").set_line_style("None").set_marker_style("+");
+            curve_ana.draw(xx.as_data(), yy_ana.as_data());
+            curve_int.draw(xx.as_data(), yy_int.as_data());
+            curve_dat.draw(xx_dat.as_data(), uu.as_data());
+            let mut plot = Plot::new();
+            let mut legend = Legend::new();
+            legend.set_num_col(4);
+            legend.set_outside(true);
+            legend.draw();
+            plot.add(&curve_ana)
+                .add(&curve_int)
+                .add(&curve_dat)
+                .add(&legend)
+                .set_cross(0.0, 0.0, "gray", "-", 1.5)
+                .grid_and_labels("x", "f(x)")
+                .set_figure_size_points(fig_width, 500.0)
+                .save(&format!(
+                    "/tmp/russell_lab/test_interp_chebyshev_new_adapt_uu_{:0>3}.svg",
+                    index
+                ))
+                .unwrap();
+            */
+        }
+    }
+
+    #[test]
+    fn new_adapt_noisy_uu_works() {
+        let data_generators = [
+            |_: f64| 2.0,                                                                            // 0
+            |x: f64| x - 0.5,                                                                        // 1
+            |x: f64| x * x - 1.0,                                                                    // 2
+            |x: f64| x * x * x - 0.5,                                                                // 3
+            |x: f64| x * x * x * x - 0.5,                                                            // 4
+            |x: f64| x * x * x * x * x - 0.5,                                                        // 5
+            |x: f64| f64::cos(16.0 * (x + 0.2)) * (1.0 + x) * f64::exp(x * x) / (1.0 + 9.0 * x * x), // 6
+            |x: f64| 0.092834 * f64::sin(77.0001 + 19.87 * x),                                       // 7
+            |x: f64| f64::ln(2.0 * f64::cos(x / 2.0)),                                               // 8
+        ];
+        let degrees_fit = [
+            10,   // 0
+            10,   // 1
+            10,   // 2
+            10,   // 3
+            10,   // 4
+            10,   // 5
+            30,   // 6
+            1000, // 7
+            10,   // 8
+        ];
+        let degrees_answer = [
+            2,   // 0
+            2,   // 1
+            2,   // 2
+            3,   // 3
+            4,   // 4
+            5,   // 5
+            30,  // 6
+            173, // 7
+            10,  // 8
+        ];
+        let ranges = [
+            (-1.0, 1.0),               // 0
+            (-1.0, 1.0),               // 1
+            (-1.0, 1.0),               // 2
+            (-1.0, 1.0),               // 3
+            (-1.0, 1.0),               // 4
+            (-1.0, 1.0),               // 5
+            (-1.0, 1.0),               // 6
+            (-2.34567, 12.34567),      // 7
+            (-0.995 * PI, 0.995 * PI), // 8
+        ];
+        let nn_max = 400;
+        let tol = 1e-7;
+        for (index, f) in data_generators.into_iter().enumerate() {
+            // generate data
+            let (xa, xb) = ranges[index];
+            let dx = xb - xa;
+            let nn_fit = degrees_fit[index];
+            let np_fit = nn_fit + 1;
+            let zz = InterpChebyshev::points(nn_fit);
+            let mut xx_dat = Vector::new(np_fit);
+            let mut uu = Vector::new(np_fit);
+            let dy = if index == 7 { 0.01 } else { 0.1 };
+            for i in 0..np_fit {
+                let x = (xb + xa + dx * zz[i]) / 2.0;
+                let noise = if i % 2 == 0 { dy } else { -dy };
+                xx_dat[i] = x;
+                uu[i] = f(x) + noise;
+            }
+
+            // adaptive interpolation
+            let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data()).unwrap();
+            let nn = interp.get_degree();
+
+            // check adapted degrees
+            print!("{:0>3}: N = {}", index, nn);
+            if nn > 0 {
+                let mut a = Vector::new(nn + 1);
+                chebyshev_coefficients(a.as_mut_data(), uu.as_data(), nn);
+                println!(", an = {}", a[nn]);
+            } else {
+                println!();
+            }
+            assert_eq!(nn, degrees_answer[index]);
+
+            // plot f(x)
+            /*
+            let (nstation, fig_width) = if index == 7 { (1201, 1200.0) } else { (201, 600.0) };
+            let xx = Vector::linspace(xa, xb, nstation).unwrap();
+            let yy_ana = xx.get_mapped(|x| f(x));
+            let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+            let mut curve_ana = Curve::new();
+            let mut curve_int = Curve::new();
+            let mut curve_dat = Curve::new();
+            curve_ana.set_label("generator");
+            curve_int
+                .set_label(&format!("interpolated,N={}", nn))
+                .set_line_style(":")
+                .set_marker_style(".")
+                .set_marker_every(5);
+            curve_dat
+                .set_label("noisy data")
+                .set_line_style("None")
+                .set_marker_style("+");
+            curve_ana.draw(xx.as_data(), yy_ana.as_data());
+            curve_int.draw(xx.as_data(), yy_int.as_data());
+            curve_dat.draw(xx_dat.as_data(), uu.as_data());
+            let mut plot = Plot::new();
+            let mut legend = Legend::new();
+            legend.set_num_col(4);
+            legend.set_outside(true);
+            legend.draw();
+            plot.add(&curve_ana)
+                .add(&curve_int)
+                .add(&curve_dat)
+                .add(&legend)
+                .set_cross(0.0, 0.0, "gray", "-", 1.5)
+                .grid_and_labels("x", "f(x)")
+                .set_figure_size_points(fig_width, 500.0)
+                .save(&format!(
+                    "/tmp/russell_lab/test_interp_chebyshev_new_adapt_noisy_uu_{:0>3}.svg",
                     index
                 ))
                 .unwrap();

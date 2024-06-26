@@ -195,7 +195,7 @@ impl RootFinding {
         Ok(roots)
     }
 
-    /// Polishes the roots using Newton's method
+    /// Refines the roots using Newton's method
     ///
     /// # Examples
     ///
@@ -224,14 +224,7 @@ impl RootFinding {
     ///     Ok(())
     /// }
     /// ```
-    pub fn polish_roots_newton<F, A>(
-        &self,
-        roots: &mut [f64],
-        xa: f64,
-        xb: f64,
-        args: &mut A,
-        mut f: F,
-    ) -> Result<(), StrError>
+    pub fn refine<F, A>(&self, roots: &mut [f64], xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -308,8 +301,8 @@ mod tests {
     fn graph<F, A>(
         name: &str,
         interp: &InterpChebyshev,
-        roots_unpolished: &[f64],
-        roots_polished: &[f64],
+        roots: &[f64],
+        roots_refined: &[f64],
         args: &mut A,
         mut f: F,
         nstation: usize,
@@ -323,30 +316,30 @@ mod tests {
         let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
         let mut curve_ana = Curve::new();
         let mut curve_int = Curve::new();
-        let mut zeros_unpolished = Curve::new();
-        let mut zeros_polished = Curve::new();
+        let mut zeros = Curve::new();
+        let mut zeros_refined = Curve::new();
         curve_ana.set_label("analytical");
         curve_int
             .set_label("interpolated")
             .set_line_style("--")
             .set_marker_style(".")
             .set_marker_every(5);
-        zeros_unpolished
+        zeros
             .set_marker_style("o")
             .set_marker_void(true)
             .set_marker_line_color("#00760F")
             .set_line_style("None");
-        zeros_polished
+        zeros_refined
             .set_marker_style("s")
             .set_marker_size(10.0)
             .set_marker_void(true)
             .set_marker_line_color("#00760F")
             .set_line_style("None");
-        for root in roots_unpolished {
-            zeros_unpolished.draw(&[*root], &[interp.eval(*root).unwrap()]);
+        for root in roots {
+            zeros.draw(&[*root], &[interp.eval(*root).unwrap()]);
         }
-        for root in roots_polished {
-            zeros_polished.draw(&[*root], &[f(*root, args).unwrap()]);
+        for root in roots_refined {
+            zeros_refined.draw(&[*root], &[f(*root, args).unwrap()]);
         }
         curve_int.draw(xx.as_data(), yy_int.as_data());
         curve_ana.draw(xx.as_data(), yy_ana.as_data());
@@ -357,8 +350,8 @@ mod tests {
         legend.draw();
         plot.add(&curve_ana)
             .add(&curve_int)
-            .add(&zeros_unpolished)
-            .add(&zeros_polished)
+            .add(&zeros)
+            .add(&zeros_refined)
             .add(&legend)
             .set_cross(0.0, 0.0, "gray", "-", 1.5)
             .grid_and_labels("x", "f(x)")
@@ -409,22 +402,20 @@ mod tests {
 
         // find roots
         let solver = RootFinding::new();
-        let roots_unpolished = solver.chebyshev(&interp).unwrap();
-        let mut roots_polished = roots_unpolished.clone();
-        solver
-            .polish_roots_newton(&mut roots_polished, xa, xb, args, f)
-            .unwrap();
-        println!("n_roots = {}", roots_polished.len());
-        println!("roots_unpolished = {:?}", roots_unpolished);
-        println!("roots_polished = {:?}", roots_polished);
+        let roots = solver.chebyshev(&interp).unwrap();
+        let mut roots_refined = roots.clone();
+        solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
+        println!("n_roots = {}", roots_refined.len());
+        println!("roots = {:?}", roots);
+        println!("roots_refined = {:?}", roots_refined);
 
         // figure
         /*
         graph(
             "test_multi_root_solver_cheby_simple",
             &interp,
-            &roots_unpolished,
-            &roots_polished,
+            &roots,
+            &roots_refined,
             args,
             f,
             101,
@@ -433,7 +424,7 @@ mod tests {
         */
 
         // check
-        array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-14);
+        array_approx_eq(&roots_refined, &[-1.0, 1.0], 1e-14);
     }
 
     #[test]
@@ -445,13 +436,13 @@ mod tests {
         let mut solver = RootFinding::new();
         let mut roots = Vec::new();
         assert_eq!(
-            solver.polish_roots_newton(&mut roots, xa, xb, args, f).err(),
+            solver.refine(&mut roots, xa, xb, args, f).err(),
             Some("at least one root is required")
         );
         let mut roots = [0.0];
         solver.newton_max_iterations = 0;
         assert_eq!(
-            solver.polish_roots_newton(&mut roots, xa, xb, args, f).err(),
+            solver.refine(&mut roots, xa, xb, args, f).err(),
             Some("Newton's method did not converge")
         );
     }
@@ -470,22 +461,20 @@ mod tests {
 
         // find roots
         let solver = RootFinding::new();
-        let roots_unpolished = solver.chebyshev(&interp).unwrap();
-        let mut roots_polished = roots_unpolished.clone();
-        solver
-            .polish_roots_newton(&mut roots_polished, xa, xb, args, f)
-            .unwrap();
-        println!("n_roots = {}", roots_polished.len());
-        println!("roots_unpolished = {:?}", roots_unpolished);
-        println!("roots_polished = {:?}", roots_polished);
+        let roots = solver.chebyshev(&interp).unwrap();
+        let mut roots_refined = roots.clone();
+        solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
+        println!("n_roots = {}", roots_refined.len());
+        println!("roots = {:?}", roots);
+        println!("roots_refined = {:?}", roots_refined);
 
         // figure
         /*
         graph(
             "test_polish_roots_newton",
             &interp,
-            &roots_unpolished,
-            &roots_polished,
+            &roots,
+            &roots_refined,
             args,
             f,
             101,
@@ -494,7 +483,7 @@ mod tests {
         */
 
         // check
-        array_approx_eq(&roots_polished, &[-1.0, 1.0], 1e-14);
+        array_approx_eq(&roots_refined, &[-1.0, 1.0], 1e-14);
     }
 
     #[test]
@@ -511,12 +500,10 @@ mod tests {
             let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
             interp.adapt_function(tol, args, test.f).unwrap();
             let solver = RootFinding::new();
-            let roots_unpolished = solver.chebyshev(&interp).unwrap();
-            let mut roots_polished = roots_unpolished.clone();
-            solver
-                .polish_roots_newton(&mut roots_polished, xa, xb, args, test.f)
-                .unwrap();
-            for xr in &roots_polished {
+            let roots = solver.chebyshev(&interp).unwrap();
+            let mut roots_refined = roots.clone();
+            solver.refine(&mut roots_refined, xa, xb, args, test.f).unwrap();
+            for xr in &roots_refined {
                 let fx = (test.f)(*xr, args).unwrap();
                 println!("x = {}, f(x) = {:.2e}", xr, fx);
                 assert!(fx < 1e-10);
@@ -537,7 +524,7 @@ mod tests {
                 }
             }
             if *id == 9 {
-                assert_eq!(roots_unpolished.len(), 93);
+                assert_eq!(roots.len(), 93);
             }
             // figure
             /*
@@ -545,8 +532,8 @@ mod tests {
             graph(
                 &format!("test_multi_root_solver_cheby_{:0>3}", id),
                 &interp,
-                &roots_unpolished,
-                &roots_polished,
+                &roots,
+                &roots_refined,
                 args,
                 test.f,
                 nstation,

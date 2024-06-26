@@ -25,11 +25,11 @@ fn main() -> Result<(), StrError> {
     println!("f @ roots =\n{}", print_vec_exp(&f_at_roots));
 
     // polish the roots
-    let mut roots_polished = roots.clone();
-    solver.polish_roots_newton(roots_polished.as_mut_data(), xa, xb, args, f)?;
-    let f_at_roots_polished = roots_polished.get_mapped(|x| f(x, args).unwrap());
-    println!("polished roots =\n{}", roots_polished);
-    println!("f @ polished roots =\n{}", print_vec_exp(&f_at_roots_polished));
+    let mut roots_refined = roots.clone();
+    solver.refine(roots_refined.as_mut_data(), xa, xb, args, f)?;
+    let f_at_roots_refined = roots_refined.get_mapped(|x| f(x, args).unwrap());
+    println!("refined roots =\n{}", roots_refined);
+    println!("f @ refined roots =\n{}", print_vec_exp(&f_at_roots_refined));
 
     // plot the results
     let nstation = 301;
@@ -38,30 +38,30 @@ fn main() -> Result<(), StrError> {
     let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
     let mut curve_ana = Curve::new();
     let mut curve_int = Curve::new();
-    let mut zeros_unpolished = Curve::new();
-    let mut zeros_polished = Curve::new();
+    let mut zeros = Curve::new();
+    let mut zeros_refined = Curve::new();
     curve_ana.set_label("analytical");
     curve_int
         .set_label("interpolated")
         .set_line_style("--")
         .set_marker_style(".")
         .set_marker_every(5);
-    zeros_unpolished
+    zeros
         .set_marker_style("o")
         .set_marker_void(true)
         .set_marker_line_color("#00760F")
         .set_line_style("None");
-    zeros_polished
+    zeros_refined
         .set_marker_style("s")
         .set_marker_size(10.0)
         .set_marker_void(true)
         .set_marker_line_color("#00760F")
         .set_line_style("None");
     for root in &roots {
-        zeros_unpolished.draw(&[*root], &[interp.eval(*root).unwrap()]);
+        zeros.draw(&[*root], &[interp.eval(*root).unwrap()]);
     }
-    for root in &roots_polished {
-        zeros_polished.draw(&[*root], &[f(*root, args).unwrap()]);
+    for root in &roots_refined {
+        zeros_refined.draw(&[*root], &[f(*root, args).unwrap()]);
     }
     curve_int.draw(xx.as_data(), yy_int.as_data());
     curve_ana.draw(xx.as_data(), yy_ana.as_data());
@@ -72,8 +72,8 @@ fn main() -> Result<(), StrError> {
     legend.draw();
     plot.add(&curve_ana)
         .add(&curve_int)
-        .add(&zeros_unpolished)
-        .add(&zeros_polished)
+        .add(&zeros)
+        .add(&zeros_refined)
         .add(&legend)
         .set_cross(0.0, 0.0, "gray", "-", 1.5)
         .grid_and_labels("x", "f(x)")

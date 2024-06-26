@@ -507,7 +507,7 @@ f @ roots =
  -1.16e-8
  -5.80e-9
 
-polished roots =
+refined roots =
 ┌                     ┐
 │ 0.04109147155278252 │
 │ 0.15301723213859994 │
@@ -516,7 +516,7 @@ polished roots =
 │ 0.47590538689192813 │
 │  0.5162732665558162 │
 └                     ┘
-f @ polished roots =
+f @ refined roots =
  6.66e-16
 -2.22e-16
 -2.22e-16

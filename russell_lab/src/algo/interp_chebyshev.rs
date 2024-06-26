@@ -65,12 +65,12 @@ pub struct InterpChebyshev {
     /// Holds the expansion coefficients
     ///
     /// (associated with the reversed (from 1 to -1) Chebyshev-Gauss-Lobatto points)
-    a: Vector,
+    a: Vec<f64>,
 
     /// Holds the reversed function evaluations
     ///
     /// (associated with the reversed (from 1 to -1) Chebyshev-Gauss-Lobatto points)
-    uu_rev: Vector,
+    uu_rev: Vec<f64>,
 
     /// Holds the constant y=c value for a zeroth-order function
     constant_fx: f64,
@@ -110,8 +110,8 @@ impl InterpChebyshev {
             xa,
             xb,
             dx: xb - xa,
-            a: Vector::new(np),
-            uu_rev: Vector::new(np),
+            a: vec![0.0; np],
+            uu_rev: vec![0.0; np],
             constant_fx: 0.0,
             ready: false,
         })
@@ -158,7 +158,7 @@ impl InterpChebyshev {
     pub fn set_uu_value(&mut self, i: usize, uui: f64) {
         self.uu_rev[self.nn - i] = uui;
         if i == self.nn {
-            chebyshev_coefficients(self.a.as_mut_data(), self.uu_rev.as_mut_data(), self.nn);
+            chebyshev_coefficients(&mut self.a, &self.uu_rev, self.nn);
             self.ready = true;
         } else {
             self.ready = false;
@@ -209,16 +209,16 @@ impl InterpChebyshev {
             xa,
             xb,
             dx: xb - xa,
-            a: Vector::new(np),
-            uu_rev: Vector::new(np),
+            a: vec![0.0; np],
+            uu_rev: vec![0.0; np],
             constant_fx: 0.0,
             ready: true,
         };
         if nn == 0 {
             interp.constant_fx = f((xa + xb) / 2.0, args)?;
         } else {
-            chebyshev_data_vector(interp.uu_rev.as_mut_data(), nn, xa, xb, args, &mut f)?;
-            chebyshev_coefficients(interp.a.as_mut_data(), interp.uu_rev.as_mut_data(), nn);
+            chebyshev_data_vector(&mut interp.uu_rev, nn, xa, xb, args, &mut f)?;
+            chebyshev_coefficients(&mut interp.a, &interp.uu_rev, nn);
         }
         Ok(interp)
     }
@@ -247,8 +247,8 @@ impl InterpChebyshev {
             xa,
             xb,
             dx: xb - xa,
-            a: Vector::new(np),
-            uu_rev: Vector::new(np),
+            a: vec![0.0; np],
+            uu_rev: vec![0.0; np],
             constant_fx: 0.0,
             ready: true,
         };
@@ -258,7 +258,7 @@ impl InterpChebyshev {
         if nn == 0 {
             interp.constant_fx = uu[0];
         } else {
-            chebyshev_coefficients(interp.a.as_mut_data(), interp.uu_rev.as_mut_data(), nn);
+            chebyshev_coefficients(&mut interp.a, &interp.uu_rev, nn);
         }
         Ok(interp)
     }
@@ -467,7 +467,7 @@ impl InterpChebyshev {
     }
 
     /// Returns an access to the expansion coefficients (a)
-    pub fn get_coefficients(&self) -> &Vector {
+    pub fn get_coefficients(&self) -> &Vec<f64> {
         &self.a
     }
 
@@ -536,7 +536,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu_rev: &[f64], nn: usize) {
 mod tests {
     use super::{chebyshev_coefficients, InterpChebyshev};
     use crate::math::PI;
-    use crate::{approx_eq, vec_approx_eq, NoArgs, Vector, TOL_RANGE};
+    use crate::{approx_eq, array_approx_eq, NoArgs, Vector, TOL_RANGE};
 
     #[allow(unused)]
     use plotpy::{Curve, Legend, Plot};
@@ -560,8 +560,8 @@ mod tests {
         assert_eq!(interp.dx, 8.0);
         assert_eq!(interp.nn, nn);
         assert_eq!(interp.np, np);
-        assert_eq!(interp.a.dim(), np);
-        assert_eq!(interp.uu_rev.dim(), np);
+        assert_eq!(interp.a.len(), np);
+        assert_eq!(interp.uu_rev.len(), np);
         assert_eq!(interp.constant_fx, 0.0);
         assert_eq!(interp.ready, false);
     }
@@ -1139,6 +1139,6 @@ mod tests {
         assert_eq!(interp.get_degree(), 2);
         assert_eq!(interp.get_range(), (-4.0, 4.0, 8.0));
         assert_eq!(interp.is_ready(), true);
-        vec_approx_eq(interp.get_coefficients(), &[7.0, 0.0, 8.0], 1e-15);
+        array_approx_eq(interp.get_coefficients(), &[7.0, 0.0, 8.0], 1e-15);
     }
 }

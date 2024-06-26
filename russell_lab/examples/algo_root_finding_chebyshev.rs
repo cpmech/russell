@@ -17,7 +17,7 @@ fn main() -> Result<(), StrError> {
     println!("N = {}", nn);
 
     // find all roots in the interval
-    let solver = RootFinding::new();
+    let solver = RootFinder::new();
     let roots = Vector::from(&solver.chebyshev(&interp)?);
     let f_at_roots = roots.get_mapped(|x| f(x, args).unwrap());
     println!("roots =\n{}", roots);

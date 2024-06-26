@@ -2,26 +2,8 @@ use crate::StrError;
 use crate::{mat_eigenvalues, InterpChebyshev, TOL_RANGE};
 use crate::{Matrix, Vector};
 
-/// Implements a root finding solver using Chebyshev interpolation
-///
-/// This struct depends on [InterpChebyshev], an interpolant using
-/// Chebyshev-Gauss-Lobatto points.
-///
-/// It is essential that the interpolant best approximates the
-/// data/function; otherwise, not all roots can be found.
-///
-/// The roots are the eigenvalues of the companion matrix.
-///
-/// # References
-///
-/// 1. Boyd JP (2002) Computing zeros on a real interval through Chebyshev expansion
-///    and polynomial rootfinding, SIAM Journal of Numerical Analysis, 40(5):1666-1682
-/// 2. Boyd JP (2013) Finding the zeros of a univariate equation: proxy rootfinders,
-///    Chebyshev interpolation, and the companion matrix, SIAM Journal of Numerical
-///    Analysis, 55(2):375-396.
-/// 3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
-///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
-pub struct RootFinding {
+/// Implements root finding algorithms
+pub struct RootFinder {
     /// Holds the tolerance to avoid division by zero with the trailing Chebyshev coefficient
     ///
     /// Default = 1e-13
@@ -75,10 +57,10 @@ pub struct RootFinding {
     h_cen: f64,
 }
 
-impl RootFinding {
+impl RootFinder {
     /// Allocates a new instance
     pub fn new() -> Self {
-        RootFinding {
+        RootFinder {
             tol_zero_an: 1e-13,
             tol_abs_imaginary: 1.0e-8,
             tol_abs_boundary: TOL_RANGE / 10.0,
@@ -108,6 +90,20 @@ impl RootFinding {
     /// 1. It is essential that the interpolant best approximates the data/function;
     ///    otherwise, not all roots can be found.
     ///
+    /// # Method
+    ///
+    /// The roots are the eigenvalues of the companion matrix as explained in the references.
+    ///
+    /// # References
+    ///
+    /// 1. Boyd JP (2002) Computing zeros on a real interval through Chebyshev expansion
+    ///    and polynomial rootfinding, SIAM Journal of Numerical Analysis, 40(5):1666-1682
+    /// 2. Boyd JP (2013) Finding the zeros of a univariate equation: proxy rootfinders,
+    ///    Chebyshev interpolation, and the companion matrix, SIAM Journal of Numerical
+    ///    Analysis, 55(2):375-396.
+    /// 3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
+    ///    and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
+    ///
     /// # Example
     ///
     /// ```
@@ -125,7 +121,7 @@ impl RootFinding {
     ///     interp.set_function(nn, args, f)?;
     ///
     ///     // find all roots in the interval
-    ///     let mut solver = RootFinding::new();
+    ///     let mut solver = RootFinder::new();
     ///     let roots = solver.chebyshev(&interp)?;
     ///     array_approx_eq(&roots, &[-1.0, 1.0], 1e-15);
     ///     Ok(())
@@ -216,7 +212,7 @@ impl RootFinding {
     ///     interp.set_function(nn, args, f)?;
     ///
     ///     // find all roots in the interval
-    ///     let mut solver = RootFinding::new();
+    ///     let mut solver = RootFinder::new();
     ///     let mut roots = solver.chebyshev(&interp)?;
     ///     array_approx_eq(&roots, &[-0.5, 0.5], 1e-15); // inaccurate
     ///
@@ -288,7 +284,7 @@ impl RootFinding {
 
 #[cfg(test)]
 mod tests {
-    use super::RootFinding;
+    use super::RootFinder;
     use crate::algo::NoArgs;
     use crate::InterpChebyshev;
     use crate::{approx_eq, array_approx_eq, get_test_functions};
@@ -368,7 +364,7 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
         let nn = 2;
         let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         assert_eq!(
             solver.chebyshev(&interp).err(),
             Some("the interpolant must initialized first")
@@ -383,7 +379,7 @@ mod tests {
         let args = &mut 0;
         let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
         interp.set_function(nn, args, f).unwrap();
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         assert_eq!(
             solver.chebyshev(&interp).err(),
             Some("the trailing Chebyshev coefficient vanishes; try a smaller degree N")
@@ -403,7 +399,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
 
         // find roots
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = solver.chebyshev(&interp).unwrap();
         let mut roots_refined = roots.clone();
         solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
@@ -444,7 +440,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
 
         // find roots
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = solver.chebyshev(&interp).unwrap();
         let mut roots_refined = roots.clone();
         solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
@@ -483,7 +479,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
 
         // find roots
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = solver.chebyshev(&interp).unwrap();
         let mut roots_refined = roots.clone();
         solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
@@ -515,7 +511,7 @@ mod tests {
         let args = &mut 0;
         let _ = f(0.0, args);
         let (xa, xb) = (-1.0, 1.0);
-        let mut solver = RootFinding::new();
+        let mut solver = RootFinder::new();
         let mut roots = Vec::new();
         assert_eq!(
             solver.refine(&mut roots, xa, xb, args, f).err(),
@@ -542,7 +538,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
 
         // find roots
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = solver.chebyshev(&interp).unwrap();
         let mut roots_refined = roots.clone();
         solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
@@ -582,7 +578,7 @@ mod tests {
             let (xa, xb) = test.range;
             let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
             interp.adapt_function(tol, args, test.f).unwrap();
-            let solver = RootFinding::new();
+            let solver = RootFinder::new();
             let roots = solver.chebyshev(&interp).unwrap();
             let mut roots_refined = roots.clone();
             if roots.len() > 0 {
@@ -638,7 +634,7 @@ mod tests {
         interp.set_data(uu).unwrap();
 
         // find all roots in the interval
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = &solver.chebyshev(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
@@ -657,7 +653,7 @@ mod tests {
         interp.adapt_data(tol, uu).unwrap();
 
         // find all roots in the interval
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = &solver.chebyshev(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
@@ -684,7 +680,7 @@ mod tests {
         interp.adapt_data(tol, uu).unwrap();
 
         // find all roots in the interval
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         let roots = solver.chebyshev(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 1);

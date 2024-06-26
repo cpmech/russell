@@ -1,7 +1,7 @@
-use super::{RootFinding, Stats};
+use super::{RootFinder, Stats};
 use crate::StrError;
 
-impl RootFinding {
+impl RootFinder {
     /// Employs Brent's method to find a single root of an equation
     ///
     /// See: <https://mathworld.wolfram.com/BrentsMethod.html>
@@ -31,7 +31,7 @@ impl RootFinding {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let args = &mut 0;
-    ///     let solver = RootFinding::new();
+    ///     let solver = RootFinder::new();
     ///     let (xa, xb) = (-4.0, 0.0);
     ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 - x * x))?;
     ///     println!("\nroot = {:?}", xo);
@@ -196,13 +196,13 @@ impl RootFinding {
 mod tests {
     use crate::algo::testing::get_test_functions;
     use crate::approx_eq;
-    use crate::{NoArgs, RootFinding};
+    use crate::{NoArgs, RootFinder};
 
     #[test]
     fn brent_find_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
-        let mut solver = RootFinding::new();
+        let mut solver = RootFinder::new();
         assert_eq!(f(1.0, args).unwrap(), 0.0);
         assert_eq!(
             solver.brent(-0.5, -0.5, args, f).err(),
@@ -235,7 +235,7 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         // first function call
         assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("stop"));
         // second function call
@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn brent_find_works() {
         let args = &mut 0;
-        let solver = RootFinding::new();
+        let solver = RootFinder::new();
         for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);

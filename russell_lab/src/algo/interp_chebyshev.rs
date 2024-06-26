@@ -799,11 +799,13 @@ mod tests {
     #[test]
     fn adapt_data_captures_errors() {
         let uu = [];
-        let mut interp = InterpChebyshev::new(3, 0.0, 1.0).unwrap();
+        let mut interp = InterpChebyshev::new(1, 0.0, 1.0).unwrap();
         assert_eq!(
             interp.adapt_data(1e-7, &uu).err(),
             Some("the number of points (uu.len()) must be ≥ 1")
         );
+        let uu = [1.0, 2.0, 3.0];
+        assert_eq!(interp.adapt_data(1e-7, &uu).err(), Some("nn must be ≤ nn_max"));
     }
 
     #[test]

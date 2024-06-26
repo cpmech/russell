@@ -530,7 +530,7 @@ mod tests {
             /*
             let (nstation, fig_width) = if *id == 9 { (1001, 2048.0) } else { (101, 600.0) };
             graph(
-                &format!("test_multi_root_solver_cheby_{:0>3}", id),
+                &format!("test_root_finding_chebyshev_{:0>3}", id),
                 &interp,
                 &roots,
                 &roots_refined,
@@ -638,7 +638,7 @@ mod tests {
             .add(&legend)
             .set_cross(0.0, 0.0, "gray", "-", 1.5)
             .grid_and_labels("x", "f(x)")
-            .save("/tmp/russell_lab/test_multi_root_solver_cheby_linear_function.svg")
+            .save("/tmp/russell_lab/test_root_finding_chebyshev_linear_function.svg")
             .unwrap();
         */
     }

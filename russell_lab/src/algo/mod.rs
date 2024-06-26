@@ -20,5 +20,4 @@ pub use crate::algo::min_solver::*;
 pub use crate::algo::num_jacobian::*;
 pub use crate::algo::quadrature::*;
 pub use crate::algo::root_finding::*;
-pub use crate::algo::root_finding_brent::*;
 pub use crate::algo::testing::*;

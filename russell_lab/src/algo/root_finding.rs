@@ -58,6 +58,16 @@ pub struct RootFinding {
     /// Default = 15
     pub newton_max_iterations: usize,
 
+    /// Max number of iterations for Brent's method
+    ///
+    /// Default = 100
+    pub brent_max_iterations: usize,
+
+    /// Tolerance for Brent's method
+    ///
+    /// Default = 1e-13
+    pub brent_tolerance: f64,
+
     /// Stepsize for one-sided differences
     h_osd: f64,
 
@@ -75,12 +85,14 @@ impl RootFinding {
             newton_tol_zero_dx: 1e-13,
             newton_tol_zero_fx: 1e-13,
             newton_max_iterations: 15,
+            brent_max_iterations: 100,
+            brent_tolerance: 1e-13,
             h_osd: f64::powf(f64::EPSILON, 1.0 / 2.0),
             h_cen: f64::powf(f64::EPSILON, 1.0 / 3.0),
         }
     }
 
-    /// Find all roots in the interval
+    /// Find all roots in the interval using Chebyshev interpolation
     ///
     /// # Input
     ///
@@ -112,12 +124,12 @@ impl RootFinding {
     ///
     ///     // find all roots in the interval
     ///     let mut solver = RootFinding::new();
-    ///     let roots = solver.find(&interp)?;
+    ///     let roots = solver.cheby_find(&interp)?;
     ///     array_approx_eq(&roots, &[-1.0, 1.0], 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn find(&self, interp: &InterpChebyshev) -> Result<Vec<f64>, StrError> {
+    pub fn cheby_find(&self, interp: &InterpChebyshev) -> Result<Vec<f64>, StrError> {
         // check
         if !interp.is_ready() {
             return Err("the interpolant must initialized first");
@@ -203,7 +215,7 @@ impl RootFinding {
     ///
     ///     // find all roots in the interval
     ///     let mut solver = RootFinding::new();
-    ///     let mut roots = solver.find(&interp)?;
+    ///     let mut roots = solver.cheby_find(&interp)?;
     ///     array_approx_eq(&roots, &[-0.5, 0.5], 1e-15); // inaccurate
     ///
     ///     // polish the roots
@@ -363,7 +375,7 @@ mod tests {
         let interp = InterpChebyshev::new(nn, xa, xb).unwrap();
         let solver = RootFinding::new();
         assert_eq!(
-            solver.find(&interp).err(),
+            solver.cheby_find(&interp).err(),
             Some("the interpolant must initialized first")
         );
     }
@@ -378,7 +390,7 @@ mod tests {
         interp.set_function(nn, args, f).unwrap();
         let solver = RootFinding::new();
         assert_eq!(
-            solver.find(&interp).err(),
+            solver.cheby_find(&interp).err(),
             Some("the trailing Chebyshev coefficient vanishes; try a smaller degree N")
         );
     }
@@ -397,7 +409,7 @@ mod tests {
 
         // find roots
         let solver = RootFinding::new();
-        let roots_unpolished = solver.find(&interp).unwrap();
+        let roots_unpolished = solver.cheby_find(&interp).unwrap();
         let mut roots_polished = roots_unpolished.clone();
         solver
             .polish_roots_newton(&mut roots_polished, xa, xb, args, f)
@@ -458,7 +470,7 @@ mod tests {
 
         // find roots
         let solver = RootFinding::new();
-        let roots_unpolished = solver.find(&interp).unwrap();
+        let roots_unpolished = solver.cheby_find(&interp).unwrap();
         let mut roots_polished = roots_unpolished.clone();
         solver
             .polish_roots_newton(&mut roots_polished, xa, xb, args, f)
@@ -499,7 +511,7 @@ mod tests {
             let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
             interp.adapt_function(tol, args, test.f).unwrap();
             let solver = RootFinding::new();
-            let roots_unpolished = solver.find(&interp).unwrap();
+            let roots_unpolished = solver.cheby_find(&interp).unwrap();
             let mut roots_polished = roots_unpolished.clone();
             solver
                 .polish_roots_newton(&mut roots_polished, xa, xb, args, test.f)
@@ -557,7 +569,7 @@ mod tests {
 
         // find all roots in the interval
         let solver = RootFinding::new();
-        let roots = &solver.find(&interp).unwrap();
+        let roots = &solver.cheby_find(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
     }
@@ -576,7 +588,7 @@ mod tests {
 
         // find all roots in the interval
         let solver = RootFinding::new();
-        let roots = &solver.find(&interp).unwrap();
+        let roots = &solver.cheby_find(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
     }
@@ -603,7 +615,7 @@ mod tests {
 
         // find all roots in the interval
         let solver = RootFinding::new();
-        let roots = solver.find(&interp).unwrap();
+        let roots = solver.cheby_find(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 1);
         approx_eq(roots[0], 0.7, 1e-15);

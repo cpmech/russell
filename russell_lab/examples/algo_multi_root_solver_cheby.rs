@@ -19,7 +19,7 @@ fn main() -> Result<(), StrError> {
 
     // find all roots in the interval
     let solver = RootFinding::new();
-    let roots = Vector::from(&solver.cheby_find(&interp)?);
+    let roots = Vector::from(&solver.chebyshev(&interp)?);
     let f_at_roots = roots.get_mapped(|x| f(x, args).unwrap());
     println!("roots =\n{}", roots);
     println!("f @ roots =\n{}", print_vec_exp(&f_at_roots));

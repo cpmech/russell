@@ -29,10 +29,10 @@ pub struct RootFinding {
 
     /// Holds the tolerance to discard roots with imaginary part
     ///
-    /// Accepts only roots such that `abs(Im(root)) < tol_rel_imag * abs(Re(root))`
+    /// Accepts only roots such that `abs(Im(root)) < tol_abs_imaginary
     ///
     /// Default = 1e-8
-    pub tol_rel_imag: f64,
+    pub tol_abs_imaginary: f64,
 
     /// Holds the tolerance to discard roots outside the boundaries
     ///
@@ -80,7 +80,7 @@ impl RootFinding {
     pub fn new() -> Self {
         RootFinding {
             tol_zero_an: 1e-13,
-            tol_rel_imag: 1.0e-8,
+            tol_abs_imaginary: 1.0e-8,
             tol_abs_boundary: TOL_RANGE / 10.0,
             newton_tol_zero_dx: 1e-13,
             newton_tol_zero_fx: 1e-13,
@@ -107,8 +107,6 @@ impl RootFinding {
     ///
     /// 1. It is essential that the interpolant best approximates the data/function;
     ///    otherwise, not all roots can be found.
-    /// 2. This function won't find roots with a multiplicity index greater than 1.
-    ///    For example, this function won't find the roots of a parabola touching y = 0.
     ///
     /// # Example
     ///
@@ -184,7 +182,7 @@ impl RootFinding {
         // roots = real eigenvalues within the interval
         let mut roots = Vec::new();
         for i in 0..nn {
-            if f64::abs(l_imag[i]) < self.tol_rel_imag * f64::abs(l_real[i]) {
+            if f64::abs(l_imag[i]) < self.tol_abs_imaginary {
                 if f64::abs(l_real[i]) <= 1.0 + self.tol_abs_boundary {
                     let x = (xb + xa + dx * l_real[i]) / 2.0;
                     roots.push(f64::max(xa, f64::min(xb, x)));
@@ -393,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    fn find_works_simple() {
+    fn find_works_parabola() {
         // function
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let (xa, xb) = (-4.0, 4.0);
@@ -416,7 +414,7 @@ mod tests {
         // figure
         /*
         graph(
-            "test_multi_root_solver_cheby_simple",
+            "test_root_finding_chebyshev_parabola",
             &interp,
             &roots,
             &roots_refined,
@@ -429,6 +427,86 @@ mod tests {
 
         // check
         array_approx_eq(&roots_refined, &[-1.0, 1.0], 1e-14);
+    }
+
+    #[test]
+    fn find_works_parabola_mult2() {
+        // solution: x = 0.0 with multiplicity 2
+
+        // function
+        let f = |x, _: &mut NoArgs| Ok(x * x);
+        let (xa, xb) = (-4.0, 4.0);
+
+        // interpolant
+        let nn = 2;
+        let args = &mut 0;
+        let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        interp.set_function(nn, args, f).unwrap();
+
+        // find roots
+        let solver = RootFinding::new();
+        let roots = solver.chebyshev(&interp).unwrap();
+        let mut roots_refined = roots.clone();
+        solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
+        println!("n_roots = {}", roots_refined.len());
+        println!("roots = {:?}", roots);
+        println!("roots_refined = {:?}", roots_refined);
+
+        // figure
+        /*
+        graph(
+            "test_root_finding_chebyshev_parabola_mult2",
+            &interp,
+            &roots,
+            &roots_refined,
+            args,
+            f,
+            101,
+            600.0,
+        );
+        */
+
+        // check
+        array_approx_eq(&roots_refined, &[0.0, 0.0], 1e-14);
+    }
+
+    #[test]
+    fn find_works_multiplicity2() {
+        // function
+        let f = |x, _: &mut NoArgs| Ok((x + 4.0) * (x - 1.0) * (x - 1.0));
+        let (xa, xb) = (-5.0, 5.0);
+
+        // interpolant
+        let nn = 3;
+        let args = &mut 0;
+        let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        interp.set_function(nn, args, f).unwrap();
+
+        // find roots
+        let solver = RootFinding::new();
+        let roots = solver.chebyshev(&interp).unwrap();
+        let mut roots_refined = roots.clone();
+        solver.refine(&mut roots_refined, xa, xb, args, f).unwrap();
+        println!("n_roots = {}", roots_refined.len());
+        println!("roots = {:?}", roots);
+        println!("roots_refined = {:?}", roots_refined);
+
+        // figure
+        /*
+        graph(
+            "test_root_finding_chebyshev_multiplicity2",
+            &interp,
+            &roots,
+            &roots_refined,
+            args,
+            f,
+            101,
+            600.0,
+        );
+        */
+
+        // check
+        array_approx_eq(&roots_refined, &[-4.0, 1.0, 1.0], 1e-14);
     }
 
     #[test]

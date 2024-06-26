@@ -9,7 +9,8 @@ fn main() -> Result<(), StrError> {
     // interpolant
     let degree = 10;
     let args = &mut 0;
-    let interp = InterpChebyshev::new_with_f(degree, xa, xb, args, f)?;
+    let mut interp = InterpChebyshev::new(degree, xa, xb)?;
+    interp.set_function(degree, args, f)?;
     approx_eq(interp.eval(0.0).unwrap(), 1.0, 1e-15);
 
     // plot

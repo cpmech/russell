@@ -13,11 +13,13 @@ fn bench_chebyshev_eval(c: &mut Criterion) {
     for nn in &nns {
         group.throughput(Throughput::Elements(*nn as u64));
         group.bench_with_input(BenchmarkId::new("clenshaw", nn), nn, |b, &nn| {
-            let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+            let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+            interp.set_function(nn, args, f).unwrap();
             b.iter(|| interp.eval((xa + xb) / 2.0).unwrap());
         });
         group.bench_with_input(BenchmarkId::new("trigonometric", nn), nn, |b, &nn| {
-            let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+            let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+            interp.set_function(nn, args, f).unwrap();
             b.iter(|| interp.eval_using_trig((xa + xb) / 2.0).unwrap());
         });
     }

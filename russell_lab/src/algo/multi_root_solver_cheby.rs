@@ -147,7 +147,8 @@ impl MultiRootSolverCheby {
     ///
     ///     // interpolant
     ///     let nn = 2;
-    ///     let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f)?;
+    ///     let mut interp = InterpChebyshev::new(nn, xa, xb)?;
+    ///     interp.set_function(nn, args, f)?;
     ///
     ///     // find all roots in the interval
     ///     let mut solver = MultiRootSolverCheby::new(nn)?;
@@ -232,7 +233,8 @@ impl MultiRootSolverCheby {
     ///
     ///     // interpolant
     ///     let nn = 2;
-    ///     let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f)?;
+    ///     let mut interp = InterpChebyshev::new(nn, xa, xb)?;
+    ///     interp.set_function(nn, args, f)?;
     ///
     ///     // find all roots in the interval
     ///     let mut solver = MultiRootSolverCheby::new(nn)?;
@@ -420,11 +422,6 @@ mod tests {
             solver.find(&interp).err(),
             Some("the interpolant must have the same degree N as the solver")
         );
-        let mut solver = MultiRootSolverCheby::new(nn).unwrap();
-        assert_eq!(
-            solver.find(&interp).err(),
-            Some("the interpolant must have the U vector already computed")
-        );
     }
 
     #[test]
@@ -433,7 +430,8 @@ mod tests {
         let (xa, xb) = (-4.0, 4.0);
         let nn = 3;
         let args = &mut 0;
-        let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+        let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        interp.set_function(nn, args, f).unwrap();
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
         assert_eq!(
             solver.find(&interp).err(),
@@ -450,7 +448,8 @@ mod tests {
         // interpolant
         let nn = 2;
         let args = &mut 0;
-        let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+        let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        interp.set_function(nn, args, f).unwrap();
 
         // find roots
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
@@ -490,7 +489,8 @@ mod tests {
         // interpolant
         let nn = 2;
         let args = &mut 0;
-        let interp = InterpChebyshev::new_with_f(nn, xa, xb, args, f).unwrap();
+        let mut interp = InterpChebyshev::new(nn, xa, xb).unwrap();
+        interp.set_function(nn, args, f).unwrap();
 
         // find roots
         let mut solver = MultiRootSolverCheby::new(nn).unwrap();
@@ -532,7 +532,8 @@ mod tests {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             let (xa, xb) = test.range;
-            let interp = InterpChebyshev::new_adapt_f(nn_max, tol, xa, xb, args, test.f).unwrap();
+            let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
+            interp.adapt_function(tol, args, test.f).unwrap();
             let nn = interp.get_degree();
             let mut solver = MultiRootSolverCheby::new(nn).unwrap();
             let roots_unpolished = Vec::from(solver.find(&interp).unwrap());
@@ -621,7 +622,8 @@ mod tests {
         // interpolant
         let nn_max = 100;
         let tol = 1e-8;
-        let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data()).unwrap();
+        let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
+        interp.adapt_data(tol, uu.as_data()).unwrap();
         let nn = interp.get_degree();
 
         // find all roots in the interval
@@ -648,7 +650,8 @@ mod tests {
         // interpolant
         let nn_max = 100;
         let tol = 1e-8;
-        let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data()).unwrap();
+        let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
+        interp.adapt_data(tol, uu.as_data()).unwrap();
         let nn = interp.get_degree();
 
         // find all roots in the interval

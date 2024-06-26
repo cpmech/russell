@@ -5,7 +5,7 @@ fn main() -> Result<(), StrError> {
     // data
     let (xa, xb) = (0.0, 1.0);
     let dx = xb - xa;
-    let uu = Vector::from(&[3.0, 0.5, -4.5, -7.0]);
+    let uu = Vector::from(&[-7.0, -4.5, 0.5, 3.0]);
     let np = uu.dim(); // number of points
     let nn = np - 1; // degree
     let mut xx_dat = Vector::new(np);
@@ -17,7 +17,8 @@ fn main() -> Result<(), StrError> {
     // interpolant
     let nn_max = 100;
     let tol = 1e-8;
-    let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data())?;
+    let mut interp = InterpChebyshev::new(nn_max, xa, xb)?;
+    interp.adapt_data(tol, uu.as_data())?;
     let nn = interp.get_degree();
 
     // plot

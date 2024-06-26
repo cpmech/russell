@@ -22,7 +22,8 @@ fn main() -> Result<(), StrError> {
     // interpolant
     let nn_max = 100;
     let tol = 1e-8;
-    let interp = InterpChebyshev::new_adapt_uu(nn_max, tol, xa, xb, uu.as_data())?;
+    let mut interp = InterpChebyshev::new(nn_max, xa, xb)?;
+    interp.adapt_data(tol, uu.as_data())?;
     let nn = interp.get_degree();
 
     // plot

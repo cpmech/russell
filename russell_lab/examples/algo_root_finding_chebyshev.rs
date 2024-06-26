@@ -76,7 +76,7 @@ fn main() -> Result<(), StrError> {
         .add(&legend)
         .set_cross(0.0, 0.0, "gray", "-", 1.5)
         .grid_and_labels("x", "f(x)")
-        .save("/tmp/russell_lab/algo_multi_root_solver_cheby.svg")
+        .save("/tmp/russell_lab/algo_root_finding_chebyshev.svg")
         .unwrap();
     Ok(())
 }

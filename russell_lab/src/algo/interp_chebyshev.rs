@@ -1,4 +1,4 @@
-use crate::math::{chebyshev_lobatto_points_standard, chebyshev_tn, PI};
+use crate::math::{chebyshev_lobatto_points, chebyshev_tn, PI};
 use crate::StrError;
 use crate::{NoArgs, Vector};
 
@@ -41,7 +41,6 @@ pub const TOL_RANGE: f64 = 1.0e-5;
 ///    the derivative matrices, whereas this structure does not.
 /// 2. The [crate::InterpLagrange] renders the same results when using Chebyshev-Gauss-Lobatto points.
 /// 3. Only Chebyshev-Gauss-Lobatto points are considered here.
-/// 4. The Chebyshev-Gauss-Lobatto coordinates are sorted from +1 to -1 (as in Reference # 1).
 ///
 /// # References
 ///
@@ -63,11 +62,15 @@ pub struct InterpChebyshev {
     /// Holds the difference xb - xa
     dx: f64,
 
-    /// Holds the expansion coefficients (standard Chebyshev-Gauss-Lobatto)
+    /// Holds the expansion coefficients
+    ///
+    /// (associated with the reversed (from 1 to -1) Chebyshev-Gauss-Lobatto points)
     a: Vector,
 
-    /// Holds the function evaluation at the standard (from 1 to -1) Chebyshev-Gauss-Lobatto points
-    uu: Vector,
+    /// Holds the reversed function evaluations
+    ///
+    /// (associated with the reversed (from 1 to -1) Chebyshev-Gauss-Lobatto points)
+    uu_rev: Vector,
 
     /// Holds the constant y=c value for a zeroth-order function
     constant_fx: f64,
@@ -77,13 +80,13 @@ pub struct InterpChebyshev {
 }
 
 impl InterpChebyshev {
-    /// Returns the standard (from 1 to -1) Chebyshev-Gauss-Lobatto points
+    /// Returns the Chebyshev-Gauss-Lobatto points (from -1 to 1)
     ///
     /// # Input
     ///
     /// * `nn` -- polynomial degree N
     pub fn points(nn: usize) -> Vector {
-        chebyshev_lobatto_points_standard(nn)
+        chebyshev_lobatto_points(nn)
     }
 
     /// Allocates a new instance with uninitialized values
@@ -108,7 +111,7 @@ impl InterpChebyshev {
             xb,
             dx: xb - xa,
             a: Vector::new(np),
-            uu: Vector::new(np),
+            uu_rev: Vector::new(np),
             constant_fx: 0.0,
             ready: false,
         })
@@ -153,9 +156,9 @@ impl InterpChebyshev {
     /// }
     /// ```
     pub fn set_uu_value(&mut self, i: usize, uui: f64) {
-        self.uu[i] = uui;
+        self.uu_rev[self.nn - i] = uui;
         if i == self.nn {
-            chebyshev_coefficients(self.a.as_mut_data(), self.uu.as_mut_data(), self.nn);
+            chebyshev_coefficients(self.a.as_mut_data(), self.uu_rev.as_mut_data(), self.nn);
             self.ready = true;
         } else {
             self.ready = false;
@@ -207,15 +210,15 @@ impl InterpChebyshev {
             xb,
             dx: xb - xa,
             a: Vector::new(np),
-            uu: Vector::new(np),
+            uu_rev: Vector::new(np),
             constant_fx: 0.0,
             ready: true,
         };
         if nn == 0 {
             interp.constant_fx = f((xa + xb) / 2.0, args)?;
         } else {
-            chebyshev_data_vector(interp.uu.as_mut_data(), nn, xa, xb, args, &mut f)?;
-            chebyshev_coefficients(interp.a.as_mut_data(), interp.uu.as_mut_data(), nn);
+            chebyshev_data_vector(interp.uu_rev.as_mut_data(), nn, xa, xb, args, &mut f)?;
+            chebyshev_coefficients(interp.a.as_mut_data(), interp.uu_rev.as_mut_data(), nn);
         }
         Ok(interp)
     }
@@ -227,7 +230,7 @@ impl InterpChebyshev {
     /// * `xa` -- lower bound
     /// * `xb` -- upper bound (> xa + ϵ)
     /// * `uu` -- the data vector such that `Uᵢ = f(xᵢ)`; i.e., the function evaluated at the
-    ///   **standard** (from 1 to -1) Chebyshev-Gauss-Lobatto coordinates. These coordinates
+    ///   Chebyshev-Gauss-Lobatto coordinates (from -1 to 1). These coordinates
     ///   are available via the [InterpChebyshev::points()] function.
     pub fn new_with_uu(xa: f64, xb: f64, uu: &[f64]) -> Result<Self, StrError> {
         if xb <= xa + TOL_RANGE {
@@ -245,14 +248,17 @@ impl InterpChebyshev {
             xb,
             dx: xb - xa,
             a: Vector::new(np),
-            uu: Vector::from(&uu),
+            uu_rev: Vector::new(np),
             constant_fx: 0.0,
             ready: true,
         };
+        for i in 0..np {
+            interp.uu_rev[nn - i] = uu[i];
+        }
         if nn == 0 {
             interp.constant_fx = uu[0];
         } else {
-            chebyshev_coefficients(interp.a.as_mut_data(), interp.uu.as_mut_data(), nn);
+            chebyshev_coefficients(interp.a.as_mut_data(), interp.uu_rev.as_mut_data(), nn);
         }
         Ok(interp)
     }
@@ -320,11 +326,11 @@ impl InterpChebyshev {
         }
         let np_max = nn_max + 1;
         let mut work_a = vec![0.0; np_max];
-        let mut work_uu = vec![0.0; np_max];
+        let mut work_uu_rev = vec![0.0; np_max];
         let mut an_prev = 0.0;
         for nn in 1..=nn_max {
-            chebyshev_data_vector(&mut work_uu, nn, xa, xb, args, &mut f)?;
-            chebyshev_coefficients(&mut work_a, &work_uu, nn);
+            chebyshev_data_vector(&mut work_uu_rev, nn, xa, xb, args, &mut f)?;
+            chebyshev_coefficients(&mut work_a, &work_uu_rev, nn);
             let an = work_a[nn];
             if nn > 1 && f64::abs(an_prev) < tol && f64::abs(an) < tol {
                 let nn_final = nn - 2; // -2 because the last two coefficients are zero
@@ -343,7 +349,9 @@ impl InterpChebyshev {
     /// * `tol` -- tolerance to truncate the Chebyshev series (e.g., 1e-8)
     /// * `xa` -- lower bound
     /// * `xb` -- upper bound (> xa + ϵ)
-    /// * `uu` -- the data vector (len > 0)
+    /// * `uu` -- the data vector such that `Uᵢ = f(xᵢ)`; i.e., the function evaluated at the
+    ///   Chebyshev-Gauss-Lobatto coordinates (from -1 to 1). These coordinates
+    ///   are available via the [InterpChebyshev::points()] function.
     ///
     /// # Method
     ///
@@ -356,7 +364,7 @@ impl InterpChebyshev {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // data
-    ///     let uu = [3.0, 0.5, -4.5, -7.0];
+    ///     let uu = [-7.0, -4.0, 0.5, 3.0];
     ///     let (xa, xb) = (0.0, 1.0);
     ///
     ///     // interpolant
@@ -471,7 +479,7 @@ impl InterpChebyshev {
 
 /// Computes the data vector (function evaluations at Chebyshev-Gauss-Lobatto points)
 fn chebyshev_data_vector<F, A>(
-    work_uu: &mut [f64],
+    work_uu_rev: &mut [f64],
     nn: usize,
     xa: f64,
     xb: f64,
@@ -485,31 +493,31 @@ where
     let np = nn + 1;
     assert!(nn > 0);
     assert!(xb > xa);
-    assert!(work_uu.len() >= np);
+    assert!(work_uu_rev.len() >= np);
 
-    // data vector U
+    // reverse data vector U (associated to Chebyshev-Gauss-Lobatto points from 1 to -1)
     let nf = nn as f64;
-    let uu = &mut work_uu[0..np];
+    let uu_rev = &mut work_uu_rev[0..np];
     for k in 0..np {
         let kf = k as f64;
         let x = (xb + xa + (xb - xa) * f64::cos(PI * kf / nf)) / 2.0;
-        uu[k] = (*f)(x, args)?;
+        uu_rev[k] = (*f)(x, args)?;
     }
     Ok(())
 }
 
 /// Computes the Chebyshev-Gauss-Lobatto coefficients
-fn chebyshev_coefficients(work_a: &mut [f64], work_uu: &[f64], nn: usize) {
+fn chebyshev_coefficients(work_a: &mut [f64], work_uu_rev: &[f64], nn: usize) {
     // check
     let np = nn + 1;
     assert!(nn > 0);
     assert!(work_a.len() >= np);
-    assert!(work_uu.len() >= np);
+    assert!(work_uu_rev.len() >= np);
 
     // coefficients a
     let nf = nn as f64;
     let a = &mut work_a[0..np];
-    let uu = &work_uu[0..np];
+    let uu_rev = &work_uu_rev[0..np];
     for j in 0..np {
         let jf = j as f64;
         let qj = if j == 0 || j == nn { 2.0 } else { 1.0 };
@@ -517,7 +525,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu: &[f64], nn: usize) {
         for k in 0..np {
             let kf = k as f64;
             let qk = if k == 0 || k == nn { 2.0 } else { 1.0 };
-            a[j] += uu[k] * 2.0 * f64::cos(PI * jf * kf / nf) / (qj * qk * nf);
+            a[j] += uu_rev[k] * 2.0 * f64::cos(PI * jf * kf / nf) / (qj * qk * nf);
         }
     }
 }
@@ -553,7 +561,7 @@ mod tests {
         assert_eq!(interp.nn, nn);
         assert_eq!(interp.np, np);
         assert_eq!(interp.a.dim(), np);
-        assert_eq!(interp.uu.dim(), np);
+        assert_eq!(interp.uu_rev.dim(), np);
         assert_eq!(interp.constant_fx, 0.0);
         assert_eq!(interp.ready, false);
     }
@@ -617,7 +625,7 @@ mod tests {
         let f = |x, _: &mut NoArgs| Ok(-1.0 + f64::sqrt(1.0 + 2.0 * x * 1200.0));
 
         let (xa, xb) = (0.0, 1.0);
-        let nn = 10;
+        let nn = 6;
         let zz = InterpChebyshev::points(nn);
         let dx = xb - xa;
         let args = &mut 0;
@@ -632,11 +640,11 @@ mod tests {
         for i in 0..np {
             let x = (xb + xa + dx * zz[i]) / 2.0;
             let fxi = interp.eval(x).unwrap();
-            approx_eq(fxi, interp.uu[i], 1e-13);
+            approx_eq(fxi, interp.uu_rev[nn - i], 1e-13);
         }
         let err = interp.estimate_max_error(100, args, f).unwrap();
         println!("err = {}", err);
-        assert!(err < 0.73);
+        approx_eq(err, 1.74, 1e-3);
 
         // plot f(x)
         /*

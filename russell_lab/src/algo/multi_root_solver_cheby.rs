@@ -616,7 +616,7 @@ mod tests {
     fn linear_function_no_roots_works() {
         // data
         let (xa, xb) = (0.0, 1.0);
-        let uu = Vector::from(&[3.0, 0.5]);
+        let uu = Vector::from(&[0.5, 3.0]);
 
         // interpolant
         let nn_max = 100;
@@ -636,7 +636,7 @@ mod tests {
         // data
         let (xa, xb) = (0.0, 1.0);
         let dx = xb - xa;
-        let uu = Vector::from(&[3.0, 0.5, -4.5, -7.0]);
+        let uu = Vector::from(&[-7.0, -4.5, 0.5, 3.0]);
         let np = uu.dim(); // number of points
         let nn = np - 1; // degree
         let mut xx_dat = Vector::new(np);

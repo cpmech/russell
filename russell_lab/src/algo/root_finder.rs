@@ -13,7 +13,7 @@ pub struct RootFinder {
     ///
     /// Accepts only roots such that `abs(Im(root)) < tol_abs_imaginary
     ///
-    /// Default = 1e-8
+    /// Default = 1e-7
     pub tol_abs_imaginary: f64,
 
     /// Holds the tolerance to discard roots outside the boundaries
@@ -62,7 +62,7 @@ impl RootFinder {
     pub fn new() -> Self {
         RootFinder {
             tol_zero_an: 1e-13,
-            tol_abs_imaginary: 1.0e-8,
+            tol_abs_imaginary: 1.0e-7,
             tol_abs_boundary: TOL_RANGE / 10.0,
             newton_tol_zero_dx: 1e-13,
             newton_tol_zero_fx: 1e-13,

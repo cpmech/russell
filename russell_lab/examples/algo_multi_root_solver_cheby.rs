@@ -18,15 +18,15 @@ fn main() -> Result<(), StrError> {
     println!("N = {}", nn);
 
     // find all roots in the interval
-    let mut solver = MultiRootSolverCheby::new(nn)?;
+    let solver = MultiRootSolverCheby::new();
     let roots = Vector::from(&solver.find(&interp)?);
     let f_at_roots = roots.get_mapped(|x| f(x, args).unwrap());
     println!("roots =\n{}", roots);
     println!("f @ roots =\n{}", print_vec_exp(&f_at_roots));
 
     // polish the roots
-    let mut roots_polished = Vector::new(roots.dim());
-    solver.polish_roots_newton(roots_polished.as_mut_data(), roots.as_data(), xa, xb, args, f)?;
+    let mut roots_polished = roots.clone();
+    solver.polish_roots_newton(roots_polished.as_mut_data(), xa, xb, args, f)?;
     let f_at_roots_polished = roots_polished.get_mapped(|x| f(x, args).unwrap());
     println!("polished roots =\n{}", roots_polished);
     println!("f @ polished roots =\n{}", print_vec_exp(&f_at_roots_polished));

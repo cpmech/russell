@@ -1,7 +1,6 @@
 use plotpy::{Curve, Legend, Plot};
 use russell_lab::math::PI;
 use russell_lab::*;
-use std::fmt::Write;
 
 fn main() -> Result<(), StrError> {
     // function
@@ -22,14 +21,14 @@ fn main() -> Result<(), StrError> {
     let roots = Vector::from(&solver.chebyshev(&interp)?);
     let f_at_roots = roots.get_mapped(|x| f(x, args).unwrap());
     println!("roots =\n{}", roots);
-    println!("f @ roots =\n{}", print_vec_exp(&f_at_roots));
+    println!("f @ roots =\n{}", vec_fmt_scientific(&f_at_roots, 2));
 
     // polish the roots
     let mut roots_refined = roots.clone();
     solver.refine(roots_refined.as_mut_data(), xa, xb, args, f)?;
     let f_at_roots_refined = roots_refined.get_mapped(|x| f(x, args).unwrap());
     println!("refined roots =\n{}", roots_refined);
-    println!("f @ refined roots =\n{}", print_vec_exp(&f_at_roots_refined));
+    println!("f @ refined roots =\n{}", vec_fmt_scientific(&f_at_roots_refined, 2));
 
     // plot the results
     let nstation = 301;
@@ -80,12 +79,4 @@ fn main() -> Result<(), StrError> {
         .save("/tmp/russell_lab/algo_multi_root_solver_cheby.svg")
         .unwrap();
     Ok(())
-}
-
-fn print_vec_exp(v: &Vector) -> String {
-    let mut buf = String::new();
-    for x in v {
-        writeln!(&mut buf, "{:>9.2e}", x).unwrap();
-    }
-    buf
 }

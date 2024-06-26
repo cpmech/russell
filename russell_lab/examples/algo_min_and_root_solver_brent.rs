@@ -14,7 +14,7 @@ fn main() -> Result<(), StrError> {
 
     // root
     let solver = RootFinding::new();
-    let (xo, stats) = solver.brent_find(0.3, 0.4, args, |x, _| {
+    let (xo, stats) = solver.brent(0.3, 0.4, args, |x, _| {
         Ok(1.0 / (1.0 - f64::exp(-2.0 * x) * f64::powi(f64::sin(5.0 * PI * x), 2)) - 1.5)
     })?;
     println!("\nx_root = {:?}", xo);

@@ -244,24 +244,24 @@ pub fn chebyshev_gauss_points(nn: usize) -> Vector {
     xx
 }
 
-/// Computes Chebyshev-Gauss-Lobatto points
+/// Returns the Chebyshev-Gauss-Lobatto points (from -1 to 1)
 ///
-/// The point coordinates are given by (using the sin(x) function by default):
-///
-/// ```text
-///           ⎛  π⋅(N-2j)  ⎞
-/// Xⱼ = -sin ⎜ —————————— ⎟
-///           ⎝    2⋅N     ⎠
-///
-/// j = 0 ... N
-/// ```
-///
-/// Another option is:
+/// The point coordinates are defined by:
 ///
 /// ```text
 ///           ⎛  j⋅π  ⎞
 /// Xⱼ = -cos ⎜ ————— ⎟
 ///           ⎝   N   ⎠
+///
+/// j = 0 ... N
+/// ```
+///
+/// Nonetheless, here, the coordinates are calculates by using the sin(x) function:
+///
+/// ```text
+///           ⎛  π⋅(N-2j)  ⎞
+/// Xⱼ = -sin ⎜ —————————— ⎟
+///           ⎝    2⋅N     ⎠
 ///
 /// j = 0 ... N
 /// ```
@@ -278,6 +278,10 @@ pub fn chebyshev_gauss_points(nn: usize) -> Vector {
 /// See also equation (1) of the Reference #2
 ///
 /// **Note:** This function enforces the symmetry of the sequence of points.
+///
+/// # Input
+///
+/// * `nn` -- the polynomial degree `N`; thus the number of points is `npoint = nn + 1`.
 ///
 /// # References
 ///
@@ -427,6 +431,9 @@ mod tests {
 
     #[test]
     fn chebyshev_gauss_points_works() {
+        let xx = chebyshev_gauss_points(0);
+        assert_eq!(xx.as_data(), &[0.0]);
+
         let xx = chebyshev_gauss_points(1);
         let xx_ref = vec![-1.0 / SQRT_2, 1.0 / SQRT_2];
         vec_approx_eq(&xx, &xx_ref, 1e-15);
@@ -531,6 +538,9 @@ mod tests {
 
     #[test]
     fn chebyshev_lobatto_points_works() {
+        let xx = chebyshev_lobatto_points(0);
+        assert_eq!(xx.as_data(), &[1.0]);
+
         let xx = chebyshev_lobatto_points(1);
         let xx_ref = vec![-1.0, 1.0];
         vec_approx_eq(&xx, &xx_ref, 1e-15);

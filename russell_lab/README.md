@@ -20,10 +20,14 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Check first and second derivatives](#check-first-and-second-derivatives)
   - [Bessel functions](#bessel-functions)
   - [Linear fitting](#linear-fitting)
+  - [Chebyshev adaptive interpolation (given function)](#chebyshev-adaptive-interpolation-given-function)
+  - [Chebyshev adaptive interpolation (given data)](#chebyshev-adaptive-interpolation-given-data)
+  - [Chebyshev adaptive interpolation (given noisy data)](#chebyshev-adaptive-interpolation-given-noisy-data)
   - [Lagrange interpolation](#lagrange-interpolation)
   - [Solution of a 1D PDE using spectral collocation](#solution-of-a-1d-pde-using-spectral-collocation)
   - [Numerical integration: perimeter of ellipse](#numerical-integration-perimeter-of-ellipse)
   - [Finding a local minimum and a root](#finding-a-local-minimum-and-a-root)
+  - [Finding all roots in an interval](#finding-all-roots-in-an-interval)
   - [Computing the pseudo-inverse matrix](#computing-the-pseudo-inverse-matrix)
   - [Matrix visualization](#matrix-visualization)
   - [Computing eigenvalues and eigenvectors](#computing-eigenvalues-and-eigenvectors)
@@ -31,6 +35,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Read a table-formatted data file](#read-a-table-formatted-data-file)
 - [About the column major representation](#about-the-column-major-representation)
 - [Benchmarks](#benchmarks)
+  - [Chebyshev polynomial evaluation](#chebyshev-polynomial-evaluation)
   - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
 - [Notes for developers](#notes-for-developers)
 
@@ -323,16 +328,51 @@ Results:
 
 
 
+### Chebyshev adaptive interpolation (given function)
+
+This example illustrates the use of `InterpChebyshev` to interpolate data given a function.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_chebyshev_adapt.rs)
+
+Results:
+
+![Chebyshev interpolation (given function)](data/figures/algo_interp_chebyshev_adapt.svg)
+
+
+
+### Chebyshev adaptive interpolation (given data)
+
+This example illustrates the use of `InterpChebyshev` to interpolate discrete data.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_chebyshev_data.rs)
+
+Results:
+
+![Chebyshev interpolation (given data)](data/figures/algo_interp_chebyshev_data.svg)
+
+
+
+### Chebyshev adaptive interpolation (given noisy data)
+
+This example illustrates the use of `InterpChebyshev` to interpolate noisy data.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_chebyshev_noisy_data.rs)
+
+Results:
+
+![Chebyshev interpolation (given noisy data)](data/figures/algo_interp_chebyshev_noisy_data.svg)
+
+
 
 ### Lagrange interpolation
 
 This example illustrates the use of `InterpLagrange` with at Chebyshev-Gauss-Lobatto grid to interpolate Runge's equation.
 
-[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interpolation_lagrange.rs)
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_interp_lagrange.rs)
 
 Results:
 
-![algo_interpolation_lagrange](data/figures/algo_interpolation_lagrange.svg)
+![algo_interp_lagrange](data/figures/algo_interp_lagrange.svg)
 
 
 
@@ -438,6 +478,69 @@ Number of iterations             = 9
 Error estimate                   = unavailable
 Total computation time           = 907ns
 ```
+
+
+### Finding all roots in an interval
+
+This example employs a Chebyshev interpolant to find all roots of a function in an interval. The method uses adaptive interpolation followed by calculating the eigenvalues of the companion matrix. These eigenvalues equal the roots of the polynomial. After that, a simple Newton refining (polishing) algorithm is applied.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/algo_root_finding_chebyshev.rs)
+
+The output looks like:
+
+```text
+N = 184
+roots =
+┌                     ┐
+│ 0.04109147217011577 │
+│  0.1530172326889439 │
+│ 0.25340124027487965 │
+│ 0.33978749525956276 │
+│ 0.47590538542276967 │
+│  0.5162732673126048 │
+└                     ┘
+f @ roots =
+┌           ┐
+│  1.84E-08 │
+│ -1.51E-08 │
+│ -2.40E-08 │
+│  9.53E-09 │
+│ -1.16E-08 │
+│ -5.80E-09 │
+└           ┘
+refined roots =
+┌                     ┐
+│ 0.04109147155278252 │
+│ 0.15301723213859994 │
+│ 0.25340124149692184 │
+│   0.339787495774806 │
+│ 0.47590538689192813 │
+│  0.5162732665558162 │
+└                     ┘
+f @ refined roots =
+┌           ┐
+│  6.66E-16 │
+│ -2.22E-16 │
+│ -2.22E-16 │
+│  1.33E-15 │
+│  4.44E-16 │
+│ -2.22E-16 │
+└           ┘
+```
+
+The function and the roots are illustrated in the figure below.
+
+![All roots in an interval](data/figures/algo_root_finding_chebyshev.svg)
+
+**References**
+
+1. Boyd JP (2002) Computing zeros on a real interval through Chebyshev expansion
+   and polynomial rootfinding, SIAM Journal of Numerical Analysis, 40(5):1666-1682
+2. Boyd JP (2013) Finding the zeros of a univariate equation: proxy rootfinders,
+   Chebyshev interpolation, and the companion matrix, SIAM Journal of Numerical
+   Analysis, 55(2):375-396.
+3. Boyd JP (2014) Solving Transcendental Equations: The Chebyshev Polynomial Proxy
+   and Other Numerical Rootfinders, Perturbation Series, and Oracles, SIAM, pp460
 
 
 
@@ -708,6 +811,13 @@ Run the benchmarks with:
 bash ./zscripts/benchmark.bash
 ```
 
+### Chebyshev polynomial evaluation
+
+Comparison of the performances of `InterpChebyshev::eval` implementing the Clenshaw algorithm and `InterpChebyshev::eval_using_trig` using the trigonometric functions.
+
+![Chebyshev evaluation (small)](data/figures/bench_chebyshev_eval_small.svg)
+
+![Chebyshev evaluation (large)](data/figures/bench_chebyshev_eval_large.svg)
 
 
 ### Jacobi Rotation versus LAPACK DSYEV

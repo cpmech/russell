@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cargo-criterion bench
+cargo-criterion bench --features intel_mkl

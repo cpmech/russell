@@ -498,7 +498,7 @@ impl InterpLagrange {
     ///
     /// # Input
     ///
-    /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ j ≤ 1
+    /// * `x` -- the coordinate to evaluate the polynomial; must satisfy -1 ≤ x ≤ 1
     /// * `uu` -- the "data" vector `U` of size equal to `N + 1`
     ///
     /// # Examples
@@ -960,7 +960,7 @@ impl InterpLagrange {
     ///
     /// # Output
     ///
-    /// * `err_f` -- is the max interpolation in `[-1, 1]`
+    /// * `err_f` -- is the max interpolation error in `[-1, 1]`
     pub fn estimate_max_error<F, A>(&self, args: &mut A, mut f: F) -> Result<f64, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
@@ -1061,6 +1061,11 @@ impl InterpLagrange {
     /// Returns the (min, max) coordinates
     pub fn get_xrange(&self) -> (f64, f64) {
         (-1.0, 1.0)
+    }
+
+    /// Returns and access to the barycentric coefficients
+    pub fn get_lambda(&self) -> &Vector {
+        &self.lambda
     }
 
     /// Returns the D1 matrix (calculate it if needed)
@@ -1794,6 +1799,7 @@ mod tests {
         assert_eq!(interp.get_grid_type(), InterpGrid::ChebyshevGaussLobatto);
         assert_eq!(interp.get_points().as_data(), &[-1.0, 0.0, 1.0]);
         assert_eq!(interp.get_xrange(), (-1.0, 1.0));
+        assert_eq!(interp.get_lambda().dim(), 3);
         interp.calc_dd1_matrix();
         interp.calc_dd2_matrix();
         assert_eq!(interp.get_dd1().unwrap().dims(), (3, 3));

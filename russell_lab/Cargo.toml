@@ -21,7 +21,7 @@ serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.5"
-plotpy = "0.6"
+plotpy = "0.7"
 serde_json = "1.0"
 serial_test = "3.0"
 
@@ -29,5 +29,5 @@ serial_test = "3.0"
 cc = "1.0"
 
 [[bench]]
-name = "matvec_benchmark"
+name = "algo_chebyshev"
 harness = false

@@ -1,43 +1,8 @@
-use super::Stats;
+use super::{RootFinder, Stats};
 use crate::StrError;
 
-/// Implements algorithms for finding the roots of an equation
-#[derive(Clone, Debug)]
-pub struct RootSolver {
-    /// Max number of iterations
-    ///
-    /// ```text
-    /// n_iteration_max ≥ 2
-    /// ```
-    pub n_iteration_max: usize,
-
-    /// Tolerance
-    ///
-    /// e.g., 1e-10
-    pub tolerance: f64,
-}
-
-impl RootSolver {
-    /// Allocates a new instance
-    pub fn new() -> Self {
-        RootSolver {
-            n_iteration_max: 100,
-            tolerance: 1e-10,
-        }
-    }
-
-    /// Validates the parameters
-    fn validate_params(&self) -> Result<(), StrError> {
-        if self.n_iteration_max < 2 {
-            return Err("n_iteration_max must be ≥ 2");
-        }
-        if self.tolerance < 10.0 * f64::EPSILON {
-            return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
-        }
-        Ok(())
-    }
-
-    /// Employs Brent's method to find the roots of an equation
+impl RootFinder {
+    /// Employs Brent's method to find a single root of an equation
     ///
     /// See: <https://mathworld.wolfram.com/BrentsMethod.html>
     ///
@@ -45,11 +10,10 @@ impl RootSolver {
     ///
     /// # Input
     ///
-    /// * `xa` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
-    /// * `xb` -- initial "bracket" coordinate such that `f(xa) × f(xb) < 0`
-    /// * `params` -- optional control parameters
+    /// * `xa` -- lower bound such that `f(xa) × f(xb) < 0`
+    /// * `xb` -- upper bound such that `f(xa) × f(xb) < 0`
     /// * `args` -- extra arguments for the callback function
-    /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
+    /// * `f` -- callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
     ///
     /// **Note:** `xa` must be different from `xb`
     ///
@@ -63,16 +27,16 @@ impl RootSolver {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::{approx_eq, RootSolver, StrError};
+    /// use russell_lab::*;
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let args = &mut 0;
-    ///     let solver = RootSolver::new();
+    ///     let solver = RootFinder::new();
     ///     let (xa, xb) = (-4.0, 0.0);
     ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 - x * x))?;
     ///     println!("\nroot = {:?}", xo);
     ///     println!("\n{}", stats);
-    ///     approx_eq(xo, -2.0, 1e-10);
+    ///     approx_eq(xo, -2.0, 1e-14);
     ///     Ok(())
     /// }
     /// ```
@@ -111,9 +75,6 @@ impl RootSolver {
             return Err("xa must be different from xb");
         }
 
-        // validate the parameters
-        self.validate_params()?;
-
         // allocate stats struct
         let mut stats = Stats::new();
 
@@ -131,7 +92,7 @@ impl RootSolver {
 
         // solve
         let mut converged = false;
-        for _ in 0..self.n_iteration_max {
+        for _ in 0..self.brent_max_iterations {
             stats.n_iterations += 1;
 
             // old step
@@ -148,7 +109,7 @@ impl RootSolver {
             }
 
             // tolerance
-            let tol = 2.0 * f64::EPSILON * f64::abs(b) + self.tolerance / 2.0;
+            let tol = 2.0 * f64::EPSILON * f64::abs(b) + self.brent_tolerance / 2.0;
 
             // new step
             let mut step_new = (c - b) / 2.0;
@@ -233,29 +194,15 @@ impl RootSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::RootSolver;
     use crate::algo::testing::get_test_functions;
-    use crate::algo::NoArgs;
     use crate::approx_eq;
+    use crate::{NoArgs, RootFinder};
 
     #[test]
-    fn validate_params_captures_errors() {
-        let mut solver = RootSolver::new();
-        solver.n_iteration_max = 0;
-        assert_eq!(solver.validate_params().err(), Some("n_iteration_max must be ≥ 2"));
-        solver.n_iteration_max = 2;
-        solver.tolerance = 0.0;
-        assert_eq!(
-            solver.validate_params().err(),
-            Some("the tolerance must be ≥ 10.0 * f64::EPSILON")
-        );
-    }
-
-    #[test]
-    fn brent_captures_errors_1() {
+    fn brent_find_captures_errors_1() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;
-        let mut solver = RootSolver::new();
+        let mut solver = RootFinder::new();
         assert_eq!(f(1.0, args).unwrap(), 0.0);
         assert_eq!(
             solver.brent(-0.5, -0.5, args, f).err(),
@@ -265,15 +212,15 @@ mod tests {
             solver.brent(-0.5, -0.5 - 10.0 * f64::EPSILON, args, f).err(),
             Some("xa and xb must bracket the root and f(xa) × f(xb) < 0")
         );
-        solver.n_iteration_max = 0;
+        solver.brent_max_iterations = 0;
         assert_eq!(
-            solver.brent(-0.5, 2.0, args, f).err(),
-            Some("n_iteration_max must be ≥ 2")
+            solver.brent(0.0, 2.0, args, f).err(),
+            Some("brent solver failed to converge")
         );
     }
 
     #[test]
-    fn brent_captures_errors_2() {
+    fn brent_find_captures_errors_2() {
         struct Args {
             count: usize,
             target: usize,
@@ -288,7 +235,7 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
-        let solver = RootSolver::new();
+        let solver = RootFinder::new();
         // first function call
         assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("stop"));
         // second function call
@@ -302,9 +249,9 @@ mod tests {
     }
 
     #[test]
-    fn brent_works_1() {
+    fn brent_find_works() {
         let args = &mut 0;
-        let solver = RootSolver::new();
+        let solver = RootFinder::new();
         for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
@@ -331,18 +278,5 @@ mod tests {
             }
         }
         println!("\n===================================================================\n");
-    }
-
-    #[test]
-    fn brent_fails_on_non_converged() {
-        let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
-        let args = &mut 0;
-        assert!(f(1.0, args).unwrap() > 0.0);
-        let mut solver = RootSolver::new();
-        solver.n_iteration_max = 2;
-        assert_eq!(
-            solver.brent(-2.0, -0.7, args, f).err(),
-            Some("brent solver failed to converge")
-        );
     }
 }

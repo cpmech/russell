@@ -114,6 +114,7 @@ impl InterpChebyshev {
         if xb <= xa + TOL_RANGE {
             return Err("xb must be greater than xa + ϵ");
         }
+        let nn_max = nn_max + 2; // add 2 because adapt_function subtracts 2 in the end
         let np_max = nn_max + 1;
         Ok(InterpChebyshev {
             nn_max,
@@ -521,6 +522,7 @@ mod tests {
         let nn_max = 2;
         let (xa, xb) = (-4.0, 4.0);
         let interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
+        let nn_max = nn_max + 2; // for adapt_function
         let np_max = nn_max + 1;
         assert_eq!(interp.nn_max, nn_max);
         assert_eq!(interp.nn, 0);
@@ -539,7 +541,7 @@ mod tests {
         let args = &mut 0;
         _ = f(0.0, args); // for coverage tool
         let mut interp = InterpChebyshev::new(2, 0.0, 1.0).unwrap();
-        assert_eq!(interp.set_function(3, args, f).err(), Some("nn must be ≤ nn_max"));
+        assert_eq!(interp.set_function(5, args, f).err(), Some("nn must be ≤ nn_max"));
         let f = |_: f64, _: &mut NoArgs| Err("stop");
         assert_eq!(interp.set_function(0, args, f).err(), Some("stop"));
         assert_eq!(interp.set_function(1, args, f).err(), Some("stop"));
@@ -572,7 +574,7 @@ mod tests {
             interp.set_data(uu.as_data()).err(),
             Some("the number of points (uu.len()) must be ≥ 1")
         );
-        let uu = Vector::new(3);
+        let uu = Vector::new(5);
         assert_eq!(
             interp.set_data(uu.as_data()).err(),
             Some("nn (=uu.len()-1) must be ≤ nn_max")
@@ -804,7 +806,7 @@ mod tests {
             interp.adapt_data(1e-7, &uu).err(),
             Some("the number of points (uu.len()) must be ≥ 1")
         );
-        let uu = [1.0, 2.0, 3.0];
+        let uu = [1.0, 2.0, 3.0, 4.0, 5.0];
         assert_eq!(interp.adapt_data(1e-7, &uu).err(), Some("nn must be ≤ nn_max"));
     }
 
@@ -1082,6 +1084,73 @@ mod tests {
         assert_eq!(interp.get_degree(), 2);
         assert_eq!(interp.get_range(), (-4.0, 4.0, 8.0));
         assert_eq!(interp.is_ready(), true);
-        array_approx_eq(interp.get_coefficients(), &[7.0, 0.0, 8.0], 1e-15);
+        array_approx_eq(interp.get_coefficients(), &[7.0, 0.0, 8.0, 0.0, 0.0], 1e-15);
+    }
+
+    #[test]
+    fn case_with_discontinuity_1() {
+        let uu = [
+            -1.5000000000000009,
+            -1.5410857847379518,
+            -1.6638929944964582,
+            -1.8670761277863486,
+            -2.1484090676804932,
+            -2.504809471616711,
+            -2.9323725421878937,
+            -3.426413808919543,
+            -3.9815204523085637,
+            -4.591610607806451,
+            -5.249999999999998,
+            -5.9494751769314975,
+            -6.682372542187893,
+            -7.4406623188668055,
+            -8.216036525492598,
+            -8.999999999999998,
+            -8.2160365254926,
+            -7.440662318866806,
+            -6.682372542187896,
+            -5.949475176931499,
+            -5.250000000000002,
+            -4.591610607806453,
+            -3.9815204523085654,
+            -3.4264138089195466,
+            -2.9323725421878954,
+            -2.5048094716167135,
+            -2.1484090676804986,
+            -1.8670761277863521,
+            -1.6638929944964609,
+            -1.5410857847379535,
+            -1.5000000000000044,
+        ];
+        let (xa, xb) = (0.0, 1.0);
+        let nn_max = 30;
+        let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
+        interp.adapt_data(1e-8, &uu).unwrap();
+        let nn = interp.get_degree();
+        assert_eq!(nn, 30);
+
+        // plot
+        /*
+        let xx = Vector::linspace(xa, xb, 201).unwrap();
+        let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+        let mut curve_int = Curve::new();
+        curve_int
+            .set_label(&format!("interpolated,N={}", nn))
+            .set_line_style(":")
+            .set_marker_style(".")
+            .set_marker_every(5);
+        curve_int.draw(xx.as_data(), yy_int.as_data());
+        let mut plot = Plot::new();
+        let mut legend = Legend::new();
+        legend.set_num_col(4);
+        legend.set_outside(true);
+        legend.draw();
+        plot.add(&curve_int)
+            .add(&legend)
+            .set_cross(0.0, 0.0, "gray", "-", 1.5)
+            .grid_and_labels("x", "f(x)")
+            .save("/tmp/russell_lab/test_interp_chebyshev_case_with_discontinuity_1.svg")
+            .unwrap();
+        */
     }
 }

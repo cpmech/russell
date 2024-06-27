@@ -1089,6 +1089,48 @@ mod tests {
 
     #[test]
     fn case_with_discontinuity_1() {
+        let f = |x: f64, _: &mut NoArgs| {
+            if x < 0.0 {
+                Ok(-x)
+            } else {
+                Ok(x)
+            }
+        };
+        let (xa, xb) = (-1.0, 1.0);
+        let nn_max = 200;
+        let mut interp = InterpChebyshev::new(nn_max, xa, xb).unwrap();
+        let args = &mut 0;
+        interp.adapt_function(1e-4, args, f).unwrap();
+        let nn = interp.get_degree();
+        assert_eq!(nn, 124);
+
+        // plot
+        /*
+        let xx = Vector::linspace(xa, xb, 201).unwrap();
+        let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+        let mut curve_int = Curve::new();
+        curve_int
+            .set_label(&format!("interpolated,N={}", nn))
+            .set_line_style(":")
+            .set_marker_style(".")
+            .set_marker_every(5);
+        curve_int.draw(xx.as_data(), yy_int.as_data());
+        let mut plot = Plot::new();
+        let mut legend = Legend::new();
+        legend.set_num_col(4);
+        legend.set_outside(true);
+        legend.draw();
+        plot.add(&curve_int)
+            .add(&legend)
+            .set_cross(0.0, 0.0, "gray", "-", 1.5)
+            .grid_and_labels("x", "f(x)")
+            .save("/tmp/russell_lab/test_interp_chebyshev_case_with_discontinuity_1.svg")
+            .unwrap();
+        */
+    }
+
+    #[test]
+    fn case_with_discontinuity_2() {
         let uu = [
             -1.5000000000000009,
             -1.5410857847379518,
@@ -1149,7 +1191,7 @@ mod tests {
             .add(&legend)
             .set_cross(0.0, 0.0, "gray", "-", 1.5)
             .grid_and_labels("x", "f(x)")
-            .save("/tmp/russell_lab/test_interp_chebyshev_case_with_discontinuity_1.svg")
+            .save("/tmp/russell_lab/test_interp_chebyshev_case_with_discontinuity_2.svg")
             .unwrap();
         */
     }

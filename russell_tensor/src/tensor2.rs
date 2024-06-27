@@ -1,6 +1,7 @@
 use crate::{AsMatrix3x3, Mandel, StrError};
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
+use russell_lab::math::PI;
 use russell_lab::{Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -146,6 +147,47 @@ impl Tensor2 {
         let star1 = radius * f64::cos(theta);
         let star2 = distance;
         let star3 = radius * f64::sin(theta);
+        let mut tt = Tensor2::new_sym(two_dim);
+        tt.vec[0] = (SQRT_2 * star1 + star2) / SQRT_3;
+        tt.vec[1] = -star1 / SQRT_6 + star2 / SQRT_3 - star3 / SQRT_2;
+        tt.vec[2] = -star1 / SQRT_6 + star2 / SQRT_3 + star3 / SQRT_2;
+        Ok(tt)
+    }
+
+    /// Allocates a diagonal Tensor2 from octahedral components (using alpha angle)
+    ///
+    /// # Input
+    ///
+    /// * `distance` -- distance from the octahedral plane to the origin: `d = (λ1 + λ2 + λ3) / √3`
+    /// * `radius` -- radius on the octahedral plane: `r = ‖s‖`
+    /// * `alpha` -- alpha angle in radians from -π to π
+    /// * `two_dim` -- 2D instead of 3D?
+    ///
+    /// The octahedral components and the invariants are related as follows:
+    ///
+    /// ```text
+    /// σm = d / √3   →  d = σm √3
+    /// σd = r √3/√2  →  r = σd √2/√3 = √2 √J2
+    /// εv = d √3     →  d = εv / √3
+    /// εd = r √2/√3  →  r = εd √3/√2
+    /// ```
+    ///
+    /// In matrix form, the diagonal components of the tensor are the principal values `(λ1, λ2, λ3)`:
+    ///
+    /// ```text
+    /// ┌          ┐
+    /// │ λ1  0  0 │
+    /// │  0 λ2  0 │
+    /// │  0  0 λ3 │
+    /// └          ┘
+    /// ```
+    pub fn new_from_octahedral_alpha(distance: f64, radius: f64, alpha: f64, two_dim: bool) -> Result<Self, StrError> {
+        if alpha < -PI || alpha > PI {
+            return Err("alpha must be in -π ≤ alpha ≤ π");
+        }
+        let star1 = radius * f64::sin(alpha);
+        let star2 = distance;
+        let star3 = radius * f64::cos(alpha);
         let mut tt = Tensor2::new_sym(two_dim);
         tt.vec[0] = (SQRT_2 * star1 + star2) / SQRT_3;
         tt.vec[1] = -star1 / SQRT_6 + star2 / SQRT_3 - star3 / SQRT_2;
@@ -1953,7 +1995,7 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2};
+    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
     use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix, Vector};
 
     #[test]
@@ -2677,10 +2719,7 @@ mod tests {
         // symmetric 3D
         let mut tt = Tensor2::new(Mandel::Symmetric);
         tt.vec.fill(NOISE);
-        tt.set_mandel_vector(
-            2.0,
-            &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2],
-        );
+        tt.set_mandel_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
 
@@ -3480,34 +3519,154 @@ mod tests {
     }
 
     #[test]
-    fn new_from_oct_invariants_works() {
-        let (sigma_m, sigma_d) = (1.0, 3.0);
-        let (distance, radius) = (sigma_m * SQRT_3, sigma_d * SQRT_2_BY_3);
-
+    fn new_from_octahedral_works() {
         assert_eq!(
             Tensor2::new_from_octahedral(0.0, 0.0, -2.0, true).err(),
             Some("lode invariant must be in -1 ≤ lode ≤ 1")
         );
 
-        let tt = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
+        let (sigma_m, sigma_d) = (1.0, 3.0);
+        let (distance, radius) = (sigma_m * SQRT_3, sigma_d * SQRT_2_BY_3);
+
+        let t1 = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
+        let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 2.0, true).unwrap();
+        assert_eq!(t1.vec.dim(), 4);
+        approx_eq(t1.vec[0], 3.0, 1e-15);
+        approx_eq(t1.vec[1], 0.0, 1e-15);
+        approx_eq(t1.vec[2], 0.0, 1e-15);
+        assert_eq!(t1.vec[3], 0.0);
+        vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+
+        let t1 = Tensor2::new_from_octahedral(distance, radius, 0.0, true).unwrap();
+        let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 3.0, true).unwrap();
+        assert_eq!(t1.vec.dim(), 4);
+        approx_eq(t1.vec[0], 1.0 + SQRT_3, 1e-15);
+        approx_eq(t1.vec[1], 1.0 - SQRT_3, 1e-15);
+        approx_eq(t1.vec[2], 1.0, 1e-15);
+        assert_eq!(t1.vec[3], 0.0);
+        vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+
+        let t1 = Tensor2::new_from_octahedral(distance, radius, -1.0, true).unwrap();
+        let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 6.0, true).unwrap();
+        assert_eq!(t1.vec.dim(), 4);
+        approx_eq(t1.vec[0], 2.0, 1e-15);
+        approx_eq(t1.vec[1], -1.0, 1e-15);
+        approx_eq(t1.vec[2], 2.0, 1e-15);
+        assert_eq!(t1.vec[3], 0.0);
+        vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+    }
+
+    #[test]
+    fn new_from_octahedral_alpha_works() {
+        assert_eq!(
+            Tensor2::new_from_octahedral_alpha(0.0, 0.0, -2.0 * PI, true).err(),
+            Some("alpha must be in -π ≤ alpha ≤ π")
+        );
+
+        let (distance, radius) = (SQRT_3, SQRT_6);
+
+        // 0 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, 0.0, true).unwrap();
         assert_eq!(tt.vec.dim(), 4);
-        approx_eq(tt.vec[0], 3.0, 1e-15);
-        approx_eq(tt.vec[1], 0.0, 1e-15);
-        approx_eq(tt.vec[2], 0.0, 1e-15);
+        approx_eq(tt.vec[0], 1.0, 1e-15);
+        approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0 + SQRT_3, 1e-15);
         assert_eq!(tt.vec[3], 0.0);
 
-        let tt = Tensor2::new_from_octahedral(distance, radius, 0.0, true).unwrap();
+        // 30 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 6.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 2.0, 1e-15);
+        approx_eq(tt.vec[1], -1.0, 1e-15);
+        approx_eq(tt.vec[2], 2.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // 60 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 3.0, true).unwrap();
         assert_eq!(tt.vec.dim(), 4);
         approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
         approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(tt.vec[2], 1.0, 1e-15);
         assert_eq!(tt.vec[3], 0.0);
 
-        let tt = Tensor2::new_from_octahedral(distance, radius, -1.0, true).unwrap();
+        // 90 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 2.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 3.0, 1e-15);
+        approx_eq(tt.vec[1], 0.0, 1e-15);
+        approx_eq(tt.vec[2], 0.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // 120 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, 2.0 * PI / 3.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[1], 1.0, 1e-15);
+        approx_eq(tt.vec[2], 1.0 - SQRT_3, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // 150 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, 5.0 * PI / 6.0, true).unwrap();
         assert_eq!(tt.vec.dim(), 4);
         approx_eq(tt.vec[0], 2.0, 1e-15);
-        approx_eq(tt.vec[1], -1.0, 1e-15);
+        approx_eq(tt.vec[1], 2.0, 1e-15);
+        approx_eq(tt.vec[2], -1.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // 180 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0, 1e-15);
+        approx_eq(tt.vec[1], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0 - SQRT_3, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // -180 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0, 1e-15);
+        approx_eq(tt.vec[1], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0 - SQRT_3, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // -150 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -5.0 * PI / 6.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 0.0, 1e-15);
+        approx_eq(tt.vec[1], 3.0, 1e-15);
+        approx_eq(tt.vec[2], 0.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // -120 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -2.0 * PI / 3.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0 - SQRT_3, 1e-15);
+        approx_eq(tt.vec[1], 1.0 + SQRT_3, 1e-15);
+        approx_eq(tt.vec[2], 1.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // -90 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI / 2.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], -1.0, 1e-15);
+        approx_eq(tt.vec[1], 2.0, 1e-15);
         approx_eq(tt.vec[2], 2.0, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // -60 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI / 3.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 1.0 - SQRT_3, 1e-15);
+        approx_eq(tt.vec[1], 1.0, 1e-15);
+        approx_eq(tt.vec[2], 1.0 + SQRT_3, 1e-15);
+        assert_eq!(tt.vec[3], 0.0);
+
+        // -30 degrees
+        let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI / 6.0, true).unwrap();
+        assert_eq!(tt.vec.dim(), 4);
+        approx_eq(tt.vec[0], 0.0, 1e-15);
+        approx_eq(tt.vec[1], 0.0, 1e-15);
+        approx_eq(tt.vec[2], 3.0, 1e-15);
         assert_eq!(tt.vec[3], 0.0);
     }
 }

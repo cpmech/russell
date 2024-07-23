@@ -12,8 +12,13 @@ fn main() {
 
     #[cfg(not(feature = "local_suitesparse"))]
     let inc_dirs = vec![
-        "/usr/include/suitesparse",          // Linux
+        "/usr/include/suitesparse", // Linux
+    ];
+
+    #[cfg(target_os = "macos")]
+    let inc_dirs = vec![
         "/opt/homebrew/include/suitesparse", // macOS
+        "/usr/local/include/suitesparse",    // macOS
     ];
 
     #[cfg(feature = "local_suitesparse")]

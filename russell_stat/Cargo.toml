@@ -1,6 +1,6 @@
 [package]
 name = "russell_stat"
-version = "1.6.0"
+version = "1.6.2"
 edition = "2021"
 license = "MIT"
 description = "Statistics calculations and (engineering) probability distributions"

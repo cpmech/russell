@@ -35,11 +35,15 @@ fn compile_blas() {
             "/usr/include/openblas",              // Arch
             "/opt/homebrew/opt/lapack/include",   // macOS
             "/opt/homebrew/opt/openblas/include", // macOS
+            "/usr/local/opt/lapack/include",      // macOS
+            "/usr/local/opt/openblas/include",    // macOS
         ])
         .compile("c_code_interface_blas");
     for d in &[
         "/opt/homebrew/opt/lapack/lib",   // macOS
         "/opt/homebrew/opt/openblas/lib", // macOS
+        "/usr/local/opt/lapack/lib",      // macOS
+        "/usr/local/opt/openblas/lib",    // macOS
     ] {
         println!("cargo:rustc-link-search=native={}", *d);
     }

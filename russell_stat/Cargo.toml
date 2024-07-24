@@ -21,4 +21,4 @@ rand = "0.8.5"
 rand_distr = "0.4.3"
 
 [dev-dependencies]
-plotpy = "0.6"
+plotpy = "1.1"

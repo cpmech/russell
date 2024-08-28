@@ -804,7 +804,7 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement multidimensional data interpolation
     - [ ] Add interpolation and polynomials to `russell_lab`
         - [x] Implement Chebyshev polynomials
-        - [ ] Implement Chebyshev interpolation
+        - [x] Implement Chebyshev interpolation
         - [ ] Implement Orthogonal polynomials
         - [x] Implement Lagrange interpolation
         - [ ] Implement Fourier interpolation

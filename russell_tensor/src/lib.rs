@@ -27,22 +27,23 @@ mod samples_tensor4;
 mod spectral2;
 mod tensor2;
 mod tensor4;
-pub use crate::as_matrix_3x3::*;
-pub use crate::as_matrix_9x9::*;
-pub use crate::constants::*;
-pub use crate::derivatives_t2::*;
-pub use crate::derivatives_t4::*;
-pub use crate::enums::*;
-pub use crate::lin_elasticity::*;
-pub use crate::operations_mix1::*;
-pub use crate::operations_mix2::*;
-pub use crate::operations_t2::*;
-pub use crate::operations_t4::*;
-pub use crate::samples_tensor2::*;
-pub use crate::samples_tensor4::*;
-pub use crate::spectral2::*;
-pub use crate::tensor2::*;
-pub use crate::tensor4::*;
+
+pub use as_matrix_3x3::*;
+pub use as_matrix_9x9::*;
+pub use constants::*;
+pub use derivatives_t2::*;
+pub use derivatives_t4::*;
+pub use enums::*;
+pub use lin_elasticity::*;
+pub use operations_mix1::*;
+pub use operations_mix2::*;
+pub use operations_t2::*;
+pub use operations_t4::*;
+pub use samples_tensor2::*;
+pub use samples_tensor4::*;
+pub use spectral2::*;
+pub use tensor2::*;
+pub use tensor4::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

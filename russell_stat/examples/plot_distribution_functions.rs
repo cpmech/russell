@@ -34,7 +34,7 @@ fn main() -> Result<(), StrError> {
         .set_subplot(2, 1, 2)
         .add(&curve_cdf)
         .grid_and_labels("$x$", "$CDF(x)$")
-        .set_super_title(&title, Some(params))
+        .set_super_title(&title, Some(&params))
         .set_figure_size_points(350.0, 500.0)
         .save(&path)?;
 
@@ -61,7 +61,7 @@ fn main() -> Result<(), StrError> {
         .set_subplot(2, 1, 2)
         .add(&curve_cdf)
         .grid_and_labels("$x$", "$CDF(x)$")
-        .set_super_title(&title, Some(params))
+        .set_super_title(&title, Some(&params))
         .set_figure_size_points(350.0, 500.0)
         .save(&path)?;
 
@@ -88,7 +88,7 @@ fn main() -> Result<(), StrError> {
         .set_subplot(2, 1, 2)
         .add(&curve_cdf)
         .grid_and_labels("$x$", "$CDF(x)$")
-        .set_super_title(&title, Some(params))
+        .set_super_title(&title, Some(&params))
         .set_figure_size_points(350.0, 500.0)
         .save(&path)?;
 
@@ -115,7 +115,7 @@ fn main() -> Result<(), StrError> {
         .set_subplot(2, 1, 2)
         .add(&curve_cdf)
         .grid_and_labels("$x$", "$CDF(x)$")
-        .set_super_title(&title, Some(params))
+        .set_super_title(&title, Some(&params))
         .set_figure_size_points(350.0, 500.0)
         .save(&path)?;
 
@@ -142,7 +142,7 @@ fn main() -> Result<(), StrError> {
         .set_subplot(2, 1, 2)
         .add(&curve_cdf)
         .grid_and_labels("$x$", "$CDF(x)$")
-        .set_super_title(&title, Some(params))
+        .set_super_title(&title, Some(&params))
         .set_figure_size_points(350.0, 500.0)
         .save(&path)?;
 

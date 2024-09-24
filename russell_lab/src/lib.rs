@@ -154,13 +154,14 @@ pub mod math;
 pub mod matrix;
 pub mod matvec;
 pub mod vector;
-pub use crate::algo::*;
-pub use crate::base::*;
-pub use crate::check::*;
-use crate::internal::*;
-pub use crate::matrix::*;
-pub use crate::matvec::*;
-pub use crate::vector::*;
+
+pub use algo::*;
+pub use base::*;
+pub use check::*;
+use internal::*;
+pub use matrix::*;
+pub use matvec::*;
+pub use vector::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

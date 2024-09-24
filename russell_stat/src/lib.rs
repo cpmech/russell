@@ -30,14 +30,15 @@ mod distribution_uniform;
 mod histogram;
 mod probability_distribution;
 mod statistics;
-pub use crate::distribution_frechet::*;
-pub use crate::distribution_gumbel::*;
-pub use crate::distribution_lognormal::*;
-pub use crate::distribution_normal::*;
-pub use crate::distribution_uniform::*;
-pub use crate::histogram::*;
-pub use crate::probability_distribution::*;
-pub use crate::statistics::*;
+
+pub use distribution_frechet::*;
+pub use distribution_gumbel::*;
+pub use distribution_lognormal::*;
+pub use distribution_normal::*;
+pub use distribution_uniform::*;
+pub use histogram::*;
+pub use probability_distribution::*;
+pub use statistics::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

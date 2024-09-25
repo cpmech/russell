@@ -308,12 +308,12 @@ Fit a line through a set of points. The line has slope `m` and intercepts the y 
 
 ```rust
 use russell_lab::algo::linear_fitting;
-use russell_lab::{approx_eq, StrError, Vector};
+use russell_lab::{approx_eq, StrError};
 
 fn main() -> Result<(), StrError> {
     // model: c is the y value @ x = 0; m is the slope
-    let x = Vector::from(&[0.0, 1.0, 3.0, 5.0]);
-    let y = Vector::from(&[1.0, 0.0, 2.0, 4.0]);
+    let x = [0.0, 1.0, 3.0, 5.0];
+    let y = [1.0, 0.0, 2.0, 4.0];
     let (c, m) = linear_fitting(&x, &y, false)?;
     println!("c = {}, m = {}", c, m);
     approx_eq(c, 0.1864406779661015, 1e-15);

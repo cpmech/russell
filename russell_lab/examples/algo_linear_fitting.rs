@@ -11,8 +11,8 @@ const OUT_DIR: &str = "/tmp/russell_lab/";
 
 fn main() -> Result<(), StrError> {
     // model: c is the y value @ x = 0; m is the slope
-    let x = Vector::from(&[0.0, 1.0, 3.0, 5.0]);
-    let y = Vector::from(&[1.0, 0.0, 2.0, 4.0]);
+    let x = [0.0, 1.0, 3.0, 5.0];
+    let y = [1.0, 0.0, 2.0, 4.0];
     let (c, m) = linear_fitting(&x, &y, false)?;
     println!("c = {}, m = {}", c, m);
     approx_eq(c, 0.1864406779661015, 1e-15);
@@ -28,7 +28,7 @@ fn main() -> Result<(), StrError> {
         .set_marker_line_color("red")
         .set_marker_color("red");
     curve_fit.draw_ray(0.0, c, RayEndpoint::Slope(m));
-    curve_dat.draw(x.as_data(), y.as_data());
+    curve_dat.draw(&x, &y);
     let mut plot = Plot::new();
     let path = format!("{}/algo_linear_fitting_1.svg", OUT_DIR);
     plot.add(&curve_dat)

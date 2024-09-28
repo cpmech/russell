@@ -8,6 +8,11 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
 
+/// Holds a tiny number (epsilon) to improve the rounding of x1 - x0 in with_dense_output
+///
+/// This tolerance helps in making x1 = 0.49999999999999839 behave as x1 = 0.5, for example.
+const EPS_X1_H_OUT: f64 = 1e-13;
+
 /// Holds the data generated at an accepted step or during the dense output
 #[derive(Clone, Debug, Deserialize)]
 pub struct OutData {
@@ -389,7 +394,7 @@ impl<'a, A> Output<'a, A> {
         if self.with_dense_output() {
             if let Some(h_out) = self.dense_h_out {
                 // uniform spacing
-                let n = usize::max(2, ((x1 - x0) / h_out) as usize + 1); // at least 2 (first and last) are required
+                let n = usize::max(2, ((x1 + EPS_X1_H_OUT - x0) / h_out) as usize + 1); // at least 2 (first and last) are required
                 if self.dense_x.len() != n {
                     self.dense_x.resize(n, 0.0);
                 }
@@ -792,6 +797,12 @@ mod tests {
             &[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0],
             1e-15,
         );
+
+        // with x1 nearly equal to 0.5
+        let x1 = 0.4999999999999;
+        out.set_dense_h_out(0.1).unwrap();
+        out.initialize(0.0, x1, false).unwrap();
+        array_approx_eq(&out.dense_x, &[0.0, 0.1, 0.2, 0.3, 0.4, x1], 1e-15);
 
         // with empty x_out
         out.set_dense_x_out(&[]).unwrap();

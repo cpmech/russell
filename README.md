@@ -192,6 +192,8 @@ bash zscripts/compile-and-install-suitesparse.bash mkl
 bash zscripts/compile-and-install-mumps.bash mkl
 ```
 
+**Warning:** We need to further investigate why the nightly Rust version (1.83) fails to link with Intel MKL on Ubuntu 24.04.1 LTS. The stable version (1.81) works just fine.
+
 ### Number of threads
 
 By default, OpenBLAS will use all available threads, including Hyper-Threads that may worsen the performance. Thus, it is recommended to set the following environment variable:

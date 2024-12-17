@@ -20,6 +20,10 @@
 //! * [matvec] -- Functions operating on matrices and vectors
 //! * [vector] -- Vector struct and associated functions
 //!
+//! Other functionality may be found in external crates, for instance:
+//!
+//! * [lambert_w](https://github.com/JSorngard/lambert_w) -- Computes the [Lambert W function](https://mathworld.wolfram.com/LambertW-Function.html)
+//!
 //! ## Linear algebra
 //!
 //! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.

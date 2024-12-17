@@ -11,6 +11,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 - [Introduction](#introduction)
   - [Documentation](#documentation)
+  - [External crates](#external-crates)
 - [Installation](#installation)
   - [Setting Cargo.toml up](#setting-cargotoml-up)
   - [Optional features](#optional-features)
@@ -73,6 +74,12 @@ There are many functions for linear algebra, such as (for Real and Complex types
 ### Documentation
 
 * [![documentation](https://docs.rs/russell_lab/badge.svg)](https://docs.rs/russell_lab/) — [russell_lab documentation](https://docs.rs/russell_lab/)
+
+### External crates
+
+A few other third-party crates related to numerical mathematics and associated disciplines are listed below:
+
+* [lambert_w](https://github.com/JSorngard/lambert_w) — Computes the [Lambert W function](https://mathworld.wolfram.com/LambertW-Function.html)
 
 
 

@@ -407,4 +407,22 @@ mod tests {
         let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
         mat_approx_eq(&a_ai_a, &a_copy, 1e-13);
     }
+
+    #[test]
+    fn mat_pseudo_inverse_1x4_works() {
+        #[rustfmt::skip]
+        let data = [
+            [0.25, 0.25, 0.25, 0.25],
+        ];
+        let mut a = Matrix::from(&data);
+        let (m, n) = a.dims();
+        let mut ai = Matrix::new(n, m);
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
+        let a_copy = Matrix::from(&data);
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        mat_approx_eq(&a_ai_a, &a_copy, 1e-13);
+
+        let ai_correct = Matrix::from(&[[1.0], [1.0], [1.0], [1.0]]);
+        mat_approx_eq(&ai, &ai_correct, 1e-13);
+    }
 }

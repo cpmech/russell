@@ -126,7 +126,7 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &mut Matrix) -> Result<(), StrErro
 #[cfg(test)]
 mod tests {
     use super::{mat_pseudo_inverse, Matrix};
-    use crate::mat_approx_eq;
+    use crate::{mat_approx_eq, mat_inverse, mat_mat_mul};
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
@@ -424,5 +424,58 @@ mod tests {
 
         let ai_correct = Matrix::from(&[[1.0], [1.0], [1.0], [1.0]]);
         mat_approx_eq(&ai, &ai_correct, 1e-13);
+    }
+
+    #[test]
+    fn mat_pseudo_inverse_3x2_works() {
+        #[rustfmt::skip]
+        let data = [
+            [ 1.0,  2.0],
+            [ 3.0, -4.0],
+            [ 5.0,  6.0],
+        ];
+        let mut a = Matrix::from(&data);
+        let (m, n) = a.dims();
+        let mut ai = Matrix::new(n, m);
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
+        let a_copy = Matrix::from(&data);
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        mat_approx_eq(&a_ai_a, &a_copy, 1e-13);
+
+        // A⁺ = (Aᵀ A)⁻¹ Aᵀ
+        let at = a_copy.transposed(); // (n,m)
+        let mut at_a = Matrix::new(n, n);
+        let mut at_a_inv = Matrix::new(n, n);
+        let mut at_a_inv_at = Matrix::new(n, m);
+        mat_mat_mul(&mut at_a, 1.0, &at, &a_copy, 0.0).unwrap();
+        mat_inverse(&mut at_a_inv, &at_a).unwrap();
+        mat_mat_mul(&mut at_a_inv_at, 1.0, &at_a_inv, &at, 0.0).unwrap();
+        mat_approx_eq(&ai, &at_a_inv_at, 1e-14);
+    }
+
+    #[test]
+    fn mat_pseudo_inverse_2x3_works() {
+        #[rustfmt::skip]
+        let data = [
+            [ 1.0,  2.0, -5.0],
+            [ 3.0, -4.0,  3.0],
+        ];
+        let mut a = Matrix::from(&data);
+        let (m, n) = a.dims();
+        let mut ai = Matrix::new(n, m);
+        mat_pseudo_inverse(&mut ai, &mut a).unwrap();
+        let a_copy = Matrix::from(&data);
+        let a_ai_a = get_a_times_ai_times_a(&a_copy, &ai);
+        mat_approx_eq(&a_ai_a, &a_copy, 1e-13);
+
+        // A⁺ = Aᵀ (A Aᵀ)⁻¹
+        let at = a_copy.transposed(); // (n,m)
+        let mut a_at = Matrix::new(m, m);
+        let mut a_at_inv = Matrix::new(m, m);
+        let mut at_a_at_inv = Matrix::new(n, m);
+        mat_mat_mul(&mut a_at, 1.0, &a_copy, &at, 0.0).unwrap();
+        mat_inverse(&mut a_at_inv, &a_at).unwrap();
+        mat_mat_mul(&mut at_a_at_inv, 1.0, &at, &a_at_inv, 0.0).unwrap();
+        mat_approx_eq(&ai, &at_a_at_inv, 1e-14);
     }
 }

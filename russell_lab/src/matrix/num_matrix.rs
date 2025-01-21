@@ -903,6 +903,8 @@ where
 
     /// Returns this matrix transposed
     ///
+    /// Returns `Aᵀ`
+    ///
     /// # Examples
     ///
     /// ```

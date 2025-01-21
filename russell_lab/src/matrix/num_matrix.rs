@@ -900,6 +900,38 @@ where
         }
         res
     }
+
+    /// Returns this matrix transposed
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use russell_lab::NumMatrix;
+    /// let a = NumMatrix::<f64>::from(&[
+    ///     [1.0, 2.0, 3.0, 4.0],
+    ///     [5.0, 6.0, 7.0, 8.0],
+    /// ]);
+    /// let tt = a.transposed();
+    /// assert_eq!(
+    ///     format!("{}", tt),
+    ///     "┌     ┐\n\
+    ///      │ 1 5 │\n\
+    ///      │ 2 6 │\n\
+    ///      │ 3 7 │\n\
+    ///      │ 4 8 │\n\
+    ///      └     ┘"
+    /// );
+    /// ```
+    pub fn transposed(&self) -> Self {
+        let (m, n) = (self.nrow, self.ncol);
+        let mut tt = NumMatrix::new(n, m);
+        for i in 0..m {
+            for j in 0..n {
+                tt.data[j + i * n] = self.data[i + j * m];
+            }
+        }
+        tt
+    }
 }
 
 impl<T> fmt::Display for NumMatrix<T>
@@ -1383,6 +1415,58 @@ mod tests {
         let second_column = a.extract_column(1);
         assert_eq!(first_column, [1.0, 2.0, 3.0, 4.0]);
         assert_eq!(second_column, [5.0, 6.0, 7.0, 8.0]);
+    }
+
+    #[test]
+    fn transposed_works() {
+        // nrow < ncol
+        #[rustfmt::skip]
+        let a = NumMatrix::<f64>::from(&[
+            [1.0, 2.0, 3.0, 4.0],
+            [5.0, 6.0, 7.0, 8.0],
+        ]);
+        let tt = a.transposed();
+        assert_eq!(
+            format!("{}", tt),
+            "┌     ┐\n\
+             │ 1 5 │\n\
+             │ 2 6 │\n\
+             │ 3 7 │\n\
+             │ 4 8 │\n\
+             └     ┘"
+        );
+        // nrow = ncol
+        #[rustfmt::skip]
+        let a = NumMatrix::<f64>::from(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]);
+        let tt = a.transposed();
+        assert_eq!(
+            format!("{}", tt),
+            "┌       ┐\n\
+             │ 1 4 7 │\n\
+             │ 2 5 8 │\n\
+             │ 3 6 9 │\n\
+             └       ┘"
+        );
+        // nrow > ncol
+        #[rustfmt::skip]
+        let a = NumMatrix::<f64>::from(&[
+            [1.0, 5.0],
+            [2.0, 6.0],
+            [3.0, 7.0],
+            [4.0, 8.0],
+        ]);
+        let tt = a.transposed();
+        assert_eq!(
+            format!("{}", tt),
+            "┌         ┐\n\
+             │ 1 2 3 4 │\n\
+             │ 5 6 7 8 │\n\
+             └         ┘"
+        );
     }
 
     #[test]

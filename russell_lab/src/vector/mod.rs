@@ -21,6 +21,7 @@ mod vec_max_scaled;
 mod vec_norm;
 mod vec_rms_scaled;
 mod vec_scale;
+mod vec_to_static_array;
 mod vec_update;
 
 pub use aliases::*;
@@ -44,4 +45,5 @@ pub use vec_max_scaled::*;
 pub use vec_norm::*;
 pub use vec_rms_scaled::*;
 pub use vec_scale::*;
+pub use vec_to_static_array::*;
 pub use vec_update::*;

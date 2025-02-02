@@ -2,7 +2,7 @@ use crate::{AsMatrix3x3, Mandel, StrError};
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
-use russell_lab::{Matrix, Vector};
+use russell_lab::{sort3, Matrix, Vector};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -1508,6 +1508,17 @@ impl Tensor2 {
             dev.vec[7] = self.vec[7];
             dev.vec[8] = self.vec[8];
         }
+        let new_trace_s = dev.vec[0] + dev.vec[1] + dev.vec[2];
+        if f64::abs(new_trace_s) > 1e-10 {
+            // fix error due to large magnitudes
+            let mut v = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
+            sort3(&mut v);
+            let d = f64::max(1.0, v.2);
+            let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
+            dev.vec[0] = (self.vec[0] / d - m) * d;
+            dev.vec[1] = (self.vec[1] / d - m) * d;
+            dev.vec[2] = (self.vec[2] / d - m) * d;
+        }
     }
 
     /// Calculates the norm of the deviator tensor
@@ -2753,8 +2764,8 @@ mod tests {
         let mut a = Tensor2::new(Mandel::General);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
-            [1.0, 3.0, 1.0], 
-            [2.0, 2.0, 2.0], 
+            [1.0, 3.0, 1.0],
+            [2.0, 2.0, 2.0],
             [3.0, 1.0, 3.0],
         ],
         Mandel::General).unwrap();
@@ -3668,5 +3679,21 @@ mod tests {
         approx_eq(tt.vec[1], 0.0, 1e-15);
         approx_eq(tt.vec[2], 3.0, 1e-15);
         assert_eq!(tt.vec[3], 0.0);
+    }
+
+    #[test]
+    fn deviator_with_large_numbers_works() {
+        let tt = Tensor2::from_matrix(
+            &[
+                [-531906.3158661836, -459.8093541033259, 0.0],
+                [-459.8093541033259, -531567.8289754189, 0.0],
+                [0.0, 0.0, -531737.0724207585],
+            ],
+            Mandel::Symmetric2D,
+        )
+        .unwrap();
+        let mut ss = Tensor2::new_sym(true);
+        tt.deviator(&mut ss);
+        approx_eq(ss.trace(), 0.0, 1e-14);
     }
 }

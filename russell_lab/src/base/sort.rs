@@ -103,11 +103,63 @@ pub fn argsort_f64(data: &[f64]) -> Vec<usize> {
     sorted_indices
 }
 
+/// Returns the indices that would sort three f64 arrays in ascending order
+///
+/// The function sorts primarily by `x`, then by `y`, and finally by `z`.
+/// All input vectors must have the same length.
+///
+/// **Warning:** The NaN values are considered equal in this function, i.e., they
+/// are not handled well enough and **care should be taken** if NaNs are expected.
+///
+/// # Arguments
+///
+/// * `x` -- first vector to sort by
+/// * `y` -- second vector to sort by when `x` values are equal
+/// * `z` -- third vector to sort by when both `x` and `y` values are equal
+///
+/// # Returns
+///
+/// A vector of indices that would sort the input vectors
+///
+/// # Panics
+///
+/// Panics if the input vectors have different lengths
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::argsort3_f64;
+///
+/// let x = vec![3.0, 1.0, 2.0];
+/// let y = vec![1.0, 2.0, 1.0];
+/// let z = vec![5.0, 4.0, 3.0];
+///
+/// let sorted_indices = argsort3_f64(&x, &y, &z);
+/// assert_eq!(sorted_indices, vec![1, 2, 0]);
+/// ```
+pub fn argsort3_f64(x: &[f64], y: &[f64], z: &[f64]) -> Vec<usize> {
+    assert!(
+        x.len() == y.len() && y.len() == z.len(),
+        "vectors must have equal length"
+    );
+
+    let mut indices: Vec<usize> = (0..x.len()).collect();
+
+    indices.sort_by(|&a, &b| {
+        x[a].partial_cmp(&x[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(y[a].partial_cmp(&y[b]).unwrap_or(std::cmp::Ordering::Equal))
+            .then(z[a].partial_cmp(&z[b]).unwrap_or(std::cmp::Ordering::Equal))
+    });
+
+    indices
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{argsort_f64, sort2, sort3, sort4};
+    use super::{argsort3_f64, argsort_f64, sort2, sort3, sort4};
 
     #[test]
     fn sort2_works() {
@@ -196,5 +248,55 @@ mod tests {
 
         let data = [3.0, 1.0, f64::NAN, 8.0, f64::NAN];
         assert_eq!(argsort_f64(&data), &[1, 0, 3, 2, 4]);
+    }
+
+    #[test]
+    fn argsort3_f64_works_basic() {
+        let x = vec![3.0, 1.0, 2.0, 1.0];
+        let y = vec![1.0, 2.0, 1.0, 3.0];
+        let z = vec![5.0, 4.0, 3.0, 2.0];
+
+        let sorted_indices = argsort3_f64(&x, &y, &z);
+        assert_eq!(sorted_indices, vec![1, 3, 2, 0]);
+    }
+
+    #[test]
+    fn argsort3_f64_works_equal_x() {
+        let x = vec![1.0, 1.0, 1.0];
+        let y = vec![3.0, 2.0, 1.0];
+        let z = vec![1.0, 2.0, 3.0];
+
+        let sorted_indices = argsort3_f64(&x, &y, &z);
+        assert_eq!(sorted_indices, vec![2, 1, 0]);
+    }
+
+    #[test]
+    fn argsort3_f64_works_equal_x_y() {
+        let x = vec![1.0, 1.0, 1.0];
+        let y = vec![2.0, 2.0, 2.0];
+        let z = vec![3.0, 1.0, 2.0];
+
+        let sorted_indices = argsort3_f64(&x, &y, &z);
+        assert_eq!(sorted_indices, vec![1, 2, 0]);
+    }
+
+    #[test]
+    fn argsort3_f64_works_single_element() {
+        let x = vec![1.0];
+        let y = vec![2.0];
+        let z = vec![3.0];
+
+        let sorted_indices = argsort3_f64(&x, &y, &z);
+        assert_eq!(sorted_indices, vec![0]);
+    }
+
+    #[test]
+    #[should_panic(expected = "vectors must have equal length")]
+    fn argsort3_f64_works_different_lengths() {
+        let x = vec![1.0, 2.0];
+        let y = vec![1.0];
+        let z = vec![1.0];
+
+        argsort3_f64(&x, &y, &z);
     }
 }

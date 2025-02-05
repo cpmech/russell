@@ -193,5 +193,8 @@ mod tests {
 
         let data = [3.0, 1.0, f64::NAN, 8.0, -5.0];
         assert_eq!(argsort_f64(&data), &[4, 1, 0, 3, 2]);
+
+        let data = [3.0, 1.0, f64::NAN, 8.0, f64::NAN];
+        assert_eq!(argsort_f64(&data), &[1, 0, 3, 2, 4]);
     }
 }

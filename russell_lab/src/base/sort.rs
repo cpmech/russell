@@ -81,32 +81,40 @@ where
     }
 }
 
-/// Returns the indices that would sort an array of f64
+/// Returns the indices that would sort a f64 array in ascending order
 ///
-/// **Note:** NaN values are handled such that they will be placed at the end of the array.
+/// **Warning:** The NaN values are considered equal in this function, i.e., they
+/// are not handled well enough and **care should be taken** if NaNs are expected.
+///
+/// # Arguments
+///
+/// * `data` -- vector to sort
+///
+/// # Returns
+///
+/// A vector of indices that would sort the input vector
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::argsort_f64;
+///
+/// let data = [3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0, 5.0, 3.0];
+/// assert_eq!(argsort_f64(&data), &[1, 3, 6, 0, 9, 2, 4, 8, 7, 5]);
+/// ```
 pub fn argsort_f64(data: &[f64]) -> Vec<usize> {
-    // create a vector of (index, value) pairs
-    let mut indexed_data: Vec<_> = data.iter().enumerate().collect();
-
-    // sort the pairs by the value, handling NaN values
-    indexed_data.sort_by(|a, b| {
-        match (a.1.is_nan(), b.1.is_nan()) {
-            (true, true) => std::cmp::Ordering::Equal,    // both are NaN
-            (true, false) => std::cmp::Ordering::Greater, // place NaN after
-            (false, true) => std::cmp::Ordering::Less,    // place NaN before
-            _ => a.1.partial_cmp(b.1).unwrap(),           // compare normally
-        }
-    });
-
-    // extract and return the indices from the sorted pairs
-    let sorted_indices = indexed_data.iter().map(|(idx, _)| *idx).collect();
-    sorted_indices
+    let mut indices: Vec<usize> = (0..data.len()).collect();
+    indices.sort_by(|&i, &j| data[i].partial_cmp(&data[j]).unwrap_or(std::cmp::Ordering::Equal));
+    indices
 }
 
 /// Returns the indices that would sort two f64 arrays in ascending order
 ///
 /// The function sorts primarily by `x`, then by `y`.
 /// Both input vectors must have the same length.
+///
+/// **Warning:** The NaN values are considered equal in this function, i.e., they
+/// are not handled well enough and **care should be taken** if NaNs are expected.
 ///
 /// # Arguments
 ///
@@ -283,11 +291,8 @@ mod tests {
         let data = [3.0, 1.0, 4.0, 1.0, 5.0, 9.0, 2.0, 6.0, 5.0, 3.0];
         assert_eq!(argsort_f64(&data), &[1, 3, 6, 0, 9, 2, 4, 8, 7, 5]);
 
-        let data = [3.0, 1.0, f64::NAN, 8.0, -5.0];
-        assert_eq!(argsort_f64(&data), &[4, 1, 0, 3, 2]);
-
-        let data = [3.0, 1.0, f64::NAN, 8.0, f64::NAN];
-        assert_eq!(argsort_f64(&data), &[1, 0, 3, 2, 4]);
+        let data = [3.0, 1.0, 8.0, -5.0];
+        assert_eq!(argsort_f64(&data), &[3, 1, 0, 2]);
     }
 
     #[test]

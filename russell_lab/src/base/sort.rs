@@ -376,6 +376,16 @@ mod tests {
     }
 
     #[test]
+    fn argsort2_f64_works_equal_x_y() {
+        let y = vec![2.0, 2.0, 2.0];
+        let x = vec![2.0, 2.0, 2.0];
+        let tol = [1e-9, 1e-9];
+
+        let sorted_indices = argsort2_f64(&y, &x, &tol);
+        assert_eq!(sorted_indices, vec![0, 1, 2]);
+    }
+
+    #[test]
     fn argsort2_f64_works_single_element() {
         let y = vec![1.0];
         let x = vec![2.0];
@@ -436,6 +446,17 @@ mod tests {
 
         let sorted_indices = argsort3_f64(&x, &y, &z, &tol);
         assert_eq!(sorted_indices, vec![1, 2, 0]);
+    }
+
+    #[test]
+    fn argsort3_f64_works_equal_x_y_z() {
+        let x = vec![1.0, 1.0, 1.0];
+        let y = vec![2.0, 2.0, 2.0];
+        let z = vec![3.0, 3.0, 3.0];
+        let tol = [1e-9, 1e-9, 1e-9];
+
+        let sorted_indices = argsort3_f64(&x, &y, &z, &tol);
+        assert_eq!(sorted_indices, vec![0, 1, 2]);
     }
 
     #[test]

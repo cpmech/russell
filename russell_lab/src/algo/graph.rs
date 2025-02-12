@@ -535,7 +535,7 @@ mod tests {
     use crate::read_table;
     use std::collections::HashMap;
 
-    const SAVE_FIGURE: bool = false;
+    const SAVE_FIGURE: bool = true;
 
     #[test]
     #[should_panic(expected = "index out of bounds: the len is 0 but the index is 0")]
@@ -598,6 +598,16 @@ mod tests {
 
         assert_eq!(graph.path(0, 3).unwrap(), &[0, 1, 3]);
         assert_eq!(graph.path(3, 0).unwrap(), &[3, 1, 0]);
+    }
+
+    #[test]
+    fn path_captures_missing_shortest_paths_calculation() {
+        let edges = [[0, 1], [1, 2]];
+        let graph = Graph::new(&edges);
+        assert_eq!(
+            graph.path(0, 1).err(),
+            Some("a path finding algorithm (e.g., shortest_paths_fw) must be called first")
+        );
     }
 
     #[test]

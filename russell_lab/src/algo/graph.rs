@@ -535,7 +535,7 @@ mod tests {
     use crate::read_table;
     use std::collections::HashMap;
 
-    const SAVE_FIGURE: bool = true;
+    const SAVE_FIGURE: bool = false;
 
     #[test]
     #[should_panic(expected = "index out of bounds: the len is 0 but the index is 0")]

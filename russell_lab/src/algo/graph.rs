@@ -156,31 +156,50 @@ impl Graph {
         self.shares.len()
     }
 
-    /// Computes all-pairs shortest paths using Floyd-Warshall algorithm
+    /// Computes the shortest paths using the Floyd-Warshall algorithm
     ///
-    /// # Algorithm
-    /// - Time complexity: O(n³) where n is number of nodes
-    /// - Space complexity: O(n²)
-    /// - Handles negative edge weights (but no negative cycles)
-    /// - Computes shortest paths between all pairs of nodes
+    /// An example of a graph with weights:
     ///
-    /// # Example
-    /// ```
-    /// use russell_lab::algo::Graph;
-    /// 
-    /// let edges = [[0, 1], [1, 2], [2, 3]];
-    /// let mut graph = Graph::new(&edges);
-    /// graph.set_weight(0, 5.0).set_weight(1, 3.0).set_weight(2, 1.0);
-    /// 
-    /// graph.shortest_paths_fw();
-    /// 
-    /// // Get shortest path from node 0 to 3
-    /// let path = graph.path(0, 3).unwrap();
-    /// assert_eq!(path, &[0, 1, 2, 3]);
+    /// ```text
+    ///          $10
+    ///    0 ––––––––––→ 3
+    ///    │      1      ↑
+    ///    │             │
+    /// $5 │ 0         3 │ $1
+    ///    │             │
+    ///    ↓      2      |
+    ///    1 ––––––––––→ 2
+    ///          $3
+    ///
+    /// the weights are indicated by the dollar sign
     /// ```
     ///
-    /// # Panics
-    /// Panics if graph contains negative cycles
+    /// The initial distance matrix is:
+    ///
+    /// ```text
+    /// j=   0  1  2  3
+    ///   ┌             ┐ i=
+    ///   │  0  5  ∞ 10 │  0  ⇒  w(0→1)=5, w(0→3)=10
+    ///   │  ∞  0  3  ∞ │  1  ⇒  w(1→2)=3
+    ///   │  ∞  ∞  0  1 │  2  ⇒  w(2→3)=1
+    ///   │  ∞  ∞  ∞  0 │  3
+    ///   └             ┘
+    /// ∞ means that there are no connections from i to j
+    /// i,j are node indices
+    /// ```
+    ///
+    /// The final distance matrix is:
+    ///
+    /// ```text
+    /// ┌         ┐
+    /// │ 0 5 8 9 │
+    /// │ ∞ 0 3 4 │
+    /// │ ∞ ∞ 0 1 │
+    /// │ ∞ ∞ ∞ 0 │
+    /// └         ┘
+    /// ```
+    ///
+    /// See, e.g., <https://algorithms.discrete.ma.tum.de/graph-algorithms/spp-floyd-warshall/index_en.html>
     pub fn shortest_paths_fw(&mut self) {
         self.calc_dist_and_next();
         let nnode = self.dist.nrow();

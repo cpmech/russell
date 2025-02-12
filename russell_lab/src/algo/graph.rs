@@ -457,7 +457,7 @@ mod tests {
     const SAVE_FIGURE: bool = false;
 
     #[test]
-    fn new_works_1() {
+    fn new_works() {
         //  0 ––––––––––→ 3
         //  │      1      ↑
         //  │             │
@@ -507,7 +507,7 @@ mod tests {
     }
 
     #[test]
-    fn shortest_paths_fw_works_1() {
+    fn shortest_paths_fw_works_4nodes_no_weights() {
         //  0 ––––––––––→ 3
         //  │      1      ↑
         //  │             │
@@ -559,7 +559,7 @@ mod tests {
     }
 
     #[test]
-    fn shortest_paths_fw_works_2() {
+    fn shortest_paths_fw_works_4nodes() {
         //          $10
         //    0 ––––––––––→ 3
         //    │      1      ↑
@@ -665,7 +665,7 @@ mod tests {
     }
 
     #[test]
-    fn shortest_paths_fw_works_3() {
+    fn shortest_paths_fw_works_6nodes() {
         //              $3
         //      4 ––––––––––––––→ 5 .  6
         //      ↑        0        │  `. $4
@@ -779,7 +779,7 @@ mod tests {
     }
 
     #[test]
-    fn shortest_paths_fw_works_4() {
+    fn shortest_paths_fw_works_sioux_falls() {
         // read the graph
         let table: HashMap<String, Vec<f64>> =
             read_table("data/tables/SiouxFalls.flow", Some(&["from", "to", "cap", "cost"])).unwrap();

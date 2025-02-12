@@ -21,7 +21,7 @@ use std::{collections::HashMap, vec};
 /// # Example
 /// ```
 /// use russell_lab::algo::Graph;
-/// 
+///
 /// // Create graph with 4 nodes and 4 edges
 /// let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
 /// let mut graph = Graph::new(&edges);
@@ -89,7 +89,7 @@ impl Graph {
     /// # Example
     /// ```
     /// use russell_lab::algo::Graph;
-    /// 
+    ///
     /// // Create graph with 3 nodes and 2 edges
     /// let edges = [[0, 1], [1, 2]];
     /// let graph = Graph::new(&edges);
@@ -133,7 +133,7 @@ impl Graph {
     /// # Example
     /// ```
     /// use russell_lab::algo::Graph;
-    /// 
+    ///
     /// let edges = [[0, 1], [1, 2]];
     /// let mut graph = Graph::new(&edges);
     /// graph.set_weight(0, 5.0);  // Set weight of edge 0 to 5.0
@@ -156,7 +156,9 @@ impl Graph {
         self.shares.len()
     }
 
-    /// Computes the shortest paths using the Floyd-Warshall algorithm
+    /// Computes all-pairs shortest paths using Floyd-Warshall algorithm
+    ///
+    /// This function computes shortest paths between all pairs of nodes using the Floyd-Warshall algorithm
     ///
     /// An example of a graph with weights:
     ///
@@ -200,6 +202,24 @@ impl Graph {
     /// ```
     ///
     /// See, e.g., <https://algorithms.discrete.ma.tum.de/graph-algorithms/spp-floyd-warshall/index_en.html>
+    ///
+    /// The complexity of the algorithm is O(n³) where n is number of nodes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::algo::Graph;
+    ///
+    /// let edges = [[0, 1], [1, 2], [2, 3]];
+    /// let mut graph = Graph::new(&edges);
+    /// graph.set_weight(0, 5.0).set_weight(1, 3.0).set_weight(2, 1.0);
+    ///
+    /// graph.shortest_paths_fw();
+    ///
+    /// // Get shortest path from node 0 to 3
+    /// let path = graph.path(0, 3).unwrap();
+    /// assert_eq!(path, &[0, 1, 2, 3]);
+    /// ```
     pub fn shortest_paths_fw(&mut self) {
         self.calc_dist_and_next();
         let nnode = self.dist.nrow();

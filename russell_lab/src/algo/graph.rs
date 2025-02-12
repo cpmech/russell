@@ -1,5 +1,6 @@
 use crate::{AsArray2D, StrError};
 use crate::{Matrix, NumMatrix};
+use plotpy::{Canvas, Plot, Text};
 use std::cmp;
 use std::fmt::Write;
 use std::{collections::HashMap, vec};
@@ -33,7 +34,10 @@ pub struct Graph {
     /// needed to calculate the distances.
     ///
     /// Size: 0 or (nnode, ndim)
-    coordinates: Vec<Vec<f64>>,
+    coords: Vec<Vec<f64>>,
+
+    /// Specifies that the distances are based on coordinates
+    coords_based_dist: bool,
 
     /// Holds the distances (is the distance matrix)
     ///
@@ -76,7 +80,8 @@ impl Graph {
             edges: NumMatrix::from(edges),
             weights: vec![1.0; nedge],
             shares,
-            coordinates: Vec::new(),
+            coords: Vec::new(),
+            coords_based_dist: false,
             dist: Matrix::new(nnode, nnode),
             next: NumMatrix::new(nnode, nnode),
             ready_path: false,
@@ -98,21 +103,24 @@ impl Graph {
     }
 
     /// Sets the coordinates of a node
-    pub fn set_node_coordinates(&mut self, node: usize, coordinates: &[f64]) -> &mut Self {
+    pub fn set_coords(&mut self, node: usize, coordinates: &[f64]) -> &mut Self {
         let ndim = coordinates.len();
-        if self.coordinates.is_empty() {
+        if self.coords.is_empty() {
             let nnode = self.shares.len();
-            self.coordinates = vec![vec![0.0; ndim]; nnode];
+            self.coords = vec![vec![0.0; ndim]; nnode];
         } else {
-            assert_eq!(
-                self.coordinates[0].len(),
-                ndim,
-                "coordinates must have the same dimension"
-            );
+            assert_eq!(self.coords[0].len(), ndim, "coordinates must have the same dimension");
         }
         for i in 0..ndim {
-            self.coordinates[node][i] = coordinates[i];
+            self.coords[node][i] = coordinates[i];
         }
+        self.ready_path = false;
+        self
+    }
+
+    /// Activates the use of node coordinates to calculate distances
+    pub fn set_coords_based_dist(&mut self, value: bool) -> &mut Self {
+        self.coords_based_dist = value;
         self.ready_path = false;
         self
     }
@@ -225,10 +233,11 @@ impl Graph {
             let mut d = 1.0;
 
             // compute Euclidean distance if vertex coordinates are provided
-            if self.coordinates.len() == nnode {
+            // and the coords_based_dist flag is true
+            if self.coords_based_dist && self.coords.len() == nnode {
                 d = 0.0;
-                let xa = &self.coordinates[i];
-                let xb = &self.coordinates[j];
+                let xa = &self.coords[i];
+                let xb = &self.coords[j];
                 for dim in 0..xa.len() {
                     d += (xa[dim] - xb[dim]).powi(2);
                 }
@@ -311,11 +320,142 @@ impl Graph {
         write!(&mut buf, "└{:1$}┘", " ", width * ncol + 1).unwrap();
         buf
     }
+
+    /// Draws the graph
+    pub fn draw(
+        &self,
+        full_path: &str,
+        labels_n: HashMap<usize, String>,
+        labels_e: HashMap<usize, String>,
+    ) -> Result<(), StrError> {
+        // check
+        if self.coords.is_empty() {
+            return Err("vertices coordinates are required to draw graph");
+        }
+
+        // drawing objects
+        let mut txt1 = Text::new();
+        txt1.set_color("#d70d0d")
+            .set_fontsize(8.0)
+            .set_align_vertical("center")
+            .set_align_horizontal("center");
+        let mut txt2 = Text::new();
+        txt2.set_color("#2732c6")
+            .set_fontsize(7.0)
+            .set_align_vertical("center")
+            .set_align_horizontal("center");
+        let mut canvas1 = Canvas::new();
+        canvas1
+            .set_face_color("none")
+            .set_edge_color("black")
+            .set_line_width(0.8);
+        let mut canvas2 = Canvas::new();
+        canvas2.set_arrow_style("->").set_arrow_scale(12.0);
+
+        // constants
+        let mut width = 0.15;
+        let radius = 0.25;
+        let gap = 0.12;
+
+        // draw nodes and find limits
+        let mut xmin = self.coords[0][0];
+        let mut ymin = self.coords[0][1];
+        let mut xmax = xmin;
+        let mut ymax = ymin;
+        let nnode = self.coords.len();
+        for i in 0..nnode {
+            let (x, y) = (self.coords[i][0], self.coords[i][1]);
+
+            // plot vertex label
+            let lbl = if labels_n.contains_key(&i) {
+                labels_n.get(&i).unwrap()
+            } else {
+                &format!("{}", i)
+            };
+            txt1.draw(x, y, lbl);
+
+            // plot vertex circle with partition color if available
+            canvas1.draw_circle(x, y, radius);
+
+            // update limits
+            xmin = xmin.min(x);
+            xmax = xmax.max(x);
+            ymin = ymin.min(y);
+            ymax = ymax.max(y);
+        }
+
+        // distance between edges
+        if width > 2.0 * radius {
+            width = 1.8 * radius;
+        }
+        let w = width / 2.0;
+        let l = f64::sqrt(radius * radius - w * w);
+
+        // draw edges
+        let mut xa = [0.0; 2];
+        let mut xb = [0.0; 2];
+        let mut xc = [0.0; 2];
+        let mut dx = [0.0; 2];
+        let mut mu = [0.0; 2];
+        let mut nu = [0.0; 2];
+        let mut xi = [0.0; 2];
+        let mut xj = [0.0; 2];
+        let nedge = self.edges.nrow();
+        for k in 0..nedge {
+            let mut ll = 0.0;
+            for i in 0..2 {
+                xa[i] = self.coords[self.edges.get(k, 0)][i];
+                xb[i] = self.coords[self.edges.get(k, 1)][i];
+                xc[i] = (xa[i] + xb[i]) / 2.0;
+                dx[i] = xb[i] - xa[i];
+                ll += dx[i] * dx[i];
+            }
+            ll = ll.sqrt();
+            mu[0] = dx[0] / ll;
+            mu[1] = dx[1] / ll;
+            nu[0] = -dx[1] / ll;
+            nu[1] = dx[0] / ll;
+
+            for i in 0..2 {
+                xi[i] = xa[i] + l * mu[i] - w * nu[i];
+                xj[i] = xb[i] - l * mu[i] - w * nu[i];
+                xc[i] = (xi[i] + xj[i]) / 2.0 - gap * nu[i];
+            }
+
+            canvas2.draw_arrow(xi[0], xi[1], xj[0], xj[1]);
+            let lbl = if labels_e.contains_key(&k) {
+                labels_e.get(&k).unwrap()
+            } else {
+                &format!("{}", k)
+            };
+            txt2.draw(xc[0], xc[1], lbl);
+        }
+
+        // update range
+        xmin -= 1.2 * radius;
+        xmax += 1.2 * radius;
+        ymin -= 1.2 * radius;
+        ymax += 1.2 * radius;
+
+        // add objects to plot
+        let mut plot = Plot::new();
+        plot.set_range(xmin, xmax, ymin, ymax)
+            .set_equal_axes(true)
+            .add(&canvas1)
+            .add(&canvas2)
+            .add(&txt1)
+            .add(&txt2)
+            .set_hide_axes(true)
+            .set_figure_size_points(800.0, 800.0)
+            .save(full_path)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Graph;
+    use crate::read_table;
+    use std::collections::HashMap;
 
     #[test]
     fn new_works_1() {
@@ -356,7 +496,7 @@ mod tests {
         );
 
         // check coordinates
-        assert_eq!(graph.coordinates.len(), 0);
+        assert_eq!(graph.coords.len(), 0);
 
         // check 'dist'
         assert_eq!(graph.dist.dims(), (4, 4));
@@ -535,5 +675,98 @@ mod tests {
              │  ∞  ∞  7  4  ∞  0 │\n\
              └                   ┘"
         );
+    }
+
+    #[test]
+    fn draw_graph_works() {
+        //              *3
+        //      4 ––––––––––––––→ 5 . (6)
+        //      ↑       (0)       │  `. *4
+        //      │                 │    `.
+        //      │                 │      `v
+        //  *11 │(1)           *7 │(4)     3
+        //      |                 │     ,^
+        //      │                 │   ,' *9
+        //      │   (2)     (3)   ↓ ,' (5)
+        //      1 ←––––– 0 –––––→ 2
+        //           *6      *8
+        //
+        // numbers in parentheses indicate edge ids
+        // starred numbers indicate weights
+
+        // edge:       0       1       2       3       4       5       6
+        let edges = [[4, 5], [1, 4], [0, 1], [0, 2], [5, 2], [2, 3], [5, 3]];
+        let mut graph = Graph::new(&edges);
+        graph
+            .set_weight(0, 3.0)
+            .set_weight(1, 11.0)
+            .set_weight(2, 6.0)
+            .set_weight(3, 8.0)
+            .set_weight(4, 7.0)
+            .set_weight(5, 9.0)
+            .set_weight(6, 4.0);
+        graph
+            .set_coords(0, &[1.0, 0.0])
+            .set_coords(1, &[0.0, 0.0])
+            .set_coords(2, &[2.0, 0.0])
+            .set_coords(3, &[3.0, 1.0])
+            .set_coords(4, &[0.0, 2.0])
+            .set_coords(5, &[2.0, 2.0]);
+
+        graph
+            .draw("/tmp/russell/test_draw_graph_works.svg", HashMap::new(), HashMap::new())
+            .unwrap();
+    }
+
+    #[test]
+    fn draw_graph_works_2() {
+        // read the graph
+        let table: HashMap<String, Vec<f64>> =
+            read_table("data/tables/SiouxFalls.flow", Some(&["from", "to", "cap", "cost"])).unwrap();
+
+        // create the graph
+        let from = table.get("from").unwrap();
+        let to = table.get("to").unwrap();
+        let edges: Vec<_> = from
+            .iter()
+            .zip(to.iter())
+            .map(|(a, b)| vec![*a as usize - 1, *b as usize - 1])
+            .collect();
+        let mut graph = Graph::new(&edges);
+
+        // define the graph layout data
+        let columns = vec![
+            vec![0, 2, 11, 12],
+            vec![3, 10, 13, 22, 23],
+            vec![4, 8, 9, 14, 21, 20],
+            vec![1, 5, 7, 15, 16, 18, 19],
+            vec![6, 17],
+        ];
+        let y_coords = vec![
+            vec![7.0, 6.0, 4.0, 0.0],                // col0
+            vec![6.0, 4.0, 2.0, 1.0, 0.0],           // col1
+            vec![6.0, 5.0, 4.0, 2.0, 1.0, 0.0],      // col2
+            vec![7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 0.0], // col3
+            vec![5.0, 4.0],                          // col4
+        ];
+        let scale_x = 1.8;
+        let scale_y = 1.3;
+        let nv = 24;
+
+        // Create vertices coordinates
+        for (j, col) in columns.iter().enumerate() {
+            let x = j as f64 * scale_x;
+            for (i, &vid) in col.iter().enumerate() {
+                graph.set_coords(vid, &[x, y_coords[j][i] * scale_y]);
+            }
+        }
+
+        // Create edge and vertex labels
+        let ne = 76;
+        let edge_labels: HashMap<usize, String> = (0..ne).map(|i| (i, i.to_string())).collect();
+        let vertex_labels: HashMap<usize, String> = (0..nv).map(|i| (i, i.to_string())).collect();
+        graph
+            .draw("/tmp/russell/test_draw_graph_works_2.svg", vertex_labels, edge_labels)
+            .unwrap();
     }
 }

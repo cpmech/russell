@@ -5,11 +5,40 @@ use std::cmp;
 use std::fmt::Write;
 use std::{collections::HashMap, vec};
 
-/// Graph defines a (directed) graph structure
+/// Defines a directed graph structure with weighted edges
 ///
-/// Warning: The algorithms here are not as optimized as they could be.
-/// A specialized graph library certainly would provide better performance.
-/// Also, the matrix is not sparse, so it is not suitable for large graphs.
+/// The graph is represented using:
+/// - An edge list storing connections between nodes
+/// - A weight vector for edge weights
+/// - A distance matrix for shortest paths
+/// - A next-hop matrix for path reconstruction
+///
+/// # Performance Notes
+/// - Uses dense matrices, so best for small to medium graphs
+/// - Algorithms are not highly optimized - for large graphs consider a specialized library
+/// - Floyd-Warshall algorithm has O(n³) time complexity
+///
+/// # Example
+/// ```
+/// use russell_lab::algo::Graph;
+/// 
+/// // Create graph with 4 nodes and 4 edges
+/// let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
+/// let mut graph = Graph::new(&edges);
+///
+/// // Set edge weights
+/// graph.set_weight(0, 5.0)  // Edge 0: 0→1 with weight 5.0
+///     .set_weight(1, 10.0)  // Edge 1: 0→3 with weight 10.0
+///     .set_weight(2, 3.0)   // Edge 2: 1→2 with weight 3.0
+///     .set_weight(3, 1.0);  // Edge 3: 2→3 with weight 1.0
+///
+/// // Compute shortest paths
+/// graph.shortest_paths_fw();
+///
+/// // Get shortest path from node 0 to 3
+/// let path = graph.path(0, 3).unwrap();
+/// assert_eq!(path, &[0, 1, 2, 3]); // Path with total weight 9.0
+/// ```
 pub struct Graph {
     /// Holds all edges (connectivity)
     ///
@@ -48,10 +77,25 @@ pub struct Graph {
 }
 
 impl Graph {
-    /// Creates a new graph from a series of edges
+    /// Creates a new directed graph from an edge list
     ///
-    /// Each edge must contain two nodes or more, with the first two nodes
-    /// defining the edge and the others being ignored.
+    /// # Arguments
+    /// * `edges` - 2D array where each row defines an edge as [source, target]
+    ///             Additional nodes in each edge are ignored
+    ///
+    /// # Panics
+    /// Panics if edges have fewer than 2 nodes
+    ///
+    /// # Example
+    /// ```
+    /// use russell_lab::algo::Graph;
+    /// 
+    /// // Create graph with 3 nodes and 2 edges
+    /// let edges = [[0, 1], [1, 2]];
+    /// let graph = Graph::new(&edges);
+    /// assert_eq!(graph.get_nnode(), 3);
+    /// assert_eq!(graph.get_nedge(), 2);
+    /// ```
     pub fn new<'a, T>(edges: &'a T) -> Self
     where
         T: AsArray2D<'a, usize>,
@@ -77,11 +121,24 @@ impl Graph {
 
     /// Sets the weight of an edge
     ///
-    /// **Important**: The weight must be non-negative.
+    /// # Arguments
+    /// * `edge` - Index of the edge to set weight for
+    /// * `non_neg_value` - Non-negative weight value
     ///
     /// # Panics
+    /// Panics if:
+    /// - Edge index is out of bounds
+    /// - Weight is negative
     ///
-    /// This function may panic if the edge is out of bounds or the weight is negative.
+    /// # Example
+    /// ```
+    /// use russell_lab::algo::Graph;
+    /// 
+    /// let edges = [[0, 1], [1, 2]];
+    /// let mut graph = Graph::new(&edges);
+    /// graph.set_weight(0, 5.0);  // Set weight of edge 0 to 5.0
+    /// graph.set_weight(1, 3.0);  // Set weight of edge 1 to 3.0
+    /// ```
     pub fn set_weight(&mut self, edge: usize, non_neg_value: f64) -> &mut Self {
         assert!(non_neg_value >= 0.0, "edge weight must be ≥ 0");
         self.weights[edge] = non_neg_value;
@@ -99,50 +156,31 @@ impl Graph {
         self.shares.len()
     }
 
-    /// Computes the shortest paths using the Floyd-Warshall algorithm
+    /// Computes all-pairs shortest paths using Floyd-Warshall algorithm
     ///
-    /// An example of a graph with weights:
+    /// # Algorithm
+    /// - Time complexity: O(n³) where n is number of nodes
+    /// - Space complexity: O(n²)
+    /// - Handles negative edge weights (but no negative cycles)
+    /// - Computes shortest paths between all pairs of nodes
     ///
-    /// ```text
-    ///          $10
-    ///    0 ––––––––––→ 3
-    ///    │      1      ↑
-    ///    │             │
-    /// $5 │ 0         3 │ $1
-    ///    │             │
-    ///    ↓      2      |
-    ///    1 ––––––––––→ 2
-    ///          $3
-    ///
-    /// the weights are indicated by the dollar sign
+    /// # Example
+    /// ```
+    /// use russell_lab::algo::Graph;
+    /// 
+    /// let edges = [[0, 1], [1, 2], [2, 3]];
+    /// let mut graph = Graph::new(&edges);
+    /// graph.set_weight(0, 5.0).set_weight(1, 3.0).set_weight(2, 1.0);
+    /// 
+    /// graph.shortest_paths_fw();
+    /// 
+    /// // Get shortest path from node 0 to 3
+    /// let path = graph.path(0, 3).unwrap();
+    /// assert_eq!(path, &[0, 1, 2, 3]);
     /// ```
     ///
-    /// The initial distance matrix is:
-    ///
-    /// ```text
-    /// j=   0  1  2  3
-    ///   ┌             ┐ i=
-    ///   │  0  5  ∞ 10 │  0  ⇒  w(0→1)=5, w(0→3)=10
-    ///   │  ∞  0  3  ∞ │  1  ⇒  w(1→2)=3
-    ///   │  ∞  ∞  0  1 │  2  ⇒  w(2→3)=1
-    ///   │  ∞  ∞  ∞  0 │  3
-    ///   └             ┘
-    /// ∞ means that there are no connections from i to j
-    /// i,j are node indices
-    /// ```
-    ///
-    /// The final distance matrix is:
-    ///
-    /// ```text
-    /// ┌         ┐
-    /// │ 0 5 8 9 │
-    /// │ ∞ 0 3 4 │
-    /// │ ∞ ∞ 0 1 │
-    /// │ ∞ ∞ ∞ 0 │
-    /// └         ┘
-    /// ```
-    ///
-    /// See, e.g., <https://algorithms.discrete.ma.tum.de/graph-algorithms/spp-floyd-warshall/index_en.html>
+    /// # Panics
+    /// Panics if graph contains negative cycles
     pub fn shortest_paths_fw(&mut self) {
         self.calc_dist_and_next();
         let nnode = self.dist.nrow();

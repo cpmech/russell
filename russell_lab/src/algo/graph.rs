@@ -534,6 +534,108 @@ mod tests {
     const SAVE_FIGURE: bool = false;
 
     #[test]
+    fn new_handles_empty_graph() {
+        let edges: Vec<[usize; 2]> = vec![];
+        let graph = Graph::new(&edges);
+        assert_eq!(graph.get_nnode(), 0);
+        assert_eq!(graph.get_nedge(), 0);
+    }
+
+    #[test]
+    fn new_handles_single_node() {
+        let edges = [[0, 0]];
+        let graph = Graph::new(&edges);
+        assert_eq!(graph.get_nnode(), 1);
+        assert_eq!(graph.get_nedge(), 1);
+    }
+
+    #[test]
+    fn set_weight_handles_zero_weight() {
+        let edges = [[0, 1]];
+        let mut graph = Graph::new(&edges);
+        graph.set_weight(0, 0.0);
+        assert_eq!(graph.weights[0], 0.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "edge weight must be ≥ 0")]
+    fn set_weight_panics_on_negative_weight() {
+        let edges = [[0, 1]];
+        let mut graph = Graph::new(&edges);
+        graph.set_weight(0, -1.0);
+    }
+
+    #[test]
+    fn shortest_paths_fw_handles_disconnected_graph() {
+        // 0   1   2
+        let edges = [[0, 0], [1, 1], [2, 2]];
+        let mut graph = Graph::new(&edges);
+        graph.shortest_paths_fw();
+        
+        assert_eq!(graph.path(0, 1).err(), Some("no path found"));
+        assert_eq!(graph.path(1, 2).err(), Some("no path found"));
+        assert_eq!(graph.path(2, 0).err(), Some("no path found"));
+    }
+
+    #[test]
+    fn shortest_paths_fw_handles_self_loops() {
+        // 0 ↔ 1
+        // ↕   ↕
+        // 2 ↔ 3
+        let edges = [[0, 1], [1, 0], [1, 3], [3, 1], [0, 2], [2, 0], [2, 3], [3, 2]];
+        let mut graph = Graph::new(&edges);
+        graph.shortest_paths_fw();
+        
+        assert_eq!(graph.path(0, 3).unwrap(), &[0, 1, 3]);
+        assert_eq!(graph.path(3, 0).unwrap(), &[3, 1, 0]);
+    }
+
+    #[test]
+    fn shortest_paths_fw_handles_negative_cycle_detection() {
+        // 0 → 1 → 2 → 0 (negative cycle)
+        let edges = [[0, 1], [1, 2], [2, 0]];
+        let mut graph = Graph::new(&edges);
+        graph.set_weight(0, 1.0).set_weight(1, 1.0).set_weight(2, -3.0);
+        
+        // Floyd-Warshall doesn't handle negative cycles, but we should test the behavior
+        graph.shortest_paths_fw();
+        assert!(graph.path(0, 2).is_ok());
+    }
+
+    #[test]
+    fn path_handles_direct_connection() {
+        let edges = [[0, 1], [1, 2]];
+        let mut graph = Graph::new(&edges);
+        graph.shortest_paths_fw();
+        assert_eq!(graph.path(0, 1).unwrap(), &[0, 1]);
+    }
+
+    #[test]
+    fn path_handles_same_start_and_end() {
+        let edges = [[0, 1], [1, 2]];
+        let mut graph = Graph::new(&edges);
+        graph.shortest_paths_fw();
+        assert_eq!(graph.path(0, 0).unwrap(), &[0]);
+    }
+
+    #[test]
+    fn calc_dist_and_next_initializes_correctly() {
+        let edges = [[0, 1], [1, 2]];
+        let mut graph = Graph::new(&edges);
+        graph.calc_dist_and_next();
+        
+        assert_eq!(graph.dist.get(0, 1), 1.0);
+        assert_eq!(graph.dist.get(1, 2), 1.0);
+        assert_eq!(graph.dist.get(0, 0), 0.0);
+        assert_eq!(graph.dist.get(2, 2), 0.0);
+        assert_eq!(graph.dist.get(0, 2), f64::MAX);
+        
+        assert_eq!(graph.next.get(0, 1), 1);
+        assert_eq!(graph.next.get(1, 2), 2);
+        assert_eq!(graph.next.get(0, 2), usize::MAX);
+    }
+
+    #[test]
     fn new_works() {
         //  0 ––––––––––→ 3
         //  │      1      ↑

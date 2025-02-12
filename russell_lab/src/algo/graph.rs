@@ -140,18 +140,17 @@ impl Graph {
     /// An example of a graph with weights:
     ///
     /// ```text
-    ///          *10
+    ///          $10
     ///    0 ––––––––––→ 3
-    ///    │     (1)     ↑
+    ///    │      1      ↑
     ///    │             │
-    /// *5 │(0)       (3)│ *1
+    /// $5 │ 0         3 │ $1
     ///    │             │
-    ///    ↓     (2)     |
+    ///    ↓      2      |
     ///    1 ––––––––––→ 2
-    ///          *3
+    ///          $3
     ///
-    /// numbers in parentheses indicate edge ids
-    /// starred numbers indicate weights
+    /// the weights are indicated by the dollar sign
     /// ```
     ///
     /// The initial distance matrix is:
@@ -207,6 +206,9 @@ impl Graph {
         let mut path = vec![start_point];
         let mut current_point = start_point;
         while current_point != end_point {
+            if current_point == usize::MAX {
+                return Err("no path found");
+            }
             current_point = self.next.get(current_point, end_point);
             path.push(current_point);
         }
@@ -336,6 +338,9 @@ impl Graph {
     /// # Arguments
     ///
     /// * `full_path`: The full path to save the plot
+    /// * `show_edge_ids`: Whether to show edge IDs or not
+    /// * `show_weights`: Whether to show edge weights or not
+    /// * `precision`: (optional) The precision for the edge weights
     /// * `labels_n`: (optional) A dictionary with node labels
     /// * `labels_e`: (optional) A dictionary with edge labels
     /// * `radius`: (optional) The radius of the vertex circle
@@ -345,6 +350,9 @@ impl Graph {
     pub fn draw(
         &self,
         full_path: &str,
+        show_edge_ids: bool,
+        show_weights: bool,
+        precision: Option<usize>,
         labels_n: Option<HashMap<usize, String>>,
         labels_e: Option<HashMap<usize, String>>,
         radius: Option<f64>,
@@ -358,23 +366,28 @@ impl Graph {
         }
 
         // drawing objects
-        let mut txt1 = Text::new();
-        txt1.set_color("#d70d0d")
+        let mut text_n = Text::new();
+        text_n
+            .set_color("black")
             .set_fontsize(8.0)
             .set_align_vertical("center")
             .set_align_horizontal("center");
-        let mut txt2 = Text::new();
-        txt2.set_color("#2732c6")
+        let mut text_e = Text::new();
+        text_e
+            .set_color("#0074c5")
             .set_fontsize(7.0)
             .set_align_vertical("center")
             .set_align_horizontal("center");
-        let mut canvas1 = Canvas::new();
-        canvas1
+        let mut canvas_n = Canvas::new();
+        canvas_n
             .set_face_color("none")
-            .set_edge_color("black")
+            .set_edge_color("#b40b00")
             .set_line_width(0.8);
-        let mut canvas2 = Canvas::new();
-        canvas2.set_arrow_style("->").set_arrow_scale(12.0);
+        let mut canvas_e = Canvas::new();
+        canvas_e
+            .set_edge_color("#474747")
+            .set_arrow_style("->")
+            .set_arrow_scale(12.0);
 
         // constants
         let nnode = self.coords.len();
@@ -395,10 +408,10 @@ impl Graph {
             if let Some(labels_n) = labels_n.as_ref() {
                 lbl = labels_n.get(&i).unwrap_or(&lbl);
             }
-            txt1.draw(x, y, lbl);
+            text_n.draw(x, y, lbl);
 
             // plot vertex circle with partition color if available
-            canvas1.draw_circle(x, y, radius);
+            canvas_n.draw_circle(x, y, radius);
 
             // update limits
             xmin = xmin.min(x);
@@ -445,30 +458,49 @@ impl Graph {
                 xc[i] = (xi[i] + xj[i]) / 2.0 - gap_labels * nu[i];
             }
 
-            canvas2.draw_arrow(xi[0], xi[1], xj[0], xj[1]);
+            canvas_e.draw_arrow(xi[0], xi[1], xj[0], xj[1]);
 
-            let mut lbl = &format!("{}", k);
-            if let Some(labels_e) = labels_e.as_ref() {
-                lbl = labels_e.get(&k).unwrap_or(lbl);
+            if show_edge_ids || show_weights {
+                let mut lbl = String::new();
+                let mut sep = "";
+                if show_edge_ids {
+                    lbl.push_str(&format!("{}", k));
+                    sep = "| ";
+                };
+                if show_weights {
+                    match precision {
+                        Some(p) => lbl.push_str(&format!("{}${:.2$}", sep, self.weights[k], p)),
+                        None => lbl.push_str(&format!("{}${}", sep, self.weights[k])),
+                    }
+                }
+                if let Some(labels_e) = labels_e.as_ref() {
+                    lbl = labels_e.get(&k).unwrap_or(&lbl).to_string();
+                }
+                if show_edge_ids && show_weights && f64::abs(dx[0]) < 1e-3 {
+                    text_e.set_rotation(90.0);
+                } else {
+                    text_e.set_rotation(0.0);
+                }
+                text_e.draw(xc[0], xc[1], &lbl);
             }
-            txt2.draw(xc[0], xc[1], lbl);
         }
 
         // update range
-        xmin -= 1.2 * radius;
-        xmax += 1.2 * radius;
-        ymin -= 1.2 * radius;
-        ymax += 1.2 * radius;
+        xmin -= 2.0 * radius;
+        xmax += 2.0 * radius;
+        ymin -= 2.0 * radius;
+        ymax += 2.0 * radius;
 
         // add objects to plot
         let width = fig_width_pt.unwrap_or(600.0);
         let mut plot = Plot::new();
+        plot.add(&canvas_n).add(&canvas_e).add(&text_n);
+        if show_edge_ids {
+            plot.add(&text_e);
+        }
         plot.set_range(xmin, xmax, ymin, ymax)
             .set_equal_axes(true)
-            .add(&canvas1)
-            .add(&canvas2)
-            .add(&txt1)
-            .add(&txt2)
+            .add(&text_e)
             .set_hide_axes(true)
             .set_figure_size_points(width, width)
             .save(full_path)
@@ -481,17 +513,17 @@ mod tests {
     use crate::read_table;
     use std::collections::HashMap;
 
+    const SAVE_FIGURE: bool = true;
+
     #[test]
     fn new_works_1() {
         //  0 ––––––––––→ 3
-        //  │     (1)     ↑
+        //  │      1      ↑
         //  │             │
-        //  │(0)       (3)│
+        //  │ 0         3 │
         //  │             │
-        //  ↓     (2)     |
+        //  ↓      2      |
         //  1 ––––––––––→ 2
-        //
-        // numbers in parentheses indicate edge ids
 
         // edge:       0       1       2       3
         let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
@@ -539,14 +571,12 @@ mod tests {
     #[test]
     fn shortest_paths_fw_works_1() {
         //  0 ––––––––––→ 3
-        //  │     (1)     ↑
+        //  │      1      ↑
         //  │             │
-        //  │(0)       (3)│
+        //  │ 0         3 │
         //  │             │
-        //  ↓     (2)     |
-        //  1 ––––––––––→ 2     equal unitary weights
-        //
-        // numbers in parentheses indicate edge ids
+        //  ↓      2      |
+        //  1 ––––––––––→ 2
 
         // edge:       0       1       2       3
         let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
@@ -577,22 +607,32 @@ mod tests {
              │ ∞ ∞ ∞ 0 │\n\
              └         ┘"
         );
+
+        // check paths
+        assert_eq!(graph.path(0, 3).unwrap(), &[0, 3]);
+        assert_eq!(graph.path(0, 1).unwrap(), &[0, 1]);
+        assert_eq!(graph.path(1, 2).unwrap(), &[1, 2]);
+        assert_eq!(graph.path(2, 3).unwrap(), &[2, 3]);
+        assert_eq!(graph.path(3, 0).err(), Some("no path found"));
+        assert_eq!(graph.path(1, 0).err(), Some("no path found"));
+        assert_eq!(graph.path(2, 1).err(), Some("no path found"));
+        assert_eq!(graph.path(3, 2).err(), Some("no path found"));
+        assert_eq!(graph.path(0, 2).unwrap(), &[0, 1, 2]);
     }
 
     #[test]
     fn shortest_paths_fw_works_2() {
-        //          *10
+        //          $10
         //    0 ––––––––––→ 3
-        //    │     (1)     ↑
+        //    │      1      ↑
         //    │             │
-        // *5 │(0)       (3)│ *1
+        // $5 │ 0         3 │ $1
         //    │             │
-        //    ↓     (2)     |
+        //    ↓      2      |
         //    1 ––––––––––→ 2
-        //          *3
+        //          $3
         //
-        // numbers in parentheses indicate edge ids
-        // starred numbers indicate weights
+        // the weights are indicated by the dollar sign
 
         // edge:       0       1       2       3
         let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
@@ -629,6 +669,17 @@ mod tests {
              └         ┘"
         );
 
+        // check path
+        assert_eq!(graph.path(0, 3).unwrap(), &[0, 1, 2, 3]); // lower cost path with 5+3+1 < 10
+        assert_eq!(graph.path(0, 1).unwrap(), &[0, 1]);
+        assert_eq!(graph.path(1, 2).unwrap(), &[1, 2]);
+        assert_eq!(graph.path(2, 3).unwrap(), &[2, 3]);
+        assert_eq!(graph.path(3, 0).err(), Some("no path found"));
+        assert_eq!(graph.path(1, 0).err(), Some("no path found"));
+        assert_eq!(graph.path(2, 1).err(), Some("no path found"));
+        assert_eq!(graph.path(3, 2).err(), Some("no path found"));
+        assert_eq!(graph.path(0, 2).unwrap(), &[0, 1, 2]);
+
         // call shortest_paths_fw again with different weights
         graph.set_weight(3, 13.0);
         graph.shortest_paths_fw();
@@ -643,24 +694,56 @@ mod tests {
              │  ∞  ∞  ∞  0 │\n\
              └             ┘"
         );
+
+        // check path
+        assert_eq!(graph.path(0, 3).unwrap(), &[0, 3]);
+        assert_eq!(graph.path(0, 1).unwrap(), &[0, 1]);
+        assert_eq!(graph.path(1, 2).unwrap(), &[1, 2]);
+        assert_eq!(graph.path(2, 3).unwrap(), &[2, 3]);
+        assert_eq!(graph.path(3, 0).err(), Some("no path found"));
+        assert_eq!(graph.path(1, 0).err(), Some("no path found"));
+        assert_eq!(graph.path(2, 1).err(), Some("no path found"));
+        assert_eq!(graph.path(3, 2).err(), Some("no path found"));
+        assert_eq!(graph.path(0, 2).unwrap(), &[0, 1, 2]);
+
+        if SAVE_FIGURE {
+            graph
+                .set_coords(0, &[0.0, 1.0])
+                .set_coords(1, &[0.0, 0.0])
+                .set_coords(2, &[1.0, 0.0])
+                .set_coords(3, &[1.0, 1.0]);
+            graph
+                .draw(
+                    "/tmp/russell/test_shortest_paths_fw_works_2.svg",
+                    true,
+                    true,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+        }
     }
 
     #[test]
     fn shortest_paths_fw_works_3() {
-        //              *3
-        //      4 ––––––––––––––→ 5 . (6)
-        //      ↑       (0)       │  `. *4
+        //              $3
+        //      4 ––––––––––––––→ 5 .  6
+        //      ↑        0        │  `. $4
         //      │                 │    `.
         //      │                 │      `v
-        //  *11 │(1)           *7 │(4)     3
+        //  $11 │ 1            $7 │ 4      3
         //      |                 │     ,^
-        //      │                 │   ,' *9
-        //      │   (2)     (3)   ↓ ,' (5)
+        //      │                 │   ,' $9
+        //      │    2       3    ↓ ,'  5
         //      1 ←––––– 0 –––––→ 2
-        //           *6      *8
+        //           $6      $8
         //
-        // numbers in parentheses indicate edge ids
-        // starred numbers indicate weights
+        // the weights are indicated by the dollar sign
 
         // edge:       0       1       2       3       4       5       6
         let edges = [[4, 5], [1, 4], [0, 1], [0, 2], [5, 2], [2, 3], [5, 3]];
@@ -707,76 +790,59 @@ mod tests {
              │  ∞  ∞  7  4  ∞  0 │\n\
              └                   ┘"
         );
+
+        // check paths
+        assert_eq!(graph.path(0, 3).unwrap(), &[0, 2, 3]);
+        assert_eq!(graph.path(4, 3).unwrap(), &[4, 5, 3]);
+        assert_eq!(graph.path(0, 2).unwrap(), &[0, 2]);
+        assert_eq!(graph.path(0, 5).unwrap(), &[0, 1, 4, 5]);
+        assert_eq!(graph.path(2, 4).err(), Some("no path found"));
+        assert_eq!(graph.path(1, 0).err(), Some("no path found"));
+
+        if SAVE_FIGURE {
+            graph
+                .set_coords(0, &[1.0, 0.0])
+                .set_coords(1, &[0.0, 0.0])
+                .set_coords(2, &[2.0, 0.0])
+                .set_coords(3, &[3.0, 1.0])
+                .set_coords(4, &[0.0, 2.0])
+                .set_coords(5, &[2.0, 2.0]);
+            let labels_n = HashMap::from([
+                (0, "N0".to_string()),
+                (1, "N1".to_string()),
+                (2, "N2".to_string()),
+                (3, "N3".to_string()),
+                (4, "N4".to_string()),
+                (5, "N5".to_string()),
+            ]);
+            let labels_e = HashMap::from([
+                (0, "E0".to_string()),
+                (1, "E1".to_string()),
+                (2, "E2".to_string()),
+                (3, "E3".to_string()),
+                (4, "E4".to_string()),
+                (5, "E5".to_string()),
+                (6, "E6".to_string()),
+            ]);
+            graph
+                .draw(
+                    "/tmp/russell/test_shortest_paths_fw_works_3.svg",
+                    true,
+                    true,
+                    None,
+                    Some(labels_n),
+                    Some(labels_e),
+                    Some(0.1),
+                    Some(0.0),
+                    None,
+                    Some(400.0),
+                )
+                .unwrap();
+        }
     }
 
     #[test]
-    fn draw_graph_works_1() {
-        //              *3
-        //      4 ––––––––––––––→ 5 . (6)
-        //      ↑       (0)       │  `. *4
-        //      │                 │    `.
-        //      │                 │      `v
-        //  *11 │(1)           *7 │(4)     3
-        //      |                 │     ,^
-        //      │                 │   ,' *9
-        //      │   (2)     (3)   ↓ ,' (5)
-        //      1 ←––––– 0 –––––→ 2
-        //           *6      *8
-        //
-        // numbers in parentheses indicate edge ids
-        // starred numbers indicate weights
-
-        // edge:       0       1       2       3       4       5       6
-        let edges = [[4, 5], [1, 4], [0, 1], [0, 2], [5, 2], [2, 3], [5, 3]];
-        let mut graph = Graph::new(&edges);
-        graph
-            .set_weight(0, 3.0)
-            .set_weight(1, 11.0)
-            .set_weight(2, 6.0)
-            .set_weight(3, 8.0)
-            .set_weight(4, 7.0)
-            .set_weight(5, 9.0)
-            .set_weight(6, 4.0);
-        graph
-            .set_coords(0, &[1.0, 0.0])
-            .set_coords(1, &[0.0, 0.0])
-            .set_coords(2, &[2.0, 0.0])
-            .set_coords(3, &[3.0, 1.0])
-            .set_coords(4, &[0.0, 2.0])
-            .set_coords(5, &[2.0, 2.0]);
-
-        let labels_n = HashMap::from([
-            (0, "0".to_string()),
-            (1, "1".to_string()),
-            (2, "2".to_string()),
-            (3, "3".to_string()),
-            (4, "4".to_string()),
-            (5, "5".to_string()),
-        ]);
-        let labels_e = HashMap::from([
-            (0, "(0)".to_string()),
-            (1, "(1)".to_string()),
-            (2, "(2)".to_string()),
-            (3, "(3)".to_string()),
-            (4, "(4)".to_string()),
-            (5, "(5)".to_string()),
-            (6, "(6)".to_string()),
-        ]);
-        graph
-            .draw(
-                "/tmp/russell/test_draw_graph_works_1.svg",
-                Some(labels_n),
-                Some(labels_e),
-                Some(0.1),
-                Some(0.0),
-                None,
-                Some(400.0),
-            )
-            .unwrap();
-    }
-
-    #[test]
-    fn draw_graph_works_2() {
+    fn shortest_paths_fw_works_4() {
         // read the graph
         let table: HashMap<String, Vec<f64>> =
             read_table("data/tables/SiouxFalls.flow", Some(&["from", "to", "cap", "cost"])).unwrap();
@@ -791,43 +857,68 @@ mod tests {
             .collect();
         let mut graph = Graph::new(&edges);
 
-        // define the graph layout data
-        let columns = vec![
-            vec![0, 2, 11, 12],
-            vec![3, 10, 13, 22, 23],
-            vec![4, 8, 9, 14, 21, 20],
-            vec![1, 5, 7, 15, 16, 18, 19],
-            vec![6, 17],
-        ];
-        let y_coords = vec![
-            vec![7.0, 6.0, 4.0, 0.0],                // col0
-            vec![6.0, 4.0, 2.0, 1.0, 0.0],           // col1
-            vec![6.0, 5.0, 4.0, 2.0, 1.0, 0.0],      // col2
-            vec![7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 0.0], // col3
-            vec![5.0, 4.0],                          // col4
-        ];
-        let scale_x = 1.8;
-        let scale_y = 1.3;
-
-        // create coordinates
-        for (j, col) in columns.iter().enumerate() {
-            let x = j as f64 * scale_x;
-            for (i, &vid) in col.iter().enumerate() {
-                graph.set_coords(vid, &[x, y_coords[j][i] * scale_y]);
-            }
+        // set the weights
+        let cost = table.get("cost").unwrap();
+        for (e, &c) in cost.iter().enumerate() {
+            graph.set_weight(e, c);
         }
 
-        // draw the graph
-        graph
-            .draw(
-                "/tmp/russell/test_draw_graph_works_2.svg",
-                None,
-                None,
-                None,
-                None,
-                None,
-                Some(800.0),
-            )
-            .unwrap();
+        // shortest paths
+        graph.shortest_paths_fw();
+
+        // check paths
+        assert_eq!(graph.path(0, 20).unwrap(), &[0, 2, 11, 12, 23, 20]);
+        assert_eq!(graph.path(2, 21).unwrap(), &[2, 11, 12, 23, 22, 21]);
+        assert_eq!(graph.path(9, 15).unwrap(), &[9, 15]);
+        assert_eq!(graph.path(10, 11).unwrap(), &[10, 11]);
+        assert_eq!(graph.path(3, 20).unwrap(), &[3, 2, 11, 12, 23, 20]);
+        assert_eq!(graph.path(8, 10).unwrap(), &[8, 9, 10]);
+        assert_eq!(graph.path(11, 21).unwrap(), &[11, 12, 23, 22, 21]);
+        assert_eq!(graph.path(5, 16).unwrap(), &[5, 7, 6, 17, 15, 16]);
+        assert_eq!(graph.path(9, 11).unwrap(), &[9, 10, 11]);
+
+        if SAVE_FIGURE {
+            // define the graph layout data
+            let columns = vec![
+                vec![0, 2, 11, 12],
+                vec![3, 10, 13, 22, 23],
+                vec![4, 8, 9, 14, 21, 20],
+                vec![1, 5, 7, 15, 16, 18, 19],
+                vec![6, 17],
+            ];
+            let y_coords = vec![
+                vec![7.0, 6.0, 4.0, 0.0],                // col0
+                vec![6.0, 4.0, 2.0, 1.0, 0.0],           // col1
+                vec![6.0, 5.0, 4.0, 2.0, 1.0, 0.0],      // col2
+                vec![7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 0.0], // col3
+                vec![5.0, 4.0],                          // col4
+            ];
+            let scale_x = 1.8;
+            let scale_y = 1.3;
+
+            // create coordinates
+            for (j, col) in columns.iter().enumerate() {
+                let x = j as f64 * scale_x;
+                for (i, &vid) in col.iter().enumerate() {
+                    graph.set_coords(vid, &[x, y_coords[j][i] * scale_y]);
+                }
+            }
+
+            // draw the graph
+            graph
+                .draw(
+                    "/tmp/russell/test_shortest_paths_fw_works_4.svg",
+                    true,
+                    true,
+                    Some(1),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(800.0),
+                )
+                .unwrap();
+        }
     }
 }

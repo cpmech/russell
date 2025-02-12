@@ -28,17 +28,6 @@ pub struct Graph {
     /// Size: nnode
     shares: HashMap<usize, Vec<usize>>,
 
-    /// (optional) Holds all node coordinates
-    ///
-    /// This array is only used if the real coordinates of points are
-    /// needed to calculate the distances.
-    ///
-    /// Size: 0 or (nnode, ndim)
-    coords: Vec<Vec<f64>>,
-
-    /// Specifies that the distances are based on coordinates
-    coords_based_dist: bool,
-
     /// Holds the distances (is the distance matrix)
     ///
     /// If the real coordinates of points are provided, the distance is the Euclidean distance
@@ -80,8 +69,6 @@ impl Graph {
             edges: NumMatrix::from(edges),
             weights: vec![1.0; nedge],
             shares,
-            coords: Vec::new(),
-            coords_based_dist: false,
             dist: Matrix::new(nnode, nnode),
             next: NumMatrix::new(nnode, nnode),
             ready_path: false,
@@ -98,29 +85,6 @@ impl Graph {
     pub fn set_weight(&mut self, edge: usize, non_neg_value: f64) -> &mut Self {
         assert!(non_neg_value >= 0.0, "edge weight must be ≥ 0");
         self.weights[edge] = non_neg_value;
-        self.ready_path = false;
-        self
-    }
-
-    /// Sets the coordinates of a node
-    pub fn set_coords(&mut self, node: usize, coordinates: &[f64]) -> &mut Self {
-        let ndim = coordinates.len();
-        if self.coords.is_empty() {
-            let nnode = self.shares.len();
-            self.coords = vec![vec![0.0; ndim]; nnode];
-        } else {
-            assert_eq!(self.coords[0].len(), ndim, "coordinates must have the same dimension");
-        }
-        for i in 0..ndim {
-            self.coords[node][i] = coordinates[i];
-        }
-        self.ready_path = false;
-        self
-    }
-
-    /// Activates the use of node coordinates to calculate distances
-    pub fn set_coords_based_dist(&mut self, value: bool) -> &mut Self {
-        self.coords_based_dist = value;
         self.ready_path = false;
         self
     }
@@ -220,11 +184,8 @@ impl Graph {
     /// Note: there is no need to call this function because it is called by `shortest_paths_fw` already.
     /// Nonetheless, it may be useful for debugging the initial matrices.
     pub fn calc_dist_and_next(&mut self) {
-        // constants
-        let nedge = self.edges.nrow();
-        let nnode = self.shares.len();
-
         // initialize 'dist' and 'next' matrices
+        let nnode = self.shares.len();
         for i in 0..nnode {
             for j in 0..nnode {
                 if i == j {
@@ -237,32 +198,11 @@ impl Graph {
         }
 
         // compute distances and initialize next-hop matrix
+        let nedge = self.edges.nrow();
         for e in 0..nedge {
-            // get edge nodes
             let (i, j) = (self.edges.get(e, 0), self.edges.get(e, 1));
-
-            // initialize distance
-            let mut d = 1.0;
-
-            // compute Euclidean distance if vertex coordinates are provided
-            // and the coords_based_dist flag is true
-            if self.coords_based_dist && self.coords.len() == nnode {
-                d = 0.0;
-                let xa = &self.coords[i];
-                let xb = &self.coords[j];
-                for dim in 0..xa.len() {
-                    d += (xa[dim] - xb[dim]).powi(2);
-                }
-                d = d.sqrt();
-            }
-
-            // apply edge weight
-            d *= self.weights[e];
-
-            // update distance and next-hop matrices
-            self.dist.set(i, j, d);
+            self.dist.set(i, j, self.weights[e]);
             self.next.set(i, j, j);
-            assert!(self.dist.get(i, j) >= 0.0, "distance must be ≥ 0");
         }
     }
 
@@ -350,6 +290,7 @@ impl Graph {
     pub fn draw(
         &self,
         full_path: &str,
+        coords: &Vec<Vec<f64>>,
         show_edge_ids: bool,
         show_weights: bool,
         precision: Option<usize>,
@@ -361,8 +302,9 @@ impl Graph {
         fig_width_pt: Option<f64>,
     ) -> Result<(), StrError> {
         // check
-        if self.coords.is_empty() {
-            return Err("vertices coordinates are required to draw graph");
+        let nnode = coords.len();
+        if nnode != self.dist.nrow() {
+            return Err("number of nodes in coordinates must match the number of nodes in the graph");
         }
 
         // drawing objects
@@ -390,18 +332,17 @@ impl Graph {
             .set_arrow_scale(12.0);
 
         // constants
-        let nnode = self.coords.len();
         let mut gap_arrows = gap_arrows.unwrap_or(0.15);
         let gap_labels = gap_labels.unwrap_or(0.12);
         let radius = radius.unwrap_or(0.2);
 
         // draw nodes and find limits
-        let mut xmin = self.coords[0][0];
-        let mut ymin = self.coords[0][1];
+        let mut xmin = coords[0][0];
+        let mut ymin = coords[0][1];
         let mut xmax = xmin;
         let mut ymax = ymin;
         for i in 0..nnode {
-            let (x, y) = (self.coords[i][0], self.coords[i][1]);
+            let (x, y) = (coords[i][0], coords[i][1]);
 
             // plot vertex label
             let mut lbl = &format!("{}", i);
@@ -440,8 +381,8 @@ impl Graph {
         for k in 0..nedge {
             let mut ll = 0.0;
             for i in 0..2 {
-                xa[i] = self.coords[self.edges.get(k, 0)][i];
-                xb[i] = self.coords[self.edges.get(k, 1)][i];
+                xa[i] = coords[self.edges.get(k, 0)][i];
+                xb[i] = coords[self.edges.get(k, 1)][i];
                 xc[i] = (xa[i] + xb[i]) / 2.0;
                 dx[i] = xb[i] - xa[i];
                 ll += dx[i] * dx[i];
@@ -513,7 +454,7 @@ mod tests {
     use crate::read_table;
     use std::collections::HashMap;
 
-    const SAVE_FIGURE: bool = true;
+    const SAVE_FIGURE: bool = false;
 
     #[test]
     fn new_works_1() {
@@ -550,9 +491,6 @@ mod tests {
             format!("{:?}", entries),
             "[(0, [0, 1]), (1, [0, 2]), (2, [2, 3]), (3, [1, 3])]"
         );
-
-        // check coordinates
-        assert_eq!(graph.coords.len(), 0);
 
         // check 'dist'
         assert_eq!(graph.dist.dims(), (4, 4));
@@ -707,14 +645,11 @@ mod tests {
         assert_eq!(graph.path(0, 2).unwrap(), &[0, 1, 2]);
 
         if SAVE_FIGURE {
-            graph
-                .set_coords(0, &[0.0, 1.0])
-                .set_coords(1, &[0.0, 0.0])
-                .set_coords(2, &[1.0, 0.0])
-                .set_coords(3, &[1.0, 1.0]);
+            let coords = vec![vec![0.0, 1.0], vec![0.0, 0.0], vec![1.0, 0.0], vec![1.0, 1.0]];
             graph
                 .draw(
                     "/tmp/russell/test_shortest_paths_fw_works_2.svg",
+                    &coords,
                     true,
                     true,
                     None,
@@ -800,13 +735,14 @@ mod tests {
         assert_eq!(graph.path(1, 0).err(), Some("no path found"));
 
         if SAVE_FIGURE {
-            graph
-                .set_coords(0, &[1.0, 0.0])
-                .set_coords(1, &[0.0, 0.0])
-                .set_coords(2, &[2.0, 0.0])
-                .set_coords(3, &[3.0, 1.0])
-                .set_coords(4, &[0.0, 2.0])
-                .set_coords(5, &[2.0, 2.0]);
+            let coords = vec![
+                vec![1.0, 0.0],
+                vec![0.0, 0.0],
+                vec![2.0, 0.0],
+                vec![3.0, 1.0],
+                vec![0.0, 2.0],
+                vec![2.0, 2.0],
+            ];
             let labels_n = HashMap::from([
                 (0, "N0".to_string()),
                 (1, "N1".to_string()),
@@ -827,6 +763,7 @@ mod tests {
             graph
                 .draw(
                     "/tmp/russell/test_shortest_paths_fw_works_3.svg",
+                    &coords,
                     true,
                     true,
                     None,
@@ -897,10 +834,12 @@ mod tests {
             let scale_y = 1.3;
 
             // create coordinates
+            let mut coords = vec![vec![0.0, 0.0]; graph.get_nnode()];
             for (j, col) in columns.iter().enumerate() {
                 let x = j as f64 * scale_x;
-                for (i, &vid) in col.iter().enumerate() {
-                    graph.set_coords(vid, &[x, y_coords[j][i] * scale_y]);
+                for (i, n) in col.iter().enumerate() {
+                    coords[*n][0] = x;
+                    coords[*n][1] = y_coords[j][i] * scale_y;
                 }
             }
 
@@ -908,6 +847,7 @@ mod tests {
             graph
                 .draw(
                     "/tmp/russell/test_shortest_paths_fw_works_4.svg",
+                    &coords,
                     true,
                     true,
                     Some(1),

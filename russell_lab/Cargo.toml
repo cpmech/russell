@@ -17,11 +17,11 @@ intel_mkl = []
 [dependencies]
 num-complex = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
+plotpy = "1.13"
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.5"
-plotpy = "1.9"
 serde_json = "1.0"
 serial_test = "3.0"
 

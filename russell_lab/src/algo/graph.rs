@@ -125,6 +125,16 @@ impl Graph {
         self
     }
 
+    /// Returns the number of edges
+    pub fn get_nedge(&self) -> usize {
+        self.edges.nrow()
+    }
+
+    /// Returns the number of nodes
+    pub fn get_nnode(&self) -> usize {
+        self.shares.len()
+    }
+
     /// Computes the shortest paths using the Floyd-Warshall algorithm
     ///
     /// An example of a graph with weights:
@@ -322,11 +332,25 @@ impl Graph {
     }
 
     /// Draws the graph
+    ///
+    /// # Arguments
+    ///
+    /// * `full_path`: The full path to save the plot
+    /// * `labels_n`: (optional) A dictionary with node labels
+    /// * `labels_e`: (optional) A dictionary with edge labels
+    /// * `radius`: (optional) The radius of the vertex circle
+    /// * `gap_arrows`: (optional) The gap between arrows
+    /// * `gap_labels`: (optional) The gap between the edge arrows and the respective label
+    /// * `fig_width_pt`: (optional) The figure width in points
     pub fn draw(
         &self,
         full_path: &str,
-        labels_n: HashMap<usize, String>,
-        labels_e: HashMap<usize, String>,
+        labels_n: Option<HashMap<usize, String>>,
+        labels_e: Option<HashMap<usize, String>>,
+        radius: Option<f64>,
+        gap_arrows: Option<f64>,
+        gap_labels: Option<f64>,
+        fig_width_pt: Option<f64>,
     ) -> Result<(), StrError> {
         // check
         if self.coords.is_empty() {
@@ -353,25 +377,24 @@ impl Graph {
         canvas2.set_arrow_style("->").set_arrow_scale(12.0);
 
         // constants
-        let mut width = 0.15;
-        let radius = 0.25;
-        let gap = 0.12;
+        let nnode = self.coords.len();
+        let mut gap_arrows = gap_arrows.unwrap_or(0.15);
+        let gap_labels = gap_labels.unwrap_or(0.12);
+        let radius = radius.unwrap_or(0.2);
 
         // draw nodes and find limits
         let mut xmin = self.coords[0][0];
         let mut ymin = self.coords[0][1];
         let mut xmax = xmin;
         let mut ymax = ymin;
-        let nnode = self.coords.len();
         for i in 0..nnode {
             let (x, y) = (self.coords[i][0], self.coords[i][1]);
 
             // plot vertex label
-            let lbl = if labels_n.contains_key(&i) {
-                labels_n.get(&i).unwrap()
-            } else {
-                &format!("{}", i)
-            };
+            let mut lbl = &format!("{}", i);
+            if let Some(labels_n) = labels_n.as_ref() {
+                lbl = labels_n.get(&i).unwrap_or(&lbl);
+            }
             txt1.draw(x, y, lbl);
 
             // plot vertex circle with partition color if available
@@ -385,10 +408,10 @@ impl Graph {
         }
 
         // distance between edges
-        if width > 2.0 * radius {
-            width = 1.8 * radius;
+        if gap_arrows > 2.0 * radius {
+            gap_arrows = 1.8 * radius;
         }
-        let w = width / 2.0;
+        let w = gap_arrows / 2.0;
         let l = f64::sqrt(radius * radius - w * w);
 
         // draw edges
@@ -419,15 +442,15 @@ impl Graph {
             for i in 0..2 {
                 xi[i] = xa[i] + l * mu[i] - w * nu[i];
                 xj[i] = xb[i] - l * mu[i] - w * nu[i];
-                xc[i] = (xi[i] + xj[i]) / 2.0 - gap * nu[i];
+                xc[i] = (xi[i] + xj[i]) / 2.0 - gap_labels * nu[i];
             }
 
             canvas2.draw_arrow(xi[0], xi[1], xj[0], xj[1]);
-            let lbl = if labels_e.contains_key(&k) {
-                labels_e.get(&k).unwrap()
-            } else {
-                &format!("{}", k)
-            };
+
+            let mut lbl = &format!("{}", k);
+            if let Some(labels_e) = labels_e.as_ref() {
+                lbl = labels_e.get(&k).unwrap_or(lbl);
+            }
             txt2.draw(xc[0], xc[1], lbl);
         }
 
@@ -438,6 +461,7 @@ impl Graph {
         ymax += 1.2 * radius;
 
         // add objects to plot
+        let width = fig_width_pt.unwrap_or(600.0);
         let mut plot = Plot::new();
         plot.set_range(xmin, xmax, ymin, ymax)
             .set_equal_axes(true)
@@ -446,7 +470,7 @@ impl Graph {
             .add(&txt1)
             .add(&txt2)
             .set_hide_axes(true)
-            .set_figure_size_points(800.0, 800.0)
+            .set_figure_size_points(width, width)
             .save(full_path)
     }
 }
@@ -506,6 +530,10 @@ mod tests {
 
         // check 'ready_path'
         assert_eq!(graph.ready_path, false);
+
+        // check getters
+        assert_eq!(graph.get_nedge(), 4);
+        assert_eq!(graph.get_nnode(), 4);
     }
 
     #[test]
@@ -646,6 +674,10 @@ mod tests {
             .set_weight(5, 9.0)
             .set_weight(6, 4.0);
 
+        // check getters
+        assert_eq!(graph.get_nedge(), 7);
+        assert_eq!(graph.get_nnode(), 6);
+
         // initial 'dist' matrix
         graph.calc_dist_and_next();
         assert_eq!(
@@ -678,7 +710,7 @@ mod tests {
     }
 
     #[test]
-    fn draw_graph_works() {
+    fn draw_graph_works_1() {
         //              *3
         //      4 ––––––––––––––→ 5 . (6)
         //      ↑       (0)       │  `. *4
@@ -713,8 +745,33 @@ mod tests {
             .set_coords(4, &[0.0, 2.0])
             .set_coords(5, &[2.0, 2.0]);
 
+        let labels_n = HashMap::from([
+            (0, "0".to_string()),
+            (1, "1".to_string()),
+            (2, "2".to_string()),
+            (3, "3".to_string()),
+            (4, "4".to_string()),
+            (5, "5".to_string()),
+        ]);
+        let labels_e = HashMap::from([
+            (0, "(0)".to_string()),
+            (1, "(1)".to_string()),
+            (2, "(2)".to_string()),
+            (3, "(3)".to_string()),
+            (4, "(4)".to_string()),
+            (5, "(5)".to_string()),
+            (6, "(6)".to_string()),
+        ]);
         graph
-            .draw("/tmp/russell/test_draw_graph_works.svg", HashMap::new(), HashMap::new())
+            .draw(
+                "/tmp/russell/test_draw_graph_works_1.svg",
+                Some(labels_n),
+                Some(labels_e),
+                Some(0.1),
+                Some(0.0),
+                None,
+                Some(400.0),
+            )
             .unwrap();
     }
 
@@ -751,9 +808,8 @@ mod tests {
         ];
         let scale_x = 1.8;
         let scale_y = 1.3;
-        let nv = 24;
 
-        // Create vertices coordinates
+        // create coordinates
         for (j, col) in columns.iter().enumerate() {
             let x = j as f64 * scale_x;
             for (i, &vid) in col.iter().enumerate() {
@@ -761,12 +817,17 @@ mod tests {
             }
         }
 
-        // Create edge and vertex labels
-        let ne = 76;
-        let edge_labels: HashMap<usize, String> = (0..ne).map(|i| (i, i.to_string())).collect();
-        let vertex_labels: HashMap<usize, String> = (0..nv).map(|i| (i, i.to_string())).collect();
+        // draw the graph
         graph
-            .draw("/tmp/russell/test_draw_graph_works_2.svg", vertex_labels, edge_labels)
+            .draw(
+                "/tmp/russell/test_draw_graph_works_2.svg",
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(800.0),
+            )
             .unwrap();
     }
 }

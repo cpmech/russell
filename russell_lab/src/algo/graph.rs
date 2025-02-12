@@ -74,7 +74,7 @@ impl Graph {
         let nnode = shares.len();
         Graph {
             edges: NumMatrix::from(edges),
-            weights: vec![1.0; nnode],
+            weights: vec![1.0; nedge],
             shares,
             coordinates: Vec::new(),
             dist: Matrix::new(nnode, nnode),
@@ -86,9 +86,14 @@ impl Graph {
     /// Sets the weight of an edge
     ///
     /// **Important**: The weight must be non-negative.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the edge is out of bounds or the weight is negative.
     pub fn set_weight(&mut self, edge: usize, non_neg_value: f64) -> &mut Self {
         assert!(non_neg_value >= 0.0, "edge weight must be ≥ 0");
         self.weights[edge] = non_neg_value;
+        self.ready_path = false;
         self
     }
 
@@ -108,6 +113,7 @@ impl Graph {
         for i in 0..ndim {
             self.coordinates[node][i] = coordinates[i];
         }
+        self.ready_path = false;
         self
     }
 
@@ -116,32 +122,48 @@ impl Graph {
     /// An example of a graph with weights:
     ///
     /// ```text
-    ///        [10]
-    ///     0 ––––––→ 3       []: numbers in brackets
-    ///     │         ↑           indicate weights
-    /// [5] │         │ [1]
-    ///     ↓         │
-    ///     1 ––––––→ 2
-    ///         [3]
+    ///          *10
+    ///    0 ––––––––––→ 3
+    ///    │     (1)     ↑
+    ///    │             │
+    /// *5 │(0)       (3)│ *1
+    ///    │             │
+    ///    ↓     (2)     |
+    ///    1 ––––––––––→ 2
+    ///          *3
+    ///
+    /// numbers in parentheses indicate edge ids
+    /// starred numbers indicate weights
     /// ```
     ///
     /// The initial distance matrix is:
     ///
     /// ```text
-    /// j=  0  1  2  3
-    ///   ┌            ┐ i=
-    ///   │ 0  5  ∞ 10 │  0  ⇒  w(0→1)=5, w(0→3)=10
-    ///   │ ∞  0  3  ∞ │  1  ⇒  w(1→2)=3
-    ///   │ ∞  ∞  0  1 │  2  ⇒  w(2→3)=1
-    ///   │ ∞  ∞  ∞  0 │  3
-    ///   └            ┘
+    /// j=   0  1  2  3
+    ///   ┌             ┐ i=
+    ///   │  0  5  ∞ 10 │  0  ⇒  w(0→1)=5, w(0→3)=10
+    ///   │  ∞  0  3  ∞ │  1  ⇒  w(1→2)=3
+    ///   │  ∞  ∞  0  1 │  2  ⇒  w(2→3)=1
+    ///   │  ∞  ∞  ∞  0 │  3
+    ///   └             ┘
     /// ∞ means that there are no connections from i to j
+    /// i,j are node indices
     /// ```
     ///
-    /// See <https://algorithms.discrete.ma.tum.de/graph-algorithms/spp-floyd-warshall/index_en.html>
+    /// The final distance matrix is:
+    ///
+    /// ```text
+    /// ┌         ┐
+    /// │ 0 5 8 9 │
+    /// │ ∞ 0 3 4 │
+    /// │ ∞ ∞ 0 1 │
+    /// │ ∞ ∞ ∞ 0 │
+    /// └         ┘
+    /// ```
+    ///
+    /// See, e.g., <https://algorithms.discrete.ma.tum.de/graph-algorithms/spp-floyd-warshall/index_en.html>
     pub fn shortest_paths_fw(&mut self) {
         self.calc_dist_and_next();
-        println!("{}", self.str_mat(false));
         let nnode = self.dist.nrow();
         for k in 0..nnode {
             for i in 0..nnode {
@@ -150,11 +172,11 @@ impl Graph {
                     if self.dist.get(i, j) > sum {
                         self.dist.set(i, j, sum);
                         self.next.set(i, j, self.next.get(i, k));
-                        println!("{}", self.str_mat(false));
                     }
                 }
             }
         }
+        self.ready_path = true;
     }
 
     /// Returns a path from start to end points
@@ -174,7 +196,10 @@ impl Graph {
     }
 
     /// Calculates the distance matrix and initializes the next-hop matrix
-    fn calc_dist_and_next(&mut self) {
+    ///
+    /// Note: there is no need to call this function because it is called by `shortest_paths_fw` already.
+    /// Nonetheless, it may be useful for debugging the initial matrices.
+    pub fn calc_dist_and_next(&mut self) {
         // constants
         let nedge = self.edges.nrow();
         let nnode = self.shares.len();
@@ -294,12 +319,15 @@ mod tests {
 
     #[test]
     fn new_works_1() {
-        //  0 ––––––––→ 3    (): numbers in parentheses
-        //  │    (1)    ↑        indicate edge ids
-        //  │(0)        │
-        //  │        (3)│
-        //  ↓    (2)    |
-        //  1 ––––––––→ 2
+        //  0 ––––––––––→ 3
+        //  │     (1)     ↑
+        //  │             │
+        //  │(0)       (3)│
+        //  │             │
+        //  ↓     (2)     |
+        //  1 ––––––––––→ 2
+        //
+        // numbers in parentheses indicate edge ids
 
         // edge:       0       1       2       3
         let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
@@ -331,26 +359,10 @@ mod tests {
         assert_eq!(graph.coordinates.len(), 0);
 
         // check 'dist'
-        assert_eq!(
-            format!("{}", graph.str_mat(false)),
-            "┌         ┐\n\
-             │ 0 ∞ ∞ ∞ │\n\
-             │ ∞ 0 ∞ ∞ │\n\
-             │ ∞ ∞ 0 ∞ │\n\
-             │ ∞ ∞ ∞ 0 │\n\
-             └         ┘"
-        );
+        assert_eq!(graph.dist.dims(), (4, 4));
 
         // check 'next'
-        assert_eq!(
-            format!("{}", graph.str_mat(true)),
-            "┌         ┐\n\
-             │ ∞ ∞ ∞ ∞ │\n\
-             │ ∞ ∞ ∞ ∞ │\n\
-             │ ∞ ∞ ∞ ∞ │\n\
-             │ ∞ ∞ ∞ ∞ │\n\
-             └         ┘"
-        );
+        assert_eq!(graph.next.dims(), (4, 4));
 
         // check 'ready_path'
         assert_eq!(graph.ready_path, false);
@@ -358,17 +370,33 @@ mod tests {
 
     #[test]
     fn shortest_paths_fw_works_1() {
-        //  0 ––––––––→ 3    (): numbers in parentheses
-        //  │    (1)    ↑        indicate edge ids
-        //  │(0)        │
-        //  │        (3)│    Note: equal weights
-        //  ↓    (2)    |
-        //  1 ––––––––→ 2
+        //  0 ––––––––––→ 3
+        //  │     (1)     ↑
+        //  │             │
+        //  │(0)       (3)│
+        //  │             │
+        //  ↓     (2)     |
+        //  1 ––––––––––→ 2     equal unitary weights
+        //
+        // numbers in parentheses indicate edge ids
 
         // edge:       0       1       2       3
         let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
         let mut graph = Graph::new(&edges);
 
+        // initial 'dist' matrix
+        graph.calc_dist_and_next();
+        assert_eq!(
+            format!("{}", graph.str_mat(false)),
+            "┌         ┐\n\
+             │ 0 1 ∞ 1 │\n\
+             │ ∞ 0 1 ∞ │\n\
+             │ ∞ ∞ 0 1 │\n\
+             │ ∞ ∞ ∞ 0 │\n\
+             └         ┘"
+        );
+
+        // call shortest_paths_fw
         graph.shortest_paths_fw();
 
         // check 'dist'
@@ -385,14 +413,18 @@ mod tests {
 
     #[test]
     fn shortest_paths_fw_works_2() {
-        //           [10]
-        //      0 ––––––––→ 3      (): numbers in parentheses
-        //      |    (1)    ↑          indicate edge ids
-        //   [5]|(0)        |
-        //      |        (3)|[1]
-        //      ↓    (2)    |      []: numbers in brackets
-        //      1 ––––––––→ 2          indicate weights
-        //           [3]
+        //          *10
+        //    0 ––––––––––→ 3
+        //    │     (1)     ↑
+        //    │             │
+        // *5 │(0)       (3)│ *1
+        //    │             │
+        //    ↓     (2)     |
+        //    1 ––––––––––→ 2
+        //          *3
+        //
+        // numbers in parentheses indicate edge ids
+        // starred numbers indicate weights
 
         // edge:       0       1       2       3
         let edges = [[0, 1], [0, 3], [1, 2], [2, 3]];
@@ -403,6 +435,19 @@ mod tests {
             .set_weight(2, 3.0)
             .set_weight(3, 1.0);
 
+        // initial 'dist' matrix
+        graph.calc_dist_and_next();
+        assert_eq!(
+            format!("{}", graph.str_mat(false)),
+            "┌             ┐\n\
+             │  0  5  ∞ 10 │\n\
+             │  ∞  0  3  ∞ │\n\
+             │  ∞  ∞  0  1 │\n\
+             │  ∞  ∞  ∞  0 │\n\
+             └             ┘"
+        );
+
+        // call shortest_paths_fw
         graph.shortest_paths_fw();
 
         // check 'dist'
@@ -416,6 +461,7 @@ mod tests {
              └         ┘"
         );
 
+        // call shortest_paths_fw again with different weights
         graph.set_weight(3, 13.0);
         graph.shortest_paths_fw();
 
@@ -428,6 +474,66 @@ mod tests {
              │  ∞  ∞  0 13 │\n\
              │  ∞  ∞  ∞  0 │\n\
              └             ┘"
+        );
+    }
+
+    #[test]
+    fn shortest_paths_fw_works_3() {
+        //              *3
+        //      4 ––––––––––––––→ 5 . (6)
+        //      ↑       (0)       │  `. *4
+        //      │                 │    `.
+        //      │                 │      `v
+        //  *11 │(1)           *7 │(4)     3
+        //      |                 │     ,^
+        //      │                 │   ,' *9
+        //      │   (2)     (3)   ↓ ,' (5)
+        //      1 ←––––– 0 –––––→ 2
+        //           *6      *8
+        //
+        // numbers in parentheses indicate edge ids
+        // starred numbers indicate weights
+
+        // edge:       0       1       2       3       4       5       6
+        let edges = [[4, 5], [1, 4], [0, 1], [0, 2], [5, 2], [2, 3], [5, 3]];
+        let mut graph = Graph::new(&edges);
+        graph
+            .set_weight(0, 3.0)
+            .set_weight(1, 11.0)
+            .set_weight(2, 6.0)
+            .set_weight(3, 8.0)
+            .set_weight(4, 7.0)
+            .set_weight(5, 9.0)
+            .set_weight(6, 4.0);
+
+        // initial 'dist' matrix
+        graph.calc_dist_and_next();
+        assert_eq!(
+            format!("{}", graph.str_mat(false)),
+            "┌                   ┐\n\
+             │  0  6  8  ∞  ∞  ∞ │\n\
+             │  ∞  0  ∞  ∞ 11  ∞ │\n\
+             │  ∞  ∞  0  9  ∞  ∞ │\n\
+             │  ∞  ∞  ∞  0  ∞  ∞ │\n\
+             │  ∞  ∞  ∞  ∞  0  3 │\n\
+             │  ∞  ∞  7  4  ∞  0 │\n\
+             └                   ┘"
+        );
+
+        // shortest paths
+        graph.shortest_paths_fw();
+
+        // check 'dist'
+        assert_eq!(
+            format!("{}", graph.str_mat(false)),
+            "┌                   ┐\n\
+             │  0  6  8 17 17 20 │\n\
+             │  ∞  0 21 18 11 14 │\n\
+             │  ∞  ∞  0  9  ∞  ∞ │\n\
+             │  ∞  ∞  ∞  0  ∞  ∞ │\n\
+             │  ∞  ∞ 10  7  0  3 │\n\
+             │  ∞  ∞  7  4  ∞  0 │\n\
+             └                   ┘"
         );
     }
 }

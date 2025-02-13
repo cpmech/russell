@@ -1,7 +1,7 @@
 //! This module implements algorithms built from base, math, and vector-matrix routines
 
 mod common;
-mod graph;
+mod graph_dir;
 mod interp_chebyshev;
 mod interp_lagrange;
 mod linear_fitting;
@@ -14,7 +14,7 @@ mod root_finder_brent;
 mod testing;
 
 pub use common::*;
-pub use graph::*;
+pub use graph_dir::*;
 pub use interp_chebyshev::*;
 pub use interp_lagrange::*;
 pub use linear_fitting::*;

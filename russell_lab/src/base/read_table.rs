@@ -6,6 +6,21 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::str::FromStr;
 
+/// Reads data in tabular format
+///
+/// Note: This function is a wrapper to [read_table()] with f64 numbers and String labels for the columns.
+///
+/// # Input
+///
+/// * `full_path` -- may be a String, &str, or Path
+/// * `labels` -- the column names in the header of the file and works as keys for the resulting HashMap
+pub fn read_data<P>(full_path: &P, labels: &[&str]) -> Result<HashMap<String, Vec<f64>>, StrError>
+where
+    P: AsRef<OsStr> + ?Sized,
+{
+    read_table(full_path, Some(labels))
+}
+
 /// Reads a file containing tabled data
 ///
 /// # Input
@@ -163,7 +178,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::read_table;
+    use super::{read_data, read_table};
     use crate::StrError;
     use std::collections::HashMap;
 
@@ -242,5 +257,13 @@ mod tests {
             table.get("colors").unwrap(),
             &["\"#ff0000\"", "\"#00ff00\"", "\"#0000ff\""]
         );
+    }
+
+    #[test]
+    fn read_data_works() {
+        let full_path = "./data/tables/ok1.txt";
+        let data = read_data(full_path, &["column_0", "column_1"]).unwrap();
+        assert_eq!(data.get("column_0").unwrap(), &[1.0]);
+        assert_eq!(data.get("column_1").unwrap(), &[2.0]);
     }
 }

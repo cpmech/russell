@@ -14,6 +14,36 @@ use std::str::FromStr;
 ///
 /// * `full_path` -- may be a String, &str, or Path
 /// * `labels` -- the column names in the header of the file and works as keys for the resulting HashMap
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{read_data, StrError};
+/// use std::env;
+/// use std::path::PathBuf;
+///
+/// fn main() -> Result<(), StrError> {
+///     // <my-data.txt>
+///     //
+///     // x y z
+///     // 1 2 3
+///     // 4 5 6
+///     // 7 8 9
+///
+///     // get the asset's full path
+///     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+///     let full_path = root.join("data/tables/my-data.txt");
+///
+///     // read the file
+///     let data = read_data(&full_path, &["x", "y", "z"])?;
+///
+///     // check the data
+///     assert_eq!(data.get("x").unwrap(), &[1.0, 4.0, 7.0]);
+///     assert_eq!(data.get("y").unwrap(), &[2.0, 5.0, 8.0]);
+///     assert_eq!(data.get("z").unwrap(), &[3.0, 6.0, 9.0]);
+///     Ok(())
+/// }
+/// ```
 pub fn read_data<P>(full_path: &P, labels: &[&str]) -> Result<HashMap<String, Vec<f64>>, StrError>
 where
     P: AsRef<OsStr> + ?Sized,
@@ -130,10 +160,16 @@ where
                                         if column_index >= ls.len() {
                                             return Err("there are more columns than labels");
                                         }
+                                        if s != ls[column_index] {
+                                            return Err("column data is missing");
+                                        }
                                         ls[column_index].to_string()
                                     }
                                     None => {
-                                        format!("col{}", column_index)
+                                        if header_labels.contains(&s.to_string()) {
+                                            return Err("found duplicate column label");
+                                        }
+                                        s.to_string()
                                     }
                                 };
                                 header_labels.push(label);
@@ -218,6 +254,12 @@ mod tests {
 
         table = read_table("./data/tables/bad_missing_data.txt", None);
         assert_eq!(table.err(), Some("column data is missing"));
+
+        table = read_table("./data/tables/ok1.txt", Some(&["column_0", "wrong"]));
+        assert_eq!(table.err(), Some("column data is missing"));
+
+        table = read_table("./data/tables/bad_duplicate_labels.txt", None);
+        assert_eq!(table.err(), Some("found duplicate column label"));
     }
 
     const OK2_COL0: [f64; 5] = [1.0, 2.0, 3.0, 4.0, 5.0];
@@ -228,14 +270,17 @@ mod tests {
     fn read_table_works() {
         let full_path = "./data/tables/clay-data.txt";
         let mut table: HashMap<String, Vec<f64>>;
+
+        // no labels
         table = read_table(full_path, None).unwrap();
         let mut labels: Vec<_> = table.keys().collect();
         labels.sort();
-        assert_eq!(labels, &["col0", "col1", "col2"]);
-        assert_eq!(table.get("col0").unwrap(), &OK2_COL0);
-        assert_eq!(table.get("col1").unwrap(), &OK2_COL1);
-        assert_eq!(table.get("col2").unwrap(), &OK2_COL2);
+        assert_eq!(labels, &["ea", "er", "sr"]);
+        assert_eq!(table.get("sr").unwrap(), &OK2_COL0);
+        assert_eq!(table.get("ea").unwrap(), &OK2_COL1);
+        assert_eq!(table.get("er").unwrap(), &OK2_COL2);
 
+        // with labels
         table = read_table(full_path, Some(&["sr", "ea", "er"])).unwrap();
         let mut labels: Vec<_> = table.keys().collect();
         labels.sort();
@@ -243,6 +288,10 @@ mod tests {
         assert_eq!(table.get("sr").unwrap(), &OK2_COL0);
         assert_eq!(table.get("ea").unwrap(), &OK2_COL1);
         assert_eq!(table.get("er").unwrap(), &OK2_COL2);
+
+        // wrong labels
+        let table: Result<HashMap<String, Vec<f64>>, StrError> = read_table(full_path, Some(&["x", "y", "z"]));
+        assert_eq!(table.err(), Some("column data is missing"));
     }
 
     #[test]

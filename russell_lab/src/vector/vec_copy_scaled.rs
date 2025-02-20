@@ -3,9 +3,20 @@ use crate::StrError;
 
 /// Copies a scaled vector into another
 ///
+/// Performs the operation:
 /// ```text
 /// v = α⋅u
 /// ```
+///
+/// # Input
+///
+/// * `v` -- destination vector that will receive the scaled values
+/// * `alpha` -- scaling factor
+/// * `u` -- source vector to be scaled
+///
+/// # Returns
+///
+/// Returns an error if the vectors have different dimensions.
 ///
 /// # Examples
 ///
@@ -26,6 +37,11 @@ use crate::StrError;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Note
+///
+/// The function optimizes performance by processing vectors in chunks of 4 elements
+/// when possible, with special handling for the remainder elements.
 pub fn vec_copy_scaled(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
     // Check dimensions
     let n = v.dim();
@@ -79,6 +95,51 @@ mod tests {
         let mut v = Vector::from(&[NOISE, NOISE, NOISE]);
         vec_copy_scaled(&mut v, 0.01, &u).unwrap();
         let correct = &[1.0, 2.0, 3.0];
+        vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    #[test]
+    fn vec_copy_scaled_works_with_zero_alpha() {
+        let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
+        let mut v = Vector::from(&[10.0, 20.0, 30.0, 40.0]);
+        vec_copy_scaled(&mut v, 0.0, &u).unwrap();
+        let correct = &[0.0, 0.0, 0.0, 0.0];
+        vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    #[test]
+    fn vec_copy_scaled_works_with_negative_alpha() {
+        let u = Vector::from(&[1.0, 2.0, 3.0]);
+        let mut v = Vector::new(3);
+        vec_copy_scaled(&mut v, -2.0, &u).unwrap();
+        let correct = &[-2.0, -4.0, -6.0];
+        vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    #[test]
+    fn vec_copy_scaled_works_with_small_vector() {
+        let u = Vector::from(&[1.0, 2.0]);
+        let mut v = Vector::new(2);
+        vec_copy_scaled(&mut v, 3.0, &u).unwrap();
+        let correct = &[3.0, 6.0];
+        vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    #[test]
+    fn vec_copy_scaled_works_with_large_vector() {
+        let u = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]);
+        let mut v = Vector::new(7);
+        vec_copy_scaled(&mut v, 2.0, &u).unwrap();
+        let correct = &[2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
+        vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    #[test]
+    fn vec_copy_scaled_works_with_exactly_four_elements() {
+        let u = Vector::from(&[1.0, 2.0, 3.0, 4.0]);
+        let mut v = Vector::new(4);
+        vec_copy_scaled(&mut v, 0.5, &u).unwrap();
+        let correct = &[0.5, 1.0, 1.5, 2.0];
         vec_approx_eq(&v, correct, 1e-15);
     }
 }

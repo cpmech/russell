@@ -64,8 +64,7 @@ pub fn vec_copy_scaled(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), Str
     }
 
     // Process the rest in chunks of 4
-    let mp1 = m;
-    for i in (mp1..n).step_by(4) {
+    for i in (m..n).step_by(4) {
         v[i] = alpha * u[i];
         v[i + 1] = alpha * u[i + 1];
         v[i + 2] = alpha * u[i + 2];

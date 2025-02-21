@@ -1,7 +1,7 @@
 use plotpy::{Contour, Plot};
 use russell_lab::{StrError, Vector};
 use russell_ode::{PdeDiscreteLaplacian2d, Side};
-use russell_sparse::{Genie, LinSolver, SparseMatrix};
+use russell_sparse::{Genie, LinSolver};
 
 fn main() -> Result<(), StrError> {
     // Approximate (with the Finite Differences Method, FDM) the solution of
@@ -53,10 +53,9 @@ fn main() -> Result<(), StrError> {
     });
 
     // solve the linear system
-    let mut mat = SparseMatrix::from_coo(aa);
     let mut solver = LinSolver::new(Genie::Umfpack)?;
-    solver.actual.factorize(&mut mat, None)?;
-    solver.actual.solve(&mut phi, &mut mat, &rhs, false)?;
+    solver.actual.factorize(&aa, None)?;
+    solver.actual.solve(&mut phi, &rhs, false)?;
 
     // plot results
     let mut contour = Contour::new();

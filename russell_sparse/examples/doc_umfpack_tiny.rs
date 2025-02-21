@@ -11,7 +11,7 @@ fn main() -> Result<(), StrError> {
     let mut umfpack = SolverUMFPACK::new()?;
 
     // allocate the coefficient matrix
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
+    let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
     coo.put(0, 0, 0.2)?;
     coo.put(0, 1, 0.2)?;
     coo.put(1, 0, 0.5)?;
@@ -28,14 +28,14 @@ fn main() -> Result<(), StrError> {
     assert_eq!(format!("{}", a), correct);
 
     // call factorize
-    umfpack.factorize(&mut coo, None)?;
+    umfpack.factorize(&coo, None)?;
 
     // allocate two right-hand side vectors
     let b = Vector::from(&[1.0, 1.0, 1.0]);
 
     // calculate the solution
     let mut x = Vector::new(ndim);
-    umfpack.solve(&mut x, &coo, &b, false)?;
+    umfpack.solve(&mut x, &b, false)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(&x, &correct, 1e-14);
     Ok(())

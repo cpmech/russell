@@ -1,6 +1,6 @@
 use russell_lab::{vec_approx_eq, Vector};
 use russell_ode::{PdeDiscreteLaplacian2d, Side};
-use russell_sparse::{Genie, LinSolver, SparseMatrix};
+use russell_sparse::{Genie, LinSolver};
 
 #[test]
 fn test_pde_laplace_1() {
@@ -66,10 +66,9 @@ fn test_pde_laplace_1() {
     });
 
     // solve the linear system
-    let mut mat = SparseMatrix::from_coo(aa);
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&mut mat, None).unwrap();
-    solver.actual.solve(&mut x, &mut mat, &b, false).unwrap();
+    solver.actual.factorize(&aa, None).unwrap();
+    solver.actual.solve(&mut x, &b, false).unwrap();
 
     // check
     let x_correct = [

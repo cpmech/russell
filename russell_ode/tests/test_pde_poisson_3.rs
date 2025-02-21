@@ -1,7 +1,7 @@
 use plotpy::{Contour, Plot};
 use russell_lab::{vec_approx_eq, Vector};
 use russell_ode::PdeDiscreteLaplacian2d;
-use russell_sparse::{Genie, LinSolver, SparseMatrix};
+use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
 
@@ -59,10 +59,9 @@ fn test_pde_poisson_3() {
     });
 
     // solve the linear system
-    let mut mat = SparseMatrix::from_coo(aa);
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&mut mat, None).unwrap();
-    solver.actual.solve(&mut phi, &mut mat, &rhs, false).unwrap();
+    solver.actual.factorize(&aa, None).unwrap();
+    solver.actual.solve(&mut phi, &rhs, false).unwrap();
 
     // check
     let mut phi_correct = Vector::new(dim);

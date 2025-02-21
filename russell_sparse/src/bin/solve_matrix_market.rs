@@ -118,11 +118,8 @@ fn main() -> Result<(), StrError> {
             csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_real.smat", true)?;
         }
 
-        // save the COO matrix as a generic SparseMatrix
-        let mut mat = SparseMatrix::from_coo(coo);
-
         // save information about the matrix
-        let (nrow, ncol, nnz, sym) = mat.get_info();
+        let (nrow, ncol, nnz, sym) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.matrix.nrow = nrow;
         stats.matrix.ncol = ncol;
@@ -134,18 +131,18 @@ fn main() -> Result<(), StrError> {
         let mut solver = LinSolver::new(genie)?;
 
         // call factorize
-        solver.actual.factorize(&mut mat, Some(params))?;
+        solver.actual.factorize(&coo, Some(params))?;
 
         // allocate vectors
         let mut x = Vector::new(nrow);
         let rhs = Vector::filled(nrow, 1.0);
 
         // solve linear system
-        solver.actual.solve(&mut x, &mat, &rhs, opt.verbose)?;
+        solver.actual.solve(&mut x, &rhs, opt.verbose)?;
 
         // verify the solution
         sw.reset();
-        stats.verify = VerifyLinSys::from(&mat, &x, &rhs)?;
+        stats.verify = VerifyLinSys::from(&coo, &x, &rhs)?;
         stats.time_nanoseconds.verify = sw.stop();
 
         // update stats

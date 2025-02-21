@@ -1,5 +1,5 @@
-use super::{ComplexSparseMatrix, SparseMatrix};
-use crate::StrError;
+use super::ComplexSparseMatrix;
+use crate::{CooMatrix, StrError};
 use russell_lab::{complex_vec_norm, complex_vec_update, cpx, Complex64, ComplexVector};
 use russell_lab::{find_index_abs_max, vec_norm, vec_update, Norm, Vector};
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ impl VerifyLinSys {
     /// fn main() -> Result<(), StrError> {
     ///     // set sparse matrix (3 x 3) with 4 non-zeros
     ///     let (nrow, ncol, nnz) = (3, 3, 4);
-    ///     let mut coo = SparseMatrix::new_coo(nrow, ncol, nnz, Sym::No)?;
+    ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, Sym::No)?;
     ///     coo.put(0, 0, 1.0)?;
     ///     coo.put(0, 2, 4.0)?;
     ///     coo.put(1, 1, 2.0)?;
@@ -57,7 +57,7 @@ impl VerifyLinSys {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from(mat: &SparseMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
+    pub fn from(mat: &CooMatrix, x: &Vector, rhs: &Vector) -> Result<Self, StrError> {
         let (nrow, ncol, _, _) = mat.get_info();
         if x.dim() != ncol {
             return Err("x.dim() must be equal to ncol");
@@ -151,13 +151,13 @@ impl VerifyLinSys {
 #[cfg(test)]
 mod tests {
     use super::VerifyLinSys;
-    use crate::{ComplexSparseMatrix, Samples, SparseMatrix, Sym};
+    use crate::{ComplexSparseMatrix, CooMatrix, Samples, Sym};
     use russell_lab::{approx_eq, cpx, Complex64, ComplexVector, Vector};
 
     #[test]
     fn from_captures_errors() {
         // real
-        let coo = SparseMatrix::new_coo(2, 1, 1, Sym::No).unwrap();
+        let coo = CooMatrix::new(2, 1, 1, Sym::No).unwrap();
         let x = Vector::new(1);
         let rhs = Vector::new(2);
         assert_eq!(VerifyLinSys::from(&coo, &x, &rhs).err(), Some("matrix is empty"));
@@ -196,7 +196,7 @@ mod tests {
         // 1  3 -2
         // 3  5  6
         // 2  4  3
-        let mut coo = SparseMatrix::new_coo(3, 3, 9, Sym::No).unwrap();
+        let mut coo = CooMatrix::new(3, 3, 9, Sym::No).unwrap();
         coo.put(0, 0, 1.0).unwrap();
         coo.put(0, 1, 3.0).unwrap();
         coo.put(0, 2, -2.0).unwrap();
@@ -220,41 +220,24 @@ mod tests {
         //   5  -2  .  1
         //  10  -4  .  2
         //  15  -6  .  3
-        let (coo, csc, csr, _) = Samples::rectangular_3x4();
+        let (coo, _, _, _) = Samples::rectangular_3x4();
         let x = Vector::from(&[1.0, 3.0, 8.0, 5.0]);
 
         let rhs = Vector::from(&[0.0, 0.0, 0.0]);
         let a_times_x = &[4.0, 8.0, 12.0];
 
         // COO
-        let mat = SparseMatrix::from_coo(coo);
-        let verify = VerifyLinSys::from(&mat, &x, &rhs).unwrap();
+        let verify = VerifyLinSys::from(&coo, &x, &rhs).unwrap();
         assert_eq!(verify.max_abs_a, 15.0);
         assert_eq!(verify.max_abs_ax, 12.0);
         assert_eq!(verify.max_abs_diff, 12.0);
         approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
 
-        let verify = VerifyLinSys::from(&mat, &x, &Vector::from(a_times_x)).unwrap();
+        let verify = VerifyLinSys::from(&coo, &x, &Vector::from(a_times_x)).unwrap();
         assert_eq!(verify.max_abs_a, 15.0);
         assert_eq!(verify.max_abs_ax, 12.0);
         assert_eq!(verify.max_abs_diff, 0.0);
         approx_eq(verify.relative_error, 0.0, 1e-15);
-
-        // CSC
-        let mat = SparseMatrix::from_csc(csc);
-        let verify = VerifyLinSys::from(&mat, &x, &rhs).unwrap();
-        assert_eq!(verify.max_abs_a, 15.0);
-        assert_eq!(verify.max_abs_ax, 12.0);
-        assert_eq!(verify.max_abs_diff, 12.0);
-        approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
-
-        // CSR
-        let mat = SparseMatrix::from_csr(csr);
-        let verify = VerifyLinSys::from(&mat, &x, &rhs).unwrap();
-        assert_eq!(verify.max_abs_a, 15.0);
-        assert_eq!(verify.max_abs_ax, 12.0);
-        assert_eq!(verify.max_abs_diff, 12.0);
-        approx_eq(verify.relative_error, 12.0 / (15.0 + 1.0), 1e-15);
     }
 
     #[test]

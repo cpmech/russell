@@ -1,7 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{numerical_jacobian, LinSolver, SparseMatrix};
+use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
 pub(crate) struct EulerBackward<'a, A> {
@@ -26,7 +26,7 @@ pub(crate) struct EulerBackward<'a, A> {
     dy: Vector,
 
     /// Coefficient matrix K = h J - I
-    kk: SparseMatrix,
+    kk: CooMatrix,
 
     /// Linear solver
     solver: LinSolver<'a>,
@@ -50,7 +50,7 @@ impl<'a, A> EulerBackward<'a, A> {
             w: Vector::new(ndim),
             r: Vector::new(ndim),
             dy: Vector::new(ndim),
-            kk: SparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
+            kk: CooMatrix::new(ndim, ndim, nnz, sym).unwrap(),
             solver: LinSolver::new(params.newton.genie).unwrap(),
         }
     }
@@ -103,7 +103,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
                 work.stats.n_jacobian += 1;
 
                 // calculate J_new := h J
-                let kk = self.kk.get_coo_mut().unwrap();
+                let kk = &mut self.kk;
                 if self.params.newton.use_numerical_jacobian || self.system.jacobian.is_none() {
                     work.stats.n_function += ndim;
                     let w1 = &mut self.k; // workspace
@@ -124,16 +124,14 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
                 // perform factorization
                 work.stats.sw_factor.reset();
                 work.stats.n_factor += 1;
-                self.solver
-                    .actual
-                    .factorize(&mut self.kk, self.params.newton.lin_sol_params)?;
+                self.solver.actual.factorize(kk, self.params.newton.lin_sol_params)?;
                 work.stats.stop_sw_factor();
             }
 
             // solve the linear system
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            self.solver.actual.solve(&mut self.dy, &self.kk, &self.r, false)?;
+            self.solver.actual.solve(&mut self.dy, &self.r, false)?;
             work.stats.stop_sw_lin_sol();
 
             // update y

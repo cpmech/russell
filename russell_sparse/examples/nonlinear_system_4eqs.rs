@@ -30,7 +30,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate Jacobian matrix (J) as SparseMatrix
     let (neq, nnz) = (4, 16);
-    let mut jj = SparseMatrix::new_coo(neq, neq, nnz, Sym::No).unwrap();
+    let mut jj = CooMatrix::new(neq, neq, nnz, Sym::No).unwrap();
 
     // allocate residual (rr), vector of unknowns (uu), and minus-uu (mdu)
     let mut rr = Vector::new(neq);
@@ -72,11 +72,11 @@ fn main() -> Result<(), StrError> {
         }
 
         // calculate Jacobian matrix
-        calc_jacobian(jj.get_coo_mut()?, &uu)?;
+        calc_jacobian(&mut jj, &uu)?;
 
         // factorize and solve linear system: J * mdu = rr
-        solver.actual.factorize(&mut jj, None)?;
-        solver.actual.solve(&mut mdu, &jj, &rr, false)?;
+        solver.actual.factorize(&jj, None)?;
+        solver.actual.solve(&mut mdu, &rr, false)?;
 
         // update the vector of unknowns: uu -= mdu
         vec_update(&mut uu, -1.0, &mdu)?;

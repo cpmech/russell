@@ -481,8 +481,7 @@ The code below illustrates how to do it.
 Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
 
 ```rust
-use russell_lab::{read_table, StrError};
-use std::collections::HashMap;
+use russell_lab::{read_data, StrError};
 use std::env;
 use std::path::PathBuf;
 
@@ -492,13 +491,12 @@ fn main() -> Result<(), StrError> {
     let full_path = root.join("data/tables/clay-data.txt");
 
     // read the file
-    let labels = &["sr", "ea", "er"];
-    let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+    let data = read_data(&full_path, &["sr", "ea", "er"])?;
 
     // check the columns
-    assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
-    assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
-    assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
+    assert_eq!(data.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+    assert_eq!(data.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(data.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
     Ok(())
 }
 ```

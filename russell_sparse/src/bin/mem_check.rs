@@ -19,9 +19,8 @@ fn test_solver(genie: Genie) {
     };
 
     let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
-    let mut mat = SparseMatrix::from_coo(coo);
 
-    match solver.actual.factorize(&mut mat, None) {
+    match solver.actual.factorize(&coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -32,7 +31,7 @@ fn test_solver(genie: Genie) {
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver.actual.solve(&mut x, &mut mat, &rhs, false) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -40,7 +39,7 @@ fn test_solver(genie: Genie) {
         _ => (),
     }
 
-    match solver.actual.solve(&mut x, &mat, &rhs, false) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -74,9 +73,8 @@ fn test_complex_solver(genie: Genie) {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
-    let mut mat = ComplexSparseMatrix::from_coo(coo);
 
-    match solver.actual.factorize(&mut mat, None) {
+    match solver.actual.factorize(&coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -87,7 +85,7 @@ fn test_complex_solver(genie: Genie) {
     let mut x = ComplexVector::new(3);
     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
 
-    match solver.actual.solve(&mut x, &mut mat, &rhs, false) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -95,7 +93,7 @@ fn test_complex_solver(genie: Genie) {
         _ => (),
     }
 
-    match solver.actual.solve(&mut x, &mat, &rhs, false) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;
@@ -126,7 +124,7 @@ fn test_solver_singular(genie: Genie) {
         }
     };
 
-    let mut coo_singular = match SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No) {
+    let mut coo_singular = match CooMatrix::new(ndim, ndim, nnz, Sym::No) {
         Ok(v) => v,
         Err(e) => {
             println!("FAIL(new CooMatrix): {}", e);
@@ -136,7 +134,7 @@ fn test_solver_singular(genie: Genie) {
     coo_singular.put(0, 0, 1.0).unwrap();
     coo_singular.put(1, 0, 1.0).unwrap();
 
-    match solver.actual.factorize(&mut coo_singular, None) {
+    match solver.actual.factorize(&coo_singular, None) {
         Err(e) => println!("Ok(factorize singular matrix): {}\n", e),
         _ => (),
     };

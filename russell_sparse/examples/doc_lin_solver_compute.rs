@@ -8,7 +8,7 @@ fn main() -> Result<(), StrError> {
     let nnz = 5; // number of non-zero values
 
     // allocate the coefficient matrix
-    let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
+    let mut mat = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
     mat.put(0, 0, 0.2)?;
     mat.put(0, 1, 0.2)?;
     mat.put(1, 0, 0.5)?;
@@ -29,7 +29,7 @@ fn main() -> Result<(), StrError> {
 
     // calculate the solution
     let mut x = Vector::new(ndim);
-    LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None)?;
+    LinSolver::compute(Genie::Umfpack, &mut x, &mat, &rhs, None)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(&x, &correct, 1e-14);
     Ok(())

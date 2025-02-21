@@ -26,10 +26,9 @@ fn test_complex_umfpack() -> Result<(), StrError> {
     // println!("x =\n{}", x_correct);
     // println!("b =\n{}", rhs);
     let mut x = Vector::new(n);
-    let mut mat = SparseMatrix::from_coo(coo);
     let mut solver = SolverMUMPS::new()?;
-    solver.factorize(&mut mat, None)?;
-    solver.solve(&mut x, &mut mat, &rhs, false)?;
+    solver.factorize(&coo, None)?;
+    solver.solve(&mut x, &rhs, false)?;
     vec_approx_eq(&x, &x_correct, 1e-14);
     Ok(())
 }

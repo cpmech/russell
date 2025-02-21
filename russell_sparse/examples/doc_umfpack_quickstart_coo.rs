@@ -16,7 +16,7 @@ fn main() -> Result<(), StrError> {
     //  . -1 -3  2  .
     //  .  .  1  .  .
     //  .  4  2  .  1
-    let mut coo = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
+    let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     coo.put(1, 0, 3.0)?;
@@ -37,14 +37,14 @@ fn main() -> Result<(), StrError> {
     params.compute_determinant = true;
 
     // call factorize
-    umfpack.factorize(&mut coo, Some(params))?;
+    umfpack.factorize(&coo, Some(params))?;
 
     // allocate x and rhs
     let mut x = Vector::new(ndim);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
     // calculate the solution
-    umfpack.solve(&mut x, &coo, &rhs, false)?;
+    umfpack.solve(&mut x, &rhs, false)?;
     println!("x =\n{}", x);
 
     // check the results

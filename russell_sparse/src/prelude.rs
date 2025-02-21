@@ -15,7 +15,6 @@ pub use crate::lin_solver::*;
 pub use crate::numerical_jacobian::numerical_jacobian;
 pub use crate::read_matrix_market;
 pub use crate::solver_umfpack::SolverUMFPACK;
-pub use crate::sparse_matrix::NumSparseMatrix;
 pub use crate::stats_lin_sol::StatsLinSol;
 pub use crate::verify_lin_sys::VerifyLinSys;
 

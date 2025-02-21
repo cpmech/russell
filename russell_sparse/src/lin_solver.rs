@@ -1,8 +1,7 @@
 #[cfg(feature = "with_mumps")]
 use super::SolverMUMPS;
 
-use super::{Genie, LinSolParams, SparseMatrix, StatsLinSol};
-use super::{SolverKLU, SolverUMFPACK};
+use super::{CooMatrix, Genie, LinSolParams, SolverKLU, SolverUMFPACK, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -24,7 +23,7 @@ pub trait LinSolTrait: Send {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    fn factorize(&mut self, mat: &mut SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
+    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -46,7 +45,7 @@ pub trait LinSolTrait: Send {
     /// * `verbose` -- shows messages
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
-    fn solve(&mut self, x: &mut Vector, mat: &SparseMatrix, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
+    fn solve(&mut self, x: &mut Vector, rhs: &Vector, verbose: bool) -> Result<(), StrError>;
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol);
@@ -130,7 +129,7 @@ impl<'a> LinSolver<'a> {
     ///     let nnz = 5; // number of non-zero values
     ///
     ///     // allocate the coefficient matrix
-    ///     let mut mat = SparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
+    ///     let mut mat = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
     ///     mat.put(0, 0, 0.2)?;
     ///     mat.put(0, 1, 0.2)?;
     ///     mat.put(1, 0, 0.5)?;
@@ -151,7 +150,7 @@ impl<'a> LinSolver<'a> {
     ///
     ///     // calculate the solution
     ///     let mut x = Vector::new(ndim);
-    ///     LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None)?;
+    ///     LinSolver::compute(Genie::Umfpack, &mut x, &mat, &rhs, None)?;
     ///     let correct = vec![3.0, 2.0, 4.0];
     ///     vec_approx_eq(&x, &correct, 1e-14);
     ///     Ok(())
@@ -160,14 +159,14 @@ impl<'a> LinSolver<'a> {
     pub fn compute(
         genie: Genie,
         x: &mut Vector,
-        mat: &mut SparseMatrix,
+        mat: &CooMatrix,
         rhs: &Vector,
         params: Option<LinSolParams>,
     ) -> Result<Self, StrError> {
         let mut solver = LinSolver::new(genie)?;
         solver.actual.factorize(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
-        solver.actual.solve(x, mat, rhs, verbose)?;
+        solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
     }
 }
@@ -177,7 +176,7 @@ impl<'a> LinSolver<'a> {
 #[cfg(test)]
 mod tests {
     use super::LinSolver;
-    use crate::{Genie, Samples, SparseMatrix};
+    use crate::{Genie, Samples};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[cfg(feature = "with_mumps")]
@@ -186,10 +185,9 @@ mod tests {
     #[test]
     fn lin_solver_compute_works_klu() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
-        let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Klu, &mut x, &mut mat, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Klu, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
@@ -199,10 +197,9 @@ mod tests {
     #[cfg(feature = "with_mumps")]
     fn lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
-        let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Mumps, &mut x, &mut mat, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Mumps, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
@@ -210,10 +207,9 @@ mod tests {
     #[test]
     fn lin_solver_compute_works_umfpack() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
-        let mut mat = SparseMatrix::from_coo(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Umfpack, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }

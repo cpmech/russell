@@ -1,9 +1,8 @@
 #[cfg(feature = "with_mumps")]
 use super::ComplexSolverMUMPS;
 
-use super::{ComplexSparseMatrix, Genie, LinSolParams, StatsLinSol};
+use super::{ComplexCooMatrix, ComplexSolverKLU, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
 use crate::StrError;
-use crate::{ComplexSolverKLU, ComplexSolverUMFPACK};
 use russell_lab::ComplexVector;
 
 /// Defines a unified interface for complex linear system solvers
@@ -24,7 +23,7 @@ pub trait ComplexLinSolTrait: Send {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
-    fn factorize(&mut self, mat: &mut ComplexSparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
+    fn factorize(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
     ///
@@ -46,13 +45,7 @@ pub trait ComplexLinSolTrait: Send {
     /// * `verbose` -- shows messages
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
-    fn solve(
-        &mut self,
-        x: &mut ComplexVector,
-        mat: &ComplexSparseMatrix,
-        rhs: &ComplexVector,
-        verbose: bool,
-    ) -> Result<(), StrError>;
+    fn solve(&mut self, x: &mut ComplexVector, rhs: &ComplexVector, verbose: bool) -> Result<(), StrError>;
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol);
@@ -125,14 +118,14 @@ impl<'a> ComplexLinSolver<'a> {
     pub fn compute(
         genie: Genie,
         x: &mut ComplexVector,
-        mat: &mut ComplexSparseMatrix,
+        mat: &ComplexCooMatrix,
         rhs: &ComplexVector,
         params: Option<LinSolParams>,
     ) -> Result<Self, StrError> {
         let mut solver = ComplexLinSolver::new(genie)?;
         solver.actual.factorize(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
-        solver.actual.solve(x, mat, rhs, verbose)?;
+        solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
     }
 }
@@ -142,7 +135,7 @@ impl<'a> ComplexLinSolver<'a> {
 #[cfg(test)]
 mod tests {
     use super::ComplexLinSolver;
-    use crate::{ComplexSparseMatrix, Genie, Samples};
+    use crate::{Genie, Samples};
     use russell_lab::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
 
     #[cfg(feature = "with_mumps")]
@@ -151,10 +144,9 @@ mod tests {
     #[test]
     fn complex_lin_solver_compute_works_klu() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Klu, &mut x, &mut mat, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Klu, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         complex_vec_approx_eq(&x, x_correct, 1e-15);
     }
@@ -164,10 +156,9 @@ mod tests {
     #[cfg(feature = "with_mumps")]
     fn complex_lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Mumps, &mut x, &mut mat, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Mumps, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         complex_vec_approx_eq(&x, x_correct, 1e-15);
     }
@@ -175,10 +166,9 @@ mod tests {
     #[test]
     fn complex_lin_solver_compute_works_umfpack() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Umfpack, &mut x, &mut mat, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Umfpack, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
         complex_vec_approx_eq(&x, x_correct, 1e-15);
     }

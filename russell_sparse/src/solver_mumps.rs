@@ -174,9 +174,8 @@ impl LinSolTrait for SolverMUMPS {
     ///
     /// # Input
     ///
-    /// * `mat` -- the coefficient matrix A (one-base **COO** only, not CSC and not CSR).
-    ///   Also, the matrix must be square (`nrow = ncol`) and, if symmetric,
-    ///   the symmetric flag must be [Sym::YesLower]
+    /// * `mat` -- the coefficient matrix A (one-base **COO** only). The matrix must be square
+    ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
     /// # Notes

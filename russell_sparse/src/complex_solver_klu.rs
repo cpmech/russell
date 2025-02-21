@@ -1,5 +1,5 @@
 use super::{handle_klu_error_code, klu_ordering, klu_scaling};
-use super::{ComplexLinSolTrait, ComplexSparseMatrix, LinSolParams, StatsLinSol, Sym};
+use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{KLU_ORDERING_AMD, KLU_ORDERING_COLAMD, KLU_SCALE_MAX, KLU_SCALE_NONE, KLU_SCALE_SUM};
 use crate::constants::*;
 use crate::StrError;
@@ -54,6 +54,9 @@ extern "C" {
 pub struct ComplexSolverKLU {
     /// Holds a pointer to the C interface to KLU
     solver: *mut InterfaceComplexKLU,
+
+    /// Holds the CSC matrix used in factorize
+    csc: Option<ComplexCscMatrix>,
 
     /// Indicates whether the solver has been initialized or not (just once)
     initialized: bool,
@@ -111,6 +114,7 @@ impl ComplexSolverKLU {
             }
             Ok(ComplexSolverKLU {
                 solver,
+                csc: None,
                 initialized: false,
                 factorized: false,
                 initialized_sym: Sym::No,
@@ -148,33 +152,35 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `KLU` requires [Sym::YesFull]
-    fn factorize(&mut self, mat: &mut ComplexSparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
-        // get CSC matrix
-        // (or convert from COO if CSC is not available and COO is available)
-        let csc = mat.get_csc_or_from_coo()?;
-
-        // check
+    fn factorize(&mut self, mat: &ComplexCooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+        // convert from COO to CSC
         if self.initialized {
-            if csc.symmetric != self.initialized_sym {
+            if mat.symmetric != self.initialized_sym {
                 return Err("subsequent factorizations must use the same matrix (symmetric differs)");
             }
-            if csc.nrow != self.initialized_ndim {
+            if mat.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
             }
-            if (csc.col_pointers[csc.ncol] as usize) != self.initialized_nnz {
+            if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
+            self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
-            if csc.nrow != csc.ncol {
+            if mat.nrow != mat.ncol {
                 return Err("the matrix must be square");
             }
-            if csc.symmetric == Sym::YesLower || csc.symmetric == Sym::YesUpper {
+            if mat.nnz < 1 {
+                return Err("the COO matrix must have at least one non-zero value");
+            }
+            if mat.symmetric == Sym::YesLower || mat.symmetric == Sym::YesUpper {
                 return Err("KLU requires Sym::YesFull for symmetric matrices");
             }
-            self.initialized_sym = csc.symmetric;
-            self.initialized_ndim = csc.nrow;
-            self.initialized_nnz = csc.col_pointers[csc.ncol] as usize;
+            self.initialized_sym = mat.symmetric;
+            self.initialized_ndim = mat.nrow;
+            self.initialized_nnz = mat.nnz;
+            self.csc = Some(ComplexCscMatrix::from_coo(mat)?);
         }
+        let csc = self.csc.as_ref().unwrap();
 
         // parameters
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
@@ -253,32 +259,10 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
     /// * `verbose` -- NOT AVAILABLE
     ///
     /// **Warning:** the matrix must be same one used in `factorize`.
-    fn solve(
-        &mut self,
-        x: &mut ComplexVector,
-        mat: &ComplexSparseMatrix,
-        rhs: &ComplexVector,
-        _verbose: bool,
-    ) -> Result<(), StrError> {
+    fn solve(&mut self, x: &mut ComplexVector, rhs: &ComplexVector, _verbose: bool) -> Result<(), StrError> {
         // check
         if !self.factorized {
             return Err("the function factorize must be called before solve");
-        }
-
-        // access CSC matrix
-        // (possibly already converted from COO, because factorize was (should have been) called)
-        let csc = mat.get_csc()?;
-
-        // check already factorized data
-        let (nrow, ncol, nnz, sym) = csc.get_info();
-        if sym != self.initialized_sym {
-            return Err("solve must use the same matrix (symmetric differs)");
-        }
-        if nrow != self.initialized_ndim || ncol != self.initialized_ndim {
-            return Err("solve must use the same matrix (ndim differs)");
-        }
-        if nnz != self.initialized_nnz {
-            return Err("solve must use the same matrix (nnz differs)");
         }
 
         // check vectors
@@ -365,25 +349,17 @@ mod tests {
         let mut solver = ComplexSolverKLU::new().unwrap();
         assert!(!solver.factorized);
 
-        // COO to CSC errors
-        let coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
-        assert_eq!(
-            solver.factorize(&mut mat, None).err(),
-            Some("COO to CSC requires nnz > 0")
-        );
-
-        // check CSC matrix
+        // initial validation
         let (coo, _, _, _) = Samples::complex_rectangular_4x3();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
+        assert_eq!(solver.factorize(&coo, None).err(), Some("the matrix must be square"));
+        let coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         assert_eq!(
-            solver.factorize(&mut mat, None).err(),
-            Some("the matrix must be square")
+            solver.factorize(&coo, None).err(),
+            Some("the COO matrix must have at least one non-zero value")
         );
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize(&mut mat, None).err(),
+            solver.factorize(&coo, None).err(),
             Some("KLU requires Sym::YesFull for symmetric matrices")
         );
 
@@ -391,32 +367,28 @@ mod tests {
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         // ... factorize once => OK
-        solver.factorize(&mut mat, None).unwrap();
+        solver.factorize(&coo, None).unwrap();
         // ... change matrix (symmetric)
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(2.0, 0.0)).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize(&mut mat, None).err(),
+            solver.factorize(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (symmetric differs)")
         );
         // ... change matrix (ndim)
         let mut coo = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize(&mut mat, None).err(),
+            solver.factorize(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (ndim differs)")
         );
         // ... change matrix (nnz)
         let mut coo = ComplexCooMatrix::new(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         assert_eq!(
-            solver.factorize(&mut mat, None).err(),
+            solver.factorize(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
@@ -426,19 +398,18 @@ mod tests {
         let mut solver = ComplexSolverKLU::new().unwrap();
         assert!(!solver.factorized);
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
 
         let mut params = LinSolParams::new();
         params.ordering = Ordering::Metis;
         params.scaling = Scaling::Sum;
 
-        solver.factorize(&mut mat, Some(params)).unwrap();
+        solver.factorize(&coo, Some(params)).unwrap();
         assert!(solver.factorized);
         assert_eq!(solver.effective_ordering, KLU_ORDERING_AMD);
         assert_eq!(solver.effective_scaling, KLU_SCALE_SUM);
 
         // calling factorize again works
-        solver.factorize(&mut mat, Some(params)).unwrap();
+        solver.factorize(&coo, Some(params)).unwrap();
     }
 
     #[test]
@@ -447,8 +418,7 @@ mod tests {
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(1.0, 0.0)).unwrap();
         coo.put(1, 1, cpx!(0.0, 0.0)).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
-        assert_eq!(solver.factorize(&mut mat, None), Err("klu_factor failed"));
+        assert_eq!(solver.factorize(&coo, None), Err("klu_factor failed"));
     }
 
     #[test]
@@ -456,57 +426,25 @@ mod tests {
         let mut coo = ComplexCooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, cpx!(123.0, 1.0)).unwrap();
         coo.put(1, 1, cpx!(456.0, 2.0)).unwrap();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         let mut solver = ComplexSolverKLU::new().unwrap();
         assert!(!solver.factorized);
         let mut x = ComplexVector::new(2);
         let rhs = ComplexVector::new(2);
         assert_eq!(
-            solver.solve(&mut x, &mut mat, &rhs, false),
+            solver.solve(&mut x, &rhs, false),
             Err("the function factorize must be called before solve")
         );
         let mut x = ComplexVector::new(1);
-        solver.factorize(&mut mat, None).unwrap();
+        solver.factorize(&coo, None).unwrap();
         assert_eq!(
-            solver.solve(&mut x, &mut mat, &rhs, false),
+            solver.solve(&mut x, &rhs, false),
             Err("the dimension of the vector of unknown values x is incorrect")
         );
         let mut x = ComplexVector::new(2);
         let rhs = ComplexVector::new(1);
         assert_eq!(
-            solver.solve(&mut x, &mut mat, &rhs, false),
+            solver.solve(&mut x, &rhs, false),
             Err("the dimension of the right-hand side vector is incorrect")
-        );
-        // wrong symmetric
-        let rhs = ComplexVector::new(2);
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 2, Sym::YesFull).unwrap();
-        coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
-        coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
-        let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
-        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
-        assert_eq!(
-            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
-            Err("solve must use the same matrix (symmetric differs)")
-        );
-        // wrong ndim
-        let mut coo_wrong = ComplexCooMatrix::new(1, 1, 1, Sym::No).unwrap();
-        coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
-        let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
-        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
-        assert_eq!(
-            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
-            Err("solve must use the same matrix (ndim differs)")
-        );
-        // wrong nnz
-        let mut coo_wrong = ComplexCooMatrix::new(2, 2, 3, Sym::No).unwrap();
-        coo_wrong.put(0, 0, cpx!(123.0, 1.0)).unwrap();
-        coo_wrong.put(1, 1, cpx!(456.0, 2.0)).unwrap();
-        coo_wrong.put(0, 1, cpx!(100.0, 1.0)).unwrap();
-        let mut mat_wrong = ComplexSparseMatrix::from_coo(coo_wrong);
-        mat_wrong.get_csc_or_from_coo().unwrap(); // make sure to convert to CSC (because we're not calling factorize on this wrong matrix)
-        assert_eq!(
-            solver.solve(&mut x, &mut mat_wrong, &rhs, false),
-            Err("solve must use the same matrix (nnz differs)")
         );
     }
 
@@ -514,7 +452,6 @@ mod tests {
     fn solve_works() {
         let mut solver = ComplexSolverKLU::new().unwrap();
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
-        let mut mat = ComplexSparseMatrix::from_coo(coo);
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
@@ -523,13 +460,13 @@ mod tests {
         params.ordering = Ordering::Cholmod;
         params.scaling = Scaling::Max;
 
-        solver.factorize(&mut mat, Some(params)).unwrap();
-        solver.solve(&mut x, &mut mat, &rhs, false).unwrap();
+        solver.factorize(&coo, Some(params)).unwrap();
+        solver.solve(&mut x, &rhs, false).unwrap();
         complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
         let mut x_again = ComplexVector::new(3);
-        solver.solve(&mut x_again, &mut mat, &rhs, false).unwrap();
+        solver.solve(&mut x_again, &rhs, false).unwrap();
         complex_vec_approx_eq(&x_again, x_correct, 1e-14);
 
         // update stats

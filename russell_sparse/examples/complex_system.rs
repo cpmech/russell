@@ -42,7 +42,7 @@ fn solve(genie: Genie) -> Result<(), StrError> {
     let nnz = 16; // number of non-zero values, including duplicates
 
     // input matrix in Complex Triplet format
-    let mut coo = ComplexSparseMatrix::new_coo(ndim, ndim, nnz, Sym::No)?;
+    let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
 
     // first column
     coo.put(0, 0, cpx!(19.73, 0.00))?;
@@ -88,8 +88,8 @@ fn solve(genie: Genie) -> Result<(), StrError> {
 
     // call factorize and solve
     let mut x = ComplexVector::new(ndim);
-    solver.actual.factorize(&mut coo, Some(params))?;
-    solver.actual.solve(&mut x, &coo, &b, false)?;
+    solver.actual.factorize(&coo, Some(params))?;
+    solver.actual.solve(&mut x, &b, false)?;
     println!("x =\n{}", x);
 
     // check

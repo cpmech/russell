@@ -73,9 +73,8 @@ fn test_complex_solver(genie: Genie) {
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
-    let mut mat = ComplexSparseMatrix::from_coo(coo);
 
-    match solver.actual.factorize(&mut mat, None) {
+    match solver.actual.factorize(&coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -86,7 +85,7 @@ fn test_complex_solver(genie: Genie) {
     let mut x = ComplexVector::new(3);
     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
 
-    match solver.actual.solve(&mut x, &mut mat, &rhs, false) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve): {}", e);
             return;
@@ -94,7 +93,7 @@ fn test_complex_solver(genie: Genie) {
         _ => (),
     }
 
-    match solver.actual.solve(&mut x, &mat, &rhs, false) {
+    match solver.actual.solve(&mut x, &rhs, false) {
         Err(e) => {
             println!("FAIL(solve again): {}", e);
             return;

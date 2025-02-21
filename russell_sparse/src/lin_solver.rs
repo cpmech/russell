@@ -1,9 +1,8 @@
 #[cfg(feature = "with_mumps")]
 use super::SolverMUMPS;
 
-use super::{Genie, LinSolParams, StatsLinSol};
-use super::{SolverKLU, SolverUMFPACK};
-use crate::{CooMatrix, StrError};
+use super::{CooMatrix, Genie, LinSolParams, SolverKLU, SolverUMFPACK, StatsLinSol};
+use crate::StrError;
 use russell_lab::Vector;
 
 /// Defines a unified interface for linear system solvers

@@ -2,8 +2,9 @@ use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, Complex64, ComplexVector, Vector};
-use russell_sparse::{numerical_jacobian, ComplexCscMatrix, CooMatrix, CscMatrix};
-use russell_sparse::{ComplexLinSolver, ComplexSparseMatrix, Genie, LinSolver};
+use russell_sparse::{
+    numerical_jacobian, ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver,
+};
 use std::thread;
 
 /// Implements the Radau5 method (Radau IIA) (implicit, order 5, embedded) for ODEs and DAEs
@@ -41,7 +42,7 @@ pub(crate) struct Radau5<'a, A> {
     kk_real: CooMatrix,
 
     /// Coefficient matrix (for real system). K_comp = (α + βi) M - J
-    kk_comp: ComplexSparseMatrix,
+    kk_comp: ComplexCooMatrix,
 
     /// Linear solver (for real system)
     solver_real: LinSolver<'a>,
@@ -148,7 +149,7 @@ impl<'a, A> Radau5<'a, A> {
             mass,
             jj: CooMatrix::new(ndim, ndim, jac_nnz, sym).unwrap(),
             kk_real: CooMatrix::new(ndim, ndim, nnz, sym).unwrap(),
-            kk_comp: ComplexSparseMatrix::new_coo(ndim, ndim, nnz, sym).unwrap(),
+            kk_comp: ComplexCooMatrix::new(ndim, ndim, nnz, sym).unwrap(),
             solver_real: LinSolver::new(params.newton.genie).unwrap(),
             solver_comp: ComplexLinSolver::new(params.newton.genie).unwrap(),
             reuse_jacobian: false,
@@ -195,7 +196,7 @@ impl<'a, A> Radau5<'a, A> {
         // auxiliary
         let jj = &mut self.jj; // J = df/dy
         let kk_real = &mut self.kk_real; // K_real = γ M - J
-        let kk_comp = self.kk_comp.get_coo_mut().unwrap(); // K_comp = (α + βi) M - J
+        let kk_comp = &mut self.kk_comp; // K_comp = (α + βi) M - J
 
         // Jacobian matrix
         if self.reuse_jacobian {
@@ -261,7 +262,7 @@ impl<'a, A> Radau5<'a, A> {
             .factorize(&self.kk_real, self.params.newton.lin_sol_params)?;
         self.solver_comp
             .actual
-            .factorize(&mut self.kk_comp, self.params.newton.lin_sol_params)
+            .factorize(&self.kk_comp, self.params.newton.lin_sol_params)
     }
 
     /// Factorizes the real and complex systems concurrently
@@ -276,7 +277,7 @@ impl<'a, A> Radau5<'a, A> {
             let handle_comp = scope.spawn(|| {
                 self.solver_comp
                     .actual
-                    .factorize(&mut self.kk_comp, self.params.newton.lin_sol_params)
+                    .factorize(&self.kk_comp, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let err_real = handle_real.join();
@@ -296,9 +297,7 @@ impl<'a, A> Radau5<'a, A> {
     /// Solves the real and complex linear systems
     fn solve_lin_sys(&mut self) -> Result<(), StrError> {
         self.solver_real.actual.solve(&mut self.dw0, &self.v0, false)?;
-        self.solver_comp
-            .actual
-            .solve(&mut self.dw12, &self.kk_comp, &self.v12, false)?;
+        self.solver_comp.actual.solve(&mut self.dw12, &self.v12, false)?;
         Ok(())
     }
 
@@ -309,10 +308,7 @@ impl<'a, A> Radau5<'a, A> {
                 self.solver_real.actual.solve(&mut self.dw0, &self.v0, false).unwrap();
             });
             let handle_comp = scope.spawn(|| {
-                self.solver_comp
-                    .actual
-                    .solve(&mut self.dw12, &self.kk_comp, &self.v12, false)
-                    .unwrap();
+                self.solver_comp.actual.solve(&mut self.dw12, &self.v12, false).unwrap();
             });
             let err_real = handle_real.join();
             let err_comp = handle_comp.join();

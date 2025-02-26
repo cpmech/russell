@@ -28,7 +28,7 @@ impl DistributionUniform {
         Ok(DistributionUniform {
             xmin,
             xmax,
-            sampler: Uniform::new(xmin, xmax),
+            sampler: Uniform::new(xmin, xmax).map_err(|_| "invalid parameters")?,
         })
     }
 }

@@ -19,7 +19,7 @@ use rand::rngs::ThreadRng;
 #[inline]
 pub fn get_rng() -> ThreadRng {
     // re-exported for convenience
-    rand::thread_rng()
+    rand::rng()
 }
 
 mod distribution_frechet;

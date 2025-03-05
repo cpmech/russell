@@ -3,9 +3,9 @@ use super::Vector;
 /// Returns the maximum component of a vector scaled by the components of a reference vector
 ///
 /// ```text
-///             /    |vᵢ|   \
-/// res = max_i | ————————— |
-///             \ 1 + |v0ᵢ| /
+///             ⎛    |vᵢ|   ⎞
+/// res = max_i ⎜ ————————— ⎟
+///             ⎝ 1 + |v0ᵢ| ⎠
 /// ```
 ///
 /// # Panics

@@ -1,10 +1,10 @@
 use super::ComplexMatrix;
-use crate::{array_plus_opx_complex, Complex64, StrError};
+use crate::{array_minus_op_complex, StrError};
 
-/// Performs the addition of two matrices
+/// Performs the subtraction of two matrices
 ///
 /// ```text
-/// c := α⋅a + β⋅b
+/// c := a - b
 /// ```
 ///
 /// # Examples
@@ -22,40 +22,32 @@ use crate::{array_plus_opx_complex, Complex64, StrError};
 ///         [-2.0, -1.5, -1.0, -0.5],
 ///     ]);
 ///     let mut c = ComplexMatrix::new(2, 4);
-///     let alpha = cpx!(0.1, 0.0);
-///     let beta = cpx!(2.0, 0.0);
-///     complex_mat_add(&mut c, alpha, &a, beta, &b)?;
-///     let correct = "┌                         ┐\n\
-///                    │  5+0i  5+0i  5+0i  5+0i │\n\
-///                    │ -5+0i -5+0i -5+0i -5+0i │\n\
-///                    └                         ┘";
+///     complex_mat_minus(&mut c, &a, &b)?;
+///     let correct = "┌                                     ┐\n\
+///                    │     8+0i  18.5+0i    29+0i  39.5+0i │\n\
+///                    │    -8+0i -18.5+0i   -29+0i -39.5+0i │\n\
+///                    └                                     ┘";
 ///     assert_eq!(format!("{}", c), correct);
 ///     Ok(())
 /// }
 /// ```
-pub fn complex_mat_add(
-    c: &mut ComplexMatrix,
-    alpha: Complex64,
-    a: &ComplexMatrix,
-    beta: Complex64,
-    b: &ComplexMatrix,
-) -> Result<(), StrError> {
+pub fn complex_mat_minus(c: &mut ComplexMatrix, a: &ComplexMatrix, b: &ComplexMatrix) -> Result<(), StrError> {
     let (m, n) = c.dims();
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
     }
-    array_plus_opx_complex(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
+    array_minus_op_complex(c.as_mut_data(), a.as_data(), b.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_add, ComplexMatrix};
+    use super::{complex_mat_minus, ComplexMatrix};
     use crate::{complex_mat_approx_eq, cpx, Complex64};
 
     #[test]
-    fn complex_mat_add_fails_on_wrong_dims() {
+    fn complex_mat_minus_fails_on_wrong_dims() {
         let a_2x2 = ComplexMatrix::new(2, 2);
         let a_2x3 = ComplexMatrix::new(2, 3);
         let a_3x2 = ComplexMatrix::new(3, 2);
@@ -63,28 +55,26 @@ mod tests {
         let b_2x3 = ComplexMatrix::new(2, 3);
         let b_3x2 = ComplexMatrix::new(3, 2);
         let mut c_2x2 = ComplexMatrix::new(2, 2);
-        let alpha = cpx!(1.0, 0.0);
-        let beta = cpx!(1.0, 0.0);
         assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_2x3, beta, &b_2x2),
+            complex_mat_minus(&mut c_2x2, &a_2x3, &b_2x2),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_3x2, beta, &b_2x2),
+            complex_mat_minus(&mut c_2x2, &a_3x2, &b_2x2),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_2x3),
+            complex_mat_minus(&mut c_2x2, &a_2x2, &b_2x3),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_mat_add(&mut c_2x2, alpha, &a_2x2, beta, &b_3x2),
+            complex_mat_minus(&mut c_2x2, &a_2x2, &b_3x2),
             Err("matrices are incompatible")
         );
     }
 
     #[test]
-    fn complex_mat_add_works() {
+    fn complex_mat_minus_works() {
         const NOISE: Complex64 = cpx!(1234.567, 3456.789);
         #[rustfmt::skip]
         let a = ComplexMatrix::from(&[
@@ -103,14 +93,12 @@ mod tests {
             [NOISE, NOISE, NOISE, NOISE],
             [NOISE, NOISE, NOISE, NOISE],
         ]);
-        let alpha = cpx!(1.0, 0.0);
-        let beta = cpx!(-4.0, 0.0);
-        complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
+        complex_mat_minus(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [cpx!(-1.0, 0.0), cpx!(-2.0, 0.0), cpx!(-3.0, 0.0), cpx!(-4.0, 0.0)],
-            [cpx!(-1.0, 0.0), cpx!(-2.0, 0.0), cpx!(-3.0, 0.0), cpx!(-4.0, 0.0)],
-            [cpx!(-1.0, 0.0), cpx!(-2.0, 0.0), cpx!(-3.0, 0.0), cpx!(-4.0, 0.0)],
+            [cpx!(0.5, 0.0), cpx!(1.0, 0.0), cpx!(1.5, 0.0), cpx!(2.0, 0.0)],
+            [cpx!(0.5, 0.0), cpx!(1.0, 0.0), cpx!(1.5, 0.0), cpx!(2.0, 0.0)],
+            [cpx!(0.5, 0.0), cpx!(1.0, 0.0), cpx!(1.5, 0.0), cpx!(2.0, 0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }
@@ -139,28 +127,24 @@ mod tests {
             [NOISE, NOISE, NOISE, NOISE, NOISE],
             [NOISE, NOISE, NOISE, NOISE, NOISE],
         ]);
-        let alpha = cpx!(1.0, 0.0);
-        let beta = cpx!(-4.0, 0.0);
-        complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
+        complex_mat_minus(&mut c, &a, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
-            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
-            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
-            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
-            [cpx!(-1.0,0.0), cpx!(-2.0,0.0), cpx!(-3.0,0.0), cpx!(-4.0,0.0), cpx!(-5.0,0.0)],
+            [cpx!(0.5,0.0), cpx!(1.0,0.0), cpx!(1.5,0.0), cpx!(2.0,0.0), cpx!(2.5,0.0)],
+            [cpx!(0.5,0.0), cpx!(1.0,0.0), cpx!(1.5,0.0), cpx!(2.0,0.0), cpx!(2.5,0.0)],
+            [cpx!(0.5,0.0), cpx!(1.0,0.0), cpx!(1.5,0.0), cpx!(2.0,0.0), cpx!(2.5,0.0)],
+            [cpx!(0.5,0.0), cpx!(1.0,0.0), cpx!(1.5,0.0), cpx!(2.0,0.0), cpx!(2.5,0.0)],
+            [cpx!(0.5,0.0), cpx!(1.0,0.0), cpx!(1.5,0.0), cpx!(2.0,0.0), cpx!(2.5,0.0)],
         ];
         complex_mat_approx_eq(&c, correct, 1e-15);
     }
 
     #[test]
-    fn complex_mat_add_skip() {
+    fn complex_mat_minus_skip() {
         let a = ComplexMatrix::new(0, 0);
         let b = ComplexMatrix::new(0, 0);
         let mut c = ComplexMatrix::new(0, 0);
-        let alpha = cpx!(1.0, 0.0);
-        let beta = cpx!(1.0, 0.0);
-        complex_mat_add(&mut c, alpha, &a, beta, &b).unwrap();
+        complex_mat_minus(&mut c, &a, &b).unwrap();
         assert_eq!(c.as_data().len(), 0);
     }
 }

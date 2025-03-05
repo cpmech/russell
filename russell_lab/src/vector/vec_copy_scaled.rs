@@ -43,27 +43,14 @@ use crate::StrError;
 /// The function optimizes performance by processing vectors in chunks of 4 elements
 /// when possible, with special handling for the remainder elements.
 pub fn vec_copy_scaled(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError> {
-    // Check dimensions
     let n = v.dim();
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-
     let m = n % 4;
-
-    // Handle the remainder when n is not divisible by 4
-    if m != 0 {
-        for i in 0..m {
-            v[i] = alpha * u[i];
-        }
+    for i in 0..m {
+        v[i] = alpha * u[i];
     }
-
-    // If n is less than 4, return early
-    if n < 4 {
-        return Ok(());
-    }
-
-    // Process the rest in chunks of 4
     for i in (m..n).step_by(4) {
         v[i] = alpha * u[i];
         v[i + 1] = alpha * u[i + 1];

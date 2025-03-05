@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{add_arrays_complex, Complex64, StrError};
+use crate::{array_plus_opx_complex, Complex64, StrError};
 
 /// Performs the addition of two matrices
 ///
@@ -44,7 +44,7 @@ pub fn complex_mat_add(
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
     }
-    add_arrays_complex(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
+    array_plus_opx_complex(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

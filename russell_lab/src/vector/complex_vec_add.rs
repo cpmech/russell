@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{add_arrays_complex, Complex64, StrError};
+use crate::{array_plus_opx_complex, Complex64, StrError};
 
 /// Performs the addition of two vectors
 ///
@@ -36,7 +36,7 @@ pub fn complex_vec_add(
     beta: Complex64,
     v: &ComplexVector,
 ) -> Result<(), StrError> {
-    add_arrays_complex(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data())
+    array_plus_opx_complex(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

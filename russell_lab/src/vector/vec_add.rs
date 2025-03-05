@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{add_arrays, StrError};
+use crate::{array_plus_opx, StrError};
 
 /// Performs the addition of two vectors
 ///
@@ -28,7 +28,7 @@ use crate::{add_arrays, StrError};
 /// }
 /// ```
 pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) -> Result<(), StrError> {
-    add_arrays(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data())
+    array_plus_opx(w.as_mut_data(), alpha, u.as_data(), beta, v.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

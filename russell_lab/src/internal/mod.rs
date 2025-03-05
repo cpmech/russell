@@ -1,12 +1,14 @@
 //! This module implements some functions for internal use
 
-mod add_arrays;
+mod array_minus_op;
+mod array_plus_op;
+mod array_plus_opx;
 mod constants;
 mod dgeev_data;
-mod plus_arrays;
 mod to_i32;
-pub(crate) use crate::internal::add_arrays::*;
-pub(crate) use crate::internal::constants::*;
-pub(crate) use crate::internal::dgeev_data::*;
-pub(crate) use crate::internal::plus_arrays::*;
-pub(crate) use crate::internal::to_i32::*;
+pub(crate) use array_minus_op::*;
+pub(crate) use array_plus_op::*;
+pub(crate) use array_plus_opx::*;
+pub(crate) use constants::*;
+pub(crate) use dgeev_data::*;
+pub(crate) use to_i32::*;

@@ -1,15 +1,13 @@
 use crate::Complex64;
 use crate::StrError;
 
-/// Adds two arrays (without coefficients)
-///
-/// **Note:** This is an internal function used by `vec_add` and `mat_add`.
+/// Adds two arrays
 ///
 /// ```text
 /// w := u + v
 /// ```
 #[inline]
-pub(crate) fn plus_arrays(w: &mut [f64], u: &[f64], v: &[f64]) -> Result<(), StrError> {
+pub(crate) fn array_plus_op(w: &mut [f64], u: &[f64], v: &[f64]) -> Result<(), StrError> {
     let n = w.len();
     if u.len() != n || v.len() != n {
         return Err("arrays are incompatible");
@@ -76,15 +74,13 @@ pub(crate) fn plus_arrays(w: &mut [f64], u: &[f64], v: &[f64]) -> Result<(), Str
     Ok(())
 }
 
-/// Adds two arrays (with coefficients)
-///
-/// **Note:** This is an internal function used by `vec_add` and `mat_add`.
+/// Adds two arrays
 ///
 /// ```text
 /// w := u + v
 /// ```
 #[inline]
-pub fn plus_arrays_complex(w: &mut [Complex64], u: &[Complex64], v: &[Complex64]) -> Result<(), StrError> {
+pub(crate) fn array_plus_op_complex(w: &mut [Complex64], u: &[Complex64], v: &[Complex64]) -> Result<(), StrError> {
     let n = w.len();
     if u.len() != n || v.len() != n {
         return Err("arrays are incompatible");

@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{add_arrays, StrError};
+use crate::{array_plus_opx, StrError};
 
 /// Performs the addition of two matrices
 ///
@@ -36,7 +36,7 @@ pub fn mat_add(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) ->
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
     }
-    add_arrays(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
+    array_plus_opx(c.as_mut_data(), alpha, a.as_data(), beta, b.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

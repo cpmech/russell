@@ -5,22 +5,22 @@ use super::Vector;
 /// ```text
 ///             ⎛ |uᵢ - vᵢ| ⎞
 /// res = max_i ⎜ ————————— ⎟
-///             ⎝  1 + |dᵢ| ⎠
+///             ⎝  1 + |sᵢ| ⎠
 /// ```
 ///
 /// # Panics
 ///
-/// This function will panic of u.dim() != v.dim() or d.dim() != v.dim()
-pub fn vec_max_scaled_diff(u: &Vector, v: &Vector, d: &Vector) -> f64 {
+/// This function will panic of u.dim() != v.dim() or s.dim() != v.dim()
+pub fn vec_max_scaled_diff(u: &Vector, v: &Vector, s: &Vector) -> f64 {
     let n = v.dim();
     assert!(u.dim() == n, "u.dim() != v.dim()");
-    assert!(d.dim() == n, "d.dim() != v.dim()");
+    assert!(s.dim() == n, "d.dim() != v.dim()");
     if n == 0 {
         return 0.0;
     }
     let mut res = f64::MIN;
     for i in 0..n {
-        res = f64::max(res, f64::abs(u[i] - v[i]) / (1.0 + f64::abs(d[i])));
+        res = f64::max(res, f64::abs(u[i] - v[i]) / (1.0 + f64::abs(s[i])));
     }
     res
 }

@@ -14,27 +14,19 @@
 //!
 //! ![Sparse-Matrix](https://raw.githubusercontent.com/cpmech/russell/main/russell_sparse/data/figures/sparse-matrix.svg)
 //!
-//! Additionally, to unify the handling of the above data structures, the library implements:
-//!
-//! * [NumSparseMatrix] -- Either a COO, CSC, or CSR matrix. We recommend using `NumSparseMatrix` solely, if possible.
-//!
 //! For convenience, this crate defines the following type aliases for Real and Complex matrices (with double precision):
 //!
-//! * [CooMatrix], [CscMatrix], [CsrMatrix], [SparseMatrix] -- For real numbers represented by `f64`
-//! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix], [ComplexSparseMatrix] -- For complex numbers represented by [russell_lab::Complex64]
+//! * [CooMatrix], [CscMatrix], [CsrMatrix] -- For real numbers represented by `f64`
+//! * [ComplexCooMatrix], [ComplexCscMatrix], [ComplexCsrMatrix] -- For complex numbers represented by [russell_lab::Complex64]
 //!
 //! The COO matrix is the best when we need to update the values of the matrix because it has easy access to the triples (i, j, aij). For instance, the repetitive access is the primary use case for codes based on the finite element method (FEM) for approximating partial differential equations. Moreover, the COO matrix allows storing duplicate entries; for example, the triple `(0, 0, 123.0)` can be stored as two triples `(0, 0, 100.0)` and `(0, 0, 23.0)`. Again, this is the primary need for FEM codes because of the so-called assembly process where elements add to the same positions in the "global stiffness" matrix. Nonetheless, the duplicate entries must be summed up at some stage for the linear solver (e.g., MUMPS, UMFPACK). These linear solvers also use the more memory-efficient storage formats CSC and CSR. The following is the default input for these solvers:
 //!
 //! * [MUMPS](https://mumps-solver.org) -- requires a COO matrix as input internally
 //! * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) -- requires a CSC matrix as input internally
 //!
-//! Nonetheless, the implemented interface to the above linear solvers takes a [SparseMatrix] as input, which will automatically be converted from COO to CSC or COO to CSR, as appropriate.
-//!
 //! The best way to use a COO matrix is to initialize it with the maximum possible number of non-zero values and repetitively call the [CooMatrix::put()] function to insert triples (i, j, aij) into the data structure. This procedure is computationally efficient. Later, we can create a Compressed Sparse Column (CSC) or a Compressed Sparse Row (CSC) matrix from the COO matrix. The CSC and CSR will sum up any duplicates in the COO matrix during the conversion process. To reinitialize the counter for "putting" entries into the triplet structure, we can call the [CooMatrix::reset()] function (e.g., to recreate the global stiffness matrix in FEM simulations).
 //!
-//! The three individual sparse matrix structures ([CooMatrix], [CscMatrix], and [CsrMatrix]) and the wrapping (unifying) structure SparseMatrix have functions to calculate the (sparse) matrix-vector product, which, albeit not computer optimized, are convenient for checking the solution to the linear problem A * x = b (see also the VerifyLinSys structure).
-//!
-//! We recommend using the [SparseMatrix] directly unless your computations need a more specialized interaction with the CSC or CSR formats. Also, the [SparseMatrix] returns "pointers" to the CSC and CSR structures (constant access and mutable access).
+//! The three individual sparse matrix structures ([CooMatrix], [CscMatrix], and [CsrMatrix]) have functions to calculate the (sparse) matrix-vector product, which, albeit not computer optimized, are convenient for checking the solution to the linear problem A * x = b (see also the VerifyLinSys structure).
 //!
 //! We call the actual linear system solver implementation [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!

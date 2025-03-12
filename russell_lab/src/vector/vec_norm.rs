@@ -17,6 +17,10 @@ extern "C" {
 
 /// Returns the vector norm
 ///
+/// ```text
+/// norm(v) = ‖v‖
+/// ```
+///
 /// # Examples
 ///
 /// ```

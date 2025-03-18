@@ -32,15 +32,13 @@ extern "C" {
     fn cblas_zscal(n: i32, alpha: *const Complex64, x: *mut Complex64, incx: i32);
 }
 
-/// Adds two arrays
-///
-/// **Note:** This is an internal function used by `vec_add` and `mat_add`.
+/// Adds two arrays (with multipliers)
 ///
 /// ```text
 /// w := α⋅u + β⋅v
 /// ```
 #[inline]
-pub(crate) fn add_arrays(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f64]) -> Result<(), StrError> {
+pub(crate) fn array_plus_opx(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f64]) -> Result<(), StrError> {
     let n = w.len();
     if u.len() != n || v.len() != n {
         return Err("arrays are incompatible");
@@ -119,15 +117,13 @@ pub(crate) fn add_arrays(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v: &[f
     Ok(())
 }
 
-/// Adds two arrays
-///
-/// **Note:** This is an internal function used by `vec_add` and `mat_add`.
+/// Adds two arrays (with multipliers)
 ///
 /// ```text
 /// w := α⋅u + β⋅v
 /// ```
 #[inline]
-pub fn add_arrays_complex(
+pub(crate) fn array_plus_opx_complex(
     w: &mut [Complex64],
     alpha: Complex64,
     u: &[Complex64],

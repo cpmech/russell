@@ -2,6 +2,7 @@
 
 members = [
   "russell_lab",
+  "russell_nonlin",
   "russell_ode",
   "russell_sparse",
   "russell_stat",

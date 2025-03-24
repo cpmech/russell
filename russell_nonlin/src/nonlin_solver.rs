@@ -1,0 +1,13 @@
+pub struct NonlinSolver {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::NonlinSolver;
+
+    #[test]
+    fn test_nonlin_solver() {
+        let _solver = NonlinSolver {};
+    }
+}

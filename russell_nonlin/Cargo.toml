@@ -1,0 +1,27 @@
+[package]
+name = "russell_nonlin"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Numerical continuation methods to solve nonlinear systems of equations"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_nonlin"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["numerical", "solver", "continuation", "nonlinear"]
+
+[features]
+intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
+local_suitesparse = ["russell_sparse/local_suitesparse"]
+with_mumps = ["russell_sparse/with_mumps"]
+
+[dependencies]
+russell_lab = { path = "../russell_lab" }
+russell_sparse = { path = "../russell_sparse" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+structopt = "0.3"
+
+[dev-dependencies]
+plotpy = "1.13"

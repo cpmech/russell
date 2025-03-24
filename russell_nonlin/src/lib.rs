@@ -3,13 +3,29 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
-mod arclength_solver;
-mod nonlin_solver;
-mod parametric_solver;
+mod enums;
+mod nl_params;
+mod nl_solver;
+mod nl_solver_trait;
+mod nl_system;
+mod output;
+mod solver_arclength;
+mod solver_parametric;
+mod solver_simple;
+mod stats;
+mod workspace;
 
-pub use arclength_solver::*;
-pub use nonlin_solver::*;
-pub use parametric_solver::*;
+pub use enums::*;
+pub use nl_params::*;
+pub use nl_solver::*;
+use nl_solver_trait::*;
+pub use nl_system::*;
+use output::*;
+pub use solver_arclength::*;
+pub use solver_parametric::*;
+pub use solver_simple::*;
+pub use stats::*;
+use workspace::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

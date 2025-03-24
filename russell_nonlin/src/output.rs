@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::Workspace;
 use crate::{Stats, StrError};
 use russell_lab::{vec_max_abs_diff, Vector};

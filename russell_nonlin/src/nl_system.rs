@@ -28,20 +28,20 @@ pub struct NlSystem<'a, A> {
     /// Dimension of `u` and `G`
     pub(crate) ndim: usize,
 
-    /// Calculates the function `G(u)` or `G(u, λ)` or `G(u(s), λ(s))`
+    /// Calculates the function G(u) or G(u, λ) or G(u(s), λ(s))
     ///
-    /// The function is `fn (gg, u, λ, s, args)` where `λ` and `s` can be ignored for the simple case.
-    pub(crate) calc_gg: Arc<dyn Fn(&mut Vector, &Vector, f64, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
+    /// The function is `fn (gg, u, λ, args)` where λ can be ignored for the simple case.
+    pub(crate) calc_gg: Arc<dyn Fn(&mut Vector, &Vector, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
 
-    /// Calculates the `Gu = dG/du` derivative
+    /// Calculates the Gu = dG/du derivative
     ///
-    /// The function is `fn (ggu, u, λ, s, args)` where `λ` and `s` can be ignored for the simple case.
+    /// The function is `fn (ggu, u, λ, args)` where λ can be ignored for the simple case.
     pub(crate) calc_ggu:
-        Option<Arc<dyn Fn(&mut CooMatrix, &Vector, f64, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+        Option<Arc<dyn Fn(&mut CooMatrix, &Vector, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
-    /// Calculates the `Gλ = dG/dλ` derivative
+    /// Calculates the Gλ = dG/dλ derivative
     ///
-    /// The function is `fn (ggl, u, λ, s, args)` where `λ` and `s` can be ignored for the simple case.
+    /// The function is `fn (ggl, u, λ, args)` where λ can be ignored for the simple case.
     pub(crate) calc_ggl:
         Option<Arc<dyn Fn(&mut Vector, &Vector, f64, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
@@ -54,9 +54,11 @@ pub struct NlSystem<'a, A> {
 
 impl<'a, A> NlSystem<'a, A> {
     /// Allocates a new instance
+    ///
+    /// use `|gg, u, args|` or `|gg: &mut Vector, u: &Vector, l: f64, args: &mut A|`
     pub fn new(
         ndim: usize,
-        calc_gg: impl Fn(&mut Vector, &Vector, f64, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
+        calc_gg: impl Fn(&mut Vector, &Vector, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
     ) -> Self {
         NlSystem {
             ndim,
@@ -82,7 +84,7 @@ impl<'a, A> NlSystem<'a, A> {
 
     /// Sets a function to calculate the `Gu = dG/du` matrix
     ///
-    /// Use `|ggu, u, λ, s, args|` or `|ggu: &mut CooMatrix, u: &Vector, l: f64, s: args: &mut A|`
+    /// Use `|ggu, u, λ, args|` or `|ggu: &mut CooMatrix, u: &Vector, l: f64, args: &mut A|`
     ///
     /// # Input
     ///
@@ -95,7 +97,7 @@ impl<'a, A> NlSystem<'a, A> {
         &mut self,
         nnz: Option<usize>,
         symmetric: Sym,
-        callback: impl Fn(&mut CooMatrix, &Vector, f64, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
+        callback: impl Fn(&mut CooMatrix, &Vector, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
     ) -> Result<(), StrError> {
         self.nnz_ggu = if let Some(value) = nnz {
             value

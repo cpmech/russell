@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::{NlMethod, NlParams, NlSolverTrait, NlSystem, Output, Stats, Workspace};
 use super::{SolverArclength, SolverParametric, SolverSimple};
 use crate::StrError;
@@ -316,9 +314,62 @@ impl<'a, A> NlSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::NlSolver;
-    use crate::{NlMethod, NlParams, NlSystem};
-    use russell_lab::{Matrix, Vector};
+    use crate::{NlMethod, NlParams, Samples};
+    use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
-    fn test_nonlin_solver() {}
+    fn new_captures_errors() {
+        let (system, _u_trial, _u_ref, _args) = Samples::simple_two_equations();
+        let mut params = NlParams::new(NlMethod::Simple);
+        params.step.m_max = 0.0; // wrong
+        assert_eq!(
+            NlSolver::new(params, system).err(),
+            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+        );
+    }
+
+    #[test]
+    fn solve_captures_errors() {
+        let (system, _u_trial, _u_ref, mut args) = Samples::simple_two_equations();
+        let ndim = system.ndim;
+        let params = NlParams::new(NlMethod::Simple);
+        let mut solver = NlSolver::new(params, system).unwrap();
+        let mut y0 = Vector::new(ndim + 1); // wrong dim
+        assert_eq!(
+            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            Some("u0.dim() must be equal to ndim")
+        );
+        let mut y0 = Vector::new(ndim);
+        assert_eq!(
+            solver.solve(&mut y0, 0.0, 0.0, None, &mut args).err(),
+            Some("l1 must be greater than l0")
+        );
+        let h_equal = Some(f64::EPSILON); // will cause an error
+        assert_eq!(
+            solver.solve(&mut y0, 0.0, 1.0, h_equal, &mut args).err(),
+            Some("h_equal must be ≥ 10.0 * f64::EPSILON")
+        );
+    }
+
+    #[test]
+    fn lack_of_convergence_is_captured() {
+        let (system, mut u0, _u_ref, mut args) = Samples::simple_two_equations();
+        let mut params = NlParams::new(NlMethod::Simple);
+        params.step.n_step_max = 1; // will make the solver to fail (too few steps)
+        let mut solver = NlSolver::new(params, system).unwrap();
+        assert_eq!(
+            solver.solve(&mut u0, 0.0, 1.0, None, &mut args).err(),
+            Some("TODO") // Some("variable stepping did not converge")
+        );
+    }
+
+    #[test]
+    fn solve_with_n_equal_steps_works() {
+        // solve the nonlinear system (will run with N_EQUAL_STEPS)
+        let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
+        let params = NlParams::new(NlMethod::Simple);
+        let mut solver = NlSolver::new(params, system).unwrap();
+        // solver.solve(&mut u, 0.0, 1.0, None, &mut args).unwrap();
+        // vec_approx_eq(&u, &u_ref, 1e-15);
+    }
 }

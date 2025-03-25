@@ -1,12 +1,18 @@
 use super::{NlMethod, NlParams, NumError};
 
 /// Prints information during time stepping
-pub(crate) struct Logger<'a> {
-    /// Parameters
-    params: &'a NlParams,
+pub(crate) struct Logger {
+    /// Method
+    method: NlMethod,
 
     /// Enables verbose output
     verbose: bool,
+
+    /// Enables verbose output for iterations
+    verbose_iterations: bool,
+
+    /// Enables verbose output for the legend
+    verbose_legend: bool,
 
     /// List of error messages
     errors: Vec<String>,
@@ -15,22 +21,23 @@ pub(crate) struct Logger<'a> {
     nchar: usize,
 }
 
-impl<'a> Logger<'a> {
+impl Logger {
     /// Creates a new instance
     ///
     /// # Arguments
     ///
     /// * `config` - Configuration parameters including convergence tolerances
-    pub fn new(params: &'a NlParams) -> Self {
-        let verbose = params.verbose || params.verbose_iterations;
+    pub fn new(params: &NlParams) -> Self {
         let nchar = match params.method {
             NlMethod::Arclength => 56,
             NlMethod::Parametric => 39,
             NlMethod::Simple => 23,
         };
         Self {
-            params,
-            verbose,
+            method: params.method,
+            verbose: params.verbose || params.verbose_iterations,
+            verbose_iterations: params.verbose_iterations,
+            verbose_legend: params.verbose_legend,
             errors: Vec::new(),
             nchar,
         }
@@ -41,11 +48,11 @@ impl<'a> Logger<'a> {
         if !self.verbose {
             return;
         }
-        if self.params.verbose_legend {
+        if self.verbose_legend {
             self.legend();
         }
         println!("{}", "─".repeat(self.nchar));
-        match self.params.method {
+        match self.method {
             NlMethod::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
@@ -71,7 +78,7 @@ impl<'a> Logger<'a> {
             return;
         }
         if increment == 0 {
-            match self.params.method {
+            match self.method {
                 NlMethod::Arclength => {
                     println!("{:>8.3e} {:>8.3e} {:>8.3e}", l, s, h);
                 }
@@ -81,7 +88,7 @@ impl<'a> Logger<'a> {
                 NlMethod::Simple => (),
             }
         } else {
-            match self.params.method {
+            match self.method {
                 NlMethod::Arclength => {
                     println!("{:>8} {:>8} {:>8}", "·", "·", "·");
                 }
@@ -95,7 +102,7 @@ impl<'a> Logger<'a> {
 
     /// Prints iteration information
     pub fn iteration(&self, iter: usize, err: &NumError) {
-        if !self.params.verbose_iterations {
+        if !self.verbose_iterations {
             return;
         }
         let (icon_gh, icon_ul) = if iter == 0 {
@@ -110,7 +117,7 @@ impl<'a> Logger<'a> {
                 )
             }
         };
-        match self.params.method {
+        match self.method {
             NlMethod::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",

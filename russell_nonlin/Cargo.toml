@@ -25,3 +25,4 @@ structopt = "0.3"
 
 [dev-dependencies]
 plotpy = "1.13"
+rayon = "1.10"

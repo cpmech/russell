@@ -109,7 +109,7 @@ pub struct NlParams {
     pub tol_ul: f64,
 
     /// Maximum max(‖δu‖∞,|δλ|) allowed
-    pub max_ul: f64,
+    pub max_ul_allowed: f64,
 
     /// Max number of iterations
     ///
@@ -150,7 +150,7 @@ impl NlParams {
             // iterations
             tol_gh: 1e-10,
             tol_ul: 1e-10,
-            max_ul: 1e8,
+            max_ul_allowed: 1e8,
             n_iteration_max: 10,
             constant_tangent: false,
             use_numerical_jacobian: false,

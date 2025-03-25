@@ -6,15 +6,15 @@ use russell_lab::{vec_add, vec_update, Vector};
 
 pub struct SolverSimple<'a, A> {
     /// Holds the parameters
-    params: &'a NlParams,
+    params: NlParams,
 
     /// System
-    system: &'a NlSystem<'a, A>,
+    system: NlSystem<'a, A>,
 }
 
 impl<'a, A> SolverSimple<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Self {
+    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Self {
         let ndim = system.ndim;
         SolverSimple { params, system }
     }
@@ -70,7 +70,7 @@ impl<'a, A> SolverSimple<'a, A> {
         }
 
         // avoid large norm(mdu)
-        if work.err.large_norm_ul() {
+        if work.err.large_du_dl() {
             // TODO: flag failed
             return Ok(());
         }

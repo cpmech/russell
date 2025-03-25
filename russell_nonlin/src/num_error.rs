@@ -3,10 +3,7 @@ use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
 /// Calculates the numerical error
-pub(crate) struct NumError<'a> {
-    /// Configuration parameters
-    params: &'a NlParams,
-
+pub(crate) struct NumError {
     /// Holds max(‖G‖∞,|H|)
     pub(crate) max_gh: f64,
 
@@ -30,13 +27,21 @@ pub(crate) struct NumError<'a> {
 
     /// Previous max(‖δu‖∞,|δλ|)
     max_ul_prev: f64,
+
+    /// Tolerance on max(‖G‖∞,|H|)
+    tol_gh: f64,
+
+    /// Tolerance on max(‖δu‖∞,|δλ|)
+    tol_ul: f64,
+
+    /// Maximum max(‖δu‖∞,|δλ|) allowed
+    max_ul_allowed: f64,
 }
 
-impl<'a> NumError<'a> {
+impl NumError {
     /// Creates a new instance
-    pub fn new(params: &'a NlParams) -> Self {
+    pub fn new(params: &NlParams) -> Self {
         Self {
-            params,
             max_gh: 0.0,
             max_ul: 0.0,
             converged_on_gh: false,
@@ -45,6 +50,9 @@ impl<'a> NumError<'a> {
             diverging_on_ul: false,
             max_gh_prev: 0.0,
             max_ul_prev: 0.0,
+            tol_gh: params.tol_gh,
+            tol_ul: params.tol_ul,
+            max_ul_allowed: params.max_ul_allowed,
         }
     }
 
@@ -62,8 +70,8 @@ impl<'a> NumError<'a> {
     }
 
     /// Returns whether max(‖δu‖∞,|δλ|) is too large
-    pub fn large_norm_ul(&self) -> bool {
-        if self.max_ul > self.params.max_ul {
+    pub fn large_du_dl(&self) -> bool {
+        if self.max_ul > self.max_ul_allowed {
             true
         } else {
             false
@@ -86,7 +94,7 @@ impl<'a> NumError<'a> {
         }
 
         // check convergence
-        self.converged_on_gh = self.max_gh < self.params.tol_gh;
+        self.converged_on_gh = self.max_gh < self.tol_gh;
 
         // check if diverging
         self.diverging_on_gh = if iteration == 0 {
@@ -114,7 +122,7 @@ impl<'a> NumError<'a> {
         self.converged_on_ul = if iteration == 0 {
             false
         } else {
-            self.max_ul < self.params.tol_ul
+            self.max_ul < self.tol_ul
         };
 
         // check if diverging

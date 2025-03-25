@@ -8,7 +8,7 @@ pub const N_EQUAL_STEPS: usize = 10;
 
 pub struct NlSolver<'a, A> {
     /// Holds the parameters
-    params: &'a NlParams,
+    params: NlParams,
 
     /// Dimension of the ODE system
     ndim: usize,
@@ -28,21 +28,23 @@ pub struct NlSolver<'a, A> {
 
 impl<'a, A> NlSolver<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Result<Self, StrError>
+    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
     {
         params.validate()?;
+        let ndim = system.ndim;
+        let work = Workspace::new(&params, &system);
         let actual: Box<dyn NlSolverTrait<A>> = match params.method {
-            NlMethod::Arclength => Box::new(SolverArclength::new(params, system)),
-            NlMethod::Parametric => Box::new(SolverParametric::new(params, system)),
-            NlMethod::Simple => Box::new(SolverSimple::new(params, system)),
+            NlMethod::Arclength => Box::new(SolverArclength::new(params, system.clone())),
+            NlMethod::Parametric => Box::new(SolverParametric::new(params, system.clone())),
+            NlMethod::Simple => Box::new(SolverSimple::new(params, system.clone())),
         };
         Ok(NlSolver {
             params,
-            ndim: system.ndim,
+            ndim,
             actual,
-            work: Workspace::new(params, system),
+            work,
             output: Output::new(),
             output_enabled: false,
         })
@@ -311,7 +313,7 @@ mod tests {
         let mut params = NlParams::new(NlMethod::Simple);
         params.m_max = 0.0; // wrong
         assert_eq!(
-            NlSolver::new(&params, &system).err(),
+            NlSolver::new(params, system).err(),
             Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
     }
@@ -321,7 +323,7 @@ mod tests {
         let (system, _u_trial, _u_ref, mut args) = Samples::simple_two_equations();
         let ndim = system.ndim;
         let params = NlParams::new(NlMethod::Simple);
-        let mut solver = NlSolver::new(&params, &system).unwrap();
+        let mut solver = NlSolver::new(params, system).unwrap();
         let mut y0 = Vector::new(ndim + 1); // wrong dim
         assert_eq!(
             solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
@@ -344,7 +346,7 @@ mod tests {
         let (system, mut u0, _u_ref, mut args) = Samples::simple_two_equations();
         let mut params = NlParams::new(NlMethod::Simple);
         params.n_step_max = 1; // will make the solver to fail (too few steps)
-        let mut solver = NlSolver::new(&params, &system).unwrap();
+        let mut solver = NlSolver::new(params, system).unwrap();
         assert_eq!(
             solver.solve(&mut u0, 0.0, 1.0, None, &mut args).err(),
             Some("TODO") // Some("variable stepping did not converge")
@@ -356,7 +358,7 @@ mod tests {
         // solve the nonlinear system (will run with N_EQUAL_STEPS)
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let params = NlParams::new(NlMethod::Simple);
-        let mut solver = NlSolver::new(&params, &system).unwrap();
+        let mut solver = NlSolver::new(params, system).unwrap();
         // solver.solve(&mut u, 0.0, 1.0, None, &mut args).unwrap();
         // vec_approx_eq(&u, &u_ref, 1e-15);
     }

@@ -6,15 +6,15 @@ use russell_lab::Vector;
 
 pub struct SolverArclength<'a, A> {
     /// Holds the parameters
-    params: &'a NlParams,
+    params: NlParams,
 
     /// System
-    system: &'a NlSystem<'a, A>,
+    system: NlSystem<'a, A>,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Self {
+    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Self {
         SolverArclength { params, system }
     }
 }

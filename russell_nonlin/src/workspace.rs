@@ -29,10 +29,10 @@ pub(crate) struct Workspace<'a> {
     pub(crate) rel_error: f64,
 
     /// Numerical error
-    pub(crate) err: NumError<'a>,
+    pub(crate) err: NumError,
 
     /// Logger
-    pub(crate) log: Logger<'a>,
+    pub(crate) log: Logger,
 
     /// Holds G(u, λ)
     pub(crate) gg: Vector,
@@ -48,7 +48,7 @@ pub(crate) struct Workspace<'a> {
 
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
-    pub(crate) fn new<A>(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Self {
+    pub(crate) fn new<'b, A>(params: &NlParams, system: &NlSystem<'b, A>) -> Self {
         Workspace {
             stats: Stats::new(params.method),
             follows_reject_step: false,

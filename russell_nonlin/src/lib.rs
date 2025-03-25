@@ -12,6 +12,7 @@ mod nl_state;
 mod nl_system;
 mod num_error;
 mod output;
+pub mod prelude;
 mod samples;
 mod solver_arclength;
 mod solver_parametric;

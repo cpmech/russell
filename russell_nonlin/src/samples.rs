@@ -16,7 +16,8 @@ impl Samples {
             gg[0] = u[0].powf(3.0) + u[1] - 1.0;
             gg[1] = -u[0] + u[1].powf(3.0) + 1.0;
             Ok(())
-        });
+        })
+        .unwrap();
 
         // function to compute Gu
         let nnz = 4;

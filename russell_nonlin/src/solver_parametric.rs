@@ -6,15 +6,15 @@ use russell_lab::Vector;
 
 pub struct SolverParametric<'a, A> {
     /// Holds the parameters
-    params: NlParams,
+    params: &'a NlParams,
 
     /// System
-    system: NlSystem<'a, A>,
+    system: &'a NlSystem<'a, A>,
 }
 
 impl<'a, A> SolverParametric<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Self {
+    pub fn new(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Self {
         SolverParametric { params, system }
     }
 }
@@ -40,7 +40,4 @@ impl<'a, A> NlSolverTrait<A> for SolverParametric<'a, A> {
 
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64) {}
-
-    /// Update the parameters (e.g., for sensitive analyses)
-    fn update_params(&mut self, params: NlParams) {}
 }

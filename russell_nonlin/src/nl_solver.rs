@@ -8,7 +8,7 @@ pub const N_EQUAL_STEPS: usize = 10;
 
 pub struct NlSolver<'a, A> {
     /// Holds the parameters
-    params: NlParams,
+    params: &'a NlParams,
 
     /// Dimension of the ODE system
     ndim: usize,
@@ -17,7 +17,7 @@ pub struct NlSolver<'a, A> {
     actual: Box<dyn NlSolverTrait<A> + 'a>,
 
     /// Holds statistics, benchmarking and "work" variables
-    work: Workspace,
+    work: Workspace<'a>,
 
     /// Assists in generating the output of results (steps or dense)
     output: Output<'a, A>,
@@ -28,12 +28,11 @@ pub struct NlSolver<'a, A> {
 
 impl<'a, A> NlSolver<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Result<Self, StrError>
+    pub fn new(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
     {
         params.validate()?;
-        let ndim = system.ndim;
         let actual: Box<dyn NlSolverTrait<A>> = match params.method {
             NlMethod::Arclength => Box::new(SolverArclength::new(params, system)),
             NlMethod::Parametric => Box::new(SolverParametric::new(params, system)),
@@ -41,9 +40,9 @@ impl<'a, A> NlSolver<'a, A> {
         };
         Ok(NlSolver {
             params,
-            ndim,
+            ndim: system.ndim,
             actual,
-            work: Workspace::new(params.method),
+            work: Workspace::new(params, system),
             output: Output::new(),
             output_enabled: false,
         })
@@ -98,14 +97,14 @@ impl<'a, A> NlSolver<'a, A> {
                 (true, h)
             }
             None => {
-                let h = f64::min(self.params.step.h_ini, l1 - l0);
+                let h = f64::min(self.params.h_ini, l1 - l0);
                 (false, h)
             }
         };
         assert!(h > 0.0);
 
         // reset variables
-        self.work.reset(h, self.params.step.rel_error_prev_min);
+        self.work.reset(h, self.params.rel_error_prev_min);
 
         // current values
         let u = u0; // vector of unknowns
@@ -136,7 +135,7 @@ impl<'a, A> NlSolver<'a, A> {
                 self.actual.accept(&mut self.work, u, &mut l, &mut s, h, args)?;
 
                 // check for anomalies
-                vec_all_finite(&u, self.params.debug)?;
+                vec_all_finite(&u, self.params.verbose)?;
 
                 // output
                 if self.output_enabled {
@@ -161,7 +160,7 @@ impl<'a, A> NlSolver<'a, A> {
         let mut last_step = false;
 
         // variable stepping loop
-        for _ in 0..self.params.step.n_step_max {
+        for _ in 0..self.params.n_step_max {
             self.work.stats.sw_step.reset();
 
             // converged?
@@ -198,7 +197,7 @@ impl<'a, A> NlSolver<'a, A> {
                 self.actual.accept(&mut self.work, u, &mut l, &mut s, h, args)?;
 
                 // check for anomalies
-                vec_all_finite(&u, self.params.debug)?;
+                vec_all_finite(&u, self.params.verbose)?;
 
                 // do not allow h to grow if previous step was a reject
                 if self.work.follows_reject_step {
@@ -208,7 +207,7 @@ impl<'a, A> NlSolver<'a, A> {
 
                 // save previous stepsize, relative error, and accepted/suggested stepsize
                 self.work.h_prev = h;
-                self.work.rel_error_prev = f64::max(self.params.step.rel_error_prev_min, self.work.rel_error);
+                self.work.rel_error_prev = f64::max(self.params.rel_error_prev_min, self.work.rel_error);
                 self.work.stats.h_accepted = self.work.h_new;
 
                 // output
@@ -243,8 +242,8 @@ impl<'a, A> NlSolver<'a, A> {
                 last_step = false;
 
                 // recompute stepsize
-                if self.work.stats.n_accepted == 0 && self.params.step.m_first_reject > 0.0 {
-                    self.work.h_new = h * self.params.step.m_first_reject;
+                if self.work.stats.n_accepted == 0 && self.params.m_first_reject > 0.0 {
+                    self.work.h_new = h * self.params.m_first_reject;
                 } else {
                     self.actual.reject(&mut self.work, h);
                 }
@@ -263,17 +262,6 @@ impl<'a, A> NlSolver<'a, A> {
         } else {
             Err("variable stepping did not converge")
         }
-    }
-
-    /// Update the parameters (e.g., for sensitive analyses)
-    pub fn update_params(&mut self, params: NlParams) -> Result<(), StrError> {
-        if params.method != self.params.method {
-            return Err("update_params must not change the method");
-        }
-        params.validate()?;
-        self.actual.update_params(params);
-        self.params = params;
-        Ok(())
     }
 
     /// Enables the output of results
@@ -321,9 +309,9 @@ mod tests {
     fn new_captures_errors() {
         let (system, _u_trial, _u_ref, _args) = Samples::simple_two_equations();
         let mut params = NlParams::new(NlMethod::Simple);
-        params.step.m_max = 0.0; // wrong
+        params.m_max = 0.0; // wrong
         assert_eq!(
-            NlSolver::new(params, system).err(),
+            NlSolver::new(&params, &system).err(),
             Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
     }
@@ -333,7 +321,7 @@ mod tests {
         let (system, _u_trial, _u_ref, mut args) = Samples::simple_two_equations();
         let ndim = system.ndim;
         let params = NlParams::new(NlMethod::Simple);
-        let mut solver = NlSolver::new(params, system).unwrap();
+        let mut solver = NlSolver::new(&params, &system).unwrap();
         let mut y0 = Vector::new(ndim + 1); // wrong dim
         assert_eq!(
             solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
@@ -355,8 +343,8 @@ mod tests {
     fn lack_of_convergence_is_captured() {
         let (system, mut u0, _u_ref, mut args) = Samples::simple_two_equations();
         let mut params = NlParams::new(NlMethod::Simple);
-        params.step.n_step_max = 1; // will make the solver to fail (too few steps)
-        let mut solver = NlSolver::new(params, system).unwrap();
+        params.n_step_max = 1; // will make the solver to fail (too few steps)
+        let mut solver = NlSolver::new(&params, &system).unwrap();
         assert_eq!(
             solver.solve(&mut u0, 0.0, 1.0, None, &mut args).err(),
             Some("TODO") // Some("variable stepping did not converge")
@@ -368,7 +356,7 @@ mod tests {
         // solve the nonlinear system (will run with N_EQUAL_STEPS)
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let params = NlParams::new(NlMethod::Simple);
-        let mut solver = NlSolver::new(params, system).unwrap();
+        let mut solver = NlSolver::new(&params, &system).unwrap();
         // solver.solve(&mut u, 0.0, 1.0, None, &mut args).unwrap();
         // vec_approx_eq(&u, &u_ref, 1e-15);
     }

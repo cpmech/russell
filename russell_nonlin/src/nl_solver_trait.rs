@@ -1,4 +1,4 @@
-use super::{NlParams, Workspace};
+use super::Workspace;
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -20,7 +20,4 @@ pub(crate) trait NlSolverTrait<A>: Send {
 
     /// Rejects the update
     fn reject(&mut self, work: &mut Workspace, h: f64);
-
-    /// Update the parameters (e.g., for sensitive analyses)
-    fn update_params(&mut self, params: NlParams);
 }

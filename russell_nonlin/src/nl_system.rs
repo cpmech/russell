@@ -50,6 +50,22 @@ pub struct NlSystem<'a, A> {
 
     /// Symmetric type of the Gu matrix
     pub(crate) sym_ggu: Sym,
+
+    /// Updates starred variables (e.g., FEM transient starred variables)
+    ///
+    /// The function is `fn (mdu, u_new, args)`
+    pub(crate) update_starred: Option<Arc<dyn Fn(&Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+
+    /// Prepares to update secondary variables (e.g., FEM stresses)
+    ///
+    /// The function is `fn (first_iteration, args)`
+    pub(crate) backup_restore_secondary: Option<Arc<dyn Fn(bool, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+
+    /// Updates secondary variables (e.g., FEM stresses)
+    ///
+    /// The function is `fn (mdu, u_new, args)`
+    pub(crate) update_secondary:
+        Option<Arc<dyn Fn(&Vector, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 }
 
 impl<'a, A> NlSystem<'a, A> {
@@ -59,15 +75,21 @@ impl<'a, A> NlSystem<'a, A> {
     pub fn new(
         ndim: usize,
         calc_gg: impl Fn(&mut Vector, &Vector, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
-    ) -> Self {
-        NlSystem {
+    ) -> Result<Self, StrError> {
+        if ndim < 1 {
+            return Err("ndim must be at least 1");
+        }
+        Ok(NlSystem {
             ndim,
             calc_gg: Arc::new(calc_gg),
             calc_ggu: None,
             calc_ggl: None,
             nnz_ggu: ndim * ndim,
             sym_ggu: Sym::No,
-        }
+            update_starred: None,
+            backup_restore_secondary: None,
+            update_secondary: None,
+        })
     }
 
     /// Returns a copy of this struct
@@ -79,6 +101,9 @@ impl<'a, A> NlSystem<'a, A> {
             calc_ggl: self.calc_ggl.clone(),
             nnz_ggu: self.nnz_ggu,
             sym_ggu: self.sym_ggu,
+            update_starred: self.update_starred.clone(),
+            backup_restore_secondary: self.backup_restore_secondary.clone(),
+            update_secondary: self.update_secondary.clone(),
         }
     }
 
@@ -100,6 +125,9 @@ impl<'a, A> NlSystem<'a, A> {
         callback: impl Fn(&mut CooMatrix, &Vector, f64, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
     ) -> Result<(), StrError> {
         self.nnz_ggu = if let Some(value) = nnz {
+            if value < 1 {
+                return Err("nnz must be at least 1");
+            }
             value
         } else {
             if symmetric.triangular() {

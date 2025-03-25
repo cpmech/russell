@@ -1,7 +1,9 @@
-use crate::{NlMethod, Stats};
+use super::{Logger, NlParams, NlSystem, NumError, Stats};
+use russell_lab::Vector;
+use russell_sparse::{CooMatrix, LinSolver};
 
 /// Holds workspace data shared among the ODE solver and actual implementations
-pub(crate) struct Workspace {
+pub(crate) struct Workspace<'a> {
     /// Holds statistics and benchmarking data
     pub(crate) stats: Stats,
 
@@ -25,13 +27,30 @@ pub(crate) struct Workspace {
 
     /// Holds the current relative error
     pub(crate) rel_error: f64,
+
+    /// Numerical error
+    pub(crate) err: NumError<'a>,
+
+    /// Logger
+    pub(crate) log: Logger<'a>,
+
+    /// Holds G(u, λ)
+    pub(crate) gg: Vector,
+
+    /// Holds the Gu = ∂G/∂u matrix
+    pub(crate) ggu: CooMatrix,
+
+    pub(crate) ls: LinSolver<'a>,
+
+    /// Holds -δu
+    pub(crate) mdu: Vector,
 }
 
-impl Workspace {
+impl<'a> Workspace<'a> {
     /// Allocates a new instance
-    pub(crate) fn new(method: NlMethod) -> Self {
+    pub(crate) fn new<A>(params: &'a NlParams, system: &'a NlSystem<'a, A>) -> Self {
         Workspace {
-            stats: Stats::new(method),
+            stats: Stats::new(params.method),
             follows_reject_step: false,
             iterations_diverging: false,
             h_multiplier_diverging: 1.0,
@@ -39,6 +58,12 @@ impl Workspace {
             h_new: 0.0,
             rel_error_prev: 0.0,
             rel_error: 0.0,
+            err: NumError::new(params),
+            log: Logger::new(params),
+            gg: Vector::new(system.ndim),
+            ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
+            ls: LinSolver::new(params.genie).unwrap(),
+            mdu: Vector::new(system.ndim),
         }
     }
 

@@ -1,5 +1,4 @@
-use crate::Workspace;
-use crate::{Stats, StrError};
+use super::{NlState, NlStateAccess, Stats, StrError, Workspace};
 use russell_lab::{vec_max_abs_diff, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -7,26 +6,6 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
-
-/// Holds the data generated at an accepted step
-#[derive(Clone, Debug, Deserialize)]
-pub struct OutData {
-    pub u: Vector,
-    pub l: f64,
-    pub s: f64,
-    pub h: f64,
-}
-
-/// Holds the data generated at an accepted step (internal version)
-///
-/// This an internal version holding a reference to `u` to avoid temporary copies.
-#[derive(Clone, Debug, Serialize)]
-struct OutDataRef<'a> {
-    pub u: &'a Vector,
-    pub l: f64,
-    pub s: f64,
-    pub h: f64,
-}
 
 /// Holds a counter of how many output files have been written
 ///
@@ -82,7 +61,7 @@ pub struct Output<'a, A> {
     calc_u_ref: Option<Arc<dyn Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a>>,
 }
 
-impl OutData {
+impl NlState {
     /// Reads a JSON file containing the results
     pub fn read_json(full_path: &str) -> Result<Self, StrError> {
         let path = Path::new(full_path).to_path_buf();
@@ -93,7 +72,7 @@ impl OutData {
     }
 }
 
-impl<'a> OutDataRef<'a> {
+impl<'a> NlStateAccess<'a> {
     /// Writes a JSON file with the results
     pub fn write_json(&self, full_path: &str) -> Result<(), StrError> {
         let path = Path::new(full_path).to_path_buf();
@@ -239,7 +218,7 @@ impl<'a, A> Output<'a, A> {
         // write file
         if let Some(fp) = &self.file_key {
             let full_path = format!("{}_{}.json", fp, self.file_count).to_string();
-            let results = OutDataRef { u, l, s, h };
+            let results = NlStateAccess { u, l, s, h };
             results.write_json(&full_path)?;
             self.file_count += 1;
         }
@@ -281,14 +260,14 @@ impl<'a, A> Output<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::{OutCount, OutData, OutDataRef, Output};
+    use super::{NlState, NlStateAccess, OutCount, Output};
     use crate::NoArgs;
     use russell_lab::Vector;
 
     #[test]
     fn derive_methods_work() {
-        // OutData
-        let out_data = OutData {
+        // NlState
+        let out_data = NlState {
             u: Vector::new(1),
             l: 0.5,
             s: 0.2,
@@ -297,18 +276,18 @@ mod tests {
         let clone = out_data.clone();
         assert_eq!(
             format!("{:?}", clone),
-            "OutData { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1 }"
+            "NlState { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1 }"
         );
         let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2,\"s\":0.3,\"h\":0.4}";
-        let from_json: OutData = serde_json::from_str(&json).unwrap();
+        let from_json: NlState = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.u.as_data(), &[3.0]);
         assert_eq!(from_json.l, 0.2);
         assert_eq!(from_json.s, 0.3);
         assert_eq!(from_json.h, 0.4);
 
-        // OutDataRef
+        // NlStateAccess
         let u = Vector::from(&[10.0]);
-        let out_data_ref = OutDataRef {
+        let out_data_ref = NlStateAccess {
             u: &u,
             l: 0.5,
             s: 0.15,
@@ -317,7 +296,7 @@ mod tests {
         let clone = out_data_ref.clone();
         assert_eq!(
             format!("{:?}", clone),
-            "OutDataRef { u: NumVector { data: [10.0] }, l: 0.5, s: 0.15, h: 0.3 }"
+            "NlStateAccess { u: NumVector { data: [10.0] }, l: 0.5, s: 0.15, h: 0.3 }"
         );
         let json = serde_json::to_string(&out_data_ref).unwrap();
         assert_eq!(json, "{\"u\":{\"data\":[10.0]},\"l\":0.5,\"s\":0.15,\"h\":0.3}");
@@ -333,9 +312,9 @@ mod tests {
 
     #[test]
     fn read_write_files_work() {
-        // Write OutDataRef
+        // Write NlStateAccess
         let u = Vector::from(&[6.6]);
-        let data_out = OutDataRef {
+        let data_out = NlStateAccess {
             u: &u,
             l: 0.5,
             s: 0.15,
@@ -344,8 +323,8 @@ mod tests {
         let path = "/tmp/russell_nonlin/test_out_data.json";
         data_out.write_json(path).unwrap();
 
-        // Read OutData
-        let data_in = OutData::read_json(path).unwrap();
+        // Read NlState
+        let data_in = NlState::read_json(path).unwrap();
         assert_eq!(data_in.u.as_data(), &[6.6]);
         assert_eq!(data_in.l, 0.5);
         assert_eq!(data_in.s, 0.15);

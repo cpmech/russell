@@ -51,6 +51,11 @@ pub struct NlSystem<'a, A> {
     /// Symmetric type of the Gu matrix
     pub(crate) sym_ggu: Sym,
 
+    /// Prepares to iterate (e.g., reset algorithmic variables in the FEM)
+    ///
+    /// The function is `fn (args)`
+    pub(crate) prepare_to_iterate: Option<Arc<dyn Fn(&mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+
     /// Updates starred variables (e.g., FEM transient starred variables)
     ///
     /// The function is `fn (mdu, u_new, args)`
@@ -59,7 +64,8 @@ pub struct NlSystem<'a, A> {
     /// Prepares to update secondary variables (e.g., FEM stresses)
     ///
     /// The function is `fn (first_iteration, args)`
-    pub(crate) backup_restore_secondary: Option<Arc<dyn Fn(bool, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+    pub(crate) prepare_to_update_secondary:
+        Option<Arc<dyn Fn(bool, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
     /// Updates secondary variables (e.g., FEM stresses)
     ///
@@ -86,8 +92,9 @@ impl<'a, A> NlSystem<'a, A> {
             calc_ggl: None,
             nnz_ggu: ndim * ndim,
             sym_ggu: Sym::No,
+            prepare_to_iterate: None,
             update_starred: None,
-            backup_restore_secondary: None,
+            prepare_to_update_secondary: None,
             update_secondary: None,
         })
     }
@@ -101,8 +108,9 @@ impl<'a, A> NlSystem<'a, A> {
             calc_ggl: self.calc_ggl.clone(),
             nnz_ggu: self.nnz_ggu,
             sym_ggu: self.sym_ggu,
+            prepare_to_iterate: self.prepare_to_iterate.clone(),
             update_starred: self.update_starred.clone(),
-            backup_restore_secondary: self.backup_restore_secondary.clone(),
+            prepare_to_update_secondary: self.prepare_to_update_secondary.clone(),
             update_secondary: self.update_secondary.clone(),
         }
     }

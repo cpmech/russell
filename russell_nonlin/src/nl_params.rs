@@ -2,6 +2,12 @@ use super::NlMethod;
 use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
+/// Defines the smallest allowed h
+pub const PARAM_H_MIN: f64 = 1e-7;
+
+/// Defines the smallest allowed tolerance
+pub const PARAM_TOL_MIN: f64 = 1e-12;
+
 /// Holds parameters to control the variable stepsize algorithm
 #[derive(Clone, Copy, Debug)]
 pub struct NlParams {
@@ -57,9 +63,14 @@ pub struct NlParams {
     /// Initial stepsize
     ///
     /// ```text
-    /// h_ini ≥ 1e-8
+    /// h_ini ≥ PARAM_H_MIN
     /// ```
+    ///
+    /// See [PARAM_H_MIN]
     pub h_ini: f64,
+
+    /// Allowed min stepsize
+    pub h_min_allowed: f64,
 
     /// Max number of steps
     ///
@@ -71,9 +82,14 @@ pub struct NlParams {
     /// Min value of previous relative error
     ///
     /// ```text
-    /// rel_error_prev_min ≥ 1e-8
+    /// rel_error_prev_min ≥ PARAM_H_MIN
     /// ```
+    ///
+    /// See [PARAM_H_MIN]
     pub rel_error_prev_min: f64,
+
+    /// Max number of lambda increments
+    pub n_lambda_max: usize,
 
     // linear solver ----------------------------------------------------------------------
     //
@@ -103,9 +119,21 @@ pub struct NlParams {
     // iterations -------------------------------------------------------------------------
     //
     /// Tolerance on max(‖G‖∞,|H|)
+    ///
+    /// ```text
+    /// tol_gh ≥ PARAM_TOL_MIN
+    /// ```
+    ///
+    /// See [PARAM_TOL_MIN]
     pub tol_gh: f64,
 
     /// Tolerance on max(‖δu‖∞,|δλ|)
+    ///
+    /// ```text
+    /// tol_ul ≥ PARAM_TOL_MIN
+    /// ```
+    ///
+    /// See [PARAM_TOL_MIN]
     pub tol_ul: f64,
 
     /// Maximum max(‖δu‖∞,|δλ|) allowed
@@ -141,8 +169,10 @@ impl NlParams {
             m_safety: 0.9,
             m_first_reject: 0.1,
             h_ini: 1e-4,
+            h_min_allowed: PARAM_H_MIN,
             n_step_max: 100_000,
             rel_error_prev_min: 1e-4,
+            n_lambda_max: 10_000,
             // linear solver
             genie: Genie::Umfpack,
             lin_sol_params: None,
@@ -173,14 +203,14 @@ impl NlParams {
         if self.m_first_reject < 0.0 {
             return Err("parameter must satisfy: m_first_rejection ≥ 0");
         }
-        if self.h_ini < 1e-8 {
-            return Err("parameter must satisfy: h_ini ≥ 1e-8");
+        if self.h_ini < PARAM_H_MIN {
+            return Err("parameter must satisfy: h_ini ≥ PARAM_H_MIN");
         }
         if self.n_step_max < 1 {
             return Err("parameter must satisfy: n_step_max ≥ 1");
         }
-        if self.rel_error_prev_min < 1e-8 {
-            return Err("parameter must satisfy: rel_error_prev_min ≥ 1e-8");
+        if self.rel_error_prev_min < PARAM_H_MIN {
+            return Err("parameter must satisfy: rel_error_prev_min ≥ PARAM_H_MIN");
         }
 
         // iterations
@@ -258,7 +288,10 @@ mod tests {
         );
         params.m_first_reject = 0.0;
         params.h_ini = 0.0;
-        assert_eq!(params.validate().err(), Some("parameter must satisfy: h_ini ≥ 1e-8"));
+        assert_eq!(
+            params.validate().err(),
+            Some("parameter must satisfy: h_ini ≥ PARAM_H_MIN")
+        );
         params.h_ini = 1e-4;
         params.n_step_max = 0;
         assert_eq!(params.validate().err(), Some("parameter must satisfy: n_step_max ≥ 1"));
@@ -266,7 +299,7 @@ mod tests {
         params.rel_error_prev_min = 0.0;
         assert_eq!(
             params.validate().err(),
-            Some("parameter must satisfy: rel_error_prev_min ≥ 1e-8")
+            Some("parameter must satisfy: rel_error_prev_min ≥ PARAM_H_MIN")
         );
         params.rel_error_prev_min = 1e-6;
 
@@ -278,6 +311,18 @@ mod tests {
             Some("parameter must satisfy: n_iteration_max ≥ 1")
         );
         params.n_iteration_max = 10;
+        params.tol_gh = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("parameter must satisfy: tol_gh ≥ PARAM_TOL_MIN")
+        );
+        params.tol_gh = 1e-10;
+        params.tol_ul = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("parameter must satisfy: tol_ul ≥ PARAM_TOL_MIN")
+        );
+        params.tol_ul = 1e-10;
 
         // all good
         assert_eq!(params.validate().is_err(), false);

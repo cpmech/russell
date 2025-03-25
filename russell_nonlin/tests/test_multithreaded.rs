@@ -4,9 +4,9 @@ use russell_nonlin::{NlMethod, NlParams, NlSolver, NlSystem, NoArgs};
 
 struct SimData<'a> {
     solver: NlSolver<'a, NoArgs>,
-    x0: f64,
-    x1: f64,
-    y: Vector,
+    l0: f64,
+    l1: f64,
+    u: Vector,
     a: u8,
 }
 
@@ -20,9 +20,9 @@ impl<'a> SimData<'a> {
         let params = NlParams::new(method);
         SimData {
             solver: NlSolver::new(params, system).unwrap(),
-            x0: 0.0,
-            x1: 1.5,
-            y: Vector::from(&[0.0]),
+            l0: 0.0,
+            l1: 1.5,
+            u: Vector::from(&[0.0]),
             a: 0,
         }
     }
@@ -48,9 +48,15 @@ impl<'a> Runner for Simulator<'a> {
     fn run_and_check(&mut self) {
         self.data
             .solver
-            .solve(&mut self.data.y, self.data.x0, self.data.x1, None, &mut self.data.a)
+            .solve(
+                &mut self.data.u,
+                &mut self.data.l0,
+                self.data.l1,
+                None,
+                &mut self.data.a,
+            )
             .unwrap();
-        approx_eq(self.data.y[0], self.data.x1, 1e-15);
+        approx_eq(self.data.u[0], self.data.l1, 1e-15);
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{NlState, NlStateAccess, Stats, StrError, Workspace};
+use super::{NlState, State, Stats, StrError, Workspace};
 use russell_lab::{vec_max_abs_diff, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -72,7 +72,7 @@ impl NlState {
     }
 }
 
-impl<'a> NlStateAccess<'a> {
+impl<'a> State<'a> {
     /// Writes a JSON file with the results
     pub fn write_json(&self, full_path: &str) -> Result<(), StrError> {
         let path = Path::new(full_path).to_path_buf();
@@ -196,20 +196,12 @@ impl<'a, A> Output<'a, A> {
     }
 
     /// Executes the output at an accepted step
-    pub(crate) fn execute(
-        &mut self,
-        work: &Workspace,
-        u: &Vector,
-        l: f64,
-        s: f64,
-        h: f64,
-        args: &mut A,
-    ) -> Result<bool, StrError> {
+    pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
         assert!(self.initialized);
 
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop = cb(&work.stats, u, l, s, h, args)?;
+            let stop = cb(&work.stats, state.u, *state.l, state.s, state.h, args)?;
             if stop {
                 return Ok(stop);
             }
@@ -218,25 +210,24 @@ impl<'a, A> Output<'a, A> {
         // write file
         if let Some(fp) = &self.file_key {
             let full_path = format!("{}_{}.json", fp, self.file_count).to_string();
-            let results = NlStateAccess { u, l, s, h };
-            results.write_json(&full_path)?;
+            state.write_json(&full_path)?;
             self.file_count += 1;
         }
 
         // record results
         if self.recording {
-            self.l.push(l);
-            self.s.push(s);
-            self.h.push(h);
+            self.l.push(*state.l);
+            self.s.push(state.s);
+            self.h.push(state.h);
             for (m, um) in self.u.iter_mut() {
-                um.push(u[*m]);
+                um.push(state.u[*m]);
             }
             if let Some(calc_u) = self.calc_u_ref.as_mut() {
-                if self.u_aux.dim() != u.dim() {
-                    self.u_aux = Vector::new(u.dim());
+                if self.u_aux.dim() != state.u.dim() {
+                    self.u_aux = Vector::new(state.u.dim());
                 }
-                calc_u(&mut self.u_aux, l, args);
-                let (_, err) = vec_max_abs_diff(u, &self.u_aux).unwrap();
+                calc_u(&mut self.u_aux, *state.l, args);
+                let (_, err) = vec_max_abs_diff(state.u, &self.u_aux).unwrap();
                 self.error.push(err);
             }
         }
@@ -260,7 +251,7 @@ impl<'a, A> Output<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::{NlState, NlStateAccess, OutCount, Output};
+    use super::{NlState, OutCount, Output, State};
     use crate::NoArgs;
     use russell_lab::Vector;
 
@@ -286,19 +277,15 @@ mod tests {
         assert_eq!(from_json.h, 0.4);
 
         // NlStateAccess
-        let u = Vector::from(&[10.0]);
-        let out_data_ref = NlStateAccess {
-            u: &u,
-            l: 0.5,
+        let mut u = Vector::from(&[10.0]);
+        let mut l = 0.5;
+        let state = State {
+            u: &mut u,
+            l: &mut l,
             s: 0.15,
             h: 0.3,
         };
-        let clone = out_data_ref.clone();
-        assert_eq!(
-            format!("{:?}", clone),
-            "NlStateAccess { u: NumVector { data: [10.0] }, l: 0.5, s: 0.15, h: 0.3 }"
-        );
-        let json = serde_json::to_string(&out_data_ref).unwrap();
+        let json = serde_json::to_string(&state).unwrap();
         assert_eq!(json, "{\"u\":{\"data\":[10.0]},\"l\":0.5,\"s\":0.15,\"h\":0.3}");
 
         // OutCount
@@ -313,10 +300,11 @@ mod tests {
     #[test]
     fn read_write_files_work() {
         // Write NlStateAccess
-        let u = Vector::from(&[6.6]);
-        let data_out = NlStateAccess {
-            u: &u,
-            l: 0.5,
+        let mut u = Vector::from(&[6.6]);
+        let mut l = 0.5;
+        let data_out = State {
+            u: &mut u,
+            l: &mut l,
             s: 0.15,
             h: 0.3,
         };

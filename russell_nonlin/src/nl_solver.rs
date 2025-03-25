@@ -1,6 +1,8 @@
+#![allow(unused)]
+
 use super::{NlMethod, NlParams, NlSolverTrait, NlSystem, Output, Stats, Workspace};
 use super::{SolverArclength, SolverParametric, SolverSimple};
-use crate::StrError;
+use crate::{State, StrError};
 use russell_lab::{vec_all_finite, Vector};
 
 /// Default number of steps
@@ -75,7 +77,7 @@ impl<'a, A> NlSolver<'a, A> {
     pub fn solve(
         &mut self,
         u0: &mut Vector,
-        l0: f64,
+        l0: &mut f64,
         l1: f64,
         h_equal: Option<f64>,
         args: &mut A,
@@ -84,7 +86,7 @@ impl<'a, A> NlSolver<'a, A> {
         if u0.dim() != self.ndim {
             return Err("u0.dim() must be equal to ndim");
         }
-        if l1 <= l0 {
+        if l1 <= *l0 {
             return Err("l1 must be greater than l0");
         }
 
@@ -94,12 +96,12 @@ impl<'a, A> NlSolver<'a, A> {
                 if h_eq < 10.0 * f64::EPSILON {
                     return Err("h_equal must be ≥ 10.0 * f64::EPSILON");
                 }
-                let n = f64::ceil((l1 - l0) / h_eq) as usize;
-                let h = (l1 - l0) / (n as f64);
+                let n = f64::ceil((l1 - *l0) / h_eq) as usize;
+                let h = (l1 - *l0) / (n as f64);
                 (true, h)
             }
             None => {
-                let h = f64::min(self.params.h_ini, l1 - l0);
+                let h = f64::min(self.params.h_ini, l1 - *l0);
                 (false, h)
             }
         };
@@ -108,40 +110,43 @@ impl<'a, A> NlSolver<'a, A> {
         // reset variables
         self.work.reset(h, self.params.rel_error_prev_min);
 
-        // current values
-        let u = u0; // vector of unknowns
-        let mut l = l0; // will become l1 at the end
-        let mut s = 0.0; // arclength
+        // current state
+        let mut state = State {
+            u: u0,
+            l: l0,
+            s: 0.0,
+            h,
+        };
 
         // first output
         if self.output_enabled {
             self.output.initialize();
-            let stop = self.output.execute(&self.work, u, l, s, h, args)?;
+            let stop = self.output.execute(&self.work, &state, args)?;
             if stop {
                 return Ok(());
             }
         }
 
+        // message
+        self.work.log.header();
+
         // equal-stepping loop
         if equal_stepping {
-            let nstep = f64::ceil((l1 - l) / h) as usize;
+            let nstep = f64::ceil((l1 - *state.l) / h) as usize;
             for _ in 0..nstep {
                 self.work.stats.sw_step.reset();
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, u, l, s, h, args)?;
-
-                // update
-                self.work.stats.n_accepted += 1; // this must be after `self.actual.step`
-                self.actual.accept(&mut self.work, u, &mut l, &mut s, h, args)?;
+                self.actual.step(&mut self.work, &mut state, args, false)?;
+                self.work.stats.n_accepted += 1;
 
                 // check for anomalies
-                vec_all_finite(&u, self.params.verbose)?;
+                vec_all_finite(state.u, self.params.verbose)?;
 
                 // output
                 if self.output_enabled {
-                    let stop = self.output.execute(&self.work, u, l, s, h, args)?;
+                    let stop = self.output.execute(&self.work, &state, args)?;
                     if stop {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
@@ -166,7 +171,7 @@ impl<'a, A> NlSolver<'a, A> {
             self.work.stats.sw_step.reset();
 
             // converged?
-            let dx = l1 - l;
+            let dx = l1 - *state.l;
             if dx <= 10.0 * f64::EPSILON {
                 success = true;
                 self.work.stats.stop_sw_step();
@@ -181,7 +186,7 @@ impl<'a, A> NlSolver<'a, A> {
 
             // step
             self.work.stats.n_steps += 1;
-            self.actual.step(&mut self.work, u, l, s, h, args)?;
+            self.actual.step(&mut self.work, &mut state, args, true)?;
 
             // handle diverging iterations
             if self.work.iterations_diverging {
@@ -196,10 +201,9 @@ impl<'a, A> NlSolver<'a, A> {
             if self.work.rel_error < 1.0 {
                 // update x and y
                 self.work.stats.n_accepted += 1;
-                self.actual.accept(&mut self.work, u, &mut l, &mut s, h, args)?;
 
                 // check for anomalies
-                vec_all_finite(&u, self.params.verbose)?;
+                vec_all_finite(state.u, self.params.verbose)?;
 
                 // do not allow h to grow if previous step was a reject
                 if self.work.follows_reject_step {
@@ -214,7 +218,7 @@ impl<'a, A> NlSolver<'a, A> {
 
                 // output
                 if self.output_enabled {
-                    let stop = self.output.execute(&self.work, u, l, s, h, args)?;
+                    let stop = self.output.execute(&self.work, &state, args)?;
                     if stop {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
@@ -230,7 +234,7 @@ impl<'a, A> NlSolver<'a, A> {
                 }
 
                 // check if the last step is approaching
-                if l + self.work.h_new >= l1 {
+                if *state.l + self.work.h_new >= l1 {
                     last_step = true;
                 }
 
@@ -247,8 +251,9 @@ impl<'a, A> NlSolver<'a, A> {
                 if self.work.stats.n_accepted == 0 && self.params.m_first_reject > 0.0 {
                     self.work.h_new = h * self.params.m_first_reject;
                 } else {
-                    self.actual.reject(&mut self.work, h);
+                    // self.actual.reject(&mut self.work, h);
                 }
+                panic!("TODO: handle reject");
             }
         }
 
@@ -256,6 +261,9 @@ impl<'a, A> NlSolver<'a, A> {
         if self.output_enabled {
             self.output.last()?;
         }
+
+        // print footer and handle errors
+        self.work.log.footer(&self.work.stats);
 
         // done
         self.work.stats.stop_sw_total();
@@ -321,22 +329,23 @@ mod tests {
     #[test]
     fn solve_captures_errors() {
         let (system, _u_trial, _u_ref, mut args) = Samples::simple_two_equations();
+        let mut l0 = 0.0;
         let ndim = system.ndim;
         let params = NlParams::new(NlMethod::Simple);
         let mut solver = NlSolver::new(params, system).unwrap();
-        let mut y0 = Vector::new(ndim + 1); // wrong dim
+        let mut u0 = Vector::new(ndim + 1); // wrong dim
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            solver.solve(&mut u0, &mut l0, 1.0, None, &mut args).err(),
             Some("u0.dim() must be equal to ndim")
         );
         let mut y0 = Vector::new(ndim);
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 0.0, None, &mut args).err(),
+            solver.solve(&mut y0, &mut l0, 0.0, None, &mut args).err(),
             Some("l1 must be greater than l0")
         );
         let h_equal = Some(f64::EPSILON); // will cause an error
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, h_equal, &mut args).err(),
+            solver.solve(&mut y0, &mut l0, 1.0, h_equal, &mut args).err(),
             Some("h_equal must be ≥ 10.0 * f64::EPSILON")
         );
     }
@@ -344,11 +353,12 @@ mod tests {
     #[test]
     fn lack_of_convergence_is_captured() {
         let (system, mut u0, _u_ref, mut args) = Samples::simple_two_equations();
+        let mut l0 = 0.0;
         let mut params = NlParams::new(NlMethod::Simple);
         params.n_step_max = 1; // will make the solver to fail (too few steps)
         let mut solver = NlSolver::new(params, system).unwrap();
         assert_eq!(
-            solver.solve(&mut u0, 0.0, 1.0, None, &mut args).err(),
+            solver.solve(&mut u0, &mut l0, 1.0, None, &mut args).err(),
             Some("TODO") // Some("variable stepping did not converge")
         );
     }

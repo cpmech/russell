@@ -10,13 +10,13 @@ pub struct NlState {
     pub h: f64,
 }
 
-/// Holds the data generated at an accepted step (internal version)
+/// Holds the data generated at an accepted step (internal version using references)
 ///
 /// This an internal version holding a reference to `u` to avoid temporary copies.
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct NlStateAccess<'a> {
-    pub u: &'a Vector,
-    pub l: f64,
+#[derive(Debug, Serialize)]
+pub(crate) struct State<'a> {
+    pub u: &'a mut Vector,
+    pub l: &'a mut f64,
     pub s: f64,
     pub h: f64,
 }

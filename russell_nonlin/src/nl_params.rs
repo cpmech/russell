@@ -215,6 +215,15 @@ impl NlParams {
 
         // iterations
 
+        if self.tol_gh < PARAM_TOL_MIN {
+            return Err("parameter must satisfy: tol_gh ≥ PARAM_TOL_MIN");
+        }
+        if self.tol_ul < PARAM_TOL_MIN {
+            return Err("parameter must satisfy: tol_ul ≥ PARAM_TOL_MIN");
+        }
+        if self.max_ul_allowed <= 0.0 {
+            return Err("parameter must satisfy: max_ul_allowed > 0");
+        }
         if self.n_iteration_max < 1 {
             return Err("parameter must satisfy: n_iteration_max ≥ 1");
         }
@@ -323,6 +332,12 @@ mod tests {
             Some("parameter must satisfy: tol_ul ≥ PARAM_TOL_MIN")
         );
         params.tol_ul = 1e-10;
+        params.max_ul_allowed = 0.0;
+        assert_eq!(
+            params.validate().err(),
+            Some("parameter must satisfy: max_ul_allowed > 0")
+        );
+        params.max_ul_allowed = 1e10;
 
         // all good
         assert_eq!(params.validate().is_err(), false);

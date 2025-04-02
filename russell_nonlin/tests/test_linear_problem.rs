@@ -1,5 +1,5 @@
 use russell_lab::{array_approx_eq, Vector};
-use russell_nonlin::{NlMethod, NlParams, NlSolver, NlStop, NlSystem, NoArgs};
+use russell_nonlin::{NlConfig, NlMethod, NlSolver, NlStop, NlSystem, NoArgs};
 use russell_sparse::{CooMatrix, Sym};
 
 #[test]
@@ -11,12 +11,12 @@ fn test_linear_no_auto_num_jac() {
     })
     .unwrap();
 
-    // parameters
-    let mut params = NlParams::new(NlMethod::Natural);
-    params.verbose = true;
+    // configuration
+    let mut config = NlConfig::new(NlMethod::Natural);
+    config.verbose = true;
 
     // define solver
-    let mut solver = NlSolver::new(params, system).unwrap();
+    let mut solver = NlSolver::new(config, system).unwrap();
     solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
@@ -74,12 +74,12 @@ fn test_linear_no_auto_ana_jac() {
         )
         .unwrap();
 
-    // parameters
-    let mut params = NlParams::new(NlMethod::Natural);
-    params.verbose = true;
+    // configuration
+    let mut config = NlConfig::new(NlMethod::Natural);
+    config.verbose = true;
 
     // define solver
-    let mut solver = NlSolver::new(params, system).unwrap();
+    let mut solver = NlSolver::new(config, system).unwrap();
     solver.enable_output().set_step_recording(&[0]);
 
     // initial guess

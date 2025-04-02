@@ -5,7 +5,7 @@ pub type StrError = &'static str;
 
 mod enums;
 mod logger;
-mod nl_params;
+mod nl_config;
 mod nl_solver;
 mod nl_solver_trait;
 mod nl_state;
@@ -21,7 +21,7 @@ mod workspace;
 
 pub use enums::*;
 use logger::*;
-pub use nl_params::*;
+pub use nl_config::*;
 pub use nl_solver::*;
 use nl_solver_trait::*;
 pub use nl_state::*;

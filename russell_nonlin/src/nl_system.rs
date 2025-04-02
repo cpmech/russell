@@ -11,9 +11,8 @@ pub type NoArgs = u8;
 /// The system is defined by:
 ///
 /// ```text
-/// Simple:     G(u) = 0
-/// Parametric: G(u, λ) = 0
-/// Arclength:  G(u(s), λ(s)) = 0
+/// Natural:   G(u, λ) = 0
+/// Arclength: G(u(s), λ(s)) = 0
 /// ```
 ///
 /// Here, we use `gg` to represent `G` because capital letters are const in Rust.

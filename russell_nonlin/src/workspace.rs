@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{Logger, NlParams, NlSystem, NumError, Stats};
+use super::{Logger, NlConfig, NlSystem, NumError, Stats};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
@@ -66,14 +66,14 @@ pub(crate) struct Workspace<'a> {
 
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
-    pub(crate) fn new<'b, A>(params: &NlParams, system: &NlSystem<'b, A>) -> Self {
-        let n_num_j = if params.use_numerical_jacobian || system.calc_ggu.is_none() {
+    pub(crate) fn new<'b, A>(config: &NlConfig, system: &NlSystem<'b, A>) -> Self {
+        let n_num_j = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
             system.ndim
         } else {
             0
         };
         Workspace {
-            stats: Stats::new(params.method),
+            stats: Stats::new(config.method),
             follows_reject_step: false,
             iterations_diverging: false,
             h_multiplier_diverging: 1.0,
@@ -81,11 +81,11 @@ impl<'a> Workspace<'a> {
             h_new: 0.0,
             rel_error_prev: 0.0,
             rel_error: 0.0,
-            err: NumError::new(params),
-            log: Logger::new(params),
+            err: NumError::new(config),
+            log: Logger::new(config),
             gg: Vector::new(system.ndim),
             ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
-            ls: LinSolver::new(params.genie).unwrap(),
+            ls: LinSolver::new(config.genie).unwrap(),
             u: Vector::new(system.ndim),
             l: 0.0,
             mdu: Vector::new(system.ndim),

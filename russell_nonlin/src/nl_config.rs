@@ -3,15 +3,15 @@ use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the smallest allowed h
-pub const PARAM_H_MIN: f64 = 1e-7;
+pub const NL_CONFIG_H_MIN: f64 = 1e-7;
 
 /// Defines the smallest allowed tolerance
-pub const PARAM_TOL_MIN: f64 = 1e-12;
+pub const NL_CONFIG_TOL_MIN: f64 = 1e-12;
 
-/// Holds parameters to control the variable stepsize algorithm
+/// Holds configuration options for the nonlinear solver
 #[derive(Clone, Copy, Debug)]
-pub struct NlParams {
-    // basic parameters -------------------------------------------------------------------
+pub struct NlConfig {
+    // basic options ----------------------------------------------------------------------
     //
     /// Nonlinear solver method
     pub(crate) method: NlMethod,
@@ -63,10 +63,10 @@ pub struct NlParams {
     /// Initial stepsize
     ///
     /// ```text
-    /// h_ini ≥ PARAM_H_MIN
+    /// h_ini ≥ NL_CONFIG_H_MIN
     /// ```
     ///
-    /// See [PARAM_H_MIN]
+    /// See [NL_CONFIG_H_MIN]
     pub h_ini: f64,
 
     /// Allowed min stepsize
@@ -82,10 +82,10 @@ pub struct NlParams {
     /// Min value of previous relative error
     ///
     /// ```text
-    /// rel_error_prev_min ≥ PARAM_H_MIN
+    /// rel_error_prev_min ≥ NL_CONFIG_H_MIN
     /// ```
     ///
-    /// See [PARAM_H_MIN]
+    /// See [NL_CONFIG_H_MIN]
     pub rel_error_prev_min: f64,
 
     /// Max number of lambda increments
@@ -97,7 +97,7 @@ pub struct NlParams {
     pub genie: Genie,
 
     /// Configurations for sparse linear solver
-    pub lin_sol_params: Option<LinSolParams>,
+    pub lin_sol_config: Option<LinSolParams>,
 
     /// Writes the Gu = dG/du matrix and stop (with an error message)
     ///
@@ -121,19 +121,19 @@ pub struct NlParams {
     /// Tolerance on max(‖G‖∞,|H|)
     ///
     /// ```text
-    /// tol_gh ≥ PARAM_TOL_MIN
+    /// tol_gh ≥ NL_CONFIG_TOL_MIN
     /// ```
     ///
-    /// See [PARAM_TOL_MIN]
+    /// See [NL_CONFIG_TOL_MIN]
     pub tol_gh: f64,
 
     /// Tolerance on max(‖δu‖∞,|δλ|)
     ///
     /// ```text
-    /// tol_ul ≥ PARAM_TOL_MIN
+    /// tol_ul ≥ NL_CONFIG_TOL_MIN
     /// ```
     ///
-    /// See [PARAM_TOL_MIN]
+    /// See [NL_CONFIG_TOL_MIN]
     pub tol_ul: f64,
 
     /// Maximum max(‖δu‖∞,|δλ|) allowed
@@ -153,11 +153,11 @@ pub struct NlParams {
     pub use_numerical_jacobian: bool,
 }
 
-impl NlParams {
+impl NlConfig {
     /// Allocates a new instance
     pub fn new(method: NlMethod) -> Self {
-        NlParams {
-            // basic parameters
+        NlConfig {
+            // basic options
             method,
             treat_as_linear: false,
             verbose: false,
@@ -169,13 +169,13 @@ impl NlParams {
             m_safety: 0.9,
             m_first_reject: 0.1,
             h_ini: 1e-4,
-            h_min_allowed: PARAM_H_MIN,
+            h_min_allowed: NL_CONFIG_H_MIN,
             n_step_max: 100_000,
             rel_error_prev_min: 1e-4,
             n_lambda_max: 10_000,
             // linear solver
             genie: Genie::Umfpack,
-            lin_sol_params: None,
+            lin_sol_config: None,
             write_matrix_after_nstep_and_stop: None,
             // iterations
             tol_gh: 1e-10,
@@ -187,45 +187,45 @@ impl NlParams {
         }
     }
 
-    /// Validates all parameters
+    /// Validates all data
     pub(crate) fn validate(&self) -> Result<(), StrError> {
         // substepping
 
         if self.m_min < 0.001 || self.m_min > 0.5 || self.m_min >= self.m_max {
-            return Err("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max");
+            return Err("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max");
         }
         if self.m_max < 0.01 || self.m_max > 20.0 {
-            return Err("parameter must satisfy: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
+            return Err("requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
         }
         if self.m_safety < 0.1 || self.m_safety > 1.0 {
-            return Err("parameter must satisfy: 0.1 ≤ m_safety ≤ 1");
+            return Err("requirement: 0.1 ≤ m_safety ≤ 1");
         }
         if self.m_first_reject < 0.0 {
-            return Err("parameter must satisfy: m_first_rejection ≥ 0");
+            return Err("requirement: m_first_rejection ≥ 0");
         }
-        if self.h_ini < PARAM_H_MIN {
-            return Err("parameter must satisfy: h_ini ≥ PARAM_H_MIN");
+        if self.h_ini < NL_CONFIG_H_MIN {
+            return Err("requirement: h_ini ≥ NL_CONFIG_H_MIN");
         }
         if self.n_step_max < 1 {
-            return Err("parameter must satisfy: n_step_max ≥ 1");
+            return Err("requirement: n_step_max ≥ 1");
         }
-        if self.rel_error_prev_min < PARAM_H_MIN {
-            return Err("parameter must satisfy: rel_error_prev_min ≥ PARAM_H_MIN");
+        if self.rel_error_prev_min < NL_CONFIG_H_MIN {
+            return Err("requirement: rel_error_prev_min ≥ NL_CONFIG_H_MIN");
         }
 
         // iterations
 
-        if self.tol_gh < PARAM_TOL_MIN {
-            return Err("parameter must satisfy: tol_gh ≥ PARAM_TOL_MIN");
+        if self.tol_gh < NL_CONFIG_TOL_MIN {
+            return Err("requirement: tol_gh ≥ NL_CONFIG_TOL_MIN");
         }
-        if self.tol_ul < PARAM_TOL_MIN {
-            return Err("parameter must satisfy: tol_ul ≥ PARAM_TOL_MIN");
+        if self.tol_ul < NL_CONFIG_TOL_MIN {
+            return Err("requirement: tol_ul ≥ NL_CONFIG_TOL_MIN");
         }
         if self.max_ul_allowed <= 0.0 {
-            return Err("parameter must satisfy: max_ul_allowed > 0");
+            return Err("requirement: max_ul_allowed > 0");
         }
         if self.n_iteration_max < 1 {
-            return Err("parameter must satisfy: n_iteration_max ≥ 1");
+            return Err("requirement: n_iteration_max ≥ 1");
         }
         Ok(())
     }
@@ -235,111 +235,87 @@ impl NlParams {
 
 #[cfg(test)]
 mod tests {
-    use super::NlParams;
+    use super::NlConfig;
     use crate::NlMethod;
 
     #[test]
     fn derive_methods_work() {
-        let params = NlParams::new(NlMethod::Arclength);
-        let clone_params = params.clone();
-        assert_eq!(format!("{:?}", params), format!("{:?}", clone_params));
+        let config = NlConfig::new(NlMethod::Arclength);
+        let clone_config = config.clone();
+        assert_eq!(format!("{:?}", config), format!("{:?}", clone_config));
     }
 
     #[test]
-    fn params_validate_works() {
-        let mut params = NlParams::new(NlMethod::Arclength);
+    fn config_validate_works() {
+        let mut config = NlConfig::new(NlMethod::Arclength);
 
         // substepping
 
-        params.m_min = 0.0;
+        config.m_min = 0.0;
         assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            config.validate().err(),
+            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
-        params.m_min = 0.6;
+        config.m_min = 0.6;
         assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            config.validate().err(),
+            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
-        params.m_min = 0.02;
-        params.m_max = 0.01;
+        config.m_min = 0.02;
+        config.m_max = 0.01;
         assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            config.validate().err(),
+            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
-        params.m_min = 0.001;
-        params.m_max = 0.005;
+        config.m_min = 0.001;
+        config.m_max = 0.005;
         assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+            config.validate().err(),
+            Some("requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
         );
-        params.m_max = 30.0;
+        config.m_max = 30.0;
         assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
+            config.validate().err(),
+            Some("requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
         );
-        params.m_max = 10.0;
-        params.m_safety = 0.0;
+        config.m_max = 10.0;
+        config.m_safety = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: 0.1 ≤ m_safety ≤ 1"));
+        config.m_safety = 1.2;
+        assert_eq!(config.validate().err(), Some("requirement: 0.1 ≤ m_safety ≤ 1"));
+        config.m_safety = 0.9;
+        config.m_first_reject = -1.0;
+        assert_eq!(config.validate().err(), Some("requirement: m_first_rejection ≥ 0"));
+        config.m_first_reject = 0.0;
+        config.h_ini = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: h_ini ≥ NL_CONFIG_H_MIN"));
+        config.h_ini = 1e-4;
+        config.n_step_max = 0;
+        assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
+        config.n_step_max = 10;
+        config.rel_error_prev_min = 0.0;
         assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1")
+            config.validate().err(),
+            Some("requirement: rel_error_prev_min ≥ NL_CONFIG_H_MIN")
         );
-        params.m_safety = 1.2;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: 0.1 ≤ m_safety ≤ 1")
-        );
-        params.m_safety = 0.9;
-        params.m_first_reject = -1.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: m_first_rejection ≥ 0")
-        );
-        params.m_first_reject = 0.0;
-        params.h_ini = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: h_ini ≥ PARAM_H_MIN")
-        );
-        params.h_ini = 1e-4;
-        params.n_step_max = 0;
-        assert_eq!(params.validate().err(), Some("parameter must satisfy: n_step_max ≥ 1"));
-        params.n_step_max = 10;
-        params.rel_error_prev_min = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: rel_error_prev_min ≥ PARAM_H_MIN")
-        );
-        params.rel_error_prev_min = 1e-6;
+        config.rel_error_prev_min = 1e-6;
 
         // iterations
 
-        params.n_iteration_max = 0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: n_iteration_max ≥ 1")
-        );
-        params.n_iteration_max = 10;
-        params.tol_gh = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: tol_gh ≥ PARAM_TOL_MIN")
-        );
-        params.tol_gh = 1e-10;
-        params.tol_ul = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: tol_ul ≥ PARAM_TOL_MIN")
-        );
-        params.tol_ul = 1e-10;
-        params.max_ul_allowed = 0.0;
-        assert_eq!(
-            params.validate().err(),
-            Some("parameter must satisfy: max_ul_allowed > 0")
-        );
-        params.max_ul_allowed = 1e10;
+        config.n_iteration_max = 0;
+        assert_eq!(config.validate().err(), Some("requirement: n_iteration_max ≥ 1"));
+        config.n_iteration_max = 10;
+        config.tol_gh = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: tol_gh ≥ NL_CONFIG_TOL_MIN"));
+        config.tol_gh = 1e-10;
+        config.tol_ul = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: tol_ul ≥ NL_CONFIG_TOL_MIN"));
+        config.tol_ul = 1e-10;
+        config.max_ul_allowed = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: max_ul_allowed > 0"));
+        config.max_ul_allowed = 1e10;
 
         // all good
-        assert_eq!(params.validate().is_err(), false);
+        assert_eq!(config.validate().is_err(), false);
     }
 }

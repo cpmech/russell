@@ -4,7 +4,7 @@
 //! access to commonly used functionality.
 
 pub use crate::enums::*;
-pub use crate::nl_params::*;
+pub use crate::nl_config::*;
 pub use crate::nl_solver::*;
 pub use crate::nl_state::*;
 pub use crate::nl_system::*;

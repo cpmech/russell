@@ -1,12 +1,12 @@
 #![allow(unused)]
 
-use super::{NlParams, NlSolverTrait, NlSystem, State, Workspace};
+use super::{NlConfig, NlSolverTrait, NlSystem, State, Workspace};
 use crate::StrError;
 use russell_lab::Vector;
 
 pub struct SolverArclength<'a, A> {
-    /// Holds the parameters
-    params: NlParams,
+    /// Configuration options
+    config: NlConfig,
 
     /// System
     system: NlSystem<'a, A>,
@@ -14,8 +14,8 @@ pub struct SolverArclength<'a, A> {
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Self {
-        SolverArclength { params, system }
+    pub fn new(config: NlConfig, system: NlSystem<'a, A>) -> Self {
+        SolverArclength { config, system }
     }
 }
 

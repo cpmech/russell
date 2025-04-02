@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{NlMethod, NlParams, NumError, Stats};
+use super::{NlConfig, NlMethod, NumError, Stats};
 use russell_lab::Stopwatch;
 
 /// Prints information during time stepping
@@ -32,22 +32,18 @@ pub(crate) struct Logger {
 
 impl Logger {
     /// Creates a new instance
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Configuration parameters including convergence tolerances
-    pub fn new(params: &NlParams) -> Self {
-        let nchar = match params.method {
+    pub fn new(config: &NlConfig) -> Self {
+        let nchar = match config.method {
             NlMethod::Arclength => 56,
             NlMethod::Natural => 50,
         };
         Self {
-            method: params.method,
-            verbose: params.verbose || params.verbose_iterations,
-            verbose_iterations: params.verbose_iterations,
-            verbose_legend: params.verbose_legend,
-            n_iteration_max: params.n_iteration_max,
-            n_lambda_max: params.n_lambda_max,
+            method: config.method,
+            verbose: config.verbose || config.verbose_iterations,
+            verbose_iterations: config.verbose_iterations,
+            verbose_legend: config.verbose_legend,
+            n_iteration_max: config.n_iteration_max,
+            n_lambda_max: config.n_lambda_max,
             errors: Vec::new(),
             nchar,
         }

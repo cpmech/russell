@@ -1,14 +1,14 @@
 #![allow(unused)]
 
-use super::{NlParams, NlSolverTrait, NlSystem, State, Workspace};
+use super::{NlConfig, NlSolverTrait, NlSystem, State, Workspace};
 use crate::StrError;
 use russell_lab::{vec_add, vec_copy, vec_update, Vector};
 use russell_sparse::numerical_jacobian;
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
 pub struct SolverNatural<'a, A> {
-    /// Holds the parameters
-    params: NlParams,
+    /// Configuration options
+    config: NlConfig,
 
     /// System
     system: NlSystem<'a, A>,
@@ -16,9 +16,9 @@ pub struct SolverNatural<'a, A> {
 
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
-    pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Self {
+    pub fn new(config: NlConfig, system: NlSystem<'a, A>) -> Self {
         let ndim = system.ndim;
-        SolverNatural { params, system }
+        SolverNatural { config, system }
     }
 
     /// Performs a single iteration
@@ -39,9 +39,9 @@ impl<'a, A> SolverNatural<'a, A> {
         }
 
         // compute Jacobian matrix
-        if iteration == 0 || !self.params.constant_tangent {
+        if iteration == 0 || !self.config.constant_tangent {
             // assemble Gu matrix
-            if self.params.use_numerical_jacobian || self.system.calc_ggu.is_none() {
+            if self.config.use_numerical_jacobian || self.system.calc_ggu.is_none() {
                 // numerical Jacobian
                 work.stats.n_function += self.system.ndim;
                 numerical_jacobian(
@@ -60,7 +60,7 @@ impl<'a, A> SolverNatural<'a, A> {
             }
 
             // factorize Gu matrix
-            work.ls.actual.factorize(&mut work.ggu, self.params.lin_sol_params)?;
+            work.ls.actual.factorize(&mut work.ggu, self.config.lin_sol_config)?;
         }
 
         // solve linear system
@@ -99,7 +99,7 @@ impl<'a, A> SolverNatural<'a, A> {
         }
 
         // exit if linear problem (done)
-        if self.params.treat_as_linear {
+        if self.config.treat_as_linear {
             work.err.set_converged_linear_problem();
             return Ok(());
         }
@@ -131,7 +131,7 @@ impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
 
         // iteration loop
         let logging = true;
-        for iteration in 0..self.params.n_iteration_max {
+        for iteration in 0..self.config.n_iteration_max {
             work.stats.n_iterations += 1;
 
             // run Newton-Raphson iteration
@@ -172,12 +172,12 @@ impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
 
         // estimate new stepsize
         let newt = work.stats.n_iterations;
-        let num = self.params.m_safety * ((1 + 2 * self.params.n_iteration_max) as f64);
-        let den = (newt + 2 * self.params.n_iteration_max) as f64;
-        let fac = f64::min(self.params.m_safety, num / den);
+        let num = self.config.m_safety * ((1 + 2 * self.config.n_iteration_max) as f64);
+        let den = (newt + 2 * self.config.n_iteration_max) as f64;
+        let fac = f64::min(self.config.m_safety, num / den);
         let div = f64::max(
-            self.params.m_min,
-            f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
+            self.config.m_min,
+            f64::min(self.config.m_max, f64::powf(work.rel_error, 0.25) / fac),
         );
         work.h_new = h / div;
     }

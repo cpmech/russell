@@ -51,26 +51,35 @@ pub struct NlSystem<'a, A> {
     /// Symmetric type of the Gu matrix
     pub(crate) sym_ggu: Sym,
 
+    /// Creates a copy of external state variables
+    ///
+    /// The function is `fn (args)`
+    pub(crate) step_backup_state: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
+
+    /// Restores external state variables
+    ///
+    /// The function is `fn (args)`
+    pub(crate) step_restore_state: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
+
     /// Prepares to iterate (e.g., reset algorithmic variables in the FEM)
     ///
     /// The function is `fn (args)`
-    pub(crate) prepare_to_iterate: Option<Arc<dyn Fn(&mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+    pub(crate) step_reset_algorithmic_variables: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
 
     /// Updates starred variables (e.g., FEM transient starred variables)
     ///
     /// The function is `fn (mdu, u_new, args)`
-    pub(crate) update_starred: Option<Arc<dyn Fn(&Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+    pub(crate) iteration_update_starred: Option<Arc<dyn Fn(&Vector, &mut A) + Send + Sync + 'a>>,
 
     /// Prepares to update secondary variables (e.g., FEM stresses)
     ///
     /// The function is `fn (first_iteration, args)`
-    pub(crate) prepare_to_update_secondary:
-        Option<Arc<dyn Fn(bool, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+    pub(crate) iteration_prepare_to_update_secondary: Option<Arc<dyn Fn(bool, &mut A) + Send + Sync + 'a>>,
 
     /// Updates secondary variables (e.g., FEM stresses)
     ///
     /// The function is `fn (mdu, u_new, args)`
-    pub(crate) update_secondary:
+    pub(crate) iteration_update_secondary:
         Option<Arc<dyn Fn(&Vector, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 }
 
@@ -92,10 +101,12 @@ impl<'a, A> NlSystem<'a, A> {
             calc_ggl: None,
             nnz_ggu: ndim * ndim,
             sym_ggu: Sym::No,
-            prepare_to_iterate: None,
-            update_starred: None,
-            prepare_to_update_secondary: None,
-            update_secondary: None,
+            step_backup_state: None,
+            step_restore_state: None,
+            step_reset_algorithmic_variables: None,
+            iteration_update_starred: None,
+            iteration_prepare_to_update_secondary: None,
+            iteration_update_secondary: None,
         })
     }
 
@@ -108,10 +119,12 @@ impl<'a, A> NlSystem<'a, A> {
             calc_ggl: self.calc_ggl.clone(),
             nnz_ggu: self.nnz_ggu,
             sym_ggu: self.sym_ggu,
-            prepare_to_iterate: self.prepare_to_iterate.clone(),
-            update_starred: self.update_starred.clone(),
-            prepare_to_update_secondary: self.prepare_to_update_secondary.clone(),
-            update_secondary: self.update_secondary.clone(),
+            step_reset_algorithmic_variables: self.step_reset_algorithmic_variables.clone(),
+            step_backup_state: self.step_backup_state.clone(),
+            step_restore_state: self.step_restore_state.clone(),
+            iteration_update_starred: self.iteration_update_starred.clone(),
+            iteration_prepare_to_update_secondary: self.iteration_prepare_to_update_secondary.clone(),
+            iteration_update_secondary: self.iteration_update_secondary.clone(),
         }
     }
 

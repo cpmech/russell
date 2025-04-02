@@ -56,8 +56,8 @@ impl NumError {
         }
     }
 
-    /// Resets convergence flags for a new step
-    pub fn reset(&mut self) {
+    /// Clears convergence flags
+    pub fn clear_flags(&mut self) {
         self.converged_on_gh = false;
         self.diverging_on_gh = false;
         self.converged_on_ul = false;

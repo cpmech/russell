@@ -39,7 +39,7 @@ impl Logger {
     pub fn new(params: &NlParams) -> Self {
         let nchar = match params.method {
             NlMethod::Arclength => 56,
-            NlMethod::Natural => 39,
+            NlMethod::Natural => 50,
         };
         Self {
             method: params.method,

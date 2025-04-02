@@ -2,8 +2,9 @@
 
 use super::{NlParams, NlSolverTrait, NlSystem, State, Workspace};
 use crate::StrError;
-use russell_lab::{vec_add, vec_update, Vector};
+use russell_lab::{vec_add, vec_copy, vec_update, Vector};
 
+/// Implements the natural parameter continuation method to solve G(u, λ) = 0
 pub struct SolverNatural<'a, A> {
     /// Holds the parameters
     params: NlParams,
@@ -20,19 +21,14 @@ impl<'a, A> SolverNatural<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(
-        &mut self,
-        iteration: usize,
-        work: &mut Workspace,
-        state: &mut State,
-        args: &mut A,
-        logging: bool,
-    ) -> Result<(), StrError> {
+    fn iterate(&mut self, iteration: usize, work: &mut Workspace, args: &mut A, logging: bool) -> Result<(), StrError> {
         // calculate G(u, λ)
-        (self.system.calc_gg)(&mut work.gg, &state.u, *state.l, args)?;
+        (self.system.calc_gg)(&mut work.gg, &work.u, work.l, args)?;
+
+        // clear convergence flags
+        work.err.clear_flags();
 
         // check convergence on G
-        work.err.reset();
         work.err.analyze_gh(iteration, &work.gg, 0.0)?;
         if work.err.converged() {
             if logging {
@@ -50,7 +46,7 @@ impl<'a, A> SolverNatural<'a, A> {
                 panic!("TODO");
             } else {
                 // analytical Jacobian
-                (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, &state.u, *state.l, args)?;
+                (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, &work.u, work.l, args)?;
             }
 
             // factorize Gu matrix
@@ -71,28 +67,28 @@ impl<'a, A> SolverNatural<'a, A> {
 
         // avoid large norm(mdu)
         if work.err.large_du_dl() {
-            return Ok(());
+            return Ok(()); // need to handle this case outside
         }
 
-        // update
-        vec_update(&mut state.u, -1.0, &work.mdu).unwrap();
+        // update: u ← u - mdu = u + δu
+        vec_update(&mut work.u, -1.0, &work.mdu).unwrap();
 
-        // update starred variables
-        if let Some(f) = self.system.update_starred.as_ref() {
-            (f)(&state.u, args)?;
+        // external: update starred variables
+        if let Some(f) = self.system.iteration_update_starred.as_ref() {
+            (f)(&work.u, args);
         }
 
-        // backup/restore secondary variables
-        if let Some(f) = self.system.prepare_to_update_secondary.as_ref() {
-            (f)(iteration == 0, args)?;
+        // external: backup/restore secondary variables to prepare for the update
+        if let Some(f) = self.system.iteration_prepare_to_update_secondary.as_ref() {
+            (f)(iteration == 0, args);
         }
 
-        // update secondary variables
-        if let Some(f) = self.system.update_secondary.as_ref() {
-            (f)(&work.mdu, &state.u, args)?;
+        // external: update secondary variables
+        if let Some(f) = self.system.iteration_update_secondary.as_ref() {
+            (f)(&work.mdu, &work.u, args)?;
         }
 
-        // exit if linear problem
+        // exit if linear problem (done)
         if self.params.treat_as_linear {
             work.err.set_converged_linear_problem();
             return Ok(());
@@ -102,45 +98,41 @@ impl<'a, A> SolverNatural<'a, A> {
 }
 
 impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
-    /// Calculates u, λ and s such that G(u(s), λ(s)) = 0
-    fn step(&mut self, work: &mut Workspace, state: &mut State, args: &mut A, auto: bool) -> Result<(), StrError> {
-        /*
-        // check for h too small
-        if state.h < self.params.h_min_allowed {
-            return Err("h is smaller than the allowed minimum");
-        }
+    /// Calculates u such that G(u, λ) = 0
+    ///
+    /// * `auto` indicates that automatic stepsize control is used.
+    ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
+    fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A, auto: bool) -> Result<(), StrError> {
+        // set workspace with trial values
+        vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
+        work.l = *state.l + state.h; // λ_trial ← λ0 + h
 
-        // check for final step
-        if *state.l + state.h >= 1.0 {
-            if auto && *state.l + state.h != 1.0 {
-                // only truncates if λ+Δλ is not exactly equal to 1.0
-                state.h = f64::max(self.params.h_min_allowed, 1.0 - *state.l);
+        // external: create a copy of external state variables
+        if auto {
+            if let Some(f) = self.system.step_backup_state.as_ref() {
+                (f)(args);
             }
-            // self.last = true;
         }
-        */
 
-        // update λ
-        *state.l += state.h;
-
-        // prepare to iterate (e.g., reset algorithmic variables)
-        if let Some(f) = self.system.prepare_to_iterate.as_ref() {
-            (f)(args)?;
+        // external: prepare to iterate (e.g., reset algorithmic variables)
+        if let Some(f) = self.system.step_reset_algorithmic_variables.as_ref() {
+            (f)(args);
         }
 
         // iteration loop
+        let logging = true;
         for iteration in 0..self.params.n_iteration_max {
             work.stats.n_iterations += 1;
 
             // run Newton-Raphson iteration
-            self.iterate(iteration, work, state, args, true)?;
+            self.iterate(iteration, work, args, logging)?;
 
             // stop if converged
             if work.err.converged() {
                 break;
             }
 
-            // stop if norm(mdu) is too large
+            // stop if (δu,δλ) is too large
             if work.err.large_du_dl() {
                 work.stats.n_large_du_dl += 1;
                 if !auto {
@@ -150,5 +142,33 @@ impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
             }
         }
         Ok(())
+    }
+
+    /// Handles the accept case by updating the state and calculating a new stepsize
+    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) {
+        vec_copy(&mut state.u, &work.u).unwrap();
+        *state.l = work.l;
+        work.h_new = state.h;
+    }
+
+    /// Handles the reject case by calculating a new stepsize
+    fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A, auto: bool) {
+        // external: restore external state variables
+        if auto {
+            if let Some(f) = self.system.step_restore_state.as_ref() {
+                (f)(args);
+            }
+        }
+
+        // estimate new stepsize
+        let newt = work.stats.n_iterations;
+        let num = self.params.m_safety * ((1 + 2 * self.params.n_iteration_max) as f64);
+        let den = (newt + 2 * self.params.n_iteration_max) as f64;
+        let fac = f64::min(self.params.m_safety, num / den);
+        let div = f64::max(
+            self.params.m_min,
+            f64::min(self.params.m_max, f64::powf(work.rel_error, 0.25) / fac),
+        );
+        work.h_new = h / div;
     }
 }

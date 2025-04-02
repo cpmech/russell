@@ -72,7 +72,7 @@ impl<'a, A> NlSolver<'a, A> {
     /// * `l0` -- the initial value of λ
     /// * `l1` -- the final value of λ
     /// * `h_equal` -- a constant stepsize for solving with equal-steps; otherwise,
-    ///   variable step sizes are automatically calculated.
+    ///   variable step sizes are automatically calculated (auto mode).
     pub fn solve(
         &mut self,
         u0: &mut Vector,
@@ -98,9 +98,10 @@ impl<'a, A> NlSolver<'a, A> {
             }
         }
 
-        // determine initial stepsize
-        let (equal_stepping, h_ini) = match h_equal {
+        // determine auto-stepping (substepping) flag and initial stepsize
+        let (auto, h_ini) = match h_equal {
             Some(h_eq) => {
+                // equal stepsize (not automatic substepping)
                 if h_eq < 10.0 * f64::EPSILON {
                     return Err("h_equal must be ≥ 10.0 * f64::EPSILON");
                 }
@@ -111,14 +112,15 @@ impl<'a, A> NlSolver<'a, A> {
                     }
                     NlStop::Steps(_) => h_eq,
                 };
-                (true, h0)
+                (false, h0)
             }
             None => {
+                // automatic substepping
                 let h0 = match stop {
                     NlStop::Lambda(l1) => f64::min(self.params.h_ini, l1 - *l0),
                     NlStop::Steps(_) => self.params.h_ini,
                 };
-                (false, h0)
+                (true, h0)
             }
         };
         assert!(h_ini > 0.0);
@@ -147,7 +149,7 @@ impl<'a, A> NlSolver<'a, A> {
         self.work.log.header();
 
         // solve with equal stepsize
-        if equal_stepping {
+        if !auto {
             let nstep = match stop {
                 NlStop::Lambda(l1) => f64::ceil((l1 - *state.l) / h_ini) as usize,
                 NlStop::Steps(n) => n,
@@ -157,7 +159,7 @@ impl<'a, A> NlSolver<'a, A> {
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, &mut state, args, false)?;
+                self.actual.step(&mut self.work, &mut state, args, auto)?;
                 self.work.stats.n_accepted += 1;
 
                 // check for anomalies

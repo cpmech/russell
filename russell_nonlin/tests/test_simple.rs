@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use russell_lab::Vector;
-use russell_nonlin::{NlMethod, NlParams, NlSolver, NlSystem, NoArgs};
+use russell_nonlin::{NlMethod, NlParams, NlSolver, NlStop, NlSystem, NoArgs};
 use russell_sparse::CooMatrix;
 
 #[test]
@@ -14,7 +14,7 @@ fn test_simple() {
     .unwrap();
 
     // define solver
-    let params = NlParams::new(NlMethod::Simple);
+    let params = NlParams::new(NlMethod::Natural);
     let mut solver = NlSolver::new(params, system).unwrap();
 
     // initial guess
@@ -23,7 +23,9 @@ fn test_simple() {
 
     // solve
     let args = &mut 0;
-    solver.solve(&mut u, &mut l, 1.5, None, args).unwrap();
+    solver
+        .solve(&mut u, &mut l, NlStop::Lambda(1.0), Some(0.1), args)
+        .unwrap();
 
     // check
     assert_eq!(u[0], 1.5);

@@ -65,7 +65,7 @@ fn test_multithreaded() {
     // run simulations concurrently
     let mut runners: Vec<Box<dyn Runner>> = vec![
         Box::new(Simulator::new(NlMethod::Arclength)),
-        Box::new(Simulator::new(NlMethod::Parametric)),
+        Box::new(Simulator::new(NlMethod::Natural)),
     ];
     runners.par_iter_mut().for_each(|r| r.run_and_check());
 }

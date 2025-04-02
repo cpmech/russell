@@ -39,8 +39,7 @@ impl Logger {
     pub fn new(params: &NlParams) -> Self {
         let nchar = match params.method {
             NlMethod::Arclength => 56,
-            NlMethod::Parametric => 39,
-            NlMethod::Simple => 23,
+            NlMethod::Natural => 39,
         };
         Self {
             method: params.method,
@@ -70,14 +69,11 @@ impl Logger {
                     "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,H)"
                 );
             }
-            NlMethod::Parametric => {
+            NlMethod::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
                     "λ", "Δλ", "iter", "‖δu‖∞", "‖G‖∞"
                 );
-            }
-            NlMethod::Simple => {
-                println!("{:>5} {:>9} ➖ {:>9} ➖", "iter", "‖δu‖∞", "‖G‖∞");
             }
         }
         println!("{}", "─".repeat(self.nchar));
@@ -93,20 +89,18 @@ impl Logger {
                 NlMethod::Arclength => {
                     println!("{:>8.3e} {:>8.3e} {:>8.3e}", l, s, h);
                 }
-                NlMethod::Parametric => {
+                NlMethod::Natural => {
                     println!("{:>8.3e} {:>8.3e}", l, h);
                 }
-                NlMethod::Simple => (),
             }
         } else {
             match self.method {
                 NlMethod::Arclength => {
                     println!("{:>8} {:>8} {:>8}", "·", "·", "·");
                 }
-                NlMethod::Parametric => {
+                NlMethod::Natural => {
                     println!("{:>8} {:>8}", "·", "·");
                 }
-                NlMethod::Simple => (),
             }
         }
     }
@@ -135,16 +129,10 @@ impl Logger {
                     "·", "·", "·", iter, err.max_ul, icon_ul, err.max_gh, icon_gh
                 );
             }
-            NlMethod::Parametric => {
+            NlMethod::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
                     "·", "·", iter, err.max_ul, icon_ul, err.max_gh, icon_gh
-                );
-            }
-            NlMethod::Simple => {
-                println!(
-                    "{:>5} {:>9.2e} {} {:>9.2e} {}",
-                    iter, err.max_ul, icon_ul, err.max_gh, icon_gh
                 );
             }
         }

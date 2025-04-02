@@ -4,7 +4,7 @@ use super::{NlParams, NlSolverTrait, NlSystem, State, Workspace};
 use crate::StrError;
 use russell_lab::{vec_add, vec_update, Vector};
 
-pub struct SolverSimple<'a, A> {
+pub struct SolverNatural<'a, A> {
     /// Holds the parameters
     params: NlParams,
 
@@ -12,11 +12,11 @@ pub struct SolverSimple<'a, A> {
     system: NlSystem<'a, A>,
 }
 
-impl<'a, A> SolverSimple<'a, A> {
+impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
     pub fn new(params: NlParams, system: NlSystem<'a, A>) -> Self {
         let ndim = system.ndim;
-        SolverSimple { params, system }
+        SolverNatural { params, system }
     }
 
     /// Performs a single iteration
@@ -101,7 +101,7 @@ impl<'a, A> SolverSimple<'a, A> {
     }
 }
 
-impl<'a, A> NlSolverTrait<A> for SolverSimple<'a, A> {
+impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
     /// Calculates u, λ and s such that G(u(s), λ(s)) = 0
     fn step(&mut self, work: &mut Workspace, state: &mut State, args: &mut A, auto: bool) -> Result<(), StrError> {
         /*

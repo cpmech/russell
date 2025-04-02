@@ -15,8 +15,7 @@ mod output;
 pub mod prelude;
 mod samples;
 mod solver_arclength;
-mod solver_parametric;
-mod solver_simple;
+mod solver_natural;
 mod stats;
 mod workspace;
 
@@ -31,8 +30,7 @@ use num_error::*;
 pub use output::*;
 pub use samples::*;
 pub use solver_arclength::*;
-pub use solver_parametric::*;
-pub use solver_simple::*;
+pub use solver_natural::*;
 pub use stats::*;
 use workspace::*;
 

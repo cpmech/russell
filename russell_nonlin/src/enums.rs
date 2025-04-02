@@ -1,21 +1,28 @@
+/// Specifies the stopping criterion for the continuation process.
+#[derive(Clone, Copy, Debug)]
+pub enum NlStop {
+    /// Stops when lambda reaches the specified value.
+    Lambda(f64),
+
+    /// Stops after a number of steps.
+    Steps(usize),
+}
+
+/// Specifies the method of continuation to be used.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NlMethod {
     /// Pseudo-arclength continuation
     Arclength,
 
-    /// Parameter continuation
-    Parametric,
-
-    /// Simple Newton-Raphson method without any parameter
-    Simple,
+    /// Natural parameter continuation
+    Natural,
 }
 
 impl NlMethod {
     pub fn description(&self) -> &'static str {
         match self {
-            NlMethod::Arclength => "Pseudo-arclength continuation; solves G(u) = 0",
-            NlMethod::Parametric => "Parameter continuation; solves G(u(s), λ(s)) = 0",
-            NlMethod::Simple => "Simple Newton-Raphson method without any parameter; solves G(u, λ) = 0",
+            NlMethod::Arclength => "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0",
+            NlMethod::Natural => "Natural parameter continuation; solves G(u, λ) = 0",
         }
     }
 }

@@ -1,11 +1,8 @@
-#![allow(unused)]
-
-use russell_lab::Vector;
+use russell_lab::{array_approx_eq, Vector};
 use russell_nonlin::{NlMethod, NlParams, NlSolver, NlStop, NlSystem, NoArgs};
-use russell_sparse::CooMatrix;
 
 #[test]
-fn test_simple() {
+fn test_simple_num_jacobian() {
     // define nonlinear system: G(u, λ) = u - λ
     let system = NlSystem::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         gg[0] = u[0] - l;
@@ -19,7 +16,7 @@ fn test_simple() {
 
     // define solver
     let mut solver = NlSolver::new(params, system).unwrap();
-    let output = solver.enable_output();
+    solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
     let mut u = Vector::from(&[0.0]);
@@ -31,7 +28,22 @@ fn test_simple() {
         .solve(&mut u, &mut l, NlStop::Lambda(1.0), Some(0.1), args)
         .unwrap();
 
+    // results
+    // println!("u[0] = {:?}", solver.out_step_u(0));
+
     // check
-    println!("h = {:?}", solver.out_step_h());
-    // assert_eq!(u[0], 1.5);
+    assert_eq!(
+        solver.out_step_h(),
+        &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    );
+    array_approx_eq(
+        solver.out_step_l(),
+        &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        1e-15,
+    );
+    array_approx_eq(
+        solver.out_step_u(0),
+        &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+        1e-10,
+    );
 }

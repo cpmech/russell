@@ -21,7 +21,7 @@ pub struct NlSolver<'a, A> {
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace<'a>,
 
-    /// Assists in generating the output of results (steps or dense)
+    /// Assists in generating the output of results
     output: Output<'a, A>,
 
     /// Indicates whether the output is enabled or not

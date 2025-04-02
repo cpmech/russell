@@ -139,8 +139,8 @@ impl<'a, A> NlSolver<'a, A> {
         // first output
         if self.output_enabled {
             self.output.initialize();
-            let stop = self.output.execute(&self.work, &state, args)?;
-            if stop {
+            let terminate = self.output.execute(&self.work, &state, args)?;
+            if terminate {
                 return Ok(());
             }
         }
@@ -160,15 +160,18 @@ impl<'a, A> NlSolver<'a, A> {
                 // step
                 self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, &mut state, args, auto)?;
+
+                // update u and λ
                 self.work.stats.n_accepted += 1;
+                self.actual.accept(&mut self.work, &mut state, args);
 
                 // check for anomalies
                 vec_all_finite(state.u, self.params.verbose)?;
 
                 // output
                 if self.output_enabled {
-                    let stop = self.output.execute(&self.work, &state, args)?;
-                    if stop {
+                    let terminate = self.output.execute(&self.work, &state, args)?;
+                    if terminate {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
                         return Ok(());
@@ -191,7 +194,7 @@ impl<'a, A> NlSolver<'a, A> {
         for step in 0..self.params.n_step_max {
             self.work.stats.sw_step.reset();
 
-            // check stopping criterion
+            // check final stepsize and stopping criterion
             let h_final = match stop {
                 NlStop::Lambda(l1) => {
                     let dl = l1 - *state.l;
@@ -212,7 +215,7 @@ impl<'a, A> NlSolver<'a, A> {
                 }
             };
 
-            // update the stepsize
+            // update and check the stepsize
             state.h = f64::min(self.work.h_new, h_final);
             if state.h <= 10.0 * f64::EPSILON {
                 return Err("the stepsize becomes too small");
@@ -220,7 +223,7 @@ impl<'a, A> NlSolver<'a, A> {
 
             // perform the step calculations
             self.work.stats.n_steps += 1;
-            self.actual.step(&mut self.work, &mut state, args, true)?;
+            self.actual.step(&mut self.work, &mut state, args, auto)?;
 
             // handle diverging iterations
             if self.work.iterations_diverging {
@@ -233,8 +236,9 @@ impl<'a, A> NlSolver<'a, A> {
 
             // accept step
             if self.work.rel_error < 1.0 {
-                // update x and y
+                // update u and λ
                 self.work.stats.n_accepted += 1;
+                self.actual.accept(&mut self.work, &mut state, args);
 
                 // check for anomalies
                 vec_all_finite(state.u, self.params.verbose)?;
@@ -252,15 +256,15 @@ impl<'a, A> NlSolver<'a, A> {
 
                 // output
                 if self.output_enabled {
-                    let stop = self.output.execute(&self.work, &state, args)?;
-                    if stop {
+                    let terminate = self.output.execute(&self.work, &state, args)?;
+                    if terminate {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
                         return Ok(());
                     }
                 }
 
-                // converged?
+                // stop calculations if last step
                 if last_step {
                     success = true;
                     self.work.stats.stop_sw_step();
@@ -286,9 +290,8 @@ impl<'a, A> NlSolver<'a, A> {
                 if self.work.stats.n_accepted == 0 && self.params.m_first_reject > 0.0 {
                     self.work.h_new = state.h * self.params.m_first_reject;
                 } else {
-                    // self.actual.reject(&mut self.work, h);
+                    self.actual.reject(&mut self.work, state.h, args, auto);
                 }
-                panic!("TODO: handle reject");
             }
         }
 

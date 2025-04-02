@@ -2,7 +2,7 @@ use russell_lab::{array_approx_eq, Vector};
 use russell_nonlin::{NlMethod, NlParams, NlSolver, NlStop, NlSystem, NoArgs};
 
 #[test]
-fn test_simple_num_jacobian() {
+fn test_linear_no_auto_num_jac() {
     // define nonlinear system: G(u, λ) = u - λ
     let system = NlSystem::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         gg[0] = u[0] - l;

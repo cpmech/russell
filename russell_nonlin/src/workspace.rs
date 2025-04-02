@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::{Logger, NlParams, NlSystem, NumError, Stats};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
@@ -54,11 +56,22 @@ pub(crate) struct Workspace<'a> {
 
     /// Holds -δλ
     pub(crate) mdl: f64,
+
+    /// Auxiliary u vector #1 (e.g., for numerical Jacobian)
+    pub(crate) u_aux1: Vector,
+
+    /// Auxiliary u vector #2 (e.g., for numerical Jacobian)
+    pub(crate) u_aux2: Vector,
 }
 
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
     pub(crate) fn new<'b, A>(params: &NlParams, system: &NlSystem<'b, A>) -> Self {
+        let n_num_j = if params.use_numerical_jacobian || system.calc_ggu.is_none() {
+            system.ndim
+        } else {
+            0
+        };
         Workspace {
             stats: Stats::new(params.method),
             follows_reject_step: false,
@@ -77,6 +90,8 @@ impl<'a> Workspace<'a> {
             l: 0.0,
             mdu: Vector::new(system.ndim),
             mdl: 0.0,
+            u_aux1: Vector::new(n_num_j),
+            u_aux2: Vector::new(n_num_j),
         }
     }
 

@@ -6,9 +6,9 @@ use russell_sparse::CooMatrix;
 
 #[test]
 fn test_simple() {
-    // define nonlinear system
-    let system = NlSystem::new(1, |gg: &mut Vector, u: &Vector, _l: f64, _args: &mut NoArgs| {
-        gg[0] = u[0];
+    // define nonlinear system: G(u, λ) = u - λ
+    let system = NlSystem::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+        gg[0] = u[0] - l;
         Ok(())
     })
     .unwrap();
@@ -19,7 +19,7 @@ fn test_simple() {
 
     // define solver
     let mut solver = NlSolver::new(params, system).unwrap();
-    solver.enable_output();
+    let output = solver.enable_output();
 
     // initial guess
     let mut u = Vector::from(&[0.0]);
@@ -32,5 +32,6 @@ fn test_simple() {
         .unwrap();
 
     // check
+    println!("h = {:?}", solver.out_step_h());
     // assert_eq!(u[0], 1.5);
 }

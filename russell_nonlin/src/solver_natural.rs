@@ -3,6 +3,7 @@
 use super::{NlParams, NlSolverTrait, NlSystem, State, Workspace};
 use crate::StrError;
 use russell_lab::{vec_add, vec_copy, vec_update, Vector};
+use russell_sparse::numerical_jacobian;
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
 pub struct SolverNatural<'a, A> {
@@ -23,7 +24,7 @@ impl<'a, A> SolverNatural<'a, A> {
     /// Performs a single iteration
     fn iterate(&mut self, iteration: usize, work: &mut Workspace, args: &mut A, logging: bool) -> Result<(), StrError> {
         // calculate G(u, λ)
-        (self.system.calc_gg)(&mut work.gg, &work.u, work.l, args)?;
+        (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
         // clear convergence flags
         work.err.clear_flags();
@@ -43,10 +44,19 @@ impl<'a, A> SolverNatural<'a, A> {
             if self.params.use_numerical_jacobian || self.system.calc_ggu.is_none() {
                 // numerical Jacobian
                 work.stats.n_function += self.system.ndim;
-                panic!("TODO");
+                numerical_jacobian(
+                    &mut work.ggu,
+                    1.0,
+                    work.l,
+                    &mut work.u,
+                    &mut work.u_aux1,
+                    &mut work.u_aux2,
+                    args,
+                    self.system.calc_gg.as_ref(),
+                )?;
             } else {
                 // analytical Jacobian
-                (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, &work.u, work.l, args)?;
+                (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, work.l, &work.u, args)?;
             }
 
             // factorize Gu matrix

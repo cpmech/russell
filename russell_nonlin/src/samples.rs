@@ -12,7 +12,7 @@ impl Samples {
     pub fn simple_two_equations<'a>() -> (NlSystem<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
-        let mut system = NlSystem::new(ndim, |gg: &mut Vector, u: &Vector, _l: f64, _args: &mut NoArgs| {
+        let mut system = NlSystem::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
             gg[0] = u[0].powf(3.0) + u[1] - 1.0;
             gg[1] = -u[0] + u[1].powf(3.0) + 1.0;
             Ok(())
@@ -25,7 +25,7 @@ impl Samples {
             .set_calc_ggu(
                 Some(nnz),
                 Sym::No,
-                |ggu: &mut CooMatrix, u: &Vector, _l: f64, _args: &mut NoArgs| {
+                |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
                     ggu.reset();
                     ggu.put(0, 0, 3.0 * u[0] * u[0]).unwrap();
                     ggu.put(0, 1, 1.0).unwrap();

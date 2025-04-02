@@ -325,17 +325,17 @@ impl<'a, A> NlSolver<'a, A> {
         &self.output.h
     }
 
-    /// Returns an access to the output during accepted steps: x values
-    pub fn out_step_x(&self) -> &Vec<f64> {
+    /// Returns an access to the output during accepted steps: λ values
+    pub fn out_step_l(&self) -> &Vec<f64> {
         &self.output.l
     }
 
-    /// Returns an access to the output during accepted steps: y values
+    /// Returns an access to the output during accepted steps: u values
     ///
     /// # Panics
     ///
     /// A panic will occur if `m` is out of range
-    pub fn out_step_y(&self, m: usize) -> &Vec<f64> {
+    pub fn out_step_u(&self, m: usize) -> &Vec<f64> {
         &self.output.u.get(&m).unwrap()
     }
 

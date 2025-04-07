@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::NlMethod;
+use super::Method;
 use russell_lab::{format_nanoseconds, Stopwatch};
 use std::fmt::{self, Write};
 
@@ -8,7 +8,7 @@ use std::fmt::{self, Write};
 #[derive(Clone, Copy, Debug)]
 pub struct Stats {
     /// Holds the method
-    method: NlMethod,
+    method: Method,
 
     /// Number of calls to G(u(s), λ(s)) function
     pub n_function: usize,
@@ -76,7 +76,7 @@ pub struct Stats {
 
 impl Stats {
     /// Allocates a new instance
-    pub fn new(method: NlMethod) -> Self {
+    pub fn new(method: Method) -> Self {
         Stats {
             method,
             n_function: 0,
@@ -229,11 +229,11 @@ impl fmt::Display for Stats {
 #[cfg(test)]
 mod tests {
     use super::Stats;
-    use crate::NlMethod;
+    use crate::Method;
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut stats = Stats::new(NlMethod::Arclength);
+        let mut stats = Stats::new(Method::Arclength);
         stats.n_accepted += 1;
         let copy = stats;
         let clone = stats.clone();
@@ -244,11 +244,11 @@ mod tests {
 
     #[test]
     fn summary_works() {
-        let stats = Stats::new(NlMethod::Arclength);
+        let stats = Stats::new(Method::Arclength);
         println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
-            "Arclength: Pseudo-arclength continuation; solves G(u) = 0\n\
+            "Arclength: Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -262,10 +262,10 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let stats = Stats::new(NlMethod::Arclength);
+        let stats = Stats::new(Method::Natural);
         assert_eq!(
             format!("{}", stats),
-            "Arclength: Pseudo-arclength continuation; solves G(u) = 0\n\
+            "Natural: Natural parameter continuation; solves G(u, λ) = 0\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\

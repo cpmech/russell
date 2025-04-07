@@ -1,4 +1,4 @@
-use super::NlConfig;
+use super::Config;
 use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
@@ -40,7 +40,7 @@ pub(crate) struct NumError {
 
 impl NumError {
     /// Creates a new instance
-    pub fn new(config: &NlConfig) -> Self {
+    pub fn new(config: &Config) -> Self {
         Self {
             max_gh: 0.0,
             max_ul: 0.0,

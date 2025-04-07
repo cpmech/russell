@@ -1,4 +1,4 @@
-use super::{NlSystem, NoArgs};
+use super::{System, NoArgs};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Sym};
 
@@ -9,10 +9,10 @@ impl Samples {
     /// Simple two-equation system
     ///
     /// Returns `(system, u_trial, u_reference, args)`
-    pub fn simple_two_equations<'a>() -> (NlSystem<'a, NoArgs>, Vector, Vector, NoArgs) {
+    pub fn simple_two_equations<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
-        let mut system = NlSystem::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
             gg[0] = u[0].powf(3.0) + u[1] - 1.0;
             gg[1] = -u[0] + u[1].powf(3.0) + 1.0;
             Ok(())

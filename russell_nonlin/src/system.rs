@@ -23,7 +23,7 @@ pub type NoArgs = u8;
 /// ggu := Gu = dG/du
 /// ggl := Gλ = dG/dλ
 /// ```
-pub struct NlSystem<'a, A> {
+pub struct System<'a, A> {
     /// Dimension of `u` and `G`
     pub(crate) ndim: usize,
 
@@ -82,7 +82,7 @@ pub struct NlSystem<'a, A> {
         Option<Arc<dyn Fn(&Vector, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 }
 
-impl<'a, A> NlSystem<'a, A> {
+impl<'a, A> System<'a, A> {
     /// Allocates a new instance
     ///
     /// use `|gg, l, u, args|` or `|gg: &mut Vector, l: f64, u: &Vector, args: &mut A|`
@@ -93,7 +93,7 @@ impl<'a, A> NlSystem<'a, A> {
         if ndim < 1 {
             return Err("ndim must be at least 1");
         }
-        Ok(NlSystem {
+        Ok(System {
             ndim,
             calc_gg: Arc::new(calc_gg),
             calc_ggu: None,
@@ -111,7 +111,7 @@ impl<'a, A> NlSystem<'a, A> {
 
     /// Returns a copy of this struct
     pub fn clone(&self) -> Self {
-        NlSystem {
+        System {
             ndim: self.ndim,
             calc_gg: self.calc_gg.clone(),
             calc_ggu: self.calc_ggu.clone(),

@@ -1,4 +1,4 @@
-use super::{NlState, State, Stats, StrError, Workspace};
+use super::{State, StateRef, Stats, StrError, Workspace};
 use russell_lab::{vec_max_abs_diff, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -61,7 +61,7 @@ pub struct Output<'a, A> {
     calc_u_ref: Option<Arc<dyn Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a>>,
 }
 
-impl NlState {
+impl State {
     /// Reads a JSON file containing the results
     pub fn read_json(full_path: &str) -> Result<Self, StrError> {
         let path = Path::new(full_path).to_path_buf();
@@ -72,7 +72,7 @@ impl NlState {
     }
 }
 
-impl<'a> State<'a> {
+impl<'a> StateRef<'a> {
     /// Writes a JSON file with the results
     pub fn write_json(&self, full_path: &str) -> Result<(), StrError> {
         let path = Path::new(full_path).to_path_buf();
@@ -196,7 +196,7 @@ impl<'a, A> Output<'a, A> {
     }
 
     /// Executes the output at an accepted step
-    pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
+    pub(crate) fn execute(&mut self, work: &Workspace, state: &StateRef, args: &mut A) -> Result<bool, StrError> {
         assert!(self.initialized);
 
         // callback
@@ -251,14 +251,14 @@ impl<'a, A> Output<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::{NlState, OutCount, Output, State};
+    use super::{OutCount, Output, State, StateRef};
     use crate::NoArgs;
     use russell_lab::Vector;
 
     #[test]
     fn derive_methods_work() {
         // NlState
-        let out_data = NlState {
+        let out_data = State {
             u: Vector::new(1),
             l: 0.5,
             s: 0.2,
@@ -267,10 +267,10 @@ mod tests {
         let clone = out_data.clone();
         assert_eq!(
             format!("{:?}", clone),
-            "NlState { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1 }"
+            "State { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1 }"
         );
         let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2,\"s\":0.3,\"h\":0.4}";
-        let from_json: NlState = serde_json::from_str(&json).unwrap();
+        let from_json: State = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.u.as_data(), &[3.0]);
         assert_eq!(from_json.l, 0.2);
         assert_eq!(from_json.s, 0.3);
@@ -279,7 +279,7 @@ mod tests {
         // NlStateAccess
         let mut u = Vector::from(&[10.0]);
         let mut l = 0.5;
-        let state = State {
+        let state = StateRef {
             u: &mut u,
             l: &mut l,
             s: 0.15,
@@ -302,7 +302,7 @@ mod tests {
         // Write NlStateAccess
         let mut u = Vector::from(&[6.6]);
         let mut l = 0.5;
-        let data_out = State {
+        let data_out = StateRef {
             u: &mut u,
             l: &mut l,
             s: 0.15,
@@ -312,7 +312,7 @@ mod tests {
         data_out.write_json(path).unwrap();
 
         // Read NlState
-        let data_in = NlState::read_json(path).unwrap();
+        let data_in = State::read_json(path).unwrap();
         assert_eq!(data_in.u.as_data(), &[6.6]);
         assert_eq!(data_in.l, 0.5);
         assert_eq!(data_in.s, 0.15);

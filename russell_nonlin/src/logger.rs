@@ -1,12 +1,12 @@
 #![allow(unused)]
 
-use super::{NlConfig, NlMethod, NumError, Stats};
+use super::{Config, Method, NumError, Stats};
 use russell_lab::Stopwatch;
 
 /// Prints information during time stepping
 pub(crate) struct Logger {
     /// Method
-    method: NlMethod,
+    method: Method,
 
     /// Enables verbose output
     verbose: bool,
@@ -32,10 +32,10 @@ pub(crate) struct Logger {
 
 impl Logger {
     /// Creates a new instance
-    pub fn new(config: &NlConfig) -> Self {
+    pub fn new(config: &Config) -> Self {
         let nchar = match config.method {
-            NlMethod::Arclength => 56,
-            NlMethod::Natural => 50,
+            Method::Arclength => 56,
+            Method::Natural => 50,
         };
         Self {
             method: config.method,
@@ -59,13 +59,13 @@ impl Logger {
         }
         println!("{}", "─".repeat(self.nchar));
         match self.method {
-            NlMethod::Arclength => {
+            Method::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
                     "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,H)"
                 );
             }
-            NlMethod::Natural => {
+            Method::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
                     "λ", "Δλ", "iter", "‖δu‖∞", "‖G‖∞"
@@ -82,19 +82,19 @@ impl Logger {
         }
         if increment == 0 {
             match self.method {
-                NlMethod::Arclength => {
+                Method::Arclength => {
                     println!("{:>8.3e} {:>8.3e} {:>8.3e}", l, s, h);
                 }
-                NlMethod::Natural => {
+                Method::Natural => {
                     println!("{:>8.3e} {:>8.3e}", l, h);
                 }
             }
         } else {
             match self.method {
-                NlMethod::Arclength => {
+                Method::Arclength => {
                     println!("{:>8} {:>8} {:>8}", "·", "·", "·");
                 }
-                NlMethod::Natural => {
+                Method::Natural => {
                     println!("{:>8} {:>8}", "·", "·");
                 }
             }
@@ -119,13 +119,13 @@ impl Logger {
             }
         };
         match self.method {
-            NlMethod::Arclength => {
+            Method::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
                     "·", "·", "·", iter, err.max_ul, icon_ul, err.max_gh, icon_gh
                 );
             }
-            NlMethod::Natural => {
+            Method::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
                     "·", "·", iter, err.max_ul, icon_ul, err.max_gh, icon_gh

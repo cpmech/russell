@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{Logger, NlConfig, NlSystem, NumError, Stats};
+use super::{Config, Logger, System, NumError, Stats};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
@@ -66,7 +66,7 @@ pub(crate) struct Workspace<'a> {
 
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
-    pub(crate) fn new<'b, A>(config: &NlConfig, system: &NlSystem<'b, A>) -> Self {
+    pub(crate) fn new<'b, A>(config: &Config, system: &System<'b, A>) -> Self {
         let n_num_j = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
             system.ndim
         } else {

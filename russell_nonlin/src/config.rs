@@ -1,20 +1,20 @@
-use super::NlMethod;
+use super::Method;
 use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the smallest allowed h
-pub const NL_CONFIG_H_MIN: f64 = 1e-7;
+pub const CONFIG_H_MIN: f64 = 1e-7;
 
 /// Defines the smallest allowed tolerance
-pub const NL_CONFIG_TOL_MIN: f64 = 1e-12;
+pub const CONFIG_TOL_MIN: f64 = 1e-12;
 
 /// Holds configuration options for the nonlinear solver
 #[derive(Clone, Copy, Debug)]
-pub struct NlConfig {
+pub struct Config {
     // basic options ----------------------------------------------------------------------
     //
     /// Nonlinear solver method
-    pub(crate) method: NlMethod,
+    pub(crate) method: Method,
 
     /// Treat the problem as linear
     pub treat_as_linear: bool,
@@ -63,10 +63,10 @@ pub struct NlConfig {
     /// Initial stepsize
     ///
     /// ```text
-    /// h_ini ≥ NL_CONFIG_H_MIN
+    /// h_ini ≥ CONFIG_H_MIN
     /// ```
     ///
-    /// See [NL_CONFIG_H_MIN]
+    /// See [CONFIG_H_MIN]
     pub h_ini: f64,
 
     /// Allowed min stepsize
@@ -82,10 +82,10 @@ pub struct NlConfig {
     /// Min value of previous relative error
     ///
     /// ```text
-    /// rel_error_prev_min ≥ NL_CONFIG_H_MIN
+    /// rel_error_prev_min ≥ CONFIG_H_MIN
     /// ```
     ///
-    /// See [NL_CONFIG_H_MIN]
+    /// See [CONFIG_H_MIN]
     pub rel_error_prev_min: f64,
 
     /// Max number of lambda increments
@@ -121,19 +121,19 @@ pub struct NlConfig {
     /// Tolerance on max(‖G‖∞,|H|)
     ///
     /// ```text
-    /// tol_gh ≥ NL_CONFIG_TOL_MIN
+    /// tol_gh ≥ CONFIG_TOL_MIN
     /// ```
     ///
-    /// See [NL_CONFIG_TOL_MIN]
+    /// See [CONFIG_TOL_MIN]
     pub tol_gh: f64,
 
     /// Tolerance on max(‖δu‖∞,|δλ|)
     ///
     /// ```text
-    /// tol_ul ≥ NL_CONFIG_TOL_MIN
+    /// tol_ul ≥ CONFIG_TOL_MIN
     /// ```
     ///
-    /// See [NL_CONFIG_TOL_MIN]
+    /// See [CONFIG_TOL_MIN]
     pub tol_ul: f64,
 
     /// Maximum max(‖δu‖∞,|δλ|) allowed
@@ -153,10 +153,10 @@ pub struct NlConfig {
     pub use_numerical_jacobian: bool,
 }
 
-impl NlConfig {
+impl Config {
     /// Allocates a new instance
-    pub fn new(method: NlMethod) -> Self {
-        NlConfig {
+    pub fn new(method: Method) -> Self {
+        Config {
             // basic options
             method,
             treat_as_linear: false,
@@ -169,7 +169,7 @@ impl NlConfig {
             m_safety: 0.9,
             m_first_reject: 0.1,
             h_ini: 1e-4,
-            h_min_allowed: NL_CONFIG_H_MIN,
+            h_min_allowed: CONFIG_H_MIN,
             n_step_max: 100_000,
             rel_error_prev_min: 1e-4,
             n_lambda_max: 10_000,
@@ -203,23 +203,23 @@ impl NlConfig {
         if self.m_first_reject < 0.0 {
             return Err("requirement: m_first_rejection ≥ 0");
         }
-        if self.h_ini < NL_CONFIG_H_MIN {
-            return Err("requirement: h_ini ≥ NL_CONFIG_H_MIN");
+        if self.h_ini < CONFIG_H_MIN {
+            return Err("requirement: h_ini ≥ CONFIG_H_MIN");
         }
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
         }
-        if self.rel_error_prev_min < NL_CONFIG_H_MIN {
-            return Err("requirement: rel_error_prev_min ≥ NL_CONFIG_H_MIN");
+        if self.rel_error_prev_min < CONFIG_H_MIN {
+            return Err("requirement: rel_error_prev_min ≥ CONFIG_H_MIN");
         }
 
         // iterations
 
-        if self.tol_gh < NL_CONFIG_TOL_MIN {
-            return Err("requirement: tol_gh ≥ NL_CONFIG_TOL_MIN");
+        if self.tol_gh < CONFIG_TOL_MIN {
+            return Err("requirement: tol_gh ≥ CONFIG_TOL_MIN");
         }
-        if self.tol_ul < NL_CONFIG_TOL_MIN {
-            return Err("requirement: tol_ul ≥ NL_CONFIG_TOL_MIN");
+        if self.tol_ul < CONFIG_TOL_MIN {
+            return Err("requirement: tol_ul ≥ CONFIG_TOL_MIN");
         }
         if self.max_ul_allowed <= 0.0 {
             return Err("requirement: max_ul_allowed > 0");
@@ -235,19 +235,19 @@ impl NlConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::NlConfig;
-    use crate::NlMethod;
+    use super::Config;
+    use crate::Method;
 
     #[test]
     fn derive_methods_work() {
-        let config = NlConfig::new(NlMethod::Arclength);
+        let config = Config::new(Method::Arclength);
         let clone_config = config.clone();
         assert_eq!(format!("{:?}", config), format!("{:?}", clone_config));
     }
 
     #[test]
     fn config_validate_works() {
-        let mut config = NlConfig::new(NlMethod::Arclength);
+        let mut config = Config::new(Method::Arclength);
 
         // substepping
 
@@ -288,7 +288,7 @@ mod tests {
         assert_eq!(config.validate().err(), Some("requirement: m_first_rejection ≥ 0"));
         config.m_first_reject = 0.0;
         config.h_ini = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: h_ini ≥ NL_CONFIG_H_MIN"));
+        assert_eq!(config.validate().err(), Some("requirement: h_ini ≥ CONFIG_H_MIN"));
         config.h_ini = 1e-4;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
@@ -296,7 +296,7 @@ mod tests {
         config.rel_error_prev_min = 0.0;
         assert_eq!(
             config.validate().err(),
-            Some("requirement: rel_error_prev_min ≥ NL_CONFIG_H_MIN")
+            Some("requirement: rel_error_prev_min ≥ CONFIG_H_MIN")
         );
         config.rel_error_prev_min = 1e-6;
 
@@ -306,10 +306,10 @@ mod tests {
         assert_eq!(config.validate().err(), Some("requirement: n_iteration_max ≥ 1"));
         config.n_iteration_max = 10;
         config.tol_gh = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: tol_gh ≥ NL_CONFIG_TOL_MIN"));
+        assert_eq!(config.validate().err(), Some("requirement: tol_gh ≥ CONFIG_TOL_MIN"));
         config.tol_gh = 1e-10;
         config.tol_ul = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: tol_ul ≥ NL_CONFIG_TOL_MIN"));
+        assert_eq!(config.validate().err(), Some("requirement: tol_ul ≥ CONFIG_TOL_MIN"));
         config.tol_ul = 1e-10;
         config.max_ul_allowed = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: max_ul_allowed > 0"));

@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{NlConfig, NlSolverTrait, NlSystem, State, Workspace};
+use super::{Config, SolverTrait, StateRef, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_add, vec_copy, vec_update, Vector};
 use russell_sparse::numerical_jacobian;
@@ -8,15 +8,15 @@ use russell_sparse::numerical_jacobian;
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
 pub struct SolverNatural<'a, A> {
     /// Configuration options
-    config: NlConfig,
+    config: Config,
 
     /// System
-    system: NlSystem<'a, A>,
+    system: System<'a, A>,
 }
 
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: NlConfig, system: NlSystem<'a, A>) -> Self {
+    pub fn new(config: Config, system: System<'a, A>) -> Self {
         let ndim = system.ndim;
         SolverNatural { config, system }
     }
@@ -107,12 +107,12 @@ impl<'a, A> SolverNatural<'a, A> {
     }
 }
 
-impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
+impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     /// Calculates u such that G(u, λ) = 0
     ///
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
-    fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A, auto: bool) -> Result<(), StrError> {
+    fn step(&mut self, work: &mut Workspace, state: &StateRef, args: &mut A, auto: bool) -> Result<(), StrError> {
         // set workspace with trial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
         work.l = *state.l + state.h; // λ_trial ← λ0 + h
@@ -155,7 +155,7 @@ impl<'a, A> NlSolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
-    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) {
+    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef, args: &mut A) {
         vec_copy(&mut state.u, &work.u).unwrap();
         *state.l = work.l;
         work.h_new = state.h;

@@ -1,22 +1,22 @@
 #![allow(unused)]
 
-use super::{NlConfig, NlMethod, NlSolverTrait, NlStop, NlSystem};
+use super::{Config, Method, SolverTrait, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Workspace};
-use crate::{State, StrError};
+use crate::{StateRef, StrError};
 use russell_lab::{vec_all_finite, Vector};
 
 /// Default number of steps
 pub const N_EQUAL_STEPS: usize = 10;
 
-pub struct NlSolver<'a, A> {
+pub struct Solver<'a, A> {
     /// Configuration options
-    config: NlConfig,
+    config: Config,
 
     /// Dimension of the ODE system
     ndim: usize,
 
     /// Holds a pointer to the actual ODE system solver
-    actual: Box<dyn NlSolverTrait<A> + 'a>,
+    actual: Box<dyn SolverTrait<A> + 'a>,
 
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace<'a>,
@@ -28,20 +28,20 @@ pub struct NlSolver<'a, A> {
     output_enabled: bool,
 }
 
-impl<'a, A> NlSolver<'a, A> {
+impl<'a, A> Solver<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: NlConfig, system: NlSystem<'a, A>) -> Result<Self, StrError>
+    pub fn new(config: Config, system: System<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
     {
         config.validate()?;
         let ndim = system.ndim;
         let work = Workspace::new(&config, &system);
-        let actual: Box<dyn NlSolverTrait<A>> = match config.method {
-            NlMethod::Arclength => Box::new(SolverArclength::new(config, system.clone())),
-            NlMethod::Natural => Box::new(SolverNatural::new(config, system.clone())),
+        let actual: Box<dyn SolverTrait<A>> = match config.method {
+            Method::Arclength => Box::new(SolverArclength::new(config, system.clone())),
+            Method::Natural => Box::new(SolverNatural::new(config, system.clone())),
         };
-        Ok(NlSolver {
+        Ok(Solver {
             config,
             ndim,
             actual,
@@ -76,7 +76,7 @@ impl<'a, A> NlSolver<'a, A> {
         &mut self,
         u0: &mut Vector,
         l0: &mut f64,
-        stop: NlStop,
+        stop: Stop,
         h_equal: Option<f64>,
         args: &mut A,
     ) -> Result<(), StrError> {
@@ -85,12 +85,12 @@ impl<'a, A> NlSolver<'a, A> {
             return Err("u0.dim() must be equal to ndim");
         }
         match stop {
-            NlStop::Lambda(l1) => {
+            Stop::Lambda(l1) => {
                 if l1 <= *l0 {
                     return Err("Stopping criterion error: l1 must be greater than l0");
                 }
             }
-            NlStop::Steps(n) => {
+            Stop::Steps(n) => {
                 if n < 1 {
                     return Err("Stopping criterion error: number of steps must be greater than 0");
                 }
@@ -105,19 +105,19 @@ impl<'a, A> NlSolver<'a, A> {
                     return Err("h_equal must be ≥ 10.0 * f64::EPSILON");
                 }
                 let h0 = match stop {
-                    NlStop::Lambda(l1) => {
+                    Stop::Lambda(l1) => {
                         let n = f64::ceil((l1 - *l0) / h_eq) as usize;
                         (l1 - *l0) / (n as f64)
                     }
-                    NlStop::Steps(_) => h_eq,
+                    Stop::Steps(_) => h_eq,
                 };
                 (false, h0)
             }
             None => {
                 // automatic substepping
                 let h0 = match stop {
-                    NlStop::Lambda(l1) => f64::min(self.config.h_ini, l1 - *l0),
-                    NlStop::Steps(_) => self.config.h_ini,
+                    Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - *l0),
+                    Stop::Steps(_) => self.config.h_ini,
                 };
                 (true, h0)
             }
@@ -128,7 +128,7 @@ impl<'a, A> NlSolver<'a, A> {
         self.work.reset(h_ini, self.config.rel_error_prev_min);
 
         // current state
-        let mut state = State {
+        let mut state = StateRef {
             u: u0,
             l: l0,
             s: 0.0,
@@ -150,8 +150,8 @@ impl<'a, A> NlSolver<'a, A> {
         // solve with equal stepsize
         if !auto {
             let nstep = match stop {
-                NlStop::Lambda(l1) => f64::ceil((l1 - *state.l) / h_ini) as usize,
-                NlStop::Steps(n) => n,
+                Stop::Lambda(l1) => f64::ceil((l1 - *state.l) / h_ini) as usize,
+                Stop::Steps(n) => n,
             };
             for _ in 0..nstep {
                 self.work.stats.sw_step.reset();
@@ -195,7 +195,7 @@ impl<'a, A> NlSolver<'a, A> {
 
             // check final stepsize and stopping criterion
             let h_final = match stop {
-                NlStop::Lambda(l1) => {
+                Stop::Lambda(l1) => {
                     let dl = l1 - *state.l;
                     if dl <= 10.0 * f64::EPSILON {
                         success = true;
@@ -204,7 +204,7 @@ impl<'a, A> NlSolver<'a, A> {
                     }
                     dl
                 }
-                NlStop::Steps(n) => {
+                Stop::Steps(n) => {
                     if step >= n {
                         success = true;
                         self.work.stats.stop_sw_step();
@@ -272,8 +272,8 @@ impl<'a, A> NlSolver<'a, A> {
 
                 // check if the last step is approaching
                 match stop {
-                    NlStop::Lambda(l1) => last_step = *state.l + self.work.h_new >= l1,
-                    NlStop::Steps(n) => last_step = step + 1 >= n,
+                    Stop::Lambda(l1) => last_step = *state.l + self.work.h_new >= l1,
+                    Stop::Steps(n) => last_step = step + 1 >= n,
                 }
 
             // reject step
@@ -348,17 +348,17 @@ impl<'a, A> NlSolver<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::NlSolver;
-    use crate::{NlConfig, NlMethod, NlStop, Samples};
+    use super::Solver;
+    use crate::{Config, Method, Samples, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
     fn new_captures_errors() {
         let (system, _u_trial, _u_ref, _args) = Samples::simple_two_equations();
-        let mut config = NlConfig::new(NlMethod::Natural);
+        let mut config = Config::new(Method::Natural);
         config.m_max = 0.0; // wrong
         assert_eq!(
-            NlSolver::new(config, system).err(),
+            Solver::new(config, system).err(),
             Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
         );
     }
@@ -368,26 +368,22 @@ mod tests {
         let (system, _u_trial, _u_ref, mut args) = Samples::simple_two_equations();
         let mut l0 = 0.0;
         let ndim = system.ndim;
-        let config = NlConfig::new(NlMethod::Natural);
-        let mut solver = NlSolver::new(config, system).unwrap();
+        let config = Config::new(Method::Natural);
+        let mut solver = Solver::new(config, system).unwrap();
         let mut u0 = Vector::new(ndim + 1); // wrong dim
         assert_eq!(
-            solver
-                .solve(&mut u0, &mut l0, NlStop::Lambda(1.0), None, &mut args)
-                .err(),
+            solver.solve(&mut u0, &mut l0, Stop::Lambda(1.0), None, &mut args).err(),
             Some("u0.dim() must be equal to ndim")
         );
         let mut y0 = Vector::new(ndim);
         assert_eq!(
-            solver
-                .solve(&mut y0, &mut l0, NlStop::Lambda(0.0), None, &mut args)
-                .err(),
-            Some("l1 must be greater than l0")
+            solver.solve(&mut y0, &mut l0, Stop::Lambda(0.0), None, &mut args).err(),
+            Some("Stopping criterion error: l1 must be greater than l0")
         );
         let h_equal = Some(f64::EPSILON); // will cause an error
         assert_eq!(
             solver
-                .solve(&mut y0, &mut l0, NlStop::Lambda(1.0), h_equal, &mut args)
+                .solve(&mut y0, &mut l0, Stop::Lambda(1.0), h_equal, &mut args)
                 .err(),
             Some("h_equal must be ≥ 10.0 * f64::EPSILON")
         );
@@ -397,14 +393,12 @@ mod tests {
     fn lack_of_convergence_is_captured() {
         let (system, mut u0, _u_ref, mut args) = Samples::simple_two_equations();
         let mut l0 = 0.0;
-        let mut config = NlConfig::new(NlMethod::Natural);
+        let mut config = Config::new(Method::Natural);
         config.n_step_max = 1; // will make the solver to fail (too few steps)
-        let mut solver = NlSolver::new(config, system).unwrap();
+        let mut solver = Solver::new(config, system).unwrap();
         assert_eq!(
-            solver
-                .solve(&mut u0, &mut l0, NlStop::Lambda(1.0), None, &mut args)
-                .err(),
-            Some("TODO") // Some("variable stepping did not converge")
+            solver.solve(&mut u0, &mut l0, Stop::Lambda(1.0), None, &mut args).err(),
+            Some("variable stepping did not converge")
         );
     }
 
@@ -412,8 +406,8 @@ mod tests {
     fn solve_with_n_equal_steps_works() {
         // solve the nonlinear system (will run with N_EQUAL_STEPS)
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
-        let config = NlConfig::new(NlMethod::Natural);
-        let mut solver = NlSolver::new(config, system).unwrap();
+        let config = Config::new(Method::Natural);
+        let mut solver = Solver::new(config, system).unwrap();
         // solver.solve(&mut u, 0.0, 1.0, None, &mut args).unwrap();
         // vec_approx_eq(&u, &u_ref, 1e-15);
     }

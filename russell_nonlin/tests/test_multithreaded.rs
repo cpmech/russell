@@ -1,23 +1,23 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{NlConfig, NlMethod, NlSolver, NlStop, NlSystem, NoArgs};
+use russell_nonlin::{Config, Method, System, NoArgs, Solver, Stop};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
 
 struct SimData<'a> {
-    solver: NlSolver<'a, NoArgs>,
+    solver: Solver<'a, NoArgs>,
     u: Vector,
     l: f64,
-    stop: NlStop,
+    stop: Stop,
     h: Option<f64>,
     args: NoArgs,
 }
 
 impl<'a> SimData<'a> {
-    fn new(method: NlMethod) -> Self {
+    fn new(method: Method) -> Self {
         // define nonlinear system: G(u, λ) = u - λ
-        let mut system = NlSystem::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
+        let mut system = System::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
             gg[0] = u[0] - l;
             Ok(())
         })
@@ -40,14 +40,14 @@ impl<'a> SimData<'a> {
             .unwrap();
 
         // configuration
-        let config = NlConfig::new(method);
+        let config = Config::new(method);
 
         // return data
         SimData {
-            solver: NlSolver::new(config, system).unwrap(),
+            solver: Solver::new(config, system).unwrap(),
             u: Vector::from(&[0.0]),
             l: 0.0,
-            stop: NlStop::Lambda(LAMBDA_FINAL),
+            stop: Stop::Lambda(LAMBDA_FINAL),
             h: Some(0.1),
             args: 0,
         }
@@ -59,7 +59,7 @@ struct Simulator<'a> {
 }
 
 impl<'a> Simulator<'a> {
-    fn new(method: NlMethod) -> Self {
+    fn new(method: Method) -> Self {
         Simulator {
             data: SimData::new(method),
         }
@@ -90,8 +90,8 @@ impl<'a> Runner for Simulator<'a> {
 fn test_multithreaded() {
     // run simulations concurrently
     let mut runners: Vec<Box<dyn Runner>> = vec![
-        Box::new(Simulator::new(NlMethod::Natural)),
-        Box::new(Simulator::new(NlMethod::Natural)),
+        Box::new(Simulator::new(Method::Natural)),
+        Box::new(Simulator::new(Method::Natural)),
     ];
     runners.par_iter_mut().for_each(|r| r.run_and_check());
 }

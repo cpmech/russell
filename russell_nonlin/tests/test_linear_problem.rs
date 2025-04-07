@@ -1,22 +1,22 @@
 use russell_lab::{array_approx_eq, Vector};
-use russell_nonlin::{NlConfig, NlMethod, NlSolver, NlStop, NlSystem, NoArgs};
+use russell_nonlin::{Config, Method, Solver, System, NoArgs, Stop};
 use russell_sparse::{CooMatrix, Sym};
 
 #[test]
 fn test_linear_no_auto_num_jac() {
     // define nonlinear system: G(u, λ) = u - λ
-    let system = NlSystem::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+    let system = System::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         gg[0] = u[0] - l;
         Ok(())
     })
     .unwrap();
 
     // configuration
-    let mut config = NlConfig::new(NlMethod::Natural);
+    let mut config = Config::new(Method::Natural);
     config.verbose = true;
 
     // define solver
-    let mut solver = NlSolver::new(config, system).unwrap();
+    let mut solver = Solver::new(config, system).unwrap();
     solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
@@ -26,7 +26,7 @@ fn test_linear_no_auto_num_jac() {
     // solve
     let args = &mut 0;
     solver
-        .solve(&mut u, &mut l, NlStop::Lambda(1.0), Some(0.1), args)
+        .solve(&mut u, &mut l, Stop::Lambda(1.0), Some(0.1), args)
         .unwrap();
 
     // results
@@ -52,7 +52,7 @@ fn test_linear_no_auto_num_jac() {
 #[test]
 fn test_linear_no_auto_ana_jac() {
     // define nonlinear system: G(u, λ) = u - λ
-    let mut system = NlSystem::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+    let mut system = System::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         gg[0] = u[0] - l;
         Ok(())
     })
@@ -75,11 +75,11 @@ fn test_linear_no_auto_ana_jac() {
         .unwrap();
 
     // configuration
-    let mut config = NlConfig::new(NlMethod::Natural);
+    let mut config = Config::new(Method::Natural);
     // config.verbose_iterations = true;
 
     // define solver
-    let mut solver = NlSolver::new(config, system).unwrap();
+    let mut solver = Solver::new(config, system).unwrap();
     solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
@@ -89,7 +89,7 @@ fn test_linear_no_auto_ana_jac() {
     // solve
     let args = &mut 0;
     solver
-        .solve(&mut u, &mut l, NlStop::Lambda(1.0), Some(0.1), args)
+        .solve(&mut u, &mut l, Stop::Lambda(1.0), Some(0.1), args)
         .unwrap();
 
     // results

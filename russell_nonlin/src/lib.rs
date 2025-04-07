@@ -3,35 +3,34 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
+mod config;
 mod enums;
 mod logger;
-mod nl_config;
-mod nl_solver;
-mod nl_solver_trait;
-mod nl_state;
-mod nl_system;
 mod num_error;
 mod output;
-pub mod prelude;
 mod samples;
+mod solver;
 mod solver_arclength;
 mod solver_natural;
+mod solver_trait;
+mod state;
 mod stats;
+mod system;
 mod workspace;
 
+pub use config::*;
 pub use enums::*;
 use logger::*;
-pub use nl_config::*;
-pub use nl_solver::*;
-use nl_solver_trait::*;
-pub use nl_state::*;
-pub use nl_system::*;
 use num_error::*;
 pub use output::*;
 pub use samples::*;
+pub use solver::*;
 pub use solver_arclength::*;
 pub use solver_natural::*;
+use solver_trait::*;
+pub use state::*;
 pub use stats::*;
+pub use system::*;
 use workspace::*;
 
 // run code from README file

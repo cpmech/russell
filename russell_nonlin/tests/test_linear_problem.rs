@@ -76,7 +76,7 @@ fn test_linear_no_auto_ana_jac() {
 
     // configuration
     let mut config = NlConfig::new(NlMethod::Natural);
-    config.verbose = true;
+    // config.verbose_iterations = true;
 
     // define solver
     let mut solver = NlSolver::new(config, system).unwrap();

@@ -99,7 +99,7 @@ impl Logger {
             ("  ", "  ")
         } else {
             if iter == 1 && err.converged_on_gh {
-                ("", self.icon(err.converged_on_gh, err.diverging_on_gh))
+                (self.icon(err.converged_on_gh, err.diverging_on_gh), "  ")
             } else {
                 (
                     self.icon(err.converged_on_gh, err.diverging_on_gh),
@@ -107,17 +107,18 @@ impl Logger {
                 )
             }
         };
+        let k = iter + 1;
         match self.method {
             Method::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
-                    "·", "·", "·", iter, err.max_ul, icon_ul, err.max_gh, icon_gh
+                    "·", "·", "·", k, err.max_ul, icon_ul, err.max_gh, icon_gh
                 );
             }
             Method::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
-                    "·", "·", iter, err.max_ul, icon_ul, err.max_gh, icon_gh
+                    "·", "·", k, err.max_ul, icon_ul, err.max_gh, icon_gh
                 );
             }
         }

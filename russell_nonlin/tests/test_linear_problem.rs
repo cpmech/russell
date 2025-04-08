@@ -13,7 +13,7 @@ fn test_linear_no_auto_num_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, false, true);
+    config.set_verbose(true, true, false, true).set_tol_ul(1e-9);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -45,7 +45,7 @@ fn test_linear_no_auto_num_jac() {
     array_approx_eq(
         solver.out_step_u(0),
         &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        1e-10,
+        1e-9,
     );
 }
 

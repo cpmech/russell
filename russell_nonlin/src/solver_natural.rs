@@ -39,11 +39,15 @@ impl<'a, A> SolverNatural<'a, A> {
             return Ok(());
         }
 
+        // auxiliary flags
+        let recompute_jacobian = iteration == 0 || !self.config.constant_tangent;
+        let use_num_jacobian = self.config.use_numerical_jacobian || self.system.calc_ggu.is_none();
+
         // compute Jacobian matrix
-        if iteration == 0 || !self.config.constant_tangent {
+        if recompute_jacobian {
             // assemble Gu matrix
             work.stats.sw_jacobian.reset();
-            if self.config.use_numerical_jacobian || self.system.calc_ggu.is_none() {
+            if use_num_jacobian {
                 // numerical Jacobian
                 work.stats.n_function += self.system.ndim;
                 numerical_jacobian(

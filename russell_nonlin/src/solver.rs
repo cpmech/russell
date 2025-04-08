@@ -405,7 +405,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_with_n_equal_steps_works() {
+    fn solve_with_one_step_works() {
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(false, true, true);

@@ -34,8 +34,8 @@ pub struct Stats {
     /// Number of large max(‖δu‖∞,|δλ|)
     pub n_large_du_dl: usize,
 
-    /// Last number of iterations
-    pub n_iterations: usize,
+    /// Total number of iterations
+    pub n_iterations_total: usize,
 
     /// Max number of iterations among all steps
     pub n_iterations_max: usize,
@@ -87,7 +87,7 @@ impl Stats {
             n_accepted: 0,
             n_rejected: 0,
             n_large_du_dl: 0,
-            n_iterations: 0,
+            n_iterations_total: 0,
             n_iterations_max: 0,
             h_accepted: 0.0,
             nanos_step_max: 0,
@@ -113,7 +113,7 @@ impl Stats {
         self.n_accepted = 0;
         self.n_rejected = 0;
         self.n_large_du_dl = 0;
-        self.n_iterations = 0;
+        self.n_iterations_total = 0;
         self.n_iterations_max = 0;
         self.h_accepted = h;
         self.nanos_step_max = 0;
@@ -163,8 +163,8 @@ impl Stats {
 
     /// Stops the stopwatch and updates n_iterations_max nanoseconds
     pub(crate) fn update_n_iterations_max(&mut self) {
-        if self.n_iterations > self.n_iterations_max {
-            self.n_iterations_max = self.n_iterations;
+        if self.n_iterations_total > self.n_iterations_max {
+            self.n_iterations_max = self.n_iterations_total;
         }
     }
 
@@ -173,7 +173,7 @@ impl Stats {
         let mut buffer = String::new();
         write!(
             &mut buffer,
-            "{:?}: {}\n\
+            "{}\n\
              Number of function evaluations   = {}\n\
              Number of Jacobian evaluations   = {}\n\
              Number of factorizations         = {}\n\
@@ -182,7 +182,6 @@ impl Stats {
              Number of accepted steps         = {}\n\
              Number of rejected steps         = {}\n\
              Number of iterations (maximum)   = {}",
-            self.method,
             self.method.description(),
             self.n_function,
             self.n_jacobian,
@@ -203,7 +202,7 @@ impl fmt::Display for Stats {
         write!(
             f,
             "{}\n\
-             Number of iterations (last step) = {}\n\
+             Number of iterations (total)     = {}\n\
              Last accepted/suggested stepsize = {}\n\
              Max time spent on a step         = {}\n\
              Max time spent on the Jacobian   = {}\n\
@@ -211,7 +210,7 @@ impl fmt::Display for Stats {
              Max time spent on lin solution   = {}\n\
              Total time                       = {}",
             self.summary(),
-            self.n_iterations,
+            self.n_iterations_total,
             self.h_accepted,
             format_nanoseconds(self.nanos_step_max),
             format_nanoseconds(self.nanos_jacobian_max),
@@ -248,7 +247,7 @@ mod tests {
         println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
-            "Arclength: Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0\n\
+            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -265,7 +264,7 @@ mod tests {
         let stats = Stats::new(Method::Natural);
         assert_eq!(
             format!("{}", stats),
-            "Natural: Natural parameter continuation; solves G(u, λ) = 0\n\
+            "Natural parameter continuation; solves G(u, λ) = 0\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -274,7 +273,7 @@ mod tests {
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
              Number of iterations (maximum)   = 0\n\
-             Number of iterations (last step) = 0\n\
+             Number of iterations (total)     = 0\n\
              Last accepted/suggested stepsize = 0\n\
              Max time spent on a step         = 0ns\n\
              Max time spent on the Jacobian   = 0ns\n\

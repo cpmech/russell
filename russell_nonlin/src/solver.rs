@@ -153,8 +153,10 @@ impl<'a, A> Solver<'a, A> {
                 Stop::Lambda(l1) => f64::ceil((l1 - *state.l) / h_ini) as usize,
                 Stop::Steps(n) => n,
             };
-            for _ in 0..nstep {
+            for increment in 0..nstep {
+                // log
                 self.work.stats.sw_step.reset();
+                self.work.log.step(&state);
 
                 // step
                 self.work.stats.n_steps += 1;
@@ -173,7 +175,7 @@ impl<'a, A> Solver<'a, A> {
                     if terminate {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
-                        return Ok(());
+                        break;
                     }
                 }
                 self.work.stats.stop_sw_step();
@@ -182,6 +184,7 @@ impl<'a, A> Solver<'a, A> {
                 self.output.last()?;
             }
             self.work.stats.stop_sw_total();
+            self.work.log.footer(&self.work.stats);
             return Ok(());
         }
 
@@ -257,9 +260,9 @@ impl<'a, A> Solver<'a, A> {
                 if self.output_enabled {
                     let terminate = self.output.execute(&self.work, &state, args)?;
                     if terminate {
+                        success = true;
                         self.work.stats.stop_sw_step();
-                        self.work.stats.stop_sw_total();
-                        return Ok(());
+                        break;
                     }
                 }
 
@@ -300,10 +303,10 @@ impl<'a, A> Solver<'a, A> {
         }
 
         // print footer and handle errors
+        self.work.stats.stop_sw_total();
         self.work.log.footer(&self.work.stats);
 
         // done
-        self.work.stats.stop_sw_total();
         if success {
             Ok(())
         } else {

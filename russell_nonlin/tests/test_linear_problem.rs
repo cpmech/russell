@@ -1,5 +1,5 @@
 use russell_lab::{array_approx_eq, Vector};
-use russell_nonlin::{Config, Method, Solver, System, NoArgs, Stop};
+use russell_nonlin::{Config, Method, NoArgs, Solver, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 #[test]
@@ -13,7 +13,7 @@ fn test_linear_no_auto_num_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.verbose = true;
+    config.set_verbose(true, true, false, true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -76,7 +76,7 @@ fn test_linear_no_auto_ana_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    // config.verbose_iterations = true;
+    config.set_verbose(true, true, false, true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

@@ -24,6 +24,7 @@ impl<'a, A> SolverNatural<'a, A> {
     /// Performs a single iteration
     fn iterate(&mut self, iteration: usize, work: &mut Workspace, args: &mut A, logging: bool) -> Result<(), StrError> {
         // calculate G(u, λ)
+        work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
         // clear convergence flags
@@ -41,6 +42,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // compute Jacobian matrix
         if iteration == 0 || !self.config.constant_tangent {
             // assemble Gu matrix
+            work.stats.sw_jacobian.reset();
             if self.config.use_numerical_jacobian || self.system.calc_ggu.is_none() {
                 // numerical Jacobian
                 work.stats.n_function += self.system.ndim;
@@ -56,15 +58,23 @@ impl<'a, A> SolverNatural<'a, A> {
                 )?;
             } else {
                 // analytical Jacobian
+                work.stats.n_jacobian += 1;
                 (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, work.l, &work.u, args)?;
             }
+            work.stats.stop_sw_jacobian();
 
             // factorize Gu matrix
+            work.stats.sw_factor.reset();
+            work.stats.n_factor += 1;
             work.ls.actual.factorize(&mut work.ggu, self.config.lin_sol_config)?;
+            work.stats.stop_sw_factor();
         }
 
         // solve linear system
+        work.stats.sw_lin_sol.reset();
+        work.stats.n_lin_sol += 1;
         work.ls.actual.solve(&mut work.mdu, &work.gg, false)?;
+        work.stats.stop_sw_lin_sol();
 
         // check convergence on δu
         work.err.analyze_ul(iteration, &work.mdu, 0.0)?;
@@ -132,7 +142,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         // iteration loop
         let logging = true;
         for iteration in 0..self.config.n_iteration_max {
-            work.stats.n_iterations += 1;
+            // stats
+            work.stats.n_iterations_total += 1;
+            work.stats.n_iterations_max = usize::max(work.stats.n_iterations_max, iteration + 1);
 
             // run Newton-Raphson iteration
             self.iterate(iteration, work, args, logging)?;
@@ -171,7 +183,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         }
 
         // estimate new stepsize
-        let newt = work.stats.n_iterations;
+        let newt = work.stats.n_iterations_total;
         let num = self.config.m_safety * ((1 + 2 * self.config.n_iteration_max) as f64);
         let den = (newt + 2 * self.config.n_iteration_max) as f64;
         let fac = f64::min(self.config.m_safety, num / den);

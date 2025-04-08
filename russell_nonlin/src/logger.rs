@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{Config, Method, NumError, Stats};
+use super::{Config, Method, NumError, StateRef, Stats};
 use russell_lab::Stopwatch;
 
 /// Prints information during time stepping
@@ -76,27 +76,16 @@ impl Logger {
     }
 
     /// Prints step information
-    pub fn step(&self, increment: usize, l: f64, s: f64, h: f64) {
+    pub fn step(&self, state: &StateRef) {
         if !self.verbose {
             return;
         }
-        if increment == 0 {
-            match self.method {
-                Method::Arclength => {
-                    println!("{:>8.3e} {:>8.3e} {:>8.3e}", l, s, h);
-                }
-                Method::Natural => {
-                    println!("{:>8.3e} {:>8.3e}", l, h);
-                }
+        match self.method {
+            Method::Arclength => {
+                println!("{:>8.3e} {:>8.3e} {:>8.3e}", state.l, state.s, state.h);
             }
-        } else {
-            match self.method {
-                Method::Arclength => {
-                    println!("{:>8} {:>8} {:>8}", "·", "·", "·");
-                }
-                Method::Natural => {
-                    println!("{:>8} {:>8}", "·", "·");
-                }
+            Method::Natural => {
+                println!("{:>8.3e} {:>8.3e}", state.l, state.h);
             }
         }
     }
@@ -107,7 +96,7 @@ impl Logger {
             return;
         }
         let (icon_gh, icon_ul) = if iter == 0 {
-            ("", "")
+            ("  ", "  ")
         } else {
             if iter == 1 && err.converged_on_gh {
                 ("", self.icon(err.converged_on_gh, err.diverging_on_gh))

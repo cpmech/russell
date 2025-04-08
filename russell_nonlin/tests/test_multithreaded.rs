@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{Config, Method, System, NoArgs, Solver, Stop};
+use russell_nonlin::{Config, Method, NoArgs, Solver, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
@@ -83,6 +83,13 @@ impl<'a> Runner for Simulator<'a> {
             )
             .unwrap();
         approx_eq(self.data.u[0], LAMBDA_FINAL, 1e-15);
+        let stats = self.data.solver.stats();
+        let nstep = 10;
+        let niter = 10 * 2;
+        assert_eq!(stats.n_function, niter);
+        assert_eq!(stats.n_jacobian, nstep);
+        assert_eq!(stats.n_iterations_max, 2);
+        assert_eq!(stats.n_iterations_total, niter);
     }
 }
 

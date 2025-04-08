@@ -7,7 +7,7 @@ pub(crate) trait SolverTrait<A>: Send {
     fn step(&mut self, work: &mut Workspace, state: &StateRef, args: &mut A, auto: bool) -> Result<(), StrError>;
 
     /// Handles the accept case by updating the state and calculating a new stepsize
-    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef, args: &mut A);
+    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef);
 
     /// Handles the reject case by calculating a new stepsize
     fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A, auto: bool);

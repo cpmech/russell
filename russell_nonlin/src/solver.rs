@@ -164,7 +164,7 @@ impl<'a, A> Solver<'a, A> {
 
                 // update u and λ
                 self.work.stats.n_accepted += 1;
-                self.actual.accept(&mut self.work, &mut state, args);
+                self.actual.accept(&mut self.work, &mut state);
 
                 // check for anomalies
                 vec_all_finite(state.u, self.config.verbose)?;
@@ -240,7 +240,7 @@ impl<'a, A> Solver<'a, A> {
             if self.work.rel_error < 1.0 {
                 // update u and λ
                 self.work.stats.n_accepted += 1;
-                self.actual.accept(&mut self.work, &mut state, args);
+                self.actual.accept(&mut self.work, &mut state);
 
                 // check for anomalies
                 vec_all_finite(state.u, self.config.verbose)?;

@@ -25,7 +25,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         Err("TODO: SolverArclength")
     }
 
-    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef, args: &mut A) {
+    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef) {
         panic!("TODO: SolverArclength")
     }
 

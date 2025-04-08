@@ -1,8 +1,6 @@
-#![allow(unused)]
-
 use super::{Config, SolverTrait, StateRef, System, Workspace};
 use crate::StrError;
-use russell_lab::{vec_add, vec_copy, vec_update, Vector};
+use russell_lab::{vec_copy, vec_update};
 use russell_sparse::numerical_jacobian;
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -17,7 +15,6 @@ pub struct SolverNatural<'a, A> {
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
     pub fn new(config: Config, system: System<'a, A>) -> Self {
-        let ndim = system.ndim;
         SolverNatural { config, system }
     }
 
@@ -171,7 +168,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
-    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef, args: &mut A) {
+    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef) {
         vec_copy(&mut state.u, &work.u).unwrap();
         *state.l = work.l;
         work.h_new = state.h;

@@ -123,7 +123,7 @@ impl<'a, A> Solver<'a, A> {
         assert!(h_ini > 0.0);
 
         // reset variables
-        self.work.reset(h_ini, self.config.rel_error_prev_min);
+        self.work.reset(h_ini, self.config.rel_error_prev_min, auto);
 
         // current state
         let mut state = StateRef {
@@ -158,7 +158,7 @@ impl<'a, A> Solver<'a, A> {
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, &mut state, args, auto)?;
+                self.actual.step(&mut self.work, &mut state, args)?;
 
                 // update u and λ
                 self.work.stats.n_accepted += 1;
@@ -172,7 +172,6 @@ impl<'a, A> Solver<'a, A> {
                     let terminate = self.output.execute(&self.work, &state, args)?;
                     if terminate {
                         self.work.stats.stop_sw_step();
-                        self.work.stats.stop_sw_total();
                         break;
                     }
                 }
@@ -181,8 +180,9 @@ impl<'a, A> Solver<'a, A> {
             if self.output_enabled {
                 self.output.last()?;
             }
+            self.work.log.step(&state);
             self.work.stats.stop_sw_total();
-            self.work.log.footer(&self.work.stats);
+            self.work.log.footer(&self.work);
             return Ok(());
         }
 
@@ -224,7 +224,7 @@ impl<'a, A> Solver<'a, A> {
 
             // perform the step calculations
             self.work.stats.n_steps += 1;
-            self.actual.step(&mut self.work, &mut state, args, auto)?;
+            self.actual.step(&mut self.work, &mut state, args)?;
 
             // handle diverging iterations
             if self.work.iterations_diverging {
@@ -291,7 +291,7 @@ impl<'a, A> Solver<'a, A> {
                 if self.work.stats.n_accepted == 0 && self.config.m_first_reject > 0.0 {
                     self.work.h_new = state.h * self.config.m_first_reject;
                 } else {
-                    self.actual.reject(&mut self.work, state.h, args, auto);
+                    self.actual.reject(&mut self.work, state.h, args);
                 }
             }
         }
@@ -303,7 +303,7 @@ impl<'a, A> Solver<'a, A> {
 
         // print footer and handle errors
         self.work.stats.stop_sw_total();
-        self.work.log.footer(&self.work.stats);
+        self.work.log.footer(&self.work);
 
         // done
         if success {
@@ -405,10 +405,32 @@ mod tests {
     }
 
     #[test]
-    fn solve_with_one_step_works() {
+    fn solve_with_one_step_works_fixed() {
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let mut config = Config::new(Method::Natural);
-        config.set_verbose(false, true, true);
+        config.set_verbose(true, true, true);
+        let mut solver = Solver::new(config, system).unwrap();
+        let mut l = 0.0;
+        let stop = Stop::Steps(1); // just one step
+        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
+        vec_approx_eq(&u, &u_ref, 1e-15);
+        let stats = solver.stats();
+        assert_eq!(stats.n_function, 7);
+        assert_eq!(stats.n_jacobian, 6);
+        assert_eq!(stats.n_factor, 6);
+        assert_eq!(stats.n_lin_sol, 6);
+        assert_eq!(stats.n_steps, 1);
+        assert_eq!(stats.n_accepted, 1);
+        assert_eq!(stats.n_rejected, 0);
+        assert_eq!(stats.n_iterations_max, 7);
+        assert_eq!(stats.n_iterations_total, 7);
+    }
+
+    #[test]
+    fn solve_with_one_step_works_auto() {
+        let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
+        let mut config = Config::new(Method::Natural);
+        config.set_verbose(true, true, true);
         let mut solver = Solver::new(config, system).unwrap();
         let mut l = 0.0;
         let stop = Stop::Steps(1); // just one step

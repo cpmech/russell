@@ -123,13 +123,13 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     ///
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
-    fn step(&mut self, work: &mut Workspace, state: &StateRef, args: &mut A, auto: bool) -> Result<(), StrError> {
+    fn step(&mut self, work: &mut Workspace, state: &StateRef, args: &mut A) -> Result<(), StrError> {
         // set workspace with trial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
         work.l = *state.l + state.h; // λ_trial ← λ0 + h
 
         // external: create a copy of external state variables
-        if auto {
+        if work.auto {
             if let Some(f) = self.system.step_backup_state.as_ref() {
                 (f)(args);
             }
@@ -158,7 +158,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             // stop if (δu,δλ) is too large
             if work.err.large_du_dl() {
                 work.stats.n_large_du_dl += 1;
-                if !auto {
+                if !work.auto {
                     work.log.error_large_ul(work.err.max_ul);
                 }
                 break;
@@ -175,9 +175,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Handles the reject case by calculating a new stepsize
-    fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A, auto: bool) {
+    fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A) {
         // external: restore external state variables
-        if auto {
+        if work.auto {
             if let Some(f) = self.system.step_restore_state.as_ref() {
                 (f)(args);
             }

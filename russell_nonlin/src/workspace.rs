@@ -1,11 +1,14 @@
 #![allow(unused)]
 
-use super::{Config, Logger, System, NumError, Stats};
+use super::{Config, Logger, NumError, Stats, System};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
 /// Holds workspace data shared among the ODE solver and actual implementations
 pub(crate) struct Workspace<'a> {
+    /// Indicates automatic stepsize adjustment
+    pub(crate) auto: bool,
+
     /// Holds statistics and benchmarking data
     pub(crate) stats: Stats,
 
@@ -73,6 +76,7 @@ impl<'a> Workspace<'a> {
             0
         };
         Workspace {
+            auto: false,
             stats: Stats::new(config.method),
             follows_reject_step: false,
             iterations_diverging: false,
@@ -96,8 +100,9 @@ impl<'a> Workspace<'a> {
     }
 
     /// Resets all values
-    pub(crate) fn reset(&mut self, h: f64, rel_error_prev_min: f64) {
+    pub(crate) fn reset(&mut self, h: f64, rel_error_prev_min: f64, auto: bool) {
         self.stats.reset(h);
+        self.auto = auto;
         self.follows_reject_step = false;
         self.iterations_diverging = false;
         self.h_multiplier_diverging = 1.0;

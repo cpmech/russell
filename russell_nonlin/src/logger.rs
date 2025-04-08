@@ -1,7 +1,4 @@
-#![allow(unused)]
-
-use super::{Config, Method, NumError, StateRef, Stats};
-use russell_lab::Stopwatch;
+use super::{Config, Method, NumError, StateRef, Workspace};
 
 /// Prints information during time stepping
 pub(crate) struct Logger {
@@ -16,12 +13,6 @@ pub(crate) struct Logger {
 
     /// Enables verbose output for the legend
     verbose_legend: bool,
-
-    /// Max number of iterations
-    n_iteration_max: usize,
-
-    /// Max number of lambda increments
-    n_lambda_max: usize,
 
     /// List of error messages
     errors: Vec<String>,
@@ -42,8 +33,6 @@ impl Logger {
             verbose: config.verbose,
             verbose_iterations: config.verbose_iterations,
             verbose_legend: config.verbose_legend,
-            n_iteration_max: config.n_iteration_max,
-            n_lambda_max: config.n_lambda_max,
             errors: Vec::new(),
             nchar,
         }
@@ -146,10 +135,11 @@ impl Logger {
     }
 
     /// Prints statistics and eventual errors
-    pub fn footer(&self, stats: &Stats) {
+    pub fn footer(&self, work: &Workspace) {
         if self.verbose {
             println!("{}\n", "─".repeat(self.nchar));
-            println!("{}", stats);
+            println!("{}", work.stats);
+            println!("Automatic stepsize adjustment    = {:?}", work.auto);
         }
         if self.errors.len() > 0 {
             println!("\n❌❌❌❌❌❌ SIMULATION FAILED ❌❌❌❌❌❌\n");
@@ -158,33 +148,6 @@ impl Logger {
                 println!("ERROR: {}", message);
             }
         }
-    }
-
-    /// Prints the computer time
-    pub fn computer_time(&self, stopwatch: &Stopwatch) {
-        if self.verbose {
-            println!("\nelapsed computer time = {}\n", stopwatch);
-            println!("{}\n", "═".repeat(self.nchar));
-        }
-    }
-
-    // Errors
-
-    /// Logs an error when the maximum number of loading increments is reached
-    pub fn error_max_n_lambda(&mut self) {
-        self.errors
-            .push(format!("max number of load steps reached; max_n_lambda = {}", self.n_lambda_max).to_string());
-    }
-
-    /// Logs an error when the Newton-Raphson method does not converge
-    pub fn error_newton(&mut self) {
-        self.errors.push(
-            format!(
-                "Newton-Raphson did not converge; max_iterations = {}",
-                self.n_iteration_max
-            )
-            .to_string(),
-        );
     }
 
     /// Logs an error when max(‖δu‖∞,|δλ|) is too large

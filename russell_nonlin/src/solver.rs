@@ -54,6 +54,11 @@ impl<'a, A> Solver<'a, A> {
         &self.work.stats
     }
 
+    /// Returns the error messages
+    pub fn errors(&self) -> &Vec<String> {
+        self.work.err.get_failures()
+    }
+
     /// Solves the nonlinear system
     ///
     /// Solves:
@@ -159,6 +164,9 @@ impl<'a, A> Solver<'a, A> {
                 // step
                 self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, &mut state, args)?;
+                if self.work.err.failed() {
+                    break;
+                }
 
                 // update u and λ
                 self.work.stats.n_accepted += 1;
@@ -177,13 +185,24 @@ impl<'a, A> Solver<'a, A> {
                 }
                 self.work.stats.stop_sw_step();
             }
+
+            // last output
             if self.output_enabled {
                 self.output.last()?;
             }
+
+            // print last message and footer
             self.work.log.step(&state);
             self.work.stats.stop_sw_total();
             self.work.log.footer(&self.work);
-            return Ok(());
+
+            // handle errors
+            if self.work.err.failed() {
+                self.work.err.print_failures(self.config.verbose);
+                return Err("failed to solve the nonlinear problem with equal stepsize");
+            } else {
+                return Ok(());
+            }
         }
 
         // variable steps: control variables
@@ -192,6 +211,7 @@ impl<'a, A> Solver<'a, A> {
 
         // variable stepping loop
         for step in 0..self.config.n_step_max {
+            // log
             self.work.stats.sw_step.reset();
             self.work.log.step(&state);
 
@@ -207,7 +227,7 @@ impl<'a, A> Solver<'a, A> {
                     dl
                 }
                 Stop::Steps(n) => {
-                    if step >= n {
+                    if step >= n && !self.work.follows_reject_step {
                         success = true;
                         self.work.stats.stop_sw_step();
                         break;
@@ -215,6 +235,12 @@ impl<'a, A> Solver<'a, A> {
                     self.work.h_new
                 }
             };
+
+            // check number of continued rejections
+            self.work.n_continued_rejection += 1;
+            if self.work.n_continued_rejection >= self.config.n_cont_reject_allowed {
+                return Err("too many continued rejections");
+            }
 
             // update and check the stepsize
             state.h = f64::min(self.work.h_new, h_final);
@@ -227,11 +253,11 @@ impl<'a, A> Solver<'a, A> {
             self.actual.step(&mut self.work, &mut state, args)?;
 
             // handle diverging iterations
-            if self.work.iterations_diverging {
-                self.work.iterations_diverging = false;
+            if self.work.iterations_failed {
+                self.work.iterations_failed = false;
                 self.work.follows_reject_step = true;
                 last_step = false;
-                self.work.h_new = state.h * self.work.h_multiplier_diverging;
+                self.work.h_new = state.h * self.work.h_multiplier_failure;
                 continue;
             }
 
@@ -248,6 +274,7 @@ impl<'a, A> Solver<'a, A> {
                 if self.work.follows_reject_step {
                     self.work.h_new = f64::min(self.work.h_new, state.h);
                 }
+                self.work.n_continued_rejection = 0;
                 self.work.follows_reject_step = false;
 
                 // save previous stepsize, relative error, and accepted/suggested stepsize
@@ -301,15 +328,16 @@ impl<'a, A> Solver<'a, A> {
             self.output.last()?;
         }
 
-        // print footer and handle errors
+        // print footer
         self.work.stats.stop_sw_total();
         self.work.log.footer(&self.work);
 
-        // done
+        // handle errors
         if success {
             Ok(())
         } else {
-            Err("variable stepping did not converge")
+            self.work.err.print_failures(self.config.verbose);
+            return Err("failed to solve the nonlinear problem with automatic stepsize");
         }
     }
 
@@ -400,7 +428,7 @@ mod tests {
         let mut solver = Solver::new(config, system).unwrap();
         assert_eq!(
             solver.solve(&mut u0, &mut l0, Stop::Lambda(1.0), None, &mut args).err(),
-            Some("variable stepping did not converge")
+            Some("failed to solve the nonlinear problem with automatic stepsize")
         );
     }
 

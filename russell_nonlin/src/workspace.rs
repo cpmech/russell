@@ -12,14 +12,20 @@ pub(crate) struct Workspace<'a> {
     /// Holds statistics and benchmarking data
     pub(crate) stats: Stats,
 
+    /// Number of continued rejections
+    pub(crate) n_continued_rejection: usize,
+
     /// Indicates that the step follows a reject
     pub(crate) follows_reject_step: bool,
 
-    /// Indicates that the iterations are diverging
-    pub(crate) iterations_diverging: bool,
+    /// Indicates that the iterations have failed
+    pub(crate) iterations_failed: bool,
 
-    /// Multiplier to the stepsize when the iterations are diverging
-    pub(crate) h_multiplier_diverging: f64,
+    /// Multiplier to the stepsize when the iterations are failing
+    ///
+    /// Note: this value is currently constant, but it could be made variable
+    ///       by analyzing Newton's convergence rate as in the ODE crate.
+    pub(crate) h_multiplier_failure: f64,
 
     /// Previous stepsize
     pub(crate) h_prev: f64,
@@ -65,6 +71,9 @@ pub(crate) struct Workspace<'a> {
 
     /// Auxiliary u vector #2 (e.g., for numerical Jacobian)
     pub(crate) u_aux2: Vector,
+
+    /// Initial multiplier to the stepsize when the iterations are diverging
+    h_multiplier_failure_initial: f64,
 }
 
 impl<'a> Workspace<'a> {
@@ -78,9 +87,10 @@ impl<'a> Workspace<'a> {
         Workspace {
             auto: false,
             stats: Stats::new(config.method),
+            n_continued_rejection: 0,
             follows_reject_step: false,
-            iterations_diverging: false,
-            h_multiplier_diverging: 1.0,
+            iterations_failed: false,
+            h_multiplier_failure: config.m_failure,
             h_prev: 0.0,
             h_new: 0.0,
             rel_error_prev: 0.0,
@@ -96,6 +106,7 @@ impl<'a> Workspace<'a> {
             mdl: 0.0,
             u_aux1: Vector::new(n_num_j),
             u_aux2: Vector::new(n_num_j),
+            h_multiplier_failure_initial: config.m_failure,
         }
     }
 
@@ -103,9 +114,10 @@ impl<'a> Workspace<'a> {
     pub(crate) fn reset(&mut self, h: f64, rel_error_prev_min: f64, auto: bool) {
         self.stats.reset(h);
         self.auto = auto;
+        self.n_continued_rejection = 0;
         self.follows_reject_step = false;
-        self.iterations_diverging = false;
-        self.h_multiplier_diverging = 1.0;
+        self.iterations_failed = false;
+        self.h_multiplier_failure = self.h_multiplier_failure_initial;
         self.h_prev = h;
         self.h_new = h;
         self.rel_error_prev = rel_error_prev_min;

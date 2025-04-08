@@ -48,6 +48,9 @@ pub(crate) struct NumError {
 
     /// Maximum number of iterations allowed
     n_iteration_max: usize,
+
+    /// Holds failure messages
+    failures: Vec<String>,
 }
 
 impl NumError {
@@ -69,6 +72,7 @@ impl NumError {
             n_cont_div_ul: 0,
             n_allowed_cont_div_ul: config.n_allowed_cont_div_ul,
             n_iteration_max: config.n_iteration_max,
+            failures: Vec::new(),
         }
     }
 
@@ -161,37 +165,50 @@ impl NumError {
         Ok(())
     }
 
-    /// Checks for errors and returns break flag
+    /// Checks for failures and returns a flag to break the iteration loop
     ///
-    /// Returns `break flag`
-    pub fn check(&self, iteration: usize, stats: &mut Stats, auto: bool) -> Result<bool, StrError> {
+    /// Returns `break` flag
+    pub fn failures(&mut self, iteration: usize, stats: &mut Stats) -> bool {
+        // large (δu,δλ)
         if self.max_ul > self.max_ul_allowed {
-            // large (δu,δλ)
             stats.n_large_du_dl += 1;
-            if auto {
-                Ok(true)
-            } else {
-                Err("max(‖δu‖∞,|δλ|) is too large")
-            }
-        } else if self.n_cont_div_ul >= self.n_allowed_cont_div_ul {
-            // continued divergence
-            stats.n_continued_divergence += 1;
-            if auto {
-                Ok(true)
-            } else {
-                Err("Continued divergence detected")
-            }
-        } else if iteration == self.n_iteration_max - 1 {
-            // failed to converge
-            stats.n_failed_converge += 1;
-            if auto {
-                Ok(true)
-            } else {
-                Err("Newton-Raphson did not converge")
-            }
-        } else {
-            // keep going
-            Ok(false)
+            self.failures.push("max(‖δu‖∞,|δλ|) is too large".to_string());
         }
+
+        // continued divergence
+        if self.n_cont_div_ul >= self.n_allowed_cont_div_ul {
+            stats.n_continued_divergence += 1;
+            self.failures.push("continued divergence detected".to_string());
+        }
+
+        // max number of iterations reached
+        if iteration == self.n_iteration_max - 1 {
+            stats.n_iterations_max += 1;
+            self.failures.push("max number of iterations reached".to_string());
+        }
+
+        // flag to break the iteration loop
+        self.failures.len() > 0
+    }
+
+    /// Returns whether the simulation has failed or not
+    pub fn failed(&self) -> bool {
+        self.failures.len() > 0
+    }
+
+    /// Prints the failure messages
+    pub fn print_failures(&self, verbose: bool) {
+        if verbose && self.failures.len() > 0 {
+            println!("\n{:═^1$}", " ERRORS ", 60);
+            for message in &self.failures {
+                println!("{}", message);
+            }
+            println!("{}\n", "═".repeat(60));
+        }
+    }
+
+    /// Returns an access to failure messages
+    pub fn get_failures(&self) -> &Vec<String> {
+        &self.failures
     }
 }

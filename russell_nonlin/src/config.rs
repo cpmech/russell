@@ -63,6 +63,13 @@ pub struct Config {
     /// If `m_first_reject = 0`, the solver will use `h_new` on a rejected step.
     pub(crate) m_first_reject: f64,
 
+    /// Coefficient to multiply the stepsize if the iterations are failing
+    ///
+    /// ```text
+    /// m_failure ≥ 0.001   (recommended = 0.5)
+    /// ```
+    pub(crate) m_failure: f64,
+
     /// Initial stepsize
     ///
     /// ```text
@@ -91,8 +98,8 @@ pub struct Config {
     /// See [CONFIG_H_MIN]
     pub(crate) rel_error_prev_min: f64,
 
-    /// Max number of lambda increments
-    pub(crate) n_lambda_max: usize,
+    /// Number of continued rejections allowed
+    pub(crate) n_cont_reject_allowed: usize,
 
     // linear solver ----------------------------------------------------------------------
     //
@@ -175,11 +182,12 @@ impl Config {
             m_max: 2.0,
             m_safety: 0.9,
             m_first_reject: 0.1,
+            m_failure: 0.5,
             h_ini: 1e-4,
             h_min_allowed: CONFIG_H_MIN,
             n_step_max: 100_000,
             rel_error_prev_min: 1e-4,
-            n_lambda_max: 10_000,
+            n_cont_reject_allowed: 10,
             // linear solver
             genie: Genie::Umfpack,
             lin_sol_config: None,
@@ -239,6 +247,12 @@ impl Config {
         self
     }
 
+    /// Sets the coefficient to multiply the stepsize if the iterations are failing
+    pub fn set_m_failure(&mut self, value: f64) -> &mut Self {
+        self.m_failure = value;
+        self
+    }
+
     /// Sets the initial stepsize
     pub fn set_h_ini(&mut self, value: f64) -> &mut Self {
         self.h_ini = value;
@@ -263,9 +277,9 @@ impl Config {
         self
     }
 
-    /// Sets the max number of lambda increments
-    pub fn set_n_lambda_max(&mut self, value: usize) -> &mut Self {
-        self.n_lambda_max = value;
+    /// Sets the number of continued rejections allowed
+    pub fn set_n_cont_reject_allowed(&mut self, value: usize) -> &mut Self {
+        self.n_cont_reject_allowed = value;
         self
     }
 
@@ -344,6 +358,9 @@ impl Config {
         }
         if self.m_first_reject < 0.0 {
             return Err("requirement: m_first_rejection ≥ 0");
+        }
+        if self.m_failure < 0.1 {
+            return Err("requirement: m_failure ≥ 0.001");
         }
         if self.h_ini < CONFIG_H_MIN {
             return Err("requirement: h_ini ≥ CONFIG_H_MIN");

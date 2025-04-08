@@ -155,8 +155,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                 break;
             }
 
-            // check errors
-            if work.err.check(iteration, &mut work.stats, work.auto)? {
+            // check for failures
+            if work.err.failures(iteration, &mut work.stats) {
+                work.iterations_failed = true;
                 break;
             }
         }

@@ -193,6 +193,7 @@ impl<'a, A> Solver<'a, A> {
         // variable stepping loop
         for step in 0..self.config.n_step_max {
             self.work.stats.sw_step.reset();
+            self.work.log.step(&state);
 
             // check final stepsize and stopping criterion
             let h_final = match stop {
@@ -405,13 +406,13 @@ mod tests {
 
     #[test]
     fn solve_with_n_equal_steps_works() {
-        // solve the nonlinear system (will run with N_EQUAL_STEPS)
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let mut config = Config::new(Method::Natural);
-        config.set_verbose(false, true, true);
+        config.set_verbose(true, true, true);
         let mut solver = Solver::new(config, system).unwrap();
         let mut l = 0.0;
-        solver.solve(&mut u, &mut l, Stop::Steps(1), None, &mut args).unwrap();
+        let stop = Stop::Steps(1); // just one step
+        solver.solve(&mut u, &mut l, stop, None, &mut args).unwrap();
         vec_approx_eq(&u, &u_ref, 1e-15);
     }
 }

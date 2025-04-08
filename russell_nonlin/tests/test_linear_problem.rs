@@ -29,7 +29,7 @@ fn test_linear_no_auto_ana_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, false, true);
+    config.set_verbose(true, true, true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -95,7 +95,7 @@ fn test_linear_no_auto_num_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, false, true).set_tol_ul(1e-9);
+    config.set_verbose(true, true, true).set_tol_ul(1e-9);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

@@ -39,7 +39,7 @@ impl Logger {
         };
         Self {
             method: config.method,
-            verbose: config.verbose || config.verbose_iterations,
+            verbose: config.verbose,
             verbose_iterations: config.verbose_iterations,
             verbose_legend: config.verbose_legend,
             n_iteration_max: config.n_iteration_max,
@@ -92,7 +92,7 @@ impl Logger {
 
     /// Prints iteration information
     pub fn iteration(&self, iter: usize, err: &NumError) {
-        if !self.verbose_iterations {
+        if !(self.verbose && self.verbose_iterations) {
             return;
         }
         let (icon_gh, icon_ul) = if iter == 0 {

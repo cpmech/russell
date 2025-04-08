@@ -198,11 +198,16 @@ impl Config {
     }
 
     /// Sets the verbose flag
-    pub fn set_verbose(&mut self, flag: bool, show_iterations: bool, show_legend: bool, show_stats: bool) -> &mut Self {
+    pub fn set_verbose(&mut self, flag: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
         self.verbose = flag;
         self.verbose_iterations = show_iterations;
-        self.verbose_legend = show_legend;
         self.verbose_stats = show_stats;
+        self
+    }
+
+    /// Shows the legend
+    pub fn set_show_legend(&mut self, flag: bool) -> &mut Self {
+        self.verbose_legend = flag;
         self
     }
 

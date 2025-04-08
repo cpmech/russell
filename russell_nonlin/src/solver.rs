@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::{Config, Method, SolverTrait, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Workspace};
 use crate::{StateRef, StrError};
@@ -153,7 +151,7 @@ impl<'a, A> Solver<'a, A> {
                 Stop::Lambda(l1) => f64::ceil((l1 - *state.l) / h_ini) as usize,
                 Stop::Steps(n) => n,
             };
-            for increment in 0..nstep {
+            for _ in 0..nstep {
                 // log
                 self.work.stats.sw_step.reset();
                 self.work.log.step(&state);
@@ -409,9 +407,11 @@ mod tests {
     fn solve_with_n_equal_steps_works() {
         // solve the nonlinear system (will run with N_EQUAL_STEPS)
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
-        let config = Config::new(Method::Natural);
+        let mut config = Config::new(Method::Natural);
+        config.set_verbose(false, true, true);
         let mut solver = Solver::new(config, system).unwrap();
-        // solver.solve(&mut u, 0.0, 1.0, None, &mut args).unwrap();
-        // vec_approx_eq(&u, &u_ref, 1e-15);
+        let mut l = 0.0;
+        solver.solve(&mut u, &mut l, Stop::Steps(1), None, &mut args).unwrap();
+        vec_approx_eq(&u, &u_ref, 1e-15);
     }
 }

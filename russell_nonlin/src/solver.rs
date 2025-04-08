@@ -408,11 +408,21 @@ mod tests {
     fn solve_with_n_equal_steps_works() {
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let mut config = Config::new(Method::Natural);
-        config.set_verbose(true, true, true);
+        config.set_verbose(false, true, true);
         let mut solver = Solver::new(config, system).unwrap();
         let mut l = 0.0;
         let stop = Stop::Steps(1); // just one step
         solver.solve(&mut u, &mut l, stop, None, &mut args).unwrap();
         vec_approx_eq(&u, &u_ref, 1e-15);
+        let stats = solver.stats();
+        assert_eq!(stats.n_function, 7);
+        assert_eq!(stats.n_jacobian, 6);
+        assert_eq!(stats.n_factor, 6);
+        assert_eq!(stats.n_lin_sol, 6);
+        assert_eq!(stats.n_steps, 1);
+        assert_eq!(stats.n_accepted, 1);
+        assert_eq!(stats.n_rejected, 0);
+        assert_eq!(stats.n_iterations_max, 7);
+        assert_eq!(stats.n_iterations_total, 7);
     }
 }

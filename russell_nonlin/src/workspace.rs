@@ -15,7 +15,7 @@ pub(crate) struct Workspace<'a> {
     /// Indicates that the step follows a reject
     pub(crate) follows_reject_step: bool,
 
-    /// Indicates that the iterations (in an implicit method) are diverging
+    /// Indicates that the iterations are diverging
     pub(crate) iterations_diverging: bool,
 
     /// Multiplier to the stepsize when the iterations are diverging

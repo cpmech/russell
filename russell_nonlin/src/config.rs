@@ -149,6 +149,9 @@ pub struct Config {
     /// ```
     pub(crate) n_iteration_max: usize,
 
+    /// Number of allowed continuing divergence on max(‖δu‖∞,|δλ|)
+    pub(crate) n_allowed_cont_div_ul: usize,
+
     /// Modified Newton's method with constant tangent matrix
     pub(crate) constant_tangent: bool,
 
@@ -185,7 +188,8 @@ impl Config {
             tol_gh: 1e-10,
             tol_ul: 1e-10,
             max_ul_allowed: 1e8,
-            n_iteration_max: 10,
+            n_iteration_max: 12,
+            n_allowed_cont_div_ul: 1,
             constant_tangent: false,
             use_numerical_jacobian: false,
         }
@@ -304,6 +308,12 @@ impl Config {
     /// Sets the max number of iterations
     pub fn set_n_iteration_max(&mut self, value: usize) -> &mut Self {
         self.n_iteration_max = value;
+        self
+    }
+
+    /// Sets the number of allowed continuing divergence on max(‖δu‖∞,|δλ|)
+    pub fn set_n_allowed_cont_div_ul(&mut self, value: usize) -> &mut Self {
+        self.n_allowed_cont_div_ul = value;
         self
     }
 

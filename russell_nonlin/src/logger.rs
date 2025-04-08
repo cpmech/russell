@@ -14,9 +14,6 @@ pub(crate) struct Logger {
     /// Enables verbose output for the legend
     verbose_legend: bool,
 
-    /// List of error messages
-    errors: Vec<String>,
-
     /// Number of characters for the horizontal line
     nchar: usize,
 }
@@ -33,7 +30,6 @@ impl Logger {
             verbose: config.verbose,
             verbose_iterations: config.verbose_iterations,
             verbose_legend: config.verbose_legend,
-            errors: Vec::new(),
             nchar,
         }
     }
@@ -141,18 +137,5 @@ impl Logger {
             println!("{}", work.stats);
             println!("Automatic stepsize adjustment    = {:?}", work.auto);
         }
-        if self.errors.len() > 0 {
-            println!("\n❌❌❌❌❌❌ SIMULATION FAILED ❌❌❌❌❌❌\n");
-            println!("{:═^1$}\n", " ERRORS ", self.nchar);
-            for message in &self.errors {
-                println!("ERROR: {}", message);
-            }
-        }
-    }
-
-    /// Logs an error when max(‖δu‖∞,|δλ|) is too large
-    pub fn error_large_ul(&mut self, max_ul: f64) {
-        self.errors
-            .push(format!("max(‖δu‖∞,|δλ|) = {:.3e} is too large", max_ul).to_string());
     }
 }

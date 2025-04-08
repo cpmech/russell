@@ -34,6 +34,12 @@ pub struct Stats {
     /// Number of large max(‖δu‖∞,|δλ|)
     pub n_large_du_dl: usize,
 
+    /// Number of iterations that failed to converge
+    pub n_failed_converge: usize,
+
+    /// Number of iterations with continued divergence
+    pub n_continued_divergence: usize,
+
     /// Total number of iterations
     pub n_iterations_total: usize,
 
@@ -87,6 +93,8 @@ impl Stats {
             n_accepted: 0,
             n_rejected: 0,
             n_large_du_dl: 0,
+            n_failed_converge: 0,
+            n_continued_divergence: 0,
             n_iterations_total: 0,
             n_iterations_max: 0,
             h_accepted: 0.0,
@@ -181,6 +189,9 @@ impl Stats {
              Number of performed steps        = {}\n\
              Number of accepted steps         = {}\n\
              Number of rejected steps         = {}\n\
+             Number of large max(‖δu‖∞,|δλ|)  = {}\n\
+             Number of failed convergence     = {}\n\
+             Number of continued divergence   = {}\n\
              Number of iterations (maximum)   = {}",
             self.method.description(),
             self.n_function,
@@ -190,6 +201,9 @@ impl Stats {
             self.n_steps,
             self.n_accepted,
             self.n_rejected,
+            self.n_large_du_dl,
+            self.n_failed_converge,
+            self.n_continued_divergence,
             self.n_iterations_max,
         )
         .unwrap();
@@ -255,6 +269,9 @@ mod tests {
              Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
+             Number of large max(‖δu‖∞,|δλ|)  = 0\n\
+             Number of failed convergence     = 0\n\
+             Number of continued divergence   = 0\n\
              Number of iterations (maximum)   = 0"
         );
     }
@@ -272,6 +289,9 @@ mod tests {
              Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
+             Number of large max(‖δu‖∞,|δλ|)  = 0\n\
+             Number of failed convergence     = 0\n\
+             Number of continued divergence   = 0\n\
              Number of iterations (maximum)   = 0\n\
              Number of iterations (total)     = 0\n\
              Last accepted/suggested stepsize = 0\n\

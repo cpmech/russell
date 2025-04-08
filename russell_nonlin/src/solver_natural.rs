@@ -24,9 +24,6 @@ impl<'a, A> SolverNatural<'a, A> {
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
-        // clear convergence flags
-        work.err.clear_flags();
-
         // check convergence on G
         work.err.analyze_gh(iteration, &work.gg, 0.0)?;
         if work.err.converged() {
@@ -140,6 +137,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             (f)(args);
         }
 
+        // clear convergence flags
+        work.err.reset();
+
         // iteration loop
         let logging = true;
         for iteration in 0..self.config.n_iteration_max {
@@ -155,12 +155,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                 break;
             }
 
-            // stop if (δu,δλ) is too large
-            if work.err.large_du_dl() {
-                work.stats.n_large_du_dl += 1;
-                if !work.auto {
-                    work.log.error_large_ul(work.err.max_ul);
-                }
+            // check errors
+            if work.err.check(iteration, &mut work.stats, work.auto)? {
                 break;
             }
         }

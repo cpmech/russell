@@ -152,15 +152,11 @@ impl NumError {
         }
 
         // check convergence
-        self.converged_on_ul = if iteration == 0 {
-            false
-        } else {
-            self.max_ul < self.tol_ul
-        };
+        self.converged_on_ul = self.max_ul < self.tol_ul;
 
         // check if diverging
         self.prev_div_ul = self.diverging_on_ul;
-        self.diverging_on_ul = if iteration < 2 {
+        self.diverging_on_ul = if iteration == 0 {
             false
         } else {
             self.max_ul > self.max_ul_prev

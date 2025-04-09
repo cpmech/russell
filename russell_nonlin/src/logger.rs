@@ -136,6 +136,14 @@ impl Logger {
             println!("{}\n", "─".repeat(self.nchar));
             println!("{}", work.stats);
             println!("Automatic stepsize adjustment    = {:?}", work.auto);
+            let messages = work.errors();
+            if messages.len() > 0 {
+                println!("\n{:═^1$}", " ERRORS ", 60);
+                for message in &messages {
+                    println!("{}", message);
+                }
+                println!("{}\n", "═".repeat(60));
+            }
         }
     }
 }

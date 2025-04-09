@@ -8,8 +8,6 @@ fn test_newton_problems_ok_1() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true);
 
     // solver
@@ -28,14 +26,12 @@ fn test_newton_problems_ok_1() {
 }
 
 #[test]
-fn test_newton_problems_fail_to_converge_1() {
+fn test_newton_problems_fail_due_to_max_iter() {
     // problem
     let (system, u_trial_ok, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true).set_n_iteration_max(3);
 
     // solver
@@ -53,14 +49,12 @@ fn test_newton_problems_fail_to_converge_1() {
 }
 
 #[test]
-fn test_newton_problems_fail_to_converge_2() {
+fn test_newton_problems_fail_oscillation() {
     // problem
     let (system, _, u_trial_oscillation, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true);
 
     // solver
@@ -84,8 +78,6 @@ fn test_newton_problems_indeterminate() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true);
 
     // solver
@@ -109,8 +101,6 @@ fn test_newton_problems_ok_2() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)

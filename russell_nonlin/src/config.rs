@@ -359,7 +359,7 @@ impl Config {
         if self.m_first_reject < 0.0 {
             return Err("requirement: m_first_rejection ≥ 0");
         }
-        if self.m_failure < 0.1 {
+        if self.m_failure < 0.001 {
             return Err("requirement: m_failure ≥ 0.001");
         }
         if self.h_ini < CONFIG_H_MIN {

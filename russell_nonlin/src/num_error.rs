@@ -49,8 +49,14 @@ pub(crate) struct NumError {
     /// Maximum number of iterations allowed
     n_iteration_max: usize,
 
-    /// Holds failure messages
-    failures: Vec<String>,
+    /// Failed on max(‖G‖∞,|H|)
+    fail_large_du_dl: bool,
+
+    /// Failed on continued divergence
+    fail_cont_div_ul: bool,
+
+    /// Failed on max number of iterations
+    fail_max_iter: bool,
 }
 
 impl NumError {
@@ -72,7 +78,9 @@ impl NumError {
             n_cont_div_ul: 0,
             n_allowed_cont_div_ul: config.n_allowed_cont_div_ul,
             n_iteration_max: config.n_iteration_max,
-            failures: Vec::new(),
+            fail_large_du_dl: false,
+            fail_cont_div_ul: false,
+            fail_max_iter: false,
         }
     }
 
@@ -84,6 +92,9 @@ impl NumError {
         self.diverging_on_ul = false;
         self.prev_div_ul = false;
         self.n_cont_div_ul = 0;
+        self.fail_cont_div_ul = false;
+        self.fail_large_du_dl = false;
+        self.fail_max_iter = false;
     }
 
     /// Marks the problem as converged for linear analysis
@@ -172,43 +183,42 @@ impl NumError {
         // large (δu,δλ)
         if self.max_ul > self.max_ul_allowed {
             stats.n_large_du_dl += 1;
-            self.failures.push("max(‖δu‖∞,|δλ|) is too large".to_string());
+            self.fail_large_du_dl = true;
         }
 
         // continued divergence
         if self.n_cont_div_ul >= self.n_allowed_cont_div_ul {
             stats.n_continued_divergence += 1;
-            self.failures.push("continued divergence detected".to_string());
+            self.fail_cont_div_ul = true;
         }
 
         // max number of iterations reached
         if iteration == self.n_iteration_max - 1 {
             stats.n_iterations_max += 1;
-            self.failures.push("max number of iterations reached".to_string());
+            self.fail_max_iter = true;
         }
 
         // flag to break the iteration loop
-        self.failures.len() > 0
+        self.fail_large_du_dl || self.fail_cont_div_ul || self.fail_max_iter
     }
 
     /// Returns whether the simulation has failed or not
     pub fn failed(&self) -> bool {
-        self.failures.len() > 0
+        self.fail_large_du_dl || self.fail_cont_div_ul || self.fail_max_iter
     }
 
-    /// Prints the failure messages
-    pub fn print_failures(&self, verbose: bool) {
-        if verbose && self.failures.len() > 0 {
-            println!("\n{:═^1$}", " ERRORS ", 60);
-            for message in &self.failures {
-                println!("{}", message);
-            }
-            println!("{}\n", "═".repeat(60));
+    /// Returns error messages
+    pub fn messages(&self) -> Vec<String> {
+        let mut messages = Vec::with_capacity(3);
+        if self.fail_large_du_dl {
+            messages.push("max(‖δu‖∞,|δλ|) is too large".to_string());
         }
-    }
-
-    /// Returns an access to failure messages
-    pub fn get_failures(&self) -> &Vec<String> {
-        &self.failures
+        if self.fail_cont_div_ul {
+            messages.push("continued divergence detected".to_string());
+        }
+        if self.fail_max_iter {
+            messages.push("max number of iterations reached".to_string());
+        }
+        messages
     }
 }

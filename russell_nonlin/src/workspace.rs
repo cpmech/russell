@@ -21,6 +21,12 @@ pub(crate) struct Workspace<'a> {
     /// Indicates that the iterations have failed
     pub(crate) iterations_failed: bool,
 
+    /// Need to stop due to continued rejection
+    pub(crate) stop_continued_rejection: bool,
+
+    /// Need to stop due to small stepsize
+    pub(crate) stop_small_stepsize: bool,
+
     /// Multiplier to the stepsize when the iterations are failing
     ///
     /// Note: this value is currently constant, but it could be made variable
@@ -90,6 +96,8 @@ impl<'a> Workspace<'a> {
             n_continued_rejection: 0,
             follows_reject_step: false,
             iterations_failed: false,
+            stop_continued_rejection: false,
+            stop_small_stepsize: false,
             h_multiplier_failure: config.m_failure,
             h_prev: 0.0,
             h_new: 0.0,
@@ -117,10 +125,24 @@ impl<'a> Workspace<'a> {
         self.n_continued_rejection = 0;
         self.follows_reject_step = false;
         self.iterations_failed = false;
+        self.stop_continued_rejection = false;
+        self.stop_small_stepsize = false;
         self.h_multiplier_failure = self.h_multiplier_failure_initial;
         self.h_prev = h;
         self.h_new = h;
         self.rel_error_prev = rel_error_prev_min;
         self.rel_error = 0.0;
+    }
+
+    /// Returns error messages
+    pub(crate) fn errors(&self) -> Vec<String> {
+        let mut msg = self.err.messages();
+        if self.stop_continued_rejection {
+            msg.push("too many continued rejections".to_string());
+        }
+        if self.stop_small_stepsize {
+            msg.push("the stepsize becomes too small".to_string());
+        }
+        msg
     }
 }

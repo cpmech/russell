@@ -8,8 +8,6 @@ fn test_newton_problems_ok_1_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true);
 
     // solver
@@ -28,14 +26,12 @@ fn test_newton_problems_ok_1_auto() {
 }
 
 #[test]
-fn test_newton_problems_fail_to_converge_1_auto() {
+fn test_newton_problems_fail_due_to_max_iter_auto() {
     // problem
     let (system, u_trial_ok, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true).set_n_iteration_max(3);
 
     // solver
@@ -47,20 +43,22 @@ fn test_newton_problems_fail_to_converge_1_auto() {
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
         solver.solve(&mut u, &mut l, stop, None, &mut args).err(),
-        Some("too many continued rejections")
+        Some("failed to solve the nonlinear problem with automatic stepsize")
+    );
+    assert_eq!(
+        solver.errors(),
+        &["max number of iterations reached", "too many continued rejections"]
     );
 }
 
 #[test]
-fn test_newton_problems_fail_to_converge_2_auto() {
+fn test_newton_problems_fail_oscillation_auto() {
     // problem
     let (system, _, u_trial_oscillation, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_n_cont_reject_allowed(4);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -71,7 +69,11 @@ fn test_newton_problems_fail_to_converge_2_auto() {
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
         solver.solve(&mut u, &mut l, stop, None, &mut args).err(),
-        Some("too many continued rejections")
+        Some("failed to solve the nonlinear problem with automatic stepsize")
+    );
+    assert_eq!(
+        solver.errors(),
+        &["max number of iterations reached", "too many continued rejections"]
     );
 }
 
@@ -82,8 +84,6 @@ fn test_newton_problems_indeterminate_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config.set_verbose(true, true, true);
 
     // solver
@@ -95,7 +95,11 @@ fn test_newton_problems_indeterminate_auto() {
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
         solver.solve(&mut u, &mut l, stop, None, &mut args).err(),
-        Some("too many continued rejections")
+        Some("failed to solve the nonlinear problem with automatic stepsize")
+    );
+    assert_eq!(
+        solver.errors(),
+        &["max(‖δu‖∞,|δλ|) is too large", "too many continued rejections"]
     );
 }
 
@@ -106,8 +110,6 @@ fn test_newton_problems_ok_2_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-
-    // will fail to converge because only one iteration is allowed
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)
@@ -134,7 +136,7 @@ fn test_simple_fixed_continued_divergence_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_n_cont_reject_allowed(4);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -144,6 +146,38 @@ fn test_simple_fixed_continued_divergence_auto() {
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
         solver.solve(&mut u, &mut l, stop, None, &mut args).err(),
-        Some("too many continued rejections")
+        Some("failed to solve the nonlinear problem with automatic stepsize")
+    );
+    assert_eq!(
+        solver.errors(),
+        &["continued divergence detected", "too many continued rejections"]
+    );
+}
+
+#[test]
+fn test_newton_problems_stepsize_becomes_small() {
+    // problem
+    let (system, mut u, _, mut args) = Samples::cubic_poly_2();
+
+    // configuration
+    let mut config = Config::new(Method::Natural);
+    config
+        .set_verbose(true, true, true)
+        .set_n_iteration_max(1)
+        .set_m_failure(0.01);
+
+    // solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // solve problem
+    let mut l = 0.0;
+    let stop = Stop::Steps(1); // just one step
+    assert_eq!(
+        solver.solve(&mut u, &mut l, stop, None, &mut args).err(),
+        Some("failed to solve the nonlinear problem with automatic stepsize")
+    );
+    assert_eq!(
+        solver.errors(),
+        &["max number of iterations reached", "the stepsize becomes too small"]
     );
 }

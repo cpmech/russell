@@ -55,8 +55,8 @@ impl<'a, A> Solver<'a, A> {
     }
 
     /// Returns the error messages
-    pub fn errors(&self) -> &Vec<String> {
-        self.work.err.get_failures()
+    pub fn errors(&self) -> Vec<String> {
+        self.work.errors()
     }
 
     /// Solves the nonlinear system
@@ -198,7 +198,6 @@ impl<'a, A> Solver<'a, A> {
 
             // handle errors
             if self.work.err.failed() {
-                self.work.err.print_failures(self.config.verbose);
                 return Err("failed to solve the nonlinear problem with equal stepsize");
             } else {
                 return Ok(());
@@ -239,13 +238,15 @@ impl<'a, A> Solver<'a, A> {
             // check number of continued rejections
             self.work.n_continued_rejection += 1;
             if self.work.n_continued_rejection >= self.config.n_cont_reject_allowed {
-                return Err("too many continued rejections");
+                self.work.stop_continued_rejection = true;
+                break;
             }
 
             // update and check the stepsize
             state.h = f64::min(self.work.h_new, h_final);
             if state.h <= 10.0 * f64::EPSILON {
-                return Err("the stepsize becomes too small");
+                self.work.stop_small_stepsize = true;
+                break;
             }
 
             // perform the step calculations
@@ -336,7 +337,6 @@ impl<'a, A> Solver<'a, A> {
         if success {
             Ok(())
         } else {
-            self.work.err.print_failures(self.config.verbose);
             return Err("failed to solve the nonlinear problem with automatic stepsize");
         }
     }

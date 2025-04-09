@@ -43,8 +43,8 @@ pub(crate) struct NumError {
     /// Number of continued divergence on max(‖δu‖∞,|δλ|)
     n_cont_div_ul: usize,
 
-    /// Number of allowed continuing divergence on max(‖δu‖∞,|δλ|)
-    n_allowed_cont_div_ul: usize,
+    /// Max number of continuing divergence on max(‖δu‖∞,|δλ|) allowed
+    n_cont_div_ul_allowed: usize,
 
     /// Maximum number of iterations allowed
     n_iteration_max: usize,
@@ -76,7 +76,7 @@ impl NumError {
             max_ul_allowed: config.max_ul_allowed,
             prev_div_ul: false,
             n_cont_div_ul: 0,
-            n_allowed_cont_div_ul: config.n_allowed_cont_div_ul,
+            n_cont_div_ul_allowed: config.n_cont_div_ul_allowed,
             n_iteration_max: config.n_iteration_max,
             fail_large_du_dl: false,
             fail_cont_div_ul: false,
@@ -187,7 +187,7 @@ impl NumError {
         }
 
         // continued divergence
-        if self.n_cont_div_ul >= self.n_allowed_cont_div_ul {
+        if self.n_cont_div_ul >= self.n_cont_div_ul_allowed {
             stats.n_continued_divergence += 1;
             self.fail_cont_div_ul = true;
         }

@@ -104,7 +104,7 @@ fn test_newton_problems_ok_2() {
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)
-        .set_n_allowed_cont_div_ul(2);
+        .set_n_cont_div_ul_allowed(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();

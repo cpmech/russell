@@ -1,4 +1,4 @@
-use super::{Config, Method, NumError, StateRef, Workspace};
+use super::{Config, IterationError, Method, StateRef, Workspace};
 
 /// Prints information during time stepping
 pub(crate) struct Logger {
@@ -76,7 +76,7 @@ impl Logger {
     }
 
     /// Prints iteration information
-    pub fn iteration(&self, iter: usize, err: &NumError) {
+    pub fn iteration(&self, iter: usize, err: &IterationError) {
         if !(self.verbose && self.verbose_iterations) {
             return;
         }

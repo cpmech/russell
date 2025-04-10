@@ -2,8 +2,8 @@ use super::{Config, Stats};
 use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
-/// Calculates the numerical error
-pub(crate) struct NumError {
+/// Calculates the iteration error
+pub(crate) struct IterationError {
     /// Holds max(‖G‖∞,|H|)
     pub(crate) max_gh: f64,
 
@@ -59,7 +59,7 @@ pub(crate) struct NumError {
     fail_max_iter: bool,
 }
 
-impl NumError {
+impl IterationError {
     /// Creates a new instance
     pub fn new(config: &Config) -> Self {
         Self {

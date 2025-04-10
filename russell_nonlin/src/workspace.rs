@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{Config, Logger, NumError, Stats, System};
+use super::{Config, IterationError, Logger, Stats, System};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
@@ -45,8 +45,8 @@ pub(crate) struct Workspace<'a> {
     /// Current relative error
     pub(crate) rel_error: f64,
 
-    /// Numerical error
-    pub(crate) err: NumError,
+    /// Iteration error
+    pub(crate) err: IterationError,
 
     /// Logger
     pub(crate) log: Logger,
@@ -103,7 +103,7 @@ impl<'a> Workspace<'a> {
             h_new: 0.0,
             rel_error_prev: 0.0,
             rel_error: 0.0,
-            err: NumError::new(config),
+            err: IterationError::new(config),
             log: Logger::new(config),
             gg: Vector::new(system.ndim),
             ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),

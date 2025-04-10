@@ -5,8 +5,8 @@ pub type StrError = &'static str;
 
 mod config;
 mod enums;
+mod iteration_error;
 mod logger;
-mod num_error;
 mod output;
 mod samples;
 mod solver;
@@ -20,8 +20,8 @@ mod workspace;
 
 pub use config::*;
 pub use enums::*;
+use iteration_error::*;
 use logger::*;
-use num_error::*;
 pub use output::*;
 pub use samples::*;
 pub use solver::*;

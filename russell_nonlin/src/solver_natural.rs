@@ -137,8 +137,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             (f)(args);
         }
 
-        // clear convergence flags
-        work.err.reset();
+        // reset iteration error control
+        work.err.reset(state);
 
         // iteration loop
         let logging = true;

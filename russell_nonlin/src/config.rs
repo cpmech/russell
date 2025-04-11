@@ -76,11 +76,14 @@ pub struct Config {
 
     // iterations -------------------------------------------------------------------------
     //
-    /// Tolerance on max(‖G‖∞,|H|)
-    pub(crate) tol_gh: f64,
+    /// Absolute tolerance on max(‖G‖∞,|H|)
+    pub(crate) tol_gh_abs: f64,
 
-    /// Tolerance on max(‖δu‖∞,|δλ|)
-    pub(crate) tol_ul: f64,
+    /// Absolute tolerance on RMS(δu,δλ)
+    pub(crate) tol_ul_abs: f64,
+
+    /// Relative tolerance on RMS(δu,δλ)
+    pub(crate) tol_ul_rel: f64,
 
     /// Maximum max(‖δu‖∞,|δλ|) allowed
     pub(crate) max_ul_allowed: f64,
@@ -125,8 +128,9 @@ impl Config {
             lin_sol_config: None,
             write_matrix_after_nstep_and_stop: None,
             // iterations
-            tol_gh: 1e-10,
-            tol_ul: 1e-10,
+            tol_gh_abs: 1e-10,
+            tol_ul_abs: 1e-10,
+            tol_ul_rel: 1e-7,
             max_ul_allowed: 1e8,
             n_iteration_max: 12,
             n_cont_div_ul_allowed: 1,
@@ -285,27 +289,34 @@ impl Config {
         self
     }
 
-    /// Sets the tolerance on max(‖G‖∞,|H|)
+    /// Sets the absolute tolerance on max(‖G‖∞,|H|)
     ///
     /// ```text
-    /// tol_gh ≥ CONFIG_TOL_MIN
+    /// value ≥ CONFIG_TOL_MIN
     /// ```
     ///
     /// See [CONFIG_TOL_MIN]
-    pub fn set_tol_gh(&mut self, value: f64) -> &mut Self {
-        self.tol_gh = value;
+    pub fn set_tol_gh(&mut self, tol_abs: f64) -> &mut Self {
+        self.tol_gh_abs = tol_abs;
         self
     }
 
-    /// Sets the tolerance on max(‖δu‖∞,|δλ|)
+    /// Sets the absolute and relative tolerance on RMS(δ(u,λ))
     ///
     /// ```text
-    /// tol_ul ≥ CONFIG_TOL_MIN
+    /// value ≥ CONFIG_TOL_MIN
+    ///
+    ///             /     ————            2 `
+    ///       \    /  1   \    ⎛ δ(u,λ)ᵢ ⎞
+    /// rms =  \  /  ———  /    ⎜ ——————— ⎟
+    ///         \/    N   ———— ⎝   scᵢ   ⎠
+    ///                     i
     /// ```
     ///
     /// See [CONFIG_TOL_MIN]
-    pub fn set_tol_ul(&mut self, value: f64) -> &mut Self {
-        self.tol_ul = value;
+    pub fn set_tol_ul(&mut self, tol_abs: f64, tol_rel: f64) -> &mut Self {
+        self.tol_ul_abs = tol_abs;
+        self.tol_ul_rel = tol_rel;
         self
     }
 
@@ -378,10 +389,10 @@ impl Config {
 
         // iterations
 
-        if self.tol_gh < CONFIG_TOL_MIN {
+        if self.tol_gh_abs < CONFIG_TOL_MIN {
             return Err("requirement: tol_gh ≥ CONFIG_TOL_MIN");
         }
-        if self.tol_ul < CONFIG_TOL_MIN {
+        if self.tol_ul_abs < CONFIG_TOL_MIN {
             return Err("requirement: tol_ul ≥ CONFIG_TOL_MIN");
         }
         if self.max_ul_allowed <= 0.0 {
@@ -468,12 +479,12 @@ mod tests {
         config.n_iteration_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_iteration_max ≥ 1"));
         config.n_iteration_max = 10;
-        config.tol_gh = 0.0;
+        config.tol_gh_abs = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: tol_gh ≥ CONFIG_TOL_MIN"));
-        config.tol_gh = 1e-10;
-        config.tol_ul = 0.0;
+        config.tol_gh_abs = 1e-10;
+        config.tol_ul_abs = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: tol_ul ≥ CONFIG_TOL_MIN"));
-        config.tol_ul = 1e-10;
+        config.tol_ul_abs = 1e-10;
         config.max_ul_allowed = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: max_ul_allowed > 0"));
         config.max_ul_allowed = 1e10;

@@ -436,7 +436,7 @@ mod tests {
     fn solve_with_one_step_works_fixed() {
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let mut config = Config::new(Method::Natural);
-        config.set_verbose(true, true, true);
+        config.set_verbose(true, true, true).set_tol_ul(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
         let mut l = 0.0;
         let stop = Stop::Steps(1); // just one step
@@ -458,7 +458,7 @@ mod tests {
     fn solve_with_one_step_works_auto() {
         let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
         let mut config = Config::new(Method::Natural);
-        config.set_verbose(true, true, true);
+        config.set_verbose(true, true, true).set_tol_ul(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
         let mut l = 0.0;
         let stop = Stop::Steps(1); // just one step

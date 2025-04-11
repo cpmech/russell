@@ -103,7 +103,7 @@ impl<'a> Workspace<'a> {
             h_new: 0.0,
             rel_error_prev: 0.0,
             rel_error: 0.0,
-            err: IterationError::new(config),
+            err: IterationError::new(config, system.ndim),
             log: Logger::new(config),
             gg: Vector::new(system.ndim),
             ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),

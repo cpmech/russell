@@ -1,4 +1,4 @@
-use super::{Config, Stats};
+use super::{Config, StateRef, Stats};
 use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
@@ -10,16 +10,19 @@ pub(crate) struct IterationError {
     /// Holds max(‖δu‖∞,|δλ|)
     pub(crate) max_ul: f64,
 
+    /// RMS error on (δu,δλ)
+    pub(crate) rms_ul: f64,
+
     /// Converged on
     pub(crate) converged_on_gh: bool,
 
     /// Diverging on
     pub(crate) diverging_on_gh: bool,
 
-    /// Converged on max(‖δu‖∞,|δλ|)
+    /// Converged on RMS(δu,δλ)
     pub(crate) converged_on_ul: bool,
 
-    /// Diverging on max(‖δu‖∞,|δλ|)
+    /// Diverging on RMS(δu,δλ)
     pub(crate) diverging_on_ul: bool,
 
     /// Previous max(‖G‖∞,|H|)
@@ -29,10 +32,13 @@ pub(crate) struct IterationError {
     max_ul_prev: f64,
 
     /// Tolerance on max(‖G‖∞,|H|)
-    tol_gh: f64,
+    tol_gh_abs: f64,
 
-    /// Tolerance on max(‖δu‖∞,|δλ|)
-    tol_ul: f64,
+    /// Absolute tolerance on RMS(δu,δλ)
+    tol_ul_abs: f64,
+
+    /// Relative tolerance on RMS(δu,δλ)
+    tol_ul_rel: f64,
 
     /// Maximum max(‖δu‖∞,|δλ|) allowed
     max_ul_allowed: f64,
@@ -57,22 +63,27 @@ pub(crate) struct IterationError {
 
     /// Failed on max number of iterations
     fail_max_iter: bool,
+
+    /// Scaling vector for RMS(δu,δλ)
+    scaling_ul: Vector,
 }
 
 impl IterationError {
     /// Creates a new instance
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config, ndim: usize) -> Self {
         Self {
             max_gh: 0.0,
             max_ul: 0.0,
+            rms_ul: 0.0,
             converged_on_gh: false,
             diverging_on_gh: false,
             converged_on_ul: false,
             diverging_on_ul: false,
             max_gh_prev: 0.0,
             max_ul_prev: 0.0,
-            tol_gh: config.tol_gh,
-            tol_ul: config.tol_ul,
+            tol_gh_abs: config.tol_gh_abs,
+            tol_ul_abs: config.tol_ul_abs,
+            tol_ul_rel: config.tol_ul_rel,
             max_ul_allowed: config.max_ul_allowed,
             prev_div_ul: false,
             n_cont_div_ul: 0,
@@ -81,11 +92,12 @@ impl IterationError {
             fail_large_du_dl: false,
             fail_cont_div_ul: false,
             fail_max_iter: false,
+            scaling_ul: Vector::new(ndim + 1),
         }
     }
 
     /// Resets the convergence flags and divergence counter
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, state: &StateRef) {
         self.converged_on_gh = false;
         self.diverging_on_gh = false;
         self.converged_on_ul = false;
@@ -95,6 +107,11 @@ impl IterationError {
         self.fail_cont_div_ul = false;
         self.fail_large_du_dl = false;
         self.fail_max_iter = false;
+        let ndim = self.scaling_ul.dim() - 1;
+        for i in 0..ndim {
+            self.scaling_ul[i] = self.tol_ul_abs + self.tol_ul_rel * f64::abs(state.u[i]);
+        }
+        self.scaling_ul[ndim] = self.tol_ul_abs + self.tol_ul_rel * f64::abs(*state.l);
     }
 
     /// Marks the problem as converged for linear analysis
@@ -127,7 +144,7 @@ impl IterationError {
         }
 
         // check convergence
-        self.converged_on_gh = self.max_gh < self.tol_gh;
+        self.converged_on_gh = self.max_gh < self.tol_gh_abs;
 
         // check if diverging
         self.diverging_on_gh = if iteration == 0 {
@@ -151,8 +168,17 @@ impl IterationError {
             return Err("Found NaN or Inf in max(‖δu‖∞,|δλ|)");
         }
 
+        // compute RMS(δu,δλ)
+        let ndim = self.scaling_ul.dim() - 1;
+        let mut sum = 0.0;
+        for i in 0..ndim {
+            sum += du[i] / self.scaling_ul[i] * du[i] / self.scaling_ul[i];
+        }
+        sum += dl / self.scaling_ul[ndim] * dl / self.scaling_ul[ndim];
+        self.rms_ul = f64::sqrt(sum / ((ndim + 1) as f64));
+
         // check convergence
-        self.converged_on_ul = self.max_ul < self.tol_ul;
+        self.converged_on_ul = self.rms_ul <= 1.0;
 
         // check if diverging
         self.prev_div_ul = self.diverging_on_ul;

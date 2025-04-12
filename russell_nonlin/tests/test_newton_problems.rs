@@ -165,3 +165,60 @@ fn test_simple_fixed_continued_divergence() {
     );
     assert_eq!(solver.errors(), &["continued divergence detected"]);
 }
+
+#[test]
+fn test_two_eq_nr_prob_1_singular() {
+    // problem
+    let (system, mut u, _, mut args) = Samples::two_eq_nr_prob_1();
+
+    // configuration
+    let mut config = Config::new(Method::Natural);
+    config.set_verbose(true, true, true);
+
+    // solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // solve problem
+    let mut l = 0.0;
+    let stop = Stop::Steps(1); // just one step
+    assert_eq!(
+        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        Some("Error(1): Matrix is singular")
+    );
+}
+
+#[test]
+fn test_two_eq_nr_prob_2() {
+    // problem
+    let (system, u_trial_ok1, u_trial_ok2, u_trial_bad, u_ref1, u_ref2, mut args) = Samples::two_eq_nr_prob_2();
+
+    // configuration
+    let mut config = Config::new(Method::Natural);
+    config.set_verbose(true, true, false).set_n_iteration_max(20);
+
+    // solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // solve problem: first solution
+    let mut u = u_trial_ok1.clone();
+    let mut l = 0.0;
+    let stop = Stop::Steps(1); // just one step
+    solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
+    vec_approx_eq(&u, &u_ref1, 1e-9);
+
+    // solve problem: second solution
+    let mut u = u_trial_ok2.clone();
+    let mut l = 0.0;
+    let stop = Stop::Steps(1); // just one step
+    solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
+    vec_approx_eq(&u, &u_ref2, 1e-9);
+
+    // singular case
+    let mut u = u_trial_bad.clone();
+    let mut l = 0.0;
+    let stop = Stop::Steps(1); // just one step
+    assert_eq!(
+        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        Some("Error(1): Matrix is singular")
+    );
+}

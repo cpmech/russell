@@ -14,6 +14,9 @@ pub(crate) struct Logger {
     /// Enables verbose output for the legend
     verbose_legend: bool,
 
+    /// Show statistics
+    verbose_stats: bool,
+
     /// Number of characters for the horizontal line
     nchar: usize,
 }
@@ -30,6 +33,7 @@ impl Logger {
             verbose: config.verbose,
             verbose_iterations: config.verbose_iterations,
             verbose_legend: config.verbose_legend,
+            verbose_stats: config.verbose_stats,
             nchar,
         }
     }
@@ -134,8 +138,10 @@ impl Logger {
     pub fn footer(&self, work: &Workspace) {
         if self.verbose {
             println!("{}\n", "─".repeat(self.nchar));
-            println!("{}", work.stats);
-            println!("Automatic stepsize adjustment    = {:?}", work.auto);
+            if self.verbose_stats {
+                println!("{}", work.stats);
+                println!("Automatic stepsize adjustment    = {:?}", work.auto);
+            }
             let messages = work.errors();
             if messages.len() > 0 {
                 println!("\n{:═^1$}", " ERRORS ", 60);

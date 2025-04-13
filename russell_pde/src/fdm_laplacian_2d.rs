@@ -1,4 +1,4 @@
-use super::Side2d;
+use super::{OperatorTrait, Side2d};
 use crate::StrError;
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
@@ -91,7 +91,7 @@ pub struct FdmLaplacian2d<'a> {
     /// Holds the functions to compute essential boundary conditions
     ///
     /// (4) → (xmin, xmax, ymin, ymax); corresponding to the 4 sides
-    functions: Vec<Arc<dyn Fn(f64, f64) -> f64 + Send + Sync + 'a>>,
+    functions: Vec<Arc<dyn Fn(f64, f64, f64) -> f64 + Send + Sync + 'a>>,
 
     /// Collects the essential boundary conditions
     ///
@@ -156,248 +156,13 @@ impl<'a> FdmLaplacian2d<'a> {
             periodic_along_y: false,
             molecule: vec![alpha, beta, beta, gamma, gamma],
             functions: vec![
-                Arc::new(|_, _| 0.0), // xmin
-                Arc::new(|_, _| 0.0), // xmax
-                Arc::new(|_, _| 0.0), // ymin
-                Arc::new(|_, _| 0.0), // ymax
+                Arc::new(|_, _, _| 0.0), // xmin
+                Arc::new(|_, _, _| 0.0), // xmax
+                Arc::new(|_, _, _| 0.0), // ymin
+                Arc::new(|_, _, _| 0.0), // ymax
             ],
             essential: HashMap::new(),
         })
-    }
-
-    /// Sets periodic boundary condition
-    ///
-    /// **Note:** Any essential boundary condition on the corresponding side will be removed.
-    pub fn set_periodic_boundary_condition(&mut self, along_x: bool, along_y: bool) {
-        if along_x {
-            self.periodic_along_x = true;
-            self.nodes_xmin.iter().for_each(|n| {
-                self.essential.remove(n);
-            });
-            self.nodes_xmax.iter().for_each(|n| {
-                self.essential.remove(n);
-            });
-        }
-        if along_y {
-            self.periodic_along_y = true;
-            self.nodes_ymin.iter().for_each(|n| {
-                self.essential.remove(n);
-            });
-            self.nodes_ymax.iter().for_each(|n| {
-                self.essential.remove(n);
-            });
-        }
-    }
-
-    /// Sets essential (Dirichlet) boundary condition
-    ///
-    /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
-    pub fn set_essential_boundary_condition(&mut self, side: Side2d, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
-        match side {
-            Side2d::Xmin => {
-                self.periodic_along_x = false;
-                self.functions[0] = Arc::new(f);
-                self.nodes_xmin.iter().for_each(|n| {
-                    self.essential.insert(*n, 0);
-                });
-            }
-            Side2d::Xmax => {
-                self.periodic_along_x = false;
-                self.functions[1] = Arc::new(f);
-                self.nodes_xmax.iter().for_each(|n| {
-                    self.essential.insert(*n, 1);
-                });
-            }
-            Side2d::Ymin => {
-                self.periodic_along_y = false;
-                self.functions[2] = Arc::new(f);
-                self.nodes_ymin.iter().for_each(|n| {
-                    self.essential.insert(*n, 2);
-                });
-            }
-            Side2d::Ymax => {
-                self.periodic_along_y = false;
-                self.functions[3] = Arc::new(f);
-                self.nodes_ymax.iter().for_each(|n| {
-                    self.essential.insert(*n, 3);
-                });
-            }
-        };
-    }
-
-    /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
-    ///
-    /// **Note:** Periodic boundary conditions will be removed.
-    pub fn set_homogeneous_boundary_conditions(&mut self) {
-        self.periodic_along_x = false;
-        self.periodic_along_y = false;
-        self.essential.clear();
-        self.functions = vec![
-            Arc::new(|_, _| 0.0), // xmin
-            Arc::new(|_, _| 0.0), // xmax
-            Arc::new(|_, _| 0.0), // ymin
-            Arc::new(|_, _| 0.0), // ymax
-        ];
-        self.nodes_xmin.iter().for_each(|n| {
-            self.essential.insert(*n, 0);
-        });
-        self.nodes_xmax.iter().for_each(|n| {
-            self.essential.insert(*n, 1);
-        });
-        self.nodes_ymin.iter().for_each(|n| {
-            self.essential.insert(*n, 2);
-        });
-        self.nodes_ymax.iter().for_each(|n| {
-            self.essential.insert(*n, 3);
-        });
-    }
-
-    /// Computes the coefficient matrix 'A' of A ⋅ X = B
-    ///
-    /// **Note:** Consider the following partitioning:
-    ///
-    /// ```text
-    /// ┌          ┐ ┌    ┐   ┌    ┐
-    /// │ Auu  Aup │ │ Xu │   │ Bu │
-    /// │          │ │    │ = │    │
-    /// │ Apu  App │ │ Xp │   │ Bp │
-    /// └          ┘ └    ┘   └    ┘
-    /// ```
-    ///
-    /// where `u` means *unknown* and `p` means *prescribed*. Thus, `Xu` is the sub-vector with
-    /// unknown essential values and `Xp` is the sub-vector with prescribed essential values.
-    ///
-    /// Thus:
-    ///
-    /// ```text
-    /// Auu ⋅ Xu  +  Aup ⋅ Xp  =  Bu
-    /// ```
-    ///
-    /// To handle the prescribed essential values, we modify the system as follows:
-    ///
-    /// ```text
-    /// ┌          ┐ ┌    ┐   ┌             ┐
-    /// │ Auu   0  │ │ Xu │   │ Bu - Aup⋅Xp │
-    /// │          │ │    │ = │             │
-    /// │  0    1  │ │ Xp │   │     Xp      │
-    /// └          ┘ └    ┘   └             ┘
-    /// A := augmented(Auu)
-    /// ```
-    ///
-    /// Thus:
-    ///
-    /// ```text
-    /// Xu = Auu⁻¹ ⋅ (Bu - Aup⋅Xp)
-    /// Xp = Xp
-    /// ```
-    ///
-    /// Furthermore, we return an augmented 'Aup' matrix (called 'C', correction matrix), such that:
-    ///
-    /// ```text
-    /// ┌          ┐ ┌    ┐   ┌        ┐
-    /// │  0   Aup │ │ .. │   │ Aup⋅Xp │
-    /// │          │ │    │ = │        │
-    /// │  0    0  │ │ Xp │   │   0    │
-    /// └          ┘ └    ┘   └        ┘
-    /// C := augmented(Aup)
-    /// ```
-    ///
-    /// Note that there is no performance loss in using the augmented matrix because the sparse
-    /// matrix-vector multiplication will execute the same number of computations with a reduced matrix.
-    /// Also, the CooMatrix will only hold the non-zero entries, thus, no extra memory is wasted.
-    ///
-    /// # Output
-    ///
-    /// Returns `(A, C)` where:
-    ///
-    /// * `A` -- is the augmented 'Auu' matrix (dim × dim) with ones placed on the diagonal entries
-    ///  corresponding to the prescribed essential values. Also, the entries corresponding to the
-    ///  essential values are zeroed.
-    /// * `C` -- is the augmented 'Aup' (correction) matrix (dim × dim) with only the 'unknown rows'
-    ///   and the 'prescribed' columns.
-    ///
-    /// # Warnings
-    ///
-    /// **Important:** This function must be called after setting the essential boundary conditions.
-    ///
-    /// # Todo
-    ///
-    /// * Implement the symmetric version for solvers that can handle a triangular matrix storage.
-    pub fn coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
-        // count max number of non-zeros
-        let dim = self.nx * self.ny;
-        let np = self.essential.len();
-        let mut max_nnz_aa = np; // start with the diagonal 'ones'
-        let mut max_nnz_cc = 1; // +1 just for when there are no essential conditions
-        for m in 0..dim {
-            if !self.essential.contains_key(&m) {
-                self.loop_over_bandwidth(m, |n, _| {
-                    if !self.essential.contains_key(&n) {
-                        max_nnz_aa += 1;
-                    } else {
-                        max_nnz_cc += 1;
-                    }
-                });
-            }
-        }
-
-        // allocate matrices
-        let mut aa = CooMatrix::new(dim, dim, max_nnz_aa, Sym::No)?;
-        let mut cc = CooMatrix::new(dim, dim, max_nnz_cc, Sym::No)?;
-
-        // assemble
-        for m in 0..dim {
-            if !self.essential.contains_key(&m) {
-                self.loop_over_bandwidth(m, |n, b| {
-                    if !self.essential.contains_key(&n) {
-                        aa.put(m, n, self.molecule[b]).unwrap();
-                    } else {
-                        cc.put(m, n, self.molecule[b]).unwrap();
-                    }
-                });
-            } else {
-                aa.put(m, m, 1.0).unwrap();
-            }
-        }
-        Ok((aa, cc))
-    }
-
-    /// Executes a loop over one row of the coefficient matrix 'A' of A ⋅ X = B
-    ///
-    /// Note that some column indices may appear repeated; e.g. due to the zero-flux boundaries.
-    ///
-    /// # Input
-    ///
-    /// * `m` -- the row of the coefficient matrix
-    /// * `callback` -- a `function(n, Amn)` where `n` is the column index and
-    ///   `Amn` is the m-n-element of the coefficient matrix
-    pub fn loop_over_coef_mat_row<F>(&self, m: usize, mut callback: F)
-    where
-        F: FnMut(usize, f64),
-    {
-        self.loop_over_bandwidth(m, |n, b| {
-            callback(n, self.molecule[b]);
-        });
-    }
-
-    /// Executes a loop over the prescribed values
-    ///
-    /// # Input
-    ///
-    /// * `callback` -- a `function(m, value)` where `m` is the row index and
-    ///   `value` is the prescribed value.
-    pub fn loop_over_prescribed_values<F>(&self, mut callback: F)
-    where
-        F: FnMut(usize, f64),
-    {
-        self.essential.iter().for_each(|(m, index)| {
-            let i = m % self.nx;
-            let j = m / self.nx;
-            let x = self.xmin + (i as f64) * self.dx;
-            let y = self.ymin + (j as f64) * self.dy;
-            let value = (self.functions[*index])(x, y);
-            callback(*m, value);
-        });
     }
 
     /// Executes a loop over the "bandwidth" of the coefficient matrix
@@ -452,48 +217,168 @@ impl<'a> FdmLaplacian2d<'a> {
             callback(n, b);
         }
     }
+}
+
+impl<'a> OperatorTrait<'a> for FdmLaplacian2d<'a> {
+    /// Sets periodic boundary condition
+    fn set_periodic_boundary_condition(&mut self, along_x: bool, along_y: bool, _along_z: bool) {
+        if along_x {
+            self.periodic_along_x = true;
+            self.nodes_xmin.iter().for_each(|n| {
+                self.essential.remove(n);
+            });
+            self.nodes_xmax.iter().for_each(|n| {
+                self.essential.remove(n);
+            });
+        }
+        if along_y {
+            self.periodic_along_y = true;
+            self.nodes_ymin.iter().for_each(|n| {
+                self.essential.remove(n);
+            });
+            self.nodes_ymax.iter().for_each(|n| {
+                self.essential.remove(n);
+            });
+        }
+    }
+
+    /// Sets essential (Dirichlet) boundary condition
+    fn set_essential_boundary_condition(&mut self, side: Side2d, f: impl Fn(f64, f64, f64) -> f64 + Send + Sync + 'a) {
+        match side {
+            Side2d::Xmin => {
+                self.periodic_along_x = false;
+                self.functions[0] = Arc::new(f);
+                self.nodes_xmin.iter().for_each(|n| {
+                    self.essential.insert(*n, 0);
+                });
+            }
+            Side2d::Xmax => {
+                self.periodic_along_x = false;
+                self.functions[1] = Arc::new(f);
+                self.nodes_xmax.iter().for_each(|n| {
+                    self.essential.insert(*n, 1);
+                });
+            }
+            Side2d::Ymin => {
+                self.periodic_along_y = false;
+                self.functions[2] = Arc::new(f);
+                self.nodes_ymin.iter().for_each(|n| {
+                    self.essential.insert(*n, 2);
+                });
+            }
+            Side2d::Ymax => {
+                self.periodic_along_y = false;
+                self.functions[3] = Arc::new(f);
+                self.nodes_ymax.iter().for_each(|n| {
+                    self.essential.insert(*n, 3);
+                });
+            }
+        };
+    }
+
+    /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
+    fn set_homogeneous_boundary_conditions(&mut self) {
+        self.periodic_along_x = false;
+        self.periodic_along_y = false;
+        self.essential.clear();
+        self.functions = vec![
+            Arc::new(|_, _, _| 0.0), // xmin
+            Arc::new(|_, _, _| 0.0), // xmax
+            Arc::new(|_, _, _| 0.0), // ymin
+            Arc::new(|_, _, _| 0.0), // ymax
+        ];
+        self.nodes_xmin.iter().for_each(|n| {
+            self.essential.insert(*n, 0);
+        });
+        self.nodes_xmax.iter().for_each(|n| {
+            self.essential.insert(*n, 1);
+        });
+        self.nodes_ymin.iter().for_each(|n| {
+            self.essential.insert(*n, 2);
+        });
+        self.nodes_ymax.iter().for_each(|n| {
+            self.essential.insert(*n, 3);
+        });
+    }
+
+    /// Computes the coefficient matrix 'A' of A ⋅ X = B
+    fn coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
+        // count max number of non-zeros
+        let dim = self.nx * self.ny;
+        let np = self.essential.len();
+        let mut max_nnz_aa = np; // start with the diagonal 'ones'
+        let mut max_nnz_cc = 1; // +1 just for when there are no essential conditions
+        for m in 0..dim {
+            if !self.essential.contains_key(&m) {
+                self.loop_over_bandwidth(m, |n, _| {
+                    if !self.essential.contains_key(&n) {
+                        max_nnz_aa += 1;
+                    } else {
+                        max_nnz_cc += 1;
+                    }
+                });
+            }
+        }
+
+        // allocate matrices
+        let mut aa = CooMatrix::new(dim, dim, max_nnz_aa, Sym::No)?;
+        let mut cc = CooMatrix::new(dim, dim, max_nnz_cc, Sym::No)?;
+
+        // assemble
+        for m in 0..dim {
+            if !self.essential.contains_key(&m) {
+                self.loop_over_bandwidth(m, |n, b| {
+                    if !self.essential.contains_key(&n) {
+                        aa.put(m, n, self.molecule[b]).unwrap();
+                    } else {
+                        cc.put(m, n, self.molecule[b]).unwrap();
+                    }
+                });
+            } else {
+                aa.put(m, m, 1.0).unwrap();
+            }
+        }
+        Ok((aa, cc))
+    }
+
+    /// Executes a loop over one row of the coefficient matrix 'A' of A ⋅ X = B
+    fn loop_over_coef_mat_row(&self, m: usize, mut callback: impl FnMut(usize, f64)) {
+        self.loop_over_bandwidth(m, |n, b| {
+            (callback)(n, self.molecule[b]);
+        });
+    }
+
+    /// Executes a loop over the prescribed values
+    fn loop_over_prescribed_values(&self, mut callback: impl FnMut(usize, f64)) {
+        self.essential.iter().for_each(|(m, index)| {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            let x = self.xmin + (i as f64) * self.dx;
+            let y = self.ymin + (j as f64) * self.dy;
+            let value = (self.functions[*index])(x, y, 0.0);
+            (callback)(*m, value);
+        });
+    }
 
     /// Executes a loop over the grid points
-    ///
-    /// # Input
-    ///
-    /// * `callback` -- a function of `(m, x, y)` where `m` is the sequential point number,
-    ///   and `(x, y)` are the Cartesian coordinates of the grid point.
-    ///
-    /// Note that:
-    ///
-    /// ```text
-    /// m = i + j nx
-    /// i = m % nx
-    /// j = m / nx
-    /// ```
-    pub fn loop_over_grid_points<F>(&self, mut callback: F)
-    where
-        F: FnMut(usize, f64, f64),
-    {
+    fn loop_over_grid_points(&self, mut callback: impl FnMut(usize, f64, f64, f64)) {
         let dim = self.nx * self.ny;
         for m in 0..dim {
             let i = m % self.nx;
             let j = m / self.nx;
             let x = self.xmin + (i as f64) * self.dx;
             let y = self.ymin + (j as f64) * self.dy;
-            callback(m, x, y)
+            (callback)(m, x, y, 0.0)
         }
     }
 
     /// Returns the dimension of the linear system
-    ///
-    /// ```text
-    /// dim = nx × ny
-    /// ```
-    pub fn dim(&self) -> usize {
+    fn dim(&self) -> usize {
         self.nx * self.ny
     }
 
     /// Returns the number of prescribed equations
-    ///
-    /// The number of prescribed equations is equal to the number of nodes with essential conditions.
-    pub fn num_prescribed(&self) -> usize {
+    fn num_prescribed(&self) -> usize {
         self.essential.len()
     }
 }
@@ -503,6 +388,7 @@ impl<'a> FdmLaplacian2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::{FdmLaplacian2d, Side2d};
+    use crate::OperatorTrait;
     use russell_lab::{mat_approx_eq, Matrix};
 
     #[test]
@@ -543,10 +429,10 @@ mod tests {
         const RIG: f64 = 2.0;
         const BOT: f64 = 3.0;
         const TOP: f64 = 4.0;
-        let lef = |_, _| LEF;
-        let rig = |_, _| RIG;
-        let bot = |_, _| BOT;
-        let top = |_, _| TOP;
+        let lef = |_, _, _| LEF;
+        let rig = |_, _, _| RIG;
+        let bot = |_, _, _| BOT;
+        let top = |_, _, _| TOP;
         lap.set_essential_boundary_condition(Side2d::Xmin, lef); //  0*   4   8  12*
         lap.set_essential_boundary_condition(Side2d::Xmax, rig); //  3*   7  11  15
         lap.set_essential_boundary_condition(Side2d::Ymin, bot); //  0*   1   2   3
@@ -731,7 +617,7 @@ mod tests {
     #[test]
     fn coefficient_matrix_with_periodic_bcs_works() {
         let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
-        lap.set_periodic_boundary_condition(true, true);
+        lap.set_periodic_boundary_condition(true, true, false);
         let (aa, cc) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 12);
         assert_eq!(cc.get_info().2, 0); // nnz
@@ -760,7 +646,7 @@ mod tests {
         let lap = FdmLaplacian2d::new(7.0, 8.0, -1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
-        lap.loop_over_grid_points(|m, x, y| {
+        lap.loop_over_grid_points(|m, x, y, _| {
             let i = m % nx;
             let j = m / nx;
             xx.set(j, i, x);

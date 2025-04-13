@@ -10,10 +10,12 @@ pub type StrError = &'static str;
 mod enums;
 mod fdm_laplacian_1d;
 mod fdm_laplacian_2d;
+mod operator_trait;
 
 pub use enums::*;
 pub use fdm_laplacian_1d::*;
 pub use fdm_laplacian_2d::*;
+pub use operator_trait::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

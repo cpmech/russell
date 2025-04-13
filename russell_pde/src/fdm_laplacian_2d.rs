@@ -547,10 +547,10 @@ mod tests {
         let rig = |_, _| RIG;
         let bot = |_, _| BOT;
         let top = |_, _| TOP;
-        lap.set_essential_boundary_condition(Side2d::Xmin, lef); //    0*   4   8  12*
-        lap.set_essential_boundary_condition(Side2d::Xmax, rig); //   3*   7  11  15
+        lap.set_essential_boundary_condition(Side2d::Xmin, lef); //  0*   4   8  12*
+        lap.set_essential_boundary_condition(Side2d::Xmax, rig); //  3*   7  11  15
         lap.set_essential_boundary_condition(Side2d::Ymin, bot); //  0*   1   2   3
-        lap.set_essential_boundary_condition(Side2d::Ymax, top); //    12*  13  14  15*  (corner*)
+        lap.set_essential_boundary_condition(Side2d::Ymax, top); // 12*  13  14  15*  (corner*)
         assert_eq!(lap.nodes_xmin, &[0, 4, 8, 12]);
         assert_eq!(lap.nodes_xmax, &[3, 7, 11, 15]);
         assert_eq!(lap.nodes_ymin, &[0, 1, 2, 3]);

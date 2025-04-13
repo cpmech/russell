@@ -19,7 +19,7 @@ with_mumps = []
 [dependencies]
 num-traits = "0.2"
 russell_lab = { path = "../russell_lab", version = "1.10.0" }
-structopt = "0.3" 
+structopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

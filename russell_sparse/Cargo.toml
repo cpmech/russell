@@ -27,4 +27,4 @@ serde_json = "1.0"
 serial_test = "3.2"  # Latest stable is 3.2.0
 
 [build-dependencies]
-cc = "1.0"  # Latest stable is 1.0.90
+cc = "1.0"

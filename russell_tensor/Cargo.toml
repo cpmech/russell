@@ -15,8 +15,8 @@ keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "1.0.0" }
-serde = { version = "1.0", features = ["derive"] }
+russell_lab = { path = "../russell_lab", version = "1.10.0" }
+serde = { version = "1.0.197", features = ["derive"] }
 
 [dev-dependencies]
-serde_json = "1.0"
+serde_json = "1.0.114"

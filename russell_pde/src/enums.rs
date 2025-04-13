@@ -1,9 +1,7 @@
 /// Specifies the (boundary) side of a rectangle
-pub enum Side {
+pub enum Side2d {
     Xmin,
     Xmax,
     Ymin,
     Ymax,
-    Zmin,
-    Zmax,
 }

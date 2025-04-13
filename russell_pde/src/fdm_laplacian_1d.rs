@@ -148,12 +148,18 @@ impl<'a> FdmLaplacian1d<'a> {
 
 impl<'a> OperatorTrait<'a> for FdmLaplacian1d<'a> {
     /// Sets periodic boundary condition
-    fn set_periodic_boundary_condition(&mut self, along_x: bool, _along_y: bool, _along_z: bool) {
+    fn set_periodic_boundary_condition(
+        &mut self,
+        along_x: bool,
+        _along_y: bool,
+        _along_z: bool,
+    ) -> Result<(), StrError> {
         if along_x {
             self.periodic_along_x = true;
             self.essential.remove(&self.node_xmin);
             self.essential.remove(&self.node_xmax);
         }
+        Ok(())
     }
 
     /// Sets essential (Dirichlet) boundary condition
@@ -399,7 +405,7 @@ mod tests {
     #[test]
     fn coefficient_matrix_with_periodic_bcs_works() {
         let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5).unwrap();
-        lap.set_periodic_boundary_condition(true, false, false);
+        lap.set_periodic_boundary_condition(true, false, false).unwrap();
         let (aa, cc) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
         assert_eq!(cc.get_info().2, 0); // nnz

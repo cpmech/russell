@@ -221,7 +221,12 @@ impl<'a> FdmLaplacian2d<'a> {
 
 impl<'a> OperatorTrait<'a> for FdmLaplacian2d<'a> {
     /// Sets periodic boundary condition
-    fn set_periodic_boundary_condition(&mut self, along_x: bool, along_y: bool, _along_z: bool) {
+    fn set_periodic_boundary_condition(
+        &mut self,
+        along_x: bool,
+        along_y: bool,
+        _along_z: bool,
+    ) -> Result<(), StrError> {
         if along_x {
             self.periodic_along_x = true;
             self.nodes_xmin.iter().for_each(|n| {
@@ -240,6 +245,7 @@ impl<'a> OperatorTrait<'a> for FdmLaplacian2d<'a> {
                 self.essential.remove(n);
             });
         }
+        Ok(())
     }
 
     /// Sets essential (Dirichlet) boundary condition
@@ -619,7 +625,7 @@ mod tests {
     #[test]
     fn coefficient_matrix_with_periodic_bcs_works() {
         let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
-        lap.set_periodic_boundary_condition(true, true, false);
+        lap.set_periodic_boundary_condition(true, true, false).unwrap();
         let (aa, cc) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 12);
         assert_eq!(cc.get_info().2, 0); // nnz

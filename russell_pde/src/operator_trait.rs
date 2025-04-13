@@ -6,7 +6,7 @@ pub trait OperatorTrait<'a>: Send {
     /// Sets periodic boundary condition
     ///
     /// **Note:** Any essential boundary condition on the corresponding side will be removed.
-    fn set_periodic_boundary_condition(&mut self, along_x: bool, along_y: bool, along_z: bool);
+    fn set_periodic_boundary_condition(&mut self, along_x: bool, along_y: bool, along_z: bool) -> Result<(), StrError>;
 
     /// Sets essential (Dirichlet) boundary condition
     ///

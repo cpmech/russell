@@ -318,7 +318,7 @@ impl<'a> FdmLaplacian2d<'a> {
     ///
     /// # Warnings
     ///
-    /// **Important:** This function must be called after [PdeDiscreteLaplacian2d::set_essential_boundary_condition]
+    /// **Important:** This function must be called after setting the essential boundary conditions.
     ///
     /// # Todo
     ///

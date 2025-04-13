@@ -20,9 +20,9 @@ with_mumps = ["russell_sparse/with_mumps"]
 russell_lab = { path = "../russell_lab", version = "1.10.0" }
 russell_sparse = { path = "../russell_sparse", version = "1.10.0" }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0" 
+serde_json = "1.0"
 structopt = "0.3"
 
 [dev-dependencies]
-plotpy = "1.13"  # Latest stable is 1.13.0
-rayon = "1.10"  # Latest stable is 1.10.0
+plotpy = "1.13"
+rayon = "1.10"

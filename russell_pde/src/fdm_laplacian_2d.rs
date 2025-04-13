@@ -521,6 +521,22 @@ mod tests {
     }
 
     #[test]
+    fn new_fails_on_invalid_parameters() {
+        assert_eq!(
+            FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1, 2).err(),
+            Some("nx must be ≥ 2")
+        );
+        assert_eq!(
+            FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 2, 1).err(),
+            Some("ny must be ≥ 2")
+        );
+        assert_eq!(
+            FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1, 1).err(),
+            Some("nx must be ≥ 2")
+        );
+    }
+
+    #[test]
     fn set_essential_boundary_condition_works() {
         let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         const LEF: f64 = 1.0;

@@ -21,7 +21,9 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This library implements essential tools to solve partial differential equations (PDEs). It does not implement full-fledge PDE solvers for general problems and, hence, this library is quite limited.
 
-Currently, a simple finite differences Lapoperator
+A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlinear` because they employ PDE problems as testing platforms.
+
+Currently, simple 1D and 2D finite differences operators are implemented.
 
 ### Documentation
 

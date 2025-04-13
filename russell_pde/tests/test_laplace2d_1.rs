@@ -46,33 +46,33 @@ fn test_laplace2d_1() {
 
     // allocate the left- and right-hand side vectors
     let dim = fdm.dim();
-    let mut x = Vector::new(dim);
-    let mut b = Vector::new(dim);
+    let mut phi = Vector::new(dim);
+    let mut rhs = Vector::new(dim);
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        x[i] = value; // xp := xp
+        phi[i] = value; // xp := xp
     });
 
     // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut b, -1.0, &x).unwrap(); // bu := -Aup⋅xp
+    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // bu := -Aup⋅xp
 
     // if there were natural (Neumann) boundary conditions,
     // we could set `bu := natural()` here
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        b[i] = value; // bp := xp
+        rhs[i] = value; // bp := xp
     });
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
     solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut x, &b, false).unwrap();
+    solver.actual.solve(&mut phi, &rhs, false).unwrap();
 
     // check
     let x_correct = [
         1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.5, 2.0, 1.0, 1.5, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0,
     ];
-    vec_approx_eq(&x, &x_correct, 1e-15);
+    vec_approx_eq(&phi, &x_correct, 1e-15);
 }

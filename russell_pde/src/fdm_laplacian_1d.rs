@@ -349,12 +349,12 @@ impl<'a> FdmLaplacian1d<'a> {
     /// ```
     pub fn loop_over_grid_points<F>(&self, mut callback: F)
     where
-        F: FnMut(usize, f64, f64),
+        F: FnMut(usize, f64),
     {
         let dim = self.nx;
         for m in 0..dim {
             let x = self.xmin + (m as f64) * self.dx;
-            callback(m, x, 0.0)
+            callback(m, x)
         }
     }
 
@@ -529,7 +529,7 @@ mod tests {
     fn get_grid_coordinates_works() {
         let lap = FdmLaplacian1d::new(7.0, -1.0, 1.0, 3).unwrap();
         let mut xx = Vector::new(3);
-        lap.loop_over_grid_points(|m, x, _| {
+        lap.loop_over_grid_points(|m, x| {
             xx[m] = x;
         });
         assert_eq!(

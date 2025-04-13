@@ -1,4 +1,4 @@
-use super::Side2d;
+use super::Side;
 use crate::StrError;
 use russell_sparse::CooMatrix;
 
@@ -11,7 +11,7 @@ pub trait OperatorTrait<'a>: Send {
     /// Sets essential (Dirichlet) boundary condition
     ///
     /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
-    fn set_essential_boundary_condition(&mut self, side: Side2d, f: impl Fn(f64, f64, f64) -> f64 + Send + Sync + 'a);
+    fn set_essential_boundary_condition(&mut self, side: Side, f: impl Fn(f64, f64, f64) -> f64 + Send + Sync + 'a);
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
     ///

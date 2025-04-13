@@ -1,4 +1,4 @@
-use super::{OperatorTrait, Side2d};
+use super::{OperatorTrait, Side};
 use crate::StrError;
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
@@ -243,36 +243,38 @@ impl<'a> OperatorTrait<'a> for FdmLaplacian2d<'a> {
     }
 
     /// Sets essential (Dirichlet) boundary condition
-    fn set_essential_boundary_condition(&mut self, side: Side2d, f: impl Fn(f64, f64, f64) -> f64 + Send + Sync + 'a) {
+    fn set_essential_boundary_condition(&mut self, side: Side, f: impl Fn(f64, f64, f64) -> f64 + Send + Sync + 'a) {
         match side {
-            Side2d::Xmin => {
+            Side::Xmin => {
                 self.periodic_along_x = false;
                 self.functions[0] = Arc::new(f);
                 self.nodes_xmin.iter().for_each(|n| {
                     self.essential.insert(*n, 0);
                 });
             }
-            Side2d::Xmax => {
+            Side::Xmax => {
                 self.periodic_along_x = false;
                 self.functions[1] = Arc::new(f);
                 self.nodes_xmax.iter().for_each(|n| {
                     self.essential.insert(*n, 1);
                 });
             }
-            Side2d::Ymin => {
+            Side::Ymin => {
                 self.periodic_along_y = false;
                 self.functions[2] = Arc::new(f);
                 self.nodes_ymin.iter().for_each(|n| {
                     self.essential.insert(*n, 2);
                 });
             }
-            Side2d::Ymax => {
+            Side::Ymax => {
                 self.periodic_along_y = false;
                 self.functions[3] = Arc::new(f);
                 self.nodes_ymax.iter().for_each(|n| {
                     self.essential.insert(*n, 3);
                 });
             }
+            Side::Zmin => (),
+            Side::Zmax => (),
         };
     }
 
@@ -387,7 +389,7 @@ impl<'a> OperatorTrait<'a> for FdmLaplacian2d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FdmLaplacian2d, Side2d};
+    use super::{FdmLaplacian2d, Side};
     use crate::OperatorTrait;
     use russell_lab::{mat_approx_eq, Matrix};
 
@@ -433,10 +435,10 @@ mod tests {
         let rig = |_, _, _| RIG;
         let bot = |_, _, _| BOT;
         let top = |_, _, _| TOP;
-        lap.set_essential_boundary_condition(Side2d::Xmin, lef); //  0*   4   8  12*
-        lap.set_essential_boundary_condition(Side2d::Xmax, rig); //  3*   7  11  15
-        lap.set_essential_boundary_condition(Side2d::Ymin, bot); //  0*   1   2   3
-        lap.set_essential_boundary_condition(Side2d::Ymax, top); // 12*  13  14  15*  (corner*)
+        lap.set_essential_boundary_condition(Side::Xmin, lef); //  0*   4   8  12*
+        lap.set_essential_boundary_condition(Side::Xmax, rig); //  3*   7  11  15
+        lap.set_essential_boundary_condition(Side::Ymin, bot); //  0*   1   2   3
+        lap.set_essential_boundary_condition(Side::Ymax, top); // 12*  13  14  15*  (corner*)
         assert_eq!(lap.nodes_xmin, &[0, 4, 8, 12]);
         assert_eq!(lap.nodes_xmax, &[3, 7, 11, 15]);
         assert_eq!(lap.nodes_ymin, &[0, 1, 2, 3]);

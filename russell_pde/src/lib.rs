@@ -8,9 +8,11 @@
 pub type StrError = &'static str;
 
 mod enums;
+mod fdm_laplacian_1d;
 mod fdm_laplacian_2d;
 
 pub use enums::*;
+pub use fdm_laplacian_1d::*;
 pub use fdm_laplacian_2d::*;
 
 // run code from README file

@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::{StrError, Vector};
-use russell_pde::{FdmLaplacian2d, Side2d};
+use russell_pde::{FdmLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = true;
@@ -27,10 +27,10 @@ fn test_fdm_laplacian_2d_problem_1() -> Result<(), StrError> {
     let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
     // set essential boundary conditions
-    fdm.set_essential_boundary_condition(Side2d::Xmin, |_, _| 50.0);
-    fdm.set_essential_boundary_condition(Side2d::Xmax, |_, _| 0.0);
-    fdm.set_essential_boundary_condition(Side2d::Ymin, |_, _| 0.0);
-    fdm.set_essential_boundary_condition(Side2d::Ymax, |_, _| 50.0);
+    fdm.set_essential_boundary_condition(Side::Xmin, |_, _| 50.0);
+    fdm.set_essential_boundary_condition(Side::Xmax, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Ymax, |_, _| 50.0);
 
     // compute the augmented coefficient matrix and the correction matrix
     let (aa, cc) = fdm.coefficient_matrix().unwrap();

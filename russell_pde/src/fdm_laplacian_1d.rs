@@ -1,4 +1,4 @@
-use super::Side2d;
+use super::Side;
 use crate::StrError;
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
@@ -116,20 +116,20 @@ impl<'a> FdmLaplacian1d<'a> {
     /// Sets essential (Dirichlet) boundary condition
     ///
     /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
-    pub fn set_essential_boundary_condition(&mut self, side: Side2d, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
+    pub fn set_essential_boundary_condition(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
         match side {
-            Side2d::Xmin => {
+            Side::Xmin => {
                 self.periodic_along_x = false;
                 self.functions[0] = Arc::new(f);
                 self.essential.insert(self.node_xmin, 0);
             }
-            Side2d::Xmax => {
+            Side::Xmax => {
                 self.periodic_along_x = false;
                 self.functions[1] = Arc::new(f);
                 self.essential.insert(self.node_xmax, 1);
             }
-            Side2d::Ymin => (),
-            Side2d::Ymax => (),
+            Side::Ymin => (),
+            Side::Ymax => (),
         };
     }
 
@@ -379,7 +379,7 @@ impl<'a> FdmLaplacian1d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FdmLaplacian1d, Side2d};
+    use super::{FdmLaplacian1d, Side};
     use russell_lab::{mat_approx_eq, Matrix, Vector};
 
     #[test]
@@ -404,8 +404,8 @@ mod tests {
         const RIG: f64 = 2.0;
         let lef = |_, _| LEF;
         let rig = |_, _| RIG;
-        lap.set_essential_boundary_condition(Side2d::Xmin, lef);
-        lap.set_essential_boundary_condition(Side2d::Xmax, rig);
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
         assert_eq!(lap.node_xmin, 0);
         assert_eq!(lap.node_xmax, 3);
         let mut res = Vec::new();

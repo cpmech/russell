@@ -20,6 +20,8 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
+🚧🚧🚧 WORK IN PROGRESS 🚧🚧🚧
+
 This library implements solvers for nonlinear systems of equations using *Numerical Continuation*, in particular, Predictor-Corrector algorithms based on the Euler-Newton(-Raphson) method (See References #1 and #2).
 
 ### Documentation

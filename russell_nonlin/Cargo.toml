@@ -1,6 +1,6 @@
 [package]
 name = "russell_nonlin"
-version = "1.10.0"
+version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "Numerical continuation methods to solve nonlinear systems of equations"

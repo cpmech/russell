@@ -10,8 +10,10 @@ use std::sync::Arc;
 ///
 /// ```text
 ///           ∂²ϕ
-/// L{ϕ} = kx ———
+/// L{ϕ} = kx ——— + [cf ϕ]
 ///           ∂x²
+///
+/// The term in brackets is optional.
 /// ```
 ///
 /// we substitute the partial derivatives using central FDM over a one-dimensional grid.
@@ -75,7 +77,7 @@ impl<'a> FdmLaplacian1d<'a> {
     /// * `xmin` -- min x coordinate
     /// * `xmax` -- max x coordinate
     /// * `nx` -- number of points along x (≥ 2)
-    pub fn new(kx: f64, xmin: f64, xmax: f64, nx: usize) -> Result<Self, StrError> {
+    pub fn new(kx: f64, xmin: f64, xmax: f64, nx: usize, cf: Option<f64>) -> Result<Self, StrError> {
         // check
         if nx < 2 {
             return Err("nx must be ≥ 2");
@@ -84,7 +86,10 @@ impl<'a> FdmLaplacian1d<'a> {
         // auxiliary data
         let dx = (xmax - xmin) / ((nx - 1) as f64);
         let dx2 = dx * dx;
-        let alpha = -2.0 * kx / dx2;
+        let alpha = match cf {
+            Some(value) => -2.0 * kx / dx2 + value,
+            None => -2.0 * kx / dx2,
+        };
         let beta = kx / dx2;
 
         // allocate instance
@@ -384,7 +389,7 @@ mod tests {
 
     #[test]
     fn new_works() {
-        let lap = FdmLaplacian1d::new(7.0, -1.0, 1.0, 2).unwrap();
+        let lap = FdmLaplacian1d::new(7.0, -1.0, 1.0, 2, None).unwrap();
         assert_eq!(lap.xmin, -1.0);
         assert_eq!(lap.nx, 2);
         assert_eq!(lap.dx, 2.0);
@@ -394,12 +399,15 @@ mod tests {
 
     #[test]
     fn new_fails_on_invalid_parameters() {
-        assert_eq!(FdmLaplacian1d::new(1.0, 0.0, 1.0, 1).err(), Some("nx must be ≥ 2"));
+        assert_eq!(
+            FdmLaplacian1d::new(1.0, 0.0, 1.0, 1, None).err(),
+            Some("nx must be ≥ 2")
+        );
     }
 
     #[test]
     fn set_essential_boundary_condition_works() {
-        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4).unwrap();
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4, None).unwrap();
         const LEF: f64 = 1.0;
         const RIG: f64 = 2.0;
         let lef = |_, _| LEF;
@@ -416,7 +424,7 @@ mod tests {
 
     #[test]
     fn set_homogeneous_boundary_condition_works() {
-        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4).unwrap();
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4, None).unwrap();
         lap.set_homogeneous_boundary_conditions();
         assert_eq!(lap.node_xmin, 0);
         assert_eq!(lap.node_xmax, 3);
@@ -428,7 +436,7 @@ mod tests {
 
     #[test]
     fn coefficient_matrix_works() {
-        let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5).unwrap();
+        let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
         let (aa, _) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
         assert_eq!(lap.num_prescribed(), 0);
@@ -445,6 +453,24 @@ mod tests {
     }
 
     #[test]
+    fn coefficient_matrix_works_with_cf() {
+        let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, Some(-1.0)).unwrap();
+        let (aa, _) = lap.coefficient_matrix().unwrap();
+        assert_eq!(lap.dim(), 5);
+        assert_eq!(lap.num_prescribed(), 0);
+        let ___ = 0.0;
+        #[rustfmt::skip]
+        let aa_correct = Matrix::from(&[
+            [-3.0,  2.0,  ___,  ___,  ___],
+            [ 1.0, -3.0,  1.0,  ___,  ___],
+            [ ___,  1.0, -3.0,  1.0,  ___],
+            [ ___,  ___,  1.0, -3.0,  1.0],
+            [ ___,  ___,  ___,  2.0, -3.0],
+        ]);
+        mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+    }
+
+    #[test]
     fn loop_over_molecule_works() {
         // ┌                 ┐
         // │ -2  2  .  .  .  │  0
@@ -454,7 +480,7 @@ mod tests {
         // │  .  .  .  2 -2  │  4
         // └                 ┘
         //    0  1  2  3  4
-        let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5).unwrap();
+        let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
         let mut row_0 = Vec::new();
         let mut row_2 = Vec::new();
         let mut row_4 = Vec::new();
@@ -478,7 +504,7 @@ mod tests {
         // └                 ┘
         //    0  1  2  3  4
         //    p           p
-        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5).unwrap();
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
         lap.set_homogeneous_boundary_conditions();
         let (aa, cc) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
@@ -508,7 +534,7 @@ mod tests {
 
     #[test]
     fn coefficient_matrix_with_periodic_bcs_works() {
-        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5).unwrap();
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
         lap.set_periodic_boundary_condition();
         let (aa, cc) = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
@@ -527,7 +553,7 @@ mod tests {
 
     #[test]
     fn get_grid_coordinates_works() {
-        let lap = FdmLaplacian1d::new(7.0, -1.0, 1.0, 3).unwrap();
+        let lap = FdmLaplacian1d::new(7.0, -1.0, 1.0, 3, None).unwrap();
         let mut xx = Vector::new(3);
         lap.loop_over_grid_points(|m, x| {
             xx[m] = x;

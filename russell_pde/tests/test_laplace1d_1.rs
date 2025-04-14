@@ -13,7 +13,7 @@ fn test_laplace1d_1() {
     // on a unit interval with homogeneous boundary conditions
 
     // allocate the Laplacian operator
-    let mut fdm = FdmLaplacian1d::new(-1.0, 0.0, 1.0, 5).unwrap();
+    let mut fdm = FdmLaplacian1d::new(-1.0, 0.0, 1.0, 5, None).unwrap();
 
     // set essential boundary conditions
     fdm.set_homogeneous_boundary_conditions();

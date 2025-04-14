@@ -256,77 +256,74 @@ impl<'a> FdmLaplacian2d<'a> {
         });
     }
 
-    /// Computes the coefficient matrix 'A' of A ⋅ X = B
+    /// Computes the coefficient matrix
     ///
-    /// **Note:** Consider the following partitioning:
+    /// Consider the following partitioning:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌    ┐
-    /// │ Auu  Aup │ │ Xu │   │ Bu │
+    /// │ K11  K12 │ │ u1 │   │ f1 │
     /// │          │ │    │ = │    │
-    /// │ Apu  App │ │ Xp │   │ Bp │
+    /// │ K21  K22 │ │ u2 │   │ f2 │
     /// └          ┘ └    ┘   └    ┘
     /// ```
     ///
-    /// where `u` means *unknown* and `p` means *prescribed*. Thus, `Xu` is the sub-vector with
-    /// unknown essential values and `Xp` is the sub-vector with prescribed essential values.
+    /// where `1` means *unknown* and `2` means *prescribed*. Thus, `u1` is the sub-vector with
+    /// unknown essential values and `u2` is the sub-vector with prescribed essential values.
     ///
     /// Thus:
     ///
     /// ```text
-    /// Auu ⋅ Xu  +  Aup ⋅ Xp  =  Bu
+    /// K11 ⋅ u1  +  K12 ⋅ u2  =  f1
+    ///
+    /// and
+    ///
+    /// u1 = K11⁻¹ ⋅ (f1 - K12 ⋅ u2)
     /// ```
     ///
-    /// To handle the prescribed essential values, we modify the system as follows:
+    /// Without changing the dimension of the original problem, we modify the
+    /// linear system to:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌             ┐
-    /// │ Auu   0  │ │ Xu │   │ Bu - Aup⋅Xp │
+    /// │ K11   0  │ │ u1 │   │ f1 - K12⋅u2 │
     /// │          │ │    │ = │             │
-    /// │  0    1  │ │ Xp │   │     Xp      │
+    /// │  0    1  │ │ u2 │   │     u2      │
     /// └          ┘ └    ┘   └             ┘
-    /// A := augmented(Auu)
+    ///
+    /// or   A ⋅ u = f   where   A := augmented(K11)
     /// ```
     ///
-    /// Thus:
-    ///
-    /// ```text
-    /// Xu = Auu⁻¹ ⋅ (Bu - Aup⋅Xp)
-    /// Xp = Xp
-    /// ```
-    ///
-    /// Furthermore, we return an augmented 'Aup' matrix (called 'C', correction matrix), such that:
+    /// This function also returns the **augmented** K12 matrix (called correction matrix),
+    /// which allows the fast computation of the right-hand side vector. For instance:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌        ┐
-    /// │  0   Aup │ │ .. │   │ Aup⋅Xp │
+    /// │  0   K12 │ │ .. │   │ K12⋅u2 │
     /// │          │ │    │ = │        │
-    /// │  0    0  │ │ Xp │   │   0    │
+    /// │  0    0  │ │ u2 │   │   0    │
     /// └          ┘ └    ┘   └        ┘
-    /// C := augmented(Aup)
+    ///
+    /// where  C := augmented(K12)
     /// ```
     ///
     /// Note that there is no performance loss in using the augmented matrix because the sparse
     /// matrix-vector multiplication will execute the same number of computations with a reduced matrix.
-    /// Also, the CooMatrix will only hold the non-zero entries, thus, no extra memory is wasted.
+    /// Also, the CooMatrix will only hold the non-zero entries, thus, no extra memory is needed.
     ///
     /// # Output
     ///
     /// Returns `(A, C)` where:
     ///
-    /// * `A` -- is the augmented 'Auu' matrix (dim × dim) with ones placed on the diagonal entries
+    /// * `A` -- is the augmented 'K11' matrix (dim × dim) with ones placed on the diagonal entries
     ///  corresponding to the prescribed essential values. Also, the entries corresponding to the
     ///  essential values are zeroed.
-    /// * `C` -- is the augmented 'Aup' (correction) matrix (dim × dim) with only the 'unknown rows'
+    /// * `C` -- is the augmented 'K12' (correction) matrix (dim × dim) with only the 'unknown rows'
     ///   and the 'prescribed' columns.
     ///
     /// # Warnings
     ///
     /// **Important:** This function must be called after setting the essential boundary conditions.
-    ///
-    /// # Todo
-    ///
-    /// * Implement the symmetric version for solvers that can handle a triangular matrix storage.
     pub fn coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
         // count max number of non-zeros
         let dim = self.nx * self.ny;

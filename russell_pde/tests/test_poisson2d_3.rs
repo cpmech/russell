@@ -55,7 +55,7 @@ fn test_poisson2d_3() {
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // bp := xp
+        rhs[i] = value; // f2 := 0.0
     });
 
     // solve the linear system

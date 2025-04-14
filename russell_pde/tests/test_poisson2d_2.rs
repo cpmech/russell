@@ -37,20 +37,6 @@ fn test_poisson2d_2() {
     fdm.set_essential_boundary_condition(Side::Ymax, |x, _| f64::sin(PI * x));
 
     // compute the augmented coefficient matrix and the correction matrix
-    //
-    // ┌          ┐ ┌    ┐   ┌                 ┐
-    // │ Auu   0  │ │ ϕu │   │ source - Aup⋅ϕp │
-    // │          │ │    │ = │                 │
-    // │  0    1  │ │ ϕp │   │        ϕp       │
-    // └          ┘ └    ┘   └                 ┘
-    // A := augmented(Auu)
-    //
-    // ┌          ┐ ┌    ┐   ┌        ┐
-    // │  0   Aup │ │ .. │   │ Aup⋅ϕp │
-    // │          │ │    │ = │        │
-    // │  0    0  │ │ ϕp │   │   0    │
-    // └          ┘ └    ┘   └        ┘
-    // C := augmented(Aup)
     let (aa, cc) = fdm.coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
@@ -60,20 +46,20 @@ fn test_poisson2d_2() {
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        phi[i] = value; // ϕp := ϕp
+        phi[i] = value; // u2 := ebc
     });
 
     // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // bu := -Aup⋅ϕp
+    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // f1 := -K12⋅u2
 
     // set the right-hand side vector with the source term (note plus-equal)
     fdm.loop_over_grid_points(|i, x, y| {
-        rhs[i] += -PI * PI * y * f64::sin(PI * x); // bu += source
+        rhs[i] += -PI * PI * y * f64::sin(PI * x); // f1 += source
     });
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // bp := ϕp
+        rhs[i] = value; // f2 := ebc
     });
 
     // solve the linear system

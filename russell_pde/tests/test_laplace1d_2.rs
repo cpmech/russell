@@ -68,7 +68,6 @@ fn test_laplace1d_2() {
     cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // f1 := -K12⋅u2
 
     // set the right-hand side vector with the convection term
-    // (note that we have to use negative β⋅ϕ∞)
     fdm.loop_over_grid_points(|i, _| {
         rhs[i] += phi_inf * beta;
     });

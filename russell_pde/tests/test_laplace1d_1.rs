@@ -6,13 +6,14 @@ use russell_sparse::{Genie, LinSolver};
 fn test_laplace1d_1() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
-    //    ∂²ϕ
-    //  - ——— = x
-    //    ∂x²
+    //   ∂²ϕ
+    // - ——— = x
+    //   ∂x²
     //
     // on a unit interval with homogeneous boundary conditions
 
     // allocate the Laplacian operator
+    // (note that we have to use negative kx)
     let mut fdm = FdmLaplacian1d::new(-1.0, 0.0, 1.0, 5, None).unwrap();
 
     // set essential boundary conditions
@@ -39,7 +40,7 @@ fn test_laplace1d_1() {
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // bp := ϕp
+        rhs[i] = value; // f2 := 0
     });
 
     // solve the linear system

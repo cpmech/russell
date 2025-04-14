@@ -88,7 +88,9 @@ pub struct FdmLaplacian2d<'a> {
     /// These coefficients are applied over the "bandwidth" of the coefficient matrix
     molecule: Vec<f64>,
 
-    /// Holds the functions to compute essential boundary conditions
+    /// Holds the functions to compute essential boundary conditions (ebc)
+    ///
+    /// The function is `f(x, y) -> ebc`
     ///
     /// (4) → (xmin, xmax, ymin, ymax); corresponding to the 4 sides
     functions: Vec<Arc<dyn Fn(f64, f64) -> f64 + Send + Sync + 'a>>,
@@ -190,6 +192,8 @@ impl<'a> FdmLaplacian2d<'a> {
     }
 
     /// Sets essential (Dirichlet) boundary condition
+    ///
+    /// The function is `f(x, y) -> ebc`
     ///
     /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
     pub fn set_essential_boundary_condition(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {

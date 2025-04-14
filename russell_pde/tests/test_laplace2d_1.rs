@@ -28,20 +28,6 @@ fn test_laplace2d_1() {
     fdm.set_essential_boundary_condition(Side::Ymax, |_, _| 2.0);
 
     // compute the augmented coefficient matrix and the correction matrix
-    //
-    // ┌          ┐ ┌    ┐   ┌             ┐
-    // │ Auu   0  │ │ xu │   │ bu - Aup⋅xp │
-    // │          │ │    │ = │             │
-    // │  0    1  │ │ xp │   │     xp      │
-    // └          ┘ └    ┘   └             ┘
-    // A := augmented(Auu)
-    //
-    // ┌          ┐ ┌    ┐   ┌        ┐
-    // │  0   Aup │ │ .. │   │ Aup⋅xp │
-    // │          │ │    │ = │        │
-    // │  0    0  │ │ xp │   │   0    │
-    // └          ┘ └    ┘   └        ┘
-    // C := augmented(Aup)
     let (aa, cc) = fdm.coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
@@ -51,18 +37,15 @@ fn test_laplace2d_1() {
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        phi[i] = value; // xp := xp
+        phi[i] = value;
     });
 
     // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // bu := -Aup⋅xp
-
-    // if there were natural (Neumann) boundary conditions,
-    // we could set `bu := natural()` here
+    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // f1 := -K12⋅u2
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // bp := xp
+        rhs[i] = value; // f2 := ebc
     });
 
     // solve the linear system

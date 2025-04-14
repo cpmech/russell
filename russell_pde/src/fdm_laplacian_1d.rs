@@ -191,7 +191,9 @@ impl<'a> FdmLaplacian1d<'a> {
     /// │  0    1  │ │ u2 │   │     u2      │
     /// └          ┘ └    ┘   └             ┘
     ///
-    /// or   A ⋅ u = f   where   A := augmented(K11)
+    /// or
+    ///
+    /// A ⋅ u = f   where   A := augmented(K11)
     /// ```
     ///
     /// This function also returns the **augmented** K12 matrix (called correction matrix),
@@ -204,7 +206,9 @@ impl<'a> FdmLaplacian1d<'a> {
     /// │  0    0  │ │ u2 │   │   0    │
     /// └          ┘ └    ┘   └        ┘
     ///
-    /// where  C := augmented(K12)
+    /// or
+    ///
+    /// C ⋅ u = f   where   C := augmented(K12)
     /// ```
     ///
     /// Note that there is no performance loss in using the augmented matrix because the sparse

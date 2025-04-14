@@ -58,7 +58,7 @@ use std::sync::Arc;
 ///
 /// # Remarks
 ///
-/// * The operator is built with a five-point stencil.
+/// * The operator is built with a three-point stencil.
 /// * The boundary conditions may be Neumann with zero-flux or periodic.
 /// * By default (Neumann BC), the boundary nodes are 'mirrored' yielding a no-flux barrier.
 pub struct FdmLaplacian2d<'a> {

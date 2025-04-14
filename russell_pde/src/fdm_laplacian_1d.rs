@@ -368,6 +368,11 @@ impl<'a> FdmLaplacian1d<'a> {
         }
     }
 
+    /// Returns the grid spacing
+    pub fn grid_spacing(&self) -> f64 {
+        self.dx
+    }
+
     /// Returns the dimension of the linear system
     ///
     /// ```text

@@ -57,10 +57,12 @@ pub struct FdmLaplacian1d<'a> {
     /// These coefficients are applied over the "bandwidth" of the coefficient matrix
     molecule: Vec<f64>,
 
-    /// Holds the functions to compute essential boundary conditions
+    /// Holds the functions to compute essential boundary conditions (ebc)
+    ///
+    /// The function is `f(x) -> ebc`
     ///
     /// (2) → (xmin, xmax); corresponding to the 2 "sides"
-    functions: Vec<Arc<dyn Fn(f64, f64) -> f64 + Send + Sync + 'a>>,
+    functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
     /// Collects the essential boundary conditions
     ///
@@ -102,8 +104,8 @@ impl<'a> FdmLaplacian1d<'a> {
             periodic_along_x: false,
             molecule: vec![alpha, beta, beta],
             functions: vec![
-                Arc::new(|_, _| 0.0), // xmin
-                Arc::new(|_, _| 0.0), // xmax
+                Arc::new(|_| 0.0), // xmin
+                Arc::new(|_| 0.0), // xmax
             ],
             essential: HashMap::new(),
         })
@@ -118,10 +120,12 @@ impl<'a> FdmLaplacian1d<'a> {
         self.essential.remove(&self.node_xmax);
     }
 
-    /// Sets essential (Dirichlet) boundary condition
+    /// Sets essential (Dirichlet) boundary condition (ebc)
+    ///
+    /// The function is `f(x) -> ebc`
     ///
     /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
-    pub fn set_essential_boundary_condition(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
+    pub fn set_essential_boundary_condition(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
         match side {
             Side::Xmin => {
                 self.periodic_along_x = false;
@@ -145,8 +149,8 @@ impl<'a> FdmLaplacian1d<'a> {
         self.periodic_along_x = false;
         self.essential.clear();
         self.functions = vec![
-            Arc::new(|_, _| 0.0), // xmin
-            Arc::new(|_, _| 0.0), // xmax
+            Arc::new(|_| 0.0), // xmin
+            Arc::new(|_| 0.0), // xmax
         ];
         self.essential.insert(self.node_xmin, 0);
         self.essential.insert(self.node_xmax, 0);
@@ -292,7 +296,7 @@ impl<'a> FdmLaplacian1d<'a> {
     {
         self.essential.iter().for_each(|(m, index)| {
             let x = self.xmin + (*m as f64) * self.dx;
-            let value = (self.functions[*index])(x, 0.0);
+            let value = (self.functions[*index])(x);
             callback(*m, value);
         });
     }
@@ -410,8 +414,8 @@ mod tests {
         let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4, None).unwrap();
         const LEF: f64 = 1.0;
         const RIG: f64 = 2.0;
-        let lef = |_, _| LEF;
-        let rig = |_, _| RIG;
+        let lef = |_| LEF;
+        let rig = |_| RIG;
         lap.set_essential_boundary_condition(Side::Xmin, lef);
         lap.set_essential_boundary_condition(Side::Xmax, rig);
         assert_eq!(lap.node_xmin, 0);

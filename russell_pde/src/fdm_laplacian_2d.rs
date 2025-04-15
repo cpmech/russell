@@ -72,6 +72,7 @@ pub struct FdmLaplacian2d<'a> {
     nodes_xmax: Vec<usize>, // indices of nodes on the xmax edge
     nodes_ymin: Vec<usize>, // indices of nodes on the ymin edge
     nodes_ymax: Vec<usize>, // indices of nodes on the ymax edge
+    prescribed: Vec<bool>,  // flags equations with prescribed EBC values
 
     /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
     ///
@@ -154,6 +155,7 @@ impl<'a> FdmLaplacian2d<'a> {
             nodes_xmax: ((nx - 1)..dim).step_by(nx).collect(),
             nodes_ymin: (0..nx).collect(),
             nodes_ymax: ((dim - nx)..dim).collect(),
+            prescribed: vec![false; dim],
             periodic_along_x: false,
             periodic_along_y: false,
             molecule: vec![alpha, beta, beta, gamma, gamma],
@@ -165,6 +167,18 @@ impl<'a> FdmLaplacian2d<'a> {
             ],
             essential: HashMap::new(),
         })
+    }
+
+    /// Recomputes the prescribed flags array
+    fn compute_prescribed_array(&mut self) {
+        let dim = self.nx * self.ny;
+        for m in 0..dim {
+            if self.essential.contains_key(&m) {
+                self.prescribed[m] = true;
+            } else {
+                self.prescribed[m] = false;
+            }
+        }
     }
 
     /// Sets periodic boundary condition
@@ -189,6 +203,7 @@ impl<'a> FdmLaplacian2d<'a> {
                 self.essential.remove(n);
             });
         }
+        self.compute_prescribed_array();
     }
 
     /// Sets essential (Dirichlet) boundary condition
@@ -227,6 +242,7 @@ impl<'a> FdmLaplacian2d<'a> {
                 });
             }
         };
+        self.compute_prescribed_array();
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
@@ -254,6 +270,7 @@ impl<'a> FdmLaplacian2d<'a> {
         self.nodes_ymax.iter().for_each(|n| {
             self.essential.insert(*n, 3);
         });
+        self.compute_prescribed_array();
     }
 
     /// Computes the coefficient matrix
@@ -335,9 +352,9 @@ impl<'a> FdmLaplacian2d<'a> {
         let mut max_nnz_aa = np; // start with the diagonal 'ones'
         let mut max_nnz_cc = 1; // +1 just for when there are no essential conditions
         for m in 0..dim {
-            if !self.essential.contains_key(&m) {
+            if !self.prescribed[m] {
                 self.loop_over_bandwidth(m, |n, _| {
-                    if !self.essential.contains_key(&n) {
+                    if !self.prescribed[n] {
                         max_nnz_aa += 1;
                     } else {
                         max_nnz_cc += 1;
@@ -352,9 +369,9 @@ impl<'a> FdmLaplacian2d<'a> {
 
         // assemble
         for m in 0..dim {
-            if !self.essential.contains_key(&m) {
+            if !self.prescribed[m] {
                 self.loop_over_bandwidth(m, |n, b| {
-                    if !self.essential.contains_key(&n) {
+                    if !self.prescribed[n] {
                         aa.put(m, n, self.molecule[b]).unwrap();
                     } else {
                         cc.put(m, n, self.molecule[b]).unwrap();
@@ -501,6 +518,11 @@ impl<'a> FdmLaplacian2d<'a> {
     pub fn num_prescribed(&self) -> usize {
         self.essential.len()
     }
+
+    /// Returns an access to the array of prescribed flags
+    pub fn prescribed_flags(&self) -> &Vec<bool> {
+        &self.prescribed
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -578,6 +600,28 @@ mod tests {
                 (13, TOP), // top
                 (14, TOP), // top
                 (15, TOP), // top* and right
+            ]
+        );
+        assert_eq!(lap.num_prescribed(), 12);
+        assert_eq!(
+            lap.prescribed_flags(),
+            &vec![
+                true,  // 0
+                true,  // 1
+                true,  // 2
+                true,  // 3
+                true,  // 4
+                false, // 5
+                false, // 6
+                true,  // 7
+                true,  // 8
+                false, // 9
+                false, // 10
+                true,  // 11
+                true,  // 12
+                true,  // 13
+                true,  // 14
+                true,  // 15
             ]
         );
     }

@@ -41,11 +41,12 @@ use std::sync::Arc;
 /// * The boundary conditions may be Neumann with zero-flux or periodic.
 /// * By default (Neumann BC), the boundary nodes are 'mirrored' yielding a no-flux barrier.
 pub struct FdmLaplacian1d<'a> {
-    xmin: f64,        // min x coordinate
-    nx: usize,        // number of points along x (≥ 2)
-    dx: f64,          // grid spacing along x
-    node_xmin: usize, // index of the node on the xmin "side"
-    node_xmax: usize, // index of the node on the xmax "side"
+    xmin: f64,             // min x coordinate
+    nx: usize,             // number of points along x (≥ 2)
+    dx: f64,               // grid spacing along x
+    node_xmin: usize,      // index of the node on the xmin "side"
+    node_xmax: usize,      // index of the node on the xmax "side"
+    prescribed: Vec<bool>, // flags equations with prescribed EBC values
 
     /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
     ///
@@ -101,6 +102,7 @@ impl<'a> FdmLaplacian1d<'a> {
             dx,
             node_xmin: 0,
             node_xmax: nx - 1,
+            prescribed: vec![false; nx],
             periodic_along_x: false,
             molecule: vec![alpha, beta, beta],
             functions: vec![
@@ -111,6 +113,17 @@ impl<'a> FdmLaplacian1d<'a> {
         })
     }
 
+    /// Recomputes the prescribed flags array
+    fn compute_prescribed_array(&mut self) {
+        for m in 0..self.nx {
+            if self.essential.contains_key(&m) {
+                self.prescribed[m] = true;
+            } else {
+                self.prescribed[m] = false;
+            }
+        }
+    }
+
     /// Sets periodic boundary condition
     ///
     /// **Note:** Any essential boundary condition on the corresponding side will be removed.
@@ -118,6 +131,7 @@ impl<'a> FdmLaplacian1d<'a> {
         self.periodic_along_x = true;
         self.essential.remove(&self.node_xmin);
         self.essential.remove(&self.node_xmax);
+        self.compute_prescribed_array();
     }
 
     /// Sets essential (Dirichlet) boundary condition (ebc)
@@ -140,6 +154,7 @@ impl<'a> FdmLaplacian1d<'a> {
             Side::Ymin => (),
             Side::Ymax => (),
         };
+        self.compute_prescribed_array();
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
@@ -154,6 +169,7 @@ impl<'a> FdmLaplacian1d<'a> {
         ];
         self.essential.insert(self.node_xmin, 0);
         self.essential.insert(self.node_xmax, 0);
+        self.compute_prescribed_array();
     }
 
     /// Computes the coefficient matrix
@@ -235,9 +251,9 @@ impl<'a> FdmLaplacian1d<'a> {
         let mut max_nnz_aa = np; // start with the diagonal 'ones'
         let mut max_nnz_cc = 1; // +1 just for when there are no essential conditions
         for m in 0..dim {
-            if !self.essential.contains_key(&m) {
+            if !self.prescribed[m] {
                 self.loop_over_bandwidth(m, |n, _| {
-                    if !self.essential.contains_key(&n) {
+                    if !self.prescribed[n] {
                         max_nnz_aa += 1;
                     } else {
                         max_nnz_cc += 1;
@@ -252,9 +268,9 @@ impl<'a> FdmLaplacian1d<'a> {
 
         // assemble
         for m in 0..dim {
-            if !self.essential.contains_key(&m) {
+            if !self.prescribed[m] {
                 self.loop_over_bandwidth(m, |n, b| {
-                    if !self.essential.contains_key(&n) {
+                    if !self.prescribed[n] {
                         aa.put(m, n, self.molecule[b]).unwrap();
                     } else {
                         cc.put(m, n, self.molecule[b]).unwrap();
@@ -388,6 +404,11 @@ impl<'a> FdmLaplacian1d<'a> {
     pub fn num_prescribed(&self) -> usize {
         self.essential.len()
     }
+
+    /// Returns an access to the array of prescribed flags
+    pub fn prescribed_flags(&self) -> &Vec<bool> {
+        &self.prescribed
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -429,7 +450,17 @@ mod tests {
         let mut res = Vec::new();
         lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
         res.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        assert_eq!(res, &[(0, LEF), (3, RIG),]);
+        assert_eq!(res, &[(0, LEF), (3, RIG)]);
+        assert_eq!(lap.num_prescribed(), 2);
+        assert_eq!(
+            lap.prescribed_flags(),
+            &vec![
+                true,  // 0
+                false, // 1
+                false, // 2
+                true,  // 3
+            ]
+        );
     }
 
     #[test]

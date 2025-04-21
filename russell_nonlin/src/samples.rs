@@ -140,6 +140,8 @@ impl Samples {
 
     /// Two-equation system causing problems to Newton-Raphson (singular)
     ///
+    /// Returns `(system, u_trial, u_reference, args)`
+    ///
     /// The solution is (0,0) and the Jacobian is singular at this point.
     pub fn two_eq_nr_prob_1<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
@@ -180,6 +182,8 @@ impl Samples {
     }
 
     /// Two-equation system with two solutions and causing problems to Newton-Raphson
+    ///
+    /// Returns `(system, u_trial_ok1, u_trial_ok2, u_trial_bad, u_ref1, u_ref2, args)`
     pub fn two_eq_nr_prob_2<'a>() -> (System<'a, NoArgs>, Vector, Vector, Vector, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
@@ -269,5 +273,141 @@ impl Samples {
         // done
         let args = 0;
         (system, u0, l0, lambda_ana, args)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Samples;
+    use russell_lab::{algo::num_jacobian, Vector};
+    use russell_lab::{mat_approx_eq, vec_approx_eq};
+    use russell_sparse::{CooMatrix, Sym};
+
+    #[test]
+    fn test_cubic_poly_1() {
+        // system
+        let (system, u0, _, _, _, mut args) = Samples::cubic_poly_1();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, 0.0, &u0, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, 0.0, &u0, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-11);
+    }
+
+    #[test]
+    fn test_cubic_poly_2() {
+        // system
+        let (system, u0, _, mut args) = Samples::cubic_poly_2();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, 0.0, &u0, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, 0.0, &u0, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-10);
+    }
+
+    #[test]
+    fn test_simple_two_equations() {
+        // system
+        let (system, u0, _, mut args) = Samples::simple_two_equations();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, 0.0, &u0, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, 0.0, &u0, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-10);
+    }
+
+    #[test]
+    fn test_two_eq_nr_prob_1() {
+        // system
+        let (system, u0, _, mut args) = Samples::two_eq_nr_prob_1();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, 0.0, &u0, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, 0.0, &u0, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-15);
+    }
+
+    #[test]
+    fn test_two_eq_nr_prob_2() {
+        // system
+        let (system, u0, _, _, _, _, mut args) = Samples::two_eq_nr_prob_2();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, 0.0, &u0, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, 0.0, &u0, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-12);
+    }
+
+    #[test]
+    fn test_single_eq_with_fold_point() {
+        // system
+        let (system, u0, l0, _, mut args) = Samples::single_eq_with_fold_point();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, l0, &u0, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, l0, &u0, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check Gu
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-15);
+
+        // check Gl
+        let ggl_fn = system.calc_ggl.as_ref().unwrap();
+        let mut ggl = Vector::new(1);
+        (ggl_fn)(&mut ggl, l0, &u0, &mut args).unwrap();
+        vec_approx_eq(&ggl, &[-1.0], 1e-15);
     }
 }

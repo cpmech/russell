@@ -31,7 +31,6 @@ impl Samples {
                 Some(nnz),
                 Sym::No,
                 |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.reset();
                     ggu.put(0, 0, 3.0 * u[0] * u[0] - 2.0).unwrap();
                     Ok(())
                 },
@@ -82,7 +81,6 @@ impl Samples {
                 Some(nnz),
                 Sym::No,
                 |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.reset();
                     ggu.put(0, 0, 3.0 * f64::powi(u[0] - 1.0, 2)).unwrap();
                     Ok(())
                 },
@@ -120,7 +118,6 @@ impl Samples {
                 Some(nnz),
                 Sym::No,
                 |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.reset();
                     ggu.put(0, 0, 3.0 * u[0] * u[0]).unwrap();
                     ggu.put(0, 1, 1.0).unwrap();
                     ggu.put(1, 0, -1.0).unwrap();
@@ -161,7 +158,6 @@ impl Samples {
                 Some(nnz),
                 Sym::No,
                 |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.reset();
                     ggu.put(0, 0, 2.0 * u[0]).unwrap();
                     ggu.put(0, 1, 2.0 * u[1]).unwrap();
                     ggu.put(1, 0, 2.0 * u[0]).unwrap();
@@ -201,7 +197,6 @@ impl Samples {
                 Some(nnz),
                 Sym::No,
                 |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.reset();
                     ggu.put(0, 0, 2.0 * u[0]).unwrap();
                     ggu.put(0, 1, 2.0 * u[1]).unwrap();
                     ggu.put(1, 0, 2.0 * (u[0] - 1.0)).unwrap();
@@ -224,5 +219,55 @@ impl Samples {
         // done
         let args = 0;
         (system, u_trial_ok1, u_trial_ok2, u_trial_bad, u_ref1, u_ref2, args)
+    }
+
+    /// Single equation with a fold point
+    ///
+    /// Returns `(system, u0, l0, lambda_ana, args)`
+    ///
+    /// See Reference 1, page 70.
+    ///
+    /// 1. Bank RE and Mittelmann HD (1990) Stepsize selection in continuation procedures and damped Newton's method.
+    ///    In Continuation Techniques and Bifurcation Problems, Ed. by Mittelmann HD and Roose D (1990), Springer.
+    pub fn single_eq_with_fold_point<'a>() -> (System<'a, NoArgs>, Vector, f64, fn(f64) -> f64, NoArgs) {
+        // system
+        let ndim = 1;
+        let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+            gg[0] = u[0] - l * f64::exp(u[0]);
+            Ok(())
+        })
+        .unwrap();
+
+        // function to compute Gu
+        let nnz_ggu = 1;
+        system
+            .set_calc_ggu(
+                Some(nnz_ggu),
+                Sym::No,
+                |ggu: &mut CooMatrix, l: f64, u: &Vector, _args: &mut NoArgs| {
+                    ggu.put(0, 0, 1.0 - l * f64::exp(u[0])).unwrap();
+                    Ok(())
+                },
+            )
+            .unwrap();
+
+        // function to compute Gl
+        system
+            .set_calc_ggl(|ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+                ggl[0] = -f64::exp(u[0]);
+                Ok(())
+            })
+            .unwrap();
+
+        // initial data
+        let u0 = Vector::from(&[0.0]);
+        let l0 = 0.0;
+
+        // reference solution
+        let lambda_ana = |u: f64| f64::exp(-u) * u;
+
+        // done
+        let args = 0;
+        (system, u0, l0, lambda_ana, args)
     }
 }

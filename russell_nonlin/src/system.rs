@@ -35,12 +35,14 @@ pub struct System<'a, A> {
     /// Calculates the Gu = dG/du derivative
     ///
     /// The function is `fn (ggu, λ, u, args)` where λ can be ignored for the simple case.
+    ///
+    /// **Note:** there is no need to call `reset` on the `CooMatrix` object because this is done already.
     pub(crate) calc_ggu:
         Option<Arc<dyn Fn(&mut CooMatrix, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
     /// Calculates the Gλ = dG/dλ derivative
     ///
-    /// The function is `fn (ggl, λ, u, args)` where λ can be ignored for the simple case.
+    /// The function is `fn (ggl, λ, u, args)`
     pub(crate) calc_ggl:
         Option<Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 
@@ -137,7 +139,7 @@ impl<'a, A> System<'a, A> {
     ///     * `nnz = (ndim + ndim²) / 2` if triangular
     ///     * `nnz = ndim²` otherwise
     /// * `symmetric` -- specifies the symmetric type of the Gu matrix
-    /// * `callback` -- the function to calculate the Jacobian matrix
+    /// * `callback` -- the function to calculate the Gu matrix
     pub fn set_calc_ggu(
         &mut self,
         nnz: Option<usize>,
@@ -158,6 +160,21 @@ impl<'a, A> System<'a, A> {
         };
         self.sym_ggu = symmetric;
         self.calc_ggu = Some(Arc::new(callback));
+        Ok(())
+    }
+
+    /// Sets a function to calculate the `Gλ = dG/dλ` vector
+    ///
+    /// Use `|ggl, λ, u, args|` or `|ggl: &mut Vector, l: f64, u: &Vector, args: &mut A|`
+    ///
+    /// # Input
+    ///
+    /// * `callback` -- the function to calculate the Gλ vector
+    pub fn set_calc_ggl(
+        &mut self,
+        callback: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
+    ) -> Result<(), StrError> {
+        self.calc_ggl = Some(Arc::new(callback));
         Ok(())
     }
 

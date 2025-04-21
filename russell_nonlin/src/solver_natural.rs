@@ -41,6 +41,7 @@ impl<'a, A> SolverNatural<'a, A> {
         if recompute_jacobian {
             // assemble Gu matrix
             work.stats.sw_jacobian.reset();
+            work.ggu.reset();
             if use_num_jacobian {
                 // numerical Jacobian
                 work.stats.n_function += self.system.ndim;

@@ -55,15 +55,15 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// (considering (9) again):
 ///
 /// ```text
-/// (du/ds)ᵀ du/ds + (dλ/ds)² = 1
-/// (dλ/ds)² zᵀ z  + (dλ/ds)² = 1
-/// dλ/ds = ±1 / √(1 + zᵀ z)
+/// (du/ds)ᵀ du/ds + (dλ/ds)² = 1  (12)
+/// (dλ/ds)² zᵀ z  + (dλ/ds)² = 1  (13)
+/// dλ/ds = ±1 / √(1 + zᵀ z)       (14)
 /// ```
 ///
 /// Thus, at the initial point `(u0, λ0)`:
 ///
 /// ```text
-/// (dλ/ds)₀ = sign₀ / √(1 + z₀ᵀ z₀)
+/// (dλ/ds)₀ = sign₀ / √(1 + z₀ᵀ z₀)  (15)
 /// ```
 ///
 /// Where `z₀` is the solution of `Gu z₀ = -Gλ₀`, which requires
@@ -72,6 +72,26 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// The `sign₀` variable is determines the direction along the solution branch
 /// and must be given by the user. An option to reuse the previous tangent
 /// vector is also available.
+///
+/// To determine the initial tangent vector, the non-augmented `Gu` Jacobian
+/// matrix is required. Thus, having both the augmented `A` Jacobian and `Gu`
+/// would need more than double the memory. To avoid this, the `Gu` matrix,
+/// used just once to calculate the initial tangent vector, is considered via
+/// the following modification of the augmented linear system:
+///
+/// ```text
+/// ┌          ┐ ┌    ┐   ┌      ┐
+/// │  Gu0  0  │ │ z0 │   │ -Gλ0 │
+/// │          │ │    │ = │      │  (16)
+/// │   0   1  │ │ 0  │   │  0   │
+/// └          ┘ └    ┘   └      ┘
+/// ```
+///
+/// # References
+///
+/// 1. Doedel EJ (2007) Lecture Notes on Numerical Analysis of Nonlinear Equations. In Numerical Continuation
+///    Methods for Dynamical Systems: Path following and boundary value problems. Ed. by B Krauskopf, HM Osinga,
+///    J Galán-Vioque. Springer Netherlands, doi: 10.1007/978-1-4020-6356-5 1
 pub struct SolverArclength<'a, A> {
     /// Configuration options
     config: Config,

@@ -30,8 +30,7 @@ This library implements solvers for nonlinear systems of equations using *Numeri
 
 ### References
 
-1. Doedel EJ (2007) Lecture Notes on Numerical Analysis of Nonlinear Equations. Numerical Continuation Methods for Dynamical Systems: Path following and boundary value problems. Ed. by B Krauskopf, HM Osinga, J Galán-Vioque. Dordrecht: Springer Netherlands, pp. 1–49. doi: 10.1007/978-1-4020-6356-5 1
-2. Allgower EL, Georg K (2003) Introduction to Numerical Continuation Methods. Society for Industrial and Applied Mathematics. doi: 10.1137/ 1.9780898719154
+1. Doedel EJ (2007) Lecture Notes on Numerical Analysis of Nonlinear Equations. In Numerical Continuation Methods for Dynamical Systems: Path following and boundary value problems. Ed. by B Krauskopf, HM Osinga, J Galán-Vioque. Springer Netherlands, doi: 10.1007/978-1-4020-6356-5 1
 
 
 

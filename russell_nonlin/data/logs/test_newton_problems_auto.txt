@@ -1,0 +1,380 @@
+
+running 7 tests
+test test_newton_problems_fail_due_to_max_iter_auto ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0 1.000e-4
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 1.000e-4
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 5.000e-5
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 2.500e-5
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 1.250e-5
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 6.250e-6
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 3.125e-6
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 1.563e-6
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 7.813e-7
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+ 0.000e0 3.906e-7
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 27
+Number of Jacobian evaluations   = 27
+Number of factorizations         = 27
+Number of lin sys solutions      = 27
+Number of performed steps        = 9
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 12
+Number of iterations (total)     = 27
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 1.162µs
+Max time spent on factorization  = 30.863µs
+Max time spent on lin solution   = 3.04µs
+Total time                       = 1.153501ms
+Automatic stepsize adjustment    = true
+
+══════════════════════════ ERRORS ══════════════════════════
+max number of iterations reached
+too many continued rejections
+════════════════════════════════════════════════════════════
+
+ok
+test test_newton_problems_fail_oscillation_auto ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0 1.000e-4
+       ·        ·     1    7.07e9       1.00e0    2.00e0   
+       ·        ·     2    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     3    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     4    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     5    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     6    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     7    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     8    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     9    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·    10    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·    11    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·    12    7.07e9 🔹    1.00e0    1.00e0 🔹
+ 0.000e0 1.000e-4
+       ·        ·     1    7.07e9       1.00e0    2.00e0   
+       ·        ·     2    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     3    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     4    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     5    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     6    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     7    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     8    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     9    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·    10    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·    11    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·    12    7.07e9 🔹    1.00e0    1.00e0 🔹
+ 0.000e0 5.000e-5
+       ·        ·     1    7.07e9       1.00e0    2.00e0   
+       ·        ·     2    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     3    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     4    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     5    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     6    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     7    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·     8    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·     9    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·    10    7.07e9 🔹    1.00e0    1.00e0 🔹
+       ·        ·    11    7.07e9 🔹    1.00e0    2.00e0 🎈
+       ·        ·    12    7.07e9 🔹    1.00e0    1.00e0 🔹
+ 0.000e0 2.500e-5
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 36
+Number of Jacobian evaluations   = 36
+Number of factorizations         = 36
+Number of lin sys solutions      = 36
+Number of performed steps        = 3
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 15
+Number of iterations (total)     = 36
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 331ns
+Max time spent on factorization  = 7.525µs
+Max time spent on lin solution   = 810ns
+Total time                       = 153.411µs
+Automatic stepsize adjustment    = true
+
+══════════════════════════ ERRORS ══════════════════════════
+max number of iterations reached
+too many continued rejections
+════════════════════════════════════════════════════════════
+
+ok
+test test_newton_problems_indeterminate_auto ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0 1.000e-4
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 1.000e-4
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 5.000e-5
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 2.500e-5
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 1.250e-5
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 6.250e-6
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 3.125e-6
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 1.563e-6
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 7.813e-7
+       ·        ·     1   1.20e23      1.39e16    3.09e0   
+ 0.000e0 3.906e-7
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 9
+Number of Jacobian evaluations   = 9
+Number of factorizations         = 9
+Number of lin sys solutions      = 9
+Number of performed steps        = 9
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 9
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 1
+Number of iterations (total)     = 9
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 511ns
+Max time spent on factorization  = 11.669µs
+Max time spent on lin solution   = 1.319µs
+Total time                       = 101.376µs
+Automatic stepsize adjustment    = true
+
+══════════════════════════ ERRORS ══════════════════════════
+max(‖δu‖∞,|δλ|) is too large
+too many continued rejections
+════════════════════════════════════════════════════════════
+
+ok
+test test_newton_problems_ok_1_auto ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0  1.000e0
+       ·        ·     1    2.12e7       3.00e0    3.00e0   
+       ·        ·     2    8.29e6 🔹    1.17e0    5.40e1 🎈
+       ·        ·     3    4.80e6 🔹   6.79e-1    1.49e1 🔹
+       ·        ·     4    2.15e6 🔹   3.04e-1    3.60e0 🔹
+       ·        ·     5    4.91e5 🔹   6.95e-2   5.69e-1 🔹
+       ·        ·     6    2.51e4 🔹   3.55e-3   2.63e-2 🔹
+       ·        ·     7    6.39e1 🔹   9.04e-6   6.68e-5 🔹
+       ·        ·     8   4.15e-4 ✅  5.87e-11  4.34e-10 🔹
+ 1.000e0  1.000e0
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 8
+Number of Jacobian evaluations   = 8
+Number of factorizations         = 8
+Number of lin sys solutions      = 8
+Number of performed steps        = 1
+Number of accepted steps         = 1
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 8
+Number of iterations (total)     = 8
+Last accepted/suggested stepsize = 1
+Max time spent on a step         = 70.119µs
+Max time spent on the Jacobian   = 447ns
+Max time spent on factorization  = 9.355µs
+Max time spent on lin solution   = 960ns
+Total time                       = 87.687µs
+Automatic stepsize adjustment    = false
+ok
+test test_newton_problems_ok_2_auto ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0 1.000e-4
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+       ·        ·     2    1.29e6 🔹   9.10e-1    1.92e1 🔹
+       ·        ·     3    9.02e5 🔹   6.38e-1    5.84e0 🔹
+       ·        ·     4    7.19e5 🔹   5.08e-1    1.87e0 🔹
+       ·        ·     5    9.53e5 🎈   6.74e-1   7.28e-1 🔹
+       ·        ·     6    4.39e7 🎈    3.10e1   5.12e-1 🔹
+       ·        ·     7    1.47e7 🔹    1.04e1    3.01e4 🎈
+       ·        ·     8    9.78e6 🔹    6.92e0    8.93e3 🔹
+       ·        ·     9    6.52e6 🔹    4.61e0    2.65e3 🔹
+       ·        ·    10    4.34e6 🔹    3.07e0    7.84e2 🔹
+       ·        ·    11    2.89e6 🔹    2.05e0    2.32e2 🔹
+       ·        ·    12    1.92e6 🔹    1.36e0    6.86e1 🔹
+       ·        ·    13    1.26e6 🔹   8.93e-1    2.02e1 🔹
+       ·        ·    14    8.03e5 🔹   5.68e-1    5.86e0 🔹
+       ·        ·    15    4.60e5 🔹   3.25e-1    1.61e0 🔹
+       ·        ·    16    1.91e5 🔹   1.35e-1   3.73e-1 🔹
+       ·        ·    17    3.46e4 🔹   2.45e-2   5.00e-2 🔹
+       ·        ·    18    1.08e3 🔹   7.64e-4   1.47e-3 🔹
+       ·        ·    19    1.03e0 🔹   7.30e-7   1.40e-6 🔹
+       ·        ·    20    1.03e0 🔹   7.30e-7  1.28e-12 ✅
+1.000e-4 1.000e-4
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 20
+Number of Jacobian evaluations   = 19
+Number of factorizations         = 19
+Number of lin sys solutions      = 19
+Number of performed steps        = 1
+Number of accepted steps         = 1
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 20
+Number of iterations (total)     = 20
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 1.465µs
+Max time spent on the Jacobian   = 476ns
+Max time spent on factorization  = 9.512µs
+Max time spent on lin solution   = 969ns
+Total time                       = 158.498µs
+Automatic stepsize adjustment    = true
+ok
+test test_newton_problems_stepsize_becomes_small ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0 1.000e-4
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+ 0.000e0 1.000e-4
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+ 0.000e0 1.000e-6
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+ 0.000e0 1.000e-8
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+ 0.000e0 1.000e-10
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+ 0.000e0 1.000e-12
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+ 0.000e0 1.000e-14
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 6
+Number of Jacobian evaluations   = 6
+Number of factorizations         = 6
+Number of lin sys solutions      = 6
+Number of performed steps        = 6
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 7
+Number of iterations (total)     = 6
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 464ns
+Max time spent on factorization  = 9.924µs
+Max time spent on lin solution   = 1.023µs
+Total time                       = 90.584µs
+Automatic stepsize adjustment    = true
+
+══════════════════════════ ERRORS ══════════════════════════
+max number of iterations reached
+the stepsize becomes too small
+════════════════════════════════════════════════════════════
+
+ok
+test test_simple_fixed_continued_divergence_auto ... ─────────────────────────────────────────────────────────────
+       λ       Δλ  iter   RMS(δu) ➖     ‖δu‖∞      ‖G‖∞ ➖
+─────────────────────────────────────────────────────────────
+ 0.000e0 1.000e-4
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+       ·        ·     2    1.29e6 🔹   9.10e-1    1.92e1 🔹
+       ·        ·     3    9.02e5 🔹   6.38e-1    5.84e0 🔹
+       ·        ·     4    7.19e5 🔹   5.08e-1    1.87e0 🔹
+       ·        ·     5    9.53e5 🎈   6.74e-1   7.28e-1 🔹
+       ·        ·     6    4.39e7 🎈    3.10e1   5.12e-1 🔹
+ 0.000e0 1.000e-4
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+       ·        ·     2    1.29e6 🔹   9.10e-1    1.92e1 🔹
+       ·        ·     3    9.02e5 🔹   6.38e-1    5.84e0 🔹
+       ·        ·     4    7.19e5 🔹   5.08e-1    1.87e0 🔹
+       ·        ·     5    9.53e5 🎈   6.74e-1   7.28e-1 🔹
+       ·        ·     6    4.39e7 🎈    3.10e1   5.12e-1 🔹
+ 0.000e0 5.000e-5
+       ·        ·     1    1.90e6       1.34e0    6.45e1   
+       ·        ·     2    1.29e6 🔹   9.10e-1    1.92e1 🔹
+       ·        ·     3    9.02e5 🔹   6.38e-1    5.84e0 🔹
+       ·        ·     4    7.19e5 🔹   5.08e-1    1.87e0 🔹
+       ·        ·     5    9.53e5 🎈   6.74e-1   7.28e-1 🔹
+       ·        ·     6    4.39e7 🎈    3.10e1   5.12e-1 🔹
+ 0.000e0 2.500e-5
+─────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0
+Number of function evaluations   = 18
+Number of Jacobian evaluations   = 18
+Number of factorizations         = 18
+Number of lin sys solutions      = 18
+Number of performed steps        = 3
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 3
+Number of iterations (maximum)   = 6
+Number of iterations (total)     = 18
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 476ns
+Max time spent on factorization  = 9.406µs
+Max time spent on lin solution   = 982ns
+Total time                       = 151.135µs
+Automatic stepsize adjustment    = true
+
+══════════════════════════ ERRORS ══════════════════════════
+continued divergence detected
+too many continued rejections
+════════════════════════════════════════════════════════════
+
+ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

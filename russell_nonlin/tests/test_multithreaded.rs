@@ -1,23 +1,23 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, Stop, System};
+use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
 
 struct SimData<'a> {
     solver: Solver<'a, NoArgs>,
-    u: Vector,
-    l: f64,
+    state: State,
     stop: Stop,
-    h: Option<f64>,
+    h_equal: Option<f64>,
     args: NoArgs,
 }
 
 impl<'a> SimData<'a> {
     fn new(method: Method) -> Self {
         // define nonlinear system: G(u, λ) = u - λ
-        let mut system = System::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
+        let ndim = 1;
+        let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
             gg[0] = u[0] - l;
             Ok(())
         })
@@ -45,10 +45,9 @@ impl<'a> SimData<'a> {
         // return data
         SimData {
             solver: Solver::new(config, system).unwrap(),
-            u: Vector::from(&[0.0]),
-            l: 0.0,
+            state: State::new(ndim, false),
             stop: Stop::Lambda(LAMBDA_FINAL),
-            h: Some(0.1),
+            h_equal: Some(0.1),
             args: 0,
         }
     }
@@ -75,14 +74,13 @@ impl<'a> Runner for Simulator<'a> {
         self.data
             .solver
             .solve(
-                &mut self.data.u,
-                &mut self.data.l,
+                &mut self.data.state,
                 self.data.stop,
-                self.data.h,
+                self.data.h_equal,
                 &mut self.data.args,
             )
             .unwrap();
-        approx_eq(self.data.u[0], LAMBDA_FINAL, 1e-15);
+        approx_eq(self.data.state.u[0], LAMBDA_FINAL, 1e-15);
         let stats = self.data.solver.stats();
         let nstep = 10;
         let niter = 10 * 2;

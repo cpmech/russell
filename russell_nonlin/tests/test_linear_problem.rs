@@ -1,11 +1,12 @@
 use russell_lab::{array_approx_eq, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, Stop, System};
+use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 #[test]
 fn test_linear_no_auto_ana_jac() {
     // define nonlinear system: G(u, λ) = u - λ
-    let mut system = System::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+    let ndim = 1;
+    let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         gg[0] = u[0] - l;
         Ok(())
     })
@@ -36,14 +37,13 @@ fn test_linear_no_auto_ana_jac() {
     solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
-    let mut u = Vector::from(&[0.0]);
-    let mut l = 0.0;
+    let mut state = State::new(ndim, false);
+    state.u[0] = 0.0;
+    state.l = 0.0;
 
     // solve
     let args = &mut 0;
-    solver
-        .solve(&mut u, &mut l, Stop::Lambda(1.0), Some(0.1), args)
-        .unwrap();
+    solver.solve(&mut state, Stop::Lambda(1.0), Some(0.1), args).unwrap();
 
     // results
     // println!("u[0] = {:?}", solver.out_step_u(0));
@@ -87,7 +87,8 @@ fn test_linear_no_auto_ana_jac() {
 #[test]
 fn test_linear_no_auto_num_jac() {
     // define nonlinear system: G(u, λ) = u - λ
-    let system = System::new(1, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+    let ndim = 1;
+    let system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         gg[0] = u[0] - l;
         Ok(())
     })
@@ -102,14 +103,13 @@ fn test_linear_no_auto_num_jac() {
     solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
-    let mut u = Vector::from(&[0.0]);
-    let mut l = 0.0;
+    let mut state = State::new(ndim, false);
+    state.u[0] = 0.0;
+    state.l = 0.0;
 
     // solve
     let args = &mut 0;
-    solver
-        .solve(&mut u, &mut l, Stop::Lambda(1.0), Some(0.1), args)
-        .unwrap();
+    solver.solve(&mut state, Stop::Lambda(1.0), Some(0.1), args).unwrap();
 
     // results
     // println!("u[0] = {:?}", solver.out_step_u(0));

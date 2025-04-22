@@ -1,4 +1,4 @@
-use super::{Config, StateRef, Stats};
+use super::{Config, State, Stats};
 use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
@@ -97,7 +97,7 @@ impl IterationError {
     }
 
     /// Resets the convergence flags and divergence counter
-    pub fn reset(&mut self, state: &StateRef) {
+    pub fn reset(&mut self, state: &State) {
         self.residual_converged = false;
         self.residual_diverging = false;
         self.delta_converged = false;
@@ -111,7 +111,7 @@ impl IterationError {
         for i in 0..ndim {
             self.scaling[i] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.u[i]);
         }
-        self.scaling[ndim] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(*state.l);
+        self.scaling[ndim] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.l);
     }
 
     /// Marks the problem as converged for linear analysis

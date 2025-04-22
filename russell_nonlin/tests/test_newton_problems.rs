@@ -4,7 +4,7 @@ use russell_nonlin::{Config, Method, Samples, Solver, Stop};
 #[test]
 fn test_newton_problems_ok_1() {
     // problem
-    let (system, u_trial_ok, _, _, u_ok, mut args) = Samples::cubic_poly_1();
+    let (system, mut state, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -14,10 +14,8 @@ fn test_newton_problems_ok_1() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut u = u_trial_ok;
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state, stop, Some(1.0), &mut args).unwrap();
 
     // check
     let stats = solver.stats();
@@ -34,13 +32,13 @@ fn test_newton_problems_ok_1() {
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
-    vec_approx_eq(&u, &u_ok, 1e-10);
+    vec_approx_eq(&state.u, &u_ref, 1e-10);
 }
 
 #[test]
 fn test_newton_problems_fail_due_to_max_iter() {
     // problem
-    let (system, u_trial_ok, _, _, _, mut args) = Samples::cubic_poly_1();
+    let (system, mut state, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -50,11 +48,9 @@ fn test_newton_problems_fail_due_to_max_iter() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut u = u_trial_ok;
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["max number of iterations reached"]);
@@ -63,7 +59,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
 #[test]
 fn test_newton_problems_fail_oscillation() {
     // problem
-    let (system, _, u_trial_oscillation, _, _, mut args) = Samples::cubic_poly_1();
+    let (system, _, mut state, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -73,11 +69,9 @@ fn test_newton_problems_fail_oscillation() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut u = u_trial_oscillation;
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["max number of iterations reached"]);
@@ -86,7 +80,7 @@ fn test_newton_problems_fail_oscillation() {
 #[test]
 fn test_newton_problems_indeterminate() {
     // problem
-    let (system, _, _, u_trial_indeterminate, _, mut args) = Samples::cubic_poly_1();
+    let (system, _, _, mut state, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -96,11 +90,9 @@ fn test_newton_problems_indeterminate() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut u = u_trial_indeterminate;
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["max(‖δu‖∞,|δλ|) is too large"]);
@@ -109,7 +101,7 @@ fn test_newton_problems_indeterminate() {
 #[test]
 fn test_newton_problems_ok_2() {
     // problem
-    let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
+    let (system, mut state, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -122,9 +114,8 @@ fn test_newton_problems_ok_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state, stop, Some(1.0), &mut args).unwrap();
 
     // check
     let stats = solver.stats();
@@ -141,13 +132,13 @@ fn test_newton_problems_ok_2() {
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
-    vec_approx_eq(&u, &u_ref, 1e-12);
+    vec_approx_eq(&state.u, &u_ref, 1e-12);
 }
 
 #[test]
 fn test_simple_fixed_continued_divergence() {
     // problem
-    let (system, mut u, _, mut args) = Samples::cubic_poly_2();
+    let (system, mut state, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -157,10 +148,9 @@ fn test_simple_fixed_continued_divergence() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["continued divergence detected"]);
@@ -169,7 +159,7 @@ fn test_simple_fixed_continued_divergence() {
 #[test]
 fn test_two_eq_nr_prob_1_singular() {
     // problem
-    let (system, mut u, _, mut args) = Samples::two_eq_nr_prob_1();
+    let (system, mut state, _, mut args) = Samples::two_eq_nr_prob_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -179,10 +169,9 @@ fn test_two_eq_nr_prob_1_singular() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
         Some("Error(1): Matrix is singular")
     );
 }
@@ -190,7 +179,7 @@ fn test_two_eq_nr_prob_1_singular() {
 #[test]
 fn test_two_eq_nr_prob_2() {
     // problem
-    let (system, u_trial_ok1, u_trial_ok2, u_trial_bad, u_ref1, u_ref2, mut args) = Samples::two_eq_nr_prob_2();
+    let (system, mut state_ok1, mut state_ok2, mut state_bad, u_ref1, u_ref2, mut args) = Samples::two_eq_nr_prob_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -200,25 +189,19 @@ fn test_two_eq_nr_prob_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem: first solution
-    let mut u = u_trial_ok1.clone();
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
-    vec_approx_eq(&u, &u_ref1, 1e-9);
+    solver.solve(&mut state_ok1, stop, Some(1.0), &mut args).unwrap();
+    vec_approx_eq(&state_ok1.u, &u_ref1, 1e-9);
 
     // solve problem: second solution
-    let mut u = u_trial_ok2.clone();
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).unwrap();
-    vec_approx_eq(&u, &u_ref2, 1e-9);
+    solver.solve(&mut state_ok2, stop, Some(1.0), &mut args).unwrap();
+    vec_approx_eq(&state_ok2.u, &u_ref2, 1e-9);
 
     // singular case
-    let mut u = u_trial_bad.clone();
-    let mut l = 0.0;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut u, &mut l, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state_bad, stop, Some(1.0), &mut args).err(),
         Some("Error(1): Matrix is singular")
     );
 }

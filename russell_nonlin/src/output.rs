@@ -1,4 +1,4 @@
-use super::{State, StateRef, Stats, StrError, Workspace};
+use super::{State, Stats, StrError, Workspace};
 use russell_lab::{vec_max_abs_diff, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -70,9 +70,7 @@ impl State {
         let stat = serde_json::from_reader(buffered).map_err(|_| "cannot parse JSON file")?;
         Ok(stat)
     }
-}
 
-impl<'a> StateRef<'a> {
     /// Writes a JSON file with the results
     pub fn write_json(&self, full_path: &str) -> Result<(), StrError> {
         let path = Path::new(full_path).to_path_buf();
@@ -196,12 +194,12 @@ impl<'a, A> Output<'a, A> {
     }
 
     /// Executes the output at an accepted step
-    pub(crate) fn execute(&mut self, work: &Workspace, state: &StateRef, args: &mut A) -> Result<bool, StrError> {
+    pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
         assert!(self.initialized);
 
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop = cb(&work.stats, state.u, *state.l, state.s, state.h, args)?;
+            let stop = cb(&work.stats, &state.u, state.l, state.s, state.h, args)?;
             if stop {
                 return Ok(stop);
             }
@@ -216,7 +214,7 @@ impl<'a, A> Output<'a, A> {
 
         // record results
         if self.recording {
-            self.l.push(*state.l);
+            self.l.push(state.l);
             self.s.push(state.s);
             self.h.push(state.h);
             for (m, um) in self.u.iter_mut() {
@@ -226,8 +224,8 @@ impl<'a, A> Output<'a, A> {
                 if self.u_aux.dim() != state.u.dim() {
                     self.u_aux = Vector::new(state.u.dim());
                 }
-                calc_u(&mut self.u_aux, *state.l, args);
-                let (_, err) = vec_max_abs_diff(state.u, &self.u_aux).unwrap();
+                calc_u(&mut self.u_aux, state.l, args);
+                let (_, err) = vec_max_abs_diff(&state.u, &self.u_aux).unwrap();
                 self.error.push(err);
             }
         }
@@ -251,42 +249,47 @@ impl<'a, A> Output<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::{OutCount, Output, State, StateRef};
+    use super::{OutCount, Output, State};
     use crate::NoArgs;
     use russell_lab::Vector;
 
     #[test]
     fn derive_methods_work() {
-        // NlState
+        // State: read from JSON
         let out_data = State {
             u: Vector::new(1),
             l: 0.5,
             s: 0.2,
             h: 0.1,
+            duds: Vector::new(0),
+            dlds: 0.0,
         };
         let clone = out_data.clone();
         assert_eq!(
             format!("{:?}", clone),
-            "State { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1 }"
+            "State { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1, duds: NumVector { data: [] }, dlds: 0.0 }"
         );
-        let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2,\"s\":0.3,\"h\":0.4}";
+        let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2,\"s\":0.3,\"h\":0.4,\"duds\":{\"data\":[]},\"dlds\":0.0}";
         let from_json: State = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.u.as_data(), &[3.0]);
         assert_eq!(from_json.l, 0.2);
         assert_eq!(from_json.s, 0.3);
         assert_eq!(from_json.h, 0.4);
 
-        // NlStateAccess
-        let mut u = Vector::from(&[10.0]);
-        let mut l = 0.5;
-        let state = StateRef {
-            u: &mut u,
-            l: &mut l,
+        // State: write to JSON
+        let state = State {
+            u: Vector::from(&[10.0]),
+            l: 0.5,
             s: 0.15,
             h: 0.3,
+            duds: Vector::new(0),
+            dlds: 0.0,
         };
         let json = serde_json::to_string(&state).unwrap();
-        assert_eq!(json, "{\"u\":{\"data\":[10.0]},\"l\":0.5,\"s\":0.15,\"h\":0.3}");
+        assert_eq!(
+            json,
+            "{\"u\":{\"data\":[10.0]},\"l\":0.5,\"s\":0.15,\"h\":0.3,\"duds\":{\"data\":[]},\"dlds\":0.0}"
+        );
 
         // OutCount
         let count = OutCount { n: 123 };
@@ -299,19 +302,19 @@ mod tests {
 
     #[test]
     fn read_write_files_work() {
-        // Write NlStateAccess
-        let mut u = Vector::from(&[6.6]);
-        let mut l = 0.5;
-        let data_out = StateRef {
-            u: &mut u,
-            l: &mut l,
+        // Write State
+        let data_out = State {
+            u: Vector::from(&[6.6]),
+            l: 0.5,
             s: 0.15,
             h: 0.3,
+            duds: Vector::new(0),
+            dlds: 0.0,
         };
         let path = "/tmp/russell_nonlin/test_out_data.json";
         data_out.write_json(path).unwrap();
 
-        // Read NlState
+        // Read State
         let data_in = State::read_json(path).unwrap();
         assert_eq!(data_in.u.as_data(), &[6.6]);
         assert_eq!(data_in.l, 0.5);

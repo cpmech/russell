@@ -1,4 +1,4 @@
-use super::{Config, SolverTrait, StateRef, System, Workspace};
+use super::{Config, SolverTrait, State, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update};
 use russell_sparse::numerical_jacobian;
@@ -117,14 +117,19 @@ impl<'a, A> SolverNatural<'a, A> {
 }
 
 impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
+    /// Perform initialization such as computing the first tangent vector in pseudo-arclength
+    fn initialize(&mut self, _work: &mut Workspace, _state: &State, _args: &mut A) -> Result<(), StrError> {
+        Ok(())
+    }
+
     /// Calculates u such that G(u, λ) = 0
     ///
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
-    fn step(&mut self, work: &mut Workspace, state: &StateRef, args: &mut A) -> Result<(), StrError> {
+    fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
         // set workspace with trial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
-        work.l = *state.l + state.h; // λ_trial ← λ0 + h
+        work.l = state.l + state.h; // λ_trial ← λ0 + h
 
         // external: create a copy of external state variables
         if work.auto {
@@ -166,9 +171,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
-    fn accept(&mut self, work: &mut Workspace, state: &mut StateRef) {
+    fn accept(&mut self, work: &mut Workspace, state: &mut State) {
         vec_copy(&mut state.u, &work.u).unwrap();
-        *state.l = work.l;
+        state.l = work.l;
         work.h_new = state.h;
     }
 

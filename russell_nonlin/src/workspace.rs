@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{Config, IterationError, Logger, Stats, System};
+use super::{Config, IterationError, Logger, Method, Stats, System};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
@@ -75,6 +75,18 @@ pub(crate) struct Workspace<'a> {
     /// Holds current λ
     pub(crate) l: f64,
 
+    /// Holds the initial u0 (pseudo-arclength only)
+    pub(crate) u0: Vector,
+
+    /// Holds the initial λ0 (pseudo-arclength only)
+    pub(crate) l0: f64,
+
+    /// Holds the initial derivative du/ds (pseudo-arclength only)
+    pub(crate) duds0: Vector,
+
+    /// Holds the initial derivative dλ/ds (pseudo-arclength only)
+    pub(crate) dlds0: f64,
+
     /// Holds -δu
     pub(crate) mdu: Vector,
 
@@ -94,7 +106,11 @@ pub(crate) struct Workspace<'a> {
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
     pub(crate) fn new<'b, A>(config: &Config, system: &System<'b, A>) -> Self {
-        let n_num_j = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
+        let ndim_extra_arc = match config.method {
+            Method::Arclength => system.ndim,
+            Method::Natural => 0,
+        };
+        let ndim_num_jac = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
             system.ndim
         } else {
             0
@@ -120,10 +136,14 @@ impl<'a> Workspace<'a> {
             ls: LinSolver::new(config.genie).unwrap(),
             u: Vector::new(system.ndim),
             l: 0.0,
+            u0: Vector::new(ndim_extra_arc),
+            l0: 0.0,
+            duds0: Vector::new(ndim_extra_arc),
+            dlds0: 0.0,
             mdu: Vector::new(system.ndim),
             mdl: 0.0,
-            u_aux1: Vector::new(n_num_j),
-            u_aux2: Vector::new(n_num_j),
+            u_aux1: Vector::new(ndim_num_jac),
+            u_aux2: Vector::new(ndim_num_jac),
             h_multiplier_failure_initial: config.m_failure,
         }
     }

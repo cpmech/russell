@@ -76,7 +76,7 @@ impl<'a, A> SolverNatural<'a, A> {
         work.stats.stop_sw_lin_sol();
 
         // check convergence on δu
-        work.err.analyze_delta(iteration, &work.mdu, 0.0)?;
+        work.err.analyze_delta(iteration, &work.mdu)?;
         if logging {
             work.log.iteration(iteration, &work.err);
         }

@@ -155,9 +155,11 @@ impl IterationError {
     }
 
     /// Analyzes convergence on RMS(‖δu‖∞,|δλ|)
-    pub fn analyze_delta(&mut self, iteration: usize, du: &Vector, dl: f64) -> Result<(), StrError> {
+    ///
+    /// `x` may be simply `δu` or the augmented vector `(δu, δλ)`
+    pub fn analyze_delta(&mut self, iteration: usize, x: &Vector) -> Result<(), StrError> {
         // compute max norm
-        self.delta_max = f64::max(vec_norm(du, Norm::Max), f64::abs(dl));
+        self.delta_max = vec_norm(x, Norm::Max);
 
         // check for NaN or Inf
         if !self.delta_max.is_finite() {
@@ -165,13 +167,11 @@ impl IterationError {
         }
 
         // compute RMS(δu,δλ)
-        let ndim = self.scaling.dim() - 1; // -1 due to λ
         let mut sum = 0.0;
-        for i in 0..ndim {
-            sum += (du[i] / self.scaling[i]) * (du[i] / self.scaling[i]);
+        for i in 0..x.dim() {
+            sum += (x[i] / self.scaling[i]) * (x[i] / self.scaling[i]);
         }
-        sum += (dl / self.scaling[ndim]) * (dl / self.scaling[ndim]);
-        self.delta_rms = f64::sqrt(sum / ((ndim + 1) as f64)); // +1 for λ
+        self.delta_rms = f64::sqrt(sum / (x.dim() as f64));
 
         // check convergence
         self.delta_converged = self.delta_rms <= 1.0;

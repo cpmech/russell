@@ -56,24 +56,10 @@ pub(crate) struct Workspace<'a> {
     /// (ndim)
     pub(crate) gg: Vector,
 
-    /// Holds the pseudo-arclength normalization (constraint) function value
-    ///
-    /// The function is `Nₒ(u, λ; u0, λ0, duds0, dλds0, Δs)`
-    ///
-    /// ```text
-    /// Nₒ = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
-    /// ```
-    pub(crate) nno: f64,
-
     /// Holds the Gu = ∂G/∂u matrix
     ///
     /// (ndim x ndim)
     pub(crate) ggu: CooMatrix,
-
-    /// Holds the Gλ = ∂G/∂λ vector (pseudo-arclength only)
-    ///
-    /// (ndim)
-    pub(crate) ggl: Vector,
 
     /// Linear solver
     pub(crate) ls: LinSolver<'a>,
@@ -84,23 +70,8 @@ pub(crate) struct Workspace<'a> {
     /// Holds current λ
     pub(crate) l: f64,
 
-    /// Holds the initial u0 (pseudo-arclength only)
-    pub(crate) u0: Vector,
-
-    /// Holds the initial λ0 (pseudo-arclength only)
-    pub(crate) l0: f64,
-
-    /// Holds the initial derivative du/ds (pseudo-arclength only)
-    pub(crate) duds0: Vector,
-
-    /// Holds the initial derivative dλ/ds (pseudo-arclength only)
-    pub(crate) dlds0: f64,
-
     /// Holds -δu
     pub(crate) mdu: Vector,
-
-    /// Holds -δλ
-    pub(crate) mdl: f64,
 
     /// Auxiliary u vector #1 (e.g., for numerical Jacobian)
     pub(crate) u_aux1: Vector,
@@ -115,10 +86,6 @@ pub(crate) struct Workspace<'a> {
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
     pub(crate) fn new<'b, A>(config: &Config, system: &System<'b, A>) -> Self {
-        let ndim_extra_arc = match config.method {
-            Method::Arclength => system.ndim,
-            Method::Natural => 0,
-        };
         let ndim_num_jac = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
             system.ndim
         } else {
@@ -140,18 +107,11 @@ impl<'a> Workspace<'a> {
             err: IterationError::new(config, system.ndim),
             log: Logger::new(config),
             gg: Vector::new(system.ndim),
-            nno: 0.0,
             ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
-            ggl: Vector::new(ndim_extra_arc),
             ls: LinSolver::new(config.genie).unwrap(),
             u: Vector::new(system.ndim),
             l: 0.0,
-            u0: Vector::new(ndim_extra_arc),
-            l0: 0.0,
-            duds0: Vector::new(ndim_extra_arc),
-            dlds0: 0.0,
             mdu: Vector::new(system.ndim),
-            mdl: 0.0,
             u_aux1: Vector::new(ndim_num_jac),
             u_aux2: Vector::new(ndim_num_jac),
             h_multiplier_failure_initial: config.m_failure,

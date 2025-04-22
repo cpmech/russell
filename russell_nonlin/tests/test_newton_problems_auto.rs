@@ -30,7 +30,7 @@ fn test_newton_problems_ok_1_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -44,7 +44,7 @@ fn test_newton_problems_fail_due_to_max_iter_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true).set_n_iteration_max(3);
+    config.set_verbose(true, true, true).set_allowed_iterations(3);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -124,8 +124,8 @@ fn test_newton_problems_ok_2_auto() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
-        .set_n_iteration_max(20)
-        .set_n_cont_div_ul_allowed(2);
+        .set_allowed_iterations(20)
+        .set_allowed_continued_divergence(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -146,7 +146,7 @@ fn test_newton_problems_ok_2_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -187,7 +187,7 @@ fn test_newton_problems_stepsize_becomes_small() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
-        .set_n_iteration_max(1)
+        .set_allowed_iterations(1)
         .set_m_failure(0.01);
 
     // solver

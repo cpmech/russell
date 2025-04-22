@@ -48,6 +48,7 @@
     "dtype",
     "dydx",
     "dznrm2",
+    "dλds",
     "Eᵢⱼₖₗ",
     "erfinv",
     "FACCON",

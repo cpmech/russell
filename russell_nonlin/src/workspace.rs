@@ -54,6 +54,15 @@ pub(crate) struct Workspace<'a> {
     /// Holds G(u, λ)
     pub(crate) gg: Vector,
 
+    /// Holds the pseudo-arclength normalization (constraint) function value
+    ///
+    /// The function is `Nₒ(u, λ; u0, λ0, duds0, dλds0, Δs)`
+    ///
+    /// ```text
+    /// Nₒ = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
+    /// ```
+    pub(crate) nno: f64,
+
     /// Holds the Gu = ∂G/∂u matrix
     pub(crate) ggu: CooMatrix,
 
@@ -106,6 +115,7 @@ impl<'a> Workspace<'a> {
             err: IterationError::new(config, system.ndim),
             log: Logger::new(config),
             gg: Vector::new(system.ndim),
+            nno: 0.0,
             ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
             ls: LinSolver::new(config.genie).unwrap(),
             u: Vector::new(system.ndim),

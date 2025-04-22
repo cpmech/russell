@@ -25,7 +25,7 @@ impl<'a, A> SolverNatural<'a, A> {
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
         // check convergence on G
-        work.err.analyze_gh(iteration, &work.gg, 0.0)?;
+        work.err.analyze_residual(iteration, &work.gg, 0.0)?;
         if work.err.converged() {
             if logging {
                 work.log.iteration(iteration, &work.err);
@@ -76,7 +76,7 @@ impl<'a, A> SolverNatural<'a, A> {
         work.stats.stop_sw_lin_sol();
 
         // check convergence on δu
-        work.err.analyze_ul(iteration, &work.mdu, 0.0)?;
+        work.err.analyze_delta(iteration, &work.mdu, 0.0)?;
         if logging {
             work.log.iteration(iteration, &work.err);
         }
@@ -85,7 +85,7 @@ impl<'a, A> SolverNatural<'a, A> {
         }
 
         // avoid large norm(mdu)
-        if work.err.large_du_dl() {
+        if work.err.is_delta_large() {
             return Ok(()); // need to handle this case outside
         }
 
@@ -143,7 +143,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // iteration loop
         let logging = true;
-        for iteration in 0..self.config.n_iteration_max {
+        for iteration in 0..self.config.allowed_iterations {
             // stats
             work.stats.n_iterations_total += 1;
             work.stats.n_iterations_max = usize::max(work.stats.n_iterations_max, iteration + 1);
@@ -183,8 +183,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // estimate new stepsize
         let newt = work.stats.n_iterations_total;
-        let num = self.config.m_safety * ((1 + 2 * self.config.n_iteration_max) as f64);
-        let den = (newt + 2 * self.config.n_iteration_max) as f64;
+        let num = self.config.m_safety * ((1 + 2 * self.config.allowed_iterations) as f64);
+        let den = (newt + 2 * self.config.allowed_iterations) as f64;
         let fac = f64::min(self.config.m_safety, num / den);
         let div = f64::max(
             self.config.m_min,

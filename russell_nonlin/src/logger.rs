@@ -51,7 +51,7 @@ impl Logger {
             Method::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
-                    "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,H)"
+                    "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,Nₒ)"
                 );
             }
             Method::Natural => {
@@ -87,12 +87,12 @@ impl Logger {
         let (icon_gh, icon_ul) = if iter == 0 {
             ("  ", "  ")
         } else {
-            if iter == 1 && err.converged_on_gh {
-                (self.icon(err.converged_on_gh, err.diverging_on_gh), "  ")
+            if iter == 1 && err.residual_converged {
+                (self.icon(err.residual_converged, err.residual_diverging), "  ")
             } else {
                 (
-                    self.icon(err.converged_on_gh, err.diverging_on_gh),
-                    self.icon(err.converged_on_ul, err.diverging_on_ul),
+                    self.icon(err.residual_converged, err.residual_diverging),
+                    self.icon(err.delta_converged, err.delta_diverging),
                 )
             }
         };
@@ -101,13 +101,13 @@ impl Logger {
             Method::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
-                    "·", "·", "·", k, err.max_ul, icon_ul, err.max_gh, icon_gh
+                    "·", "·", "·", k, err.delta_max, icon_ul, err.residual_max, icon_gh
                 );
             }
             Method::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {:>9.2e} {}",
-                    "·", "·", k, err.rms_ul, icon_ul, err.max_ul, err.max_gh, icon_gh
+                    "·", "·", k, err.delta_rms, icon_ul, err.delta_max, err.residual_max, icon_gh
                 );
             }
         }

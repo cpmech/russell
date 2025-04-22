@@ -32,7 +32,7 @@ pub struct Stats {
     pub n_rejected: usize,
 
     /// Number of large max(‖δu‖∞,|δλ|)
-    pub n_large_du_dl: usize,
+    pub n_large_delta: usize,
 
     /// Number of times that maximum iterations have been reached
     pub n_max_iterations_reached: usize,
@@ -92,7 +92,7 @@ impl Stats {
             n_steps: 0,
             n_accepted: 0,
             n_rejected: 0,
-            n_large_du_dl: 0,
+            n_large_delta: 0,
             n_max_iterations_reached: 0,
             n_continued_divergence: 0,
             n_iterations_total: 0,
@@ -120,7 +120,7 @@ impl Stats {
         self.n_steps = 0;
         self.n_accepted = 0;
         self.n_rejected = 0;
-        self.n_large_du_dl = 0;
+        self.n_large_delta = 0;
         self.n_iterations_total = 0;
         self.n_iterations_max = 0;
         self.h_accepted = h;
@@ -201,7 +201,7 @@ impl Stats {
             self.n_steps,
             self.n_accepted,
             self.n_rejected,
-            self.n_large_du_dl,
+            self.n_large_delta,
             self.n_max_iterations_reached,
             self.n_continued_divergence,
             self.n_iterations_max,

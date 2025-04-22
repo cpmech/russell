@@ -32,7 +32,7 @@ fn test_multiple_calls_to_solve_1() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -55,7 +55,7 @@ fn test_multiple_calls_to_solve_1() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -71,8 +71,8 @@ fn test_multiple_calls_to_solve_2() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
-        .set_n_iteration_max(20)
-        .set_n_cont_div_ul_allowed(2);
+        .set_allowed_iterations(20)
+        .set_allowed_continued_divergence(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -95,7 +95,7 @@ fn test_multiple_calls_to_solve_2() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -118,7 +118,7 @@ fn test_multiple_calls_to_solve_2() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -156,7 +156,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -179,7 +179,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -195,8 +195,8 @@ fn test_multiple_calls_to_solve_2_auto() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
-        .set_n_iteration_max(20)
-        .set_n_cont_div_ul_allowed(2);
+        .set_allowed_iterations(20)
+        .set_allowed_continued_divergence(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -219,7 +219,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);
@@ -242,7 +242,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_du_dl, 0);
+    assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
     assert_eq!(stats.n_iterations_max, n_iter);
     assert_eq!(stats.n_iterations_total, n_iter);

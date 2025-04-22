@@ -76,23 +76,23 @@ pub struct Config {
 
     // iterations -------------------------------------------------------------------------
     //
-    /// Absolute tolerance on max(‖G‖∞,|H|)
-    pub(crate) tol_gh_abs: f64,
+    /// Absolute tolerance on max(‖G‖∞,|Nₒ|)
+    pub(crate) tol_abs_residual: f64,
 
     /// Absolute tolerance on RMS(δu,δλ)
-    pub(crate) tol_ul_abs: f64,
+    pub(crate) tol_abs_delta: f64,
 
     /// Relative tolerance on RMS(δu,δλ)
-    pub(crate) tol_ul_rel: f64,
+    pub(crate) tol_rel_delta: f64,
 
-    /// Maximum max(‖δu‖∞,|δλ|) allowed
-    pub(crate) max_ul_allowed: f64,
+    /// Allowed max(‖δu‖∞,|δλ|)
+    pub(crate) allowed_delta_max: f64,
 
-    /// Max number of iterations
-    pub(crate) n_iteration_max: usize,
+    /// Allowed number of iterations
+    pub(crate) allowed_iterations: usize,
 
-    /// Max number of continuing divergence on max(‖δu‖∞,|δλ|) allowed
-    pub(crate) n_cont_div_ul_allowed: usize,
+    /// Allowed number of continued divergence on max(‖δu‖∞,|δλ|)
+    pub(crate) allowed_continued_divergence: usize,
 
     /// Modified Newton's method with constant tangent matrix
     pub(crate) constant_tangent: bool,
@@ -128,12 +128,12 @@ impl Config {
             lin_sol_config: None,
             write_matrix_after_nstep_and_stop: None,
             // iterations
-            tol_gh_abs: 1e-10,
-            tol_ul_abs: 1e-10,
-            tol_ul_rel: 1e-7,
-            max_ul_allowed: 1e8,
-            n_iteration_max: 12,
-            n_cont_div_ul_allowed: 1,
+            tol_abs_residual: 1e-10,
+            tol_abs_delta: 1e-10,
+            tol_rel_delta: 1e-7,
+            allowed_delta_max: 1e8,
+            allowed_iterations: 12,
+            allowed_continued_divergence: 1,
             constant_tangent: false,
             use_numerical_jacobian: false,
         }
@@ -296,8 +296,8 @@ impl Config {
     /// ```
     ///
     /// See [CONFIG_TOL_MIN]
-    pub fn set_tol_gh(&mut self, tol_abs: f64) -> &mut Self {
-        self.tol_gh_abs = tol_abs;
+    pub fn set_tol_residual(&mut self, tol_abs: f64) -> &mut Self {
+        self.tol_abs_residual = tol_abs;
         self
     }
 
@@ -314,31 +314,31 @@ impl Config {
     /// ```
     ///
     /// See [CONFIG_TOL_MIN]
-    pub fn set_tol_ul(&mut self, tol_abs: f64, tol_rel: f64) -> &mut Self {
-        self.tol_ul_abs = tol_abs;
-        self.tol_ul_rel = tol_rel;
+    pub fn set_tol_delta(&mut self, tol_abs: f64, tol_rel: f64) -> &mut Self {
+        self.tol_abs_delta = tol_abs;
+        self.tol_rel_delta = tol_rel;
         self
     }
 
-    /// Sets the maximum max(‖δu‖∞,|δλ|) allowed
-    pub fn set_max_ul_allowed(&mut self, value: f64) -> &mut Self {
-        self.max_ul_allowed = value;
+    /// Sets the allowed max(‖δu‖∞,|δλ|)
+    pub fn set_allowed_delta_max(&mut self, value: f64) -> &mut Self {
+        self.allowed_delta_max = value;
         self
     }
 
-    /// Sets the max number of iterations
+    /// Sets the allowed number of iterations
     ///
     /// ```text
-    /// n_iteration_max ≥ 1
+    /// value ≥ 1
     /// ```
-    pub fn set_n_iteration_max(&mut self, value: usize) -> &mut Self {
-        self.n_iteration_max = value;
+    pub fn set_allowed_iterations(&mut self, value: usize) -> &mut Self {
+        self.allowed_iterations = value;
         self
     }
 
-    /// Sets the max number of continuing divergence on max(‖δu‖∞,|δλ|) allowed
-    pub fn set_n_cont_div_ul_allowed(&mut self, value: usize) -> &mut Self {
-        self.n_cont_div_ul_allowed = value;
+    /// Sets the allowed number of continued divergence on max(‖δu‖∞,|δλ|)
+    pub fn set_allowed_continued_divergence(&mut self, value: usize) -> &mut Self {
+        self.allowed_continued_divergence = value;
         self
     }
 
@@ -389,17 +389,20 @@ impl Config {
 
         // iterations
 
-        if self.tol_gh_abs < CONFIG_TOL_MIN {
-            return Err("requirement: tol_gh ≥ CONFIG_TOL_MIN");
+        if self.tol_abs_residual < CONFIG_TOL_MIN {
+            return Err("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN");
         }
-        if self.tol_ul_abs < CONFIG_TOL_MIN {
-            return Err("requirement: tol_ul ≥ CONFIG_TOL_MIN");
+        if self.tol_abs_delta < CONFIG_TOL_MIN {
+            return Err("requirement: tol_abs_delta ≥ CONFIG_TOL_MIN");
         }
-        if self.max_ul_allowed <= 0.0 {
-            return Err("requirement: max_ul_allowed > 0");
+        if self.tol_rel_delta < CONFIG_TOL_MIN {
+            return Err("requirement: tol_rel_delta ≥ CONFIG_TOL_MIN");
         }
-        if self.n_iteration_max < 1 {
-            return Err("requirement: n_iteration_max ≥ 1");
+        if self.allowed_delta_max <= 0.0 {
+            return Err("requirement: allowed_delta_max > 0");
+        }
+        if self.allowed_iterations < 1 {
+            return Err("requirement: allowed_iterations ≥ 1");
         }
         Ok(())
     }
@@ -476,18 +479,30 @@ mod tests {
 
         // iterations
 
-        config.n_iteration_max = 0;
-        assert_eq!(config.validate().err(), Some("requirement: n_iteration_max ≥ 1"));
-        config.n_iteration_max = 10;
-        config.tol_gh_abs = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: tol_gh ≥ CONFIG_TOL_MIN"));
-        config.tol_gh_abs = 1e-10;
-        config.tol_ul_abs = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: tol_ul ≥ CONFIG_TOL_MIN"));
-        config.tol_ul_abs = 1e-10;
-        config.max_ul_allowed = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: max_ul_allowed > 0"));
-        config.max_ul_allowed = 1e10;
+        config.allowed_iterations = 0;
+        assert_eq!(config.validate().err(), Some("requirement: allowed_iterations ≥ 1"));
+        config.allowed_iterations = 10;
+        config.tol_abs_residual = 0.0;
+        assert_eq!(
+            config.validate().err(),
+            Some("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN")
+        );
+        config.tol_abs_residual = 1e-10;
+        config.tol_abs_delta = 0.0;
+        assert_eq!(
+            config.validate().err(),
+            Some("requirement: tol_abs_delta ≥ CONFIG_TOL_MIN")
+        );
+        config.tol_abs_delta = 1e-10;
+        config.tol_rel_delta = 0.0;
+        assert_eq!(
+            config.validate().err(),
+            Some("requirement: tol_rel_delta ≥ CONFIG_TOL_MIN")
+        );
+        config.tol_rel_delta = 1e-10;
+        config.allowed_delta_max = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0"));
+        config.allowed_delta_max = 1e10;
 
         // all good
         assert_eq!(config.validate().is_err(), false);

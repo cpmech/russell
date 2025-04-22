@@ -5,22 +5,73 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
 ///
-/// The augmented system solved at each iteration is:
+/// The nonlinear problem is:
+///
+/// ```text
+/// G(u(s), λ(s)) = 0  (1)
+///
+/// with Gu ≡ ∂G/∂u and Gλ ≡ ∂G/∂λ
+/// ```
+///
+/// The pseudo-arclength normalization (constraint) is:
+///
+/// ```text
+/// Nₒ = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs  (2)
+/// ```
+///
+/// The augmented linear system solved at each Newton iteration is:
 ///
 /// ```text
 /// ┌              ┐ ┌    ┐   ┌     ┐
 /// │  Gu      Gλ  │ │ δu │   │ -G  │
-/// │              │ │    │ = │     │
+/// │              │ │    │ = │     │  (3)
 /// │ duds0ᵀ dλds0 │ │ δλ │   │ -Nₒ │
 /// └              ┘ └    ┘   └     ┘
 ///         A           x        b
 /// ```
 ///
-/// where the normalization (constraint) function is:
+/// To calculate the initial tangent vector, the following applies:
 ///
 /// ```text
-/// Nₒ = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
+/// dG/ds = ∂G/∂u du/ds + ∂G/∂λ dλ/ds ≡ 0  (4)
+/// Gu du/ds + Gλ dλ/ds = 0                (5)
+/// Gu du/ds = -Gλ dλ/ds                   (6)
+/// du/ds = -(Gu⁻¹ Gλ) dλ/ds               (7)
+///              z
+/// z ≡ -Gu⁻¹ Gλ                           (8)
+/// du/ds = dλ/ds z                        (9)
 /// ```
+///
+/// Substituting (9) into (6) gives:
+///
+/// ```text
+/// Gu (z dλ/ds) = -Gλ dλ/ds  (10)
+/// Gu z = -Gλ                (11)
+/// ```
+///
+/// Thus, `z` is the solution of the linear system `Gu z = -Gλ`.
+///
+/// With the norm of the tangent vector being 1, we have
+/// (considering (9) again):
+///
+/// ```text
+/// (du/ds)ᵀ du/ds + (dλ/ds)² = 1
+/// (dλ/ds)² zᵀ z  + (dλ/ds)² = 1
+/// dλ/ds = ±1 / √(1 + zᵀ z)
+/// ```
+///
+/// Thus, at the initial point `(u0, λ0)`:
+///
+/// ```text
+/// (dλ/ds)₀ = sign₀ / √(1 + z₀ᵀ z₀)
+/// ```
+///
+/// Where `z₀` is the solution of `Gu z₀ = -Gλ₀`, which requires
+/// that `Gu` be non-singular at the initial point.
+///
+/// The `sign₀` variable is determines the direction along the solution branch
+/// and must be given by the user. An option to reuse the previous tangent
+/// vector is also available.
 pub struct SolverArclength<'a, A> {
     /// Configuration options
     config: Config,

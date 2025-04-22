@@ -1,4 +1,4 @@
-use super::{Config, Method, SolverTrait, State, Stop, System};
+use super::{Config, Method, SolverTrait, State, Stop, System, TgVec};
 use super::{Output, SolverArclength, SolverNatural, Stats, Workspace};
 use crate::StrError;
 use russell_lab::vec_all_finite;
@@ -71,11 +71,18 @@ impl<'a, A> Solver<'a, A> {
     /// # Input
     ///
     /// * `state` -- the initial state (u0,λ0) with a non-singular Gu = du/dλ (Jacobian) matrix.
-    ///    The state also includes an option to compute or reuse the initial tangent vector.
     ///    The state will be updated with the new solution (u,λ) util a stop criterion is reached.
+    /// * `tg` -- the option to compute (or reuse) the initial tangent vector (duds0, dλds0) for the pseudo-arclength method.
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
     /// * `h_equal` -- use a constant stepsize; otherwise, variable step sizes are automatically calculated (auto mode).
-    pub fn solve(&mut self, state: &mut State, stop: Stop, h_equal: Option<f64>, args: &mut A) -> Result<(), StrError> {
+    pub fn solve(
+        &mut self,
+        state: &mut State,
+        tg: TgVec,
+        stop: Stop,
+        h_equal: Option<f64>,
+        args: &mut A,
+    ) -> Result<(), StrError> {
         // check data
         if state.u.dim() != self.ndim {
             return Err("u.dim() must be equal to ndim");
@@ -125,7 +132,7 @@ impl<'a, A> Solver<'a, A> {
         self.work.reset(h_ini, self.config.rel_error_prev_min, auto);
 
         // perform initialization such as computing the first tangent vector in pseudo-arclength
-        self.actual.initialize(&mut self.work, &state, args)?;
+        self.actual.initialize(&mut self.work, &state, tg, args)?;
 
         // first output
         if self.output_enabled {
@@ -368,7 +375,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{Config, Method, Samples, State, Stop};
+    use crate::{Config, Method, Samples, State, Stop, TgVec};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -386,21 +393,24 @@ mod tests {
     fn solve_captures_errors() {
         let (system, _, _, mut args) = Samples::two_eq_ref();
         let mut state = State::new(system.ndim + 1, false); // wrong dim
+        let tg = TgVec::Positive;
         let ndim = system.ndim;
         let config = Config::new(Method::Natural);
         let mut solver = Solver::new(config, system).unwrap();
         assert_eq!(
-            solver.solve(&mut state, Stop::Lambda(1.0), None, &mut args).err(),
+            solver.solve(&mut state, tg, Stop::Lambda(1.0), None, &mut args).err(),
             Some("u.dim() must be equal to ndim")
         );
         state.u = Vector::new(ndim); // fix dim
         assert_eq!(
-            solver.solve(&mut state, Stop::Lambda(0.0), None, &mut args).err(),
+            solver.solve(&mut state, tg, Stop::Lambda(0.0), None, &mut args).err(),
             Some("Stopping criterion error: l1 must be greater than l0")
         );
         let h_equal = Some(f64::EPSILON); // will cause an error
         assert_eq!(
-            solver.solve(&mut state, Stop::Lambda(1.0), h_equal, &mut args).err(),
+            solver
+                .solve(&mut state, tg, Stop::Lambda(1.0), h_equal, &mut args)
+                .err(),
             Some("h_equal must be ≥ 10.0 * f64::EPSILON")
         );
     }
@@ -408,11 +418,12 @@ mod tests {
     #[test]
     fn lack_of_convergence_is_captured() {
         let (system, mut state, _u_ref, mut args) = Samples::two_eq_ref();
+        let tg = TgVec::Positive;
         let mut config = Config::new(Method::Natural);
         config.n_step_max = 1; // will make the solver to fail (too few steps)
         let mut solver = Solver::new(config, system).unwrap();
         assert_eq!(
-            solver.solve(&mut state, Stop::Lambda(1.0), None, &mut args).err(),
+            solver.solve(&mut state, tg, Stop::Lambda(1.0), None, &mut args).err(),
             Some("failed to solve the nonlinear problem with automatic stepsize")
         );
     }
@@ -424,7 +435,8 @@ mod tests {
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
         let stop = Stop::Steps(1); // just one step
-        solver.solve(&mut state, stop, Some(1.0), &mut args).unwrap();
+        let tg = TgVec::Positive;
+        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
         let stats = solver.stats();
         assert_eq!(stats.n_function, 7);
@@ -444,8 +456,9 @@ mod tests {
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
+        let tg = TgVec::Positive;
         let stop = Stop::Steps(1); // just one step
-        solver.solve(&mut state, stop, None, &mut args).unwrap();
+        solver.solve(&mut state, tg, stop, None, &mut args).unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
         let stats = solver.stats();
         assert_eq!(stats.n_function, 7);

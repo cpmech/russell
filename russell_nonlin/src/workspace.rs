@@ -52,6 +52,8 @@ pub(crate) struct Workspace<'a> {
     pub(crate) log: Logger,
 
     /// Holds G(u, λ)
+    ///
+    /// (ndim)
     pub(crate) gg: Vector,
 
     /// Holds the pseudo-arclength normalization (constraint) function value
@@ -64,7 +66,14 @@ pub(crate) struct Workspace<'a> {
     pub(crate) nno: f64,
 
     /// Holds the Gu = ∂G/∂u matrix
+    ///
+    /// (ndim x ndim)
     pub(crate) ggu: CooMatrix,
+
+    /// Holds the Gλ = ∂G/∂λ vector (pseudo-arclength only)
+    ///
+    /// (ndim)
+    pub(crate) ggl: Vector,
 
     /// Linear solver
     pub(crate) ls: LinSolver<'a>,
@@ -133,6 +142,7 @@ impl<'a> Workspace<'a> {
             gg: Vector::new(system.ndim),
             nno: 0.0,
             ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
+            ggl: Vector::new(ndim_extra_arc),
             ls: LinSolver::new(config.genie).unwrap(),
             u: Vector::new(system.ndim),
             l: 0.0,

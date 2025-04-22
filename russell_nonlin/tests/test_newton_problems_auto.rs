@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{Config, Method, Samples, Solver, Stop};
+use russell_nonlin::{Config, Method, Samples, Solver, Stop, TgVec};
 
 #[test]
 fn test_newton_problems_ok_1_auto() {
@@ -14,8 +14,9 @@ fn test_newton_problems_ok_1_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut state, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state, tg, stop, Some(1.0), &mut args).unwrap();
 
     // check
     let stats = solver.stats();
@@ -48,9 +49,10 @@ fn test_newton_problems_fail_due_to_max_iter_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, None, &mut args).err(),
+        solver.solve(&mut state, tg, stop, None, &mut args).err(),
         Some("failed to solve the nonlinear problem with automatic stepsize")
     );
     assert_eq!(
@@ -72,9 +74,10 @@ fn test_newton_problems_fail_oscillation_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, None, &mut args).err(),
+        solver.solve(&mut state, tg, stop, None, &mut args).err(),
         Some("failed to solve the nonlinear problem with automatic stepsize")
     );
     assert_eq!(
@@ -96,9 +99,10 @@ fn test_newton_problems_indeterminate_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, None, &mut args).err(),
+        solver.solve(&mut state, tg, stop, None, &mut args).err(),
         Some("failed to solve the nonlinear problem with automatic stepsize")
     );
     assert_eq!(
@@ -123,8 +127,9 @@ fn test_newton_problems_ok_2_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut state, stop, None, &mut args).unwrap();
+    solver.solve(&mut state, tg, stop, None, &mut args).unwrap();
 
     // check
     let stats = solver.stats();
@@ -157,9 +162,10 @@ fn test_simple_fixed_continued_divergence_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, None, &mut args).err(),
+        solver.solve(&mut state, tg, stop, None, &mut args).err(),
         Some("failed to solve the nonlinear problem with automatic stepsize")
     );
     assert_eq!(
@@ -184,9 +190,10 @@ fn test_newton_problems_stepsize_becomes_small() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, None, &mut args).err(),
+        solver.solve(&mut state, tg, stop, None, &mut args).err(),
         Some("failed to solve the nonlinear problem with automatic stepsize")
     );
     assert_eq!(

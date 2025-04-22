@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{Config, Method, Samples, Solver, Stop};
+use russell_nonlin::{Config, Method, Samples, Solver, Stop, TgVec};
 
 #[test]
 fn test_newton_problems_ok_1() {
@@ -14,8 +14,9 @@ fn test_newton_problems_ok_1() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut state, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state, tg, stop, Some(1.0), &mut args).unwrap();
 
     // check
     let stats = solver.stats();
@@ -48,9 +49,10 @@ fn test_newton_problems_fail_due_to_max_iter() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["max number of iterations reached"]);
@@ -69,9 +71,10 @@ fn test_newton_problems_fail_oscillation() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["max number of iterations reached"]);
@@ -90,9 +93,10 @@ fn test_newton_problems_indeterminate() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["max(‖δu‖∞,|δλ|) is too large"]);
@@ -114,8 +118,9 @@ fn test_newton_problems_ok_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut state, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state, tg, stop, Some(1.0), &mut args).unwrap();
 
     // check
     let stats = solver.stats();
@@ -148,9 +153,10 @@ fn test_simple_fixed_continued_divergence() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
     assert_eq!(solver.errors(), &["continued divergence detected"]);
@@ -169,9 +175,10 @@ fn test_two_eq_nr_prob_1_singular() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).err(),
         Some("Error(1): Matrix is singular")
     );
 }
@@ -189,19 +196,20 @@ fn test_two_eq_nr_prob_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem: first solution
+    let tg = TgVec::Positive;
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut state_ok1, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state_ok1, tg, stop, Some(1.0), &mut args).unwrap();
     vec_approx_eq(&state_ok1.u, &u_ref1, 1e-9);
 
     // solve problem: second solution
     let stop = Stop::Steps(1); // just one step
-    solver.solve(&mut state_ok2, stop, Some(1.0), &mut args).unwrap();
+    solver.solve(&mut state_ok2, tg, stop, Some(1.0), &mut args).unwrap();
     vec_approx_eq(&state_ok2.u, &u_ref2, 1e-9);
 
     // singular case
     let stop = Stop::Steps(1); // just one step
     assert_eq!(
-        solver.solve(&mut state_bad, stop, Some(1.0), &mut args).err(),
+        solver.solve(&mut state_bad, tg, stop, Some(1.0), &mut args).err(),
         Some("Error(1): Matrix is singular")
     );
 }

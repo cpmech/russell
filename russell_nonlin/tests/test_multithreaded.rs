@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System};
+use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System, TgVec};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
@@ -75,6 +75,7 @@ impl<'a> Runner for Simulator<'a> {
             .solver
             .solve(
                 &mut self.data.state,
+                TgVec::Positive,
                 self.data.stop,
                 self.data.h_equal,
                 &mut self.data.args,

@@ -1,4 +1,4 @@
-use super::{Config, SolverTrait, State, System, Workspace};
+use super::{Config, SolverTrait, State, System, TgVec, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update};
 use russell_sparse::numerical_jacobian;
@@ -10,12 +10,64 @@ pub struct SolverArclength<'a, A> {
 
     /// System
     system: System<'a, A>,
+
+    /// Use the numerical Gu matrix
+    use_num_ggu: bool,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
     pub fn new(config: Config, system: System<'a, A>) -> Self {
-        SolverArclength { config, system }
+        let use_num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
+        SolverArclength {
+            config,
+            system,
+            use_num_ggu,
+        }
+    }
+
+    /// Calculates the Gu = ∂G/∂u matrix
+    fn calc_ggu(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        // assemble Gu matrix
+        work.stats.sw_jacobian.reset();
+        work.ggu.reset();
+        if self.use_num_ggu {
+            // numerical
+            work.stats.n_function += self.system.ndim;
+            numerical_jacobian(
+                &mut work.ggu,
+                1.0,
+                work.l,
+                &mut work.u,
+                &mut work.u_aux1,
+                &mut work.u_aux2,
+                args,
+                self.system.calc_gg.as_ref(),
+            )?;
+        } else {
+            // analytical
+            work.stats.n_jacobian += 1;
+            (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, work.l, &work.u, args)?;
+        }
+        work.stats.stop_sw_jacobian();
+
+        // factorize Gu matrix
+        work.stats.sw_factor.reset();
+        work.stats.n_factor += 1;
+        work.ls.actual.factorize(&mut work.ggu, self.config.lin_sol_config)?;
+        work.stats.stop_sw_factor();
+        Ok(())
+    }
+
+    /// Calculates the Gλ = ∂G/∂λ matrix
+    fn calc_ggl(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        match self.system.calc_ggl.as_ref() {
+            Some(calc_ggl) => {
+                (calc_ggl)(&mut work.ggl, work.l, &work.u, args)?;
+            }
+            None => return Err("calc_ggl is required for the Arclength method"),
+        }
+        Ok(())
     }
 
     /// Performs a single iteration
@@ -33,40 +85,10 @@ impl<'a, A> SolverArclength<'a, A> {
             return Ok(());
         }
 
-        // auxiliary flags
-        let recompute_jacobian = iteration == 0 || !self.config.constant_tangent;
-        let use_num_jacobian = self.config.use_numerical_jacobian || self.system.calc_ggu.is_none();
-
-        // compute Jacobian matrix
-        if recompute_jacobian {
-            // assemble Gu matrix
-            work.stats.sw_jacobian.reset();
-            work.ggu.reset();
-            if use_num_jacobian {
-                // numerical Jacobian
-                work.stats.n_function += self.system.ndim;
-                numerical_jacobian(
-                    &mut work.ggu,
-                    1.0,
-                    work.l,
-                    &mut work.u,
-                    &mut work.u_aux1,
-                    &mut work.u_aux2,
-                    args,
-                    self.system.calc_gg.as_ref(),
-                )?;
-            } else {
-                // analytical Jacobian
-                work.stats.n_jacobian += 1;
-                (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, work.l, &work.u, args)?;
-            }
-            work.stats.stop_sw_jacobian();
-
-            // factorize Gu matrix
-            work.stats.sw_factor.reset();
-            work.stats.n_factor += 1;
-            work.ls.actual.factorize(&mut work.ggu, self.config.lin_sol_config)?;
-            work.stats.stop_sw_factor();
+        // compute Gu matrix
+        let recompute_ggu = iteration == 0 || !self.config.constant_tangent;
+        if recompute_ggu {
+            self.calc_ggu(work, args)?;
         }
 
         // solve linear system
@@ -118,7 +140,22 @@ impl<'a, A> SolverArclength<'a, A> {
 
 impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// Perform initialization such as computing the first tangent vector in pseudo-arclength
-    fn initialize(&mut self, _work: &mut Workspace, _state: &State, _args: &mut A) -> Result<(), StrError> {
+    fn initialize(&mut self, work: &mut Workspace, state: &State, tg: TgVec, args: &mut A) -> Result<(), StrError> {
+        // check if the tangent vector is available
+        if state.duds.dim() != state.u.dim() {
+            return Err("duds.ndim != to u.ndim; the tangent vector is required for the Arclength method");
+        }
+
+        // calculate Gu = ∂G/∂u
+        self.calc_ggu(work, args)?;
+
+        // calculate Gλ = ∂G/∂λ
+        match self.system.calc_ggl.as_ref() {
+            Some(calc_ggl) => {
+                calc_ggl(&mut work.ggl, state.l, &state.u, args)?;
+            }
+            None => return Err("calc_ggl is required for the Arclength method"),
+        }
         Ok(())
     }
 

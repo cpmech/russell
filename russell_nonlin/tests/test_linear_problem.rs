@@ -1,5 +1,5 @@
 use russell_lab::{array_approx_eq, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System};
+use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System, TgVec};
 use russell_sparse::{CooMatrix, Sym};
 
 #[test]
@@ -42,8 +42,11 @@ fn test_linear_no_auto_ana_jac() {
     state.l = 0.0;
 
     // solve
+    let tg = TgVec::Positive;
     let args = &mut 0;
-    solver.solve(&mut state, Stop::Lambda(1.0), Some(0.1), args).unwrap();
+    solver
+        .solve(&mut state, tg, Stop::Lambda(1.0), Some(0.1), args)
+        .unwrap();
 
     // results
     // println!("u[0] = {:?}", solver.out_step_u(0));
@@ -108,8 +111,11 @@ fn test_linear_no_auto_num_jac() {
     state.l = 0.0;
 
     // solve
+    let tg = TgVec::Positive;
     let args = &mut 0;
-    solver.solve(&mut state, Stop::Lambda(1.0), Some(0.1), args).unwrap();
+    solver
+        .solve(&mut state, tg, Stop::Lambda(1.0), Some(0.1), args)
+        .unwrap();
 
     // results
     // println!("u[0] = {:?}", solver.out_step_u(0));

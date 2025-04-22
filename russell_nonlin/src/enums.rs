@@ -13,17 +13,17 @@ pub enum Stop {
 /// Defines the initial tangent vector (duds0, dλds0) for the pseudo-arclength method.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum TgVec {
-    /// Calculated using the positive sign of dλds0 (follows the positive direction on the branch).
+    /// Use the positive sign of dλds0 (follows the positive direction on the branch).
     ///
     /// This requires the Jacobian matrix Gu0 = ∂G/∂u @ (u0,λ0) to be non-singular.
     Positive,
 
-    /// Calculated using the negative sign of dλds0 (follows the negative direction on the branch).
+    /// Use the negative sign of dλds0 (follows the negative direction on the branch).
     ///
     /// This requires the Jacobian matrix Gu0 = ∂G/∂u @ (u0,λ0) to be non-singular.
     Negative,
 
-    /// Use a given (previous) tangent vector
+    /// Use a given (previous) tangent vector specified in the State object.
     Given,
 }
 

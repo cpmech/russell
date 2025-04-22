@@ -98,10 +98,10 @@ impl Samples {
         (system, u_trial, u_reference, args)
     }
 
-    /// Simple two-equation system
+    /// Simple two-equation system with reference solution
     ///
     /// Returns `(system, u_trial, u_reference, args)`
-    pub fn simple_two_equations<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
+    pub fn two_eq_ref<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
         let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn test_simple_two_equations() {
         // system
-        let (system, u0, _, mut args) = Samples::simple_two_equations();
+        let (system, u0, _, mut args) = Samples::two_eq_ref();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();

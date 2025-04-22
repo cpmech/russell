@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        let (system, _u_trial, _u_ref, _args) = Samples::simple_two_equations();
+        let (system, _u_trial, _u_ref, _args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.m_max = 0.0; // wrong
         assert_eq!(
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn solve_captures_errors() {
-        let (system, _u_trial, _u_ref, mut args) = Samples::simple_two_equations();
+        let (system, _u_trial, _u_ref, mut args) = Samples::two_eq_ref();
         let mut l0 = 0.0;
         let ndim = system.ndim;
         let config = Config::new(Method::Natural);
@@ -421,7 +421,7 @@ mod tests {
 
     #[test]
     fn lack_of_convergence_is_captured() {
-        let (system, mut u0, _u_ref, mut args) = Samples::simple_two_equations();
+        let (system, mut u0, _u_ref, mut args) = Samples::two_eq_ref();
         let mut l0 = 0.0;
         let mut config = Config::new(Method::Natural);
         config.n_step_max = 1; // will make the solver to fail (too few steps)
@@ -434,7 +434,7 @@ mod tests {
 
     #[test]
     fn solve_with_one_step_works_fixed() {
-        let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
+        let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_ul(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn solve_with_one_step_works_auto() {
-        let (system, mut u, u_ref, mut args) = Samples::simple_two_equations();
+        let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_ul(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();

@@ -16,18 +16,18 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// The pseudo-arclength normalization (constraint) is:
 ///
 /// ```text
-/// Nₒ = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs  (2)
+/// Nₒ = (u - u₀)ᵀ (du/ds)₀ + (λ - λ₀)ᵀ (dλ/ds)₀ - Δs  (2)
 /// ```
 ///
 /// The augmented linear system solved at each Newton iteration is:
 ///
 /// ```text
-/// ┌              ┐ ┌    ┐   ┌     ┐
-/// │  Gu      Gλ  │ │ δu │   │ -G  │
-/// │              │ │    │ = │     │  (3)
-/// │ duds0ᵀ dλds0 │ │ δλ │   │ -Nₒ │
-/// └              ┘ └    ┘   └     ┘
-///         A           x        b
+/// ┌                    ┐ ┌    ┐   ┌     ┐
+/// │    Gu        Gλ    │ │ δu │   │ -G  │
+/// │                    │ │    │ = │     │  (3)
+/// │ (du/ds)₀ᵀ (dλ/ds)₀ │ │ δλ │   │ -Nₒ │
+/// └                    ┘ └    ┘   └     ┘
+///            A             x         b
 /// ```
 ///
 /// To calculate the initial tangent vector, the following applies:
@@ -81,10 +81,45 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 ///
 /// ```text
 /// ┌          ┐ ┌    ┐   ┌      ┐
-/// │  Gu0  0  │ │ z0 │   │ -Gλ0 │
+/// │  Gu₀  0  │ │ z₀ │   │ -Gλ₀ │
 /// │          │ │    │ = │      │  (16)
 /// │   0   1  │ │ 0  │   │  0   │
 /// └          ┘ └    ┘   └      ┘
+/// ```
+///
+/// After Newton's iteration is completed (converged), the tangent vector needs to
+/// be updated. To continue following the solution branch in the same direction, the
+/// new tangent vector `((du/ds)₁, (dλ/ds)₁)` must satisfy:
+///
+/// ```text
+/// (du/ds)₀ᵀ (du/ds)₁ + (dλ/ds)₀ (dλ/ds)₁ = 1  (17)
+/// ```
+///
+/// i.e., the inner product between the previous and new vectors is 1.
+/// Also, from (5) we have:
+///
+/// ```text
+/// Gu₁ (du/ds)₁ + Gλ₁ (dλ/ds)₁ = 0  (18)
+/// ```
+///
+/// Thus, the new tangent vector can be calculated from the following linear system:
+///
+/// ```text
+/// ┌                    ┐ ┌          ┐   ┌   ┐
+/// │    Gu₁      Gλ₁    │ │ (du/ds)₁ │   │ 0 │
+/// │                    │ │          │ = │   │  (19)
+/// │ (du/ds)₀ᵀ (dλ/ds)₀ │ │ (dλ/ds)₁ │   │ 1 │
+/// └                    ┘ └          ┘   └   ┘
+///            A₁               x₁         b₁
+/// ```
+///
+/// Note that the augmented Jacobian matrix `A₁` is already factorized
+/// by the end of the Newton iteration.
+///
+/// Finally, the new tangent vector must be rescaled such that:
+///
+/// ```text
+/// (du/ds)₁ᵀ (du/ds)₁ + (dλ/ds)₁² = 1  (20)
 /// ```
 ///
 /// # References

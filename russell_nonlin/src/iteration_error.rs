@@ -114,11 +114,6 @@ impl IterationError {
         self.scaling[ndim] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.l);
     }
 
-    /// Marks the problem as converged for linear analysis
-    pub fn set_converged_linear_problem(&mut self) {
-        self.residual_converged = true;
-    }
-
     /// Returns whether max(‖δu‖∞,|δλ|) is too large
     pub fn is_delta_large(&self) -> bool {
         self.delta_max > self.allowed_delta_max

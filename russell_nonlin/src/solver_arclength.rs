@@ -373,12 +373,6 @@ impl<'a, A> SolverArclength<'a, A> {
             }
             (f)(&work.mdu, &work.u, args)?;
         }
-
-        // exit if linear problem (done)
-        if self.config.treat_as_linear {
-            work.err.set_converged_linear_problem();
-            return Ok(());
-        }
         Ok(())
     }
 }

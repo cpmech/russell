@@ -16,9 +16,6 @@ pub struct Config {
     /// Nonlinear solver method
     pub(crate) method: Method,
 
-    /// Treat the problem as linear
-    pub(crate) treat_as_linear: bool,
-
     /// Show stepping messages
     pub(crate) verbose: bool,
 
@@ -107,7 +104,6 @@ impl Config {
         Config {
             // basic options
             method,
-            treat_as_linear: false,
             verbose: false,
             verbose_iterations: false,
             verbose_legend: false,
@@ -137,12 +133,6 @@ impl Config {
             constant_tangent: false,
             use_numerical_jacobian: false,
         }
-    }
-
-    /// Sets a flag to treat the problem as linear (and skip iterations)
-    pub fn set_treat_as_linear(&mut self, flag: bool) -> &mut Self {
-        self.treat_as_linear = flag;
-        self
     }
 
     /// Sets the verbose flag

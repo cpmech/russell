@@ -101,9 +101,6 @@ pub struct Config {
     //
     /// Use the bordering algorithm throughout the entire simulation
     pub(crate) bordering: bool,
-
-    /// Use the bordering algorithm but switch to the augmented method if the Jacobian becomes singular
-    pub(crate) bordering_switchable: bool,
 }
 
 impl Config {
@@ -142,7 +139,6 @@ impl Config {
             use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: false,
-            bordering_switchable: false,
         }
     }
 
@@ -374,15 +370,6 @@ impl Config {
     /// Use the bordering algorithm throughout the entire simulation
     pub fn set_bordering(&mut self, flag: bool) -> &mut Self {
         self.bordering = flag;
-        self
-    }
-
-    /// Sets the bordering switchable flag
-    ///
-    /// Use the bordering algorithm but switch to the augmented method
-    /// if the Jacobian becomes singular
-    pub fn set_bordering_switchable(&mut self, flag: bool) -> &mut Self {
-        self.bordering_switchable = flag;
         self
     }
 

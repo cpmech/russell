@@ -96,6 +96,14 @@ pub struct Config {
 
     /// Use numerical Jacobian, even if the analytical Jacobian is available
     pub(crate) use_numerical_jacobian: bool,
+
+    // pseudo-arclength -------------------------------------------------------------------
+    //
+    /// Use the bordering algorithm throughout the entire simulation
+    pub(crate) bordering: bool,
+
+    /// Use the bordering algorithm but switch to the augmented method if the Jacobian becomes singular
+    pub(crate) bordering_switchable: bool,
 }
 
 impl Config {
@@ -132,8 +140,13 @@ impl Config {
             allowed_continued_divergence: 1,
             constant_tangent: false,
             use_numerical_jacobian: false,
+            // pseudo-arclength
+            bordering: false,
+            bordering_switchable: false,
         }
     }
+
+    // basic options ----------------------------------------------------------------------
 
     /// Sets the verbose flag
     pub fn set_verbose(&mut self, flag: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
@@ -148,6 +161,8 @@ impl Config {
         self.verbose_legend = flag;
         self
     }
+
+    // substepping ------------------------------------------------------------------------
 
     /// Sets the min step multiplier
     ///
@@ -247,6 +262,8 @@ impl Config {
         self
     }
 
+    // linear solver ----------------------------------------------------------------------
+
     /// Sets the linear solver kind
     pub fn set_genie(&mut self, genie: Genie) -> &mut Self {
         self.genie = genie;
@@ -278,6 +295,8 @@ impl Config {
         self.write_matrix_after_nstep_and_stop = value;
         self
     }
+
+    // iterations -------------------------------------------------------------------------
 
     /// Sets the absolute tolerance on max(‖G‖∞,|H|)
     ///
@@ -345,6 +364,25 @@ impl Config {
     /// Use numerical Jacobian, even if the analytical Jacobian is available
     pub fn set_use_numerical_jacobian(&mut self, flag: bool) -> &mut Self {
         self.use_numerical_jacobian = flag;
+        self
+    }
+
+    // pseudo-arclength -------------------------------------------------------------------
+
+    /// Sets the bordering flag
+    ///
+    /// Use the bordering algorithm throughout the entire simulation
+    pub fn set_bordering(&mut self, flag: bool) -> &mut Self {
+        self.bordering = flag;
+        self
+    }
+
+    /// Sets the bordering switchable flag
+    ///
+    /// Use the bordering algorithm but switch to the augmented method
+    /// if the Jacobian becomes singular
+    pub fn set_bordering_switchable(&mut self, flag: bool) -> &mut Self {
+        self.bordering_switchable = flag;
         self
     }
 

@@ -4,7 +4,7 @@ use russell_lab::{vec_norm, Norm, Vector};
 
 /// Calculates the iteration error
 pub(crate) struct IterationError {
-    /// Holds max(‖G‖∞,|Nₒ|)
+    /// Holds max(‖G‖∞,|N|)
     pub(crate) residual_max: f64,
 
     /// Holds max(‖δu‖∞,|δλ|)
@@ -13,10 +13,10 @@ pub(crate) struct IterationError {
     /// RMS error on (δu,δλ)
     pub(crate) delta_rms: f64,
 
-    /// Converged on (‖G‖∞,|Nₒ|)
+    /// Converged on (‖G‖∞,|N|)
     pub(crate) residual_converged: bool,
 
-    /// Diverging on (‖G‖∞,|Nₒ|)
+    /// Diverging on (‖G‖∞,|N|)
     pub(crate) residual_diverging: bool,
 
     /// Converged on RMS(δu,δλ)
@@ -31,7 +31,7 @@ pub(crate) struct IterationError {
     /// Previous `delta_max`
     delta_max_prev: f64,
 
-    /// Tolerance on max(‖G‖∞,|Nₒ|)
+    /// Tolerance on max(‖G‖∞,|N|)
     tol_abs_residual: f64,
 
     /// Absolute tolerance on RMS(δu,δλ)
@@ -129,14 +129,14 @@ impl IterationError {
         self.residual_converged || self.delta_converged
     }
 
-    /// Analyzes convergence on max(‖G‖∞,|Nₒ|)
+    /// Analyzes convergence on max(‖G‖∞,|N|)
     pub fn analyze_residual(&mut self, iteration: usize, gg: &Vector, nno: f64) -> Result<(), StrError> {
         // compute max norm
         self.residual_max = f64::max(vec_norm(gg, Norm::Max), f64::abs(nno));
 
         // check for NaN or Inf
         if !self.residual_max.is_finite() {
-            return Err("Found NaN or Inf in max(‖G‖∞,|Nₒ|)");
+            return Err("Found NaN or Inf in max(‖G‖∞,|N|)");
         }
 
         // check convergence

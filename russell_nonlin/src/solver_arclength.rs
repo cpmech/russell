@@ -10,24 +10,26 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// ```text
 /// G(u(s), λ(s)) = 0  (1)
 ///
-/// with Gu ≡ ∂G/∂u and Gλ ≡ ∂G/∂λ
+/// with Gu ≡ ∂G/∂u  and  Gλ ≡ ∂G/∂λ
 /// ```
 ///
 /// The pseudo-arclength normalization (constraint) is:
 ///
 /// ```text
-/// Nₒ = (u - u₀)ᵀ (du/ds)₀ + (λ - λ₀)ᵀ (dλ/ds)₀ - Δs  (2)
+/// N = (u - u₀)ᵀ du/ds|₀ + (λ - λ₀)ᵀ dλ/ds|₀ - Δs  (2)
+///
+/// with Nu₀ ≡ ∂N/∂u|₀ = du/ds|₀  and  Nλ₀ ≡ ∂N/∂λ|₀ = dλ/ds|₀
 /// ```
 ///
 /// The augmented linear system solved at each Newton iteration is:
 ///
 /// ```text
-/// ┌                    ┐ ┌    ┐   ┌     ┐
-/// │    Gu        Gλ    │ │ δu │   │ -G  │
-/// │                    │ │    │ = │     │  (3)
-/// │ (du/ds)₀ᵀ (dλ/ds)₀ │ │ δλ │   │ -Nₒ │
-/// └                    ┘ └    ┘   └     ┘
-///            A             x         b
+/// ┌           ┐ ┌    ┐   ┌    ┐
+/// │ Gu    Gλ  │ │ δu │   │ -G │
+/// │           │ │    │ = │    │  (3)
+/// │ Nu₀ᵀ  Nλ₀ │ │ δλ │   │ -N │
+/// └           ┘ └    ┘   └    ┘
+///       A         x         b
 /// ```
 ///
 /// To calculate the initial tangent vector, the following applies:
@@ -60,14 +62,14 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// dλ/ds = ±1 / √(1 + zᵀ z)       (14)
 /// ```
 ///
-/// Thus, at the initial point `(u0, λ0)`:
+/// Thus, at the initial point `(u₀, λ₀)`:
 ///
 /// ```text
-/// (dλ/ds)₀ = sign₀ / √(1 + z₀ᵀ z₀)  (15)
+/// dλ/ds|₀ = sign₀ / √(1 + z₀ᵀ z₀)  (15)
 /// ```
 ///
-/// Where `z₀` is the solution of `Gu z₀ = -Gλ₀`, which requires
-/// that `Gu` be non-singular at the initial point.
+/// Where `z₀` is the solution of `Gu₀ z₀ = -Gλ₀`, which requires
+/// that `Gu₀` be non-singular at the initial point.
 ///
 /// The `sign₀` variable is determines the direction along the solution branch
 /// and must be given by the user. An option to reuse the previous tangent
@@ -80,37 +82,37 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// the following modification of the augmented linear system:
 ///
 /// ```text
-/// ┌          ┐ ┌    ┐   ┌      ┐
-/// │  Gu₀  0  │ │ z₀ │   │ -Gλ₀ │
-/// │          │ │    │ = │      │  (16)
-/// │   0   1  │ │ 0  │   │  0   │
-/// └          ┘ └    ┘   └      ┘
+/// ┌        ┐ ┌    ┐   ┌      ┐
+/// │ Gu₀  0 │ │ z₀ │   │ -Gλ₀ │
+/// │        │ │    │ = │      │  (16)
+/// │  0   1 │ │ 0  │   │  0   │
+/// └        ┘ └    ┘   └      ┘
 /// ```
 ///
 /// After Newton's iteration is completed (converged), the tangent vector needs to
 /// be updated. To continue following the solution branch in the same direction, the
-/// new tangent vector `((du/ds)₁, (dλ/ds)₁)` must satisfy:
+/// new tangent vector `(du/ds|₁, dλ/ds|₁)` must satisfy:
 ///
 /// ```text
-/// (du/ds)₀ᵀ (du/ds)₁ + (dλ/ds)₀ (dλ/ds)₁ = 1  (17)
+/// du/ds|₀ᵀ du/ds|₁ + dλ/ds|₀ dλ/ds|₁ = 1  (17)
 /// ```
 ///
 /// i.e., the inner product between the previous and new vectors is 1.
 /// Also, from (5) we have:
 ///
 /// ```text
-/// Gu₁ (du/ds)₁ + Gλ₁ (dλ/ds)₁ = 0  (18)
+/// Gu₁ du/ds|₁ + Gλ₁ dλ/ds|₁ = 0  (18)
 /// ```
 ///
 /// Thus, the new tangent vector can be calculated from the following linear system:
 ///
 /// ```text
-/// ┌                    ┐ ┌          ┐   ┌   ┐
-/// │    Gu₁      Gλ₁    │ │ (du/ds)₁ │   │ 0 │
-/// │                    │ │          │ = │   │  (19)
-/// │ (du/ds)₀ᵀ (dλ/ds)₀ │ │ (dλ/ds)₁ │   │ 1 │
-/// └                    ┘ └          ┘   └   ┘
-///            A₁               x₁         b₁
+/// ┌           ┐ ┌         ┐   ┌   ┐
+/// │ Gu₁   Gλ₁ │ │ du/ds|₁ │   │ 0 │
+/// │           │ │         │ = │   │  (19)
+/// │ Nu₀ᵀ  Nλ₀ │ │ dλ/ds|₁ │   │ 1 │
+/// └           ┘ └         ┘   └   ┘
+///       A₁           x₁         b₁
 /// ```
 ///
 /// Note that the augmented Jacobian matrix `A₁` is already factorized by the end of the
@@ -119,14 +121,19 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// Finally, the new tangent vector must be rescaled such that:
 ///
 /// ```text
-/// (du/ds)₁ᵀ (du/ds)₁ + (dλ/ds)₁² = 1  (20)
+/// du/ds|₁ᵀ du/ds|₁ + dλ/ds|₁² = 1  (20)
 /// ```
 ///
 /// # References
 ///
-/// 1. Doedel EJ (2007) Lecture Notes on Numerical Analysis of Nonlinear Equations. In Numerical Continuation
-///    Methods for Dynamical Systems: Path following and boundary value problems. Ed. by B Krauskopf, HM Osinga,
-///    J Galán-Vioque. Springer Netherlands, doi: 10.1007/978-1-4020-6356-5 1
+/// 1. Spence A, Graham IG (1999) Numerical Methods for Bifurcation Problems. In The Graduate Student’s Guide to
+///    Numerical Analysis '98. Springer Series in Computational Mathematics. Ed. by Ainsworth M, Levesley J,
+///    Marletta M. vol 26. Springer, Berlin, Heidelberg. https://doi.org/10.1007/978-3-662-03972-4_5
+/// 2. Doedel EJ (2007) Lecture Notes on Numerical Analysis of Nonlinear Equations. In Numerical Continuation
+///    Methods for Dynamical Systems: Path following and boundary value problems. Ed. by Krauskopf B, Osinga HM,
+///    Galán-Vioque J. Springer Netherlands, https://doi.org/10.1007/978-1-4020-6356-5
+/// 3. Mittelmann HD (1986) A Pseudo-Arclength Continuation Method for Nonlinear Eigenvalue Problems,
+///    SIAM Journal on Numerical Analysis, 23:5, 1007-1016 https://doi.org/10.1137/0723068
 pub struct SolverArclength<'a, A> {
     /// Configuration options
     config: Config,
@@ -294,7 +301,7 @@ impl<'a, A> SolverArclength<'a, A> {
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
-        // calculate Nₒ = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
+        // calculate N = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
         let ndim = self.system.ndim;
         let mut nno = -dds;
         for i in 0..ndim {
@@ -302,7 +309,7 @@ impl<'a, A> SolverArclength<'a, A> {
         }
         nno += (work.l - self.l0) * self.dlds0;
 
-        // check convergence on (G, Nₒ)
+        // check convergence on (G, N)
         work.err.analyze_residual(iteration, &work.gg, nno)?;
         if work.err.converged() {
             if logging {
@@ -317,7 +324,7 @@ impl<'a, A> SolverArclength<'a, A> {
             self.calc_aa(work, args)?;
         }
 
-        // set the right-hand side vector b = (-G, -Nₒ)
+        // set the right-hand side vector b = (-G, -N)
         for i in 0..ndim {
             self.b[i] = -work.gg[i];
         }

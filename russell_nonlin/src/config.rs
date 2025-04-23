@@ -76,7 +76,7 @@ pub struct Config {
 
     // iterations -------------------------------------------------------------------------
     //
-    /// Absolute tolerance on max(‖G‖∞,|Nₒ|)
+    /// Absolute tolerance on max(‖G‖∞,|N|)
     pub(crate) tol_abs_residual: f64,
 
     /// Absolute tolerance on RMS(δu,δλ)

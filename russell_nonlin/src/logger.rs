@@ -51,7 +51,7 @@ impl Logger {
             Method::Arclength => {
                 println!(
                     "{:>8} {:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
-                    "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,Nₒ)"
+                    "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,N)"
                 );
             }
             Method::Natural => {

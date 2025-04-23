@@ -61,6 +61,13 @@ pub(crate) struct Workspace<'a> {
     /// (ndim x ndim)
     pub(crate) ggu: CooMatrix,
 
+    /// Indicates that the Gu matrix has been allocated
+    ///
+    /// Gu is always allocated for the Natural method. Nonetheless, for the
+    /// Arclength method, Gu is allocated only if either the bordering algorithm
+    /// is activated or the Gu matrix is symmetric (triangular storage).
+    pub(crate) with_ggu: bool,
+
     /// Linear solver
     pub(crate) ls: LinSolver<'a>,
 
@@ -86,11 +93,30 @@ pub(crate) struct Workspace<'a> {
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
     pub(crate) fn new<'b, A>(config: &Config, system: &System<'b, A>) -> Self {
+        // allocate Gu matrix
+        let (ggu, with_ggu) = match config.method {
+            Method::Arclength => {
+                if config.bordering || system.sym_ggu.triangular() {
+                    (
+                        CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
+                        true,
+                    )
+                } else {
+                    (CooMatrix::new(1, 1, 1, system.sym_ggu).unwrap(), false)
+                }
+            }
+            Method::Natural => (
+                CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
+                true,
+            ),
+        };
+        // determine Jacobian size
         let ndim_num_jac = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
             system.ndim
         } else {
             0
         };
+        // allocate the workspace
         Workspace {
             auto: false,
             stats: Stats::new(config.method),
@@ -107,7 +133,8 @@ impl<'a> Workspace<'a> {
             err: IterationError::new(config, system.ndim),
             log: Logger::new(config),
             gg: Vector::new(system.ndim),
-            ggu: CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
+            ggu,
+            with_ggu,
             ls: LinSolver::new(config.genie).unwrap(),
             u: Vector::new(system.ndim),
             l: 0.0,

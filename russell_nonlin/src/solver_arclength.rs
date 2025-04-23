@@ -194,8 +194,20 @@ impl<'a, A> SolverArclength<'a, A> {
         }
     }
 
+    /// Calculates the Gλ = ∂G/∂λ vector
+    fn calc_ggl(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        match self.system.calc_ggl.as_ref() {
+            Some(calc_ggl) => {
+                (calc_ggl)(&mut self.ggl, work.l, &work.u, args)?;
+            }
+            None => return Err("calc_ggl is required for the Arclength method"),
+        }
+        Ok(())
+    }
+
     /// Calculates the Gu = ∂G/∂u matrix
     fn calc_ggu(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        assert_eq!(work.with_ggu, true);
         // assemble Gu matrix
         work.stats.sw_jacobian.reset();
         work.ggu.reset();
@@ -227,27 +239,30 @@ impl<'a, A> SolverArclength<'a, A> {
         Ok(())
     }
 
-    /// Calculates the Gλ = ∂G/∂λ vector
-    fn calc_ggl(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
-        match self.system.calc_ggl.as_ref() {
-            Some(calc_ggl) => {
-                (calc_ggl)(&mut self.ggl, work.l, &work.u, args)?;
-            }
-            None => return Err("calc_ggl is required for the Arclength method"),
-        }
-        Ok(())
-    }
-
     /// Calculates the augmented Jacobian matrix
     ///
+    /// The augmented Jacobian matrix is:
+    ///
     /// ```text
+    /// just_ggu == false:
     ///     ┌              ┐
     ///     │  Gu      Gλ  │
     /// A = │              │
     ///     │ duds0ᵀ dλds0 │
     ///     └              ┘
     /// ```
-    fn calc_aa(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+    ///
+    /// Nonetheless, when using A to calculate the initial tangent vector, it is:
+    ///
+    /// ```text
+    /// just_ggu == true:
+    ///     ┌        ┐
+    ///     │ Gu₀  0 │
+    /// A = │        │
+    ///     │  0   1 │
+    ///     └        ┘
+    /// ```
+    fn calc_aa(&mut self, work: &mut Workspace, args: &mut A, just_ggu: bool) -> Result<(), StrError> {
         // assemble Gu matrix into A
         work.stats.sw_jacobian.reset();
         self.aa.reset();
@@ -270,14 +285,25 @@ impl<'a, A> SolverArclength<'a, A> {
             (self.system.calc_ggu.as_ref().unwrap())(&mut self.aa, work.l, &work.u, args)?;
         }
 
-        // assemble Gλ, duds0, and dλds0 into A
+        // set the last row and column of A
         let ndim = self.system.ndim;
-        self.calc_ggl(work, args)?;
-        for i in 0..ndim {
-            self.aa.put(i, ndim, self.ggl[i]).unwrap();
-            self.aa.put(ndim, i, self.duds0[i]).unwrap();
+        if just_ggu {
+            // put 0 on the last row and column and 1 on the diagonal
+            // (putting zeros is only necessary because the sparse solver requires it for subsequent calls)
+            for i in 0..ndim {
+                self.aa.put(i, ndim, 0.0).unwrap();
+                self.aa.put(ndim, i, 0.0).unwrap();
+            }
+            self.aa.put(ndim, ndim, 1.0).unwrap();
+        } else {
+            // put Gλ, duds0, and dλds0 into A
+            self.calc_ggl(work, args)?;
+            for i in 0..ndim {
+                self.aa.put(i, ndim, self.ggl[i]).unwrap();
+                self.aa.put(ndim, i, self.duds0[i]).unwrap();
+            }
+            self.aa.put(ndim, ndim, self.dlds0).unwrap();
         }
-        self.aa.put(ndim, ndim, self.dlds0).unwrap();
         work.stats.stop_sw_jacobian();
 
         // factorize matrix A
@@ -321,7 +347,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // compute augmented Jacobian matrix
         let recompute_aa = iteration == 0 || !self.config.constant_tangent;
         if recompute_aa {
-            self.calc_aa(work, args)?;
+            self.calc_aa(work, args, false)?;
         }
 
         // set the right-hand side vector b = (-G, -N)
@@ -379,6 +405,8 @@ impl<'a, A> SolverArclength<'a, A> {
 
 impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// Perform initialization such as computing the first tangent vector in pseudo-arclength
+    ///
+    /// **Note**: Gu₀ must be non-singular
     fn initialize(&mut self, work: &mut Workspace, state: &State, tg: TgVec, args: &mut A) -> Result<(), StrError> {
         // check if the tangent vector is available
         if state.duds.dim() != state.u.dim() {
@@ -405,19 +433,45 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             }
         };
 
-        // calculate Gu = ∂G/∂u and Gλ = ∂G/∂λ
-        self.calc_ggu(work, args)?;
+        // calculate Gλ = ∂G/∂λ
         self.calc_ggl(work, args)?;
 
-        // (Gu must be non-singular) solve mdu := Gu⁻¹ · Gλ = -z0
-        work.stats.sw_lin_sol.reset();
-        work.stats.n_lin_sol += 1;
-        work.ls.actual.solve(&mut work.mdu, &self.ggl, false)?; // mdu := -z0
-        work.stats.stop_sw_lin_sol();
+        if work.with_ggu {
+            // calculate Gu = ∂G/∂u
+            self.calc_ggu(work, args)?;
 
-        // calculate tangent vector
-        self.dlds0 = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
-        vec_copy_scaled(&mut self.duds0, -self.dlds0, &work.mdu).unwrap(); // "-1" because mdu = -z0
+            // solve mdu := Gu⁻¹ · Gλ = -z₀
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            work.ls.actual.solve(&mut work.mdu, &self.ggl, false)?; // mdu := -z₀
+            work.stats.stop_sw_lin_sol();
+
+            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
+            self.dlds0 = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
+            vec_copy_scaled(&mut self.duds0, -self.dlds0, &work.mdu).unwrap(); // "-1" because mdu = -z₀
+        } else {
+            // calculate the augmented matrix A := Gu = ∂G/∂u
+            self.calc_aa(work, args, true)?;
+
+            // set b = (-Gλ₀, 0)
+            for i in 0..ndim {
+                self.b[i] = -self.ggl[i];
+            }
+            self.b[ndim] = 0.0;
+
+            // solve x := A⁻¹ · b = (z₀, 0)
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
+            work.stats.stop_sw_lin_sol();
+
+            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
+            assert_eq!(self.x[ndim], 0.0);
+            self.dlds0 = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
+            for i in 0..ndim {
+                self.duds0[i] = self.dlds0 * self.x[i];
+            }
+        }
         Ok(())
     }
 

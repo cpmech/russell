@@ -486,16 +486,10 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
-        println!("step: u = {:?}", state.u.as_data());
-        println!("step: l = {:?}", state.l);
-
         // predictor
         let dds = state.h;
         vec_add(&mut work.u, 1.0, &state.u, dds, &self.duds0).unwrap(); // u1 = u0 + Δs · duds0
         work.l = state.l + dds * self.dlds0; // λ1 = λ0 + Δs · dlds0
-
-        println!("predictor: u = {:?}", work.u.as_data());
-        println!("predictor: l = {:?}", work.l);
 
         // external: create a copy of external state variables
         if work.auto {
@@ -538,9 +532,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
     /// Handles the accept case by updating the state and calculating a new stepsize
     fn accept(&mut self, work: &mut Workspace, state: &mut State) {
-        println!("accept: u = {:?}", work.u.as_data());
-        println!("accept: l = {:?}", work.l);
-
         // update the tangent vector
         let ndim = self.system.ndim;
         if self.config.bordering {
@@ -563,8 +554,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 self.duds0[i] = self.x[i] / norm;
             }
             self.dlds0 = self.x[ndim] / norm;
-            println!("duds0 = {:?}", self.duds0.as_data());
-            println!("dlds0 = {:?}", self.dlds0);
             approx_eq(
                 vec_inner(&self.duds0, &self.duds0) + self.dlds0 * self.dlds0,
                 1.0,

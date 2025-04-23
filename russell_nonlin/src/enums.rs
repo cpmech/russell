@@ -1,5 +1,22 @@
 use serde::{Deserialize, Serialize};
 
+/// Defines the initial direction (e.g., tangent vector) for the pseudo-arclength method.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub enum Direction {
+    /// Use the positive sign of `dλ/ds₀` (follows the positive direction on the branch).
+    ///
+    /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
+    Pos,
+
+    /// Use the negative sign of dλds₀0 (follows the negative direction on the branch).
+    ///
+    /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
+    Neg,
+
+    /// Use a given (previous) tangent vector specified in the State object.
+    Prev,
+}
+
 /// Specifies the stopping criterion for the continuation process.
 #[derive(Clone, Copy, Debug)]
 pub enum Stop {
@@ -10,21 +27,32 @@ pub enum Stop {
     Steps(usize),
 }
 
-/// Defines the initial tangent vector (duds0, dλds0) for the pseudo-arclength method.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub enum TgVec {
-    /// Use the positive sign of dλds0 (follows the positive direction on the branch).
-    ///
-    /// This requires the Jacobian matrix Gu0 = ∂G/∂u @ (u0,λ0) to be non-singular.
-    Positive,
+/// Specifies the stepsize control method
+#[derive(Clone, Copy, Debug)]
+pub enum AutoStep {
+    /// Automatic stepping with variable stepsizes
+    Yes,
 
-    /// Use the negative sign of dλds0 (follows the negative direction on the branch).
-    ///
-    /// This requires the Jacobian matrix Gu0 = ∂G/∂u @ (u0,λ0) to be non-singular.
-    Negative,
+    /// Fixed stepsize (h is given)
+    No(f64),
+}
 
-    /// Use a given (previous) tangent vector specified in the State object.
-    Given,
+impl AutoStep {
+    /// Indicates variable stepsize control.
+    pub fn yes(&self) -> bool {
+        match self {
+            AutoStep::Yes => true,
+            AutoStep::No(_) => false,
+        }
+    }
+
+    /// Indicates fixed/equal stepsize.
+    pub fn no(&self) -> bool {
+        match self {
+            AutoStep::Yes => false,
+            AutoStep::No(_) => true,
+        }
+    }
 }
 
 /// Specifies the method of continuation to be used.

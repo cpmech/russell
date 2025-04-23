@@ -1,10 +1,11 @@
-use super::{State, TgVec, Workspace};
+use super::{Direction, State, Workspace};
 use crate::StrError;
 
 /// Defines the numerical solver
 pub(crate) trait SolverTrait<A>: Send {
     /// Perform initialization such as computing the first tangent vector in pseudo-arclength
-    fn initialize(&mut self, work: &mut Workspace, state: &State, tg: TgVec, args: &mut A) -> Result<(), StrError>;
+    fn initialize(&mut self, work: &mut Workspace, state: &State, dir: Direction, args: &mut A)
+        -> Result<(), StrError>;
 
     /// Calculates u, λ and s such that G(u(s), λ(s)) = 0
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError>;

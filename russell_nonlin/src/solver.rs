@@ -1,4 +1,4 @@
-use super::{Config, Method, SolverTrait, State, Stop, System, TgVec};
+use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Workspace};
 use crate::StrError;
 use russell_lab::vec_all_finite;
@@ -18,12 +18,6 @@ pub struct Solver<'a, A> {
 
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace<'a>,
-
-    /// Assists in generating the output of results
-    output: Output<'a, A>,
-
-    /// Indicates whether the output is enabled or not
-    output_enabled: bool,
 }
 
 impl<'a, A> Solver<'a, A> {
@@ -44,8 +38,6 @@ impl<'a, A> Solver<'a, A> {
             ndim,
             actual,
             work,
-            output: Output::new(),
-            output_enabled: false,
         })
     }
 
@@ -70,18 +62,21 @@ impl<'a, A> Solver<'a, A> {
     ///
     /// # Input
     ///
-    /// * `state` -- the initial state (u0,λ0) with a non-singular Gu = du/dλ (Jacobian) matrix.
-    ///    The state will be updated with the new solution (u,λ) util a stop criterion is reached.
-    /// * `tg` -- the option to compute (or reuse) the initial tangent vector (duds0, dλds0) for the pseudo-arclength method.
+    /// * `args` -- extra arguments to be passed to the system functions
+    /// * `state` -- the initial state `(u₀, λ₀)` with a non-singular `Gu₀ = ∂u/∂λ|₀` (Jacobian) matrix.
+    ///    The state will be updated with the new solution (u, λ) util a stop criterion is reached.
+    /// * `dir` -- the direction to follow on the solution branch (pseudo-arclength method).
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
-    /// * `h_equal` -- use a constant stepsize; otherwise, variable step sizes are automatically calculated (auto mode).
-    pub fn solve(
+    /// * `auto` -- defines the stepsize control method (variable stepsize control or fixed stepsize)
+    /// * `output` -- output object to write results files, record the results, or execute a callback function
+    pub fn solve<'b>(
         &mut self,
-        state: &mut State,
-        tg: TgVec,
-        stop: Stop,
-        h_equal: Option<f64>,
         args: &mut A,
+        state: &mut State,
+        dir: Direction,
+        stop: Stop,
+        auto: AutoStep,
+        mut output: Option<&mut Output<'b, A>>,
     ) -> Result<(), StrError> {
         // check data
         if state.u.dim() != self.ndim {
@@ -100,44 +95,37 @@ impl<'a, A> Solver<'a, A> {
             }
         }
 
-        // determine auto-stepping (substepping) flag and initial stepsize
-        let (auto, h_ini) = match h_equal {
-            Some(h_eq) => {
-                // equal stepsize (not automatic substepping)
+        // determine the initial stepsize
+        let h_ini = match auto {
+            AutoStep::Yes => match stop {
+                Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - state.l),
+                Stop::Steps(_) => self.config.h_ini,
+            },
+            AutoStep::No(h_eq) => {
                 if h_eq < 10.0 * f64::EPSILON {
-                    return Err("h_equal must be ≥ 10.0 * f64::EPSILON");
+                    return Err("h must be ≥ 10.0 * f64::EPSILON for fixed stepsize");
                 }
-                let h0 = match stop {
+                match stop {
                     Stop::Lambda(l1) => {
                         let n = f64::ceil((l1 - state.l) / h_eq) as usize;
                         (l1 - state.l) / (n as f64)
                     }
                     Stop::Steps(_) => h_eq,
-                };
-                (false, h0)
-            }
-            None => {
-                // automatic substepping
-                let h0 = match stop {
-                    Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - state.l),
-                    Stop::Steps(_) => self.config.h_ini,
-                };
-                (true, h0)
+                }
             }
         };
         assert!(h_ini > 0.0);
         state.h = h_ini;
 
         // reset variables
-        self.work.reset(h_ini, self.config.rel_error_prev_min, auto);
+        self.work.reset(h_ini, self.config.rel_error_prev_min, auto.yes());
 
         // perform initialization such as computing the first tangent vector in pseudo-arclength
-        self.actual.initialize(&mut self.work, &state, tg, args)?;
+        self.actual.initialize(&mut self.work, &state, dir, args)?;
 
         // first output
-        if self.output_enabled {
-            self.output.initialize();
-            let terminate = self.output.execute(&self.work, &state, args)?;
+        if let Some(out) = output.as_deref_mut() {
+            let terminate = out.execute(&self.work, &state, args)?;
             if terminate {
                 return Ok(());
             }
@@ -146,8 +134,8 @@ impl<'a, A> Solver<'a, A> {
         // message
         self.work.log.header();
 
-        // solve with equal stepsize
-        if !auto {
+        // solve with fixed/equal stepsize
+        if auto.no() {
             let nstep = match stop {
                 Stop::Lambda(l1) => f64::ceil((l1 - state.l) / h_ini) as usize,
                 Stop::Steps(n) => n,
@@ -172,8 +160,8 @@ impl<'a, A> Solver<'a, A> {
                 vec_all_finite(&state.u, self.config.verbose)?;
 
                 // output
-                if self.output_enabled {
-                    let terminate = self.output.execute(&self.work, &state, args)?;
+                if let Some(out) = output.as_deref_mut() {
+                    let terminate = out.execute(&self.work, &state, args)?;
                     if terminate {
                         self.work.stats.stop_sw_step();
                         break;
@@ -183,8 +171,8 @@ impl<'a, A> Solver<'a, A> {
             }
 
             // last output
-            if self.output_enabled {
-                self.output.last()?;
+            if let Some(out) = output.as_deref_mut() {
+                out.last()?;
             }
 
             // print last message and footer
@@ -280,8 +268,8 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.h_accepted = self.work.h_new;
 
                 // output
-                if self.output_enabled {
-                    let terminate = self.output.execute(&self.work, &state, args)?;
+                if let Some(out) = output.as_deref_mut() {
+                    let terminate = out.execute(&self.work, &state, args)?;
                     if terminate {
                         success = true;
                         self.work.stats.stop_sw_step();
@@ -321,8 +309,8 @@ impl<'a, A> Solver<'a, A> {
         }
 
         // last output
-        if self.output_enabled {
-            self.output.last()?;
+        if let Some(out) = output.as_deref_mut() {
+            out.last()?;
         }
 
         // print footer
@@ -336,38 +324,6 @@ impl<'a, A> Solver<'a, A> {
             return Err("failed to solve the nonlinear problem with automatic stepsize");
         }
     }
-
-    /// Enables the output of results
-    ///
-    /// Returns an access to the output structure for further configuration
-    pub fn enable_output(&mut self) -> &mut Output<'a, A> {
-        self.output_enabled = true;
-        &mut self.output
-    }
-
-    /// Returns an access to the output during accepted steps: stepsizes (h)
-    pub fn out_step_h(&self) -> &Vec<f64> {
-        &self.output.h
-    }
-
-    /// Returns an access to the output during accepted steps: λ values
-    pub fn out_step_l(&self) -> &Vec<f64> {
-        &self.output.l
-    }
-
-    /// Returns an access to the output during accepted steps: u values
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if `m` is out of range
-    pub fn out_step_u(&self, m: usize) -> &Vec<f64> {
-        &self.output.u.get(&m).unwrap()
-    }
-
-    /// Returns an access to the output during accepted steps: global error
-    pub fn out_step_global_error(&self) -> &Vec<f64> {
-        &self.output.error
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -375,7 +331,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{Config, Method, Samples, State, Stop, TgVec};
+    use crate::{AutoStep, Config, Direction, Method, Samples, State, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -393,37 +349,68 @@ mod tests {
     fn solve_captures_errors() {
         let (system, _, _, mut args) = Samples::two_eq_ref();
         let mut state = State::new(system.ndim + 1, false); // wrong dim
-        let tg = TgVec::Positive;
         let ndim = system.ndim;
         let config = Config::new(Method::Natural);
         let mut solver = Solver::new(config, system).unwrap();
         assert_eq!(
-            solver.solve(&mut state, tg, Stop::Lambda(1.0), None, &mut args).err(),
+            solver
+                .solve(
+                    &mut args,
+                    &mut state,
+                    Direction::Pos,
+                    Stop::Lambda(1.0),
+                    AutoStep::Yes,
+                    None
+                )
+                .err(),
             Some("u.dim() must be equal to ndim")
         );
         state.u = Vector::new(ndim); // fix dim
         assert_eq!(
-            solver.solve(&mut state, tg, Stop::Lambda(0.0), None, &mut args).err(),
+            solver
+                .solve(
+                    &mut args,
+                    &mut state,
+                    Direction::Pos,
+                    Stop::Lambda(0.0),
+                    AutoStep::Yes,
+                    None,
+                )
+                .err(),
             Some("Stopping criterion error: l1 must be greater than l0")
         );
-        let h_equal = Some(f64::EPSILON); // will cause an error
         assert_eq!(
             solver
-                .solve(&mut state, tg, Stop::Lambda(1.0), h_equal, &mut args)
+                .solve(
+                    &mut args,
+                    &mut state,
+                    Direction::Pos,
+                    Stop::Lambda(1.0),
+                    AutoStep::No(f64::EPSILON), // will cause an error
+                    None,
+                )
                 .err(),
-            Some("h_equal must be ≥ 10.0 * f64::EPSILON")
+            Some("h must be ≥ 10.0 * f64::EPSILON for fixed stepsize")
         );
     }
 
     #[test]
     fn lack_of_convergence_is_captured() {
         let (system, mut state, _u_ref, mut args) = Samples::two_eq_ref();
-        let tg = TgVec::Positive;
         let mut config = Config::new(Method::Natural);
         config.n_step_max = 1; // will make the solver to fail (too few steps)
         let mut solver = Solver::new(config, system).unwrap();
         assert_eq!(
-            solver.solve(&mut state, tg, Stop::Lambda(1.0), None, &mut args).err(),
+            solver
+                .solve(
+                    &mut args,
+                    &mut state,
+                    Direction::Pos,
+                    Stop::Lambda(1.0),
+                    AutoStep::Yes,
+                    None,
+                )
+                .err(),
             Some("failed to solve the nonlinear problem with automatic stepsize")
         );
     }
@@ -434,9 +421,16 @@ mod tests {
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
-        let stop = Stop::Steps(1); // just one step
-        let tg = TgVec::Positive;
-        solver.solve(&mut state, tg, stop, Some(1.0), &mut args).unwrap();
+        solver
+            .solve(
+                &mut args,
+                &mut state,
+                Direction::Pos,
+                Stop::Steps(1),
+                AutoStep::No(1.0),
+                None,
+            )
+            .unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
         let stats = solver.stats();
         assert_eq!(stats.n_function, 7);
@@ -456,9 +450,16 @@ mod tests {
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
-        let tg = TgVec::Positive;
-        let stop = Stop::Steps(1); // just one step
-        solver.solve(&mut state, tg, stop, None, &mut args).unwrap();
+        solver
+            .solve(
+                &mut args,
+                &mut state,
+                Direction::Pos,
+                Stop::Steps(1),
+                AutoStep::Yes,
+                None,
+            )
+            .unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
         let stats = solver.stats();
         assert_eq!(stats.n_function, 7);

@@ -1,16 +1,17 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System, TgVec};
+use russell_nonlin::{AutoStep, Config, Direction, Method, NoArgs, Solver, State, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
 
 struct SimData<'a> {
     solver: Solver<'a, NoArgs>,
-    state: State,
-    stop: Stop,
-    h_equal: Option<f64>,
     args: NoArgs,
+    state: State,
+    dir: Direction,
+    stop: Stop,
+    auto_step: AutoStep,
 }
 
 impl<'a> SimData<'a> {
@@ -45,10 +46,11 @@ impl<'a> SimData<'a> {
         // return data
         SimData {
             solver: Solver::new(config, system).unwrap(),
-            state: State::new(ndim, false),
-            stop: Stop::Lambda(LAMBDA_FINAL),
-            h_equal: Some(0.1),
             args: 0,
+            state: State::new(ndim, false),
+            dir: Direction::Pos,
+            stop: Stop::Lambda(LAMBDA_FINAL),
+            auto_step: AutoStep::No(0.1),
         }
     }
 }
@@ -74,11 +76,12 @@ impl<'a> Runner for Simulator<'a> {
         self.data
             .solver
             .solve(
-                &mut self.data.state,
-                TgVec::Positive,
-                self.data.stop,
-                self.data.h_equal,
                 &mut self.data.args,
+                &mut self.data.state,
+                self.data.dir,
+                self.data.stop,
+                self.data.auto_step,
+                None,
             )
             .unwrap();
         approx_eq(self.data.state.u[0], LAMBDA_FINAL, 1e-15);

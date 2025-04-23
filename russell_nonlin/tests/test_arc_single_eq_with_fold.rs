@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use russell_lab::{array_approx_eq, mat_approx_eq, num_jacobian, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Samples, Solver, Stop, System, TgVec};
+use russell_nonlin::{AutoStep, Config, Direction, Method, NoArgs, Samples, Solver, Stop, System};
 use russell_pde::FdmLaplacian2d;
 use russell_sparse::{CooMatrix, Sym};
 
@@ -16,11 +16,16 @@ fn test_arc_single_eq_with_fold() {
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
-    solver.enable_output().set_step_recording(&[0]);
 
     // numerical continuation
-    let tg = TgVec::Positive;
     solver
-        .solve(&mut state, tg, Stop::Steps(2), Some(0.5), &mut args)
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::Steps(5),
+            AutoStep::No(0.5),
+            None,
+        )
         .unwrap();
 }

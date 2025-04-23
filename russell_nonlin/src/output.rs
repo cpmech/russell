@@ -1,5 +1,5 @@
 use super::{State, Stats, StrError, Workspace};
-use russell_lab::{vec_max_abs_diff, Vector};
+use russell_lab::Vector;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -17,8 +17,8 @@ pub struct OutCount {
 
 /// Holds the results at accepted steps
 pub struct Output<'a, A> {
-    /// Indicates whether the solver called initialize or not
-    initialized: bool,
+    /// Enables the recording of results (u, l, s, h, duds, dlds)
+    recording: bool,
 
     /// Holds a callback function called on an accepted step
     ///
@@ -31,56 +31,23 @@ pub struct Output<'a, A> {
     /// Counts the number of file saves (step)
     file_count: usize,
 
-    /// Tells Output to record the results from accepted steps
-    recording: bool,
-
     /// Holds the selected u components computed at accepted steps
-    pub(crate) u: HashMap<usize, Vec<f64>>,
+    u: HashMap<usize, Vec<f64>>,
 
     /// Holds the λ (parameter) values computed at accepted steps
-    pub(crate) l: Vec<f64>,
+    l: Vec<f64>,
 
     /// Holds the s (arclength) values computed at accepted steps
-    pub(crate) s: Vec<f64>,
+    s: Vec<f64>,
 
     /// Holds the stepsize computed at accepted steps
-    pub(crate) h: Vec<f64>,
+    h: Vec<f64>,
 
-    /// Holds the error computed at accepted steps (if the u_reference is available)
-    ///
-    /// The error is the maximum absolute difference between the numerical results and
-    /// the ones computed by `calc_u_ref` (see [russell_lab::vec_max_abs_diff])
-    pub(crate) error: Vec<f64>,
+    /// Holds the selected du/ds components computed at accepted steps (pseudo-arclength)
+    duds: HashMap<usize, Vec<f64>>,
 
-    /// Holds an auxiliary u vector (e.g., to compute the analytical solution)
-    u_aux: Vector,
-
-    /// Holds a function to compute the correct/reference results G(u, λ) = 0
-    ///
-    /// The function is `fn (u_correct, λ, args)`
-    calc_u_ref: Option<Arc<dyn Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a>>,
-}
-
-impl State {
-    /// Reads a JSON file containing the results
-    pub fn read_json(full_path: &str) -> Result<Self, StrError> {
-        let path = Path::new(full_path).to_path_buf();
-        let input = File::open(path).map_err(|_| "cannot open file")?;
-        let buffered = BufReader::new(input);
-        let stat = serde_json::from_reader(buffered).map_err(|_| "cannot parse JSON file")?;
-        Ok(stat)
-    }
-
-    /// Writes a JSON file with the results
-    pub fn write_json(&self, full_path: &str) -> Result<(), StrError> {
-        let path = Path::new(full_path).to_path_buf();
-        if let Some(p) = path.parent() {
-            fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
-        }
-        let mut file = File::create(&path).map_err(|_| "cannot create file")?;
-        serde_json::to_writer(&mut file, &self).map_err(|_| "cannot write file")?;
-        Ok(())
-    }
+    /// Holds the dλ/ds values computed at accepted steps (pseudo-arclength)
+    dlds: Vec<f64>,
 }
 
 impl OutCount {
@@ -107,24 +74,22 @@ impl OutCount {
 
 impl<'a, A> Output<'a, A> {
     /// Allocates a new instance
-    pub(crate) fn new() -> Self {
-        const EMPTY: usize = 0;
+    pub fn new() -> Self {
         Output {
-            initialized: false,
+            recording: false,
             callback: None,
             file_key: None,
             file_count: 0,
-            recording: false,
             u: HashMap::new(),
             l: Vec::new(),
             s: Vec::new(),
             h: Vec::new(),
-            error: Vec::new(),
-            // auxiliary
-            u_aux: Vector::new(EMPTY),
-            calc_u_ref: None,
+            duds: HashMap::new(),
+            dlds: Vec::new(),
         }
     }
+
+    // setters ----------------------------------------------------------------------------------------------------------
 
     /// Sets a callback function called on an accepted step
     ///
@@ -135,7 +100,7 @@ impl<'a, A> Output<'a, A> {
     /// # Input
     ///
     /// * `callback` -- function to be executed on an accepted step
-    pub fn set_step_callback(
+    pub fn set_callback(
         &mut self,
         callback: impl Fn(&Stats, &Vector, f64, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
@@ -148,55 +113,61 @@ impl<'a, A> Output<'a, A> {
     /// # Input
     ///
     /// * `filepath_without_extension` -- example: `/tmp/russell_ode/my_simulation`
-    pub fn set_step_file_writing(&mut self, filepath_without_extension: &str) -> &mut Self {
+    pub fn set_file_writing(&mut self, filepath_without_extension: &str) -> &mut Self {
         self.file_key = Some(filepath_without_extension.to_string());
         self
     }
 
-    /// Sets the recording of results at accepted steps
+    /// Enables the recording of results (u, l, s, h, duds, dlds)
     ///
-    /// # Input
-    ///
-    /// * `selected_u_components` -- specifies which elements of the `u` vector are to be saved
-    pub fn set_step_recording(&mut self, selected_u_components: &[usize]) -> &mut Self {
-        self.recording = selected_u_components.len() > 0;
-        for m in selected_u_components {
+    /// Also specifies which components of the u and du/ds vectors are to be recorded
+    pub fn set_recording(&mut self, recording: bool, u_components: &[usize], duds_components: &[usize]) -> &mut Self {
+        self.recording = recording;
+        for m in u_components {
             self.u.insert(*m, Vec::new());
         }
-        self
-    }
-
-    /// Sets the function to compute the correct/reference results of G(u, λ) = 0
-    ///
-    /// The function is `fn (u_correct, λ, args)`
-    pub fn set_u_correct(&mut self, calc_u: impl Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a) -> &mut Self {
-        self.calc_u_ref = Some(Arc::new(calc_u));
-        self
-    }
-
-    /// Initializes the output structure with initial and final values
-    ///
-    /// **Note:** This function also clears the previous results.
-    pub(crate) fn initialize(&mut self) {
-        // clear previous results
-        if self.initialized {
-            if self.recording {
-                self.h.clear();
-                self.l.clear();
-                self.error.clear();
-                for (_, um) in self.u.iter_mut() {
-                    um.clear();
-                }
-            }
+        for m in duds_components {
+            self.duds.insert(*m, Vec::new());
         }
-        // set initialized
-        self.initialized = true;
+        self
     }
+
+    // getters ----------------------------------------------------------------------------------------------------------
+
+    /// Returns the selected u components computed at accepted steps
+    pub fn get_u_values(&self, m: usize) -> &Vec<f64> {
+        self.u.get(&m).unwrap()
+    }
+
+    /// Returns the λ values computed at accepted steps
+    pub fn get_l_values(&self) -> &Vec<f64> {
+        &self.l
+    }
+
+    /// Returns the h values computed at accepted steps
+    pub fn get_h_values(&self) -> &Vec<f64> {
+        &self.h
+    }
+
+    /// Returns the s values computed at accepted steps
+    pub fn get_s_values(&self) -> &Vec<f64> {
+        &self.s
+    }
+
+    /// Returns the selected du/ds components computed at accepted steps
+    pub fn get_duds_values(&self, m: usize) -> &Vec<f64> {
+        self.duds.get(&m).unwrap()
+    }
+
+    /// Returns the dλ/ds values computed at accepted steps
+    pub fn get_dlds_values(&self) -> &Vec<f64> {
+        &self.dlds
+    }
+
+    // internal ---------------------------------------------------------------------------------------------------------
 
     /// Executes the output at an accepted step
     pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
-        assert!(self.initialized);
-
         // callback
         if let Some(cb) = self.callback.as_ref() {
             let stop = cb(&work.stats, &state.u, state.l, state.s, state.h, args)?;
@@ -214,19 +185,18 @@ impl<'a, A> Output<'a, A> {
 
         // record results
         if self.recording {
-            self.l.push(state.l);
-            self.s.push(state.s);
-            self.h.push(state.h);
             for (m, um) in self.u.iter_mut() {
                 um.push(state.u[*m]);
             }
-            if let Some(calc_u) = self.calc_u_ref.as_mut() {
-                if self.u_aux.dim() != state.u.dim() {
-                    self.u_aux = Vector::new(state.u.dim());
+            self.l.push(state.l);
+            self.s.push(state.s);
+            self.h.push(state.h);
+            if state.duds.dim() == state.u.dim() {
+                // only for pseudo-arclength with available du/ds and dλ/ds
+                for (m, duds_m) in self.duds.iter_mut() {
+                    duds_m.push(state.duds[*m]);
                 }
-                calc_u(&mut self.u_aux, state.l, args);
-                let (_, err) = vec_max_abs_diff(&state.u, &self.u_aux).unwrap();
-                self.error.push(err);
+                self.dlds.push(state.dlds);
             }
         }
 
@@ -249,8 +219,7 @@ impl<'a, A> Output<'a, A> {
 
 #[cfg(test)]
 mod tests {
-    use super::{OutCount, Output, State};
-    use crate::NoArgs;
+    use super::{OutCount, State};
     use russell_lab::Vector;
 
     #[test]
@@ -327,31 +296,5 @@ mod tests {
         sum_out.write_json(path).unwrap();
         let sum_in = OutCount::read_json(path).unwrap();
         assert_eq!(sum_in.n, 456);
-    }
-
-    #[test]
-    fn initialize_with_step_output_works() {
-        let mut out = Output::<'_, NoArgs>::new();
-
-        // first call
-        out.set_step_recording(&[0]);
-        assert_eq!(out.u.len(), 1);
-        out.initialize();
-
-        // write some values
-        out.h.push(11.11);
-        out.l.push(22.22);
-        out.u.get_mut(&0).unwrap().push(33.33);
-        out.error.push(44.44);
-
-        // initialize again
-        out.initialize();
-        assert_eq!(out.u.len(), 1);
-
-        // check empty arrays
-        assert_eq!(out.h.len(), 0);
-        assert_eq!(out.l.len(), 0);
-        assert_eq!(out.u.get_mut(&0).unwrap().len(), 0);
-        assert_eq!(out.error.len(), 0);
     }
 }

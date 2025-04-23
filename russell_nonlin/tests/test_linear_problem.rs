@@ -1,5 +1,5 @@
 use russell_lab::{array_approx_eq, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, State, Stop, System, TgVec};
+use russell_nonlin::{AutoStep, Config, Direction, Method, NoArgs, Output, Solver, State, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 #[test]
@@ -34,35 +34,41 @@ fn test_linear_no_auto_ana_jac() {
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
-    solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
     let mut state = State::new(ndim, false);
     state.u[0] = 0.0;
     state.l = 0.0;
 
+    // output
+    let out = &mut Output::new();
+    out.set_recording(true, &[0], &[]);
+
     // solve
-    let tg = TgVec::Positive;
     let args = &mut 0;
     solver
-        .solve(&mut state, tg, Stop::Lambda(1.0), Some(0.1), args)
+        .solve(
+            args,
+            &mut state,
+            Direction::Pos,
+            Stop::Lambda(1.0),
+            AutoStep::No(0.1),
+            Some(out),
+        )
         .unwrap();
-
-    // results
-    // println!("u[0] = {:?}", solver.out_step_u(0));
 
     // check
     assert_eq!(
-        solver.out_step_h(),
+        out.get_h_values(),
         &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     );
     array_approx_eq(
-        solver.out_step_l(),
+        out.get_l_values(),
         &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         1e-15,
     );
     array_approx_eq(
-        solver.out_step_u(0),
+        out.get_u_values(0),
         &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         1e-15,
     );
@@ -103,35 +109,41 @@ fn test_linear_no_auto_num_jac() {
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
-    solver.enable_output().set_step_recording(&[0]);
 
     // initial guess
     let mut state = State::new(ndim, false);
     state.u[0] = 0.0;
     state.l = 0.0;
 
+    // output
+    let out = &mut Output::new();
+    out.set_recording(true, &[0], &[]);
+
     // solve
-    let tg = TgVec::Positive;
     let args = &mut 0;
     solver
-        .solve(&mut state, tg, Stop::Lambda(1.0), Some(0.1), args)
+        .solve(
+            args,
+            &mut state,
+            Direction::Pos,
+            Stop::Lambda(1.0),
+            AutoStep::No(0.1),
+            Some(out),
+        )
         .unwrap();
-
-    // results
-    // println!("u[0] = {:?}", solver.out_step_u(0));
 
     // check
     assert_eq!(
-        solver.out_step_h(),
+        out.get_h_values(),
         &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     );
     array_approx_eq(
-        solver.out_step_l(),
+        out.get_l_values(),
         &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         1e-15,
     );
     array_approx_eq(
-        solver.out_step_u(0),
+        out.get_u_values(0),
         &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
         1e-9,
     );

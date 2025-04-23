@@ -1,4 +1,4 @@
-use super::{Config, SolverTrait, State, System, TgVec, Workspace};
+use super::{Config, Direction, SolverTrait, State, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update};
 use russell_sparse::numerical_jacobian;
@@ -112,7 +112,13 @@ impl<'a, A> SolverNatural<'a, A> {
 
 impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     /// Perform initialization such as computing the first tangent vector in pseudo-arclength
-    fn initialize(&mut self, _work: &mut Workspace, _state: &State, _tg: TgVec, _args: &mut A) -> Result<(), StrError> {
+    fn initialize(
+        &mut self,
+        _work: &mut Workspace,
+        _state: &State,
+        _dir: Direction,
+        _args: &mut A,
+    ) -> Result<(), StrError> {
         Ok(())
     }
 

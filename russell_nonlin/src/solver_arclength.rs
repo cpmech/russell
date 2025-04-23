@@ -1,4 +1,4 @@
-use super::{Config, SolverTrait, State, System, TgVec, Workspace};
+use super::{Config, Direction, SolverTrait, State, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
@@ -407,7 +407,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// Perform initialization such as computing the first tangent vector in pseudo-arclength
     ///
     /// **Note**: Gu₀ must be non-singular
-    fn initialize(&mut self, work: &mut Workspace, state: &State, tg: TgVec, args: &mut A) -> Result<(), StrError> {
+    fn initialize(
+        &mut self,
+        work: &mut Workspace,
+        state: &State,
+        dir: Direction,
+        args: &mut A,
+    ) -> Result<(), StrError> {
         // check if the tangent vector is available
         if state.duds.dim() != state.u.dim() {
             return Err("duds.ndim != to u.ndim; the tangent vector is required for the Arclength method");
@@ -423,10 +429,10 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         work.l = state.l;
 
         // get sign of dlds or reuse previous tangent vector
-        let sign0 = match tg {
-            TgVec::Positive => 1.0,
-            TgVec::Negative => -1.0,
-            TgVec::Given => {
+        let sign0 = match dir {
+            Direction::Pos => 1.0,
+            Direction::Neg => -1.0,
+            Direction::Prev => {
                 vec_copy(&mut self.duds0, &state.duds).unwrap();
                 self.dlds0 = state.dlds;
                 return Ok(());

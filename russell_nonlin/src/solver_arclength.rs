@@ -113,8 +113,8 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 ///            A₁               x₁         b₁
 /// ```
 ///
-/// Note that the augmented Jacobian matrix `A₁` is already factorized
-/// by the end of the Newton iteration.
+/// Note that the augmented Jacobian matrix `A₁` is already factorized by the end of the
+/// Newton iteration. Hence, it can be reused without adding a significant computation cost.
 ///
 /// Finally, the new tangent vector must be rescaled such that:
 ///

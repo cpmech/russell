@@ -21,6 +21,6 @@ fn test_arc_single_eq_with_fold() {
     // numerical continuation
     let tg = TgVec::Positive;
     solver
-        .solve(&mut state, tg, Stop::Steps(1), Some(0.5), &mut args)
+        .solve(&mut state, tg, Stop::Steps(2), Some(0.5), &mut args)
         .unwrap();
 }

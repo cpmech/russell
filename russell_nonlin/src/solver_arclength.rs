@@ -1,6 +1,6 @@
 use super::{Config, SolverTrait, State, System, TgVec, Workspace};
 use crate::StrError;
-use russell_lab::{vec_copy, vec_copy_scaled, vec_inner, vec_update, Vector};
+use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -480,10 +480,16 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
+        println!("step: u = {:?}", state.u.as_data());
+        println!("step: l = {:?}", state.l);
+
         // predictor
         let dds = state.h;
-        vec_update(&mut work.u, dds, &self.duds0).unwrap(); // u1 = u0 + Δs · duds0
-        work.l += dds * self.dlds0; // λ1 = λ0 + Δs · dlds0
+        vec_add(&mut work.u, 1.0, &state.u, dds, &self.duds0).unwrap(); // u1 = u0 + Δs · duds0
+        work.l = state.l + dds * self.dlds0; // λ1 = λ0 + Δs · dlds0
+
+        println!("predictor: u = {:?}", work.u.as_data());
+        println!("predictor: l = {:?}", work.l);
 
         // external: create a copy of external state variables
         if work.auto {
@@ -526,15 +532,53 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
     /// Handles the accept case by updating the state and calculating a new stepsize
     fn accept(&mut self, work: &mut Workspace, state: &mut State) {
+        println!("accept: u = {:?}", work.u.as_data());
+        println!("accept: l = {:?}", work.l);
+
+        // update the tangent vector
         let ndim = self.system.ndim;
+        if self.config.bordering {
+            panic!("bordering is not implemented yet");
+        } else {
+            // set b = (0, 1)
+            for i in 0..ndim {
+                self.b[i] = 0.0;
+            }
+            self.b[ndim] = 1.0;
+            // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            self.ls_aug.actual.solve(&mut self.x, &self.b, false).unwrap();
+            work.stats.stop_sw_lin_sol();
+            // calculate the norm
+            let norm = vec_norm(&self.x, Norm::Euc);
+            // update tangent vector
+            for i in 0..ndim {
+                self.duds0[i] = self.x[i] / norm;
+            }
+            self.dlds0 = self.x[ndim] / norm;
+            println!("duds0 = {:?}", self.duds0.as_data());
+            println!("dlds0 = {:?}", self.dlds0);
+            approx_eq(
+                vec_inner(&self.duds0, &self.duds0) + self.dlds0 * self.dlds0,
+                1.0,
+                1e-15,
+            );
+        }
+
+        // update initial values
+        for i in 0..ndim {
+            self.u0[i] = work.u[i];
+        }
+        self.l0 = work.l;
+
+        // update state
         for i in 0..ndim {
             state.u[i] = work.u[i];
-            // TODO: need to calculate new tangent vector
-            // state.duds[i] = self.duds0[i];
+            state.duds[i] = self.duds0[i];
         }
         state.l = work.l;
-        // TODO: need to calculate new tangent vector
-        // state.dlds = self.dlds0;
+        state.dlds = self.dlds0;
         state.s += state.h;
         work.h_new = state.h;
     }

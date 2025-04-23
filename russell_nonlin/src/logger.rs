@@ -26,7 +26,7 @@ impl Logger {
     pub fn new(config: &Config) -> Self {
         let nchar = match config.method {
             Method::Arclength => 56,
-            Method::Natural => 61,
+            Method::Natural => 59,
         };
         Self {
             method: config.method,
@@ -57,7 +57,7 @@ impl Logger {
             Method::Natural => {
                 println!(
                     "{:>8} {:>8} {:>5} {:>9} ➖ {:>9} {:>9} ➖",
-                    "λ", "Δλ", "iter", "RMS(δu)", "‖δu‖∞", "‖G‖∞"
+                    "λ", "Δλ", "iter", "‖G‖∞", "‖δu‖∞", "Rel(δu)"
                 );
             }
         }
@@ -105,10 +105,17 @@ impl Logger {
                 );
             }
             Method::Natural => {
-                println!(
-                    "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {:>9.2e} {}",
-                    "·", "·", k, err.delta_rms, icon_ul, err.delta_max, err.residual_max, icon_gh
-                );
+                if err.residual_converged {
+                    println!(
+                        "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9} {:>9}",
+                        "·", "·", k, err.residual_max, icon_gh, "·", "·"
+                    );
+                } else {
+                    println!(
+                        "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {:>9.2e} {}",
+                        "·", "·", k, err.residual_max, icon_gh, err.delta_max, err.delta_rms, icon_ul
+                    );
+                }
             }
         }
     }

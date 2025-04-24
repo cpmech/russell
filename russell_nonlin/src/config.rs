@@ -28,6 +28,9 @@ pub struct Config {
     /// Show statistics
     pub(crate) verbose_stats: bool,
 
+    /// Hide timings when displaying statistics
+    pub(crate) hide_timings: bool,
+
     // substepping ------------------------------------------------------------------------
     //
     /// Min step multiplier
@@ -113,6 +116,7 @@ impl Config {
             verbose_iterations: false,
             verbose_legend: false,
             verbose_stats: false,
+            hide_timings: false,
             // substepping
             m_min: 0.001,
             m_max: 2.0,
@@ -155,6 +159,12 @@ impl Config {
     /// Shows the legend
     pub fn set_show_legend(&mut self, flag: bool) -> &mut Self {
         self.verbose_legend = flag;
+        self
+    }
+
+    /// Hides timings when displaying statistics
+    pub fn set_hide_timings(&mut self, flag: bool) -> &mut Self {
+        self.hide_timings = flag;
         self
     }
 

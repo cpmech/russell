@@ -10,6 +10,9 @@ pub struct Stats {
     /// Holds the method
     method: Method,
 
+    /// Hide timings when displaying statistics
+    hide_timings: bool,
+
     /// Number of calls to G(u(s), λ(s)) function
     pub n_function: usize,
 
@@ -82,9 +85,10 @@ pub struct Stats {
 
 impl Stats {
     /// Allocates a new instance
-    pub fn new(method: Method) -> Self {
+    pub fn new(method: Method, hide_timings: bool) -> Self {
         Stats {
             method,
+            hide_timings,
             n_function: 0,
             n_jacobian: 0,
             n_factor: 0,
@@ -213,26 +217,39 @@ impl Stats {
 
 impl fmt::Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}\n\
-             Number of iterations (total)     = {}\n\
-             Last accepted/suggested stepsize = {}\n\
-             Max time spent on a step         = {}\n\
-             Max time spent on the Jacobian   = {}\n\
-             Max time spent on factorization  = {}\n\
-             Max time spent on lin solution   = {}\n\
-             Total time                       = {}",
-            self.summary(),
-            self.n_iterations_total,
-            self.h_accepted,
-            format_nanoseconds(self.nanos_step_max),
-            format_nanoseconds(self.nanos_jacobian_max),
-            format_nanoseconds(self.nanos_factor_max),
-            format_nanoseconds(self.nanos_lin_sol_max),
-            format_nanoseconds(self.nanos_total),
-        )
-        .unwrap();
+        if self.hide_timings {
+            write!(
+                f,
+                "{}\n\
+                 Number of iterations (total)     = {}\n\
+                 Last accepted/suggested stepsize = {}",
+                self.summary(),
+                self.n_iterations_total,
+                self.h_accepted,
+            )
+            .unwrap();
+        } else {
+            write!(
+                f,
+                "{}\n\
+                 Number of iterations (total)     = {}\n\
+                 Last accepted/suggested stepsize = {}\n\
+                 Max time spent on a step         = {}\n\
+                 Max time spent on the Jacobian   = {}\n\
+                 Max time spent on factorization  = {}\n\
+                 Max time spent on lin solution   = {}\n\
+                 Total time                       = {}",
+                self.summary(),
+                self.n_iterations_total,
+                self.h_accepted,
+                format_nanoseconds(self.nanos_step_max),
+                format_nanoseconds(self.nanos_jacobian_max),
+                format_nanoseconds(self.nanos_factor_max),
+                format_nanoseconds(self.nanos_lin_sol_max),
+                format_nanoseconds(self.nanos_total),
+            )
+            .unwrap();
+        }
         Ok(())
     }
 }
@@ -246,7 +263,7 @@ mod tests {
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut stats = Stats::new(Method::Arclength);
+        let mut stats = Stats::new(Method::Arclength, false);
         stats.n_accepted += 1;
         let copy = stats;
         let clone = stats.clone();
@@ -257,7 +274,7 @@ mod tests {
 
     #[test]
     fn summary_works() {
-        let stats = Stats::new(Method::Arclength);
+        let stats = Stats::new(Method::Arclength, false);
         println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
@@ -278,7 +295,7 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let stats = Stats::new(Method::Natural);
+        let stats = Stats::new(Method::Natural, false);
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0\n\
@@ -300,6 +317,25 @@ mod tests {
              Max time spent on factorization  = 0ns\n\
              Max time spent on lin solution   = 0ns\n\
              Total time                       = 0ns"
+        );
+
+        let stats = Stats::new(Method::Natural, true);
+        assert_eq!(
+            format!("{}", stats),
+            "Natural parameter continuation; solves G(u, λ) = 0\n\
+             Number of function evaluations   = 0\n\
+             Number of Jacobian evaluations   = 0\n\
+             Number of factorizations         = 0\n\
+             Number of lin sys solutions      = 0\n\
+             Number of performed steps        = 0\n\
+             Number of accepted steps         = 0\n\
+             Number of rejected steps         = 0\n\
+             Number of large max(‖δu‖∞,|δλ|)  = 0\n\
+             Number of max iterations reached = 0\n\
+             Number of continued divergence   = 0\n\
+             Number of iterations (maximum)   = 0\n\
+             Number of iterations (total)     = 0\n\
+             Last accepted/suggested stepsize = 0"
         );
     }
 }

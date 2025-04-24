@@ -56,11 +56,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 12
 Number of iterations (total)     = 27
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 1.258µs
-Max time spent on factorization  = 65.317µs
-Max time spent on lin solution   = 5.23µs
-Total time                       = 1.968796ms
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -128,11 +123,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 15
 Number of iterations (total)     = 36
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 993ns
-Max time spent on factorization  = 21.855µs
-Max time spent on lin solution   = 2.435µs
-Total time                       = 464.798µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -179,11 +169,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 1
 Number of iterations (total)     = 9
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 667ns
-Max time spent on factorization  = 16.883µs
-Max time spent on lin solution   = 2.094µs
-Total time                       = 167.078µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -221,11 +206,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 8
 Number of iterations (total)     = 8
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 2.584µs
-Max time spent on the Jacobian   = 781ns
-Max time spent on factorization  = 17.857µs
-Max time spent on lin solution   = 1.964µs
-Total time                       = 149.363µs
 Automatic stepsize adjustment    = true
 ok
 test test_newton_problems_ok_2_auto ... ───────────────────────────────────────────────────────────
@@ -269,11 +249,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 20
 Number of iterations (total)     = 20
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 2.722µs
-Max time spent on the Jacobian   = 812ns
-Max time spent on factorization  = 18.268µs
-Max time spent on lin solution   = 1.898µs
-Total time                       = 294.596µs
 Automatic stepsize adjustment    = true
 ok
 test test_newton_problems_stepsize_becomes_small ... ───────────────────────────────────────────────────────────
@@ -308,11 +283,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 7
 Number of iterations (total)     = 6
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 677ns
-Max time spent on factorization  = 15.805µs
-Max time spent on lin solution   = 1.702µs
-Total time                       = 136.423µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -362,11 +332,6 @@ Number of continued divergence   = 3
 Number of iterations (maximum)   = 6
 Number of iterations (total)     = 18
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 814ns
-Max time spent on factorization  = 17.599µs
-Max time spent on lin solution   = 1.803µs
-Total time                       = 294.942µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════

@@ -8,7 +8,7 @@ fn test_newton_problems_ok_1() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -50,7 +50,10 @@ fn test_newton_problems_fail_due_to_max_iter() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true).set_allowed_iterations(3);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_allowed_iterations(3);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -79,7 +82,7 @@ fn test_newton_problems_fail_oscillation() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -108,7 +111,7 @@ fn test_newton_problems_indeterminate() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -139,6 +142,7 @@ fn test_newton_problems_ok_2() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
+        .set_hide_timings(true)
         .set_allowed_iterations(20)
         .set_allowed_continued_divergence(2);
 
@@ -182,7 +186,7 @@ fn test_simple_fixed_continued_divergence() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -211,7 +215,7 @@ fn test_two_eq_nr_prob_1_singular() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -239,7 +243,10 @@ fn test_two_eq_nr_prob_2() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, false).set_allowed_iterations(20);
+    config
+        .set_verbose(true, true, false)
+        .set_hide_timings(true)
+        .set_allowed_iterations(20);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();

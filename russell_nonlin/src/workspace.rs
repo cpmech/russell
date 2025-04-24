@@ -119,7 +119,7 @@ impl<'a> Workspace<'a> {
         // allocate the workspace
         Workspace {
             auto: false,
-            stats: Stats::new(config.method),
+            stats: Stats::new(config.method, config.hide_timings),
             n_continued_rejection: 0,
             follows_reject_step: false,
             iterations_failed: false,

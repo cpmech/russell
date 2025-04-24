@@ -46,11 +46,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 8
 Number of iterations (total)     = 21
 Last accepted/suggested stepsize = 0.5
-Max time spent on a step         = 59.602µs
-Max time spent on the Jacobian   = 8.069µs
-Max time spent on factorization  = 67.234µs
-Max time spent on lin solution   = 2.796µs
-Total time                       = 1.518935ms
 Automatic stepsize adjustment    = false
 ok
 test test_arc_singular_initial_state_2 ... ─────────────────────────────────────────────────────────────────────────
@@ -96,11 +91,11 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 5
 Number of iterations (total)     = 18
 Last accepted/suggested stepsize = 0.5
-Max time spent on a step         = 65.599µs
-Max time spent on the Jacobian   = 1.561µs
-Max time spent on factorization  = 25.973µs
-Max time spent on lin solution   = 1.677µs
-Total time                       = 246.321µs
+Max time spent on a step         = 63.329µs
+Max time spent on the Jacobian   = 1.151µs
+Max time spent on factorization  = 26.855µs
+Max time spent on lin solution   = 1.353µs
+Total time                       = 238.349µs
 Automatic stepsize adjustment    = false
 ok
 

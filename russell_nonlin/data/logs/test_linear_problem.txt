@@ -50,11 +50,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 2
 Number of iterations (total)     = 20
 Last accepted/suggested stepsize = 0.1
-Max time spent on a step         = 1.590029ms
-Max time spent on the Jacobian   = 831ns
-Max time spent on factorization  = 48.952µs
-Max time spent on lin solution   = 5.386µs
-Total time                       = 1.738447ms
 Automatic stepsize adjustment    = false
 ok
 test test_linear_no_auto_num_jac ... ───────────────────────────────────────────────────────────
@@ -108,11 +103,11 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 3
 Number of iterations (total)     = 21
 Last accepted/suggested stepsize = 0.1
-Max time spent on a step         = 42.449µs
-Max time spent on the Jacobian   = 1.263µs
-Max time spent on factorization  = 15.126µs
-Max time spent on lin solution   = 1.865µs
-Total time                       = 204.62µs
+Max time spent on a step         = 63.145µs
+Max time spent on the Jacobian   = 1.648µs
+Max time spent on factorization  = 22.358µs
+Max time spent on lin solution   = 2.963µs
+Total time                       = 293.568µs
 Automatic stepsize adjustment    = false
 ok
 

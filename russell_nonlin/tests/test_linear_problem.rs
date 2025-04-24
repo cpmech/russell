@@ -30,7 +30,7 @@ fn test_linear_no_auto_ana_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

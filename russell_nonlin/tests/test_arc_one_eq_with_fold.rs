@@ -12,7 +12,7 @@ fn test_arc_one_eq_with_fold() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();

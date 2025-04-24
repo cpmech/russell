@@ -40,7 +40,7 @@ fn test_arc_linear_problem() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

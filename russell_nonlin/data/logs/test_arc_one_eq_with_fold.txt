@@ -1,6 +1,6 @@
 
 running 1 test
-test test_arc_single_eq_with_fold ... ─────────────────────────────────────────────────────────────────────────
+test test_arc_one_eq_with_fold ... ─────────────────────────────────────────────────────────────────────────
        λ        s       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
 ─────────────────────────────────────────────────────────────────────────
  0.000e0  0.000e0 5.000e-1
@@ -42,11 +42,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 4
 Number of iterations (total)     = 17
 Last accepted/suggested stepsize = 0.5
-Max time spent on a step         = 49.268µs
-Max time spent on the Jacobian   = 2.192µs
-Max time spent on factorization  = 71.825µs
-Max time spent on lin solution   = 3.082µs
-Total time                       = 1.696081ms
 Automatic stepsize adjustment    = false
 ok
 

@@ -1,6 +1,6 @@
 
-running 1 test
-test test_arc_one_eq_with_fold ... ─────────────────────────────────────────────────────────────────────────
+running 2 tests
+test test_arc_one_eq_with_fold_1 ... ─────────────────────────────────────────────────────────────────────────
        λ        s       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
 ─────────────────────────────────────────────────────────────────────────
  0.000e0  0.000e0 5.000e-1
@@ -44,6 +44,38 @@ Number of iterations (total)     = 17
 Last accepted/suggested stepsize = 0.5
 Automatic stepsize adjustment    = false
 ok
+test test_arc_one_eq_with_fold_2 ... ─────────────────────────────────────────────────────────────────────────
+       λ        s       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+─────────────────────────────────────────────────────────────────────────
+ 0.000e0  0.000e0 9.672e-1
+       ·        ·        ·     1    6.71e-1       4.13e-1       4.13e9   
+       ·        ·        ·     2    2.85e-1 🔹    8.95e-2       8.95e8 🔹
+       ·        ·        ·     3    1.98e-2 🔹    7.20e-3       7.20e7 🔹
+       ·        ·        ·     4    1.16e-4 🔹    4.26e-5       4.26e5 🔹
+       ·        ·        ·     5    4.03e-9 🔹    1.48e-9       1.48e1 🔹
+       ·        ·        ·     6   1.11e-16 ✅    1.48e-9       1.48e1 🔹
+3.679e-1 9.672e-1 9.672e-1
+       ·        ·        ·     1    6.63e-1       9.28e-2       1.78e6   
+       ·        ·        ·     2   5.77e-11 ✅    9.28e-2       1.78e6 🔹
+2.751e-1  1.934e0 9.672e-1
+─────────────────────────────────────────────────────────────────────────
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0
+Number of function evaluations   = 8
+Number of Jacobian evaluations   = 7
+Number of factorizations         = 7
+Number of lin sys solutions      = 9
+Number of performed steps        = 2
+Number of accepted steps         = 2
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 6
+Number of iterations (total)     = 8
+Last accepted/suggested stepsize = 0.9672368286979919
+Automatic stepsize adjustment    = false
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 

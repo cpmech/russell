@@ -91,11 +91,6 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 5
 Number of iterations (total)     = 18
 Last accepted/suggested stepsize = 0.5
-Max time spent on a step         = 63.329µs
-Max time spent on the Jacobian   = 1.151µs
-Max time spent on factorization  = 26.855µs
-Max time spent on lin solution   = 1.353µs
-Total time                       = 238.349µs
 Automatic stepsize adjustment    = false
 ok
 

@@ -127,7 +127,10 @@ fn test_arc_singular_initial_state_2() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true).set_allowed_continued_divergence(2);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_allowed_continued_divergence(2);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

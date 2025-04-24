@@ -105,7 +105,10 @@ fn test_linear_no_auto_num_jac() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true).set_tol_delta(1e-9, 1e-7);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_tol_delta(1e-9, 1e-7);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

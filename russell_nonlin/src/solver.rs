@@ -121,7 +121,7 @@ impl<'a, A> Solver<'a, A> {
         self.work.reset(h_ini, self.config.rel_error_prev_min, auto.yes());
 
         // perform initialization such as computing the first tangent vector in pseudo-arclength
-        self.actual.initialize(&mut self.work, &state, dir, args)?;
+        self.actual.initialize(&mut self.work, state, dir, args)?;
 
         // first output
         if let Some(out) = output.as_deref_mut() {

@@ -241,7 +241,7 @@ impl Samples {
 
     /// Single equation with a fold point
     ///
-    /// Returns `(system, state, lambda_ana, args)`
+    /// Returns `(system, state, lambda_ana, args)` where `lambda_ana` is `f(u) -> λ`
     ///
     /// See Reference 1, page 70.
     ///

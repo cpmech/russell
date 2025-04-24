@@ -115,7 +115,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     fn initialize(
         &mut self,
         _work: &mut Workspace,
-        _state: &State,
+        _state: &mut State,
         _dir: Direction,
         _args: &mut A,
     ) -> Result<(), StrError> {

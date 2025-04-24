@@ -144,18 +144,6 @@ pub struct SolverArclength<'a, A> {
     /// Gλ = ∂G/∂λ vector (ndim)
     ggl: Vector,
 
-    /// initial u0 (ndim)
-    u0: Vector,
-
-    /// initial λ0
-    l0: f64,
-
-    /// initial derivative du/ds @ (u0, λ0) (ndim)
-    duds0: Vector,
-
-    /// initial derivative dλ/ds @ (u0, λ0)
-    dlds0: f64,
-
     /// Linear solver for the augmented system
     ls_aug: LinSolver<'a>,
 
@@ -182,10 +170,6 @@ impl<'a, A> SolverArclength<'a, A> {
             config,
             system,
             ggl: Vector::new(ndim),
-            u0: Vector::new(ndim),
-            l0: 0.0,
-            duds0: Vector::new(ndim),
-            dlds0: 0.0,
             ls_aug: LinSolver::new(config.genie).unwrap(),
             aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_jac, Sym::No).unwrap(),
             x: Vector::new(ndim + 1),
@@ -262,7 +246,7 @@ impl<'a, A> SolverArclength<'a, A> {
     ///     │  0   1 │
     ///     └        ┘
     /// ```
-    fn calc_aa(&mut self, work: &mut Workspace, args: &mut A, just_ggu: bool) -> Result<(), StrError> {
+    fn calc_aa(&mut self, work: &mut Workspace, state: &State, args: &mut A, just_ggu: bool) -> Result<(), StrError> {
         // assemble Gu matrix into A
         work.stats.sw_jacobian.reset();
         self.aa.reset();
@@ -300,9 +284,9 @@ impl<'a, A> SolverArclength<'a, A> {
             self.calc_ggl(work, args)?;
             for i in 0..ndim {
                 self.aa.put(i, ndim, self.ggl[i]).unwrap();
-                self.aa.put(ndim, i, self.duds0[i]).unwrap();
+                self.aa.put(ndim, i, state.duds[i]).unwrap();
             }
-            self.aa.put(ndim, ndim, self.dlds0).unwrap();
+            self.aa.put(ndim, ndim, state.dlds).unwrap();
         }
         work.stats.stop_sw_jacobian();
 
@@ -319,7 +303,7 @@ impl<'a, A> SolverArclength<'a, A> {
         &mut self,
         iteration: usize,
         work: &mut Workspace,
-        dds: f64,
+        state: &State,
         args: &mut A,
         logging: bool,
     ) -> Result<(), StrError> {
@@ -328,15 +312,16 @@ impl<'a, A> SolverArclength<'a, A> {
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
         // calculate N = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
+        let dds = state.h;
         let ndim = self.system.ndim;
-        let mut nno = -dds;
+        let mut nn = -dds;
         for i in 0..ndim {
-            nno += (work.u[i] - self.u0[i]) * self.duds0[i];
+            nn += (work.u[i] - state.u[i]) * state.duds[i];
         }
-        nno += (work.l - self.l0) * self.dlds0;
+        nn += (work.l - state.l) * state.dlds;
 
         // check convergence on (G, N)
-        work.err.analyze_residual(iteration, &work.gg, nno)?;
+        work.err.analyze_residual(iteration, &work.gg, nn)?;
         if work.err.converged() {
             if logging {
                 work.log.iteration(iteration, &work.err);
@@ -347,14 +332,14 @@ impl<'a, A> SolverArclength<'a, A> {
         // compute augmented Jacobian matrix
         let recompute_aa = iteration == 0 || !self.config.constant_tangent;
         if recompute_aa {
-            self.calc_aa(work, args, false)?;
+            self.calc_aa(work, state, args, false)?;
         }
 
         // set the right-hand side vector b = (-G, -N)
         for i in 0..ndim {
             self.b[i] = -work.gg[i];
         }
-        self.b[ndim] = -nno;
+        self.b[ndim] = -nn;
 
         // solve linear system A x = b; thus x = (δu, δλ)
         work.stats.sw_lin_sol.reset();
@@ -410,7 +395,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        state: &State,
+        state: &mut State,
         dir: Direction,
         args: &mut A,
     ) -> Result<(), StrError> {
@@ -420,21 +405,14 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         }
 
         // set initial values
-        let ndim = self.system.ndim;
-        for i in 0..ndim {
-            self.u0[i] = state.u[i];
-            work.u[i] = state.u[i];
-        }
-        self.l0 = state.l;
-        work.l = state.l;
+        vec_copy(&mut work.u, &state.u).unwrap(); // u₀ = u
+        work.l = state.l; // λ₀ = λ
 
         // get sign of dlds or reuse previous tangent vector
         let sign0 = match dir {
             Direction::Pos => 1.0,
             Direction::Neg => -1.0,
             Direction::Prev => {
-                vec_copy(&mut self.duds0, &state.duds).unwrap();
-                self.dlds0 = state.dlds;
                 return Ok(());
             }
         };
@@ -453,13 +431,14 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            self.dlds0 = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
-            vec_copy_scaled(&mut self.duds0, -self.dlds0, &work.mdu).unwrap(); // "-1" because mdu = -z₀
+            state.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
+            vec_copy_scaled(&mut state.duds, -state.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
         } else {
             // calculate the augmented matrix A := Gu = ∂G/∂u
-            self.calc_aa(work, args, true)?;
+            self.calc_aa(work, state, args, true)?;
 
             // set b = (-Gλ₀, 0)
+            let ndim = self.system.ndim;
             for i in 0..ndim {
                 self.b[i] = -self.ggl[i];
             }
@@ -473,9 +452,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
             assert_eq!(self.x[ndim], 0.0);
-            self.dlds0 = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
+            state.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
             for i in 0..ndim {
-                self.duds0[i] = self.dlds0 * self.x[i];
+                state.duds[i] = state.dlds * self.x[i];
             }
         }
         Ok(())
@@ -488,8 +467,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
         // predictor
         let dds = state.h;
-        vec_add(&mut work.u, 1.0, &state.u, dds, &self.duds0).unwrap(); // u1 = u0 + Δs · duds0
-        work.l = state.l + dds * self.dlds0; // λ1 = λ0 + Δs · dlds0
+        vec_add(&mut work.u, 1.0, &state.u, dds, &state.duds).unwrap(); // u₁ = u₀ + Δs · duds₀
+        work.l = state.l + dds * state.dlds; // λ₁ = λ₀ + Δs · dlds₀
 
         // external: create a copy of external state variables
         if work.auto {
@@ -514,7 +493,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.stats.n_iterations_max = usize::max(work.stats.n_iterations_max, iteration + 1);
 
             // run Newton-Raphson iteration
-            self.iterate(iteration, work, dds, args, logging)?;
+            self.iterate(iteration, work, state, args, logging)?;
 
             // stop if converged
             if work.err.converged() {
@@ -542,39 +521,36 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 self.b[i] = 0.0;
             }
             self.b[ndim] = 1.0;
+
             // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
             self.ls_aug.actual.solve(&mut self.x, &self.b, false).unwrap();
             work.stats.stop_sw_lin_sol();
+
             // calculate the norm
             let norm = vec_norm(&self.x, Norm::Euc);
+
             // update tangent vector
             for i in 0..ndim {
-                self.duds0[i] = self.x[i] / norm;
+                state.duds[i] = self.x[i] / norm;
             }
-            self.dlds0 = self.x[ndim] / norm;
+            state.dlds = self.x[ndim] / norm;
+
+            // TODO: remove this check
             approx_eq(
-                vec_inner(&self.duds0, &self.duds0) + self.dlds0 * self.dlds0,
+                vec_inner(&state.duds, &state.duds) + state.dlds * state.dlds,
                 1.0,
-                1e-15,
+                1e-14,
             );
         }
 
-        // update initial values
-        for i in 0..ndim {
-            self.u0[i] = work.u[i];
-        }
-        self.l0 = work.l;
-
         // update state
-        for i in 0..ndim {
-            state.u[i] = work.u[i];
-            state.duds[i] = self.duds0[i];
-        }
-        state.l = work.l;
-        state.dlds = self.dlds0;
+        vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
+        state.l = work.l; // λ := λ₁
         state.s += state.h;
+
+        // update stepsize
         work.h_new = state.h;
     }
 

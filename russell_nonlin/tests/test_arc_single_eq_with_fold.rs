@@ -1,4 +1,4 @@
-use plotpy::{linspace, Curve, Plot};
+use plotpy::{linspace, Canvas, Curve, Plot};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
 
@@ -22,13 +22,14 @@ fn test_arc_single_eq_with_fold() {
     out.set_recording(true, &[0], &[0]);
 
     // numerical continuation
+    let dds = 0.5; // Δs ≡ h
     solver
         .solve(
             &mut args,
             &mut state,
             Direction::Pos,
             Stop::Steps(5),
-            AutoStep::No(0.5),
+            AutoStep::No(dds),
             Some(out),
         )
         .unwrap();
@@ -95,11 +96,23 @@ fn test_arc_single_eq_with_fold() {
             .set_marker_style("o");
         curve_num.draw(uu, ll);
 
+        let mut arrows = Canvas::new();
+        arrows
+            .set_arrow_scale(10.0)
+            .set_edge_color("None")
+            .set_face_color("black");
+        for i in 0..uu.len() {
+            let xf = uu[i] + dds * duds[i];
+            let yf = ll[i] + dds * dlds[i];
+            arrows.draw_arrow(uu[i], ll[i], xf, yf);
+        }
+
         let mut plot = Plot::new();
-        plot.set_title("Arc-length continuation with fold")
+        plot.set_title("Arclength continuation with fold")
             .grid_labels_legend("$u$", "$\\lambda$")
             .add(&curve_ana)
             .add(&curve_num)
+            .add(&arrows)
             .save(&format!("/tmp/russell_nonlin/{}.svg", NAME))
             .unwrap()
     }

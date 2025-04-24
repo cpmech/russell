@@ -84,18 +84,8 @@ impl Logger {
         if !(self.verbose && self.verbose_iterations) {
             return;
         }
-        let (icon_gh, icon_ul) = if iter == 0 {
-            ("  ", "  ")
-        } else {
-            if iter == 1 && err.residual_converged {
-                (self.icon(err.residual_converged, err.residual_diverging), "  ")
-            } else {
-                (
-                    self.icon(err.residual_converged, err.residual_diverging),
-                    self.icon(err.delta_converged, err.delta_diverging),
-                )
-            }
-        };
+        let icon_gh = self.icon(iter, err.residual_converged, err.residual_diverging);
+        let icon_ul = self.icon(iter, err.delta_converged, err.delta_diverging);
         let k = iter + 1;
         match self.method {
             Method::Arclength => {
@@ -122,11 +112,13 @@ impl Logger {
 
     /// Returns the icon
     #[inline]
-    fn icon(&self, converged: bool, diverging: bool) -> &'static str {
+    fn icon(&self, iter: usize, converged: bool, diverging: bool) -> &'static str {
         if converged {
             "✅"
         } else if diverging {
             "🎈"
+        } else if iter == 0 {
+            "  "
         } else {
             "🔹"
         }

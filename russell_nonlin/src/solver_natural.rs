@@ -171,10 +171,11 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
-    fn accept(&mut self, work: &mut Workspace, state: &mut State) {
+    fn accept(&mut self, work: &mut Workspace, state: &mut State, _args: &mut A) -> Result<(), StrError> {
         vec_copy(&mut state.u, &work.u).unwrap();
         state.l = work.l;
         work.h_new = state.h;
+        Ok(())
     }
 
     /// Handles the reject case by calculating a new stepsize

@@ -158,6 +158,12 @@ pub struct SolverArclength<'a, A> {
 
     /// Use the numerical Gu matrix
     use_num_ggu: bool,
+
+    /// Indicates that the Jacobian matrix (Gu or A) has been computed at least once in the iteration
+    ///
+    /// This check is necessary because the predictor may be so good that the iteration
+    /// stops without even computing the Jacobian matrix.
+    iter_jac_computed: bool,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -175,6 +181,7 @@ impl<'a, A> SolverArclength<'a, A> {
             x: Vector::new(ndim + 1),
             b: Vector::new(ndim + 1),
             use_num_ggu,
+            iter_jac_computed: false,
         }
     }
 
@@ -333,6 +340,7 @@ impl<'a, A> SolverArclength<'a, A> {
         let recompute_aa = iteration == 0 || !self.config.constant_tangent;
         if recompute_aa {
             self.calc_aa(work, state, args, false)?;
+            self.iter_jac_computed = true;
         }
 
         // set the right-hand side vector b = (-G, -N)
@@ -510,12 +518,19 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
-    fn accept(&mut self, work: &mut Workspace, state: &mut State) {
+    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<(), StrError> {
         // update the tangent vector
         let ndim = self.system.ndim;
         if self.config.bordering {
             panic!("bordering is not implemented yet");
         } else {
+            // compute Jacobian matrix at the updated state
+            if !self.iter_jac_computed {
+                // only needed if the iteration converged without computing
+                // the Jacobian, e.g., when the predictor was good enough
+                self.calc_aa(work, state, args, false)?;
+            }
+
             // set b = (0, 1)
             for i in 0..ndim {
                 self.b[i] = 0.0;
@@ -525,7 +540,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            self.ls_aug.actual.solve(&mut self.x, &self.b, false).unwrap();
+            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
             work.stats.stop_sw_lin_sol();
 
             // calculate the norm
@@ -552,6 +567,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // update stepsize
         work.h_new = state.h;
+        Ok(())
     }
 
     /// Handles the reject case by calculating a new stepsize

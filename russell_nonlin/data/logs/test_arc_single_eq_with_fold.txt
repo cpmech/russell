@@ -1,0 +1,54 @@
+
+running 1 test
+test test_arc_single_eq_with_fold ... ─────────────────────────────────────────────────────────────────────────
+       λ        s       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+─────────────────────────────────────────────────────────────────────────
+ 0.000e0  0.000e0 5.000e-1
+       ·        ·        ·     1    1.50e-1       7.81e-2       7.81e8   
+       ·        ·        ·     2    7.45e-3 🔹    3.52e-3       3.52e7 🔹
+       ·        ·        ·     3    1.64e-5 🔹    7.81e-6       7.81e4 🔹
+       ·        ·        ·     4   8.05e-11 ✅    7.81e-6       7.81e4 🔹
+2.790e-1 5.000e-1 5.000e-1
+       ·        ·        ·     1    2.15e-1       8.94e-2       2.32e6   
+       ·        ·        ·     2    6.80e-3 🔹    2.65e-3       6.90e4 🔹
+       ·        ·        ·     3    6.20e-6 🔹    2.42e-6       6.29e1 🔹
+       ·        ·        ·     4   5.16e-12 ✅    2.42e-6       6.29e1 🔹
+3.669e-1  1.000e0 5.000e-1
+       ·        ·        ·     1    1.61e-1       3.87e-2       7.45e5   
+       ·        ·        ·     2    1.75e-4 🔹    4.20e-5       8.08e2 🔹
+       ·        ·        ·     3   2.06e-10 🔹   4.95e-11      9.51e-4 ✅
+3.422e-1  1.500e0 5.000e-1
+       ·        ·        ·     1    7.25e-2       1.04e-2       2.14e5   
+       ·        ·        ·     2    7.74e-5 🔹    1.11e-5       2.29e2 🔹
+       ·        ·        ·     3   8.87e-11 ✅    1.11e-5       2.29e2 🔹
+2.807e-1  2.000e0 5.000e-1
+       ·        ·        ·     1    1.35e-2       1.18e-3       2.96e4   
+       ·        ·        ·     2    2.14e-6 🔹    1.87e-7       4.69e0 🔹
+       ·        ·        ·     3   5.46e-14 ✅    1.87e-7       4.69e0 🔹
+2.150e-1  2.500e0 5.000e-1
+─────────────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0
+Number of function evaluations   = 17
+Number of Jacobian evaluations   = 14
+Number of factorizations         = 14
+Number of lin sys solutions      = 19
+Number of performed steps        = 5
+Number of accepted steps         = 5
+Number of rejected steps         = 0
+Number of large max(‖δu‖∞,|δλ|)  = 0
+Number of max iterations reached = 0
+Number of continued divergence   = 0
+Number of iterations (maximum)   = 4
+Number of iterations (total)     = 17
+Last accepted/suggested stepsize = 0.5
+Max time spent on a step         = 49.268µs
+Max time spent on the Jacobian   = 2.192µs
+Max time spent on factorization  = 71.825µs
+Max time spent on lin solution   = 3.082µs
+Total time                       = 1.696081ms
+Automatic stepsize adjustment    = false
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

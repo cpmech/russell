@@ -108,8 +108,7 @@ fn test_arc_single_eq_with_fold() {
         }
 
         let mut plot = Plot::new();
-        plot.set_title("Arclength continuation with fold")
-            .grid_labels_legend("$u$", "$\\lambda$")
+        plot.grid_labels_legend("$u$", "$\\lambda$")
             .add(&curve_ana)
             .add(&curve_num)
             .add(&arrows)

@@ -1,7 +1,7 @@
 use super::{NoArgs, State, System};
 use russell_lab::math::{SQRT_2_BY_3, SQRT_3};
 use russell_lab::Vector;
-use russell_sparse::{CooMatrix, Sym};
+use russell_sparse::Sym;
 
 /// Holds a collection of nonlinear problems
 pub struct Samples {}
@@ -18,7 +18,7 @@ impl Samples {
     pub fn cubic_poly_1<'a>() -> (System<'a, NoArgs>, State, State, State, Vector, NoArgs) {
         // system
         let ndim = 1;
-        let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg, _l, u, _args| {
             gg[0] = u[0] * u[0] * u[0] - 2.0 * u[0] - 2.0;
             Ok(())
         })
@@ -27,14 +27,10 @@ impl Samples {
         // function to compute Gu
         let nnz = 1;
         system
-            .set_calc_ggu(
-                Some(nnz),
-                Sym::No,
-                |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.put(0, 0, 3.0 * u[0] * u[0] - 2.0).unwrap();
-                    Ok(())
-                },
-            )
+            .set_calc_ggu(Some(nnz), Sym::No, |ggu, _l, u, _args| {
+                ggu.put(0, 0, 3.0 * u[0] * u[0] - 2.0).unwrap();
+                Ok(())
+            })
             .unwrap();
 
         // initial states = trial for Newton's method
@@ -71,7 +67,7 @@ impl Samples {
     pub fn cubic_poly_2<'a>() -> (System<'a, NoArgs>, State, Vector, NoArgs) {
         // system
         let ndim = 1;
-        let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg, _l, u, _args| {
             gg[0] = f64::powi(u[0] - 1.0, 3) + 0.512;
             Ok(())
         })
@@ -80,14 +76,10 @@ impl Samples {
         // function to compute Gu
         let nnz = 1;
         system
-            .set_calc_ggu(
-                Some(nnz),
-                Sym::No,
-                |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.put(0, 0, 3.0 * f64::powi(u[0] - 1.0, 2)).unwrap();
-                    Ok(())
-                },
-            )
+            .set_calc_ggu(Some(nnz), Sym::No, |ggu, _l, u, _args| {
+                ggu.put(0, 0, 3.0 * f64::powi(u[0] - 1.0, 2)).unwrap();
+                Ok(())
+            })
             .unwrap();
 
         // initial state = trial for Newton's method
@@ -108,7 +100,7 @@ impl Samples {
     pub fn two_eq_ref<'a>() -> (System<'a, NoArgs>, State, Vector, NoArgs) {
         // system
         let ndim = 2;
-        let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg, _l, u, _args| {
             gg[0] = u[0].powf(3.0) + u[1] - 1.0;
             gg[1] = -u[0] + u[1].powf(3.0) + 1.0;
             Ok(())
@@ -118,17 +110,13 @@ impl Samples {
         // function to compute Gu
         let nnz = 4;
         system
-            .set_calc_ggu(
-                Some(nnz),
-                Sym::No,
-                |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.put(0, 0, 3.0 * u[0] * u[0]).unwrap();
-                    ggu.put(0, 1, 1.0).unwrap();
-                    ggu.put(1, 0, -1.0).unwrap();
-                    ggu.put(1, 1, 3.0 * u[1] * u[1]).unwrap();
-                    Ok(())
-                },
-            )
+            .set_calc_ggu(Some(nnz), Sym::No, |ggu, _l, u, _args| {
+                ggu.put(0, 0, 3.0 * u[0] * u[0]).unwrap();
+                ggu.put(0, 1, 1.0).unwrap();
+                ggu.put(1, 0, -1.0).unwrap();
+                ggu.put(1, 1, 3.0 * u[1] * u[1]).unwrap();
+                Ok(())
+            })
             .unwrap();
 
         // initial state = trial for Newton's method
@@ -152,7 +140,7 @@ impl Samples {
     pub fn two_eq_nr_prob_1<'a>() -> (System<'a, NoArgs>, State, Vector, NoArgs) {
         // system
         let ndim = 2;
-        let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg, _l, u, _args| {
             gg[0] = u[0] * u[0] + u[1] * u[1];
             gg[1] = u[0] * u[0] - u[1] * u[1];
             Ok(())
@@ -162,17 +150,13 @@ impl Samples {
         // function to compute Gu
         let nnz = 4;
         system
-            .set_calc_ggu(
-                Some(nnz),
-                Sym::No,
-                |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.put(0, 0, 2.0 * u[0]).unwrap();
-                    ggu.put(0, 1, 2.0 * u[1]).unwrap();
-                    ggu.put(1, 0, 2.0 * u[0]).unwrap();
-                    ggu.put(1, 1, -2.0 * u[1]).unwrap();
-                    Ok(())
-                },
-            )
+            .set_calc_ggu(Some(nnz), Sym::No, |ggu, _l, u, _args| {
+                ggu.put(0, 0, 2.0 * u[0]).unwrap();
+                ggu.put(0, 1, 2.0 * u[1]).unwrap();
+                ggu.put(1, 0, 2.0 * u[0]).unwrap();
+                ggu.put(1, 1, -2.0 * u[1]).unwrap();
+                Ok(())
+            })
             .unwrap();
 
         // initial state = trial for Newton's method
@@ -195,7 +179,7 @@ impl Samples {
     pub fn two_eq_nr_prob_2<'a>() -> (System<'a, NoArgs>, State, State, State, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
-        let mut system = System::new(ndim, |gg: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg, _l, u, _args| {
             gg[0] = f64::powi(u[0], 2) + f64::powi(u[1], 2) - 2.0; // circle centered @ (0, 0) with r = √2
             gg[1] = f64::powi(u[0] - 1.0, 2) + f64::powi(u[1] - 1.0, 2) - 2.0; // circle centered @ (1, 1) with r = √2
             Ok(())
@@ -205,17 +189,13 @@ impl Samples {
         // function to compute Gu
         let nnz = 4;
         system
-            .set_calc_ggu(
-                Some(nnz),
-                Sym::No,
-                |ggu: &mut CooMatrix, _l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.put(0, 0, 2.0 * u[0]).unwrap();
-                    ggu.put(0, 1, 2.0 * u[1]).unwrap();
-                    ggu.put(1, 0, 2.0 * (u[0] - 1.0)).unwrap();
-                    ggu.put(1, 1, 2.0 * (u[1] - 1.0)).unwrap();
-                    Ok(())
-                },
-            )
+            .set_calc_ggu(Some(nnz), Sym::No, |ggu, _l, u, _args| {
+                ggu.put(0, 0, 2.0 * u[0]).unwrap();
+                ggu.put(0, 1, 2.0 * u[1]).unwrap();
+                ggu.put(1, 0, 2.0 * (u[0] - 1.0)).unwrap();
+                ggu.put(1, 1, 2.0 * (u[1] - 1.0)).unwrap();
+                Ok(())
+            })
             .unwrap();
 
         // initial state = trial for Newton's method
@@ -250,7 +230,7 @@ impl Samples {
     pub fn one_eq_with_fold_point<'a>() -> (System<'a, NoArgs>, State, fn(f64) -> f64, NoArgs) {
         // system
         let ndim = 1;
-        let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+        let mut system = System::new(ndim, |gg, l, u, _args| {
             gg[0] = u[0] - l * f64::exp(u[0]);
             Ok(())
         })
@@ -259,19 +239,15 @@ impl Samples {
         // function to compute Gu
         let nnz_ggu = 1;
         system
-            .set_calc_ggu(
-                Some(nnz_ggu),
-                Sym::No,
-                |ggu: &mut CooMatrix, l: f64, u: &Vector, _args: &mut NoArgs| {
-                    ggu.put(0, 0, 1.0 - l * f64::exp(u[0])).unwrap();
-                    Ok(())
-                },
-            )
+            .set_calc_ggu(Some(nnz_ggu), Sym::No, |ggu, l, u, _args| {
+                ggu.put(0, 0, 1.0 - l * f64::exp(u[0])).unwrap();
+                Ok(())
+            })
             .unwrap();
 
         // function to compute Gl
         system
-            .set_calc_ggl(|ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
+            .set_calc_ggl(|ggl, _l, u, _args| {
                 ggl[0] = -f64::exp(u[0]);
                 Ok(())
             })

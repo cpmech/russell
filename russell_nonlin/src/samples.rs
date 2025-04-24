@@ -239,7 +239,7 @@ impl Samples {
         (system, state_ok1, state_ok2, state_bad, u_ref1, u_ref2, args)
     }
 
-    /// Single equation with a fold point
+    /// One equation with a fold point
     ///
     /// Returns `(system, state, lambda_ana, args)` where `lambda_ana` is `f(u) -> λ`
     ///
@@ -247,7 +247,7 @@ impl Samples {
     ///
     /// 1. Bank RE and Mittelmann HD (1990) Stepsize selection in continuation procedures and damped Newton's method.
     ///    In Continuation Techniques and Bifurcation Problems, Ed. by Mittelmann HD and Roose D (1990), Springer.
-    pub fn single_eq_with_fold_point<'a>() -> (System<'a, NoArgs>, State, fn(f64) -> f64, NoArgs) {
+    pub fn one_eq_with_fold_point<'a>() -> (System<'a, NoArgs>, State, fn(f64) -> f64, NoArgs) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn test_single_eq_with_fold_point() {
         // system
-        let (system, state, _, mut args) = Samples::single_eq_with_fold_point();
+        let (system, state, _, mut args) = Samples::one_eq_with_fold_point();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();

@@ -3,12 +3,12 @@ use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
 
 const SAVE_FIGURE: bool = false;
-const NAME: &str = "test_arc_single_eq_with_fold";
+const NAME: &str = "test_arc_one_eq_with_fold";
 
 #[test]
-fn test_arc_single_eq_with_fold() {
+fn test_arc_one_eq_with_fold() {
     // nonlinear problem
-    let (system, mut state, lambda_ana, mut args) = Samples::single_eq_with_fold_point();
+    let (system, mut state, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
 
     // configuration
     let mut config = Config::new(Method::Arclength);

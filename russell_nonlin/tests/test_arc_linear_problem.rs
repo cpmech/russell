@@ -1,4 +1,4 @@
-use plotpy::{linspace, Canvas, Curve, Plot};
+use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{array_approx_eq, math::SQRT_2, Vector};
 use russell_nonlin::{AutoStep, Config, Direction, Method, NoArgs, Output, Solver, State, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
@@ -126,8 +126,21 @@ fn test_arc_linear_problem() {
             arrows.draw_arrow(uu[i], ll[i], xf, yf);
         }
 
+        let mut hyperplanes = Curve::new();
+        hyperplanes.set_line_style("--").set_line_color("gray");
+        for i in 0..uu.len() {
+            let xa = uu[i] + dds * duds[i];
+            let ya = ll[i] + dds * dlds[i];
+            let phi = f64::atan2(dlds[i], duds[i]);
+            let xb = xa - f64::sin(phi);
+            let yb = ya + f64::cos(phi);
+            let ep = RayEndpoint::Coords(xb, yb);
+            hyperplanes.draw_ray(xa, ya, ep);
+        }
+
         let mut plot = Plot::new();
-        plot.grid_labels_legend("$u$", "$\\lambda$")
+        plot.set_labels("$u$", "$\\lambda$")
+            .add(&hyperplanes)
             .add(&curve_ana)
             .add(&curve_num)
             .add(&arrows)

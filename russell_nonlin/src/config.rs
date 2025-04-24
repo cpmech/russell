@@ -73,22 +73,22 @@ pub struct Config {
 
     // iterations -------------------------------------------------------------------------
     //
-    /// Absolute tolerance on max(‖G‖∞,|N|)
+    /// Absolute tolerance on ‖G,N‖∞
     pub(crate) tol_abs_residual: f64,
 
-    /// Absolute tolerance on RMS(δu,δλ)
+    /// Absolute tolerance on rms = Rel((δu,δλ))
     pub(crate) tol_abs_delta: f64,
 
-    /// Relative tolerance on RMS(δu,δλ)
+    /// Relative tolerance on rms = Rel((δu,δλ))
     pub(crate) tol_rel_delta: f64,
 
-    /// Allowed max(‖δu‖∞,|δλ|)
+    /// Allowed ‖δu,δλ‖∞ max
     pub(crate) allowed_delta_max: f64,
 
     /// Allowed number of iterations
     pub(crate) allowed_iterations: usize,
 
-    /// Allowed number of continued divergence on max(‖δu‖∞,|δλ|)
+    /// Allowed number of continued divergence on ‖δu,δλ‖∞
     pub(crate) allowed_continued_divergence: usize,
 
     /// Modified Newton's method with constant tangent matrix
@@ -294,38 +294,41 @@ impl Config {
 
     // iterations -------------------------------------------------------------------------
 
-    /// Sets the absolute tolerance on max(‖G‖∞,|H|)
+    /// Sets the absolute tolerance on ‖G,N‖∞
     ///
     /// ```text
     /// value ≥ CONFIG_TOL_MIN
     /// ```
     ///
     /// See [CONFIG_TOL_MIN]
+    ///
+    /// Default value: 1e-10
     pub fn set_tol_residual(&mut self, tol_abs: f64) -> &mut Self {
         self.tol_abs_residual = tol_abs;
         self
     }
 
-    /// Sets the absolute and relative tolerance on RMS(δ(u,λ))
+    /// Sets the absolute and relative tolerance on rms = Rel((δu,δλ))
     ///
     /// ```text
-    /// value ≥ CONFIG_TOL_MIN
-    ///
-    ///             /     ————            2 `
-    ///       \    /  1   \    ⎛ δ(u,λ)ᵢ ⎞
-    /// rms =  \  /  ———  /    ⎜ ——————— ⎟
-    ///         \/    N   ———— ⎝   scᵢ   ⎠
-    ///                     i
+    ///        ___________________________
+    /// rms = √ (1/N) ∑ᵢ [(δu,δλ)ᵢ / scᵢ]²
+    /// scᵢ = ϵₐ + ϵᵣ |(u,λ)⁰ᵢ|
+    /// ϵₐ and ϵᵣ ≥ CONFIG_TOL_MIN
     /// ```
     ///
     /// See [CONFIG_TOL_MIN]
+    ///
+    /// Default values: tol_abs = 1e-10, tol_rel = 1e-7
     pub fn set_tol_delta(&mut self, tol_abs: f64, tol_rel: f64) -> &mut Self {
         self.tol_abs_delta = tol_abs;
         self.tol_rel_delta = tol_rel;
         self
     }
 
-    /// Sets the allowed max(‖δu‖∞,|δλ|)
+    /// Sets the allowed ‖δu,δλ‖∞ max
+    ///
+    /// Default value: 1e8
     pub fn set_allowed_delta_max(&mut self, value: f64) -> &mut Self {
         self.allowed_delta_max = value;
         self
@@ -336,12 +339,16 @@ impl Config {
     /// ```text
     /// value ≥ 1
     /// ```
+    ///
+    /// Default value: 12
     pub fn set_allowed_iterations(&mut self, value: usize) -> &mut Self {
         self.allowed_iterations = value;
         self
     }
 
-    /// Sets the allowed number of continued divergence on max(‖δu‖∞,|δλ|)
+    /// Sets the allowed number of continued divergence on ‖δu,δλ‖∞
+    ///
+    /// Default value: 1
     pub fn set_allowed_continued_divergence(&mut self, value: usize) -> &mut Self {
         self.allowed_continued_divergence = value;
         self
@@ -350,6 +357,8 @@ impl Config {
     /// Sets the constant tangent flag
     ///
     /// Modified Newton's method with constant tangent matrix
+    ///
+    /// Default value: false
     pub fn set_constant_tangent(&mut self, flag: bool) -> &mut Self {
         self.constant_tangent = flag;
         self
@@ -358,6 +367,8 @@ impl Config {
     /// Sets the use numerical Jacobian flag
     ///
     /// Use numerical Jacobian, even if the analytical Jacobian is available
+    ///
+    /// Default value: false
     pub fn set_use_numerical_jacobian(&mut self, flag: bool) -> &mut Self {
         self.use_numerical_jacobian = flag;
         self
@@ -368,6 +379,8 @@ impl Config {
     /// Sets the bordering flag
     ///
     /// Use the bordering algorithm throughout the entire simulation
+    ///
+    /// Default value: false
     pub fn set_bordering(&mut self, flag: bool) -> &mut Self {
         self.bordering = flag;
         self

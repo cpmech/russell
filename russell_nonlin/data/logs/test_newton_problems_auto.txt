@@ -57,10 +57,10 @@ Number of iterations (maximum)   = 12
 Number of iterations (total)     = 27
 Last accepted/suggested stepsize = 0.0001
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 1.006µs
-Max time spent on factorization  = 48.719µs
-Max time spent on lin solution   = 3.812µs
-Total time                       = 1.816201ms
+Max time spent on the Jacobian   = 1.258µs
+Max time spent on factorization  = 65.317µs
+Max time spent on lin solution   = 5.23µs
+Total time                       = 1.968796ms
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -129,10 +129,10 @@ Number of iterations (maximum)   = 15
 Number of iterations (total)     = 36
 Last accepted/suggested stepsize = 0.0001
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 1.082µs
-Max time spent on factorization  = 20.723µs
-Max time spent on lin solution   = 2.802µs
-Total time                       = 284.944µs
+Max time spent on the Jacobian   = 993ns
+Max time spent on factorization  = 21.855µs
+Max time spent on lin solution   = 2.435µs
+Total time                       = 464.798µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -180,14 +180,14 @@ Number of iterations (maximum)   = 1
 Number of iterations (total)     = 9
 Last accepted/suggested stepsize = 0.0001
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 752ns
-Max time spent on factorization  = 15.635µs
-Max time spent on lin solution   = 1.869µs
-Total time                       = 113.526µs
+Max time spent on the Jacobian   = 667ns
+Max time spent on factorization  = 16.883µs
+Max time spent on lin solution   = 2.094µs
+Total time                       = 167.078µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
-max(‖δu‖∞,|δλ|) is too large
+‖(δu,δλ)‖∞ is too large
 too many continued rejections
 ════════════════════════════════════════════════════════════
 
@@ -195,7 +195,7 @@ ok
 test test_newton_problems_ok_1_auto ... ───────────────────────────────────────────────────────────
        λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
 ───────────────────────────────────────────────────────────
- 0.000e0  1.000e0
+ 0.000e0 1.000e-4
        ·        ·     1    3.00e0       3.00e0    3.00e7   
        ·        ·     2    5.40e1 🎈    1.17e0    1.17e7 🔹
        ·        ·     3    1.49e1 🔹   6.79e-1    6.79e6 🔹
@@ -204,7 +204,7 @@ test test_newton_problems_ok_1_auto ... ─────────────�
        ·        ·     6   2.63e-2 🔹   3.55e-3    3.54e4 🔹
        ·        ·     7   6.68e-5 🔹   9.04e-6    9.03e1 🔹
        ·        ·     8  4.34e-10 🔹  5.87e-11   5.87e-4 ✅
- 1.000e0  1.000e0
+1.000e-4 1.000e-4
 ───────────────────────────────────────────────────────────
 
 Natural parameter continuation; solves G(u, λ) = 0
@@ -220,13 +220,13 @@ Number of max iterations reached = 0
 Number of continued divergence   = 0
 Number of iterations (maximum)   = 8
 Number of iterations (total)     = 8
-Last accepted/suggested stepsize = 1
-Max time spent on a step         = 71.755µs
-Max time spent on the Jacobian   = 586ns
-Max time spent on factorization  = 12.224µs
-Max time spent on lin solution   = 1.341µs
-Total time                       = 89.42µs
-Automatic stepsize adjustment    = false
+Last accepted/suggested stepsize = 0.0001
+Max time spent on a step         = 2.584µs
+Max time spent on the Jacobian   = 781ns
+Max time spent on factorization  = 17.857µs
+Max time spent on lin solution   = 1.964µs
+Total time                       = 149.363µs
+Automatic stepsize adjustment    = true
 ok
 test test_newton_problems_ok_2_auto ... ───────────────────────────────────────────────────────────
        λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
@@ -269,11 +269,11 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 20
 Number of iterations (total)     = 20
 Last accepted/suggested stepsize = 0.0001
-Max time spent on a step         = 1.266µs
-Max time spent on the Jacobian   = 332ns
-Max time spent on factorization  = 6.317µs
-Max time spent on lin solution   = 599ns
-Total time                       = 142.037µs
+Max time spent on a step         = 2.722µs
+Max time spent on the Jacobian   = 812ns
+Max time spent on factorization  = 18.268µs
+Max time spent on lin solution   = 1.898µs
+Total time                       = 294.596µs
 Automatic stepsize adjustment    = true
 ok
 test test_newton_problems_stepsize_becomes_small ... ───────────────────────────────────────────────────────────
@@ -309,10 +309,10 @@ Number of iterations (maximum)   = 7
 Number of iterations (total)     = 6
 Last accepted/suggested stepsize = 0.0001
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 251ns
-Max time spent on factorization  = 5.831µs
-Max time spent on lin solution   = 561ns
-Total time                       = 64.59µs
+Max time spent on the Jacobian   = 677ns
+Max time spent on factorization  = 15.805µs
+Max time spent on lin solution   = 1.702µs
+Total time                       = 136.423µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -363,10 +363,10 @@ Number of iterations (maximum)   = 6
 Number of iterations (total)     = 18
 Last accepted/suggested stepsize = 0.0001
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 1.032µs
-Max time spent on factorization  = 6.929µs
-Max time spent on lin solution   = 17.965µs
-Total time                       = 116.083µs
+Max time spent on the Jacobian   = 814ns
+Max time spent on factorization  = 17.599µs
+Max time spent on lin solution   = 1.803µs
+Total time                       = 294.942µs
 Automatic stepsize adjustment    = true
 
 ══════════════════════════ ERRORS ══════════════════════════

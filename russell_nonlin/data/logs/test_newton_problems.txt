@@ -25,10 +25,10 @@ Number of iterations (maximum)   = 4
 Number of iterations (total)     = 3
 Last accepted/suggested stepsize = 1
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 1.136µs
-Max time spent on factorization  = 60.954µs
-Max time spent on lin solution   = 2.451µs
-Total time                       = 1.117598ms
+Max time spent on the Jacobian   = 1.243µs
+Max time spent on factorization  = 45.823µs
+Max time spent on lin solution   = 4.109µs
+Total time                       = 1.660285ms
 Automatic stepsize adjustment    = false
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -70,10 +70,10 @@ Number of iterations (maximum)   = 13
 Number of iterations (total)     = 12
 Last accepted/suggested stepsize = 1
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 602ns
-Max time spent on factorization  = 11.024µs
-Max time spent on lin solution   = 1.244µs
-Total time                       = 108.584µs
+Max time spent on the Jacobian   = 724ns
+Max time spent on factorization  = 15.776µs
+Max time spent on lin solution   = 1.781µs
+Total time                       = 122.315µs
 Automatic stepsize adjustment    = false
 
 ══════════════════════════ ERRORS ══════════════════════════
@@ -104,14 +104,14 @@ Number of iterations (maximum)   = 1
 Number of iterations (total)     = 1
 Last accepted/suggested stepsize = 1
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 498ns
-Max time spent on factorization  = 9.084µs
-Max time spent on lin solution   = 973ns
-Total time                       = 36.765µs
+Max time spent on the Jacobian   = 477ns
+Max time spent on factorization  = 10.909µs
+Max time spent on lin solution   = 1.202µs
+Total time                       = 32.159µs
 Automatic stepsize adjustment    = false
 
 ══════════════════════════ ERRORS ══════════════════════════
-max(‖δu‖∞,|δλ|) is too large
+‖(δu,δλ)‖∞ is too large
 ════════════════════════════════════════════════════════════
 
 ok
@@ -144,11 +144,11 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 8
 Number of iterations (total)     = 8
 Last accepted/suggested stepsize = 1
-Max time spent on a step         = 67.406µs
-Max time spent on the Jacobian   = 482ns
-Max time spent on factorization  = 9.14µs
-Max time spent on lin solution   = 902ns
-Total time                       = 84.805µs
+Max time spent on a step         = 71.224µs
+Max time spent on the Jacobian   = 474ns
+Max time spent on factorization  = 11.079µs
+Max time spent on lin solution   = 1.035µs
+Total time                       = 87.358µs
 Automatic stepsize adjustment    = false
 ok
 test test_newton_problems_ok_2 ... ───────────────────────────────────────────────────────────
@@ -192,11 +192,11 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 20
 Number of iterations (total)     = 20
 Last accepted/suggested stepsize = 1
-Max time spent on a step         = 161.599µs
-Max time spent on the Jacobian   = 359ns
-Max time spent on factorization  = 7.628µs
-Max time spent on lin solution   = 688ns
-Total time                       = 172.533µs
+Max time spent on a step         = 139.985µs
+Max time spent on the Jacobian   = 498ns
+Max time spent on factorization  = 10.797µs
+Max time spent on lin solution   = 1.021µs
+Total time                       = 155.692µs
 Automatic stepsize adjustment    = false
 ok
 test test_simple_fixed_continued_divergence ... ───────────────────────────────────────────────────────────
@@ -227,10 +227,10 @@ Number of iterations (maximum)   = 6
 Number of iterations (total)     = 6
 Last accepted/suggested stepsize = 1
 Max time spent on a step         = 0ns
-Max time spent on the Jacobian   = 384ns
-Max time spent on factorization  = 7.872µs
-Max time spent on lin solution   = 800ns
-Total time                       = 69.71µs
+Max time spent on the Jacobian   = 418ns
+Max time spent on factorization  = 9.585µs
+Max time spent on lin solution   = 847ns
+Total time                       = 73.504µs
 Automatic stepsize adjustment    = false
 
 ══════════════════════════ ERRORS ══════════════════════════

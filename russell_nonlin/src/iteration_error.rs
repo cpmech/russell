@@ -125,13 +125,13 @@ impl IterationError {
     }
 
     /// Analyzes convergence on max(‖G‖∞,|N|)
-    pub fn analyze_residual(&mut self, iteration: usize, gg: &Vector, nno: f64) -> Result<(), StrError> {
+    pub fn analyze_residual(&mut self, iteration: usize, gg: &Vector, nn: f64) -> Result<(), StrError> {
         // compute max norm
-        self.residual_max = f64::max(vec_norm(gg, Norm::Max), f64::abs(nno));
+        self.residual_max = f64::max(vec_norm(gg, Norm::Max), f64::abs(nn));
 
         // check for NaN or Inf
         if !self.residual_max.is_finite() {
-            return Err("Found NaN or Inf in max(‖G‖∞,|N|)");
+            return Err("Found NaN or Inf in ‖(G,N)‖∞");
         }
 
         // check convergence
@@ -158,7 +158,7 @@ impl IterationError {
 
         // check for NaN or Inf
         if !self.delta_max.is_finite() {
-            return Err("Found NaN or Inf in max(‖δu‖∞,|δλ|)");
+            return Err("Found NaN or Inf in ‖(δu,δλ)‖∞");
         }
 
         // compute RMS(δu,δλ)
@@ -224,7 +224,7 @@ impl IterationError {
     pub fn messages(&self) -> Vec<String> {
         let mut messages = Vec::with_capacity(3);
         if self.fail_large_delta {
-            messages.push("max(‖δu‖∞,|δλ|) is too large".to_string());
+            messages.push("‖(δu,δλ)‖∞ is too large".to_string());
         }
         if self.fail_continued_divergence {
             messages.push("continued divergence detected".to_string());

@@ -25,7 +25,7 @@ impl Logger {
     /// Creates a new instance
     pub fn new(config: &Config) -> Self {
         let nchar = match config.method {
-            Method::Arclength => 56,
+            Method::Arclength => 73,
             Method::Natural => 59,
         };
         Self {
@@ -50,8 +50,8 @@ impl Logger {
         match self.method {
             Method::Arclength => {
                 println!(
-                    "{:>8} {:>8} {:>8} {:>5} {:>9} ➖ {:>9} ➖",
-                    "λ", "s", "Δs", "iter", "(δu,δλ)", "(G,N)"
+                    "{:>8} {:>8} {:>8} {:>5} {:>10} ➖ {:>10} {:>12} ➖",
+                    "λ", "s", "Δs", "iter", "‖(G,N)‖∞", "‖(δu,δλ)‖∞", "Rel((δu,δλ))"
                 );
             }
             Method::Natural => {
@@ -100,8 +100,8 @@ impl Logger {
         match self.method {
             Method::Arclength => {
                 println!(
-                    "{:>8} {:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {}",
-                    "·", "·", "·", k, err.delta_max, icon_ul, err.residual_max, icon_gh
+                    "{:>8} {:>8} {:>8} {:>5} {:>10.2e} {} {:>10.2e} {:>12.2e} {}",
+                    "·", "·", "·", k, err.residual_max, icon_gh, err.delta_max, err.delta_rms, icon_ul
                 );
             }
             Method::Natural => {

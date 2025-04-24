@@ -135,7 +135,7 @@ fn test_newton_problems_indeterminate_auto() {
     );
     assert_eq!(
         solver.errors(),
-        &["max(‖δu‖∞,|δλ|) is too large", "too many continued rejections"]
+        &["‖(δu,δλ)‖∞ is too large", "too many continued rejections"]
     );
 }
 

@@ -127,7 +127,7 @@ fn test_newton_problems_indeterminate() {
             .err(),
         Some("failed to solve the nonlinear problem with equal stepsize")
     );
-    assert_eq!(solver.errors(), &["max(‖δu‖∞,|δλ|) is too large"]);
+    assert_eq!(solver.errors(), &["‖(δu,δλ)‖∞ is too large"]);
 }
 
 #[test]

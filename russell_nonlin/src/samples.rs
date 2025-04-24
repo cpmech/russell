@@ -289,6 +289,50 @@ impl Samples {
         let args = 0;
         (system, state, lambda_ana, args)
     }
+
+    /// One equation with singular initial state
+    pub fn singular_initial_state<'a>(
+        alpha: f64,
+        perturbation: f64,
+    ) -> (System<'a, NoArgs>, State, impl Fn(f64) -> f64, NoArgs) {
+        // system
+        let ndim = 1;
+        let mut system = System::new(ndim, move |gg, l, u, _args| {
+            gg[0] = f64::powf(u[0], alpha) - l;
+            Ok(())
+        })
+        .unwrap();
+
+        // function to compute Gu = ∂G/∂u
+        let nnz = Some(1);
+        let sym = Sym::No;
+        system
+            .set_calc_ggu(nnz, sym, move |ggu, _l, u, _args| {
+                ggu.put(0, 0, alpha * f64::powf(u[0], alpha - 1.0)).unwrap();
+                Ok(())
+            })
+            .unwrap();
+
+        // function to compute Gl = ∂G/∂λ
+        system
+            .set_calc_ggl(|ggl, _l, _u, _args| {
+                ggl[0] = -1.0;
+                Ok(())
+            })
+            .unwrap();
+
+        // initial state
+        let mut state = State::new(ndim, true);
+        state.u[0] = perturbation;
+        state.l = 0.0;
+
+        // reference solution
+        let lambda_ana = move |u: f64| f64::powf(u, alpha);
+
+        // done
+        let args = 0;
+        (system, state, lambda_ana, args)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -401,9 +445,35 @@ mod tests {
     }
 
     #[test]
-    fn test_single_eq_with_fold_point() {
+    fn test_one_eq_with_fold_point() {
         // system
         let (system, state, _, mut args) = Samples::one_eq_with_fold_point();
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        (ggu_fn)(&mut ggu, state.l, &state.u, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check Gu
+        println!("{}", ana);
+        println!("{}", num);
+        mat_approx_eq(&ana, &num, 1e-15);
+
+        // check Gl
+        let ggl_fn = system.calc_ggl.as_ref().unwrap();
+        let mut ggl = Vector::new(1);
+        (ggl_fn)(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        vec_approx_eq(&ggl, &[-1.0], 1e-15);
+    }
+
+    #[test]
+    fn test_arc_singular_initial_state() {
+        // system
+        let (system, state, _, mut args) = Samples::singular_initial_state(2.0, 1e-2);
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();

@@ -253,7 +253,7 @@ impl Bspline {
         self.recursive_nn(u, i, self.p)
     }
 
-    /// Returns the x-y-z coordinates of a point on the B-spline
+    /// Calculates and returns the x-y-z coordinates of a point on the B-spline
     ///
     /// # Arguments
     ///
@@ -264,10 +264,10 @@ impl Bspline {
     /// # Panics
     ///
     /// Panics if control points are not set
-    pub fn get_point(&mut self, cc: &mut Vector, u: f64, recursive: bool) -> Result<(), StrError> {
+    pub fn calc_point(&mut self, cc: &mut Vector, u: f64, recursive: bool) -> Result<(), StrError> {
         let nb = self.num_basis();
         if self.pp.len() != nb {
-            return Err("control points must be set before calling get_point");
+            return Err("control points must be set before calling calc_point");
         }
         let ndim = self.pp[0].len(); // nb is always > 0
         if cc.dim() != ndim {
@@ -328,7 +328,7 @@ impl Bspline {
     ///
     /// # Output
     ///
-    /// Use the [Bspline::get_point_derivs()] method to get the results
+    /// Use the [Bspline::get_curve_deriv()] method to get the results
     pub fn calc_curve_derivs(&mut self, u: f64, upto: usize, use_control: bool) {
         let upto = usize::min(upto, self.p);
         if use_control {
@@ -340,7 +340,7 @@ impl Bspline {
 
     /// Returns the derivatives of the B-spline curve at parameter u calculated in `calc_derivs`
     ///
-    /// Note: this function must be called after [Bspline::calc_derivs()]
+    /// Note: this function must be called after [Bspline::calc_curve_derivs()]
     ///
     /// # Arguments
     ///
@@ -825,7 +825,7 @@ mod tests {
         let recursive = false;
         let mut cc = Vector::new(ndim);
         for i in 0..n_station {
-            b.get_point(&mut cc, knots[i], recursive).unwrap();
+            b.calc_point(&mut cc, knots[i], recursive).unwrap();
             xx[i] = cc[0];
             yy[i] = cc[1];
         }
@@ -839,7 +839,7 @@ mod tests {
             .set_marker_color("black");
         let elements = b.get_elements(1e-14);
         for e in &elements {
-            b.get_point(&mut cc, b.uu[e[0]], false).unwrap();
+            b.calc_point(&mut cc, b.uu[e[0]], false).unwrap();
             curve_spans.draw(&[cc[0]], &[cc[1]]);
         }
 
@@ -851,7 +851,7 @@ mod tests {
                 .set_face_color("gray")
                 .set_arrow_scale(15.0);
             for &u in uu_tg {
-                b.get_point(&mut cc, u, false).unwrap();
+                b.calc_point(&mut cc, u, false).unwrap();
                 b.calc_curve_derivs(u, 1, false);
                 let (dx, dy) = (b.cc_ders[1][0], b.cc_ders[1][1]);
                 let norm = f64::sqrt(dx * dx + dy * dy);
@@ -1048,7 +1048,7 @@ mod tests {
                 .grid_and_labels("u", "Nᵢ,ₚ")
                 .set_ymax(1.1)
                 .set_figure_size_points(600.0, 350.0)
-                .save("/tmp/russell_lab/test_calc_basis_and_get_basis.svg")
+                .save("/tmp/russell_lab/test_bspline_calc_basis_and_get_basis.svg")
                 .unwrap();
         }
     }
@@ -1165,7 +1165,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_control_points_and_get_point_errors() {
+    fn test_set_control_points_and_calc_point_errors() {
         let mut b = Bspline::new(1, &[0.0, 0.0, 1.0, 1.0]).unwrap();
         let wrong_pp = &[[0.0, 0.0]];
         assert_eq!(
@@ -1181,8 +1181,8 @@ mod tests {
 
         let mut cc = Vector::new(2);
         assert_eq!(
-            b.get_point(&mut cc, 0.0, false).err(),
-            Some("control points must be set before calling get_point")
+            b.calc_point(&mut cc, 0.0, false).err(),
+            Some("control points must be set before calling calc_point")
         );
 
         let pp = &[[0.0, 0.0], [1.0, 0.0]];
@@ -1190,13 +1190,13 @@ mod tests {
 
         let mut wrong_cc = Vector::new(1);
         assert_eq!(
-            b.get_point(&mut wrong_cc, 0.0, false).err(),
+            b.calc_point(&mut wrong_cc, 0.0, false).err(),
             Some("cc must have the same dimension as control points")
         );
     }
 
     #[test]
-    fn test_set_control_points_and_get_point_1() {
+    fn test_set_control_points_and_calc_point_1() {
         // allocate B-spline (Figure 3.2 on page 84 of Ref 1)
         let p = 3;
         let uu = &[0.0, 0.0, 0.0, 0.0, 0.25, 0.5, 0.75, 1.0, 1.0, 1.0, 1.0];
@@ -1221,33 +1221,33 @@ mod tests {
         // auxiliary variable `C` holding a point on the curve
         let mut cc = Vector::new(2);
 
-        // check get_point for the first control point
-        b.get_point(&mut cc, uu[0], false).unwrap();
+        // check calc_point for the first control point
+        b.calc_point(&mut cc, uu[0], false).unwrap();
         vec_approx_eq(&cc, &pp[0], 1e-15);
 
-        // check get_point for the last control point
-        b.get_point(&mut cc, uu[uu.len() - 1], false).unwrap();
+        // check calc_point for the last control point
+        b.calc_point(&mut cc, uu[uu.len() - 1], false).unwrap();
         vec_approx_eq(&cc, &pp[pp.len() - 1], 1e-15);
 
         // compare recursive and non-recursive methods
         let mut cc_rec = Vector::new(2);
         let knots = &[0.0, 0.1, 0.3, 0.25, 0.5, 0.6, 0.75, 0.8, 1.0];
         for &u in knots {
-            b.get_point(&mut cc_rec, u, true).unwrap();
-            b.get_point(&mut cc, u, false).unwrap();
+            b.calc_point(&mut cc_rec, u, true).unwrap();
+            b.calc_point(&mut cc, u, false).unwrap();
             vec_approx_eq(&cc_rec, &cc, 1e-13);
         }
 
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, None, 1.0);
-            plot.save("/tmp/russell_lab/test_set_control_points_and_get_point_1.svg")
+            plot.save("/tmp/russell_lab/test_bspline_set_control_points_and_calc_point_1.svg")
                 .unwrap();
         }
     }
 
     #[test]
-    fn test_set_control_points_and_get_point_2() {
+    fn test_set_control_points_and_calc_point_2() {
         // allocate B-spline (Figure 3.6 on page 87 of Ref 1)
         let p = 2;
         let uu = &[0.0, 0.0, 0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 4.0 / 5.0, 1.0, 1.0, 1.0];
@@ -1276,24 +1276,24 @@ mod tests {
         // auxiliary variable `C` holding a point on the curve
         let mut cc = Vector::new(2);
 
-        // check get_point for the first control point
-        b.get_point(&mut cc, uu[0], false).unwrap();
+        // check calc_point for the first control point
+        b.calc_point(&mut cc, uu[0], false).unwrap();
         vec_approx_eq(&cc, &pp[0], 1e-15);
 
-        // check get_point for the last control point
-        b.get_point(&mut cc, uu[uu.len() - 1], false).unwrap();
+        // check calc_point for the last control point
+        b.calc_point(&mut cc, uu[uu.len() - 1], false).unwrap();
         vec_approx_eq(&cc, &pp[pp.len() - 1], 1e-15);
 
         // check points on strait parts of curve
-        b.get_point(&mut cc, 2.0 / 5.0, false).unwrap();
+        b.calc_point(&mut cc, 2.0 / 5.0, false).unwrap();
         approx_eq((cc[1] - pp4[1]) / (cc[0] - pp4[0]), slope, 1e-15);
-        b.get_point(&mut cc, 3.0 / 5.0, false).unwrap();
+        b.calc_point(&mut cc, 3.0 / 5.0, false).unwrap();
         approx_eq((cc[1] - pp4[1]) / (cc[0] - pp4[0]), slope, 1e-15);
 
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, None, 1.0);
-            plot.save("/tmp/russell_lab/test_set_control_points_and_get_point_2.svg")
+            plot.save("/tmp/russell_lab/test_bspline_set_control_points_and_calc_point_2.svg")
                 .unwrap();
         }
     }
@@ -1384,7 +1384,7 @@ mod tests {
                 .set_ymin(0.0)
                 .set_ymax(1700.0)
                 .set_equal_axes(true)
-                .save("/tmp/russell_lab/test_curve_derivs_1.svg")
+                .save("/tmp/russell_lab/test_bspline_curve_derivs_1.svg")
                 .unwrap();
         }
     }
@@ -1425,7 +1425,8 @@ mod tests {
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
-            plot.save("/tmp/russell_lab/test_curve_derivs_alg1.svg").unwrap();
+            plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg1.svg")
+                .unwrap();
         }
     }
 
@@ -1465,7 +1466,8 @@ mod tests {
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
-            plot.save("/tmp/russell_lab/test_curve_derivs_alg2.svg").unwrap();
+            plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg2.svg")
+                .unwrap();
         }
     }
 
@@ -1483,7 +1485,7 @@ mod tests {
         // get point on the curve
         let knot = 0.5;
         let mut cc = Vector::new(2);
-        b.get_point(&mut cc, knot, false).unwrap();
+        b.calc_point(&mut cc, knot, false).unwrap();
 
         // calculate derivatives
         let mut cck = Vector::new(2);
@@ -1516,7 +1518,7 @@ mod tests {
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, Some(&[0.5]), 1.0);
-            plot.save("/tmp/russell_lab/test_calc_curve_derivs_and_get_curve_deriv_1.svg")
+            plot.save("/tmp/russell_lab/test_calc_bspline_curve_derivs_and_get_curve_deriv_1.svg")
                 .unwrap();
         }
     }
@@ -1535,7 +1537,7 @@ mod tests {
         // get point on the curve
         let knot = 0.5;
         let mut cc = Vector::new(2);
-        b.get_point(&mut cc, knot, false).unwrap();
+        b.calc_point(&mut cc, knot, false).unwrap();
 
         // calculate derivatives
         let mut cck = Vector::new(2);
@@ -1568,7 +1570,7 @@ mod tests {
         // drawing
         if SAVE_FIGURE {
             let plot = draw_curve(&mut b, pp, Some(&[0.5]), 1.0);
-            plot.save("/tmp/russell_lab/test_calc_curve_derivs_and_get_curve_deriv_2.svg")
+            plot.save("/tmp/russell_lab/test_bspline_calc_curve_derivs_and_get_curve_deriv_2.svg")
                 .unwrap();
         }
     }
@@ -1578,14 +1580,14 @@ mod tests {
         // function returning the x-component of the curve point
         let fx = |u: f64, b: &mut Bspline| {
             let mut cc = Vector::new(2);
-            b.get_point(&mut cc, u, false).unwrap();
+            b.calc_point(&mut cc, u, false).unwrap();
             Ok(cc[0])
         };
 
         // function returning the y-component of the curve point
         let fy = |u: f64, b: &mut Bspline| {
             let mut cc = Vector::new(2);
-            b.get_point(&mut cc, u, false).unwrap();
+            b.calc_point(&mut cc, u, false).unwrap();
             Ok(cc[1])
         };
 

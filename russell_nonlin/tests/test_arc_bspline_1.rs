@@ -1,9 +1,5 @@
-#![allow(unused)]
-
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_lab::{Bspline, Vector};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, State, Stop, System};
-use russell_sparse::{CooMatrix, Sym};
+use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_bspline_1";
@@ -16,6 +12,7 @@ fn test_arc_bspline_1() {
     // configuration
     let mut config = Config::new(Method::Arclength);
     config.set_verbose(true, true, true).set_hide_timings(true);
+    // .set_allowed_continued_divergence(3);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -26,7 +23,8 @@ fn test_arc_bspline_1() {
 
     // numerical continuation
     let nstep = 6;
-    let dds = 0.481; // Δs ≡ h
+    // let dds = 0.4742; // Δs ≡ h
+    let dds = 0.4743; // Δs ≡ h (this value causes problems; Newton's method diverges)
     let status = solver
         .solve(
             &mut args,
@@ -37,15 +35,15 @@ fn test_arc_bspline_1() {
             Some(out),
         )
         .unwrap();
-    println!("status = {:?}", status);
+    assert_eq!(status, Status::Failure);
 
     // results
     let uu0 = out.get_u_values(0);
     let uu1 = out.get_u_values(1);
-    let ll = out.get_l_values();
+    // let ll = out.get_l_values();
     let du0ds = out.get_duds_values(0);
     let du1ds = out.get_duds_values(1);
-    let dlds = out.get_dlds_values();
+    // let dlds = out.get_dlds_values();
 
     // plot
     if SAVE_FIGURE {
@@ -101,7 +99,7 @@ fn test_arc_bspline_1() {
             .add(&curve)
             .add(&curve_num)
             .add(&arrows)
-            .set_range(-0.1, 2.6, -0.1, 1.2)
+            .set_range(-0.1, 2.7, -0.1, 1.2)
             .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
             .save(&format!("/tmp/russell_nonlin/{}.svg", NAME))

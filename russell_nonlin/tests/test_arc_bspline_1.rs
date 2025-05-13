@@ -44,7 +44,7 @@ fn test_arc_bspline_1() {
     let uu1 = out.get_u_values(1);
     let ll = out.get_l_values();
     let du0ds = out.get_duds_values(0);
-    let du1ds = out.get_duds_values(0);
+    let du1ds = out.get_duds_values(1);
     let dlds = out.get_dlds_values();
 
     // plot
@@ -84,7 +84,7 @@ fn test_arc_bspline_1() {
         }
 
         let mut hyperplanes = Curve::new();
-        hyperplanes.set_line_style("--").set_line_color("gray");
+        hyperplanes.set_line_style("--").set_line_color("#d0d0d0");
         for i in 0..uu0.len() {
             let xa = uu0[i] + dds * du0ds[i];
             let ya = uu1[i] + dds * du1ds[i];
@@ -97,10 +97,11 @@ fn test_arc_bspline_1() {
 
         let mut plot = Plot::new();
         plot.set_labels("$u_1$", "$u_2$")
-            // .add(&hyperplanes)
+            .add(&hyperplanes)
             .add(&curve)
             .add(&curve_num)
             .add(&arrows)
+            .set_range(-0.1, 2.6, -0.1, 1.2)
             .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
             .save(&format!("/tmp/russell_nonlin/{}.svg", NAME))

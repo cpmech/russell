@@ -73,3 +73,16 @@ impl Method {
         }
     }
 }
+
+/// Specifies the status of the continuation process.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Status {
+    /// The continuation process was successful.
+    Success,
+
+    /// The continuation process failed.
+    Failure,
+
+    /// The continuation process was stopped by the user.
+    Stopped,
+}

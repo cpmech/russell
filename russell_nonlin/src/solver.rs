@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Stop, System};
+use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Status, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Workspace};
 use crate::StrError;
 use russell_lab::vec_all_finite;
@@ -69,6 +69,10 @@ impl<'a, A> Solver<'a, A> {
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
     /// * `auto` -- defines the stepsize control method (variable stepsize control or fixed stepsize)
     /// * `output` -- output object to write results files, record the results, or execute a callback function
+    ///
+    /// # Returns
+    ///
+    /// Returns the status code.
     pub fn solve<'b>(
         &mut self,
         args: &mut A,
@@ -77,7 +81,7 @@ impl<'a, A> Solver<'a, A> {
         stop: Stop,
         auto: AutoStep,
         mut output: Option<&mut Output<'b, A>>,
-    ) -> Result<(), StrError> {
+    ) -> Result<Status, StrError> {
         // check data
         if state.u.dim() != self.ndim {
             return Err("u.dim() must be equal to ndim");
@@ -127,7 +131,7 @@ impl<'a, A> Solver<'a, A> {
         if let Some(out) = output.as_deref_mut() {
             let terminate = out.execute(&self.work, &state, args)?;
             if terminate {
-                return Ok(());
+                return Ok(Status::Stopped);
             }
         }
 
@@ -182,9 +186,9 @@ impl<'a, A> Solver<'a, A> {
 
             // handle errors
             if self.work.err.failed() {
-                return Err("failed to solve the nonlinear problem with equal stepsize");
+                return Ok(Status::Failure);
             } else {
-                return Ok(());
+                return Ok(Status::Success);
             }
         }
 
@@ -319,9 +323,9 @@ impl<'a, A> Solver<'a, A> {
 
         // handle errors
         if success {
-            Ok(())
+            Ok(Status::Success)
         } else {
-            return Err("failed to solve the nonlinear problem with automatic stepsize");
+            Ok(Status::Failure)
         }
     }
 }

@@ -145,7 +145,7 @@ impl Logger {
             if messages.len() > 0 {
                 println!("\n{:═^1$}", " ERRORS ", 60);
                 for message in &messages {
-                    println!("{}", message);
+                    println!("❌ {} ❌", message);
                 }
                 println!("{}\n", "═".repeat(60));
             }

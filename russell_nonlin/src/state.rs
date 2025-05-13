@@ -37,9 +37,9 @@ impl State {
     /// # Input
     ///
     /// * `ndim` -- number of dimensions (must match the system's ndim)
-    /// * `with_tangent_vector` -- with tangent vector; this is required for the pseudo-arclength method
-    pub fn new(ndim: usize, with_tangent_vector: bool) -> Self {
-        let ndim_duds = if with_tangent_vector { ndim } else { 0 };
+    /// * `alloc_tangent_vector` -- also allocates the tangent vector, as required by the pseudo-arclength method
+    pub fn new(ndim: usize, alloc_tangent_vector: bool) -> Self {
+        let ndim_duds = if alloc_tangent_vector { ndim } else { 0 };
         State {
             u: Vector::new(ndim),
             l: 0.0,

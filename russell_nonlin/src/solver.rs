@@ -335,7 +335,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{AutoStep, Config, Direction, Method, Samples, State, Stop};
+    use crate::{AutoStep, Config, Direction, Method, Samples, State, Status, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -414,8 +414,8 @@ mod tests {
                     AutoStep::Yes,
                     None,
                 )
-                .err(),
-            Some("failed to solve the nonlinear problem with automatic stepsize")
+                .unwrap(),
+            Status::Failure
         );
     }
 

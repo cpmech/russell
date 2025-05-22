@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1_auto() {
@@ -69,8 +69,8 @@ fn test_newton_problems_fail_due_to_max_iter_auto() {
                 AutoStep::Yes,
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with automatic stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(
         solver.errors(),
@@ -104,8 +104,8 @@ fn test_newton_problems_fail_oscillation_auto() {
                 AutoStep::Yes,
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with automatic stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(
         solver.errors(),
@@ -136,8 +136,8 @@ fn test_newton_problems_indeterminate_auto() {
                 AutoStep::Yes,
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with automatic stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(
         solver.errors(),
@@ -217,8 +217,8 @@ fn test_simple_fixed_continued_divergence_auto() {
                 AutoStep::Yes,
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with automatic stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(
         solver.errors(),
@@ -253,8 +253,8 @@ fn test_newton_problems_stepsize_becomes_small() {
                 AutoStep::Yes,
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with automatic stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(
         solver.errors(),

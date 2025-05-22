@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1() {
@@ -69,8 +69,8 @@ fn test_newton_problems_fail_due_to_max_iter() {
                 AutoStep::No(1.0),
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with equal stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(solver.errors(), &["max number of iterations reached"]);
 }
@@ -98,8 +98,8 @@ fn test_newton_problems_fail_oscillation() {
                 AutoStep::No(1.0),
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with equal stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(solver.errors(), &["max number of iterations reached"]);
 }
@@ -127,8 +127,8 @@ fn test_newton_problems_indeterminate() {
                 AutoStep::No(1.0),
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with equal stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(solver.errors(), &["‖(δu,δλ)‖∞ is too large"]);
 }
@@ -202,8 +202,8 @@ fn test_simple_fixed_continued_divergence() {
                 AutoStep::No(1.0),
                 None,
             )
-            .err(),
-        Some("failed to solve the nonlinear problem with equal stepsize")
+            .unwrap(),
+        Status::Failure
     );
     assert_eq!(solver.errors(), &["continued divergence detected"]);
 }

@@ -13,22 +13,6 @@ pub struct State {
 
     /// λ parameter
     pub l: f64,
-
-    /// Arclength
-    pub s: f64,
-
-    /// Stepsize: either Δs (arclength) or Δλ (natural parameter)
-    pub h: f64,
-
-    /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
-    ///
-    /// **Note**: this vector is only allocated for the pseudo-arclength method
-    ///
-    /// (ndim)
-    pub duds: Vector,
-
-    /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
-    pub dlds: f64,
 }
 
 impl State {
@@ -37,16 +21,10 @@ impl State {
     /// # Input
     ///
     /// * `ndim` -- number of dimensions (must match the system's ndim)
-    /// * `alloc_tangent_vector` -- also allocates the tangent vector, as required by the pseudo-arclength method
-    pub fn new(ndim: usize, alloc_tangent_vector: bool) -> Self {
-        let ndim_duds = if alloc_tangent_vector { ndim } else { 0 };
+    pub fn new(ndim: usize) -> Self {
         State {
             u: Vector::new(ndim),
             l: 0.0,
-            s: 0.0,
-            h: 0.0,
-            duds: Vector::new(ndim_duds),
-            dlds: 0.0,
         }
     }
 

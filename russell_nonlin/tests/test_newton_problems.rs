@@ -38,8 +38,8 @@ fn test_newton_problems_ok_1() {
     assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iterations_max, n_iter);
-    assert_eq!(stats.n_iterations_total, n_iter);
+    assert_eq!(stats.n_iteration_max, n_iter);
+    assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 }
 
@@ -174,8 +174,8 @@ fn test_newton_problems_ok_2() {
     assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_large_delta, 0);
     assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iterations_max, n_iter);
-    assert_eq!(stats.n_iterations_total, n_iter);
+    assert_eq!(stats.n_iteration_max, n_iter);
+    assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-12);
 }
 

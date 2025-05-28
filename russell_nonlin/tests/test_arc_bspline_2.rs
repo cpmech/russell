@@ -1,17 +1,25 @@
-use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
+#![allow(unused)]
+
+use plotpy::{linspace, Curve, Plot};
+use russell_lab::approx_eq;
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
-const NAME: &str = "test_arc_bspline_1";
+const NAME: &str = "test_arc_bspline_2";
 
 #[test]
-fn test_arc_bspline_1() {
+fn test_arc_bspline_2() {
     // nonlinear problem
     let (system, mut state, mut args) = Samples::bspline_problem_1();
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true).set_hide_timings(true);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_allowed_continued_divergence(1)
+        // .set_h_ini(0.4);
+        .set_h_ini(0.4743);
     // .set_allowed_continued_divergence(3);
 
     // define solver
@@ -22,21 +30,19 @@ fn test_arc_bspline_1() {
     out.set_recording(true, &[0, 1], &[0, 1]);
 
     // numerical continuation
-    let nstep = 6;
-    // let sigma = 0.4742; // σ ≡ h
-    let sigma = 0.4743; // σ ≡ h (this value causes problems; Newton's method diverges)
     let status = solver
         .solve(
             &mut args,
             &mut state,
             Direction::Pos,
-            Stop::Steps(nstep),
-            AutoStep::No(sigma),
+            Stop::Lambda(1.0),
+            AutoStep::Yes,
             Some(out),
         )
         .unwrap();
-    assert_eq!(status, Status::Failure);
-    assert_eq!(solver.errors(), &["max number of iterations reached"]);
+
+    // check
+    approx_eq(state.l, 1.0, 1e-15);
 
     // results
     let uu0 = out.get_u_values(0);
@@ -71,35 +77,10 @@ fn test_arc_bspline_1() {
             .set_marker_line_color("red");
         curve_num.draw(uu0, uu1);
 
-        let mut arrows = Canvas::new();
-        arrows
-            .set_arrow_scale(10.0)
-            .set_edge_color("None")
-            .set_face_color("black");
-        for i in 0..uu0.len() {
-            let xf = uu0[i] + sigma * du0ds[i];
-            let yf = uu1[i] + sigma * du1ds[i];
-            arrows.draw_arrow(uu0[i], uu1[i], xf, yf);
-        }
-
-        let mut hyperplanes = Curve::new();
-        hyperplanes.set_line_style("--").set_line_color("#d0d0d0");
-        for i in 0..uu0.len() {
-            let xa = uu0[i] + sigma * du0ds[i];
-            let ya = uu1[i] + sigma * du1ds[i];
-            let phi = f64::atan2(du1ds[i], du0ds[i]);
-            let xb = xa - f64::sin(phi);
-            let yb = ya + f64::cos(phi);
-            let ep = RayEndpoint::Coords(xb, yb);
-            hyperplanes.draw_ray(xa, ya, ep);
-        }
-
         let mut plot = Plot::new();
         plot.set_labels("$u_1$", "$u_2$")
-            .add(&hyperplanes)
             .add(&curve)
             .add(&curve_num)
-            .add(&arrows)
             .set_range(-0.1, 2.7, -0.1, 1.2)
             .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)

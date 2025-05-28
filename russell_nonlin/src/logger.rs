@@ -25,7 +25,7 @@ impl Logger {
     /// Creates a new instance
     pub fn new(config: &Config) -> Self {
         let nchar = match config.method {
-            Method::Arclength => 73,
+            Method::Arclength => 64,
             Method::Natural => 59,
         };
         Self {
@@ -50,8 +50,8 @@ impl Logger {
         match self.method {
             Method::Arclength => {
                 println!(
-                    "{:>8} {:>8} {:>8} {:>5} {:>10} ➖ {:>10} {:>12} ➖",
-                    "λ", "s", "Δs", "iter", "‖(G,N)‖∞", "‖(δu,δλ)‖∞", "Rel((δu,δλ))"
+                    "{:>8} {:>8} {:>5} {:>10} ➖ {:>10} {:>12} ➖",
+                    "λ", "Δs", "iter", "‖(G,N)‖∞", "‖(δu,δλ)‖∞", "Rel((δu,δλ))"
                 );
             }
             Method::Natural => {
@@ -65,18 +65,11 @@ impl Logger {
     }
 
     /// Prints step information
-    pub fn step(&self, state: &State) {
+    pub fn step(&self, h: f64, state: &State) {
         if !self.verbose {
             return;
         }
-        match self.method {
-            Method::Arclength => {
-                println!("{:>8.3e} {:>8.3e} {:>8.3e}", state.l, state.s, state.h);
-            }
-            Method::Natural => {
-                println!("{:>8.3e} {:>8.3e}", state.l, state.h);
-            }
-        }
+        println!("{:>8.3e} {:>8.3e}", state.l, h);
     }
 
     /// Prints iteration information
@@ -90,8 +83,8 @@ impl Logger {
         match self.method {
             Method::Arclength => {
                 println!(
-                    "{:>8} {:>8} {:>8} {:>5} {:>10.2e} {} {:>10.2e} {:>12.2e} {}",
-                    "·", "·", "·", k, err.residual_max, icon_gh, err.delta_max, err.delta_rms, icon_ul
+                    "{:>8} {:>8} {:>5} {:>10.2e} {} {:>10.2e} {:>12.2e} {}",
+                    "·", "·", k, err.residual_max, icon_gh, err.delta_max, err.delta_rms, icon_ul
                 );
             }
             Method::Natural => {

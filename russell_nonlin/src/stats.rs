@@ -44,10 +44,10 @@ pub struct Stats {
     pub n_continued_divergence: usize,
 
     /// Total number of iterations
-    pub n_iterations_total: usize,
+    pub n_iteration_total: usize,
 
     /// Max number of iterations among all steps
-    pub n_iterations_max: usize,
+    pub n_iteration_max: usize,
 
     /// Last accepted/suggested step size h_new
     pub h_accepted: f64,
@@ -99,8 +99,8 @@ impl Stats {
             n_large_delta: 0,
             n_max_iterations_reached: 0,
             n_continued_divergence: 0,
-            n_iterations_total: 0,
-            n_iterations_max: 0,
+            n_iteration_total: 0,
+            n_iteration_max: 0,
             h_accepted: 0.0,
             nanos_step_max: 0,
             nanos_jacobian_max: 0,
@@ -116,7 +116,7 @@ impl Stats {
     }
 
     /// Resets all values
-    pub(crate) fn reset(&mut self, h: f64) {
+    pub(crate) fn reset(&mut self) {
         self.n_function = 0;
         self.n_jacobian = 0;
         self.n_factor = 0;
@@ -125,9 +125,9 @@ impl Stats {
         self.n_accepted = 0;
         self.n_rejected = 0;
         self.n_large_delta = 0;
-        self.n_iterations_total = 0;
-        self.n_iterations_max = 0;
-        self.h_accepted = h;
+        self.n_iteration_total = 0;
+        self.n_iteration_max = 0;
+        self.h_accepted = 0.0;
         self.nanos_step_max = 0;
         self.nanos_jacobian_max = 0;
         self.nanos_factor_max = 0;
@@ -175,8 +175,8 @@ impl Stats {
 
     /// Stops the stopwatch and updates n_iterations_max nanoseconds
     pub(crate) fn update_n_iterations_max(&mut self) {
-        if self.n_iterations_total > self.n_iterations_max {
-            self.n_iterations_max = self.n_iterations_total;
+        if self.n_iteration_total > self.n_iteration_max {
+            self.n_iteration_max = self.n_iteration_total;
         }
     }
 
@@ -208,7 +208,7 @@ impl Stats {
             self.n_large_delta,
             self.n_max_iterations_reached,
             self.n_continued_divergence,
-            self.n_iterations_max,
+            self.n_iteration_max,
         )
         .unwrap();
         buffer
@@ -224,7 +224,7 @@ impl fmt::Display for Stats {
                  Number of iterations (total)     = {}\n\
                  Last accepted/suggested stepsize = {}",
                 self.summary(),
-                self.n_iterations_total,
+                self.n_iteration_total,
                 self.h_accepted,
             )
             .unwrap();
@@ -240,7 +240,7 @@ impl fmt::Display for Stats {
                  Max time spent on lin solution   = {}\n\
                  Total time                       = {}",
                 self.summary(),
-                self.n_iterations_total,
+                self.n_iteration_total,
                 self.h_accepted,
                 format_nanoseconds(self.nanos_step_max),
                 format_nanoseconds(self.nanos_jacobian_max),

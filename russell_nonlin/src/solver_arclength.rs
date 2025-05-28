@@ -1,6 +1,10 @@
-use super::{Config, Direction, SolverTrait, State, System, Workspace};
+#![allow(unused)]
+
+use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, Norm, Vector};
+use russell_lab::{
+    approx_eq, math::PI, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_scale, Norm, Vector,
+};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -16,10 +20,18 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// The pseudo-arclength normalization (constraint) is:
 ///
 /// ```text
-/// N = (u - u₀)ᵀ du/ds|₀ + (λ - λ₀)ᵀ dλ/ds|₀ - Δs  (2)
+/// N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀)ᵀ dλ/ds|₀ - σ  (2)
 ///
-/// with Nu₀ ≡ ∂N/∂u|₀ = du/ds|₀  and  Nλ₀ ≡ ∂N/∂λ|₀ = dλ/ds|₀
+/// with Nu₀ ≡ ∂N/∂u|₀ = θ du/ds|₀
+/// and  Nλ₀ ≡ ∂N/∂λ|₀ = (2 - θ) dλ/ds|₀
 /// ```
+///
+/// The `Θ` constant above is internally selected such that:
+///
+/// * `Θ = 1`: normal operation
+/// * `Θ = 0`: targeting lambda
+///
+/// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
 ///
 /// The augmented linear system solved at each Newton iteration is:
 ///
@@ -39,6 +51,7 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// Gu du/ds + Gλ dλ/ds = 0                (5)
 /// Gu du/ds = -Gλ dλ/ds                   (6)
 /// du/ds = -(Gu⁻¹ Gλ) dλ/ds               (7)
+///         ╰────┬────╯
 ///              z
 /// z ≡ -Gu⁻¹ Gλ                           (8)
 /// du/ds = dλ/ds z                        (9)
@@ -68,7 +81,7 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// dλ/ds|₀ = sign₀ / √(1 + z₀ᵀ z₀)  (15)
 /// ```
 ///
-/// Where `z₀` is the solution of `Gu₀ z₀ = -Gλ₀`, which requires
+/// Where `z₀` is the solution of `Gu₀ z₀ = -Gλ₀`, requiring
 /// that `Gu₀` be non-singular at the initial point.
 ///
 /// The `sign₀` variable is determines the direction along the solution branch
@@ -164,6 +177,16 @@ pub struct SolverArclength<'a, A> {
     /// This check is necessary because the predictor may be so good that the iteration
     /// stops without even computing the Jacobian matrix.
     iter_jac_computed: bool,
+
+    /// Theta variable to switch the operation mode via the normalization function
+    ///
+    /// ```text
+    /// N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀)ᵀ dλ/ds|₀ - σ
+    /// ```
+    ///
+    /// * `Θ = 1.0`: normal operation
+    /// * `Θ = 0.0`: targeting lambda
+    theta: f64,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -171,17 +194,18 @@ impl<'a, A> SolverArclength<'a, A> {
     pub fn new(config: Config, system: System<'a, A>) -> Self {
         let use_num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
         let ndim = system.ndim;
-        let nnz_jac = system.nnz_ggu + 2 * ndim + 1;
+        let nnz_aa = system.nnz_ggu + 2 * ndim + 1;
         SolverArclength {
             config,
             system,
             ggl: Vector::new(ndim),
             ls_aug: LinSolver::new(config.genie).unwrap(),
-            aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_jac, Sym::No).unwrap(),
+            aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_aa, Sym::No).unwrap(),
             x: Vector::new(ndim + 1),
             b: Vector::new(ndim + 1),
             use_num_ggu,
             iter_jac_computed: false,
+            theta: 1.0,
         }
     }
 
@@ -235,25 +259,30 @@ impl<'a, A> SolverArclength<'a, A> {
     /// The augmented Jacobian matrix is:
     ///
     /// ```text
-    /// just_ggu == false:
-    ///     ┌              ┐
-    ///     │  Gu      Gλ  │
-    /// A = │              │
-    ///     │ duds0ᵀ dλds0 │
-    ///     └              ┘
+    /// for_initial_tangent_vector == false:
+    ///     ┌           ┐
+    ///     │ Gu    Gλ  │
+    /// A = │           │
+    ///     │ Nu₀ᵀ  Nλ₀ │
+    ///     └           ┘
     /// ```
     ///
     /// Nonetheless, when using A to calculate the initial tangent vector, it is:
     ///
     /// ```text
-    /// just_ggu == true:
+    /// for_initial_tangent_vector == true:
     ///     ┌        ┐
     ///     │ Gu₀  0 │
     /// A = │        │
     ///     │  0   1 │
     ///     └        ┘
     /// ```
-    fn calc_aa(&mut self, work: &mut Workspace, state: &State, args: &mut A, just_ggu: bool) -> Result<(), StrError> {
+    fn calc_aa(
+        &mut self,
+        work: &mut Workspace,
+        args: &mut A,
+        for_initial_tangent_vector: bool,
+    ) -> Result<(), StrError> {
         // assemble Gu matrix into A
         work.stats.sw_jacobian.reset();
         self.aa.reset();
@@ -278,7 +307,7 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // set the last row and column of A
         let ndim = self.system.ndim;
-        if just_ggu {
+        if for_initial_tangent_vector {
             // put 0 on the last row and column and 1 on the diagonal
             // (putting zeros is only necessary because the sparse solver requires it for subsequent calls)
             for i in 0..ndim {
@@ -287,13 +316,13 @@ impl<'a, A> SolverArclength<'a, A> {
             }
             self.aa.put(ndim, ndim, 1.0).unwrap();
         } else {
-            // put Gλ, duds0, and dλds0 into A
+            // put Gλ, Nu₀ᵀ=θdu/ds|₀, and Nλ₀=(2-θ)dλ/ds|₀ into A
             self.calc_ggl(work, args)?;
             for i in 0..ndim {
                 self.aa.put(i, ndim, self.ggl[i]).unwrap();
-                self.aa.put(ndim, i, state.duds[i]).unwrap();
+                self.aa.put(ndim, i, self.theta * work.duds[i]).unwrap();
             }
-            self.aa.put(ndim, ndim, state.dlds).unwrap();
+            self.aa.put(ndim, ndim, (2.0 - self.theta) * work.dlds).unwrap();
         }
         work.stats.stop_sw_jacobian();
 
@@ -306,40 +335,35 @@ impl<'a, A> SolverArclength<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(
-        &mut self,
-        iteration: usize,
-        work: &mut Workspace,
-        state: &State,
-        args: &mut A,
-        logging: bool,
-    ) -> Result<(), StrError> {
+    fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A, logging: bool) -> Result<(), StrError> {
         // calculate G(u(s), λ(s))
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
-        // calculate N = (u - u0)ᵀ duds0 + (λ - λ0)ᵀ dλds0 - Δs
-        let dds = state.h;
+        // calculate N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀)ᵀ dλ/ds|₀ - σ
         let ndim = self.system.ndim;
-        let mut nn = -dds;
-        for i in 0..ndim {
-            nn += (work.u[i] - state.u[i]) * state.duds[i];
+        let mut du_part = 0.0; // (u - u₀)ᵀ du/ds|₀
+        if self.theta != 0.0 {
+            for i in 0..ndim {
+                du_part += (work.u[i] - state.u[i]) * work.duds[i];
+            }
         }
-        nn += (work.l - state.l) * state.dlds;
+        let sigma = work.h;
+        let nn = self.theta * du_part + (2.0 - self.theta) * (work.l - state.l) * work.dlds - sigma;
 
         // check convergence on (G, N)
-        work.err.analyze_residual(iteration, &work.gg, nn)?;
+        work.err.analyze_residual(work.n_iteration, &work.gg, nn)?;
         if work.err.converged() {
             if logging {
-                work.log.iteration(iteration, &work.err);
+                work.log.iteration(work.n_iteration, &work.err);
             }
             return Ok(());
         }
 
         // compute augmented Jacobian matrix
-        let recompute_aa = iteration == 0 || !self.config.constant_tangent;
+        let recompute_aa = work.n_iteration == 0 || !self.config.constant_tangent;
         if recompute_aa {
-            self.calc_aa(work, state, args, false)?;
+            self.calc_aa(work, args, false)?;
             self.iter_jac_computed = true;
         }
 
@@ -356,9 +380,9 @@ impl<'a, A> SolverArclength<'a, A> {
         work.stats.stop_sw_lin_sol();
 
         // check convergence on x = (δu, δλ)
-        work.err.analyze_delta(iteration, &self.x)?;
+        work.err.analyze_delta(work.n_iteration, &self.x)?;
         if logging {
-            work.log.iteration(iteration, &work.err);
+            work.log.iteration(work.n_iteration, &work.err);
         }
         if work.err.converged() {
             return Ok(());
@@ -377,12 +401,12 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // external: update starred variables
         if let Some(f) = self.system.iteration_update_starred.as_ref() {
-            (f)(&work.u, args);
+            f(&work.u, args);
         }
 
         // external: backup/restore secondary variables to prepare for the update
         if let Some(f) = self.system.iteration_prepare_to_update_secondary.as_ref() {
-            (f)(iteration == 0, args);
+            f(work.n_iteration == 0, args);
         }
 
         // external: update secondary variables
@@ -390,14 +414,17 @@ impl<'a, A> SolverArclength<'a, A> {
             for i in 0..ndim {
                 work.mdu[i] = -self.x[i]; // mdu = - δu
             }
-            (f)(&work.mdu, &work.u, args)?;
+            f(&work.mdu, &work.u, args)?;
         }
         Ok(())
     }
 }
 
 impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
-    /// Perform initialization such as computing the first tangent vector in pseudo-arclength
+    /// Performs initialization
+    ///
+    /// 1. Calculates the initial stepsize
+    /// 2. Determines the first tangent vector in pseudo-arclength
     ///
     /// **Note**: Gu₀ must be non-singular
     fn initialize(
@@ -405,12 +432,15 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         work: &mut Workspace,
         state: &mut State,
         dir: Direction,
+        stop: Stop,
+        auto: AutoStep,
         args: &mut A,
     ) -> Result<(), StrError> {
-        // check if the tangent vector is available
-        if state.duds.dim() != state.u.dim() {
-            return Err("duds.ndim != to u.ndim; the tangent vector is required for the Arclength method");
-        }
+        // initial stepsize (σ₀)
+        work.h = match auto {
+            AutoStep::Yes => self.config.h_ini,
+            AutoStep::No(h_eq) => h_eq,
+        };
 
         // set initial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u₀ = u
@@ -420,9 +450,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         let sign0 = match dir {
             Direction::Pos => 1.0,
             Direction::Neg => -1.0,
-            Direction::Prev => {
-                return Ok(());
-            }
         };
 
         // calculate Gλ = ∂G/∂λ
@@ -439,11 +466,11 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            state.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
-            vec_copy_scaled(&mut state.duds, -state.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
+            vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
         } else {
             // calculate the augmented matrix A := Gu = ∂G/∂u
-            self.calc_aa(work, state, args, true)?;
+            self.calc_aa(work, args, true)?;
 
             // set b = (-Gλ₀, 0)
             let ndim = self.system.ndim;
@@ -460,9 +487,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
             assert_eq!(self.x[ndim], 0.0);
-            state.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
             for i in 0..ndim {
-                state.duds[i] = state.dlds * self.x[i];
+                work.duds[i] = work.dlds * self.x[i];
             }
         }
         Ok(())
@@ -473,21 +500,24 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
+        if self.theta == 0.0 {
+            println!("theta = 0.0, targeting lambda");
+        }
         // predictor
-        let dds = state.h;
-        vec_add(&mut work.u, 1.0, &state.u, dds, &state.duds).unwrap(); // u₁ = u₀ + Δs · duds₀
-        work.l = state.l + dds * state.dlds; // λ₁ = λ₀ + Δs · dlds₀
+        let sigma = work.h;
+        vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + Θ σ · duds₀
+        work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - Θ) σ · dλds₀
 
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.step_backup_state.as_ref() {
-                (f)(args);
+                f(args);
             }
         }
 
         // external: prepare to iterate (e.g., reset algorithmic variables)
         if let Some(f) = self.system.step_reset_algorithmic_variables.as_ref() {
-            (f)(args);
+            f(args);
         }
 
         // reset iteration error control
@@ -495,13 +525,14 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // iteration loop
         let logging = true;
-        for iteration in 0..self.config.allowed_iterations {
+        work.n_iteration = 0;
+        for _ in 0..self.config.allowed_iterations {
             // stats
-            work.stats.n_iterations_total += 1;
-            work.stats.n_iterations_max = usize::max(work.stats.n_iterations_max, iteration + 1);
+            work.stats.n_iteration_total += 1;
+            work.stats.n_iteration_max = usize::max(work.stats.n_iteration_max, work.n_iteration + 1);
 
             // run Newton-Raphson iteration
-            self.iterate(iteration, work, state, args, logging)?;
+            self.iterate(work, state, args, logging)?;
 
             // stop if converged
             if work.err.converged() {
@@ -509,32 +540,56 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             }
 
             // check for failures
-            if work.err.failures(iteration, &mut work.stats) {
-                work.iterations_failed = true;
+            work.err.set_failures(work.n_iteration, &mut work.stats);
+            if work.err.failed() {
                 break;
             }
+            work.n_iteration += 1;
         }
+
+        // exit if not converged
+        work.acceptable = false;
+        if !work.err.converged() {
+            return Ok(());
+        }
+
+        // set b := (duds₀, dlds₀); i.e., the tangent vector at the initial point
+        // set x := (u₁ - u₀, λ₁ - λ₀); i.e., the increment vector
+        let ndim = self.system.ndim;
+        for i in 0..ndim {
+            self.b[i] = work.duds[i];
+            self.x[i] = work.u[i] - state.u[i];
+        }
+        self.b[ndim] = work.dlds;
+        self.x[ndim] = work.l - state.l;
+
+        // calculate the angle between the increment and the predictor: ~ turning angle
+        approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15); // TODO: remove this
+        let norm_x = vec_norm(&self.x, Norm::Euc);
+        let alpha = f64::acos(vec_inner(&self.b, &self.x) / norm_x) * 180.0 / PI;
+        println!("alpha = {}", alpha);
+        work.acceptable = alpha <= 15.0;
+
+        // done
         Ok(())
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
     fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<(), StrError> {
         // update the tangent vector
-        let ndim = self.system.ndim;
         if self.config.bordering {
             panic!("bordering is not implemented yet");
         } else {
             // compute Jacobian matrix at the updated state
             if !self.iter_jac_computed {
-                // only needed if the iteration converged without computing
-                // the Jacobian, e.g., when the predictor was good enough
-                self.calc_aa(work, state, args, false)?;
+                // This is only needed if the iteration converged without computing the Jacobian
+                // For example, when the predictor was good enough and no Jacobian was computed
+                self.calc_aa(work, args, false)?;
             }
 
             // set b = (0, 1)
-            for i in 0..ndim {
-                self.b[i] = 0.0;
-            }
+            let ndim = self.system.ndim;
+            self.b.fill(0.0);
             self.b[ndim] = 1.0;
 
             // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
@@ -543,51 +598,49 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
             work.stats.stop_sw_lin_sol();
 
-            // calculate the norm
+            // calculate the norm of x
             let norm = vec_norm(&self.x, Norm::Euc);
 
-            // update tangent vector
+            // update the tangent vector
             for i in 0..ndim {
-                state.duds[i] = self.x[i] / norm;
+                work.duds[i] = self.x[i] / norm;
             }
-            state.dlds = self.x[ndim] / norm;
+            work.dlds = self.x[ndim] / norm;
 
             // TODO: remove this check
-            approx_eq(
-                vec_inner(&state.duds, &state.duds) + state.dlds * state.dlds,
-                1.0,
-                1e-14,
-            );
+            approx_eq(vec_inner(&work.duds, &work.duds) + work.dlds * work.dlds, 1.0, 1e-14);
         }
 
-        // update state
+        // update the state
         vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
         state.l = work.l; // λ := λ₁
-        state.s += state.h;
 
-        // update stepsize
-        work.h_new = state.h;
+        // TODO: check if work.n_iteration == work.stats.n_iterations_total
+
+        // TODO: calculate a new stepsize
+        work.h_estimate = work.h;
+
+        // done
         Ok(())
     }
 
     /// Handles the reject case by calculating a new stepsize
-    fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A) {
+    fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
         if work.auto {
             if let Some(f) = self.system.step_restore_state.as_ref() {
-                (f)(args);
+                f(args);
             }
         }
 
-        // estimate new stepsize
-        let newt = work.stats.n_iterations_total;
-        let num = self.config.m_safety * ((1 + 2 * self.config.allowed_iterations) as f64);
-        let den = (newt + 2 * self.config.allowed_iterations) as f64;
-        let fac = f64::min(self.config.m_safety, num / den);
-        let div = f64::max(
-            self.config.m_min,
-            f64::min(self.config.m_max, f64::powf(work.rel_error, 0.25) / fac),
-        );
-        work.h_new = h / div;
+        // reduce the stepsize
+        work.h_estimate = work.h / 2.0;
+    }
+
+    /// Calculates the stepsize that allows reaching the target lambda
+    fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64) {
+        assert!(lambda_target > state.l);
+        work.h = 2.0 * (lambda_target - state.l) * work.dlds;
+        self.theta = 0.0; // switch mode to lambda-target
     }
 }

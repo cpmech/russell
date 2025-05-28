@@ -182,5 +182,10 @@
     "zscal",
     "zsyrk",
     "zticks"
+  ],
+  "rust-analyzer.cargo.features": [
+    "intel_mkl",
+    "local_suitesparse",
+    "with_mumps"
   ]
 }

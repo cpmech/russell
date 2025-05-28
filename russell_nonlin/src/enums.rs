@@ -12,9 +12,6 @@ pub enum Direction {
     ///
     /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
     Neg,
-
-    /// Use a given (previous) tangent vector specified in the State object.
-    Prev,
 }
 
 /// Specifies the stopping criterion for the continuation process.
@@ -25,6 +22,16 @@ pub enum Stop {
 
     /// Stops after a number of steps.
     Steps(usize),
+}
+
+impl Stop {
+    /// Returns the target lambda value, if specified
+    pub fn lambda_target(&self) -> Option<f64> {
+        match self {
+            Stop::Lambda(l1) => Some(*l1),
+            Stop::Steps(_) => None,
+        }
+    }
 }
 
 /// Specifies the stepsize control method

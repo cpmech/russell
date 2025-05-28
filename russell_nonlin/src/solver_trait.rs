@@ -1,14 +1,19 @@
-use super::{Direction, State, Workspace};
+use super::{AutoStep, Direction, State, Stop, Workspace};
 use crate::StrError;
 
 /// Defines the numerical solver
 pub(crate) trait SolverTrait<A>: Send {
-    /// Perform initialization such as computing the first tangent vector in pseudo-arclength
+    /// Performs initialization
+    ///
+    /// 1. Calculates the initial stepsize
+    /// 2. Determines the first tangent vector in pseudo-arclength
     fn initialize(
         &mut self,
         work: &mut Workspace,
         state: &mut State,
         dir: Direction,
+        stop: Stop,
+        auto: AutoStep,
         args: &mut A,
     ) -> Result<(), StrError>;
 
@@ -19,5 +24,8 @@ pub(crate) trait SolverTrait<A>: Send {
     fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<(), StrError>;
 
     /// Handles the reject case by calculating a new stepsize
-    fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A);
+    fn reject(&mut self, work: &mut Workspace, args: &mut A);
+
+    /// Calculates the stepsize that allows reaching the target lambda
+    fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64);
 }

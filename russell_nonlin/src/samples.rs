@@ -1,7 +1,7 @@
 use super::{NoArgs, State, System};
 use russell_lab::math::{SQRT_2_BY_3, SQRT_3};
 use russell_lab::{Bspline, Vector};
-use russell_sparse::Sym;
+use russell_sparse::{CooMatrix, Sym};
 
 /// Holds a collection of nonlinear problems
 pub struct Samples {}
@@ -13,6 +13,61 @@ pub struct SampleBsplineArgs {
 }
 
 impl Samples {
+    /// Simple linear problem: G(u, λ) = u - λ
+    ///
+    /// Returns `(system, state, args)`
+    ///
+    /// ```text
+    /// G(u, λ) = u - λ
+    /// Gu = ∂G/∂u = 1
+    /// Gl = ∂G/∂λ = -1
+    /// ```
+    pub fn simple_linear_problem<'a>(with_ggu: bool, with_ggl: bool) -> (System<'a, NoArgs>, State, NoArgs) {
+        // nonlinear problem: G(u, λ) = u - λ
+        let ndim = 1;
+        let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
+            gg[0] = u[0] - l;
+            Ok(())
+        })
+        .unwrap();
+
+        // analytical Jacobian: Gu = ∂G/∂u
+        let nnz = Some(1);
+        let sym = Sym::No;
+        if with_ggu {
+            system
+                .set_calc_ggu(
+                    nnz,
+                    sym,
+                    |ggu: &mut CooMatrix, _l: f64, _u: &Vector, _args: &mut NoArgs| {
+                        ggu.reset();
+                        ggu.put(0, 0, 1.0).unwrap();
+                        Ok(())
+                    },
+                )
+                .unwrap();
+        }
+
+        // function to compute Gl = ∂G/∂λ
+        if with_ggl {
+            system
+                .set_calc_ggl(|ggl: &mut Vector, _l: f64, _u: &Vector, _args: &mut NoArgs| {
+                    ggl[0] = -1.0;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        // initial state
+        let mut state = State::new(ndim);
+        state.u[0] = 0.0;
+        state.l = 0.0;
+
+        // done
+        let args = 0;
+        (system, state, args)
+    }
+
     /// Cubic polynomial (causing problems to Newton's method)
     ///
     /// Returns `(system, state_ok, state_oscillation, state_indeterminate, u_ref, args)`
@@ -40,9 +95,9 @@ impl Samples {
             .unwrap();
 
         // initial states = trial for Newton's method
-        let mut state_ok = State::new(ndim, false);
-        let mut state_oscillation = State::new(ndim, false);
-        let mut state_indeterminate = State::new(ndim, false);
+        let mut state_ok = State::new(ndim);
+        let mut state_oscillation = State::new(ndim);
+        let mut state_indeterminate = State::new(ndim);
         state_ok.u[0] = 1.0;
         state_oscillation.u[0] = 0.0;
         state_indeterminate.u[0] = SQRT_2_BY_3;
@@ -89,7 +144,7 @@ impl Samples {
             .unwrap();
 
         // initial state = trial for Newton's method
-        let mut state = State::new(ndim, false);
+        let mut state = State::new(ndim);
         state.u[0] = 5.0;
 
         // reference solution
@@ -126,7 +181,7 @@ impl Samples {
             .unwrap();
 
         // initial state = trial for Newton's method
-        let mut state = State::new(ndim, false);
+        let mut state = State::new(ndim);
         state.u[0] = 0.5;
         state.u[1] = 0.5;
 
@@ -167,7 +222,7 @@ impl Samples {
 
         // initial state = trial for Newton's method
         let eps = 1e-5;
-        let mut state = State::new(ndim, false);
+        let mut state = State::new(ndim);
         state.u[0] = 0.0;
         state.u[1] = eps;
 
@@ -206,9 +261,9 @@ impl Samples {
 
         // initial state = trial for Newton's method
         // Note: det(J) = -4 u₀ + 4 u₁, thus, it may be zero when u₀ = u₁
-        let mut state_ok1 = State::new(ndim, false);
-        let mut state_ok2 = State::new(ndim, false);
-        let mut state_bad = State::new(ndim, false);
+        let mut state_ok1 = State::new(ndim);
+        let mut state_ok2 = State::new(ndim);
+        let mut state_bad = State::new(ndim);
         state_ok1.u[0] = -0.1;
         state_ok1.u[1] = 0.1;
         state_ok2.u[0] = 0.1;
@@ -260,7 +315,7 @@ impl Samples {
             .unwrap();
 
         // initial state
-        let mut state = State::new(ndim, true);
+        let mut state = State::new(ndim);
         state.u[0] = 0.0;
         state.l = 0.0;
 
@@ -304,7 +359,7 @@ impl Samples {
             .unwrap();
 
         // initial state
-        let mut state = State::new(ndim, true);
+        let mut state = State::new(ndim);
         state.u[0] = perturbation;
         state.l = 0.0;
 
@@ -372,7 +427,7 @@ impl Samples {
         args.bspline.set_control_points(control).unwrap();
 
         // initial state
-        let mut state = State::new(ndim, true);
+        let mut state = State::new(ndim);
         state.u[0] = 0.0;
         state.u[1] = 0.0;
         state.l = 0.0;

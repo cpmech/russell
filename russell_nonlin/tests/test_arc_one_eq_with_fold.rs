@@ -3,7 +3,7 @@ use russell_lab::math::{NAPIER, SQRT_2};
 use russell_lab::{approx_eq, array_approx_eq};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
 
-const SAVE_FIGURE: bool = false;
+const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_one_eq_with_fold";
 
 fn do_plot(

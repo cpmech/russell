@@ -22,8 +22,8 @@ pub struct Output<'a, A> {
 
     /// Holds a callback function called on an accepted step
     ///
-    /// The function is `fn (stats, u, λ, s, h, args)`
-    callback: Option<Arc<dyn Fn(&Stats, &Vector, f64, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
+    /// The function is `fn (stats, u, λ, h, args)`
+    callback: Option<Arc<dyn Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
 
     /// Save the results to a file (step)
     file_key: Option<String>,
@@ -36,9 +36,6 @@ pub struct Output<'a, A> {
 
     /// Holds the λ (parameter) values computed at accepted steps
     l: Vec<f64>,
-
-    /// Holds the s (arclength) values computed at accepted steps
-    s: Vec<f64>,
 
     /// Holds the stepsize computed at accepted steps
     h: Vec<f64>,
@@ -82,7 +79,6 @@ impl<'a, A> Output<'a, A> {
             file_count: 0,
             u: HashMap::new(),
             l: Vec::new(),
-            s: Vec::new(),
             h: Vec::new(),
             duds: HashMap::new(),
             dlds: Vec::new(),
@@ -93,7 +89,7 @@ impl<'a, A> Output<'a, A> {
 
     /// Sets a callback function called on an accepted step
     ///
-    /// The function is `fn (stats, u, λ, s, h, args)`
+    /// The function is `fn (stats, u, λ, h, args)`
     ///
     /// The function may return `true` to stop the computations
     ///
@@ -102,7 +98,7 @@ impl<'a, A> Output<'a, A> {
     /// * `callback` -- function to be executed on an accepted step
     pub fn set_callback(
         &mut self,
-        callback: impl Fn(&Stats, &Vector, f64, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
+        callback: impl Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
         self.callback = Some(Arc::new(callback));
         self
@@ -118,7 +114,7 @@ impl<'a, A> Output<'a, A> {
         self
     }
 
-    /// Enables the recording of results (u, l, s, h, duds, dlds)
+    /// Enables the recording of results (u, l, h, duds, dlds)
     ///
     /// Also specifies which components of the u and du/ds vectors are to be recorded
     pub fn set_recording(&mut self, recording: bool, u_components: &[usize], duds_components: &[usize]) -> &mut Self {
@@ -149,11 +145,6 @@ impl<'a, A> Output<'a, A> {
         &self.h
     }
 
-    /// Returns the s values computed at accepted steps
-    pub fn get_s_values(&self) -> &Vec<f64> {
-        &self.s
-    }
-
     /// Returns the selected du/ds components computed at accepted steps
     pub fn get_duds_values(&self, m: usize) -> &Vec<f64> {
         self.duds.get(&m).unwrap()
@@ -170,7 +161,7 @@ impl<'a, A> Output<'a, A> {
     pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop = cb(&work.stats, &state.u, state.l, state.s, state.h, args)?;
+            let stop = cb(&work.stats, &state.u, state.l, work.h, args)?;
             if stop {
                 return Ok(stop);
             }
@@ -189,14 +180,13 @@ impl<'a, A> Output<'a, A> {
                 um.push(state.u[*m]);
             }
             self.l.push(state.l);
-            self.s.push(state.s);
-            self.h.push(state.h);
-            if state.duds.dim() == state.u.dim() {
+            self.h.push(work.h);
+            if work.duds.dim() == state.u.dim() {
                 // only for pseudo-arclength with available du/ds and dλ/ds
                 for (m, duds_m) in self.duds.iter_mut() {
-                    duds_m.push(state.duds[*m]);
+                    duds_m.push(work.duds[*m]);
                 }
-                self.dlds.push(state.dlds);
+                self.dlds.push(work.dlds);
             }
         }
 
@@ -228,37 +218,21 @@ mod tests {
         let out_data = State {
             u: Vector::new(1),
             l: 0.5,
-            s: 0.2,
-            h: 0.1,
-            duds: Vector::new(0),
-            dlds: 0.0,
         };
         let clone = out_data.clone();
-        assert_eq!(
-            format!("{:?}", clone),
-            "State { u: NumVector { data: [0.0] }, l: 0.5, s: 0.2, h: 0.1, duds: NumVector { data: [] }, dlds: 0.0 }"
-        );
-        let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2,\"s\":0.3,\"h\":0.4,\"duds\":{\"data\":[]},\"dlds\":0.0}";
+        assert_eq!(format!("{:?}", clone), "State { u: NumVector { data: [0.0] }, l: 0.5 }");
+        let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2}";
         let from_json: State = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json.u.as_data(), &[3.0]);
         assert_eq!(from_json.l, 0.2);
-        assert_eq!(from_json.s, 0.3);
-        assert_eq!(from_json.h, 0.4);
 
         // State: write to JSON
         let state = State {
             u: Vector::from(&[10.0]),
             l: 0.5,
-            s: 0.15,
-            h: 0.3,
-            duds: Vector::new(0),
-            dlds: 0.0,
         };
         let json = serde_json::to_string(&state).unwrap();
-        assert_eq!(
-            json,
-            "{\"u\":{\"data\":[10.0]},\"l\":0.5,\"s\":0.15,\"h\":0.3,\"duds\":{\"data\":[]},\"dlds\":0.0}"
-        );
+        assert_eq!(json, "{\"u\":{\"data\":[10.0]},\"l\":0.5}");
 
         // OutCount
         let count = OutCount { n: 123 };
@@ -275,10 +249,6 @@ mod tests {
         let data_out = State {
             u: Vector::from(&[6.6]),
             l: 0.5,
-            s: 0.15,
-            h: 0.3,
-            duds: Vector::new(0),
-            dlds: 0.0,
         };
         let path = "/tmp/russell_nonlin/test_out_data.json";
         data_out.write_json(path).unwrap();
@@ -287,8 +257,6 @@ mod tests {
         let data_in = State::read_json(path).unwrap();
         assert_eq!(data_in.u.as_data(), &[6.6]);
         assert_eq!(data_in.l, 0.5);
-        assert_eq!(data_in.s, 0.15);
-        assert_eq!(data_in.h, 0.3);
 
         // Write OutCount
         let sum_out = OutCount { n: 456 };

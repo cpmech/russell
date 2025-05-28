@@ -189,10 +189,8 @@ impl IterationError {
         Ok(())
     }
 
-    /// Checks for failures and returns a flag to break the iteration loop
-    ///
-    /// Returns `break` flag
-    pub fn failures(&mut self, iteration: usize, stats: &mut Stats) -> bool {
+    /// Sets eventual failures
+    pub fn set_failures(&mut self, iteration: usize, stats: &mut Stats) {
         // large (δu,δλ)
         if self.delta_max > self.allowed_delta_max {
             stats.n_large_delta += 1;
@@ -207,12 +205,9 @@ impl IterationError {
 
         // max number of iterations reached
         if iteration == self.allowed_iterations - 1 {
-            stats.n_iterations_max += 1;
+            stats.n_iteration_max += 1;
             self.fail_max_iterations = true;
         }
-
-        // flag to break the iteration loop
-        self.fail_large_delta || self.fail_continued_divergence || self.fail_max_iterations
     }
 
     /// Returns whether the simulation has failed or not
@@ -233,5 +228,12 @@ impl IterationError {
             messages.push("max number of iterations reached".to_string());
         }
         messages
+    }
+
+    /// Clears error flags
+    pub(crate) fn clear_error_flags(&mut self) {
+        self.fail_large_delta = false;
+        self.fail_continued_divergence = false;
+        self.fail_max_iterations = false;
     }
 }

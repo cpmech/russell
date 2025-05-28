@@ -47,7 +47,7 @@ impl<'a> SimData<'a> {
         SimData {
             solver: Solver::new(config, system).unwrap(),
             args: 0,
-            state: State::new(ndim, false),
+            state: State::new(ndim),
             dir: Direction::Pos,
             stop: Stop::Lambda(LAMBDA_FINAL),
             auto_step: AutoStep::No(0.1),
@@ -90,8 +90,8 @@ impl<'a> Runner for Simulator<'a> {
         let niter = 10 * 2;
         assert_eq!(stats.n_function, niter);
         assert_eq!(stats.n_jacobian, nstep);
-        assert_eq!(stats.n_iterations_max, 2);
-        assert_eq!(stats.n_iterations_total, niter);
+        assert_eq!(stats.n_iteration_max, 2);
+        assert_eq!(stats.n_iteration_total, niter);
     }
 }
 

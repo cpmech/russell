@@ -1,42 +1,16 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_lab::{array_approx_eq, math::SQRT_2, Vector};
-use russell_nonlin::{AutoStep, Config, Direction, Method, NoArgs, Output, Solver, State, Stop, System};
-use russell_sparse::{CooMatrix, Sym};
+use russell_lab::{array_approx_eq, math::SQRT_2};
+use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
 
-const SAVE_FIGURE: bool = false;
+const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_linear_problem";
 
 #[test]
 fn test_arc_linear_problem() {
-    // define nonlinear system: G(u, λ) = u - λ
-    let ndim = 1;
-    let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
-        gg[0] = u[0] - l;
-        Ok(())
-    })
-    .unwrap();
-
-    // function to compute Gu = ∂G/∂u
-    let nnz = Some(1);
-    let sym = Sym::No;
-    system
-        .set_calc_ggu(
-            nnz,
-            sym,
-            |ggu: &mut CooMatrix, _l: f64, _u: &Vector, _args: &mut NoArgs| {
-                ggu.put(0, 0, 1.0).unwrap();
-                Ok(())
-            },
-        )
-        .unwrap();
-
-    // function to compute Gl = ∂G/∂λ
-    system
-        .set_calc_ggl(|ggl: &mut Vector, _l: f64, _u: &Vector, _args: &mut NoArgs| {
-            ggl[0] = -1.0;
-            Ok(())
-        })
-        .unwrap();
+    // system
+    let with_ggu = true; // with ∂G/∂u
+    let with_ggl = true; // with ∂G/∂λ
+    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -45,11 +19,6 @@ fn test_arc_linear_problem() {
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
 
-    // initial state
-    let mut state = State::new(ndim, true);
-    state.u[0] = 0.0;
-    state.l = 0.0;
-
     // output
     let out = &mut Output::new();
     out.set_recording(true, &[0], &[0]);
@@ -57,10 +26,9 @@ fn test_arc_linear_problem() {
     // numerical continuation
     let nstep = 5;
     let dds = 0.5; // Δs ≡ h
-    let args = &mut 0;
     solver
         .solve(
-            args,
+            &mut args,
             &mut state,
             Direction::Pos,
             Stop::Steps(nstep),
@@ -91,8 +59,8 @@ fn test_arc_linear_problem() {
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iterations_max, 1); // Euler predictor already gives the exact answer
-    assert_eq!(stats.n_iterations_total, niter);
+    assert_eq!(stats.n_iteration_max, 1); // Euler predictor already gives the exact answer
+    assert_eq!(stats.n_iteration_total, niter);
     assert_eq!(stats.h_accepted, dds);
     assert!(stats.nanos_step_max > 0);
     assert!(stats.nanos_jacobian_max > 0);
@@ -144,6 +112,8 @@ fn test_arc_linear_problem() {
             .add(&curve_ana)
             .add(&curve_num)
             .add(&arrows)
+            .set_range(-0.1, 3.0, -0.1, 3.0)
+            .set_equal_axes(true)
             .save(&format!("/tmp/russell_nonlin/{}.svg", NAME))
             .unwrap()
     }

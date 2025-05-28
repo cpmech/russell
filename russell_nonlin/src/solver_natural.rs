@@ -1,4 +1,4 @@
-use super::{Config, Direction, SolverTrait, State, System, Workspace};
+use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update};
 use russell_sparse::numerical_jacobian;
@@ -94,31 +94,54 @@ impl<'a, A> SolverNatural<'a, A> {
 
         // external: update starred variables
         if let Some(f) = self.system.iteration_update_starred.as_ref() {
-            (f)(&work.u, args);
+            f(&work.u, args);
         }
 
         // external: backup/restore secondary variables to prepare for the update
         if let Some(f) = self.system.iteration_prepare_to_update_secondary.as_ref() {
-            (f)(iteration == 0, args);
+            f(iteration == 0, args);
         }
 
         // external: update secondary variables
         if let Some(f) = self.system.iteration_update_secondary.as_ref() {
-            (f)(&work.mdu, &work.u, args)?;
+            f(&work.mdu, &work.u, args)?;
         }
         Ok(())
     }
 }
 
 impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
-    /// Perform initialization such as computing the first tangent vector in pseudo-arclength
+    /// Performs initialization
+    ///
+    /// 1. Calculates the initial stepsize
+    /// 2. Determines the first tangent vector in pseudo-arclength
     fn initialize(
         &mut self,
-        _work: &mut Workspace,
-        _state: &mut State,
+        work: &mut Workspace,
+        state: &mut State,
         _dir: Direction,
+        stop: Stop,
+        auto: AutoStep,
         _args: &mut A,
     ) -> Result<(), StrError> {
+        work.h = match auto {
+            AutoStep::Yes => match stop {
+                Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - state.l),
+                Stop::Steps(_) => self.config.h_ini,
+            },
+            AutoStep::No(h_eq) => {
+                if h_eq < 10.0 * f64::EPSILON {
+                    return Err("h must be ≥ 10.0 * f64::EPSILON for fixed stepsize");
+                }
+                match stop {
+                    Stop::Lambda(l1) => {
+                        let n = f64::ceil((l1 - state.l) / h_eq) as usize;
+                        (l1 - state.l) / (n as f64)
+                    }
+                    Stop::Steps(_) => h_eq,
+                }
+            }
+        };
         Ok(())
     }
 
@@ -129,18 +152,18 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
         // set workspace with trial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
-        work.l = state.l + state.h; // λ_trial ← λ0 + h
+        work.l = state.l + work.h; // λ_trial ← λ0 + h
 
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.step_backup_state.as_ref() {
-                (f)(args);
+                f(args);
             }
         }
 
         // external: prepare to iterate (e.g., reset algorithmic variables)
         if let Some(f) = self.system.step_reset_algorithmic_variables.as_ref() {
-            (f)(args);
+            f(args);
         }
 
         // reset iteration error control
@@ -150,8 +173,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         let logging = true;
         for iteration in 0..self.config.allowed_iterations {
             // stats
-            work.stats.n_iterations_total += 1;
-            work.stats.n_iterations_max = usize::max(work.stats.n_iterations_max, iteration + 1);
+            work.stats.n_iteration_total += 1;
+            work.stats.n_iteration_max = usize::max(work.stats.n_iteration_max, iteration + 1);
 
             // run Newton-Raphson iteration
             self.iterate(iteration, work, args, logging)?;
@@ -162,8 +185,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             }
 
             // check for failures
-            if work.err.failures(iteration, &mut work.stats) {
-                work.iterations_failed = true;
+            work.err.set_failures(work.n_iteration, &mut work.stats);
+            if work.err.failed() {
                 break;
             }
         }
@@ -174,28 +197,22 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     fn accept(&mut self, work: &mut Workspace, state: &mut State, _args: &mut A) -> Result<(), StrError> {
         vec_copy(&mut state.u, &work.u).unwrap();
         state.l = work.l;
-        work.h_new = state.h;
         Ok(())
     }
 
     /// Handles the reject case by calculating a new stepsize
-    fn reject(&mut self, work: &mut Workspace, h: f64, args: &mut A) {
+    fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
         if work.auto {
             if let Some(f) = self.system.step_restore_state.as_ref() {
-                (f)(args);
+                f(args);
             }
         }
+    }
 
-        // estimate new stepsize
-        let newt = work.stats.n_iterations_total;
-        let num = self.config.m_safety * ((1 + 2 * self.config.allowed_iterations) as f64);
-        let den = (newt + 2 * self.config.allowed_iterations) as f64;
-        let fac = f64::min(self.config.m_safety, num / den);
-        let div = f64::max(
-            self.config.m_min,
-            f64::min(self.config.m_max, f64::powf(work.rel_error, 0.25) / fac),
-        );
-        work.h_new = h / div;
+    /// Calculates the stepsize that allows reaching the target lambda
+    fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64) {
+        assert!(lambda_target > state.l);
+        work.h_estimate = lambda_target - state.l;
     }
 }

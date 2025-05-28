@@ -1,5 +1,5 @@
 use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Status, Stop, System};
-use super::{Output, SolverArclength, SolverNatural, Stats, Workspace};
+use super::{Output, SolverArclength, SolverNatural, Stats, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::vec_all_finite;
 
@@ -99,33 +99,11 @@ impl<'a, A> Solver<'a, A> {
             }
         }
 
-        // determine the initial stepsize
-        let h_ini = match auto {
-            AutoStep::Yes => match stop {
-                Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - state.l),
-                Stop::Steps(_) => self.config.h_ini,
-            },
-            AutoStep::No(h_eq) => {
-                if h_eq < 10.0 * f64::EPSILON {
-                    return Err("h must be ≥ 10.0 * f64::EPSILON for fixed stepsize");
-                }
-                match stop {
-                    Stop::Lambda(l1) => {
-                        let n = f64::ceil((l1 - state.l) / h_eq) as usize;
-                        (l1 - state.l) / (n as f64)
-                    }
-                    Stop::Steps(_) => h_eq,
-                }
-            }
-        };
-        assert!(h_ini > 0.0);
-        state.h = h_ini;
+        // reset stats and flags
+        self.work.reset_stats_and_flags(auto.yes());
 
-        // reset variables
-        self.work.reset(h_ini, self.config.rel_error_prev_min, auto.yes());
-
-        // perform initialization such as computing the first tangent vector in pseudo-arclength
-        self.actual.initialize(&mut self.work, state, dir, args)?;
+        // perform initialization (compute initial stepsize and tangent vector)
+        self.actual.initialize(&mut self.work, state, dir, stop, auto, args)?;
 
         // first output
         if let Some(out) = output.as_deref_mut() {
@@ -138,16 +116,15 @@ impl<'a, A> Solver<'a, A> {
         // message
         self.work.log.header();
 
-        // solve with fixed/equal stepsize
+        // perform continuation
+        let mut continuation_completed = false;
         if auto.no() {
-            let nstep = match stop {
-                Stop::Lambda(l1) => f64::ceil((l1 - state.l) / h_ini) as usize,
-                Stop::Steps(n) => n,
-            };
-            for _ in 0..nstep {
+            // fixed/equal stepsize
+            self.work.stats.h_accepted = self.work.h;
+            for i in 0..self.config.n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
-                self.work.log.step(&state);
+                self.work.log.step(self.work.h, &state);
 
                 // step
                 self.work.stats.n_steps += 1;
@@ -171,144 +148,118 @@ impl<'a, A> Solver<'a, A> {
                         break;
                     }
                 }
+
+                // exit point
                 self.work.stats.stop_sw_step();
-            }
-
-            // last output
-            if let Some(out) = output.as_deref_mut() {
-                out.last()?;
-            }
-
-            // print last message and footer
-            self.work.log.step(&state);
-            self.work.stats.stop_sw_total();
-            self.work.log.footer(&self.work);
-
-            // handle errors
-            if self.work.err.failed() {
-                return Ok(Status::Failure);
-            } else {
-                return Ok(Status::Success);
-            }
-        }
-
-        // variable steps: control variables
-        let mut success = false;
-        let mut last_step = false;
-
-        // variable stepping loop
-        for i in 0..self.config.n_step_max {
-            // log
-            self.work.stats.sw_step.reset();
-            self.work.log.step(&state);
-
-            // check final stepsize and stopping criterion
-            let h_final = match stop {
-                Stop::Lambda(l1) => {
-                    let dl = l1 - state.l;
-                    if dl <= 10.0 * f64::EPSILON {
-                        success = true;
-                        self.work.stats.stop_sw_step();
-                        break;
-                    }
-                    dl
+                if match stop {
+                    Stop::Lambda(l1) => state.l > l1 || f64::abs(state.l - l1) < CONFIG_H_MIN,
+                    Stop::Steps(n) => (i + 1) == n,
+                } {
+                    continuation_completed = true;
+                    break;
                 }
-                Stop::Steps(n) => {
-                    if i >= n && !self.work.follows_reject_step {
-                        success = true;
-                        self.work.stats.stop_sw_step();
-                        break;
-                    }
-                    self.work.h_new
-                }
-            };
-
-            // check number of continued rejections
-            self.work.n_continued_rejection += 1;
-            if self.work.n_continued_rejection >= self.config.n_cont_reject_allowed {
-                self.work.stop_continued_rejection = true;
-                break;
             }
+        } else {
+            // variable stepsize
+            for i in 0..self.config.n_step_max {
+                // log
+                self.work.stats.sw_step.reset();
+                self.work.log.step(self.work.h, &state);
 
-            // update and check the stepsize
-            state.h = f64::min(self.work.h_new, h_final);
-            if state.h <= 10.0 * f64::EPSILON {
-                self.work.stop_small_stepsize = true;
-                break;
-            }
-
-            // perform the step calculations
-            self.work.stats.n_steps += 1;
-            self.actual.step(&mut self.work, state, args)?;
-
-            // handle diverging iterations
-            if self.work.iterations_failed {
-                self.work.iterations_failed = false;
-                self.work.follows_reject_step = true;
-                last_step = false;
-                self.work.h_new = state.h * self.work.h_multiplier_failure;
-                continue;
-            }
-
-            // accept step
-            if self.work.rel_error < 1.0 {
-                // update u and λ
-                self.work.stats.n_accepted += 1;
-                self.actual.accept(&mut self.work, state, args)?;
-
-                // check for anomalies
-                vec_all_finite(&state.u, self.config.verbose)?;
-
-                // do not allow h to grow if previous step was a reject
-                if self.work.follows_reject_step {
-                    self.work.h_new = f64::min(self.work.h_new, state.h);
-                }
-                self.work.n_continued_rejection = 0;
-                self.work.follows_reject_step = false;
-
-                // save previous stepsize, relative error, and accepted/suggested stepsize
-                self.work.h_prev = state.h;
-                self.work.rel_error_prev = f64::max(self.config.rel_error_prev_min, self.work.rel_error);
-                self.work.stats.h_accepted = self.work.h_new;
-
-                // output
-                if let Some(out) = output.as_deref_mut() {
-                    let terminate = out.execute(&self.work, &state, args)?;
-                    if terminate {
-                        success = true;
-                        self.work.stats.stop_sw_step();
-                        break;
-                    }
-                }
-
-                // stop calculations if last step
-                if last_step {
-                    success = true;
-                    self.work.stats.stop_sw_step();
+                // handle small stepsize
+                if self.work.h < CONFIG_H_MIN {
+                    self.work.stopped_due_to_small_stepsize = true;
                     break;
                 }
 
-                // check if the last step is approaching
-                match stop {
-                    Stop::Lambda(l1) => last_step = state.l + self.work.h_new >= l1,
-                    Stop::Steps(n) => last_step = i + 1 >= n,
+                // step
+                self.work.stats.n_steps += 1;
+                self.actual.step(&mut self.work, state, args)?;
+
+                // handle iteration failure
+                if self.work.err.failed() {
+                    self.work.n_continued_failure += 1;
+                    self.work.follows_failure = true;
+                }
+                if self.work.n_continued_failure >= 3 {
+                    self.work.stopped_due_to_continued_failure = true;
+                    break;
                 }
 
-            // reject step
-            } else {
-                // set flags
-                if self.work.stats.n_accepted > 0 {
-                    self.work.stats.n_rejected += 1;
+                // handle rejections (due to large curvatures, etc.)
+                if self.work.n_continued_rejection >= 3 {
+                    self.work.stopped_due_to_continued_rejection = true;
+                    break;
                 }
-                self.work.follows_reject_step = true;
-                last_step = false;
 
-                // recompute stepsize
-                if self.work.stats.n_accepted == 0 && self.config.m_first_reject > 0.0 {
-                    self.work.h_new = state.h * self.config.m_first_reject;
+                // handle lambda target
+                if let Some(l1) = stop.lambda_target() {
+                    if self.work.l > l1 {
+                        // redo with target stepsize
+                        self.work.stats.n_steps += 1;
+                        self.work.stats.sw_step.reset();
+                        self.work.log.step(self.work.h, &state);
+                        self.actual.target_stepsize(&mut self.work, state, l1);
+                        self.actual.step(&mut self.work, state, args)?;
+                    }
+                }
+
+                // accept step
+                if self.work.acceptable {
+                    // update u and λ
+                    self.work.stats.n_accepted += 1;
+                    self.actual.accept(&mut self.work, state, args)?;
+
+                    // check for anomalies
+                    vec_all_finite(&state.u, self.config.verbose)?;
+
+                    // fix stepsize estimate
+                    if self.work.follows_failure || self.work.follows_rejection {
+                        // avoid stepsize growth on failure/rejection
+                        self.work.h_estimate = f64::min(self.work.h_estimate, self.work.h);
+                    }
+                    self.work.stats.h_accepted = self.work.h_estimate;
+
+                    // reset flags
+                    if self.work.follows_failure {
+                        self.work.err.clear_error_flags();
+                    }
+                    self.work.n_continued_failure = 0;
+                    self.work.n_continued_rejection = 0;
+                    self.work.follows_failure = false;
+                    self.work.follows_rejection = false;
+
+                    // output
+                    if let Some(out) = output.as_deref_mut() {
+                        let terminate = out.execute(&self.work, &state, args)?;
+                        if terminate {
+                            self.work.stats.stop_sw_step();
+                            break;
+                        }
+                    }
+
+                    // exit point
+                    self.work.stats.stop_sw_step();
+                    if match stop {
+                        Stop::Lambda(l1) => state.l > l1 || f64::abs(state.l - l1) < CONFIG_H_MIN,
+                        Stop::Steps(n) => (i + 1) == n,
+                    } {
+                        continuation_completed = true;
+                        break;
+                    }
+
+                // reject step
                 } else {
-                    self.actual.reject(&mut self.work, state.h, args);
+                    // set flags
+                    self.work.stats.n_rejected += 1;
+                    self.work.follows_rejection = true;
+
+                    // perform the reject operations (e.g., restore external vars) and recompute stepsize
+                    self.actual.reject(&mut self.work, args);
                 }
+
+                // adjust stepsize
+                self.work.h = self.work.h_estimate;
             }
         }
 
@@ -317,15 +268,16 @@ impl<'a, A> Solver<'a, A> {
             out.last()?;
         }
 
-        // print footer
+        // print last message and footer
+        self.work.log.step(self.work.h, &state);
         self.work.stats.stop_sw_total();
         self.work.log.footer(&self.work);
 
-        // handle errors
-        if success {
-            Ok(Status::Success)
+        // done
+        if continuation_completed {
+            return Ok(Status::Success);
         } else {
-            Ok(Status::Failure)
+            return Ok(Status::Failure);
         }
     }
 }
@@ -352,7 +304,7 @@ mod tests {
     #[test]
     fn solve_captures_errors() {
         let (system, _, _, mut args) = Samples::two_eq_ref();
-        let mut state = State::new(system.ndim + 1, false); // wrong dim
+        let mut state = State::new(system.ndim + 1); // wrong dim
         let ndim = system.ndim;
         let config = Config::new(Method::Natural);
         let mut solver = Solver::new(config, system).unwrap();
@@ -444,8 +396,8 @@ mod tests {
         assert_eq!(stats.n_steps, 1);
         assert_eq!(stats.n_accepted, 1);
         assert_eq!(stats.n_rejected, 0);
-        assert_eq!(stats.n_iterations_max, 7);
-        assert_eq!(stats.n_iterations_total, 7);
+        assert_eq!(stats.n_iteration_max, 7);
+        assert_eq!(stats.n_iteration_total, 7);
     }
 
     #[test]
@@ -473,7 +425,7 @@ mod tests {
         assert_eq!(stats.n_steps, 1);
         assert_eq!(stats.n_accepted, 1);
         assert_eq!(stats.n_rejected, 0);
-        assert_eq!(stats.n_iterations_max, 7);
-        assert_eq!(stats.n_iterations_total, 7);
+        assert_eq!(stats.n_iteration_max, 7);
+        assert_eq!(stats.n_iteration_total, 7);
     }
 }

@@ -6,61 +6,8 @@ use russell_sparse::{CooMatrix, LinSolver};
 
 /// Holds workspace data shared among the ODE solver and actual implementations
 pub(crate) struct Workspace<'a> {
-    /// Indicates automatic stepsize adjustment
-    pub(crate) auto: bool,
-
-    /// Holds statistics and benchmarking data
-    pub(crate) stats: Stats,
-
-    /// Number of continued rejections
-    pub(crate) n_continued_rejection: usize,
-
-    /// Indicates that the step follows a reject
-    pub(crate) follows_reject_step: bool,
-
-    /// Indicates that the iterations have failed
-    pub(crate) iterations_failed: bool,
-
-    /// Need to stop due to continued rejection
-    pub(crate) stop_continued_rejection: bool,
-
-    /// Need to stop due to small stepsize
-    pub(crate) stop_small_stepsize: bool,
-
-    /// Multiplier to the stepsize when the iterations are failing
-    ///
-    /// Note: this value is currently constant, but it could be made variable
-    ///       by analyzing Newton's convergence rate as in the ODE crate.
-    pub(crate) h_multiplier_failure: f64,
-
-    /// Previous stepsize
-    pub(crate) h_prev: f64,
-
-    /// Next stepsize estimate
-    pub(crate) h_new: f64,
-
-    /// Previous relative error
-    pub(crate) rel_error_prev: f64,
-
-    /// Current relative error
-    pub(crate) rel_error: f64,
-
-    /// Iteration error
-    pub(crate) err: IterationError,
-
-    /// Logger
-    pub(crate) log: Logger,
-
-    /// Holds G(u, λ)
-    ///
-    /// (ndim)
-    pub(crate) gg: Vector,
-
-    /// Holds the Gu = ∂G/∂u matrix
-    ///
-    /// (ndim x ndim)
-    pub(crate) ggu: CooMatrix,
-
+    // control variables and structures ------------------------------------------
+    //
     /// Indicates that the Gu matrix has been allocated
     ///
     /// Gu is always allocated for the Natural method. Nonetheless, for the
@@ -71,11 +18,91 @@ pub(crate) struct Workspace<'a> {
     /// Linear solver
     pub(crate) ls: LinSolver<'a>,
 
+    /// Iteration error
+    pub(crate) err: IterationError,
+
+    /// Logger
+    pub(crate) log: Logger,
+
+    // stats and flags -----------------------------------------------------------
+    //
+    /// Holds statistics and benchmarking data
+    pub(crate) stats: Stats,
+
+    /// Indicates automatic stepsize adjustment
+    pub(crate) auto: bool,
+
+    /// Current number of iterations
+    pub(crate) n_iteration: usize,
+
+    /// Records the number of times that the iterations failed
+    ///
+    /// Failure here means that the iterations failed to converge
+    ///
+    /// Three problems may be detected:
+    ///
+    /// 1. ‖(δu,δλ)‖∞ is too large
+    /// 2. continued divergence detected
+    /// 3. max number of iterations reached
+    pub(crate) n_continued_failure: usize,
+
+    /// Records the number of times that a step update was rejected
+    ///
+    /// The rejection may occur due to the following criteria:
+    ///
+    /// 1. The distance between the predictor and the converged result is too large
+    /// 2. A measure of curvature from the previous to the converged result is too large
+    /// 3. The number of iterations exceeded a desired number of iterations
+    pub(crate) n_continued_rejection: usize,
+
+    /// Indicates that this step follows a previously failed step
+    pub(crate) follows_failure: bool,
+
+    /// Indicates that this step follows a previously rejected step
+    pub(crate) follows_rejection: bool,
+
+    /// Flags that the solver stopped due to continued failure
+    pub(crate) stopped_due_to_continued_failure: bool,
+
+    /// Flags that the solver stopped due to continued rejection
+    pub(crate) stopped_due_to_continued_rejection: bool,
+
+    /// Flags that the solver stopped because the stepsize became too small
+    pub(crate) stopped_due_to_small_stepsize: bool,
+
+    // state variables -----------------------------------------------------------
+    //
+    /// Holds G(u, λ)
+    ///
+    /// (ndim)
+    pub(crate) gg: Vector,
+
+    /// Holds the Gu = ∂G/∂u matrix
+    ///
+    /// (ndim x ndim)
+    pub(crate) ggu: CooMatrix,
+
+    /// Next stepsize estimate
+    pub(crate) h_estimate: f64,
+
+    /// Stepsize: either σ (pseudo-arclength) or Δλ (natural parameter)
+    pub(crate) h: f64,
+
     /// Holds current u
     pub(crate) u: Vector,
 
     /// Holds current λ
     pub(crate) l: f64,
+
+    /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
+    ///
+    /// **Note**: this vector is only allocated for the pseudo-arclength method
+    ///
+    /// (ndim)
+    pub(crate) duds: Vector,
+
+    /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
+    pub(crate) dlds: f64,
 
     /// Holds -δu
     pub(crate) mdu: Vector,
@@ -86,88 +113,102 @@ pub(crate) struct Workspace<'a> {
     /// Auxiliary u vector #2 (e.g., for numerical Jacobian)
     pub(crate) u_aux2: Vector,
 
-    /// Initial multiplier to the stepsize when the iterations are diverging
-    h_multiplier_failure_initial: f64,
+    /// Indicates whether this step results were acceptable or not
+    pub(crate) acceptable: bool,
 }
 
 impl<'a> Workspace<'a> {
     /// Allocates a new instance
     pub(crate) fn new<'b, A>(config: &Config, system: &System<'b, A>) -> Self {
         // allocate Gu matrix
-        let (ggu, with_ggu) = match config.method {
+        let (ggu, with_ggu, with_tangent) = match config.method {
             Method::Arclength => {
                 if config.bordering || system.sym_ggu.triangular() {
                     (
                         CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
                         true,
+                        true,
                     )
                 } else {
-                    (CooMatrix::new(1, 1, 1, system.sym_ggu).unwrap(), false)
+                    (CooMatrix::new(1, 1, 1, system.sym_ggu).unwrap(), false, true)
                 }
             }
             Method::Natural => (
                 CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
                 true,
+                false,
             ),
         };
+
         // determine Jacobian size
         let ndim_num_jac = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
             system.ndim
         } else {
             0
         };
+
+        let ndim_tangent = if with_tangent { system.ndim } else { 0 };
+
         // allocate the workspace
         Workspace {
-            auto: false,
-            stats: Stats::new(config.method, config.hide_timings),
-            n_continued_rejection: 0,
-            follows_reject_step: false,
-            iterations_failed: false,
-            stop_continued_rejection: false,
-            stop_small_stepsize: false,
-            h_multiplier_failure: config.m_failure,
-            h_prev: 0.0,
-            h_new: 0.0,
-            rel_error_prev: 0.0,
-            rel_error: 0.0,
-            err: IterationError::new(config, system.ndim),
-            log: Logger::new(config),
-            gg: Vector::new(system.ndim),
-            ggu,
+            // control variables and structures
             with_ggu,
             ls: LinSolver::new(config.genie).unwrap(),
+            err: IterationError::new(config, system.ndim),
+            log: Logger::new(config),
+
+            // stats and flags
+            stats: Stats::new(config.method, config.hide_timings),
+            auto: false,
+            n_iteration: 0,
+            n_continued_failure: 0,
+            n_continued_rejection: 0,
+            follows_failure: false,
+            follows_rejection: false,
+            stopped_due_to_continued_failure: false,
+            stopped_due_to_continued_rejection: false,
+            stopped_due_to_small_stepsize: false,
+
+            // state variables
+            gg: Vector::new(system.ndim),
+            ggu,
+            h_estimate: 0.0,
+            h: config.h_ini,
             u: Vector::new(system.ndim),
             l: 0.0,
+            duds: Vector::new(ndim_tangent),
+            dlds: 0.0,
             mdu: Vector::new(system.ndim),
             u_aux1: Vector::new(ndim_num_jac),
             u_aux2: Vector::new(ndim_num_jac),
-            h_multiplier_failure_initial: config.m_failure,
+            acceptable: true,
         }
     }
 
-    /// Resets all values
-    pub(crate) fn reset(&mut self, h: f64, rel_error_prev_min: f64, auto: bool) {
-        self.stats.reset(h);
-        self.auto = auto;
+    /// Resets stats and flags
+    pub(crate) fn reset_stats_and_flags(&mut self, auto: bool) {
+        self.stats.reset();
+        self.auto = false;
+        self.n_iteration = 0;
+        self.n_continued_failure = 0;
         self.n_continued_rejection = 0;
-        self.follows_reject_step = false;
-        self.iterations_failed = false;
-        self.stop_continued_rejection = false;
-        self.stop_small_stepsize = false;
-        self.h_multiplier_failure = self.h_multiplier_failure_initial;
-        self.h_prev = h;
-        self.h_new = h;
-        self.rel_error_prev = rel_error_prev_min;
-        self.rel_error = 0.0;
+        self.follows_failure = false;
+        self.follows_rejection = false;
+        self.stopped_due_to_continued_failure = false;
+        self.stopped_due_to_continued_rejection = false;
+        self.stopped_due_to_small_stepsize = false;
     }
 
     /// Returns error messages
     pub(crate) fn errors(&self) -> Vec<String> {
         let mut msg = self.err.messages();
-        if self.stop_continued_rejection {
-            msg.push("too many continued rejections".to_string());
+        if self.stopped_due_to_continued_failure {
+            msg.push("too many continued (iteration) failures".to_string());
         }
-        if self.stop_small_stepsize {
+        if self.stopped_due_to_continued_rejection {
+            msg.push("too many continued (error behavior) rejections".to_string());
+        }
+        if self.stopped_due_to_small_stepsize {
             msg.push("the stepsize becomes too small".to_string());
         }
         msg

@@ -104,6 +104,8 @@ pub struct Config {
     //
     /// Use the bordering algorithm throughout the entire simulation
     pub(crate) bordering: bool,
+
+    pub(crate) alpha_max: f64,
 }
 
 impl Config {
@@ -143,6 +145,7 @@ impl Config {
             use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: false,
+            alpha_max: 10.0,
         }
     }
 

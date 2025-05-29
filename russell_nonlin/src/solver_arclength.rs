@@ -187,6 +187,9 @@ pub struct SolverArclength<'a, A> {
     /// * `Θ = 1.0`: normal operation
     /// * `Θ = 0.0`: targeting lambda
     theta: f64,
+
+    /// Angle between the previous tangent vector and the increment vector
+    alpha: f64,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -206,6 +209,7 @@ impl<'a, A> SolverArclength<'a, A> {
             use_num_ggu,
             iter_jac_computed: false,
             theta: 1.0,
+            alpha: 0.0,
         }
     }
 
@@ -566,9 +570,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // calculate the angle between the increment and the predictor: ~ turning angle
         approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15); // TODO: remove this
         let norm_x = vec_norm(&self.x, Norm::Euc);
-        let alpha = f64::acos(vec_inner(&self.b, &self.x) / norm_x) * 180.0 / PI;
-        println!("alpha = {}", alpha);
-        work.acceptable = alpha <= 15.0;
+        self.alpha = f64::acos(vec_inner(&self.b, &self.x) / norm_x) * 180.0 / PI;
+        println!("alpha = {}", self.alpha);
+        work.acceptable = self.alpha <= self.config.alpha_max;
 
         // done
         Ok(())
@@ -617,8 +621,14 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // TODO: check if work.n_iteration == work.stats.n_iterations_total
 
-        // TODO: calculate a new stepsize
-        work.h_estimate = work.h;
+        // calculate a new stepsize
+        work.h_estimate = if self.alpha < 0.0 {
+            work.h / 2.0
+        } else if self.alpha == 0.0 {
+            work.h * 2.0
+        } else {
+            f64::max(0.5, f64::min(2.0, self.config.alpha_max / self.alpha))
+        };
 
         // done
         Ok(())
@@ -634,7 +644,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         }
 
         // reduce the stepsize
-        work.h_estimate = work.h / 2.0;
+        work.h_estimate = 0.5 * work.h;
     }
 
     /// Calculates the stepsize that allows reaching the target lambda

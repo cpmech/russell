@@ -372,7 +372,7 @@ impl Samples {
     }
 
     /// B-spline problem # 1
-    pub fn bspline_problem_1<'a>() -> (System<'a, SampleBsplineArgs>, State, SampleBsplineArgs) {
+    pub fn bspline_problem_1<'a>(snap_back_delta: f64) -> (System<'a, SampleBsplineArgs>, State, SampleBsplineArgs) {
         // define the nonlinear system: G(u, λ)
         let ndim = 2;
         let mut system = System::new(
@@ -418,11 +418,11 @@ impl Samples {
             coords: Vector::new(2),
         };
         let control = &[
-            [0.0, 0.0],  // P0
-            [0.5, 1.0],  // P1
-            [1.75, 1.0], // P2
-            [2.0, 0.0],  // P3
-            [2.5, 0.5],  // P4
+            [0.0, 0.0],                   // P0
+            [0.5, 1.0],                   // P1
+            [1.75, 1.0],                  // P2
+            [2.0 - snap_back_delta, 0.0], // P3
+            [2.5, 0.5],                   // P4
         ];
         args.bspline.set_control_points(control).unwrap();
 
@@ -601,7 +601,7 @@ mod tests {
     #[test]
     fn test_samples_bspline_problem_1() {
         // system
-        let (system, state, mut args) = Samples::bspline_problem_1();
+        let (system, state, mut args) = Samples::bspline_problem_1(0.5);
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(2, 2, 2, Sym::No).unwrap();

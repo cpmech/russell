@@ -145,7 +145,7 @@ impl Config {
             use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: false,
-            alpha_max: 10.0,
+            alpha_max: 1.0,
         }
     }
 
@@ -396,6 +396,16 @@ impl Config {
     /// Default value: false
     pub fn set_bordering(&mut self, flag: bool) -> &mut Self {
         self.bordering = flag;
+        self
+    }
+
+    /// Sets the maximum value for alpha
+    ///
+    /// The alpha parameter is used in the arc-length method.
+    ///
+    /// Default value: 1.0
+    pub fn set_alpha_max(&mut self, value: f64) -> &mut Self {
+        self.alpha_max = value;
         self
     }
 

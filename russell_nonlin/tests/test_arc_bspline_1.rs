@@ -7,7 +7,7 @@ const NAME: &str = "test_arc_bspline_1";
 #[test]
 fn test_arc_bspline_1() {
     // nonlinear problem
-    let (system, mut state, mut args) = Samples::bspline_problem_1();
+    let (system, mut state, mut args) = Samples::bspline_problem_1(0.0);
 
     // configuration
     let mut config = Config::new(Method::Arclength);

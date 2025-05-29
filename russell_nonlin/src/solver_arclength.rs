@@ -572,7 +572,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         let norm_x = vec_norm(&self.x, Norm::Euc);
         self.alpha = f64::acos(vec_inner(&self.b, &self.x) / norm_x) * 180.0 / PI;
         println!("alpha = {}", self.alpha);
-        work.acceptable = self.alpha <= self.config.alpha_max;
+        work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
 
         // done
         Ok(())

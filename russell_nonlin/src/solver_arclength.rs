@@ -20,7 +20,7 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// The pseudo-arclength normalization (constraint) is:
 ///
 /// ```text
-/// N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀)ᵀ dλ/ds|₀ - σ  (2)
+/// N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀) dλ/ds|₀ - σ  (2)
 ///
 /// with Nu₀ ≡ ∂N/∂u|₀ = θ du/ds|₀
 /// and  Nλ₀ ≡ ∂N/∂λ|₀ = (2 - θ) dλ/ds|₀
@@ -344,7 +344,7 @@ impl<'a, A> SolverArclength<'a, A> {
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
-        // calculate N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀)ᵀ dλ/ds|₀ - σ
+        // calculate N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀) dλ/ds|₀ - σ
         let ndim = self.system.ndim;
         let mut du_part = 0.0; // (u - u₀)ᵀ du/ds|₀
         if self.theta != 0.0 {

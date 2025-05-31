@@ -2,9 +2,8 @@
 
 use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::{
-    approx_eq, math::PI, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_scale, Norm, Vector,
-};
+use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_scale};
+use russell_lab::{math::PI, Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -504,9 +503,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
-        if self.theta == 0.0 {
-            println!("theta = 0.0, targeting lambda");
-        }
         // predictor
         let sigma = work.h;
         vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + Θ σ · duds₀
@@ -571,7 +567,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15); // TODO: remove this
         let norm_x = vec_norm(&self.x, Norm::Euc);
         self.alpha = f64::acos(vec_inner(&self.b, &self.x) / norm_x) * 180.0 / PI;
-        println!("alpha = {}", self.alpha);
         work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
 
         // done
@@ -629,6 +624,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         } else {
             f64::max(0.5, f64::min(2.0, self.config.alpha_max / self.alpha))
         };
+        work.h_estimate = f64::min(self.config.sigma_max, work.h_estimate);
 
         // done
         Ok(())

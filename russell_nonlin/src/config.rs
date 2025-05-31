@@ -105,7 +105,13 @@ pub struct Config {
     /// Use the bordering algorithm throughout the entire simulation
     pub(crate) bordering: bool,
 
+    /// Max angle between the tangent and the secant
     pub(crate) alpha_max: f64,
+
+    /// Sets the maximum pseudo-arclength step size σ
+    ///
+    /// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
+    pub(crate) sigma_max: f64,
 }
 
 impl Config {
@@ -145,7 +151,8 @@ impl Config {
             use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: false,
-            alpha_max: 1.0,
+            alpha_max: 5.0,
+            sigma_max: 0.01,
         }
     }
 
@@ -399,13 +406,21 @@ impl Config {
         self
     }
 
-    /// Sets the maximum value for alpha
+    /// Sets the maximum angle between the tangent and the secant
     ///
-    /// The alpha parameter is used in the arc-length method.
-    ///
-    /// Default value: 1.0
+    /// Default value: 5.0
     pub fn set_alpha_max(&mut self, value: f64) -> &mut Self {
         self.alpha_max = value;
+        self
+    }
+
+    /// Sets the maximum pseudo-arclength step size σ
+    ///
+    /// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
+    ///
+    /// Default value: 0.01
+    pub fn set_sigma_max(&mut self, value: f64) -> &mut Self {
+        self.sigma_max = value;
         self
     }
 
@@ -454,6 +469,14 @@ impl Config {
         }
         if self.allowed_iterations < 1 {
             return Err("requirement: allowed_iterations ≥ 1");
+        }
+
+        // pseudo-arclength
+        if self.alpha_max <= 0.0 {
+            return Err("requirement: alpha_max > 0");
+        }
+        if self.sigma_max <= 0.0 {
+            return Err("requirement: sigma_max > 0");
         }
         Ok(())
     }

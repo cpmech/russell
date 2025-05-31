@@ -10,7 +10,7 @@ const NAME: &str = "test_arc_bspline_2";
 #[test]
 fn test_arc_bspline_2() {
     // nonlinear problem
-    let (system, mut state, mut args) = Samples::bspline_problem_1(0.5);
+    let (system, mut state, mut args) = Samples::bspline_problem_1(1.5);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -19,8 +19,9 @@ fn test_arc_bspline_2() {
         .set_hide_timings(true)
         .set_allowed_continued_divergence(1)
         .set_alpha_max(15.0)
-        // .set_h_ini(0.4);
-        .set_h_ini(0.4743);
+        .set_sigma_max(0.3)
+        .set_h_ini(0.04);
+    // .set_h_ini(0.4743);
     // .set_allowed_continued_divergence(3);
 
     // define solver

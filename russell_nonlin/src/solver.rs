@@ -198,8 +198,8 @@ impl<'a, A> Solver<'a, A> {
                         // redo with target stepsize
                         self.work.stats.n_steps += 1;
                         self.work.stats.sw_step.reset();
-                        self.work.log.step(self.work.h, &state);
                         self.actual.target_stepsize(&mut self.work, state, l1);
+                        self.work.log.step(self.work.h, &state);
                         self.actual.step(&mut self.work, state, args)?;
                     }
                 }

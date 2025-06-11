@@ -188,7 +188,7 @@ impl<'a> Workspace<'a> {
     /// Resets stats and flags
     pub(crate) fn reset_stats_and_flags(&mut self, auto: bool) {
         self.stats.reset();
-        self.auto = false;
+        self.auto = auto;
         self.n_iteration = 0;
         self.n_continued_failure = 0;
         self.n_continued_rejection = 0;

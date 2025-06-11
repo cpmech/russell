@@ -74,7 +74,10 @@ fn test_newton_problems_fail_due_to_max_iter_auto() {
     );
     assert_eq!(
         solver.errors(),
-        &["max number of iterations reached", "too many continued rejections"]
+        &[
+            "max number of iterations reached",
+            "too many continued (iteration) failures"
+        ]
     );
 }
 
@@ -109,7 +112,10 @@ fn test_newton_problems_fail_oscillation_auto() {
     );
     assert_eq!(
         solver.errors(),
-        &["max number of iterations reached", "too many continued rejections"]
+        &[
+            "max number of iterations reached",
+            "too many continued (iteration) failures"
+        ]
     );
 }
 
@@ -141,7 +147,7 @@ fn test_newton_problems_indeterminate_auto() {
     );
     assert_eq!(
         solver.errors(),
-        &["‖(δu,δλ)‖∞ is too large", "too many continued rejections"]
+        &["‖(δu,δλ)‖∞ is too large", "too many continued (iteration) failures"]
     );
 }
 
@@ -222,7 +228,10 @@ fn test_simple_fixed_continued_divergence_auto() {
     );
     assert_eq!(
         solver.errors(),
-        &["continued divergence detected", "too many continued rejections"]
+        &[
+            "continued divergence detected",
+            "too many continued (iteration) failures"
+        ]
     );
 }
 

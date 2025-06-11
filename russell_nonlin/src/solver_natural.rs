@@ -19,22 +19,22 @@ impl<'a, A> SolverNatural<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(&mut self, iteration: usize, work: &mut Workspace, args: &mut A, logging: bool) -> Result<(), StrError> {
+    fn iterate(&mut self, work: &mut Workspace, args: &mut A, logging: bool) -> Result<(), StrError> {
         // calculate G(u, λ)
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
         // check convergence on G
-        work.err.analyze_residual(iteration, &work.gg, 0.0)?;
+        work.err.analyze_residual(work.n_iteration, &work.gg, 0.0)?;
         if work.err.converged() {
             if logging {
-                work.log.iteration(iteration, &work.err);
+                work.log.iteration(work.n_iteration, &work.err);
             }
             return Ok(());
         }
 
         // auxiliary flags
-        let recompute_jacobian = iteration == 0 || !self.config.constant_tangent;
+        let recompute_jacobian = work.n_iteration == 0 || !self.config.constant_tangent;
         let use_num_jacobian = self.config.use_numerical_jacobian || self.system.calc_ggu.is_none();
 
         // compute Jacobian matrix
@@ -76,9 +76,9 @@ impl<'a, A> SolverNatural<'a, A> {
         work.stats.stop_sw_lin_sol();
 
         // check convergence on δu
-        work.err.analyze_delta(iteration, &work.mdu)?;
+        work.err.analyze_delta(work.n_iteration, &work.mdu)?;
         if logging {
-            work.log.iteration(iteration, &work.err);
+            work.log.iteration(work.n_iteration, &work.err);
         }
         if work.err.converged() {
             return Ok(());
@@ -99,7 +99,7 @@ impl<'a, A> SolverNatural<'a, A> {
 
         // external: backup/restore secondary variables to prepare for the update
         if let Some(f) = self.system.iteration_prepare_to_update_secondary.as_ref() {
-            f(iteration == 0, args);
+            f(work.n_iteration == 0, args);
         }
 
         // external: update secondary variables
@@ -171,13 +171,14 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // iteration loop
         let logging = true;
-        for iteration in 0..self.config.allowed_iterations {
+        work.n_iteration = 0;
+        for _ in 0..self.config.allowed_iterations {
             // stats
             work.stats.n_iteration_total += 1;
-            work.stats.n_iteration_max = usize::max(work.stats.n_iteration_max, iteration + 1);
+            work.stats.n_iteration_max = usize::max(work.stats.n_iteration_max, work.n_iteration + 1);
 
             // run Newton-Raphson iteration
-            self.iterate(iteration, work, args, logging)?;
+            self.iterate(work, args, logging)?;
 
             // stop if converged
             if work.err.converged() {
@@ -189,14 +190,22 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             if work.err.failed() {
                 break;
             }
+            work.n_iteration += 1;
         }
+
+        // done
+        work.acceptable = work.err.converged();
         Ok(())
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
     fn accept(&mut self, work: &mut Workspace, state: &mut State, _args: &mut A) -> Result<(), StrError> {
-        vec_copy(&mut state.u, &work.u).unwrap();
-        state.l = work.l;
+        // update the state
+        vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
+        state.l = work.l; // λ := λ₁
+
+        // calculate a new stepsize
+        work.h_estimate = work.h; // TODO
         Ok(())
     }
 
@@ -208,11 +217,14 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                 f(args);
             }
         }
+
+        // reduce the stepsize
+        work.h_estimate = self.config.m_failure * work.h;
     }
 
     /// Calculates the stepsize that allows reaching the target lambda
     fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64) {
         assert!(lambda_target > state.l);
-        work.h_estimate = lambda_target - state.l;
+        work.h = lambda_target - state.l;
     }
 }

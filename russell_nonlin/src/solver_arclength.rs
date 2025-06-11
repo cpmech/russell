@@ -640,7 +640,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         }
 
         // reduce the stepsize
-        work.h_estimate = 0.5 * work.h;
+        work.h_estimate = self.config.m_failure * work.h;
     }
 
     /// Calculates the stepsize that allows reaching the target lambda

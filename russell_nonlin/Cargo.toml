@@ -25,5 +25,6 @@ structopt = "0.3"
 
 [dev-dependencies]
 russell_pde = { path = "../russell_pde", version = "0.1.0" }
+russell_ode = { path = "../russell_ode", version = "1.10.0" }
 plotpy = "1.13"
 rayon = "1.10"

@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use plotpy::{Curve, Plot};
+use russell_lab::approx_eq;
 use russell_lab::Vector;
 use russell_nonlin::StrError;
 use russell_ode::Method as OdeMethod;
@@ -139,8 +140,8 @@ fn test_hardening_softening_model() {
         stress: 0.0,
     };
 
-    let delta_strain = 0.005;
-    let np = 101;
+    let delta_strain = 0.01;
+    let np = 50;
     let mut xx = vec![state.strain; np + 1];
     let mut yy = vec![state.stress; np + 1];
     for i in 0..np {
@@ -149,15 +150,84 @@ fn test_hardening_softening_model() {
         yy[1 + i] = state.stress;
     }
 
+    let mut xx_ref = vec![
+        0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18,
+        0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37,
+        0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5,
+    ];
+
+    let mut yy_ref = vec![
+        0.,
+        0.0921923529874959,
+        0.180995936702942,
+        0.265135546339778,
+        0.34303769588157,
+        0.412909639654633,
+        0.472933902640526,
+        0.521575383562834,
+        0.557924601234833,
+        0.581937761631112,
+        0.594452730469534,
+        0.596972402157104,
+        0.591326450808571,
+        0.579354305707458,
+        0.562695563124671,
+        0.542698423576125,
+        0.520413194773086,
+        0.496630461299565,
+        0.471934147069921,
+        0.446753034002368,
+        0.421403915953387,
+        0.39612495266096,
+        0.371100159763253,
+        0.346476741387926,
+        0.322376942591868,
+        0.298905838568251,
+        0.276156158431712,
+        0.254210961837679,
+        0.23314478624825,
+        0.213023733754134,
+        0.193904874033716,
+        0.175835268002485,
+        0.158850897482815,
+        0.142975694678168,
+        0.128220878500363,
+        0.114584707614984,
+        0.102052740913371,
+        0.0905985737010805,
+        0.0801850545040245,
+        0.070765847217885,
+        0.062287241401217,
+        0.0546900747507887,
+        0.047911642057484,
+        0.0418874859643884,
+        0.0365529932436868,
+        0.0318447432166188,
+        0.0277015895758155,
+        0.0240654765039555,
+        0.0208820056359409,
+        0.0181007846054456,
+        0.0156755917049248,
+    ];
+
     if SAVE_FIGURE {
         let mut curve = Curve::new();
-        curve.set_label("Stress-Strain Curve");
+        let mut curve_ref = Curve::new();
+        curve.set_label("russell").set_line_style("None").set_marker_style("o");
+        curve_ref.set_label("reference");
         curve.draw(&xx, &yy);
+        curve_ref.draw(&xx_ref, &yy_ref);
         let mut plot = Plot::new();
-        plot.add(&curve)
-            .grid_and_labels("strain", "stress")
+        plot.add(&curve_ref)
+            .add(&curve)
+            .grid_labels_legend("strain", "stress")
             .set_figure_size_points(600.0, 350.0)
             .save("/tmp/russell_nonlin/test_hardening_softening_model.svg")
             .unwrap();
+    }
+
+    // check results
+    for i in 0..np {
+        approx_eq(yy[i], yy_ref[i], 0.003);
     }
 }

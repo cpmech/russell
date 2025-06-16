@@ -6,6 +6,7 @@ use russell_ode::Method as OdeMethod;
 use russell_ode::OdeSolver;
 use russell_ode::Params as OdeParams;
 use russell_ode::System as OdeSystem;
+use russell_sparse::Sym;
 
 /// Implements the y(x) model with hardening and softening
 ///
@@ -59,26 +60,45 @@ impl HardeningSofteningModel {
         }
     }
 
-    /// Calculates the modulus (y is stress, x is strain)
-    pub fn dydx(&self, x: f64, y: f64) -> f64 {
-        // reference curve
+    /// Calculates the reference curve y(x)
+    fn calc_y_ref(&self, x: f64) -> f64 {
         let c1x = self.c1 * x;
-        let y_ref = if c1x >= 500.0 {
+        if c1x >= 500.0 {
             0.0
         } else {
             -self.lambda_r * x + f64::ln(self.c3 + self.c2 * f64::exp(c1x)) / self.beta
-        };
-        let dydx_ref = if c1x >= 500.0 {
+        }
+    }
+
+    /// Calculates the slope of the reference curve dy/dx
+    fn calc_dy_dx_ref(&self, x: f64) -> f64 {
+        let c1x = self.c1 * x;
+        if c1x >= 500.0 {
             0.0
         } else {
             let ec1x = f64::exp(c1x);
             -self.lambda_r + (self.c1 * self.c2 * ec1x) / (self.beta * (self.c3 + self.c2 * ec1x))
-        };
+        }
+    }
 
-        // slope (modulus)
+    /// Calculates the modulus (y is stress, x is strain)
+    ///
+    /// For the ODE system, `f = dy/dx`
+    pub fn dy_dx(&self, x: f64, y: f64) -> f64 {
+        let y_ref = self.calc_y_ref(x);
+        let lambda_f = self.calc_dy_dx_ref(x);
         let dist = f64::max(0.0, y_ref - y);
-        let lambda_f = dydx_ref;
         self.lambda_i + (lambda_f - self.lambda_i) * f64::exp(-self.alpha * dist)
+    }
+
+    /// Calculates the derivative of the modulus with respect to stress
+    ///
+    /// For the ODE system, `df/dy = d(dy/dx)/dy = d²y/(dx dy)`
+    pub fn d2y_dx_dy(&self, x: f64, y: f64) -> f64 {
+        let y_ref = self.calc_y_ref(x);
+        let lambda_f = self.calc_dy_dx_ref(x);
+        let dist = f64::max(0.0, y_ref - y);
+        self.alpha * (lambda_f - self.lambda_i) * f64::exp(-self.alpha * dist)
     }
 }
 
@@ -91,10 +111,15 @@ impl<'a> StressStrainModel<'a> {
 
         // ODE solver
         let params = OdeParams::new(OdeMethod::BwEuler);
-        let system = OdeSystem::new(1, |f, x, y, args: &mut OdeArgs| {
-            f[0] = args.model.dydx(x, y[0]);
+        let mut system = OdeSystem::new(1, |f, x, y, args: &mut OdeArgs| {
+            f[0] = args.model.dy_dx(x, y[0]);
             Ok(())
         });
+        system.set_jacobian(Some(1), Sym::No, |jj, m, x, y, args| {
+            jj.reset();
+            jj.put(0, 0, m * args.model.d2y_dx_dy(x, y[0])).unwrap();
+            Ok(())
+        })?;
         let ode = OdeSolver::new(params, system)?;
 
         // new instance

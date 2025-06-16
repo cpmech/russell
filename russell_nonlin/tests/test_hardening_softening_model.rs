@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use plotpy::{Curve, Plot};
 use russell_lab::approx_eq;
 use russell_lab::Vector;
@@ -31,7 +29,6 @@ struct StressStrainState {
 
 /// Holds the arguments for the ODE solver
 struct OdeArgs {
-    state: StressStrainState,
     model: HardeningSofteningModel,
 }
 
@@ -88,13 +85,9 @@ impl HardeningSofteningModel {
 impl<'a> StressStrainModel<'a> {
     /// Allocates a new instance
     pub fn new(lambda_i: f64, lambda_r: f64, y_r: f64, alpha: f64, beta: f64) -> Result<Self, StrError> {
-        // stress-strain stress state and model
-        let state = StressStrainState {
-            strain: 0.0,
-            stress: 0.0,
-        };
+        // arguments for the ODE solver
         let model = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
-        let args = OdeArgs { state, model };
+        let args = OdeArgs { model };
 
         // ODE solver
         let params = OdeParams::new(OdeMethod::BwEuler);
@@ -150,13 +143,13 @@ fn test_hardening_softening_model() {
         yy[1 + i] = state.stress;
     }
 
-    let mut xx_ref = vec![
+    let xx_ref = vec![
         0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18,
         0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37,
         0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5,
     ];
 
-    let mut yy_ref = vec![
+    let yy_ref = vec![
         0.,
         0.0921923529874959,
         0.180995936702942,

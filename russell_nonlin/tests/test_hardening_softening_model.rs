@@ -1,6 +1,6 @@
 use plotpy::{Curve, Plot};
-use russell_lab::approx_eq;
-use russell_lab::Vector;
+use russell_lab::deriv1_forward7;
+use russell_lab::{approx_eq, Vector};
 use russell_nonlin::StrError;
 use russell_ode::Method as OdeMethod;
 use russell_ode::OdeSolver;
@@ -142,10 +142,41 @@ impl<'a> StressStrainModel<'a> {
     }
 }
 
-const SAVE_FIGURE: bool = true;
-
 #[test]
 fn test_hardening_softening_model() {
+    let lambda_i = 10.0;
+    let lambda_r = 3.0;
+    let y_r = 1.0;
+    let alpha = 30.0;
+    let beta = 30.0;
+
+    let hs = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
+
+    let y_ref = hs.calc_y_ref(0.0);
+    let dy_dx_ref = hs.calc_dy_dx_ref(0.0);
+    assert_eq!(y_ref, y_r); // @ x=0.0, y_ref must equal y_r
+    approx_eq(dy_dx_ref, -lambda_r, 1e-12); // @ x=0.0, dy/dx must equal -lambda_r if beta is large enough
+
+    let dy_dx = hs.dy_dx(0.0, 0.0);
+    approx_eq(dy_dx, lambda_i, 1e-11); // @ x=0.0, dy/dx must equal lambda_i if alpha is large enough
+
+    // analytical second derivative
+    let ana = hs.d2y_dx_dy(0.0, 0.0);
+
+    // numerical second derivative
+    let args = &mut 0;
+    let x_at = 0.0;
+    let y_at = 0.0;
+    let num = deriv1_forward7(y_at, args, |y, _| Ok(hs.dy_dx(x_at, y))).unwrap();
+
+    // check
+    approx_eq(ana, num, 1e-11);
+}
+
+const SAVE_FIGURE: bool = false;
+
+#[test]
+fn test_stress_strain_model() {
     let lambda_i = 10.0;
     let lambda_r = 3.0;
     let y_r = 1.0;
@@ -174,6 +205,7 @@ fn test_hardening_softening_model() {
         0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5,
     ];
 
+    // from Mathematica
     let yy_ref = vec![
         0.,
         0.0921923529874959,

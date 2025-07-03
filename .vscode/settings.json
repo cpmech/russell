@@ -53,6 +53,7 @@
     "dsyev",
     "dsyrk",
     "dtype",
+    "dxdy",
     "dydx",
     "dznrm2",
     "dλds",

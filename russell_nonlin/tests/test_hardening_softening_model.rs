@@ -60,8 +60,8 @@ impl HardeningSofteningModel {
         }
     }
 
-    /// Calculates the reference curve y(x)
-    fn calc_y_ref(&self, x: f64) -> f64 {
+    /// Calculates the reference curve ordinate, yr(x)
+    fn yr(&self, x: f64) -> f64 {
         let c1x = self.c1 * x;
         if c1x >= 500.0 {
             0.0
@@ -70,35 +70,60 @@ impl HardeningSofteningModel {
         }
     }
 
-    /// Calculates the slope of the reference curve dy/dx
-    fn calc_dy_dx_ref(&self, x: f64) -> f64 {
+    /// Calculates the slope of the reference curve dyr/dx
+    fn dyr_dx(&self, x: f64) -> f64 {
         let c1x = self.c1 * x;
         if c1x >= 500.0 {
             0.0
         } else {
             let ec1x = f64::exp(c1x);
-            -self.lambda_r + (self.c1 * self.c2 * ec1x) / (self.beta * (self.c3 + self.c2 * ec1x))
+            let h = self.c3 + self.c2 * ec1x;
+            -self.lambda_r + (self.c1 * self.c2 * ec1x) / (self.beta * h)
         }
     }
 
-    /// Calculates the modulus (y is stress, x is strain)
+    /// Calculates the derivative of the slope of the reference curve w.r.t x
     ///
-    /// For the ODE system, `f = dy/dx`
-    pub fn dy_dx(&self, x: f64, y: f64) -> f64 {
-        let y_ref = self.calc_y_ref(x);
-        let lambda_f = self.calc_dy_dx_ref(x);
-        let dist = f64::max(0.0, y_ref - y);
-        self.lambda_i + (lambda_f - self.lambda_i) * f64::exp(-self.alpha * dist)
+    /// Calculates `d(dyr/dx)/dx = d²yr/dx²`
+    fn d2yr_dx2(&self, x: f64) -> f64 {
+        let c1x = self.c1 * x;
+        if c1x >= 500.0 {
+            0.0
+        } else {
+            let ec1x = f64::exp(c1x);
+            let h = self.c3 + self.c2 * ec1x;
+            (self.c1 * self.c1 * self.c2 * self.c3 * ec1x) / (self.beta * h * h)
+        }
     }
 
-    /// Calculates the derivative of the modulus with respect to stress
+    /// Calculates the derivative of y with respect to x
+    pub fn dy_dx(&self, x: f64, y: f64) -> f64 {
+        let yr = self.yr(x);
+        let del = f64::max(0.0, yr - y);
+        let lambda_f = self.dyr_dx(x);
+        self.lambda_i + (lambda_f - self.lambda_i) * f64::exp(-self.alpha * del)
+    }
+
+    /// Calculates the derivative of dy/dx with respect to x
     ///
-    /// For the ODE system, `df/dy = d(dy/dx)/dy = d²y/(dx dy)`
-    pub fn d2y_dx_dy(&self, x: f64, y: f64) -> f64 {
-        let y_ref = self.calc_y_ref(x);
-        let lambda_f = self.calc_dy_dx_ref(x);
-        let dist = f64::max(0.0, y_ref - y);
-        self.alpha * (lambda_f - self.lambda_i) * f64::exp(-self.alpha * dist)
+    /// Calculates `d(dy/dx)/dx = d²y/dx²`
+    pub fn d2y_dx2(&self, x: f64, y: f64) -> f64 {
+        let yr = self.yr(x);
+        let del = f64::max(0.0, yr - y);
+        let lambda_f = self.dyr_dx(x);
+        let dyr1 = self.dyr_dx(x);
+        let dyr2 = self.d2yr_dx2(x);
+        (dyr2 - dyr1 * self.alpha * (lambda_f - self.lambda_i)) * f64::exp(-self.alpha * del)
+    }
+
+    /// Calculates the derivative of dy/dx with respect to y
+    ///
+    /// Calculates `d(dy/dx)/dy = d²y/(dx dy)`
+    pub fn d2y_dxdy(&self, x: f64, y: f64) -> f64 {
+        let yr = self.yr(x);
+        let del = f64::max(0.0, yr - y);
+        let lambda_f = self.dyr_dx(x);
+        self.alpha * (lambda_f - self.lambda_i) * f64::exp(-self.alpha * del)
     }
 }
 
@@ -117,7 +142,7 @@ impl<'a> StressStrainModel<'a> {
         });
         system.set_jacobian(Some(1), Sym::No, |jj, m, x, y, args| {
             jj.reset();
-            jj.put(0, 0, m * args.model.d2y_dx_dy(x, y[0])).unwrap();
+            jj.put(0, 0, m * args.model.d2y_dxdy(x, y[0])).unwrap();
             Ok(())
         })?;
         let ode = OdeSolver::new(params, system)?;
@@ -140,10 +165,12 @@ impl<'a> StressStrainModel<'a> {
         state.stress = self.aux[0];
         Ok(())
     }
+
+    // Calculates `D = dσ/dε = dy/dx`
 }
 
 #[test]
-fn test_hardening_softening_model() {
+fn test_hardening_softening_model_1() {
     let lambda_i = 10.0;
     let lambda_r = 3.0;
     let y_r = 1.0;
@@ -152,24 +179,55 @@ fn test_hardening_softening_model() {
 
     let hs = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
 
-    let y_ref = hs.calc_y_ref(0.0);
-    let dy_dx_ref = hs.calc_dy_dx_ref(0.0);
+    let y_ref = hs.yr(0.0);
+    let dy_dx_ref = hs.dyr_dx(0.0);
     assert_eq!(y_ref, y_r); // @ x=0.0, y_ref must equal y_r
     approx_eq(dy_dx_ref, -lambda_r, 1e-12); // @ x=0.0, dy/dx must equal -lambda_r if beta is large enough
 
     let dy_dx = hs.dy_dx(0.0, 0.0);
     approx_eq(dy_dx, lambda_i, 1e-11); // @ x=0.0, dy/dx must equal lambda_i if alpha is large enough
 
-    // analytical second derivative
-    let ana = hs.d2y_dx_dy(0.0, 0.0);
-
-    // numerical second derivative
     let args = &mut 0;
     let x_at = 0.0;
     let y_at = 0.0;
-    let num = deriv1_forward7(y_at, args, |y, _| Ok(hs.dy_dx(x_at, y))).unwrap();
 
-    // check
+    // check d²y/dx²
+    let ana = hs.d2y_dx2(x_at, y_at);
+    let num = deriv1_forward7(x_at, args, |x, _| Ok(hs.dy_dx(x, y_at))).unwrap();
+    println!("d²y/dx²: analytical = {}, numerical = {}", ana, num);
+    approx_eq(ana, num, 1e-10);
+
+    // check d²y/(dx dy)
+    let ana = hs.d2y_dxdy(0.0, 0.0);
+    let num = deriv1_forward7(y_at, args, |y, _| Ok(hs.dy_dx(x_at, y))).unwrap();
+    println!("d²y/(dx dy): analytical = {}, numerical = {}", ana, num);
+    approx_eq(ana, num, 1e-11);
+}
+
+#[test]
+fn test_hardening_softening_model_2() {
+    let lambda_i = 10.0;
+    let lambda_r = 3.0;
+    let y_r = 1.0;
+    let alpha = 3.0;
+    let beta = 3.0;
+
+    let hs = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
+
+    let args = &mut 0;
+    let x_at = 0.0;
+    let y_at = 0.0;
+
+    // check d²y/dx²
+    let ana = hs.d2y_dx2(x_at, y_at);
+    let num = deriv1_forward7(x_at, args, |x, _| Ok(hs.dy_dx(x, y_at))).unwrap();
+    println!("d²y/dx²: analytical = {}, numerical = {}", ana, num);
+    approx_eq(ana, num, 1e-12);
+
+    // check d²y/(dx dy)
+    let ana = hs.d2y_dxdy(0.0, 0.0);
+    let num = deriv1_forward7(y_at, args, |y, _| Ok(hs.dy_dx(x_at, y))).unwrap();
+    println!("d²y/(dx dy): analytical = {}, numerical = {}", ana, num);
     approx_eq(ana, num, 1e-11);
 }
 

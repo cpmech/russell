@@ -8,6 +8,8 @@ use russell_ode::Params as OdeParams;
 use russell_ode::System as OdeSystem;
 use russell_sparse::Sym;
 
+const SAVE_FIGURE: bool = true;
+
 /// Implements the y(x) model with hardening and softening
 ///
 /// x is strain
@@ -23,9 +25,31 @@ struct HardeningSofteningModel {
 }
 
 /// Holds the strain (x) and stress (y) state
+#[derive(Clone)]
 struct StressStrainState {
-    strain: f64, // x
-    stress: f64, // y
+    strain: f64,     // x
+    stress: f64,     // y
+    strain_bkp: f64, // backup of strain
+    stress_bkp: f64, // backup of stress
+}
+
+impl StressStrainState {
+    pub fn new() -> Self {
+        StressStrainState {
+            strain: 0.0,
+            stress: 0.0,
+            strain_bkp: 0.0,
+            stress_bkp: 0.0,
+        }
+    }
+    pub fn backup(&mut self) {
+        self.strain_bkp = self.strain;
+        self.stress_bkp = self.stress;
+    }
+    pub fn restore(&mut self) {
+        self.strain = self.strain_bkp;
+        self.stress = self.stress_bkp;
+    }
 }
 
 /// Holds the arguments for the ODE solver
@@ -157,6 +181,9 @@ impl<'a> StressStrainModel<'a> {
 
     /// Updates the stress-strain state given an increment of strain
     pub fn update(&mut self, state: &mut StressStrainState, delta_strain: f64) -> Result<(), StrError> {
+        if f64::abs(delta_strain) < 1e-12 {
+            return Ok(()); // no update needed
+        }
         self.aux[0] = state.stress;
         let x0 = state.strain;
         let x1 = x0 + delta_strain;
@@ -166,7 +193,34 @@ impl<'a> StressStrainModel<'a> {
         Ok(())
     }
 
-    // Calculates `D = dσ/dε = dy/dx`
+    /// Calculates the (consistent) modulus `D = dσ/dε`
+    ///
+    /// `Consistency` here means that derivative is taken from the Backward-Euler update
+    pub fn modulus(&self, state: &StressStrainState, delta_strain: f64, inconsistent: bool) -> f64 {
+        let ddb = self.args.model.dy_dx(state.strain, state.stress);
+        if inconsistent {
+            ddb
+        } else {
+            let ll = self.args.model.d2y_dx2(state.strain, state.stress);
+            let jj = self.args.model.d2y_dxdy(state.strain, state.stress);
+            (ddb + delta_strain * ll) / (1.0 - delta_strain * jj)
+        }
+    }
+
+    pub fn numerical_modulus(&mut self, state: &StressStrainState) -> Result<f64, StrError> {
+        let mut args = state.clone();
+        let at_x = state.strain;
+        let calc_sigma = |x, a: &mut StressStrainState| {
+            a.backup();
+            let dx = x - at_x;
+            assert!(dx >= 0.0);
+            self.update(a, dx)?;
+            let sigma = a.stress;
+            a.restore();
+            Ok(sigma)
+        };
+        deriv1_forward7(at_x, &mut args, calc_sigma)
+    }
 }
 
 #[test]
@@ -231,10 +285,8 @@ fn test_hardening_softening_model_2() {
     approx_eq(ana, num, 1e-11);
 }
 
-const SAVE_FIGURE: bool = false;
-
 #[test]
-fn test_stress_strain_model() {
+fn test_stress_strain_model_1() {
     let lambda_i = 10.0;
     let lambda_r = 3.0;
     let y_r = 1.0;
@@ -242,10 +294,7 @@ fn test_stress_strain_model() {
     let beta = 5.0;
 
     let mut model = StressStrainModel::new(lambda_i, lambda_r, y_r, alpha, beta).unwrap();
-    let mut state = StressStrainState {
-        strain: 0.0,
-        stress: 0.0,
-    };
+    let mut state = StressStrainState::new();
 
     let delta_strain = 0.01;
     let np = 50;
@@ -330,7 +379,7 @@ fn test_stress_strain_model() {
             .add(&curve)
             .grid_labels_legend("strain", "stress")
             .set_figure_size_points(600.0, 350.0)
-            .save("/tmp/russell_nonlin/test_hardening_softening_model.svg")
+            .save("/tmp/russell_nonlin/test_stress_strain_model_1.svg")
             .unwrap();
     }
 
@@ -338,4 +387,78 @@ fn test_stress_strain_model() {
     for i in 0..np {
         approx_eq(yy[i], yy_ref[i], 0.003);
     }
+}
+
+#[test]
+fn test_stress_strain_model_2() {
+    let lambda_i = 10.0;
+    let lambda_r = 3.0;
+    let y_r = 1.0;
+    let alpha = 3.0;
+    let beta = 5.0;
+
+    let mut model = StressStrainModel::new(lambda_i, lambda_r, y_r, alpha, beta).unwrap();
+    let mut state = StressStrainState::new();
+
+    let ddb0 = model.modulus(&state, 0.0, true); // first inconsistent modulus
+    let dd0 = ddb0; // first consistent modulus == first inconsistent modulus
+
+    let delta_strain = 0.05; // local NR won't converge with large delta_strain
+    let np = 10;
+    let mut xx = vec![state.strain; np + 1];
+    let mut yy = vec![state.stress; np + 1];
+    let mut ddb = vec![ddb0; np + 1]; // inconsistent modulus
+    let mut dd = vec![dd0; np + 1]; // consistent modulus
+    let mut dd_num = vec![dd0; np + 1]; // numerical consistent modulus
+    for i in 0..np {
+        model.update(&mut state, delta_strain).unwrap();
+        xx[1 + i] = state.strain;
+        yy[1 + i] = state.stress;
+        ddb[1 + i] = model.modulus(&state, delta_strain, true);
+        dd[1 + i] = model.modulus(&state, delta_strain, false);
+        dd_num[1 + i] = model.numerical_modulus(&state).unwrap();
+    }
+
+    if SAVE_FIGURE {
+        let mut state_fine = StressStrainState::new();
+        let delta_strain = 0.01;
+        let np = 50;
+        let mut xx_fine = vec![state_fine.strain; np + 1];
+        let mut yy_fine = vec![state_fine.stress; np + 1];
+        for i in 0..np {
+            model.update(&mut state_fine, delta_strain).unwrap();
+            xx_fine[1 + i] = state_fine.strain;
+            yy_fine[1 + i] = state_fine.stress;
+        }
+        let mut curve_fine = Curve::new();
+        let mut curve = Curve::new();
+        let mut curve_ddb = Curve::new();
+        let mut curve_dd = Curve::new();
+        let mut curve_dd_num = Curve::new();
+        curve_fine.set_line_color("gray").draw(&xx_fine, &yy_fine);
+        curve.set_marker_style("o").draw(&xx, &yy);
+        curve_ddb.set_label("$\\bar{D}$ (inconsistent)").draw(&xx, &ddb);
+        curve_dd.set_label("$D$ (consistent)").draw(&xx, &dd);
+        curve_dd_num
+            .set_label("$D$ (numerical, consistent)")
+            .set_line_style("None")
+            .set_marker_style("*")
+            .draw(&xx, &dd_num);
+        let mut plot = Plot::new();
+        plot.set_subplot(2, 1, 1)
+            .add(&curve_fine)
+            .add(&curve)
+            .grid_labels_legend("strain", "stress")
+            .set_subplot(2, 1, 2)
+            .add(&curve_ddb)
+            .add(&curve_dd)
+            .add(&curve_dd_num)
+            .grid_labels_legend("strain", "moduli")
+            .set_horiz_line(0.0, "black", "-", 1.0)
+            .set_figure_size_points(600.0, 700.0)
+            .save("/tmp/russell_nonlin/test_stress_strain_model_2.svg")
+            .unwrap();
+    }
+
+    // numerical consistent modulus
 }

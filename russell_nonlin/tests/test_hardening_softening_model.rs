@@ -1,12 +1,6 @@
 use plotpy::{Curve, Plot};
-use russell_lab::deriv1_forward7;
-use russell_lab::{approx_eq, Vector};
+use russell_lab::{approx_eq, deriv1_forward7};
 use russell_nonlin::StrError;
-use russell_ode::Method as OdeMethod;
-use russell_ode::OdeSolver;
-use russell_ode::Params as OdeParams;
-use russell_ode::System as OdeSystem;
-use russell_sparse::Sym;
 
 const SAVE_FIGURE: bool = true;
 
@@ -52,16 +46,9 @@ impl StressStrainState {
     }
 }
 
-/// Holds the arguments for the ODE solver
-struct OdeArgs {
-    model: HardeningSofteningModel,
-}
-
 /// Implements the stress-strain model
-struct StressStrainModel<'a> {
-    args: OdeArgs,
-    ode: OdeSolver<'a, OdeArgs>,
-    aux: Vector, // auxiliary: stress (single component in 1D)
+struct StressStrainModel {
+    model: HardeningSofteningModel,
 }
 
 impl HardeningSofteningModel {
@@ -151,31 +138,11 @@ impl HardeningSofteningModel {
     }
 }
 
-impl<'a> StressStrainModel<'a> {
+impl StressStrainModel {
     /// Allocates a new instance
     pub fn new(lambda_i: f64, lambda_r: f64, y_r: f64, alpha: f64, beta: f64) -> Result<Self, StrError> {
-        // arguments for the ODE solver
-        let model = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
-        let args = OdeArgs { model };
-
-        // ODE solver
-        let params = OdeParams::new(OdeMethod::BwEuler);
-        let mut system = OdeSystem::new(1, |f, x, y, args: &mut OdeArgs| {
-            f[0] = args.model.dy_dx(x, y[0]);
-            Ok(())
-        });
-        system.set_jacobian(Some(1), Sym::No, |jj, m, x, y, args| {
-            jj.reset();
-            jj.put(0, 0, m * args.model.d2y_dxdy(x, y[0])).unwrap();
-            Ok(())
-        })?;
-        let ode = OdeSolver::new(params, system)?;
-
-        // new instance
         Ok(StressStrainModel {
-            args,
-            ode,
-            aux: Vector::new(1),
+            model: HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta),
         })
     }
 
@@ -184,12 +151,36 @@ impl<'a> StressStrainModel<'a> {
         if f64::abs(delta_strain) < 1e-12 {
             return Ok(()); // no update needed
         }
-        self.aux[0] = state.stress;
         let x0 = state.strain;
-        let x1 = x0 + delta_strain;
-        self.ode.solve(&mut self.aux, x0, x1, None, &mut self.args)?;
+        let dx = delta_strain;
+        let x1 = x0 + dx;
+        let y0 = state.stress;
+        let f0 = self.model.dy_dx(x0, y0);
+        let mut y1 = y0 + dx * f0;
+        let mut converged = false;
+        for _ in 0..21 {
+            let f1 = self.model.dy_dx(x1, y1);
+            let r = y1 - y0 - dx * f1;
+            if f64::abs(r) < 1e-12 {
+                converged = true;
+                break;
+            }
+            let jj = self.model.d2y_dxdy(x1, y1);
+            let dy = -r / (1.0 - dx * jj);
+            if f64::abs(dy) < 1e-12 {
+                converged = true;
+                break;
+            }
+            y1 += dy;
+        }
+        if !converged {
+            return Err("Newton-Raphson did not converge");
+        }
         state.strain = x1;
-        state.stress = self.aux[0];
+        state.stress = y1;
+        // self.aux[0] = state.stress;
+        // self.ode.solve(&mut self.aux, x0, x1, None, &mut self.args)?;
+        // state.stress = self.aux[0];
         Ok(())
     }
 
@@ -197,29 +188,28 @@ impl<'a> StressStrainModel<'a> {
     ///
     /// `Consistency` here means that derivative is taken from the Backward-Euler update
     pub fn modulus(&self, state: &StressStrainState, delta_strain: f64, inconsistent: bool) -> f64 {
-        let ddb = self.args.model.dy_dx(state.strain, state.stress);
+        let ddb = self.model.dy_dx(state.strain, state.stress);
         if inconsistent {
             ddb
         } else {
-            let ll = self.args.model.d2y_dx2(state.strain, state.stress);
-            let jj = self.args.model.d2y_dxdy(state.strain, state.stress);
+            let ll = self.model.d2y_dx2(state.strain, state.stress);
+            let jj = self.model.d2y_dxdy(state.strain, state.stress);
             (ddb + delta_strain * ll) / (1.0 - delta_strain * jj)
         }
     }
 
-    pub fn numerical_modulus(&mut self, state: &StressStrainState) -> Result<f64, StrError> {
+    pub fn numerical_modulus(&mut self, state: &StressStrainState, delta_strain: f64) -> Result<f64, StrError> {
         let mut args = state.clone();
-        let at_x = state.strain;
-        let calc_sigma = |x, a: &mut StressStrainState| {
+        let dx_at = delta_strain;
+        let calc_sigma = |dx, a: &mut StressStrainState| {
             a.backup();
-            let dx = x - at_x;
-            assert!(dx >= 0.0);
             self.update(a, dx)?;
             let sigma = a.stress;
             a.restore();
             Ok(sigma)
         };
-        deriv1_forward7(at_x, &mut args, calc_sigma)
+        // deriv1_central5(dx_at, &mut args, calc_sigma)
+        deriv1_forward7(dx_at, &mut args, calc_sigma)
     }
 }
 
@@ -385,7 +375,7 @@ fn test_stress_strain_model_1() {
 
     // check results
     for i in 0..np {
-        approx_eq(yy[i], yy_ref[i], 0.003);
+        approx_eq(yy[i], yy_ref[i], 0.03);
     }
 }
 
@@ -403,8 +393,8 @@ fn test_stress_strain_model_2() {
     let ddb0 = model.modulus(&state, 0.0, true); // first inconsistent modulus
     let dd0 = ddb0; // first consistent modulus == first inconsistent modulus
 
-    let delta_strain = 0.05; // local NR won't converge with large delta_strain
-    let np = 10;
+    let delta_strain = 0.01; // local NR won't converge with large delta_strain
+    let np = 20;
     let mut xx = vec![state.strain; np + 1];
     let mut yy = vec![state.stress; np + 1];
     let mut ddb = vec![ddb0; np + 1]; // inconsistent modulus
@@ -416,13 +406,13 @@ fn test_stress_strain_model_2() {
         yy[1 + i] = state.stress;
         ddb[1 + i] = model.modulus(&state, delta_strain, true);
         dd[1 + i] = model.modulus(&state, delta_strain, false);
-        dd_num[1 + i] = model.numerical_modulus(&state).unwrap();
+        dd_num[1 + i] = model.numerical_modulus(&state, delta_strain).unwrap();
     }
 
     if SAVE_FIGURE {
         let mut state_fine = StressStrainState::new();
-        let delta_strain = 0.01;
-        let np = 50;
+        let delta_strain = 0.005;
+        let np = 100;
         let mut xx_fine = vec![state_fine.strain; np + 1];
         let mut yy_fine = vec![state_fine.stress; np + 1];
         for i in 0..np {

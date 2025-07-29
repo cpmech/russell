@@ -2,23 +2,7 @@ use plotpy::{Curve, Plot};
 use russell_lab::{approx_eq, deriv1_forward7};
 use russell_nonlin::StrError;
 
-const SAVE_FIGURE: bool = true;
-
-/// Implements the y(x) model with hardening and softening
-///
-/// x is strain
-/// y is stress
-struct HardeningSofteningModel {
-    lambda_i: f64,
-    lambda_r: f64,
-    alpha: f64,
-    beta: f64,
-    c1: f64,
-    c2: f64,
-    c3: f64,
-}
-
-/// Holds the strain (x) and stress (y) state
+/// Defines the strain (x) and stress (y) state
 #[derive(Clone)]
 struct StressStrainState {
     strain: f64,     // x
@@ -28,6 +12,7 @@ struct StressStrainState {
 }
 
 impl StressStrainState {
+    /// Allocates a new instance
     pub fn new() -> Self {
         StressStrainState {
             strain: 0.0,
@@ -36,35 +21,62 @@ impl StressStrainState {
             stress_bkp: 0.0,
         }
     }
+
+    /// Creates a backup of the current state
     pub fn backup(&mut self) {
         self.strain_bkp = self.strain;
         self.stress_bkp = self.stress;
     }
+
+    /// Restores the state from the backup
     pub fn restore(&mut self) {
         self.strain = self.strain_bkp;
         self.stress = self.stress_bkp;
     }
 }
 
-/// Implements the stress-strain model
-struct StressStrainModel {
-    model: HardeningSofteningModel,
+/// Implements the hardening and softening model
+///
+/// ```text
+/// dy
+/// ── = f(x, y)
+/// dx
+/// ```
+///
+/// where:
+///
+/// * x is strain
+/// * y is stress
+/// * f is the (continuous) modulus
+struct HardeningSofteningModel {
+    li: f64, // initial slope (λi)
+    lr: f64, // reference slope (λr); second slope, after peak, going down
+    a: f64,  // smoothing parameter (α); when going from λi to λr
+    b: f64,  // smoothing parameter (β); when going from λr to 0
+    c1: f64, // constant c1
+    c2: f64, // constant c2
+    c3: f64, // constant c3
 }
 
 impl HardeningSofteningModel {
     /// Allocates a new instance
-    pub fn new(lambda_i: f64, lambda_r: f64, y_r: f64, alpha: f64, beta: f64) -> Self {
-        // constants
-        let c1 = beta * lambda_r;
-        let c2 = 1.0;
-        let c3 = f64::exp(beta * y_r) - c2;
-
-        // new instance
+    ///
+    /// # Arguments
+    ///
+    /// * `li` - initial slope (λi)
+    /// * `lr` - reference slope (λr); second slope, after peak, going down
+    /// * `y0r` - reference ordinate (yr(0)); stress at zero strain (x=0). Note that this is not the same yr0 (which is 0 in this model)
+    /// * `a` - smoothing parameter (α); when going from λi to λr
+    /// * `b` - smoothing parameter (β); when going from λr to 0
+    pub fn new(li: f64, lr: f64, y0r: f64, a: f64, b: f64) -> Self {
+        let c1 = b * lr;
+        let c2 = 1.0; // exp(β yr0) = exp(0) since yr0 = 0
+        let c3 = f64::exp(b * y0r) - c2;
         HardeningSofteningModel {
-            lambda_i,
-            lambda_r,
-            alpha,
-            beta,
+            li,
+            lr,
+            a,
+            b,
             c1,
             c2,
             c3,
@@ -72,12 +84,18 @@ impl HardeningSofteningModel {
     }
 
     /// Calculates the reference curve ordinate, yr(x)
+    ///
+    /// (This is Model C0: Decay reaching an exactly horizontal line)
+    ///
+    /// ```text
+    /// yr(x) = -λr x + ln(c3 + c2 * exp(c1 * x)) / β
+    /// ```
     fn yr(&self, x: f64) -> f64 {
         let c1x = self.c1 * x;
         if c1x >= 500.0 {
             0.0
         } else {
-            -self.lambda_r * x + f64::ln(self.c3 + self.c2 * f64::exp(c1x)) / self.beta
+            -self.lr * x + f64::ln(self.c3 + self.c2 * f64::exp(c1x)) / self.b
         }
     }
 
@@ -89,7 +107,7 @@ impl HardeningSofteningModel {
         } else {
             let ec1x = f64::exp(c1x);
             let h = self.c3 + self.c2 * ec1x;
-            -self.lambda_r + (self.c1 * self.c2 * ec1x) / (self.beta * h)
+            -self.lr + (self.c1 * self.c2 * ec1x) / (self.b * h)
         }
     }
 
@@ -103,47 +121,51 @@ impl HardeningSofteningModel {
         } else {
             let ec1x = f64::exp(c1x);
             let h = self.c3 + self.c2 * ec1x;
-            (self.c1 * self.c1 * self.c2 * self.c3 * ec1x) / (self.beta * h * h)
+            (self.c1 * self.c1 * self.c2 * self.c3 * ec1x) / (self.b * h * h)
         }
     }
 
     /// Calculates the derivative of y with respect to x
-    pub fn dy_dx(&self, x: f64, y: f64) -> f64 {
-        let yr = self.yr(x);
-        let del = f64::max(0.0, yr - y);
-        let lambda_f = self.dyr_dx(x);
-        self.lambda_i + (lambda_f - self.lambda_i) * f64::exp(-self.alpha * del)
-    }
-
-    /// Calculates the derivative of dy/dx with respect to x
     ///
-    /// Calculates `d(dy/dx)/dx = d²y/dx²`
-    pub fn d2y_dx2(&self, x: f64, y: f64) -> f64 {
+    /// ```text
+    /// dy                                              _
+    /// ── = f(x,y)  where  f is the continuous modulus D
+    /// dx
+    /// ```
+    pub fn f(&self, x: f64, y: f64) -> f64 {
         let yr = self.yr(x);
         let del = f64::max(0.0, yr - y);
-        let lambda_f = self.dyr_dx(x);
-        let dyr1 = self.dyr_dx(x);
-        let dyr2 = self.d2yr_dx2(x);
-        (dyr2 - dyr1 * self.alpha * (lambda_f - self.lambda_i)) * f64::exp(-self.alpha * del)
+        let lt = self.dyr_dx(x); // λt (target slope controlled by the reference curve)
+        self.li + (lt - self.li) * f64::exp(-self.a * del)
     }
 
-    /// Calculates the derivative of dy/dx with respect to y
+    /// Calculates the derivative of f with respect to x
     ///
-    /// Calculates `d(dy/dx)/dy = d²y/(dx dy)`
-    pub fn d2y_dxdy(&self, x: f64, y: f64) -> f64 {
+    /// ```text
+    /// df    d ⎛dy⎞   d²y   
+    /// ── = ── ⎜──⎟ = ───
+    /// dx   dx ⎝dx⎠   dx²   
+    /// ```
+    pub fn df_dx(&self, x: f64, y: f64) -> f64 {
         let yr = self.yr(x);
         let del = f64::max(0.0, yr - y);
-        let lambda_f = self.dyr_dx(x);
-        self.alpha * (lambda_f - self.lambda_i) * f64::exp(-self.alpha * del)
+        let lt = self.dyr_dx(x); // λt (target slope controlled by the reference curve)
+        let d2 = self.d2yr_dx2(x);
+        f64::exp(-self.a * del) * (d2 + self.a * self.li * lt - self.a * lt * lt)
     }
-}
 
-impl StressStrainModel {
-    /// Allocates a new instance
-    pub fn new(lambda_i: f64, lambda_r: f64, y_r: f64, alpha: f64, beta: f64) -> Result<Self, StrError> {
-        Ok(StressStrainModel {
-            model: HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta),
-        })
+    /// Calculates the derivative of f with respect to y
+    ///
+    /// ```text
+    /// df    d ⎛dy⎞    d²y   
+    /// ── = ── ⎜──⎟ = ─────
+    /// dy   dy ⎝dx⎠   dx dy
+    /// ```
+    pub fn df_dy(&self, x: f64, y: f64) -> f64 {
+        let yr = self.yr(x);
+        let del = f64::max(0.0, yr - y);
+        let lt = self.dyr_dx(x); // λt (target slope controlled by the reference curve)
+        f64::exp(-self.a * del) * self.a * (lt - self.li)
     }
 
     /// Updates the stress-strain state given an increment of strain
@@ -155,17 +177,17 @@ impl StressStrainModel {
         let dx = delta_strain;
         let x1 = x0 + dx;
         let y0 = state.stress;
-        let f0 = self.model.dy_dx(x0, y0);
+        let f0 = self.f(x0, y0);
         let mut y1 = y0 + dx * f0;
         let mut converged = false;
         for _ in 0..21 {
-            let f1 = self.model.dy_dx(x1, y1);
+            let f1 = self.f(x1, y1);
             let r = y1 - y0 - dx * f1;
             if f64::abs(r) < 1e-12 {
                 converged = true;
                 break;
             }
-            let jj = self.model.d2y_dxdy(x1, y1);
+            let jj = self.df_dy(x1, y1);
             let dy = -r / (1.0 - dx * jj);
             if f64::abs(dy) < 1e-12 {
                 converged = true;
@@ -178,9 +200,6 @@ impl StressStrainModel {
         }
         state.strain = x1;
         state.stress = y1;
-        // self.aux[0] = state.stress;
-        // self.ode.solve(&mut self.aux, x0, x1, None, &mut self.args)?;
-        // state.stress = self.aux[0];
         Ok(())
     }
 
@@ -188,12 +207,12 @@ impl StressStrainModel {
     ///
     /// `Consistency` here means that derivative is taken from the Backward-Euler update
     pub fn modulus(&self, state: &StressStrainState, delta_strain: f64, inconsistent: bool) -> f64 {
-        let ddb = self.model.dy_dx(state.strain, state.stress);
+        let ddb = self.f(state.strain, state.stress);
         if inconsistent {
             ddb
         } else {
-            let ll = self.model.d2y_dx2(state.strain, state.stress);
-            let jj = self.model.d2y_dxdy(state.strain, state.stress);
+            let ll = self.df_dx(state.strain, state.stress);
+            let jj = self.df_dy(state.strain, state.stress);
             (ddb + delta_strain * ll) / (1.0 - delta_strain * jj)
         }
     }
@@ -213,85 +232,87 @@ impl StressStrainModel {
     }
 }
 
+const SAVE_FIGURE: bool = true;
+
 #[test]
-fn test_hardening_softening_model_1() {
-    let lambda_i = 10.0;
-    let lambda_r = 3.0;
-    let y_r = 1.0;
-    let alpha = 30.0;
-    let beta = 30.0;
+fn test_model_derivatives_1() {
+    let li = 10.0;
+    let lr = 3.0;
+    let y0r = 1.0;
+    let a = 30.0;
+    let b = 30.0;
 
-    let hs = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
+    let model = HardeningSofteningModel::new(li, lr, y0r, a, b);
 
-    let y_ref = hs.yr(0.0);
-    let dy_dx_ref = hs.dyr_dx(0.0);
-    assert_eq!(y_ref, y_r); // @ x=0.0, y_ref must equal y_r
-    approx_eq(dy_dx_ref, -lambda_r, 1e-12); // @ x=0.0, dy/dx must equal -lambda_r if beta is large enough
+    let yr = model.yr(0.0);
+    let dyr_dx = model.dyr_dx(0.0);
+    assert_eq!(yr, y0r); // @ x=0.0
+    approx_eq(dyr_dx, -lr, 1e-12); // @ x=0.0, dy/dx must equal -lr if b is large enough
 
-    let dy_dx = hs.dy_dx(0.0, 0.0);
-    approx_eq(dy_dx, lambda_i, 1e-11); // @ x=0.0, dy/dx must equal lambda_i if alpha is large enough
+    let dy_dx = model.f(0.0, 0.0);
+    approx_eq(dy_dx, li, 1e-11); // @ x=0.0, dy/dx must equal li if a is large enough
 
     let args = &mut 0;
     let x_at = 0.0;
     let y_at = 0.0;
 
-    // check d²y/dx²
-    let ana = hs.d2y_dx2(x_at, y_at);
-    let num = deriv1_forward7(x_at, args, |x, _| Ok(hs.dy_dx(x, y_at))).unwrap();
-    println!("d²y/dx²: analytical = {}, numerical = {}", ana, num);
+    // check df/dx = d²y/dx²
+    let ana = model.df_dx(x_at, y_at);
+    let num = deriv1_forward7(x_at, args, |x, _| Ok(model.f(x, y_at))).unwrap();
+    println!("df/dx = d²y/dx²:     ana = {}, num = {}", ana, num);
     approx_eq(ana, num, 1e-10);
 
-    // check d²y/(dx dy)
-    let ana = hs.d2y_dxdy(0.0, 0.0);
-    let num = deriv1_forward7(y_at, args, |y, _| Ok(hs.dy_dx(x_at, y))).unwrap();
-    println!("d²y/(dx dy): analytical = {}, numerical = {}", ana, num);
+    // check df/dy = d²y/(dx dy)
+    let ana = model.df_dy(0.0, 0.0);
+    let num = deriv1_forward7(y_at, args, |y, _| Ok(model.f(x_at, y))).unwrap();
+    println!("df/dy = d²y/(dx dy): ana = {}, num = {}", ana, num);
     approx_eq(ana, num, 1e-11);
 }
 
 #[test]
-fn test_hardening_softening_model_2() {
-    let lambda_i = 10.0;
-    let lambda_r = 3.0;
-    let y_r = 1.0;
-    let alpha = 3.0;
-    let beta = 3.0;
+fn test_model_derivatives_2() {
+    let li = 10.0;
+    let lr = 3.0;
+    let y0r = 1.0;
+    let a = 3.0;
+    let b = 3.0;
 
-    let hs = HardeningSofteningModel::new(lambda_i, lambda_r, y_r, alpha, beta);
+    let model = HardeningSofteningModel::new(li, lr, y0r, a, b);
 
     let args = &mut 0;
     let x_at = 0.0;
     let y_at = 0.0;
 
-    // check d²y/dx²
-    let ana = hs.d2y_dx2(x_at, y_at);
-    let num = deriv1_forward7(x_at, args, |x, _| Ok(hs.dy_dx(x, y_at))).unwrap();
-    println!("d²y/dx²: analytical = {}, numerical = {}", ana, num);
+    // check df/dx = d²y/dx²
+    let ana = model.df_dx(x_at, y_at);
+    let num = deriv1_forward7(x_at, args, |x, _| Ok(model.f(x, y_at))).unwrap();
+    println!("df/dx = d²y/dx²:     ana = {}, num = {}", ana, num);
     approx_eq(ana, num, 1e-12);
 
-    // check d²y/(dx dy)
-    let ana = hs.d2y_dxdy(0.0, 0.0);
-    let num = deriv1_forward7(y_at, args, |y, _| Ok(hs.dy_dx(x_at, y))).unwrap();
-    println!("d²y/(dx dy): analytical = {}, numerical = {}", ana, num);
+    // check df/dy = d²y/(dx dy)
+    let ana = model.df_dy(0.0, 0.0);
+    let num = deriv1_forward7(y_at, args, |y, _| Ok(model.f(x_at, y))).unwrap();
+    println!("df/dy = d²y/(dx dy): ana = {}, num = {}", ana, num);
     approx_eq(ana, num, 1e-11);
 }
 
 #[test]
-fn test_stress_strain_model_1() {
-    let lambda_i = 10.0;
-    let lambda_r = 3.0;
-    let y_r = 1.0;
-    let alpha = 3.0;
-    let beta = 5.0;
+fn test_model_curve_1() {
+    let li = 10.0;
+    let lr = 3.0;
+    let y0r = 1.0;
+    let a = 3.0;
+    let b = 5.0;
 
-    let mut model = StressStrainModel::new(lambda_i, lambda_r, y_r, alpha, beta).unwrap();
+    let mut model = HardeningSofteningModel::new(li, lr, y0r, a, b);
     let mut state = StressStrainState::new();
 
-    let delta_strain = 0.01;
+    let dx = 0.01;
     let np = 50;
     let mut xx = vec![state.strain; np + 1];
     let mut yy = vec![state.stress; np + 1];
     for i in 0..np {
-        model.update(&mut state, delta_strain).unwrap();
+        model.update(&mut state, dx).unwrap();
         xx[1 + i] = state.strain;
         yy[1 + i] = state.stress;
     }
@@ -369,31 +390,31 @@ fn test_stress_strain_model_1() {
             .add(&curve)
             .grid_labels_legend("strain", "stress")
             .set_figure_size_points(600.0, 350.0)
-            .save("/tmp/russell_nonlin/test_stress_strain_model_1.svg")
+            .save("/tmp/russell_nonlin/test_model_curve_1.svg")
             .unwrap();
     }
 
     // check results
     for i in 0..np {
-        approx_eq(yy[i], yy_ref[i], 0.03);
+        approx_eq(yy[i], yy_ref[i], 0.022);
     }
 }
 
 #[test]
-fn test_stress_strain_model_2() {
-    let lambda_i = 10.0;
-    let lambda_r = 3.0;
-    let y_r = 1.0;
-    let alpha = 3.0;
-    let beta = 5.0;
+fn test_model_curve_and_modulus_1() {
+    let li = 10.0;
+    let lr = 3.0;
+    let y0r = 1.0;
+    let a = 3.0;
+    let b = 5.0;
 
-    let mut model = StressStrainModel::new(lambda_i, lambda_r, y_r, alpha, beta).unwrap();
+    let mut model = HardeningSofteningModel::new(li, lr, y0r, a, b);
     let mut state = StressStrainState::new();
 
     let ddb0 = model.modulus(&state, 0.0, true); // first inconsistent modulus
     let dd0 = ddb0; // first consistent modulus == first inconsistent modulus
 
-    let delta_strain = 0.01; // local NR won't converge with large delta_strain
+    let dx = 0.01; // local NR won't converge with large delta_strain
     let np = 20;
     let mut xx = vec![state.strain; np + 1];
     let mut yy = vec![state.stress; np + 1];
@@ -401,12 +422,12 @@ fn test_stress_strain_model_2() {
     let mut dd = vec![dd0; np + 1]; // consistent modulus
     let mut dd_num = vec![dd0; np + 1]; // numerical consistent modulus
     for i in 0..np {
-        model.update(&mut state, delta_strain).unwrap();
+        model.update(&mut state, dx).unwrap();
         xx[1 + i] = state.strain;
         yy[1 + i] = state.stress;
-        ddb[1 + i] = model.modulus(&state, delta_strain, true);
-        dd[1 + i] = model.modulus(&state, delta_strain, false);
-        dd_num[1 + i] = model.numerical_modulus(&state, delta_strain).unwrap();
+        ddb[1 + i] = model.modulus(&state, dx, true);
+        dd[1 + i] = model.modulus(&state, dx, false);
+        dd_num[1 + i] = model.numerical_modulus(&state, dx).unwrap();
     }
 
     if SAVE_FIGURE {
@@ -446,7 +467,7 @@ fn test_stress_strain_model_2() {
             .grid_labels_legend("strain", "moduli")
             .set_horiz_line(0.0, "black", "-", 1.0)
             .set_figure_size_points(600.0, 700.0)
-            .save("/tmp/russell_nonlin/test_stress_strain_model_2.svg")
+            .save("/tmp/russell_nonlin/test_model_curve_and_modulus_1.svg")
             .unwrap();
     }
 

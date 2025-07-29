@@ -182,13 +182,13 @@ impl HardeningSofteningModel {
         let mut converged = false;
         for _ in 0..21 {
             let f1 = self.f(x1, y1);
-            let r = y1 - y0 - dx * f1;
-            if f64::abs(r) < 1e-12 {
+            let r1 = y1 - y0 - dx * f1;
+            if f64::abs(r1) < 1e-12 {
                 converged = true;
                 break;
             }
             let jj = self.df_dy(x1, y1);
-            let dy = -r / (1.0 - dx * jj);
+            let dy = -r1 / (1.0 - dx * jj);
             if f64::abs(dy) < 1e-12 {
                 converged = true;
                 break;
@@ -207,28 +207,32 @@ impl HardeningSofteningModel {
     ///
     /// `Consistency` here means that derivative is taken from the Backward-Euler update
     pub fn modulus(&self, state: &StressStrainState, delta_strain: f64, inconsistent: bool) -> f64 {
-        let ddb = self.f(state.strain, state.stress);
+        let x = state.strain;
+        let y = state.stress;
+        let dx = delta_strain;
+        let f = self.f(x, y);
         if inconsistent {
-            ddb
+            f
         } else {
-            let ll = self.df_dx(state.strain, state.stress);
-            let jj = self.df_dy(state.strain, state.stress);
-            (ddb + delta_strain * ll) / (1.0 - delta_strain * jj)
+            let ll = self.df_dx(x, y);
+            let jj = self.df_dy(x, y);
+            (f + dx * ll) / (1.0 - dx * jj)
         }
     }
 
     pub fn numerical_modulus(&mut self, state: &StressStrainState, delta_strain: f64) -> Result<f64, StrError> {
-        let mut args = state.clone();
-        let dx_at = delta_strain;
-        let calc_sigma = |dx, a: &mut StressStrainState| {
-            a.backup();
-            self.update(a, dx)?;
-            let sigma = a.stress;
-            a.restore();
-            Ok(sigma)
+        // calculate stress (y) given a small increment of strain (dx)
+        let calc_y = |dx, args: &mut StressStrainState| {
+            args.backup();
+            self.update(args, dx)?;
+            let y = args.stress;
+            args.restore();
+            Ok(y)
         };
-        // deriv1_central5(dx_at, &mut args, calc_sigma)
-        deriv1_forward7(dx_at, &mut args, calc_sigma)
+        // dy/dx = ∂y/∂Δx
+        let dx_at = delta_strain;
+        let mut args = state.clone();
+        deriv1_forward7(dx_at, &mut args, calc_y)
     }
 }
 
@@ -415,13 +419,13 @@ fn test_model_curve_and_modulus_1() {
     let dd0 = ddb0; // first consistent modulus == first inconsistent modulus
 
     let dx = 0.01; // local NR won't converge with large delta_strain
-    let np = 20;
-    let mut xx = vec![state.strain; np + 1];
-    let mut yy = vec![state.stress; np + 1];
-    let mut ddb = vec![ddb0; np + 1]; // inconsistent modulus
-    let mut dd = vec![dd0; np + 1]; // consistent modulus
-    let mut dd_num = vec![dd0; np + 1]; // numerical consistent modulus
-    for i in 0..np {
+    let nd = 20;
+    let mut xx = vec![state.strain; nd + 1];
+    let mut yy = vec![state.stress; nd + 1];
+    let mut ddb = vec![ddb0; nd + 1]; // inconsistent modulus
+    let mut dd = vec![dd0; nd + 1]; // consistent modulus
+    let mut dd_num = vec![dd0; nd + 1]; // numerical consistent modulus
+    for i in 0..nd {
         model.update(&mut state, dx).unwrap();
         xx[1 + i] = state.strain;
         yy[1 + i] = state.stress;
@@ -470,6 +474,4 @@ fn test_model_curve_and_modulus_1() {
             .save("/tmp/russell_nonlin/test_model_curve_and_modulus_1.svg")
             .unwrap();
     }
-
-    // numerical consistent modulus
 }

@@ -12,19 +12,28 @@ categories = ["mathematics", "science"]
 keywords = ["numerical", "solver", "continuation", "nonlinear"]
 
 [features]
-intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
-local_suitesparse = ["russell_sparse/local_suitesparse"]
+intel_mkl = [
+  "russell_lab/intel_mkl",
+  "russell_sparse/intel_mkl",
+  "ctm_demo/intel_mkl",
+]
+local_suitesparse = [
+  "russell_sparse/local_suitesparse",
+  "ctm_demo/local_suitesparse",
+]
 with_mumps = ["russell_sparse/with_mumps"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "1.10.0" }
 russell_sparse = { path = "../russell_sparse", version = "1.10.0" }
+russell_stat = { path = "../russell_stat", version = "1.10.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"
 
 [dev-dependencies]
+ctm_demo = "0.1.1"
 russell_pde = { path = "../russell_pde", version = "0.1.0" }
-russell_ode = { path = "../russell_ode", version = "1.10.0" }
+russell_ode = "1.10"
 plotpy = "1.13"
 rayon = "1.10"

@@ -169,6 +169,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         // reset iteration error control
         work.err.reset(state);
 
+        // start the recording of iteration errors
+        work.stats.record_iterations_residuals_start();
+
         // iteration loop
         let logging = true;
         work.n_iteration = 0;
@@ -179,6 +182,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
             // run Newton-Raphson iteration
             self.iterate(work, args, logging)?;
+
+            // append the iteration residuals to the current step
+            work.stats.record_iterations_residuals_append(work.err.residual_max);
 
             // stop if converged
             if work.err.converged() {
@@ -192,6 +198,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             }
             work.n_iteration += 1;
         }
+
+        // stop the recording of iteration errors
+        work.stats.record_iterations_residuals_stop(work.err.converged());
 
         // done
         work.acceptable = work.err.converged();

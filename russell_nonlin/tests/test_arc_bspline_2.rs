@@ -17,6 +17,7 @@ fn test_arc_bspline_2() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
+        .set_record_iterations_residuals(true)
         .set_allowed_continued_divergence(1)
         .set_alpha_max(15.0)
         .set_sigma_max(0.3)

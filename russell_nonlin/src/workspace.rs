@@ -158,7 +158,7 @@ impl<'a> Workspace<'a> {
             log: Logger::new(config),
 
             // stats and flags
-            stats: Stats::new(config.method, config.hide_timings),
+            stats: Stats::new(config.method, config.hide_timings, config.record_iterations_residuals),
             auto: false,
             n_iteration: 0,
             n_continued_failure: 0,

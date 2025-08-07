@@ -31,6 +31,9 @@ pub struct Config {
     /// Hide timings when displaying statistics
     pub(crate) hide_timings: bool,
 
+    /// Indicates whether to record the iterations residuals or not (in statistics)
+    pub(crate) record_iterations_residuals: bool,
+
     // substepping ------------------------------------------------------------------------
     //
     /// Min step multiplier
@@ -125,6 +128,7 @@ impl Config {
             verbose_legend: false,
             verbose_stats: false,
             hide_timings: false,
+            record_iterations_residuals: false,
             // substepping
             m_min: 0.001,
             m_max: 2.0,
@@ -175,6 +179,12 @@ impl Config {
     /// Hides timings when displaying statistics
     pub fn set_hide_timings(&mut self, flag: bool) -> &mut Self {
         self.hide_timings = flag;
+        self
+    }
+
+    /// Indicates whether to record the iterations residuals or not (in statistics)
+    pub fn set_record_iterations_residuals(&mut self, flag: bool) -> &mut Self {
+        self.record_iterations_residuals = flag;
         self
     }
 

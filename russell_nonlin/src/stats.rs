@@ -1,17 +1,24 @@
-#![allow(unused)]
-
 use super::Method;
 use russell_lab::{format_nanoseconds, Stopwatch};
+use russell_stat::Histogram;
 use std::fmt::{self, Write};
 
 /// Holds statistics and benchmarking data
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Stats {
     /// Holds the method
     method: Method,
 
     /// Hide timings when displaying statistics
     hide_timings: bool,
+
+    /// Indicates whether to record the iterations residuals or not
+    ///
+    /// Will populate `iterations_errors` with the iteration residuals
+    record_iterations_residuals: bool,
+
+    /// Holds the iterations residuals for the current step, temporarily
+    temporary_iterations_residuals: Vec<f64>,
 
     /// Number of calls to G(u(s), λ(s)) function
     pub n_function: usize,
@@ -49,6 +56,15 @@ pub struct Stats {
     /// Max number of iterations among all steps
     pub n_iteration_max: usize,
 
+    /// Holds the iteration residuals
+    ///
+    /// Each element is a vector with the iteration residuals for each step.
+    ///
+    /// Only used if `record_iterations_residuals` is true.
+    ///
+    /// `(nstep, n_iteration_in_step)`
+    pub iterations_residuals: Option<Vec<Vec<f64>>>,
+
     /// Last accepted/suggested step size h_new
     pub h_accepted: f64,
 
@@ -85,10 +101,12 @@ pub struct Stats {
 
 impl Stats {
     /// Allocates a new instance
-    pub fn new(method: Method, hide_timings: bool) -> Self {
+    pub fn new(method: Method, hide_timings: bool, record_iterations_residuals: bool) -> Self {
         Stats {
             method,
             hide_timings,
+            record_iterations_residuals,
+            temporary_iterations_residuals: Vec::new(),
             n_function: 0,
             n_jacobian: 0,
             n_factor: 0,
@@ -101,6 +119,7 @@ impl Stats {
             n_continued_divergence: 0,
             n_iteration_total: 0,
             n_iteration_max: 0,
+            iterations_residuals: None,
             h_accepted: 0.0,
             nanos_step_max: 0,
             nanos_jacobian_max: 0,
@@ -133,6 +152,34 @@ impl Stats {
         self.nanos_factor_max = 0;
         self.nanos_lin_sol_max = 0;
         self.nanos_total = 0;
+    }
+
+    /// Starts the recording of iterations residuals
+    pub(crate) fn record_iterations_residuals_start(&mut self) {
+        if self.record_iterations_residuals {
+            self.temporary_iterations_residuals.clear();
+            if self.iterations_residuals.is_none() {
+                self.iterations_residuals = Some(Vec::new());
+            }
+        }
+    }
+
+    /// Appends the current iteration residual to the current step
+    pub(crate) fn record_iterations_residuals_append(&mut self, residual_max: f64) {
+        if self.record_iterations_residuals {
+            self.temporary_iterations_residuals.push(residual_max);
+        }
+    }
+
+    /// Stops the recording of iterations residuals
+    pub(crate) fn record_iterations_residuals_stop(&mut self, converged: bool) {
+        if self.record_iterations_residuals {
+            if converged {
+                if let Some(residuals) = &mut self.iterations_residuals {
+                    residuals.push(self.temporary_iterations_residuals.clone());
+                }
+            }
+        }
     }
 
     /// Stops the stopwatch and updates step nanoseconds
@@ -173,13 +220,6 @@ impl Stats {
         self.nanos_total = nanos;
     }
 
-    /// Stops the stopwatch and updates n_iterations_max nanoseconds
-    pub(crate) fn update_n_iterations_max(&mut self) {
-        if self.n_iteration_total > self.n_iteration_max {
-            self.n_iteration_max = self.n_iteration_total;
-        }
-    }
-
     /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
         let mut buffer = String::new();
@@ -211,6 +251,21 @@ impl Stats {
             self.n_iteration_max,
         )
         .unwrap();
+        if self.record_iterations_residuals {
+            if let Some(residuals) = &self.iterations_residuals {
+                let n_iter_data = residuals.iter().map(|res| res.len()).collect::<Vec<usize>>();
+                let stations = (0..11).collect::<Vec<usize>>();
+                let mut histogram = Histogram::new(&stations).unwrap();
+                histogram.set_bar_char('*').set_bar_max_len(40);
+                histogram.count(&n_iter_data);
+                write!(
+                    &mut buffer,
+                    "\n\nDistribution of the number of converged iterations across all steps:\n",
+                )
+                .unwrap();
+                write!(&mut buffer, "{}", histogram).unwrap();
+            }
+        }
         buffer
     }
 }
@@ -263,18 +318,16 @@ mod tests {
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut stats = Stats::new(Method::Arclength, false);
+        let mut stats = Stats::new(Method::Arclength, false, false);
         stats.n_accepted += 1;
-        let copy = stats;
         let clone = stats.clone();
-        assert_eq!(copy.n_accepted, stats.n_accepted);
         assert_eq!(clone.n_accepted, stats.n_accepted);
         assert!(format!("{:?}", stats).len() > 0);
     }
 
     #[test]
     fn summary_works() {
-        let stats = Stats::new(Method::Arclength, false);
+        let stats = Stats::new(Method::Arclength, false, false);
         println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
@@ -295,7 +348,7 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let stats = Stats::new(Method::Natural, false);
+        let stats = Stats::new(Method::Natural, false, false);
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0\n\
@@ -319,7 +372,7 @@ mod tests {
              Total time                       = 0ns"
         );
 
-        let stats = Stats::new(Method::Natural, true);
+        let stats = Stats::new(Method::Natural, false, false);
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0\n\

@@ -132,7 +132,6 @@ impl Logger {
             println!("{}\n", "─".repeat(self.nchar));
             if self.verbose_stats {
                 println!("{}", work.stats);
-                println!("Automatic stepsize adjustment    = {:?}", work.auto);
             }
             let messages = work.errors();
             if messages.len() > 0 {

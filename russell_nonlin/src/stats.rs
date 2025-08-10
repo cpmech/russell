@@ -1,6 +1,6 @@
 use super::Method;
 use russell_lab::{format_nanoseconds, Stopwatch};
-use russell_stat::Histogram;
+use russell_stat::{statistics, Histogram};
 use std::fmt::{self, Write};
 
 /// Holds statistics and benchmarking data
@@ -16,6 +16,9 @@ pub struct Stats {
     ///
     /// Will populate `iterations_errors` with the iteration residuals
     record_iterations_residuals: bool,
+
+    /// Indicates automatic stepsize adjustment
+    auto: bool,
 
     /// Holds the iterations residuals for the current step, temporarily
     temporary_iterations_residuals: Vec<f64>,
@@ -106,6 +109,7 @@ impl Stats {
             method,
             hide_timings,
             record_iterations_residuals,
+            auto: false,
             temporary_iterations_residuals: Vec::new(),
             n_function: 0,
             n_jacobian: 0,
@@ -135,7 +139,8 @@ impl Stats {
     }
 
     /// Resets all values
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn reset(&mut self, auto: bool) {
+        self.auto = auto;
         self.n_function = 0;
         self.n_jacobian = 0;
         self.n_factor = 0;
@@ -144,8 +149,11 @@ impl Stats {
         self.n_accepted = 0;
         self.n_rejected = 0;
         self.n_large_delta = 0;
+        self.n_max_iterations_reached = 0;
+        self.n_continued_divergence = 0;
         self.n_iteration_total = 0;
         self.n_iteration_max = 0;
+        self.iterations_residuals = None;
         self.h_accepted = 0.0;
         self.nanos_step_max = 0;
         self.nanos_jacobian_max = 0;
@@ -225,7 +233,7 @@ impl Stats {
         let mut buffer = String::new();
         write!(
             &mut buffer,
-            "{}\n\
+            "{} ({})\n\
              Number of function evaluations   = {}\n\
              Number of Jacobian evaluations   = {}\n\
              Number of factorizations         = {}\n\
@@ -236,8 +244,11 @@ impl Stats {
              Number of large max(‖δu‖∞,|δλ|)  = {}\n\
              Number of max iterations reached = {}\n\
              Number of continued divergence   = {}\n\
-             Number of iterations (maximum)   = {}",
+             Number of iterations (maximum)   = {}\n\
+             Number of iterations (total)     = {}\n\
+             Last accepted/suggested stepsize = {}",
             self.method.description(),
+            if self.auto { "auto steps" } else { "fixed steps" },
             self.n_function,
             self.n_jacobian,
             self.n_factor,
@@ -249,6 +260,8 @@ impl Stats {
             self.n_max_iterations_reached,
             self.n_continued_divergence,
             self.n_iteration_max,
+            self.n_iteration_total,
+            self.h_accepted,
         )
         .unwrap();
         if self.record_iterations_residuals {
@@ -260,10 +273,27 @@ impl Stats {
                 histogram.count(&n_iter_data);
                 write!(
                     &mut buffer,
-                    "\n\nDistribution of the number of converged iterations across all steps:\n",
+                    "\nDistribution of the number of converged iterations across all steps:\n",
                 )
                 .unwrap();
                 write!(&mut buffer, "{}", histogram).unwrap();
+                let mut conv_ratio_values = Vec::new();
+                for err in residuals {
+                    if err.len() >= 3 {
+                        let l = err.len();
+                        let rate = f64::ln(err[l - 1] / err[l - 2]) / f64::ln(err[l - 2] / err[l - 3]);
+                        if rate.is_finite() && rate >= 0.9 && rate <= 2.1 {
+                            conv_ratio_values.push(rate);
+                        }
+                    }
+                }
+                let res = statistics(&conv_ratio_values);
+                write!(
+                    &mut buffer,
+                    "Convergence: mean = {:.3}, std_dev = {:.3}, min_max = ({:.3}, {:.3})",
+                    res.mean, res.std_dev, res.min, res.max
+                )
+                .unwrap();
             }
         }
         buffer
@@ -273,30 +303,17 @@ impl Stats {
 impl fmt::Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.hide_timings {
-            write!(
-                f,
-                "{}\n\
-                 Number of iterations (total)     = {}\n\
-                 Last accepted/suggested stepsize = {}",
-                self.summary(),
-                self.n_iteration_total,
-                self.h_accepted,
-            )
-            .unwrap();
+            write!(f, "{}", self.summary()).unwrap();
         } else {
             write!(
                 f,
                 "{}\n\
-                 Number of iterations (total)     = {}\n\
-                 Last accepted/suggested stepsize = {}\n\
                  Max time spent on a step         = {}\n\
                  Max time spent on the Jacobian   = {}\n\
                  Max time spent on factorization  = {}\n\
                  Max time spent on lin solution   = {}\n\
                  Total time                       = {}",
                 self.summary(),
-                self.n_iteration_total,
-                self.h_accepted,
                 format_nanoseconds(self.nanos_step_max),
                 format_nanoseconds(self.nanos_jacobian_max),
                 format_nanoseconds(self.nanos_factor_max),
@@ -331,7 +348,7 @@ mod tests {
         println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
-            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0\n\
+            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -342,7 +359,9 @@ mod tests {
              Number of large max(‖δu‖∞,|δλ|)  = 0\n\
              Number of max iterations reached = 0\n\
              Number of continued divergence   = 0\n\
-             Number of iterations (maximum)   = 0"
+             Number of iterations (maximum)   = 0\n\
+             Number of iterations (total)     = 0\n\
+             Last accepted/suggested stepsize = 0"
         );
     }
 
@@ -351,7 +370,7 @@ mod tests {
         let stats = Stats::new(Method::Natural, false, false);
         assert_eq!(
             format!("{}", stats),
-            "Natural parameter continuation; solves G(u, λ) = 0\n\
+            "Natural parameter continuation; solves G(u, λ) = 0 (fixed steps)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -372,10 +391,10 @@ mod tests {
              Total time                       = 0ns"
         );
 
-        let stats = Stats::new(Method::Natural, false, false);
+        let stats = Stats::new(Method::Natural, true, false);
         assert_eq!(
             format!("{}", stats),
-            "Natural parameter continuation; solves G(u, λ) = 0\n\
+            "Natural parameter continuation; solves G(u, λ) = 0 (fixed steps)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\

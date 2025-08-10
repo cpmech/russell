@@ -1,22 +1,22 @@
 
 running 1 test
-test test_arc_linear_problem ... ─────────────────────────────────────────────────────────────────────────
-       λ        s       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
-─────────────────────────────────────────────────────────────────────────
- 0.000e0  0.000e0 5.000e-1
-       ·        ·        ·     1   1.11e-16 ✅     0.00e0       0.00e0   
-3.536e-1 5.000e-1 5.000e-1
-       ·        ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
-7.071e-1  1.000e0 5.000e-1
-       ·        ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
- 1.061e0  1.500e0 5.000e-1
-       ·        ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
- 1.414e0  2.000e0 5.000e-1
-       ·        ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
- 1.768e0  2.500e0 5.000e-1
-─────────────────────────────────────────────────────────────────────────
+test test_arc_linear_problem ... ────────────────────────────────────────────────────────────────
+       λ       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────
+ 0.000e0 5.000e-1
+       ·        ·     1   1.11e-16 ✅     0.00e0       0.00e0   
+3.536e-1 5.000e-1
+       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
+7.071e-1 5.000e-1
+       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
+ 1.061e0 5.000e-1
+       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
+ 1.414e0 5.000e-1
+       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
+ 1.768e0 5.000e-1
+────────────────────────────────────────────────────────────────
 
-Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)
 Number of function evaluations   = 5
 Number of Jacobian evaluations   = 6
 Number of factorizations         = 6
@@ -30,8 +30,7 @@ Number of continued divergence   = 0
 Number of iterations (maximum)   = 1
 Number of iterations (total)     = 5
 Last accepted/suggested stepsize = 0.5
-Automatic stepsize adjustment    = false
 ok
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
 

@@ -173,22 +173,22 @@ impl Stats {
     ///
     /// # Arguments
     ///
-    /// * `n_iter_max` - The maximum number of iterations to consider (in the stations array); e.g., 13
+    /// * `niter_upper` - Upper bound on the number of iterations (in the stations array); e.g., 13
     /// * `character` - The character to use for the histogram bars
     /// * `bar_len` - The maximum length of the histogram bars; e.g., 40
-    pub fn get_histogram_of_iterations(&self, n_iter_max: usize, character: char, bar_len: usize) -> String {
-        let mut buffer = String::new();
+    pub fn get_histogram_of_iterations(&self, niter_upper: usize, character: char, bar_len: usize) -> Histogram<usize> {
         if self.record_iterations_residuals {
             if let Some(residuals) = &self.iterations_residuals {
                 let n_iter_data = residuals.iter().map(|res| res.len()).collect::<Vec<usize>>();
-                let stations = (0..n_iter_max).collect::<Vec<usize>>();
+                let stations = (0..niter_upper).collect::<Vec<usize>>();
                 let mut histogram = Histogram::new(&stations).unwrap();
                 histogram.set_bar_char(character).set_bar_max_len(bar_len);
                 histogram.count(&n_iter_data);
-                write!(&mut buffer, "{}", histogram).unwrap();
+                return histogram;
             }
         }
-        buffer
+        let empty_histogram = Histogram::new(&[0, 1]).unwrap();
+        empty_histogram
     }
 
     /// Resets all values
@@ -303,9 +303,10 @@ impl Stats {
         let niter_hist = if !self.record_iterations_residuals {
             String::new()
         } else {
+            let hist = self.get_histogram_of_iterations(13, '■', 40);
             format!(
                 "\n\nDistribution of the number of converged iterations across all steps:\n{}",
-                self.get_histogram_of_iterations(13, '■', 40)
+                hist
             )
         };
 
@@ -421,10 +422,10 @@ mod tests {
     fn histogram_works() {
         // check empty string due to false flag
         let stats = Stats::new(Method::Arclength, false, false);
-        assert!(stats.get_histogram_of_iterations(13, '*', 40).is_empty());
+        assert_eq!(stats.get_histogram_of_iterations(13, '*', 40).get_counts(), &[0]);
         // check empty string due to no values added
         let mut stats = Stats::new(Method::Arclength, false, true);
-        assert!(stats.get_histogram_of_iterations(13, '*', 40).is_empty());
+        assert_eq!(stats.get_histogram_of_iterations(13, '*', 40).get_counts(), &[0]);
         // first step
         stats.record_iterations_residuals_start();
         stats.record_iterations_residuals_append(1.0 / 2.0);
@@ -437,8 +438,9 @@ mod tests {
         stats.record_iterations_residuals_append(1.0e-4);
         stats.record_iterations_residuals_append(1.0e-8);
         stats.record_iterations_residuals_stop(true);
+        let hist = stats.get_histogram_of_iterations(13, '■', 40);
         assert_eq!(
-            stats.get_histogram_of_iterations(13, '■', 40),
+            format!("{}", hist),
             "[ 0, 1) | 0 \n\
              [ 1, 2) | 0 \n\
              [ 2, 3) | 0 \n\

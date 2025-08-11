@@ -138,6 +138,54 @@ impl Stats {
         }
     }
 
+    /// Returns the convergence rates across all steps
+    ///
+    /// Note: This is only available if `record_iterations_residuals` is enabled
+    ///
+    /// # Arguments
+    ///
+    /// * `lower_limit` - The lower limit for the convergence rates; e.g. 0.9
+    /// * `upper_limit` - The upper limit for the convergence rates; e.g. 2.1
+    pub fn get_convergence_rates(&self, lower_limit: f64, upper_limit: f64) -> Vec<f64> {
+        let mut conv_ratio_values = Vec::new();
+        if self.record_iterations_residuals {
+            if let Some(residuals) = &self.iterations_residuals {
+                for err in residuals {
+                    if err.len() >= 3 {
+                        let l = err.len();
+                        let rate = f64::ln(err[l - 1] / err[l - 2]) / f64::ln(err[l - 2] / err[l - 3]);
+                        if rate.is_finite() && rate >= lower_limit && rate <= upper_limit {
+                            conv_ratio_values.push(rate);
+                        }
+                    }
+                }
+            }
+        }
+        conv_ratio_values
+    }
+
+    /// Returns a histogram of the number of iterations across all steps
+    ///
+    /// Note: This is only available if `record_iterations_residuals` is enabled
+    ///
+    /// # Arguments
+    ///
+    /// * `character` - The character to use for the histogram bars
+    pub fn get_histogram_of_iterations(&self, character: char) -> String {
+        let mut buffer = String::new();
+        if self.record_iterations_residuals {
+            if let Some(residuals) = &self.iterations_residuals {
+                let n_iter_data = residuals.iter().map(|res| res.len()).collect::<Vec<usize>>();
+                let stations = (0..11).collect::<Vec<usize>>();
+                let mut histogram = Histogram::new(&stations).unwrap();
+                histogram.set_bar_char(character).set_bar_max_len(40);
+                histogram.count(&n_iter_data);
+                write!(&mut buffer, "{}", histogram).unwrap();
+            }
+        }
+        buffer
+    }
+
     /// Resets all values
     pub(crate) fn reset(&mut self, auto: bool) {
         self.auto = auto;
@@ -230,6 +278,33 @@ impl Stats {
 
     /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
+        // Convergence rates statistics
+        let rates_stats = if !self.record_iterations_residuals {
+            ""
+        } else {
+            let rates = self.get_convergence_rates(0.9, 2.1);
+            if rates.is_empty() {
+                ""
+            } else {
+                let res = statistics(&rates);
+                &format!(
+                    "\n\nConvergence rates: (min, max) = ({:.3}, {:.3})\n                       (μ, σ) = ({:.3}, {:.3})",
+                    res.min, res.max, res.mean, res.std_dev
+                )
+            }
+        };
+
+        // Histogram of the number of iterations
+        let niter_hist = if !self.record_iterations_residuals {
+            String::new()
+        } else {
+            format!(
+                "\n\nDistribution of the number of converged iterations across all steps:\n{}",
+                self.get_histogram_of_iterations('■')
+            )
+        };
+
+        // Write summary to buffer
         let mut buffer = String::new();
         write!(
             &mut buffer,
@@ -246,7 +321,7 @@ impl Stats {
              Number of continued divergence   = {}\n\
              Number of iterations (maximum)   = {}\n\
              Number of iterations (total)     = {}\n\
-             Last accepted/suggested stepsize = {}",
+             Last accepted/suggested stepsize = {}{}{}",
             self.method.description(),
             if self.auto { "auto steps" } else { "fixed steps" },
             self.n_function,
@@ -262,40 +337,10 @@ impl Stats {
             self.n_iteration_max,
             self.n_iteration_total,
             self.h_accepted,
+            rates_stats,
+            niter_hist
         )
         .unwrap();
-        if self.record_iterations_residuals {
-            if let Some(residuals) = &self.iterations_residuals {
-                let n_iter_data = residuals.iter().map(|res| res.len()).collect::<Vec<usize>>();
-                let stations = (0..11).collect::<Vec<usize>>();
-                let mut histogram = Histogram::new(&stations).unwrap();
-                histogram.set_bar_char('*').set_bar_max_len(40);
-                histogram.count(&n_iter_data);
-                write!(
-                    &mut buffer,
-                    "\nDistribution of the number of converged iterations across all steps:\n",
-                )
-                .unwrap();
-                write!(&mut buffer, "{}", histogram).unwrap();
-                let mut conv_ratio_values = Vec::new();
-                for err in residuals {
-                    if err.len() >= 3 {
-                        let l = err.len();
-                        let rate = f64::ln(err[l - 1] / err[l - 2]) / f64::ln(err[l - 2] / err[l - 3]);
-                        if rate.is_finite() && rate >= 0.9 && rate <= 2.1 {
-                            conv_ratio_values.push(rate);
-                        }
-                    }
-                }
-                let res = statistics(&conv_ratio_values);
-                write!(
-                    &mut buffer,
-                    "Convergence: mean = {:.3}, std_dev = {:.3}, min_max = ({:.3}, {:.3})",
-                    res.mean, res.std_dev, res.min, res.max
-                )
-                .unwrap();
-            }
-        }
         buffer
     }
 }
@@ -345,7 +390,6 @@ mod tests {
     #[test]
     fn summary_works() {
         let stats = Stats::new(Method::Arclength, false, false);
-        println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
             "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)\n\

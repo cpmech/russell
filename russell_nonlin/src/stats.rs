@@ -170,15 +170,17 @@ impl Stats {
     ///
     /// # Arguments
     ///
+    /// * `n_iter_max` - The maximum number of iterations to consider (in the stations array); e.g., 13
     /// * `character` - The character to use for the histogram bars
-    pub fn get_histogram_of_iterations(&self, character: char) -> String {
+    /// * `bar_len` - The maximum length of the histogram bars; e.g., 40
+    pub fn get_histogram_of_iterations(&self, n_iter_max: usize, character: char, bar_len: usize) -> String {
         let mut buffer = String::new();
         if self.record_iterations_residuals {
             if let Some(residuals) = &self.iterations_residuals {
                 let n_iter_data = residuals.iter().map(|res| res.len()).collect::<Vec<usize>>();
-                let stations = (0..11).collect::<Vec<usize>>();
+                let stations = (0..n_iter_max).collect::<Vec<usize>>();
                 let mut histogram = Histogram::new(&stations).unwrap();
-                histogram.set_bar_char(character).set_bar_max_len(40);
+                histogram.set_bar_char(character).set_bar_max_len(bar_len);
                 histogram.count(&n_iter_data);
                 write!(&mut buffer, "{}", histogram).unwrap();
             }
@@ -300,7 +302,7 @@ impl Stats {
         } else {
             format!(
                 "\n\nDistribution of the number of converged iterations across all steps:\n{}",
-                self.get_histogram_of_iterations('■')
+                self.get_histogram_of_iterations(13, '■', 40)
             )
         };
 

@@ -140,6 +140,9 @@ impl Stats {
 
     /// Returns the convergence rates across all steps
     ///
+    /// The convergence rate is calculated for the last three results and returned only
+    /// if the rate is within the lower and upper limits, inclusive.
+    ///
     /// Note: This is only available if `record_iterations_residuals` is enabled
     ///
     /// # Arguments
@@ -379,6 +382,7 @@ impl fmt::Display for Stats {
 mod tests {
     use super::Stats;
     use crate::Method;
+    use russell_lab::array_approx_eq;
 
     #[test]
     fn clone_copy_and_debug_work() {
@@ -390,7 +394,69 @@ mod tests {
     }
 
     #[test]
-    fn summary_works() {
+    fn convergence_rate_works() {
+        // check empty vector due to false flag
+        let stats = Stats::new(Method::Arclength, false, false);
+        assert!(stats.get_convergence_rates(0.0, 10.0).is_empty());
+        // check empty vector due to no values added
+        let mut stats = Stats::new(Method::Arclength, false, true);
+        assert!(stats.get_convergence_rates(0.0, 10.0).is_empty());
+        // first step
+        stats.record_iterations_residuals_start();
+        stats.record_iterations_residuals_append(1.0 / 2.0);
+        stats.record_iterations_residuals_append(1.0 / 4.0);
+        stats.record_iterations_residuals_append(1.0 / 16.0);
+        stats.record_iterations_residuals_stop(true);
+        // second step
+        stats.record_iterations_residuals_start();
+        stats.record_iterations_residuals_append(1.0e-2);
+        stats.record_iterations_residuals_append(1.0e-4);
+        stats.record_iterations_residuals_append(1.0e-8);
+        stats.record_iterations_residuals_stop(true);
+        let rates = stats.get_convergence_rates(0.0, 10.0);
+        array_approx_eq(&rates, &[2.0, 2.0], 1e-15);
+    }
+
+    #[test]
+    fn histogram_works() {
+        // check empty string due to false flag
+        let stats = Stats::new(Method::Arclength, false, false);
+        assert!(stats.get_histogram_of_iterations(13, '*', 40).is_empty());
+        // check empty string due to no values added
+        let mut stats = Stats::new(Method::Arclength, false, true);
+        assert!(stats.get_histogram_of_iterations(13, '*', 40).is_empty());
+        // first step
+        stats.record_iterations_residuals_start();
+        stats.record_iterations_residuals_append(1.0 / 2.0);
+        stats.record_iterations_residuals_append(1.0 / 4.0);
+        stats.record_iterations_residuals_append(1.0 / 16.0);
+        stats.record_iterations_residuals_stop(true);
+        // second step
+        stats.record_iterations_residuals_start();
+        stats.record_iterations_residuals_append(1.0e-2);
+        stats.record_iterations_residuals_append(1.0e-4);
+        stats.record_iterations_residuals_append(1.0e-8);
+        stats.record_iterations_residuals_stop(true);
+        assert_eq!(
+            stats.get_histogram_of_iterations(13, '■', 40),
+            "[ 0, 1) | 0 \n\
+             [ 1, 2) | 0 \n\
+             [ 2, 3) | 0 \n\
+             [ 3, 4) | 2 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 4, 5) | 0 \n\
+             [ 5, 6) | 0 \n\
+             [ 6, 7) | 0 \n\
+             [ 7, 8) | 0 \n\
+             [ 8, 9) | 0 \n\
+             [ 9,10) | 0 \n\
+             [10,11) | 0 \n\
+             [11,12) | 0 \n\
+             \x20\x20\x20\x20sum = 2\n"
+        );
+    }
+
+    #[test]
+    fn summary_works_basic() {
         let stats = Stats::new(Method::Arclength, false, false);
         assert_eq!(
             format!("{}", stats.summary()),
@@ -408,6 +474,51 @@ mod tests {
              Number of iterations (maximum)   = 0\n\
              Number of iterations (total)     = 0\n\
              Last accepted/suggested stepsize = 0"
+        );
+    }
+
+    #[test]
+    fn summary_works_with_convergence_rate_info() {
+        let mut stats = Stats::new(Method::Arclength, false, true);
+        stats.record_iterations_residuals_start();
+        stats.record_iterations_residuals_append(1.0e-2);
+        stats.record_iterations_residuals_append(1.0e-4);
+        stats.record_iterations_residuals_append(1.0e-8);
+        stats.record_iterations_residuals_stop(true);
+        assert_eq!(
+            format!("{}", stats.summary()),
+            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)\n\
+             Number of function evaluations   = 0\n\
+             Number of Jacobian evaluations   = 0\n\
+             Number of factorizations         = 0\n\
+             Number of lin sys solutions      = 0\n\
+             Number of performed steps        = 0\n\
+             Number of accepted steps         = 0\n\
+             Number of rejected steps         = 0\n\
+             Number of large max(‖δu‖∞,|δλ|)  = 0\n\
+             Number of max iterations reached = 0\n\
+             Number of continued divergence   = 0\n\
+             Number of iterations (maximum)   = 0\n\
+             Number of iterations (total)     = 0\n\
+             Last accepted/suggested stepsize = 0\n\
+             \n\
+             Convergence rates: (min, max) = (2.000, 2.000)\n\
+             (0.9 ≤ cr ≤ 2.1)       (μ, σ) = (2.000, 0.000)\n\
+             \n\
+             Distribution of the number of converged iterations across all steps:\n\
+             [ 0, 1) | 0 \n\
+             [ 1, 2) | 0 \n\
+             [ 2, 3) | 0 \n\
+             [ 3, 4) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 4, 5) | 0 \n\
+             [ 5, 6) | 0 \n\
+             [ 6, 7) | 0 \n\
+             [ 7, 8) | 0 \n\
+             [ 8, 9) | 0 \n\
+             [ 9,10) | 0 \n\
+             [10,11) | 0 \n\
+             [11,12) | 0 \n\
+             \x20\x20\x20\x20sum = 1\n"
         );
     }
 

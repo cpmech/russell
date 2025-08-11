@@ -290,7 +290,7 @@ impl Stats {
             } else {
                 let res = statistics(&rates);
                 &format!(
-                    "\n\nConvergence rates: (min, max) = ({:.3}, {:.3})\n                       (μ, σ) = ({:.3}, {:.3})",
+                    "\n\nConvergence rates: (min, max) = ({:.3}, {:.3})\n(0.9 ≤ cr ≤ 2.1)       (μ, σ) = ({:.3}, {:.3})",
                     res.min, res.max, res.mean, res.std_dev
                 )
             }

@@ -115,6 +115,9 @@ pub struct Config {
     ///
     /// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
     pub(crate) sigma_max: f64,
+
+    /// Records the predictor values for debugging
+    pub(crate) debug_predictor: bool,
 }
 
 impl Config {
@@ -157,6 +160,7 @@ impl Config {
             bordering: false,
             alpha_max: 5.0,
             sigma_max: 0.01,
+            debug_predictor: false,
         }
     }
 
@@ -431,6 +435,12 @@ impl Config {
     /// Default value: 0.01
     pub fn set_sigma_max(&mut self, value: f64) -> &mut Self {
         self.sigma_max = value;
+        self
+    }
+
+    /// Records the predictor values for debugging
+    pub fn set_debug_predictor(&mut self, flag: bool) -> &mut Self {
+        self.debug_predictor = flag;
         self
     }
 

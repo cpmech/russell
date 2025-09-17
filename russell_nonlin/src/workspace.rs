@@ -115,6 +115,11 @@ pub(crate) struct Workspace<'a> {
 
     /// Indicates whether this step results were acceptable or not
     pub(crate) acceptable: bool,
+
+    /// Holds the predictor values for debugging
+    ///
+    /// Holds λ and the first two components of u (if available), calculated by the predictor step.
+    pub(crate) predictor_values_debug: Option<(Vec<f64>, Vec<f64>, Vec<f64>)>,
 }
 
 impl<'a> Workspace<'a> {
@@ -183,6 +188,9 @@ impl<'a> Workspace<'a> {
             u_aux1: Vector::new(ndim_num_jac),
             u_aux2: Vector::new(ndim_num_jac),
             acceptable: true,
+
+            // debugging
+            predictor_values_debug: None,
         }
     }
 

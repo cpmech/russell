@@ -51,6 +51,17 @@ impl<'a, A> Solver<'a, A> {
         self.work.errors()
     }
 
+    /// Returns λ and the first two components of u (if available), calculated by the predictor step (for debugging)
+    ///
+    /// Returns `(l_predictor, u0_predictor, u1_predictor)`.
+    pub fn get_debug_predictor_values(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+        if let Some((l, u0, u1)) = &self.work.predictor_values_debug {
+            (l.clone(), u0.clone(), u1.clone())
+        } else {
+            (Vec::new(), Vec::new(), Vec::new())
+        }
+    }
+
     /// Solves the nonlinear system
     ///
     /// Solves:

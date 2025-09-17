@@ -522,6 +522,19 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             f(do_backup, &state.u, &work.u, args)?;
         }
 
+        // record the predictor for debugging
+        if self.config.debug_predictor {
+            if work.predictor_values_debug.is_none() {
+                work.predictor_values_debug = Some((Vec::new(), Vec::new(), Vec::new()));
+            }
+            let predictor_values = work.predictor_values_debug.as_mut().unwrap();
+            predictor_values.0.push(work.l);
+            predictor_values.1.push(work.u[0]);
+            if work.u.dim() > 1 {
+                predictor_values.2.push(work.u[1]);
+            }
+        }
+
         // iteration loop
         let logging = true;
         work.n_iteration = 0;
@@ -646,6 +659,16 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // reduce the stepsize
         work.h_estimate = self.config.m_failure * work.h;
+
+        // remove predictor values
+        if self.config.debug_predictor {
+            let predictor_values = work.predictor_values_debug.as_mut().unwrap();
+            predictor_values.0.pop();
+            predictor_values.1.pop();
+            if work.u.dim() > 1 {
+                predictor_values.2.pop();
+            }
+        }
     }
 
     /// Calculates the stepsize that allows reaching the target lambda

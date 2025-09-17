@@ -11,7 +11,10 @@ fn test_arc_bspline_1() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true).set_hide_timings(true);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_debug_predictor(true);
     // .set_allowed_continued_divergence(3);
 
     // define solver
@@ -46,6 +49,9 @@ fn test_arc_bspline_1() {
     let du1ds = out.get_duds_values(1);
     // let dlds = out.get_dlds_values();
 
+    // debug data
+    let (_, u0_predictor, u1_predictor) = solver.get_debug_predictor_values();
+
     // plot
     if SAVE_FIGURE {
         // draw B-spline curve
@@ -61,6 +67,7 @@ fn test_arc_bspline_1() {
         }
         curve.draw(&xx, &yy);
 
+        // draw numerical solution
         let mut curve_num = Curve::new();
         curve_num
             .set_label("numerical")
@@ -71,6 +78,16 @@ fn test_arc_bspline_1() {
             .set_marker_line_color("red");
         curve_num.draw(uu0, uu1);
 
+        // draw predictor points
+        let mut predictor_curve = Curve::new();
+        predictor_curve
+            .set_line_style("None")
+            .set_marker_style("*")
+            .set_marker_color("magenta")
+            .set_marker_line_color("magenta");
+        predictor_curve.draw(&u0_predictor, &u1_predictor);
+
+        // draw tangent vectors
         let mut arrows = Canvas::new();
         arrows
             .set_arrow_scale(10.0)
@@ -82,6 +99,7 @@ fn test_arc_bspline_1() {
             arrows.draw_arrow(uu0[i], uu1[i], xf, yf);
         }
 
+        // draw hyperplanes
         let mut hyperplanes = Curve::new();
         hyperplanes.set_line_style("--").set_line_color("#d0d0d0");
         for i in 0..uu0.len() {
@@ -94,9 +112,11 @@ fn test_arc_bspline_1() {
             hyperplanes.draw_ray(xa, ya, ep);
         }
 
+        // plot
         let mut plot = Plot::new();
         plot.set_labels("$u_1$", "$u_2$")
             .add(&hyperplanes)
+            .add(&predictor_curve)
             .add(&curve)
             .add(&curve_num)
             .add(&arrows)

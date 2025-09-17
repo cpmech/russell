@@ -50,12 +50,10 @@ impl Samples {
 
         // function to compute Gl = ∂G/∂λ
         if with_ggl {
-            system
-                .set_calc_ggl(|ggl: &mut Vector, _l: f64, _u: &Vector, _args: &mut NoArgs| {
-                    ggl[0] = -1.0;
-                    Ok(())
-                })
-                .unwrap();
+            system.set_calc_ggl(|ggl: &mut Vector, _l: f64, _u: &Vector, _args: &mut NoArgs| {
+                ggl[0] = -1.0;
+                Ok(())
+            });
         }
 
         // initial state
@@ -307,12 +305,10 @@ impl Samples {
             .unwrap();
 
         // function to compute Gl
-        system
-            .set_calc_ggl(|ggl, _l, u, _args| {
-                ggl[0] = -f64::exp(u[0]);
-                Ok(())
-            })
-            .unwrap();
+        system.set_calc_ggl(|ggl, _l, u, _args| {
+            ggl[0] = -f64::exp(u[0]);
+            Ok(())
+        });
 
         // initial state
         let mut state = State::new(ndim);
@@ -351,12 +347,10 @@ impl Samples {
             .unwrap();
 
         // function to compute Gl = ∂G/∂λ
-        system
-            .set_calc_ggl(|ggl, _l, _u, _args| {
-                ggl[0] = -1.0;
-                Ok(())
-            })
-            .unwrap();
+        system.set_calc_ggl(|ggl, _l, _u, _args| {
+            ggl[0] = -1.0;
+            Ok(())
+        });
 
         // initial state
         let mut state = State::new(ndim);
@@ -399,16 +393,14 @@ impl Samples {
             .unwrap();
 
         // function to compute Gl = ∂G/∂λ
-        system
-            .set_calc_ggl(|ggl, l, _u, args: &mut SampleBsplineArgs| {
-                let t = f64::min(1.0, f64::max(0.0, l));
-                args.bspline.calc_curve_derivs(t, 1, false);
-                args.bspline.get_curve_deriv(&mut args.coords, 1);
-                ggl[0] = -args.coords[0];
-                ggl[1] = -args.coords[1];
-                Ok(())
-            })
-            .unwrap();
+        system.set_calc_ggl(|ggl, l, _u, args: &mut SampleBsplineArgs| {
+            let t = f64::min(1.0, f64::max(0.0, l));
+            args.bspline.calc_curve_derivs(t, 1, false);
+            args.bspline.get_curve_deriv(&mut args.coords, 1);
+            ggl[0] = -args.coords[0];
+            ggl[1] = -args.coords[1];
+            Ok(())
+        });
 
         // allocate B-spline and extra arguments
         let degree = 2;

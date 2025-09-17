@@ -19,7 +19,7 @@ impl<'a, A> SolverNatural<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(&mut self, work: &mut Workspace, args: &mut A, logging: bool) -> Result<(), StrError> {
+    fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A, logging: bool) -> Result<(), StrError> {
         // calculate G(u, λ)
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
@@ -92,19 +92,10 @@ impl<'a, A> SolverNatural<'a, A> {
         // update: u ← u - mdu = u + δu
         vec_update(&mut work.u, -1.0, &work.mdu).unwrap();
 
-        // external: update starred variables
-        if let Some(f) = self.system.iteration_update_starred.as_ref() {
-            f(&work.u, args);
-        }
-
-        // external: backup/restore secondary variables to prepare for the update
-        if let Some(f) = self.system.iteration_prepare_to_update_secondary.as_ref() {
-            f(work.n_iteration == 0, args);
-        }
-
         // external: update secondary variables
-        if let Some(f) = self.system.iteration_update_secondary.as_ref() {
-            f(&work.mdu, &work.u, args)?;
+        if let Some(f) = self.system.update_secondary_state.as_ref() {
+            let do_backup = false; // already done by the predictor
+            f(do_backup, &state.u, &work.u, args)?;
         }
         Ok(())
     }
@@ -150,19 +141,15 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
-        // set workspace with trial values
-        vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
-        work.l = state.l + work.h; // λ_trial ← λ0 + h
-
         // external: create a copy of external state variables
         if work.auto {
-            if let Some(f) = self.system.step_backup_state.as_ref() {
+            if let Some(f) = self.system.backup_secondary_state.as_ref() {
                 f(args);
             }
         }
 
         // external: prepare to iterate (e.g., reset algorithmic variables)
-        if let Some(f) = self.system.step_reset_algorithmic_variables.as_ref() {
+        if let Some(f) = self.system.prepare_to_iterate.as_ref() {
             f(args);
         }
 
@@ -171,6 +158,16 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // start the recording of iteration errors
         work.stats.record_iterations_residuals_start();
+
+        // predictor: set workspace with trial values
+        vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
+        work.l = state.l + work.h; // λ_trial ← λ0 + h
+
+        // predictor: update secondary variables (e.g., local state)
+        if let Some(f) = self.system.update_secondary_state.as_ref() {
+            let do_backup = true;
+            f(do_backup, &state.u, &work.u, args)?;
+        }
 
         // iteration loop
         let logging = true;
@@ -181,7 +178,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             work.stats.n_iteration_max = usize::max(work.stats.n_iteration_max, work.n_iteration + 1);
 
             // run Newton-Raphson iteration
-            self.iterate(work, args, logging)?;
+            self.iterate(work, state, args, logging)?;
 
             // append the iteration residuals to the current step
             work.stats.record_iterations_residuals_append(work.err.residual_max);
@@ -222,7 +219,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
         if work.auto {
-            if let Some(f) = self.system.step_restore_state.as_ref() {
+            if let Some(f) = self.system.restore_secondary_state.as_ref() {
                 f(args);
             }
         }

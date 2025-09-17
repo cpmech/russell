@@ -52,36 +52,27 @@ pub struct System<'a, A> {
     /// Symmetric type of the Gu matrix
     pub(crate) sym_ggu: Sym,
 
-    /// Creates a copy of external state variables
+    /// Creates a copy of external state variables at the beginning of a step
     ///
     /// The function is `fn (args)`
-    pub(crate) step_backup_state: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
+    pub(crate) backup_secondary_state: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
 
-    /// Restores external state variables
+    /// Restores external state variables at the end of a step, if the step failed
     ///
     /// The function is `fn (args)`
-    pub(crate) step_restore_state: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
+    pub(crate) restore_secondary_state: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
 
     /// Prepares to iterate (e.g., reset algorithmic variables in the FEM)
     ///
     /// The function is `fn (args)`
-    pub(crate) step_reset_algorithmic_variables: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
+    pub(crate) prepare_to_iterate: Option<Arc<dyn Fn(&mut A) + Send + Sync + 'a>>,
 
-    /// Updates starred variables (e.g., FEM transient starred variables)
+    /// Updates secondary variables (e.g., FEM stresses and starred variables)
     ///
-    /// The function is `fn (mdu, u_new, args)`
-    pub(crate) iteration_update_starred: Option<Arc<dyn Fn(&Vector, &mut A) + Send + Sync + 'a>>,
-
-    /// Prepares to update secondary variables (e.g., FEM stresses)
-    ///
-    /// The function is `fn (first_iteration, args)`
-    pub(crate) iteration_prepare_to_update_secondary: Option<Arc<dyn Fn(bool, &mut A) + Send + Sync + 'a>>,
-
-    /// Updates secondary variables (e.g., FEM stresses)
-    ///
-    /// The function is `fn (mdu, u_new, args)`
-    pub(crate) iteration_update_secondary:
-        Option<Arc<dyn Fn(&Vector, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
+    /// The function is `fn (do_backup, u0, u1, args)` with `u0` being the
+    /// value at the beginning of the step and `u1` the value at the updated step.
+    pub(crate) update_secondary_state:
+        Option<Arc<dyn Fn(bool, &Vector, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
 }
 
 impl<'a, A> System<'a, A> {
@@ -102,12 +93,10 @@ impl<'a, A> System<'a, A> {
             calc_ggl: None,
             nnz_ggu: ndim * ndim,
             sym_ggu: Sym::No,
-            step_backup_state: None,
-            step_restore_state: None,
-            step_reset_algorithmic_variables: None,
-            iteration_update_starred: None,
-            iteration_prepare_to_update_secondary: None,
-            iteration_update_secondary: None,
+            backup_secondary_state: None,
+            restore_secondary_state: None,
+            prepare_to_iterate: None,
+            update_secondary_state: None,
         })
     }
 
@@ -120,12 +109,10 @@ impl<'a, A> System<'a, A> {
             calc_ggl: self.calc_ggl.clone(),
             nnz_ggu: self.nnz_ggu,
             sym_ggu: self.sym_ggu,
-            step_reset_algorithmic_variables: self.step_reset_algorithmic_variables.clone(),
-            step_backup_state: self.step_backup_state.clone(),
-            step_restore_state: self.step_restore_state.clone(),
-            iteration_update_starred: self.iteration_update_starred.clone(),
-            iteration_prepare_to_update_secondary: self.iteration_prepare_to_update_secondary.clone(),
-            iteration_update_secondary: self.iteration_update_secondary.clone(),
+            backup_secondary_state: self.backup_secondary_state.clone(),
+            restore_secondary_state: self.restore_secondary_state.clone(),
+            prepare_to_iterate: self.prepare_to_iterate.clone(),
+            update_secondary_state: self.update_secondary_state.clone(),
         }
     }
 
@@ -145,7 +132,7 @@ impl<'a, A> System<'a, A> {
         nnz: Option<usize>,
         symmetric: Sym,
         callback: impl Fn(&mut CooMatrix, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
-    ) -> Result<(), StrError> {
+    ) -> Result<&mut Self, StrError> {
         self.nnz_ggu = if let Some(value) = nnz {
             if value < 1 {
                 return Err("nnz must be at least 1");
@@ -160,7 +147,7 @@ impl<'a, A> System<'a, A> {
         };
         self.sym_ggu = symmetric;
         self.calc_ggu = Some(Arc::new(callback));
-        Ok(())
+        Ok(self)
     }
 
     /// Sets a function to calculate the `Gλ = dG/dλ` vector
@@ -173,9 +160,45 @@ impl<'a, A> System<'a, A> {
     pub fn set_calc_ggl(
         &mut self,
         callback: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
-    ) -> Result<(), StrError> {
+    ) -> &mut Self {
         self.calc_ggl = Some(Arc::new(callback));
-        Ok(())
+        self
+    }
+
+    /// Sets a function to create a copy of external state variables at the beginning of a step
+    ///
+    /// The function is `fn (args)`
+    pub fn set_backup_secondary_state(&mut self, callback: impl Fn(&mut A) + Send + Sync + 'a) -> &mut Self {
+        self.backup_secondary_state = Some(Arc::new(callback));
+        self
+    }
+
+    /// Sets a function to restore external state variables at the end of a step, if the step failed
+    ///
+    /// The function is `fn (args)`
+    pub fn set_restore_secondary_state(&mut self, callback: impl Fn(&mut A) + Send + Sync + 'a) -> &mut Self {
+        self.restore_secondary_state = Some(Arc::new(callback));
+        self
+    }
+
+    /// Sets a function to prepare to iterate (e.g., reset algorithmic variables in the FEM)
+    ///
+    /// The function is `fn (args)`
+    pub fn set_prepare_to_iterate(&mut self, callback: impl Fn(&mut A) + Send + Sync + 'a) -> &mut Self {
+        self.prepare_to_iterate = Some(Arc::new(callback));
+        self
+    }
+
+    /// Sets a function to update secondary variables (e.g., FEM stresses and starred variables)
+    ///
+    /// The function is `fn (do_backup, u0, u1, args)` with `u0` being the
+    /// value at the beginning of the step and `u1` the value at the updated step.
+    pub fn set_update_secondary_state(
+        &mut self,
+        callback: impl Fn(bool, &Vector, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
+    ) -> &mut Self {
+        self.update_secondary_state = Some(Arc::new(callback));
+        self
     }
 
     /// Returns the dimension of the ODE system

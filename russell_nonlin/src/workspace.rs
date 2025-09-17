@@ -104,7 +104,7 @@ pub(crate) struct Workspace<'a> {
     /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
     pub(crate) dlds: f64,
 
-    /// Holds -δu
+    /// Holds -δu (negative of iteration increment)
     pub(crate) mdu: Vector,
 
     /// Auxiliary u vector #1 (e.g., for numerical Jacobian)
@@ -147,6 +147,7 @@ impl<'a> Workspace<'a> {
             0
         };
 
+        // auxiliary variable
         let ndim_tangent = if with_tangent { system.ndim } else { 0 };
 
         // allocate the workspace

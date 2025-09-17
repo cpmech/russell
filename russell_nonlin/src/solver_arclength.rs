@@ -25,12 +25,12 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// and  Nλ₀ ≡ ∂N/∂λ|₀ = (2 - θ) dλ/ds|₀
 /// ```
 ///
-/// The `Θ` constant above is internally selected such that:
+/// The `θ` constant above is internally selected such that:
 ///
-/// * `Θ = 1`: normal operation
-/// * `Θ = 0`: targeting lambda
+/// * `θ = 1`: normal operation
+/// * `θ = 0`: targeting lambda
 ///
-/// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
+/// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is not the arclength but the pseudo-arclength.
 ///
 /// The augmented linear system solved at each Newton iteration is:
 ///
@@ -102,7 +102,7 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 /// ```
 ///
 /// After Newton's iteration is completed (converged), the tangent vector needs to
-/// be updated. To continue following the solution branch in the same direction, the
+/// be updated. To keep following the solution branch in the same direction, the
 /// new tangent vector `(du/ds|₁, dλ/ds|₁)` must satisfy:
 ///
 /// ```text
@@ -183,8 +183,8 @@ pub struct SolverArclength<'a, A> {
     /// N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀)ᵀ dλ/ds|₀ - σ
     /// ```
     ///
-    /// * `Θ = 1.0`: normal operation
-    /// * `Θ = 0.0`: targeting lambda
+    /// * `θ = 1.0`: normal operation
+    /// * `θ = 0.0`: targeting lambda
     theta: f64,
 
     /// Angle between the previous tangent vector and the increment vector
@@ -292,8 +292,9 @@ impl<'a, A> SolverArclength<'a, A> {
         if self.use_num_ggu {
             // numerical
             work.stats.n_function += self.system.ndim;
+            work.ggu.reset();
             numerical_jacobian(
-                &mut self.aa,
+                &mut work.ggu,
                 1.0,
                 work.l,
                 &mut work.u,
@@ -302,6 +303,7 @@ impl<'a, A> SolverArclength<'a, A> {
                 args,
                 self.system.calc_gg.as_ref(),
             )?;
+            panic!("not implemented yet");
         } else {
             // analytical
             work.stats.n_jacobian += 1;
@@ -402,22 +404,10 @@ impl<'a, A> SolverArclength<'a, A> {
         }
         work.l += self.x[ndim];
 
-        // external: update starred variables
-        if let Some(f) = self.system.iteration_update_starred.as_ref() {
-            f(&work.u, args);
-        }
-
-        // external: backup/restore secondary variables to prepare for the update
-        if let Some(f) = self.system.iteration_prepare_to_update_secondary.as_ref() {
-            f(work.n_iteration == 0, args);
-        }
-
-        // external: update secondary variables
-        if let Some(f) = self.system.iteration_update_secondary.as_ref() {
-            for i in 0..ndim {
-                work.mdu[i] = -self.x[i]; // mdu = - δu
-            }
-            f(&work.mdu, &work.u, args)?;
+        // external: update secondary variables (e.g., local state)
+        if let Some(f) = self.system.update_secondary_state.as_ref() {
+            let do_backup = false; // already done by the predictor
+            f(do_backup, &state.u, &work.u, args)?; // do_backup, u0, u1, args
         }
         Ok(())
     }
@@ -449,7 +439,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut work.u, &state.u).unwrap(); // u₀ = u
         work.l = state.l; // λ₀ = λ
 
-        // get sign of dlds or reuse previous tangent vector
+        // get sign of dlds
         let sign0 = match dir {
             Direction::Pos => 1.0,
             Direction::Neg => -1.0,
@@ -503,20 +493,15 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
-        // predictor
-        let sigma = work.h;
-        vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + Θ σ · duds₀
-        work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - Θ) σ · dλds₀
-
         // external: create a copy of external state variables
         if work.auto {
-            if let Some(f) = self.system.step_backup_state.as_ref() {
+            if let Some(f) = self.system.backup_secondary_state.as_ref() {
                 f(args);
             }
         }
 
         // external: prepare to iterate (e.g., reset algorithmic variables)
-        if let Some(f) = self.system.step_reset_algorithmic_variables.as_ref() {
+        if let Some(f) = self.system.prepare_to_iterate.as_ref() {
             f(args);
         }
 
@@ -525,6 +510,17 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // start the recording of iteration errors
         work.stats.record_iterations_residuals_start();
+
+        // predictor: set workspace with trial values
+        let sigma = work.h;
+        vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + θ σ · duds₀
+        work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - θ) σ · dλds₀
+
+        // predictor: update secondary variables (e.g., local state)
+        if let Some(f) = self.system.update_secondary_state.as_ref() {
+            let do_backup = true;
+            f(do_backup, &state.u, &work.u, args)?;
+        }
 
         // iteration loop
         let logging = true;
@@ -643,7 +639,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
         if work.auto {
-            if let Some(f) = self.system.step_restore_state.as_ref() {
+            if let Some(f) = self.system.restore_secondary_state.as_ref() {
                 f(args);
             }
         }

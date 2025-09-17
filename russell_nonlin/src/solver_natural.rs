@@ -119,6 +119,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             AutoStep::Yes => match stop {
                 Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - state.l),
                 Stop::Steps(_) => self.config.h_ini,
+                Stop::Component(_, _) => self.config.h_ini,
             },
             AutoStep::No(h_eq) => {
                 if h_eq < 10.0 * f64::EPSILON {
@@ -130,6 +131,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                         (l1 - state.l) / (n as f64)
                     }
                     Stop::Steps(_) => h_eq,
+                    Stop::Component(_, _) => h_eq,
                 }
             }
         };

@@ -211,7 +211,8 @@ fn test_hardening_softening_model() {
             // AutoStep::No(sigma),
             // Stop::Steps(10),
             // AutoStep::No(0.05),
-            Stop::Steps(20),
+            // Stop::Steps(20),
+            Stop::Component(0, 0.5),
             AutoStep::Yes,
             Some(out),
         )

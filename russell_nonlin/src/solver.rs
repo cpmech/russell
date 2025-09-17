@@ -108,6 +108,7 @@ impl<'a, A> Solver<'a, A> {
                     return Err("Stopping criterion error: number of steps must be greater than 0");
                 }
             }
+            Stop::Component(_, _) => (),
         }
 
         // reset stats and flags
@@ -165,6 +166,7 @@ impl<'a, A> Solver<'a, A> {
                 if match stop {
                     Stop::Lambda(l1) => state.l > l1 || f64::abs(state.l - l1) < CONFIG_H_MIN,
                     Stop::Steps(n) => (i + 1) == n,
+                    Stop::Component(i, max) => state.u[i] >= max,
                 } {
                     continuation_completed = true;
                     break;
@@ -254,6 +256,7 @@ impl<'a, A> Solver<'a, A> {
                     if match stop {
                         Stop::Lambda(l1) => state.l > l1 || f64::abs(state.l - l1) < CONFIG_H_MIN,
                         Stop::Steps(n) => (i + 1) == n,
+                        Stop::Component(i, max) => state.u[i] >= max,
                     } {
                         continuation_completed = true;
                         break;

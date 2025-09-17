@@ -22,6 +22,11 @@ pub enum Stop {
 
     /// Stops after a number of steps.
     Steps(usize),
+
+    /// Stops when a component of the `u` vector reaches a maximum value.
+    ///
+    /// Holds `(index, max_value)`.
+    Component(usize, f64),
 }
 
 impl Stop {
@@ -30,6 +35,7 @@ impl Stop {
         match self {
             Stop::Lambda(l1) => Some(*l1),
             Stop::Steps(_) => None,
+            Stop::Component(_, _) => None,
         }
     }
 }

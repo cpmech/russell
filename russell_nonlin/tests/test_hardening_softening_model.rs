@@ -171,6 +171,7 @@ fn test_hardening_softening_model() {
         // .set_allowed_iterations(22)
         // .set_allowed_continued_divergence(3)
         .set_debug_predictor(true)
+        .set_record_stepsizes(true)
         .set_record_iterations_residuals(true);
     // .set_hide_timings(true)
     // .set_record_iterations_residuals(true)

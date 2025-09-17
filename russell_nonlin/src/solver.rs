@@ -138,6 +138,9 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.sw_step.reset();
                 self.work.log.step(self.work.h, &state);
 
+                // record stepsize
+                self.work.stats.record_stepsize(self.work.h);
+
                 // step
                 self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, state, args)?;
@@ -178,6 +181,9 @@ impl<'a, A> Solver<'a, A> {
                 // log
                 self.work.stats.sw_step.reset();
                 self.work.log.step(self.work.h, &state);
+
+                // record stepsize
+                self.work.stats.record_stepsize(self.work.h);
 
                 // handle small stepsize
                 if self.work.h < CONFIG_H_MIN {

@@ -1,4 +1,4 @@
-use super::Method;
+use super::{Config, Method};
 use russell_lab::{format_nanoseconds, Stopwatch};
 use russell_stat::{statistics, Histogram};
 use std::fmt::{self, Write};
@@ -11,6 +11,9 @@ pub struct Stats {
 
     /// Hide timings when displaying statistics
     hide_timings: bool,
+
+    /// Indicates whether to record the stepsizes or not
+    record_stepsizes: bool,
 
     /// Indicates whether to record the iterations residuals or not
     ///
@@ -68,6 +71,9 @@ pub struct Stats {
     /// `(nstep, n_iteration_in_step)`
     pub iterations_residuals: Option<Vec<Vec<f64>>>,
 
+    /// Holds the step sizes used in each step
+    pub stepsizes: Option<Vec<f64>>,
+
     /// Last accepted/suggested step size h_new
     pub h_accepted: f64,
 
@@ -104,11 +110,12 @@ pub struct Stats {
 
 impl Stats {
     /// Allocates a new instance
-    pub fn new(method: Method, hide_timings: bool, record_iterations_residuals: bool) -> Self {
+    pub fn new(config: &Config) -> Self {
         Stats {
-            method,
-            hide_timings,
-            record_iterations_residuals,
+            method: config.method,
+            hide_timings: config.hide_timings,
+            record_stepsizes: config.record_stepsizes,
+            record_iterations_residuals: config.record_iterations_residuals,
             auto: false,
             temporary_iterations_residuals: Vec::new(),
             n_function: 0,
@@ -124,6 +131,7 @@ impl Stats {
             n_iteration_total: 0,
             n_iteration_max: 0,
             iterations_residuals: None,
+            stepsizes: None,
             h_accepted: 0.0,
             nanos_step_max: 0,
             nanos_jacobian_max: 0,
@@ -136,6 +144,42 @@ impl Stats {
             sw_lin_sol: Stopwatch::new(),
             sw_total: Stopwatch::new(),
         }
+    }
+
+    /// Returns a histogram of the stepsizes across all steps
+    pub fn get_histogram_of_stepsizes(&self, n_bins: usize, character: char, bar_len: usize) -> Histogram<f64> {
+        if self.record_stepsizes {
+            if let Some(stepsizes) = &self.stepsizes {
+                if let Some(h_min) = stepsizes.iter().min_by(|a, b| a.total_cmp(b)) {
+                    if let Some(h_max) = stepsizes.iter().max_by(|a, b| a.total_cmp(b)) {
+                        if f64::is_finite(*h_min) && f64::is_finite(*h_max) {
+                            if *h_max > *h_min {
+                                let log_min = f64::log10(*h_min);
+                                let log_max = f64::log10(*h_max);
+                                let bin_width = (log_max - log_min) / (n_bins as f64);
+                                let mut stations = Vec::with_capacity(n_bins + 1);
+                                for i in 0..=n_bins {
+                                    let val = f64::round(1e8 * f64::powf(10.0, log_min + (i as f64) * bin_width)) / 1e8;
+                                    stations.push(val);
+                                }
+                                let mut histogram = Histogram::new(&stations).unwrap();
+                                histogram.set_bar_char(character).set_bar_max_len(bar_len);
+                                histogram.count(stepsizes);
+                                return histogram;
+                            } else {
+                                // all stepsizes are the same
+                                let mut histogram = Histogram::new(&[*h_min, *h_max + 1.0]).unwrap();
+                                histogram.set_bar_char(character).set_bar_max_len(bar_len);
+                                histogram.count(stepsizes);
+                                return histogram;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let empty_histogram = Histogram::new(&[0.0, 1.0]).unwrap();
+        empty_histogram
     }
 
     /// Returns the convergence rates across all steps
@@ -215,6 +259,18 @@ impl Stats {
         self.nanos_total = 0;
     }
 
+    /// Appends the current stepsize to the list of step sizes
+    pub(crate) fn record_stepsize(&mut self, step_size: f64) {
+        if self.record_stepsizes {
+            if self.stepsizes.is_none() {
+                self.stepsizes = Some(Vec::new());
+            }
+            if let Some(sizes) = &mut self.stepsizes {
+                sizes.push(step_size);
+            }
+        }
+    }
+
     /// Starts the recording of iterations residuals
     pub(crate) fn record_iterations_residuals_start(&mut self) {
         if self.record_iterations_residuals {
@@ -283,17 +339,29 @@ impl Stats {
 
     /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
+        // Histogram of the stepsizes
+        let stepsizes_hist = if !self.record_stepsizes {
+            if self.record_iterations_residuals {
+                "\n".to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            let hist = self.get_histogram_of_stepsizes(10, '■', 40);
+            format!("\n\nDistribution of the stepsizes across all steps:\n{}", hist)
+        };
+
         // Convergence rates statistics
         let rates_stats = if !self.record_iterations_residuals {
-            ""
+            String::new()
         } else {
             let rates = self.get_convergence_rates(0.9, 2.1);
             if rates.is_empty() {
-                ""
+                String::new()
             } else {
                 let res = statistics(&rates);
-                &format!(
-                    "\n\nConvergence rates: (min, max) = ({:.3}, {:.3})\n(0.9 ≤ cr ≤ 2.1)       (μ, σ) = ({:.3}, {:.3})",
+                format!(
+                    "\nConvergence rates: (min, max) = ({:.3}, {:.3})\n(0.9 ≤ cr ≤ 2.1)       (μ, σ) = ({:.3}, {:.3})",
                     res.min, res.max, res.mean, res.std_dev
                 )
             }
@@ -327,7 +395,7 @@ impl Stats {
              Number of continued divergence   = {}\n\
              Number of iterations (maximum)   = {}\n\
              Number of iterations (total)     = {}\n\
-             Last accepted/suggested stepsize = {}{}{}",
+             Last accepted/suggested stepsize = {}{}{}{}",
             self.method.description(),
             if self.auto { "auto steps" } else { "fixed steps" },
             self.n_function,
@@ -343,6 +411,7 @@ impl Stats {
             self.n_iteration_max,
             self.n_iteration_total,
             self.h_accepted,
+            stepsizes_hist,
             rates_stats,
             niter_hist
         )
@@ -382,12 +451,13 @@ impl fmt::Display for Stats {
 #[cfg(test)]
 mod tests {
     use super::Stats;
-    use crate::Method;
+    use crate::{Config, Method};
     use russell_lab::array_approx_eq;
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let mut stats = Stats::new(Method::Arclength, false, false);
+        let config = Config::new(Method::Arclength);
+        let mut stats = Stats::new(&config);
         stats.n_accepted += 1;
         let clone = stats.clone();
         assert_eq!(clone.n_accepted, stats.n_accepted);
@@ -397,10 +467,12 @@ mod tests {
     #[test]
     fn convergence_rate_works() {
         // check empty vector due to false flag
-        let stats = Stats::new(Method::Arclength, false, false);
+        let mut config = Config::new(Method::Arclength);
+        let stats = Stats::new(&config);
         assert!(stats.get_convergence_rates(0.0, 10.0).is_empty());
         // check empty vector due to no values added
-        let mut stats = Stats::new(Method::Arclength, false, true);
+        config.record_iterations_residuals = true;
+        let mut stats = Stats::new(&config);
         assert!(stats.get_convergence_rates(0.0, 10.0).is_empty());
         // first step
         stats.record_iterations_residuals_start();
@@ -420,11 +492,13 @@ mod tests {
 
     #[test]
     fn histogram_works() {
+        let mut config = Config::new(Method::Arclength);
         // check empty string due to false flag
-        let stats = Stats::new(Method::Arclength, false, false);
+        let stats = Stats::new(&config);
         assert_eq!(stats.get_histogram_of_iterations(13, '*', 40).get_counts(), &[0]);
         // check empty string due to no values added
-        let mut stats = Stats::new(Method::Arclength, false, true);
+        config.record_iterations_residuals = true;
+        let mut stats = Stats::new(&config);
         assert_eq!(stats.get_histogram_of_iterations(13, '*', 40).get_counts(), &[0]);
         // first step
         stats.record_iterations_residuals_start();
@@ -459,7 +533,8 @@ mod tests {
 
     #[test]
     fn summary_works_basic() {
-        let stats = Stats::new(Method::Arclength, false, false);
+        let config = Config::new(Method::Arclength);
+        let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats.summary()),
             "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)\n\
@@ -481,7 +556,9 @@ mod tests {
 
     #[test]
     fn summary_works_with_convergence_rate_info() {
-        let mut stats = Stats::new(Method::Arclength, false, true);
+        let mut config = Config::new(Method::Arclength);
+        config.record_iterations_residuals = true;
+        let mut stats = Stats::new(&config);
         stats.record_iterations_residuals_start();
         stats.record_iterations_residuals_append(1.0e-2);
         stats.record_iterations_residuals_append(1.0e-4);
@@ -526,7 +603,8 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let stats = Stats::new(Method::Natural, false, false);
+        let mut config = Config::new(Method::Natural);
+        let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0 (fixed steps)\n\
@@ -550,7 +628,8 @@ mod tests {
              Total time                       = 0ns"
         );
 
-        let stats = Stats::new(Method::Natural, true, false);
+        config.hide_timings = true;
+        let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0 (fixed steps)\n\

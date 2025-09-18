@@ -1,5 +1,7 @@
 use crate::StrError;
+use num_traits::cast::ToPrimitive;
 use num_traits::Num;
+use russell_lab::write_formatted_number;
 use std::cmp;
 use std::fmt::{self, Write};
 
@@ -68,6 +70,9 @@ where
     // used in Display
     bar_char: char,     // character used in bars
     bar_max_len: usize, // maximum length of bar (max number of characters)
+
+    // used in Display
+    scientific_fmt_precision: Option<usize>,
 }
 
 impl<T> Histogram<T>
@@ -85,6 +90,7 @@ where
             counts: vec![0; nbins],
             bar_char: '🟦',
             bar_max_len: 30,
+            scientific_fmt_precision: None,
         })
     }
 
@@ -121,6 +127,12 @@ where
         self
     }
 
+    /// Sets the precision used to format station numbers in scientific notation
+    pub fn set_scientific_fmt_precision(&mut self, precision: usize) -> &mut Self {
+        self.scientific_fmt_precision = Some(precision);
+        self
+    }
+
     /// Finds which bin contains x
     fn find_bin(&self, x: T) -> Option<usize> {
         // handle values outside range
@@ -150,7 +162,7 @@ where
 
 impl<T> fmt::Display for Histogram<T>
 where
-    T: Num + Copy + fmt::Display,
+    T: Num + Copy + fmt::Display + ToPrimitive,
 {
     /// Draws histogram
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -175,13 +187,11 @@ where
         }
 
         // find number of characters of station number
+        let precision = f.precision().unwrap_or(0);
         let mut l_s_max = 0; // max length of station numbers
         for i in 0..self.stations.len() {
             let station = self.stations[i];
-            match f.precision() {
-                Some(digits) => write!(&mut buf, "{:.1$}", station, digits).unwrap(),
-                None => write!(&mut buf, "{}", station).unwrap(),
-            }
+            write_formatted_number(&mut buf, station, 0, Some(precision), self.scientific_fmt_precision);
             l_s_max = cmp::max(l_s_max, buf.chars().count());
             buf.clear();
         }
@@ -189,24 +199,22 @@ where
         // draw histogram
         let scale = (self.bar_max_len as f64) / (c_max as f64);
         let mut total = 0;
+        let mut bl = String::new();
+        let mut br = String::new();
         for i in 0..nbins {
             let count = self.counts[i];
             let (left, right) = (self.stations[i], self.stations[i + 1]);
             total += count;
-            match f.precision() {
-                Some(digits) => write!(
-                    f,
-                    "[{:>3$.4$},{:>3$.4$}) | {:>5$}",
-                    left, right, count, l_s_max, digits, l_c_max
-                )
-                .unwrap(),
-                None => write!(f, "[{:>3$},{:>3$}) | {:>4$}", left, right, count, l_s_max, l_c_max).unwrap(),
-            }
+            write_formatted_number(&mut bl, left, l_s_max, Some(precision), self.scientific_fmt_precision);
+            write_formatted_number(&mut br, right, l_s_max, Some(precision), self.scientific_fmt_precision);
+            write!(f, "[{}, {}) | {:>w$}", bl, br, count, w = l_c_max).unwrap();
+            bl.clear();
+            br.clear();
             let n = scale * (count as f64);
             let bar = std::iter::repeat(self.bar_char).take(n as usize).collect::<String>();
             write!(f, " {}\n", bar).unwrap();
         }
-        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 6).unwrap();
+        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 7).unwrap();
         Ok(())
     }
 }
@@ -328,17 +336,33 @@ mod tests {
         hist.set_bar_char('🔶').set_bar_max_len(10);
         assert_eq!(
             format!("{:.3}", hist),
-            "[ 0.000, 1.000) |  5 🔶🔶🔶🔶🔶\n\
-             [ 1.000, 2.000) | 10 🔶🔶🔶🔶🔶🔶🔶🔶🔶🔶\n\
-             [ 2.000, 3.000) |  2 🔶🔶\n\
-             [ 3.000, 4.000) |  0 \n\
-             [ 4.000, 5.000) |  3 🔶🔶🔶\n\
-             [ 5.000, 6.000) |  0 \n\
-             [ 6.000, 7.000) |  0 \n\
-             [ 7.000, 8.000) |  0 \n\
-             [ 8.000, 9.000) |  0 \n\
-             [ 9.000,10.000) |  0 \n\
-             \x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20sum = 20\n"
+            "[ 0.000,  1.000) |  5 🔶🔶🔶🔶🔶\n\
+             [ 1.000,  2.000) | 10 🔶🔶🔶🔶🔶🔶🔶🔶🔶🔶\n\
+             [ 2.000,  3.000) |  2 🔶🔶\n\
+             [ 3.000,  4.000) |  0 \n\
+             [ 4.000,  5.000) |  3 🔶🔶🔶\n\
+             [ 5.000,  6.000) |  0 \n\
+             [ 6.000,  7.000) |  0 \n\
+             [ 7.000,  8.000) |  0 \n\
+             [ 8.000,  9.000) |  0 \n\
+             [ 9.000, 10.000) |  0 \n\
+             \x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20sum = 20\n"
+        );
+
+        hist.set_scientific_fmt_precision(2);
+        assert_eq!(
+            format!("{:.3}", hist),
+            "[0.00E+00, 1.00E+00) |  5 🔶🔶🔶🔶🔶\n\
+             [1.00E+00, 2.00E+00) | 10 🔶🔶🔶🔶🔶🔶🔶🔶🔶🔶\n\
+             [2.00E+00, 3.00E+00) |  2 🔶🔶\n\
+             [3.00E+00, 4.00E+00) |  0 \n\
+             [4.00E+00, 5.00E+00) |  3 🔶🔶🔶\n\
+             [5.00E+00, 6.00E+00) |  0 \n\
+             [6.00E+00, 7.00E+00) |  0 \n\
+             [7.00E+00, 8.00E+00) |  0 \n\
+             [8.00E+00, 9.00E+00) |  0 \n\
+             [9.00E+00, 1.00E+01) |  0 \n\
+             \x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20sum = 20\n"
         );
 
         #[rustfmt::skip]
@@ -357,17 +381,17 @@ mod tests {
         assert_eq!(hist.counts, &[5, 8, 2, 2, 3, 0, 0, 0, 0, 0]);
         assert_eq!(
             format!("{}", hist),
-            "[ 0, 1) | 5 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
-             [ 1, 2) | 8 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
-             [ 2, 3) | 2 🟦🟦🟦🟦🟦🟦🟦\n\
-             [ 3, 4) | 2 🟦🟦🟦🟦🟦🟦🟦\n\
-             [ 4, 5) | 3 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
-             [ 5, 6) | 0 \n\
-             [ 6, 7) | 0 \n\
-             [ 7, 8) | 0 \n\
-             [ 8, 9) | 0 \n\
-             [ 9,10) | 0 \n\
-             \x20\x20\x20sum = 20\n"
+            "[ 0,  1) | 5 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 1,  2) | 8 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 2,  3) | 2 🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 3,  4) | 2 🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 4,  5) | 3 🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦🟦\n\
+             [ 5,  6) | 0 \n\
+             [ 6,  7) | 0 \n\
+             [ 7,  8) | 0 \n\
+             [ 8,  9) | 0 \n\
+             [ 9, 10) | 0 \n\
+             \x20\x20\x20\x20sum = 20\n"
         );
     }
 }

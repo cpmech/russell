@@ -1,4 +1,6 @@
-use std::fmt::Write;
+use num_traits::cast::ToPrimitive;
+use num_traits::Num;
+use std::fmt::{self, Write};
 
 const NS_PER_NANOSECOND: u128 = 1;
 const NS_PER_MICROSECOND: u128 = 1000 * NS_PER_NANOSECOND;
@@ -109,11 +111,51 @@ pub fn format_fortran(num: f64) -> String {
     format_scientific(num, 23, 15)
 }
 
+/// Writes a formatted number into a buffer, considering the number of digits and the precision
+///
+/// This function optionally formats the number in scientific notation.
+///
+/// This function is useful when implementing the Display trait for a struct that contains numbers.
+///
+/// # Arguments
+///
+/// * `buffer` - the buffer to write into
+/// * `number` - the number to format
+/// * `standard_formatter` - the standard formatter (used to get the precision)
+/// * `scientific_precision` - the precision for scientific notation (if any)
+/// * `width` - the width of the field (may be 0 to ignore the width formatting)
+pub fn write_formatted_number<T>(
+    buffer: &mut String,
+    number: T,
+    width: usize,
+    precision: Option<usize>,
+    scientific_precision: Option<usize>,
+) where
+    T: Num + Copy + fmt::Display + ToPrimitive,
+{
+    match scientific_precision {
+        // has scientific precision
+        Some(p) => match number.to_f64() {
+            // if number can be converted to f64, use scientific notation
+            Some(v) => write!(buffer, "{}", format_scientific(v, width, p)).unwrap(),
+            // otherwise, use standard formatting
+            None => write!(buffer, "{:>w$.p$}", number, p = p, w = width).unwrap(),
+        },
+        // use default precision
+        None => match precision {
+            // has standard precision
+            Some(p) => write!(buffer, "{:>w$.p$}", number, p = p, w = width).unwrap(),
+            // no precision
+            None => write!(buffer, "{:>w$}", number, w = width).unwrap(),
+        },
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{format_fortran, format_nanoseconds, format_scientific};
+    use super::{format_fortran, format_nanoseconds, format_scientific, write_formatted_number};
 
     #[test]
     fn format_nanoseconds_works() {
@@ -240,5 +282,105 @@ mod tests {
         assert_eq!(format_fortran(9999999999.00), "  9.999999999000000E+09");
         assert_eq!(format_fortran(999999999999.00), "  9.999999999990000E+11");
         assert_eq!(format_fortran(123456789.1011), "  1.234567891011000E+08");
+    }
+
+    #[test]
+    fn write_formatted_number_works() {
+        let mut buffer = String::new();
+
+        // Test with no precision, no scientific, no width
+        write_formatted_number(&mut buffer, 42.0, 0, None, None);
+        assert_eq!(buffer, "42");
+        buffer.clear();
+
+        // Test with width only
+        write_formatted_number(&mut buffer, 42, 5, None, None);
+        assert_eq!(buffer, "   42");
+        buffer.clear();
+
+        // Test with standard precision only
+        write_formatted_number(&mut buffer, 123.456, 0, Some(2), None);
+        assert_eq!(buffer, "123.46");
+        buffer.clear();
+
+        // Test with standard precision and width
+        write_formatted_number(&mut buffer, 123.456, 10, Some(3), None);
+        assert_eq!(buffer, "   123.456");
+        buffer.clear();
+
+        // Test with scientific precision only
+        write_formatted_number(&mut buffer, 123.456, 0, None, Some(2));
+        assert_eq!(buffer, "1.23E+02");
+        buffer.clear();
+
+        // Test with scientific precision and width
+        write_formatted_number(&mut buffer, 123.456, 12, None, Some(3));
+        assert_eq!(buffer, "   1.235E+02");
+        buffer.clear();
+
+        // Test negative number with scientific notation
+        write_formatted_number(&mut buffer, -456.789, 14, None, Some(4));
+        assert_eq!(buffer, "   -4.5679E+02");
+        buffer.clear();
+
+        // Test zero with scientific notation
+        write_formatted_number(&mut buffer, 0.0, 9, None, Some(1));
+        assert_eq!(buffer, "  0.0E+00");
+        buffer.clear();
+
+        // Test integer type
+        write_formatted_number(&mut buffer, 42i32, 0, None, None);
+        assert_eq!(buffer, "42");
+        buffer.clear();
+
+        // Test integer with scientific (should convert to f64)
+        write_formatted_number(&mut buffer, 1234i32, 9, None, Some(2));
+        assert_eq!(buffer, " 1.23E+03");
+        buffer.clear();
+
+        // Test very small number with scientific notation
+        write_formatted_number(&mut buffer, 0.000123, 9, None, Some(2));
+        assert_eq!(buffer, " 1.23E-04");
+        buffer.clear();
+
+        // Test large number with scientific notation
+        write_formatted_number(&mut buffer, 1234567.89, 12, None, Some(3));
+        assert_eq!(buffer, "   1.235E+06");
+        buffer.clear();
+
+        // Test with both standard precision and scientific (scientific takes precedence)
+        write_formatted_number(&mut buffer, 123.456, 9, Some(5), Some(2));
+        assert_eq!(buffer, " 1.23E+02");
+        buffer.clear();
+
+        // Test integer with standard precision
+        write_formatted_number(&mut buffer, 42i32, 8, Some(3), None);
+        assert_eq!(buffer, "      42");
+        buffer.clear();
+
+        // Test floating point with zero width
+        write_formatted_number(&mut buffer, 3.14159, 0, Some(2), None);
+        assert_eq!(buffer, "3.14");
+        buffer.clear();
+
+        // Test very large width
+        write_formatted_number(&mut buffer, 1.0, 20, None, Some(1));
+        assert_eq!(buffer, "             1.0E+00");
+        buffer.clear();
+
+        // Test negative with standard formatting
+        write_formatted_number(&mut buffer, -123.456, 10, Some(2), None);
+        assert_eq!(buffer, "   -123.46");
+        buffer.clear();
+
+        let n = 9_223_372_036_854_775_807i64;
+        write_formatted_number(&mut buffer, n, 0, None, Some(3));
+        assert_eq!(buffer, "9.223E+18");
+        buffer.clear();
+
+        let n = 9_223_372_036_854_775_808u128;
+        write_formatted_number(&mut buffer, n, 0, None, Some(3));
+        assert_eq!(buffer, "9.223E+18");
+        buffer.clear();
     }
 }

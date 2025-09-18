@@ -407,7 +407,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // external: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            f(do_backup, &state.u, &work.u, args)?; // do_backup, u0, u1, args
+            work.err.capture_secondary_error(f(do_backup, &state.u, &work.u, args));
         }
         Ok(())
     }
@@ -512,9 +512,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         work.stats.record_iterations_residuals_start();
 
         // predictor: set workspace with trial values
+        println!("\n\nh = {}\n\n", work.h);
         let sigma = work.h;
         vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + θ σ · duds₀
         work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - θ) σ · dλds₀
+
+        println!("Predictor: u = {:?}, l = {}", work.u.as_data(), work.l);
+        println!("duds = {:?}, dlds = {}", work.duds.as_data(), work.dlds);
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
@@ -584,8 +588,30 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // calculate the angle between the increment and the predictor: ~ turning angle
         approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15); // TODO: remove this
         let norm_x = vec_norm(&self.x, Norm::Euc);
-        self.alpha = f64::acos(vec_inner(&self.b, &self.x) / norm_x) * 180.0 / PI;
+        let ratio = f64::min(vec_inner(&self.b, &self.x) / norm_x, 1.0);
+        // let ratio = vec_inner(&self.b, &self.x) / norm_x;
+        self.alpha = f64::acos(ratio) * 180.0 / PI;
         work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
+
+        println!("x = {:?}", self.x.as_data());
+        println!("u = {:?}, l = {:?}", work.u.as_data(), work.l);
+        println!("inner = {}", vec_inner(&self.b, &self.x));
+        println!("norm_x = {}", norm_x);
+        println!("ratio = {}", ratio);
+        println!("G(u,l) = {:?}", work.gg.as_data());
+        println!(
+            "h = {}, >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> alpha = {}",
+            work.h, self.alpha
+        );
+
+        assert!(f64::is_finite(self.alpha));
+
+        // if ratio == 1.0 { panic!("stop"); }
+
+        if self.alpha > 30.0 {
+            work.err.capture_other_error("alpha is too large");
+            return Ok(());
+        }
 
         // done
         Ok(())
@@ -634,15 +660,22 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // TODO: check if work.n_iteration == work.stats.n_iterations_total
 
+        // if self.alpha == 0.0 { panic!("stop 1"); }
+
         // calculate a new stepsize
         work.h_estimate = if self.alpha < 0.0 {
-            work.h / 2.0
+            // work.h / 2.0
+            work.h * 0.8
         } else if self.alpha == 0.0 {
-            work.h * 2.0
+            // work.h * 2.0
+            work.h * 1.2
         } else {
+            println!("alpha_max / alpha = {}", self.config.alpha_max / self.alpha);
             f64::max(0.5, f64::min(2.0, self.config.alpha_max / self.alpha))
         };
+        println!("h_estimate (before) = {}", work.h_estimate);
         work.h_estimate = f64::min(self.config.sigma_max, work.h_estimate);
+        println!("h_estimate (after) = {}", work.h_estimate);
 
         // done
         Ok(())
@@ -659,6 +692,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // reduce the stepsize
         work.h_estimate = self.config.m_failure * work.h;
+
+        println!("h_estimate = {}", work.h_estimate);
 
         // remove predictor values
         if self.config.debug_predictor {

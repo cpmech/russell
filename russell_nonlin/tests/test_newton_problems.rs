@@ -26,7 +26,7 @@ fn test_newton_problems_ok_1() {
         .unwrap();
 
     // check
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     let n_iter = 8;
     let n_jac = n_iter; // because it converges on ‖δu‖∞ thus the last Jacobian is computed
     assert_eq!(stats.n_function, n_iter);
@@ -72,7 +72,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
             .unwrap(),
         Status::Failure
     );
-    assert_eq!(solver.errors(), &["max number of iterations reached"]);
+    assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn test_newton_problems_fail_oscillation() {
             .unwrap(),
         Status::Failure
     );
-    assert_eq!(solver.errors(), &["max number of iterations reached"]);
+    assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_newton_problems_indeterminate() {
             .unwrap(),
         Status::Failure
     );
-    assert_eq!(solver.errors(), &["‖(δu,δλ)‖∞ is too large"]);
+    assert_eq!(solver.get_errors(), &["‖(δu,δλ)‖∞ is too large"]);
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn test_newton_problems_ok_2() {
         .unwrap();
 
     // check
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     let n_iter = 20;
     let n_jac = n_iter - 1; // because it converges on ‖G‖∞ thus the last Jacobian is NOT computed
     assert_eq!(stats.n_function, n_iter);
@@ -205,7 +205,7 @@ fn test_simple_fixed_continued_divergence() {
             .unwrap(),
         Status::Failure
     );
-    assert_eq!(solver.errors(), &["continued divergence detected"]);
+    assert_eq!(solver.get_errors(), &["continued divergence detected"]);
 }
 
 #[test]

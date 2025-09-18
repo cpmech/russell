@@ -3,7 +3,7 @@ use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
 /// Defines the smallest allowed h
-pub const CONFIG_H_MIN: f64 = 1e-7;
+pub const CONFIG_H_MIN: f64 = 1e-10;
 
 /// Defines the smallest allowed tolerance
 pub const CONFIG_TOL_MIN: f64 = 1e-12;
@@ -68,6 +68,9 @@ pub struct Config {
 
     /// Number of continued rejections allowed
     pub(crate) n_cont_reject_allowed: usize,
+
+    /// Number of continued (iteration) failures allowed
+    pub(crate) n_cont_failure_allowed: usize,
 
     // linear solver ----------------------------------------------------------------------
     //
@@ -147,6 +150,7 @@ impl Config {
             n_step_max: 100_000,
             rel_error_prev_min: 1e-4,
             n_cont_reject_allowed: 10,
+            n_cont_failure_allowed: 5,
             // linear solver
             genie: Genie::Umfpack,
             lin_sol_config: None,
@@ -299,6 +303,12 @@ impl Config {
     /// Sets the number of continued rejections allowed
     pub fn set_n_cont_reject_allowed(&mut self, value: usize) -> &mut Self {
         self.n_cont_reject_allowed = value;
+        self
+    }
+
+    /// Sets the number of continued (iteration) failures allowed
+    pub fn set_n_cont_failure_allowed(&mut self, value: usize) -> &mut Self {
+        self.n_cont_failure_allowed = value;
         self
     }
 
@@ -475,6 +485,9 @@ impl Config {
         }
         if self.h_ini < CONFIG_H_MIN {
             return Err("requirement: h_ini ≥ CONFIG_H_MIN");
+        }
+        if self.h_min_allowed < CONFIG_H_MIN {
+            return Err("requirement: h_min_allowed ≥ CONFIG_H_MIN");
         }
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");

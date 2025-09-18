@@ -42,12 +42,12 @@ impl<'a, A> Solver<'a, A> {
     }
 
     /// Returns some benchmarking data
-    pub fn stats(&self) -> &Stats {
+    pub fn get_stats(&self) -> &Stats {
         &self.work.stats
     }
 
     /// Returns the error messages
-    pub fn errors(&self) -> Vec<String> {
+    pub fn get_errors(&self) -> Vec<String> {
         self.work.errors()
     }
 
@@ -182,9 +182,6 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.sw_step.reset();
                 self.work.log.step(self.work.h, &state);
 
-                // record stepsize
-                self.work.stats.record_stepsize(self.work.h);
-
                 // handle small stepsize
                 if self.work.h < CONFIG_H_MIN {
                     self.work.stopped_due_to_small_stepsize = true;
@@ -200,7 +197,7 @@ impl<'a, A> Solver<'a, A> {
                     self.work.n_continued_failure += 1;
                     self.work.follows_failure = true;
                 }
-                if self.work.n_continued_failure >= 3 {
+                if self.work.n_continued_failure >= self.config.n_cont_failure_allowed {
                     self.work.stopped_due_to_continued_failure = true;
                     break;
                 }
@@ -225,6 +222,9 @@ impl<'a, A> Solver<'a, A> {
 
                 // accept step
                 if self.work.acceptable {
+                    // record accepted stepsize
+                    self.work.stats.record_stepsize(self.work.h);
+
                     // update u and λ
                     self.work.stats.n_accepted += 1;
                     self.actual.accept(&mut self.work, state, args)?;
@@ -270,6 +270,9 @@ impl<'a, A> Solver<'a, A> {
 
                 // reject step
                 } else {
+                    // record rejected stepsize
+                    self.work.stats.record_rejected_stepsize(self.work.h);
+
                     // set flags
                     self.work.stats.n_rejected += 1;
                     self.work.follows_rejection = true;
@@ -408,7 +411,7 @@ mod tests {
             )
             .unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
-        let stats = solver.stats();
+        let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
         assert_eq!(stats.n_jacobian, 6);
         assert_eq!(stats.n_factor, 6);
@@ -437,7 +440,7 @@ mod tests {
             )
             .unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
-        let stats = solver.stats();
+        let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
         assert_eq!(stats.n_jacobian, 6);
         assert_eq!(stats.n_factor, 6);

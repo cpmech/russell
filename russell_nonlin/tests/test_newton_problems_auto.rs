@@ -26,7 +26,7 @@ fn test_newton_problems_ok_1_auto() {
         .unwrap();
 
     // check
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     let n_iter = 8;
     let n_jac = n_iter; // because it converges on ‖δu‖∞ thus the last Jacobian is computed
     assert_eq!(stats.n_function, n_iter);
@@ -73,7 +73,7 @@ fn test_newton_problems_fail_due_to_max_iter_auto() {
         Status::Failure
     );
     assert_eq!(
-        solver.errors(),
+        solver.get_errors(),
         &[
             "max number of iterations reached",
             "too many continued (iteration) failures"
@@ -111,7 +111,7 @@ fn test_newton_problems_fail_oscillation_auto() {
         Status::Failure
     );
     assert_eq!(
-        solver.errors(),
+        solver.get_errors(),
         &[
             "max number of iterations reached",
             "too many continued (iteration) failures"
@@ -146,7 +146,7 @@ fn test_newton_problems_indeterminate_auto() {
         Status::Failure
     );
     assert_eq!(
-        solver.errors(),
+        solver.get_errors(),
         &["‖(δu,δλ)‖∞ is too large", "too many continued (iteration) failures"]
     );
 }
@@ -180,7 +180,7 @@ fn test_newton_problems_ok_2_auto() {
         .unwrap();
 
     // check
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     let n_iter = 20;
     let n_jac = n_iter - 1; // because it converges on ‖G‖∞ thus the last Jacobian is NOT computed
     assert_eq!(stats.n_function, n_iter);
@@ -227,7 +227,7 @@ fn test_simple_fixed_continued_divergence_auto() {
         Status::Failure
     );
     assert_eq!(
-        solver.errors(),
+        solver.get_errors(),
         &[
             "continued divergence detected",
             "too many continued (iteration) failures"
@@ -266,7 +266,7 @@ fn test_newton_problems_stepsize_becomes_small() {
         Status::Failure
     );
     assert_eq!(
-        solver.errors(),
+        solver.get_errors(),
         &["max number of iterations reached", "the stepsize becomes too small"]
     );
 }

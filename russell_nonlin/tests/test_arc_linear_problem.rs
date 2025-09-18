@@ -51,7 +51,7 @@ fn test_arc_linear_problem() {
 
     // check stats
     let niter = nstep; // 1 iteration per step because the Euler predictor gives the exact answer
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
     assert_eq!(stats.n_jacobian, niter + 1); // +1 because of the initial tangent vector
     assert_eq!(stats.n_factor, niter + 1);

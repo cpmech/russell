@@ -85,7 +85,7 @@ impl<'a> Runner for Simulator<'a> {
             )
             .unwrap();
         approx_eq(self.data.state.u[0], LAMBDA_FINAL, 1e-15);
-        let stats = self.data.solver.stats();
+        let stats = self.data.solver.get_stats();
         let nstep = 10;
         let niter = 10 * 2;
         assert_eq!(stats.n_function, niter);

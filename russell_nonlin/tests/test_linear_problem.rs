@@ -53,7 +53,7 @@ fn test_linear_no_auto_ana_jac() {
     // check stats
     let nstep = 10;
     let niter = 10 * 2;
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
     assert_eq!(stats.n_jacobian, nstep);
     assert_eq!(stats.n_factor, nstep);
@@ -124,7 +124,7 @@ fn test_linear_no_auto_num_jac() {
     let n_conv_du = 5; // number of converged steps on δu
     let n_num_jac = 10 + 1; // +1 because the first iteration does not converge immediately
     let niter = 10 * 2 + 1; // +1 because the first iteration does not converge immediately
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter + n_num_jac + n_conv_du);
     assert_eq!(stats.n_jacobian, 0);
     assert_eq!(stats.n_factor, n_num_jac + n_conv_du);
@@ -193,7 +193,7 @@ fn test_linear_auto_ana_jac() {
     // check stats
     let nstep = 10;
     let niter = 10 * 2;
-    let stats = solver.stats();
+    let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
     assert_eq!(stats.n_jacobian, nstep);
     assert_eq!(stats.n_factor, nstep);

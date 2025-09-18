@@ -71,8 +71,11 @@ pub struct Stats {
     /// `(nstep, n_iteration_in_step)`
     pub iterations_residuals: Option<Vec<Vec<f64>>>,
 
-    /// Holds the step sizes used in each step
+    /// Holds the (accepted) stepsizes used in each step
     pub stepsizes: Option<Vec<f64>>,
+
+    /// Holds the rejected stepsizes in each step
+    pub rejected_stepsizes: Option<Vec<f64>>,
 
     /// Last accepted/suggested step size h_new
     pub h_accepted: f64,
@@ -132,6 +135,7 @@ impl Stats {
             n_iteration_max: 0,
             iterations_residuals: None,
             stepsizes: None,
+            rejected_stepsizes: None,
             h_accepted: 0.0,
             nanos_step_max: 0,
             nanos_jacobian_max: 0,
@@ -146,40 +150,37 @@ impl Stats {
         }
     }
 
-    /// Returns a histogram of the stepsizes across all steps
+    /// Returns a histogram of stepsizes across all steps
     pub fn get_histogram_of_stepsizes(&self, n_bins: usize, character: char, bar_len: usize) -> Histogram<f64> {
         if self.record_stepsizes {
             if let Some(stepsizes) = &self.stepsizes {
-                if let Some(h_min) = stepsizes.iter().min_by(|a, b| a.total_cmp(b)) {
-                    if let Some(h_max) = stepsizes.iter().max_by(|a, b| a.total_cmp(b)) {
-                        if f64::is_finite(*h_min) && f64::is_finite(*h_max) {
-                            if *h_max > *h_min {
-                                let log_min = f64::log10(*h_min);
-                                let log_max = f64::log10(*h_max);
-                                let bin_width = (log_max - log_min) / (n_bins as f64);
-                                let mut stations = Vec::with_capacity(n_bins + 1);
-                                for i in 0..=n_bins {
-                                    let val = f64::round(1e8 * f64::powf(10.0, log_min + (i as f64) * bin_width)) / 1e8;
-                                    stations.push(val);
-                                }
-                                let mut histogram = Histogram::new(&stations).unwrap();
-                                histogram.set_bar_char(character).set_bar_max_len(bar_len);
-                                histogram.count(stepsizes);
-                                return histogram;
-                            } else {
-                                // all stepsizes are the same
-                                let mut histogram = Histogram::new(&[*h_min, *h_max + 1.0]).unwrap();
-                                histogram.set_bar_char(character).set_bar_max_len(bar_len);
-                                histogram.count(stepsizes);
-                                return histogram;
-                            }
-                        }
-                    }
-                }
+                return generate_histogram_stepsizes(stepsizes, n_bins, character, bar_len);
             }
         }
-        let empty_histogram = Histogram::new(&[0.0, 1.0]).unwrap();
-        empty_histogram
+        Histogram::new(&[0.0, 1.0]).unwrap() // empty histogram
+    }
+
+    /// Returns a histogram of rejected stepsizes across all steps
+    pub fn get_histogram_of_rejected_stepsizes(
+        &self,
+        n_bins: usize,
+        character: char,
+        bar_len: usize,
+    ) -> Histogram<f64> {
+        if self.record_stepsizes {
+            if let Some(stepsizes) = &self.rejected_stepsizes {
+                return generate_histogram_stepsizes(stepsizes, n_bins, character, bar_len);
+            }
+        }
+        Histogram::new(&[0.0, 1.0]).unwrap() // empty histogram
+    }
+
+    /// Returns the (accepted) stepsizes across all steps, if available
+    pub fn get_stepsizes(&self) -> Vec<f64> {
+        match self.stepsizes {
+            Some(ref stepsizes) => stepsizes.clone(),
+            None => Vec::new(),
+        }
     }
 
     /// Returns the convergence rates across all steps
@@ -231,8 +232,7 @@ impl Stats {
                 return histogram;
             }
         }
-        let empty_histogram = Histogram::new(&[0, 1]).unwrap();
-        empty_histogram
+        Histogram::new(&[0, 1]).unwrap() // empty histogram
     }
 
     /// Resets all values
@@ -266,6 +266,18 @@ impl Stats {
                 self.stepsizes = Some(Vec::new());
             }
             if let Some(sizes) = &mut self.stepsizes {
+                sizes.push(step_size);
+            }
+        }
+    }
+
+    /// Appends the current rejected stepsize to the list of step sizes
+    pub(crate) fn record_rejected_stepsize(&mut self, step_size: f64) {
+        if self.record_stepsizes {
+            if self.rejected_stepsizes.is_none() {
+                self.rejected_stepsizes = Some(Vec::new());
+            }
+            if let Some(sizes) = &mut self.rejected_stepsizes {
                 sizes.push(step_size);
             }
         }
@@ -339,16 +351,24 @@ impl Stats {
 
     /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
-        // Histogram of the stepsizes
+        // Histogram of stepsizes
         let stepsizes_hist = if !self.record_stepsizes {
             if self.record_iterations_residuals {
-                "\n".to_string()
+                "\n".to_string() // to separate from convergence rates
             } else {
                 String::new()
             }
         } else {
             let hist = self.get_histogram_of_stepsizes(10, '■', 40);
             format!("\n\nDistribution of the stepsizes across all steps:\n{}", hist)
+        };
+
+        // Histogram of rejected stepsizes
+        let rejected_stepsizes_hist = if !self.record_stepsizes {
+            String::new()
+        } else {
+            let hist = self.get_histogram_of_rejected_stepsizes(10, '■', 40);
+            format!("\nDistribution of the rejected stepsizes across all steps:\n{}", hist)
         };
 
         // Convergence rates statistics
@@ -395,7 +415,7 @@ impl Stats {
              Number of continued divergence   = {}\n\
              Number of iterations (maximum)   = {}\n\
              Number of iterations (total)     = {}\n\
-             Last accepted/suggested stepsize = {}{}{}{}",
+             Last accepted/suggested stepsize = {}{}{}{}{}",
             self.method.description(),
             if self.auto { "auto steps" } else { "fixed steps" },
             self.n_function,
@@ -412,6 +432,7 @@ impl Stats {
             self.n_iteration_total,
             self.h_accepted,
             stepsizes_hist,
+            rejected_stepsizes_hist,
             rates_stats,
             niter_hist
         )
@@ -444,6 +465,46 @@ impl fmt::Display for Stats {
         }
         Ok(())
     }
+}
+
+/// Generates a histogram of stepsizes
+fn generate_histogram_stepsizes(
+    stepsizes: &Vec<f64>,
+    n_bins: usize,
+    character: char,
+    bar_len: usize,
+) -> Histogram<f64> {
+    if let Some(h_min) = stepsizes.iter().min_by(|a, b| a.total_cmp(b)) {
+        if let Some(h_max) = stepsizes.iter().max_by(|a, b| a.total_cmp(b)) {
+            if f64::is_finite(*h_min) && f64::is_finite(*h_max) {
+                if *h_max > *h_min {
+                    let (min, max) = (0.999 * h_min, 1.001 * h_max);
+                    let log_min = f64::log10(min);
+                    let log_max = f64::log10(max);
+                    let bin_width = (log_max - log_min) / (n_bins as f64);
+                    let mut stations = Vec::with_capacity(n_bins + 1);
+                    for i in 0..=n_bins {
+                        let val = f64::powf(10.0, log_min + (i as f64) * bin_width);
+                        stations.push(val);
+                    }
+                    let mut histogram = Histogram::new(&stations).unwrap();
+                    histogram
+                        .set_scientific_fmt_precision(5)
+                        .set_bar_char(character)
+                        .set_bar_max_len(bar_len);
+                    histogram.count(stepsizes);
+                    return histogram;
+                } else {
+                    // all stepsizes are the same
+                    let mut histogram = Histogram::new(&[*h_min, *h_max + 1.0]).unwrap();
+                    histogram.set_bar_char(character).set_bar_max_len(bar_len);
+                    histogram.count(stepsizes);
+                    return histogram;
+                }
+            }
+        }
+    }
+    Histogram::new(&[0.0, 1.0]).unwrap() // empty histogram
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -515,19 +576,19 @@ mod tests {
         let hist = stats.get_histogram_of_iterations(13, '■', 40);
         assert_eq!(
             format!("{}", hist),
-            "[ 0, 1) | 0 \n\
-             [ 1, 2) | 0 \n\
-             [ 2, 3) | 0 \n\
-             [ 3, 4) | 2 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
-             [ 4, 5) | 0 \n\
-             [ 5, 6) | 0 \n\
-             [ 6, 7) | 0 \n\
-             [ 7, 8) | 0 \n\
-             [ 8, 9) | 0 \n\
-             [ 9,10) | 0 \n\
-             [10,11) | 0 \n\
-             [11,12) | 0 \n\
-             \x20\x20\x20\x20sum = 2\n"
+            "[ 0,  1) | 0 \n\
+             [ 1,  2) | 0 \n\
+             [ 2,  3) | 0 \n\
+             [ 3,  4) | 2 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 4,  5) | 0 \n\
+             [ 5,  6) | 0 \n\
+             [ 6,  7) | 0 \n\
+             [ 7,  8) | 0 \n\
+             [ 8,  9) | 0 \n\
+             [ 9, 10) | 0 \n\
+             [10, 11) | 0 \n\
+             [11, 12) | 0 \n\
+             \x20\x20\x20\x20\x20sum = 2\n"
         );
     }
 
@@ -585,19 +646,19 @@ mod tests {
              (0.9 ≤ cr ≤ 2.1)       (μ, σ) = (2.000, 0.000)\n\
              \n\
              Distribution of the number of converged iterations across all steps:\n\
-             [ 0, 1) | 0 \n\
-             [ 1, 2) | 0 \n\
-             [ 2, 3) | 0 \n\
-             [ 3, 4) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
-             [ 4, 5) | 0 \n\
-             [ 5, 6) | 0 \n\
-             [ 6, 7) | 0 \n\
-             [ 7, 8) | 0 \n\
-             [ 8, 9) | 0 \n\
-             [ 9,10) | 0 \n\
-             [10,11) | 0 \n\
-             [11,12) | 0 \n\
-             \x20\x20\x20\x20sum = 1\n"
+             [ 0,  1) | 0 \n\
+             [ 1,  2) | 0 \n\
+             [ 2,  3) | 0 \n\
+             [ 3,  4) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 4,  5) | 0 \n\
+             [ 5,  6) | 0 \n\
+             [ 6,  7) | 0 \n\
+             [ 7,  8) | 0 \n\
+             [ 8,  9) | 0 \n\
+             [ 9, 10) | 0 \n\
+             [10, 11) | 0 \n\
+             [11, 12) | 0 \n\
+             \x20\x20\x20\x20\x20sum = 1\n"
         );
     }
 

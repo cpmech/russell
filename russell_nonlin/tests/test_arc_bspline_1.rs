@@ -39,7 +39,7 @@ fn test_arc_bspline_1() {
         )
         .unwrap();
     assert_eq!(status, Status::Failure);
-    assert_eq!(solver.errors(), &["max number of iterations reached"]);
+    assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
 
     // results
     let uu0 = out.get_u_values(0);

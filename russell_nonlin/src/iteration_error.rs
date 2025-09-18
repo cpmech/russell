@@ -64,6 +64,14 @@ pub(crate) struct IterationError {
     /// Failed on max number of iterations
     fail_max_iterations: bool,
 
+    /// Failed when calling `update_secondary_state`
+    ///
+    /// Holds the error message
+    fail_update_secondary_state: Option<String>,
+
+    /// Records other failures
+    fail_other: Option<String>,
+
     /// Scaling vector for RMS(δu,δλ)
     scaling: Vector,
 }
@@ -92,6 +100,8 @@ impl IterationError {
             fail_large_delta: false,
             fail_continued_divergence: false,
             fail_max_iterations: false,
+            fail_update_secondary_state: None,
+            fail_other: None,
             scaling: Vector::new(ndim + 1), // +1 for λ
         }
     }
@@ -107,6 +117,7 @@ impl IterationError {
         self.fail_continued_divergence = false;
         self.fail_large_delta = false;
         self.fail_max_iterations = false;
+        self.fail_update_secondary_state = None;
         let ndim = self.scaling.dim() - 1; // -1 due to λ
         for i in 0..ndim {
             self.scaling[i] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.u[i]);
@@ -189,6 +200,18 @@ impl IterationError {
         Ok(())
     }
 
+    /// Captures the possible error returned by `update_secondary_state`
+    pub fn capture_secondary_error(&mut self, res: Result<(), StrError>) {
+        if let Err(e) = res {
+            self.fail_update_secondary_state = Some(e.to_string());
+        }
+    }
+
+    /// Captures other errors
+    pub fn capture_other_error(&mut self, err: &str) {
+        self.fail_other = Some(err.to_string());
+    }
+
     /// Sets eventual failures
     pub fn set_failures(&mut self, iteration: usize, stats: &mut Stats) {
         // large (δu,δλ)
@@ -212,7 +235,11 @@ impl IterationError {
 
     /// Returns whether the simulation has failed or not
     pub fn failed(&self) -> bool {
-        self.fail_large_delta || self.fail_continued_divergence || self.fail_max_iterations
+        self.fail_large_delta
+            || self.fail_continued_divergence
+            || self.fail_max_iterations
+            || self.fail_update_secondary_state.is_some()
+            || self.fail_other.is_some()
     }
 
     /// Returns error messages
@@ -226,6 +253,12 @@ impl IterationError {
         }
         if self.fail_max_iterations {
             messages.push("max number of iterations reached".to_string());
+        }
+        if let Some(ref msg) = self.fail_update_secondary_state {
+            messages.push(msg.clone());
+        }
+        if let Some(ref msg) = self.fail_other {
+            messages.push(msg.clone());
         }
         messages
     }

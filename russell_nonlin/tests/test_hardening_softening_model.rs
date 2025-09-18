@@ -153,15 +153,15 @@ fn test_hardening_softening_model() {
             let x = &mut args.local_state.strain;
             let y = &mut args.local_state.stress;
             args.ddx = B * (u1[0] - u0[0]);
-            println!("Δε = {}, ε = {}, σ = {}", args.ddx, *x, *y);
+            // println!("Δε = {}, ε = {}, σ = {}", args.ddx, *x, *y);
             args.model.backward_euler_update(x, y, args.ddx)?;
             if do_backup {
                 args.xx_predictor.push(*x);
                 args.yy_predictor.push(*y);
             }
-            println!("    after ε = {}, σ = {}", *x, *y);
+            // println!("    after ε = {}, σ = {}", *x, *y);
             if *y < 0.0 {
-                println!("                                <<<<<<<<<<");
+                // println!("                                <<<<<<<<<<");
                 return Err("sup: negative stress is not allowed");
             }
             Ok(())
@@ -259,7 +259,6 @@ fn test_hardening_softening_model() {
     let ll = out.get_l_values();
     let duds = out.get_duds_values(0);
     let dlds = out.get_dlds_values();
-    println!("uu = {:?}", uu);
 
     // debug data
     let (l_predictor, u0_predictor, _) = solver.get_debug_predictor_values();
@@ -267,7 +266,6 @@ fn test_hardening_softening_model() {
     // stats
     let stats = solver.get_stats();
     let stepsizes = stats.get_stepsizes();
-    println!("stepsizes = {:?}", stepsizes);
 
     if SAVE_FIGURE {
         let mut curve_ref = Curve::new();
@@ -335,7 +333,7 @@ fn test_hardening_softening_model() {
             .add(&load_displacement_curve)
             .add(&predictor_curve1)
             .grid_labels_legend("$u$", "$\\lambda$")
-            .set_range(0.088, 0.121, 0.57, 0.61)
+            // .set_range(0.088, 0.121, 0.57, 0.61)
             .set_figure_size_points(1200.0, 650.0)
             .save("/tmp/russell_nonlin/test_hardening_softening_model_1.svg")
             // .show("/tmp/russell_nonlin/test_hardening_softening_model_1.svg")

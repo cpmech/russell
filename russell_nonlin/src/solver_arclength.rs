@@ -512,13 +512,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         work.stats.record_iterations_residuals_start();
 
         // predictor: set workspace with trial values
-        println!("\n\nh = {}\n\n", work.h);
+        // println!("\n\nh = {}\n\n", work.h);
         let sigma = work.h;
         vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + θ σ · duds₀
         work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - θ) σ · dλds₀
 
-        println!("Predictor: u = {:?}, l = {}", work.u.as_data(), work.l);
-        println!("duds = {:?}, dlds = {}", work.duds.as_data(), work.dlds);
+        // println!("Predictor: u = {:?}, l = {}", work.u.as_data(), work.l);
+        // println!("duds = {:?}, dlds = {}", work.duds.as_data(), work.dlds);
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
@@ -572,6 +572,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // exit if not converged
         work.acceptable = false;
         if !work.err.converged() {
+            work.log.did_not_converge();
             return Ok(());
         }
 
@@ -593,16 +594,16 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         self.alpha = f64::acos(ratio) * 180.0 / PI;
         work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
 
-        println!("x = {:?}", self.x.as_data());
-        println!("u = {:?}, l = {:?}", work.u.as_data(), work.l);
-        println!("inner = {}", vec_inner(&self.b, &self.x));
-        println!("norm_x = {}", norm_x);
-        println!("ratio = {}", ratio);
-        println!("G(u,l) = {:?}", work.gg.as_data());
-        println!(
-            "h = {}, >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> alpha = {}",
-            work.h, self.alpha
-        );
+        // println!("x = {:?}", self.x.as_data());
+        // println!("u = {:?}, l = {:?}", work.u.as_data(), work.l);
+        // println!("inner = {}", vec_inner(&self.b, &self.x));
+        // println!("norm_x = {}", norm_x);
+        // println!("ratio = {}", ratio);
+        // println!("G(u,l) = {:?}", work.gg.as_data());
+        // println!(
+        //     "h = {}, >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> alpha = {}",
+        //     work.h, self.alpha
+        // );
 
         assert!(f64::is_finite(self.alpha));
 
@@ -658,10 +659,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
         state.l = work.l; // λ := λ₁
 
-        // TODO: check if work.n_iteration == work.stats.n_iterations_total
-
-        // if self.alpha == 0.0 { panic!("stop 1"); }
-
+        /*
         // calculate a new stepsize
         work.h_estimate = if self.alpha < 0.0 {
             // work.h / 2.0
@@ -671,11 +669,25 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.h * 1.2
         } else {
             println!("alpha_max / alpha = {}", self.config.alpha_max / self.alpha);
-            f64::max(0.5, f64::min(2.0, self.config.alpha_max / self.alpha))
+            f64::clamp(self.config.alpha_max / self.alpha, 0.5, 2.0)
         };
         println!("h_estimate (before) = {}", work.h_estimate);
         work.h_estimate = f64::min(self.config.sigma_max, work.h_estimate);
         println!("h_estimate (after) = {}", work.h_estimate);
+        */
+
+        let nn = work.n_iteration as f64;
+        let nn_opt = self.config.nr_control_n_opt as f64;
+        let ksi_try1 = f64::powf(nn_opt / nn, self.config.nr_control_beta);
+        let ksi_try2 = f64::powf(2.0, (nn_opt - nn) / 4.0);
+        let ksi1 = f64::clamp(ksi_try1, 0.5, 2.0);
+        let ksi2 = f64::clamp(ksi_try2, 0.5, 2.0);
+        println!("nn = {}, ksi1 = {}, ksi2 = {}", work.n_iteration, ksi1, ksi2);
+        if self.config.nr_control_model2 {
+            work.h_estimate = work.h * ksi2;
+        } else {
+            work.h_estimate = work.h * ksi1;
+        }
 
         // done
         Ok(())
@@ -693,7 +705,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // reduce the stepsize
         work.h_estimate = self.config.m_failure * work.h;
 
-        println!("h_estimate = {}", work.h_estimate);
+        // println!("h_estimate = {}", work.h_estimate);
 
         // remove predictor values
         if self.config.debug_predictor {

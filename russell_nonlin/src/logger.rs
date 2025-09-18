@@ -126,6 +126,12 @@ impl Logger {
         println!("  🔹  Not converged");
     }
 
+    pub fn did_not_converge(&self) {
+        if self.verbose {
+            println!("{:^w$}", "(did not converge)", w = self.nchar);
+        }
+    }
+
     /// Prints statistics and eventual errors
     pub fn footer(&self, work: &Workspace) {
         if self.verbose {

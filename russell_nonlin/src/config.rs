@@ -124,6 +124,17 @@ pub struct Config {
 
     /// Records the predictor values for debugging
     pub(crate) debug_predictor: bool,
+
+    // stepsize control -----------------------------------------------------------------
+    //
+    /// Optimal number of iterations for stepsize control using Newton-Raphson statistics
+    pub(crate) nr_control_n_opt: usize,
+
+    /// Beta coefficient used with the NR stepsize control
+    pub(crate) nr_control_beta: f64,
+
+    /// Use alternative NR stepsize control (Sundararajan and Noah, 1997)
+    pub(crate) nr_control_model2: bool,
 }
 
 impl Config {
@@ -169,6 +180,10 @@ impl Config {
             alpha_max: 5.0,
             sigma_max: 0.01,
             debug_predictor: false,
+            // stepsize control
+            nr_control_n_opt: 3,
+            nr_control_beta: 0.5,
+            nr_control_model2: true,
         }
     }
 

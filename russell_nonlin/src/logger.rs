@@ -126,12 +126,14 @@ impl Logger {
         println!("  🔹  Not converged");
     }
 
+    /// Prints a message when the step is rejected because it did not converge
     pub fn did_not_converge(&self) {
         if self.verbose {
             println!("{:^w$}", "(rejected: did not converge)", w = self.nchar);
         }
     }
 
+    /// Prints a message when the step is rejected because alpha is not acceptable
     pub fn alpha_is_not_acceptable(&self) {
         if self.verbose {
             println!("{:^w$}", "(rejected: alpha is not acceptable)", w = self.nchar);

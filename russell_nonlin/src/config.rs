@@ -72,6 +72,9 @@ pub struct Config {
     /// Number of continued (iteration) failures allowed
     pub(crate) n_cont_failure_allowed: usize,
 
+    /// Allowed number of continued rejections (due to large curvatures, etc.)
+    pub(crate) allowed_continued_rejection: usize,
+
     // linear solver ----------------------------------------------------------------------
     //
     /// Linear solver kind
@@ -114,8 +117,11 @@ pub struct Config {
     /// Use the bordering algorithm throughout the entire simulation
     pub(crate) bordering: bool,
 
-    /// Max angle between the tangent and the secant
+    /// Max angle between the tangent and the secant (to try again)
     pub(crate) alpha_max: f64,
+
+    /// Ultimate max angle between the tangent and the secant (to stop the simulation)
+    pub(crate) alpha_max_ultimate: f64,
 
     /// Sets the maximum pseudo-arclength step size σ
     ///
@@ -133,20 +139,60 @@ pub struct Config {
     /// Beta coefficient used with the NR stepsize control
     pub(crate) nr_control_beta: f64,
 
-    /// Use alternative NR stepsize control (Sundararajan and Noah, 1997)
-    pub(crate) nr_control_model2: bool,
+    /// First exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Reference:
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub(crate) tg_control_beta1: f64,
 
-    /// Tolerance for the tangent vector stepsize control
-    pub(crate) tg_control_tol: f64,
+    /// Second exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// References:
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub(crate) tg_control_beta2: f64,
 
-    /// Exponent for the tangent vector stepsize control (proportional)
-    pub(crate) tg_control_kp: f64,
+    /// Third exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// References:
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub(crate) tg_control_beta3: f64,
 
-    /// Exponent for the tangent vector stepsize control (integral)
-    pub(crate) tg_control_ki: f64,
+    /// Fourth exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Reference:
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub(crate) tg_control_alpha2: f64,
 
-    /// Exponent for the tangent vector stepsize control (derivative)
-    pub(crate) tg_control_kd: f64,
+    /// Fifth exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Reference:
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub(crate) tg_control_alpha3: f64,
 }
 
 impl Config {
@@ -174,6 +220,7 @@ impl Config {
             rel_error_prev_min: 1e-4,
             n_cont_reject_allowed: 10,
             n_cont_failure_allowed: 5,
+            allowed_continued_rejection: 3,
             // linear solver
             genie: Genie::Umfpack,
             lin_sol_config: None,
@@ -190,16 +237,17 @@ impl Config {
             // pseudo-arclength
             bordering: false,
             alpha_max: 5.0,
+            alpha_max_ultimate: 30.0,
             sigma_max: 0.01,
             debug_predictor: false,
             // stepsize control
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
-            nr_control_model2: true,
-            tg_control_tol: 1.0e-1,
-            tg_control_kp: 0.075,
-            tg_control_ki: 0.175,
-            tg_control_kd: 0.01,
+            tg_control_beta1: 1.0 / 3.0,
+            tg_control_beta2: 1.0 / 18.0,
+            tg_control_beta3: -5.0 / 18.0,
+            tg_control_alpha2: -5.0 / 6.0,
+            tg_control_alpha3: -1.0 / 6.0,
         }
     }
 

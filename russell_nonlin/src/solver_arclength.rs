@@ -192,21 +192,12 @@ pub struct SolverArclength<'a, A> {
     /// Angle between the previous tangent vector and the increment vector
     alpha: f64,
 
-    tangent: Vector,
+    // variables for the tangent vector stepsize control
     prev_tangent: Vector,
-
-    /// Current error estimate
-    error: f64,
-
-    /// Previous error estimate
-    error_prev: f64,
-
-    /// Ancient error estimate (before previous)
-    error_anc: f64,
-
     rerr_prev: f64,
-
+    rerr_anc: f64,
     h_prev: f64,
+    h_anc: f64,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -227,13 +218,13 @@ impl<'a, A> SolverArclength<'a, A> {
             iter_jac_computed: false,
             theta: 1.0,
             alpha: 0.0,
-            tangent: Vector::new(ndim + 1),
+
+            // variables for the tangent vector stepsize control
             prev_tangent: Vector::new(ndim + 1),
-            error: 0.0,
-            error_prev: 0.0,
-            error_anc: 0.0,
             rerr_prev: 0.0,
+            rerr_anc: 0.0,
             h_prev: 0.0,
+            h_anc: 0.0,
         }
     }
 
@@ -602,6 +593,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             return Ok(());
         }
 
+        // check if the angle (alpha) between the increment and the tangent vector is below the maximum allowed
+
         // set b := (duds₀, dlds₀); i.e., the tangent vector at the initial point
         // set x := (u₁ - u₀, λ₁ - λ₀); i.e., the increment vector
         let ndim = self.system.ndim;
@@ -613,22 +606,21 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         self.x[ndim] = work.l - state.l;
 
         // calculate the angle between the increment and the predictor: ~ turning angle
-        approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15); // TODO: remove this
+        // Note that: approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15);
         let norm_x = vec_norm(&self.x, Norm::Euc);
-        let ratio = f64::min(vec_inner(&self.b, &self.x) / norm_x, 1.0);
-        // let ratio = vec_inner(&self.b, &self.x) / norm_x;
-        self.alpha = f64::acos(ratio) * 180.0 / PI;
+        let ratio = f64::min(vec_inner(&self.b, &self.x) / norm_x, 1.0); // need to truncate to 1.0
+        self.alpha = f64::acos(ratio) * 180.0 / PI; // alpha in degrees
+        assert!(f64::is_finite(self.alpha)); // make sure alpha is finite
+
+        // check if alpha is acceptable
         work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
         if !work.acceptable {
             work.log.alpha_is_not_acceptable();
         }
 
-        assert!(f64::is_finite(self.alpha));
-
-        // if ratio == 1.0 { panic!("stop"); }
-
-        if self.alpha > 30.0 {
-            work.err.capture_other_error("alpha is too large");
+        // check if alpha is way out of bounds
+        if self.alpha > self.config.alpha_max_ultimate {
+            work.err.capture_other_error("alpha is excessively large");
             return Ok(());
         }
 
@@ -690,56 +682,37 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
         state.l = work.l; // λ := λ₁
 
-        // calculate the difference between tangents
+        // calculate the difference between tangent vectors
         for i in 0..ndim {
-            self.x[i] = work.duds[i] - self.prev_tangent[i];
-            self.b[i] = self.prev_tangent[i];
+            self.x[i] = work.duds[i] - self.prev_tangent[i]; // du/ds|₁ - du/ds|₀
+            self.b[i] = self.prev_tangent[i]; // du/ds|₀
         }
-        self.x[ndim] = work.dlds - self.prev_tangent[ndim];
-        self.b[ndim] = self.prev_tangent[ndim];
+        self.x[ndim] = work.dlds - self.prev_tangent[ndim]; // dλ/ds|₁ - dλ/ds|₀
+        self.b[ndim] = self.prev_tangent[ndim]; // dλ/ds|₀
 
-        /*
-        let mut mp = 1.0;
-        let mut mi = 1.0;
-        let mut md = 1.0;
-        let norm_diff = vec_norm(&self.x, Norm::Euc);
-        self.error = norm_diff / self.config.tg_control_tol;
-        if self.error > 0.0 {
-            mi = f64::powf(1.0 / self.error, self.config.tg_control_ki);
-            if work.stats.n_accepted > 1 {
-                mp = f64::powf(self.error_prev / self.error, self.config.tg_control_kp);
-            }
-            if work.stats.n_accepted > 2 && self.error_anc > 0.0 {
-                md = f64::powf(
-                    self.error_prev * self.error_prev / (self.error * self.error_anc),
-                    self.config.tg_control_kd,
-                );
-            }
-        }
-        let m = mp * mi * md;
-        self.error_anc = self.error_prev;
-        self.error_prev = self.error;
-        */
-
+        // calculate the relative error in the tangent vector
         let rerr = vec_rms_scaled(&self.x, &self.b, 1e-2, 1e-2);
-        let mut rho = f64::powf(1.0 / rerr, 0.25);
+        let mut rho = f64::powf(1.0 / rerr, self.config.tg_control_beta1);
         if work.stats.n_accepted > 1 {
-            rho *= f64::powf(1.0 / self.rerr_prev, 0.25);
-            rho *= f64::powf(work.h / self.h_prev, -0.25);
+            rho *= f64::powf(1.0 / self.rerr_prev, self.config.tg_control_beta2);
+            rho *= f64::powf(work.h / self.h_prev, -self.config.tg_control_alpha2);
         }
+        if work.stats.n_accepted > 2 {
+            rho *= f64::powf(1.0 / self.rerr_anc, self.config.tg_control_beta3);
+            rho *= f64::powf(self.h_prev / self.h_anc, -self.config.tg_control_alpha3);
+        }
+        self.rerr_anc = self.rerr_prev;
         self.rerr_prev = rerr;
+        self.h_anc = self.h_prev;
         self.h_prev = work.h;
 
+        // calculate the relative convergence behavior of the Newton-Raphson iterations
         let nn = work.n_iteration as f64;
         let nn_opt = self.config.nr_control_n_opt as f64;
-        let ksi_try1 = f64::powf(nn_opt / nn, self.config.nr_control_beta);
-        let ksi_try2 = f64::powf(2.0, (nn_opt - nn) / 4.0);
-        // let ksi1 = f64::clamp(ksi_try1, 0.5, 2.0);
-        // let ksi2 = f64::clamp(ksi_try2, 0.5, 2.0);
-        // let ksi = if self.config.nr_control_model2 { ksi2 } else { ksi1 };
+        let ksi = f64::powf(nn_opt / nn, self.config.nr_control_beta);
 
-        let m = 1.0 + f64::atan(rho * ksi_try1 - 1.0);
-        // println!("c = {}, ksi = {}, m = {}", c, ksi_try2, m);
+        // calculate the new stepsize using the convergence behavior and the error in the tangent vector
+        let m = 1.0 + f64::atan(rho * ksi - 1.0); // smoothing formula by Soderlind and Wang (2006)
         work.h_estimate = work.h * m;
 
         // done

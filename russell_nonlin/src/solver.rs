@@ -203,7 +203,7 @@ impl<'a, A> Solver<'a, A> {
                 }
 
                 // handle rejections (due to large curvatures, etc.)
-                if self.work.n_continued_rejection >= 3 {
+                if self.work.n_continued_rejection >= self.config.allowed_continued_rejection {
                     self.work.stopped_due_to_continued_rejection = true;
                     break;
                 }

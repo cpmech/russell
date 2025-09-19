@@ -2,7 +2,9 @@
 
 use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_scale};
+use russell_lab::{
+    approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_rms_scaled, vec_rms_scaled_diff, vec_scale,
+};
 use russell_lab::{math::PI, Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
@@ -189,6 +191,22 @@ pub struct SolverArclength<'a, A> {
 
     /// Angle between the previous tangent vector and the increment vector
     alpha: f64,
+
+    tangent: Vector,
+    prev_tangent: Vector,
+
+    /// Current error estimate
+    error: f64,
+
+    /// Previous error estimate
+    error_prev: f64,
+
+    /// Ancient error estimate (before previous)
+    error_anc: f64,
+
+    rerr_prev: f64,
+
+    h_prev: f64,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -209,6 +227,13 @@ impl<'a, A> SolverArclength<'a, A> {
             iter_jac_computed: false,
             theta: 1.0,
             alpha: 0.0,
+            tangent: Vector::new(ndim + 1),
+            prev_tangent: Vector::new(ndim + 1),
+            error: 0.0,
+            error_prev: 0.0,
+            error_anc: 0.0,
+            rerr_prev: 0.0,
+            h_prev: 0.0,
         }
     }
 
@@ -490,8 +515,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
     /// Calculates (u,λ) such that G(u(s), λ(s)) = 0
     ///
-    /// * `auto` indicates that automatic stepsize control is used.
-    ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
+    /// Note that:
+    ///
+    ///  * `state` -- corresponds to the initial values (u₀, λ₀)
+    ///  * `work` -- will contain the updated values (u₁, λ₁) by the end of iterations
+    ///
+    /// Note also that `work.auto` indicates that automatic stepsize control is in use.
+    /// On auto mode, a large (δu,δλ) is not an error; otherwise, it is an error.
     fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
         // external: create a copy of external state variables
         if work.auto {
@@ -512,13 +542,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         work.stats.record_iterations_residuals_start();
 
         // predictor: set workspace with trial values
-        // println!("\n\nh = {}\n\n", work.h);
         let sigma = work.h;
         vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + θ σ · duds₀
         work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - θ) σ · dλds₀
-
-        // println!("Predictor: u = {:?}, l = {}", work.u.as_data(), work.l);
-        // println!("duds = {:?}, dlds = {}", work.duds.as_data(), work.dlds);
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
@@ -593,17 +619,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // let ratio = vec_inner(&self.b, &self.x) / norm_x;
         self.alpha = f64::acos(ratio) * 180.0 / PI;
         work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
-
-        // println!("x = {:?}", self.x.as_data());
-        // println!("u = {:?}, l = {:?}", work.u.as_data(), work.l);
-        // println!("inner = {}", vec_inner(&self.b, &self.x));
-        // println!("norm_x = {}", norm_x);
-        // println!("ratio = {}", ratio);
-        // println!("G(u,l) = {:?}", work.gg.as_data());
-        // println!(
-        //     "h = {}, >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> alpha = {}",
-        //     work.h, self.alpha
-        // );
+        if !work.acceptable {
+            work.log.alpha_is_not_acceptable();
+        }
 
         assert!(f64::is_finite(self.alpha));
 
@@ -619,7 +637,21 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
+    ///
+    /// Note that:
+    ///
+    ///  * `work` -- contains the updated values (u₁, λ₁)
+    ///  * `state` -- will be updated from (u₀, λ₀) to (u₁, λ₁)
     fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<(), StrError> {
+        // create a copy of the tangent vector at the initial point
+        let ndim = self.system.ndim;
+        for i in 0..ndim {
+            // self.tangent[i] = work.duds[i];
+            self.prev_tangent[i] = work.duds[i];
+        }
+        // self.tangent[ndim] = work.dlds;
+        self.prev_tangent[ndim] = work.dlds;
+
         // update the tangent vector
         if self.config.bordering {
             panic!("bordering is not implemented yet");
@@ -632,7 +664,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             }
 
             // set b = (0, 1)
-            let ndim = self.system.ndim;
             self.b.fill(0.0);
             self.b[ndim] = 1.0;
 
@@ -659,35 +690,57 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
         state.l = work.l; // λ := λ₁
 
+        // calculate the difference between tangents
+        for i in 0..ndim {
+            self.x[i] = work.duds[i] - self.prev_tangent[i];
+            self.b[i] = self.prev_tangent[i];
+        }
+        self.x[ndim] = work.dlds - self.prev_tangent[ndim];
+        self.b[ndim] = self.prev_tangent[ndim];
+
         /*
-        // calculate a new stepsize
-        work.h_estimate = if self.alpha < 0.0 {
-            // work.h / 2.0
-            work.h * 0.8
-        } else if self.alpha == 0.0 {
-            // work.h * 2.0
-            work.h * 1.2
-        } else {
-            println!("alpha_max / alpha = {}", self.config.alpha_max / self.alpha);
-            f64::clamp(self.config.alpha_max / self.alpha, 0.5, 2.0)
-        };
-        println!("h_estimate (before) = {}", work.h_estimate);
-        work.h_estimate = f64::min(self.config.sigma_max, work.h_estimate);
-        println!("h_estimate (after) = {}", work.h_estimate);
+        let mut mp = 1.0;
+        let mut mi = 1.0;
+        let mut md = 1.0;
+        let norm_diff = vec_norm(&self.x, Norm::Euc);
+        self.error = norm_diff / self.config.tg_control_tol;
+        if self.error > 0.0 {
+            mi = f64::powf(1.0 / self.error, self.config.tg_control_ki);
+            if work.stats.n_accepted > 1 {
+                mp = f64::powf(self.error_prev / self.error, self.config.tg_control_kp);
+            }
+            if work.stats.n_accepted > 2 && self.error_anc > 0.0 {
+                md = f64::powf(
+                    self.error_prev * self.error_prev / (self.error * self.error_anc),
+                    self.config.tg_control_kd,
+                );
+            }
+        }
+        let m = mp * mi * md;
+        self.error_anc = self.error_prev;
+        self.error_prev = self.error;
         */
+
+        let rerr = vec_rms_scaled(&self.x, &self.b, 1e-2, 1e-2);
+        let mut rho = f64::powf(1.0 / rerr, 0.25);
+        if work.stats.n_accepted > 1 {
+            rho *= f64::powf(1.0 / self.rerr_prev, 0.25);
+            rho *= f64::powf(work.h / self.h_prev, -0.25);
+        }
+        self.rerr_prev = rerr;
+        self.h_prev = work.h;
 
         let nn = work.n_iteration as f64;
         let nn_opt = self.config.nr_control_n_opt as f64;
         let ksi_try1 = f64::powf(nn_opt / nn, self.config.nr_control_beta);
         let ksi_try2 = f64::powf(2.0, (nn_opt - nn) / 4.0);
-        let ksi1 = f64::clamp(ksi_try1, 0.5, 2.0);
-        let ksi2 = f64::clamp(ksi_try2, 0.5, 2.0);
-        println!("nn = {}, ksi1 = {}, ksi2 = {}", work.n_iteration, ksi1, ksi2);
-        if self.config.nr_control_model2 {
-            work.h_estimate = work.h * ksi2;
-        } else {
-            work.h_estimate = work.h * ksi1;
-        }
+        // let ksi1 = f64::clamp(ksi_try1, 0.5, 2.0);
+        // let ksi2 = f64::clamp(ksi_try2, 0.5, 2.0);
+        // let ksi = if self.config.nr_control_model2 { ksi2 } else { ksi1 };
+
+        let m = 1.0 + f64::atan(rho * ksi_try1 - 1.0);
+        // println!("c = {}, ksi = {}, m = {}", c, ksi_try2, m);
+        work.h_estimate = work.h * m;
 
         // done
         Ok(())
@@ -704,8 +757,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // reduce the stepsize
         work.h_estimate = self.config.m_failure * work.h;
-
-        // println!("h_estimate = {}", work.h_estimate);
 
         // remove predictor values
         if self.config.debug_predictor {

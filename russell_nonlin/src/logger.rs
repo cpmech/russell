@@ -128,7 +128,13 @@ impl Logger {
 
     pub fn did_not_converge(&self) {
         if self.verbose {
-            println!("{:^w$}", "(did not converge)", w = self.nchar);
+            println!("{:^w$}", "(rejected: did not converge)", w = self.nchar);
+        }
+    }
+
+    pub fn alpha_is_not_acceptable(&self) {
+        if self.verbose {
+            println!("{:^w$}", "(rejected: alpha is not acceptable)", w = self.nchar);
         }
     }
 

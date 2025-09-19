@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use ctm_demo::{Model, ModelType};
 use plotpy::{Canvas, Curve, Plot, RayEndpoint};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Solver, State, Stop, System};
@@ -275,6 +277,7 @@ fn test_hardening_softening_model() {
             .set_line_style("-")
             .draw(&MATHEMATICA_U, &MATHEMATICA_L);
 
+        /*
         // draw tangent vectors
         let mut arrows = Canvas::new();
         arrows
@@ -300,14 +303,16 @@ fn test_hardening_softening_model() {
             let ep = RayEndpoint::Coords(xb, yb);
             hyperplanes.draw_ray(xa, ya, ep);
         }
+        */
 
         // draw numerical solution: load-displacement curve
         let mut load_displacement_curve = Curve::new();
         load_displacement_curve
-            .set_marker_style("o")
+            .set_marker_style(".")
             .set_line_color("#d60943")
             .draw(uu, ll);
 
+        /*
         // add predictor points to the load-displacement curve
         let mut predictor_curve1 = Curve::new();
         predictor_curve1
@@ -325,13 +330,15 @@ fn test_hardening_softening_model() {
             .set_line_style("None")
             .set_marker_style("*")
             .draw(&args.xx_predictor, &args.yy_predictor);
+        */
 
         // generate the plot
         let mut plot = Plot::new();
-        plot.add(&arrows)
+        plot
+            // .add(&arrows)
             .add(&curve_ref)
             .add(&load_displacement_curve)
-            .add(&predictor_curve1)
+            // .add(&predictor_curve1)
             .grid_labels_legend("$u$", "$\\lambda$")
             // .set_range(0.088, 0.121, 0.57, 0.61)
             .set_figure_size_points(1200.0, 650.0)

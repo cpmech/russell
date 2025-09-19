@@ -135,6 +135,18 @@ pub struct Config {
 
     /// Use alternative NR stepsize control (Sundararajan and Noah, 1997)
     pub(crate) nr_control_model2: bool,
+
+    /// Tolerance for the tangent vector stepsize control
+    pub(crate) tg_control_tol: f64,
+
+    /// Exponent for the tangent vector stepsize control (proportional)
+    pub(crate) tg_control_kp: f64,
+
+    /// Exponent for the tangent vector stepsize control (integral)
+    pub(crate) tg_control_ki: f64,
+
+    /// Exponent for the tangent vector stepsize control (derivative)
+    pub(crate) tg_control_kd: f64,
 }
 
 impl Config {
@@ -184,6 +196,10 @@ impl Config {
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
             nr_control_model2: true,
+            tg_control_tol: 1.0e-1,
+            tg_control_kp: 0.075,
+            tg_control_ki: 0.175,
+            tg_control_kd: 0.01,
         }
     }
 

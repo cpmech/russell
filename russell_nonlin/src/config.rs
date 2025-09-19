@@ -139,6 +139,12 @@ pub struct Config {
     /// Beta coefficient used with the NR stepsize control
     pub(crate) nr_control_beta: f64,
 
+    /// Absolute tolerance for the tangent vector stepsize control
+    pub(crate) tg_control_atol: f64,
+
+    /// Relative tolerance for the tangent vector stepsize control
+    pub(crate) tg_control_rtol: f64,
+
     /// First exponent for the tangent vector stepsize control
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
@@ -243,6 +249,8 @@ impl Config {
             // stepsize control
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
+            tg_control_atol: 1e-2,
+            tg_control_rtol: 1e-2,
             tg_control_beta1: 1.0 / 3.0,
             tg_control_beta2: 1.0 / 18.0,
             tg_control_beta3: -5.0 / 18.0,
@@ -540,6 +548,132 @@ impl Config {
     /// Records the predictor values for debugging
     pub fn set_debug_predictor(&mut self, flag: bool) -> &mut Self {
         self.debug_predictor = flag;
+        self
+    }
+
+    /// Sets the optimal number of iterations for stepsize control using Newton-Raphson statistics
+    ///
+    /// Default value: 3
+    pub fn set_nr_control_n_opt(&mut self, value: usize) -> &mut Self {
+        self.nr_control_n_opt = value;
+        self
+    }
+
+    /// Sets the beta coefficient used with the NR stepsize control
+    ///
+    /// Default value: 0.5
+    pub fn set_nr_control_beta(&mut self, value: f64) -> &mut Self {
+        self.nr_control_beta = value;
+        self
+    }
+
+    /// Sets the absolute tolerance for the tangent vector stepsize control
+    ///
+    /// Default value: 1e-2
+    pub fn set_tg_control_atol(&mut self, value: f64) -> &mut Self {
+        self.tg_control_atol = value;
+        self
+    }
+
+    /// Sets the relative tolerance for the tangent vector stepsize control
+    ///
+    /// Default value: 1e-2
+    pub fn set_tg_control_rtol(&mut self, value: f64) -> &mut Self {
+        self.tg_control_rtol = value;
+        self
+    }
+
+    /// Sets the absolute and relative tolerance with the same value for the tangent vector stepsize control
+    ///
+    /// Default values: atol = 1e-2, rtol = 1e-2
+    pub fn set_tg_control_atol_and_rtol(&mut self, tol: f64) -> &mut Self {
+        self.tg_control_atol = tol;
+        self.tg_control_rtol = tol;
+        self
+    }
+
+    /// Sets the first exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Default value: 1.0 / 3.0
+    ///
+    /// # References
+    ///
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub fn set_tg_control_beta1(&mut self, value: f64) -> &mut Self {
+        self.tg_control_beta1 = value;
+        self
+    }
+
+    /// Sets the second exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Default value: 1.0 / 18.0
+    ///
+    /// # References
+    ///
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub fn set_tg_control_beta2(&mut self, value: f64) -> &mut Self {
+        self.tg_control_beta2 = value;
+        self
+    }
+
+    /// Sets the third exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Default value: -5.0 / 18.0
+    ///
+    /// # References
+    ///
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub fn set_tg_control_beta3(&mut self, value: f64) -> &mut Self {
+        self.tg_control_beta3 = value;
+        self
+    }
+
+    /// Sets the fourth exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Default value: -5.0 / 6.0
+    ///
+    /// # References
+    ///
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub fn set_tg_control_alpha2(&mut self, value: f64) -> &mut Self {
+        self.tg_control_alpha2 = value;
+        self
+    }
+
+    /// Sets the fifth exponent for the tangent vector stepsize control
+    ///
+    /// See Equation (18) on page 7 of Soderlind (2003)
+    ///
+    /// Default value: -1.0 / 6.0
+    ///
+    /// # References
+    ///
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    pub fn set_tg_control_alpha3(&mut self, value: f64) -> &mut Self {
+        self.tg_control_alpha3 = value;
         self
     }
 

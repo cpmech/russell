@@ -673,9 +673,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 work.duds[i] = self.x[i] / norm;
             }
             work.dlds = self.x[ndim] / norm;
-
-            // TODO: remove this check
-            approx_eq(vec_inner(&work.duds, &work.duds) + work.dlds * work.dlds, 1.0, 1e-14);
+            // Note: approx_eq(vec_inner(&work.duds, &work.duds) + work.dlds * work.dlds, 1.0, 1e-14);
         }
 
         // update the state
@@ -691,7 +689,12 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         self.b[ndim] = self.prev_tangent[ndim]; // dλ/ds|₀
 
         // calculate the relative error in the tangent vector
-        let rerr = vec_rms_scaled(&self.x, &self.b, 1e-2, 1e-2);
+        let rerr = vec_rms_scaled(
+            &self.x,
+            &self.b,
+            self.config.tg_control_atol,
+            self.config.tg_control_rtol,
+        );
         let mut rho = f64::powf(1.0 / rerr, self.config.tg_control_beta1);
         if work.stats.n_accepted > 1 {
             rho *= f64::powf(1.0 / self.rerr_prev, self.config.tg_control_beta2);

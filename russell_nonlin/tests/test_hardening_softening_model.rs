@@ -2,7 +2,7 @@
 
 use ctm_demo::{Model, ModelType};
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_lab::InterpChebyshev;
+use russell_lab::{approx_eq, InterpChebyshev};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Solver, State};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
@@ -217,28 +217,20 @@ fn get_mathematica_ref_function() -> Result<InterpChebyshev, StrError> {
     let tol = 1e-12;
     let mut interp = InterpChebyshev::new(nn_max, 0.0, 0.5)?;
     interp.adapt_data(tol, &MATHEMATICA_LL_CHEBY)?;
-    let nn = interp.get_degree();
-    println!("Mathematica reference function: nn = {}", nn);
     Ok(interp)
 }
 
 /// Plot the results
 fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(), StrError> {
-    let mut curve_ref_pts = Curve::new();
     let mut curve_ref = Curve::new();
-    curve_ref_pts
-        .set_line_color("#40915d")
-        .set_line_style("None")
-        .set_marker_style("+")
-        .draw(&MATHEMATICA_UU_CHEBY, &MATHEMATICA_LL_CHEBY);
-    let f_ref = get_mathematica_ref_function()?;
-    let xx_ref = linspace(0.0, 0.5, 100);
-    let yy_ref: Vec<_> = xx_ref.iter().map(|&x| f_ref.eval(x).unwrap()).collect();
+    let lambda_ref = get_mathematica_ref_function()?;
+    let uu_ref = linspace(0.0, 0.5, 100);
+    let ll_ref: Vec<_> = uu_ref.iter().map(|&u| lambda_ref.eval(u).unwrap()).collect();
     curve_ref
         .set_label("reference")
         .set_line_color("#40915d")
         .set_line_style("-")
-        .draw(&xx_ref, &yy_ref);
+        .draw(&uu_ref, &ll_ref);
 
     /*
     // draw tangent vectors
@@ -301,7 +293,6 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
     plot
         // .add(&arrows)
         .add(&curve_ref)
-        .add(&curve_ref_pts)
         .add(&load_displacement_curve)
         // .add(&predictor_curve1)
         .grid_labels_legend("$u$", "$\\lambda$")
@@ -347,7 +338,7 @@ fn run_hs_model(
     initial_l: f64,
     stop: Stop,
     auto: AutoStep,
-    tol_u: f64,
+    tol_lambda: f64,
     fig_width: f64,
 ) -> Result<Stats, StrError> {
     // Allocate the system and arguments
@@ -427,6 +418,12 @@ fn run_hs_model(
     }
 
     // check the results against reference values
+    let lambda_ref = get_mathematica_ref_function()?;
+    for (i, &u) in uu.iter().enumerate() {
+        let l_ref = lambda_ref.eval(u)?;
+        let l = ll[i];
+        approx_eq(l, l_ref, tol_lambda);
+    }
 
     // done
     Ok(solver.get_stats().clone())
@@ -459,7 +456,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
 
     let stop = Stop::Component(0, 0.5);
     let auto = AutoStep::Yes;
-    let tol_u = 1e-5;
+    let tol_lambda = 0.07;
 
     let fig_width = 600.0;
 
@@ -471,7 +468,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         initial_l,
         stop,
         auto,
-        tol_u,
+        tol_lambda,
         fig_width,
     )?;
 
@@ -498,7 +495,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
 
     let stop = Stop::Component(0, 0.5);
     let auto = AutoStep::Yes;
-    let tol_u = 1e-5;
+    let tol_lambda = 0.019;
 
     let fig_width = 600.0;
 
@@ -510,7 +507,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
         initial_l,
         stop,
         auto,
-        tol_u,
+        tol_lambda,
         fig_width,
     )?;
 

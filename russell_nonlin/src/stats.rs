@@ -351,6 +351,10 @@ impl Stats {
 
     /// Returns a pretty formatted string with the stats
     pub fn summary(&self) -> String {
+        // Length of the histogram bars
+        const BAR_LEN1: usize = 42;
+        const BAR_LEN2: usize = 53;
+
         // Histogram of stepsizes
         let stepsizes_hist = if !self.record_stepsizes {
             if self.record_iterations_residuals {
@@ -359,7 +363,7 @@ impl Stats {
                 String::new()
             }
         } else {
-            let hist = self.get_histogram_of_stepsizes(10, '■', 40);
+            let hist = self.get_histogram_of_stepsizes(10, '■', BAR_LEN1);
             format!("\n\nDistribution of the stepsizes across all steps:\n{}", hist)
         };
 
@@ -367,7 +371,7 @@ impl Stats {
         let rejected_stepsizes_hist = if !self.record_stepsizes {
             String::new()
         } else {
-            let hist = self.get_histogram_of_rejected_stepsizes(10, '■', 40);
+            let hist = self.get_histogram_of_rejected_stepsizes(10, '■', BAR_LEN1);
             format!("\nDistribution of the rejected stepsizes across all steps:\n{}", hist)
         };
 
@@ -391,7 +395,7 @@ impl Stats {
         let niter_hist = if !self.record_iterations_residuals {
             String::new()
         } else {
-            let hist = self.get_histogram_of_iterations(13, '■', 40);
+            let hist = self.get_histogram_of_iterations(13, '■', BAR_LEN2);
             format!(
                 "\n\nDistribution of the number of converged iterations across all steps:\n{}",
                 hist
@@ -417,7 +421,7 @@ impl Stats {
              Number of iterations (total)     = {}\n\
              Last accepted/suggested stepsize = {}{}{}{}{}",
             self.method.description(),
-            if self.auto { "auto steps" } else { "fixed steps" },
+            if self.auto { "auto" } else { "fixed" },
             self.n_function,
             self.n_jacobian,
             self.n_factor,
@@ -474,6 +478,7 @@ fn generate_histogram_stepsizes(
     character: char,
     bar_len: usize,
 ) -> Histogram<f64> {
+    const PRECISION: usize = 2; // for scientific notation
     if let Some(h_min) = stepsizes.iter().min_by(|a, b| a.total_cmp(b)) {
         if let Some(h_max) = stepsizes.iter().max_by(|a, b| a.total_cmp(b)) {
             if f64::is_finite(*h_min) && f64::is_finite(*h_max) {
@@ -489,7 +494,7 @@ fn generate_histogram_stepsizes(
                     }
                     let mut histogram = Histogram::new(&stations).unwrap();
                     histogram
-                        .set_scientific_fmt_precision(5)
+                        .set_scientific_fmt_precision(PRECISION)
                         .set_bar_char(character)
                         .set_bar_max_len(bar_len);
                     histogram.count(stepsizes);
@@ -598,7 +603,7 @@ mod tests {
         let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats.summary()),
-            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)\n\
+            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -627,7 +632,7 @@ mod tests {
         stats.record_iterations_residuals_stop(true);
         assert_eq!(
             format!("{}", stats.summary()),
-            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)\n\
+            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -649,7 +654,7 @@ mod tests {
              [ 0,  1) | 0 \n\
              [ 1,  2) | 0 \n\
              [ 2,  3) | 0 \n\
-             [ 3,  4) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 3,  4) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
              [ 4,  5) | 0 \n\
              [ 5,  6) | 0 \n\
              [ 6,  7) | 0 \n\
@@ -668,7 +673,7 @@ mod tests {
         let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats),
-            "Natural parameter continuation; solves G(u, λ) = 0 (fixed steps)\n\
+            "Natural parameter continuation; solves G(u, λ) = 0 (fixed)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -693,7 +698,7 @@ mod tests {
         let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats),
-            "Natural parameter continuation; solves G(u, λ) = 0 (fixed steps)\n\
+            "Natural parameter continuation; solves G(u, λ) = 0 (fixed)\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\

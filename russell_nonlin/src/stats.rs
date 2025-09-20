@@ -411,9 +411,9 @@ impl Stats {
              Number of Jacobian evaluations   = {}\n\
              Number of factorizations         = {}\n\
              Number of lin sys solutions      = {}\n\
-             Number of performed steps        = {}\n\
              Number of accepted steps         = {}\n\
              Number of rejected steps         = {}\n\
+             Number of performed steps        = {}\n\
              Number of large max(‖δu‖∞,|δλ|)  = {}\n\
              Number of max iterations reached = {}\n\
              Number of continued divergence   = {}\n\
@@ -608,9 +608,9 @@ mod tests {
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
-             Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
+             Number of performed steps        = 0\n\
              Number of large max(‖δu‖∞,|δλ|)  = 0\n\
              Number of max iterations reached = 0\n\
              Number of continued divergence   = 0\n\
@@ -637,9 +637,9 @@ mod tests {
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
-             Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
+             Number of performed steps        = 0\n\
              Number of large max(‖δu‖∞,|δλ|)  = 0\n\
              Number of max iterations reached = 0\n\
              Number of continued divergence   = 0\n\
@@ -678,9 +678,9 @@ mod tests {
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
-             Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
+             Number of performed steps        = 0\n\
              Number of large max(‖δu‖∞,|δλ|)  = 0\n\
              Number of max iterations reached = 0\n\
              Number of continued divergence   = 0\n\
@@ -703,9 +703,9 @@ mod tests {
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
-             Number of performed steps        = 0\n\
              Number of accepted steps         = 0\n\
              Number of rejected steps         = 0\n\
+             Number of performed steps        = 0\n\
              Number of large max(‖δu‖∞,|δλ|)  = 0\n\
              Number of max iterations reached = 0\n\
              Number of continued divergence   = 0\n\

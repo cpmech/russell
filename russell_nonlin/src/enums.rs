@@ -99,3 +99,60 @@ pub enum Status {
     /// The continuation process was stopped by the user.
     Stopped,
 }
+
+/// Specifies the problem classes in Soderlind (2003) that can be used to define the stepsize control parameters
+///
+/// Reference:
+/// * Soderlind (2003) Digital filters in adaptive time-stepping,
+///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+#[derive(Clone, Copy, Debug)]
+pub enum SoderlindClass {
+    /// Smooth to medium problem type
+    Ho211,
+
+    /// Medium to non-smooth problem type (holds parameter `b`)
+    H211b(f64),
+
+    /// Medium to non-smooth problem type
+    H211PI,
+
+    /// Medium
+    Ho312,
+
+    /// Non-smooth (holds parameter `b`)
+    H312b(f64),
+
+    /// Non-smooth
+    H312PID,
+
+    /// Smooth
+    Ho321,
+
+    /// Medium
+    H321,
+}
+
+impl SoderlindClass {
+    /// Returns the parameters (beta1, beta2, beta3, alpha2, alpha3) for the selected class
+    ///
+    /// From Table III on page 24 of Soderlind (2003).
+    ///
+    /// The parameter `b` is a user-defined parameter that can be adjusted and is used with the
+    /// `H211b`, `H312b` classes.
+    ///
+    /// Reference:
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    pub fn params(&self) -> (f64, f64, f64, f64, f64) {
+        match self {
+            SoderlindClass::Ho211 => (1.0 / 2.0, 1.0 / 2.0, 0.0, 1.0 / 2.0, 0.0),
+            SoderlindClass::H211b(b) => (1.0 / b, 1.0 / b, 0.0, 1.0 / b, 0.0),
+            SoderlindClass::H211PI => (1.0 / 6.0, 1.0 / 6.0, 0.0, 0.0, 0.0),
+            SoderlindClass::Ho312 => (1.0 / 4.0, 1.0 / 2.0, 1.0 / 4.0, 3.0 / 4.0, 1.0 / 4.0),
+            SoderlindClass::H312b(b) => (1.0 / b, 2.0 / b, 1.0 / b, 3.0 / b, 1.0 / b),
+            SoderlindClass::H312PID => (1.0 / 18.0, 1.0 / 9.0, 1.0 / 18.0, 0.0, 0.0),
+            SoderlindClass::Ho321 => (5.0 / 4.0, 1.0 / 2.0, -3.0 / 4.0, -1.0 / 4.0, -3.0 / 4.0),
+            SoderlindClass::H321 => (1.0 / 3.0, 1.0 / 18.0, -5.0 / 18.0, -5.0 / 6.0, -1.0 / 6.0),
+        }
+    }
+}

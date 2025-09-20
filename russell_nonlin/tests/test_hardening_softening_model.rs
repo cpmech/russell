@@ -3,7 +3,7 @@
 use ctm_demo::{Model, ModelType};
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, InterpChebyshev};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Solver, State};
+use russell_nonlin::{AutoStep, Config, Direction, Method, Output, SoderlindClass, Solver, State};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
@@ -335,6 +335,7 @@ const SAVE_FIGURE: bool = true;
 fn run_hs_model(
     name: &str,
     settings: &HashMap<&str, f64>,
+    so_class: Option<SoderlindClass>,
     use_continuous_modulus: bool,
     initial_u: f64,
     initial_l: f64,
@@ -372,6 +373,11 @@ fn run_hs_model(
             "tg_control_alpha3" => config.set_tg_control_alpha3(*value),
             _ => return Err("invalid setting"),
         };
+    }
+
+    // Set the Soderlind class, if given
+    if let Some(so_class) = so_class {
+        config.set_tg_control_soderlind(so_class);
     }
 
     // Define the nonlinear solver
@@ -434,24 +440,8 @@ fn run_hs_model(
 
 #[test]
 fn test_hardening_softening_model_full() -> Result<(), StrError> {
-    // Stop::Steps(33),
-    // AutoStep::No(sigma),
-    // AutoStep::No(0.0191),
-    // Stop::Steps(8),
-    // AutoStep::No(sigma),
-    // Stop::Steps(10),
-    // AutoStep::No(0.05),
-    // Stop::Steps(20),
-
     // Settings
-    let settings = HashMap::from([
-        ("tg_control_atol_and_rtol", 1e-2),
-        ("tg_control_beta1", 1.0 / 3.0),
-        ("tg_control_beta2", 1.0 / 18.0),
-        ("tg_control_beta3", -5.0 / 18.0),
-        ("tg_control_alpha2", -5.0 / 6.0),
-        ("tg_control_alpha3", -1.0 / 6.0),
-    ]);
+    let settings = HashMap::from([("tg_control_atol_and_rtol", 1e-2)]);
 
     // Input data
     let use_continuous_modulus = false;
@@ -465,6 +455,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     let (stats, max_err) = run_hs_model(
         "test_hs_model_full",
         &settings,
+        Some(SoderlindClass::H211PI),
         use_continuous_modulus,
         initial_u,
         initial_l,
@@ -473,22 +464,19 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         fig_width,
     )?;
 
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 58);
+    assert_eq!(stats.n_rejected, 2);
+    assert_eq!(stats.n_steps, 60);
+
     // Check the maximum error on lambda
-    assert!(max_err < 0.07, "max_err = {} is greater than the tolerance", max_err);
+    println!("\nMaximum error on lambda = {}\n", max_err);
+    assert!(max_err < 0.03525, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
 #[test]
 fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
-    // Stop::Steps(33),
-    // AutoStep::No(sigma),
-    // AutoStep::No(0.0191),
-    // Stop::Steps(8),
-    // AutoStep::No(sigma),
-    // Stop::Steps(10),
-    // AutoStep::No(0.05),
-    // Stop::Steps(20),
-
     // Settings
     let settings = HashMap::new();
 
@@ -504,6 +492,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     let (stats, max_err) = run_hs_model(
         "test_hs_model_from_peak",
         &settings,
+        None,
         use_continuous_modulus,
         initial_u,
         initial_l,
@@ -512,7 +501,13 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
         fig_width,
     )?;
 
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 51);
+    assert_eq!(stats.n_rejected, 7);
+    assert_eq!(stats.n_steps, 58);
+
     // Check the maximum error on lambda
-    assert!(max_err < 0.0185, "max_err = {} is greater than the tolerance", max_err);
+    println!("\nMaximum error on lambda = {}\n", max_err);
+    assert!(max_err < 0.0292, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }

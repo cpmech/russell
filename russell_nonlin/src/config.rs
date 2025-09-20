@@ -1,4 +1,4 @@
-use super::Method;
+use super::{Method, SoderlindClass};
 use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
@@ -204,6 +204,7 @@ pub struct Config {
 impl Config {
     /// Allocates a new instance
     pub fn new(method: Method) -> Self {
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H211PI.params();
         Config {
             // basic options
             method,
@@ -251,11 +252,11 @@ impl Config {
             nr_control_beta: 0.5,
             tg_control_atol: 1e-2,
             tg_control_rtol: 1e-2,
-            tg_control_beta1: 1.0 / 3.0,
-            tg_control_beta2: 1.0 / 18.0,
-            tg_control_beta3: -5.0 / 18.0,
-            tg_control_alpha2: -5.0 / 6.0,
-            tg_control_alpha3: -1.0 / 6.0,
+            tg_control_beta1: b1,
+            tg_control_beta2: b2,
+            tg_control_beta3: b3,
+            tg_control_alpha2: a2,
+            tg_control_alpha3: a3,
         }
     }
 
@@ -596,8 +597,6 @@ impl Config {
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
     ///
-    /// Default value: 1.0 / 3.0
-    ///
     /// # References
     ///
     /// * Soderlind (2003) Digital filters in adaptive time-stepping,
@@ -612,8 +611,6 @@ impl Config {
     /// Sets the second exponent for the tangent vector stepsize control
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
-    ///
-    /// Default value: 1.0 / 18.0
     ///
     /// # References
     ///
@@ -630,8 +627,6 @@ impl Config {
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
     ///
-    /// Default value: -5.0 / 18.0
-    ///
     /// # References
     ///
     /// * Soderlind (2003) Digital filters in adaptive time-stepping,
@@ -646,8 +641,6 @@ impl Config {
     /// Sets the fourth exponent for the tangent vector stepsize control
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
-    ///
-    /// Default value: -5.0 / 6.0
     ///
     /// # References
     ///
@@ -664,8 +657,6 @@ impl Config {
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
     ///
-    /// Default value: -1.0 / 6.0
-    ///
     /// # References
     ///
     /// * Soderlind (2003) Digital filters in adaptive time-stepping,
@@ -674,6 +665,21 @@ impl Config {
     ///   Journal of Computational and Applied Mathematics, 185, 225-243.
     pub fn set_tg_control_alpha3(&mut self, value: f64) -> &mut Self {
         self.tg_control_alpha3 = value;
+        self
+    }
+
+    /// Sets the tangent vector stepsize control parameters using a problem class from Soderlind (2003)
+    ///
+    /// # References
+    ///
+    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
+    pub fn set_tg_control_soderlind(&mut self, class: SoderlindClass) -> &mut Self {
+        let (b1, b2, b3, a2, a3) = class.params();
+        self.tg_control_beta1 = b1;
+        self.tg_control_beta2 = b2;
+        self.tg_control_beta3 = b3;
+        self.tg_control_alpha2 = a2;
+        self.tg_control_alpha3 = a3;
         self
     }
 

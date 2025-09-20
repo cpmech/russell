@@ -426,9 +426,9 @@ impl Stats {
             self.n_jacobian,
             self.n_factor,
             self.n_lin_sol,
-            self.n_steps,
             self.n_accepted,
             self.n_rejected,
+            self.n_steps,
             self.n_large_delta,
             self.n_max_iterations_reached,
             self.n_continued_divergence,
@@ -600,7 +600,10 @@ mod tests {
     #[test]
     fn summary_works_basic() {
         let config = Config::new(Method::Arclength);
-        let stats = Stats::new(&config);
+        let mut stats = Stats::new(&config);
+        stats.n_accepted = 8;
+        stats.n_rejected = 2;
+        stats.n_steps = 10;
         assert_eq!(
             format!("{}", stats.summary()),
             "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)\n\
@@ -608,9 +611,9 @@ mod tests {
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
              Number of lin sys solutions      = 0\n\
-             Number of accepted steps         = 0\n\
-             Number of rejected steps         = 0\n\
-             Number of performed steps        = 0\n\
+             Number of accepted steps         = 8\n\
+             Number of rejected steps         = 2\n\
+             Number of performed steps        = 10\n\
              Number of large max(‖δu‖∞,|δλ|)  = 0\n\
              Number of max iterations reached = 0\n\
              Number of continued divergence   = 0\n\

@@ -10,12 +10,19 @@ pub struct SolverNatural<'a, A> {
 
     /// System
     system: System<'a, A>,
+
+    /// Direction multiplier (+1.0 or -1.0)
+    dir_mult: f64,
 }
 
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
     pub fn new(config: Config, system: System<'a, A>) -> Self {
-        SolverNatural { config, system }
+        SolverNatural {
+            config,
+            system,
+            dir_mult: 1.0,
+        }
     }
 
     /// Performs a single iteration
@@ -110,7 +117,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         &mut self,
         work: &mut Workspace,
         state: &mut State,
-        _dir: Direction,
+        dir: Direction,
         stop: Stop,
         auto: AutoStep,
         _args: &mut A,
@@ -118,6 +125,10 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         work.h = match auto {
             AutoStep::Yes => stop.h_ini(self.config.h_ini, state),
             AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
+        };
+        self.dir_mult = match dir {
+            Direction::Pos => 1.0,
+            Direction::Neg => -1.0,
         };
         Ok(())
     }
@@ -147,7 +158,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // predictor: set workspace with trial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
-        work.l = state.l + work.h; // λ_trial ← λ0 + h
+        work.l = state.l + self.dir_mult * work.h; // λ_trial ← λ0 + h
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {

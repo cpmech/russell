@@ -1,7 +1,8 @@
 #![allow(unused)]
 
 use ctm_demo::{Model, ModelType};
-use plotpy::{Canvas, Curve, Plot, RayEndpoint};
+use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
+use russell_lab::InterpChebyshev;
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Solver, State};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
@@ -175,7 +176,7 @@ fn new_hs_model_problem<'a>(
     Ok((system, args))
 }
 
-// Mathematica reference values (u)
+/// Defines the Mathematica reference values (u)
 #[rustfmt::skip]
 const MATHEMATICA_UU: [f64; 51] = [
     0., 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17,
@@ -183,7 +184,7 @@ const MATHEMATICA_UU: [f64; 51] = [
     0.36, 0.37, 0.38, 0.39, 0.4, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.5,
 ];
 
-// Mathematica reference values (lambda)
+/// Defines the Mathematica reference values (lambda)
 #[rustfmt::skip]
 const MATHEMATICA_LL: [f64;51] = [
     0., 0.0921923529874959, 0.180995936702942, 0.265135546339778, 0.34303769588157, 0.412909639654633, 0.472933902640526, 0.521575383562834, 0.557924601234833, 0.581937761631112, 0.594452730469534, 0.596972402157104, 0.591326450808571, 0.579354305707458,
@@ -192,14 +193,52 @@ const MATHEMATICA_LL: [f64;51] = [
     0.047911642057484, 0.0418874859643884, 0.0365529932436868, 0.0318447432166188, 0.0277015895758155, 0.0240654765039555, 0.0208820056359409, 0.0181007846054456, 0.0156755917049248,
 ];
 
+/// Defines the Mathematica reference values (u) (Chebyshev-Gauss-Lobatto spaced)
+#[rustfmt::skip]
+const MATHEMATICA_UU_CHEBY: [f64; 51] = [
+    0., 0.00049331789293211, 0.00197132467138053, 0.00442818731782782, 0.00785420971784223, 0.0122358709262116, 0.0175558785279371, 0.0237932368834951, 0.0309233299890341, 0.0389180186244962, 0.0477457514062631, 0.0573716893060527, 0.0677578431446471, 
+    0.0788632235178278, 0.0906440025628276, 0.103053686926882, 0.116043301255251, 0.129561581474571, 0.143555177108732, 0.157968861828831, 0.172745751406263, 0.187827528208786, 0.203154671353569, 0.218666691608924, 0.234302370117672, 0.25, 0.265697629882328,
+    0.281333308391076, 0.296845328646431, 0.312172471791214, 0.327254248593737, 0.34203113817117, 0.356444822891268, 0.370438418525429, 0.383956698744749, 0.396946313073118, 0.409355997437173, 0.421136776482172, 0.432242156855353, 0.442628310693947, 
+    0.452254248593737, 0.461081981375504, 0.469076670010966, 0.476206763116505, 0.482444121472063, 0.487764129073788, 0.492145790282158, 0.495571812682172, 0.49802867532862, 0.499506682107068, 0.5,
+];
+
+/// Defines the Mathematica reference values (lambda) (Chebyshev-Gauss-Lobatto spaced)
+#[rustfmt::skip]
+const MATHEMATICA_LL_CHEBY: [f64; 51] = [
+    0., 0.00461145774987275, 0.0183917943986726, 0.0411734321083657, 0.0726576679498955, 0.112382088901056, 0.15966784701565, 0.213540092031638, 0.272616001576795, 0.334963149055844, 0.397955651173981, 0.458206157740029, 0.511718529403169, 0.554421318733772,
+    0.583076843361304, 0.596201018002729, 0.594416206769029, 0.579988368458721, 0.555908222381671, 0.525083109916001, 0.489919864817226, 0.452247353390525, 0.413412038517492, 0.374416443835349, 0.336037446855862, 0.298905810706376, 0.263548999392447,
+    0.230406051609337, 0.199824939630881, 0.172052141978139, 0.147223261325688, 0.12536090930094, 0.10638296215564, 0.0901204945033013, 0.076342103793569, 0.0647800264378275, 0.0551539789866797, 0.0471900303273264, 0.0406337043155176, 0.0352573979245923,
+    0.0308635706461138, 0.027284722692107, 0.0243814551821793, 0.0220395919122741, 0.0201669581120976, 0.018690170911755, 0.017551888191699, 0.0167083714526033, 0.0161275472959352, 0.0157875259071178, 0.0156755778523422,
+];
+
+/// Returns a Chebyshev interpolation of the Mathematica reference function
+fn get_mathematica_ref_function() -> Result<InterpChebyshev, StrError> {
+    let nn_max = 100;
+    let tol = 1e-12;
+    let mut interp = InterpChebyshev::new(nn_max, 0.0, 0.5)?;
+    interp.adapt_data(tol, &MATHEMATICA_LL_CHEBY)?;
+    let nn = interp.get_degree();
+    println!("Mathematica reference function: nn = {}", nn);
+    Ok(interp)
+}
+
 /// Plot the results
 fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(), StrError> {
+    let mut curve_ref_pts = Curve::new();
     let mut curve_ref = Curve::new();
+    curve_ref_pts
+        .set_line_color("#40915d")
+        .set_line_style("None")
+        .set_marker_style("+")
+        .draw(&MATHEMATICA_UU_CHEBY, &MATHEMATICA_LL_CHEBY);
+    let f_ref = get_mathematica_ref_function()?;
+    let xx_ref = linspace(0.0, 0.5, 100);
+    let yy_ref: Vec<_> = xx_ref.iter().map(|&x| f_ref.eval(x).unwrap()).collect();
     curve_ref
         .set_label("reference")
         .set_line_color("#40915d")
         .set_line_style("-")
-        .draw(&MATHEMATICA_UU, &MATHEMATICA_LL);
+        .draw(&xx_ref, &yy_ref);
 
     /*
     // draw tangent vectors
@@ -262,6 +301,7 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
     plot
         // .add(&arrows)
         .add(&curve_ref)
+        .add(&curve_ref_pts)
         .add(&load_displacement_curve)
         // .add(&predictor_curve1)
         .grid_labels_legend("$u$", "$\\lambda$")
@@ -307,6 +347,7 @@ fn run_hs_model(
     initial_l: f64,
     stop: Stop,
     auto: AutoStep,
+    tol_u: f64,
     fig_width: f64,
 ) -> Result<Stats, StrError> {
     // Allocate the system and arguments
@@ -385,6 +426,8 @@ fn run_hs_model(
         do_plot(name, uu, ll, fig_width)?;
     }
 
+    // check the results against reference values
+
     // done
     Ok(solver.get_stats().clone())
 }
@@ -416,6 +459,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
 
     let stop = Stop::Component(0, 0.5);
     let auto = AutoStep::Yes;
+    let tol_u = 1e-5;
 
     let fig_width = 600.0;
 
@@ -427,6 +471,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         initial_l,
         stop,
         auto,
+        tol_u,
         fig_width,
     )?;
 
@@ -453,6 +498,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
 
     let stop = Stop::Component(0, 0.5);
     let auto = AutoStep::Yes;
+    let tol_u = 1e-5;
 
     let fig_width = 600.0;
 
@@ -464,6 +510,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
         initial_l,
         stop,
         auto,
+        tol_u,
         fig_width,
     )?;
 

@@ -216,6 +216,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // done
         work.acceptable = work.err.converged();
+        if !work.err.converged() {
+            work.log.did_not_converge();
+        }
         Ok(())
     }
 

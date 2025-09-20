@@ -5,10 +5,15 @@ use russell_lab::approx_eq;
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
-const NAME: &str = "test_arc_bspline_2";
 
-#[test]
-fn test_arc_bspline_2() {
+fn run_test(
+    name: &str,
+    atol_and_rtol: Option<f64>,
+    alpha_max: Option<f64>,
+    expected_n_accepted: usize,
+    expected_n_rejected: usize,
+    expected_n_steps: usize,
+) {
     // nonlinear problem
     let (system, mut state, mut args) = Samples::bspline_problem_1(1.5);
 
@@ -19,11 +24,13 @@ fn test_arc_bspline_2() {
         .set_hide_timings(true)
         .set_record_iterations_residuals(true)
         .set_allowed_continued_divergence(1)
-        .set_alpha_max(15.0)
-        .set_sigma_max(0.3)
         .set_h_ini(0.04);
-    // .set_h_ini(0.4743);
-    // .set_allowed_continued_divergence(3);
+    if let Some(tol) = atol_and_rtol {
+        config.set_tg_control_atol_and_rtol(tol);
+    }
+    if let Some(alpha) = alpha_max {
+        config.set_alpha_max(alpha);
+    }
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -38,25 +45,27 @@ fn test_arc_bspline_2() {
             &mut args,
             &mut state,
             Direction::Pos,
-            Stop::Lambda(1.0),
+            Stop::MaxLambda(1.0),
             AutoStep::Yes,
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
-    // check
-    // approx_eq(state.l, 1.0, 1e-15);
-
-    // results
-    let uu0 = out.get_u_values(0);
-    let uu1 = out.get_u_values(1);
-    // let ll = out.get_l_values();
-    let du0ds = out.get_duds_values(0);
-    let du1ds = out.get_duds_values(1);
-    // let dlds = out.get_dlds_values();
+    // check statistics
+    let stats = solver.get_stats();
+    assert_eq!(stats.n_accepted, expected_n_accepted);
+    assert_eq!(stats.n_rejected, expected_n_rejected);
+    assert_eq!(stats.n_steps, expected_n_steps);
 
     // plot
     if SAVE_FIGURE {
+        // results
+        let uu0 = out.get_u_values(0);
+        let uu1 = out.get_u_values(1);
+        let du0ds = out.get_duds_values(0);
+        let du1ds = out.get_duds_values(1);
+
         // draw B-spline curve
         let mut curve = Curve::new();
         let n_station = 201;
@@ -87,7 +96,17 @@ fn test_arc_bspline_2() {
             .set_range(-0.1, 2.7, -0.1, 1.2)
             .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save(&format!("/tmp/russell_nonlin/{}.svg", NAME))
+            .save(&format!("/tmp/russell_nonlin/{}.svg", name))
             .unwrap()
     }
+}
+
+#[test]
+fn test_arc_bspline_2_default() {
+    run_test("test_arc_bspline_2_default", None, None, 99, 2, 102);
+}
+
+#[test]
+fn test_arc_bspline_2_custom() {
+    run_test("test_arc_bspline_2_custom", Some(1e-1), Some(3.0), 82, 36, 119);
 }

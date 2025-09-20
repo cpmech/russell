@@ -116,24 +116,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         _args: &mut A,
     ) -> Result<(), StrError> {
         work.h = match auto {
-            AutoStep::Yes => match stop {
-                Stop::Lambda(l1) => f64::min(self.config.h_ini, l1 - state.l),
-                Stop::Steps(_) => self.config.h_ini,
-                Stop::Component(_, _) => self.config.h_ini,
-            },
-            AutoStep::No(h_eq) => {
-                if h_eq < 10.0 * f64::EPSILON {
-                    return Err("h must be ≥ 10.0 * f64::EPSILON for fixed stepsize");
-                }
-                match stop {
-                    Stop::Lambda(l1) => {
-                        let n = f64::ceil((l1 - state.l) / h_eq) as usize;
-                        (l1 - state.l) / (n as f64)
-                    }
-                    Stop::Steps(_) => h_eq,
-                    Stop::Component(_, _) => h_eq,
-                }
-            }
+            AutoStep::Yes => stop.h_ini(self.config.h_ini, state),
+            AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
         };
         Ok(())
     }
@@ -231,8 +215,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Calculates the stepsize that allows reaching the target lambda
-    fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64) {
-        assert!(lambda_target > state.l);
-        work.h = lambda_target - state.l;
+    fn stepsize_to_reach_lambda(&mut self, work: &mut Workspace, state: &State, target_lambda: f64) {
+        work.h = f64::abs(target_lambda - state.l);
     }
 }

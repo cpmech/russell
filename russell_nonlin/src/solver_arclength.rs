@@ -540,7 +540,12 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            f(do_backup, &state.u, &work.u, args)?;
+            let res = f(do_backup, &state.u, &work.u, args);
+            if res.is_err() {
+                work.stopped_due_to_secondary_update_fail_predictor = true;
+                work.err.capture_other_error(res.err().unwrap());
+                return Ok(());
+            }
         }
 
         // record the predictor for debugging
@@ -746,9 +751,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     }
 
     /// Calculates the stepsize that allows reaching the target lambda
-    fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64) {
-        assert!(lambda_target > state.l);
-        work.h = 2.0 * (lambda_target - state.l) * work.dlds;
+    fn stepsize_to_reach_lambda(&mut self, work: &mut Workspace, state: &State, target_lambda: f64) {
+        work.h = 2.0 * f64::abs(target_lambda - state.l) * work.dlds;
         self.theta = 0.0; // switch mode to lambda-target
     }
 }

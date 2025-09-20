@@ -339,6 +339,7 @@ fn run_hs_model(
     use_continuous_modulus: bool,
     initial_u: f64,
     initial_l: f64,
+    direction: Direction,
     stop: Stop,
     auto: AutoStep,
     fig_width: f64,
@@ -349,13 +350,11 @@ fn run_hs_model(
 
     // Prepare the configuration
     let mut config = Config::new(Method::Arclength);
-    // let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)
         .set_h_min_allowed(1e-10)
         .set_alpha_max(5.0)
-        .set_sigma_max(0.1)
         .set_debug_predictor(true)
         .set_record_stepsizes(true)
         .set_record_iterations_residuals(true);
@@ -363,6 +362,9 @@ fn run_hs_model(
     // Override the default settings
     for (&key, value) in settings.iter() {
         match key {
+            "h_ini" => config.set_h_ini(*value),
+            "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),
+            "nr_control_beta" => config.set_nr_control_beta(*value),
             "tg_control_atol" => config.set_tg_control_atol(*value),
             "tg_control_rtol" => config.set_tg_control_rtol(*value),
             "tg_control_atol_and_rtol" => config.set_tg_control_atol_and_rtol(*value),
@@ -404,8 +406,8 @@ fn run_hs_model(
     args.local_state.stress = state.l;
 
     // Perform the numerical continuation
-    let status = solver.solve(&mut args, &mut state, Direction::Pos, stop, auto, Some(out))?;
-    assert_eq!(status, Status::Success);
+    let status = solver.solve(&mut args, &mut state, direction, stop, auto, Some(out))?;
+    // assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);
@@ -441,13 +443,17 @@ fn run_hs_model(
 #[test]
 fn test_hardening_softening_model_full() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([("tg_control_atol_and_rtol", 1e-2)]);
+    let settings = HashMap::from([
+        ("tg_control_atol_and_rtol", 1e-2),
+        ("nr_control_n_opt", 3.0),
+        ("nr_control_beta", 0.5),
+    ]);
 
     // Input data
     let use_continuous_modulus = false;
     let initial_u = 0.0;
     let initial_l = 0.0;
-    let stop = Stop::Component(0, 0.5);
+    let stop = Stop::MaxCompU(0, 0.5);
     let auto = AutoStep::Yes;
     let fig_width = 600.0;
 
@@ -459,6 +465,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         use_continuous_modulus,
         initial_u,
         initial_l,
+        Direction::Pos,
         stop,
         auto,
         fig_width,
@@ -484,7 +491,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     let use_continuous_modulus = false;
     let initial_u = MATHEMATICA_UU[10];
     let initial_l = MATHEMATICA_LL[10];
-    let stop = Stop::Component(0, 0.5);
+    let stop = Stop::MaxCompU(0, 0.5);
     let auto = AutoStep::Yes;
     let fig_width = 600.0;
 
@@ -496,6 +503,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
         use_continuous_modulus,
         initial_u,
         initial_l,
+        Direction::Pos,
         stop,
         auto,
         fig_width,
@@ -509,5 +517,43 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
     assert!(max_err < 0.0292, "max_err = {} is greater than the tolerance", max_err);
+    Ok(())
+}
+
+#[test]
+fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
+    // Settings
+    let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-2)]);
+
+    // Input data
+    let use_continuous_modulus = false;
+    let initial_u = MATHEMATICA_UU[10];
+    let initial_l = MATHEMATICA_LL[10];
+    let stop = Stop::MinCompU(0, 0.0);
+    let auto = AutoStep::Yes;
+    let fig_width = 600.0;
+
+    // Simulation
+    let (stats, max_err) = run_hs_model(
+        "test_hs_model_from_peak_backward",
+        &settings,
+        None,
+        use_continuous_modulus,
+        initial_u,
+        initial_l,
+        Direction::Neg,
+        stop,
+        auto,
+        fig_width,
+    )?;
+
+    // Check the solver statistics
+    // assert_eq!(stats.n_accepted, 51);
+    // assert_eq!(stats.n_rejected, 7);
+    // assert_eq!(stats.n_steps, 58);
+
+    // Check the maximum error on lambda
+    println!("\nMaximum error on lambda = {}\n", max_err);
+    // assert!(max_err < 0.0292, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }

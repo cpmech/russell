@@ -61,6 +61,9 @@ pub(crate) struct Workspace<'a> {
     /// Indicates that this step follows a previously rejected step
     pub(crate) follows_rejection: bool,
 
+    /// Flags that the solver stopped due to a secondary update error
+    pub(crate) stopped_due_to_secondary_update_fail_predictor: bool,
+
     /// Flags that the solver stopped due to continued failure
     pub(crate) stopped_due_to_continued_failure: bool,
 
@@ -171,6 +174,7 @@ impl<'a> Workspace<'a> {
             n_continued_rejection: 0,
             follows_failure: false,
             follows_rejection: false,
+            stopped_due_to_secondary_update_fail_predictor: false,
             stopped_due_to_continued_failure: false,
             stopped_due_to_continued_rejection: false,
             stopped_due_to_small_stepsize: false,
@@ -203,6 +207,7 @@ impl<'a> Workspace<'a> {
         self.n_continued_rejection = 0;
         self.follows_failure = false;
         self.follows_rejection = false;
+        self.stopped_due_to_secondary_update_fail_predictor = false;
         self.stopped_due_to_continued_failure = false;
         self.stopped_due_to_continued_rejection = false;
         self.stopped_due_to_small_stepsize = false;
@@ -211,6 +216,9 @@ impl<'a> Workspace<'a> {
     /// Returns error messages
     pub(crate) fn errors(&self) -> Vec<String> {
         let mut msg = self.err.messages();
+        if self.stopped_due_to_secondary_update_fail_predictor {
+            msg.push("secondary update failed in the predictor phase".to_string());
+        }
         if self.stopped_due_to_continued_failure {
             msg.push("too many continued (iteration) failures".to_string());
         }

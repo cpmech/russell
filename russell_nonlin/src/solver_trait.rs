@@ -27,5 +27,5 @@ pub(crate) trait SolverTrait<A>: Send {
     fn reject(&mut self, work: &mut Workspace, args: &mut A);
 
     /// Calculates the stepsize that allows reaching the target lambda
-    fn target_stepsize(&mut self, work: &mut Workspace, state: &State, lambda_target: f64);
+    fn stepsize_to_reach_lambda(&mut self, work: &mut Workspace, state: &State, target_lambda: f64);
 }

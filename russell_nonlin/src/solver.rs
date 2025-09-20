@@ -93,23 +93,12 @@ impl<'a, A> Solver<'a, A> {
         auto: AutoStep,
         mut output: Option<&mut Output<'b, A>>,
     ) -> Result<Status, StrError> {
-        // check data
+        // validate input
         if state.u.dim() != self.ndim {
             return Err("u.dim() must be equal to ndim");
         }
-        match stop {
-            Stop::Lambda(l1) => {
-                if l1 <= state.l {
-                    return Err("Stopping criterion error: l1 must be greater than l0");
-                }
-            }
-            Stop::Steps(n) => {
-                if n < 1 {
-                    return Err("Stopping criterion error: number of steps must be greater than 0");
-                }
-            }
-            Stop::Component(_, _) => (),
-        }
+        stop.validate(state)?;
+        auto.validate()?;
 
         // reset stats and flags
         self.work.reset_stats_and_flags(auto.yes());
@@ -148,6 +137,11 @@ impl<'a, A> Solver<'a, A> {
                     break;
                 }
 
+                // handle secondary update error in the predictor phase
+                if self.work.stopped_due_to_secondary_update_fail_predictor {
+                    break;
+                }
+
                 // update u and λ
                 self.work.stats.n_accepted += 1;
                 self.actual.accept(&mut self.work, state, args)?;
@@ -166,11 +160,7 @@ impl<'a, A> Solver<'a, A> {
 
                 // exit point
                 self.work.stats.stop_sw_step();
-                if match stop {
-                    Stop::Lambda(l1) => state.l > l1 || f64::abs(state.l - l1) < CONFIG_H_MIN,
-                    Stop::Steps(n) => (i + 1) == n,
-                    Stop::Component(i, max) => state.u[i] >= max,
-                } {
+                if stop.now(i, state) {
                     continuation_completed = true;
                     break;
                 }
@@ -192,6 +182,11 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, state, args)?;
 
+                // handle secondary update error in the predictor phase
+                if self.work.stopped_due_to_secondary_update_fail_predictor {
+                    break;
+                }
+
                 // handle iteration failure
                 if self.work.err.failed() {
                     self.work.n_continued_failure += 1;
@@ -209,12 +204,12 @@ impl<'a, A> Solver<'a, A> {
                 }
 
                 // handle lambda target
-                if let Some(l1) = stop.lambda_target() {
-                    if self.work.l > l1 {
+                if let Some((l1, is_min)) = stop.lambda() {
+                    if (self.work.l < l1 && is_min) || (self.work.l > l1 && !is_min) {
                         // redo with target stepsize
                         self.work.stats.n_steps += 1;
                         self.work.stats.sw_step.reset();
-                        self.actual.target_stepsize(&mut self.work, state, l1);
+                        self.actual.stepsize_to_reach_lambda(&mut self.work, state, l1);
                         self.work.log.step(self.work.h, &state);
                         self.actual.step(&mut self.work, state, args)?;
                     }
@@ -259,11 +254,7 @@ impl<'a, A> Solver<'a, A> {
 
                     // exit point
                     self.work.stats.stop_sw_step();
-                    if match stop {
-                        Stop::Lambda(l1) => state.l > l1 || f64::abs(state.l - l1) < CONFIG_H_MIN,
-                        Stop::Steps(n) => (i + 1) == n,
-                        Stop::Component(i, max) => state.u[i] >= max,
-                    } {
+                    if stop.now(i, state) {
                         continuation_completed = true;
                         break;
                     }
@@ -337,7 +328,7 @@ mod tests {
                     &mut args,
                     &mut state,
                     Direction::Pos,
-                    Stop::Lambda(1.0),
+                    Stop::MaxLambda(1.0),
                     AutoStep::Yes,
                     None
                 )
@@ -351,12 +342,12 @@ mod tests {
                     &mut args,
                     &mut state,
                     Direction::Pos,
-                    Stop::Lambda(0.0),
+                    Stop::MaxLambda(0.0),
                     AutoStep::Yes,
                     None,
                 )
                 .err(),
-            Some("Stopping criterion error: l1 must be greater than l0")
+            Some("Stop enum error: MaxLambda value must be greater than the initial lambda value")
         );
         assert_eq!(
             solver
@@ -364,12 +355,12 @@ mod tests {
                     &mut args,
                     &mut state,
                     Direction::Pos,
-                    Stop::Lambda(1.0),
+                    Stop::MaxLambda(1.0),
                     AutoStep::No(f64::EPSILON), // will cause an error
                     None,
                 )
                 .err(),
-            Some("h must be ≥ 10.0 * f64::EPSILON for fixed stepsize")
+            Some("AutoStep enum error: fixed stepsize h_eq must be ≥ 10.0 * f64::EPSILON")
         );
     }
 
@@ -385,7 +376,7 @@ mod tests {
                     &mut args,
                     &mut state,
                     Direction::Pos,
-                    Stop::Lambda(1.0),
+                    Stop::MaxLambda(1.0),
                     AutoStep::Yes,
                     None,
                 )

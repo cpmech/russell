@@ -123,11 +123,6 @@ pub struct Config {
     /// Ultimate max angle between the tangent and the secant (to stop the simulation)
     pub(crate) alpha_max_ultimate: f64,
 
-    /// Sets the maximum pseudo-arclength step size σ
-    ///
-    /// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
-    pub(crate) sigma_max: f64,
-
     /// Records the predictor values for debugging
     pub(crate) debug_predictor: bool,
 
@@ -245,7 +240,6 @@ impl Config {
             bordering: false,
             alpha_max: 5.0,
             alpha_max_ultimate: 30.0,
-            sigma_max: 0.01,
             debug_predictor: false,
             // stepsize control
             nr_control_n_opt: 3,
@@ -528,7 +522,7 @@ impl Config {
         self
     }
 
-    /// Sets the maximum angle between the tangent and the secant
+    /// Sets the maximum angle between the tangent and the secant (to try again)
     ///
     /// Default value: 5.0
     pub fn set_alpha_max(&mut self, value: f64) -> &mut Self {
@@ -536,13 +530,11 @@ impl Config {
         self
     }
 
-    /// Sets the maximum pseudo-arclength step size σ
+    /// Sets the ultimate max angle between the tangent and the secant (to stop the simulation)
     ///
-    /// Note that `σ ≈ Δs` only if Δs is small, i.e., σ is the pseudo-arclength.
-    ///
-    /// Default value: 0.01
-    pub fn set_sigma_max(&mut self, value: f64) -> &mut Self {
-        self.sigma_max = value;
+    /// Default value: 30.0
+    pub fn set_alpha_max_ultimate(&mut self, value: f64) -> &mut Self {
+        self.alpha_max_ultimate = value;
         self
     }
 
@@ -737,8 +729,8 @@ impl Config {
         if self.alpha_max <= 0.0 {
             return Err("requirement: alpha_max > 0");
         }
-        if self.sigma_max <= 0.0 {
-            return Err("requirement: sigma_max > 0");
+        if self.alpha_max_ultimate <= 0.0 {
+            return Err("requirement: alpha_max_ultimate > 0");
         }
         Ok(())
     }

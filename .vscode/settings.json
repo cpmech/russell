@@ -12,6 +12,7 @@
     "argsort",
     "Arioli",
     "atol",
+    "autostep",
     "BLACS",
     "blasint",
     "brusselator",

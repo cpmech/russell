@@ -28,7 +28,7 @@ fn test_linear_no_auto_ana_jac() {
             &mut args,
             &mut state,
             Direction::Pos,
-            Stop::Lambda(1.0),
+            Stop::MaxLambda(1.0),
             AutoStep::No(0.1),
             Some(out),
         )
@@ -97,7 +97,7 @@ fn test_linear_no_auto_num_jac() {
             &mut args,
             &mut state,
             Direction::Pos,
-            Stop::Lambda(1.0),
+            Stop::MaxLambda(1.0),
             AutoStep::No(0.1),
             Some(out),
         )
@@ -168,7 +168,7 @@ fn test_linear_auto_ana_jac() {
             &mut args,
             &mut state,
             Direction::Pos,
-            Stop::Lambda(1.0),
+            Stop::MaxLambda(1.0),
             AutoStep::Yes,
             Some(out),
         )

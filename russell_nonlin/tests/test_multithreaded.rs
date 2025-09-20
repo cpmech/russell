@@ -49,7 +49,7 @@ impl<'a> SimData<'a> {
             args: 0,
             state: State::new(ndim),
             dir: Direction::Pos,
-            stop: Stop::Lambda(LAMBDA_FINAL),
+            stop: Stop::MaxLambda(LAMBDA_FINAL),
             auto_step: AutoStep::No(0.1),
         }
     }

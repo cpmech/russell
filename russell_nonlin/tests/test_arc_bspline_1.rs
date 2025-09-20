@@ -2,10 +2,8 @@ use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
-const NAME: &str = "test_arc_bspline_1";
 
-#[test]
-fn test_arc_bspline_1() {
+fn run_test(name: &str, sigma: f64, expected_status: Status) {
     // nonlinear problem
     let (system, mut state, mut args) = Samples::bspline_problem_1(0.0);
 
@@ -13,9 +11,9 @@ fn test_arc_bspline_1() {
     let mut config = Config::new(Method::Arclength);
     config
         .set_verbose(true, true, true)
+        .set_alpha_max_ultimate(60.0)
         .set_hide_timings(true)
         .set_debug_predictor(true);
-    // .set_allowed_continued_divergence(3);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -26,8 +24,6 @@ fn test_arc_bspline_1() {
 
     // numerical continuation
     let nstep = 6;
-    // let sigma = 0.4742; // σ ≡ h
-    let sigma = 0.4743; // σ ≡ h (this value causes problems; Newton's method diverges)
     let status = solver
         .solve(
             &mut args,
@@ -38,22 +34,22 @@ fn test_arc_bspline_1() {
             Some(out),
         )
         .unwrap();
-    assert_eq!(status, Status::Failure);
-    assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
-
-    // results
-    let uu0 = out.get_u_values(0);
-    let uu1 = out.get_u_values(1);
-    // let ll = out.get_l_values();
-    let du0ds = out.get_duds_values(0);
-    let du1ds = out.get_duds_values(1);
-    // let dlds = out.get_dlds_values();
-
-    // debug data
-    let (_, u0_predictor, u1_predictor) = solver.get_debug_predictor_values();
+    assert_eq!(status, expected_status);
+    if expected_status == Status::Failure {
+        assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
+    }
 
     // plot
     if SAVE_FIGURE {
+        // results
+        let uu0 = out.get_u_values(0);
+        let uu1 = out.get_u_values(1);
+        let du0ds = out.get_duds_values(0);
+        let du1ds = out.get_duds_values(1);
+
+        // debug data
+        let (_, u0_predictor, u1_predictor) = solver.get_debug_predictor_values();
+
         // draw B-spline curve
         let mut curve = Curve::new();
         let n_station = 201;
@@ -123,7 +119,19 @@ fn test_arc_bspline_1() {
             .set_range(-0.1, 2.7, -0.1, 1.2)
             .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save(&format!("/tmp/russell_nonlin/{}.svg", NAME))
+            .save(&format!("/tmp/russell_nonlin/{}.svg", name))
             .unwrap()
     }
+}
+
+#[test]
+fn test_arc_bspline_1_success() {
+    let sigma = 0.4742; // σ ≡ h
+    run_test("test_arc_bspline_1_success", sigma, Status::Success);
+}
+
+#[test]
+fn test_arc_bspline_1_fail() {
+    let sigma = 0.4743; // σ ≡ h (this value causes problems; Newton's method diverges)
+    run_test("test_arc_bspline_1_fail", sigma, Status::Failure);
 }

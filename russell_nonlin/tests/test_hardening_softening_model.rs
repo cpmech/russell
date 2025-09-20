@@ -326,10 +326,12 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
     Ok(())
 }
 
-// Whether to save the figure
+/// Defines whether to generate the plot or not
 const SAVE_FIGURE: bool = true;
 
-// Function to run the Hardening-Softening model
+/// Defines a function to run the Hardening-Softening model
+///
+/// Returns `(stats, max_err)` where `max_err` is the maximum error in lambda
 fn run_hs_model(
     name: &str,
     settings: &HashMap<&str, f64>,
@@ -338,9 +340,8 @@ fn run_hs_model(
     initial_l: f64,
     stop: Stop,
     auto: AutoStep,
-    tol_lambda: f64,
     fig_width: f64,
-) -> Result<Stats, StrError> {
+) -> Result<(Stats, f64), StrError> {
     // Allocate the system and arguments
     let (system, mut args) = new_hs_model_problem(use_continuous_modulus)?;
     let ndim = system.get_ndim();
@@ -419,14 +420,16 @@ fn run_hs_model(
 
     // check the results against reference values
     let lambda_ref = get_mathematica_ref_function()?;
+    let mut max_err = 0.0;
     for (i, &u) in uu.iter().enumerate() {
         let l_ref = lambda_ref.eval(u)?;
         let l = ll[i];
-        approx_eq(l, l_ref, tol_lambda);
+        let err = f64::abs(l - l_ref);
+        max_err = f64::max(max_err, err);
     }
 
     // done
-    Ok(solver.get_stats().clone())
+    Ok((solver.get_stats().clone(), max_err))
 }
 
 #[test]
@@ -440,6 +443,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     // AutoStep::No(0.05),
     // Stop::Steps(20),
 
+    // Settings
     let settings = HashMap::from([
         ("tg_control_atol_and_rtol", 1e-2),
         ("tg_control_beta1", 1.0 / 3.0),
@@ -449,18 +453,16 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         ("tg_control_alpha3", -1.0 / 6.0),
     ]);
 
+    // Input data
     let use_continuous_modulus = false;
-
     let initial_u = 0.0;
     let initial_l = 0.0;
-
     let stop = Stop::Component(0, 0.5);
     let auto = AutoStep::Yes;
-    let tol_lambda = 0.07;
-
     let fig_width = 600.0;
 
-    let stats = run_hs_model(
+    // Simulation
+    let (stats, max_err) = run_hs_model(
         "test_hs_model_full",
         &settings,
         use_continuous_modulus,
@@ -468,10 +470,11 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         initial_l,
         stop,
         auto,
-        tol_lambda,
         fig_width,
     )?;
 
+    // Check the maximum error on lambda
+    assert!(max_err < 0.07, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -486,20 +489,19 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     // AutoStep::No(0.05),
     // Stop::Steps(20),
 
+    // Settings
     let settings = HashMap::new();
 
+    // Input data
     let use_continuous_modulus = false;
-
     let initial_u = MATHEMATICA_UU[10];
     let initial_l = MATHEMATICA_LL[10];
-
     let stop = Stop::Component(0, 0.5);
     let auto = AutoStep::Yes;
-    let tol_lambda = 0.019;
-
     let fig_width = 600.0;
 
-    let stats = run_hs_model(
+    // Simulation
+    let (stats, max_err) = run_hs_model(
         "test_hs_model_from_peak",
         &settings,
         use_continuous_modulus,
@@ -507,9 +509,10 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
         initial_l,
         stop,
         auto,
-        tol_lambda,
         fig_width,
     )?;
 
+    // Check the maximum error on lambda
+    assert!(max_err < 0.0185, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }

@@ -183,6 +183,18 @@ impl InterpChebyshev {
     /// * `uu` -- U vector with dim = npoint (≥ 1); thus the polynomial degree will be
     ///   `nn = npoint - 1` and must be ≤ nn_max
     ///
+    /// **Note:** The data must correspond (be given/evaluated) at the
+    /// Chebyshev-Gauss-Lobatto points in the range [xa, xb]. The data (U)
+    /// is associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///        xb + xa + (xb - xa) z
+    /// x(z) = —————————————————————
+    ///                 2
+    /// ```
+    ///
+    /// where z are the Chebyshev-Gauss-Lobatto coordinates, i.e., zⱼ = -cos(j π / N), j = 0, ..., N.
+    ///
     /// # Examples
     ///
     /// ```
@@ -298,7 +310,19 @@ impl InterpChebyshev {
     /// # Input
     ///
     /// * `tol` -- tolerance to truncate the Chebyshev series (e.g., 1e-8)
-    /// * `uu` -- U vector with the data values
+    /// * `uu` -- U vector with the data values.
+    ///
+    /// **Note:** The data must correspond (be given/evaluated) at the
+    /// Chebyshev-Gauss-Lobatto points in the range [xa, xb]. The data (U)
+    /// is associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///        xb + xa + (xb - xa) z
+    /// x(z) = —————————————————————
+    ///                 2
+    /// ```
+    ///
+    /// where z are the Chebyshev-Gauss-Lobatto coordinates, i.e., zⱼ = -cos(j π / N), j = 0, ..., N.
     ///
     /// # Method
     ///

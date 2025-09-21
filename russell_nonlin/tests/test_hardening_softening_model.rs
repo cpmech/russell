@@ -326,6 +326,22 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
     Ok(())
 }
 
+fn do_plot_stepsizes(name: &str, stepsizes: &[f64]) {
+    let hh = &stepsizes[1..]; // the first one is duplicated
+    let n = hh.len();
+    let x = linspace(1.0, n as f64, n);
+
+    let mut curve = Curve::new();
+    curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
+    curve.draw(&x.as_slice(), &hh);
+
+    let mut plot = Plot::new();
+    plot.set_labels("step number", "stepsize $h$")
+        .add(&curve)
+        .save(&format!("/tmp/russell_nonlin/{}_stepsizes.svg", name))
+        .unwrap();
+}
+
 /// Defines whether to generate the plot or not
 const SAVE_FIGURE: bool = true;
 
@@ -356,7 +372,6 @@ fn run_hs_model(
         .set_h_min_allowed(1e-10)
         .set_alpha_max(5.0)
         .set_debug_predictor(true)
-        .set_record_stepsizes(true)
         .set_record_iterations_residuals(true);
 
     // Override the default settings
@@ -423,7 +438,9 @@ fn run_hs_model(
 
     // plot
     if SAVE_FIGURE {
+        let hh = out.get_h_values();
         do_plot(name, uu, ll, fig_width)?;
+        do_plot_stepsizes(name, &hh);
     }
 
     // check the results against reference values

@@ -102,7 +102,6 @@ fn test_arc_circle_1() {
         .set_verbose(true, true, true)
         .set_hide_timings(true)
         .set_h_ini(0.3)
-        .set_record_stepsizes(true)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -144,7 +143,6 @@ fn test_arc_circle_1() {
         let hh = out.get_h_values();
         let duds = out.get_duds_values(0);
         let dlds = out.get_dlds_values();
-        assert_eq!(hh.last().unwrap(), stats.get_stepsizes().last().unwrap());
         do_plot("test_arc_circle_1", &uu, &ll, &duds, &dlds, &hh);
         do_plot_stepsizes("test_arc_circle_1", &hh);
     }

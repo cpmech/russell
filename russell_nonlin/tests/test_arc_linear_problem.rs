@@ -23,19 +23,20 @@ fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], steps
         .set_arrow_scale(10.0)
         .set_edge_color("None")
         .set_face_color("black");
-    for i in 0..(uu.len() - 1) {
-        let dds = stepsizes[i];
-        let xf = uu[i] + dds * duds[i];
-        let yf = ll[i] + dds * dlds[i];
+    let na = uu.len() - 1; // there are one less arrow than points.
+    for i in 0..na {
+        let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
+        let xf = uu[i] + sigma * duds[i];
+        let yf = ll[i] + sigma * dlds[i];
         arrows.draw_arrow(uu[i], ll[i], xf, yf);
     }
 
     let mut hyperplanes = Curve::new();
     hyperplanes.set_line_style("--").set_line_color("gray");
-    for i in 0..(uu.len() - 1) {
-        let dds = stepsizes[i];
-        let xa = uu[i] + dds * duds[i];
-        let ya = ll[i] + dds * dlds[i];
+    for i in 0..na {
+        let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
+        let xa = uu[i] + sigma * duds[i];
+        let ya = ll[i] + sigma * dlds[i];
         let phi = f64::atan2(dlds[i], duds[i]);
         let xb = xa - f64::sin(phi);
         let yb = ya + f64::cos(phi);
@@ -80,10 +81,7 @@ fn test_arc_linear_problem() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_record_stepsizes(true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -109,10 +107,11 @@ fn test_arc_linear_problem() {
     // results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
+    let hh = out.get_h_values();
 
     // check
     let d = dds / SQRT_2;
-    assert_eq!(out.get_h_values(), &vec![dds; nstep + 1]);
+    assert_eq!(hh, &vec![dds; nstep + 1]);
     array_approx_eq(&ll, &[0.0, d, 2.0 * d, 3.0 * d, 4.0 * d, 5.0 * d], 1e-15);
     array_approx_eq(&uu, &[0.0, d, 2.0 * d, 3.0 * d, 4.0 * d, 5.0 * d], 1e-15);
 
@@ -139,8 +138,8 @@ fn test_arc_linear_problem() {
     if SAVE_FIGURE {
         let duds = out.get_duds_values(0);
         let dlds = out.get_dlds_values();
-        let stepsizes = stats.get_stepsizes();
-        do_plot("test_arc_linear_problem", &uu, &ll, &duds, &dlds, &stepsizes);
+        let hh = out.get_h_values();
+        do_plot("test_arc_linear_problem", uu, ll, duds, dlds, hh);
     }
 }
 
@@ -157,10 +156,7 @@ fn test_arc_linear_problem_backward() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_record_stepsizes(true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -186,10 +182,11 @@ fn test_arc_linear_problem_backward() {
     // results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
+    let hh = out.get_h_values();
 
     // check
     let d = dds / SQRT_2;
-    assert_eq!(out.get_h_values(), &vec![dds; nstep + 1]);
+    assert_eq!(hh, &vec![dds; nstep + 1]);
     array_approx_eq(&ll, &[5.0 * d, 4.0 * d, 3.0 * d, 2.0 * d, d, 0.0], 1e-15);
     array_approx_eq(&uu, &[5.0 * d, 4.0 * d, 3.0 * d, 2.0 * d, d, 0.0], 1e-15);
 
@@ -216,8 +213,7 @@ fn test_arc_linear_problem_backward() {
     if SAVE_FIGURE {
         let duds = out.get_duds_values(0);
         let dlds = out.get_dlds_values();
-        let stepsizes = stats.get_stepsizes();
-        do_plot("test_arc_linear_problem_backward", &uu, &ll, &duds, &dlds, &stepsizes);
+        do_plot("test_arc_linear_problem_backward", uu, ll, duds, dlds, hh);
     }
 }
 
@@ -230,10 +226,7 @@ fn test_arc_linear_problem_large_step() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_record_stepsizes(true);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -243,7 +236,7 @@ fn test_arc_linear_problem_large_step() {
     out.set_recording(true, &[0], &[0]);
 
     // numerical continuation
-    let dds = 0.8; // Δs ≡ h
+    let dds = 1.2; // Δs ≡ h
     solver
         .solve(
             &mut args,
@@ -271,8 +264,8 @@ fn test_arc_linear_problem_large_step() {
     if SAVE_FIGURE {
         let duds = out.get_duds_values(0);
         let dlds = out.get_dlds_values();
-        let stepsizes = stats.get_stepsizes();
-        do_plot("test_arc_linear_problem_large_step", &uu, &ll, &duds, &dlds, &stepsizes);
+        let hh = out.get_h_values();
+        do_plot("test_arc_linear_problem_large_step", uu, ll, duds, dlds, hh);
     }
 }
 
@@ -288,8 +281,7 @@ fn test_arc_linear_problem_auto() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.1)
-        .set_record_stepsizes(true);
+        .set_h_ini(0.1);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -313,18 +305,17 @@ fn test_arc_linear_problem_auto() {
     // check the results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    approx_eq(*uu.last().unwrap(), 1.0, 1e-5);
-    approx_eq(*ll.last().unwrap(), 1.0, 1e-5);
+    approx_eq(*uu.last().unwrap(), 1.0, 1e-14);
+    approx_eq(*ll.last().unwrap(), 1.0, 1e-14);
 
     // plot
     if SAVE_FIGURE {
-        let stats = solver.get_stats();
         let duds = out.get_duds_values(0);
         let dlds = out.get_dlds_values();
-        let stepsizes = stats.get_stepsizes();
+        let hh = out.get_h_values();
         let name = "test_arc_linear_problem_auto";
-        do_plot(name, &uu, &ll, &duds, &dlds, &stepsizes);
-        do_plot_stepsizes(name, &stepsizes);
+        do_plot(name, uu, ll, duds, dlds, hh);
+        do_plot_stepsizes(name, hh);
     }
 }
 
@@ -344,8 +335,7 @@ fn test_arc_linear_problem_auto_backward() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.1)
-        .set_record_stepsizes(true);
+        .set_h_ini(0.1);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -374,14 +364,13 @@ fn test_arc_linear_problem_auto_backward() {
 
     // plot
     if SAVE_FIGURE {
-        let stats = solver.get_stats();
         let uu = out.get_u_values(0);
         let ll = out.get_l_values();
         let duds = out.get_duds_values(0);
         let dlds = out.get_dlds_values();
-        let stepsizes = stats.get_stepsizes();
+        let hh = out.get_h_values();
         let name = "test_arc_linear_problem_auto_backward";
-        do_plot(name, &uu, &ll, &duds, &dlds, &stepsizes);
-        do_plot_stepsizes(name, &stepsizes);
+        do_plot(name, uu, ll, duds, dlds, hh);
+        do_plot_stepsizes(name, hh);
     }
 }

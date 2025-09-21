@@ -127,9 +127,6 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.sw_step.reset();
                 self.work.log.step(self.work.h, &state);
 
-                // record stepsize
-                self.work.stats.record_stepsize(self.work.h);
-
                 // step
                 self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, state, stop, args)?;
@@ -211,9 +208,6 @@ impl<'a, A> Solver<'a, A> {
 
                 // accept step
                 if self.work.acceptable {
-                    // record accepted stepsize
-                    self.work.stats.record_stepsize(self.work.h);
-
                     // update u and λ
                     self.work.stats.n_accepted += 1;
                     self.actual.accept(&mut self.work, state, args)?;
@@ -255,9 +249,6 @@ impl<'a, A> Solver<'a, A> {
 
                 // reject step
                 } else {
-                    // record rejected stepsize
-                    self.work.stats.record_rejected_stepsize(self.work.h);
-
                     // set flags
                     self.work.stats.n_rejected += 1;
                     self.work.follows_rejection = true;

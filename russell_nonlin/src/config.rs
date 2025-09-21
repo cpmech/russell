@@ -232,7 +232,7 @@ impl Config {
             tol_abs_delta: 1e-10,
             tol_rel_delta: 1e-7,
             allowed_delta_max: 1e8,
-            allowed_iterations: 12,
+            allowed_iterations: 20,
             allowed_continued_divergence: 1,
             constant_tangent: false,
             use_numerical_jacobian: false,

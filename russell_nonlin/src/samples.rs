@@ -1,5 +1,5 @@
 use super::{NoArgs, State, System};
-use russell_lab::math::{SQRT_2_BY_3, SQRT_3};
+use russell_lab::math::{SQRT_2, SQRT_2_BY_3, SQRT_3};
 use russell_lab::{Bspline, Vector};
 use russell_sparse::{CooMatrix, Sym};
 
@@ -427,6 +427,41 @@ impl Samples {
         // done
         (system, state, args)
     }
+
+    /// Circle on the u-λ space
+    pub fn circle_ul<'a>(radius: f64) -> (System<'a, NoArgs>, State, NoArgs) {
+        // system
+        let ndim = 1;
+        let mut system = System::new(ndim, move |gg, l, u, _args| {
+            gg[0] = u[0] * u[0] + l * l - radius * radius;
+            Ok(())
+        })
+        .unwrap();
+
+        // function to compute Gu = ∂G/∂u
+        let nnz = 1;
+        system
+            .set_calc_ggu(Some(nnz), Sym::No, |ggu, _l, u, _args| {
+                ggu.put(0, 0, 2.0 * u[0]).unwrap();
+                Ok(())
+            })
+            .unwrap();
+
+        // function to compute Gl = ∂G/∂λ
+        system.set_calc_ggl(|ggl, l, _u, _args| {
+            ggl[0] = 2.0 * l;
+            Ok(())
+        });
+
+        // initial state: point on the first quadrant with u = l
+        let mut state = State::new(ndim);
+        state.u[0] = radius / SQRT_2;
+        state.l = radius / SQRT_2;
+
+        // done
+        let args = 0;
+        (system, state, args)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -434,8 +469,9 @@ impl Samples {
 #[cfg(test)]
 mod tests {
     use super::Samples;
+    use russell_lab::math::SQRT_2;
     use russell_lab::{algo::num_jacobian, Vector};
-    use russell_lab::{mat_approx_eq, vec_approx_eq};
+    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
     use russell_sparse::{CooMatrix, Sym};
 
     #[test]
@@ -453,8 +489,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-11);
     }
 
@@ -473,8 +509,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-10);
     }
 
@@ -493,8 +529,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-10);
     }
 
@@ -513,8 +549,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-15);
     }
 
@@ -533,8 +569,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-12);
     }
 
@@ -553,8 +589,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check Gu
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-15);
 
         // check Gl
@@ -579,8 +615,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check Gu
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-15);
 
         // check Gl
@@ -605,8 +641,8 @@ mod tests {
         let ana = ggu.as_dense();
 
         // check Gu
-        println!("{}", ana);
-        println!("{}", num);
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-15);
 
         // check Gl
@@ -615,5 +651,42 @@ mod tests {
         ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
         println!("{}", ggl);
         vec_approx_eq(&ggl, &[-2.5, -5.0], 1e-15);
+    }
+
+    #[test]
+    fn test_samples_circle_ul() {
+        // system
+        let radius = SQRT_2;
+        let (system, state, mut args) = Samples::circle_ul(radius);
+        println!("Initial state: l = {}, u = {}", state.l, state.u[0]);
+
+        // check initial G(u, λ) = 0
+        let ndim = system.get_ndim();
+        let gg_fn = system.calc_gg.as_ref();
+        let mut gg = Vector::new(ndim);
+        gg_fn(&mut gg, state.l, &state.u, &mut args).unwrap();
+        println!("gg =\n{}", gg);
+        approx_eq(gg[0], 0.0, 1e-15);
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        ggu_fn(&mut ggu, state.l, &state.u, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check Gu
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
+        mat_approx_eq(&ana, &num, 1e-12);
+
+        // check Gl
+        let ggl_fn = system.calc_ggl.as_ref().unwrap();
+        let mut ggl = Vector::new(ndim);
+        ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        println!("Gl = \n{}", ggl);
+        vec_approx_eq(&ggl, &[2.0 * state.l], 1e-15);
     }
 }

@@ -13,6 +13,7 @@ fn test_linear_no_auto_ana_jac() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
+        .set_record_stepsizes(true)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -68,6 +69,10 @@ fn test_linear_no_auto_ana_jac() {
     assert!(stats.nanos_factor_max > 0);
     assert!(stats.nanos_lin_sol_max > 0);
     assert!(stats.nanos_total > 0);
+
+    // check stepsizes
+    let stepsizes = stats.get_stepsizes();
+    println!("stepsizes = {:?}", stepsizes);
 }
 
 #[test]

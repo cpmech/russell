@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace};
+use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::{
     approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_rms_scaled, vec_rms_scaled_diff, vec_scale,
@@ -364,7 +364,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // calculate N = θ (u - u₀)ᵀ du/ds|₀ + (2 - θ) (λ - λ₀) dλ/ds|₀ - σ
         let ndim = self.system.ndim;
         let mut du_part = 0.0; // (u - u₀)ᵀ du/ds|₀
-        if self.theta != 0.0 {
+        if self.theta > 0.0 {
             for i in 0..ndim {
                 du_part += (work.u[i] - state.u[i]) * work.duds[i];
             }
@@ -504,7 +504,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         Ok(())
     }
 
-    /// Calculates (u,λ) such that G(u(s), λ(s)) = 0
+    /// Calculates (u,λ) such that G(u(s), λ(s)) = 0 and N = 0
     ///
     /// Note that:
     ///
@@ -513,7 +513,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     /// Note also that `work.auto` indicates that automatic stepsize control is in use.
     /// On auto mode, a large (δu,δλ) is not an error; otherwise, it is an error.
-    fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
+    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<(), StrError> {
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
@@ -532,10 +532,30 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // start the recording of iteration errors
         work.stats.record_iterations_residuals_start();
 
-        // predictor: set workspace with trial values
-        let sigma = work.h;
-        vec_add(&mut work.u, 1.0, &state.u, self.theta * sigma, &work.duds).unwrap(); // u₁ = u₀ + θ σ · duds₀
-        work.l = state.l + (2.0 - self.theta) * sigma * work.dlds; // λ₁ = λ₀ + (2 - θ) σ · dλds₀
+        // predictor: λ₁ = λ₀ + (2 - θ) σ · dλds₀
+        work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
+
+        // switch to "targeting lambda" mode if needed
+        if let Some((l1, is_min)) = stop.lambda() {
+            if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
+                self.theta = 0.0; // set θ to targeting lambda mode
+                work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
+                if work.h <= CONFIG_H_MIN {
+                    work.target_lambda_reached = true;
+                    return Ok(());
+                }
+                work.l = state.l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
+            }
+        }
+
+        // predictor: u₁ = u₀ + θ σ · du/ds₀
+        if self.theta > 0.0 {
+            // u₁ = u₀ + θ σ · duds₀
+            vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
+        } else {
+            // u₁ = u₀
+            vec_copy(&mut work.u, &state.u).unwrap();
+        }
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
@@ -748,11 +768,5 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 predictor_values.2.pop();
             }
         }
-    }
-
-    /// Calculates the stepsize that allows reaching the target lambda
-    fn stepsize_to_reach_lambda(&mut self, work: &mut Workspace, state: &State, target_lambda: f64) {
-        work.h = 2.0 * f64::abs(target_lambda - state.l) * work.dlds;
-        self.theta = 0.0; // switch mode to lambda-target
     }
 }

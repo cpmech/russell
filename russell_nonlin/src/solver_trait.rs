@@ -18,14 +18,11 @@ pub(crate) trait SolverTrait<A>: Send {
     ) -> Result<(), StrError>;
 
     /// Calculates u, λ and s such that G(u(s), λ(s)) = 0
-    fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError>;
+    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<(), StrError>;
 
     /// Handles the accept case by updating the state and calculating a new stepsize
     fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<(), StrError>;
 
     /// Handles the reject case by calculating a new stepsize
     fn reject(&mut self, work: &mut Workspace, args: &mut A);
-
-    /// Calculates the stepsize that allows reaching the target lambda
-    fn stepsize_to_reach_lambda(&mut self, work: &mut Workspace, state: &State, target_lambda: f64);
 }

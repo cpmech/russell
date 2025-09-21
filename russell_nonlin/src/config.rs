@@ -238,7 +238,7 @@ impl Config {
             use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: false,
-            alpha_max: 5.0,
+            alpha_max: 15.0,
             alpha_max_ultimate: 30.0,
             debug_predictor: false,
             // stepsize control

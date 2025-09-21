@@ -33,9 +33,7 @@ pub enum Stop {
     MinLambda(f64),
 
     /// Stops when lambda reaches a maximum value.
-    ///
-    /// Holds `(target, tolerance)`.
-    MaxLambda(f64, f64),
+    MaxLambda(f64),
 
     /// Stops after a number of steps.
     Steps(usize),
@@ -66,12 +64,9 @@ impl Stop {
                     return Err("Stop enum error: MinLambda value must be less than the initial lambda value");
                 }
             }
-            Stop::MaxLambda(l1, tol) => {
+            Stop::MaxLambda(l1) => {
                 if *l1 <= state.l {
                     return Err("Stop enum error: MaxLambda value must be greater than the initial lambda value");
-                }
-                if *tol <= CONFIG_H_MIN {
-                    return Err("Stop enum error: MaxLambda tolerance must be greater than CONFIG_H_MIN");
                 }
             }
             Stop::Steps(n) => {
@@ -91,7 +86,7 @@ impl Stop {
             Stop::MinCompU(_, _) => None,
             Stop::MaxCompU(_, _) => None,
             Stop::MinLambda(l1) => Some((*l1, true)),
-            Stop::MaxLambda(l1, _) => Some((*l1, false)),
+            Stop::MaxLambda(l1) => Some((*l1, false)),
             Stop::Steps(_) => None,
         }
     }
@@ -102,7 +97,7 @@ impl Stop {
             Stop::MinCompU(i, u1) => state.u[*i] < *u1 || f64::abs(state.u[*i] - *u1) < CONFIG_H_MIN,
             Stop::MaxCompU(i, u1) => state.u[*i] > *u1 || f64::abs(*u1 - state.u[*i]) < CONFIG_H_MIN,
             Stop::MinLambda(l1) => state.l < *l1 || f64::abs(*l1 - state.l) < CONFIG_H_MIN,
-            Stop::MaxLambda(l1, tol) => state.l > *l1 || f64::abs(state.l - *l1) < *tol,
+            Stop::MaxLambda(l1) => state.l > *l1 || f64::abs(state.l - *l1) < CONFIG_H_MIN,
             Stop::Steps(n) => (step + 1) == *n,
         }
     }
@@ -113,7 +108,7 @@ impl Stop {
             Stop::MinCompU(_, _) => h_ini_default,
             Stop::MaxCompU(_, _) => h_ini_default,
             Stop::MinLambda(l1) => f64::min(h_ini_default, f64::abs(state.l - *l1)),
-            Stop::MaxLambda(l1, _) => f64::min(h_ini_default, f64::abs(*l1 - state.l)),
+            Stop::MaxLambda(l1) => f64::min(h_ini_default, f64::abs(*l1 - state.l)),
             Stop::Steps(_) => h_ini_default,
         }
     }
@@ -127,7 +122,7 @@ impl Stop {
                 let n = f64::ceil(f64::abs(state.l - *l1) / h_eq_default) as usize;
                 (state.l - *l1) / (n as f64)
             }
-            Stop::MaxLambda(l1, _) => {
+            Stop::MaxLambda(l1) => {
                 let n = f64::ceil(f64::abs(*l1 - state.l) / h_eq_default) as usize;
                 (*l1 - state.l) / (n as f64)
             }
@@ -313,11 +308,11 @@ mod tests {
         assert!(stop.validate(&state).is_err());
 
         // MaxLambda - valid case
-        let stop = Stop::MaxLambda(7.0, 1e-5);
+        let stop = Stop::MaxLambda(7.0);
         assert!(stop.validate(&state).is_ok());
 
         // MaxLambda - value not greater than initial
-        let stop = Stop::MaxLambda(4.0, 1e-5);
+        let stop = Stop::MaxLambda(4.0);
         assert!(stop.validate(&state).is_err());
 
         // Steps - valid case
@@ -344,7 +339,7 @@ mod tests {
         assert_eq!(stop.lambda(), Some((2.5, true)));
 
         // MaxLambda - returns Some with is_min=false
-        let stop = Stop::MaxLambda(7.5, 1e-5);
+        let stop = Stop::MaxLambda(7.5);
         assert_eq!(stop.lambda(), Some((7.5, false)));
 
         // Steps - returns None
@@ -384,11 +379,11 @@ mod tests {
         assert!(!stop.now(0, &state));
 
         // MaxLambda - criterion met
-        let stop = Stop::MaxLambda(1.5, 1e-5);
+        let stop = Stop::MaxLambda(1.5);
         assert!(stop.now(0, &state));
 
         // MaxLambda - criterion not met
-        let stop = Stop::MaxLambda(3.0, 1e-5);
+        let stop = Stop::MaxLambda(3.0);
         assert!(!stop.now(0, &state));
 
         // Steps - criterion met (step+1 == n)
@@ -423,10 +418,10 @@ mod tests {
         assert_eq!(stop.h_ini(h_default, &state), 0.5); // min(2.0, abs(10.0 - 9.5)) = min(2.0, 0.5) = 0.5
 
         // MaxLambda - returns min(default, abs(target - current))
-        let stop = Stop::MaxLambda(13.0, 1e-5);
+        let stop = Stop::MaxLambda(13.0);
         assert_eq!(stop.h_ini(h_default, &state), 2.0); // min(2.0, abs(13.0 - 10.0)) = min(2.0, 3.0) = 2.0
 
-        let stop = Stop::MaxLambda(10.5, 1e-5);
+        let stop = Stop::MaxLambda(10.5);
         assert_eq!(stop.h_ini(h_default, &state), 0.5); // min(2.0, abs(10.5 - 10.0)) = min(2.0, 0.5) = 0.5
 
         // Steps - returns default
@@ -463,13 +458,13 @@ mod tests {
         assert_eq!(stop.h_eq(h_default, &state), 1.0);
 
         // MaxLambda - calculates equal stepsize
-        let stop = Stop::MaxLambda(13.0, 1e-5);
+        let stop = Stop::MaxLambda(13.0);
         // Distance: 13.0 - 10.0 = 3.0
         // n = ceil(3.0 / 1.5) = ceil(2.0) = 2
         // h_eq = (13.0 - 10.0) / 2 = 1.5
         assert_eq!(stop.h_eq(h_default, &state), 1.5);
 
-        let stop = Stop::MaxLambda(12.0, 1e-5);
+        let stop = Stop::MaxLambda(12.0);
         // Distance: 12.0 - 10.0 = 2.0
         // n = ceil(2.0 / 1.5) = ceil(1.33) = 2
         // h_eq = (12.0 - 10.0) / 2 = 1.0

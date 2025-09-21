@@ -137,7 +137,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     ///
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
-    fn step(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<(), StrError> {
+    fn step(&mut self, work: &mut Workspace, state: &State, _stop: Stop, args: &mut A) -> Result<(), StrError> {
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
@@ -254,10 +254,5 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                 predictor_values.2.pop();
             }
         }
-    }
-
-    /// Calculates the stepsize that allows reaching the target lambda
-    fn stepsize_to_reach_lambda(&mut self, work: &mut Workspace, state: &State, target_lambda: f64) {
-        work.h = f64::abs(target_lambda - state.l);
     }
 }

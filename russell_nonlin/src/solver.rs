@@ -132,7 +132,7 @@ impl<'a, A> Solver<'a, A> {
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, state, args)?;
+                self.actual.step(&mut self.work, state, stop, args)?;
                 if self.work.err.failed() {
                     break;
                 }
@@ -180,7 +180,13 @@ impl<'a, A> Solver<'a, A> {
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, state, args)?;
+                self.actual.step(&mut self.work, state, stop, args)?;
+
+                // handle target lambda reached
+                if self.work.target_lambda_reached {
+                    continuation_completed = true;
+                    break;
+                }
 
                 // handle secondary update error in the predictor phase
                 if self.work.stopped_due_to_secondary_update_fail_predictor {
@@ -201,18 +207,6 @@ impl<'a, A> Solver<'a, A> {
                 if self.work.n_continued_rejection >= self.config.allowed_continued_rejection {
                     self.work.stopped_due_to_continued_rejection = true;
                     break;
-                }
-
-                // handle lambda target
-                if let Some((l1, is_min)) = stop.lambda() {
-                    if (self.work.l < l1 && is_min) || (self.work.l > l1 && !is_min) {
-                        // redo with target stepsize
-                        self.work.stats.n_steps += 1;
-                        self.work.stats.sw_step.reset();
-                        self.actual.stepsize_to_reach_lambda(&mut self.work, state, l1);
-                        self.work.log.step(self.work.h, &state);
-                        self.actual.step(&mut self.work, state, args)?;
-                    }
                 }
 
                 // accept step

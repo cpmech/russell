@@ -84,7 +84,7 @@ fn run_test(
             .set_label("numerical")
             .set_line_style("-")
             .set_line_color("green")
-            .set_marker_style("o")
+            .set_marker_style(".")
             .set_marker_color("red")
             .set_marker_line_color("red");
         curve_num.draw(uu0, uu1);
@@ -103,10 +103,10 @@ fn run_test(
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", None, None, 99, 2, 102);
+    run_test("test_arc_bspline_2_default", None, None, 87, 0, 87);
 }
 
 #[test]
 fn test_arc_bspline_2_custom() {
-    run_test("test_arc_bspline_2_custom", Some(1e-1), Some(3.0), 82, 36, 119);
+    run_test("test_arc_bspline_2_custom", Some(1e-1), Some(3.0), 82, 36, 118);
 }

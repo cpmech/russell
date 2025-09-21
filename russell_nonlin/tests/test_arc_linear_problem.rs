@@ -1,10 +1,10 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_lab::{array_approx_eq, math::SQRT_2};
+use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
 
 const SAVE_FIGURE: bool = true;
 
-fn do_plot(name: &str, dds: f64, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64]) {
+fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], stepsizes: &[f64]) {
     let mut curve_ana = Curve::new();
     curve_ana.set_label("analytical");
     let uu_ana = linspace(0.0, 3.0, 101);
@@ -23,7 +23,8 @@ fn do_plot(name: &str, dds: f64, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f
         .set_arrow_scale(10.0)
         .set_edge_color("None")
         .set_face_color("black");
-    for i in 0..uu.len() {
+    for i in 0..(uu.len() - 1) {
+        let dds = stepsizes[i];
         let xf = uu[i] + dds * duds[i];
         let yf = ll[i] + dds * dlds[i];
         arrows.draw_arrow(uu[i], ll[i], xf, yf);
@@ -31,7 +32,8 @@ fn do_plot(name: &str, dds: f64, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f
 
     let mut hyperplanes = Curve::new();
     hyperplanes.set_line_style("--").set_line_color("gray");
-    for i in 0..uu.len() {
+    for i in 0..(uu.len() - 1) {
+        let dds = stepsizes[i];
         let xa = uu[i] + dds * duds[i];
         let ya = ll[i] + dds * dlds[i];
         let phi = f64::atan2(dlds[i], duds[i]);
@@ -47,10 +49,26 @@ fn do_plot(name: &str, dds: f64, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f
         .add(&curve_ana)
         .add(&curve_num)
         .add(&arrows)
-        .set_range(-0.1, 3.0, -0.1, 3.0)
+        .set_range(-0.1, 2.0, -0.1, 2.0)
         .set_equal_axes(true)
         .save(&format!("/tmp/russell_nonlin/{}.svg", name))
         .unwrap()
+}
+
+fn do_plot_stepsizes(name: &str, stepsizes: &[f64]) {
+    let n = stepsizes.len();
+    let x = linspace(1.0, n as f64, n);
+
+    let mut curve = Curve::new();
+    curve.set_label("stepsize").set_line_style("-").set_marker_style("o");
+    curve.draw(&x.as_slice(), &stepsizes);
+
+    let mut plot = Plot::new();
+    plot.grid_labels_legend("step number", "stepsize $h$")
+        .set_ticks_x(1.0, -1.0, "%d")
+        .add(&curve)
+        .save(&format!("/tmp/russell_nonlin/{}_stepsizes.svg", name))
+        .unwrap();
 }
 
 #[test]
@@ -62,7 +80,10 @@ fn test_arc_linear_problem() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true).set_hide_timings(true);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_record_stepsizes(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -88,8 +109,6 @@ fn test_arc_linear_problem() {
     // results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    let duds = out.get_duds_values(0);
-    let dlds = out.get_dlds_values();
 
     // check
     let d = dds / SQRT_2;
@@ -118,7 +137,10 @@ fn test_arc_linear_problem() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot("test_arc_linear_problem", dds, &uu, &ll, &duds, &dlds);
+        let duds = out.get_duds_values(0);
+        let dlds = out.get_dlds_values();
+        let stepsizes = stats.get_stepsizes();
+        do_plot("test_arc_linear_problem", &uu, &ll, &duds, &dlds, &stepsizes);
     }
 }
 
@@ -135,7 +157,10 @@ fn test_arc_linear_problem_backward() {
 
     // configuration
     let mut config = Config::new(Method::Arclength);
-    config.set_verbose(true, true, true).set_hide_timings(true);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_record_stepsizes(true);
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -161,8 +186,6 @@ fn test_arc_linear_problem_backward() {
     // results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    let duds = out.get_duds_values(0);
-    let dlds = out.get_dlds_values();
 
     // check
     let d = dds / SQRT_2;
@@ -191,6 +214,174 @@ fn test_arc_linear_problem_backward() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot("test_arc_linear_problem_backward", dds, &uu, &ll, &duds, &dlds);
+        let duds = out.get_duds_values(0);
+        let dlds = out.get_dlds_values();
+        let stepsizes = stats.get_stepsizes();
+        do_plot("test_arc_linear_problem_backward", &uu, &ll, &duds, &dlds, &stepsizes);
+    }
+}
+
+#[test]
+fn test_arc_linear_problem_large_step() {
+    // system
+    let with_ggu = true; // with ∂G/∂u
+    let with_ggl = true; // with ∂G/∂λ
+    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+
+    // configuration
+    let mut config = Config::new(Method::Arclength);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_record_stepsizes(true);
+
+    // define solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // output
+    let out = &mut Output::new();
+    out.set_recording(true, &[0], &[0]);
+
+    // numerical continuation
+    let dds = 0.8; // Δs ≡ h
+    solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::MaxLambda(1.0),
+            AutoStep::No(dds),
+            Some(out),
+        )
+        .unwrap();
+
+    // check the results
+    let uu = out.get_u_values(0);
+    let ll = out.get_l_values();
+    approx_eq(*uu.last().unwrap(), 1.0, 1e-14);
+    approx_eq(*ll.last().unwrap(), 1.0, 1e-14);
+
+    // check stats
+    let stats = solver.get_stats();
+    assert_eq!(stats.n_steps, 2);
+    assert_eq!(stats.n_accepted, 2);
+    assert_eq!(stats.n_rejected, 0);
+
+    // plot
+    if SAVE_FIGURE {
+        let duds = out.get_duds_values(0);
+        let dlds = out.get_dlds_values();
+        let stepsizes = stats.get_stepsizes();
+        do_plot("test_arc_linear_problem_large_step", &uu, &ll, &duds, &dlds, &stepsizes);
+    }
+}
+
+#[test]
+fn test_arc_linear_problem_auto() {
+    // system
+    let with_ggu = true; // with ∂G/∂u
+    let with_ggl = true; // with ∂G/∂λ
+    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+
+    // configuration
+    let mut config = Config::new(Method::Arclength);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_h_ini(0.1)
+        .set_record_stepsizes(true);
+
+    // define solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // output
+    let out = &mut Output::new();
+    out.set_recording(true, &[0], &[0]);
+
+    // numerical continuation
+    solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::MaxLambda(1.0),
+            AutoStep::Yes,
+            Some(out),
+        )
+        .unwrap();
+
+    // check the results
+    let uu = out.get_u_values(0);
+    let ll = out.get_l_values();
+    approx_eq(*uu.last().unwrap(), 1.0, 1e-5);
+    approx_eq(*ll.last().unwrap(), 1.0, 1e-5);
+
+    // plot
+    if SAVE_FIGURE {
+        let stats = solver.get_stats();
+        let duds = out.get_duds_values(0);
+        let dlds = out.get_dlds_values();
+        let stepsizes = stats.get_stepsizes();
+        let name = "test_arc_linear_problem_auto";
+        do_plot(name, &uu, &ll, &duds, &dlds, &stepsizes);
+        do_plot_stepsizes(name, &stepsizes);
+    }
+}
+
+#[test]
+fn test_arc_linear_problem_auto_backward() {
+    // system
+    let with_ggu = true; // with ∂G/∂u
+    let with_ggl = true; // with ∂G/∂λ
+    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+
+    // initial state
+    state.u[0] = 5.0 * 0.5 / SQRT_2;
+    state.l = 5.0 * 0.5 / SQRT_2;
+
+    // configuration
+    let mut config = Config::new(Method::Arclength);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_h_ini(0.1)
+        .set_record_stepsizes(true);
+
+    // define solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // output
+    let out = &mut Output::new();
+    out.set_recording(true, &[0], &[0]);
+
+    // numerical continuation
+    solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Neg,
+            Stop::MinLambda(0.0),
+            AutoStep::Yes,
+            Some(out),
+        )
+        .unwrap();
+
+    // check the results
+    let uu = out.get_u_values(0);
+    let ll = out.get_l_values();
+    approx_eq(*uu.last().unwrap(), 0.0, 1e-9);
+    approx_eq(*ll.last().unwrap(), 0.0, 1e-9);
+
+    // plot
+    if SAVE_FIGURE {
+        let stats = solver.get_stats();
+        let uu = out.get_u_values(0);
+        let ll = out.get_l_values();
+        let duds = out.get_duds_values(0);
+        let dlds = out.get_dlds_values();
+        let stepsizes = stats.get_stepsizes();
+        let name = "test_arc_linear_problem_auto_backward";
+        do_plot(name, &uu, &ll, &duds, &dlds, &stepsizes);
+        do_plot_stepsizes(name, &stepsizes);
     }
 }

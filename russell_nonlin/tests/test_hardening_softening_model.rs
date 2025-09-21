@@ -369,7 +369,6 @@ fn run_hs_model(
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)
-        .set_h_min_allowed(1e-10)
         .set_alpha_max(5.0)
         .set_debug_predictor(true)
         .set_record_iterations_residuals(true);

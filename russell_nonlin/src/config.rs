@@ -34,34 +34,16 @@ pub struct Config {
     /// Indicates whether to record the iterations residuals or not (in statistics)
     pub(crate) record_iterations_residuals: bool,
 
-    // substepping ------------------------------------------------------------------------
+    // automatic stepsize -----------------------------------------------------------------
     //
-    /// Min step multiplier
-    pub(crate) m_min: f64,
-
-    /// Max step multiplier
-    pub(crate) m_max: f64,
-
-    /// Step multiplier safety factor
-    pub(crate) m_safety: f64,
-
-    /// Coefficient to multiply the stepsize if the first step is rejected
-    pub(crate) m_first_reject: f64,
-
     /// Coefficient to multiply the stepsize if the iterations are failing
     pub(crate) m_failure: f64,
 
     /// Initial stepsize
     pub(crate) h_ini: f64,
 
-    /// Allowed min stepsize
-    pub(crate) h_min_allowed: f64,
-
     /// Max number of steps
     pub(crate) n_step_max: usize,
-
-    /// Min value of previous relative error
-    pub(crate) rel_error_prev_min: f64,
 
     /// Number of continued rejections allowed
     pub(crate) n_cont_reject_allowed: usize,
@@ -206,16 +188,10 @@ impl Config {
             verbose_stats: false,
             hide_timings: false,
             record_iterations_residuals: false,
-            // substepping
-            m_min: 0.001,
-            m_max: 2.0,
-            m_safety: 0.9,
-            m_first_reject: 0.1,
+            // automatic stepsize
             m_failure: 0.5,
             h_ini: 1e-4,
-            h_min_allowed: CONFIG_H_MIN,
             n_step_max: 100_000,
-            rel_error_prev_min: 1e-4,
             n_cont_reject_allowed: 10,
             n_cont_failure_allowed: 5,
             allowed_continued_rejection: 3,
@@ -278,49 +254,7 @@ impl Config {
         self
     }
 
-    // substepping ------------------------------------------------------------------------
-
-    /// Sets the min step multiplier
-    ///
-    /// ```text
-    /// 0.001 ≤ m_min < 0.5   and   m_min < m_max
-    /// ```
-    pub fn set_m_min(&mut self, value: f64) -> &mut Self {
-        self.m_min = value;
-        self
-    }
-
-    /// Sets the max step multiplier
-    ///
-    /// ```text
-    /// 0.01 ≤ m_max ≤ 20   and   m_max > m_min
-    /// ```
-    pub fn set_m_max(&mut self, value: f64) -> &mut Self {
-        self.m_max = value;
-        self
-    }
-
-    /// Sets the step multiplier safety factor
-    ///
-    /// ```text
-    /// 0.1 ≤ m ≤ 1
-    /// ```
-    pub fn set_m_safety(&mut self, value: f64) -> &mut Self {
-        self.m_safety = value;
-        self
-    }
-
-    /// Sets the coefficient to multiply the stepsize if the first step is rejected
-    ///
-    /// ```text
-    /// m_first_reject ≥ 0.0
-    /// ```
-    ///
-    /// If `m_first_reject = 0`, the solver will use `h_new` on a rejected step.
-    pub fn set_m_first_reject(&mut self, value: f64) -> &mut Self {
-        self.m_first_reject = value;
-        self
-    }
+    // automatic stepsize -----------------------------------------------------------------
 
     /// Sets the coefficient to multiply the stepsize if the iterations are failing
     ///
@@ -344,12 +278,6 @@ impl Config {
         self
     }
 
-    /// Sets the allowed min stepsize
-    pub fn set_h_min_allowed(&mut self, value: f64) -> &mut Self {
-        self.h_min_allowed = value;
-        self
-    }
-
     /// Sets the max number of steps
     ///
     /// ```text
@@ -357,18 +285,6 @@ impl Config {
     /// ```
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
-        self
-    }
-
-    /// Sets the min value of previous relative error
-    ///
-    /// ```text
-    /// rel_error_prev_min ≥ CONFIG_H_MIN
-    /// ```
-    ///
-    /// See [CONFIG_H_MIN]
-    pub fn set_rel_error_prev_min(&mut self, value: f64) -> &mut Self {
-        self.rel_error_prev_min = value;
         self
     }
 
@@ -667,34 +583,16 @@ impl Config {
 
     /// Validates all data
     pub(crate) fn validate(&self) -> Result<(), StrError> {
-        // substepping
+        // automatic stepsize
 
-        if self.m_min < 0.001 || self.m_min > 0.5 || self.m_min >= self.m_max {
-            return Err("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max");
-        }
-        if self.m_max < 0.01 || self.m_max > 20.0 {
-            return Err("requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min");
-        }
-        if self.m_safety < 0.1 || self.m_safety > 1.0 {
-            return Err("requirement: 0.1 ≤ m_safety ≤ 1");
-        }
-        if self.m_first_reject < 0.0 {
-            return Err("requirement: m_first_rejection ≥ 0");
-        }
         if self.m_failure < 0.001 {
             return Err("requirement: m_failure ≥ 0.001");
         }
         if self.h_ini < CONFIG_H_MIN {
             return Err("requirement: h_ini ≥ CONFIG_H_MIN");
         }
-        if self.h_min_allowed < CONFIG_H_MIN {
-            return Err("requirement: h_min_allowed ≥ CONFIG_H_MIN");
-        }
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
-        }
-        if self.rel_error_prev_min < CONFIG_H_MIN {
-            return Err("requirement: rel_error_prev_min ≥ CONFIG_H_MIN");
         }
 
         // iterations
@@ -744,56 +642,14 @@ mod tests {
     fn config_validate_works() {
         let mut config = Config::new(Method::Arclength);
 
-        // substepping
+        // automatic stepsize
 
-        config.m_min = 0.0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
-        );
-        config.m_min = 0.6;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
-        );
-        config.m_min = 0.02;
-        config.m_max = 0.01;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
-        );
-        config.m_min = 0.001;
-        config.m_max = 0.005;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
-        );
-        config.m_max = 30.0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: 0.01 ≤ m_max ≤ 20 and m_max > m_min")
-        );
-        config.m_max = 10.0;
-        config.m_safety = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: 0.1 ≤ m_safety ≤ 1"));
-        config.m_safety = 1.2;
-        assert_eq!(config.validate().err(), Some("requirement: 0.1 ≤ m_safety ≤ 1"));
-        config.m_safety = 0.9;
-        config.m_first_reject = -1.0;
-        assert_eq!(config.validate().err(), Some("requirement: m_first_rejection ≥ 0"));
-        config.m_first_reject = 0.0;
         config.h_ini = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: h_ini ≥ CONFIG_H_MIN"));
         config.h_ini = 1e-4;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;
-        config.rel_error_prev_min = 0.0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: rel_error_prev_min ≥ CONFIG_H_MIN")
-        );
-        config.rel_error_prev_min = 1e-6;
 
         // iterations
 

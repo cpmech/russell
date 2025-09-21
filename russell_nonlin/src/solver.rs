@@ -293,10 +293,10 @@ mod tests {
     fn new_captures_errors() {
         let (system, _, _, _) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
-        config.m_max = 0.0; // wrong
+        config.tol_abs_residual = 0.0; // wrong
         assert_eq!(
             Solver::new(config, system).err(),
-            Some("requirement: 0.001 ≤ m_min < 0.5 and m_min < m_max")
+            Some("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN")
         );
     }
 

@@ -73,8 +73,11 @@ pub(crate) struct Workspace<'a> {
     /// Flags that the solver stopped because the stepsize became too small
     pub(crate) stopped_due_to_small_stepsize: bool,
 
-    /// Indicates the target lambda has been reached
-    pub(crate) target_lambda_reached: bool,
+    /// Indicates the target λ or uᵢ has been reached
+    pub(crate) target_reached: bool,
+
+    /// Indicates that the solver should stop gracefully (e.g., requested by the secondary update function)
+    pub(crate) stop_gracefully: bool,
 
     // state variables -----------------------------------------------------------
     //
@@ -181,7 +184,8 @@ impl<'a> Workspace<'a> {
             stopped_due_to_continued_failure: false,
             stopped_due_to_continued_rejection: false,
             stopped_due_to_small_stepsize: false,
-            target_lambda_reached: false,
+            target_reached: false,
+            stop_gracefully: false,
 
             // state variables
             gg: Vector::new(system.ndim),
@@ -215,7 +219,8 @@ impl<'a> Workspace<'a> {
         self.stopped_due_to_continued_failure = false;
         self.stopped_due_to_continued_rejection = false;
         self.stopped_due_to_small_stepsize = false;
-        self.target_lambda_reached = false;
+        self.target_reached = false;
+        self.stop_gracefully = false;
     }
 
     /// Returns error messages

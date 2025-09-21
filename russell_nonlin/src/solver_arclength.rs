@@ -541,7 +541,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 self.theta = 0.0; // set θ to targeting lambda mode
                 work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
                 if work.h <= CONFIG_H_MIN {
-                    work.target_lambda_reached = true;
+                    work.target_reached = true;
                     return Ok(());
                 }
                 work.l = state.l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
@@ -557,14 +557,39 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             vec_copy(&mut work.u, &state.u).unwrap();
         }
 
+        // recalculate the predictor by truncating the stepsize if required and possible
+        if let Some((i, u1, is_min)) = stop.u_comp() {
+            if (work.u[i] < u1 && is_min) || (work.u[i] > u1 && !is_min) {
+                if f64::abs(work.duds[i]) > CONFIG_H_MIN {
+                    work.h = (u1 - state.u[i]) / work.duds[i];
+                    if work.h <= CONFIG_H_MIN {
+                        work.target_reached = true;
+                        return Ok(());
+                    }
+                    work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
+                    vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
+                } else {
+                    // TODO: handle this case better
+                    panic!("cannot truncate the stepsize because duds[i] is too small");
+                }
+            }
+        }
+
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
             let res = f(do_backup, &state.u, &work.u, args);
-            if res.is_err() {
-                work.stopped_due_to_secondary_update_fail_predictor = true;
-                work.err.capture_other_error(res.err().unwrap());
-                return Ok(());
+            match res {
+                Ok(stop_gracefully) => {
+                    if stop_gracefully {
+                        work.stop_gracefully = stop_gracefully;
+                        return Ok(());
+                    }
+                }
+                Err(e) => {
+                    work.err.capture_secondary_error(res);
+                    return Ok(());
+                }
             }
         }
 
@@ -601,7 +626,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             }
 
             // check for failures
-            work.err.set_failures(work.n_iteration, &mut work.stats);
+            work.err.capture_failures(work.n_iteration, &mut work.stats);
             if work.err.failed() {
                 break;
             }

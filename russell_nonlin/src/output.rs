@@ -22,7 +22,7 @@ pub struct Output<'a, A> {
 
     /// Holds a callback function called on an accepted step
     ///
-    /// The function is `fn (stats, u, λ, h, args)`
+    /// The function is `fn (stats, u, λ, h, args) -> stop_gracefully`
     callback: Option<Arc<dyn Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
 
     /// Save the results to a file (step)
@@ -89,7 +89,7 @@ impl<'a, A> Output<'a, A> {
 
     /// Sets a callback function called on an accepted step
     ///
-    /// The function is `fn (stats, u, λ, h, args)`
+    /// The function is `fn (stats, u, λ, h, args) -> stop_gracefully`
     ///
     /// The function may return `true` to stop the computations
     ///
@@ -161,9 +161,9 @@ impl<'a, A> Output<'a, A> {
     pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop = cb(&work.stats, &state.u, state.l, work.h, args)?;
-            if stop {
-                return Ok(stop);
+            let stop_gracefully = cb(&work.stats, &state.u, state.l, work.h, args)?;
+            if stop_gracefully {
+                return Ok(stop_gracefully);
             }
         }
 

@@ -201,7 +201,7 @@ impl IterationError {
     }
 
     /// Captures the possible error returned by `update_secondary_state`
-    pub fn capture_secondary_error(&mut self, res: Result<(), StrError>) {
+    pub fn capture_secondary_error(&mut self, res: Result<bool, StrError>) {
         if let Err(e) = res {
             self.fail_update_secondary_state = Some(e.to_string());
         }
@@ -212,8 +212,8 @@ impl IterationError {
         self.fail_other = Some(err.to_string());
     }
 
-    /// Sets eventual failures
-    pub fn set_failures(&mut self, iteration: usize, stats: &mut Stats) {
+    /// Captures eventual failures
+    pub fn capture_failures(&mut self, iteration: usize, stats: &mut Stats) {
         // large (δu,δλ)
         if self.delta_max > self.allowed_delta_max {
             stats.n_large_delta += 1;

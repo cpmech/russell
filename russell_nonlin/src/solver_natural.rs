@@ -204,7 +204,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             }
 
             // check for failures
-            work.err.set_failures(work.n_iteration, &mut work.stats);
+            work.err.capture_failures(work.n_iteration, &mut work.stats);
             if work.err.failed() {
                 break;
             }

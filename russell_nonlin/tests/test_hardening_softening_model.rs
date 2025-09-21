@@ -151,10 +151,8 @@ fn new_hs_model_problem<'a>(
                 args.xx_predictor.push(*x);
                 args.yy_predictor.push(*y);
             }
-            if *y < 0.0 {
-                return Err("sup: negative stress is not allowed");
-            }
-            Ok(())
+            let mut stop_gracefully = *y < 0.0;
+            Ok(stop_gracefully)
         });
 
     // Allocate the arguments
@@ -488,9 +486,9 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 58);
+    assert_eq!(stats.n_accepted, 60);
     assert_eq!(stats.n_rejected, 2);
-    assert_eq!(stats.n_steps, 60);
+    assert_eq!(stats.n_steps, 62);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -526,9 +524,9 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 51);
+    assert_eq!(stats.n_accepted, 53);
     assert_eq!(stats.n_rejected, 7);
-    assert_eq!(stats.n_steps, 58);
+    assert_eq!(stats.n_steps, 60);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -539,7 +537,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
 #[test]
 fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-2)]);
+    let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-1)]);
 
     // Input data
     let use_continuous_modulus = false;

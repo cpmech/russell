@@ -108,8 +108,8 @@ impl<'a, A> Solver<'a, A> {
 
         // first output
         if let Some(out) = output.as_deref_mut() {
-            let terminate = out.execute(&self.work, &state, args)?;
-            if terminate {
+            let stop_gracefully = out.execute(&self.work, &state, args)?;
+            if stop_gracefully {
                 return Ok(Status::Stopped);
             }
         }
@@ -148,8 +148,8 @@ impl<'a, A> Solver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_deref_mut() {
-                    let terminate = out.execute(&self.work, &state, args)?;
-                    if terminate {
+                    let stop_gracefully = out.execute(&self.work, &state, args)?;
+                    if stop_gracefully {
                         self.work.stats.stop_sw_step();
                         break;
                     }
@@ -179,8 +179,8 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.n_steps += 1;
                 self.actual.step(&mut self.work, state, stop, args)?;
 
-                // handle target lambda reached
-                if self.work.target_lambda_reached {
+                // handle target u or λ reached
+                if self.work.target_reached {
                     continuation_completed = true;
                     break;
                 }
@@ -233,8 +233,8 @@ impl<'a, A> Solver<'a, A> {
 
                     // output
                     if let Some(out) = output.as_deref_mut() {
-                        let terminate = out.execute(&self.work, &state, args)?;
-                        if terminate {
+                        let stop_gracefully = out.execute(&self.work, &state, args)?;
+                        if stop_gracefully {
                             self.work.stats.stop_sw_step();
                             break;
                         }

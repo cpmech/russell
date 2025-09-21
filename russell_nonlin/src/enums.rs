@@ -91,6 +91,19 @@ impl Stop {
         }
     }
 
+    /// Returns the target u-component value, if specified
+    ///
+    /// Returns `(i, uᵢ, is_min)` where `is_min` indicates if it is a minimum or maximum uᵢ target.
+    pub fn u_comp(&self) -> Option<(usize, f64, bool)> {
+        match self {
+            Stop::MinCompU(i, u1) => Some((*i, *u1, true)),
+            Stop::MaxCompU(i, u1) => Some((*i, *u1, false)),
+            Stop::MinLambda(_) => None,
+            Stop::MaxLambda(_) => None,
+            Stop::Steps(_) => None,
+        }
+    }
+
     /// Indicates if the stopping criterion is met at the current step
     pub fn now(&self, step: usize, state: &State) -> bool {
         match self {

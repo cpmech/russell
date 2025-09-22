@@ -1,4 +1,4 @@
-use super::{Config, State, Stats};
+use super::{Config, State, Status};
 use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
@@ -46,6 +46,9 @@ pub(crate) struct IterationError {
     /// Previous `delta_diverging`
     delta_diverging_prev: bool,
 
+    /// Number of large max(‖δu‖∞,|δλ|)
+    n_large_delta: usize,
+
     /// Number of continued `delta_diverging`
     n_continued_delta_diverging: usize,
 
@@ -54,23 +57,6 @@ pub(crate) struct IterationError {
 
     /// Allowed number of iterations
     allowed_iterations: usize,
-
-    /// Failed on large (‖δu‖∞,|δλ|)
-    fail_large_delta: bool,
-
-    /// Failed on continued divergence
-    fail_continued_divergence: bool,
-
-    /// Failed on max number of iterations
-    fail_max_iterations: bool,
-
-    /// Failed when calling `update_secondary_state`
-    ///
-    /// Holds the error message
-    fail_update_secondary_state: Option<String>,
-
-    /// Records other failures
-    fail_other: Option<String>,
 
     /// Scaling vector for RMS(δu,δλ)
     scaling: Vector,
@@ -94,14 +80,10 @@ impl IterationError {
             tol_rel_delta: config.tol_rel_delta,
             allowed_delta_max: config.allowed_delta_max,
             delta_diverging_prev: false,
+            n_large_delta: 0,
             n_continued_delta_diverging: 0,
             allowed_continued_divergence: config.allowed_continued_divergence,
             allowed_iterations: config.allowed_iterations,
-            fail_large_delta: false,
-            fail_continued_divergence: false,
-            fail_max_iterations: false,
-            fail_update_secondary_state: None,
-            fail_other: None,
             scaling: Vector::new(ndim + 1), // +1 for λ
         }
     }
@@ -113,21 +95,13 @@ impl IterationError {
         self.delta_converged = false;
         self.delta_diverging = false;
         self.delta_diverging_prev = false;
+        self.n_large_delta = 0;
         self.n_continued_delta_diverging = 0;
-        self.fail_continued_divergence = false;
-        self.fail_large_delta = false;
-        self.fail_max_iterations = false;
-        self.fail_update_secondary_state = None;
         let ndim = self.scaling.dim() - 1; // -1 due to λ
         for i in 0..ndim {
             self.scaling[i] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.u[i]);
         }
         self.scaling[ndim] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.l);
-    }
-
-    /// Returns whether max(‖δu‖∞,|δλ|) is too large
-    pub fn is_delta_large(&self) -> bool {
-        self.delta_max > self.allowed_delta_max
     }
 
     /// Checks if the solution has converged based on any criterion
@@ -200,73 +174,25 @@ impl IterationError {
         Ok(())
     }
 
-    /// Captures the possible error returned by `update_secondary_state`
-    pub fn capture_secondary_error(&mut self, res: Result<bool, StrError>) {
-        if let Err(e) = res {
-            self.fail_update_secondary_state = Some(e.to_string());
-        }
-    }
-
-    /// Captures other errors
-    pub fn capture_other_error(&mut self, err: &str) {
-        self.fail_other = Some(err.to_string());
-    }
-
     /// Captures eventual failures
-    pub fn capture_failures(&mut self, iteration: usize, stats: &mut Stats) {
-        // large (δu,δλ)
+    pub fn capture_failures(&mut self, iteration: usize) -> Status {
+        // large (‖δu‖∞,|δλ|)
         if self.delta_max > self.allowed_delta_max {
-            stats.n_large_delta += 1;
-            self.fail_large_delta = true;
+            self.n_large_delta += 1;
+            return Status::LargeDelta;
         }
 
         // continued divergence
         if self.n_continued_delta_diverging >= self.allowed_continued_divergence {
-            stats.n_continued_divergence += 1;
-            self.fail_continued_divergence = true;
+            return Status::ContinuedDivergence;
         }
 
         // max number of iterations reached
         if iteration == self.allowed_iterations - 1 {
-            stats.n_iteration_max += 1;
-            self.fail_max_iterations = true;
+            return Status::ReachedMaxIterations;
         }
-    }
 
-    /// Returns whether the simulation has failed or not
-    pub fn failed(&self) -> bool {
-        self.fail_large_delta
-            || self.fail_continued_divergence
-            || self.fail_max_iterations
-            || self.fail_update_secondary_state.is_some()
-            || self.fail_other.is_some()
-    }
-
-    /// Returns error messages
-    pub fn messages(&self) -> Vec<String> {
-        let mut messages = Vec::with_capacity(3);
-        if self.fail_large_delta {
-            messages.push("‖(δu,δλ)‖∞ is too large".to_string());
-        }
-        if self.fail_continued_divergence {
-            messages.push("continued divergence detected".to_string());
-        }
-        if self.fail_max_iterations {
-            messages.push("max number of iterations reached".to_string());
-        }
-        if let Some(ref msg) = self.fail_update_secondary_state {
-            messages.push(msg.clone());
-        }
-        if let Some(ref msg) = self.fail_other {
-            messages.push(msg.clone());
-        }
-        messages
-    }
-
-    /// Clears error flags
-    pub(crate) fn clear_error_flags(&mut self) {
-        self.fail_large_delta = false;
-        self.fail_continued_divergence = false;
-        self.fail_max_iterations = false;
+        // no failure
+        Status::Success
     }
 }

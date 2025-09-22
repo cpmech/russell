@@ -90,7 +90,6 @@ impl<'a> Runner for Simulator<'a> {
         let niter = 10 * 2;
         assert_eq!(stats.n_function, niter);
         assert_eq!(stats.n_jacobian, nstep);
-        assert_eq!(stats.n_iteration_max, 2);
         assert_eq!(stats.n_iteration_total, niter);
     }
 }

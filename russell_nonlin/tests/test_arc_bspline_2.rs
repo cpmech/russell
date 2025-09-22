@@ -13,6 +13,7 @@ fn run_test(
     expected_n_accepted: usize,
     expected_n_rejected: usize,
     expected_n_steps: usize,
+    expected_status: Status,
 ) {
     // nonlinear problem
     let (system, mut state, mut args) = Samples::bspline_problem_1(1.5);
@@ -50,7 +51,7 @@ fn run_test(
             Some(out),
         )
         .unwrap();
-    assert_eq!(status, Status::Success);
+    assert_eq!(status, expected_status);
 
     // check statistics
     let stats = solver.get_stats();
@@ -103,10 +104,18 @@ fn run_test(
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", None, None, 87, 0, 87);
+    run_test("test_arc_bspline_2_default", None, None, 87, 0, 87, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_2_custom() {
-    run_test("test_arc_bspline_2_custom", Some(1e-1), Some(3.0), 82, 36, 118);
+    run_test(
+        "test_arc_bspline_2_custom",
+        Some(1e-1),
+        Some(3.0),
+        82,
+        36,
+        118,
+        Status::Success,
+    );
 }

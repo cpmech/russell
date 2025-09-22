@@ -2,7 +2,7 @@
 
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, Direction, Status, Method, Output, Samples, Solver, Stop};
 
 const RADIUS: f64 = SQRT_2;
 

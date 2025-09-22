@@ -1,11 +1,11 @@
 #![allow(unused)]
 
-use super::{AutoStep, Config, Direction, SolverTrait, State, Stop, System, Workspace, CONFIG_H_MIN};
+use super::{AutoStep, Config, Direction, Status};
+use super::{SolverTrait, State, Stop, System, Workspace, CONFIG_H_MIN};
 use crate::StrError;
-use russell_lab::{
-    approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm, vec_rms_scaled, vec_rms_scaled_diff, vec_scale,
-};
+use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{math::PI, Norm, Vector};
+use russell_lab::{vec_rms_scaled, vec_rms_scaled_diff, vec_scale};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -189,15 +189,8 @@ pub struct SolverArclength<'a, A> {
     /// * `θ = 0.0`: targeting lambda
     theta: f64,
 
-    /// Angle between the previous tangent vector and the increment vector
-    alpha: f64,
-
-    // variables for the tangent vector stepsize control
+    // Previous tangent vector for the stepsize control
     prev_tangent: Vector,
-    rerr_prev: f64,
-    rerr_anc: f64,
-    h_prev: f64,
-    h_anc: f64,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -217,14 +210,7 @@ impl<'a, A> SolverArclength<'a, A> {
             use_num_ggu,
             iter_jac_computed: false,
             theta: 1.0,
-            alpha: 0.0,
-
-            // variables for the tangent vector stepsize control
             prev_tangent: Vector::new(ndim + 1),
-            rerr_prev: 0.0,
-            rerr_anc: 0.0,
-            h_prev: 0.0,
-            h_anc: 0.0,
         }
     }
 
@@ -356,7 +342,7 @@ impl<'a, A> SolverArclength<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A, logging: bool) -> Result<(), StrError> {
+    fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<Status, StrError> {
         // calculate G(u(s), λ(s))
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
@@ -375,10 +361,8 @@ impl<'a, A> SolverArclength<'a, A> {
         // check convergence on (G, N)
         work.err.analyze_residual(work.n_iteration, &work.gg, nn)?;
         if work.err.converged() {
-            if logging {
-                work.log.iteration(work.n_iteration, &work.err);
-            }
-            return Ok(());
+            work.log.iteration(work.n_iteration, &work.err);
+            return Ok(Status::Success);
         }
 
         // compute augmented Jacobian matrix
@@ -402,16 +386,15 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // check convergence on x = (δu, δλ)
         work.err.analyze_delta(work.n_iteration, &self.x)?;
-        if logging {
-            work.log.iteration(work.n_iteration, &work.err);
-        }
+        work.log.iteration(work.n_iteration, &work.err);
         if work.err.converged() {
-            return Ok(());
+            return Ok(Status::Success);
         }
 
-        // avoid large delta
-        if work.err.is_delta_large() {
-            return Ok(()); // need to handle this case outside
+        // capture failures
+        let status = work.err.capture_failures(work.n_iteration);
+        if status.failure() {
+            return Ok(status);
         }
 
         // update: u ← u + δu and λ ← λ + δλ
@@ -423,9 +406,14 @@ impl<'a, A> SolverArclength<'a, A> {
         // external: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            work.err.capture_secondary_error(f(do_backup, &state.u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &state.u, &work.u, args));
+            if status.failure() {
+                return Ok(status);
+            }
         }
-        Ok(())
+
+        // success
+        Ok(Status::Success)
     }
 }
 
@@ -513,7 +501,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     /// Note also that `work.auto` indicates that automatic stepsize control is in use.
     /// On auto mode, a large (δu,δλ) is not an error; otherwise, it is an error.
-    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<(), StrError> {
+    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<Status, StrError> {
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
@@ -535,14 +523,14 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: λ₁ = λ₀ + (2 - θ) σ · dλds₀
         work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
 
-        // switch to "targeting lambda" mode if needed
+        // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
                 self.theta = 0.0; // set θ to targeting lambda mode
                 work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
                 if work.h <= CONFIG_H_MIN {
                     work.target_reached = true;
-                    return Ok(());
+                    return Ok(Status::Success);
                 }
                 work.l = state.l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
             }
@@ -564,7 +552,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                     work.h = (u1 - state.u[i]) / work.duds[i];
                     if work.h <= CONFIG_H_MIN {
                         work.target_reached = true;
-                        return Ok(());
+                        return Ok(Status::Success);
                     }
                     work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
                     vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
@@ -578,18 +566,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let res = f(do_backup, &state.u, &work.u, args);
-            match res {
-                Ok(stop_gracefully) => {
-                    if stop_gracefully {
-                        work.stop_gracefully = stop_gracefully;
-                        return Ok(());
-                    }
-                }
-                Err(e) => {
-                    work.err.capture_secondary_error(res);
-                    return Ok(());
-                }
+            let status = Status::from_sup(f(do_backup, &state.u, &work.u, args));
+            if status.failure() {
+                return Ok(status);
             }
         }
 
@@ -607,15 +586,17 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         }
 
         // iteration loop
-        let logging = true;
+        let mut status = Status::Success;
         work.n_iteration = 0;
         for _ in 0..self.config.allowed_iterations {
             // stats
             work.stats.n_iteration_total += 1;
-            work.stats.n_iteration_max = usize::max(work.stats.n_iteration_max, work.n_iteration + 1);
 
             // run Newton-Raphson iteration
-            self.iterate(work, state, args, logging)?;
+            status = self.iterate(work, state, args)?;
+            if status.failure() {
+                break;
+            }
 
             // append the iteration residuals to the current step
             work.stats.record_iterations_residuals_append(work.err.residual_max);
@@ -625,25 +606,34 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 break;
             }
 
-            // check for failures
-            work.err.capture_failures(work.n_iteration, &mut work.stats);
-            if work.err.failed() {
-                break;
-            }
+            // next iteration number
             work.n_iteration += 1;
         }
 
         // stop the recording of iteration errors
         work.stats.record_iterations_residuals_stop(work.err.converged());
 
-        // exit if not converged
-        work.acceptable = false;
+        // log divergence
         if !work.err.converged() {
             work.log.did_not_converge();
-            return Ok(());
         }
 
-        // check if the angle (alpha) between the increment and the tangent vector is below the maximum allowed
+        // exit on failure (may try again)
+        if status.failure() {
+            work.acceptable = false;
+            return Ok(status);
+        }
+
+        // return if not auto mode (fixed stepsize; accept by default)
+        if !work.auto {
+            work.acceptable = true;
+            return Ok(status);
+        }
+
+        //
+        // adaptivity --- check if the angle (alpha) between the increment and the
+        // tangent vector is below the maximum allowed
+        //
 
         // set b := (duds₀, dlds₀); i.e., the tangent vector at the initial point
         // set x := (u₁ - u₀, λ₁ - λ₀); i.e., the increment vector
@@ -659,23 +649,22 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // Note that: approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15);
         let norm_x = vec_norm(&self.x, Norm::Euc);
         let ratio = f64::min(vec_inner(&self.b, &self.x) / norm_x, 1.0); // need to truncate to 1.0
-        self.alpha = f64::acos(ratio) * 180.0 / PI; // alpha in degrees
-        assert!(f64::is_finite(self.alpha)); // make sure alpha is finite
+        let alpha = f64::acos(ratio) * 180.0 / PI; // alpha in degrees
+        assert!(f64::is_finite(alpha)); // make sure alpha is finite
 
         // check if alpha is acceptable
-        work.acceptable = self.alpha >= 0.0 && self.alpha <= self.config.alpha_max;
+        work.acceptable = alpha >= 0.0 && alpha <= self.config.alpha_max;
         if !work.acceptable {
             work.log.alpha_is_not_acceptable();
         }
 
         // check if alpha is way out of bounds
-        if self.alpha > self.config.alpha_max_ultimate {
-            work.err.capture_other_error("alpha is excessively large");
-            return Ok(());
+        if alpha > self.config.alpha_max_ultimate {
+            status = Status::ExtremelyLargeAlpha;
         }
 
         // done
-        Ok(())
+        Ok(status)
     }
 
     /// Handles the accept case by updating the state and calculating a new stepsize
@@ -684,7 +673,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     ///  * `work` -- contains the updated values (u₁, λ₁)
     ///  * `state` -- will be updated from (u₀, λ₀) to (u₁, λ₁)
-    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<(), StrError> {
+    ///
+    /// Returns `rerr` the relative error used in stepsize adaptation
+    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<f64, StrError> {
         // create a copy of the tangent vector at the initial point
         let ndim = self.system.ndim;
         for i in 0..ndim {
@@ -745,31 +736,9 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             self.config.tg_control_atol,
             self.config.tg_control_rtol,
         );
-        let mut rho = f64::powf(1.0 / rerr, self.config.tg_control_beta1);
-        if work.stats.n_accepted > 1 {
-            rho *= f64::powf(1.0 / self.rerr_prev, self.config.tg_control_beta2);
-            rho *= f64::powf(work.h / self.h_prev, -self.config.tg_control_alpha2);
-        }
-        if work.stats.n_accepted > 2 {
-            rho *= f64::powf(1.0 / self.rerr_anc, self.config.tg_control_beta3);
-            rho *= f64::powf(self.h_prev / self.h_anc, -self.config.tg_control_alpha3);
-        }
-        self.rerr_anc = self.rerr_prev;
-        self.rerr_prev = rerr;
-        self.h_anc = self.h_prev;
-        self.h_prev = work.h;
-
-        // calculate the relative convergence behavior of the Newton-Raphson iterations
-        let nn = work.n_iteration as f64;
-        let nn_opt = self.config.nr_control_n_opt as f64;
-        let ksi = f64::powf(nn_opt / nn, self.config.nr_control_beta);
-
-        // calculate the new stepsize using the convergence behavior and the error in the tangent vector
-        let m = 1.0 + f64::atan(rho * ksi - 1.0); // smoothing formula by Soderlind and Wang (2006)
-        work.h_estimate = work.h * m;
 
         // done
-        Ok(())
+        Ok(rerr)
     }
 
     /// Handles the reject case by calculating a new stepsize
@@ -780,9 +749,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 f(args);
             }
         }
-
-        // reduce the stepsize
-        work.h_estimate = self.config.m_failure * work.h;
 
         // remove predictor values
         if self.config.debug_predictor {

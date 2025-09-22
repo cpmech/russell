@@ -35,9 +35,6 @@ fn run_test(name: &str, sigma: f64, expected_status: Status) {
         )
         .unwrap();
     assert_eq!(status, expected_status);
-    if expected_status == Status::Failure {
-        assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
-    }
 
     // plot
     if SAVE_FIGURE {
@@ -133,5 +130,5 @@ fn test_arc_bspline_1_success() {
 #[test]
 fn test_arc_bspline_1_fail() {
     let sigma = 0.4743; // σ ≡ h (this value causes problems; Newton's method diverges)
-    run_test("test_arc_bspline_1_fail", sigma, Status::Failure);
+    run_test("test_arc_bspline_1_fail", sigma, Status::ReachedMaxIterations);
 }

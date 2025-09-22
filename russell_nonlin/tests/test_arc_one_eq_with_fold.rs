@@ -1,7 +1,7 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::math::{NAPIER, SQRT_2};
 use russell_lab::{approx_eq, array_approx_eq};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_one_eq_with_fold";
@@ -82,7 +82,7 @@ fn test_arc_one_eq_with_fold_1() {
 
     // numerical continuation
     let dds = 0.5; // Δs ≡ h
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -92,6 +92,7 @@ fn test_arc_one_eq_with_fold_1() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // compare with Mathematica results
     let uu = out.get_u_values(0);
@@ -170,7 +171,7 @@ fn test_arc_one_eq_with_fold_2() {
 
     // numerical continuation with the first step reaching the fold point
     let dds = (1.0 + 1.0 / NAPIER) / SQRT_2; // Δs ≡ h (0.967236828697992)
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -180,6 +181,7 @@ fn test_arc_one_eq_with_fold_2() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);

@@ -1,5 +1,5 @@
-use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Status, Stop, System};
-use super::{Output, SolverArclength, SolverNatural, Stats, Workspace, CONFIG_H_MIN};
+use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Stop, System};
+use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::vec_all_finite;
 
@@ -18,6 +18,12 @@ pub struct Solver<'a, A> {
 
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace<'a>,
+
+    // variables for the stepsize adaptation
+    rerr_prev: f64,
+    rerr_anc: f64,
+    h_prev: f64,
+    h_anc: f64,
 }
 
 impl<'a, A> Solver<'a, A> {
@@ -38,17 +44,16 @@ impl<'a, A> Solver<'a, A> {
             ndim,
             actual,
             work,
+            rerr_prev: 0.0,
+            rerr_anc: 0.0,
+            h_prev: 0.0,
+            h_anc: 0.0,
         })
     }
 
     /// Returns some benchmarking data
     pub fn get_stats(&self) -> &Stats {
         &self.work.stats
-    }
-
-    /// Returns the error messages
-    pub fn get_errors(&self) -> Vec<String> {
-        self.work.errors()
     }
 
     /// Returns λ and the first two components of u (if available), calculated by the predictor step (for debugging)
@@ -110,15 +115,17 @@ impl<'a, A> Solver<'a, A> {
         if let Some(out) = output.as_deref_mut() {
             let stop_gracefully = out.execute(&self.work, &state, args)?;
             if stop_gracefully {
-                return Ok(Status::Stopped);
+                return Ok(Status::Success);
             }
         }
 
         // message
         self.work.log.header();
 
+        // default status
+        let mut status = Status::Success;
+
         // perform continuation
-        let mut continuation_completed = false;
         if auto.no() {
             // fixed/equal stepsize
             self.work.stats.h_accepted = self.work.h;
@@ -129,13 +136,10 @@ impl<'a, A> Solver<'a, A> {
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, state, stop, args)?;
-                if self.work.err.failed() {
-                    break;
-                }
+                status = self.actual.step(&mut self.work, state, stop, args)?;
 
-                // handle secondary update error in the predictor phase
-                if self.work.stopped_due_to_secondary_update_fail_predictor {
+                // handle failures
+                if status.failure() {
                     break;
                 }
 
@@ -158,7 +162,6 @@ impl<'a, A> Solver<'a, A> {
                 // exit point
                 self.work.stats.stop_sw_step();
                 if stop.now(i, state) {
-                    continuation_completed = true;
                     break;
                 }
             }
@@ -169,40 +172,29 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.sw_step.reset();
                 self.work.log.step(self.work.h, &state);
 
-                // handle small stepsize
-                if self.work.h < CONFIG_H_MIN {
-                    self.work.stopped_due_to_small_stepsize = true;
-                    break;
-                }
-
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, state, stop, args)?;
+                status = self.actual.step(&mut self.work, state, stop, args)?;
 
-                // handle target u or λ reached
-                if self.work.target_reached {
-                    continuation_completed = true;
-                    break;
+                // handle failures
+                if status.failure() {
+                    if status.try_again() {
+                        self.work.n_continued_failure += 1;
+                        self.work.follows_failure = true;
+                    } else {
+                        break;
+                    }
                 }
 
-                // handle secondary update error in the predictor phase
-                if self.work.stopped_due_to_secondary_update_fail_predictor {
-                    break;
-                }
-
-                // handle iteration failure
-                if self.work.err.failed() {
-                    self.work.n_continued_failure += 1;
-                    self.work.follows_failure = true;
-                }
+                // handle continued failure (allowed to "try again")
                 if self.work.n_continued_failure >= self.config.n_cont_failure_allowed {
-                    self.work.stopped_due_to_continued_failure = true;
+                    status = Status::ContinuedFailure;
                     break;
                 }
 
                 // handle rejections (due to large curvatures, etc.)
                 if self.work.n_continued_rejection >= self.config.allowed_continued_rejection {
-                    self.work.stopped_due_to_continued_rejection = true;
+                    status = Status::ContinuedRejection;
                     break;
                 }
 
@@ -210,22 +202,26 @@ impl<'a, A> Solver<'a, A> {
                 if self.work.acceptable {
                     // update u and λ
                     self.work.stats.n_accepted += 1;
-                    self.actual.accept(&mut self.work, state, args)?;
+                    let rerr = self.actual.accept(&mut self.work, state, args)?;
 
                     // check for anomalies
                     vec_all_finite(&state.u, self.config.verbose)?;
 
-                    // fix stepsize estimate
+                    // handle target u or λ reached
+                    if self.work.target_reached {
+                        break;
+                    }
+
+                    // adapt stepsize
+                    let mut h_estimate = self.adapt_stepsize(rerr);
                     if self.work.follows_failure || self.work.follows_rejection {
                         // avoid stepsize growth on failure/rejection
-                        self.work.h_estimate = f64::min(self.work.h_estimate, self.work.h);
+                        h_estimate = f64::min(h_estimate, self.work.h);
                     }
-                    self.work.stats.h_accepted = self.work.h_estimate;
+                    self.work.h = h_estimate;
+                    self.work.stats.h_accepted = h_estimate;
 
                     // reset flags
-                    if self.work.follows_failure {
-                        self.work.err.clear_error_flags();
-                    }
                     self.work.n_continued_failure = 0;
                     self.work.n_continued_rejection = 0;
                     self.work.follows_failure = false;
@@ -243,7 +239,6 @@ impl<'a, A> Solver<'a, A> {
                     // exit point
                     self.work.stats.stop_sw_step();
                     if stop.now(i, state) {
-                        continuation_completed = true;
                         break;
                     }
 
@@ -255,10 +250,16 @@ impl<'a, A> Solver<'a, A> {
 
                     // perform the reject operations (e.g., restore external vars) and recompute stepsize
                     self.actual.reject(&mut self.work, args);
+
+                    // adapt stepsize
+                    self.work.h *= self.config.m_failure;
                 }
 
-                // adjust stepsize
-                self.work.h = self.work.h_estimate;
+                // check allowed stepsize change
+                if self.work.h <= CONFIG_H_MIN {
+                    status = Status::SmallStepsize;
+                    break;
+                }
             }
         }
 
@@ -270,14 +271,36 @@ impl<'a, A> Solver<'a, A> {
         // print last message and footer
         self.work.log.step(self.work.h, &state);
         self.work.stats.stop_sw_total();
-        self.work.log.footer(&self.work);
+        self.work.log.footer(&self.work, status);
 
         // done
-        if continuation_completed {
-            return Ok(Status::Success);
-        } else {
-            return Ok(Status::Failure);
+        Ok(status)
+    }
+
+    /// Calculates the new stepsize based on the relative error `rerr`
+    fn adapt_stepsize(&mut self, rerr: f64) -> f64 {
+        let mut rho = f64::powf(1.0 / rerr, self.config.tg_control_beta1);
+        if self.work.stats.n_accepted > 1 {
+            rho *= f64::powf(1.0 / self.rerr_prev, self.config.tg_control_beta2);
+            rho *= f64::powf(self.work.h / self.h_prev, -self.config.tg_control_alpha2);
         }
+        if self.work.stats.n_accepted > 2 {
+            rho *= f64::powf(1.0 / self.rerr_anc, self.config.tg_control_beta3);
+            rho *= f64::powf(self.h_prev / self.h_anc, -self.config.tg_control_alpha3);
+        }
+        self.rerr_anc = self.rerr_prev;
+        self.rerr_prev = rerr;
+        self.h_anc = self.h_prev;
+        self.h_prev = self.work.h;
+
+        // calculate the relative convergence behavior of the Newton-Raphson iterations
+        let nn = self.work.n_iteration as f64;
+        let nn_opt = self.config.nr_control_n_opt as f64;
+        let ksi = f64::powf(nn_opt / nn, self.config.nr_control_beta);
+
+        // calculate the new stepsize using the convergence behavior and the error in the tangent vector
+        let m = 1.0 + f64::atan(rho * ksi - 1.0); // smoothing formula by Soderlind and Wang (2006)
+        self.work.h * m
     }
 }
 
@@ -366,7 +389,7 @@ mod tests {
                     None,
                 )
                 .unwrap(),
-            Status::Failure
+            Status::Success
         );
     }
 
@@ -395,7 +418,6 @@ mod tests {
         assert_eq!(stats.n_steps, 1);
         assert_eq!(stats.n_accepted, 1);
         assert_eq!(stats.n_rejected, 0);
-        assert_eq!(stats.n_iteration_max, 7);
         assert_eq!(stats.n_iteration_total, 7);
     }
 
@@ -424,7 +446,6 @@ mod tests {
         assert_eq!(stats.n_steps, 1);
         assert_eq!(stats.n_accepted, 1);
         assert_eq!(stats.n_rejected, 0);
-        assert_eq!(stats.n_iteration_max, 7);
         assert_eq!(stats.n_iteration_total, 7);
     }
 }

@@ -1,6 +1,6 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, Direction, Status, Method, Output, Samples, Solver, Stop};
 
 const SAVE_FIGURE: bool = true;
 
@@ -93,7 +93,7 @@ fn test_arc_linear_problem() {
     // numerical continuation
     let nstep = 5;
     let dds = 0.5; // Δs ≡ h
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -103,6 +103,7 @@ fn test_arc_linear_problem() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);
@@ -125,7 +126,6 @@ fn test_arc_linear_problem() {
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iteration_max, 1); // Euler predictor already gives the exact answer
     assert_eq!(stats.n_iteration_total, niter);
     assert_eq!(stats.h_accepted, dds);
     assert!(stats.nanos_step_max > 0);
@@ -168,7 +168,7 @@ fn test_arc_linear_problem_backward() {
     // numerical continuation
     let nstep = 5;
     let dds = 0.5; // Δs ≡ h
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -178,6 +178,7 @@ fn test_arc_linear_problem_backward() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);
@@ -200,7 +201,6 @@ fn test_arc_linear_problem_backward() {
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iteration_max, 1); // Euler predictor already gives the exact answer
     assert_eq!(stats.n_iteration_total, niter);
     assert_eq!(stats.h_accepted, dds);
     assert!(stats.nanos_step_max > 0);
@@ -237,7 +237,7 @@ fn test_arc_linear_problem_large_step() {
 
     // numerical continuation
     let dds = 1.2; // Δs ≡ h
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -247,6 +247,7 @@ fn test_arc_linear_problem_large_step() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // check the results
     let uu = out.get_u_values(0);
@@ -291,7 +292,7 @@ fn test_arc_linear_problem_auto() {
     out.set_recording(true, &[0], &[0]);
 
     // numerical continuation
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -301,6 +302,7 @@ fn test_arc_linear_problem_auto() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // check the results
     let uu = out.get_u_values(0);
@@ -345,7 +347,7 @@ fn test_arc_linear_problem_auto_backward() {
     out.set_recording(true, &[0], &[0]);
 
     // numerical continuation
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -355,6 +357,7 @@ fn test_arc_linear_problem_auto_backward() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // check the results
     let uu = out.get_u_values(0);

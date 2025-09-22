@@ -204,19 +204,6 @@ impl Method {
     }
 }
 
-/// Specifies the status of the continuation process.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Status {
-    /// The continuation process was successful.
-    Success,
-
-    /// The continuation process failed.
-    Failure,
-
-    /// The continuation process was stopped by the user.
-    Stopped,
-}
-
 /// Specifies the problem classes in Soderlind (2003) that can be used to define the stepsize control parameters
 ///
 /// Reference:
@@ -270,6 +257,107 @@ impl SoderlindClass {
             SoderlindClass::H312PID => (1.0 / 18.0, 1.0 / 9.0, 1.0 / 18.0, 0.0, 0.0),
             SoderlindClass::Ho321 => (5.0 / 4.0, 1.0 / 2.0, -3.0 / 4.0, -1.0 / 4.0, -3.0 / 4.0),
             SoderlindClass::H321 => (1.0 / 3.0, 1.0 / 18.0, -5.0 / 18.0, -5.0 / 6.0, -1.0 / 6.0),
+        }
+    }
+}
+
+/// Specifies Success of Failure
+///
+/// Holds the type of failure encountered during the continuation process
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Status {
+    /// Failure: Newton-Raphson iteration yielded a large (‖δu‖∞,|δλ|)
+    ///
+    /// (may try again)
+    LargeDelta,
+
+    /// Failure: Newton-Raphson iteration did not converge within the maximum number of iterations
+    ///
+    /// (may try again)
+    ReachedMaxIterations,
+
+    /// Failure: Newton-Raphson iteration detected continued divergence over one step
+    ///
+    /// (may try again)
+    ContinuedDivergence,
+
+    /// Failure: The step is rejected
+    ///
+    /// (may try again)
+    Rejection,
+
+    /// Failure: The secondary update failed
+    ///
+    /// (may try again)
+    SecondaryUpdateError(StrError),
+
+    /// Failure: The curvature angle becomes too large
+    ///
+    /// (may tray again)
+    LargeAlpha,
+
+    /// Failure: The curvature angle became extremely large
+    ExtremelyLargeAlpha,
+
+    /// Failure: The stepsize became too small.
+    SmallStepsize,
+
+    /// The secondary update requested termination
+    SecondaryUpdateTerminate,
+
+    /// Failure: Detected continued failure, after multiple tries
+    ContinuedFailure,
+
+    /// Failure: Detected continued rejection over multiple tries
+    ContinuedRejection,
+
+    /// No failure has occurred
+    Success,
+}
+
+impl Status {
+    /// Indicates success
+    pub fn success(&self) -> bool {
+        *self == Status::Success
+    }
+
+    /// Indicates that a failure has occurred
+    pub fn failure(&self) -> bool {
+        *self != Status::Success
+    }
+
+    /// Indicates whether we can try again by reducing the stepsize
+    pub(crate) fn try_again(&self) -> bool {
+        match self {
+            // may try again
+            Status::LargeDelta => true,
+            Status::ReachedMaxIterations => true,
+            Status::ContinuedDivergence => true,
+            Status::Rejection => true,
+            Status::SecondaryUpdateError(_) => true,
+            Status::LargeAlpha => true,
+            // must stop
+            Status::ExtremelyLargeAlpha => false,
+            Status::SmallStepsize => false,
+            Status::SecondaryUpdateTerminate => false,
+            Status::ContinuedFailure => false,
+            Status::ContinuedRejection => false,
+            // irrelevant
+            Status::Success => false,
+        }
+    }
+
+    /// Allocates a new instance from the result of a secondary update (SUP)
+    pub(crate) fn from_sup(res: Result<bool, StrError>) -> Self {
+        match res {
+            Ok(terminate) => {
+                if terminate {
+                    Status::SecondaryUpdateTerminate
+                } else {
+                    Status::Success
+                }
+            }
+            Err(e) => Status::SecondaryUpdateError(e),
         }
     }
 }

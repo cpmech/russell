@@ -38,9 +38,6 @@ fn test_multiple_calls_to_solve_1() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 
@@ -70,9 +67,6 @@ fn test_multiple_calls_to_solve_1() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 }
@@ -117,9 +111,6 @@ fn test_multiple_calls_to_solve_2() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 
@@ -149,9 +140,6 @@ fn test_multiple_calls_to_solve_2() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 }
@@ -193,9 +181,6 @@ fn test_multiple_calls_to_solve_1_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 
@@ -225,9 +210,6 @@ fn test_multiple_calls_to_solve_1_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 }
@@ -272,9 +254,6 @@ fn test_multiple_calls_to_solve_2_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 
@@ -304,9 +283,6 @@ fn test_multiple_calls_to_solve_2_auto() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 }

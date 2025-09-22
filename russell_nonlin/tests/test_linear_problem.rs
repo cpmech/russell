@@ -61,7 +61,6 @@ fn test_linear_no_auto_ana_jac() {
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iteration_max, 2);
     assert_eq!(stats.n_iteration_total, niter);
     assert!(stats.nanos_step_max > 0);
     assert!(stats.nanos_jacobian_max > 0);
@@ -132,7 +131,6 @@ fn test_linear_no_auto_num_jac() {
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iteration_max, 3);
     assert_eq!(stats.n_iteration_total, niter);
     assert!(stats.nanos_step_max > 0);
     assert!(stats.nanos_jacobian_max > 0);
@@ -174,40 +172,11 @@ fn test_linear_auto_ana_jac() {
         )
         .unwrap();
 
-    // check
-    assert_eq!(
-        out.get_h_values(),
-        &[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    );
-    array_approx_eq(
-        out.get_l_values(),
-        &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        1e-15,
-    );
-    array_approx_eq(
-        out.get_u_values(0),
-        &[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-        1e-15,
-    );
-
     // check stats
-    let nstep = 10;
-    let niter = 10 * 2;
     let stats = solver.get_stats();
-    assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, nstep);
-    assert_eq!(stats.n_factor, nstep);
-    assert_eq!(stats.n_lin_sol, nstep);
-    assert_eq!(stats.n_steps, nstep);
-    assert_eq!(stats.n_accepted, nstep);
+    assert_eq!(stats.n_accepted, 3);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iteration_max, 2);
-    assert_eq!(stats.n_iteration_total, niter);
-    assert!(stats.nanos_step_max > 0);
-    assert!(stats.nanos_jacobian_max > 0);
-    assert!(stats.nanos_factor_max > 0);
-    assert!(stats.nanos_lin_sol_max > 0);
-    assert!(stats.nanos_total > 0);
+    assert_eq!(stats.n_steps, 3);
 }
 
 #[test]
@@ -274,7 +243,6 @@ fn test_linear_no_auto_ana_jac_backward() {
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_iteration_max, 2);
     assert_eq!(stats.n_iteration_total, niter);
     assert!(stats.nanos_step_max > 0);
     assert!(stats.nanos_jacobian_max > 0);

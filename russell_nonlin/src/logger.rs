@@ -1,4 +1,4 @@
-use super::{Config, IterationError, Method, State, Workspace};
+use super::{Config, IterationError, Method, State, Status, Workspace};
 
 /// Prints information during time stepping
 pub(crate) struct Logger {
@@ -141,18 +141,15 @@ impl Logger {
     }
 
     /// Prints statistics and eventual errors
-    pub fn footer(&self, work: &Workspace) {
+    pub fn footer(&self, work: &Workspace, status: Status) {
         if self.verbose {
             println!("{}\n", "─".repeat(self.nchar));
             if self.verbose_stats {
                 println!("{}", work.stats);
             }
-            let messages = work.errors();
-            if messages.len() > 0 {
-                println!("\n{:═^1$}", " ERRORS ", 60);
-                for message in &messages {
-                    println!("❌ {} ❌", message);
-                }
+            if status.failure() {
+                println!("\n{:═^1$}", " FAILURE ", 60);
+                println!("❌ {:?} ❌", status);
                 println!("{}\n", "═".repeat(60));
             }
         }

@@ -36,9 +36,6 @@ fn test_newton_problems_ok_1() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-10);
 }
@@ -59,20 +56,17 @@ fn test_newton_problems_fail_due_to_max_iter() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    assert_eq!(
-        solver
-            .solve(
-                &mut args,
-                &mut state,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::No(1.0),
-                None,
-            )
-            .unwrap(),
-        Status::Failure
-    );
-    assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
+    let status = solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::Steps(1),
+            AutoStep::No(1.0),
+            None,
+        )
+        .unwrap();
+    assert_eq!(status, Status::ReachedMaxIterations);
 }
 
 #[test]
@@ -88,20 +82,17 @@ fn test_newton_problems_fail_oscillation() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    assert_eq!(
-        solver
-            .solve(
-                &mut args,
-                &mut state,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::No(1.0),
-                None,
-            )
-            .unwrap(),
-        Status::Failure
-    );
-    assert_eq!(solver.get_errors(), &["max number of iterations reached"]);
+    let status = solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::Steps(1),
+            AutoStep::No(1.0),
+            None,
+        )
+        .unwrap();
+    assert_eq!(status, Status::ReachedMaxIterations);
 }
 
 #[test]
@@ -117,20 +108,17 @@ fn test_newton_problems_indeterminate() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    assert_eq!(
-        solver
-            .solve(
-                &mut args,
-                &mut state,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::No(1.0),
-                None,
-            )
-            .unwrap(),
-        Status::Failure
-    );
-    assert_eq!(solver.get_errors(), &["‖(δu,δλ)‖∞ is too large"]);
+    let status = solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::Steps(1),
+            AutoStep::No(1.0),
+            None,
+        )
+        .unwrap();
+    assert_eq!(status, Status::LargeDelta);
 }
 
 #[test]
@@ -150,7 +138,7 @@ fn test_newton_problems_ok_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -160,6 +148,7 @@ fn test_newton_problems_ok_2() {
             None,
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // check
     let stats = solver.get_stats();
@@ -172,9 +161,6 @@ fn test_newton_problems_ok_2() {
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_large_delta, 0);
-    assert_eq!(stats.n_max_iterations_reached, 0);
-    assert_eq!(stats.n_iteration_max, n_iter);
     assert_eq!(stats.n_iteration_total, n_iter);
     vec_approx_eq(&state.u, &u_ref, 1e-12);
 }
@@ -192,20 +178,17 @@ fn test_simple_fixed_continued_divergence() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    assert_eq!(
-        solver
-            .solve(
-                &mut args,
-                &mut state,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::No(1.0),
-                None,
-            )
-            .unwrap(),
-        Status::Failure
-    );
-    assert_eq!(solver.get_errors(), &["continued divergence detected"]);
+    let status = solver
+        .solve(
+            &mut args,
+            &mut state,
+            Direction::Pos,
+            Stop::Steps(1),
+            AutoStep::No(1.0),
+            None,
+        )
+        .unwrap();
+    assert_eq!(status, Status::ContinuedDivergence);
 }
 
 #[test]
@@ -221,19 +204,15 @@ fn test_two_eq_nr_prob_1_singular() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
-    assert_eq!(
-        solver
-            .solve(
-                &mut args,
-                &mut state,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::No(1.0),
-                None,
-            )
-            .err(),
-        Some("Error(1): Matrix is singular")
+    let res = solver.solve(
+        &mut args,
+        &mut state,
+        Direction::Pos,
+        Stop::Steps(1),
+        AutoStep::No(1.0),
+        None,
     );
+    assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
 }
 
 #[test]
@@ -252,7 +231,7 @@ fn test_two_eq_nr_prob_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem: first solution
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state_ok1,
@@ -262,10 +241,11 @@ fn test_two_eq_nr_prob_2() {
             None,
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
     vec_approx_eq(&state_ok1.u, &u_ref1, 1e-9);
 
     // solve problem: second solution
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state_ok2,
@@ -275,20 +255,17 @@ fn test_two_eq_nr_prob_2() {
             None,
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
     vec_approx_eq(&state_ok2.u, &u_ref2, 1e-9);
 
     // singular case
-    assert_eq!(
-        solver
-            .solve(
-                &mut args,
-                &mut state_bad,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::No(1.0),
-                None
-            )
-            .err(),
-        Some("Error(1): Matrix is singular")
+    let res = solver.solve(
+        &mut args,
+        &mut state_bad,
+        Direction::Pos,
+        Stop::Steps(1),
+        AutoStep::No(1.0),
+        None,
     );
+    assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
 }

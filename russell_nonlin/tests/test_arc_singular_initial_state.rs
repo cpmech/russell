@@ -1,8 +1,8 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, Direction, Status, Method, Output, Samples, Solver, Stop};
 
-const SAVE_FIGURE: bool = false;
+const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_singular_initial_state";
 
 fn do_plot(
@@ -90,7 +90,7 @@ fn test_arc_singular_initial_state_1() {
     // numerical continuation
     let nstep = 5;
     let dds = 0.5; // Δs ≡ h
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -100,6 +100,7 @@ fn test_arc_singular_initial_state_1() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);
@@ -142,7 +143,7 @@ fn test_arc_singular_initial_state_2() {
     // numerical continuation
     let nstep = 5;
     let dds = 0.5; // Δs ≡ h
-    solver
+    let status = solver
         .solve(
             &mut args,
             &mut state,
@@ -152,6 +153,7 @@ fn test_arc_singular_initial_state_2() {
             Some(out),
         )
         .unwrap();
+    assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);

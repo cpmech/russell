@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{Config, IterationError, Logger, Method, Stats, System};
+use super::{Config, Status, IterationError, Logger, Method, Stats, System};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
@@ -61,18 +61,6 @@ pub(crate) struct Workspace<'a> {
     /// Indicates that this step follows a previously rejected step
     pub(crate) follows_rejection: bool,
 
-    /// Flags that the solver stopped due to a secondary update error
-    pub(crate) stopped_due_to_secondary_update_fail_predictor: bool,
-
-    /// Flags that the solver stopped due to continued failure
-    pub(crate) stopped_due_to_continued_failure: bool,
-
-    /// Flags that the solver stopped due to continued rejection
-    pub(crate) stopped_due_to_continued_rejection: bool,
-
-    /// Flags that the solver stopped because the stepsize became too small
-    pub(crate) stopped_due_to_small_stepsize: bool,
-
     /// Indicates the target λ or uᵢ has been reached
     pub(crate) target_reached: bool,
 
@@ -90,9 +78,6 @@ pub(crate) struct Workspace<'a> {
     ///
     /// (ndim x ndim)
     pub(crate) ggu: CooMatrix,
-
-    /// Next stepsize estimate
-    pub(crate) h_estimate: f64,
 
     /// Stepsize: either σ (pseudo-arclength) or Δλ (natural parameter)
     pub(crate) h: f64,
@@ -180,17 +165,12 @@ impl<'a> Workspace<'a> {
             n_continued_rejection: 0,
             follows_failure: false,
             follows_rejection: false,
-            stopped_due_to_secondary_update_fail_predictor: false,
-            stopped_due_to_continued_failure: false,
-            stopped_due_to_continued_rejection: false,
-            stopped_due_to_small_stepsize: false,
             target_reached: false,
             stop_gracefully: false,
 
             // state variables
             gg: Vector::new(system.ndim),
             ggu,
-            h_estimate: 0.0,
             h: config.h_ini,
             u: Vector::new(system.ndim),
             l: 0.0,
@@ -215,29 +195,7 @@ impl<'a> Workspace<'a> {
         self.n_continued_rejection = 0;
         self.follows_failure = false;
         self.follows_rejection = false;
-        self.stopped_due_to_secondary_update_fail_predictor = false;
-        self.stopped_due_to_continued_failure = false;
-        self.stopped_due_to_continued_rejection = false;
-        self.stopped_due_to_small_stepsize = false;
         self.target_reached = false;
         self.stop_gracefully = false;
-    }
-
-    /// Returns error messages
-    pub(crate) fn errors(&self) -> Vec<String> {
-        let mut msg = self.err.messages();
-        if self.stopped_due_to_secondary_update_fail_predictor {
-            msg.push("secondary update failed in the predictor phase".to_string());
-        }
-        if self.stopped_due_to_continued_failure {
-            msg.push("too many continued (iteration) failures".to_string());
-        }
-        if self.stopped_due_to_continued_rejection {
-            msg.push("too many continued (error behavior) rejections".to_string());
-        }
-        if self.stopped_due_to_small_stepsize {
-            msg.push("the stepsize becomes too small".to_string());
-        }
-        msg
     }
 }

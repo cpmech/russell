@@ -528,6 +528,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
                 self.theta = 0.0; // set θ to targeting lambda mode
                 work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
+                assert!(work.h >= 0.0); // TODO: remove this check
                 if work.h <= CONFIG_H_MIN {
                     work.target_reached = true;
                     return Ok(Status::Success);
@@ -557,8 +558,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                     work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
                     vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
                 } else {
-                    // TODO: handle this case better
-                    panic!("cannot truncate the stepsize because duds[i] is too small");
+                    return Err("INTERNAL ERROR: duds[i] is too small");
                 }
             }
         }

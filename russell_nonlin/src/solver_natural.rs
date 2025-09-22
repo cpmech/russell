@@ -268,8 +268,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         if let Some((l1, is_min)) = stop.lambda() {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
                 work.h = (l1 - state.l) * self.dir_mult; // dir_mult will correct the difference
-                assert!(work.h >= 0.0); // TODO: remove this
-                if work.h <= CONFIG_H_MIN {
+                assert!(work.h >= 0.0); // TODO: remove this check
+                if work.h < CONFIG_H_MIN {
                     work.target_reached = true;
                     return Ok(Status::Success);
                 }

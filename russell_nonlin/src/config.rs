@@ -269,7 +269,7 @@ impl Config {
     /// Sets the initial stepsize
     ///
     /// ```text
-    /// h_ini ≥ CONFIG_H_MIN
+    /// h_ini > CONFIG_H_MIN
     /// ```
     ///
     /// See [CONFIG_H_MIN]
@@ -588,8 +588,8 @@ impl Config {
         if self.m_failure < 0.001 {
             return Err("requirement: m_failure ≥ 0.001");
         }
-        if self.h_ini < CONFIG_H_MIN {
-            return Err("requirement: h_ini ≥ CONFIG_H_MIN");
+        if self.h_ini <= CONFIG_H_MIN {
+            return Err("requirement: h_ini > CONFIG_H_MIN");
         }
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
@@ -645,7 +645,7 @@ mod tests {
         // automatic stepsize
 
         config.h_ini = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: h_ini ≥ CONFIG_H_MIN"));
+        assert_eq!(config.validate().err(), Some("requirement: h_ini > CONFIG_H_MIN"));
         config.h_ini = 1e-4;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));

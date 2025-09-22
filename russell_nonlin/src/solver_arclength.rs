@@ -529,7 +529,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 self.theta = 0.0; // set θ to targeting lambda mode
                 work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
                 assert!(work.h >= 0.0); // TODO: remove this check
-                if work.h <= CONFIG_H_MIN {
+                if work.h < CONFIG_H_MIN {
                     work.target_reached = true;
                     return Ok(Status::Success);
                 }
@@ -551,7 +551,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             if (work.u[i] < u1 && is_min) || (work.u[i] > u1 && !is_min) {
                 if f64::abs(work.duds[i]) > CONFIG_H_MIN {
                     work.h = (u1 - state.u[i]) / work.duds[i];
-                    if work.h <= CONFIG_H_MIN {
+                    if work.h < CONFIG_H_MIN {
                         work.target_reached = true;
                         return Ok(Status::Success);
                     }

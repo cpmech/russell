@@ -256,7 +256,7 @@ impl<'a, A> Solver<'a, A> {
                 }
 
                 // check allowed stepsize change
-                if self.work.h <= CONFIG_H_MIN {
+                if self.work.h < CONFIG_H_MIN {
                     status = Status::SmallStepsize;
                     break;
                 }

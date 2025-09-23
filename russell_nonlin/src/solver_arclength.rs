@@ -196,6 +196,7 @@ pub struct SolverArclength<'a, A> {
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
     pub fn new(config: Config, system: System<'a, A>) -> Self {
+        let genie = config.genie;
         let use_num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
         let ndim = system.ndim;
         let nnz_aa = system.nnz_ggu + 2 * ndim + 1;
@@ -203,7 +204,7 @@ impl<'a, A> SolverArclength<'a, A> {
             config,
             system,
             ggl: Vector::new(ndim),
-            ls_aug: LinSolver::new(config.genie).unwrap(),
+            ls_aug: LinSolver::new(genie).unwrap(),
             aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_aa, Sym::No).unwrap(),
             x: Vector::new(ndim + 1),
             b: Vector::new(ndim + 1),

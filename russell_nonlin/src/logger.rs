@@ -1,24 +1,39 @@
-use super::{Config, IterationError, Method, State, Status, Workspace};
+use russell_lab::format_scientific;
+
+use super::{Config, IterationError, Method, State, Stats, Status};
+use crate::StrError;
+use std::fmt::Write;
+use std::fs::{self, File};
+use std::io::Write as IoWrite;
+use std::path::Path;
 
 /// Prints information during time stepping
 pub(crate) struct Logger {
     /// Method
     method: Method,
 
-    /// Enables verbose output
-    verbose: bool,
+    /// Enables the logging of steps and iterations
+    enabled: bool,
 
-    /// Enables verbose output for iterations
-    verbose_iterations: bool,
+    /// Enables detailed output of iterations
+    with_iterations: bool,
 
-    /// Enables verbose output for the legend
-    verbose_legend: bool,
+    /// Enables the output of the legend
+    with_legend: bool,
 
-    /// Show statistics
-    verbose_stats: bool,
+    /// Enables the generation of a statistics report
+    with_statistics: bool,
 
     /// Number of characters for the horizontal line
     nchar: usize,
+
+    /// Output buffer
+    buffer: String,
+
+    /// Full path to the log file
+    ///
+    /// Note: the file is written by the footer method
+    full_path: Option<String>,
 }
 
 impl Logger {
@@ -26,55 +41,63 @@ impl Logger {
     pub fn new(config: &Config) -> Self {
         let nchar = match config.method {
             Method::Arclength => 64,
-            Method::Natural => 59,
+            Method::Natural => 62,
         };
-        Self {
+        Logger {
             method: config.method,
-            verbose: config.verbose,
-            verbose_iterations: config.verbose_iterations,
-            verbose_legend: config.verbose_legend,
-            verbose_stats: config.verbose_stats,
+            enabled: config.verbose || config.log_file.is_some(),
+            with_iterations: config.verbose_iterations,
+            with_legend: config.verbose_legend,
+            with_statistics: config.verbose_stats,
             nchar,
+            buffer: String::new(),
+            full_path: config.log_file.clone(),
         }
     }
 
     /// Prints the header before time stepping and convergence statistics
-    pub fn header(&self) {
-        if !self.verbose {
+    pub fn header(&mut self) {
+        if !self.enabled {
             return;
         }
-        if self.verbose_legend {
+        if self.with_legend {
             self.legend();
         }
-        println!("{}", "─".repeat(self.nchar));
+        writeln!(&mut self.buffer, "{}", "─".repeat(self.nchar)).unwrap();
         match self.method {
             Method::Arclength => {
-                println!(
+                writeln!(
+                    &mut self.buffer,
                     "{:>8} {:>8} {:>5} {:>10} ➖ {:>10} {:>12} ➖",
                     "λ", "Δs", "iter", "‖(G,N)‖∞", "‖(δu,δλ)‖∞", "Rel((δu,δλ))"
-                );
+                )
+                .unwrap();
             }
             Method::Natural => {
-                println!(
-                    "{:>8} {:>8} {:>5} {:>9} ➖ {:>9} {:>9} ➖",
+                writeln!(
+                    &mut self.buffer,
+                    "{:>8} {:>8} {:>5} {:>10} ➖ {:>10} {:>10} ➖",
                     "λ", "Δλ", "iter", "‖G‖∞", "‖δu‖∞", "Rel(δu)"
-                );
+                )
+                .unwrap();
             }
         }
-        println!("{}", "─".repeat(self.nchar));
+        writeln!(&mut self.buffer, "{}", "─".repeat(self.nchar)).unwrap();
     }
 
     /// Prints step information
-    pub fn step(&self, h: f64, state: &State) {
-        if !self.verbose {
+    pub fn step(&mut self, h: f64, state: &State) {
+        if !self.enabled {
             return;
         }
-        println!("{:>8.3e} {:>8.3e}", state.l, h);
+        let str_l = format_scientific(state.l, 8, 3);
+        let str_h = format_scientific(h, 8, 3);
+        writeln!(&mut self.buffer, "{} {}", str_l, str_h).unwrap();
     }
 
     /// Prints iteration information
-    pub fn iteration(&self, iter: usize, err: &IterationError) {
-        if !(self.verbose && self.verbose_iterations) {
+    pub fn iteration(&mut self, iter: usize, err: &IterationError) {
+        if !(self.enabled && self.with_iterations) {
             return;
         }
         let icon_gh = self.icon(iter, err.residual_converged, err.residual_diverging);
@@ -82,22 +105,35 @@ impl Logger {
         let k = iter + 1;
         match self.method {
             Method::Arclength => {
-                println!(
-                    "{:>8} {:>8} {:>5} {:>10.2e} {} {:>10.2e} {:>12.2e} {}",
-                    "·", "·", k, err.residual_max, icon_gh, err.delta_max, err.delta_rms, icon_ul
-                );
+                let res_max = format_scientific(err.residual_max, 10, 2);
+                let del_max = format_scientific(err.delta_max, 10, 2);
+                let del_rms = format_scientific(err.delta_rms, 12, 2);
+                writeln!(
+                    &mut self.buffer,
+                    "{:>8} {:>8} {:>5} {} {} {} {} {}",
+                    "·", "·", k, res_max, icon_gh, del_max, del_rms, icon_ul
+                )
+                .unwrap();
             }
             Method::Natural => {
                 if err.residual_converged {
-                    println!(
-                        "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9} {:>9}",
-                        "·", "·", k, err.residual_max, icon_gh, "·", "·"
-                    );
+                    let res_max = format_scientific(err.residual_max, 10, 2);
+                    writeln!(
+                        &mut self.buffer,
+                        "{:>8} {:>8} {:>5} {} {} {:>10} {:>10}",
+                        "·", "·", k, res_max, icon_gh, "·", "·"
+                    )
+                    .unwrap();
                 } else {
-                    println!(
-                        "{:>8} {:>8} {:>5} {:>9.2e} {} {:>9.2e} {:>9.2e} {}",
-                        "·", "·", k, err.residual_max, icon_gh, err.delta_max, err.delta_rms, icon_ul
-                    );
+                    let res_max = format_scientific(err.residual_max, 10, 2);
+                    let del_max = format_scientific(err.delta_max, 10, 2);
+                    let del_rms = format_scientific(err.delta_rms, 12, 2);
+                    writeln!(
+                        &mut self.buffer,
+                        "{:>8} {:>8} {:>5} {} {} {} {} {}",
+                        "·", "·", k, res_max, icon_gh, del_max, del_rms, icon_ul
+                    )
+                    .unwrap();
                 }
             }
         }
@@ -119,40 +155,64 @@ impl Logger {
 
     /// Prints the legend
     #[inline]
-    fn legend(&self) {
-        println!("Legend:");
-        println!("  ✅  Converged");
-        println!("  🎈  Diverging");
-        println!("  🔹  Not converged");
+    fn legend(&mut self) {
+        writeln!(
+            &mut self.buffer,
+            "Legend:\n  ✅  Converged\n  🎈  Diverging\n  🔹  Not converged"
+        )
+        .unwrap();
     }
 
     /// Prints a message when the step is rejected because it did not converge
-    pub fn did_not_converge(&self) {
-        if self.verbose {
-            println!("{:^w$}", "(rejected: did not converge)", w = self.nchar);
+    pub fn did_not_converge(&mut self) {
+        if self.enabled {
+            writeln!(
+                &mut self.buffer,
+                "{:^w$}",
+                "(rejected: did not converge)",
+                w = self.nchar
+            )
+            .unwrap();
         }
     }
 
     /// Prints a message when the step is rejected because alpha is not acceptable
-    pub fn alpha_is_not_acceptable(&self) {
-        if self.verbose {
-            println!("{:^w$}", "(rejected: alpha is not acceptable)", w = self.nchar);
+    pub fn alpha_is_not_acceptable(&mut self) {
+        if self.enabled {
+            writeln!(
+                &mut self.buffer,
+                "{:^w$}",
+                "(rejected: alpha is not acceptable)",
+                w = self.nchar
+            )
+            .unwrap();
         }
     }
 
     /// Prints statistics and eventual errors
-    pub fn footer(&self, work: &Workspace, status: Status) {
-        if self.verbose {
-            println!("{}\n", "─".repeat(self.nchar));
-            if self.verbose_stats {
-                println!("{}", work.stats);
+    pub fn footer(&mut self, stats: &Stats, status: Status) -> Result<(), StrError> {
+        if self.enabled {
+            writeln!(&mut self.buffer, "{}\n", "─".repeat(self.nchar)).unwrap();
+            if self.with_statistics {
+                writeln!(&mut self.buffer, "{}", stats).unwrap();
             }
             if status.failure() {
-                println!("\n{:═^1$}", " FAILURE ", 60);
-                println!("❌ {:?} ❌", status);
-                println!("{}\n", "═".repeat(60));
+                writeln!(&mut self.buffer, "\n{:═^1$}", " FAILURE ", 60).unwrap();
+                writeln!(&mut self.buffer, "❌ {:?} ❌", status).unwrap();
+                writeln!(&mut self.buffer, "{}\n", "═".repeat(60)).unwrap();
             }
         }
+        if let Some(fp) = self.full_path.as_ref() {
+            let path = Path::new(fp).to_path_buf();
+            if let Some(p) = path.parent() {
+                fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
+            }
+            let mut file = File::create(&path).map_err(|_| "cannot create file")?;
+            file.write_all(self.buffer.as_bytes())
+                .map_err(|_| "cannot write file")?;
+            file.sync_all().map_err(|_| "cannot sync file")?;
+        }
+        Ok(())
     }
 }
 
@@ -161,7 +221,7 @@ impl Logger {
 #[cfg(test)]
 mod tests {
     use super::Logger;
-    use crate::{Config, IterationError, Method, Samples, State, Status, Workspace};
+    use crate::{Config, IterationError, Method, State, Stats, Status};
 
     #[test]
     fn logger_new_works() {
@@ -174,53 +234,120 @@ mod tests {
 
         let logger = Logger::new(&config);
         assert_eq!(logger.method, Method::Arclength);
-        assert!(logger.verbose);
-        assert!(logger.verbose_iterations);
-        assert!(logger.verbose_legend);
-        assert!(logger.verbose_stats);
+        assert!(logger.enabled);
+        assert!(logger.with_iterations);
+        assert!(logger.with_legend);
+        assert!(logger.with_statistics);
         assert_eq!(logger.nchar, 64);
 
         // Test with Natural method
         let config = Config::new(Method::Natural);
         let logger = Logger::new(&config);
         assert_eq!(logger.method, Method::Natural);
-        assert!(!logger.verbose); // default is false
-        assert!(!logger.verbose_iterations);
-        assert!(!logger.verbose_legend);
-        assert!(!logger.verbose_stats);
-        assert_eq!(logger.nchar, 59);
+        assert!(!logger.enabled); // default is false
+        assert!(!logger.with_iterations);
+        assert!(!logger.with_legend);
+        assert!(!logger.with_statistics);
+        assert_eq!(logger.nchar, 62);
     }
 
     #[test]
     fn logger_header_verbose_false_does_nothing() {
         let config = Config::new(Method::Arclength);
-        let logger = Logger::new(&config);
+        let mut logger = Logger::new(&config);
 
-        // Should not print anything when verbose is false
         logger.header();
-        // No assertion needed - just ensuring no panic
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn logger_header_arclength_with_legend() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        config.verbose_legend = true;
+        let mut logger = Logger::new(&config);
+
+        logger.header();
+
+        let expected = r#"Legend:
+  ✅  Converged
+  🎈  Diverging
+  🔹  Not converged
+────────────────────────────────────────────────────────────────
+       λ       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────
+"#;
+        assert_eq!(logger.buffer, expected);
+    }
+
+    #[test]
+    fn logger_header_arclength_without_legend() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        config.verbose_legend = false;
+        let mut logger = Logger::new(&config);
+
+        logger.header();
+
+        let expected = r#"
+────────────────────────────────────────────────────────────────
+       λ       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────
+"#;
+        assert_eq!(logger.buffer, &expected[1..]);
+    }
+
+    #[test]
+    fn logger_header_natural_without_legend() {
+        let mut config = Config::new(Method::Natural);
+        config.verbose = true;
+        config.verbose_legend = false;
+        let mut logger = Logger::new(&config);
+
+        logger.header();
+
+        let expected = r#"
+──────────────────────────────────────────────────────────────
+       λ       Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞    Rel(δu) ➖
+──────────────────────────────────────────────────────────────
+"#;
+        assert_eq!(logger.buffer, &expected[1..]);
     }
 
     #[test]
     fn logger_step_verbose_false_does_nothing() {
         let config = Config::new(Method::Arclength);
-        let logger = Logger::new(&config);
+        let mut logger = Logger::new(&config);
         let state = State::new(1);
 
-        // Should not print anything when verbose is false
         logger.step(0.1, &state);
-        // No assertion needed - just ensuring no panic
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn logger_step_works() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        let mut logger = Logger::new(&config);
+
+        let mut state = State::new(2);
+        state.l = 1.5;
+        let h = 0.25;
+
+        logger.step(h, &state);
+
+        let expected = "1.500E+00 2.500E-01\n";
+        assert_eq!(logger.buffer, expected);
     }
 
     #[test]
     fn logger_iteration_verbose_false_does_nothing() {
         let config = Config::new(Method::Arclength);
-        let logger = Logger::new(&config);
+        let mut logger = Logger::new(&config);
         let err = IterationError::new(&config, 1);
 
-        // Should not print anything when verbose is false
         logger.iteration(0, &err);
-        // No assertion needed - just ensuring no panic
+        assert!(logger.buffer.is_empty());
     }
 
     #[test]
@@ -228,12 +355,88 @@ mod tests {
         let mut config = Config::new(Method::Arclength);
         config.verbose = true;
         config.verbose_iterations = false;
-        let logger = Logger::new(&config);
+        let mut logger = Logger::new(&config);
         let err = IterationError::new(&config, 1);
 
-        // Should not print anything when verbose_iterations is false
         logger.iteration(0, &err);
-        // No assertion needed - just ensuring no panic
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn logger_iteration_arclength_converged() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        config.verbose_iterations = true;
+        let mut logger = Logger::new(&config);
+
+        let mut err = IterationError::new(&config, 1);
+        err.residual_max = 1e-10;
+        err.delta_max = 1e-11;
+        err.delta_rms = 1e-12;
+        err.residual_converged = true;
+        err.delta_converged = true;
+
+        logger.iteration(0, &err);
+
+        let expected = "       ·        ·     1   1.00E-10 ✅   1.00E-11     1.00E-12 ✅\n";
+        assert_eq!(logger.buffer, expected);
+    }
+
+    #[test]
+    fn logger_iteration_arclength_diverging() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        config.verbose_iterations = true;
+        let mut logger = Logger::new(&config);
+
+        let mut err = IterationError::new(&config, 1);
+        err.residual_max = 1e10;
+        err.delta_max = 1e11;
+        err.delta_rms = 1e12;
+        err.residual_diverging = true;
+        err.delta_diverging = true;
+
+        logger.iteration(1, &err);
+
+        let expected = "       ·        ·     2   1.00E+10 🎈   1.00E+11     1.00E+12 🎈\n";
+        assert_eq!(logger.buffer, expected);
+    }
+
+    #[test]
+    fn logger_iteration_natural_converged() {
+        let mut config = Config::new(Method::Natural);
+        config.verbose = true;
+        config.verbose_iterations = true;
+        let mut logger = Logger::new(&config);
+
+        let mut err = IterationError::new(&config, 1);
+        err.residual_max = 1e-10;
+        err.residual_converged = true;
+
+        logger.iteration(0, &err);
+
+        let expected = "       ·        ·     1   1.00E-10 ✅          ·          ·\n";
+        assert_eq!(logger.buffer, expected);
+    }
+
+    #[test]
+    fn logger_iteration_natural_not_converged() {
+        let mut config = Config::new(Method::Natural);
+        config.verbose = true;
+        config.verbose_iterations = true;
+        let mut logger = Logger::new(&config);
+
+        let mut err = IterationError::new(&config, 1);
+        err.residual_max = 1e-3;
+        err.delta_max = 1e-4;
+        err.delta_rms = 1e-5;
+        err.residual_converged = false;
+        err.delta_converged = false;
+
+        logger.iteration(2, &err);
+
+        let expected = "       ·        ·     3   1.00E-03 🔹   1.00E-04     1.00E-05 🔹\n";
+        assert_eq!(logger.buffer, expected);
     }
 
     #[test]
@@ -260,118 +463,198 @@ mod tests {
     #[test]
     fn logger_did_not_converge_verbose_false_does_nothing() {
         let config = Config::new(Method::Arclength);
-        let logger = Logger::new(&config);
+        let mut logger = Logger::new(&config);
 
-        // Should not print anything when verbose is false
         logger.did_not_converge();
-        // No assertion needed - just ensuring no panic
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn logger_did_not_converge_works() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        let mut logger = Logger::new(&config);
+
+        logger.did_not_converge();
+
+        let expected = "                  (rejected: did not converge)                  \n";
+        assert_eq!(logger.buffer, expected);
     }
 
     #[test]
     fn logger_alpha_is_not_acceptable_verbose_false_does_nothing() {
         let config = Config::new(Method::Arclength);
-        let logger = Logger::new(&config);
+        let mut logger = Logger::new(&config);
 
-        // Should not print anything when verbose is false
         logger.alpha_is_not_acceptable();
-        // No assertion needed - just ensuring no panic
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn logger_alpha_is_not_acceptable_works() {
+        let mut config = Config::new(Method::Arclength);
+        config.verbose = true;
+        let mut logger = Logger::new(&config);
+
+        logger.alpha_is_not_acceptable();
+
+        let expected = "              (rejected: alpha is not acceptable)               \n";
+        assert_eq!(logger.buffer, expected);
     }
 
     #[test]
     fn logger_footer_verbose_false_does_nothing() {
         let config = Config::new(Method::Arclength);
-        let logger = Logger::new(&config);
-        let (system, _, _) = Samples::simple_linear_problem(false, false);
-        let work = Workspace::new(&config, &system);
+        let mut logger = Logger::new(&config);
+        let stats = Stats::new(&config);
 
-        // Should not print anything when verbose is false
-        logger.footer(&work, Status::Success);
-        // No assertion needed - just ensuring no panic
+        logger.footer(&stats, Status::Success).unwrap();
+        assert!(logger.buffer.is_empty());
     }
 
     #[test]
-    fn logger_footer_with_success_status() {
+    fn logger_footer_success_with_stats() {
         let mut config = Config::new(Method::Arclength);
         config.verbose = true;
         config.verbose_stats = true;
-        let logger = Logger::new(&config);
-        let (system, _, _) = Samples::simple_linear_problem(false, false);
-        let work = Workspace::new(&config, &system);
+        let mut logger = Logger::new(&config);
+        let stats = Stats::new(&config);
 
-        // Should print stats but no failure message for success
-        logger.footer(&work, Status::Success);
-        // No assertion needed - just ensuring no panic and proper formatting
+        logger.footer(&stats, Status::Success).unwrap();
+
+        // Should contain the line separator and stats, but no failure message
+        let expected = r#"
+────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Number of function evaluations   = 0
+Number of Jacobian evaluations   = 0
+Number of factorizations         = 0
+Number of lin sys solutions      = 0
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of performed steps        = 0
+Number of iterations (total)     = 0
+Last accepted/suggested stepsize = 0
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 0ns
+Max time spent on factorization  = 0ns
+Max time spent on lin solution   = 0ns
+Total time                       = 0ns
+"#;
+        assert_eq!(logger.buffer, &expected[1..]);
     }
 
     #[test]
-    fn logger_footer_with_failure_status() {
+    fn logger_footer_failure_with_stats() {
         let mut config = Config::new(Method::Arclength);
         config.verbose = true;
         config.verbose_stats = true;
-        let logger = Logger::new(&config);
-        let (system, _, _) = Samples::simple_linear_problem(false, false);
-        let work = Workspace::new(&config, &system);
+        let mut logger = Logger::new(&config);
+        let stats = Stats::new(&config);
 
-        // Should print stats and failure message
-        logger.footer(&work, Status::LargeDelta);
-        // No assertion needed - just ensuring no panic and proper formatting
+        logger.footer(&stats, Status::LargeDelta).unwrap();
+
+        // Should contain the line separator, stats, and failure message
+        // (notice the double new line at the end)
+        let expected = r#"
+────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Number of function evaluations   = 0
+Number of Jacobian evaluations   = 0
+Number of factorizations         = 0
+Number of lin sys solutions      = 0
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of performed steps        = 0
+Number of iterations (total)     = 0
+Last accepted/suggested stepsize = 0
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 0ns
+Max time spent on factorization  = 0ns
+Max time spent on lin solution   = 0ns
+Total time                       = 0ns
+
+═════════════════════════ FAILURE ══════════════════════════
+❌ LargeDelta ❌
+════════════════════════════════════════════════════════════
+
+"#;
+        assert_eq!(logger.buffer, &expected[1..]);
     }
 
     #[test]
-    fn logger_iteration_error_states_work() {
+    fn logger_footer_success_without_stats() {
         let mut config = Config::new(Method::Arclength);
         config.verbose = true;
-        config.verbose_iterations = true;
-        let logger = Logger::new(&config);
+        config.verbose_stats = false;
+        let mut logger = Logger::new(&config);
+        let stats = Stats::new(&config);
 
-        // Test various error states for Arclength method
-        let mut err_converged = IterationError::new(&config, 1);
-        err_converged.delta_converged = true;
-        logger.iteration(0, &err_converged);
+        logger.footer(&stats, Status::Success).unwrap();
 
-        println!("\n");
+        // Should contain only the line separator, no stats or failure message
+        // (notice the double new line at the end)
+        let expected = r#"
+────────────────────────────────────────────────────────────────
 
-        let mut err_diverging = IterationError::new(&config, 1);
-        err_diverging.residual_diverging = true;
-        logger.iteration(1, &err_diverging);
-
-        println!("\n");
-
-        let mut err_not_converged = IterationError::new(&config, 1);
-        err_not_converged.residual_max = 1e-3;
-        logger.iteration(2, &err_not_converged);
+"#;
+        assert_eq!(logger.buffer, &expected[1..]);
     }
 
     #[test]
-    fn logger_iteration_natural_method_works() {
+    fn logger_complete_workflow() {
         let mut config = Config::new(Method::Natural);
         config.verbose = true;
         config.verbose_iterations = true;
-        let logger = Logger::new(&config);
+        config.verbose_legend = true;
+        config.verbose_stats = true;
+        let mut logger = Logger::new(&config);
 
-        // Test converged case for Natural method
-        let mut err_converged = IterationError::new(&config, 1);
-        err_converged.delta_converged = true;
-        logger.iteration(0, &err_converged);
+        // Simulate a complete workflow
+        logger.header();
 
-        // Test not converged case for Natural method
-        let mut err_not_converged = IterationError::new(&config, 1);
-        err_not_converged.delta_diverging = true;
-        logger.iteration(1, &err_not_converged);
-    }
+        let mut state = State::new(1);
+        state.l = 0.5;
+        logger.step(0.1, &state);
 
-    #[test]
-    fn logger_step_works() {
-        let mut config = Config::new(Method::Arclength);
-        config.verbose = true;
-        let logger = Logger::new(&config);
+        let mut err = IterationError::new(&config, 1);
+        err.residual_max = 1e-8;
+        err.residual_converged = true;
+        logger.iteration(0, &err);
 
-        let mut state = State::new(2);
-        state.l = 1.5;
-        let h = 0.25;
+        let stats = Stats::new(&config);
+        logger.footer(&stats, Status::Success).unwrap();
 
-        // Should print step information
-        logger.step(h, &state);
-        // No assertion needed - just ensuring no panic and proper formatting
+        let expected = r#"
+Legend:
+  ✅  Converged
+  🎈  Diverging
+  🔹  Not converged
+──────────────────────────────────────────────────────────────
+       λ       Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞    Rel(δu) ➖
+──────────────────────────────────────────────────────────────
+5.000E-01 1.000E-01
+       ·        ·     1   1.00E-08 ✅          ·          ·
+──────────────────────────────────────────────────────────────
+
+Natural parameter continuation; solves G(u, λ) = 0 (fixed)
+Number of function evaluations   = 0
+Number of Jacobian evaluations   = 0
+Number of factorizations         = 0
+Number of lin sys solutions      = 0
+Number of accepted steps         = 0
+Number of rejected steps         = 0
+Number of performed steps        = 0
+Number of iterations (total)     = 0
+Last accepted/suggested stepsize = 0
+Max time spent on a step         = 0ns
+Max time spent on the Jacobian   = 0ns
+Max time spent on factorization  = 0ns
+Max time spent on lin solution   = 0ns
+Total time                       = 0ns
+"#;
+        assert_eq!(logger.buffer, &expected[1..]);
     }
 }

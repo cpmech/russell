@@ -36,8 +36,8 @@ impl<'a, A> Solver<'a, A> {
         let ndim = system.ndim;
         let work = Workspace::new(&config, &system);
         let actual: Box<dyn SolverTrait<A>> = match config.method {
-            Method::Arclength => Box::new(SolverArclength::new(config, system.clone())),
-            Method::Natural => Box::new(SolverNatural::new(config, system.clone())),
+            Method::Arclength => Box::new(SolverArclength::new(config.clone(), system.clone())),
+            Method::Natural => Box::new(SolverNatural::new(config.clone(), system.clone())),
         };
         Ok(Solver {
             config,
@@ -271,7 +271,7 @@ impl<'a, A> Solver<'a, A> {
         // print last message and footer
         self.work.log.step(self.work.h, &state);
         self.work.stats.stop_sw_total();
-        self.work.log.footer(&self.work, status);
+        self.work.log.footer(&self.work.stats, status)?;
 
         // done
         Ok(status)

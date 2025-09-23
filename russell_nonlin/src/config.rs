@@ -9,12 +9,15 @@ pub const CONFIG_H_MIN: f64 = 1e-10;
 pub const CONFIG_TOL_MIN: f64 = 1e-12;
 
 /// Holds configuration options for the nonlinear solver
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Config {
     // basic options ----------------------------------------------------------------------
     //
     /// Nonlinear solver method
     pub(crate) method: Method,
+
+    /// Save the output to a log file instead of stdout
+    pub(crate) log_file: Option<String>,
 
     /// Show stepping messages
     pub(crate) verbose: bool,
@@ -182,6 +185,7 @@ impl Config {
         Config {
             // basic options
             method,
+            log_file: None,
             verbose: false,
             verbose_iterations: false,
             verbose_legend: false,
@@ -227,6 +231,12 @@ impl Config {
     }
 
     // basic options ----------------------------------------------------------------------
+
+    /// Sets the log file path, to save the output instead of stdout
+    pub fn set_log_file(&mut self, full_path: &str) -> &mut Self {
+        self.log_file = Some(full_path.to_string());
+        self
+    }
 
     /// Sets the verbose flag
     pub fn set_verbose(&mut self, flag: bool, show_iterations: bool, show_stats: bool) -> &mut Self {

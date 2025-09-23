@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use super::{AutoStep, Config, Direction, Status};
-use super::{SolverTrait, State, Stop, System, Workspace, CONFIG_H_MIN};
+use super::{AutoStep, Config, Direction, Status, CONFIG_H_MIN};
+use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{math::PI, Norm, Vector};
@@ -529,11 +529,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
                 self.theta = 0.0; // set θ to targeting lambda mode
                 work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
-                assert!(work.h >= 0.0); // TODO: remove this check
-                if work.h < CONFIG_H_MIN {
-                    work.target_reached = true;
-                    return Ok(Status::Success);
-                }
                 work.l = state.l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
             }
         }
@@ -552,10 +547,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             if (work.u[i] < u1 && is_min) || (work.u[i] > u1 && !is_min) {
                 if f64::abs(work.duds[i]) > CONFIG_H_MIN {
                     work.h = (u1 - state.u[i]) / work.duds[i];
-                    if work.h < CONFIG_H_MIN {
-                        work.target_reached = true;
-                        return Ok(Status::Success);
-                    }
                     work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
                     vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
                 } else {

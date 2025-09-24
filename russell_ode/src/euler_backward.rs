@@ -108,7 +108,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
                     work.stats.n_function += ndim;
                     let w1 = &mut self.k; // workspace
                     let w2 = &mut self.dy; // workspace
-                    numerical_jacobian(kk, h, x_new, y_new, w1, w2, args, self.system.function.as_ref())?;
+                    numerical_jacobian(kk, ndim, h, x_new, y_new, w1, w2, args, self.system.function.as_ref())?;
                 } else {
                     (self.system.jacobian.as_ref().unwrap())(kk, h, x_new, y_new, args)?;
                 }

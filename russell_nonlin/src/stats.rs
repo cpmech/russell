@@ -20,6 +20,9 @@ pub struct Stats {
     /// Indicates automatic stepsize adjustment
     auto: bool,
 
+    /// Indicates the use of numerical Jacobian
+    pub num_jacobian: bool,
+
     /// Holds the iterations residuals for the current step, temporarily
     temporary_iterations_residuals: Vec<f64>,
 
@@ -98,6 +101,7 @@ impl Stats {
             hide_timings: config.hide_timings,
             record_iterations_residuals: config.record_iterations_residuals,
             auto: false,
+            num_jacobian: false,
             temporary_iterations_residuals: Vec::new(),
             n_function: 0,
             n_jacobian: 0,
@@ -297,6 +301,7 @@ impl Stats {
         write!(
             &mut buffer,
             "{} ({})\n\
+             Using numerical Jacobian         = {}\n\
              Number of function evaluations   = {}\n\
              Number of Jacobian evaluations   = {}\n\
              Number of factorizations         = {}\n\
@@ -308,6 +313,7 @@ impl Stats {
              Last accepted/suggested stepsize = {}{}{}",
             self.method.description(),
             if self.auto { "auto" } else { "fixed" },
+            self.num_jacobian,
             self.n_function,
             self.n_jacobian,
             self.n_factor,
@@ -446,6 +452,7 @@ mod tests {
         assert_eq!(
             format!("{}", stats.summary()),
             "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)\n\
+             Using numerical Jacobian         = false\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -471,6 +478,7 @@ mod tests {
         assert_eq!(
             format!("{}", stats.summary()),
             "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)\n\
+             Using numerical Jacobian         = false\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -508,6 +516,7 @@ mod tests {
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0 (fixed)\n\
+             Using numerical Jacobian         = false\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\
@@ -529,6 +538,7 @@ mod tests {
         assert_eq!(
             format!("{}", stats),
             "Natural parameter continuation; solves G(u, λ) = 0 (fixed)\n\
+             Using numerical Jacobian         = false\n\
              Number of function evaluations   = 0\n\
              Number of Jacobian evaluations   = 0\n\
              Number of factorizations         = 0\n\

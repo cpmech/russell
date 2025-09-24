@@ -210,7 +210,8 @@ impl<'a, A> Radau5<'a, A> {
                 let w1 = &mut self.dw0; // workspace
                 let w2 = &mut self.dw1; // workspace
                 vec_copy(y_mut, y).unwrap();
-                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
+                let ndim = self.system.ndim;
+                numerical_jacobian(jj, ndim, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
             } else {
                 (self.system.jacobian.as_ref().unwrap())(jj, 1.0, x, y, args)?;
             }

@@ -56,13 +56,16 @@ impl<'a, A> SolverNatural<'a, A> {
         // compute Jacobian matrix
         if recompute_jacobian {
             // assemble Gu matrix
+            let ndim = self.system.ndim;
             work.stats.sw_jacobian.reset();
             work.ggu.reset();
             if use_num_jacobian {
                 // numerical Jacobian
+                work.stats.num_jacobian = true;
                 work.stats.n_function += self.system.ndim;
                 numerical_jacobian(
                     &mut work.ggu,
+                    ndim,
                     1.0,
                     work.l,
                     &mut work.u,

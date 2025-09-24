@@ -230,13 +230,16 @@ impl<'a, A> SolverArclength<'a, A> {
     fn calc_ggu(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
         assert_eq!(work.with_ggu, true);
         // assemble Gu matrix
+        let ndim = self.system.ndim;
         work.stats.sw_jacobian.reset();
         work.ggu.reset();
         if self.use_num_ggu {
             // numerical
+            work.stats.num_jacobian = true;
             work.stats.n_function += self.system.ndim;
             numerical_jacobian(
                 &mut work.ggu,
+                ndim,
                 1.0,
                 work.l,
                 &mut work.u,
@@ -290,14 +293,16 @@ impl<'a, A> SolverArclength<'a, A> {
         for_initial_tangent_vector: bool,
     ) -> Result<(), StrError> {
         // assemble Gu matrix into A
+        let ndim = self.system.ndim;
         work.stats.sw_jacobian.reset();
         self.aa.reset();
         if self.use_num_ggu {
             // numerical
+            work.stats.num_jacobian = true;
             work.stats.n_function += self.system.ndim;
-            work.ggu.reset();
             numerical_jacobian(
-                &mut work.ggu,
+                &mut self.aa,
+                ndim,
                 1.0,
                 work.l,
                 &mut work.u,
@@ -314,7 +319,6 @@ impl<'a, A> SolverArclength<'a, A> {
         }
 
         // set the last row and column of A
-        let ndim = self.system.ndim;
         if for_initial_tangent_vector {
             // put 0 on the last row and column and 1 on the diagonal
             // (putting zeros is only necessary because the sparse solver requires it for subsequent calls)

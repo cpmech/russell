@@ -58,12 +58,15 @@ use russell_lab::Vector;
 ///
 /// # Input
 ///
+/// * `ndim` -- The minimum number of columns and rows of the Jacobian matrix and
+///   also the minimum number of entries in the `{y}`. Despite allowing larger matrices and vectors,
+///   the numerical Jacobian is always computed for the first `ndim` rows and columns (and is a square matrix).
 /// * `alpha` -- A coefficient to multiply all elements of the Jacobian
-/// * `x` -- The station (e.g., time) where the `f` function is called
-/// * `y` -- The vector `{y}` for which the `f` function is called.
+/// * `x` -- The station (e.g., time) where the `f` function is called. Requirement: `x.dim() ≥ ndim`
+/// * `y` -- The vector `{y}` for which the `f` function is called. Requirement: `y.dim() ≥ ndim`
 ///   **Note:** Although this variable is mutable, the original values are restored on exit
-/// * `w1` -- A workspace vector with `len ≥ ndim`
-/// * `w2` -- A workspace vector with `len ≥ ndim`
+/// * `w1` -- A workspace vector. Requirement: `w1.dim() ≥ ndim`
+/// * `w2` -- A workspace vector. Requirement: `w2.dim() ≥ ndim`
 /// * `function` -- The `f(f: &mut Vector, x: f64, y: &Vector, args: &mut A)` function
 /// * `args` -- Extra arguments for the `f` function
 ///
@@ -120,6 +123,7 @@ use russell_lab::Vector;
 /// ```
 pub fn numerical_jacobian<F, A>(
     jj: &mut CooMatrix,
+    ndim: usize,
     alpha: f64,
     x: f64,
     y: &mut Vector,
@@ -131,10 +135,12 @@ pub fn numerical_jacobian<F, A>(
 where
     F: FnMut(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError>,
 {
-    if jj.nrow != jj.ncol {
-        return Err("the Jacobian matrix must be square");
+    if jj.nrow < ndim {
+        return Err("the Jacobian matrix must have nrow ≥ ndim");
     }
-    let ndim = jj.nrow;
+    if jj.ncol < ndim {
+        return Err("the Jacobian matrix must have ncol ≥ ndim");
+    }
     if jj.symmetric.triangular() {
         if jj.max_nnz < (ndim + ndim * ndim) / 2 {
             return Err(
@@ -146,11 +152,14 @@ where
             return Err("the max number of non-zero values in the numerical Jacobian matrix must be at least ndim²");
         }
     }
-    if y.dim() != ndim {
-        return Err("the y-vector must have dim = ndim");
+    if y.dim() < ndim {
+        return Err("the y vector must have dim ≥ ndim");
     }
-    if w1.dim() < ndim || w2.dim() < ndim {
-        return Err("the workspace vectors must have dim ≥ ndim");
+    if w1.dim() < ndim {
+        return Err("the workspace vector w1 must have dim ≥ ndim");
+    }
+    if w2.dim() < ndim {
+        return Err("the workspace vector w2 must have dim ≥ ndim");
     }
     const THRESHOLD: f64 = 1e-5;
     function(w1, x, y, args)?; // w1 := f(x, y)
@@ -186,52 +195,58 @@ mod tests {
     fn numerical_jacobian_captures_errors() {
         struct Args {}
         let mut args = Args {};
-        let mut jj = CooMatrix::new(2, 3, 1, Sym::No).unwrap();
+        let mut jj = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let mut y = Vector::new(2);
         let mut w1 = Vector::new(2);
         let mut w2 = Vector::new(2);
         let function = |_f: &mut Vector, _x: f64, _y: &Vector, _args: &mut Args| Ok(());
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
-            Some("the Jacobian matrix must be square")
+            numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the Jacobian matrix must have nrow ≥ ndim")
+        );
+        let mut jj = CooMatrix::new(2, 1, 1, Sym::No).unwrap();
+        assert_eq!(
+            numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the Jacobian matrix must have ncol ≥ ndim")
         );
         let nnz_wrong = 2; // nnz_correct = 3 = (ndim + ndim * ndim)/2
         let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::YesLower).unwrap();
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
             Some("the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2")
         );
         let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::YesUpper).unwrap();
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
             Some("the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2")
         );
         let nnz_wrong = 3; // nnz_correct = 4 = ndim * ndim
         let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::No).unwrap();
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
             Some("the max number of non-zero values in the numerical Jacobian matrix must be at least ndim²")
         );
-        let mut jj = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let mut jj = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
+        let mut y = Vector::new(1);
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
-            Some("the y-vector must have dim = ndim")
+            numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the y vector must have dim ≥ ndim")
         );
         let mut y = Vector::new(1);
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            numerical_jacobian(&mut jj, 1, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
             None
         );
         let mut w1 = Vector::new(0);
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
-            Some("the workspace vectors must have dim ≥ ndim")
+            numerical_jacobian(&mut jj, 1, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the workspace vector w1 must have dim ≥ ndim")
         );
-        let mut w1 = Vector::new(2);
+        let mut w1 = Vector::new(1);
         let mut w2 = Vector::new(0);
         assert_eq!(
-            numerical_jacobian(&mut jj, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
-            Some("the workspace vectors must have dim ≥ ndim")
+            numerical_jacobian(&mut jj, 1, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
+            Some("the workspace vector w2 must have dim ≥ ndim")
         );
     }
 
@@ -286,7 +301,18 @@ mod tests {
         let mut jj_num = CooMatrix::new(ndim, ndim, ndim * ndim, Sym::No).unwrap();
         let mut w1 = Vector::new(ndim);
         let mut w2 = Vector::new(ndim);
-        numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
+        numerical_jacobian(
+            &mut jj_num,
+            ndim,
+            alpha,
+            x,
+            &mut y,
+            &mut w1,
+            &mut w2,
+            &mut args,
+            function,
+        )
+        .unwrap();
         assert_eq!(args.n_function_calls, 1 + ndim);
 
         let mat_jj_num = jj_num.as_dense();
@@ -346,7 +372,18 @@ mod tests {
         let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetric).unwrap();
         let mut w1 = Vector::new(ndim);
         let mut w2 = Vector::new(ndim);
-        numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
+        numerical_jacobian(
+            &mut jj_num,
+            ndim,
+            alpha,
+            x,
+            &mut y,
+            &mut w1,
+            &mut w2,
+            &mut args,
+            function,
+        )
+        .unwrap();
         assert_eq!(args.n_function_calls, 1 + ndim);
 
         let mat_jj_num = jj_num.as_dense();
@@ -366,7 +403,18 @@ mod tests {
         let mut jj_num = CooMatrix::new(ndim, ndim, jac_num_nnz, symmetric).unwrap();
         let mut w1 = Vector::new(ndim);
         let mut w2 = Vector::new(ndim);
-        numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function).unwrap();
+        numerical_jacobian(
+            &mut jj_num,
+            ndim,
+            alpha,
+            x,
+            &mut y,
+            &mut w1,
+            &mut w2,
+            &mut args,
+            function,
+        )
+        .unwrap();
         assert_eq!(args.n_function_calls, 1 + ndim);
 
         let mat_jj_num = jj_num.as_dense();

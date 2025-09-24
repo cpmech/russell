@@ -314,6 +314,7 @@ Legend:
 ────────────────────────────────────────────────────────────────────
 
 Natural parameter continuation; solves G(u, λ) = 0 (fixed)
+Using numerical Jacobian         = false
 Number of function evaluations   = 0
 Number of Jacobian evaluations   = 0
 Number of factorizations         = 0
@@ -381,6 +382,7 @@ Legend:
 ────────────────────────────────────────────────────────────────────
 
 Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
 Number of function evaluations   = 0
 Number of Jacobian evaluations   = 0
 Number of factorizations         = 0

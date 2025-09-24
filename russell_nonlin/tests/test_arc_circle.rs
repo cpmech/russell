@@ -100,6 +100,7 @@ fn test_arc_circle_max_lambda() {
         .set_verbose(true, true, true)
         .set_hide_timings(true)
         .set_h_ini(0.3)
+        .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda.log")
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -317,7 +318,7 @@ fn test_arc_circle_min_u() {
     }
 }
 
-// #[test]
+#[test]
 fn test_arc_circle_max_lambda_num_jac() {
     // system
     let (system, mut state, mut args) = Samples::circle_ul(RADIUS);
@@ -329,6 +330,7 @@ fn test_arc_circle_max_lambda_num_jac() {
         .set_hide_timings(true)
         .set_h_ini(0.3)
         .set_use_numerical_jacobian(true)
+        .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda_num_jac.log")
         .set_record_iterations_residuals(true);
 
     // define solver

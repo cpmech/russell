@@ -311,7 +311,6 @@ impl<'a, A> SolverArclength<'a, A> {
                 args,
                 self.system.calc_gg.as_ref(),
             )?;
-            panic!("not implemented yet");
         } else {
             // analytical
             work.stats.n_jacobian += 1;

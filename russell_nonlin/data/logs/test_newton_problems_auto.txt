@@ -1,293 +1,386 @@
 
 running 7 tests
-test test_newton_problems_fail_due_to_max_iter_auto ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    3.00e0       3.00e0    3.00e7   
-       ·        ·     2    5.40e1 🎈    1.17e0    1.17e7 🔹
-       ·        ·     3    1.49e1 🔹   6.79e-1    6.79e6 🔹
- 0.000e0 5.000e-5
-       ·        ·     1    3.00e0       3.00e0    3.00e7   
-       ·        ·     2    5.40e1 🎈    1.17e0    1.17e7 🔹
-       ·        ·     3    1.49e1 🔹   6.79e-1    6.79e6 🔹
- 0.000e0 2.500e-5
-       ·        ·     1    3.00e0       3.00e0    3.00e7   
-       ·        ·     2    5.40e1 🎈    1.17e0    1.17e7 🔹
-       ·        ·     3    1.49e1 🔹   6.79e-1    6.79e6 🔹
- 0.000e0 2.500e-5
-───────────────────────────────────────────────────────────
+test test_newton_problems_fail_due_to_continued_failure_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   3.00E+00      3.00E+00     3.00E+07   
+         ·          ·     2   5.40E+01 🎈   1.17E+00     1.17E+07 🔹
+         ·          ·     3   1.49E+01 🔹   6.79E-01     6.79E+06 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  5.000E-05
+         ·          ·     1   3.00E+00      3.00E+00     3.00E+07   
+         ·          ·     2   5.40E+01 🎈   1.17E+00     1.17E+07 🔹
+         ·          ·     3   1.49E+01 🔹   6.79E-01     6.79E+06 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  2.500E-05
+         ·          ·     1   3.00E+00      3.00E+00     3.00E+07   
+         ·          ·     2   5.40E+01 🎈   1.17E+00     1.17E+07 🔹
+         ·          ·     3   1.49E+01 🔹   6.79E-01     6.79E+06 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  1.250E-05
+         ·          ·     1   3.00E+00      3.00E+00     3.00E+07   
+         ·          ·     2   5.40E+01 🎈   1.17E+00     1.17E+07 🔹
+         ·          ·     3   1.49E+01 🔹   6.79E-01     6.79E+06 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+         ·          ·     1   3.00E+00      3.00E+00     3.00E+07   
+         ·          ·     2   5.40E+01 🎈   1.17E+00     1.17E+07 🔹
+         ·          ·     3   1.49E+01 🔹   6.79E-01     6.79E+06 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
-Number of function evaluations   = 9
-Number of Jacobian evaluations   = 9
-Number of factorizations         = 9
-Number of lin sys solutions      = 9
-Number of performed steps        = 3
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 15
+Number of Jacobian evaluations   = 15
+Number of factorizations         = 15
+Number of lin sys solutions      = 15
 Number of accepted steps         = 0
-Number of rejected steps         = 2
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 6
-Number of iterations (total)     = 9
+Number of rejected steps         = 4
+Number of performed steps        = 5
+Number of iterations (total)     = 15
 Last accepted/suggested stepsize = 0
 
-══════════════════════════ ERRORS ══════════════════════════
-❌ max number of iterations reached ❌
-❌ too many continued (iteration) failures ❌
-════════════════════════════════════════════════════════════
+═════════════════════════════ FAILURE ══════════════════════════════
+❌ ContinuedFailure ❌
+════════════════════════════════════════════════════════════════════
 
 ok
-test test_newton_problems_fail_oscillation_auto ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    2.00e0       1.00e0   1.00e10   
-       ·        ·     2    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     3    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     4    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     5    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     6    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     7    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     8    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     9    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·    10    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·    11    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·    12    1.00e0 🔹    1.00e0   1.00e10 🔹
- 0.000e0 5.000e-5
-       ·        ·     1    2.00e0       1.00e0   1.00e10   
-       ·        ·     2    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     3    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     4    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     5    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     6    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     7    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     8    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     9    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·    10    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·    11    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·    12    1.00e0 🔹    1.00e0   1.00e10 🔹
- 0.000e0 2.500e-5
-       ·        ·     1    2.00e0       1.00e0   1.00e10   
-       ·        ·     2    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     3    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     4    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     5    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     6    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     7    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·     8    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·     9    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·    10    1.00e0 🔹    1.00e0   1.00e10 🔹
-       ·        ·    11    2.00e0 🎈    1.00e0   1.00e10 🔹
-       ·        ·    12    1.00e0 🔹    1.00e0   1.00e10 🔹
- 0.000e0 2.500e-5
-───────────────────────────────────────────────────────────
+test test_newton_problems_fail_oscillation_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   2.00E+00      1.00E+00     1.00E+10   
+         ·          ·     2   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     3   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     4   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     5   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     6   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     7   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     8   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     9   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    10   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    11   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    12   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    13   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    14   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    15   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    16   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    17   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    18   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    19   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    20   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  5.000E-05
+         ·          ·     1   2.00E+00      1.00E+00     1.00E+10   
+         ·          ·     2   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     3   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     4   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     5   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     6   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     7   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     8   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     9   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    10   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    11   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    12   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    13   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    14   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    15   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    16   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    17   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    18   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    19   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    20   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  2.500E-05
+         ·          ·     1   2.00E+00      1.00E+00     1.00E+10   
+         ·          ·     2   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     3   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     4   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     5   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     6   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     7   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     8   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     9   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    10   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    11   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    12   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    13   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    14   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    15   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    16   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    17   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    18   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    19   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    20   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  1.250E-05
+         ·          ·     1   2.00E+00      1.00E+00     1.00E+10   
+         ·          ·     2   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     3   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     4   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     5   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     6   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     7   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     8   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     9   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    10   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    11   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    12   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    13   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    14   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    15   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    16   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    17   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    18   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    19   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    20   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+         ·          ·     1   2.00E+00      1.00E+00     1.00E+10   
+         ·          ·     2   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     3   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     4   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     5   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     6   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     7   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·     8   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·     9   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    10   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    11   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    12   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    13   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    14   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    15   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    16   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    17   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    18   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+         ·          ·    19   2.00E+00 🎈   1.00E+00     1.00E+10 🔹
+         ·          ·    20   1.00E+00 🔹   1.00E+00     1.00E+10 🔹
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
-Number of function evaluations   = 36
-Number of Jacobian evaluations   = 36
-Number of factorizations         = 36
-Number of lin sys solutions      = 36
-Number of performed steps        = 3
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 100
+Number of Jacobian evaluations   = 100
+Number of factorizations         = 100
+Number of lin sys solutions      = 100
 Number of accepted steps         = 0
-Number of rejected steps         = 2
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 15
-Number of iterations (total)     = 36
+Number of rejected steps         = 4
+Number of performed steps        = 5
+Number of iterations (total)     = 100
 Last accepted/suggested stepsize = 0
 
-══════════════════════════ ERRORS ══════════════════════════
-❌ max number of iterations reached ❌
-❌ too many continued (iteration) failures ❌
-════════════════════════════════════════════════════════════
+═════════════════════════════ FAILURE ══════════════════════════════
+❌ ContinuedFailure ❌
+════════════════════════════════════════════════════════════════════
 
 ok
-test test_newton_problems_indeterminate_auto ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    3.09e0      1.39e16   1.70e23   
- 0.000e0 5.000e-5
-       ·        ·     1    3.09e0      1.39e16   1.70e23   
- 0.000e0 2.500e-5
-       ·        ·     1    3.09e0      1.39e16   1.70e23   
- 0.000e0 2.500e-5
-───────────────────────────────────────────────────────────
+test test_newton_problems_indeterminate_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   3.09E+00      1.39E+16     1.70E+23   
+                    (rejected: did not converge)                    
+ 0.000E+00  5.000E-05
+         ·          ·     1   3.09E+00      1.39E+16     1.70E+23   
+                    (rejected: did not converge)                    
+ 0.000E+00  2.500E-05
+         ·          ·     1   3.09E+00      1.39E+16     1.70E+23   
+                    (rejected: did not converge)                    
+ 0.000E+00  1.250E-05
+         ·          ·     1   3.09E+00      1.39E+16     1.70E+23   
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+         ·          ·     1   3.09E+00      1.39E+16     1.70E+23   
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
-Number of function evaluations   = 3
-Number of Jacobian evaluations   = 3
-Number of factorizations         = 3
-Number of lin sys solutions      = 3
-Number of performed steps        = 3
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 5
+Number of Jacobian evaluations   = 5
+Number of factorizations         = 5
+Number of lin sys solutions      = 5
 Number of accepted steps         = 0
-Number of rejected steps         = 2
-Number of large max(‖δu‖∞,|δλ|)  = 3
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 1
-Number of iterations (total)     = 3
+Number of rejected steps         = 4
+Number of performed steps        = 5
+Number of iterations (total)     = 5
 Last accepted/suggested stepsize = 0
 
-══════════════════════════ ERRORS ══════════════════════════
-❌ ‖(δu,δλ)‖∞ is too large ❌
-❌ too many continued (iteration) failures ❌
-════════════════════════════════════════════════════════════
+═════════════════════════════ FAILURE ══════════════════════════════
+❌ ContinuedFailure ❌
+════════════════════════════════════════════════════════════════════
 
 ok
-test test_newton_problems_ok_1_auto ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    3.00e0       3.00e0    3.00e7   
-       ·        ·     2    5.40e1 🎈    1.17e0    1.17e7 🔹
-       ·        ·     3    1.49e1 🔹   6.79e-1    6.79e6 🔹
-       ·        ·     4    3.60e0 🔹   3.04e-1    3.04e6 🔹
-       ·        ·     5   5.69e-1 🔹   6.95e-2    6.94e5 🔹
-       ·        ·     6   2.63e-2 🔹   3.55e-3    3.54e4 🔹
-       ·        ·     7   6.68e-5 🔹   9.04e-6    9.03e1 🔹
-       ·        ·     8  4.34e-10 🔹  5.87e-11   5.87e-4 ✅
-1.000e-4 1.000e-4
-───────────────────────────────────────────────────────────
+test test_newton_problems_ok_1_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   3.00E+00      3.00E+00     3.00E+07   
+         ·          ·     2   5.40E+01 🎈   1.17E+00     1.17E+07 🔹
+         ·          ·     3   1.49E+01 🔹   6.79E-01     6.79E+06 🔹
+         ·          ·     4   3.60E+00 🔹   3.04E-01     3.04E+06 🔹
+         ·          ·     5   5.69E-01 🔹   6.95E-02     6.94E+05 🔹
+         ·          ·     6   2.63E-02 🔹   3.55E-03     3.54E+04 🔹
+         ·          ·     7   6.68E-05 🔹   9.04E-06     9.03E+01 🔹
+         ·          ·     8   4.34E-10 🔹   5.87E-11     5.87E-04 ✅
+ 1.000E-04  2.571E-04
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
 Number of function evaluations   = 8
 Number of Jacobian evaluations   = 8
 Number of factorizations         = 8
 Number of lin sys solutions      = 8
-Number of performed steps        = 1
 Number of accepted steps         = 1
 Number of rejected steps         = 0
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 8
+Number of performed steps        = 1
 Number of iterations (total)     = 8
-Last accepted/suggested stepsize = 0.0001
+Last accepted/suggested stepsize = 0.00025707963267948965
 ok
-test test_newton_problems_ok_2_auto ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    6.45e1       1.34e0    2.69e6   
-       ·        ·     2    1.92e1 🔹   9.10e-1    1.82e6 🔹
-       ·        ·     3    5.84e0 🔹   6.38e-1    1.28e6 🔹
-       ·        ·     4    1.87e0 🔹   5.08e-1    1.02e6 🔹
-       ·        ·     5   7.28e-1 🔹   6.74e-1    1.35e6 🎈
-       ·        ·     6   5.12e-1 🔹    3.10e1    6.21e7 🎈
-       ·        ·     7    3.01e4 🎈    1.04e1    2.07e7 🔹
-       ·        ·     8    8.93e3 🔹    6.92e0    1.38e7 🔹
-       ·        ·     9    2.65e3 🔹    4.61e0    9.22e6 🔹
-       ·        ·    10    7.84e2 🔹    3.07e0    6.14e6 🔹
-       ·        ·    11    2.32e2 🔹    2.05e0    4.09e6 🔹
-       ·        ·    12    6.86e1 🔹    1.36e0    2.72e6 🔹
-       ·        ·    13    2.02e1 🔹   8.93e-1    1.79e6 🔹
-       ·        ·    14    5.86e0 🔹   5.68e-1    1.14e6 🔹
-       ·        ·    15    1.61e0 🔹   3.25e-1    6.50e5 🔹
-       ·        ·    16   3.73e-1 🔹   1.35e-1    2.70e5 🔹
-       ·        ·    17   5.00e-2 🔹   2.45e-2    4.90e4 🔹
-       ·        ·    18   1.47e-3 🔹   7.64e-4    1.53e3 🔹
-       ·        ·    19   1.40e-6 🔹   7.30e-7    1.46e0 🔹
-       ·        ·    20  1.28e-12 ✅         ·         ·
-1.000e-4 1.000e-4
-───────────────────────────────────────────────────────────
+test test_newton_problems_ok_2_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+         ·          ·     2   1.92E+01 🔹   9.10E-01     1.82E+06 🔹
+         ·          ·     3   5.84E+00 🔹   6.38E-01     1.28E+06 🔹
+         ·          ·     4   1.87E+00 🔹   5.08E-01     1.02E+06 🔹
+         ·          ·     5   7.28E-01 🔹   6.74E-01     1.35E+06 🎈
+         ·          ·     6   5.12E-01 🔹   3.10E+01     6.21E+07 🎈
+         ·          ·     7   3.01E+04 🎈   1.04E+01     2.07E+07 🔹
+         ·          ·     8   8.93E+03 🔹   6.92E+00     1.38E+07 🔹
+         ·          ·     9   2.65E+03 🔹   4.61E+00     9.22E+06 🔹
+         ·          ·    10   7.84E+02 🔹   3.07E+00     6.14E+06 🔹
+         ·          ·    11   2.32E+02 🔹   2.05E+00     4.09E+06 🔹
+         ·          ·    12   6.86E+01 🔹   1.36E+00     2.72E+06 🔹
+         ·          ·    13   2.02E+01 🔹   8.93E-01     1.79E+06 🔹
+         ·          ·    14   5.86E+00 🔹   5.68E-01     1.14E+06 🔹
+         ·          ·    15   1.61E+00 🔹   3.25E-01     6.50E+05 🔹
+         ·          ·    16   3.73E-01 🔹   1.35E-01     2.70E+05 🔹
+         ·          ·    17   5.00E-02 🔹   2.45E-02     4.90E+04 🔹
+         ·          ·    18   1.47E-03 🔹   7.64E-04     1.53E+03 🔹
+         ·          ·    19   1.40E-06 🔹   7.30E-07     1.46E+00 🔹
+         ·          ·    20   1.28E-12 ✅          ·            ·
+ 1.000E-04  2.571E-04
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
 Number of function evaluations   = 20
 Number of Jacobian evaluations   = 19
 Number of factorizations         = 19
 Number of lin sys solutions      = 19
-Number of performed steps        = 1
 Number of accepted steps         = 1
 Number of rejected steps         = 0
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 20
+Number of performed steps        = 1
 Number of iterations (total)     = 20
-Last accepted/suggested stepsize = 0.0001
+Last accepted/suggested stepsize = 0.00025707963267948965
 ok
-test test_newton_problems_stepsize_becomes_small ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    6.45e1       1.34e0    2.69e6   
- 0.000e0 1.000e-6
-       ·        ·     1    6.45e1       1.34e0    2.69e6   
- 0.000e0 1.000e-8
- 0.000e0 1.000e-8
-───────────────────────────────────────────────────────────
+test test_newton_problems_stepsize_becomes_small ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+                    (rejected: did not converge)                    
+ 0.000E+00  1.000E-06
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+                    (rejected: did not converge)                    
+ 0.000E+00  1.000E-08
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+                    (rejected: did not converge)                    
+ 0.000E+00  1.000E-10
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+                    (rejected: did not converge)                    
+ 0.000E+00  1.000E-12
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
-Number of function evaluations   = 2
-Number of Jacobian evaluations   = 2
-Number of factorizations         = 2
-Number of lin sys solutions      = 2
-Number of performed steps        = 2
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 4
+Number of Jacobian evaluations   = 4
+Number of factorizations         = 4
+Number of lin sys solutions      = 4
 Number of accepted steps         = 0
-Number of rejected steps         = 2
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 3
-Number of iterations (total)     = 2
+Number of rejected steps         = 4
+Number of performed steps        = 4
+Number of iterations (total)     = 4
 Last accepted/suggested stepsize = 0
 
-══════════════════════════ ERRORS ══════════════════════════
-❌ max number of iterations reached ❌
-❌ the stepsize becomes too small ❌
-════════════════════════════════════════════════════════════
+═════════════════════════════ FAILURE ══════════════════════════════
+❌ SmallStepsize ❌
+════════════════════════════════════════════════════════════════════
 
 ok
-test test_simple_fixed_continued_divergence_auto ... ───────────────────────────────────────────────────────────
-       λ       Δλ  iter      ‖G‖∞ ➖     ‖δu‖∞   Rel(δu) ➖
-───────────────────────────────────────────────────────────
- 0.000e0 1.000e-4
-       ·        ·     1    6.45e1       1.34e0    2.69e6   
-       ·        ·     2    1.92e1 🔹   9.10e-1    1.82e6 🔹
-       ·        ·     3    5.84e0 🔹   6.38e-1    1.28e6 🔹
-       ·        ·     4    1.87e0 🔹   5.08e-1    1.02e6 🔹
-       ·        ·     5   7.28e-1 🔹   6.74e-1    1.35e6 🎈
-       ·        ·     6   5.12e-1 🔹    3.10e1    6.21e7 🎈
- 0.000e0 5.000e-5
-       ·        ·     1    6.45e1       1.34e0    2.69e6   
-       ·        ·     2    1.92e1 🔹   9.10e-1    1.82e6 🔹
-       ·        ·     3    5.84e0 🔹   6.38e-1    1.28e6 🔹
-       ·        ·     4    1.87e0 🔹   5.08e-1    1.02e6 🔹
-       ·        ·     5   7.28e-1 🔹   6.74e-1    1.35e6 🎈
-       ·        ·     6   5.12e-1 🔹    3.10e1    6.21e7 🎈
- 0.000e0 2.500e-5
-       ·        ·     1    6.45e1       1.34e0    2.69e6   
-       ·        ·     2    1.92e1 🔹   9.10e-1    1.82e6 🔹
-       ·        ·     3    5.84e0 🔹   6.38e-1    1.28e6 🔹
-       ·        ·     4    1.87e0 🔹   5.08e-1    1.02e6 🔹
-       ·        ·     5   7.28e-1 🔹   6.74e-1    1.35e6 🎈
-       ·        ·     6   5.12e-1 🔹    3.10e1    6.21e7 🎈
- 0.000e0 2.500e-5
-───────────────────────────────────────────────────────────
+test test_simple_fixed_continued_divergence_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-04
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+         ·          ·     2   1.92E+01 🔹   9.10E-01     1.82E+06 🔹
+         ·          ·     3   5.84E+00 🔹   6.38E-01     1.28E+06 🔹
+         ·          ·     4   1.87E+00 🔹   5.08E-01     1.02E+06 🔹
+         ·          ·     5   7.28E-01 🔹   6.74E-01     1.35E+06 🎈
+         ·          ·     6   5.12E-01 🔹   3.10E+01     6.21E+07 🎈
+                    (rejected: did not converge)                    
+ 0.000E+00  5.000E-05
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+         ·          ·     2   1.92E+01 🔹   9.10E-01     1.82E+06 🔹
+         ·          ·     3   5.84E+00 🔹   6.38E-01     1.28E+06 🔹
+         ·          ·     4   1.87E+00 🔹   5.08E-01     1.02E+06 🔹
+         ·          ·     5   7.28E-01 🔹   6.74E-01     1.35E+06 🎈
+         ·          ·     6   5.12E-01 🔹   3.10E+01     6.21E+07 🎈
+                    (rejected: did not converge)                    
+ 0.000E+00  2.500E-05
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+         ·          ·     2   1.92E+01 🔹   9.10E-01     1.82E+06 🔹
+         ·          ·     3   5.84E+00 🔹   6.38E-01     1.28E+06 🔹
+         ·          ·     4   1.87E+00 🔹   5.08E-01     1.02E+06 🔹
+         ·          ·     5   7.28E-01 🔹   6.74E-01     1.35E+06 🎈
+         ·          ·     6   5.12E-01 🔹   3.10E+01     6.21E+07 🎈
+                    (rejected: did not converge)                    
+ 0.000E+00  1.250E-05
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+         ·          ·     2   1.92E+01 🔹   9.10E-01     1.82E+06 🔹
+         ·          ·     3   5.84E+00 🔹   6.38E-01     1.28E+06 🔹
+         ·          ·     4   1.87E+00 🔹   5.08E-01     1.02E+06 🔹
+         ·          ·     5   7.28E-01 🔹   6.74E-01     1.35E+06 🎈
+         ·          ·     6   5.12E-01 🔹   3.10E+01     6.21E+07 🎈
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+         ·          ·     1   6.45E+01      1.34E+00     2.69E+06   
+         ·          ·     2   1.92E+01 🔹   9.10E-01     1.82E+06 🔹
+         ·          ·     3   5.84E+00 🔹   6.38E-01     1.28E+06 🔹
+         ·          ·     4   1.87E+00 🔹   5.08E-01     1.02E+06 🔹
+         ·          ·     5   7.28E-01 🔹   6.74E-01     1.35E+06 🎈
+         ·          ·     6   5.12E-01 🔹   3.10E+01     6.21E+07 🎈
+                    (rejected: did not converge)                    
+ 0.000E+00  6.250E-06
+────────────────────────────────────────────────────────────────────
 
-Natural parameter continuation; solves G(u, λ) = 0 (auto steps)
-Number of function evaluations   = 18
-Number of Jacobian evaluations   = 18
-Number of factorizations         = 18
-Number of lin sys solutions      = 18
-Number of performed steps        = 3
+Natural parameter continuation; solves G(u, λ) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 30
+Number of Jacobian evaluations   = 30
+Number of factorizations         = 30
+Number of lin sys solutions      = 30
 Number of accepted steps         = 0
-Number of rejected steps         = 2
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 3
-Number of iterations (maximum)   = 6
-Number of iterations (total)     = 18
+Number of rejected steps         = 4
+Number of performed steps        = 5
+Number of iterations (total)     = 30
 Last accepted/suggested stepsize = 0
 
-══════════════════════════ ERRORS ══════════════════════════
-❌ continued divergence detected ❌
-❌ too many continued (iteration) failures ❌
-════════════════════════════════════════════════════════════
+═════════════════════════════ FAILURE ══════════════════════════════
+❌ ContinuedFailure ❌
+════════════════════════════════════════════════════════════════════
 
 ok
 

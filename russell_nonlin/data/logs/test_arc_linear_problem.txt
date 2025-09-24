@@ -1,36 +1,138 @@
 
-running 1 test
-test test_arc_linear_problem ... ────────────────────────────────────────────────────────────────
-       λ       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
-────────────────────────────────────────────────────────────────
- 0.000e0 5.000e-1
-       ·        ·     1   1.11e-16 ✅     0.00e0       0.00e0   
-3.536e-1 5.000e-1
-       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
-7.071e-1 5.000e-1
-       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
- 1.061e0 5.000e-1
-       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
- 1.414e0 5.000e-1
-       ·        ·     1     0.00e0 ✅     0.00e0       0.00e0   
- 1.768e0 5.000e-1
-────────────────────────────────────────────────────────────────
+running 5 tests
+test test_arc_linear_problem ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  5.000E-01
+         ·          ·     1   1.11E-16 ✅   0.00E+00     0.00E+00   
+ 3.536E-01  5.000E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 7.071E-01  5.000E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 1.061E+00  5.000E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 1.414E+00  5.000E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 1.768E+00  5.000E-01
+────────────────────────────────────────────────────────────────────
 
-Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
 Number of function evaluations   = 5
 Number of Jacobian evaluations   = 6
 Number of factorizations         = 6
 Number of lin sys solutions      = 6
-Number of performed steps        = 5
 Number of accepted steps         = 5
 Number of rejected steps         = 0
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 1
+Number of performed steps        = 5
 Number of iterations (total)     = 5
 Last accepted/suggested stepsize = 0.5
 ok
+test test_arc_linear_problem_auto ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.000E-01
+         ·          ·     1   1.39E-17 ✅   0.00E+00     0.00E+00   
+ 7.071E-02  2.571E-01
+         ·          ·     1   5.55E-17 ✅   0.00E+00     0.00E+00   
+ 2.525E-01  6.609E-01
+         ·          ·     1   2.22E-16 ✅   0.00E+00     0.00E+00   
+ 7.198E-01  1.699E+00
+         ·          ·     1   5.60E-01      2.80E-01     3.89E+06   
+         ·          ·     2   0.00E+00 ✅   2.80E-01     3.89E+06 🔹
+ 1.000E+00  1.019E+00
+────────────────────────────────────────────────────────────────────
 
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 5
+Number of Jacobian evaluations   = 5
+Number of factorizations         = 5
+Number of lin sys solutions      = 6
+Number of accepted steps         = 4
+Number of rejected steps         = 0
+Number of performed steps        = 4
+Number of iterations (total)     = 5
+Last accepted/suggested stepsize = 1.018638336762656
+ok
+test test_arc_linear_problem_auto_backward ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 1.768E+00  1.000E-01
+         ·          ·     1   9.71E-17 ✅   0.00E+00     0.00E+00   
+ 1.697E+00  2.571E-01
+         ·          ·     1   1.67E-16 ✅   0.00E+00     0.00E+00   
+ 1.515E+00  6.609E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 1.048E+00  1.699E+00
+         ·          ·     1   2.10E+00      1.05E+00     9.99E+06   
+         ·          ·     2   0.00E+00 ✅   1.05E+00     9.99E+06 🔹
+ 0.000E+00  3.810E+00
+────────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 5
+Number of Jacobian evaluations   = 5
+Number of factorizations         = 5
+Number of lin sys solutions      = 6
+Number of accepted steps         = 4
+Number of rejected steps         = 0
+Number of performed steps        = 4
+Number of iterations (total)     = 5
+Last accepted/suggested stepsize = 3.8099741222976187
+ok
+test test_arc_linear_problem_backward ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 1.768E+00  5.000E-01
+         ·          ·     1   1.11E-16 ✅   0.00E+00     0.00E+00   
+ 1.414E+00  5.000E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 1.061E+00  5.000E-01
+         ·          ·     1   0.00E+00 ✅   0.00E+00     0.00E+00   
+ 7.071E-01  5.000E-01
+         ·          ·     1   1.11E-16 ✅   0.00E+00     0.00E+00   
+ 3.536E-01  5.000E-01
+         ·          ·     1   1.11E-16 ✅   0.00E+00     0.00E+00   
+-1.110E-16  5.000E-01
+────────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
+Number of function evaluations   = 5
+Number of Jacobian evaluations   = 6
+Number of factorizations         = 6
+Number of lin sys solutions      = 6
+Number of accepted steps         = 5
+Number of rejected steps         = 0
+Number of performed steps        = 5
+Number of iterations (total)     = 5
+Last accepted/suggested stepsize = 0.5
+ok
+test test_arc_linear_problem_large_step ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  1.200E+00
+         ·          ·     1   2.22E-16 ✅   0.00E+00     0.00E+00   
+ 8.485E-01  1.200E+00
+         ·          ·     1   3.03E-01      1.51E-01     1.78E+06   
+         ·          ·     2   0.00E+00 ✅   1.51E-01     1.78E+06 🔹
+ 1.000E+00  2.142E-01
+────────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
+Number of function evaluations   = 3
+Number of Jacobian evaluations   = 3
+Number of factorizations         = 3
+Number of lin sys solutions      = 4
+Number of accepted steps         = 2
+Number of rejected steps         = 0
+Number of performed steps        = 2
+Number of iterations (total)     = 3
+Last accepted/suggested stepsize = 1.2
+ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.74s
 

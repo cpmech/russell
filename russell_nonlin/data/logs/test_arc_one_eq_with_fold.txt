@@ -1,79 +1,73 @@
 
 running 2 tests
-test test_arc_one_eq_with_fold_1 ... ────────────────────────────────────────────────────────────────
-       λ       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
-────────────────────────────────────────────────────────────────
- 0.000e0 5.000e-1
-       ·        ·     1    1.50e-1       7.81e-2       7.81e8   
-       ·        ·     2    7.45e-3 🔹    3.52e-3       3.52e7 🔹
-       ·        ·     3    1.64e-5 🔹    7.81e-6       7.81e4 🔹
-       ·        ·     4   8.05e-11 ✅    7.81e-6       7.81e4 🔹
-2.790e-1 5.000e-1
-       ·        ·     1    2.15e-1       8.94e-2       2.32e6   
-       ·        ·     2    6.80e-3 🔹    2.65e-3       6.90e4 🔹
-       ·        ·     3    6.20e-6 🔹    2.42e-6       6.29e1 🔹
-       ·        ·     4   5.16e-12 ✅    2.42e-6       6.29e1 🔹
-3.669e-1 5.000e-1
-       ·        ·     1    1.61e-1       3.87e-2       7.45e5   
-       ·        ·     2    1.75e-4 🔹    4.20e-5       8.08e2 🔹
-       ·        ·     3   2.06e-10 🔹   4.95e-11      9.51e-4 ✅
-3.422e-1 5.000e-1
-       ·        ·     1    7.25e-2       1.04e-2       2.14e5   
-       ·        ·     2    7.74e-5 🔹    1.11e-5       2.29e2 🔹
-       ·        ·     3   8.87e-11 ✅    1.11e-5       2.29e2 🔹
-2.807e-1 5.000e-1
-       ·        ·     1    1.35e-2       1.18e-3       2.96e4   
-       ·        ·     2    2.14e-6 🔹    1.87e-7       4.69e0 🔹
-       ·        ·     3   5.46e-14 ✅    1.87e-7       4.69e0 🔹
-2.150e-1 5.000e-1
-────────────────────────────────────────────────────────────────
+test test_arc_one_eq_with_fold_1 ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  5.000E-01
+         ·          ·     1   1.50E-01      7.81E-02     7.81E+08   
+         ·          ·     2   7.45E-03 🔹   3.52E-03     3.52E+07 🔹
+         ·          ·     3   1.64E-05 🔹   7.81E-06     7.81E+04 🔹
+         ·          ·     4   8.05E-11 ✅   7.81E-06     7.81E+04 🔹
+ 2.790E-01  5.000E-01
+         ·          ·     1   2.15E-01      8.94E-02     2.32E+06   
+         ·          ·     2   6.80E-03 🔹   2.65E-03     6.90E+04 🔹
+         ·          ·     3   6.20E-06 🔹   2.42E-06     6.29E+01 🔹
+         ·          ·     4   5.16E-12 ✅   2.42E-06     6.29E+01 🔹
+ 3.669E-01  5.000E-01
+         ·          ·     1   1.61E-01      3.87E-02     7.45E+05   
+         ·          ·     2   1.75E-04 🔹   4.20E-05     8.08E+02 🔹
+         ·          ·     3   2.06E-10 🔹   4.95E-11     9.51E-04 ✅
+ 3.422E-01  5.000E-01
+         ·          ·     1   7.25E-02      1.04E-02     2.14E+05   
+         ·          ·     2   7.74E-05 🔹   1.11E-05     2.29E+02 🔹
+         ·          ·     3   8.87E-11 ✅   1.11E-05     2.29E+02 🔹
+ 2.807E-01  5.000E-01
+         ·          ·     1   1.35E-02      1.18E-03     2.96E+04   
+         ·          ·     2   2.14E-06 🔹   1.87E-07     4.69E+00 🔹
+         ·          ·     3   5.46E-14 ✅   1.87E-07     4.69E+00 🔹
+ 2.150E-01  5.000E-01
+────────────────────────────────────────────────────────────────────
 
-Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
 Number of function evaluations   = 17
 Number of Jacobian evaluations   = 14
 Number of factorizations         = 14
 Number of lin sys solutions      = 19
-Number of performed steps        = 5
 Number of accepted steps         = 5
 Number of rejected steps         = 0
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 4
+Number of performed steps        = 5
 Number of iterations (total)     = 17
 Last accepted/suggested stepsize = 0.5
 ok
-test test_arc_one_eq_with_fold_2 ... ────────────────────────────────────────────────────────────────
-       λ       Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
-────────────────────────────────────────────────────────────────
- 0.000e0 9.672e-1
-       ·        ·     1    6.71e-1       4.13e-1       4.13e9   
-       ·        ·     2    2.85e-1 🔹    8.95e-2       8.95e8 🔹
-       ·        ·     3    1.98e-2 🔹    7.20e-3       7.20e7 🔹
-       ·        ·     4    1.16e-4 🔹    4.26e-5       4.26e5 🔹
-       ·        ·     5    4.03e-9 🔹    1.48e-9       1.48e1 🔹
-       ·        ·     6   1.11e-16 ✅    1.48e-9       1.48e1 🔹
-3.679e-1 9.672e-1
-       ·        ·     1    6.63e-1       9.28e-2       1.78e6   
-       ·        ·     2   5.77e-11 ✅    9.28e-2       1.78e6 🔹
-2.751e-1 9.672e-1
-────────────────────────────────────────────────────────────────
+test test_arc_one_eq_with_fold_2 ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  9.672E-01
+         ·          ·     1   6.71E-01      4.13E-01     4.13E+09   
+         ·          ·     2   2.85E-01 🔹   8.95E-02     8.95E+08 🔹
+         ·          ·     3   1.98E-02 🔹   7.20E-03     7.20E+07 🔹
+         ·          ·     4   1.16E-04 🔹   4.26E-05     4.26E+05 🔹
+         ·          ·     5   4.03E-09 🔹   1.48E-09     1.48E+01 🔹
+         ·          ·     6   1.11E-16 ✅   1.48E-09     1.48E+01 🔹
+ 3.679E-01  9.672E-01
+         ·          ·     1   6.63E-01      9.28E-02     1.78E+06   
+         ·          ·     2   5.77E-11 ✅   9.28E-02     1.78E+06 🔹
+ 2.751E-01  9.672E-01
+────────────────────────────────────────────────────────────────────
 
-Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed steps)
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
 Number of function evaluations   = 8
 Number of Jacobian evaluations   = 7
 Number of factorizations         = 7
 Number of lin sys solutions      = 9
-Number of performed steps        = 2
 Number of accepted steps         = 2
 Number of rejected steps         = 0
-Number of large max(‖δu‖∞,|δλ|)  = 0
-Number of max iterations reached = 0
-Number of continued divergence   = 0
-Number of iterations (maximum)   = 6
+Number of performed steps        = 2
 Number of iterations (total)     = 8
 Last accepted/suggested stepsize = 0.9672368286979919
 ok
 
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
 

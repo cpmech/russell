@@ -113,7 +113,7 @@ use russell_lab::Vector;
 ///     let mut jj_num = CooMatrix::new(ndim, ndim, ndim * ndim, Sym::No).unwrap();
 ///     let mut w1 = Vector::new(ndim);
 ///     let mut w2 = Vector::new(ndim);
-///     numerical_jacobian(&mut jj_num, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function)?;
+///     numerical_jacobian(&mut jj_num, ndim, alpha, x, &mut y, &mut w1, &mut w2, &mut args, function)?;
 ///     assert_eq!(args.n_function_calls, 1 + ndim);
 ///
 ///     let mat_jj_num = jj_num.as_dense();

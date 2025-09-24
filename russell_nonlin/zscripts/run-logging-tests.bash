@@ -10,3 +10,7 @@ cargo test --features intel_mkl,local_suitesparse --test test_newton_problems_au
 cargo test --features intel_mkl,local_suitesparse --test test_arc_circle -- --test-threads=1
 cp /tmp/russell_nonlin/test_arc_circle_max_lambda.txt data/logs/
 cp /tmp/russell_nonlin/test_arc_circle_max_lambda_num_jac.txt data/logs/
+
+cargo test --features intel_mkl,local_suitesparse --test test_circle -- --test-threads=1
+cp /tmp/russell_nonlin/test_circle_max_lambda.txt data/logs/
+cp /tmp/russell_nonlin/test_circle_max_lambda_num_jac.txt data/logs/

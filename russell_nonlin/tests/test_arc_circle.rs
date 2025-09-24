@@ -100,8 +100,8 @@ fn test_arc_circle_max_lambda() {
         .set_verbose(true, true, true)
         .set_hide_timings(true)
         .set_h_ini(0.3)
-        .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda.txt")
-        .set_record_iterations_residuals(true);
+        .set_record_iterations_residuals(true)
+        .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda.txt");
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -330,8 +330,8 @@ fn test_arc_circle_max_lambda_num_jac() {
         .set_hide_timings(true)
         .set_h_ini(0.3)
         .set_use_numerical_jacobian(true)
-        .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda_num_jac.txt")
-        .set_record_iterations_residuals(true);
+        .set_record_iterations_residuals(true)
+        .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda_num_jac.txt");
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();

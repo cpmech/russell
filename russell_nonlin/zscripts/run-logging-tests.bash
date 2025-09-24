@@ -6,3 +6,7 @@ cargo test --features intel_mkl,local_suitesparse --test test_arc_singular_initi
 cargo test --features intel_mkl,local_suitesparse --test test_linear_problem -- --test-threads=1 --nocapture > data/logs/test_linear_problem.txt
 cargo test --features intel_mkl,local_suitesparse --test test_newton_problems -- --test-threads=1 --nocapture > data/logs/test_newton_problems.txt
 cargo test --features intel_mkl,local_suitesparse --test test_newton_problems_auto -- --test-threads=1 --nocapture > data/logs/test_newton_problems_auto.txt
+
+cargo test --features intel_mkl,local_suitesparse --test test_arc_circle -- --test-threads=1
+cp /tmp/russell_nonlin/test_arc_circle_max_lambda.log data/logs/
+cp /tmp/russell_nonlin/test_arc_circle_max_lambda_num_jac.log data/logs/

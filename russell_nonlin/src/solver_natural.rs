@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, Direction, Status};
+use super::{AutoStep, Config, Direction, Method, Status};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::math::PI;
@@ -25,6 +25,7 @@ pub struct SolverNatural<'a, A> {
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
     pub fn new(config: Config, system: System<'a, A>) -> Self {
+        assert_eq!(config.method, Method::Natural);
         let ndim = system.ndim;
         SolverNatural {
             config,

@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::{AutoStep, Config, Direction, Status, CONFIG_H_MIN};
+use super::{AutoStep, Config, Direction, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
@@ -195,12 +195,16 @@ pub struct SolverArclength<'a, A> {
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: Config, system: System<'a, A>) -> Self {
+    pub fn new(config: Config, system: System<'a, A>) -> Result<Self, StrError> {
+        assert_eq!(config.method, Method::Arclength);
         let genie = config.genie;
         let use_num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
+        if use_num_ggu && system.update_secondary_state.is_some() {
+            return Err("The Arclength method cannot use numerical Jacobian with the secondary update function");
+        }
         let ndim = system.ndim;
         let nnz_aa = system.nnz_ggu + 2 * ndim + 1;
-        SolverArclength {
+        Ok(SolverArclength {
             config,
             system,
             ggl: Vector::new(ndim),
@@ -212,7 +216,7 @@ impl<'a, A> SolverArclength<'a, A> {
             iter_jac_computed: false,
             theta: 1.0,
             prev_tangent: Vector::new(ndim + 1),
-        }
+        })
     }
 
     /// Calculates the Gλ = ∂G/∂λ vector
@@ -754,5 +758,25 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 predictor_values.2.pop();
             }
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::SolverArclength;
+    use crate::{Config, Method, Samples};
+
+    #[test]
+    fn new_captures_errors() {
+        let mut config = Config::new(Method::Arclength);
+        config.set_use_numerical_jacobian(true);
+        let (mut system, _, _) = Samples::simple_linear_problem(false, false);
+        system.set_update_secondary_state(|_, _, _, _| Ok(false));
+        assert_eq!(
+            SolverArclength::new(config, system).err(),
+            Some("The Arclength method cannot use numerical Jacobian with the secondary update function")
+        );
     }
 }

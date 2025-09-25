@@ -36,7 +36,7 @@ impl<'a, A> Solver<'a, A> {
         let ndim = system.ndim;
         let work = Workspace::new(&config, &system);
         let actual: Box<dyn SolverTrait<A>> = match config.method {
-            Method::Arclength => Box::new(SolverArclength::new(config.clone(), system.clone())),
+            Method::Arclength => Box::new(SolverArclength::new(config.clone(), system.clone())?),
             Method::Natural => Box::new(SolverNatural::new(config.clone(), system.clone())),
         };
         Ok(Solver {

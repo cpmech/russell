@@ -266,6 +266,9 @@ impl SoderlindClass {
 /// Holds the type of failure encountered during the continuation process
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Status {
+    /// Failure: The denominator to calculate δλ in the bordering algorithm is too small
+    BorderingSmallDenominator,
+
     /// Failure: Newton-Raphson iteration yielded a large (‖δu‖∞,|δλ|)
     ///
     /// (may try again)
@@ -330,6 +333,7 @@ impl Status {
     pub(crate) fn try_again(&self) -> bool {
         match self {
             // may try again
+            Status::BorderingSmallDenominator => true,
             Status::LargeDelta => true,
             Status::ReachedMaxIterations => true,
             Status::ContinuedDivergence => true,

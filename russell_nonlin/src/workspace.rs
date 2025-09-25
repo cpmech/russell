@@ -1,6 +1,4 @@
-#![allow(unused)]
-
-use super::{Config, Status, IterationError, Logger, Method, Stats, System};
+use super::{Config, IterationError, Logger, Method, Stats, System};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, LinSolver};
 
@@ -69,6 +67,11 @@ pub(crate) struct Workspace<'a> {
 
     // state variables -----------------------------------------------------------
     //
+    /// Direction to follow the path (for the arclength method)
+    ///
+    /// +1.0 means the positive direction, -1.0 means the negative direction
+    pub(crate) direction: f64,
+
     /// Holds G(u, λ)
     ///
     /// (ndim)
@@ -101,10 +104,10 @@ pub(crate) struct Workspace<'a> {
     /// Holds -δu (negative of iteration increment)
     pub(crate) mdu: Vector,
 
-    /// Auxiliary u vector #1 (e.g., for numerical Jacobian)
+    /// Auxiliary u vector #1 (e.g., for the numerical Jacobian or bordering algorithm)
     pub(crate) u_aux1: Vector,
 
-    /// Auxiliary u vector #2 (e.g., for numerical Jacobian)
+    /// Auxiliary u vector #2 (e.g., for the numerical Jacobian)
     pub(crate) u_aux2: Vector,
 
     /// Indicates whether this step results were acceptable or not
@@ -139,12 +142,10 @@ impl<'a> Workspace<'a> {
             ),
         };
 
-        // determine Jacobian size
-        let ndim_num_jac = if config.use_numerical_jacobian || system.calc_ggu.is_none() {
-            system.ndim
-        } else {
-            0
-        };
+        // determine the dimensions of auxiliary variables
+        let num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
+        let ndim_aux1 = if num_ggu || config.bordering { system.ndim } else { 0 };
+        let ndim_aux2 = if num_ggu { system.ndim } else { 0 };
 
         // auxiliary variable
         let ndim_tangent = if with_tangent { system.ndim } else { 0 };
@@ -169,6 +170,7 @@ impl<'a> Workspace<'a> {
             stop_gracefully: false,
 
             // state variables
+            direction: 1.0,
             gg: Vector::new(system.ndim),
             ggu,
             h: config.h_ini,
@@ -177,8 +179,8 @@ impl<'a> Workspace<'a> {
             duds: Vector::new(ndim_tangent),
             dlds: 0.0,
             mdu: Vector::new(system.ndim),
-            u_aux1: Vector::new(ndim_num_jac),
-            u_aux2: Vector::new(ndim_num_jac),
+            u_aux1: Vector::new(ndim_aux1),
+            u_aux2: Vector::new(ndim_aux2),
             acceptable: true,
 
             // debugging

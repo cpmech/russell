@@ -3,7 +3,7 @@ use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solve
 
 const SAVE_FIGURE: bool = true;
 
-fn run_test(name: &str, sigma: f64, expected_status: Status) {
+fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
     // nonlinear problem
     let (system, mut state, mut args) = Samples::bspline_problem_1(0.0);
 
@@ -12,8 +12,10 @@ fn run_test(name: &str, sigma: f64, expected_status: Status) {
     config
         .set_verbose(true, true, true)
         .set_alpha_max_ultimate(60.0)
+        .set_bordering(bordering)
         .set_hide_timings(true)
-        .set_debug_predictor(true);
+        .set_debug_predictor(true)
+        .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name));
 
     // define solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -124,11 +126,17 @@ fn run_test(name: &str, sigma: f64, expected_status: Status) {
 #[test]
 fn test_arc_bspline_1_success() {
     let sigma = 0.4742; // σ ≡ h
-    run_test("test_arc_bspline_1_success", sigma, Status::Success);
+    run_test("test_arc_bspline_1_success", sigma, false, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_1_fail() {
     let sigma = 0.4743; // σ ≡ h (this value causes problems; Newton's method diverges)
-    run_test("test_arc_bspline_1_fail", sigma, Status::ReachedMaxIterations);
+    run_test("test_arc_bspline_1_fail", sigma, false, Status::ReachedMaxIterations);
+}
+
+#[test]
+fn test_arc_bspline_1_bordering() {
+    let sigma = 0.4742; // σ ≡ h
+    run_test("test_arc_bspline_1_bordering", sigma, true, Status::Success);
 }

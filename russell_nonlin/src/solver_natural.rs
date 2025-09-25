@@ -13,9 +13,6 @@ pub struct SolverNatural<'a, A> {
     /// System
     system: System<'a, A>,
 
-    /// Direction multiplier (+1.0 or -1.0)
-    dir_mult: f64,
-
     // variables for the curvature estimation
     ddu: Vector,
     prev_u: Vector,
@@ -30,7 +27,6 @@ impl<'a, A> SolverNatural<'a, A> {
         SolverNatural {
             config,
             system,
-            dir_mult: 1.0,
             ddu: Vector::new(ndim),
             prev_u: Vector::new(ndim),
             prev_l: 0.0,
@@ -234,7 +230,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             AutoStep::Yes => stop.h_ini(self.config.h_ini, state),
             AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
         };
-        self.dir_mult = match dir {
+        work.direction = match dir {
             Direction::Pos => 1.0,
             Direction::Neg => -1.0,
         };
@@ -266,13 +262,13 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // predictor: set workspace with trial values
         vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
-        work.l = state.l + self.dir_mult * work.h; // λ_trial ← λ0 + h
+        work.l = state.l + work.direction * work.h; // λ_trial ← λ0 + h
 
         // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
-                work.h = (l1 - state.l) * self.dir_mult; // dir_mult will correct the difference
-                work.l = state.l + self.dir_mult * work.h; // λ_trial ← λ0 + h
+                work.h = (l1 - state.l) * work.direction; // dir_mult will correct the difference
+                work.l = state.l + work.direction * work.h; // λ_trial ← λ0 + h
             }
         }
 

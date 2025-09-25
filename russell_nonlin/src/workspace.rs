@@ -67,7 +67,7 @@ pub(crate) struct Workspace<'a> {
 
     // state variables -----------------------------------------------------------
     //
-    /// Direction to follow the path (for the arclength method)
+    /// Direction to follow the path
     ///
     /// +1.0 means the positive direction, -1.0 means the negative direction
     pub(crate) direction: f64,

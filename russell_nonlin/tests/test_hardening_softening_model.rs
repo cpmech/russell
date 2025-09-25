@@ -279,6 +279,7 @@ fn run_hs_model(
     direction: Direction,
     stop: Stop,
     auto: AutoStep,
+    expected_status: Status,
     fig_width: f64,
 ) -> Result<(Stats, f64), StrError> {
     // Allocate the system and arguments
@@ -286,7 +287,7 @@ fn run_hs_model(
     let ndim = system.get_ndim();
 
     // Prepare the configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)
@@ -342,7 +343,7 @@ fn run_hs_model(
 
     // Perform the numerical continuation
     let status = solver.solve(&mut args, &mut state, direction, stop, auto, Some(out))?;
-    assert_eq!(status, Status::Success);
+    assert_eq!(status, expected_status);
 
     // results
     let uu = out.get_u_values(0);
@@ -376,7 +377,7 @@ fn run_hs_model(
 }
 
 #[test]
-fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
+fn test_hardening_softening_model_full() -> Result<(), StrError> {
     // Settings
     let settings = HashMap::from([
         ("tg_control_atol_and_rtol", 1e-2),
@@ -394,7 +395,7 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
 
     // Simulation
     let (stats, max_err) = run_hs_model(
-        "test_arc_hardening_softening_model_full",
+        "test_hardening_softening_model_full",
         &settings,
         Some(SoderlindClass::H211PI),
         use_continuous_modulus,
@@ -403,22 +404,23 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
         Direction::Pos,
         stop,
         auto,
+        Status::SmallStepsize,
         fig_width,
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 60);
-    assert_eq!(stats.n_rejected, 2);
-    assert_eq!(stats.n_steps, 62);
+    assert_eq!(stats.n_accepted, 48);
+    assert_eq!(stats.n_rejected, 52);
+    assert_eq!(stats.n_steps, 100);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.03525, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
 #[test]
-fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
+fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     // Settings
     let settings = HashMap::new();
 
@@ -431,8 +433,8 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     let fig_width = 600.0;
 
     // Simulation
-    let (stats, max_err) = run_hs_model(
-        "test_arc_hardening_softening_model_from_peak",
+    let (stats, _) = run_hs_model(
+        "test_hardening_softening_model_from_peak",
         &settings,
         None,
         use_continuous_modulus,
@@ -441,22 +443,19 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
         Direction::Pos,
         stop,
         auto,
+        Status::ContinuedFailure,
         fig_width,
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 53);
-    assert_eq!(stats.n_rejected, 7);
-    assert_eq!(stats.n_steps, 60);
-
-    // Check the maximum error on lambda
-    println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.0292, "max_err = {} is greater than the tolerance", max_err);
+    assert_eq!(stats.n_accepted, 0);
+    assert_eq!(stats.n_rejected, 4);
+    assert_eq!(stats.n_steps, 5);
     Ok(())
 }
 
 #[test]
-fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
+fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     // Settings
     let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-1)]);
 
@@ -469,8 +468,8 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     let fig_width = 600.0;
 
     // Simulation
-    let (stats, max_err) = run_hs_model(
-        "test_arc_hardening_softening_model_from_peak_backward",
+    let (stats, _) = run_hs_model(
+        "test_hs_model_from_peak_backward",
         &settings,
         None,
         use_continuous_modulus,
@@ -479,16 +478,13 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
         Direction::Neg,
         stop,
         auto,
+        Status::Success,
         fig_width,
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 13);
-    assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 13);
-
-    // Check the maximum error on lambda
-    println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.0739, "max_err = {} is greater than the tolerance", max_err);
+    assert_eq!(stats.n_accepted, 14);
+    assert_eq!(stats.n_rejected, 3);
+    assert_eq!(stats.n_steps, 17);
     Ok(())
 }

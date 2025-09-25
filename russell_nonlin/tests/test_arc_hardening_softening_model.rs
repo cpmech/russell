@@ -1,10 +1,8 @@
-#![allow(unused)]
-
 use ctm_demo::{Model, ModelType};
-use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
+use plotpy::{linspace, Curve, Plot};
 use russell_lab::{approx_eq, InterpChebyshev};
 use russell_nonlin::{AutoStep, Config, Direction, Method, Output, SoderlindClass, Solver, State};
-use russell_nonlin::{Status, Stats, Stop, StrError, System};
+use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
 use std::collections::HashMap;
@@ -151,14 +149,12 @@ fn new_hs_model_problem<'a>(
                 args.xx_predictor.push(*x);
                 args.yy_predictor.push(*y);
             }
-            let mut stop_gracefully = *y < 0.0;
-            println!("x = {}, y = {}", x, y);
-            stop_gracefully = false;
+            let stop_gracefully = false;
             Ok(stop_gracefully)
         });
 
     // Allocate the arguments
-    let mut args = HSmodelArgs {
+    let args = HSmodelArgs {
         model: Model::new(
             ModelType::HardeningSoftening,
             HashMap::from([("li", 10.0), ("lr", 3.0), ("y0r", 1.0), ("a", 3.0), ("b", 5.0)]),
@@ -195,7 +191,7 @@ const MATHEMATICA_LL: [f64;51] = [
 
 /// Defines the Mathematica reference values (u) (Chebyshev-Gauss-Lobatto spaced)
 #[rustfmt::skip]
-const MATHEMATICA_UU_CHEBY: [f64; 51] = [
+const _MATHEMATICA_UU_CHEBY: [f64; 51] = [
     0., 0.00049331789293211, 0.00197132467138053, 0.00442818731782782, 0.00785420971784223, 0.0122358709262116, 0.0175558785279371, 0.0237932368834951, 0.0309233299890341, 0.0389180186244962, 0.0477457514062631, 0.0573716893060527, 0.0677578431446471, 
     0.0788632235178278, 0.0906440025628276, 0.103053686926882, 0.116043301255251, 0.129561581474571, 0.143555177108732, 0.157968861828831, 0.172745751406263, 0.187827528208786, 0.203154671353569, 0.218666691608924, 0.234302370117672, 0.25, 0.265697629882328,
     0.281333308391076, 0.296845328646431, 0.312172471791214, 0.327254248593737, 0.34203113817117, 0.356444822891268, 0.370438418525429, 0.383956698744749, 0.396946313073118, 0.409355997437173, 0.421136776482172, 0.432242156855353, 0.442628310693947, 
@@ -222,6 +218,7 @@ fn get_mathematica_ref_function() -> Result<InterpChebyshev, StrError> {
 
 /// Plot the results
 fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(), StrError> {
+    // draw reference curve
     let mut curve_ref = Curve::new();
     let lambda_ref = get_mathematica_ref_function()?;
     let uu_ref = linspace(0.0, 0.5, 100);
@@ -232,34 +229,6 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
         .set_line_style("-")
         .draw(&uu_ref, &ll_ref);
 
-    /*
-    // draw tangent vectors
-    let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(10.0)
-        .set_edge_color("None")
-        .set_face_color("#414141ff");
-    for i in 0..(uu.len() - 1) {
-        let sig = stepsizes[i];
-        let xf = uu[i] + sig * duds[i];
-        let yf = ll[i] + sig * dlds[i];
-        arrows.draw_arrow(uu[i], ll[i], xf, yf);
-    }
-
-    // draw hyperplanes
-    let mut hyperplanes = Curve::new();
-    hyperplanes.set_line_style("--").set_line_color("#d0d0d0");
-    for i in 0..uu.len() {
-        let xa = uu[i] + sigma * duds[i];
-        let ya = ll[i] + sigma * dlds[i];
-        let phi = f64::atan2(dlds[i], duds[i]);
-        let xb = xa - f64::sin(phi);
-        let yb = ya + f64::cos(phi);
-        let ep = RayEndpoint::Coords(xb, yb);
-        hyperplanes.draw_ray(xa, ya, ep);
-    }
-    */
-
     // draw numerical solution: load-displacement curve
     let mut load_displacement_curve = Curve::new();
     load_displacement_curve
@@ -267,62 +236,14 @@ fn do_plot(name: &str, uu: &Vec<f64>, ll: &Vec<f64>, fig_width: f64) -> Result<(
         .set_line_color("#d60943")
         .draw(uu, ll);
 
-    /*
-    // add predictor points to the load-displacement curve
-    let mut predictor_curve1 = Curve::new();
-    predictor_curve1
-        .set_line_style("None")
-        .set_marker_style("*")
-        .draw(&u0_predictor, &l_predictor);
-
-    // draw numerical solution: stress-strain curve
-    let mut stress_strain_curve = Curve::new();
-    stress_strain_curve.draw(&args.xx, &args.yy);
-
-    // add predictor points to the stress-strain curve
-    let mut predictor_curve2 = Curve::new();
-    predictor_curve2
-        .set_line_style("None")
-        .set_marker_style("*")
-        .draw(&args.xx_predictor, &args.yy_predictor);
-    */
-
     // generate the plot
     let fig_height = fig_width * 0.618;
     let mut plot = Plot::new();
-    plot
-        // .add(&arrows)
-        .add(&curve_ref)
+    plot.add(&curve_ref)
         .add(&load_displacement_curve)
-        // .add(&predictor_curve1)
         .grid_labels_legend("$u$", "$\\lambda$")
-        // .set_range(0.088, 0.121, 0.57, 0.61)
         .set_figure_size_points(fig_width, fig_height)
         .save(&format!("/tmp/russell_nonlin/{}.svg", name))?;
-
-    /*
-    // generate the plot
-    let mut plot = Plot::new();
-    plot.set_subplot(1, 2, 1)
-        // .add(&hyperplanes)
-        .add(&arrows)
-        .add(&curve_ref)
-        .add(&load_displacement_curve)
-        .add(&predictor_curve1)
-        .grid_labels_legend("$u$", "$\\lambda$")
-        // .set_range(-0.025, 0.525, -0.025, 0.625)
-        // .set_range(0.07, 0.15, 0.54, 0.63)
-        // .set_range(0.03, 0.2, 0.34, 0.63)
-        .set_subplot(1, 2, 2)
-        .add(&curve_ref)
-        .add(&predictor_curve2)
-        .add(&stress_strain_curve)
-        .grid_labels_legend("$\\varepsilon$", "$\\sigma$")
-        // .set_range(-0.025, 0.525, -0.025, 0.625)
-        // .set_range(0.05, 0.2, 0.4, 0.6)
-        .set_figure_size_points(800.0, 350.0)
-        .save("/tmp/russell_nonlin/test_hardening_softening_model_1.svg")?;
-    */
     Ok(())
 }
 
@@ -421,19 +342,11 @@ fn run_hs_model(
 
     // Perform the numerical continuation
     let status = solver.solve(&mut args, &mut state, direction, stop, auto, Some(out))?;
-    // assert_eq!(status, Status::Success);
+    assert_eq!(status, Status::Success);
 
     // results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-
-    /*
-    let duds = out.get_duds_values(0);
-    let dlds = out.get_dlds_values();
-    let (l_predictor, u0_predictor, _) = solver.get_debug_predictor_values();
-    let stats = solver.get_stats();
-    let stepsizes = stats.get_stepsizes();
-    */
 
     // plot
     if SAVE_FIGURE {
@@ -450,6 +363,12 @@ fn run_hs_model(
         let l = ll[i];
         let err = f64::abs(l - l_ref);
         max_err = f64::max(max_err, err);
+    }
+
+    // check if u matches strain and λ matches stress
+    for (i, &u) in uu.iter().enumerate() {
+        approx_eq(u, args.xx[i], 1e-14);
+        approx_eq(ll[i], args.yy[i], 1e-7);
     }
 
     // done
@@ -475,7 +394,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
 
     // Simulation
     let (stats, max_err) = run_hs_model(
-        "test_hs_model_full",
+        "test_arc_hardening_softening_model_full",
         &settings,
         Some(SoderlindClass::H211PI),
         use_continuous_modulus,
@@ -488,9 +407,9 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    // assert_eq!(stats.n_accepted, 60);
-    // assert_eq!(stats.n_rejected, 2);
-    // assert_eq!(stats.n_steps, 62);
+    assert_eq!(stats.n_accepted, 60);
+    assert_eq!(stats.n_rejected, 2);
+    assert_eq!(stats.n_steps, 62);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -513,7 +432,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
 
     // Simulation
     let (stats, max_err) = run_hs_model(
-        "test_hs_model_from_peak",
+        "test_arc_hardening_softening_model_from_peak",
         &settings,
         None,
         use_continuous_modulus,
@@ -564,12 +483,12 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    // assert_eq!(stats.n_accepted, 51);
-    // assert_eq!(stats.n_rejected, 7);
-    // assert_eq!(stats.n_steps, 58);
+    assert_eq!(stats.n_accepted, 13);
+    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_steps, 13);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    // assert!(max_err < 0.0292, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.0739, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }

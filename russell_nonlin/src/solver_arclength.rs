@@ -1,11 +1,9 @@
-#![allow(unused)]
-
 use super::{AutoStep, Config, Direction, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
+use russell_lab::vec_rms_scaled;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{math::PI, Norm, Vector};
-use russell_lab::{vec_rms_scaled, vec_rms_scaled_diff, vec_scale};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -492,8 +490,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ) -> Result<(), StrError> {
         // initial stepsize (σ₀)
         work.h = match auto {
-            AutoStep::Yes => self.config.h_ini,
-            AutoStep::No(h_eq) => h_eq,
+            AutoStep::Yes => stop.h_ini(self.config.h_ini, state),
+            AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
         };
 
         // set initial values

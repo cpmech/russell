@@ -499,7 +499,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         work.l = state.l; // λ₀ = λ
 
         // get sign of dlds
-        work.direction = match dir {
+        let sign0 = match dir {
             Direction::Pos => 1.0,
             Direction::Neg => -1.0,
         };
@@ -521,7 +521,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            work.dlds = work.direction / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
             vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
         } else {
             // Gu has not been allocated; let's use the augmented matrix A instead
@@ -544,7 +544,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
             assert_eq!(self.x[ndim], 0.0);
-            work.dlds = work.direction / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
             for i in 0..ndim {
                 work.duds[i] = work.dlds * self.x[i];
             }
@@ -745,6 +745,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 self.calc_ggu(work, args)?;
             }
 
+            // Note that Gλ was calculated at the updated state during the iteration
             // solve mdu := Gu⁻¹ · Gλ = -z
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
@@ -752,8 +753,17 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            work.dlds = work.direction / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
+            work.dlds = 1.0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
             vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z
+
+            // fix the sign of the tangent vector to keep following the same direction
+            let dot = vec_inner(&work.duds, &self.prev_tangent) + work.dlds * self.prev_tangent[ndim];
+            if dot < 0.0 {
+                for i in 0..ndim {
+                    work.duds[i] = -work.duds[i];
+                }
+                work.dlds = -work.dlds;
+            }
         } else {
             // compute Jacobian matrix at the updated state
             if !self.iter_jac_computed {

@@ -67,11 +67,6 @@ pub(crate) struct Workspace<'a> {
 
     // state variables -----------------------------------------------------------
     //
-    /// Direction to follow the path
-    ///
-    /// +1.0 means the positive direction, -1.0 means the negative direction
-    pub(crate) direction: f64,
-
     /// Holds G(u, λ)
     ///
     /// (ndim)
@@ -170,7 +165,6 @@ impl<'a> Workspace<'a> {
             stop_gracefully: false,
 
             // state variables
-            direction: 1.0,
             gg: Vector::new(system.ndim),
             ggu,
             h: config.h_ini,

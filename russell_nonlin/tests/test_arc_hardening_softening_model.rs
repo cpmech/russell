@@ -292,12 +292,15 @@ fn run_hs_model(
         .set_h_ini(0.1)
         .set_alpha_max(5.0)
         .set_debug_predictor(true)
-        .set_record_iterations_residuals(true);
+        .set_record_iterations_residuals(true)
+        .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name));
 
     // Override the default settings
     for (&key, value) in settings.iter() {
         match key {
             "h_ini" => config.set_h_ini(*value),
+            "bordering" => config.set_bordering(*value != 0.0),
+            "n_step_max" => config.set_n_step_max(*value as usize),
             "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),
             "nr_control_beta" => config.set_nr_control_beta(*value),
             "tg_control_atol" => config.set_tg_control_atol(*value),
@@ -490,5 +493,48 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
     assert!(max_err < 0.0739, "max_err = {} is greater than the tolerance", max_err);
+    Ok(())
+}
+
+#[test]
+fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
+    // Settings
+    let settings = HashMap::from([
+        ("bordering", 1.0),
+        ("tg_control_atol_and_rtol", 1e-2),
+        ("nr_control_n_opt", 3.0),
+        ("nr_control_beta", 0.5),
+    ]);
+
+    // Input data
+    let use_continuous_modulus = false;
+    let initial_u = 0.0;
+    let initial_l = 0.0;
+    let stop = Stop::MaxCompU(0, 0.5);
+    let auto = AutoStep::Yes;
+    let fig_width = 600.0;
+
+    // Simulation
+    let (stats, max_err) = run_hs_model(
+        "test_arc_hardening_softening_model_bordering",
+        &settings,
+        Some(SoderlindClass::H211PI),
+        use_continuous_modulus,
+        initial_u,
+        initial_l,
+        Direction::Pos,
+        stop,
+        auto,
+        fig_width,
+    )?;
+
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 60);
+    assert_eq!(stats.n_rejected, 2);
+    assert_eq!(stats.n_steps, 62);
+
+    // Check the maximum error on lambda
+    println!("\nMaximum error on lambda = {}\n", max_err);
+    assert!(max_err < 0.03525, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }

@@ -8,6 +8,7 @@ const SAVE_FIGURE: bool = true;
 
 fn run_test(
     name: &str,
+    bordering: bool,
     atol_and_rtol: Option<f64>,
     alpha_max: Option<f64>,
     expected_n_accepted: usize,
@@ -23,6 +24,8 @@ fn run_test(
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
+        .set_bordering(bordering)
+        .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name))
         .set_record_iterations_residuals(true)
         .set_allowed_continued_divergence(1)
         .set_h_ini(0.04);
@@ -104,18 +107,42 @@ fn run_test(
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", None, None, 87, 0, 87, Status::Success);
+    run_test(
+        "test_arc_bspline_2_default",
+        false,
+        None,
+        None,
+        87,
+        0,
+        87,
+        Status::Success,
+    );
 }
 
 #[test]
 fn test_arc_bspline_2_custom() {
     run_test(
         "test_arc_bspline_2_custom",
+        false,
         Some(1e-1),
         Some(3.0),
         82,
         36,
         118,
+        Status::Success,
+    );
+}
+
+#[test]
+fn test_arc_bspline_2_bordering() {
+    run_test(
+        "test_arc_bspline_2_bordering",
+        true,
+        None,
+        None,
+        87,
+        0,
+        87,
         Status::Success,
     );
 }

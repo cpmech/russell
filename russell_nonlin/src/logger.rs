@@ -221,6 +221,18 @@ impl Logger {
         Ok(())
     }
 
+    /// Logs extra text (for debugging purposes)
+    pub(crate) fn _extra(&mut self, text: &str) {
+        if !self.enabled {
+            return;
+        }
+        if self.full_path.is_none() {
+            println!("{}", text);
+        } else {
+            writeln!(&mut self.buffer, "{}", text).unwrap();
+        }
+    }
+
     /// Returns the icon
     #[inline]
     fn icon(&self, iter: usize, converged: bool, diverging: bool) -> &'static str {

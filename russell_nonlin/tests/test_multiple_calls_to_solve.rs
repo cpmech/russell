@@ -160,14 +160,7 @@ fn test_multiple_calls_to_solve_1_auto() {
 
     // solve problem
     solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
 
     // check
@@ -189,14 +182,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     // solve again
     println!();
     solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
 
     // check again
@@ -233,14 +219,7 @@ fn test_multiple_calls_to_solve_2_auto() {
 
     // solve problem
     solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
 
     // check
@@ -262,14 +241,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     // solve again
     println!();
     solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
 
     // check

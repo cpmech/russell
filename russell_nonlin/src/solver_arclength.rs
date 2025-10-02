@@ -352,6 +352,68 @@ impl<'a, A> SolverArclength<'a, A> {
         Ok(())
     }
 
+    /// Calculates the initial tangent vector (duds₀, dlds₀)
+    ///
+    /// Important: work.u and work.l must contain the initial state (u₀, λ₀)
+    ///
+    /// Steps:
+    ///
+    /// ```text
+    /// Solve:     Gu₀ z = -Gλ₀
+    /// Calculate: dλ/ds₀ = ±1 / √(1 + zᵀ z)
+    /// Calculate: du/ds₀ = dλ/ds₀ z
+    /// ```
+    fn calc_initial_tangent(&mut self, work: &mut Workspace, sign0: f64, args: &mut A) -> Result<(), StrError> {
+        if work.with_ggu {
+            // use Gu directly
+
+            // calculate Gu = ∂G/∂u
+            self.calc_ggu(work, args)?;
+
+            // solve mdu := Gu⁻¹ · Gλ = -z₀
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            work.ls.actual.solve(&mut work.mdu, &self.ggl, false)?; // mdu := -z₀
+            work.stats.stop_sw_lin_sol();
+
+            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
+            vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
+        } else {
+            // use the augmented matrix A instead because Gu has not been allocated
+            // ┌        ┐ ┌    ┐   ┌      ┐
+            // │ Gu₀  0 │ │ z₀ │   │ -Gλ₀ │
+            // │        │ │    │ = │      │
+            // │  0   1 │ │ 0  │   │  0   │
+            // └        ┘ └    ┘   └      ┘
+            //      A        x         b
+
+            // calculate the augmented matrix A := Gu = ∂G/∂u
+            self.calc_aa(work, args, true)?;
+
+            // set b = (-Gλ₀, 0)
+            let ndim = self.system.ndim;
+            for i in 0..ndim {
+                self.b[i] = -self.ggl[i];
+            }
+            self.b[ndim] = 0.0;
+
+            // solve x := A⁻¹ · b = (z₀, 0)
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
+            work.stats.stop_sw_lin_sol();
+
+            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
+            assert_eq!(self.x[ndim], 0.0);
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
+            for i in 0..ndim {
+                work.duds[i] = work.dlds * self.x[i];
+            }
+        }
+        Ok(())
+    }
+
     /// Performs a single iteration
     fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<Status, StrError> {
         // calculate G(u(s), λ(s))
@@ -498,56 +560,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut work.u, &state.u).unwrap(); // u₀ = u
         work.l = state.l; // λ₀ = λ
 
-        // get sign of dlds
-        let sign0 = match dir {
-            IniDir::Pos => 1.0,
-            IniDir::Neg => -1.0,
-        };
-
         // calculate Gλ = ∂G/∂λ
         self.calc_ggl(work, args)?;
 
-        // calculate the initial tangent vector (duds,dlds)
-        if work.with_ggu {
-            // we can use Gu directly
-
-            // calculate Gu = ∂G/∂u
-            self.calc_ggu(work, args)?;
-
-            // solve mdu := Gu⁻¹ · Gλ = -z₀
-            work.stats.sw_lin_sol.reset();
-            work.stats.n_lin_sol += 1;
-            work.ls.actual.solve(&mut work.mdu, &self.ggl, false)?; // mdu := -z₀
-            work.stats.stop_sw_lin_sol();
-
-            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
-            vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
-        } else {
-            // Gu has not been allocated; let's use the augmented matrix A instead
-
-            // calculate the augmented matrix A := Gu = ∂G/∂u
-            self.calc_aa(work, args, true)?;
-
-            // set b = (-Gλ₀, 0)
-            let ndim = self.system.ndim;
-            for i in 0..ndim {
-                self.b[i] = -self.ggl[i];
-            }
-            self.b[ndim] = 0.0;
-
-            // solve x := A⁻¹ · b = (z₀, 0)
-            work.stats.sw_lin_sol.reset();
-            work.stats.n_lin_sol += 1;
-            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
-            work.stats.stop_sw_lin_sol();
-
-            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            assert_eq!(self.x[ndim], 0.0);
-            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.x, &self.x));
-            for i in 0..ndim {
-                work.duds[i] = work.dlds * self.x[i];
-            }
+        // set the initial direction vector
+        match dir {
+            IniDir::Pos => self.calc_initial_tangent(work, 1.0, args)?,
+            IniDir::Neg => self.calc_initial_tangent(work, -1.0, args)?,
         }
         Ok(())
     }
@@ -756,7 +775,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.dlds = 1.0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
             vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z
 
-            // fix the sign of the tangent vector to keep following the same direction
+            // fix the sign of the tangent vector to keep following in the same direction
             let dot = vec_inner(&work.duds, &self.prev_tangent) + work.dlds * self.prev_tangent[ndim];
             if dot < 0.0 {
                 for i in 0..ndim {

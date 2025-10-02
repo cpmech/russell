@@ -2,17 +2,48 @@ use super::{State, CONFIG_H_MIN};
 use crate::StrError;
 use serde::{Deserialize, Serialize};
 
-/// Defines the initial direction (e.g., tangent vector) for the pseudo-arclength method.
+/// Defines the initial direction of the tangent vector for the pseudo-arclength method
+/// or the (constant) sign of Δλ for the Natural method.
+///
+/// The initial tangent vector is `(du/ds₀, dλ/ds₀)` for the pseudo-arclength method,
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum IniDir {
-    /// Use the positive sign of `(du/ds₀, dλ/ds₀)` (follows the positive direction on the branch).
+    /// Selects the positive value for dλ/ds₀ or Δλ
     ///
-    /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
+    /// For the Natural solver, this option follows an increase on λ. Otherwise,
+    /// for the pseudo-arclength solver, it calculates the initial tangent vector by
+    /// using a positive dλ/ds₀ as explained below.
+    ///
+    /// For the pseudo-arclength solver, the tangent is given by `(du/ds₀, dλ/ds₀)`
+    /// and this option requires the initial Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)`
+    /// to be **non-singular**.
+    ///
+    /// Steps to calculate the initial tangent vector (pseudo-arclength only):
+    ///
+    /// ```text
+    /// Solve:     Gu₀ z = -Gλ₀
+    /// Calculate: dλ/ds₀ = 1 / √(1 + zᵀ z)
+    /// Calculate: du/ds₀ = dλ/ds₀ z
+    /// ```
     Pos,
 
-    /// Use the negative sign of `(du/ds₀, dλ/ds₀)` (follows the negative direction on the branch).
+    /// Selects the negative value for dλ/ds₀ or Δλ
     ///
-    /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
+    /// For the Natural solver, this option follows a decrease on λ. Otherwise,
+    /// for the pseudo-arclength solver, it calculates the initial tangent vector by
+    /// using a negative dλ/ds₀ as explained below.
+    ///
+    /// For the pseudo-arclength solver, the tangent is given by `(du/ds₀, dλ/ds₀)`
+    /// and this option requires the initial Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)`
+    /// to be **non-singular**.
+    ///
+    /// Steps to calculate the initial tangent vector (pseudo-arclength only):
+    ///
+    /// ```text
+    /// Solve:     Gu₀ z = -Gλ₀
+    /// Calculate: dλ/ds₀ = -1 / √(1 + zᵀ z)
+    /// Calculate: du/ds₀ = dλ/ds₀ z
+    /// ```
     Neg,
 }
 

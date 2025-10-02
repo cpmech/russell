@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, Direction, Method, Status};
+use super::{AutoStep, Config, IniDir, Method, Status};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::math::PI;
@@ -225,7 +225,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         &mut self,
         work: &mut Workspace,
         state: &mut State,
-        dir: Direction,
+        dir: IniDir,
         stop: Stop,
         auto: AutoStep,
         _args: &mut A,
@@ -235,8 +235,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
         };
         self.sign0 = match dir {
-            Direction::Pos => 1.0,
-            Direction::Neg => -1.0,
+            IniDir::Pos => 1.0,
+            IniDir::Neg => -1.0,
         };
         Ok(())
     }

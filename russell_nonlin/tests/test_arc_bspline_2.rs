@@ -2,7 +2,7 @@
 
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
 
@@ -48,7 +48,7 @@ fn run_test(
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::Yes,
             Some(out),

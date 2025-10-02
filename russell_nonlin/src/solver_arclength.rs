@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, Direction, Method, Status, CONFIG_H_MIN};
+use super::{AutoStep, Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::vec_rms_scaled;
@@ -483,7 +483,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         &mut self,
         work: &mut Workspace,
         state: &mut State,
-        dir: Direction,
+        dir: IniDir,
         stop: Stop,
         auto: AutoStep,
         args: &mut A,
@@ -500,8 +500,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // get sign of dlds
         let sign0 = match dir {
-            Direction::Pos => 1.0,
-            Direction::Neg => -1.0,
+            IniDir::Pos => 1.0,
+            IniDir::Neg => -1.0,
         };
 
         // calculate Gλ = ∂G/∂λ

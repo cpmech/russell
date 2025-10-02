@@ -1,5 +1,5 @@
 use russell_lab::array_approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Stop};
 
 #[test]
 fn test_linear_no_auto_ana_jac() {
@@ -27,7 +27,7 @@ fn test_linear_no_auto_ana_jac() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::No(0.1),
             Some(out),
@@ -95,7 +95,7 @@ fn test_linear_no_auto_num_jac() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::No(0.1),
             Some(out),
@@ -165,7 +165,7 @@ fn test_linear_auto_ana_jac() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::Yes,
             Some(out),
@@ -209,7 +209,7 @@ fn test_linear_no_auto_ana_jac_backward() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Neg,
+            IniDir::Neg,
             Stop::MinLambda(0.0),
             AutoStep::No(0.1),
             Some(out),

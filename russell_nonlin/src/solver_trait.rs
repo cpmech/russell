@@ -1,4 +1,4 @@
-use super::{AutoStep, Direction, Status, State, Stop, Workspace};
+use super::{AutoStep, IniDir, State, Status, Stop, Workspace};
 use crate::StrError;
 
 /// Defines the numerical solver
@@ -11,7 +11,7 @@ pub(crate) trait SolverTrait<A>: Send {
         &mut self,
         work: &mut Workspace,
         state: &mut State,
-        dir: Direction,
+        dir: IniDir,
         stop: Stop,
         auto: AutoStep,
         args: &mut A,

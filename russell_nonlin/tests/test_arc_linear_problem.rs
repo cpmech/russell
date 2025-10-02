@@ -1,6 +1,6 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, Direction, Status, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Status, Method, Output, Samples, Solver, Stop};
 
 const SAVE_FIGURE: bool = true;
 
@@ -97,7 +97,7 @@ fn test_arc_linear_problem() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(dds),
             Some(out),
@@ -172,7 +172,7 @@ fn test_arc_linear_problem_backward() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Neg,
+            IniDir::Neg,
             Stop::Steps(nstep),
             AutoStep::No(dds),
             Some(out),
@@ -241,7 +241,7 @@ fn test_arc_linear_problem_large_step() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::No(dds),
             Some(out),
@@ -296,7 +296,7 @@ fn test_arc_linear_problem_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::Yes,
             Some(out),
@@ -351,7 +351,7 @@ fn test_arc_linear_problem_auto_backward() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Neg,
+            IniDir::Neg,
             Stop::MinLambda(0.0),
             AutoStep::Yes,
             Some(out),

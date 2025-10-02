@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1_auto() {
@@ -18,7 +18,7 @@ fn test_newton_problems_ok_1_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -61,7 +61,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -90,7 +90,7 @@ fn test_newton_problems_fail_oscillation_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -116,7 +116,7 @@ fn test_newton_problems_indeterminate_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -146,7 +146,7 @@ fn test_newton_problems_ok_2_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -189,7 +189,7 @@ fn test_simple_fixed_continued_divergence_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -219,7 +219,7 @@ fn test_newton_problems_stepsize_becomes_small() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,

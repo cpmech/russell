@@ -1,5 +1,5 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
 
@@ -30,7 +30,7 @@ fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(sigma),
             Some(out),

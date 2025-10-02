@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Stop};
 
 #[test]
 fn test_multiple_calls_to_solve_1() {
@@ -20,7 +20,7 @@ fn test_multiple_calls_to_solve_1() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -49,7 +49,7 @@ fn test_multiple_calls_to_solve_1() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -93,7 +93,7 @@ fn test_multiple_calls_to_solve_2() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -122,7 +122,7 @@ fn test_multiple_calls_to_solve_2() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -163,7 +163,7 @@ fn test_multiple_calls_to_solve_1_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -192,7 +192,7 @@ fn test_multiple_calls_to_solve_1_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -236,7 +236,7 @@ fn test_multiple_calls_to_solve_2_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,
@@ -265,7 +265,7 @@ fn test_multiple_calls_to_solve_2_auto() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::Yes,
             None,

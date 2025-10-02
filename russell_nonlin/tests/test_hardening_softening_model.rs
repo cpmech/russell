@@ -1,7 +1,7 @@
 use ctm_demo::{Model, ModelType};
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::{approx_eq, InterpChebyshev};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, SoderlindClass, Solver, State};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, SoderlindClass, Solver, State};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
@@ -276,7 +276,7 @@ fn run_hs_model(
     use_continuous_modulus: bool,
     initial_u: f64,
     initial_l: f64,
-    direction: Direction,
+    direction: IniDir,
     stop: Stop,
     auto: AutoStep,
     expected_status: Status,
@@ -401,7 +401,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         use_continuous_modulus,
         initial_u,
         initial_l,
-        Direction::Pos,
+        IniDir::Pos,
         stop,
         auto,
         Status::SmallStepsize,
@@ -440,7 +440,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
         use_continuous_modulus,
         initial_u,
         initial_l,
-        Direction::Pos,
+        IniDir::Pos,
         stop,
         auto,
         Status::ContinuedFailure,
@@ -475,7 +475,7 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
         use_continuous_modulus,
         initial_u,
         initial_l,
-        Direction::Neg,
+        IniDir::Neg,
         stop,
         auto,
         Status::Success,

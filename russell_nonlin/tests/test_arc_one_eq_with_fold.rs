@@ -1,7 +1,7 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::math::{NAPIER, SQRT_2};
 use russell_lab::{approx_eq, array_approx_eq};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_one_eq_with_fold";
@@ -86,7 +86,7 @@ fn test_arc_one_eq_with_fold_1() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(5),
             AutoStep::No(dds),
             Some(out),
@@ -175,7 +175,7 @@ fn test_arc_one_eq_with_fold_2() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(2),
             AutoStep::No(dds),
             Some(out),

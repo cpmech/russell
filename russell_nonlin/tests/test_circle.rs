@@ -2,7 +2,7 @@
 
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, Direction, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const RADIUS: f64 = SQRT_2;
 
@@ -75,7 +75,7 @@ fn test_circle_max_lambda() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(RADIUS),
             AutoStep::Yes,
             Some(out),
@@ -130,7 +130,7 @@ fn test_circle_min_lambda() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Neg,
+            IniDir::Neg,
             Stop::MinLambda(0.0),
             AutoStep::Yes,
             Some(out),
@@ -187,7 +187,7 @@ fn test_circle_max_u() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Neg,
+            IniDir::Neg,
             Stop::MaxCompU(0, 1.3),
             AutoStep::Yes,
             Some(out),
@@ -244,7 +244,7 @@ fn test_circle_min_u() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MinCompU(0, 0.4),
             AutoStep::Yes,
             Some(out),
@@ -301,7 +301,7 @@ fn test_circle_max_lambda_num_jac() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::MaxLambda(RADIUS),
             AutoStep::Yes,
             Some(out),

@@ -1,6 +1,6 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Status, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Status, Method, Output, Samples, Solver, Stop};
 
 const SAVE_FIGURE: bool = true;
 const NAME: &str = "test_arc_singular_initial_state";
@@ -94,7 +94,7 @@ fn test_arc_singular_initial_state_1() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(dds),
             Some(out),
@@ -147,7 +147,7 @@ fn test_arc_singular_initial_state_2() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(dds),
             Some(out),

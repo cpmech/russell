@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, Direction, Method, SolverTrait, State, Stop, System};
+use super::{AutoStep, Config, IniDir, Method, SolverTrait, State, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::vec_all_finite;
@@ -93,7 +93,7 @@ impl<'a, A> Solver<'a, A> {
         &mut self,
         args: &mut A,
         state: &mut State,
-        dir: Direction,
+        dir: IniDir,
         stop: Stop,
         auto: AutoStep,
         mut output: Option<&mut Output<'b, A>>,
@@ -309,7 +309,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{AutoStep, Config, Direction, Method, Samples, State, Status, Stop};
+    use crate::{AutoStep, Config, IniDir, Method, Samples, State, Status, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
                 .solve(
                     &mut args,
                     &mut state,
-                    Direction::Pos,
+                    IniDir::Pos,
                     Stop::MaxLambda(1.0),
                     AutoStep::Yes,
                     None
@@ -349,7 +349,7 @@ mod tests {
                 .solve(
                     &mut args,
                     &mut state,
-                    Direction::Pos,
+                    IniDir::Pos,
                     Stop::MaxLambda(0.0),
                     AutoStep::Yes,
                     None,
@@ -362,7 +362,7 @@ mod tests {
                 .solve(
                     &mut args,
                     &mut state,
-                    Direction::Pos,
+                    IniDir::Pos,
                     Stop::MaxLambda(1.0),
                     AutoStep::No(f64::EPSILON), // will cause an error
                     None,
@@ -383,7 +383,7 @@ mod tests {
                 .solve(
                     &mut args,
                     &mut state,
-                    Direction::Pos,
+                    IniDir::Pos,
                     Stop::MaxLambda(1.0),
                     AutoStep::Yes,
                     None,
@@ -403,7 +403,7 @@ mod tests {
             .solve(
                 &mut args,
                 &mut state,
-                Direction::Pos,
+                IniDir::Pos,
                 Stop::Steps(1),
                 AutoStep::No(1.0),
                 None,
@@ -428,14 +428,7 @@ mod tests {
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
         solver
-            .solve(
-                &mut args,
-                &mut state,
-                Direction::Pos,
-                Stop::Steps(1),
-                AutoStep::Yes,
-                None,
-            )
+            .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
             .unwrap();
         vec_approx_eq(&state.u, &u_ref, 1e-15);
         let stats = solver.get_stats();

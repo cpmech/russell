@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, Direction, Method, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1() {
@@ -18,7 +18,7 @@ fn test_newton_problems_ok_1() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -60,7 +60,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -86,7 +86,7 @@ fn test_newton_problems_fail_oscillation() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -112,7 +112,7 @@ fn test_newton_problems_indeterminate() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -142,7 +142,7 @@ fn test_newton_problems_ok_2() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -182,7 +182,7 @@ fn test_simple_fixed_continued_divergence() {
         .solve(
             &mut args,
             &mut state,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -207,7 +207,7 @@ fn test_two_eq_nr_prob_1_singular() {
     let res = solver.solve(
         &mut args,
         &mut state,
-        Direction::Pos,
+        IniDir::Pos,
         Stop::Steps(1),
         AutoStep::No(1.0),
         None,
@@ -235,7 +235,7 @@ fn test_two_eq_nr_prob_2() {
         .solve(
             &mut args,
             &mut state_ok1,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -249,7 +249,7 @@ fn test_two_eq_nr_prob_2() {
         .solve(
             &mut args,
             &mut state_ok2,
-            Direction::Pos,
+            IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
             None,
@@ -262,7 +262,7 @@ fn test_two_eq_nr_prob_2() {
     let res = solver.solve(
         &mut args,
         &mut state_bad,
-        Direction::Pos,
+        IniDir::Pos,
         Stop::Steps(1),
         AutoStep::No(1.0),
         None,

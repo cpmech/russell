@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{AutoStep, Config, Direction, Method, NoArgs, Solver, State, Stop, System};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Solver, State, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
@@ -9,7 +9,7 @@ struct SimData<'a> {
     solver: Solver<'a, NoArgs>,
     args: NoArgs,
     state: State,
-    dir: Direction,
+    dir: IniDir,
     stop: Stop,
     auto_step: AutoStep,
 }
@@ -48,7 +48,7 @@ impl<'a> SimData<'a> {
             solver: Solver::new(config, system).unwrap(),
             args: 0,
             state: State::new(ndim),
-            dir: Direction::Pos,
+            dir: IniDir::Pos,
             stop: Stop::MaxLambda(LAMBDA_FINAL),
             auto_step: AutoStep::No(0.1),
         }

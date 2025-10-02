@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 /// Defines the initial direction (e.g., tangent vector) for the pseudo-arclength method.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum Direction {
-    /// Use the positive sign of `dλ/ds₀` (follows the positive direction on the branch).
+    /// Use the positive sign of `(du/ds₀, dλ/ds₀)` (follows the positive direction on the branch).
     ///
     /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
     Pos,
 
-    /// Use the negative sign of dλds₀0 (follows the negative direction on the branch).
+    /// Use the negative sign of `(du/ds₀, dλ/ds₀)` (follows the negative direction on the branch).
     ///
     /// This requires the Jacobian matrix `Gu₀ = ∂G/∂u @ (u₀,λ₀)` to be non-singular.
     Neg,

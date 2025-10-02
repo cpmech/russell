@@ -462,6 +462,50 @@ impl Samples {
         let args = 0;
         (system, state, args)
     }
+
+    /// Limaçon de Pascal (including the Cardioid) on the u-λ space
+    ///
+    /// The Cardioid is obtained with a = b.
+    ///
+    /// For l = 0, the curve intersects the u-axis at
+    /// u = 0 (double root), u = a + b, and u = a - b.
+    ///
+    /// The initial state is set with l = 0 and u = a + b
+    pub fn limacon_de_pascal<'a>(a: f64, b: f64) -> (System<'a, NoArgs>, State, NoArgs) {
+        // system
+        let ndim = 1;
+        let mut system = System::new(ndim, move |gg, l, u, _args| {
+            let t = u[0] * u[0] + l * l - a * u[0];
+            gg[0] = t * t - b * b * (u[0] * u[0] + l * l);
+            Ok(())
+        })
+        .unwrap();
+
+        // function to compute Gu = ∂G/∂u
+        let nnz = 1;
+        system
+            .set_calc_ggu(Some(nnz), Sym::No, move |ggu, l, u, _args| {
+                let val = -2.0 * b * b * u[0] + 2.0 * (-a + 2.0 * u[0]) * (-a * u[0] + u[0] * u[0] + l * l);
+                ggu.put(0, 0, val).unwrap();
+                Ok(())
+            })
+            .unwrap();
+
+        // function to compute Gl = ∂G/∂λ
+        system.set_calc_ggl(move |ggl, l, u, _args| {
+            ggl[0] = -2.0 * b * b * l + 4.0 * l * (-a * u[0] + u[0] * u[0] + l * l);
+            Ok(())
+        });
+
+        // initial state: point on the first quadrant with u = l
+        let mut state = State::new(ndim);
+        state.u[0] = a + b;
+        state.l = 0.0;
+
+        // done
+        let args = 0;
+        (system, state, args)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -681,6 +725,44 @@ mod tests {
         println!("Gu (ana) = \n{}", ana);
         println!("Gu (num) = \n{}", num);
         mat_approx_eq(&ana, &num, 1e-12);
+
+        // check Gl
+        let ggl_fn = system.calc_ggl.as_ref().unwrap();
+        let mut ggl = Vector::new(ndim);
+        ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        println!("Gl = \n{}", ggl);
+        vec_approx_eq(&ggl, &[2.0 * state.l], 1e-15);
+    }
+
+    #[test]
+    fn test_samples_limacon_de_pascal() {
+        // system
+        let a = 2.0;
+        let b = 1.0;
+        let (system, state, mut args) = Samples::limacon_de_pascal(a, b);
+        println!("Initial state: u = {}, l = {}", state.u[0], state.l);
+
+        // check initial G(u, λ) = 0
+        let ndim = system.get_ndim();
+        let gg_fn = system.calc_gg.as_ref();
+        let mut gg = Vector::new(ndim);
+        gg_fn(&mut gg, state.l, &state.u, &mut args).unwrap();
+        println!("gg =\n{}", gg);
+        approx_eq(gg[0], 0.0, 1e-15);
+
+        // analytical Jacobian
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let ggu_fn = system.calc_ggu.as_ref().unwrap();
+        ggu_fn(&mut ggu, state.l, &state.u, &mut args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check Gu
+        println!("Gu (ana) = \n{}", ana);
+        println!("Gu (num) = \n{}", num);
+        mat_approx_eq(&ana, &num, 1e-9);
 
         // check Gl
         let ggl_fn = system.calc_ggl.as_ref().unwrap();

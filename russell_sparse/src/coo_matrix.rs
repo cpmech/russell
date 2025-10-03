@@ -485,11 +485,11 @@ where
     ///
     /// # Input
     ///
-    /// * `u` -- Vector with dimension equal to the number of columns of the matrix
+    /// * `u` -- Vector with dimension ≥ the number of columns of the matrix
     ///
     /// # Output
     ///
-    /// * `v` -- Vector with dimension equal to the number of rows of the matrix
+    /// * `v` -- Vector with dimension ≥ the number of rows of the matrix
     ///
     /// # Note
     ///
@@ -538,11 +538,11 @@ where
     /// }
     /// ```
     pub fn mat_vec_mul(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
-        if u.dim() != self.ncol {
-            return Err("u vector is incompatible");
+        if u.dim() < self.ncol {
+            return Err("u.dim() must be ≥ the number of columns of the matrix");
         }
-        if v.dim() != self.nrow {
-            return Err("v vector is incompatible");
+        if v.dim() < self.nrow {
+            return Err("v.dim() must be ≥ the number of rows of the matrix");
         }
         let mirror_required = self.symmetric.triangular();
         v.fill(T::zero());
@@ -925,12 +925,18 @@ mod tests {
     fn mat_vec_mul_captures_errors() {
         let mut coo = NumCooMatrix::<u8>::new(2, 2, 1, Sym::No).unwrap();
         coo.put(0, 0, 123).unwrap();
-        let u = NumVector::<u8>::new(3);
+        let u = NumVector::<u8>::new(1);
         let mut v = NumVector::<u8>::new(coo.nrow);
-        assert_eq!(coo.mat_vec_mul(&mut v, 1, &u).err(), Some("u vector is incompatible"));
+        assert_eq!(
+            coo.mat_vec_mul(&mut v, 1, &u).err(),
+            Some("u.dim() must be ≥ the number of columns of the matrix")
+        );
         let u = NumVector::<u8>::new(2);
         let mut v = NumVector::<u8>::new(1);
-        assert_eq!(coo.mat_vec_mul(&mut v, 1, &u).err(), Some("v vector is incompatible"));
+        assert_eq!(
+            coo.mat_vec_mul(&mut v, 1, &u).err(),
+            Some("v.dim() must be ≥ the number of rows of the matrix")
+        );
     }
 
     #[test]

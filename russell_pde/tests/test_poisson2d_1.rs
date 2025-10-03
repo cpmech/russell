@@ -26,8 +26,8 @@ fn test_poisson2d_1() {
     // set zero essential boundary conditions
     fdm.set_homogeneous_boundary_conditions();
 
-    // compute the augmented coefficient matrix and the correction matrix
-    let (aa, _) = fdm.coefficient_matrix().unwrap();
+    // compute the modified coefficient matrix and the correction matrix
+    let (aa, _) = fdm.mod_coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
     let dim = fdm.dim();

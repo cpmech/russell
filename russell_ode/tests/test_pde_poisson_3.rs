@@ -30,7 +30,7 @@ fn test_pde_poisson_3() {
     // set zero essential boundary conditions
     fdm.set_homogeneous_boundary_conditions();
 
-    // compute the augmented coefficient matrix
+    // compute the modified coefficient matrix
     let (aa, _) = fdm.coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors

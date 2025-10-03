@@ -27,8 +27,8 @@ fn test_laplace2d_1() {
     fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 1.0);
     fdm.set_essential_boundary_condition(Side::Ymax, |_, _| 2.0);
 
-    // compute the augmented coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.coefficient_matrix().unwrap();
+    // compute the modified coefficient matrix and the correction matrix
+    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
     let dim = fdm.dim();

@@ -36,8 +36,8 @@ fn test_poisson2d_2() {
     fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 0.0);
     fdm.set_essential_boundary_condition(Side::Ymax, |x, _| f64::sin(PI * x));
 
-    // compute the augmented coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.coefficient_matrix().unwrap();
+    // compute the modified coefficient matrix and the correction matrix
+    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
     let dim = fdm.dim();

@@ -273,7 +273,7 @@ impl<'a> FdmLaplacian2d<'a> {
         self.compute_prescribed_array();
     }
 
-    /// Computes the coefficient matrix
+    /// Computes the modified coefficient matrix
     ///
     /// Consider the following partitioning:
     ///
@@ -298,8 +298,8 @@ impl<'a> FdmLaplacian2d<'a> {
     /// u1 = K11⁻¹ ⋅ (f1 - K12 ⋅ u2)
     /// ```
     ///
-    /// Without changing the dimension of the original problem, we modify the
-    /// linear system to:
+    /// Without changing the dimension of the original problem, the **modified**
+    /// linear system is:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌             ┐
@@ -307,14 +307,12 @@ impl<'a> FdmLaplacian2d<'a> {
     /// │          │ │    │ = │             │
     /// │  0    1  │ │ u2 │   │     u2      │
     /// └          ┘ └    ┘   └             ┘
-    ///
+    ///      A         u             f
     /// or
-    ///
-    /// A ⋅ u = f   where   A := augmented(K11)
     /// ```
     ///
-    /// This function also returns the **augmented** K12 matrix (called correction matrix),
-    /// which allows the fast computation of the right-hand side vector. For instance:
+    /// This function also returns the correction matrix, which allows the computation
+    /// of the right-hand side vector. For instance:
     ///
     /// ```text
     /// ┌          ┐ ┌    ┐   ┌        ┐
@@ -322,13 +320,10 @@ impl<'a> FdmLaplacian2d<'a> {
     /// │          │ │    │ = │        │
     /// │  0    0  │ │ u2 │   │   0    │
     /// └          ┘ └    ┘   └        ┘
-    ///
-    /// or
-    ///
-    /// C ⋅ u = f   where   C := augmented(K12)
+    ///      C         u           f
     /// ```
     ///
-    /// Note that there is no performance loss in using the augmented matrix because the sparse
+    /// Note that there is no performance loss in using the modified matrix because the sparse
     /// matrix-vector multiplication will execute the same number of computations with a reduced matrix.
     /// Also, the CooMatrix will only hold the non-zero entries, thus, no extra memory is needed.
     ///
@@ -336,16 +331,16 @@ impl<'a> FdmLaplacian2d<'a> {
     ///
     /// Returns `(A, C)` where:
     ///
-    /// * `A` -- is the augmented 'K11' matrix (dim × dim) with ones placed on the diagonal entries
+    /// * `A` -- is the modified coefficient matrix (dim × dim) with ones placed on the diagonal entries
     ///  corresponding to the prescribed essential values. Also, the entries corresponding to the
     ///  essential values are zeroed.
-    /// * `C` -- is the augmented 'K12' (correction) matrix (dim × dim) with only the 'unknown rows'
+    /// * `C` -- is the correction matrix (dim × dim) with only the 'unknown rows'
     ///   and the 'prescribed' columns.
     ///
     /// # Warnings
     ///
     /// **Important:** This function must be called after setting the essential boundary conditions.
-    pub fn coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
+    pub fn mod_coefficient_matrix(&self) -> Result<(CooMatrix, CooMatrix), StrError> {
         // count max number of non-zeros
         let dim = self.nx * self.ny;
         let np = self.essential.len();
@@ -659,7 +654,7 @@ mod tests {
     #[test]
     fn coefficient_matrix_works() {
         let lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
-        let (aa, _) = lap.coefficient_matrix().unwrap();
+        let (aa, _) = lap.mod_coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 9);
         assert_eq!(lap.num_prescribed(), 0);
         let ___ = 0.0;
@@ -729,7 +724,7 @@ mod tests {
         //    p  p  p  p  p        p  p        p  p  p  p  p
         let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         lap.set_homogeneous_boundary_conditions();
-        let (aa, cc) = lap.coefficient_matrix().unwrap();
+        let (aa, cc) = lap.mod_coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 16);
         assert_eq!(lap.num_prescribed(), 12);
         const ___: f64 = 0.0;
@@ -781,7 +776,7 @@ mod tests {
     fn coefficient_matrix_with_periodic_bcs_works() {
         let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
         lap.set_periodic_boundary_condition(true, true);
-        let (aa, cc) = lap.coefficient_matrix().unwrap();
+        let (aa, cc) = lap.mod_coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 12);
         assert_eq!(cc.get_info().2, 0); // nnz
         const ___: f64 = 0.0;

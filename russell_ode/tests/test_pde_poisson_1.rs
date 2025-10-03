@@ -26,7 +26,7 @@ fn test_pde_poisson_1() {
     // set zero essential boundary conditions
     fdm.set_homogeneous_boundary_conditions();
 
-    // compute the augmented coefficient matrix and the correction matrix
+    // compute the modified coefficient matrix and the correction matrix
     let (aa, _) = fdm.coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors

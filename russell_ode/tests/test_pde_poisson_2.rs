@@ -36,7 +36,7 @@ fn test_pde_poisson_2() {
     fdm.set_essential_boundary_condition(Side::Bottom, |_, _| 0.0);
     fdm.set_essential_boundary_condition(Side::Top, |x, _| f64::sin(PI * x));
 
-    // compute the augmented coefficient matrix and the correction matrix
+    // compute the modified coefficient matrix and the correction matrix
     //
     // ┌          ┐ ┌    ┐   ┌                 ┐
     // │ Auu   0  │ │ ϕu │   │ source - Aup⋅ϕp │

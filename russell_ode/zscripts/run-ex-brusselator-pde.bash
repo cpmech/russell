@@ -6,7 +6,7 @@ INTEL_MKL=${3:-""} # 0 or 1 to use intel_mkl
 
 FEAT=""
 if [ "${INTEL_MKL}" = "1" ]; then
-    FEAT="--features intel_mkl"
+    FEAT="--features intel_mkl,local_suitesparse"
 fi
 
 if [ ! "${ONLY_PLOT}" = "1" ]; then

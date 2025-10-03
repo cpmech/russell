@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::{StrError, Vector};
-use russell_ode::{PdeDiscreteLaplacian2d, Side};
+use russell_pde::{FdmLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver};
 
 fn main() -> Result<(), StrError> {
@@ -20,16 +20,16 @@ fn main() -> Result<(), StrError> {
 
     // allocate the Laplacian operator
     let (nx, ny) = (31, 31);
-    let mut fdm = PdeDiscreteLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
+    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
     // set essential boundary conditions
-    fdm.set_essential_boundary_condition(Side::Left, |_, _| 50.0);
-    fdm.set_essential_boundary_condition(Side::Right, |_, _| 0.0);
-    fdm.set_essential_boundary_condition(Side::Bottom, |_, _| 0.0);
-    fdm.set_essential_boundary_condition(Side::Top, |_, _| 50.0);
+    fdm.set_essential_boundary_condition(Side::Xmin, |_, _| 50.0);
+    fdm.set_essential_boundary_condition(Side::Xmax, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Ymax, |_, _| 50.0);
 
-    // compute the augmented coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.coefficient_matrix().unwrap();
+    // compute the modified coefficient matrix and the correction matrix
+    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
     let dim = fdm.dim();
@@ -75,6 +75,6 @@ fn main() -> Result<(), StrError> {
     plot.add(&contour);
     plot.set_equal_axes(true)
         .set_figure_size_points(600.0, 600.0)
-        .save("/tmp/russell_ode/pde_laplace_equation.svg")?;
+        .save("/tmp/russell_pde/laplace_equation.svg")?;
     Ok(())
 }

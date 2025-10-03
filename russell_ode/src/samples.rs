@@ -1,6 +1,7 @@
-use crate::{NoArgs, PdeDiscreteLaplacian2d, Side, System};
+use crate::{NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
+use russell_pde::FdmLaplacian2d;
 use russell_sparse::{CooMatrix, Genie, Sym};
 
 /// Holds a collection of sample ODE problems
@@ -498,7 +499,7 @@ impl Samples {
         npoint: usize,
         second_book: bool,
         ignore_diffusion: bool,
-    ) -> (System<'a, PdeDiscreteLaplacian2d>, f64, Vector, PdeDiscreteLaplacian2d) {
+    ) -> (System<'a, FdmLaplacian2d<'a>>, f64, Vector, FdmLaplacian2d<'a>) {
         // constants
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax) = (0.0, 1.0);
@@ -516,7 +517,7 @@ impl Samples {
         };
 
         // system
-        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut PdeDiscreteLaplacian2d| {
+        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2d<'a>| {
             fdm.loop_over_grid_points(|m, x, y| {
                 let um = yy[m];
                 let vm = yy[s + m];
@@ -548,7 +549,7 @@ impl Samples {
             .set_jacobian(
                 Some(jac_nnz),
                 Sym::No,
-                move |jj, aa, _x, yy, fdm: &mut PdeDiscreteLaplacian2d| {
+                move |jj, aa, _x, yy, fdm: &mut FdmLaplacian2d<'a>| {
                     jj.reset();
                     let mut nnz_count = 0;
                     for m in 0..s {
@@ -575,10 +576,9 @@ impl Samples {
             .unwrap();
 
         // discrete laplacian
-        let mut fdm = PdeDiscreteLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        let mut fdm = FdmLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
         if second_book {
-            fdm.set_periodic_boundary_condition(Side::Left);
-            fdm.set_periodic_boundary_condition(Side::Bottom);
+            fdm.set_periodic_boundary_condition(true, true);
         }
 
         // initial values

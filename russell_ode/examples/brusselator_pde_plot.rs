@@ -1,6 +1,7 @@
 use plotpy::{Plot, StrError, Surface};
 use russell_lab::Vector;
-use russell_ode::{prelude::*, PdeDiscreteLaplacian2d};
+use russell_ode::prelude::*;
+use russell_pde::FdmLaplacian2d;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
@@ -61,11 +62,11 @@ impl ProblemData {
     }
 }
 
-struct Graph {
+struct Graph<'a> {
     second_book: bool,
     path_key: String,
     npoint: usize,
-    fdm: PdeDiscreteLaplacian2d,
+    fdm: FdmLaplacian2d<'a>,
     grid_x: Vec<Vec<f64>>,
     grid_y: Vec<Vec<f64>>,
     grid_z: Vec<Vec<f64>>,
@@ -75,12 +76,12 @@ struct Graph {
     index: usize,
 }
 
-impl Graph {
+impl<'a> Graph<'a> {
     pub fn new(second_book: bool, path_key: &String, n_files: usize) -> Result<Self, StrError> {
         let problem_data = ProblemData::read_json(&format!("{}_problem_data.json", path_key))?;
         let alpha = problem_data.alpha;
         let npoint = problem_data.npoint;
-        let fdm = PdeDiscreteLaplacian2d::new(alpha, alpha, 0.0, 1.0, 0.0, 1.0, npoint, npoint)?;
+        let fdm = FdmLaplacian2d::new(alpha, alpha, 0.0, 1.0, 0.0, 1.0, npoint, npoint)?;
         let mut grid_x = vec![vec![0.0; npoint]; npoint];
         let mut grid_y = vec![vec![0.0; npoint]; npoint];
         fdm.loop_over_grid_points(|m, x, y| {

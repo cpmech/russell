@@ -1,7 +1,4 @@
-#![allow(unused)]
-
 use plotpy::{linspace, Curve, Plot};
-use russell_lab::approx_eq;
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = true;
@@ -67,8 +64,6 @@ fn run_test(
         // results
         let uu0 = out.get_u_values(0);
         let uu1 = out.get_u_values(1);
-        let du0ds = out.get_duds_values(0);
-        let du1ds = out.get_duds_values(1);
 
         // draw B-spline curve
         let mut curve = Curve::new();

@@ -1,14 +1,12 @@
-#![allow(unused)]
-
-use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
+use plotpy::{linspace, Canvas, Curve, Plot};
+use russell_lab::{approx_eq, math::SQRT_2};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const RADIUS: f64 = SQRT_2;
 
 const SAVE_FIGURE: bool = true;
 
-fn do_plot(name: &str, uu: &[f64], ll: &[f64], stepsizes: &[f64]) {
+fn do_plot(name: &str, uu: &[f64], ll: &[f64]) {
     // Draw a reference circle
     let mut circle = Canvas::new();
     circle
@@ -81,7 +79,7 @@ fn test_circle_max_lambda() {
             Some(out),
         )
         .unwrap();
-    // assert_eq!(status, Failure::Success);
+    assert_eq!(status, Status::Success);
 
     // check the results
     let uu = out.get_u_values(0);
@@ -100,7 +98,7 @@ fn test_circle_max_lambda() {
     // plot
     if SAVE_FIGURE {
         let hh = out.get_h_values();
-        do_plot("test_circle_max_lambda", uu, ll, hh);
+        do_plot("test_circle_max_lambda", uu, ll);
         do_plot_stepsizes("test_circle_max_lambda", hh);
     }
 }
@@ -155,9 +153,7 @@ fn test_circle_min_lambda() {
     // plot
     if SAVE_FIGURE {
         let hh = out.get_h_values();
-        let duds = out.get_duds_values(0);
-        let dlds = out.get_dlds_values();
-        do_plot("test_circle_min_lambda", uu, ll, hh);
+        do_plot("test_circle_min_lambda", uu, ll);
         do_plot_stepsizes("test_circle_min_lambda", hh);
     }
 }
@@ -212,9 +208,7 @@ fn test_circle_max_u() {
     // plot
     if SAVE_FIGURE {
         let hh = out.get_h_values();
-        let duds = out.get_duds_values(0);
-        let dlds = out.get_dlds_values();
-        do_plot("test_circle_max_u", uu, ll, hh);
+        do_plot("test_circle_max_u", uu, ll);
         do_plot_stepsizes("test_circle_max_u", hh);
     }
 }
@@ -250,7 +244,7 @@ fn test_circle_min_u() {
             Some(out),
         )
         .unwrap();
-    // assert_eq!(status, Failure::Success);
+    assert_eq!(status, Status::Success);
 
     // check the results
     let uu = out.get_u_values(0);
@@ -269,7 +263,7 @@ fn test_circle_min_u() {
     // plot
     if SAVE_FIGURE {
         let hh = out.get_h_values();
-        do_plot("test_circle_min_u", uu, ll, hh);
+        do_plot("test_circle_min_u", uu, ll);
         do_plot_stepsizes("test_circle_min_u", hh);
     }
 }
@@ -307,7 +301,7 @@ fn test_circle_max_lambda_num_jac() {
             Some(out),
         )
         .unwrap();
-    // assert_eq!(status, Failure::Success);
+    assert_eq!(status, Status::Success);
 
     // check the results
     let uu = out.get_u_values(0);
@@ -326,7 +320,7 @@ fn test_circle_max_lambda_num_jac() {
     // plot
     if SAVE_FIGURE {
         let hh = out.get_h_values();
-        do_plot("test_circle_max_lambda_num_jac", uu, ll, hh);
+        do_plot("test_circle_max_lambda_num_jac", uu, ll);
         do_plot_stepsizes("test_circle_max_lambda_num_jac", hh);
     }
 }

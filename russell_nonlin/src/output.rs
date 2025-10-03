@@ -1,5 +1,5 @@
 use super::{State, Stats, StrError, Workspace};
-use russell_lab::Vector;
+use russell_lab::{vec_norm, Norm, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -20,6 +20,9 @@ pub struct Output<'a, A> {
     /// Enables the recording of results (u, l, s, h, duds, dlds)
     recording: bool,
 
+    /// Enables the recording of the Euclidean norm of u, ‖u‖₂
+    record_norm_u: bool,
+
     /// Holds a callback function called on an accepted step
     ///
     /// The function is `fn (stats, u, λ, h, args) -> stop_gracefully`
@@ -30,6 +33,9 @@ pub struct Output<'a, A> {
 
     /// Counts the number of file saves (step)
     file_count: usize,
+
+    /// Holds the Euclidean norm of u computed at accepted steps
+    norm_u: Vec<f64>,
 
     /// Holds the selected u components computed at accepted steps
     u: HashMap<usize, Vec<f64>>,
@@ -74,9 +80,11 @@ impl<'a, A> Output<'a, A> {
     pub fn new() -> Self {
         Output {
             recording: false,
+            record_norm_u: false,
             callback: None,
             file_key: None,
             file_count: 0,
+            norm_u: Vec::new(),
             u: HashMap::new(),
             l: Vec::new(),
             h: Vec::new(),
@@ -128,7 +136,19 @@ impl<'a, A> Output<'a, A> {
         self
     }
 
+    /// Enables the recording of the Euclidean norm of u , ‖u‖₂
+    pub fn set_record_norm_u(&mut self, recording: bool) -> &mut Self {
+        self.recording = recording;
+        self.record_norm_u = recording;
+        self
+    }
+
     // getters ----------------------------------------------------------------------------------------------------------
+
+    /// Returns the Euclidean norm of u computed at accepted steps
+    pub fn get_norm_u_values(&self) -> &Vec<f64> {
+        &self.norm_u
+    }
 
     /// Returns the selected u components computed at accepted steps
     pub fn get_u_values(&self, m: usize) -> &Vec<f64> {
@@ -176,6 +196,10 @@ impl<'a, A> Output<'a, A> {
 
         // record results
         if self.recording {
+            if self.record_norm_u {
+                let norm = vec_norm(&state.u, Norm::Euc);
+                self.norm_u.push(norm);
+            }
             for (m, um) in self.u.iter_mut() {
                 um.push(state.u[*m]);
             }

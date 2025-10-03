@@ -1,5 +1,6 @@
 use super::{State, CONFIG_H_MIN};
 use crate::StrError;
+use russell_lab::{vec_norm, Norm};
 use serde::{Deserialize, Serialize};
 
 /// Defines the initial direction of the tangent vector for the pseudo-arclength method
@@ -60,6 +61,9 @@ pub enum Stop {
     /// Holds `(index, max_value)`.
     MaxCompU(usize, f64),
 
+    /// Stops when the Euclidean norm of `u` (‖u‖₂) reaches a maximum value.
+    MaxNormU(f64),
+
     /// Stops when lambda reaches a minimum value.
     MinLambda(f64),
 
@@ -90,6 +94,11 @@ impl Stop {
                     return Err("Stop enum error: MaxCompU value must be greater than the initial u value");
                 }
             }
+            Stop::MaxNormU(norm_u1) => {
+                if *norm_u1 <= 0.0 {
+                    return Err("Stop enum error: MaxNormU value must be greater than 0.0");
+                }
+            }
             Stop::MinLambda(l1) => {
                 if *l1 >= state.l {
                     return Err("Stop enum error: MinLambda value must be less than the initial lambda value");
@@ -116,6 +125,7 @@ impl Stop {
         match self {
             Stop::MinCompU(_, _) => None,
             Stop::MaxCompU(_, _) => None,
+            Stop::MaxNormU(_) => None,
             Stop::MinLambda(l1) => Some((*l1, true)),
             Stop::MaxLambda(l1) => Some((*l1, false)),
             Stop::Steps(_) => None,
@@ -129,6 +139,7 @@ impl Stop {
         match self {
             Stop::MinCompU(i, u1) => Some((*i, *u1, true)),
             Stop::MaxCompU(i, u1) => Some((*i, *u1, false)),
+            Stop::MaxNormU(_) => None,
             Stop::MinLambda(_) => None,
             Stop::MaxLambda(_) => None,
             Stop::Steps(_) => None,
@@ -140,6 +151,10 @@ impl Stop {
         match self {
             Stop::MinCompU(i, u1) => state.u[*i] < *u1 || f64::abs(state.u[*i] - *u1) < CONFIG_H_MIN,
             Stop::MaxCompU(i, u1) => state.u[*i] > *u1 || f64::abs(*u1 - state.u[*i]) < CONFIG_H_MIN,
+            Stop::MaxNormU(norm_u1) => {
+                let norm_u = vec_norm(&state.u, Norm::Euc);
+                norm_u > *norm_u1 || f64::abs(norm_u - *norm_u1) < CONFIG_H_MIN
+            }
             Stop::MinLambda(l1) => state.l < *l1 || f64::abs(*l1 - state.l) < CONFIG_H_MIN,
             Stop::MaxLambda(l1) => state.l > *l1 || f64::abs(state.l - *l1) < CONFIG_H_MIN,
             Stop::Steps(n) => (step + 1) == *n,
@@ -151,6 +166,7 @@ impl Stop {
         match self {
             Stop::MinCompU(_, _) => h_ini_default,
             Stop::MaxCompU(_, _) => h_ini_default,
+            Stop::MaxNormU(_) => h_ini_default,
             Stop::MinLambda(l1) => f64::min(h_ini_default, f64::abs(state.l - *l1)),
             Stop::MaxLambda(l1) => f64::min(h_ini_default, f64::abs(*l1 - state.l)),
             Stop::Steps(_) => h_ini_default,
@@ -162,6 +178,7 @@ impl Stop {
         match self {
             Stop::MinCompU(_, _) => h_eq_default,
             Stop::MaxCompU(_, _) => h_eq_default,
+            Stop::MaxNormU(_) => h_eq_default,
             Stop::MinLambda(l1) => {
                 let n = f64::ceil(f64::abs(state.l - *l1) / h_eq_default) as usize;
                 (state.l - *l1) / (n as f64)

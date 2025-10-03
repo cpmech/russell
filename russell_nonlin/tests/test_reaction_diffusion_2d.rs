@@ -1,11 +1,12 @@
-#![allow(unused)]
-
-use russell_lab::{array_approx_eq, mat_approx_eq, num_jacobian, Vector};
-use russell_nonlin::{Config, Method, NoArgs, Solver, Stop, System};
+use plotpy::{Curve, Plot};
+use russell_lab::{mat_approx_eq, num_jacobian, Vector};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Stop, System};
 use russell_pde::FdmLaplacian2d;
 use russell_sparse::{CooMatrix, Sym};
 
+const BAND: usize = 5;
 const CHECK_JACOBIAN: bool = false;
+const SAVE_FIGURE: bool = true;
 
 #[test]
 fn test_reaction_diffusion_2d() {
@@ -18,10 +19,10 @@ fn test_reaction_diffusion_2d() {
     // on the unit square (1.0 × 1.0) with homogeneous boundary conditions.
 
     // constants
-    const ALPHA: f64 = 0.1;
+    const ALPHA: f64 = 0.0;
 
     // allocate the Laplacian operator
-    let nn = 5;
+    let nn = 10;
     let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nn, nn).unwrap();
     fdm.set_homogeneous_boundary_conditions();
 
@@ -63,11 +64,10 @@ fn test_reaction_diffusion_2d() {
     let mut system = System::new(dim, calc_gg).unwrap();
 
     // max number of non-zeros in the Jacobian (disregarding prescribed)
-    let band = 5;
-    let nnz = dim + dim * band; // 1 diagonal matrix + banded (laplacian) matrix
+    let nnz = dim + dim * BAND; // 1 diagonal matrix + banded (laplacian) matrix
     let sym = Sym::No;
 
-    // set the Jacobian function
+    // set the Jacobian function. Function to compute Gu = ∂G/∂u
     system.set_calc_ggu(Some(nnz), sym, calc_ggu).unwrap();
 
     // check Jacobian matrix
@@ -79,10 +79,60 @@ fn test_reaction_diffusion_2d() {
         calc_ggu(&mut ggu, l0, &u0, &mut fdm).unwrap();
         let ana = ggu.as_dense();
         let num = num_jacobian(dim, l0, &u0, 1.0, &mut fdm, calc_gg).unwrap();
-        if nn <= 5 {
+        if nn <= 3 {
             println!("ana =\n{:.5}", ana);
             println!("num =\n{:.5}", num);
         }
-        mat_approx_eq(&ana, &num, 1e-10);
+        mat_approx_eq(&ana, &num, 1e-9);
+    }
+
+    // Function to compute Gl = ∂G/∂λ
+    system.set_calc_ggl(|ggl, _l, u, _lap: &mut FdmLaplacian2d| {
+        for m in 0..dim {
+            let dm = 1.0 + ALPHA * u[m];
+            ggl[m] = f64::exp(u[m] / dm);
+        }
+        Ok(())
+    });
+
+    // configuration
+    let mut config = Config::new(Method::Arclength);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_debug_predictor(true);
+
+    // define the solver
+    let mut solver = Solver::new(config, system).unwrap();
+
+    // output
+    let out = &mut Output::new();
+    out.set_record_norm_u(true);
+
+    // initial state
+    let mut state = State::new(dim);
+
+    // numerical continuation
+    let status = solver
+        .solve(
+            &mut fdm,
+            &mut state,
+            IniDir::Pos,
+            Stop::MaxNormU(30.0),
+            AutoStep::Yes,
+            Some(out),
+        )
+        .unwrap();
+    println!("Status: {:?}", status);
+
+    // plot the results
+    if SAVE_FIGURE {
+        let mut curve = Curve::new();
+        curve.draw(out.get_l_values(), out.get_norm_u_values());
+        let mut plot = Plot::new();
+        plot.add(&curve)
+            .grid_and_labels("λ", "‖u‖₂")
+            .save(&format!("/tmp/russell_nonlin/test_reaction_diffusion_2d.svg"))
+            .unwrap();
     }
 }

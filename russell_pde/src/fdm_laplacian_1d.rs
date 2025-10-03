@@ -172,6 +172,24 @@ impl<'a> FdmLaplacian1d<'a> {
         self.compute_prescribed_array();
     }
 
+    /// Computes the (full) coefficient matrix
+    pub fn coefficient_matrix(&self) -> Result<CooMatrix, StrError> {
+        // count max number of non-zeros
+        let dim = self.nx;
+        let max_nnz_aa = 3 * dim;
+
+        // allocate the matrix
+        let mut aa = CooMatrix::new(dim, dim, max_nnz_aa, Sym::No)?;
+
+        // assemble
+        for m in 0..dim {
+            self.loop_over_bandwidth(m, |n, b| {
+                aa.put(m, n, self.molecule[b]).unwrap();
+            });
+        }
+        Ok(aa)
+    }
+
     /// Computes the modified coefficient matrix
     ///
     /// Consider the following partitioning:
@@ -472,6 +490,24 @@ mod tests {
     #[test]
     fn coefficient_matrix_works() {
         let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
+        let aa = lap.coefficient_matrix().unwrap();
+        assert_eq!(lap.dim(), 5);
+        assert_eq!(lap.num_prescribed(), 0);
+        let ___ = 0.0;
+        #[rustfmt::skip]
+        let aa_correct = Matrix::from(&[
+            [-2.0,  2.0,  ___,  ___,  ___],
+            [ 1.0, -2.0,  1.0,  ___,  ___],
+            [ ___,  1.0, -2.0,  1.0,  ___],
+            [ ___,  ___,  1.0, -2.0,  1.0],
+            [ ___,  ___,  ___,  2.0, -2.0],
+        ]);
+        mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+    }
+
+    #[test]
+    fn mod_coefficient_matrix_works() {
+        let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
         let (aa, _) = lap.mod_coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
         assert_eq!(lap.num_prescribed(), 0);
@@ -488,7 +524,7 @@ mod tests {
     }
 
     #[test]
-    fn coefficient_matrix_works_with_cf() {
+    fn mod_coefficient_matrix_works_with_cf() {
         let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, Some(-1.0)).unwrap();
         let (aa, _) = lap.mod_coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
@@ -528,7 +564,7 @@ mod tests {
     }
 
     #[test]
-    fn coefficient_matrix_with_essential_prescribed_works() {
+    fn mod_coefficient_matrix_with_essential_prescribed_works() {
         // The full matrix is:
         // ┌                 ┐
         // │ -2  2  .  .  .  │  0 prescribed
@@ -568,7 +604,7 @@ mod tests {
     }
 
     #[test]
-    fn coefficient_matrix_with_periodic_bcs_works() {
+    fn mod_coefficient_matrix_with_periodic_bcs_works() {
         let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
         lap.set_periodic_boundary_condition();
         let (aa, cc) = lap.mod_coefficient_matrix().unwrap();

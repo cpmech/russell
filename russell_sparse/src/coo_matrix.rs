@@ -696,6 +696,49 @@ where
         Ok(())
     }
 
+    /// Puts a Lagrangian block into this matrix
+    ///
+    /// The resulting matrix will be:
+    ///
+    /// ```text
+    ///          ┌                         ┐
+    ///          │ ... ... ... b00 b10 ... │   ┌              ┐
+    /// ncol(B)  │ ... ... ... b01 b11 ... │   │ ...   Bᵀ ... │
+    ///    +     │ ... ... ... b02 b12 ... │ = │  B   ... ... │
+    ///          │ b00 b01 b02 ... ... ... │   │ ...  ... ... │
+    /// nrow(B)  │ b10 b11 b12 ... ... ... │   └              ┘
+    ///          │ ... ... ... ... ... ... │
+    ///          └                         ┘
+    ///              ncol(B) + nrow(B)     ≤ ncol(A)
+    /// ≤ nrow(A)
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * `bb` -- The Lagrangian block to be inserted.
+    ///
+    /// # Requirements
+    ///
+    /// * This matrix must be allocated with enough space to accommodate the extra `2 nnz(B)`.
+    /// * `ncol(B) + nrow(B) ≤ nrow(A)`
+    /// * `ncol(B) + nrow(B) ≤ ncol(A)`
+    pub fn put_lagrangian(&mut self, bb: &NumCooMatrix<T>) -> Result<(), StrError> {
+        if bb.ncol + bb.nrow > self.nrow {
+            return Err("ncol(B) + nrow(B) must be ≤ nrow(A)");
+        }
+        if bb.ncol + bb.nrow > self.ncol {
+            return Err("ncol(B) + nrow(B) must be ≤ ncol(A)");
+        }
+        for p in 0..bb.nnz {
+            let i = bb.indices_i[p] as usize;
+            let j = bb.indices_j[p] as usize;
+            let x = bb.values[p];
+            self.put(bb.ncol + i, j, x)?; // puts B
+            self.put(j, bb.ncol + i, x)?; // puts Bᵀ
+        }
+        Ok(())
+    }
+
     /// Returns information about the dimensions and symmetric type
     ///
     /// Returns `(nrow, ncol, nnz, sym)`
@@ -1117,6 +1160,40 @@ mod tests {
              │    0    0 │\n\
              │    0 1100 │\n\
              └           ┘"
+        );
+    }
+
+    #[test]
+    fn put_lagrangian_works() {
+        let (nrow_a, ncol_a) = (6, 6);
+        let (nrow_b, ncol_b) = (2, 3);
+        let nnz_k = nrow_a * ncol_a;
+        let nnz_b = nrow_b * ncol_b;
+        let nnz_a = nnz_k + 2 * nnz_b;
+        let mut aa = NumCooMatrix::<f64>::new(nrow_a, ncol_a, nnz_a, Sym::No).unwrap();
+        let mut bb = NumCooMatrix::<f64>::new(nrow_b, ncol_b, nnz_b, Sym::No).unwrap();
+        for i in 0..nrow_a {
+            for j in 0..ncol_a {
+                aa.put(i, j, 1000.0).unwrap();
+            }
+        }
+        for i in 0..nrow_b {
+            for j in 0..ncol_b {
+                bb.put(i, j, (10 * (i + 1) + j + 1) as f64).unwrap();
+            }
+        }
+        aa.put_lagrangian(&bb).unwrap();
+        println!("{}", aa.as_dense());
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                               ┐\n\
+             │ 1000 1000 1000 1011 1021 1000 │\n\
+             │ 1000 1000 1000 1012 1022 1000 │\n\
+             │ 1000 1000 1000 1013 1023 1000 │\n\
+             │ 1011 1012 1013 1000 1000 1000 │\n\
+             │ 1021 1022 1023 1000 1000 1000 │\n\
+             │ 1000 1000 1000 1000 1000 1000 │\n\
+             └                               ┘"
         );
     }
 

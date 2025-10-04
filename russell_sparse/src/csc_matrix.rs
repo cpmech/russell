@@ -217,6 +217,9 @@ where
         if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
         }
+        if symmetric != Sym::No && nrow != ncol {
+            return Err("symmetric storage requires a square matrix");
+        }
         let m = to_i32(nrow);
         for j in 0..ncol {
             if col_pointers[j] < 0 {
@@ -882,6 +885,10 @@ mod tests {
         assert_eq!(
             NumCscMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], Sym::No).err(),
             Some("row indices must be < nrow")
+        );
+        assert_eq!(
+            NumCscMatrix::<f32>::new(1, 2, vec![0, 1, 2], vec![0, 0], vec![0.0, 0.0], Sym::YesFull).err(),
+            Some("symmetric storage requires a square matrix")
         );
         // ┌    ┐
         // │ 10 │

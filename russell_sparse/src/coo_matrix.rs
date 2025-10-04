@@ -1164,6 +1164,32 @@ mod tests {
     }
 
     #[test]
+    fn put_lagrangian_capture_errors() {
+        let bb = NumCooMatrix::<f64>::new(2, 1, 6, Sym::No).unwrap();
+
+        let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
+        assert_eq!(
+            aa.put_lagrangian(&bb).err(),
+            Some("ncol(B) + nrow(B) must be ≤ nrow(A)")
+        );
+
+        let mut aa = NumCooMatrix::<f64>::new(3, 2, 1, Sym::No).unwrap();
+        assert_eq!(
+            aa.put_lagrangian(&bb).err(),
+            Some("ncol(B) + nrow(B) must be ≤ ncol(A)")
+        );
+
+        let mut aa = NumCooMatrix::<f64>::new(2, 2, 1, Sym::No).unwrap();
+        let mut bb = NumCooMatrix::<f64>::new(1, 1, 6, Sym::No).unwrap();
+        aa.put(0, 0, 1000.0).unwrap();
+        bb.put(0, 0, 10.0).unwrap();
+        assert_eq!(
+            aa.put_lagrangian(&bb).err(),
+            Some("COO matrix: max number of items has been reached")
+        );
+    }
+
+    #[test]
     fn put_lagrangian_works() {
         let (nrow_a, ncol_a) = (6, 6);
         let (nrow_b, ncol_b) = (2, 3);

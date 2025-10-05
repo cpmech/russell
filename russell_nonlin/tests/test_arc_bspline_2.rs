@@ -24,7 +24,7 @@ fn run_test(
         .set_bordering(bordering)
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name))
         .set_record_iterations_residuals(true)
-        .set_allowed_continued_divergence(1)
+        .set_n_cont_divergence_max(1)
         .set_h_ini(0.04);
     if let Some(tol) = atol_and_rtol {
         config.set_tg_control_atol_and_rtol(tol);

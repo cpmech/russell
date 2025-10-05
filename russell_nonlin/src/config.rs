@@ -76,14 +76,14 @@ pub struct Config {
     /// Relative tolerance on rms = Rel((δu,δλ))
     pub(crate) tol_rel_delta: f64,
 
-    /// Allowed ‖δu,δλ‖∞ max
-    pub(crate) allowed_delta_max: f64,
+    /// Maximum allowed ‖δu,δλ‖∞ max
+    pub(crate) delta_max_allowed: f64,
 
-    /// Allowed number of iterations
-    pub(crate) allowed_iterations: usize,
+    /// Maximum allowed number of iterations
+    pub(crate) n_iteration_max: usize,
 
-    /// Allowed number of continued divergence on ‖δu,δλ‖∞
-    pub(crate) allowed_continued_divergence: usize,
+    /// Maximum allowed number of continued divergence on ‖δu,δλ‖∞
+    pub(crate) n_cont_divergence_max: usize,
 
     /// Modified Newton's method with constant tangent matrix
     pub(crate) constant_tangent: bool,
@@ -203,9 +203,9 @@ impl Config {
             tol_abs_residual: 1e-10,
             tol_abs_delta: 1e-10,
             tol_rel_delta: 1e-7,
-            allowed_delta_max: 1e8,
-            allowed_iterations: 20,
-            allowed_continued_divergence: 1,
+            delta_max_allowed: 1e8,
+            n_iteration_max: 20,
+            n_cont_divergence_max: 2,
             constant_tangent: false,
             use_numerical_jacobian: false,
             // pseudo-arclength
@@ -381,8 +381,8 @@ impl Config {
     /// Sets the allowed ‖δu,δλ‖∞ max
     ///
     /// Default value: 1e8
-    pub fn set_allowed_delta_max(&mut self, value: f64) -> &mut Self {
-        self.allowed_delta_max = value;
+    pub fn set_delta_max_allowed(&mut self, value: f64) -> &mut Self {
+        self.delta_max_allowed = value;
         self
     }
 
@@ -392,17 +392,17 @@ impl Config {
     /// value ≥ 1
     /// ```
     ///
-    /// Default value: 12
-    pub fn set_allowed_iterations(&mut self, value: usize) -> &mut Self {
-        self.allowed_iterations = value;
+    /// Default value: 20
+    pub fn set_n_iteration_max(&mut self, value: usize) -> &mut Self {
+        self.n_iteration_max = value;
         self
     }
 
-    /// Sets the allowed number of continued divergence on ‖δu,δλ‖∞
+    /// Sets the maximum allowed number of continued divergence on ‖δu,δλ‖∞
     ///
-    /// Default value: 1
-    pub fn set_allowed_continued_divergence(&mut self, value: usize) -> &mut Self {
-        self.allowed_continued_divergence = value;
+    /// Default value: 2
+    pub fn set_n_cont_divergence_max(&mut self, value: usize) -> &mut Self {
+        self.n_cont_divergence_max = value;
         self
     }
 
@@ -616,10 +616,10 @@ impl Config {
         if self.tol_rel_delta < CONFIG_TOL_MIN {
             return Err("requirement: tol_rel_delta ≥ CONFIG_TOL_MIN");
         }
-        if self.allowed_delta_max <= 0.0 {
+        if self.delta_max_allowed <= 0.0 {
             return Err("requirement: allowed_delta_max > 0");
         }
-        if self.allowed_iterations < 1 {
+        if self.n_iteration_max < 1 {
             return Err("requirement: allowed_iterations ≥ 1");
         }
 
@@ -663,9 +663,9 @@ mod tests {
 
         // iterations
 
-        config.allowed_iterations = 0;
+        config.n_iteration_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: allowed_iterations ≥ 1"));
-        config.allowed_iterations = 10;
+        config.n_iteration_max = 10;
         config.tol_abs_residual = 0.0;
         assert_eq!(
             config.validate().err(),
@@ -684,9 +684,9 @@ mod tests {
             Some("requirement: tol_rel_delta ≥ CONFIG_TOL_MIN")
         );
         config.tol_rel_delta = 1e-10;
-        config.allowed_delta_max = 0.0;
+        config.delta_max_allowed = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0"));
-        config.allowed_delta_max = 1e10;
+        config.delta_max_allowed = 1e10;
 
         // all good
         assert_eq!(config.validate().is_err(), false);

@@ -50,7 +50,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_allowed_iterations(3);
+        .set_n_iteration_max(3);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -131,8 +131,8 @@ fn test_newton_problems_ok_2() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_allowed_iterations(20)
-        .set_allowed_continued_divergence(2);
+        .set_n_iteration_max(20)
+        .set_n_cont_divergence_max(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -172,7 +172,10 @@ fn test_simple_fixed_continued_divergence() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config.set_verbose(true, true, true).set_hide_timings(true);
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_n_cont_divergence_max(1);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -225,7 +228,7 @@ fn test_two_eq_nr_prob_2() {
     config
         .set_verbose(true, true, false)
         .set_hide_timings(true)
-        .set_allowed_iterations(20);
+        .set_n_iteration_max(20);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();

@@ -80,8 +80,8 @@ fn test_multiple_calls_to_solve_2() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
-        .set_allowed_iterations(20)
-        .set_allowed_continued_divergence(2);
+        .set_n_iteration_max(20)
+        .set_n_cont_divergence_max(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
@@ -209,8 +209,8 @@ fn test_multiple_calls_to_solve_2_auto() {
     let mut config = Config::new(Method::Natural);
     config
         .set_verbose(true, true, true)
-        .set_allowed_iterations(20)
-        .set_allowed_continued_divergence(2);
+        .set_n_iteration_max(20)
+        .set_n_cont_divergence_max(2);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();

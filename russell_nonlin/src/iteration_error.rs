@@ -78,12 +78,12 @@ impl IterationError {
             tol_abs_residual: config.tol_abs_residual,
             tol_abs_delta: config.tol_abs_delta,
             tol_rel_delta: config.tol_rel_delta,
-            allowed_delta_max: config.allowed_delta_max,
+            allowed_delta_max: config.delta_max_allowed,
             delta_diverging_prev: false,
             n_large_delta: 0,
             n_continued_delta_diverging: 0,
-            allowed_continued_divergence: config.allowed_continued_divergence,
-            allowed_iterations: config.allowed_iterations,
+            allowed_continued_divergence: config.n_cont_divergence_max,
+            allowed_iterations: config.n_iteration_max,
             scaling: Vector::new(ndim + 1), // +1 for λ
         }
     }

@@ -658,7 +658,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // iteration loop
         let mut status = Status::Success;
         work.n_iteration = 0;
-        for _ in 0..self.config.allowed_iterations {
+        for _ in 0..self.config.n_iteration_max {
             // stats
             work.stats.n_iteration_total += 1;
 

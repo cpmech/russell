@@ -59,13 +59,26 @@ impl ComplexCooMatrix {
     /// p = [0, nnz(other)]
     /// ```
     ///
-    /// **Warning:** make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
+    /// # Arguments
+    ///
+    /// * `alpha` -- scaling factor
+    /// * `other` -- the other matrix to be added. It must be at most as large as `this`.
+    ///
+    /// # Requirements
+    ///
+    /// * `other.nrow ≤ this.nrow`
+    /// * `other.ncol ≤ this.ncol`
+    /// * `other.symmetric == this.symmetric`
+    ///
+    /// # Note
+    ///
+    /// * make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
     pub fn add_real(&mut self, alpha: f64, beta: f64, other: &CooMatrix) -> Result<(), StrError> {
-        if other.nrow != self.nrow {
-            return Err("matrices must have the same nrow");
+        if other.nrow > self.nrow {
+            return Err("other.nrow must be ≤ this.nrow");
         }
-        if other.ncol != self.ncol {
-            return Err("matrices must have the same ncol");
+        if other.ncol > self.ncol {
+            return Err("other.ncol must be ≤ this.ncol");
         }
         if other.symmetric != self.symmetric {
             return Err("matrices must have the same symmetric flag");
@@ -156,11 +169,11 @@ mod tests {
         b_1x2.put(0, 0, 456.0).unwrap();
         assert_eq!(
             a_1x2.add_real(2.0, 3.0, &b_2x1).err(),
-            Some("matrices must have the same nrow")
+            Some("other.nrow must be ≤ this.nrow")
         );
         assert_eq!(
             a_1x2.add_real(2.0, 3.0, &b_1x3).err(),
-            Some("matrices must have the same ncol")
+            Some("other.ncol must be ≤ this.ncol")
         );
         assert_eq!(
             a_1x2.add_real(2.0, 3.0, &b_1x2).err(),

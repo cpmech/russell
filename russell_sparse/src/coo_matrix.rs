@@ -677,13 +677,26 @@ where
     /// this += α · other
     /// ```
     ///
-    /// **Warning:** make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
+    /// # Arguments
+    ///
+    /// * `alpha` -- scaling factor
+    /// * `other` -- the other matrix to be added. It must be at most as large as `this`.
+    ///
+    /// # Requirements
+    ///
+    /// * `other.nrow ≤ this.nrow`
+    /// * `other.ncol ≤ this.ncol`
+    /// * `other.symmetric == this.symmetric`
+    ///
+    /// # Note
+    ///
+    /// * make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
     pub fn add(&mut self, alpha: T, other: &NumCooMatrix<T>) -> Result<(), StrError> {
-        if other.nrow != self.nrow {
-            return Err("matrices must have the same nrow");
+        if other.nrow > self.nrow {
+            return Err("other.nrow must be ≤ this.nrow");
         }
-        if other.ncol != self.ncol {
-            return Err("matrices must have the same ncol");
+        if other.ncol > self.ncol {
+            return Err("other.ncol must be ≤ this.ncol");
         }
         if other.symmetric != self.symmetric {
             return Err("matrices must have the same symmetric type");
@@ -1140,8 +1153,8 @@ mod tests {
         let mut b_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_b, Sym::No).unwrap();
         a_1x2.put(0, 0, 123).unwrap();
         b_1x2.put(0, 0, 456).unwrap();
-        assert_eq!(a_1x2.add(2, &b_2x1).err(), Some("matrices must have the same nrow"));
-        assert_eq!(a_1x2.add(2, &b_1x3).err(), Some("matrices must have the same ncol"));
+        assert_eq!(a_1x2.add(2, &b_2x1).err(), Some("other.nrow must be ≤ this.nrow"));
+        assert_eq!(a_1x2.add(2, &b_1x3).err(), Some("other.ncol must be ≤ this.ncol"));
         assert_eq!(
             a_1x2.add(2, &b_1x2).err(),
             Some("COO matrix: max number of items has been reached")

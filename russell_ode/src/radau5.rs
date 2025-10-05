@@ -227,8 +227,8 @@ impl<'a, A> Radau5<'a, A> {
         kk_comp.assign_real(-1.0, 0.0, jj).unwrap(); // K_comp = -J
         match self.mass.as_ref() {
             Some(mass) => {
-                kk_real.augment(gamma, mass).unwrap(); // K_real += γ M
-                kk_comp.augment_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
+                kk_real.add(gamma, mass).unwrap(); // K_real += γ M
+                kk_comp.add_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
             }
             None => {
                 for m in 0..self.system.ndim {

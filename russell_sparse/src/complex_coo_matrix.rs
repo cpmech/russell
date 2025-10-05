@@ -41,7 +41,7 @@ impl ComplexCooMatrix {
         Ok(())
     }
 
-    /// Augments this matrix with the entries of another real matrix (scaled)
+    /// Puts the entries of another real matrix into this matrix
     ///
     /// Effectively, performs:
     ///
@@ -60,7 +60,7 @@ impl ComplexCooMatrix {
     /// ```
     ///
     /// **Warning:** make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
-    pub fn augment_real(&mut self, alpha: f64, beta: f64, other: &CooMatrix) -> Result<(), StrError> {
+    pub fn add_real(&mut self, alpha: f64, beta: f64, other: &CooMatrix) -> Result<(), StrError> {
         if other.nrow != self.nrow {
             return Err("matrices must have the same nrow");
         }
@@ -87,7 +87,7 @@ mod tests {
     use russell_lab::{cpx, Complex64};
 
     #[test]
-    fn assign_capture_errors() {
+    fn assign_real_capture_errors() {
         let nnz_a = 1;
         let nnz_b = 2; // wrong: must be ≤ nnz_a
         let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a, Sym::No).unwrap();
@@ -118,7 +118,7 @@ mod tests {
     }
 
     #[test]
-    fn assign_works() {
+    fn assign_real_works() {
         let nnz = 2;
         let mut a = ComplexCooMatrix::new(3, 2, nnz, Sym::No).unwrap();
         let mut b = CooMatrix::new(3, 2, nnz, Sym::No).unwrap();
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn augment_capture_errors() {
+    fn add_real_capture_errors() {
         let nnz_a = 1;
         let nnz_b = 1;
         let mut a_1x2 = ComplexCooMatrix::new(1, 2, nnz_a /* + nnz_b */, Sym::No).unwrap();
@@ -155,27 +155,27 @@ mod tests {
         a_1x2.put(0, 0, cpx!(123.0, 321.0)).unwrap();
         b_1x2.put(0, 0, 456.0).unwrap();
         assert_eq!(
-            a_1x2.augment_real(2.0, 3.0, &b_2x1).err(),
+            a_1x2.add_real(2.0, 3.0, &b_2x1).err(),
             Some("matrices must have the same nrow")
         );
         assert_eq!(
-            a_1x2.augment_real(2.0, 3.0, &b_1x3).err(),
+            a_1x2.add_real(2.0, 3.0, &b_1x3).err(),
             Some("matrices must have the same ncol")
         );
         assert_eq!(
-            a_1x2.augment_real(2.0, 3.0, &b_1x2).err(),
+            a_1x2.add_real(2.0, 3.0, &b_1x2).err(),
             Some("COO matrix: max number of items has been reached")
         );
         let mut a_2x2 = ComplexCooMatrix::new(2, 2, 1, Sym::YesLower).unwrap();
         let b_2x2 = CooMatrix::new(2, 2, 1, Sym::YesFull).unwrap();
         assert_eq!(
-            a_2x2.augment_real(2.0, 3.0, &b_2x2).err(),
+            a_2x2.add_real(2.0, 3.0, &b_2x2).err(),
             Some("matrices must have the same symmetric flag")
         );
     }
 
     #[test]
-    fn augment_works() {
+    fn add_real_works() {
         let nnz_a = 1;
         let nnz_b = 2;
         let mut a = ComplexCooMatrix::new(3, 2, nnz_a + nnz_b, Sym::No).unwrap();
@@ -191,7 +191,7 @@ mod tests {
              │       0+0i 1000+2000i │\n\
              └                       ┘"
         );
-        a.augment_real(3.0, 2.0, &b).unwrap();
+        a.add_real(3.0, 2.0, &b).unwrap();
         assert_eq!(
             format!("{}", a.as_dense()),
             "┌                       ┐\n\

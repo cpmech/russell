@@ -669,7 +669,7 @@ where
         Ok(())
     }
 
-    /// Augments this matrix with the entries of another matrix (scaled)
+    /// Puts the entries of another matrix into this matrix
     ///
     /// Effectively, performs:
     ///
@@ -678,7 +678,7 @@ where
     /// ```
     ///
     /// **Warning:** make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
-    pub fn augment(&mut self, alpha: T, other: &NumCooMatrix<T>) -> Result<(), StrError> {
+    pub fn add(&mut self, alpha: T, other: &NumCooMatrix<T>) -> Result<(), StrError> {
         if other.nrow != self.nrow {
             return Err("matrices must have the same nrow");
         }
@@ -1131,7 +1131,7 @@ mod tests {
     }
 
     #[test]
-    fn augment_capture_errors() {
+    fn add_capture_errors() {
         let nnz_a = 1;
         let nnz_b = 1;
         let mut a_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_a /* + nnz_b */, Sym::No).unwrap();
@@ -1140,22 +1140,22 @@ mod tests {
         let mut b_1x2 = NumCooMatrix::<u32>::new(1, 2, nnz_b, Sym::No).unwrap();
         a_1x2.put(0, 0, 123).unwrap();
         b_1x2.put(0, 0, 456).unwrap();
-        assert_eq!(a_1x2.augment(2, &b_2x1).err(), Some("matrices must have the same nrow"));
-        assert_eq!(a_1x2.augment(2, &b_1x3).err(), Some("matrices must have the same ncol"));
+        assert_eq!(a_1x2.add(2, &b_2x1).err(), Some("matrices must have the same nrow"));
+        assert_eq!(a_1x2.add(2, &b_1x3).err(), Some("matrices must have the same ncol"));
         assert_eq!(
-            a_1x2.augment(2, &b_1x2).err(),
+            a_1x2.add(2, &b_1x2).err(),
             Some("COO matrix: max number of items has been reached")
         );
         let mut a_2x2 = NumCooMatrix::<u32>::new(2, 2, 1, Sym::YesLower).unwrap();
         let b_2x2 = NumCooMatrix::<u32>::new(2, 2, 1, Sym::YesFull).unwrap();
         assert_eq!(
-            a_2x2.augment(2, &b_2x2).err(),
+            a_2x2.add(2, &b_2x2).err(),
             Some("matrices must have the same symmetric type")
         );
     }
 
     #[test]
-    fn augment_works() {
+    fn add_works() {
         let nnz_a = 1;
         let nnz_b = 2;
         let mut a = NumCooMatrix::<f64>::new(3, 2, nnz_a + nnz_b, Sym::No).unwrap();
@@ -1171,7 +1171,7 @@ mod tests {
              │    0 1000 │\n\
              └           ┘"
         );
-        a.augment(5.0, &b).unwrap();
+        a.add(5.0, &b).unwrap();
         assert_eq!(
             format!("{}", a.as_dense()),
             "┌           ┐\n\

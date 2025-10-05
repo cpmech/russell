@@ -201,8 +201,8 @@ impl<'a> FdmLaplacian1d<'a> {
         let dim = self.nx;
         let nnz = np;
         let mut ee = CooMatrix::new(np, dim, nnz, Sym::No).unwrap();
-        self.loop_over_prescribed_values(|ip, j, _val| {
-            ee.put(ip, j, 1.0).unwrap();
+        self.loop_over_prescribed_values(|ip, m, _val| {
+            ee.put(ip, m, 1.0).unwrap();
         });
         Ok(ee)
     }

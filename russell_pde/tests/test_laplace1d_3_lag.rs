@@ -58,7 +58,7 @@ fn test_laplace1d_3_lag() {
     // │ E  0  │ │ w │   │ ū │
     // └       ┘ └   ┘   └   ┘
     //     A      lhs     rhs
-    let aa = fdm.augmented_coefficient_matrix().unwrap();
+    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
 
     // allocate the left- and right-hand side vectors
     let np = fdm.num_prescribed();

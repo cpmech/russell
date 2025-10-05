@@ -243,10 +243,10 @@ impl<'a> FdmLaplacian1d<'a> {
     ///
     /// where `E` is the Lagrange matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
     /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
-    pub fn augmented_coefficient_matrix(&self) -> Result<CooMatrix, StrError> {
+    pub fn augmented_coefficient_matrix(&self, extra_nnz: usize) -> Result<CooMatrix, StrError> {
         let np = self.essential.len(); // number of prescribed equations
         let dim = self.nx;
-        let max_nnz_aa = 3 * dim + 2 * np; // 3 per row + 2 per prescribed equation
+        let max_nnz_aa = 3 * dim + 2 * np + extra_nnz; // 3 per row + 2 per prescribed equation
         let mut aa = CooMatrix::new(dim + np, dim + np, max_nnz_aa, Sym::No)?;
 
         // assemble A
@@ -612,7 +612,7 @@ mod tests {
         let rig = |_| RIG;
         lap.set_essential_boundary_condition(Side::Xmin, lef);
         lap.set_essential_boundary_condition(Side::Xmax, rig);
-        let aa = lap.augmented_coefficient_matrix().unwrap();
+        let aa = lap.augmented_coefficient_matrix(2).unwrap();
         println!("{}", aa.as_dense());
         assert_eq!(
             format!("{}", aa.as_dense()),

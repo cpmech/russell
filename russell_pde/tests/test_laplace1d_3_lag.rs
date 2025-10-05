@@ -6,7 +6,7 @@ use russell_sparse::{Genie, LinSolver};
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_laplace1d_3() {
+fn test_laplace1d_3_lag() {
     // This problem simulates the heat conduction-confection of 1D rod.
     //
     // The rod has a length of lx = 1.0 m and the conductivity coefficient
@@ -51,28 +51,28 @@ fn test_laplace1d_3() {
     // set essential boundary conditions
     fdm.set_essential_boundary_condition(Side::Xmin, |_| phi_a);
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
+    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K  Eᵀ │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ E  0  │ │ w │   │ ū │
+    // └       ┘ └   ┘   └   ┘
+    //     A      lhs     rhs
+    let aa = fdm.augmented_coefficient_matrix().unwrap();
 
     // allocate the left- and right-hand side vectors
+    let np = fdm.num_prescribed();
     let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
+    let mut lhs = Vector::new(dim + np);
+    let mut rhs = Vector::new(dim + np);
 
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        lhs[m] = value; // u2 := ϕ₀
-    });
-
-    // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &lhs).unwrap(); // f1 := -K12⋅u2
-
-    // set the right-hand side vector with the convection, source, and flux terms
+    // add the source term to the right-hand side vector
     fdm.loop_over_grid_points(|m, x| {
-        rhs[m] += phi_inf * beta + x * x;
+        rhs[m] = phi_inf * beta + x * x;
     });
 
-    // set the right-hand side with the flux boundary condition
+    // add the flux term to the right-hand side vector
+    //
     // (the flux is calculated using central differences)
     //
     // The FDM stencil uses the "molecule" {α, β, β} such that:
@@ -104,9 +104,9 @@ fn test_laplace1d_3() {
     let dx = fdm.grid_spacing();
     rhs[nx - 1] += 2.0 * kx * flux / dx;
 
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ϕ₀
+    // add the prescribed values to the right-hand side vector
+    fdm.loop_over_prescribed_values(|ip, _, value| {
+        rhs[dim + ip] = value;
     });
 
     // solve the linear system
@@ -117,9 +117,9 @@ fn test_laplace1d_3() {
     // results
     let d = f64::cosh(1.0);
     let ana_phi = |x| f64::sinh(x) / d + x * x + 2.0;
-    fdm.loop_over_grid_points(|i, x| {
-        println!("{}: ϕ = {} ({})", i, lhs[i], ana_phi(x));
-        approx_eq(lhs[i], ana_phi(x), 0.000282);
+    fdm.loop_over_grid_points(|m, x| {
+        println!("{}: ϕ = {} ({})", m, lhs[m], ana_phi(x));
+        approx_eq(lhs[m], ana_phi(x), 0.000282);
     });
 
     // plot
@@ -137,13 +137,14 @@ fn test_laplace1d_3() {
         fdm.loop_over_grid_points(|i, x| {
             xx_num[i] = x;
         });
+        let uu_num = Vec::from(&lhs.as_data()[..dim]);
         curve_ana.draw(&xx_ana, &uu_ana);
-        curve_num.draw(&xx_num, &lhs.as_data());
+        curve_num.draw(&xx_num, &uu_num);
         let mut plot = Plot::new();
         plot.add(&curve_ana)
             .add(&curve_num)
             .grid_labels_legend("$x$", "$\\phi$")
-            .save("/tmp/russell_pde/test_laplace1d_3.svg")
+            .save("/tmp/russell_pde/test_laplace1d_3_lag.svg")
             .unwrap();
     }
 }

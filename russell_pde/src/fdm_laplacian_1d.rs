@@ -201,10 +201,8 @@ impl<'a> FdmLaplacian1d<'a> {
         let dim = self.nx;
         let nnz = np;
         let mut ee = CooMatrix::new(np, dim, nnz, Sym::No).unwrap();
-        let mut ip = 0; // index of prescribed equation
-        self.loop_over_prescribed_values(|j, _val| {
+        self.loop_over_prescribed_values(|ip, j, _val| {
             ee.put(ip, j, 1.0).unwrap();
-            ip += 1;
         });
         Ok(ee)
     }
@@ -224,6 +222,45 @@ impl<'a> FdmLaplacian1d<'a> {
                 aa.put(m, n, self.molecule[b]).unwrap();
             });
         }
+        Ok(aa)
+    }
+
+    /// Computes the augmented coefficient matrix for the Lagrange multipliers method
+    ///
+    /// Returns the augmented matrix `A` for handling essential boundary conditions
+    /// with the Lagrange multipliers method (LMM).
+    ///
+    /// The LMM considers the augmented system of equations:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Eᵀ │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ E  0  │ │ w │   │ ū │
+    /// └       ┘ └   ┘   └   ┘
+    ///     A       x       b
+    /// ```
+    ///
+    /// where `E` is the Lagrange matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
+    /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
+    pub fn augmented_coefficient_matrix(&self) -> Result<CooMatrix, StrError> {
+        let np = self.essential.len(); // number of prescribed equations
+        let dim = self.nx;
+        let max_nnz_aa = 3 * dim + 2 * np; // 3 per row + 2 per prescribed equation
+        let mut aa = CooMatrix::new(dim + np, dim + np, max_nnz_aa, Sym::No)?;
+
+        // assemble A
+        for m in 0..dim {
+            self.loop_over_bandwidth(m, |n, b| {
+                aa.put(m, n, self.molecule[b]).unwrap();
+            });
+        }
+
+        // assemble E and Eᵀ
+        self.loop_over_prescribed_values(|ip, j, _val| {
+            aa.put(dim + ip, j, 1.0).unwrap(); // E
+            aa.put(j, dim + ip, 1.0).unwrap(); // Eᵀ
+        });
         Ok(aa)
     }
 
@@ -354,17 +391,20 @@ impl<'a> FdmLaplacian1d<'a> {
     ///
     /// # Input
     ///
-    /// * `callback` -- a `function(m, value)` where `m` is the row index and
-    ///   `value` is the prescribed value.
+    /// * `callback` -- a `function(ip, m, value)` where `ip` is the index of the
+    ///   prescribed value/Lagrange multiplier, `m` is the row index in the coefficient
+    ///   matrix, and `value` is the prescribed value.
     pub fn loop_over_prescribed_values<F>(&self, mut callback: F)
     where
-        F: FnMut(usize, f64),
+        F: FnMut(usize, usize, f64),
     {
+        let mut ip = 0;
         self.essential_sorted.iter().for_each(|m| {
             let index = self.essential.get(m).unwrap();
             let x = self.xmin + (*m as f64) * self.dx;
             let value = (self.functions[*index])(x);
-            callback(*m, value);
+            callback(ip, *m, value);
+            ip += 1;
         });
     }
 
@@ -500,7 +540,7 @@ mod tests {
         assert_eq!(lap.node_xmin, 0);
         assert_eq!(lap.node_xmax, 3);
         let mut res = Vec::new();
-        lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
+        lap.loop_over_prescribed_values(|_, m, value| res.push((m, value)));
         assert_eq!(res, &[(0, LEF), (3, RIG)]);
         assert_eq!(lap.num_prescribed(), 2);
         assert_eq!(
@@ -521,14 +561,14 @@ mod tests {
         assert_eq!(lap.node_xmin, 0);
         assert_eq!(lap.node_xmax, 3);
         let mut res = Vec::new();
-        lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
+        lap.loop_over_prescribed_values(|_, m, value| res.push((m, value)));
         res.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         assert_eq!(res, &[(0, 0.0), (3, 0.0),]);
     }
 
     #[test]
     fn lagrange_matrix_works() {
-        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4, None).unwrap();
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 5, None).unwrap();
         const LEF: f64 = 1.0;
         const RIG: f64 = 2.0;
         let lef = |_| LEF;
@@ -538,29 +578,54 @@ mod tests {
         let ee = lap.lagrange_matrix().unwrap();
         assert_eq!(
             format!("{}", ee.as_dense()),
-            "┌         ┐\n\
-             │ 1 0 0 0 │\n\
-             │ 0 0 0 1 │\n\
-             └         ┘"
+            "┌           ┐\n\
+             │ 1 0 0 0 0 │\n\
+             │ 0 0 0 0 1 │\n\
+             └           ┘"
         );
     }
 
     #[test]
     fn coefficient_matrix_works() {
         let lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
-        let aa = lap.coefficient_matrix().unwrap();
+        let kk = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 5);
         assert_eq!(lap.num_prescribed(), 0);
-        let ___ = 0.0;
-        #[rustfmt::skip]
-        let aa_correct = Matrix::from(&[
-            [-2.0,  2.0,  ___,  ___,  ___],
-            [ 1.0, -2.0,  1.0,  ___,  ___],
-            [ ___,  1.0, -2.0,  1.0,  ___],
-            [ ___,  ___,  1.0, -2.0,  1.0],
-            [ ___,  ___,  ___,  2.0, -2.0],
-        ]);
-        mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+        assert_eq!(
+            format!("{}", kk.as_dense()),
+            "┌                ┐\n\
+             │ -2  2  0  0  0 │\n\
+             │  1 -2  1  0  0 │\n\
+             │  0  1 -2  1  0 │\n\
+             │  0  0  1 -2  1 │\n\
+             │  0  0  0  2 -2 │\n\
+             └                ┘"
+        );
+    }
+
+    #[test]
+    fn augmented_coefficient_matrix_works() {
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 4.0, 5, None).unwrap();
+        const LEF: f64 = 1.0;
+        const RIG: f64 = 2.0;
+        let lef = |_| LEF;
+        let rig = |_| RIG;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+        let aa = lap.augmented_coefficient_matrix().unwrap();
+        println!("{}", aa.as_dense());
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                      ┐\n\
+             │ -2  2  0  0  0  1  0 │\n\
+             │  1 -2  1  0  0  0  0 │\n\
+             │  0  1 -2  1  0  0  0 │\n\
+             │  0  0  1 -2  1  0  0 │\n\
+             │  0  0  0  2 -2  0  1 │\n\
+             │  1  0  0  0  0  0  0 │\n\
+             │  0  0  0  0  1  0  0 │\n\
+             └                      ┘"
+        );
     }
 
     #[test]

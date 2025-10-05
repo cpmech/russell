@@ -134,7 +134,8 @@ fn test_reaction_diffusion_1d() {
     // configuration
     let mut config = Config::new(Method::Arclength);
     config
-        // .set_n_cont_reject_allowed(100)
+        .set_n_cont_failure_max(5)
+        .set_n_cont_rejection_max(5)
         .set_verbose(true, true, true)
         .set_hide_timings(true)
         .set_debug_predictor(true)

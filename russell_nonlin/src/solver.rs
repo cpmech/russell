@@ -187,13 +187,13 @@ impl<'a, A> Solver<'a, A> {
                 }
 
                 // handle continued failure (allowed to "try again")
-                if self.work.n_continued_failure >= self.config.n_cont_failure_allowed {
+                if self.work.n_continued_failure >= self.config.n_cont_failure_max {
                     status = Status::ContinuedFailure;
                     break;
                 }
 
                 // handle rejections (due to large curvatures, etc.)
-                if self.work.n_continued_rejection >= self.config.allowed_continued_rejection {
+                if self.work.n_continued_rejection >= self.config.n_cont_rejection_max {
                     status = Status::ContinuedRejection;
                     break;
                 }

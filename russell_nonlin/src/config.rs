@@ -48,11 +48,11 @@ pub struct Config {
     /// Max number of steps
     pub(crate) n_step_max: usize,
 
-    /// Number of continued (iteration) failures allowed
-    pub(crate) n_cont_failure_allowed: usize,
+    /// Maximum allowed number of continued iteration failures
+    pub(crate) n_cont_failure_max: usize,
 
-    /// Allowed number of continued rejections (due to large curvatures, etc.)
-    pub(crate) allowed_continued_rejection: usize,
+    /// Maximum allowed number of continued rejections (due to large curvatures, etc.)
+    pub(crate) n_cont_rejection_max: usize,
 
     // linear solver ----------------------------------------------------------------------
     //
@@ -193,8 +193,8 @@ impl Config {
             m_failure: 0.5,
             h_ini: 1e-4,
             n_step_max: 100_000,
-            n_cont_failure_allowed: 5,
-            allowed_continued_rejection: 3,
+            n_cont_failure_max: 5,
+            n_cont_rejection_max: 5,
             // linear solver
             genie: Genie::Umfpack,
             lin_sol_config: None,
@@ -294,9 +294,19 @@ impl Config {
         self
     }
 
-    /// Sets the number of continued (iteration) failures allowed
-    pub fn set_n_cont_failure_allowed(&mut self, value: usize) -> &mut Self {
-        self.n_cont_failure_allowed = value;
+    /// Sets the maximum allowed number of continued iteration failures
+    ///
+    /// Default value: 5
+    pub fn set_n_cont_failure_max(&mut self, value: usize) -> &mut Self {
+        self.n_cont_failure_max = value;
+        self
+    }
+
+    /// Sets the maximum allowed number of continued rejections (due to large curvatures, etc.)
+    ///
+    /// Default value: 5
+    pub fn set_n_cont_rejection_max(&mut self, value: usize) -> &mut Self {
+        self.n_cont_rejection_max = value;
         self
     }
 

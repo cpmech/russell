@@ -1,9 +1,9 @@
-use russell_lab::{vec_approx_eq, Vector};
+use russell_lab::{array_approx_eq, Vector};
 use russell_pde::{FdmLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver};
 
 #[test]
-fn test_laplace2d_1() {
+fn test_laplace2d_1_lag() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     //  ∂²ϕ     ∂²ϕ
@@ -27,25 +27,24 @@ fn test_laplace2d_1() {
     fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 1.0);
     fdm.set_essential_boundary_condition(Side::Ymax, |_, _| 2.0);
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
+    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K  Eᵀ │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ E  0  │ │ w │   │ ū │
+    // └       ┘ └   ┘   └   ┘
+    //     A      lhs     rhs
+    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
 
     // allocate the left- and right-hand side vectors
+    let np = fdm.num_prescribed();
     let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
+    let mut lhs = Vector::new(dim + np);
+    let mut rhs = Vector::new(dim + np);
 
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        lhs[m] = value;
-    });
-
-    // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &lhs).unwrap(); // f1 := -K12⋅u2
-
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ebc
+    // add the prescribed values to the right-hand side vector
+    fdm.loop_over_prescribed_values(|ip, _, value| {
+        rhs[dim + ip] = value;
     });
 
     // solve the linear system
@@ -57,5 +56,5 @@ fn test_laplace2d_1() {
     let x_correct = [
         1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.5, 2.0, 1.0, 1.5, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0,
     ];
-    vec_approx_eq(&lhs, &x_correct, 1e-15);
+    array_approx_eq(&lhs.as_data()[..dim], &x_correct, 1e-15);
 }

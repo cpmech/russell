@@ -1,53 +1,64 @@
 use plotpy::{Contour, Plot};
-use russell_lab::{vec_approx_eq, Vector};
-use russell_pde::FdmLaplacian2d;
+use russell_lab::{array_approx_eq, math::PI, Vector};
+use russell_pde::{FdmLaplacian2d, Side};
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_poisson2d_1() {
+fn test_poisson2d_2_lag() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     // ∂²ϕ   ∂²ϕ
-    // ——— + ——— = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
+    // ——— + ——— = - π² y sin(π x)
     // ∂x²   ∂y²
     //
-    // on a (1.0 × 1.0) square with the homogeneous boundary conditions.
+    // on a (1.0 × 1.0) square with the following essential boundary conditions:
+    //
+    // left:    ϕ(0.0, y) = 0.0
+    // right:   ϕ(1.0, y) = 0.0
+    // bottom:  ϕ(x, 0.0) = 0.0
+    // top:     ϕ(x, 1.0) = sin(π x)
     //
     // The analytical solution is:
     //
-    // ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
+    // ϕ(x, y) = y sin(π x)
+    //
+    // Reference: Olver PJ (2020) - page 210 - Introduction to Partial Differential Equations, Springer
 
     // allocate the Laplacian operator
-    let (nx, ny) = (9, 9);
+    let (nx, ny) = (17, 17);
     let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
-    // set zero essential boundary conditions
-    fdm.set_homogeneous_boundary_conditions();
+    // set essential boundary conditions
+    fdm.set_essential_boundary_condition(Side::Xmin, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Xmax, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 0.0);
+    fdm.set_essential_boundary_condition(Side::Ymax, |x, _| f64::sin(PI * x));
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, _) = fdm.mod_coefficient_matrix().unwrap();
+    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K  Eᵀ │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ E  0  │ │ w │   │ ū │
+    // └       ┘ └   ┘   └   ┘
+    //     A      lhs     rhs
+    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
 
     // allocate the left- and right-hand side vectors
+    let np = fdm.num_prescribed();
     let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
+    let mut lhs = Vector::new(dim + np);
+    let mut rhs = Vector::new(dim + np);
 
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    // (this step is not needed with homogeneous boundary conditions)
-
-    // initialize the right-hand side vector with the correction
-    // (this step is not needed with homogeneous boundary conditions)
-
-    // set the right-hand side vector with the source term
+    // add the source term to the right-hand side vector
     fdm.loop_over_grid_points(|m, x, y| {
-        rhs[m] = 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
+        rhs[m] = -PI * PI * y * f64::sin(PI * x); // f1 += source
     });
 
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ebc
+    // add the prescribed values to the right-hand side vector
+    fdm.loop_over_prescribed_values(|ip, _, value| {
+        rhs[dim + ip] = value;
     });
 
     // solve the linear system
@@ -57,11 +68,11 @@ fn test_poisson2d_1() {
 
     // check
     let mut phi_correct = Vector::new(dim);
-    let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);
+    let analytical = |x, y| y * f64::sin(PI * x);
     fdm.loop_over_grid_points(|m, x, y| {
         phi_correct[m] = analytical(x, y);
     });
-    vec_approx_eq(&lhs, phi_correct.as_data(), 1e-3);
+    array_approx_eq(&lhs.as_data()[..dim], phi_correct.as_data(), 0.001036);
 
     // plot results
     if SAVE_FIGURE {
@@ -92,7 +103,7 @@ fn test_poisson2d_1() {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/russell_pde/test_poisson2d_1.svg")
+            .save("/tmp/russell_pde/test_poisson2d_2_lag.svg")
             .unwrap();
     }
 }

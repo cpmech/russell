@@ -326,6 +326,45 @@ impl<'a> FdmLaplacian2d<'a> {
         Ok(aa)
     }
 
+    /// Computes the augmented coefficient matrix for the Lagrange multipliers method
+    ///
+    /// Returns the augmented matrix `A` for handling essential boundary conditions
+    /// with the Lagrange multipliers method (LMM).
+    ///
+    /// The LMM considers the augmented system of equations:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Eᵀ │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ E  0  │ │ w │   │ ū │
+    /// └       ┘ └   ┘   └   ┘
+    ///     A       x       b
+    /// ```
+    ///
+    /// where `E` is the Lagrange matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
+    /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
+    pub fn augmented_coefficient_matrix(&self, extra_nnz: usize) -> Result<CooMatrix, StrError> {
+        let np = self.essential.len(); // number of prescribed equations
+        let dim = self.nx * self.ny;
+        let max_nnz_aa = 5 * dim + 2 * np + extra_nnz; // 5 per row + 2 per prescribed equation
+        let mut aa = CooMatrix::new(dim + np, dim + np, max_nnz_aa, Sym::No)?;
+
+        // assemble A
+        for m in 0..dim {
+            self.loop_over_bandwidth(m, |n, b| {
+                aa.put(m, n, self.molecule[b]).unwrap();
+            });
+        }
+
+        // assemble E and Eᵀ
+        self.loop_over_prescribed_values(|ip, j, _val| {
+            aa.put(dim + ip, j, 1.0).unwrap(); // E
+            aa.put(j, dim + ip, 1.0).unwrap(); // Eᵀ
+        });
+        Ok(aa)
+    }
+
     /// Computes the modified coefficient matrix
     ///
     /// Consider the following partitioning:
@@ -735,20 +774,50 @@ mod tests {
         let aa = lap.coefficient_matrix().unwrap();
         assert_eq!(lap.dim(), 9);
         assert_eq!(lap.num_prescribed(), 0);
-        let ___ = 0.0;
-        #[rustfmt::skip]
-        let aa_correct = Matrix::from(&[
-            [-4.0,  2.0,  ___,  2.0,  ___,  ___,  ___,  ___,  ___],
-            [ 1.0, -4.0,  1.0,  ___,  2.0,  ___,  ___,  ___,  ___],
-            [ ___,  2.0, -4.0,  ___,  ___,  2.0,  ___,  ___,  ___],
-            [ 1.0,  ___,  ___, -4.0,  2.0,  ___,  1.0,  ___,  ___],
-            [ ___,  1.0,  ___,  1.0, -4.0,  1.0,  ___,  1.0,  ___],
-            [ ___,  ___,  1.0,  ___,  2.0, -4.0,  ___,  ___,  1.0],
-            [ ___,  ___,  ___,  2.0,  ___,  ___, -4.0,  2.0,  ___],
-            [ ___,  ___,  ___,  ___,  2.0,  ___,  1.0, -4.0,  1.0],
-            [ ___,  ___,  ___,  ___,  ___,  2.0,  ___,  2.0, -4.0],
-        ]);
-        mat_approx_eq(&aa.as_dense(), &aa_correct, 1e-15);
+        println!("{}", aa.as_dense());
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                            ┐\n\
+             │ -4  2  0  2  0  0  0  0  0 │\n\
+             │  1 -4  1  0  2  0  0  0  0 │\n\
+             │  0  2 -4  0  0  2  0  0  0 │\n\
+             │  1  0  0 -4  2  0  1  0  0 │\n\
+             │  0  1  0  1 -4  1  0  1  0 │\n\
+             │  0  0  1  0  2 -4  0  0  1 │\n\
+             │  0  0  0  2  0  0 -4  2  0 │\n\
+             │  0  0  0  0  2  0  1 -4  1 │\n\
+             │  0  0  0  0  0  2  0  2 -4 │\n\
+             └                            ┘"
+        );
+    }
+
+    #[test]
+    fn augmented_coefficient_matrix_works() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        const LEF: f64 = 1.0;
+        let lef = |_, _| LEF;
+        lap.set_essential_boundary_condition(Side::Xmin, lef); //  0 3 6
+        let ee = lap.lagrange_matrix().unwrap();
+        println!("{}", ee.as_dense());
+        let aa = lap.augmented_coefficient_matrix(2).unwrap();
+        println!("{}", aa.as_dense());
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ -4  2  0  2  0  0  0  0  0  1  0  0 │\n\
+             │  1 -4  1  0  2  0  0  0  0  0  0  0 │\n\
+             │  0  2 -4  0  0  2  0  0  0  0  0  0 │\n\
+             │  1  0  0 -4  2  0  1  0  0  0  1  0 │\n\
+             │  0  1  0  1 -4  1  0  1  0  0  0  0 │\n\
+             │  0  0  1  0  2 -4  0  0  1  0  0  0 │\n\
+             │  0  0  0  2  0  0 -4  2  0  0  0  1 │\n\
+             │  0  0  0  0  2  0  1 -4  1  0  0  0 │\n\
+             │  0  0  0  0  0  2  0  2 -4  0  0  0 │\n\
+             │  1  0  0  0  0  0  0  0  0  0  0  0 │\n\
+             │  0  0  0  1  0  0  0  0  0  0  0  0 │\n\
+             │  0  0  0  0  0  0  1  0  0  0  0  0 │\n\
+             └                                     ┘"
+        );
     }
 
     #[test]

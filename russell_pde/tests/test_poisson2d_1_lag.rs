@@ -1,12 +1,12 @@
 use plotpy::{Contour, Plot};
-use russell_lab::{vec_approx_eq, Vector};
+use russell_lab::{array_approx_eq, Vector};
 use russell_pde::FdmLaplacian2d;
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_poisson2d_1() {
+fn test_poisson2d_1_lag() {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     // ∂²ϕ   ∂²ϕ
@@ -26,28 +26,29 @@ fn test_poisson2d_1() {
     // set zero essential boundary conditions
     fdm.set_homogeneous_boundary_conditions();
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, _) = fdm.mod_coefficient_matrix().unwrap();
+    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K  Eᵀ │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ E  0  │ │ w │   │ ū │
+    // └       ┘ └   ┘   └   ┘
+    //     A      lhs     rhs
+    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
 
     // allocate the left- and right-hand side vectors
+    let np = fdm.num_prescribed();
     let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
+    let mut lhs = Vector::new(dim + np);
+    let mut rhs = Vector::new(dim + np);
 
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    // (this step is not needed with homogeneous boundary conditions)
-
-    // initialize the right-hand side vector with the correction
-    // (this step is not needed with homogeneous boundary conditions)
-
-    // set the right-hand side vector with the source term
+    // add the source term to the right-hand side vector
     fdm.loop_over_grid_points(|m, x, y| {
         rhs[m] = 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
     });
 
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ebc
+    // add the prescribed values to the right-hand side vector
+    fdm.loop_over_prescribed_values(|ip, _, value| {
+        rhs[dim + ip] = value;
     });
 
     // solve the linear system
@@ -61,7 +62,7 @@ fn test_poisson2d_1() {
     fdm.loop_over_grid_points(|m, x, y| {
         phi_correct[m] = analytical(x, y);
     });
-    vec_approx_eq(&lhs, phi_correct.as_data(), 1e-3);
+    array_approx_eq(&lhs.as_data()[..dim], phi_correct.as_data(), 1e-3);
 
     // plot results
     if SAVE_FIGURE {
@@ -92,7 +93,7 @@ fn test_poisson2d_1() {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/russell_pde/test_poisson2d_1.svg")
+            .save("/tmp/russell_pde/test_poisson2d_1_lag.svg")
             .unwrap();
     }
 }

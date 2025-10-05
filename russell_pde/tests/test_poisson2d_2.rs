@@ -41,20 +41,20 @@ fn test_poisson2d_2() {
 
     // allocate the left- and right-hand side vectors
     let dim = fdm.dim();
-    let mut phi = Vector::new(dim);
+    let mut lhs = Vector::new(dim);
     let mut rhs = Vector::new(dim);
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
     fdm.loop_over_prescribed_values(|_, m, value| {
-        phi[m] = value; // u2 := ebc
+        lhs[m] = value; // u2 := ebc
     });
 
     // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // f1 := -K12⋅u2
+    cc.mat_vec_mul(&mut rhs, -1.0, &lhs).unwrap(); // f1 := -K12⋅u2
 
     // set the right-hand side vector with the source term (note plus-equal)
-    fdm.loop_over_grid_points(|i, x, y| {
-        rhs[i] += -PI * PI * y * f64::sin(PI * x); // f1 += source
+    fdm.loop_over_grid_points(|m, x, y| {
+        rhs[m] += -PI * PI * y * f64::sin(PI * x); // f1 += source
     });
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
@@ -65,15 +65,15 @@ fn test_poisson2d_2() {
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
     solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut phi, &rhs, false).unwrap();
+    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
 
     // check
     let mut phi_correct = Vector::new(dim);
     let analytical = |x, y| y * f64::sin(PI * x);
-    fdm.loop_over_grid_points(|i, x, y| {
-        phi_correct[i] = analytical(x, y);
+    fdm.loop_over_grid_points(|m, x, y| {
+        phi_correct[m] = analytical(x, y);
     });
-    vec_approx_eq(&phi, phi_correct.as_data(), 0.001036);
+    vec_approx_eq(&lhs, phi_correct.as_data(), 0.001036);
 
     // plot results
     if SAVE_FIGURE {
@@ -83,12 +83,12 @@ fn test_poisson2d_2() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        fdm.loop_over_grid_points(|i, x, y| {
-            let row = i / nx;
-            let col = i % nx;
+        fdm.loop_over_grid_points(|m, x, y| {
+            let row = m / nx;
+            let col = m % nx;
             xx[row][col] = x;
             yy[row][col] = y;
-            zz_num[row][col] = phi[i];
+            zz_num[row][col] = lhs[m];
             zz_ana[row][col] = analytical(x, y);
         });
         contour_num.set_no_lines(false).draw(&xx, &yy, &zz_num);

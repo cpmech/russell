@@ -696,7 +696,7 @@ where
         Ok(())
     }
 
-    /// Puts a Lagrangian block into this matrix
+    /// Puts a Lagrange block matrix into this matrix
     ///
     /// The resulting matrix will be:
     ///
@@ -715,16 +715,16 @@ where
     ///
     /// # Arguments
     ///
-    /// * `bb` -- The Lagrangian block to be inserted. It must not be symmetric.
+    /// * `bb` -- The block to be inserted. It must not be symmetric.
     ///
     /// # Requirements
     ///
     /// * This matrix must be allocated with enough space to accommodate the extra `2 nnz(B)`.
     /// * `ncol(B) + nrow(B) ≤ nrow(A)`
     /// * `ncol(B) + nrow(B) ≤ ncol(A)`
-    pub fn put_lagrangian(&mut self, bb: &NumCooMatrix<T>) -> Result<(), StrError> {
+    pub fn put_lagrange_block(&mut self, bb: &NumCooMatrix<T>) -> Result<(), StrError> {
         if bb.symmetric != Sym::No {
-            return Err("the Lagrangian block must not be symmetric");
+            return Err("the Lagrange block must not be symmetric");
         }
         if bb.ncol + bb.nrow > self.nrow {
             return Err("ncol(B) + nrow(B) must be ≤ nrow(A)");
@@ -1183,25 +1183,25 @@ mod tests {
     }
 
     #[test]
-    fn put_lagrangian_capture_errors() {
+    fn put_lagrange_block_capture_errors() {
         let bb = NumCooMatrix::<f64>::new(1, 1, 6, Sym::YesFull).unwrap();
         let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
         assert_eq!(
-            aa.put_lagrangian(&bb).err(),
-            Some("the Lagrangian block must not be symmetric")
+            aa.put_lagrange_block(&bb).err(),
+            Some("the Lagrange block must not be symmetric")
         );
 
         let bb = NumCooMatrix::<f64>::new(2, 1, 6, Sym::No).unwrap();
 
         let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
         assert_eq!(
-            aa.put_lagrangian(&bb).err(),
+            aa.put_lagrange_block(&bb).err(),
             Some("ncol(B) + nrow(B) must be ≤ nrow(A)")
         );
 
         let mut aa = NumCooMatrix::<f64>::new(3, 2, 1, Sym::No).unwrap();
         assert_eq!(
-            aa.put_lagrangian(&bb).err(),
+            aa.put_lagrange_block(&bb).err(),
             Some("ncol(B) + nrow(B) must be ≤ ncol(A)")
         );
 
@@ -1210,13 +1210,13 @@ mod tests {
         aa.put(0, 0, 1000.0).unwrap();
         bb.put(0, 0, 10.0).unwrap();
         assert_eq!(
-            aa.put_lagrangian(&bb).err(),
+            aa.put_lagrange_block(&bb).err(),
             Some("COO matrix: max number of items has been reached")
         );
     }
 
     #[test]
-    fn put_lagrangian_works() {
+    fn put_lagrange_block_works() {
         // definitions
         let (nrow_a, ncol_a) = (6, 6);
         let (nrow_b, ncol_b) = (2, 3);
@@ -1259,7 +1259,7 @@ mod tests {
         );
 
         // put B and Bᵀ into A
-        aa.put_lagrangian(&bb).unwrap();
+        aa.put_lagrange_block(&bb).unwrap();
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                                     ┐\n\
@@ -1274,7 +1274,7 @@ mod tests {
     }
 
     #[test]
-    fn put_lagrangian_sym_lower_works() {
+    fn put_lagrange_block_sym_lower_works() {
         // definitions
         let na = 6; // square matrix
         let (nrow_b, ncol_b) = (2, 3);
@@ -1320,7 +1320,7 @@ mod tests {
         );
 
         // put B and Bᵀ into A
-        aa.put_lagrangian(&bb).unwrap();
+        aa.put_lagrange_block(&bb).unwrap();
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                                     ┐\n\
@@ -1335,7 +1335,7 @@ mod tests {
     }
 
     #[test]
-    fn put_lagrangian_sym_upper_works() {
+    fn put_lagrange_block_sym_upper_works() {
         // definitions
         let na = 6; // square matrix
         let (nrow_b, ncol_b) = (2, 3);
@@ -1381,7 +1381,7 @@ mod tests {
         );
 
         // put B and Bᵀ into A
-        aa.put_lagrangian(&bb).unwrap();
+        aa.put_lagrange_block(&bb).unwrap();
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                                     ┐\n\
@@ -1396,7 +1396,7 @@ mod tests {
     }
 
     #[test]
-    fn put_lagrangian_sym_full_works() {
+    fn put_lagrange_block_sym_full_works() {
         // definitions
         let na = 6; // square matrix
         let (nrow_b, ncol_b) = (2, 3);
@@ -1443,7 +1443,7 @@ mod tests {
         );
 
         // put B and Bᵀ into A
-        aa.put_lagrangian(&bb).unwrap();
+        aa.put_lagrange_block(&bb).unwrap();
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                                     ┐\n\

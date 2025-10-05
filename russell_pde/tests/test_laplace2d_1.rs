@@ -36,16 +36,16 @@ fn test_laplace2d_1() {
     let mut rhs = Vector::new(dim);
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|i, value| {
-        phi[i] = value;
+    fdm.loop_over_prescribed_values(|_, m, value| {
+        phi[m] = value;
     });
 
     // initialize the right-hand side vector with the correction
     cc.mat_vec_mul(&mut rhs, -1.0, &phi).unwrap(); // f1 := -K12⋅u2
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // f2 := ebc
+    fdm.loop_over_prescribed_values(|_, m, value| {
+        rhs[m] = value; // f2 := ebc
     });
 
     // solve the linear system

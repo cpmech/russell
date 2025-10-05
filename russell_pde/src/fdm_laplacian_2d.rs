@@ -302,10 +302,8 @@ impl<'a> FdmLaplacian2d<'a> {
         let dim = self.nx * self.ny;
         let nnz = np;
         let mut ee = CooMatrix::new(np, dim, nnz, Sym::No).unwrap();
-        let mut ip = 0; // index of prescribed equation
-        self.loop_over_prescribed_values(|j, _val| {
-            ee.put(ip, j, 1.0).unwrap();
-            ip += 1;
+        self.loop_over_prescribed_values(|ip, m, _val| {
+            ee.put(ip, m, 1.0).unwrap();
         });
         Ok(ee)
     }
@@ -455,12 +453,14 @@ impl<'a> FdmLaplacian2d<'a> {
     ///
     /// # Input
     ///
-    /// * `callback` -- a `function(m, value)` where `m` is the row index and
-    ///   `value` is the prescribed value.
+    /// * `callback` -- a `function(ip, m, value)` where `ip` is the index of the
+    ///   prescribed value/Lagrange multiplier, `m` is the row index in the coefficient
+    ///   matrix, and `value` is the prescribed value.
     pub fn loop_over_prescribed_values<F>(&self, mut callback: F)
     where
-        F: FnMut(usize, f64),
+        F: FnMut(usize, usize, f64),
     {
+        let mut ip = 0;
         self.essential_sorted.iter().for_each(|m| {
             let index = self.essential.get(m).unwrap();
             let i = m % self.nx;
@@ -468,7 +468,8 @@ impl<'a> FdmLaplacian2d<'a> {
             let x = self.xmin + (i as f64) * self.dx;
             let y = self.ymin + (j as f64) * self.dy;
             let value = (self.functions[*index])(x, y);
-            callback(*m, value);
+            callback(ip, *m, value);
+            ip += 1;
         });
     }
 
@@ -637,7 +638,7 @@ mod tests {
         assert_eq!(lap.nodes_ymin, &[0, 1, 2, 3]);
         assert_eq!(lap.nodes_ymax, &[12, 13, 14, 15]);
         let mut res = Vec::new();
-        lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
+        lap.loop_over_prescribed_values(|_, m, value| res.push((m, value)));
         assert_eq!(
             res,
             &[
@@ -688,7 +689,7 @@ mod tests {
         assert_eq!(lap.nodes_ymin, &[0, 1, 2, 3]);
         assert_eq!(lap.nodes_ymax, &[12, 13, 14, 15]);
         let mut res = Vec::new();
-        lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
+        lap.loop_over_prescribed_values(|_, m, value| res.push((m, value)));
         res.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         assert_eq!(
             res,

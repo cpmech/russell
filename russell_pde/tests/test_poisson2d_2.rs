@@ -45,8 +45,8 @@ fn test_poisson2d_2() {
     let mut rhs = Vector::new(dim);
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|i, value| {
-        phi[i] = value; // u2 := ebc
+    fdm.loop_over_prescribed_values(|_, m, value| {
+        phi[m] = value; // u2 := ebc
     });
 
     // initialize the right-hand side vector with the correction
@@ -58,8 +58,8 @@ fn test_poisson2d_2() {
     });
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // f2 := ebc
+    fdm.loop_over_prescribed_values(|_, m, value| {
+        rhs[m] = value; // f2 := ebc
     });
 
     // solve the linear system

@@ -37,8 +37,8 @@ fn main() -> Result<(), StrError> {
     let mut rhs = Vector::new(dim);
 
     // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|i, value| {
-        phi[i] = value; // xp := xp
+    fdm.loop_over_prescribed_values(|_, m, value| {
+        phi[m] = value; // xp := xp
     });
 
     // initialize the right-hand side vector with the correction
@@ -48,8 +48,8 @@ fn main() -> Result<(), StrError> {
     // we could set `bu := natural()` here
 
     // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|i, value| {
-        rhs[i] = value; // bp := xp
+    fdm.loop_over_prescribed_values(|_, m, value| {
+        rhs[m] = value; // bp := xp
     });
 
     // solve the linear system

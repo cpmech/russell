@@ -178,7 +178,7 @@ impl<'a> FdmLaplacian1d<'a> {
         self.recompute_arrays();
     }
 
-    /// Generates the Lagrangian matrix
+    /// Generates the Lagrange matrix
     ///
     /// Returns the Lagrangian matrix `E` for handling essential boundary conditions
     /// with the Lagrange multipliers method (LMM).
@@ -196,7 +196,7 @@ impl<'a> FdmLaplacian1d<'a> {
     ///
     /// where `E` is the Lagrangian matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
     /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
-    pub fn lagrangian_matrix(&self) -> Result<CooMatrix, StrError> {
+    pub fn lagrange_matrix(&self) -> Result<CooMatrix, StrError> {
         let np = self.essential.len(); // number of prescribed equations
         let dim = self.nx;
         let nnz = np;
@@ -535,7 +535,7 @@ mod tests {
         let rig = |_| RIG;
         lap.set_essential_boundary_condition(Side::Xmin, lef);
         lap.set_essential_boundary_condition(Side::Xmax, rig);
-        let ee = lap.lagrangian_matrix().unwrap();
+        let ee = lap.lagrange_matrix().unwrap();
         assert_eq!(
             format!("{}", ee.as_dense()),
             "┌         ┐\n\

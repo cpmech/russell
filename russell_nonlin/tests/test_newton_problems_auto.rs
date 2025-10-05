@@ -15,14 +15,7 @@ fn test_newton_problems_ok_1_auto() {
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -58,14 +51,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -77,24 +63,14 @@ fn test_newton_problems_fail_oscillation_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_n_cont_reject_allowed(4);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -113,14 +89,7 @@ fn test_newton_problems_indeterminate_auto() {
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -143,14 +112,7 @@ fn test_newton_problems_ok_2_auto() {
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -176,24 +138,14 @@ fn test_simple_fixed_continued_divergence_auto() {
 
     // configuration
     let mut config = Config::new(Method::Natural);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_n_cont_reject_allowed(4);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -216,14 +168,7 @@ fn test_newton_problems_stepsize_becomes_small() {
 
     // solve problem
     let status = solver
-        .solve(
-            &mut args,
-            &mut state,
-            IniDir::Pos,
-            Stop::Steps(1),
-            AutoStep::Yes,
-            None,
-        )
+        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
         .unwrap();
     assert_eq!(status, Status::SmallStepsize);
 }

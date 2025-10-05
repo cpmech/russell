@@ -48,9 +48,6 @@ pub struct Config {
     /// Max number of steps
     pub(crate) n_step_max: usize,
 
-    /// Number of continued rejections allowed
-    pub(crate) n_cont_reject_allowed: usize,
-
     /// Number of continued (iteration) failures allowed
     pub(crate) n_cont_failure_allowed: usize,
 
@@ -196,7 +193,6 @@ impl Config {
             m_failure: 0.5,
             h_ini: 1e-4,
             n_step_max: 100_000,
-            n_cont_reject_allowed: 10,
             n_cont_failure_allowed: 5,
             allowed_continued_rejection: 3,
             // linear solver
@@ -295,12 +291,6 @@ impl Config {
     /// ```
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
-        self
-    }
-
-    /// Sets the number of continued rejections allowed
-    pub fn set_n_cont_reject_allowed(&mut self, value: usize) -> &mut Self {
-        self.n_cont_reject_allowed = value;
         self
     }
 

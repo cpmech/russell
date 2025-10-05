@@ -715,7 +715,7 @@ where
     ///
     /// # Arguments
     ///
-    /// * `bb` -- The Lagrangian block to be inserted.
+    /// * `bb` -- The Lagrangian block to be inserted. It must not be symmetric.
     ///
     /// # Requirements
     ///
@@ -723,18 +723,37 @@ where
     /// * `ncol(B) + nrow(B) ≤ nrow(A)`
     /// * `ncol(B) + nrow(B) ≤ ncol(A)`
     pub fn put_lagrangian(&mut self, bb: &NumCooMatrix<T>) -> Result<(), StrError> {
+        if bb.symmetric != Sym::No {
+            return Err("the Lagrangian block must not be symmetric");
+        }
         if bb.ncol + bb.nrow > self.nrow {
             return Err("ncol(B) + nrow(B) must be ≤ nrow(A)");
         }
         if bb.ncol + bb.nrow > self.ncol {
             return Err("ncol(B) + nrow(B) must be ≤ ncol(A)");
         }
-        for p in 0..bb.nnz {
-            let i = bb.indices_i[p] as usize;
-            let j = bb.indices_j[p] as usize;
-            let x = bb.values[p];
-            self.put(bb.ncol + i, j, x)?; // puts B
-            self.put(j, bb.ncol + i, x)?; // puts Bᵀ
+        if self.symmetric == Sym::YesLower {
+            for p in 0..bb.nnz {
+                let i = bb.indices_i[p] as usize;
+                let j = bb.indices_j[p] as usize;
+                let x = bb.values[p];
+                self.put(bb.ncol + i, j, x)?; // only needs to put B
+            }
+        } else if self.symmetric == Sym::YesUpper {
+            for p in 0..bb.nnz {
+                let i = bb.indices_i[p] as usize;
+                let j = bb.indices_j[p] as usize;
+                let x = bb.values[p];
+                self.put(j, bb.ncol + i, x)?; // only needs to put Bᵀ
+            }
+        } else {
+            for p in 0..bb.nnz {
+                let i = bb.indices_i[p] as usize;
+                let j = bb.indices_j[p] as usize;
+                let x = bb.values[p];
+                self.put(bb.ncol + i, j, x)?; // puts B
+                self.put(j, bb.ncol + i, x)?; // puts Bᵀ
+            }
         }
         Ok(())
     }
@@ -1165,6 +1184,13 @@ mod tests {
 
     #[test]
     fn put_lagrangian_capture_errors() {
+        let bb = NumCooMatrix::<f64>::new(1, 1, 6, Sym::YesFull).unwrap();
+        let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
+        assert_eq!(
+            aa.put_lagrangian(&bb).err(),
+            Some("the Lagrangian block must not be symmetric")
+        );
+
         let bb = NumCooMatrix::<f64>::new(2, 1, 6, Sym::No).unwrap();
 
         let mut aa = NumCooMatrix::<f64>::new(2, 3, 1, Sym::No).unwrap();
@@ -1243,6 +1269,190 @@ mod tests {
              │ 41011 42012 43013 44000 45000 46000 │\n\
              │ 51021 52022 53023 54000 55000 56000 │\n\
              │ 61000 62000 63000 64000 65000 66000 │\n\
+             └                                     ┘"
+        );
+    }
+
+    #[test]
+    fn put_lagrangian_sym_lower_works() {
+        // definitions
+        let na = 6; // square matrix
+        let (nrow_b, ncol_b) = (2, 3);
+        let nnz_k = na * (na + 1) / 2; // triangle including the diagonal
+        let nnz_b = nrow_b * ncol_b;
+        let nnz_a = nnz_k + 2 * nnz_b;
+        let mut aa = NumCooMatrix::<f64>::new(na, na, nnz_a, Sym::YesLower).unwrap();
+        let mut bb = NumCooMatrix::<f64>::new(nrow_b, ncol_b, nnz_b, Sym::No).unwrap();
+
+        // populate A
+        let mut count = 0;
+        for i in 0..na {
+            for j in 0..=i {
+                aa.put(i, j, (10_000 * (i + 1) + 1_000 * (j + 1)) as f64).unwrap();
+                count += 1;
+            }
+        }
+        assert_eq!(aa.nnz, count);
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 21000 31000 41000 51000 61000 │\n\
+             │ 21000 22000 32000 42000 52000 62000 │\n\
+             │ 31000 32000 33000 43000 53000 63000 │\n\
+             │ 41000 42000 43000 44000 54000 64000 │\n\
+             │ 51000 52000 53000 54000 55000 65000 │\n\
+             │ 61000 62000 63000 64000 65000 66000 │\n\
+             └                                     ┘"
+        );
+
+        // populate B
+        for i in 0..nrow_b {
+            for j in 0..ncol_b {
+                bb.put(i, j, (10 * (i + 1) + j + 1) as f64).unwrap();
+            }
+        }
+        assert_eq!(
+            format!("{}", bb.as_dense()),
+            "┌          ┐\n\
+             │ 11 12 13 │\n\
+             │ 21 22 23 │\n\
+             └          ┘"
+        );
+
+        // put B and Bᵀ into A
+        aa.put_lagrangian(&bb).unwrap();
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 21000 31000 41011 51021 61000 │\n\
+             │ 21000 22000 32000 42012 52022 62000 │\n\
+             │ 31000 32000 33000 43013 53023 63000 │\n\
+             │ 41011 42012 43013 44000 54000 64000 │\n\
+             │ 51021 52022 53023 54000 55000 65000 │\n\
+             │ 61000 62000 63000 64000 65000 66000 │\n\
+             └                                     ┘"
+        );
+    }
+
+    #[test]
+    fn put_lagrangian_sym_upper_works() {
+        // definitions
+        let na = 6; // square matrix
+        let (nrow_b, ncol_b) = (2, 3);
+        let nnz_k = na * (na + 1) / 2; // triangle including the diagonal
+        let nnz_b = nrow_b * ncol_b;
+        let nnz_a = nnz_k + 2 * nnz_b;
+        let mut aa = NumCooMatrix::<f64>::new(na, na, nnz_a, Sym::YesUpper).unwrap();
+        let mut bb = NumCooMatrix::<f64>::new(nrow_b, ncol_b, nnz_b, Sym::No).unwrap();
+
+        // populate A
+        let mut count = 0;
+        for i in 0..na {
+            for j in i..na {
+                aa.put(i, j, (10_000 * (i + 1) + 1_000 * (j + 1)) as f64).unwrap();
+                count += 1;
+            }
+        }
+        assert_eq!(aa.nnz, count);
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 12000 13000 14000 15000 16000 │\n\
+             │ 12000 22000 23000 24000 25000 26000 │\n\
+             │ 13000 23000 33000 34000 35000 36000 │\n\
+             │ 14000 24000 34000 44000 45000 46000 │\n\
+             │ 15000 25000 35000 45000 55000 56000 │\n\
+             │ 16000 26000 36000 46000 56000 66000 │\n\
+             └                                     ┘"
+        );
+
+        // populate B
+        for i in 0..nrow_b {
+            for j in 0..ncol_b {
+                bb.put(i, j, (10 * (i + 1) + j + 1) as f64).unwrap();
+            }
+        }
+        assert_eq!(
+            format!("{}", bb.as_dense()),
+            "┌          ┐\n\
+             │ 11 12 13 │\n\
+             │ 21 22 23 │\n\
+             └          ┘"
+        );
+
+        // put B and Bᵀ into A
+        aa.put_lagrangian(&bb).unwrap();
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 12000 13000 14011 15021 16000 │\n\
+             │ 12000 22000 23000 24012 25022 26000 │\n\
+             │ 13000 23000 33000 34013 35023 36000 │\n\
+             │ 14011 24012 34013 44000 45000 46000 │\n\
+             │ 15021 25022 35023 45000 55000 56000 │\n\
+             │ 16000 26000 36000 46000 56000 66000 │\n\
+             └                                     ┘"
+        );
+    }
+
+    #[test]
+    fn put_lagrangian_sym_full_works() {
+        // definitions
+        let na = 6; // square matrix
+        let (nrow_b, ncol_b) = (2, 3);
+        let nnz_k = na * na;
+        let nnz_b = nrow_b * ncol_b;
+        let nnz_a = nnz_k + 2 * nnz_b;
+        let mut aa = NumCooMatrix::<f64>::new(na, na, nnz_a, Sym::YesFull).unwrap();
+        let mut bb = NumCooMatrix::<f64>::new(nrow_b, ncol_b, nnz_b, Sym::No).unwrap();
+
+        // populate A
+        for i in 0..na {
+            for j in i..na {
+                let val = (10_000 * (i + 1) + 1_000 * (j + 1)) as f64;
+                aa.put(i, j, val).unwrap();
+                if i != j {
+                    aa.put(j, i, val).unwrap();
+                }
+            }
+        }
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 12000 13000 14000 15000 16000 │\n\
+             │ 12000 22000 23000 24000 25000 26000 │\n\
+             │ 13000 23000 33000 34000 35000 36000 │\n\
+             │ 14000 24000 34000 44000 45000 46000 │\n\
+             │ 15000 25000 35000 45000 55000 56000 │\n\
+             │ 16000 26000 36000 46000 56000 66000 │\n\
+             └                                     ┘"
+        );
+
+        // populate B
+        for i in 0..nrow_b {
+            for j in 0..ncol_b {
+                bb.put(i, j, (10 * (i + 1) + j + 1) as f64).unwrap();
+            }
+        }
+        assert_eq!(
+            format!("{}", bb.as_dense()),
+            "┌          ┐\n\
+             │ 11 12 13 │\n\
+             │ 21 22 23 │\n\
+             └          ┘"
+        );
+
+        // put B and Bᵀ into A
+        aa.put_lagrangian(&bb).unwrap();
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 12000 13000 14011 15021 16000 │\n\
+             │ 12000 22000 23000 24012 25022 26000 │\n\
+             │ 13000 23000 33000 34013 35023 36000 │\n\
+             │ 14011 24012 34013 44000 45000 46000 │\n\
+             │ 15021 25022 35023 45000 55000 56000 │\n\
+             │ 16000 26000 36000 46000 56000 66000 │\n\
              └                                     ┘"
         );
     }

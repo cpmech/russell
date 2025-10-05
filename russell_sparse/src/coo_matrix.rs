@@ -1191,6 +1191,7 @@ mod tests {
 
     #[test]
     fn put_lagrangian_works() {
+        // definitions
         let (nrow_a, ncol_a) = (6, 6);
         let (nrow_b, ncol_b) = (2, 3);
         let nnz_k = nrow_a * ncol_a;
@@ -1198,28 +1199,51 @@ mod tests {
         let nnz_a = nnz_k + 2 * nnz_b;
         let mut aa = NumCooMatrix::<f64>::new(nrow_a, ncol_a, nnz_a, Sym::No).unwrap();
         let mut bb = NumCooMatrix::<f64>::new(nrow_b, ncol_b, nnz_b, Sym::No).unwrap();
+
+        // populate A
         for i in 0..nrow_a {
             for j in 0..ncol_a {
-                aa.put(i, j, 1000.0).unwrap();
+                aa.put(i, j, (10_000 * (i + 1) + 1_000 * (j + 1)) as f64).unwrap();
             }
         }
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                                     ┐\n\
+             │ 11000 12000 13000 14000 15000 16000 │\n\
+             │ 21000 22000 23000 24000 25000 26000 │\n\
+             │ 31000 32000 33000 34000 35000 36000 │\n\
+             │ 41000 42000 43000 44000 45000 46000 │\n\
+             │ 51000 52000 53000 54000 55000 56000 │\n\
+             │ 61000 62000 63000 64000 65000 66000 │\n\
+             └                                     ┘"
+        );
+
+        // populate B
         for i in 0..nrow_b {
             for j in 0..ncol_b {
                 bb.put(i, j, (10 * (i + 1) + j + 1) as f64).unwrap();
             }
         }
+        assert_eq!(
+            format!("{}", bb.as_dense()),
+            "┌          ┐\n\
+             │ 11 12 13 │\n\
+             │ 21 22 23 │\n\
+             └          ┘"
+        );
+
+        // put B and Bᵀ into A
         aa.put_lagrangian(&bb).unwrap();
-        println!("{}", aa.as_dense());
         assert_eq!(
             format!("{}", aa.as_dense()),
-            "┌                               ┐\n\
-             │ 1000 1000 1000 1011 1021 1000 │\n\
-             │ 1000 1000 1000 1012 1022 1000 │\n\
-             │ 1000 1000 1000 1013 1023 1000 │\n\
-             │ 1011 1012 1013 1000 1000 1000 │\n\
-             │ 1021 1022 1023 1000 1000 1000 │\n\
-             │ 1000 1000 1000 1000 1000 1000 │\n\
-             └                               ┘"
+            "┌                                     ┐\n\
+             │ 11000 12000 13000 14011 15021 16000 │\n\
+             │ 21000 22000 23000 24012 25022 26000 │\n\
+             │ 31000 32000 33000 34013 35023 36000 │\n\
+             │ 41011 42012 43013 44000 45000 46000 │\n\
+             │ 51021 52022 53023 54000 55000 56000 │\n\
+             │ 61000 62000 63000 64000 65000 66000 │\n\
+             └                                     ┘"
         );
     }
 

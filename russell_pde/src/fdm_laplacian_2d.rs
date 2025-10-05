@@ -100,6 +100,9 @@ pub struct FdmLaplacian2d<'a> {
     ///
     /// Maps node ID to one of the four functions in `functions`
     essential: HashMap<usize, usize>,
+
+    /// Holds the sorted indices of the equations with essential boundary conditions
+    essential_sorted: Vec<usize>,
 }
 
 impl<'a> FdmLaplacian2d<'a> {
@@ -166,11 +169,12 @@ impl<'a> FdmLaplacian2d<'a> {
                 Arc::new(|_, _| 0.0), // ymax
             ],
             essential: HashMap::new(),
+            essential_sorted: Vec::new(),
         })
     }
 
-    /// Recomputes the prescribed flags array
-    fn compute_prescribed_array(&mut self) {
+    /// Recomputes the prescribed flags array and the essential_sorted array
+    fn recompute_arrays(&mut self) {
         let dim = self.nx * self.ny;
         for m in 0..dim {
             if self.essential.contains_key(&m) {
@@ -179,6 +183,8 @@ impl<'a> FdmLaplacian2d<'a> {
                 self.prescribed[m] = false;
             }
         }
+        self.essential_sorted = self.essential.keys().copied().collect();
+        self.essential_sorted.sort();
     }
 
     /// Sets periodic boundary condition
@@ -203,7 +209,7 @@ impl<'a> FdmLaplacian2d<'a> {
                 self.essential.remove(n);
             });
         }
-        self.compute_prescribed_array();
+        self.recompute_arrays();
     }
 
     /// Sets essential (Dirichlet) boundary condition
@@ -242,7 +248,7 @@ impl<'a> FdmLaplacian2d<'a> {
                 });
             }
         };
-        self.compute_prescribed_array();
+        self.recompute_arrays();
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
@@ -270,7 +276,38 @@ impl<'a> FdmLaplacian2d<'a> {
         self.nodes_ymax.iter().for_each(|n| {
             self.essential.insert(*n, 3);
         });
-        self.compute_prescribed_array();
+        self.recompute_arrays();
+    }
+
+    /// Generates the Lagrangian matrix
+    ///
+    /// Returns the Lagrangian matrix `E` for handling essential boundary conditions
+    /// with the Lagrange multipliers method (LMM).
+    ///
+    /// The LMM considers the augmented system of equations:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Eᵀ │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ E  0  │ │ w │   │ ū │
+    /// └       ┘ └   ┘   └   ┘
+    ///     A       x       b
+    /// ```
+    ///
+    /// where `E` is the Lagrangian matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
+    /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
+    pub fn lagrangian_matrix(&self) -> Result<CooMatrix, StrError> {
+        let np = self.essential.len(); // number of prescribed equations
+        let dim = self.nx * self.ny;
+        let nnz = np;
+        let mut ee = CooMatrix::new(np, dim, nnz, Sym::No).unwrap();
+        let mut ip = 0; // index of prescribed equation
+        self.loop_over_prescribed_values(|j, _val| {
+            ee.put(ip, j, 1.0).unwrap();
+            ip += 1;
+        });
+        Ok(ee)
     }
 
     /// Computes the (full) coefficient matrix
@@ -325,8 +362,7 @@ impl<'a> FdmLaplacian2d<'a> {
     /// │          │ │    │ = │             │
     /// │  0    1  │ │ u2 │   │     u2      │
     /// └          ┘ └    ┘   └             ┘
-    ///      A         u             f
-    /// or
+    ///       A         u            f
     /// ```
     ///
     /// This function also returns the correction matrix, which allows the computation
@@ -349,7 +385,7 @@ impl<'a> FdmLaplacian2d<'a> {
     ///
     /// Returns `(A, C)` where:
     ///
-    /// * `A` -- is the modified coefficient matrix (dim × dim) with ones placed on the diagonal entries
+    /// * `A` -- is the modified matrix (dim × dim) with ones placed on the diagonal entries
     ///  corresponding to the prescribed essential values. Also, the entries corresponding to the
     ///  essential values are zeroed.
     /// * `C` -- is the correction matrix (dim × dim) with only the 'unknown rows'
@@ -425,7 +461,8 @@ impl<'a> FdmLaplacian2d<'a> {
     where
         F: FnMut(usize, f64),
     {
-        self.essential.iter().for_each(|(m, index)| {
+        self.essential_sorted.iter().for_each(|m| {
+            let index = self.essential.get(m).unwrap();
             let i = m % self.nx;
             let j = m / self.nx;
             let x = self.xmin + (i as f64) * self.dx;
@@ -588,16 +625,19 @@ mod tests {
         let bot = |_, _| BOT;
         let top = |_, _| TOP;
         lap.set_essential_boundary_condition(Side::Xmin, lef); //  0*   4   8  12*
+        assert_eq!(lap.essential_sorted, vec![0, 4, 8, 12]);
         lap.set_essential_boundary_condition(Side::Xmax, rig); //  3*   7  11  15
+        assert_eq!(lap.essential_sorted, vec![0, 3, 4, 7, 8, 11, 12, 15]);
         lap.set_essential_boundary_condition(Side::Ymin, bot); //  0*   1   2   3
+        assert_eq!(lap.essential_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 15]);
         lap.set_essential_boundary_condition(Side::Ymax, top); // 12*  13  14  15*  (corner*)
+        assert_eq!(lap.essential_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15]);
         assert_eq!(lap.nodes_xmin, &[0, 4, 8, 12]);
         assert_eq!(lap.nodes_xmax, &[3, 7, 11, 15]);
         assert_eq!(lap.nodes_ymin, &[0, 1, 2, 3]);
         assert_eq!(lap.nodes_ymax, &[12, 13, 14, 15]);
         let mut res = Vec::new();
         lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
-        res.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         assert_eq!(
             res,
             &[
@@ -666,6 +706,25 @@ mod tests {
                 (14, 0.0),
                 (15, 0.0),
             ]
+        );
+    }
+
+    #[test]
+    fn lagrangian_matrix_works() {
+        let n = 4;
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, n, n).unwrap();
+        const LEF: f64 = 1.0;
+        let lef = |_, _| LEF;
+        lap.set_essential_boundary_condition(Side::Xmin, lef); //  0*   4   8  12*
+        let ee = lap.lagrangian_matrix().unwrap();
+        assert_eq!(
+            format!("{}", ee.as_dense()),
+            "┌                                 ┐\n\
+             │ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 │\n\
+             │ 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 │\n\
+             │ 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 │\n\
+             │ 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 │\n\
+             └                                 ┘"
         );
     }
 

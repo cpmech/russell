@@ -69,6 +69,9 @@ pub struct FdmLaplacian1d<'a> {
     ///
     /// Maps node ID to one of the four functions in `functions`
     essential: HashMap<usize, usize>,
+
+    /// Holds the sorted indices of the equations with essential boundary conditions
+    essential_sorted: Vec<usize>,
 }
 
 impl<'a> FdmLaplacian1d<'a> {
@@ -110,11 +113,12 @@ impl<'a> FdmLaplacian1d<'a> {
                 Arc::new(|_| 0.0), // xmax
             ],
             essential: HashMap::new(),
+            essential_sorted: Vec::new(),
         })
     }
 
-    /// Recomputes the prescribed flags array
-    fn compute_prescribed_array(&mut self) {
+    /// Recomputes the prescribed flags array and the essential_sorted array
+    fn recompute_arrays(&mut self) {
         for m in 0..self.nx {
             if self.essential.contains_key(&m) {
                 self.prescribed[m] = true;
@@ -122,6 +126,8 @@ impl<'a> FdmLaplacian1d<'a> {
                 self.prescribed[m] = false;
             }
         }
+        self.essential_sorted = self.essential.keys().copied().collect();
+        self.essential_sorted.sort();
     }
 
     /// Sets periodic boundary condition
@@ -131,7 +137,7 @@ impl<'a> FdmLaplacian1d<'a> {
         self.periodic_along_x = true;
         self.essential.remove(&self.node_xmin);
         self.essential.remove(&self.node_xmax);
-        self.compute_prescribed_array();
+        self.recompute_arrays();
     }
 
     /// Sets essential (Dirichlet) boundary condition (ebc)
@@ -154,7 +160,7 @@ impl<'a> FdmLaplacian1d<'a> {
             Side::Ymin => (),
             Side::Ymax => (),
         };
-        self.compute_prescribed_array();
+        self.recompute_arrays();
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
@@ -169,7 +175,38 @@ impl<'a> FdmLaplacian1d<'a> {
         ];
         self.essential.insert(self.node_xmin, 0);
         self.essential.insert(self.node_xmax, 0);
-        self.compute_prescribed_array();
+        self.recompute_arrays();
+    }
+
+    /// Generates the Lagrangian matrix
+    ///
+    /// Returns the Lagrangian matrix `E` for handling essential boundary conditions
+    /// with the Lagrange multipliers method (LMM).
+    ///
+    /// The LMM considers the augmented system of equations:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Eᵀ │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ E  0  │ │ w │   │ ū │
+    /// └       ┘ └   ┘   └   ┘
+    ///     A       x       b
+    /// ```
+    ///
+    /// where `E` is the Lagrangian matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
+    /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
+    pub fn lagrangian_matrix(&self) -> Result<CooMatrix, StrError> {
+        let np = self.essential.len(); // number of prescribed equations
+        let dim = self.nx;
+        let nnz = np;
+        let mut ee = CooMatrix::new(np, dim, nnz, Sym::No).unwrap();
+        let mut ip = 0; // index of prescribed equation
+        self.loop_over_prescribed_values(|j, _val| {
+            ee.put(ip, j, 1.0).unwrap();
+            ip += 1;
+        });
+        Ok(ee)
     }
 
     /// Computes the (full) coefficient matrix
@@ -323,7 +360,8 @@ impl<'a> FdmLaplacian1d<'a> {
     where
         F: FnMut(usize, f64),
     {
-        self.essential.iter().for_each(|(m, index)| {
+        self.essential_sorted.iter().for_each(|m| {
+            let index = self.essential.get(m).unwrap();
             let x = self.xmin + (*m as f64) * self.dx;
             let value = (self.functions[*index])(x);
             callback(*m, value);
@@ -456,12 +494,13 @@ mod tests {
         let lef = |_| LEF;
         let rig = |_| RIG;
         lap.set_essential_boundary_condition(Side::Xmin, lef);
+        assert_eq!(lap.essential_sorted, vec![0]);
         lap.set_essential_boundary_condition(Side::Xmax, rig);
+        assert_eq!(lap.essential_sorted, vec![0, 3]);
         assert_eq!(lap.node_xmin, 0);
         assert_eq!(lap.node_xmax, 3);
         let mut res = Vec::new();
         lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
-        res.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         assert_eq!(res, &[(0, LEF), (3, RIG)]);
         assert_eq!(lap.num_prescribed(), 2);
         assert_eq!(
@@ -485,6 +524,25 @@ mod tests {
         lap.loop_over_prescribed_values(|i, value| res.push((i, value)));
         res.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         assert_eq!(res, &[(0, 0.0), (3, 0.0),]);
+    }
+
+    #[test]
+    fn lagrangian_matrix_works() {
+        let mut lap = FdmLaplacian1d::new(1.0, 0.0, 3.0, 4, None).unwrap();
+        const LEF: f64 = 1.0;
+        const RIG: f64 = 2.0;
+        let lef = |_| LEF;
+        let rig = |_| RIG;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+        let ee = lap.lagrangian_matrix().unwrap();
+        assert_eq!(
+            format!("{}", ee.as_dense()),
+            "┌         ┐\n\
+             │ 1 0 0 0 │\n\
+             │ 0 0 0 1 │\n\
+             └         ┘"
+        );
     }
 
     #[test]

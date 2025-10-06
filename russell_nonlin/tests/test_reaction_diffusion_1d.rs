@@ -1,4 +1,4 @@
-use plotpy::{linspace, Curve, Plot};
+use plotpy::{linspace, Curve, Plot, SuperTitleParams};
 use russell_lab::{approx_eq, mat_approx_eq, num_jacobian, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
 use russell_pde::FdmLaplacian1d;
@@ -206,7 +206,8 @@ fn test_reaction_diffusion_1d() {
             "npt = {}  |  $λ_{{crit}}$ = {:.6}  |  $\\phi_{{crit}}(x=0.5)$ = {:.6}",
             NPT, lambda_history[index_crit], phi_mid_history[index_crit]
         );
-        // plot ϕ versus λ
+
+        // draw ϕ versus λ
         let phi_norm_history = out.get_norm_u_values();
         let mut curve_norm_phi = Curve::new();
         let mut curve_mid_phi = Curve::new();
@@ -216,23 +217,8 @@ fn test_reaction_diffusion_1d() {
         curve_mid_phi
             .set_marker_style(".")
             .draw(lambda_history, phi_mid_history);
-        let mut plot = Plot::new();
-        plot.set_super_title(&title, None)
-            .set_subplot(1, 2, 1)
-            .set_horiz_line(phi_norm_history[index_crit], "#689868ff", "-", 1.0)
-            .add(&curve_norm_phi)
-            .grid_and_labels("λ", &pretty_norm_phi(norm_type))
-            .set_subplot(1, 2, 2)
-            .set_horiz_line(phi_mid_history[index_crit], "#689868ff", "-", 1.0)
-            .add(&curve_mid_phi)
-            .grid_and_labels("λ", "$\\phi(x=0.5)$")
-            .set_figure_size_points(800.0, 300.0)
-            .save(&format!(
-                "/tmp/russell_nonlin/test_reaction_diffusion_1d_npt{}.svg",
-                NPT
-            ))
-            .unwrap();
-        // plot ϕ along x near λCrit and at the end
+
+        // draw ϕ along x near λCrit and at the end
         let mut curve_profile_crit_ana = Curve::new();
         let mut curve_profile_crit_num = Curve::new();
         let mut curve_profile_end = Curve::new();
@@ -259,18 +245,30 @@ fn test_reaction_diffusion_1d() {
             .set_marker_line_color("#d8211aff")
             .draw(&xx_num, &phi_crit_num);
         curve_profile_end.draw(&xx_num, &phi_crit_end);
+
+        // generate the plot
+        let mut params = SuperTitleParams::new();
+        params.set_y(0.93);
         let mut plot = Plot::new();
-        plot.set_super_title(&title, None)
-            .set_subplot(1, 2, 1)
+        plot.set_super_title(&title, Some(&params))
+            .set_subplot(2, 2, 1)
+            .set_horiz_line(phi_norm_history[index_crit], "#689868ff", "-", 1.0)
+            .add(&curve_norm_phi)
+            .grid_and_labels("λ", &pretty_norm_phi(norm_type))
+            .set_subplot(2, 2, 2)
+            .set_horiz_line(phi_mid_history[index_crit], "#689868ff", "-", 1.0)
+            .add(&curve_mid_phi)
+            .grid_and_labels("λ", "$\\phi(x=0.5)$")
+            .set_subplot(2, 2, 3)
             .add(&curve_profile_crit_ana)
             .add(&curve_profile_crit_num)
             .grid_labels_legend("x", "$\\phi_{crit}(x)$")
-            .set_subplot(1, 2, 2)
+            .set_subplot(2, 2, 4)
             .add(&curve_profile_end)
             .grid_and_labels("x", "$\\phi(x)$")
-            .set_figure_size_points(800.0, 300.0)
+            .set_figure_size_points(800.0, 600.0)
             .save(&format!(
-                "/tmp/russell_nonlin/test_reaction_diffusion_1d_profile_npt{}.svg",
+                "/tmp/russell_nonlin/test_reaction_diffusion_1d_npt{}.svg",
                 NPT
             ))
             .unwrap();

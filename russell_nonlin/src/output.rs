@@ -1,5 +1,5 @@
 use super::{State, Stats, StrError, Workspace};
-use russell_lab::{vec_norm, Norm, Vector};
+use russell_lab::{vec_norm_chunk, Norm, Vector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -20,8 +20,10 @@ pub struct Output<'a, A> {
     /// Enables the recording of results (u, l, s, h, duds, dlds)
     recording: bool,
 
-    /// Enables the recording of the Euclidean norm of u, ‖u‖₂
-    record_norm_u: bool,
+    /// Enables the recording of the norm of u
+    ///
+    /// Holds `(norm_type, start, stop)`
+    record_norm_u: Option<(Norm, usize, usize)>,
 
     /// Holds a callback function called on an accepted step
     ///
@@ -80,7 +82,7 @@ impl<'a, A> Output<'a, A> {
     pub fn new() -> Self {
         Output {
             recording: false,
-            record_norm_u: false,
+            record_norm_u: None,
             callback: None,
             file_key: None,
             file_count: 0,
@@ -136,10 +138,20 @@ impl<'a, A> Output<'a, A> {
         self
     }
 
-    /// Enables the recording of the Euclidean norm of u , ‖u‖₂
-    pub fn set_record_norm_u(&mut self, recording: bool) -> &mut Self {
+    /// Enables the recording of the norm of u
+    ///
+    /// Uses the following slice of u to compute the norm:
+    ///
+    /// ```text
+    /// let slice = &u[start..stop];
+    /// ```
+    ///
+    /// Note that `stop` is exclusive, i.e., the slice goes up to `stop - 1`.
+    ///
+    /// Requirements: `start` must be < `stop` and `stop` must be ≤ `u.dim()`.
+    pub fn set_record_norm_u(&mut self, recording: bool, norm_type: Norm, start: usize, stop: usize) -> &mut Self {
         self.recording = recording;
-        self.record_norm_u = recording;
+        self.record_norm_u = Some((norm_type, start, stop));
         self
     }
 
@@ -196,8 +208,8 @@ impl<'a, A> Output<'a, A> {
 
         // record results
         if self.recording {
-            if self.record_norm_u {
-                let norm = vec_norm(&state.u, Norm::Euc);
+            if let Some((norm_type, start, stop)) = self.record_norm_u {
+                let norm = vec_norm_chunk(&state.u, norm_type, start, stop);
                 self.norm_u.push(norm);
             }
             for (m, um) in self.u.iter_mut() {

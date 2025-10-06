@@ -12,7 +12,7 @@ pub enum Norm {
     /// **vector**
     ///
     /// ```text
-    /// ‖u‖_2 = sqrt(Σ_i |uᵢ|⋅|uᵢ|)
+    /// ‖u‖₂ = sqrt(Σ_i |uᵢ|⋅|uᵢ|)
     /// ```
     Euc = NORM_EUC,
 
@@ -21,7 +21,7 @@ pub enum Norm {
     /// **matrix**
     ///
     /// ```text
-    /// ‖a‖_F = sqrt(Σ_i Σ_j |aᵢⱼ|⋅|aᵢⱼ|) == ‖a‖_2
+    /// ‖a‖F = sqrt(Σ_i Σ_j |aᵢⱼ|⋅|aᵢⱼ|) == ‖a‖₂
     /// ```
     ///
     /// **vector**
@@ -34,7 +34,7 @@ pub enum Norm {
     /// **matrix**
     ///
     /// ```text
-    /// ‖a‖_∞ = max_i ( Σ_j |aᵢⱼ| )
+    /// ‖a‖∞ = max_i ( Σ_j |aᵢⱼ| )
     /// ```
     ///
     /// **vector**
@@ -47,13 +47,13 @@ pub enum Norm {
     /// **matrix**
     ///
     /// ```text
-    /// ‖a‖_max = max_ij ( |aᵢⱼ| )
+    /// ‖a‖ₘₐₓ = max_ij ( |aᵢⱼ| )
     /// ```
     ///
     /// **vector**
     ///
     /// ```text
-    /// ‖u‖_max = max_i ( |uᵢ| ) == ‖u‖_∞
+    /// ‖u‖ₘₐₓ = max_i ( |uᵢ| ) == ‖u‖_∞
     /// ```
     Max = NORM_MAX,
 
@@ -62,15 +62,28 @@ pub enum Norm {
     /// **matrix**
     ///
     /// ```text
-    /// ‖a‖_1 = max_j ( Σ_i |aᵢⱼ| )
+    /// ‖a‖₁ = max_j ( Σ_i |aᵢⱼ| )
     /// ```
     ///
     /// **vector** (taxicab or sum of abs values)
     ///
     /// ```text
-    /// ‖u‖_1 := sum_i |uᵢ|
+    /// ‖u‖₁ := sum_i |uᵢ|
     /// ```
     One = NORM_ONE,
+}
+
+impl Norm {
+    /// Returns a pretty string representation of the norm
+    pub fn pretty(&self) -> &'static str {
+        match self {
+            Norm::Euc => "‖u‖₂",
+            Norm::Fro => "‖a‖F",
+            Norm::Inf => "‖a‖∞",
+            Norm::Max => "‖a‖ₘₐₓ",
+            Norm::One => "‖u‖₁",
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,5 +100,14 @@ mod tests {
         assert_eq!(format!("{:?}", norm), "Inf");
         assert_eq!(copy, Norm::Inf);
         assert_eq!(clone, Norm::Inf);
+    }
+
+    #[test]
+    fn pretty_works() {
+        assert_eq!(Norm::Euc.pretty(), "‖u‖₂");
+        assert_eq!(Norm::Fro.pretty(), "‖a‖F");
+        assert_eq!(Norm::Inf.pretty(), "‖a‖∞");
+        assert_eq!(Norm::Max.pretty(), "‖a‖ₘₐₓ");
+        assert_eq!(Norm::One.pretty(), "‖u‖₁");
     }
 }

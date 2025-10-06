@@ -44,7 +44,10 @@ impl<'a, A> SolverNatural<'a, A> {
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
 
         // check convergence on G
-        work.err.analyze_residual(work.n_iteration, &work.gg, 0.0)?;
+        let nan_or_inf = work.err.analyze_residual(work.n_iteration, &work.gg, 0.0);
+        if nan_or_inf {
+            return Ok(Status::NanOrInfResidual);
+        }
         if work.err.converged() {
             work.log.iteration(work.n_iteration, &work.err);
             return Ok(Status::Success);
@@ -96,7 +99,10 @@ impl<'a, A> SolverNatural<'a, A> {
         work.stats.stop_sw_lin_sol();
 
         // check convergence on δu
-        work.err.analyze_delta(work.n_iteration, &work.mdu)?;
+        let nan_or_inf = work.err.analyze_delta(work.n_iteration, &work.mdu);
+        if nan_or_inf {
+            return Ok(Status::NanOrInfDelta);
+        }
         work.log.iteration(work.n_iteration, &work.err);
         if work.err.converged() {
             return Ok(Status::Success);

@@ -348,19 +348,39 @@ pub enum Status {
     LargeAlpha,
 
     /// Failure: The curvature angle became extremely large
+    ///
+    /// (must stop)
     ExtremelyLargeAlpha,
 
     /// Failure: The stepsize became too small.
+    ///
+    /// (must stop)
     SmallStepsize,
 
     /// The secondary update requested termination
+    ///
+    /// (must stop)
     SecondaryUpdateTerminate,
 
     /// Failure: Detected continued failure, after multiple tries
+    ///
+    /// (must stop)
     ContinuedFailure,
 
     /// Failure: Detected continued rejection over multiple tries
+    ///
+    /// (must stop)
     ContinuedRejection,
+
+    /// Failure: Found NaN or Inf in the residual vector during iteration
+    ///
+    /// (must stop)
+    NanOrInfResidual,
+
+    /// Failure: Found NaN or Inf in the correction vector during iteration
+    ///
+    /// (must stop)
+    NanOrInfDelta,
 
     /// No failure has occurred
     Success,
@@ -394,6 +414,8 @@ impl Status {
             Status::SecondaryUpdateTerminate => false,
             Status::ContinuedFailure => false,
             Status::ContinuedRejection => false,
+            Status::NanOrInfResidual => false,
+            Status::NanOrInfDelta => false,
             // irrelevant
             Status::Success => false,
         }

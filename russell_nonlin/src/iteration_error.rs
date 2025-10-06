@@ -1,5 +1,4 @@
 use super::{Config, State, Status};
-use crate::StrError;
 use russell_lab::{vec_norm, Norm, Vector};
 
 /// Calculates the iteration error
@@ -110,13 +109,15 @@ impl IterationError {
     }
 
     /// Analyzes convergence on max(‖G‖∞,|N|)
-    pub fn analyze_residual(&mut self, iteration: usize, gg: &Vector, nn: f64) -> Result<(), StrError> {
+    ///
+    /// Returns true if NaN or Inf is found, false otherwise (success)
+    pub fn analyze_residual(&mut self, iteration: usize, gg: &Vector, nn: f64) -> bool {
         // compute max norm
         self.residual_max = f64::max(vec_norm(gg, Norm::Max), f64::abs(nn));
 
         // check for NaN or Inf
         if !self.residual_max.is_finite() {
-            return Err("Found NaN or Inf in ‖(G,N)‖∞");
+            return true;
         }
 
         // check convergence
@@ -131,19 +132,23 @@ impl IterationError {
 
         // for subsequent iterations
         self.residual_max_prev = self.residual_max;
-        Ok(())
+
+        // success, no NaN or Inf found
+        false
     }
 
     /// Analyzes convergence on RMS(‖δu‖∞,|δλ|)
     ///
     /// `x` may be simply `δu` or the augmented vector `(δu, δλ)`
-    pub fn analyze_delta(&mut self, iteration: usize, x: &Vector) -> Result<(), StrError> {
+    ///
+    /// Returns true if NaN or Inf is found, false otherwise (success)
+    pub fn analyze_delta(&mut self, iteration: usize, x: &Vector) -> bool {
         // compute max norm
         self.delta_max = vec_norm(x, Norm::Max);
 
         // check for NaN or Inf
         if !self.delta_max.is_finite() {
-            return Err("Found NaN or Inf in ‖(δu,δλ)‖∞");
+            return true;
         }
 
         // compute RMS(δu,δλ)
@@ -171,7 +176,9 @@ impl IterationError {
 
         // for subsequent iterations
         self.delta_max_prev = self.delta_max;
-        Ok(())
+
+        // success, no NaN or Inf found
+        false
     }
 
     /// Captures eventual failures

@@ -432,7 +432,10 @@ impl<'a, A> SolverArclength<'a, A> {
         let nn = self.theta * du_part + (2.0 - self.theta) * (work.l - state.l) * work.dlds - sigma;
 
         // check convergence on (G, N)
-        work.err.analyze_residual(work.n_iteration, &work.gg, nn)?;
+        let nan_or_inf = work.err.analyze_residual(work.n_iteration, &work.gg, nn);
+        if nan_or_inf {
+            return Ok(Status::NanOrInfResidual);
+        }
         if work.err.converged() {
             work.log.iteration(work.n_iteration, &work.err);
             return Ok(Status::Success);
@@ -502,7 +505,10 @@ impl<'a, A> SolverArclength<'a, A> {
         }
 
         // check convergence on x = (δu, δλ)
-        work.err.analyze_delta(work.n_iteration, &self.x)?;
+        let nan_or_inf = work.err.analyze_delta(work.n_iteration, &self.x);
+        if nan_or_inf {
+            return Ok(Status::NanOrInfDelta);
+        }
         work.log.iteration(work.n_iteration, &work.err);
         if work.err.converged() {
             return Ok(Status::Success);

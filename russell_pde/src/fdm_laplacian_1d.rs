@@ -453,8 +453,8 @@ impl<'a> FdmLaplacian1d<'a> {
     ///
     /// # Input
     ///
-    /// * `callback` -- a function of `(m, x, y)` where `m` is the sequential point number,
-    ///   and `(x, y)` are the Cartesian coordinates of the grid point.
+    /// * `callback` -- a function of `(m, x)` where `m` is the sequential point number,
+    ///   and `x` is the Cartesian coordinates of the grid point.
     ///
     /// Note that:
     ///

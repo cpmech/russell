@@ -300,6 +300,7 @@ impl<'a, A> SolverArclength<'a, A> {
     ) -> Result<(), StrError> {
         assert!(!self.config.bordering);
         // assemble Gu matrix into A
+        // IMPORTANT: note that we are passing A down to the calc_ggu callback function
         let ndim = self.system.ndim;
         work.stats.sw_jacobian.reset();
         self.aa.reset();

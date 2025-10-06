@@ -118,7 +118,20 @@ impl<'a, A> System<'a, A> {
 
     /// Sets a function to calculate the `Gu = dG/du` matrix
     ///
-    /// Use `|ggu, λ, u, args|` or `|ggu: &mut CooMatrix, l: f64, u: &Vector, args: &mut A|`
+    /// Use `|ggu_or_aa, λ, u, args|` or `|ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, args: &mut A|`
+    ///
+    /// **Important:** If `bordering = true`, then `ggu_or_aa` is called with the actual `Gu` matrix.
+    /// Otherwise, the function may be called with either the `Gu` matrix or the `A` matrix, so we can
+    /// build the system shown below:
+    ///
+    /// ```text
+    /// ┌           ┐ ┌    ┐   ┌    ┐
+    /// │ Gu    Gλ  │ │ δu │   │ -G │
+    /// │           │ │    │ = │    │
+    /// │ Nu₀ᵀ  Nλ₀ │ │ δλ │   │ -N │
+    /// └           ┘ └    ┘   └    ┘
+    ///       A         x         b
+    /// ```
     ///
     /// # Input
     ///

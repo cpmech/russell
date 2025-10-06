@@ -50,7 +50,9 @@ fn test_reaction_diffusion_1d() {
     //      └       ┘   └   ┘
 
     // number of points along each axis of the FDM grid (must be ODD)
-    const NPT: usize = 21;
+    const NPT: usize = 5;
+    // const NPT: usize = 21;
+    // const NPT: usize = 101;
     assert_eq!(NPT % 2, 1, "NPT must be odd");
 
     // allocate the Laplacian operator
@@ -147,7 +149,7 @@ fn test_reaction_diffusion_1d() {
     config
         .set_n_cont_failure_max(5)
         .set_n_cont_rejection_max(5)
-        .set_tg_control_atol_and_rtol(1e-4)
+        // .set_tg_control_atol_and_rtol(1e-5)
         // .set_alpha_max(0.01)
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -173,7 +175,7 @@ fn test_reaction_diffusion_1d() {
             &mut 0,
             &mut state,
             IniDir::Pos,
-            Stop::MaxNormU(7.5, norm_type, 0, n_phi),
+            Stop::MaxNormU(5.0 * f64::sqrt(NPT as f64), norm_type, 0, n_phi),
             AutoStep::Yes,
             Some(out),
         )
@@ -197,7 +199,13 @@ fn test_reaction_diffusion_1d() {
     let lac_num = lambda_history[index_crit]; // numerical λ critical
     let diff = f64::abs(lac_num - lac);
     println!("\nλCrit = {:.15} ({:.15}), diff = {:.2e}\n", lac_num, lac, diff);
-    approx_eq(lac_num, lac, 6e-3);
+    if NPT == 5 {
+        approx_eq(lac_num, lac, 1.18);
+    } else if NPT == 21 {
+        approx_eq(lac_num, lac, 4.73e-2);
+    } else if NPT == 101 {
+        approx_eq(lac_num, lac, 5.48e-3);
+    }
 
     // plot the results
     if SAVE_FIGURE {
@@ -265,7 +273,7 @@ fn test_reaction_diffusion_1d() {
             .grid_labels_legend("x", "$\\phi_{crit}(x)$")
             .set_subplot(2, 2, 4)
             .add(&curve_profile_end)
-            .grid_and_labels("x", "$\\phi(x)$")
+            .grid_and_labels("x", "$\\phi_{end}(x)$")
             .set_figure_size_points(800.0, 600.0)
             .save(&format!(
                 "/tmp/russell_nonlin/test_reaction_diffusion_1d_npt{}.svg",

@@ -73,19 +73,6 @@ pub enum Norm {
     One = NORM_ONE,
 }
 
-impl Norm {
-    /// Returns a pretty string representation of the norm
-    pub fn pretty(&self) -> &'static str {
-        match self {
-            Norm::Euc => "‖u‖₂",
-            Norm::Fro => "‖a‖F",
-            Norm::Inf => "‖a‖∞",
-            Norm::Max => "‖a‖ₘₐₓ",
-            Norm::One => "‖u‖₁",
-        }
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -100,14 +87,5 @@ mod tests {
         assert_eq!(format!("{:?}", norm), "Inf");
         assert_eq!(copy, Norm::Inf);
         assert_eq!(clone, Norm::Inf);
-    }
-
-    #[test]
-    fn pretty_works() {
-        assert_eq!(Norm::Euc.pretty(), "‖u‖₂");
-        assert_eq!(Norm::Fro.pretty(), "‖a‖F");
-        assert_eq!(Norm::Inf.pretty(), "‖a‖∞");
-        assert_eq!(Norm::Max.pretty(), "‖a‖ₘₐₓ");
-        assert_eq!(Norm::One.pretty(), "‖u‖₁");
     }
 }

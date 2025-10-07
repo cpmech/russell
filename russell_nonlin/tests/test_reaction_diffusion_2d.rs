@@ -248,11 +248,12 @@ fn test_reaction_diffusion_2d() {
         (3, (1.47, 1.49)), // npt => (tol_lam_crit_a, tol_lam_crit_b)
         (5, (0.27, 0.43)),
         (21, (0.011, 0.0073)),
-        (101, (0.0004, 0.052)),
+        (101, (0.00044, 0.052)),
     ]);
     if ALPHA == 0.0 {
         println!("λCrit = {} ({})", lam_crit_a, ref_alp0.0);
         println!("‖ϕCrit‖∞ = {} ({})\n", nrm_crit_a, ref_alp0.1);
+        approx_eq(lam_crit_a, ref_alp0.0, tolerances[&NPT].0);
     } else if ALPHA == 0.2 {
         println!("First λCrit = {} ({})", lam_crit_a, ref_alp0d2_a.0);
         println!("First ‖ϕCrit‖∞ = {} ({})", nrm_crit_a, ref_alp0d2_a.1);
@@ -269,6 +270,7 @@ fn test_reaction_diffusion_2d() {
 
         // annotations
         let mut annotations = Text::new();
+        let dy = if ALPHA == 0.0 { 0.5 } else { 2.0 };
         annotations
             .set_bbox(true)
             .set_bbox_facecolor("white")
@@ -277,7 +279,7 @@ fn test_reaction_diffusion_2d() {
             .set_rotation(90.0)
             .draw(
                 lam_crit_a,
-                nrm_crit_a + 2.0,
+                nrm_crit_a + dy,
                 &format!("← ({:.8}, {:.8})", lam_crit_a, nrm_crit_a),
             );
 

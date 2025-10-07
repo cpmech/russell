@@ -195,7 +195,7 @@ fn test_reaction_diffusion_2d() {
 
     // reference λ critical
     let lac_ref = 6.808124; // Bolstad and Keller
-                            // let norm_inf_u_crit_ref = 1.39166; // Bolstad and Keller
+    let nrm_ref = 1.39166; // Bolstad and Keller
 
     // analyze the results
     let phi_mid_history = out.get_u_values(m_middle);
@@ -207,8 +207,11 @@ fn test_reaction_diffusion_2d() {
         .map(|(index, _)| index)
         .unwrap();
     let lac_num = lambda_history[index_crit]; // numerical λ critical
-    let diff = f64::abs(lac_num - lac_ref);
-    println!("\nλCrit = {:.15} ({}), diff = {}\n", lac_num, lac_ref, diff);
+    let nrm_num = out.get_norm_u_values()[index_crit]; // numerical ‖ϕ‖∞ at λ critical
+    let diff_l = f64::abs(lac_num - lac_ref);
+    let diff_nrm = f64::abs(nrm_num - nrm_ref);
+    println!("\nλCrit = {:.15} ({}), diff = {}", lac_num, lac_ref, diff_l);
+    println!("‖ϕCrit‖∞ = {:.15} ({}), diff = {}\n", nrm_num, nrm_ref, diff_nrm);
     if NPT == 3 {
         approx_eq(lac_num, lac_ref, 0.923);
     } else if NPT == 5 {

@@ -49,7 +49,7 @@ fn test_reaction_diffusion_1d() {
     //      │ ∂S/∂λ │   │ 0 │
     //      └       ┘   └   ┘
 
-    // number of points along each axis of the FDM grid (must be ODD)
+    // number of points along the x-axis of the FDM grid (must be ODD)
     const NPT: usize = 5;
     // const NPT: usize = 21;
     // const NPT: usize = 101;

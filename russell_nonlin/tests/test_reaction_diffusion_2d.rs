@@ -50,10 +50,12 @@ fn test_reaction_diffusion_2d() {
     //      │ ∂S/∂λ │   │ 0 │
     //      └       ┘   └   ┘
     //
-    // Reference:
+    // References:
     //
-    // * Bank RE, Chan TF (1986) PLTMGC: A multi-grid continuation program for parametrized nonlinear elliptic systems.
-    //   SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. https://doi.org/10.1137/0907036
+    // 1. Bank RE, Chan TF (1986) PLTMGC: A multi-grid continuation program for parametrized nonlinear elliptic systems.
+    //    SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. https://doi.org/10.1137/0907036
+    // 2. Bolstad JH, Keller HB (1986) A multigrid continuation method for elliptic problems with folds.
+    //    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. https://doi.org/10.1137/0907074
 
     // number of points along each axis of the FDM grid (must be ODD)
     const NPT: usize = 3;
@@ -171,9 +173,9 @@ fn test_reaction_diffusion_2d() {
 
     // output
     let out = &mut Output::new();
-    let norm_type = Norm::Euc;
+    let norm_type_out = Norm::Inf;
     out.set_recording(true, &[m_middle], &[])
-        .set_record_norm_u(true, norm_type, 0, n_phi);
+        .set_record_norm_u(true, norm_type_out, 0, n_phi);
 
     // initial state (all zero)
     let mut state = State::new(ndim);
@@ -184,7 +186,7 @@ fn test_reaction_diffusion_2d() {
             &mut 0,
             &mut state,
             IniDir::Pos,
-            Stop::MaxNormU(2.0 * (NPT as f64), norm_type, 0, n_phi),
+            Stop::MaxNormU(2.0 * (NPT as f64), Norm::Euc, 0, n_phi),
             AutoStep::Yes,
             Some(out),
         )
@@ -192,7 +194,8 @@ fn test_reaction_diffusion_2d() {
     println!("Status: {:?}", status);
 
     // reference λ critical
-    let lac_ref = 6.8; // Bank and Chan
+    let lac_ref = 6.808124; // Bolstad and Keller
+                            // let norm_inf_u_crit_ref = 1.39166; // Bolstad and Keller
 
     // analyze the results
     let phi_mid_history = out.get_u_values(m_middle);
@@ -207,20 +210,20 @@ fn test_reaction_diffusion_2d() {
     let diff = f64::abs(lac_num - lac_ref);
     println!("\nλCrit = {:.15} ({}), diff = {}\n", lac_num, lac_ref, diff);
     if NPT == 3 {
-        approx_eq(lac_num, lac_ref, 1.0);
+        approx_eq(lac_num, lac_ref, 0.923);
     } else if NPT == 5 {
-        approx_eq(lac_num, lac_ref, 0.11);
+        approx_eq(lac_num, lac_ref, 0.118);
     } else if NPT == 21 {
-        approx_eq(lac_num, lac_ref, 0.041);
+        approx_eq(lac_num, lac_ref, 0.00411);
     } else if NPT == 101 {
-        approx_eq(lac_num, lac_ref, 0.008);
+        approx_eq(lac_num, lac_ref, 0.000432);
     }
 
     // plot the results
     if SAVE_FIGURE {
         // define the title
         let title = format!(
-            "npt = {}  |  $λ_{{crit}}$ = {:.6}  |  $\\phi_{{crit}}(x=0.5)$ = {:.6}",
+            "npt = {}  |  $λ_{{crit}}$ = {:.6}  |  $\\phi_{{crit}}(x=0.5,y=0.5)$ = {:.6}",
             NPT, lambda_history[index_crit], phi_mid_history[index_crit]
         );
 
@@ -242,7 +245,7 @@ fn test_reaction_diffusion_2d() {
             .set_subplot(1, 2, 1)
             .set_horiz_line(phi_norm_history[index_crit], "#689868ff", "-", 1.0)
             .add(&curve_norm_phi)
-            .grid_and_labels("λ", &pretty_norm_phi(norm_type))
+            .grid_and_labels("λ", &pretty_norm_phi(norm_type_out))
             .set_subplot(1, 2, 2)
             .set_horiz_line(phi_mid_history[index_crit], "#689868ff", "-", 1.0)
             .add(&curve_mid_phi)

@@ -161,10 +161,10 @@ fn test_reaction_diffusion_1d() {
 
     // output
     let out = &mut Output::new();
-    let norm_type = Norm::Euc;
+    let norm_type_out = Norm::Inf;
     let all_indices: Vec<usize> = (0..NPT).collect();
     out.set_recording(true, &all_indices, &[])
-        .set_record_norm_u(true, norm_type, 0, n_phi);
+        .set_record_norm_u(true, norm_type_out, 0, n_phi);
 
     // initial state (all zero)
     let mut state = State::new(ndim);
@@ -175,7 +175,7 @@ fn test_reaction_diffusion_1d() {
             &mut 0,
             &mut state,
             IniDir::Pos,
-            Stop::MaxNormU(5.0 * f64::sqrt(NPT as f64), norm_type, 0, n_phi),
+            Stop::MaxNormU(5.0 * f64::sqrt(NPT as f64), Norm::Euc, 0, n_phi),
             AutoStep::Yes,
             Some(out),
         )
@@ -262,7 +262,7 @@ fn test_reaction_diffusion_1d() {
             .set_subplot(2, 2, 1)
             .set_horiz_line(phi_norm_history[index_crit], "#689868ff", "-", 1.0)
             .add(&curve_norm_phi)
-            .grid_and_labels("λ", &pretty_norm_phi(norm_type))
+            .grid_and_labels("λ", &pretty_norm_phi(norm_type_out))
             .set_subplot(2, 2, 2)
             .set_horiz_line(phi_mid_history[index_crit], "#689868ff", "-", 1.0)
             .add(&curve_mid_phi)

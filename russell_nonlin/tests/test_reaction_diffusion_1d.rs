@@ -19,7 +19,7 @@ fn test_reaction_diffusion_1d() {
     //
     // Below, ϕ is a vector, i.e., ϕ = [ϕ₀, ϕ₁, ϕ₂, ..., ϕₙ₋₁]ᵀ, where n is the number of grid points.
     // The prescribed values are collected in the vector c = [c₀, cₙ₋₁]ᵀ. The Laplacian operator is
-    // represented by the matrix K, thus Kϕ is the discretization of the Laplacian operator applied to ϕ(x,y).
+    // represented by the matrix K, thus Kϕ is the discretization of the Laplacian operator applied to ϕ(x).
     //
     // The boundary conditions are enforced via Lagrange multipliers ψ = [ψ₀, ψ₁]ᵀ. The prescribed
     // values are both zero (homogeneous boundary conditions), thus c = [0, 0]ᵀ. The constraints matrix

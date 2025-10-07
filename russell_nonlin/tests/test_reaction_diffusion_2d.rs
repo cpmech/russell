@@ -1,8 +1,9 @@
-use plotpy::{Curve, Plot, SuperTitleParams};
+use plotpy::{Curve, Plot, Text};
 use russell_lab::{approx_eq, mat_approx_eq, num_jacobian, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
 use russell_pde::FdmLaplacian2d;
 use russell_sparse::{CooMatrix, Sym};
+use std::collections::HashMap;
 
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
@@ -32,9 +33,9 @@ fn test_reaction_diffusion_2d() {
     // R(u, λ) = K ϕ + λ b + Eᵀψ = 0
     // S(u, λ) = E ϕ - c = 0
     //
-    // With bₘ = exp(ϕₘ), the derivatives are:
+    // With bₘ = exp(ϕₘ/(1 + α ϕₘ)), the derivatives are:
     //
-    //                  ⎧ bₘ  if m = n
+    //                  ⎧ bₘ/(1 + α ϕₘ)²  if m = n
     // Bₘₙ := ∂bₘ/∂ϕₙ = ⎨
     //                  ⎩ 0   otherwise
     //
@@ -56,6 +57,10 @@ fn test_reaction_diffusion_2d() {
     //    SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. https://doi.org/10.1137/0907036
     // 2. Bolstad JH, Keller HB (1986) A multigrid continuation method for elliptic problems with folds.
     //    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. https://doi.org/10.1137/0907074
+
+    // alpha parameter in bₘ = exp(ϕₘ/(1 + α ϕₘ))
+    const ALPHA: f64 = 0.2;
+    assert!(ALPHA == 0.0 || ALPHA == 0.2, "ALPHA must be either 0.0 or 0.2");
 
     // number of points along each axis of the FDM grid (must be ODD)
     const NPT: usize = 3;
@@ -103,7 +108,8 @@ fn test_reaction_diffusion_2d() {
         aa.mat_vec_mul(gg, 1.0, u).unwrap();
         // update R += λ b
         for m in 0..n_phi {
-            let bm = f64::exp(u[m]);
+            let dm = 1.0 + ALPHA * u[m];
+            let bm = f64::exp(u[m] / dm);
             gg[m] += l * bm;
         }
         // update S -= c (not needed since c = 0)
@@ -117,8 +123,9 @@ fn test_reaction_diffusion_2d() {
         ggu_or_aa.add(1.0, &aa).unwrap();
         // add λ B to the K term
         for m in 0..n_phi {
-            let bm = f64::exp(u[m]);
-            ggu_or_aa.put(m, m, l * bm).unwrap();
+            let dm = 1.0 + ALPHA * u[m];
+            let bm = f64::exp(u[m] / dm);
+            ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
         }
         // check Jacobian for smaller grids
         if CHECK_JACOBIAN && NPT <= 21 {
@@ -136,7 +143,8 @@ fn test_reaction_diffusion_2d() {
     // function to calculate Gl = ∂G/∂λ
     let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
         for m in 0..n_phi {
-            let bm = f64::exp(u[m]);
+            let dm = 1.0 + ALPHA * u[m];
+            let bm = f64::exp(u[m] / dm);
             ggl[m] = bm;
         }
         Ok(())
@@ -174,89 +182,132 @@ fn test_reaction_diffusion_2d() {
     // output
     let out = &mut Output::new();
     let norm_type_out = Norm::Inf;
-    out.set_recording(true, &[m_middle], &[])
-        .set_record_norm_u(true, norm_type_out, 0, n_phi);
+    out.set_record_norm_u(true, norm_type_out, 0, n_phi);
 
     // initial state (all zero)
     let mut state = State::new(ndim);
 
     // numerical continuation
+    let npt_f64 = NPT as f64;
+    let max_norm = if ALPHA == 0.0 { 2.0 * npt_f64 } else { 15.0 * npt_f64 };
     let status = solver
         .solve(
             &mut 0,
             &mut state,
             IniDir::Pos,
-            Stop::MaxNormU(2.0 * (NPT as f64), Norm::Euc, 0, n_phi),
+            Stop::MaxNormU(max_norm, Norm::Euc, 0, n_phi),
             AutoStep::Yes,
             Some(out),
         )
         .unwrap();
     println!("Status: {:?}", status);
 
-    // reference λ critical
-    let lac_ref = 6.808124; // Bolstad and Keller
-    let nrm_ref = 1.39166; // Bolstad and Keller
+    // reference λCrit and ‖ϕCrit‖∞ values (Bolstad and Keller, 6 order scheme, very fine mesh)
+    let ref_alp0 = (6.80812442259, 1.3916612); // α = 0: first critical point
+    let ref_alp0d2_a = (9.13638296666, 2.8858004); // α = 0.2: first critical point
+    let ref_alp0d2_b = (7.10189894953, 18.192768); // α = 0.2: second critical point
 
-    // analyze the results
-    let phi_mid_history = out.get_u_values(m_middle);
-    let lambda_history = out.get_l_values();
-    let index_crit = lambda_history
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-        .map(|(index, _)| index)
-        .unwrap();
-    let lac_num = lambda_history[index_crit]; // numerical λ critical
-    let nrm_num = out.get_norm_u_values()[index_crit]; // numerical ‖ϕ‖∞ at λ critical
-    let diff_l = f64::abs(lac_num - lac_ref);
-    let diff_nrm = f64::abs(nrm_num - nrm_ref);
-    println!("\nλCrit = {:.15} ({}), diff = {}", lac_num, lac_ref, diff_l);
-    println!("‖ϕCrit‖∞ = {:.15} ({}), diff = {}\n", nrm_num, nrm_ref, diff_nrm);
-    if NPT == 3 {
-        approx_eq(lac_num, lac_ref, 0.923);
-    } else if NPT == 5 {
-        approx_eq(lac_num, lac_ref, 0.118);
-    } else if NPT == 21 {
-        approx_eq(lac_num, lac_ref, 0.00411);
-    } else if NPT == 101 {
-        approx_eq(lac_num, lac_ref, 0.000432);
+    // numerical results
+    let lam_vals = out.get_l_values();
+    let nrm_vals = out.get_norm_u_values();
+    let mut lam_crit_a = f64::NEG_INFINITY; // first λCrit (largest before turning point)
+    let mut nrm_crit_a = 0.0; // ‖ϕ‖∞ @ first λCrit
+    let mut lam_crit_b = f64::INFINITY; // second λCrit (smallest after turning point)
+    let mut nrm_crit_b = 0.0; // ‖ϕ‖∞ @ second λCrit
+    let mut found_first = false;
+    for i in 0..lam_vals.len() {
+        let lam = lam_vals[i];
+        if ALPHA == 0.0 {
+            if lam > lam_crit_a {
+                lam_crit_a = lam;
+                nrm_crit_a = nrm_vals[i];
+            }
+        } else if ALPHA == 0.2 {
+            if found_first {
+                if lam < lam_crit_b {
+                    // now we are searching for the smallest value
+                    lam_crit_b = lam;
+                    nrm_crit_b = nrm_vals[i];
+                }
+            } else {
+                if lam > lam_crit_a {
+                    lam_crit_a = lam;
+                    nrm_crit_a = nrm_vals[i];
+                }
+                if i > 0 {
+                    if lam < lam_vals[i - 1] {
+                        // it start to decrease; i.e., passed the first critical point
+                        found_first = true;
+                    }
+                }
+            }
+        }
+    }
+    println!("\nNumerical results:");
+    let tolerances = HashMap::from([
+        (3, (1.47, 1.49)), // npt => (tol_lam_crit_a, tol_lam_crit_b)
+        (5, (0.27, 0.43)),
+        (21, (0.011, 0.0073)),
+        (101, (0.0004, 0.052)),
+    ]);
+    if ALPHA == 0.0 {
+        println!("λCrit = {} ({})", lam_crit_a, ref_alp0.0);
+        println!("‖ϕCrit‖∞ = {} ({})\n", nrm_crit_a, ref_alp0.1);
+    } else if ALPHA == 0.2 {
+        println!("First λCrit = {} ({})", lam_crit_a, ref_alp0d2_a.0);
+        println!("First ‖ϕCrit‖∞ = {} ({})", nrm_crit_a, ref_alp0d2_a.1);
+        println!("Second λCrit = {} ({})", lam_crit_b, ref_alp0d2_b.0);
+        println!("Second ‖ϕCrit‖∞ = {} ({})\n", nrm_crit_b, ref_alp0d2_b.1);
+        approx_eq(lam_crit_a, ref_alp0d2_a.0, tolerances[&NPT].0);
+        approx_eq(lam_crit_b, ref_alp0d2_b.0, tolerances[&NPT].1);
     }
 
     // plot the results
     if SAVE_FIGURE {
         // define the title
-        let title = format!(
-            "npt = {}  |  $λ_{{crit}}$ = {:.6}  |  $\\phi_{{crit}}(x=0.5,y=0.5)$ = {:.6}",
-            NPT, lambda_history[index_crit], phi_mid_history[index_crit]
-        );
+        let title = format!("$\\alpha = {}$  |  npt = {}", ALPHA, NPT,);
+
+        // annotations
+        let mut annotations = Text::new();
+        annotations
+            .set_bbox(true)
+            .set_bbox_facecolor("white")
+            .set_bbox_edgecolor("None")
+            .set_bbox_style("round,pad=0.3")
+            .set_rotation(90.0)
+            .draw(
+                lam_crit_a,
+                nrm_crit_a + 2.0,
+                &format!("← ({:.8}, {:.8})", lam_crit_a, nrm_crit_a),
+            );
 
         // draw ϕ versus λ
-        let phi_norm_history = out.get_norm_u_values();
         let mut curve_norm_phi = Curve::new();
-        let mut curve_mid_phi = Curve::new();
-        curve_norm_phi
-            .set_marker_style(".")
-            .draw(lambda_history, phi_norm_history);
-        curve_mid_phi
-            .set_marker_style(".")
-            .draw(lambda_history, phi_mid_history);
+        curve_norm_phi.set_marker_style(".").draw(lam_vals, nrm_vals);
 
         // generate the plot
-        let params = SuperTitleParams::new();
         let mut plot = Plot::new();
-        plot.set_super_title(&title, Some(&params))
-            .set_subplot(1, 2, 1)
-            .set_horiz_line(phi_norm_history[index_crit], "#689868ff", "-", 1.0)
+        plot.set_horiz_line(nrm_crit_a, "#689868ff", "-", 1.0);
+        if ALPHA == 0.2 {
+            plot.set_horiz_line(nrm_crit_b, "#689868ff", "-", 1.0);
+            annotations
+                .set_align_horizontal("right")
+                .set_align_vertical("center")
+                .set_rotation(0.0)
+                .draw(
+                    lam_crit_b - 0.3,
+                    nrm_crit_b,
+                    &format!("({:.8}, {:.8}) →", lam_crit_b, nrm_crit_b),
+                );
+        }
+        plot.set_title(&title)
             .add(&curve_norm_phi)
+            .add(&annotations)
             .grid_and_labels("λ", &pretty_norm_phi(norm_type_out))
-            .set_subplot(1, 2, 2)
-            .set_horiz_line(phi_mid_history[index_crit], "#689868ff", "-", 1.0)
-            .add(&curve_mid_phi)
-            .grid_and_labels("λ", "$\\phi(x=0.5)$")
-            .set_figure_size_points(800.0, 300.0)
+            .set_figure_size_points(400.0, 300.0)
             .save(&format!(
-                "/tmp/russell_nonlin/test_reaction_diffusion_2d_npt{}.svg",
-                NPT
+                "/tmp/russell_nonlin/test_reaction_diffusion_2d_alpha{}_npt{}.svg",
+                ALPHA, NPT
             ))
             .unwrap();
     }

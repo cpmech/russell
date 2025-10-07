@@ -8,8 +8,7 @@ use std::collections::HashMap;
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
-#[test]
-fn test_reaction_diffusion_2d() {
+fn run_test(alpha: f64, npt: usize) {
     // The nonlinear problem originates from the FDM discretization of the following equation:
     //
     // ∂²ϕ   ∂²ϕ
@@ -58,25 +57,20 @@ fn test_reaction_diffusion_2d() {
     // 2. Bolstad JH, Keller HB (1986) A multigrid continuation method for elliptic problems with folds.
     //    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. https://doi.org/10.1137/0907074
 
-    // alpha parameter in bₘ = exp(ϕₘ/(1 + α ϕₘ))
-    const ALPHA: f64 = 0.2;
-    assert!(ALPHA == 0.0 || ALPHA == 0.2, "ALPHA must be either 0.0 or 0.2");
+    // check: alpha parameter in bₘ = exp(ϕₘ/(1 + α ϕₘ))
+    assert!(alpha == 0.0 || alpha == 0.2, "alpha must be either 0.0 or 0.2");
 
-    // number of points along each axis of the FDM grid (must be ODD)
-    const NPT: usize = 3;
-    // const NPT: usize = 5;
-    // const NPT: usize = 21;
-    // const NPT: usize = 101;
-    assert_eq!(NPT % 2, 1, "NPT must be odd");
+    // check: number of points along each axis of the FDM grid (must be ODD)
+    assert_eq!(npt % 2, 1, "npt must be odd");
 
     // allocate the Laplacian operator
-    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, NPT, NPT).unwrap();
+    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
     fdm.set_homogeneous_boundary_conditions();
 
     // check if there is a middle point
-    let i_middle = NPT / 2;
-    let j_middle = NPT / 2;
-    let m_middle = i_middle + j_middle * NPT;
+    let i_middle = npt / 2;
+    let j_middle = npt / 2;
+    let m_middle = i_middle + j_middle * npt;
     fdm.loop_over_grid_points(|m, x, y| {
         if m == m_middle {
             assert_eq!(x, 0.5, "the middle point must be at x = 0.5");
@@ -108,7 +102,7 @@ fn test_reaction_diffusion_2d() {
         aa.mat_vec_mul(gg, 1.0, u).unwrap();
         // update R += λ b
         for m in 0..n_phi {
-            let dm = 1.0 + ALPHA * u[m];
+            let dm = 1.0 + alpha * u[m];
             let bm = f64::exp(u[m] / dm);
             gg[m] += l * bm;
         }
@@ -123,15 +117,15 @@ fn test_reaction_diffusion_2d() {
         ggu_or_aa.add(1.0, &aa).unwrap();
         // add λ B to the K term
         for m in 0..n_phi {
-            let dm = 1.0 + ALPHA * u[m];
+            let dm = 1.0 + alpha * u[m];
             let bm = f64::exp(u[m] / dm);
             ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
         }
         // check Jacobian for smaller grids
-        if CHECK_JACOBIAN && NPT <= 21 {
+        if CHECK_JACOBIAN && npt <= 21 {
             let ana = ggu_or_aa.as_dense();
             let num = num_jacobian(ndim, l, u, 1.0, &mut 0, calc_gg).unwrap();
-            if NPT <= 3 {
+            if npt <= 3 {
                 println!("ana =\n{:.3}", ana);
                 println!("num =\n{:.3}", num);
             }
@@ -143,7 +137,7 @@ fn test_reaction_diffusion_2d() {
     // function to calculate Gl = ∂G/∂λ
     let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
         for m in 0..n_phi {
-            let dm = 1.0 + ALPHA * u[m];
+            let dm = 1.0 + alpha * u[m];
             let bm = f64::exp(u[m] / dm);
             ggl[m] = bm;
         }
@@ -171,7 +165,7 @@ fn test_reaction_diffusion_2d() {
         .set_n_cont_rejection_max(5)
         .set_tg_control_atol_and_rtol(1e-4)
         // .set_alpha_max(0.01)
-        .set_verbose(true, true, true)
+        .set_verbose(false, true, true)
         .set_hide_timings(true)
         .set_debug_predictor(true)
         .set_bordering(CHECK_JACOBIAN);
@@ -188,8 +182,8 @@ fn test_reaction_diffusion_2d() {
     let mut state = State::new(ndim);
 
     // numerical continuation
-    let npt_f64 = NPT as f64;
-    let max_norm = if ALPHA == 0.0 { 2.0 * npt_f64 } else { 15.0 * npt_f64 };
+    let npt_f64 = npt as f64;
+    let max_norm = if alpha == 0.0 { 2.0 * npt_f64 } else { 15.0 * npt_f64 };
     let status = solver
         .solve(
             &mut 0,
@@ -217,12 +211,12 @@ fn test_reaction_diffusion_2d() {
     let mut found_first = false;
     for i in 0..lam_vals.len() {
         let lam = lam_vals[i];
-        if ALPHA == 0.0 {
+        if alpha == 0.0 {
             if lam > lam_crit_a {
                 lam_crit_a = lam;
                 nrm_crit_a = nrm_vals[i];
             }
-        } else if ALPHA == 0.2 {
+        } else if alpha == 0.2 {
             if found_first {
                 if lam < lam_crit_b {
                     // now we are searching for the smallest value
@@ -243,34 +237,46 @@ fn test_reaction_diffusion_2d() {
             }
         }
     }
-    println!("\nNumerical results:");
+    println!("\nNumerical results for α = {} and npt = {}:", alpha, npt);
     let tolerances = HashMap::from([
         (3, (1.47, 1.49)), // npt => (tol_lam_crit_a, tol_lam_crit_b)
         (5, (0.27, 0.43)),
         (21, (0.011, 0.0073)),
         (101, (0.00044, 0.052)),
     ]);
-    if ALPHA == 0.0 {
-        println!("λCrit = {} ({})", lam_crit_a, ref_alp0.0);
+    if alpha == 0.0 {
+        let err_lam_crit_a = f64::abs(lam_crit_a - ref_alp0.0);
+        println!("λCrit = {} ({}), err = {}", lam_crit_a, ref_alp0.0, err_lam_crit_a);
         println!("‖ϕCrit‖∞ = {} ({})\n", nrm_crit_a, ref_alp0.1);
-        approx_eq(lam_crit_a, ref_alp0.0, tolerances[&NPT].0);
-    } else if ALPHA == 0.2 {
-        println!("First λCrit = {} ({})", lam_crit_a, ref_alp0d2_a.0);
+        approx_eq(lam_crit_a, ref_alp0.0, tolerances[&npt].0);
+    } else if alpha == 0.2 {
+        let err_lam_crit_a = f64::abs(lam_crit_a - ref_alp0d2_a.0);
+        let err_lam_crit_b = f64::abs(lam_crit_b - ref_alp0d2_b.0);
+        println!(
+            "First λCrit = {} ({}). diff = {}",
+            lam_crit_a, ref_alp0d2_a.0, err_lam_crit_a
+        );
         println!("First ‖ϕCrit‖∞ = {} ({})", nrm_crit_a, ref_alp0d2_a.1);
-        println!("Second λCrit = {} ({})", lam_crit_b, ref_alp0d2_b.0);
+        println!(
+            "Second λCrit = {} ({}). diff = {}",
+            lam_crit_b, ref_alp0d2_b.0, err_lam_crit_b
+        );
         println!("Second ‖ϕCrit‖∞ = {} ({})\n", nrm_crit_b, ref_alp0d2_b.1);
-        approx_eq(lam_crit_a, ref_alp0d2_a.0, tolerances[&NPT].0);
-        approx_eq(lam_crit_b, ref_alp0d2_b.0, tolerances[&NPT].1);
+        approx_eq(lam_crit_a, ref_alp0d2_a.0, tolerances[&npt].0);
+        approx_eq(lam_crit_b, ref_alp0d2_b.0, tolerances[&npt].1);
     }
 
     // plot the results
     if SAVE_FIGURE {
         // define the title
-        let title = format!("$\\alpha = {}$  |  npt = {}", ALPHA, NPT,);
+        let title = format!(
+            "$\\alpha = {}$  |  npt = {}  |  $\\lambda_{{crit}} = {:.8}$",
+            alpha, npt, lam_crit_a
+        );
 
         // annotations
         let mut annotations = Text::new();
-        let dy = if ALPHA == 0.0 { 0.5 } else { 2.0 };
+        let dy = if alpha == 0.0 { 0.5 } else { 2.0 };
         annotations
             .set_bbox(true)
             .set_bbox_facecolor("white")
@@ -290,7 +296,7 @@ fn test_reaction_diffusion_2d() {
         // generate the plot
         let mut plot = Plot::new();
         plot.set_horiz_line(nrm_crit_a, "#689868ff", "-", 1.0);
-        if ALPHA == 0.2 {
+        if alpha == 0.2 {
             plot.set_horiz_line(nrm_crit_b, "#689868ff", "-", 1.0);
             annotations
                 .set_align_horizontal("right")
@@ -309,7 +315,7 @@ fn test_reaction_diffusion_2d() {
             .set_figure_size_points(400.0, 300.0)
             .save(&format!(
                 "/tmp/russell_nonlin/test_reaction_diffusion_2d_alpha{}_npt{}.svg",
-                ALPHA, NPT
+                alpha, npt
             ))
             .unwrap();
     }
@@ -322,5 +328,14 @@ fn pretty_norm_phi(norm_type: Norm) -> String {
         Norm::Inf => "‖ϕ‖∞".to_string(),
         Norm::Max => "‖ϕ‖max".to_string(),
         Norm::One => "‖ϕ‖₁".to_string(),
+    }
+}
+
+#[test]
+fn test_reaction_diffusion_2d() {
+    for alpha in [0.0, 0.2] {
+        for npt in [5, 21] {
+            run_test(alpha, npt);
+        }
     }
 }

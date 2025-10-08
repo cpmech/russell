@@ -103,6 +103,9 @@ pub struct FdmLaplacian2d<'a> {
 
     /// Holds the sorted indices of the equations with essential boundary conditions
     essential_sorted: Vec<usize>,
+
+    /// Holds the sorted indices of the equations without essential boundary conditions
+    unknown_sorted: Vec<usize>,
 }
 
 impl<'a> FdmLaplacian2d<'a> {
@@ -170,21 +173,24 @@ impl<'a> FdmLaplacian2d<'a> {
             ],
             essential: HashMap::new(),
             essential_sorted: Vec::new(),
+            unknown_sorted: (0..dim).collect(), // Initialize with all node indices
         })
     }
 
     /// Recomputes the prescribed flags array and the essential_sorted array
     fn recompute_arrays(&mut self) {
+        self.unknown_sorted.clear();
         let dim = self.nx * self.ny;
         for m in 0..dim {
             if self.essential.contains_key(&m) {
                 self.prescribed[m] = true;
             } else {
                 self.prescribed[m] = false;
+                self.unknown_sorted.push(m); // already in sorted order due to loop order
             }
         }
         self.essential_sorted = self.essential.keys().copied().collect();
-        self.essential_sorted.sort();
+        self.essential_sorted.sort(); // need this since HashMap keys are unordered
     }
 
     /// Sets periodic boundary condition
@@ -613,6 +619,29 @@ impl<'a> FdmLaplacian2d<'a> {
     pub fn prescribed_flags(&self) -> &Vec<bool> {
         &self.prescribed
     }
+
+    /// Returns the prescribed value for the given node
+    pub fn get_prescribed_value(&self, m: usize) -> Result<f64, StrError> {
+        if let Some(index) = self.essential.get(&m) {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            let x = self.xmin + (i as f64) * self.dx;
+            let y = self.ymin + (j as f64) * self.dy;
+            Ok((self.functions[*index])(x, y))
+        } else {
+            Err("no prescribed value for the given index")
+        }
+    }
+
+    /// Returns the (sorted) indices of the nodes with unknown values
+    pub fn get_nodes_unknown(&self) -> &Vec<usize> {
+        &self.unknown_sorted
+    }
+
+    /// Returns the (sorted) indices of the nodes with prescribed values
+    pub fn get_nodes_prescribed(&self) -> &Vec<usize> {
+        &self.essential_sorted
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -872,7 +901,7 @@ mod tests {
     fn mod_coefficient_matrix_with_essential_prescribed_works() {
         // The full matrix is:
         // ┌                                                 ┐
-        // │ -4  2  .  .  2  .  .  .  .  .  .  .  .  .  .  . │  0 prescribed
+        // │ -4  2  .  2  .  .  .  .  .  .  .  .  .  .  .  . │  0 prescribed
         // │  1 -4  1  .  .  2  .  .  .  .  .  .  .  .  .  . │  1 prescribed
         // │  .  1 -4  1  .  .  2  .  .  .  .  .  .  .  .  . │  2 prescribed
         // │  .  .  2 -4  .  .  .  2  .  .  .  .  .  .  .  . │  3 prescribed
@@ -994,6 +1023,570 @@ mod tests {
              │  0  0 │\n\
              │  3  3 │\n\
              └       ┘"
+        );
+    }
+
+    #[test]
+    fn get_prescribed_value_works() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Set different boundary conditions for each side
+        const LEF: f64 = 10.0;
+        const RIG: f64 = 20.0;
+        const BOT: f64 = 30.0;
+        const TOP: f64 = 40.0;
+
+        let lef = |_x, y| LEF + y; // 10 + y
+        let rig = |_x, y| RIG + y; // 20 + y
+        let bot = |x, _y| BOT + x; // 30 + x
+        let top = |x, _y| TOP + x; // 40 + x
+
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+        lap.set_essential_boundary_condition(Side::Ymin, bot);
+        lap.set_essential_boundary_condition(Side::Ymax, top);
+
+        // Test prescribed values on different boundaries
+        // Grid layout for 4x4:
+        //  12  13  14  15  (y=3)
+        //   8   9  10  11  (y=2)
+        //   4   5   6   7  (y=1)
+        //   0   1   2   3  (y=0)
+        // (x=0)(x=1)(x=2)(x=3)
+
+        // Bottom boundary (y=0): should use bot function (30 + x)
+        assert_eq!(lap.get_prescribed_value(0).unwrap(), 30.0); // x=0, y=0 -> 30 + 0 = 30
+        assert_eq!(lap.get_prescribed_value(1).unwrap(), 31.0); // x=1, y=0 -> 30 + 1 = 31
+        assert_eq!(lap.get_prescribed_value(2).unwrap(), 32.0); // x=2, y=0 -> 30 + 2 = 32
+        assert_eq!(lap.get_prescribed_value(3).unwrap(), 33.0); // x=3, y=0 -> 30 + 3 = 33
+
+        // Top boundary (y=3): should use top function (40 + x)
+        assert_eq!(lap.get_prescribed_value(12).unwrap(), 40.0); // x=0, y=3 -> 40 + 0 = 40
+        assert_eq!(lap.get_prescribed_value(13).unwrap(), 41.0); // x=1, y=3 -> 40 + 1 = 41
+        assert_eq!(lap.get_prescribed_value(14).unwrap(), 42.0); // x=2, y=3 -> 40 + 2 = 42
+        assert_eq!(lap.get_prescribed_value(15).unwrap(), 43.0); // x=3, y=3 -> 40 + 3 = 43
+
+        // Left boundary (x=0): should use lef function (10 + y)
+        assert_eq!(lap.get_prescribed_value(4).unwrap(), 11.0); // x=0, y=1 -> 10 + 1 = 11
+        assert_eq!(lap.get_prescribed_value(8).unwrap(), 12.0); // x=0, y=2 -> 10 + 2 = 12
+
+        // Right boundary (x=3): should use rig function (20 + y)
+        assert_eq!(lap.get_prescribed_value(7).unwrap(), 21.0); // x=3, y=1 -> 20 + 1 = 21
+        assert_eq!(lap.get_prescribed_value(11).unwrap(), 22.0); // x=3, y=2 -> 20 + 2 = 22
+    }
+
+    #[test]
+    fn get_prescribed_value_fails_for_unprescribed_node() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Only set boundary condition on one side
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+
+        // Try to get prescribed value for a node that doesn't have one
+        assert_eq!(
+            lap.get_prescribed_value(5).err(), // node 5 is interior
+            Some("no prescribed value for the given index")
+        );
+
+        assert_eq!(
+            lap.get_prescribed_value(9).err(), // node 9 is interior
+            Some("no prescribed value for the given index")
+        );
+    }
+
+    #[test]
+    fn get_prescribed_value_with_homogeneous_bcs() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        lap.set_homogeneous_boundary_conditions();
+
+        // All boundary nodes should have prescribed value of 0.0
+        let boundary_nodes = vec![0, 1, 2, 3, 5, 6, 7, 8]; // all except node 4 (center)
+
+        for &node in &boundary_nodes {
+            assert_eq!(lap.get_prescribed_value(node).unwrap(), 0.0);
+        }
+
+        // Interior node should not have a prescribed value
+        assert_eq!(
+            lap.get_prescribed_value(4).err(),
+            Some("no prescribed value for the given index")
+        );
+    }
+
+    #[test]
+    fn get_prescribed_value_with_coordinate_dependent_function() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+
+        // Set a function that depends on both x and y coordinates
+        let func = |x, y| x * x + y * y; // x² + y²
+        lap.set_essential_boundary_condition(Side::Xmin, func);
+
+        // Grid coordinates for nx=3, ny=3:
+        // (0,2) -> node 6  (1,2) -> node 7  (2,2) -> node 8
+        // (0,1) -> node 3  (1,1) -> node 4  (2,1) -> node 5
+        // (0,0) -> node 0  (1,0) -> node 1  (2,0) -> node 2
+
+        // Left boundary nodes (x=0): should use func(0, y) = 0² + y² = y²
+        assert_eq!(lap.get_prescribed_value(0).unwrap(), 0.0); // x=0, y=0 -> 0² + 0² = 0
+        assert_eq!(lap.get_prescribed_value(3).unwrap(), 1.0); // x=0, y=1 -> 0² + 1² = 1
+        assert_eq!(lap.get_prescribed_value(6).unwrap(), 4.0); // x=0, y=2 -> 0² + 2² = 4
+    }
+
+    #[test]
+    fn get_nodes_unknown_works() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Initially, no boundary conditions set, so all nodes are unknown
+        let all_nodes: Vec<usize> = (0..16).collect();
+        assert_eq!(lap.get_nodes_unknown(), &all_nodes);
+
+        // Set boundary condition on left side (nodes 0, 4, 8, 12)
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+
+        // Unknown nodes should be all except left boundary
+        let expected_unknown = vec![1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+
+        // Set boundary condition on right side (nodes 3, 7, 11, 15)
+        let rig = |_x, _y| 20.0;
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+
+        // Unknown nodes should exclude both left and right boundaries
+        let expected_unknown = vec![1, 2, 5, 6, 9, 10, 13, 14];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+    }
+
+    #[test]
+    fn get_nodes_unknown_with_homogeneous_bcs() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        lap.set_homogeneous_boundary_conditions();
+
+        // Grid layout for 3x3:
+        //  6  7  8
+        //  3  4  5
+        //  0  1  2
+
+        // Only interior nodes should be unknown (node 4 in this case)
+        let expected_unknown = vec![4];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+    }
+
+    #[test]
+    fn get_nodes_unknown_with_all_boundaries_prescribed() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Set all boundary conditions
+        let lef = |_x, _y| 10.0;
+        let rig = |_x, _y| 20.0;
+        let bot = |_x, _y| 30.0;
+        let top = |_x, _y| 40.0;
+
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+        lap.set_essential_boundary_condition(Side::Ymin, bot);
+        lap.set_essential_boundary_condition(Side::Ymax, top);
+
+        // Grid layout for 4x4:
+        //  12* 13* 14* 15*  (y=3) - top boundary
+        //   8*  9  10  11*  (y=2)
+        //   4*  5   6   7*  (y=1)
+        //   0*  1*  2*  3*  (y=0) - bottom boundary
+        // (x=0)(x=1)(x=2)(x=3)
+
+        // Only interior nodes should be unknown (nodes 5, 6, 9, 10)
+        let expected_unknown = vec![5, 6, 9, 10];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+    }
+
+    #[test]
+    fn get_nodes_unknown_with_partial_boundaries() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Set only bottom and top boundaries
+        let bot = |_x, _y| 30.0;
+        let top = |_x, _y| 40.0;
+
+        lap.set_essential_boundary_condition(Side::Ymin, bot);
+        lap.set_essential_boundary_condition(Side::Ymax, top);
+
+        // Unknown nodes should exclude bottom (0,1,2,3) and top (12,13,14,15) boundaries
+        let expected_unknown = vec![4, 5, 6, 7, 8, 9, 10, 11];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+    }
+
+    #[test]
+    fn get_nodes_unknown_with_periodic_boundaries() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+
+        // First set some boundary conditions
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+
+        // Verify that some nodes are prescribed
+        let expected_unknown = vec![1, 2, 4, 5, 7, 8];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+
+        // Set periodic boundary conditions along x
+        lap.set_periodic_boundary_condition(true, false);
+
+        // Grid layout for 3x3:
+        //  6  7  8
+        //  3  4  5
+        //  0  1  2
+
+        // With periodic BC along x, all nodes should be unknown since
+        // periodic BC removes essential BC on left/right sides
+        let expected_unknown = vec![0, 1, 2, 3, 4, 5, 6, 7, 8];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+    }
+
+    #[test]
+    fn get_nodes_unknown_returns_sorted_indices() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Test 1: Initially all nodes are unknown and should be sorted
+        let unknown_initial = lap.get_nodes_unknown();
+        let mut sorted_initial = unknown_initial.clone();
+        sorted_initial.sort();
+        assert_eq!(unknown_initial, &sorted_initial);
+        assert_eq!(
+            unknown_initial,
+            &vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        );
+
+        // Test 2: After setting some boundary conditions
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef); // prescribes nodes 0, 4, 8, 12
+
+        let unknown_after_bc = lap.get_nodes_unknown();
+        let mut sorted_after_bc = unknown_after_bc.clone();
+        sorted_after_bc.sort();
+        assert_eq!(unknown_after_bc, &sorted_after_bc);
+
+        // Verify that the unknown nodes are indeed sorted
+        for i in 1..unknown_after_bc.len() {
+            assert!(
+                unknown_after_bc[i] > unknown_after_bc[i - 1],
+                "Indices should be sorted in ascending order"
+            );
+        }
+
+        // Test 3: After setting more boundary conditions
+        let rig = |_x, _y| 20.0;
+        lap.set_essential_boundary_condition(Side::Xmax, rig); // prescribes nodes 3, 7, 11, 15
+
+        let unknown_final = lap.get_nodes_unknown();
+        let mut sorted_final = unknown_final.clone();
+        sorted_final.sort();
+        assert_eq!(unknown_final, &sorted_final);
+
+        // Expected: [1, 2, 5, 6, 9, 10, 13, 14] - should already be sorted
+        assert_eq!(unknown_final, &vec![1, 2, 5, 6, 9, 10, 13, 14]);
+
+        // Verify sorting
+        for i in 1..unknown_final.len() {
+            assert!(
+                unknown_final[i] > unknown_final[i - 1],
+                "Final indices should be sorted in ascending order"
+            );
+        }
+    }
+
+    #[test]
+    fn get_nodes_unknown_empty_when_all_prescribed() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 2, 2).unwrap();
+
+        // For a 2x2 grid, all 4 nodes are on the boundary
+        // Grid layout for 2x2:
+        //  2  3
+        //  0  1
+
+        lap.set_homogeneous_boundary_conditions();
+
+        // All nodes are on boundary, so no unknown nodes
+        let expected_unknown: Vec<usize> = vec![];
+        assert_eq!(lap.get_nodes_unknown(), &expected_unknown);
+        assert!(lap.get_nodes_unknown().is_empty());
+    }
+
+    #[test]
+    fn get_nodes_prescribed_works() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Initially, no boundary conditions set, so no nodes are prescribed
+        let empty_nodes: Vec<usize> = vec![];
+        assert_eq!(lap.get_nodes_prescribed(), &empty_nodes);
+
+        // Set boundary condition on left side (nodes 0, 4, 8, 12)
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+
+        // Prescribed nodes should only include left boundary
+        let expected_prescribed = vec![0, 4, 8, 12];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+
+        // Set boundary condition on right side (nodes 3, 7, 11, 15)
+        let rig = |_x, _y| 20.0;
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+
+        // Prescribed nodes should include both left and right boundaries
+        let expected_prescribed = vec![0, 3, 4, 7, 8, 11, 12, 15];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+    }
+
+    #[test]
+    fn get_nodes_prescribed_with_homogeneous_bcs() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        lap.set_homogeneous_boundary_conditions();
+
+        // Grid layout for 3x3:
+        //  6  7  8
+        //  3  4  5
+        //  0  1  2
+
+        // All boundary nodes should be prescribed (all except node 4)
+        let expected_prescribed = vec![0, 1, 2, 3, 5, 6, 7, 8];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+    }
+
+    #[test]
+    fn get_nodes_prescribed_with_all_boundaries_prescribed() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Set all boundary conditions
+        let lef = |_x, _y| 10.0;
+        let rig = |_x, _y| 20.0;
+        let bot = |_x, _y| 30.0;
+        let top = |_x, _y| 40.0;
+
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+        lap.set_essential_boundary_condition(Side::Ymin, bot);
+        lap.set_essential_boundary_condition(Side::Ymax, top);
+
+        // Grid layout for 4x4:
+        //  12* 13* 14* 15*  (y=3) - top boundary
+        //   8*  9  10  11*  (y=2)
+        //   4*  5   6   7*  (y=1)
+        //   0*  1*  2*  3*  (y=0) - bottom boundary
+        // (x=0)(x=1)(x=2)(x=3)
+
+        // All boundary nodes should be prescribed
+        let expected_prescribed = vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+    }
+
+    #[test]
+    fn get_nodes_prescribed_with_periodic_bc() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // First set essential boundary conditions
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+
+        // Verify that some nodes are prescribed
+        let expected_prescribed = vec![0, 4, 8, 12];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+
+        // Set periodic boundary condition along x (removes essential BCs on left/right)
+        lap.set_periodic_boundary_condition(true, false);
+
+        // With periodic BC along x, no nodes should be prescribed since
+        // periodic BC removes essential BC on left/right boundaries
+        let expected_prescribed: Vec<usize> = vec![];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+        assert!(lap.get_nodes_prescribed().is_empty());
+    }
+
+    #[test]
+    fn get_nodes_prescribed_returns_sorted_indices() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Test 1: Initially no nodes are prescribed
+        let prescribed_initial = lap.get_nodes_prescribed();
+        assert!(prescribed_initial.is_empty());
+
+        // Test 2: Set boundaries in different order to test sorting
+        let rig = |_x, _y| 20.0;
+        lap.set_essential_boundary_condition(Side::Xmax, rig); // prescribes nodes 3, 7, 11, 15
+
+        let prescribed_after_right = lap.get_nodes_prescribed();
+        assert_eq!(prescribed_after_right, &vec![3, 7, 11, 15]);
+
+        // Test 3: Add left boundary condition
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef); // prescribes nodes 0, 4, 8, 12
+
+        let prescribed_final = lap.get_nodes_prescribed();
+        let mut sorted_final = prescribed_final.clone();
+        sorted_final.sort();
+        assert_eq!(prescribed_final, &sorted_final);
+
+        // Expected: [0, 3, 4, 7, 8, 11, 12, 15] - should already be sorted
+        assert_eq!(prescribed_final, &vec![0, 3, 4, 7, 8, 11, 12, 15]);
+
+        // Verify sorting
+        for i in 1..prescribed_final.len() {
+            assert!(
+                prescribed_final[i] > prescribed_final[i - 1],
+                "Indices should be sorted in ascending order"
+            );
+        }
+    }
+
+    #[test]
+    fn get_nodes_prescribed_empty_when_none_prescribed() {
+        let lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // No boundary conditions set, so no prescribed nodes
+        let expected_prescribed: Vec<usize> = vec![];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+        assert!(lap.get_nodes_prescribed().is_empty());
+    }
+
+    #[test]
+    fn get_nodes_prescribed_all_when_all_prescribed() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 2, 2).unwrap();
+
+        // For a 2x2 grid, all 4 nodes are on the boundary
+        // Grid layout for 2x2:
+        //  2  3
+        //  0  1
+
+        lap.set_homogeneous_boundary_conditions();
+
+        // All nodes are on boundary, so all nodes are prescribed
+        let expected_prescribed = vec![0, 1, 2, 3];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+    }
+
+    #[test]
+    fn get_nodes_prescribed_with_partial_boundaries() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Set only bottom and top boundaries
+        let bot = |_x, _y| 30.0;
+        let top = |_x, _y| 40.0;
+
+        lap.set_essential_boundary_condition(Side::Ymin, bot);
+        lap.set_essential_boundary_condition(Side::Ymax, top);
+
+        // Prescribed nodes should include bottom (0,1,2,3) and top (12,13,14,15) boundaries
+        let expected_prescribed = vec![0, 1, 2, 3, 12, 13, 14, 15];
+        assert_eq!(lap.get_nodes_prescribed(), &expected_prescribed);
+    }
+
+    #[test]
+    fn get_nodes_prescribed_complementary_to_unknown() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Test that prescribed + unknown = all nodes at each stage
+        let all_nodes: Vec<usize> = (0..16).collect();
+
+        // Stage 1: No BCs
+        let mut combined = lap.get_nodes_prescribed().clone();
+        combined.extend(lap.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 2: Left BC only
+        let lef = |_x, _y| 10.0;
+        lap.set_essential_boundary_condition(Side::Xmin, lef);
+
+        let mut combined = lap.get_nodes_prescribed().clone();
+        combined.extend(lap.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 3: Add right BC
+        let rig = |_x, _y| 20.0;
+        lap.set_essential_boundary_condition(Side::Xmax, rig);
+
+        let mut combined = lap.get_nodes_prescribed().clone();
+        combined.extend(lap.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 4: Add all boundaries
+        let bot = |_x, _y| 30.0;
+        let top = |_x, _y| 40.0;
+        lap.set_essential_boundary_condition(Side::Ymin, bot);
+        lap.set_essential_boundary_condition(Side::Ymax, top);
+
+        let mut combined = lap.get_nodes_prescribed().clone();
+        combined.extend(lap.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 5: Periodic BC (removes essential BCs)
+        lap.set_periodic_boundary_condition(true, true);
+
+        let mut combined = lap.get_nodes_prescribed().clone();
+        combined.extend(lap.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Verify no overlap between prescribed and unknown
+        let prescribed = lap.get_nodes_prescribed();
+        let unknown = lap.get_nodes_unknown();
+        for &p_node in prescribed {
+            assert!(
+                !unknown.contains(&p_node),
+                "Node {} should not be in both prescribed and unknown",
+                p_node
+            );
+        }
+        for &u_node in unknown {
+            assert!(
+                !prescribed.contains(&u_node),
+                "Node {} should not be in both unknown and prescribed",
+                u_node
+            );
+        }
+    }
+
+    #[test]
+    fn get_nodes_prescribed_with_corner_overlaps() {
+        let mut lap = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+        // Set boundary conditions that create corner overlaps
+        const LEF: f64 = 10.0;
+        const RIG: f64 = 20.0;
+        const BOT: f64 = 30.0;
+        const TOP: f64 = 40.0;
+
+        let lef = |_x, _y| LEF;
+        let rig = |_x, _y| RIG;
+        let bot = |_x, _y| BOT;
+        let top = |_x, _y| TOP;
+
+        // Add boundaries one by one and check prescribed nodes
+        lap.set_essential_boundary_condition(Side::Xmin, lef); // nodes 0, 4, 8, 12
+        assert_eq!(lap.get_nodes_prescribed(), &vec![0, 4, 8, 12]);
+
+        lap.set_essential_boundary_condition(Side::Xmax, rig); // adds nodes 3, 7, 11, 15
+        assert_eq!(lap.get_nodes_prescribed(), &vec![0, 3, 4, 7, 8, 11, 12, 15]);
+
+        lap.set_essential_boundary_condition(Side::Ymin, bot); // adds nodes 1, 2 (0,3 already prescribed)
+        assert_eq!(lap.get_nodes_prescribed(), &vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 15]);
+
+        lap.set_essential_boundary_condition(Side::Ymax, top); // adds nodes 13, 14 (12,15 already prescribed)
+        assert_eq!(
+            lap.get_nodes_prescribed(),
+            &vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15]
+        );
+
+        // Corner nodes (0, 3, 12, 15) should be prescribed only once
+        let prescribed = lap.get_nodes_prescribed();
+        let mut unique_prescribed = prescribed.clone();
+        unique_prescribed.sort();
+        unique_prescribed.dedup();
+        assert_eq!(
+            prescribed.len(),
+            unique_prescribed.len(),
+            "No duplicate prescribed nodes should exist"
         );
     }
 }

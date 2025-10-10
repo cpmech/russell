@@ -1,10 +1,11 @@
 #![allow(unused)]
 
 use plotpy::{linspace, Curve, Plot, Text};
-use russell_lab::{mat_approx_eq, num_jacobian, Norm, Vector};
+use russell_lab::{mat_approx_eq, num_jacobian, read_table, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
 use russell_pde::FdmLaplacian2d;
 use russell_sparse::{CooMatrix, Sym};
+use std::collections::HashMap;
 
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
@@ -23,17 +24,17 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // let dxx = dx * dx;
     let dxx = 1.0;
 
-    println!(
-        "\nfdm.dim = {}, n_unknown = {}, n_prescribed = {}, ndim = {}, dx = {}, dy = {}\n",
-        fdm.dim(),
-        ndim,
-        fdm.num_prescribed(),
-        ndim,
-        dx,
-        dy
-    );
-    println!("nodes_unknown = {:?}", nodes_unknown);
-    println!("nodes_prescribed = {:?}\n", nodes_prescribed);
+    // println!(
+    //     "\nfdm.dim = {}, n_unknown = {}, n_prescribed = {}, ndim = {}, dx = {}, dy = {}\n",
+    //     fdm.dim(),
+    //     ndim,
+    //     fdm.num_prescribed(),
+    //     ndim,
+    //     dx,
+    //     dy
+    // );
+    // println!("nodes_unknown = {:?}", nodes_unknown);
+    // println!("nodes_prescribed = {:?}\n", nodes_prescribed);
 
     let mut node_to_local_index = vec![0; fdm.dim()];
     for (k, m) in nodes_unknown.iter().enumerate() {
@@ -160,25 +161,31 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
         // annotations
         let mut annotations = Text::new();
         annotations
+            .set_align_vertical("center")
             .set_bbox(true)
             .set_bbox_facecolor("white")
             .set_bbox_edgecolor("None")
             .set_bbox_style("round,pad=0.3")
-            .set_rotation(90.0)
-            .draw(
-                lam_crit,
-                nrm_crit + 0.5,
-                &format!("← ({:.8}, {:.8})", lam_crit, nrm_crit),
-            );
+            .draw(0.0, nrm_crit, &format!("{:.8}", nrm_crit));
 
         // draw ϕ versus λ
         let mut curve_norm_phi = Curve::new();
         curve_norm_phi.set_marker_style(".").draw(lam_vals, nrm_vals);
 
+        // reference results
+        let table: HashMap<String, Vec<f64>> =
+            read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"])).unwrap();
+        let mut curve_ref = Curve::new();
+        let n_ref = 50;
+        let x_ref = &table["lambda"].as_slice()[..n_ref];
+        let y_ref = &table["u_max"].as_slice()[..n_ref];
+        curve_ref.set_label("reference").draw(&x_ref, &y_ref);
+
         // generate the plot
         let key = if auto.yes() { "auto" } else { "fixed" };
         let mut plot = Plot::new();
         plot.set_title(&title)
+            .add(&curve_ref)
             .set_horiz_line(nrm_crit, "#689868ff", "-", 1.0)
             .add(&curve_norm_phi)
             .add(&annotations)
@@ -208,7 +215,7 @@ fn test_bratu_2d_auto() {
     let bordering = false;
     let auto = AutoStep::Yes;
     for alpha in [0.0] {
-        for npt in [4, 5, 6, 7] {
+        for npt in [5, 6, 7] {
             let ndim = (npt - 2) * (npt - 2);
             let stop = Stop::MaxNormU(4.0, Norm::Inf, 0, ndim);
             run_test(bordering, alpha, npt, stop, auto);

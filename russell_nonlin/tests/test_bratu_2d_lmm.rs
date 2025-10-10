@@ -1,7 +1,9 @@
 #![allow(unused)]
 
 use plotpy::{linspace, Curve, Plot, Text};
-use russell_lab::{approx_eq, mat_approx_eq, mat_eigenvalues, mat_inverse, num_jacobian, vec_norm, vec_norm_chunk};
+use russell_lab::{
+    approx_eq, mat_approx_eq, mat_eigenvalues, mat_inverse, num_jacobian, read_table, vec_norm, vec_norm_chunk,
+};
 use russell_lab::{Matrix, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Status, Stop, System};
 use russell_pde::FdmLaplacian2d;
@@ -281,22 +283,27 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
 
         // annotations
         let mut annotations = Text::new();
-        let dy = if alpha == 0.0 { 0.5 } else { 2.0 };
+        let dy = if alpha == 0.0 { 1.0 } else { 2.0 };
         annotations
+            .set_align_vertical("center")
             .set_bbox(true)
             .set_bbox_facecolor("white")
             .set_bbox_edgecolor("None")
             .set_bbox_style("round,pad=0.3")
-            .set_rotation(90.0)
-            .draw(
-                lam_crit_a,
-                nrm_crit_a + dy,
-                &format!("← ({:.8}, {:.8})", lam_crit_a, nrm_crit_a),
-            );
+            .draw(0.0, nrm_crit_a, &format!("{:.8}", nrm_crit_a));
 
         // draw ϕ versus λ
         let mut curve_norm_phi = Curve::new();
         curve_norm_phi.set_marker_style(".").draw(lam_vals, nrm_vals);
+
+        // reference results
+        let table: HashMap<String, Vec<f64>> =
+            read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"])).unwrap();
+        let mut curve_ref = Curve::new();
+        let n_ref = 50;
+        let x_ref = &table["lambda"].as_slice()[..n_ref];
+        let y_ref = &table["u_max"].as_slice()[..n_ref];
+        curve_ref.set_label("reference").draw(&x_ref, &y_ref);
 
         // generate the plot
         let mut plot = Plot::new();
@@ -315,6 +322,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
         }
         let key = if auto.yes() { "auto" } else { "fixed" };
         plot.set_title(&title)
+            .add(&curve_ref)
             .add(&curve_norm_phi)
             .add(&annotations)
             .grid_and_labels("λ", &pretty_norm_phi(norm_type_out))
@@ -326,21 +334,23 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
             .unwrap();
 
         // plot stepsizes
-        let hh = &out.get_h_values()[1..]; // the first one is duplicated
-        let n = hh.len();
-        let x = linspace(1.0, n as f64, n);
-        let mut curve = Curve::new();
-        curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
-        curve.draw(&x.as_slice(), &hh);
-        let mut plot_b = Plot::new();
-        plot_b
-            .set_labels("step number", "stepsize $h$")
-            .add(&curve)
-            .save(&format!(
-                "/tmp/russell_nonlin/test_bratu_2d_lmm_alpha{}_npt{}_h_{}.svg",
-                alpha, npt, key
-            ))
-            .unwrap();
+        if auto.yes() {
+            let hh = &out.get_h_values()[1..]; // the first one is duplicated
+            let n = hh.len();
+            let x = linspace(1.0, n as f64, n);
+            let mut curve = Curve::new();
+            curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
+            curve.draw(&x.as_slice(), &hh);
+            let mut plot_b = Plot::new();
+            plot_b
+                .set_labels("step number", "stepsize $h$")
+                .add(&curve)
+                .save(&format!(
+                    "/tmp/russell_nonlin/test_bratu_2d_lmm_alpha{}_npt{}_h_{}.svg",
+                    alpha, npt, key
+                ))
+                .unwrap();
+        }
     }
 }
 
@@ -359,7 +369,7 @@ fn test_bratu_2d_lmm_auto() {
     let bordering = false;
     let auto = AutoStep::Yes;
     for alpha in [0.0] {
-        for npt in [4, 5, 6, 7] {
+        for npt in [5, 6, 7] {
             let n_phi = (npt - 2) * (npt - 2);
             let stop = Stop::MaxNormU(4.0, Norm::Inf, 0, n_phi);
             run_test(bordering, alpha, npt, stop, auto);
@@ -373,7 +383,7 @@ fn test_bratu_2d_lmm_fixed() {
     let auto = AutoStep::No(4.89516358573);
     let stop = Stop::Steps(67);
     for alpha in [0.0] {
-        for npt in [6, 7] {
+        for npt in [5, 6, 7] {
             run_test(bordering, alpha, npt, stop, auto);
         }
     }

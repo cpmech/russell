@@ -4,6 +4,15 @@ use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+// constants for clarity/convenience
+const CUR: usize = 0; // current node
+const LEF: usize = 1; // left node
+const RIG: usize = 2; // right node
+const BOT: usize = 3; // bottom node
+const TOP: usize = 4; // top node
+const INI_X: usize = 0;
+const INI_Y: usize = 0;
+
 /// Implements the Finite Difference (FDM) Laplacian operator in 2D
 ///
 /// Given the (continuum) scalar field ϕ(x, y) and its Laplacian
@@ -478,7 +487,9 @@ impl<'a> FdmLaplacian2d<'a> {
 
     /// Executes a loop over one row of the coefficient matrix 'A' of A ⋅ X = B
     ///
-    /// Note that some column indices may appear repeated; e.g. due to the zero-flux boundaries.
+    /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
+    /// This also allows the setting up of flux boundary conditions. Therefore, some
+    /// column indices may appear repeated; e.g. due to the zero-flux boundaries.
     ///
     /// # Input
     ///
@@ -490,6 +501,30 @@ impl<'a> FdmLaplacian2d<'a> {
         F: FnMut(usize, f64),
     {
         self.loop_over_bandwidth(m, |n, b| {
+            callback(n, self.molecule[b]);
+        });
+    }
+
+    /// Executes a loop over one row of the CORE coefficient matrix 'A' of A ⋅ X = B
+    ///
+    /// **Note:** This function does not flip the ghost boundary indices, therefore, it
+    /// can only be used for the CORE of the coefficient matrix (excluding the boundaries).
+    /// Otherwise a **panic** may occur.
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row of the coefficient matrix
+    /// * `callback` -- a `function(n, Amn)` where `n` is the column index and
+    ///   `Amn` is the m-n-element of the coefficient matrix
+    ///
+    /// # Panics
+    ///
+    /// A panic may occur if the row index `m` is not within the bounds of the core matrix.
+    pub fn loop_over_coef_mat_row_core<F>(&self, m: usize, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        self.loop_over_bandwidth_core(m, |n, b| {
             callback(n, self.molecule[b]);
         });
     }
@@ -520,6 +555,10 @@ impl<'a> FdmLaplacian2d<'a> {
 
     /// Executes a loop over the "bandwidth" of the coefficient matrix
     ///
+    /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
+    /// This also allows the setting up of flux boundary conditions. Therefore, some
+    /// column indices may appear repeated; e.g. due to the zero-flux boundaries.
+    ///
     /// Here, the "bandwidth" means the non-zero values on a row of the coefficient matrix.
     /// This is not the actual bandwidth because the zero elements are ignored. There are
     /// five non-zero values in the "bandwidth" and they correspond to the "molecule" array.
@@ -534,13 +573,6 @@ impl<'a> FdmLaplacian2d<'a> {
         F: FnMut(usize, usize),
     {
         // constants for clarity/convenience
-        const CUR: usize = 0; // current node
-        const LEF: usize = 1; // left node
-        const RIG: usize = 2; // right node
-        const BOT: usize = 3; // bottom node
-        const TOP: usize = 4; // top node
-        const INI_X: usize = 0;
-        const INI_Y: usize = 0;
         let fin_x = self.nx - 1;
         let fin_y = self.ny - 1;
         let i = m % self.nx;
@@ -564,6 +596,44 @@ impl<'a> FdmLaplacian2d<'a> {
             nn[BOT] = if j != INI_Y { m - self.nx } else { m + self.nx };
             nn[TOP] = if j != fin_y { m + self.nx } else { m - self.nx };
         }
+
+        // execute callback
+        for (b, &n) in nn.iter().enumerate() {
+            callback(n, b);
+        }
+    }
+
+    /// Executes a loop over the "bandwidth" of the CORE coefficient matrix
+    ///
+    /// **Note:** This function does not flip the ghost boundary indices, therefore, it
+    /// can only be used for the CORE of the coefficient matrix (excluding the boundaries).
+    /// Otherwise a **panic** may occur.
+    ///
+    /// Here, the "bandwidth" means the non-zero values on a row of the coefficient matrix.
+    /// This is not the actual bandwidth because the zero elements are ignored. There are
+    /// five non-zero values in the "bandwidth" and they correspond to the "molecule" array.
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row index
+    /// * `callback` -- a function of `(n, b)` where `n` is the column index and
+    ///   `b` is the bandwidth index, i.e., the index in the molecule array.
+    ///
+    /// # Panics
+    ///
+    /// A panic may occur if the row index `m` is not within the bounds of the core matrix.
+    pub fn loop_over_bandwidth_core<F>(&self, m: usize, mut callback: F)
+    where
+        F: FnMut(usize, usize),
+    {
+        // n indices of the non-zero values on the row m of the coefficient matrix
+        // (mirror or swap the indices of boundary nodes, as appropriate)
+        let mut nn = [0, 0, 0, 0, 0];
+        nn[CUR] = m;
+        nn[LEF] = m - 1;
+        nn[RIG] = m + 1;
+        nn[BOT] = m - self.nx;
+        nn[TOP] = m + self.nx;
 
         // execute callback
         for (b, &n) in nn.iter().enumerate() {
@@ -597,6 +667,11 @@ impl<'a> FdmLaplacian2d<'a> {
             let y = self.ymin + (j as f64) * self.dy;
             callback(m, x, y)
         }
+    }
+
+    /// Returns the grid spacing along x and y
+    pub fn get_dx_dy(&self) -> (f64, f64) {
+        (self.dx, self.dy)
     }
 
     /// Returns the dimension of the linear system

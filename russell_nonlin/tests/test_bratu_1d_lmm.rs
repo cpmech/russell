@@ -8,8 +8,10 @@ const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
 #[test]
-fn test_reaction_diffusion_1d() {
+fn test_bratu_1d_lmm() {
     // The nonlinear problem originates from the FDM discretization of the following equation:
+    //
+    // (Bratu's problem in 1D with Lagrange multipliers method - LMM)
     //
     // ∂²ϕ
     // ——— + λ exp(ϕ) = 0
@@ -275,10 +277,7 @@ fn test_reaction_diffusion_1d() {
             .add(&curve_profile_end)
             .grid_and_labels("x", "$\\phi_{end}(x)$")
             .set_figure_size_points(800.0, 600.0)
-            .save(&format!(
-                "/tmp/russell_nonlin/test_reaction_diffusion_1d_npt{}.svg",
-                NPT
-            ))
+            .save(&format!("/tmp/russell_nonlin/test_bratu_1d_lmm{}.svg", NPT))
             .unwrap();
     }
 }

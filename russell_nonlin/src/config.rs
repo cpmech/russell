@@ -107,6 +107,36 @@ pub struct Config {
 
     // stepsize control -----------------------------------------------------------------
     //
+    /// Enables the Newton-Raphson stepsize control
+    pub(crate) nr_control_enabled: bool,
+
+    /// Enables the tangent vector stepsize control
+    pub(crate) tg_control_enabled: bool,
+
+    /// Uses the PID coefficients from Valli-Carey-Coutinho (VCC) for the tangent vector stepsize control
+    ///
+    /// The coefficients recommended in Ref 1 (page 212) are:
+    ///
+    /// ```text
+    /// KP = 0.075
+    /// KI = 0.175
+    /// KD = 0.01
+    /// ```
+    ///
+    /// See also Ref 2 and Ref 3.
+    ///
+    /// # References
+    ///
+    /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in nite element
+    ///    simulation of incompressible flows and coupled reaction–convection–diffusion processes,
+    ///    International Journal for Numerical Methods in Fluids, 47:201-231, https://doi.org/10.1002/fld.805
+    /// 2. Barros GF, Cortes AMA, Coutinho ALGA (2021) Finite element solution of nonlocal Cahn–Hilliard
+    ///    equations with feedback control time step size adaptivity, International Journal for Numerical Methods
+    ///    in Engineering, 122:5028-5052, https://doi.org/10.1002/nme.6755
+    /// 3. Kubatschek T, Forster A (2025) Investigation of existing and new approaches to step size control in a
+    ///    continuation framework, Computers & Structures, 313:107747, https://doi.org/10.1016/j.compstruc.2025.107747
+    pub(crate) tg_control_pid_vcc: bool,
+
     /// Optimal number of iterations for stepsize control using Newton-Raphson statistics
     pub(crate) nr_control_n_opt: usize,
 
@@ -123,11 +153,12 @@ pub struct Config {
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
     ///
-    /// Reference:
-    /// * Soderlind (2003) Digital filters in adaptive time-stepping,
-    ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
-    /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
-    ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    /// # References
+    ///
+    /// 1. Soderlind (2003) Digital filters in adaptive time-stepping,
+    ///    ACM Transactions on Mathematical Software, 29(1), 1-26.
+    /// 2. Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
+    ///    Journal of Computational and Applied Mathematics, 185, 225-243.
     pub(crate) tg_control_beta1: f64,
 
     /// Second exponent for the tangent vector stepsize control
@@ -214,6 +245,9 @@ impl Config {
             alpha_max_ultimate: 30.0,
             debug_predictor: false,
             // stepsize control
+            nr_control_enabled: true,
+            tg_control_enabled: true,
+            tg_control_pid_vcc: false,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
             tg_control_atol: 1e-2,
@@ -457,6 +491,55 @@ impl Config {
     /// Records the predictor values for debugging
     pub fn set_debug_predictor(&mut self, flag: bool) -> &mut Self {
         self.debug_predictor = flag;
+        self
+    }
+
+    /// Sets the Newton-Raphson stepsize control flag
+    ///
+    /// Enables or disables the Newton-Raphson stepsize control
+    ///
+    /// Default value: true
+    pub fn set_nr_control_enabled(&mut self, flag: bool) -> &mut Self {
+        self.nr_control_enabled = flag;
+        self
+    }
+
+    /// Sets the tangent vector stepsize control flag
+    ///
+    /// Enables or disables the tangent vector stepsize control
+    ///
+    /// Default value: true
+    pub fn set_tg_control_enabled(&mut self, flag: bool) -> &mut Self {
+        self.tg_control_enabled = flag;
+        self
+    }
+
+    /// Sets the use of the PID coefficients from Valli-Carey-Coutinho (VCC) for the tangent vector stepsize control
+    ///
+    /// The coefficients recommended in Ref 1 (page 212) are:
+    ///
+    /// ```text
+    /// KP = 0.075
+    /// KI = 0.175
+    /// KD = 0.01
+    /// ```
+    ///
+    /// See also Ref 2 and Ref 3.
+    ///
+    /// # References
+    ///
+    /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in nite element
+    ///    simulation of incompressible flows and coupled reaction–convection–diffusion processes,
+    ///    International Journal for Numerical Methods in Fluids, 47:201-231, https://doi.org/10.1002/fld.805
+    /// 2. Barros GF, Cortes AMA, Coutinho ALGA (2021) Finite element solution of nonlocal Cahn–Hilliard
+    ///    equations with feedback control time step size adaptivity, International Journal for Numerical Methods
+    ///    in Engineering, 122:5028-5052, https://doi.org/10.1002/nme.6755
+    /// 3. Kubatschek T, Forster A (2025) Investigation of existing and new approaches to step size control in a
+    ///    continuation framework, Computers & Structures, 313:107747, https://doi.org/10.1016/j.compstruc.2025.107747
+    ///
+    /// Default value: false
+    pub fn set_tg_control_pid_vcc(&mut self, flag: bool) -> &mut Self {
+        self.tg_control_pid_vcc = flag;
         self
     }
 

@@ -1,7 +1,6 @@
 use super::{AutoStep, Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::vec_rms_scaled;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{math::PI, Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
@@ -187,8 +186,11 @@ pub struct SolverArclength<'a, A> {
     /// * `θ = 0.0`: targeting lambda
     theta: f64,
 
-    // Previous tangent vector for the stepsize control
-    prev_tangent: Vector,
+    // Previous du/ds vector for the stepsize control
+    duds_prev: Vector,
+
+    // Previous dλ/ds for the stepsize control
+    dlds_prev: f64,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
@@ -217,7 +219,8 @@ impl<'a, A> SolverArclength<'a, A> {
             use_num_ggu,
             iter_jac_computed: false,
             theta: 1.0,
-            prev_tangent: Vector::new(ndim + 1),
+            duds_prev: Vector::new(ndim),
+            dlds_prev: 0.0,
         })
     }
 
@@ -708,24 +711,32 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         }
 
         //
-        // adaptivity --- check if the angle (alpha) between the increment and the
-        // tangent vector is below the maximum allowed
+        // curvature control --- calculate the angle between the tangent and increment vectors
         //
 
-        // set b := (duds₀, dlds₀); i.e., the tangent vector at the initial point
-        // set x := (u₁ - u₀, λ₁ - λ₀); i.e., the increment vector
-        let ndim = self.system.ndim;
-        for i in 0..ndim {
-            self.b[i] = work.duds[i];
-            self.x[i] = work.u[i] - state.u[i];
+        // with:
+        //   dx := (u₁ - u₀, λ₁ - λ₀)  → increment vector
+        //   t0 := (duds₀, dlds₀)      → tangent vector at the initial point
+        // calculate:
+        //   norm_dx := ‖dx‖ = √((u₁ - u₀)ᵀ (u₁ - u₀) + (λ₁ - λ₀)²)
+        //   dx_dot_t0 := dxᵀ t0 = (u₁ - u₀)ᵀ (du/ds|₀) + (λ₁ - λ₀) dλ/ds|₀
+        let mut dx;
+        let mut dx_dot_dx = 0.0;
+        let mut dx_dot_t0 = 0.0;
+        for i in 0..self.system.ndim {
+            dx = work.u[i] - state.u[i]; // u₁ - u₀
+            dx_dot_dx += dx * dx; // + (u₁ - u₀)ᵀ (u₁ - u₀)
+            dx_dot_t0 += dx * work.duds[i]; // + (u₁ - u₀)ᵀ (du/ds|₀)
         }
-        self.b[ndim] = work.dlds;
-        self.x[ndim] = work.l - state.l;
+        dx = work.l - state.l; // λ₁ - λ₀
+        dx_dot_dx += dx * dx;
+        dx_dot_t0 += dx * work.dlds; // + (λ₁ - λ₀) dλ/ds|₀
+        let norm_dx = f64::sqrt(dx_dot_dx);
 
-        // calculate the angle between the increment and the predictor: ~ turning angle
-        // Note that: approx_eq(vec_norm(&self.b, Norm::Euc), 1.0, 1e-15);
-        let norm_x = vec_norm(&self.x, Norm::Euc);
-        let ratio = f64::min(vec_inner(&self.b, &self.x) / norm_x, 1.0); // need to truncate to 1.0
+        // angle between the increment and the tangent vector:
+        //   α = acos((tgᵀ dx) / (‖tg‖ ‖dx‖)) = acos(tgᵀ dx / ‖dx‖)
+        // Note that ‖tg‖ = 1 because of the normalization condition
+        let ratio = f64::min(dx_dot_t0 / norm_dx, 1.0); // need to truncate to 1.0
         let alpha = f64::acos(ratio) * 180.0 / PI; // alpha in degrees
         assert!(f64::is_finite(alpha)); // make sure alpha is finite
 
@@ -754,15 +765,11 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     /// Returns `rerr` the relative error used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<f64, StrError> {
         // create a copy of the tangent vector at the initial point
-        let ndim = self.system.ndim;
-        for i in 0..ndim {
-            // self.tangent[i] = work.duds[i];
-            self.prev_tangent[i] = work.duds[i];
-        }
-        // self.tangent[ndim] = work.dlds;
-        self.prev_tangent[ndim] = work.dlds;
+        vec_copy(&mut self.duds_prev, &work.duds).unwrap();
+        self.dlds_prev = work.dlds;
 
         // update the tangent vector
+        let ndim = self.system.ndim;
         if self.config.bordering {
             // calculate Gu = ∂G/∂u at the updated state
             if !self.iter_jac_computed {
@@ -783,7 +790,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z
 
             // fix the sign of the tangent vector to keep following in the same direction
-            let dot = vec_inner(&work.duds, &self.prev_tangent) + work.dlds * self.prev_tangent[ndim];
+            let dot = vec_inner(&work.duds, &self.duds_prev) + work.dlds * self.dlds_prev;
             if dot < 0.0 {
                 for i in 0..ndim {
                     work.duds[i] = -work.duds[i];
@@ -825,21 +832,24 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
         state.l = work.l; // λ := λ₁
 
-        // calculate the difference between tangent vectors
-        for i in 0..ndim {
-            self.x[i] = work.duds[i] - self.prev_tangent[i]; // du/ds|₁ - du/ds|₀
-            self.b[i] = self.prev_tangent[i]; // du/ds|₀
-        }
-        self.x[ndim] = work.dlds - self.prev_tangent[ndim]; // dλ/ds|₁ - dλ/ds|₀
-        self.b[ndim] = self.prev_tangent[ndim]; // dλ/ds|₀
+        //
+        // stepsize control --- calculate the relative change in the tangent vector
+        //
 
-        // calculate the relative error in the tangent vector
-        let rerr = vec_rms_scaled(
-            &self.x,
-            &self.b,
-            self.config.tg_control_atol,
-            self.config.tg_control_rtol,
-        );
+        // calculate the relative difference between tangent vectors (RMS of the error)
+        let (atol, rtol) = (self.config.tg_control_atol, self.config.tg_control_rtol);
+        let mut delta_tg; // (du/ds|₁ - du/ds|₀, dλ/ds|₁ - dλ/ds|₀)
+        let mut den;
+        let mut sum = 0.0;
+        for i in 0..ndim {
+            delta_tg = work.duds[i] - self.duds_prev[i];
+            den = atol + rtol * f64::abs(self.duds_prev[i]);
+            sum += delta_tg * delta_tg / (den * den);
+        }
+        delta_tg = work.dlds - self.dlds_prev;
+        den = atol + rtol * f64::abs(self.dlds_prev);
+        sum += delta_tg * delta_tg / (den * den);
+        let rerr = f64::sqrt(sum / ((ndim + 1) as f64));
 
         // done
         Ok(rerr)

@@ -181,7 +181,7 @@ impl Logger {
     }
 
     /// Prints statistics and eventual errors
-    pub fn footer(&mut self, stats: &Stats, status: Status) -> Result<(), StrError> {
+    pub fn footer(&mut self, stats: &Stats, status: &Status) -> Result<(), StrError> {
         if !self.enabled {
             return Ok(());
         }
@@ -307,7 +307,7 @@ mod tests {
         logger.did_not_converge();
         logger.alpha_is_not_acceptable();
         let stats = Stats::new(&config);
-        logger.footer(&stats, Status::SmallStepsize).unwrap();
+        logger.footer(&stats, &Status::SmallStepsize).unwrap();
 
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
 
@@ -375,7 +375,7 @@ Total time                       = 0ns
         logger.did_not_converge();
         logger.alpha_is_not_acceptable();
         let stats = Stats::new(&config);
-        logger.footer(&stats, Status::SmallStepsize).unwrap();
+        logger.footer(&stats, &Status::SmallStepsize).unwrap();
 
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
 

@@ -324,7 +324,7 @@ impl SoderlindClass {
 /// Specifies Success of Failure
 ///
 /// Holds the type of failure encountered during the continuation process
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Status {
     /// Failure: The denominator to calculate δλ in the bordering algorithm is too small
     BorderingSmallDenominator,
@@ -362,7 +362,7 @@ pub enum Status {
     /// Failure: The curvature angle became extremely large
     ///
     /// (must stop)
-    ExtremelyLargeAlpha,
+    ExtremelyLargeAlpha(String),
 
     /// Failure: The stepsize became too small.
     ///
@@ -421,7 +421,7 @@ impl Status {
             Status::SecondaryUpdateError(_) => true,
             Status::LargeAlpha => true,
             // must stop
-            Status::ExtremelyLargeAlpha => false,
+            Status::ExtremelyLargeAlpha(_) => false,
             Status::SmallStepsize => false,
             Status::SecondaryUpdateTerminate => false,
             Status::ContinuedFailure => false,

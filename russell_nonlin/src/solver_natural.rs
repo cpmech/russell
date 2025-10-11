@@ -366,7 +366,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
                 // check if alpha is way out of bounds
                 if alpha > self.config.alpha_max_ultimate {
-                    status = Status::ExtremelyLargeAlpha;
+                    status = Status::ExtremelyLargeAlpha(alpha.to_string());
                 }
             }
         }

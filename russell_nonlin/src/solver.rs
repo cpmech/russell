@@ -271,7 +271,7 @@ impl<'a, A> Solver<'a, A> {
         // print last message and footer
         self.work.log.step(self.work.h, &state);
         self.work.stats.stop_sw_total();
-        self.work.log.footer(&self.work.stats, status)?;
+        self.work.log.footer(&self.work.stats, &status)?;
 
         // done
         Ok(status)

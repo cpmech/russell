@@ -404,33 +404,23 @@ impl Grid2d {
     /// use russell_pde::{Grid2d, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 4, 3)?;
     ///
-    ///     // Grid layout (4x3):
-    ///     //    8───9──10──11  (y=2.0)
+    ///     // Left boundary nodes: 0, 4, 8 (marked with *)
+    ///     //   *8───9──10──11
     ///     //    │   │   │   │
-    ///     //    4───5───6───7  (y=1.0)
+    ///     //   *4───5───6───7
     ///     //    │   │   │   │
-    ///     //    0───1───2───3  (y=0.0)
-    ///     //   x=0  0.67 1.33 2.0
-    ///     ///
-    ///     /// Left boundary nodes: 0, 4, 8 (marked with *)
-    ///     ///   *8───9──10──11
-    ///     ///    │   │   │   │
-    ///     ///   *4───5───6───7
-    ///     ///    │   │   │   │
-    ///     ///   *0───1───2───3
+    ///     //   *0───1───2───3
     ///
-    ///     // Apply Dirichlet boundary condition on left edge
+    ///     // Verify left boundary nodes
+    ///     let mut left_nodes = Vec::new();
     ///     grid.for_each_node_xmin(|&node| {
-    ///         let (x, y) = grid.coord(node);
-    ///         println!("Left boundary node {}: ({}, {})", node, x, y);
-    ///         // Set boundary value: u[node] = boundary_function(x, y)
+    ///         let (x, _y) = grid.coord(node);
+    ///         assert_eq!(x, 0.0); // All left boundary nodes have x = 0
+    ///         left_nodes.push(node);
     ///     });
-    ///     // Output:
-    ///     // Left boundary node 0: (0, 0)
-    ///     // Left boundary node 4: (0, 1)
-    ///     // Left boundary node 8: (0, 2)
+    ///     assert_eq!(left_nodes, vec![0, 4, 8]);
     ///     Ok(())
     /// }
     /// ```
@@ -456,7 +446,7 @@ impl Grid2d {
     /// use russell_pde::{Grid2d, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 4, 3)?;
     ///
     ///     // Right boundary nodes: 3, 7, 11 (marked with *)
     ///     //    8───9──10──*11
@@ -465,10 +455,14 @@ impl Grid2d {
     ///     //    │   │   │   │
     ///     //    0───1───2──*3
     ///
+    ///     // Verify right boundary nodes
+    ///     let mut right_nodes = Vec::new();
     ///     grid.for_each_node_xmax(|&node| {
-    ///         let (x, y) = grid.coord(node);
-    ///         println!("Right boundary node {}: ({}, {})", node, x, y);
+    ///         let (x, _y) = grid.coord(node);
+    ///         assert_eq!(x, 2.0); // All right boundary nodes have x = 2.0
+    ///         right_nodes.push(node);
     ///     });
+    ///     assert_eq!(right_nodes, vec![3, 7, 11]);
     ///     Ok(())
     /// }
     /// ```
@@ -494,7 +488,7 @@ impl Grid2d {
     /// use russell_pde::{Grid2d, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 4, 3)?;
     ///
     ///     // Bottom boundary nodes: 0, 1, 2, 3 (marked with *)
     ///     //    8───9──10──11
@@ -503,10 +497,14 @@ impl Grid2d {
     ///     //    │   │   │   │
     ///     //   *0──*1──*2──*3
     ///
+    ///     // Verify bottom boundary nodes
+    ///     let mut bottom_nodes = Vec::new();
     ///     grid.for_each_node_ymin(|&node| {
-    ///         let (x, y) = grid.coord(node);
-    ///         println!("Bottom boundary node {}: ({}, {})", node, x, y);
+    ///         let (_x, y) = grid.coord(node);
+    ///         assert_eq!(y, 0.0); // All bottom boundary nodes have y = 0.0
+    ///         bottom_nodes.push(node);
     ///     });
+    ///     assert_eq!(bottom_nodes, vec![0, 1, 2, 3]);
     ///     Ok(())
     /// }
     /// ```
@@ -532,7 +530,7 @@ impl Grid2d {
     /// use russell_pde::{Grid2d, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 4, 3)?;
     ///
     ///     // Top boundary nodes: 8, 9, 10, 11 (marked with *)
     ///     //   *8──*9─*10─*11
@@ -541,10 +539,14 @@ impl Grid2d {
     ///     //    │   │   │   │
     ///     //    0───1───2───3
     ///
+    ///     // Verify top boundary nodes
+    ///     let mut top_nodes = Vec::new();
     ///     grid.for_each_node_ymax(|&node| {
-    ///         let (x, y) = grid.coord(node);
-    ///         println!("Top boundary node {}: ({}, {})", node, x, y);
+    ///         let (_x, y) = grid.coord(node);
+    ///         assert_eq!(y, 3.0); // All top boundary nodes have y = 3.0
+    ///         top_nodes.push(node);
     ///     });
+    ///     assert_eq!(top_nodes, vec![8, 9, 10, 11]);
     ///     Ok(())
     /// }
     /// ```

@@ -239,14 +239,15 @@ impl<'a> EssentialBcs2d<'a> {
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K  Eᵀ │ │ u │   │ f │
+    /// │ M  Eᵀ │ │ a │   │ r │
     /// │       │ │   │ = │   │
     /// │ E  0  │ │ w │   │ ū │
     /// └       ┘ └   ┘   └   ┘
     /// ```
     ///
-    /// where `E` is the Lagrange matrix, `u` is the vector of unknowns, `f` is the vector of "forces",
-    /// `w` is the vector of Lagrange multipliers, and `ū` is the vector of prescribed essential values.
+    /// where `E` is the Lagrange matrix, `a = (u, p)` is the vector of grid values (unknowns and prescribed),
+    /// `r` is the right-hand side vector, `w` is the vector of Lagrange multipliers, and `ū` is the vector of
+    /// prescribed essential values.
     pub fn get_lagrange_matrix(&self) -> CooMatrix {
         let np = self.essential.len();
         let dim = self.grid.size();

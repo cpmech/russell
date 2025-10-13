@@ -273,7 +273,7 @@ mod tests {
     const TOP: f64 = 4.0;
 
     #[test]
-    fn set_periodic_works() {
+    fn new_default_and_set_periodic_work() {
         //  8  9 10 11
         //  4  5  6  7
         //  0  1  2  3
@@ -301,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn set_works() {
+    fn new_and_set_work() {
         // 12 13 14 15
         //  8  9 10 11
         //  4  5  6  7
@@ -485,5 +485,412 @@ mod tests {
              │ 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 │\n\
              └                                 ┘"
         );
+    }
+
+    #[test]
+    fn new_initializes_correctly() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        let ebcs = EssentialBcs2d::new(&grid);
+
+        assert_eq!(ebcs.grid.size(), 9);
+        assert_eq!(ebcs.is_prescribed.len(), 9);
+        assert!(ebcs.is_prescribed.iter().all(|&x| !x)); // all false initially
+        assert!(!ebcs.periodic_along_x);
+        assert!(!ebcs.periodic_along_y);
+        assert_eq!(ebcs.functions.len(), 4);
+        assert!(ebcs.essential.is_empty());
+        assert!(ebcs.essential_sorted.is_empty());
+        assert_eq!(ebcs.unknown_sorted, vec![0, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+        // Check that default functions return 0.0
+        for i in 0..4 {
+            assert_eq!((ebcs.functions[i])(123.456, 789.012), 0.0);
+        }
+    }
+
+    #[test]
+    fn minimal_2x2_grid_works() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 2, 2).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Grid layout for 2x2:
+        //  2──3  (y=1.0)
+        //  │  │
+        //  0──1  (y=0.0)
+
+        assert_eq!(ebcs.num_unknown(), 4);
+        assert_eq!(ebcs.num_prescribed(), 0);
+
+        // Set homogeneous BCs - all nodes should be prescribed since all are on boundary
+        ebcs.set_homogeneous();
+        assert_eq!(ebcs.num_prescribed(), 4);
+        assert_eq!(ebcs.num_unknown(), 0);
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 1, 2, 3]);
+        assert!(ebcs.get_nodes_unknown().is_empty());
+    }
+
+    #[test]
+    fn single_boundary_conditions_work() {
+        let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Grid layout (4x3):
+        //    8───9───10──11 (y=2.0)
+        //    │   │   │   │
+        //    4───5───6───7  (y=1.0)
+        //    │   │   │   │
+        //    0───1───2───3  (y=0.0)
+
+        // Test each boundary individually
+
+        // Left boundary only
+        let lef = |_, _| LEF;
+        assert_eq!(lef(0.0, 0.0), LEF);
+        ebcs.set(Side::Xmin, lef);
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 4, 8]);
+        assert_eq!(ebcs.get_nodes_unknown(), &vec![1, 2, 3, 5, 6, 7, 9, 10, 11]);
+        assert!(!ebcs.is_periodic_along_x());
+        assert!(!ebcs.is_periodic_along_y());
+
+        // Clear and test right boundary only
+        let mut ebcs = EssentialBcs2d::new(&grid);
+        let rig = |_, _| RIG;
+        assert_eq!(rig(0.0, 0.0), RIG);
+        ebcs.set(Side::Xmax, rig);
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![3, 7, 11]);
+        assert_eq!(ebcs.get_nodes_unknown(), &vec![0, 1, 2, 4, 5, 6, 8, 9, 10]);
+
+        // Clear and test bottom boundary only
+        let mut ebcs = EssentialBcs2d::new(&grid);
+        let bot = |_, _| BOT;
+        assert_eq!(bot(0.0, 0.0), BOT);
+        ebcs.set(Side::Ymin, bot);
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 1, 2, 3]);
+        assert_eq!(ebcs.get_nodes_unknown(), &vec![4, 5, 6, 7, 8, 9, 10, 11]);
+
+        // Clear and test top boundary only
+        let mut ebcs = EssentialBcs2d::new(&grid);
+        let top = |_, _| TOP;
+        assert_eq!(top(0.0, 0.0), TOP);
+        ebcs.set(Side::Ymax, top);
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![8, 9, 10, 11]);
+        assert_eq!(ebcs.get_nodes_unknown(), &vec![0, 1, 2, 3, 4, 5, 6, 7]);
+    }
+
+    #[test]
+    fn coordinate_dependent_functions_work() {
+        let grid = Grid2d::new_uniform(-1.0, 1.0, -1.0, 1.0, 3, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Grid coordinates:
+        //   6(-1,1)  7(0,1)   8(1,1)
+        //   3(-1,0)  4(0,0)   5(1,0)
+        //   0(-1,-1) 1(0,-1)  2(1,-1)
+
+        // Set coordinate-dependent functions
+        let lef = |x, y| x * x + y; // x² + y
+        let rig = |x, y| 2.0 * x + y * y; // 2x + y²
+        let bot = |x, y| x + 3.0 * y; // x + 3y
+        let top = |x, y| x * y; // xy
+
+        ebcs.set(Side::Xmin, lef); // nodes 0, 3, 6
+        ebcs.set(Side::Xmax, rig); // nodes 2, 5, 8
+        ebcs.set(Side::Ymin, bot); // nodes 0, 1, 2
+        ebcs.set(Side::Ymax, top); // nodes 6, 7, 8
+
+        // Test prescribed values at actual coordinates
+        // Node 0: (-1, -1) -> bot function wins: -1 + 3*(-1) = -4
+        let (x0, y0) = grid.coord(0);
+        assert_eq!(ebcs.get_prescribed_value(0, x0, y0), -4.0);
+
+        // Node 1: (0, -1) -> bot function: 0 + 3*(-1) = -3
+        let (x1, y1) = grid.coord(1);
+        assert_eq!(ebcs.get_prescribed_value(1, x1, y1), -3.0);
+
+        // Node 3: (-1, 0) -> lef function: (-1)² + 0 = 1
+        let (x3, y3) = grid.coord(3);
+        assert_eq!(ebcs.get_prescribed_value(3, x3, y3), 1.0);
+
+        // Node 5: (1, 0) -> rig function: 2 * 1 + 0² = 2
+        let (x5, y5) = grid.coord(5);
+        assert_eq!(ebcs.get_prescribed_value(5, x5, y5), 2.0);
+
+        // Node 7: (0, 1) -> top function: 0 * 1 = 0
+        let (x7, y7) = grid.coord(7);
+        assert_eq!(ebcs.get_prescribed_value(7, x7, y7), 0.0);
+
+        // Node 8: (1, 1) -> top function wins: 1 * 1 = 1
+        let (x8, y8) = grid.coord(8);
+        assert_eq!(ebcs.get_prescribed_value(8, x8, y8), 1.0);
+    }
+
+    #[test]
+    fn periodic_boundary_conditions_work() {
+        // Grid layout (4x3):
+        //    8───9───10──11
+        //    │   │   │   │
+        //    4───5───6───7
+        //    │   │   │   │
+        //    0───1───2───3
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // First set some essential BCs
+        let lef = |_, _| LEF;
+        let bot = |_, _| BOT;
+        assert_eq!(lef(0.0, 0.0), LEF);
+        assert_eq!(bot(0.0, 0.0), BOT);
+        ebcs.set(Side::Xmin, lef);
+        ebcs.set(Side::Ymin, bot);
+
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 1, 2, 3, 4, 8]);
+        assert!(!ebcs.is_periodic_along_x());
+        assert!(!ebcs.is_periodic_along_y());
+
+        // Set periodic along x - should remove left/right BCs but keep the middle nodes on the bottom
+        ebcs.set_periodic(true, false);
+        assert!(ebcs.is_periodic_along_x());
+        assert!(!ebcs.is_periodic_along_y());
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![1, 2]); // only MIDDLE bottom remains
+
+        // Set periodic along both - should remove all essential BCs
+        ebcs.set_periodic(true, true);
+        assert!(ebcs.is_periodic_along_x());
+        assert!(ebcs.is_periodic_along_y());
+        assert!(ebcs.get_nodes_prescribed().is_empty());
+        assert_eq!(ebcs.get_nodes_unknown(), &vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+
+        // Set periodic only along y
+        ebcs.set_periodic(false, true);
+        assert!(!ebcs.is_periodic_along_x());
+        assert!(ebcs.is_periodic_along_y());
+        assert!(ebcs.get_nodes_prescribed().is_empty());
+    }
+
+    #[test]
+    fn boundary_condition_overrides_work() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Set initial boundary condition
+        let func1 = |_, _| 10.0;
+        ebcs.set(Side::Xmin, func1);
+        assert_eq!(ebcs.get_prescribed_value(0, 0.0, 0.0), 10.0);
+
+        // Override with new function
+        let func2 = |x, y| x + y + 20.0;
+        ebcs.set(Side::Xmin, func2);
+        assert_eq!(ebcs.get_prescribed_value(0, 1.0, 2.0), 23.0);
+
+        // Nodes should remain the same
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 3, 6]);
+
+        // Set periodic to remove essential BC
+        ebcs.set_periodic(true, false);
+        assert!(ebcs.get_nodes_prescribed().is_empty());
+
+        // Set essential again - should work after periodic
+        ebcs.set(Side::Xmin, func1);
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 3, 6]);
+        assert!(!ebcs.is_periodic_along_x());
+    }
+
+    #[test]
+    fn corner_node_priority_works() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Grid layout:
+        //   6───7───8  (y=1.0)
+        //   │   │   │
+        //   3───4───5  (y=0.5)
+        //   │   │   │
+        //   0───1───2  (y=0.0)
+
+        // Set boundaries in specific order to test priority
+        let lef = |_, _| LEF; // 1.0
+        let rig = |_, _| RIG; // 2.0
+        let bot = |_, _| BOT; // 3.0
+        let top = |_, _| TOP; // 4.0
+
+        // Set in order: left, right, bottom, top
+        ebcs.set(Side::Xmin, lef); // sets nodes 0, 3, 6
+        ebcs.set(Side::Xmax, rig); // sets nodes 2, 5, 8
+        ebcs.set(Side::Ymin, bot); // sets nodes 0, 1, 2 (0,2 already set)
+        ebcs.set(Side::Ymax, top); // sets nodes 6, 7, 8 (6,8 already set)
+
+        // Check corner node values - last set should win
+        assert_eq!(ebcs.get_prescribed_value(0, 0.0, 0.0), BOT); // bottom wins over left
+        assert_eq!(ebcs.get_prescribed_value(2, 0.0, 0.0), BOT); // bottom wins over right
+        assert_eq!(ebcs.get_prescribed_value(6, 0.0, 0.0), TOP); // top wins over left
+        assert_eq!(ebcs.get_prescribed_value(8, 0.0, 0.0), TOP); // top wins over right
+
+        // Check non-corner boundary nodes
+        assert_eq!(ebcs.get_prescribed_value(1, 0.0, 0.0), BOT); // bottom only
+        assert_eq!(ebcs.get_prescribed_value(3, 0.0, 0.0), LEF); // left only
+        assert_eq!(ebcs.get_prescribed_value(5, 0.0, 0.0), RIG); // right only
+        assert_eq!(ebcs.get_prescribed_value(7, 0.0, 0.0), TOP); // top only
+    }
+
+    #[test]
+    fn homogeneous_boundary_conditions_work() {
+        // Grid layout (4x3):
+        //    8───9───10──11
+        //    │   │   │   │
+        //    4───5───6───7
+        //    │   │   │   │
+        //    0───1───2───3
+        let grid = Grid2d::new_uniform(-1.0, 1.0, -1.0, 1.0, 4, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Set some non-homogeneous BCs first
+        let lef = |_, _| LEF;
+        assert_eq!(lef(0.0, 0.0), LEF);
+        ebcs.set(Side::Xmin, lef);
+        ebcs.set_periodic(false, true);
+
+        assert!(ebcs.is_periodic_along_y());
+        assert!(!ebcs.get_nodes_prescribed().is_empty());
+
+        // Set homogeneous - should remove all existing BCs and set all boundaries to zero
+        ebcs.set_homogeneous();
+
+        assert!(!ebcs.is_periodic_along_x());
+        assert!(!ebcs.is_periodic_along_y());
+
+        // All boundary nodes should be prescribed
+        let boundary_nodes = vec![0, 1, 2, 3, 4, 7, 8, 9, 10, 11];
+        assert_eq!(ebcs.get_nodes_prescribed(), &boundary_nodes);
+
+        // Interior nodes should be unknown
+        let interior_nodes = vec![5, 6];
+        assert_eq!(ebcs.get_nodes_unknown(), &interior_nodes);
+
+        // All prescribed values should be zero
+        for &node in &boundary_nodes {
+            let (x, y) = grid.coord(node);
+            assert_eq!(ebcs.get_prescribed_value(node, x, y), 0.0);
+        }
+    }
+
+    #[test]
+    fn complementary_prescribed_unknown_nodes() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Test that prescribed + unknown = all nodes at each stage
+        let all_nodes: Vec<usize> = (0..16).collect();
+
+        // Stage 1: No BCs
+        let mut combined = ebcs.get_nodes_prescribed().clone();
+        combined.extend(ebcs.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 2: Left BC only
+        let lef = |_, _| LEF;
+        assert_eq!(lef(0.0, 0.0), LEF);
+        ebcs.set(Side::Xmin, lef);
+
+        let mut combined = ebcs.get_nodes_prescribed().clone();
+        combined.extend(ebcs.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 3: Add more boundaries
+        let rig = |_, _| RIG;
+        let bot = |_, _| BOT;
+        assert_eq!(rig(0.0, 0.0), RIG);
+        assert_eq!(bot(0.0, 0.0), BOT);
+        ebcs.set(Side::Xmax, rig);
+        ebcs.set(Side::Ymin, bot);
+
+        let mut combined = ebcs.get_nodes_prescribed().clone();
+        combined.extend(ebcs.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+
+        // Stage 4: Periodic BC
+        ebcs.set_periodic(true, true);
+
+        let mut combined = ebcs.get_nodes_prescribed().clone();
+        combined.extend(ebcs.get_nodes_unknown().iter());
+        combined.sort();
+        assert_eq!(combined, all_nodes);
+    }
+
+    #[test]
+    fn non_uniform_grid_works() {
+        // Test with non-uniform grid spacing
+        let xx = &[0.0, 0.1, 0.5, 0.9, 1.0];
+        let yy = &[0.0, 0.3, 1.0];
+        let grid = Grid2d::new(xx, yy).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Grid layout (5x3):
+        //   10──11──12──13──14  (y=1.0)
+        //   │   │   │   │   │
+        //   5───6───7───8───9  (y=0.3)
+        //   │   │   │   │   │
+        //   0───1───2───3───4  (y=0.0)
+
+        assert_eq!(ebcs.grid.size(), 15);
+
+        // Set coordinate-dependent function
+        let lef = |x, y| 10.0 * x + y;
+        ebcs.set(Side::Xmin, lef); // nodes 0, 5, 10
+
+        // Test prescribed values at actual coordinates
+        assert_eq!(ebcs.get_prescribed_value(0, 0.0, 0.0), 0.0); // 10*0.0 + 0.0
+        assert_eq!(ebcs.get_prescribed_value(5, 0.0, 0.3), 0.3); // 10*0.0 + 0.3
+        assert_eq!(ebcs.get_prescribed_value(10, 0.0, 1.0), 1.0); // 10*0.0 + 1.0
+
+        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 5, 10]);
+        assert_eq!(ebcs.get_nodes_unknown(), &vec![1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14]);
+    }
+
+    #[test]
+    fn state_consistency_after_operations() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // Perform a sequence of operations and verify consistency
+
+        // 1. Set left boundary
+        let lef = |_, _| LEF;
+        assert_eq!(lef(0.0, 0.0), LEF);
+        ebcs.set(Side::Xmin, lef);
+        assert_eq!(ebcs.num_prescribed() + ebcs.num_unknown(), 9);
+
+        // 2. Add right boundary
+        let rig = |_, _| RIG;
+        assert_eq!(rig(0.0, 0.0), RIG);
+        ebcs.set(Side::Xmax, rig);
+        assert_eq!(ebcs.num_prescribed() + ebcs.num_unknown(), 9);
+
+        // 3. Set periodic along x (should remove left/right)
+        ebcs.set_periodic(true, false);
+        assert_eq!(ebcs.num_prescribed() + ebcs.num_unknown(), 9);
+        assert!(ebcs.get_nodes_prescribed().is_empty());
+
+        // 4. Set homogeneous (should add all boundary nodes)
+        ebcs.set_homogeneous();
+        assert_eq!(ebcs.num_prescribed() + ebcs.num_unknown(), 9);
+        assert_eq!(ebcs.num_prescribed(), 8); // all boundary nodes
+        assert_eq!(ebcs.num_unknown(), 1); // only center node
+
+        // 5. Set periodic both ways (should remove all)
+        ebcs.set_periodic(true, true);
+        assert_eq!(ebcs.num_prescribed() + ebcs.num_unknown(), 9);
+        assert_eq!(ebcs.num_prescribed(), 0);
+        assert_eq!(ebcs.num_unknown(), 9);
+
+        // Verify final state
+        assert!(ebcs.is_periodic_along_x());
+        assert!(ebcs.is_periodic_along_y());
+        assert!(ebcs.essential.is_empty());
+        assert!(ebcs.essential_sorted.is_empty());
+        assert_eq!(ebcs.unknown_sorted, vec![0, 1, 2, 3, 4, 5, 6, 7, 8]);
+        assert!(ebcs.is_prescribed.iter().all(|&x| !x));
     }
 }

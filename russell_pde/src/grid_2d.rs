@@ -761,6 +761,33 @@ mod tests {
     }
 
     #[test]
+    fn get_dx_dy_captures_non_uniform_levels() {
+        //     8    9   10   11     y=8.0
+        //     4    5    6    7     y=5.0
+        //     0    1    2    3     y=2.0
+        // x=-3.0 -1.0  1.0  3.0
+        // dx = 2.0, dy = 3.0
+        let mut grid = Grid2d::new_uniform(-3.0, 3.0, 2.0, 8.0, 4, 3).unwrap();
+        assert_eq!(grid.nx, 4);
+        assert_eq!(grid.ny, 3);
+        assert_eq!(grid.get_dx_dy(), Some((2.0, 3.0)));
+
+        // now, we must change the coordinates internally because
+        // there is no way to create a non-uniform grid
+        assert_eq!(grid.coords[6], (1.0, 5.0)); // before
+        grid.coords[6] = (1.1, 5.0); // after (non-uniform in x)
+        assert_eq!(grid.get_dx_dy(), None);
+
+        // fixed
+        grid.coords[6] = (1.0, 5.0); // after (non-uniform in x)
+        assert_eq!(grid.get_dx_dy(), Some((2.0, 3.0)));
+
+        // now, break uniformity in y
+        grid.coords[6] = (1.0, 5.1); // after (non-uniform in y)
+        assert_eq!(grid.get_dx_dy(), None);
+    }
+
+    #[test]
     fn get_dx_dy_uniform_grids() {
         // Test uniform grid with integer spacing
         let grid = Grid2d::new_uniform(0.0, 6.0, 0.0, 4.0, 4, 3).unwrap();

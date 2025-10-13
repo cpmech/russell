@@ -318,6 +318,37 @@ impl Grid2d {
         self.nx * self.ny
     }
 
+    /// Returns the spacing (dx, dy) if the grid is uniform on both directions
+    ///
+    /// Returns `None` if the grid is non-uniform in any direction.
+    pub fn get_dx_dy(&self) -> Option<(f64, f64)> {
+        let mut dx = f64::NEG_INFINITY;
+        let mut dy = f64::NEG_INFINITY;
+        for j in 1..self.ny {
+            for i in 1..self.nx {
+                let m = i + j * self.nx; // this node
+                let l = m - 1; // left node
+                let b = m - self.nx; // bottom node
+                let (x, y) = self.coords[m];
+                let (xl, _) = self.coords[l];
+                let (_, yb) = self.coords[b];
+                if dx == f64::NEG_INFINITY {
+                    dx = x - xl;
+                    assert!(dx > 0.0);
+                } else if f64::abs(x - xl - dx) > f64::EPSILON {
+                    return None; // non-uniform in x
+                }
+                if dy == f64::NEG_INFINITY {
+                    dy = y - yb;
+                    assert!(dy > 0.0);
+                } else if f64::abs(y - yb - dy) > f64::EPSILON {
+                    return None; // non-uniform in y
+                }
+            }
+        }
+        Some((dx, dy))
+    }
+
     /// Returns the (x, y) coordinates of the specified node
     ///
     /// # Arguments
@@ -604,22 +635,22 @@ mod tests {
         //  4  5  6  7
         //  0  1  2  3
 
-        let xx = &[-3.0, -1.0, 1.0, 3.0];
+        let xx = &[-3.0, -2.9, 2.9, 3.0];
         let yy = &[2.0, 5.0, 8.0];
         let correct_coords = &[
             (-3.0, 2.0), // 0
-            (-1.0, 2.0), // 1
-            (1.0, 2.0),  // 2
+            (-2.9, 2.0), // 1
+            (2.9, 2.0),  // 2
             (3.0, 2.0),  // 3
             //
             (-3.0, 5.0), // 4
-            (-1.0, 5.0), // 5
-            (1.0, 5.0),  // 6
+            (-2.9, 5.0), // 5
+            (2.9, 5.0),  // 6
             (3.0, 5.0),  // 7
             //
             (-3.0, 8.0), // 8
-            (-1.0, 8.0), // 9
-            (1.0, 8.0),  // 10
+            (-2.9, 8.0), // 9
+            (2.9, 8.0),  // 10
             (3.0, 8.0),  // 11
         ];
 
@@ -635,6 +666,7 @@ mod tests {
         assert_eq!(grid.nx(), 4);
         assert_eq!(grid.ny(), 3);
         assert_eq!(grid.size(), 12);
+        assert_eq!(grid.get_dx_dy(), None); // non-uniform grid (along x)
 
         let mut coords = Vec::new();
         grid.for_each_coord(|_m, x, y| coords.push((x, y)));
@@ -684,6 +716,7 @@ mod tests {
         assert_eq!(grid.nx(), 4);
         assert_eq!(grid.ny(), 3);
         assert_eq!(grid.size(), 12);
+        assert_eq!(grid.get_dx_dy(), Some((2.0, 3.0)));
 
         let mut coords = Vec::new();
         grid.for_each_coord(|_m, x, y| coords.push((x, y)));
@@ -725,5 +758,150 @@ mod tests {
         assert_eq!(xx_max, &[3.0, 3.0, 3.0]);
         assert_eq!(yy_min, &[2.0, 2.0, 2.0, 2.0]);
         assert_eq!(yy_max, &[8.0, 8.0, 8.0, 8.0]);
+    }
+
+    #[test]
+    fn get_dx_dy_uniform_grids() {
+        // Test uniform grid with integer spacing
+        let grid = Grid2d::new_uniform(0.0, 6.0, 0.0, 4.0, 4, 3).unwrap();
+        // dx = 6.0 / 3 = 2.0, dy = 4.0 / 2 = 2.0
+        assert_eq!(grid.get_dx_dy(), Some((2.0, 2.0)));
+
+        // Test uniform grid with fractional spacing
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 5, 3).unwrap();
+        // dx = 1.0 / 4 = 0.25, dy = 1.0 / 2 = 0.5
+        assert_eq!(grid.get_dx_dy(), Some((0.25, 0.5)));
+
+        // Test uniform grid with different aspect ratios
+        let grid = Grid2d::new_uniform(-2.0, 2.0, -1.0, 3.0, 3, 5).unwrap();
+        // dx = 4.0 / 2 = 2.0, dy = 4.0 / 4 = 1.0
+        assert_eq!(grid.get_dx_dy(), Some((2.0, 1.0)));
+
+        // Test minimal 2x2 uniform grid
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 2, 2).unwrap();
+        // dx = 1.0 / 1 = 1.0, dy = 1.0 / 1 = 1.0
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 1.0)));
+    }
+
+    #[test]
+    fn get_dx_dy_non_uniform_grids() {
+        // Non-uniform in x direction
+        let xx = &[0.0, 0.1, 0.5, 1.0]; // non-uniform spacing
+        let yy = &[0.0, 0.5, 1.0]; // uniform spacing: dy = 0.5
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), None); // should return None due to non-uniform x
+
+        // Non-uniform in y direction
+        let xx = &[0.0, 1.0, 2.0]; // uniform spacing: dx = 1.0
+        let yy = &[0.0, 0.1, 1.0]; // non-uniform spacing
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), None); // should return None due to non-uniform y
+
+        // Non-uniform in both directions
+        let xx = &[0.0, 0.2, 0.7, 1.0]; // non-uniform spacing
+        let yy = &[0.0, 0.3, 0.8, 1.0]; // non-uniform spacing
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), None); // should return None
+
+        // Logarithmic spacing
+        let xx = &[0.1, 1.0, 10.0, 100.0]; // logarithmic spacing
+        let yy = &[0.01, 0.1, 1.0]; // logarithmic spacing
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), None);
+    }
+
+    #[test]
+    fn get_dx_dy_uniform_from_arrays() {
+        // Test that manually created uniform arrays are detected as uniform
+        let xx = &[0.0, 1.0, 2.0, 3.0, 4.0]; // uniform: dx = 1.0
+        let yy = &[0.0, 0.5, 1.0]; // uniform: dy = 0.5
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 0.5)));
+
+        // Test with negative coordinates
+        let xx = &[-2.0, -1.0, 0.0, 1.0]; // uniform: dx = 1.0
+        let yy = &[-1.0, 1.0, 3.0]; // uniform: dy = 2.0
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 2.0)));
+
+        // Test with fractional uniform spacing
+        let xx = &[0.0, 0.25, 0.5, 0.75, 1.0]; // uniform: dx = 0.25
+        let yy = &[0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0]; // uniform: dy = 1/3
+        let grid = Grid2d::new(xx, yy).unwrap();
+        let result = grid.get_dx_dy().unwrap();
+        assert!((result.0 - 0.25).abs() < 1e-15);
+        assert!((result.1 - 1.0 / 3.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn get_dx_dy_precision_edge_cases() {
+        // Test with very small spacing that might have floating-point precision issues
+        let grid = Grid2d::new_uniform(0.0, 1e-6, 0.0, 1e-6, 3, 3).unwrap();
+        let result = grid.get_dx_dy().unwrap();
+        assert!((result.0 - 5e-7).abs() < 1e-21); // dx = 1e-6 / 2 = 5e-7
+        assert!((result.1 - 5e-7).abs() < 1e-21); // dy = 1e-6 / 2 = 5e-7
+
+        // Test with very large spacing
+        let grid = Grid2d::new_uniform(0.0, 1e6, 0.0, 1e6, 3, 3).unwrap();
+        let result = grid.get_dx_dy().unwrap();
+        assert!((result.0 - 5e5).abs() < 1e-9); // dx = 1e6 / 2 = 5e5
+        assert!((result.1 - 5e5).abs() < 1e-9); // dy = 1e6 / 2 = 5e5
+
+        // Test grid that's almost uniform but has tiny differences beyond epsilon
+        let mut xx = vec![0.0, 1.0, 2.0, 3.0];
+        xx[2] += 2.0 * f64::EPSILON; // Add small perturbation beyond epsilon
+        let yy = &[0.0, 1.0, 2.0];
+        let grid = Grid2d::new(&xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), None); // Should detect as non-uniform
+
+        // Test grid with differences exactly at epsilon boundary
+        let mut xx = vec![0.0, 1.0, 2.0, 3.0];
+        xx[2] += f64::EPSILON / 2.0; // Add perturbation within epsilon tolerance
+        let yy = &[0.0, 1.0, 2.0];
+        let grid = Grid2d::new(&xx, yy).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 1.0))); // Should still be uniform
+    }
+
+    #[test]
+    fn get_dx_dy_different_grid_sizes() {
+        // Test with different grid dimensions to ensure algorithm works for all sizes
+
+        // 2x2 grid
+        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 4.0, 2, 2).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((3.0, 4.0)));
+
+        // 10x2 grid (wide)
+        let grid = Grid2d::new_uniform(0.0, 9.0, 0.0, 1.0, 10, 2).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 1.0)));
+
+        // 2x10 grid (tall)
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 9.0, 2, 10).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 1.0)));
+
+        // Large square grid
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 50, 50).unwrap();
+        let result = grid.get_dx_dy().unwrap();
+        assert!((result.0 - 1.0 / 49.0).abs() < 1e-15);
+        assert!((result.1 - 1.0 / 49.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn get_dx_dy_boundary_coordinates() {
+        // Test with coordinates at domain boundaries
+
+        // Grid spanning zero
+        let grid = Grid2d::new_uniform(-1.0, 1.0, -2.0, 2.0, 3, 5).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((1.0, 1.0)));
+
+        // Grid with zero width (should fail in constructor, but testing robustness)
+        // This is already tested in constructor tests, but let's test a near-zero case
+        let grid = Grid2d::new_uniform(0.0, 1e-10, 0.0, 1e-10, 2, 2).unwrap();
+        let result = grid.get_dx_dy().unwrap();
+        assert!((result.0 - 1e-10).abs() < 1e-25);
+        assert!((result.1 - 1e-10).abs() < 1e-25);
+
+        // Grid with large coordinates
+        let grid = Grid2d::new_uniform(1e6, 1e6 + 4.0, 1e9, 1e9 + 6.0, 3, 4).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((2.0, 2.0)));
     }
 }

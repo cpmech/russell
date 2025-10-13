@@ -91,8 +91,9 @@ impl<'a> EssentialBcs2d<'a> {
     ///
     /// **Note:** Any essential boundary condition on the corresponding side will be removed.
     pub fn set_periodic(&mut self, along_x: bool, along_y: bool) {
+        self.periodic_along_x = along_x;
+        self.periodic_along_y = along_y;
         if along_x {
-            self.periodic_along_x = true;
             self.grid.for_each_node_xmin(|n| {
                 self.essential.remove(n);
             });
@@ -101,7 +102,6 @@ impl<'a> EssentialBcs2d<'a> {
             });
         }
         if along_y {
-            self.periodic_along_y = true;
             self.grid.for_each_node_ymin(|n| {
                 self.essential.remove(n);
             });
@@ -273,7 +273,35 @@ mod tests {
     const TOP: f64 = 4.0;
 
     #[test]
-    fn set_essential_boundary_condition_works() {
+    fn set_periodic_works() {
+        //  8  9 10 11
+        //  4  5  6  7
+        //  0  1  2  3
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+        assert_eq!(&ebcs.is_prescribed, &vec![false; 12]);
+        assert_eq!(ebcs.periodic_along_x, false);
+        assert_eq!(ebcs.periodic_along_y, false);
+        assert_eq!(ebcs.functions.len(), 4);
+        assert_eq!(ebcs.essential.len(), 0);
+        assert_eq!(ebcs.essential_sorted.len(), 0);
+        assert_eq!(&ebcs.unknown_sorted, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+        for i in 0..4 {
+            assert_eq!((ebcs.functions[i])(0.0, 0.0), 0.0);
+        }
+        ebcs.set_periodic(true, false);
+        assert_eq!(ebcs.periodic_along_x, true);
+        assert_eq!(ebcs.periodic_along_y, false);
+        ebcs.set_periodic(false, true);
+        assert_eq!(ebcs.periodic_along_x, false);
+        assert_eq!(ebcs.periodic_along_y, true);
+        ebcs.set_periodic(false, false);
+        assert_eq!(ebcs.periodic_along_x, false);
+        assert_eq!(ebcs.periodic_along_y, false);
+    }
+
+    #[test]
+    fn set_works() {
         // 12 13 14 15
         //  8  9 10 11
         //  4  5  6  7
@@ -445,6 +473,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new(&grid);
         const LEF: f64 = 1.0;
         let lef = |_, _| LEF;
+        assert_eq!(lef(0.0, 0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0  4  8  12
         let ee = ebcs.get_lagrange_matrix();
         assert_eq!(

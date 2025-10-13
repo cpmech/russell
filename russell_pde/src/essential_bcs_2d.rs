@@ -1,6 +1,4 @@
-use crate::{Grid2d, Side};
-use russell_sparse::CooMatrix;
-use russell_sparse::Sym;
+use crate::{Grid2d, Side, StrError};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -15,7 +13,19 @@ pub struct EssentialBcs2d<'a> {
     grid: &'a Grid2d,
 
     /// Flags equations with prescribed EBC values
+    ///
+    /// length = total number of nodes in the grid
     is_prescribed: Vec<bool>,
+
+    /// Maps (global) node ID to the prescribed index (local)
+    ///
+    /// length = total number of nodes in the grid
+    index_prescribed: Vec<usize>,
+
+    /// Maps (global) node ID to the unknown index (local)
+    ///
+    /// length = total number of nodes in the grid
+    index_unknown: Vec<usize>,
 
     /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
     ///
@@ -36,11 +46,13 @@ pub struct EssentialBcs2d<'a> {
 
     /// Collects the essential boundary conditions
     ///
-    /// Maps node ID to one of the four functions in `functions`
-    essential: HashMap<usize, usize>,
+    /// Maps node to one of the four functions in `functions`
+    ///
+    /// length = number of nodes with essential boundary conditions (prescribed nodes)
+    node_to_function: HashMap<usize, usize>,
 
     /// Holds the sorted indices of the equations with essential boundary conditions
-    essential_sorted: Vec<usize>,
+    prescribed_sorted: Vec<usize>,
 
     /// Holds the sorted indices of the equations without essential boundary conditions
     unknown_sorted: Vec<usize>,
@@ -53,6 +65,8 @@ impl<'a> EssentialBcs2d<'a> {
         EssentialBcs2d {
             grid,
             is_prescribed: vec![false; dim],
+            index_prescribed: vec![usize::MAX; dim],
+            index_unknown: vec![usize::MAX; dim],
             periodic_along_x: false,
             periodic_along_y: false,
             functions: vec![
@@ -61,8 +75,8 @@ impl<'a> EssentialBcs2d<'a> {
                 Arc::new(|_, _| 0.0), // ymin
                 Arc::new(|_, _| 0.0), // ymax
             ],
-            essential: HashMap::new(),
-            essential_sorted: Vec::new(),
+            node_to_function: HashMap::new(),
+            prescribed_sorted: Vec::new(),
             unknown_sorted: (0..dim).collect(), // Initialize with all node indices
         }
     }
@@ -71,20 +85,28 @@ impl<'a> EssentialBcs2d<'a> {
     // setters
     // --------------------------------------------------------
 
-    /// Recomputes the prescribed flags array and the essential_sorted array
+    /// Recomputes the internal arrays after any change
     fn recompute_arrays(&mut self) {
+        self.index_prescribed.fill(usize::MAX);
+        self.index_unknown.fill(usize::MAX);
         self.unknown_sorted.clear();
         let dim = self.grid.size();
+        let mut ip = 0;
+        let mut iu = 0;
         for m in 0..dim {
-            if self.essential.contains_key(&m) {
+            if self.node_to_function.contains_key(&m) {
+                self.index_prescribed[m] = ip;
                 self.is_prescribed[m] = true;
+                ip += 1;
             } else {
+                self.index_unknown[m] = iu;
                 self.is_prescribed[m] = false;
                 self.unknown_sorted.push(m); // already in sorted order due to loop order
+                iu += 1;
             }
         }
-        self.essential_sorted = self.essential.keys().copied().collect();
-        self.essential_sorted.sort(); // need this since HashMap keys are unordered
+        self.prescribed_sorted = self.node_to_function.keys().copied().collect();
+        self.prescribed_sorted.sort(); // need this since HashMap keys are unordered
     }
 
     /// Sets periodic boundary condition
@@ -95,18 +117,18 @@ impl<'a> EssentialBcs2d<'a> {
         self.periodic_along_y = along_y;
         if along_x {
             self.grid.for_each_node_xmin(|n| {
-                self.essential.remove(n);
+                self.node_to_function.remove(n);
             });
             self.grid.for_each_node_xmax(|n| {
-                self.essential.remove(n);
+                self.node_to_function.remove(n);
             });
         }
         if along_y {
             self.grid.for_each_node_ymin(|n| {
-                self.essential.remove(n);
+                self.node_to_function.remove(n);
             });
             self.grid.for_each_node_ymax(|n| {
-                self.essential.remove(n);
+                self.node_to_function.remove(n);
             });
         }
         self.recompute_arrays();
@@ -123,28 +145,28 @@ impl<'a> EssentialBcs2d<'a> {
                 self.periodic_along_x = false;
                 self.functions[0] = Arc::new(f);
                 self.grid.for_each_node_xmin(|n| {
-                    self.essential.insert(*n, 0);
+                    self.node_to_function.insert(*n, 0);
                 });
             }
             Side::Xmax => {
                 self.periodic_along_x = false;
                 self.functions[1] = Arc::new(f);
                 self.grid.for_each_node_xmax(|n| {
-                    self.essential.insert(*n, 1);
+                    self.node_to_function.insert(*n, 1);
                 });
             }
             Side::Ymin => {
                 self.periodic_along_y = false;
                 self.functions[2] = Arc::new(f);
                 self.grid.for_each_node_ymin(|n| {
-                    self.essential.insert(*n, 2);
+                    self.node_to_function.insert(*n, 2);
                 });
             }
             Side::Ymax => {
                 self.periodic_along_y = false;
                 self.functions[3] = Arc::new(f);
                 self.grid.for_each_node_ymax(|n| {
-                    self.essential.insert(*n, 3);
+                    self.node_to_function.insert(*n, 3);
                 });
             }
         };
@@ -157,7 +179,7 @@ impl<'a> EssentialBcs2d<'a> {
     pub fn set_homogeneous(&mut self) {
         self.periodic_along_x = false;
         self.periodic_along_y = false;
-        self.essential.clear();
+        self.node_to_function.clear();
         self.functions = vec![
             Arc::new(|_, _| 0.0), // xmin
             Arc::new(|_, _| 0.0), // xmax
@@ -165,16 +187,16 @@ impl<'a> EssentialBcs2d<'a> {
             Arc::new(|_, _| 0.0), // ymax
         ];
         self.grid.for_each_node_xmin(|n| {
-            self.essential.insert(*n, 0);
+            self.node_to_function.insert(*n, 0);
         });
         self.grid.for_each_node_xmax(|n| {
-            self.essential.insert(*n, 1);
+            self.node_to_function.insert(*n, 1);
         });
         self.grid.for_each_node_ymin(|n| {
-            self.essential.insert(*n, 2);
+            self.node_to_function.insert(*n, 2);
         });
         self.grid.for_each_node_ymax(|n| {
-            self.essential.insert(*n, 3);
+            self.node_to_function.insert(*n, 3);
         });
         self.recompute_arrays();
     }
@@ -182,6 +204,11 @@ impl<'a> EssentialBcs2d<'a> {
     // --------------------------------------------------------
     // getters
     // --------------------------------------------------------
+
+    /// Returns a reference to the grid
+    pub fn get_grid(&self) -> &Grid2d {
+        self.grid
+    }
 
     /// Indicates whether the boundary conditions are periodic along x
     pub fn is_periodic_along_x(&self) -> bool {
@@ -198,11 +225,37 @@ impl<'a> EssentialBcs2d<'a> {
         self.is_prescribed[m]
     }
 
+    /// Returns the local index of the prescribed node
+    pub fn get_index_prescribed(&self, m: usize) -> Result<usize, StrError> {
+        if self.index_prescribed[m] == usize::MAX {
+            Err("node is not a prescribed node")
+        } else {
+            Ok(self.index_prescribed[m])
+        }
+    }
+
+    /// Returns the local index of the unknown node
+    pub fn get_index_unknown(&self, m: usize) -> Result<usize, StrError> {
+        if self.index_unknown[m] == usize::MAX {
+            Err("node is not a unknown node")
+        } else {
+            Ok(self.index_unknown[m])
+        }
+    }
+
+    /// Returns the total number of equations (nodes)
+    ///
+    /// This is equal to the total number of nodes in the grid and equal
+    /// to `num_prescribed + num_unknown`.
+    pub fn num_total(&self) -> usize {
+        self.grid.size()
+    }
+
     /// Returns the number of prescribed equations
     ///
     /// The number of prescribed equations is equal to the number of nodes with essential conditions.
     pub fn num_prescribed(&self) -> usize {
-        self.essential.len()
+        self.node_to_function.len()
     }
 
     /// Returns the number of unknown equations
@@ -212,7 +265,7 @@ impl<'a> EssentialBcs2d<'a> {
 
     /// Returns the (sorted) indices of the nodes with prescribed values
     pub fn get_nodes_prescribed(&self) -> &Vec<usize> {
-        &self.essential_sorted
+        &self.prescribed_sorted
     }
 
     /// Returns the (sorted) indices of the nodes with unknown values
@@ -226,37 +279,46 @@ impl<'a> EssentialBcs2d<'a> {
     ///
     /// A panic may occur if the index is out of bounds.
     pub fn get_prescribed_value(&self, m: usize, x: f64, y: f64) -> f64 {
-        let index = self.essential.get(&m).unwrap();
+        let index = self.node_to_function.get(&m).unwrap();
         (self.functions[*index])(x, y)
     }
 
-    /// Generates the Lagrange matrix
+    /// Applies a function to each prescribed node
     ///
-    /// Returns the Lagrange matrix `E` for handling essential boundary conditions
-    /// with the Lagrange multipliers method (LMM).
+    /// The function is `f(ip, m, x, y, value)` where:
     ///
-    /// The LMM considers the augmented system of equations:
-    ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ M  Eᵀ │ │ a │   │ r │
-    /// │       │ │   │ = │   │
-    /// │ E  0  │ │ w │   │ ū │
-    /// └       ┘ └   ┘   └   ┘
-    /// ```
-    ///
-    /// where `E` is the Lagrange matrix, `a = (u, p)` is the vector of grid values (unknowns and prescribed),
-    /// `r` is the right-hand side vector, `w` is the vector of Lagrange multipliers, and `ū` is the vector of
-    /// prescribed essential values.
-    pub fn get_lagrange_matrix(&self) -> CooMatrix {
-        let np = self.essential.len();
-        let dim = self.grid.size();
-        let nnz = np;
-        let mut ee = CooMatrix::new(np, dim, nnz, Sym::No).unwrap();
-        self.essential_sorted.iter().enumerate().for_each(|(ip, &m)| {
-            ee.put(ip, m, 1.0).unwrap();
+    /// * `ip`: the index of the prescribed node in the sorted list of prescribed nodes
+    /// * `m`: the global index of the node
+    /// * `x`: the x-coordinate of the node
+    /// * `y`: the y-coordinate of the node
+    /// * `value`: the prescribed value at the node
+    pub fn for_each_prescribed_node<F>(&self, mut f: F)
+    where
+        F: FnMut(usize, usize, f64, f64, f64),
+    {
+        self.prescribed_sorted.iter().enumerate().for_each(|(ip, &m)| {
+            let (x, y) = self.grid.coord(m);
+            let value = self.get_prescribed_value(m, x, y);
+            f(ip, m, x, y, value);
         });
-        ee
+    }
+
+    /// Applies a function to each unknown node
+    ///
+    /// The function is `f(iu, m, x, y)` where:
+    ///
+    /// * `iu`: the index of the unknown node in the sorted list of unknown nodes
+    /// * `m`: the global index of the node
+    /// * `x`: the x-coordinate of the node
+    /// * `y`: the y-coordinate of the node
+    pub fn for_each_unknown_node<F>(&self, mut f: F)
+    where
+        F: FnMut(usize, usize, f64, f64),
+    {
+        self.unknown_sorted.iter().enumerate().for_each(|(iu, &m)| {
+            let (x, y) = self.grid.coord(m);
+            f(iu, m, x, y);
+        });
     }
 }
 
@@ -280,15 +342,18 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 3).unwrap();
         let mut ebcs = EssentialBcs2d::new(&grid);
         assert_eq!(&ebcs.is_prescribed, &vec![false; 12]);
+        assert_eq!(&ebcs.index_prescribed, &vec![usize::MAX; 12]);
+        assert_eq!(&ebcs.index_unknown, &vec![usize::MAX; 12]);
         assert_eq!(ebcs.periodic_along_x, false);
         assert_eq!(ebcs.periodic_along_y, false);
         assert_eq!(ebcs.functions.len(), 4);
-        assert_eq!(ebcs.essential.len(), 0);
-        assert_eq!(ebcs.essential_sorted.len(), 0);
+        assert_eq!(ebcs.node_to_function.len(), 0);
+        assert_eq!(ebcs.prescribed_sorted.len(), 0);
         assert_eq!(&ebcs.unknown_sorted, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
         for i in 0..4 {
             assert_eq!((ebcs.functions[i])(0.0, 0.0), 0.0);
         }
+
         ebcs.set_periodic(true, false);
         assert_eq!(ebcs.periodic_along_x, true);
         assert_eq!(ebcs.periodic_along_y, false);
@@ -301,7 +366,9 @@ mod tests {
     }
 
     #[test]
-    fn new_and_set_work() {
+    fn all_functionality_works() {
+        // --- default: no essential boundary conditions ---
+
         // 12 13 14 15
         //  8  9 10 11
         //  4  5  6  7
@@ -309,15 +376,19 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
         let mut ebcs = EssentialBcs2d::new(&grid);
         assert_eq!(&ebcs.is_prescribed, &vec![false; 16]);
+        assert_eq!(&ebcs.index_prescribed, &vec![usize::MAX; 16]);
+        assert_eq!(&ebcs.index_unknown, &vec![usize::MAX; 16]);
         assert_eq!(ebcs.periodic_along_x, false);
         assert_eq!(ebcs.periodic_along_y, false);
         assert_eq!(ebcs.functions.len(), 4);
-        assert_eq!(ebcs.essential.len(), 0);
-        assert_eq!(ebcs.essential_sorted.len(), 0);
+        assert_eq!(ebcs.node_to_function.len(), 0);
+        assert_eq!(ebcs.prescribed_sorted.len(), 0);
         assert_eq!(
             &ebcs.unknown_sorted,
             &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         );
+
+        // -- set essential boundary conditions on all sides --
 
         // 12* 13* 14* 15*
         //  8*  9  10  11*
@@ -328,19 +399,71 @@ mod tests {
         let bot = |_, _| BOT;
         let top = |_, _| TOP;
         ebcs.set(Side::Xmin, lef);
-        assert_eq!(ebcs.essential_sorted, vec![0, 4, 8, 12]);
+        assert_eq!(ebcs.prescribed_sorted, vec![0, 4, 8, 12]);
+        // assert_eq!(&ebcs.index_unknown, &vec![usize::MAX; 12]);
         ebcs.set(Side::Xmax, rig);
-        assert_eq!(ebcs.essential_sorted, vec![0, 3, 4, 7, 8, 11, 12, 15]);
+        assert_eq!(ebcs.prescribed_sorted, vec![0, 3, 4, 7, 8, 11, 12, 15]);
         ebcs.set(Side::Ymin, bot);
-        assert_eq!(ebcs.essential_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 15]);
+        assert_eq!(ebcs.prescribed_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 15]);
         ebcs.set(Side::Ymax, top);
-        assert_eq!(ebcs.essential_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15]);
+        assert_eq!(ebcs.prescribed_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15]);
+        assert_eq!(
+            &ebcs.index_prescribed,
+            &vec![
+                0,          // 0*
+                1,          // 1*
+                2,          // 2*
+                3,          // 3*
+                4,          // 4*
+                usize::MAX, // 5
+                usize::MAX, // 6
+                5,          // 7*
+                6,          // 8*
+                usize::MAX, // 9
+                usize::MAX, // 10
+                7,          // 11*
+                8,          // 12*
+                9,          // 13*
+                10,         // 14*
+                11,         // 15*
+            ]
+        );
+        assert_eq!(
+            &ebcs.index_unknown,
+            &vec![
+                usize::MAX, // 0*
+                usize::MAX, // 1*
+                usize::MAX, // 2*
+                usize::MAX, // 3*
+                usize::MAX, // 4*
+                0,          // 5
+                1,          // 6
+                usize::MAX, // 7*
+                usize::MAX, // 8*
+                2,          // 9
+                3,          // 10
+                usize::MAX, // 11*
+                usize::MAX, // 12*
+                usize::MAX, // 13*
+                usize::MAX, // 14*
+                usize::MAX, // 15*
+            ]
+        );
 
+        // --- check getters ---
+
+        assert_eq!(ebcs.get_grid().size(), 16);
         assert_eq!(ebcs.is_periodic_along_x(), false);
         assert_eq!(ebcs.is_periodic_along_y(), false);
         assert_eq!(ebcs.is_prescribed(0), true);
         assert_eq!(ebcs.is_prescribed(15), true);
         assert_eq!(ebcs.is_prescribed(5), false);
+        assert_eq!(ebcs.get_index_prescribed(0), Ok(0));
+        assert_eq!(ebcs.get_index_prescribed(15), Ok(11));
+        assert_eq!(ebcs.get_index_prescribed(5), Err("node is not a prescribed node"));
+        assert_eq!(ebcs.get_index_unknown(0), Err("node is not a unknown node"));
+        assert_eq!(ebcs.get_index_unknown(5), Ok(0));
+        assert_eq!(ebcs.get_index_unknown(10), Ok(3));
         assert_eq!(ebcs.num_prescribed(), 12);
         assert_eq!(ebcs.num_unknown(), 4);
         assert_eq!(
@@ -348,9 +471,8 @@ mod tests {
             &vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15]
         );
         assert_eq!(ebcs.get_nodes_unknown(), &vec![5, 6, 9, 10]);
-
         let mut res = Vec::new();
-        ebcs.essential_sorted.iter().for_each(|&m| {
+        ebcs.prescribed_sorted.iter().for_each(|&m| {
             let value = ebcs.get_prescribed_value(m, 0.0, 0.0); // x and y do not matter here
             res.push((m, value));
         });
@@ -391,6 +513,42 @@ mod tests {
             true,  // 15
         ];
         assert_eq!(&ebcs.is_prescribed, &correct_prescribed);
+        let mut res = Vec::new();
+        ebcs.for_each_prescribed_node(|ip, m, x, y, value| {
+            res.push((ip, m, x, y, value));
+        });
+        assert_eq!(
+            &res,
+            &[
+                (0, 0, 0.0, 0.0, BOT),
+                (1, 1, 1.0 / 3.0, 0.0, BOT),
+                (2, 2, 2.0 / 3.0, 0.0, BOT),
+                (3, 3, 1.0, 0.0, BOT),
+                (4, 4, 0.0, 1.0 / 3.0, LEF),
+                (5, 7, 1.0, 1.0 / 3.0, RIG),
+                (6, 8, 0.0, 2.0 / 3.0, LEF),
+                (7, 11, 1.0, 2.0 / 3.0, RIG),
+                (8, 12, 0.0, 1.0, TOP),
+                (9, 13, 1.0 / 3.0, 1.0, TOP),
+                (10, 14, 2.0 / 3.0, 1.0, TOP),
+                (11, 15, 1.0, 1.0, TOP),
+            ]
+        );
+        let mut res = Vec::new();
+        ebcs.for_each_unknown_node(|iu, m, x, y| {
+            res.push((iu, m, x, y));
+        });
+        assert_eq!(
+            &res,
+            &[
+                (0, 5, 1.0 / 3.0, 1.0 / 3.0),
+                (1, 6, 2.0 / 3.0, 1.0 / 3.0),
+                (2, 9, 1.0 / 3.0, 2.0 / 3.0),
+                (3, 10, 2.0 / 3.0, 2.0 / 3.0),
+            ]
+        );
+
+        // --- set homogeneous boundary conditions ---
 
         // 12* 13* 14* 15*
         //  8*  9  10  11*
@@ -398,7 +556,7 @@ mod tests {
         //  0*  1*  2*  3*
         ebcs.set_homogeneous();
         let mut res = Vec::new();
-        ebcs.essential_sorted.iter().for_each(|&m| {
+        ebcs.prescribed_sorted.iter().for_each(|&m| {
             let value = ebcs.get_prescribed_value(m, 0.0, 0.0); // x and y do not matter here
             res.push((m, value));
         });
@@ -421,13 +579,15 @@ mod tests {
         );
         assert_eq!(&ebcs.is_prescribed, &correct_prescribed);
 
+        // --- set periodic boundary conditions ---
+
         // 12  13* 14* 15
         //  8   9  10  11
         //  4   5   6   7
         //  0   1*  2*  3
         ebcs.set_periodic(true, false);
         let mut res = Vec::new();
-        ebcs.essential_sorted.iter().for_each(|&m| {
+        ebcs.prescribed_sorted.iter().for_each(|&m| {
             let value = ebcs.get_prescribed_value(m, 0.0, 0.0); // x and y do not matter here
             res.push((m, value));
         });
@@ -453,38 +613,13 @@ mod tests {
                 false, // 15
             ]
         );
-
         // 12  13  14  15
         //  8   9  10  11
         //  4   5   6   7
         //  0   1   2   3
         ebcs.set_periodic(true, true);
-        assert_eq!(ebcs.essential_sorted.len(), 0);
+        assert_eq!(ebcs.prescribed_sorted.len(), 0);
         assert_eq!(&ebcs.is_prescribed, &vec![false; 16]);
-    }
-
-    #[test]
-    fn get_lagrange_matrix_works() {
-        // 12* 13  14  15
-        //  8*  9  10  11
-        //  4*  5   6   7
-        //  0*  1   2   3
-        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
-        const LEF: f64 = 1.0;
-        let lef = |_, _| LEF;
-        assert_eq!(lef(0.0, 0.0), LEF);
-        ebcs.set(Side::Xmin, lef); //  0  4  8  12
-        let ee = ebcs.get_lagrange_matrix();
-        assert_eq!(
-            format!("{}", ee.as_dense()),
-            "┌                                 ┐\n\
-             │ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 │\n\
-             └                                 ┘"
-        );
     }
 
     #[test]
@@ -498,8 +633,8 @@ mod tests {
         assert!(!ebcs.periodic_along_x);
         assert!(!ebcs.periodic_along_y);
         assert_eq!(ebcs.functions.len(), 4);
-        assert!(ebcs.essential.is_empty());
-        assert!(ebcs.essential_sorted.is_empty());
+        assert!(ebcs.node_to_function.is_empty());
+        assert!(ebcs.prescribed_sorted.is_empty());
         assert_eq!(ebcs.unknown_sorted, vec![0, 1, 2, 3, 4, 5, 6, 7, 8]);
 
         // Check that default functions return 0.0
@@ -888,8 +1023,8 @@ mod tests {
         // Verify final state
         assert!(ebcs.is_periodic_along_x());
         assert!(ebcs.is_periodic_along_y());
-        assert!(ebcs.essential.is_empty());
-        assert!(ebcs.essential_sorted.is_empty());
+        assert!(ebcs.node_to_function.is_empty());
+        assert!(ebcs.prescribed_sorted.is_empty());
         assert_eq!(ebcs.unknown_sorted, vec![0, 1, 2, 3, 4, 5, 6, 7, 8]);
         assert!(ebcs.is_prescribed.iter().all(|&x| !x));
     }

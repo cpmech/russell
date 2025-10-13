@@ -398,13 +398,40 @@ mod tests {
         let rig = |_, _| RIG;
         let bot = |_, _| BOT;
         let top = |_, _| TOP;
+
         ebcs.set(Side::Xmin, lef);
         assert_eq!(ebcs.prescribed_sorted, vec![0, 4, 8, 12]);
-        // assert_eq!(&ebcs.index_unknown, &vec![usize::MAX; 12]);
+        ebcs.for_each_prescribed_node(|ip, m, _, _, _| {
+            assert_eq!(ebcs.index_prescribed[m], ip);
+            assert_eq!(ebcs.index_unknown[m], usize::MAX);
+        });
+        ebcs.for_each_unknown_node(|iu, m, _, _| {
+            assert_eq!(ebcs.index_prescribed[m], usize::MAX);
+            assert_eq!(ebcs.index_unknown[m], iu);
+        });
+
         ebcs.set(Side::Xmax, rig);
         assert_eq!(ebcs.prescribed_sorted, vec![0, 3, 4, 7, 8, 11, 12, 15]);
+        ebcs.for_each_prescribed_node(|ip, m, _, _, _| {
+            assert_eq!(ebcs.index_prescribed[m], ip);
+            assert_eq!(ebcs.index_unknown[m], usize::MAX);
+        });
+        ebcs.for_each_unknown_node(|iu, m, _, _| {
+            assert_eq!(ebcs.index_prescribed[m], usize::MAX);
+            assert_eq!(ebcs.index_unknown[m], iu);
+        });
+
         ebcs.set(Side::Ymin, bot);
         assert_eq!(ebcs.prescribed_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 15]);
+        ebcs.for_each_prescribed_node(|ip, m, _, _, _| {
+            assert_eq!(ebcs.index_prescribed[m], ip);
+            assert_eq!(ebcs.index_unknown[m], usize::MAX);
+        });
+        ebcs.for_each_unknown_node(|iu, m, _, _| {
+            assert_eq!(ebcs.index_prescribed[m], usize::MAX);
+            assert_eq!(ebcs.index_unknown[m], iu);
+        });
+
         ebcs.set(Side::Ymax, top);
         assert_eq!(ebcs.prescribed_sorted, vec![0, 1, 2, 3, 4, 7, 8, 11, 12, 13, 14, 15]);
         assert_eq!(
@@ -515,6 +542,8 @@ mod tests {
         assert_eq!(&ebcs.is_prescribed, &correct_prescribed);
         let mut res = Vec::new();
         ebcs.for_each_prescribed_node(|ip, m, x, y, value| {
+            assert_eq!(ebcs.index_prescribed[m], ip);
+            assert_eq!(ebcs.index_unknown[m], usize::MAX);
             res.push((ip, m, x, y, value));
         });
         assert_eq!(
@@ -536,6 +565,8 @@ mod tests {
         );
         let mut res = Vec::new();
         ebcs.for_each_unknown_node(|iu, m, x, y| {
+            assert_eq!(ebcs.index_prescribed[m], usize::MAX);
+            assert_eq!(ebcs.index_unknown[m], iu);
             res.push((iu, m, x, y));
         });
         assert_eq!(

@@ -237,6 +237,49 @@ mod tests {
     }
 
     #[test]
+    fn new_works() {
+        //  8  9 10 11
+        //  4  5  6  7
+        //  0  1  2  3
+
+        let xx = &[-3.0, -1.0, 1.0, 3.0];
+        let yy = &[2.0, 5.0, 8.0];
+        let correct_coords = &[
+            (-3.0, 2.0), // 0
+            (-1.0, 2.0), // 1
+            (1.0, 2.0),  // 2
+            (3.0, 2.0),  // 3
+            //
+            (-3.0, 5.0), // 4
+            (-1.0, 5.0), // 5
+            (1.0, 5.0),  // 6
+            (3.0, 5.0),  // 7
+            //
+            (-3.0, 8.0), // 8
+            (-1.0, 8.0), // 9
+            (1.0, 8.0),  // 10
+            (3.0, 8.0),  // 11
+        ];
+
+        let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.nx, 4);
+        assert_eq!(grid.ny, 3);
+        assert_eq!(grid.coords, correct_coords);
+        assert_eq!(grid.nodes_xmin, &[0, 4, 8]);
+        assert_eq!(grid.nodes_xmax, &[3, 7, 11]);
+        assert_eq!(grid.nodes_ymin, &[0, 1, 2, 3]);
+        assert_eq!(grid.nodes_ymax, &[8, 9, 10, 11]);
+
+        assert_eq!(grid.nx(), 4);
+        assert_eq!(grid.ny(), 3);
+        assert_eq!(grid.size(), 12);
+
+        let mut coords = Vec::new();
+        grid.for_each_coord(|_m, x, y| coords.push((x, y)));
+        assert_eq!(coords, correct_coords);
+    }
+
+    #[test]
     fn new_uniform_works() {
         //  8  9 10 11
         //  4  5  6  7

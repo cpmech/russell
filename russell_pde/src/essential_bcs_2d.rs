@@ -243,7 +243,6 @@ impl<'a> EssentialBcs2d<'a> {
     /// │       │ │   │ = │   │
     /// │ E  0  │ │ w │   │ ū │
     /// └       ┘ └   ┘   └   ┘
-    ///     A       x       b
     /// ```
     ///
     /// where `E` is the Lagrange matrix, `u` is the vector of unknowns, `f` is the vector of "forces",

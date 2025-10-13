@@ -55,21 +55,31 @@ use crate::StrError;
 /// use russell_pde::{Grid2d, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     // Create uniform grid
+///     // Create uniform 3x3 grid on unit square
 ///     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3)?;
 ///
-///     // Access node coordinates
-///     let (x, y) = grid.coord(4); // center node
+///     // Grid layout:
+///     //   6───7───8  (y=1.0)
+///     //   │   │   │
+///     //   3───4───5  (y=0.5)
+///     //   │   │   │
+///     //   0───1───2  (y=0.0)
+///     // x=0.0 0.5 1.0
 ///
-///     // Iterate over all nodes
+///     // Print all node coordinates
 ///     grid.for_each_coord(|m, x, y| {
-///         println!("Node {}: ({}, {})", m, x, y);
+///         println!("Node {}: ({:.1}, {:.1})", m, x, y);
 ///     });
+///     // Output:
+///     // Node 0: (0.0, 0.0)
+///     // Node 1: (0.5, 0.0)
+///     // Node 2: (1.0, 0.0)
+///     // Node 3: (0.0, 0.5)
+///     // ...
 ///
-///     // Process boundary nodes
-///     grid.for_each_node_xmin(|&node| {
-///         // Apply boundary condition to left edge
-///     });
+///     // Collect coordinates into a vector
+///     let mut coords = Vec::new();
+///     grid.for_each_coord(|_m, x, y| coords.push((x, y)));
 ///     Ok(())
 /// }
 /// ```
@@ -144,6 +154,16 @@ impl Grid2d {
     ///     let xx = &[0.0, 0.1, 0.5, 0.9, 1.0];
     ///     let yy = &[0.0, 0.2, 0.8, 1.0];
     ///     let grid = Grid2d::new(xx, yy)?;
+    ///
+    ///     // Grid layout (5x4):
+    ///     //   15──16──17──18──19  (y=1.0)
+    ///     //   │   │   │   │   │
+    ///     //   10──11──12──13──14  (y=0.8)
+    ///     //   │   │   │   │   │
+    ///     //   5───6───7───8───9  (y=0.2)
+    ///     //   │   │   │   │   │
+    ///     //   0───1───2───3───4  (y=0.0)
+    ///     // x=0.0 0.1 0.5 0.9 1.0
     ///
     ///     assert_eq!(grid.nx(), 5);
     ///     assert_eq!(grid.ny(), 4);
@@ -225,11 +245,21 @@ impl Grid2d {
     ///     // Unit square with 5x4 grid
     ///     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 5, 4)?;
     ///
+    ///     // Grid layout:
+    ///     //   15──16──17──18──19  (y=1.0)
+    ///     //   │   │   │   │   │
+    ///     //   10──11──12──13──14  (y=0.67)
+    ///     //   │   │   │   │   │
+    ///     //   5───6───7───8───9  (y=0.33)
+    ///     //   │   │   │   │   │
+    ///     //   0───1───2───3───4  (y=0.0)
+    ///     // x=0.0 0.25 0.5 0.75 1.0
+    ///
     ///     // Check corner coordinates
-    ///     assert_eq!(grid.coord(0), (0.0, 0.0));  // bottom-left
-    ///     assert_eq!(grid.coord(4), (1.0, 0.0));  // bottom-right  
-    ///     assert_eq!(grid.coord(15), (0.0, 1.0)); // top-left
-    ///     assert_eq!(grid.coord(19), (1.0, 1.0)); // top-right
+    ///     assert_eq!(grid.coord(0), (0.0, 0.0));   // bottom-left
+    ///     assert_eq!(grid.coord(4), (1.0, 0.0));   // bottom-right  
+    ///     assert_eq!(grid.coord(15), (0.0, 1.0));  // top-left
+    ///     assert_eq!(grid.coord(19), (1.0, 1.0));  // top-right
     ///     Ok(())
     /// }
     /// ```
@@ -309,6 +339,12 @@ impl Grid2d {
     /// fn main() -> Result<(), StrError> {
     ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 1.0, 3, 2)?;
     ///
+    ///     // Grid layout (3x2):
+    ///     //   3───4───5  (y=1.0)
+    ///     //   │   │   │
+    ///     //   0───1───2  (y=0.0)
+    ///     // x=0.0 1.0 2.0
+    ///
     ///     assert_eq!(grid.coord(0), (0.0, 0.0)); // bottom-left
     ///     assert_eq!(grid.coord(1), (1.0, 0.0)); // bottom-center  
     ///     assert_eq!(grid.coord(3), (0.0, 1.0)); // top-left
@@ -361,6 +397,43 @@ impl Grid2d {
     /// # Arguments
     ///
     /// * `f` - Closure that accepts `&node_index: &usize`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///
+    ///     // Grid layout (4x3):
+    ///     //    8───9──10──11  (y=2.0)
+    ///     //    │   │   │   │
+    ///     //    4───5───6───7  (y=1.0)
+    ///     //    │   │   │   │
+    ///     //    0───1───2───3  (y=0.0)
+    ///     //   x=0  0.67 1.33 2.0
+    ///     ///
+    ///     /// Left boundary nodes: 0, 4, 8 (marked with *)
+    ///     ///   *8───9──10──11
+    ///     ///    │   │   │   │
+    ///     ///   *4───5───6───7
+    ///     ///    │   │   │   │
+    ///     ///   *0───1───2───3
+    ///
+    ///     // Apply Dirichlet boundary condition on left edge
+    ///     grid.for_each_node_xmin(|&node| {
+    ///         let (x, y) = grid.coord(node);
+    ///         println!("Left boundary node {}: ({}, {})", node, x, y);
+    ///         // Set boundary value: u[node] = boundary_function(x, y)
+    ///     });
+    ///     // Output:
+    ///     // Left boundary node 0: (0, 0)
+    ///     // Left boundary node 4: (0, 1)
+    ///     // Left boundary node 8: (0, 2)
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn for_each_node_xmin<F>(&self, mut f: F)
     where
         F: FnMut(&usize),
@@ -376,6 +449,29 @@ impl Grid2d {
     /// # Arguments
     ///
     /// * `f` - Closure that accepts `&node_index: &usize`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///
+    ///     // Right boundary nodes: 3, 7, 11 (marked with *)
+    ///     //    8───9──10──*11
+    ///     //    │   │   │   │
+    ///     //    4───5───6──*7
+    ///     //    │   │   │   │
+    ///     //    0───1───2──*3
+    ///
+    ///     grid.for_each_node_xmax(|&node| {
+    ///         let (x, y) = grid.coord(node);
+    ///         println!("Right boundary node {}: ({}, {})", node, x, y);
+    ///     });
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn for_each_node_xmax<F>(&self, mut f: F)
     where
         F: FnMut(&usize),
@@ -391,6 +487,29 @@ impl Grid2d {
     /// # Arguments
     ///
     /// * `f` - Closure that accepts `&node_index: &usize`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///
+    ///     // Bottom boundary nodes: 0, 1, 2, 3 (marked with *)
+    ///     //    8───9──10──11
+    ///     //    │   │   │   │
+    ///     //    4───5───6───7
+    ///     //    │   │   │   │
+    ///     //   *0──*1──*2──*3
+    ///
+    ///     grid.for_each_node_ymin(|&node| {
+    ///         let (x, y) = grid.coord(node);
+    ///         println!("Bottom boundary node {}: ({}, {})", node, x, y);
+    ///     });
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn for_each_node_ymin<F>(&self, mut f: F)
     where
         F: FnMut(&usize),
@@ -406,6 +525,29 @@ impl Grid2d {
     /// # Arguments
     ///
     /// * `f` - Closure that accepts `&node_index: &usize`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3)?;
+    ///
+    ///     // Top boundary nodes: 8, 9, 10, 11 (marked with *)
+    ///     //   *8──*9─*10─*11
+    ///     //    │   │   │   │
+    ///     //    4───5───6───7
+    ///     //    │   │   │   │
+    ///     //    0───1───2───3
+    ///
+    ///     grid.for_each_node_ymax(|&node| {
+    ///         let (x, y) = grid.coord(node);
+    ///         println!("Top boundary node {}: ({}, {})", node, x, y);
+    ///     });
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn for_each_node_ymax<F>(&self, mut f: F)
     where
         F: FnMut(&usize),

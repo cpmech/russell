@@ -2,7 +2,14 @@ use crate::StrError;
 
 /// Defines a 2D Cartesian grid
 ///
-/// A sample grid is illustrated below:
+/// This structure represents a structured 2D grid with nodes arranged in a Cartesian coordinate system.
+/// The grid can be created with either arbitrary coordinates or uniform spacing.
+///
+/// ## Grid Layout and Indexing
+///
+/// The grid uses a **row-major** indexing scheme where nodes are numbered sequentially:
+/// - First along the x-direction (i-index)  
+/// - Then along the y-direction (j-index)
 ///
 /// ```text
 ///      i=0     i=1     i=2     i=3     i=4
@@ -17,41 +24,133 @@ use crate::StrError;
 ///                                     nx=5
 /// ```
 ///
-/// Thus:
+/// ## Index Conversion Formulae
 ///
 /// ```text
-/// m = i + j nx
-/// i = m % nx
-/// j = m / nx
+/// m = i + j × nx    (convert (i,j) to linear index m)
+/// i = m % nx        (extract i-index from linear index m)
+/// j = m / nx        (extract j-index from linear index m)
+/// ```
 ///
-/// "%" is the modulo operator
-/// "/" is the integer division operator
+/// Where:
+/// - `m` is the linear node index (0, 1, 2, ...)
+/// - `i` is the column index (0 ≤ i < nx)
+/// - `j` is the row index (0 ≤ j < ny)
+/// - `%` is the modulo operator
+/// - `/` is integer division
+///
+/// ## Boundary Node Classification
+///
+/// The grid automatically identifies boundary nodes:
+/// - **xmin edge**: Left boundary (i = 0)
+/// - **xmax edge**: Right boundary (i = nx-1)  
+/// - **ymin edge**: Bottom boundary (j = 0)
+/// - **ymax edge**: Top boundary (j = ny-1)
+///
+/// Corner nodes belong to multiple boundaries simultaneously.
+///
+/// ## Examples
+///
+/// ```rust
+/// use russell_pde::{Grid2d, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // Create uniform grid
+///     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3)?;
+///
+///     // Access node coordinates
+///     let (x, y) = grid.coord(4); // center node
+///
+///     // Iterate over all nodes
+///     grid.for_each_coord(|m, x, y| {
+///         println!("Node {}: ({}, {})", m, x, y);
+///     });
+///
+///     // Process boundary nodes
+///     grid.for_each_node_xmin(|&node| {
+///         // Apply boundary condition to left edge
+///     });
+///     Ok(())
+/// }
 /// ```
 pub struct Grid2d {
-    /// Number of points along x (≥ 2)
+    /// Number of points along the x-direction (≥ 2)
+    ///
+    /// This represents the number of columns in the grid.
     nx: usize,
 
-    /// Number of points along y (≥ 2)
+    /// Number of points along the y-direction (≥ 2)
+    ///
+    /// This represents the number of rows in the grid.
     ny: usize,
 
-    /// Node coordinates
+    /// Node coordinates stored as (x, y) pairs
+    ///
+    /// The coordinates are stored in row-major order, so:
+    /// - `coords[0]` to `coords[nx-1]` are the bottom row (j=0)
+    /// - `coords[nx]` to `coords[2*nx-1]` are the second row (j=1)
+    /// - And so on...
     coords: Vec<(f64, f64)>,
 
-    /// Indices of nodes on the xmin edge
+    /// Linear indices of nodes on the left boundary (xmin edge)
+    ///
+    /// Contains nodes where i = 0: [0, nx, 2*nx, ..., (ny-1)*nx]
     nodes_xmin: Vec<usize>,
 
-    /// Indices of nodes on the xmax edge
+    /// Linear indices of nodes on the right boundary (xmax edge)
+    ///
+    /// Contains nodes where i = nx-1: [nx-1, 2*nx-1, 3*nx-1, ..., ny*nx-1]
     nodes_xmax: Vec<usize>,
 
-    /// Indices of nodes on the ymin edge
+    /// Linear indices of nodes on the bottom boundary (ymin edge)
+    ///
+    /// Contains nodes where j = 0: [0, 1, 2, ..., nx-1]
     nodes_ymin: Vec<usize>,
 
-    /// Indices of nodes on the ymax edge
+    /// Linear indices of nodes on the top boundary (ymax edge)
+    ///
+    /// Contains nodes where j = ny-1: [(ny-1)*nx, (ny-1)*nx+1, ..., ny*nx-1]
     nodes_ymax: Vec<usize>,
 }
 
 impl Grid2d {
-    /// Allocates a new instance with given coordinates
+    /// Creates a new grid with arbitrary coordinate arrays
+    ///
+    /// This constructor allows for non-uniform spacing by providing explicit
+    /// coordinate arrays for both x and y directions.
+    ///
+    /// # Arguments
+    ///
+    /// * `xx` - Array of x-coordinates (must be strictly increasing, length ≥ 2)
+    /// * `yy` - Array of y-coordinates (must be strictly increasing, length ≥ 2)
+    ///
+    /// # Returns
+    ///
+    /// A new `Grid2d` instance with `nx = xx.len()` and `ny = yy.len()` points.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `xx.len() < 2` or `yy.len() < 2`
+    /// - `xx` or `yy` arrays are not strictly increasing
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // Non-uniform grid with refined spacing near boundaries
+    ///     let xx = &[0.0, 0.1, 0.5, 0.9, 1.0];
+    ///     let yy = &[0.0, 0.2, 0.8, 1.0];
+    ///     let grid = Grid2d::new(xx, yy)?;
+    ///
+    ///     assert_eq!(grid.nx(), 5);
+    ///     assert_eq!(grid.ny(), 4);
+    ///     assert_eq!(grid.size(), 20);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(xx: &[f64], yy: &[f64]) -> Result<Self, StrError> {
         let nx = xx.len();
         let ny = yy.len();
@@ -86,16 +185,54 @@ impl Grid2d {
         })
     }
 
-    /// Allocates a new instance with uniform coordinates
+    /// Creates a new grid with uniform spacing
+    ///
+    /// This constructor creates a structured grid with uniform spacing in both
+    /// x and y directions. The spacing is calculated automatically based on
+    /// the domain size and number of points.
     ///
     /// # Arguments
     ///
-    /// * `xmin` -- min x coordinate
-    /// * `xmax` -- max x coordinate
-    /// * `ymin` -- min y coordinate
-    /// * `ymax` -- max y coordinate
-    /// * `nx` -- number of points along x (≥ 2)
-    /// * `ny` -- number of points along y (≥ 2)
+    /// * `xmin` - Minimum x-coordinate (left boundary)
+    /// * `xmax` - Maximum x-coordinate (right boundary)  
+    /// * `ymin` - Minimum y-coordinate (bottom boundary)
+    /// * `ymax` - Maximum y-coordinate (top boundary)
+    /// * `nx` - Number of points along x-direction (≥ 2)
+    /// * `ny` - Number of points along y-direction (≥ 2)
+    ///
+    /// # Grid Spacing
+    ///
+    /// The uniform spacing is calculated as:
+    /// - `dx = (xmax - xmin) / (nx - 1)`
+    /// - `dy = (ymax - ymin) / (ny - 1)`
+    ///
+    /// # Returns
+    ///
+    /// A new `Grid2d` instance with uniformly spaced coordinates.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `nx < 2` or `ny < 2`
+    /// - `xmax ≤ xmin` or `ymax ≤ ymin`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // Unit square with 5x4 grid
+    ///     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 5, 4)?;
+    ///
+    ///     // Check corner coordinates
+    ///     assert_eq!(grid.coord(0), (0.0, 0.0));  // bottom-left
+    ///     assert_eq!(grid.coord(4), (1.0, 0.0));  // bottom-right  
+    ///     assert_eq!(grid.coord(15), (0.0, 1.0)); // top-left
+    ///     assert_eq!(grid.coord(19), (1.0, 1.0)); // top-right
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new_uniform(xmin: f64, xmax: f64, ymin: f64, ymax: f64, nx: usize, ny: usize) -> Result<Self, StrError> {
         if nx < 2 {
             return Err("nx must be ≥ 2");
@@ -130,40 +267,100 @@ impl Grid2d {
         })
     }
 
-    /// Returns the number of points along x
+    /// Returns the number of grid points along the x-direction
+    ///
+    /// This corresponds to the number of columns in the grid.
     pub fn nx(&self) -> usize {
         self.nx
     }
 
-    /// Returns the number of points along y
+    /// Returns the number of grid points along the y-direction
+    ///
+    /// This corresponds to the number of rows in the grid.
     pub fn ny(&self) -> usize {
         self.ny
     }
 
-    /// Returns the total number of points
+    /// Returns the total number of grid points
+    ///
+    /// This equals `nx × ny`.
     pub fn size(&self) -> usize {
         self.nx * self.ny
     }
 
-    /// Returns the coordinates of a given node
+    /// Returns the (x, y) coordinates of the specified node
+    ///
+    /// # Arguments
+    ///
+    /// * `m` - Linear node index (0 ≤ m < nx×ny)
+    ///
+    /// # Returns
+    ///
+    /// A tuple `(x, y)` containing the coordinates of node `m`.
     ///
     /// # Panics
     ///
-    /// May panic if `m` is out of bounds
+    /// Panics if `m` is out of bounds (≥ nx×ny).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    /// fn main() -> Result<(), StrError> {
+    ///     let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 1.0, 3, 2)?;
+    ///
+    ///     assert_eq!(grid.coord(0), (0.0, 0.0)); // bottom-left
+    ///     assert_eq!(grid.coord(1), (1.0, 0.0)); // bottom-center  
+    ///     assert_eq!(grid.coord(3), (0.0, 1.0)); // top-left
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn coord(&self, m: usize) -> (f64, f64) {
         self.coords[m]
     }
 
-    /// Loops over all coordinates
+    /// Iterates over all grid nodes with their coordinates
     ///
-    /// The function is `(m, x, y)` where m is the node index and (x, y) are the coordinates
+    /// The provided closure is called for each node with arguments `(m, x, y)`
+    /// where `m` is the linear node index and `(x, y)` are the coordinates.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Closure that accepts `(node_index: usize, x: f64, y: f64)`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use russell_pde::{Grid2d, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3)?;
+    ///
+    ///     // Print all node coordinates
+    ///     grid.for_each_coord(|m, x, y| {
+    ///         println!("Node {}: ({:.2}, {:.2})", m, x, y);
+    ///     });
+    ///
+    ///     // Collect coordinates into a vector
+    ///     let mut coords = Vec::new();
+    ///     grid.for_each_coord(|_m, x, y| coords.push((x, y)));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn for_each_coord(&self, mut f: impl FnMut(usize, f64, f64)) {
         for (m, (x, y)) in self.coords.iter().enumerate() {
             f(m, *x, *y);
         }
     }
 
-    /// Loops over the indices of nodes with xmin
+    /// Iterates over nodes on the left boundary (xmin edge)
+    ///
+    /// Processes all nodes where `i = 0` (leftmost column).
+    /// The closure receives a reference to each node index.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Closure that accepts `&node_index: &usize`
     pub fn for_each_node_xmin<F>(&self, mut f: F)
     where
         F: FnMut(&usize),
@@ -171,7 +368,14 @@ impl Grid2d {
         self.nodes_xmin.iter().for_each(|n| f(n));
     }
 
-    /// Loops over the indices of nodes with xmax
+    /// Iterates over nodes on the right boundary (xmax edge)
+    ///
+    /// Processes all nodes where `i = nx-1` (rightmost column).
+    /// The closure receives a reference to each node index.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Closure that accepts `&node_index: &usize`
     pub fn for_each_node_xmax<F>(&self, mut f: F)
     where
         F: FnMut(&usize),
@@ -179,7 +383,14 @@ impl Grid2d {
         self.nodes_xmax.iter().for_each(|n| f(n));
     }
 
-    /// Loops over the indices of nodes with ymin
+    /// Iterates over nodes on the bottom boundary (ymin edge)
+    ///
+    /// Processes all nodes where `j = 0` (bottom row).
+    /// The closure receives a reference to each node index.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Closure that accepts `&node_index: &usize`
     pub fn for_each_node_ymin<F>(&self, mut f: F)
     where
         F: FnMut(&usize),
@@ -187,7 +398,14 @@ impl Grid2d {
         self.nodes_ymin.iter().for_each(|n| f(n));
     }
 
-    /// Loops over the indices of nodes with ymax
+    /// Iterates over nodes on the top boundary (ymax edge)
+    ///
+    /// Processes all nodes where `j = ny-1` (top row).
+    /// The closure receives a reference to each node index.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Closure that accepts `&node_index: &usize`
     pub fn for_each_node_ymax<F>(&self, mut f: F)
     where
         F: FnMut(&usize),

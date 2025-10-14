@@ -11,12 +11,14 @@ mod enums;
 mod essential_bcs_2d;
 mod fdm_laplacian_1d;
 mod fdm_laplacian_2d;
+mod grid_1d;
 mod grid_2d;
 
 pub use enums::*;
 pub use essential_bcs_2d::*;
 pub use fdm_laplacian_1d::*;
 pub use fdm_laplacian_2d::*;
+pub use grid_1d::*;
 pub use grid_2d::*;
 
 // run code from README file

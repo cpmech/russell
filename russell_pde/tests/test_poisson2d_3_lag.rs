@@ -45,7 +45,7 @@ fn test_poisson2d_3_lag() {
     // where a = (u, p) and w are the Lagrange multipliers
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (aa, _) = fdm.get_aa_matrix(0, true);
+    let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
     let (mut x, mut b) = ebcs.get_system_vectors_lmm();
 
     // add the source term to the right-hand side vector

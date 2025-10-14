@@ -166,7 +166,7 @@ impl<'a> FdmLaplacian2dNew<'a> {
 
     /// Returns the matrix for the Lagrange multipliers method (LMM)
     ///
-    /// Returns `A` from:
+    /// Returns `A` and `E` from:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
@@ -178,7 +178,7 @@ impl<'a> FdmLaplacian2dNew<'a> {
     /// ```
     ///
     /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
-    pub fn get_aa_matrix(&self, extra_nnz: usize, return_ee_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_aa_and_ee_matrices(&self, extra_nnz: usize, return_ee_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
         // build the A matrix
         let na = self.ebcs.num_total();
         let np = self.ebcs.num_prescribed();
@@ -303,7 +303,7 @@ mod tests {
 
         let fdm = FdmLaplacian2dNew::new(&ebcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_aa_matrix(0, true);
+        let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -459,7 +459,7 @@ mod tests {
 
         let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_aa_matrix(0, true);
+        let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -642,7 +642,7 @@ mod tests {
 
         let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_aa_matrix(0, true);
+        let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());
 

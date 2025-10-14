@@ -3,7 +3,7 @@ use russell_lab::approx_eq;
 use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
 use russell_sparse::{Genie, LinSolver, Sym};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_poisson2d_1() {

@@ -10,13 +10,13 @@ pub type StrError = &'static str;
 mod enums;
 mod essential_bcs_2d;
 mod fdm_laplacian_1d;
-mod fdm_laplacian_2d_new;
+mod fdm_laplacian_2d;
 mod grid_2d;
 
 pub use enums::*;
 pub use essential_bcs_2d::*;
 pub use fdm_laplacian_1d::*;
-pub use fdm_laplacian_2d_new::*;
+pub use fdm_laplacian_2d::*;
 pub use grid_2d::*;
 
 // run code from README file

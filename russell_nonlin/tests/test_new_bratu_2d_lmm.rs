@@ -87,7 +87,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let ndim = n_phi + n_psi;
 
     // allocate the Laplacian operator
-    let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
 
     // augmented coefficient matrix of the Laplacian operator
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);

@@ -561,6 +561,87 @@ where
         Ok(())
     }
 
+    /// Performs the matrix-vector multiplication with update
+    ///
+    /// ```text
+    ///  v  +=  α ⋅  a   ⋅  u
+    /// (m)        (m,n)   (n)
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `u` -- Vector with dimension ≥ the number of columns of the matrix
+    ///
+    /// # Output
+    ///
+    /// * `v` -- Vector with dimension ≥ the number of rows of the matrix
+    ///
+    /// # Note
+    ///
+    /// This method is not highly efficient but should useful with small matrices or verifications.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{Matrix, Vector};
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // set sparse matrix (3 x 3) with 6 non-zeros
+    ///     let (nrow, ncol, max_nnz) = (3, 3, 6);
+    ///     let mut coo = CooMatrix::new(nrow, ncol, max_nnz, Sym::No)?;
+    ///     coo.put(0, 0, 1.0)?;
+    ///     coo.put(1, 0, 2.0)?;
+    ///     coo.put(1, 1, 3.0)?;
+    ///     coo.put(2, 0, 4.0)?;
+    ///     coo.put(2, 1, 5.0)?;
+    ///     coo.put(2, 2, 6.0)?;
+    ///
+    ///     // check matrix
+    ///     let a = coo.as_dense();
+    ///     let correct_a = "┌       ┐\n\
+    ///                      │ 1 0 0 │\n\
+    ///                      │ 2 3 0 │\n\
+    ///                      │ 4 5 6 │\n\
+    ///                      └       ┘";
+    ///     assert_eq!(format!("{}", a), correct_a);
+    ///
+    ///     // perform mat-vec-mul
+    ///     let u = Vector::from(&[1.0, 1.0, 1.0]);
+    ///     let mut v = Vector::from(&[1000.0, 2000.0, 3000.0]);
+    ///     coo.mat_vec_mul_update(&mut v, 1.0, &u)?;
+    ///
+    ///     // check vector
+    ///     let correct_v = "┌      ┐\n\
+    ///                      │ 1001 │\n\
+    ///                      │ 2005 │\n\
+    ///                      │ 3015 │\n\
+    ///                      └      ┘";
+    ///     assert_eq!(format!("{}", v), correct_v);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn mat_vec_mul_update(&self, v: &mut NumVector<T>, alpha: T, u: &NumVector<T>) -> Result<(), StrError> {
+        if u.dim() < self.ncol {
+            return Err("u.dim() must be ≥ the number of columns of the matrix");
+        }
+        if v.dim() < self.nrow {
+            return Err("v.dim() must be ≥ the number of rows of the matrix");
+        }
+        let mirror_required = self.symmetric.triangular();
+        for p in 0..self.nnz {
+            let i = self.indices_i[p] as usize;
+            let j = self.indices_j[p] as usize;
+            let aij = self.values[p];
+            v[i] += alpha * aij * u[j];
+            if mirror_required && i != j {
+                v[j] += alpha * aij * u[i];
+            }
+        }
+        Ok(())
+    }
+
     /// Performs the transpose(matrix)-vector multiplication
     ///
     /// ```text
@@ -1703,6 +1784,208 @@ mod tests {
     }
 
     // --- mat_vec_mul (end) ---
+
+    // --- mat_vec_mul_update (start) ---
+
+    #[test]
+    fn mat_vec_mul_update_captures_errors() {
+        let mut coo = NumCooMatrix::<u8>::new(2, 2, 1, Sym::No).unwrap();
+        coo.put(0, 0, 123).unwrap();
+        let u = NumVector::<u8>::new(1);
+        let mut v = NumVector::<u8>::new(coo.nrow);
+        assert_eq!(
+            coo.mat_vec_mul_update(&mut v, 1, &u).err(),
+            Some("u.dim() must be ≥ the number of columns of the matrix")
+        );
+        let u = NumVector::<u8>::new(2);
+        let mut v = NumVector::<u8>::new(1);
+        assert_eq!(
+            coo.mat_vec_mul_update(&mut v, 1, &u).err(),
+            Some("v.dim() must be ≥ the number of rows of the matrix")
+        );
+    }
+
+    #[test]
+    fn mat_vec_mul_update_works() {
+        //  1.0  2.0  3.0
+        //  0.1  0.2  0.3
+        // 10.0 20.0 30.0
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 9, Sym::No).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(0, 2, 3.0).unwrap();
+        coo.put(1, 0, 0.1).unwrap();
+        coo.put(1, 1, 0.2).unwrap();
+        coo.put(1, 2, 0.3).unwrap();
+        coo.put(2, 0, 10.0).unwrap();
+        coo.put(2, 1, 20.0).unwrap();
+        coo.put(2, 2, 30.0).unwrap();
+        let u = NumVector::<f64>::from(&[0.1, 0.2, 0.3]);
+        let mut v = NumVector::<f64>::new(coo.nrow);
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[2.8, 0.28, 28.0];
+        vec_approx_eq(&v, correct_v, 1e-15);
+
+        // call mat_vec_mul_update again
+        let mut v = NumVector::<f64>::from(&[1000.0, 2000.0, 3000.0]);
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[1002.8, 2000.28, 3028.0];
+        vec_approx_eq(&v, correct_v, 1e-15);
+
+        // single component matrix
+        let mut single = NumCooMatrix::<f64>::new(1, 1, 1, Sym::No).unwrap();
+        single.put(0, 0, 123.0).unwrap();
+        let u = NumVector::from(&[2.0]);
+        let mut v = NumVector::<f64>::new(1);
+        single.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        assert_eq!(v.as_data(), &[492.0]);
+    }
+
+    #[test]
+    fn mat_vec_mul_update_symmetric_lower_works() {
+        // 2
+        // 1  2     sym
+        // 1  2  9
+        // 3  1  1  7
+        // 2  1  5  1  8
+        let (nrow, ncol, nnz) = (5, 5, 15);
+        let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, Sym::YesLower).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 2, 9.0).unwrap();
+        coo.put(3, 3, 7.0).unwrap();
+        coo.put(4, 4, 8.0).unwrap();
+
+        coo.put(1, 0, 1.0).unwrap();
+
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+
+        coo.put(3, 0, 3.0).unwrap();
+        coo.put(3, 1, 1.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+
+        coo.put(4, 0, 2.0).unwrap();
+        coo.put(4, 1, 1.0).unwrap();
+        coo.put(4, 2, 5.0).unwrap();
+        coo.put(4, 3, 1.0).unwrap();
+        let u = NumVector::<f64>::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = NumVector::<f64>::from(&[1004.0, 2000.0, 3000.0, 4010.0, 5000.0]);
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[1000.0, 2008.0, 3006.0, 4000.0, 5002.0];
+        vec_approx_eq(&v, correct_v, 1e-12);
+    }
+
+    #[test]
+    fn mat_vec_mul_update_symmetric_full_works() {
+        // 2  1  1  3  2
+        // 1  2  2  1  1
+        // 1  2  9  1  5
+        // 3  1  1  7  1
+        // 2  1  5  1  8
+        let (nrow, ncol, nnz) = (5, 5, 25);
+        let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, Sym::YesFull).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 2, 9.0).unwrap();
+        coo.put(3, 3, 7.0).unwrap();
+        coo.put(4, 4, 8.0).unwrap();
+
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(0, 1, 1.0).unwrap();
+
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(0, 2, 1.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(1, 2, 2.0).unwrap();
+
+        coo.put(3, 0, 3.0).unwrap();
+        coo.put(0, 3, 3.0).unwrap();
+        coo.put(3, 1, 1.0).unwrap();
+        coo.put(1, 3, 1.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(2, 3, 1.0).unwrap();
+
+        coo.put(4, 0, 2.0).unwrap();
+        coo.put(0, 4, 2.0).unwrap();
+        coo.put(4, 1, 1.0).unwrap();
+        coo.put(1, 4, 1.0).unwrap();
+        coo.put(4, 2, 5.0).unwrap();
+        coo.put(2, 4, 5.0).unwrap();
+        coo.put(4, 3, 1.0).unwrap();
+        coo.put(3, 4, 1.0).unwrap();
+        let u = NumVector::<f64>::from(&[-629.0 / 98.0, 237.0 / 49.0, -53.0 / 49.0, 62.0 / 49.0, 23.0 / 14.0]);
+        let mut v = NumVector::<f64>::from(&[1004.0, 2000.0, 3000.0, 4010.0, 5000.0]);
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[1000.0, 2008.0, 3006.0, 4000.0, 5002.0];
+        vec_approx_eq(&v, correct_v, 1e-12);
+    }
+
+    #[test]
+    fn mat_vec_mul_update_positive_definite_works() {
+        //  2  -1              2     ...
+        // -1   2  -1    =>   -1   2
+        //     -1   2             -1   2
+        let (nrow, ncol, nnz) = (3, 3, 5);
+        let mut coo = NumCooMatrix::<f64>::new(nrow, ncol, nnz, Sym::YesLower).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 2, 2.0).unwrap();
+        coo.put(1, 0, -1.0).unwrap();
+        coo.put(2, 1, -1.0).unwrap();
+        let u = NumVector::<f64>::from(&[5.0, 8.0, 7.0]);
+        let mut v = NumVector::<f64>::from(&[1000.0, 2000.0, 3000.0]);
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct_v = &[1004.0, 2008.0, 3012.0];
+        vec_approx_eq(&v, correct_v, 1e-15);
+    }
+
+    #[test]
+    fn mat_vec_mul_update_rectangular_works() {
+        //  5  -2  .  1
+        // 10  -4  .  2
+        // 15  -6  .  3
+        let (coo, _, _, _) = Samples::rectangular_3x4();
+        let u = NumVector::<f64>::from(&[1.0, 2.0, 3.0, -5.0]);
+        let mut v = NumVector::<f64>::new(coo.nrow);
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct = &[-8.0, -16.0, -24.0];
+        vec_approx_eq(&v, correct, 1e-15);
+        // call mat_vec_mul_update again
+        coo.mat_vec_mul_update(&mut v, 2.0, &u).unwrap();
+        let correct = &[-16.0, -32.0, -48.0];
+        vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    #[test]
+    fn mat_vec_mul_update_complex_works() {
+        // 4+4i    .     2+2i
+        //  .      1     3+3i
+        //  .     5+5i   1+1i
+        //  1      .      .
+        let (coo, _, _, _) = Samples::complex_rectangular_4x3();
+        let u = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(3.0, 1.0), cpx!(5.0, -1.0)]);
+        let mut v = ComplexVector::new(coo.nrow);
+        coo.mat_vec_mul_update(&mut v, cpx!(2.0, 4.0), &u).unwrap();
+        let correct = &[
+            cpx!(-40.0, 80.0),
+            cpx!(-10.0, 110.0),
+            cpx!(-64.0, 112.0),
+            cpx!(-2.0, 6.0),
+        ];
+        complex_vec_approx_eq(&v, correct, 1e-15);
+        // call mat_vec_mul_update again
+        coo.mat_vec_mul_update(&mut v, cpx!(2.0, 4.0), &u).unwrap();
+        let correct = &[
+            cpx!(-80.0, 160.0),
+            cpx!(-20.0, 220.0),
+            cpx!(-128.0, 224.0),
+            cpx!(-4.0, 12.0),
+        ];
+        complex_vec_approx_eq(&v, correct, 1e-15);
+    }
+
+    // --- mat_vec_mul_update (end) ---
 
     // --- mat_t_vec_mul (start) ---
 

@@ -1,9 +1,9 @@
 use plotpy::{Contour, Plot};
-use russell_lab::{vec_approx_eq, Vector};
-use russell_pde::FdmLaplacian2d;
-use russell_sparse::{Genie, LinSolver};
+use russell_lab::approx_eq;
+use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
+use russell_sparse::{Genie, LinSolver, Sym};
 
-const SAVE_FIGURE: bool = false;
+const SAVE_FIGURE: bool = true;
 
 #[test]
 fn test_poisson2d_1() {
@@ -19,49 +19,52 @@ fn test_poisson2d_1() {
     //
     // ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
 
-    // allocate the Laplacian operator
+    // allocate the grid
     let (nx, ny) = (9, 9);
-    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
-    // set zero essential boundary conditions
-    fdm.set_homogeneous_boundary_conditions();
+    // homogeneous essential boundary conditions
+    let mut ebcs = EssentialBcs2d::new(&grid);
+    ebcs.set_homogeneous();
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, _) = fdm.mod_coefficient_matrix().unwrap();
+    // allocate the Laplacian operator
+    let (kx, ky) = (1.0, 1.0);
+    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
 
-    // allocate the left- and right-hand side vectors
-    let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
+    // solving K u = h from:
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K   C │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ c   k │ │ p │   │ g │
+    // └       ┘ └   ┘   └   ┘
+    // where h = f - C p
 
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    // (this step is not needed with homogeneous boundary conditions)
+    // assemble the coefficient matrix and the lhs and rhs vectors
+    let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
+    let (mut u, p, mut h) = ebcs.get_system_vectors();
+    let cc = cc_mat.unwrap();
 
-    // initialize the right-hand side vector with the correction
-    // (this step is not needed with homogeneous boundary conditions)
+    // initialize the right-hand side
+    cc.mat_vec_mul(&mut h, -1.0, &p).unwrap(); // h = - C p
 
-    // set the right-hand side vector with the source term
-    fdm.loop_over_grid_points(|m, x, y| {
-        rhs[m] = 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
-    });
-
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ebc
+    // add the source term to the right-hand side vector (h += f)
+    ebcs.for_each_unknown_node(|iu, _, x, y| {
+        h[iu] += 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
     });
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
+    solver.actual.factorize(&kk, None).unwrap();
+    solver.actual.solve(&mut u, &h, false).unwrap();
+
+    // results: a = (u, p)
+    let a = ebcs.get_composed_system_vector(&u, &p);
 
     // check
-    let mut phi_correct = Vector::new(dim);
     let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);
-    fdm.loop_over_grid_points(|m, x, y| {
-        phi_correct[m] = analytical(x, y);
+    grid.for_each_coord(|m, x, y| {
+        approx_eq(a[m], analytical(x, y), 1e-3);
     });
-    vec_approx_eq(&lhs, phi_correct.as_data(), 1e-3);
 
     // plot results
     if SAVE_FIGURE {
@@ -71,12 +74,12 @@ fn test_poisson2d_1() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        fdm.loop_over_grid_points(|m, x, y| {
+        grid.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;
             yy[row][col] = y;
-            zz_num[row][col] = lhs[m];
+            zz_num[row][col] = a[m];
             zz_ana[row][col] = analytical(x, y);
         });
         contour_num.set_no_lines(false).draw(&xx, &yy, &zz_num);

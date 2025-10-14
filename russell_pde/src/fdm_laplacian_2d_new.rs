@@ -209,6 +209,49 @@ impl<'a> FdmLaplacian2dNew<'a> {
         }
     }
 
+    /// Executes a loop over one row of the full coefficient matrix M
+    ///
+    /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
+    /// This also allows the setting up of flux boundary conditions. Therefore, some
+    /// column indices may appear repeated; e.g. due to the zero-flux boundaries.
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row of the coefficient matrix
+    /// * `callback` -- a `function(n, val_mn)` where `n` is the column index and
+    ///   `Mmn` is the m-n-element of the coefficient matrix
+    pub fn loop_over_full_coef_mat_row<F>(&self, m: usize, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        self.loop_over_bandwidth(m, |b, n| {
+            callback(n, self.molecule[b]);
+        });
+    }
+
+    /// Executes a loop over the grid points
+    ///
+    /// # Input
+    ///
+    /// * `callback` -- a function of `(m, x, y)` where `m` is the sequential point number,
+    ///   and `(x, y)` are the Cartesian coordinates of the grid point.
+    ///
+    /// Note that:
+    ///
+    /// ```text
+    /// m = i + j nx
+    /// i = m % nx
+    /// j = m / nx
+    /// ```
+    pub fn loop_over_grid_points<F>(&self, mut callback: F)
+    where
+        F: FnMut(usize, f64, f64),
+    {
+        self.ebcs.get_grid().for_each_coord(|m, x, y| {
+            callback(m, x, y);
+        });
+    }
+
     /// Executes a loop over the "bandwidth" of the coefficient matrix
     ///
     /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
@@ -265,6 +308,7 @@ impl<'a> FdmLaplacian2dNew<'a> {
 mod tests {
     use super::FdmLaplacian2dNew;
     use crate::{EssentialBcs2d, Grid2d, Side};
+    use russell_lab::Matrix;
     use russell_sparse::Sym;
 
     #[test]
@@ -697,6 +741,66 @@ mod tests {
              │  0  1  0  0  0  0  0  1  0  1 -4  1 │\n\
              │  0  0  1  0  0  0  0  0  1  1  1 -4 │\n\
              └                                     ┘"
+        );
+    }
+
+    #[test]
+    fn loop_over_mm_row_works() {
+        // ┌                            ┐
+        // │ -4  2  .  2  .  .  .  .  . │  0
+        // │  1 -4  1  .  2  .  .  .  . │  1
+        // │  .  2 -4  .  .  2  .  .  . │  2
+        // │  1  .  . -4  2  .  1  .  . │  3
+        // │  .  1  .  1 -4  1  .  1  . │  4
+        // │  .  .  1  .  2 -4  .  .  1 │  5
+        // │  .  .  .  2  .  . -4  2  . │  6
+        // │  .  .  .  .  2  .  1 -4  1 │  7
+        // │  .  .  .  .  .  2  .  2 -4 │  8
+        // └                            ┘
+        //    0  1  2  3  4  5  6  7  8
+        let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
+        let ebcs = EssentialBcs2d::new(&grid);
+        let lap = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+        let mut row_0 = Vec::new();
+        let mut row_4 = Vec::new();
+        let mut row_8 = Vec::new();
+        lap.loop_over_full_coef_mat_row(0, |j, aij| row_0.push((j, aij)));
+        lap.loop_over_full_coef_mat_row(4, |j, aij| row_4.push((j, aij)));
+        lap.loop_over_full_coef_mat_row(8, |j, aij| row_8.push((j, aij)));
+        assert_eq!(row_0, &[(0, -4.0), (1, 1.0), (1, 1.0), (3, 1.0), (3, 1.0)]);
+        assert_eq!(row_4, &[(4, -4.0), (3, 1.0), (5, 1.0), (1, 1.0), (7, 1.0)]);
+        assert_eq!(row_8, &[(8, -4.0), (7, 1.0), (7, 1.0), (5, 1.0), (5, 1.0)]);
+    }
+
+    #[test]
+    fn loop_over_grid_points_works() {
+        let (nx, ny) = (2, 3);
+        let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
+        let ebcs = EssentialBcs2d::new(&grid);
+        let lap = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+        let mut xx = Matrix::new(ny, nx);
+        let mut yy = Matrix::new(ny, nx);
+        lap.loop_over_grid_points(|m, x, y| {
+            let i = m % nx;
+            let j = m / nx;
+            xx.set(j, i, x);
+            yy.set(j, i, y);
+        });
+        assert_eq!(
+            format!("{}", xx),
+            "┌       ┐\n\
+             │ -1  1 │\n\
+             │ -1  1 │\n\
+             │ -1  1 │\n\
+             └       ┘"
+        );
+        assert_eq!(
+            format!("{}", yy),
+            "┌       ┐\n\
+             │ -3 -3 │\n\
+             │  0  0 │\n\
+             │  3  3 │\n\
+             └       ┘"
         );
     }
 }

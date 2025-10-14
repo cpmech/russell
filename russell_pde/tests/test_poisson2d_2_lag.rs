@@ -52,7 +52,7 @@ fn test_poisson2d_2_lag() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (aa, _) = fdm.get_aa_matrix(0, true);
-    let (mut x, mut b) = ebcs.get_lmm_vectors();
+    let (mut x, mut b) = ebcs.get_system_vectors_lmm();
 
     // add the source term to the right-hand side vector
     grid.for_each_coord(|m, x, y| {

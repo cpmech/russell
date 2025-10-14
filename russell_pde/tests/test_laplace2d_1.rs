@@ -1,6 +1,6 @@
-use russell_lab::{vec_approx_eq, Vector};
-use russell_pde::{FdmLaplacian2d, Side};
-use russell_sparse::{Genie, LinSolver};
+use russell_lab::vec_approx_eq;
+use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d, Side};
+use russell_sparse::{Genie, LinSolver, Sym};
 
 #[test]
 fn test_laplace2d_1() {
@@ -18,44 +18,47 @@ fn test_laplace2d_1() {
     // bottom:  ϕ(x, 0.0) = 1.0
     // top:     ϕ(x, 3.0) = 2.0
 
+    // allocate the grid
+    let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs2d::new(&grid);
+    ebcs.set(Side::Xmin, |_, _| 1.0);
+    ebcs.set(Side::Xmax, |_, _| 2.0);
+    ebcs.set(Side::Ymin, |_, _| 1.0);
+    ebcs.set(Side::Ymax, |_, _| 2.0);
+
     // allocate the Laplacian operator
-    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+    let (kx, ky) = (1.0, 1.0);
+    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
 
-    // set essential boundary conditions
-    fdm.set_essential_boundary_condition(Side::Xmin, |_, _| 1.0);
-    fdm.set_essential_boundary_condition(Side::Xmax, |_, _| 2.0);
-    fdm.set_essential_boundary_condition(Side::Ymin, |_, _| 1.0);
-    fdm.set_essential_boundary_condition(Side::Ymax, |_, _| 2.0);
+    // solving K u = h from:
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K   C │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ c   k │ │ p │   │ g │
+    // └       ┘ └   ┘   └   ┘
+    // where h = f - C p
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
+    // assemble the coefficient matrix and the lhs and rhs vectors
+    let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
+    let (mut u, p, mut h) = ebcs.get_system_vectors();
+    let cc = cc_mat.unwrap();
 
-    // allocate the left- and right-hand side vectors
-    let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
-
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        lhs[m] = value;
-    });
-
-    // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &lhs).unwrap(); // f1 := -K12⋅u2
-
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ebc
-    });
+    // set the right-hand side (note that f = 0)
+    cc.mat_vec_mul(&mut h, -1.0, &p).unwrap(); // h = - C p
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
+    solver.actual.factorize(&kk, None).unwrap();
+    solver.actual.solve(&mut u, &h, false).unwrap();
+
+    // results: a = (u, p)
+    let a = ebcs.get_composed_system_vector(&u, &p);
 
     // check
-    let x_correct = [
+    let a_correct = [
         1.0, 1.0, 1.0, 1.0, 1.0, 1.25, 1.5, 2.0, 1.0, 1.5, 1.75, 2.0, 2.0, 2.0, 2.0, 2.0,
     ];
-    vec_approx_eq(&lhs, &x_correct, 1e-15);
+    vec_approx_eq(&a, &a_correct, 1e-15);
 }

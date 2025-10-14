@@ -3,7 +3,7 @@ use russell_lab::approx_eq;
 use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
 use russell_sparse::{Genie, LinSolver};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_poisson2d_3_lag() {
@@ -46,7 +46,7 @@ fn test_poisson2d_3_lag() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (aa, _) = fdm.get_aa_matrix(0, true);
-    let (mut x, mut b) = ebcs.get_lmm_vectors();
+    let (mut x, mut b) = ebcs.get_system_vectors_lmm();
 
     // add the source term to the right-hand side vector
     grid.for_each_coord(|m, x, y| {

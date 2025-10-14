@@ -43,7 +43,7 @@ fn test_laplace2d_1_lag() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (aa, _) = fdm.get_aa_matrix(0, true);
-    let (mut x, b) = ebcs.get_lmm_vectors();
+    let (mut x, b) = ebcs.get_system_vectors_lmm();
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();

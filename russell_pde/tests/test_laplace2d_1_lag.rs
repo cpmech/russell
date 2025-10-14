@@ -30,7 +30,7 @@ fn test_laplace2d_1_lag() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
     // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐
@@ -43,7 +43,7 @@ fn test_laplace2d_1_lag() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
-    let (mut x, b) = ebcs.get_system_vectors_lmm();
+    let (mut x, b) = fdm.get_vectors_lmm(|_, _| 0.0);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
@@ -51,7 +51,7 @@ fn test_laplace2d_1_lag() {
     solver.actual.solve(&mut x, &b, false).unwrap();
 
     // results
-    let na = ebcs.get_grid().size(); // dimension of a = (u, p)
+    let na = fdm.get_info().2;
     let a = &x.as_data()[..na];
 
     // check

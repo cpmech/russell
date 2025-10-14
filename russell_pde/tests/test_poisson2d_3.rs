@@ -23,6 +23,13 @@ fn test_poisson2d_3() {
     //
     // ϕ(x, y) = x (1 - x) y (1 - y) (1 + 2x + 7y)
 
+    // define the source term
+    let source = |x, y| {
+        let (xx, yy) = (x * x, y * y);
+        let (xxx, yyy) = (xx * x, yy * y);
+        14.0 * yyy - (16.0 - 12.0 * x) * yy - (-42.0 * xx + 54.0 * x - 2.0) * y + 4.0 * xxx - 16.0 * xx + 12.0 * x
+    };
+
     // allocate the grid
     let (nx, ny) = (11, 11);
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
@@ -33,7 +40,7 @@ fn test_poisson2d_3() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
     // solving K u = h from:
     // ┌       ┐ ┌   ┐   ┌   ┐
@@ -45,20 +52,11 @@ fn test_poisson2d_3() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-    let (mut u, p, mut h) = ebcs.get_system_vectors();
+    let (mut u, p, mut h) = fdm.get_vectors(source);
     let cc = cc_mat.unwrap();
 
     // initialize the right-hand side
-    cc.mat_vec_mul(&mut h, -1.0, &p).unwrap(); // h = - C p
-
-    // add the source term to the right-hand side vector (h += f)
-    ebcs.for_each_unknown_node(|iu, _, x, y| {
-        let (xx, yy) = (x * x, y * y);
-        let (xxx, yyy) = (xx * x, yy * y);
-        let f =
-            14.0 * yyy - (16.0 - 12.0 * x) * yy - (-42.0 * xx + 54.0 * x - 2.0) * y + 4.0 * xxx - 16.0 * xx + 12.0 * x;
-        h[iu] += f;
-    });
+    cc.mat_vec_mul_update(&mut h, -1.0, &p).unwrap(); // h -= C p
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
@@ -66,7 +64,7 @@ fn test_poisson2d_3() {
     solver.actual.solve(&mut u, &h, false).unwrap();
 
     // results: a = (u, p)
-    let a = ebcs.get_composed_system_vector(&u, &p);
+    let a = fdm.get_composed_vector(&u, &p);
 
     // check
     let analytical = |x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y);

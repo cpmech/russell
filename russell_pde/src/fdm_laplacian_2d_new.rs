@@ -1,5 +1,6 @@
 use crate::EssentialBcs2d;
 use crate::StrError;
+use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Sym};
 
 // constants for clarity/convenience
@@ -89,7 +90,7 @@ const INI_Y: usize = 0;
 /// for every node. Each row in `E` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
 pub struct FdmLaplacian2dNew<'a> {
     /// Holds a reference to the essential boundary conditions handler
-    ebcs: &'a EssentialBcs2d<'a>,
+    ebcs: EssentialBcs2d<'a>,
 
     /// Holds the FDM coefficients (α, β, β, γ, γ) corresponding to (CUR, LEF, RIG, BOT, TOP)
     ///
@@ -99,7 +100,7 @@ pub struct FdmLaplacian2dNew<'a> {
 
 impl<'a> FdmLaplacian2dNew<'a> {
     /// Allocates a new instance
-    pub fn new(ebcs: &'a EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
+    pub fn new(ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
         // check grid
         let (dx, dy) = match ebcs.get_grid().get_dx_dy() {
             Some((dx, dy)) => (dx, dy),
@@ -118,6 +119,50 @@ impl<'a> FdmLaplacian2dNew<'a> {
             ebcs,
             molecule: vec![alpha, beta, beta, gamma, gamma],
         })
+    }
+
+    /// Returns the dimension of the various vectors and matrices used in the linear system
+    ///
+    /// Returns `(nu, np, na, nw, nx)`.
+    ///
+    /// Consider the two approaches for solving the linear system:
+    ///
+    /// (1) the reduced system:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K   C │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ c   k │ │ p │   │ g │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       a       r
+    /// ```
+    ///
+    /// (2) the Lagrange multipliers method (LMM):
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ M  Eᵀ │ │ a │   │ r │
+    /// │       │ │   │ = │   │
+    /// │ E  0  │ │ w │   │ ū │
+    /// └       ┘ └   ┘   └   ┘
+    ///     A       x       b
+    /// ```
+    ///
+    /// The dimension of the various vectors and matrices are:
+    ///
+    /// * nu = num(unknown)
+    /// * np = num(prescribed)
+    /// * na = nu + np = size(grid)
+    /// * nw = np
+    /// * nx = na + nw
+    pub fn get_info(&self) -> (usize, usize, usize, usize, usize) {
+        let nu = self.ebcs.num_unknown();
+        let np = self.ebcs.num_prescribed();
+        let na = nu + np;
+        let nw = np;
+        let nx = na + nw;
+        (nu, np, na, nw, nx)
     }
 
     /// Returns the reduced coefficient matrices
@@ -207,6 +252,115 @@ impl<'a> FdmLaplacian2dNew<'a> {
         } else {
             (aa, None)
         }
+    }
+
+    /// Returns the vectors for the solution of the system of equations
+    ///
+    /// Returns `(u, p, f)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K   C │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ c   k │ │ p │   │ g │
+    /// └       ┘ └   ┘   └   ┘
+    /// ```
+    ///
+    /// Note that:
+    ///
+    /// ```text
+    /// nu = num(unknown)
+    /// np = num(prescribed)
+    /// nf = nu
+    /// ```
+    ///
+    /// The `source` function calculates f(x, y).
+    pub fn get_vectors<F>(&self, source: F) -> (Vector, Vector, Vector)
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let nu = self.ebcs.num_unknown();
+        let np = self.ebcs.num_prescribed();
+        let u = Vector::new(nu);
+        let mut p = Vector::new(np);
+        let mut f = Vector::new(nu);
+        self.ebcs.for_each_unknown_node(|iu, _, x, y| {
+            f[iu] = source(x, y);
+        });
+        self.ebcs.for_each_prescribed_node(|ip, _, _, _, u_bar| {
+            p[ip] = u_bar;
+        });
+        (u, p, f)
+    }
+
+    /// Returns the composed solution vector from the unknown and prescribed vectors
+    ///
+    /// Returns `a = (u, p)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K   C │ │ u │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ c   k │ │ p │   │ g │
+    /// └       ┘ └   ┘   └   ┘
+    /// ```
+    pub fn get_composed_vector(&self, u: &Vector, p: &Vector) -> Vector {
+        let na = self.ebcs.get_grid().size();
+        let mut a = Vector::new(na);
+        self.ebcs.get_nodes_unknown().iter().enumerate().for_each(|(iu, &m)| {
+            a[m] = u[iu];
+        });
+        self.ebcs
+            .get_nodes_prescribed()
+            .iter()
+            .enumerate()
+            .for_each(|(ip, &m)| {
+                a[m] = p[ip];
+            });
+        a
+    }
+
+    /// Returns the vectors for the solution of the system of equations using the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(x, b)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ M  Eᵀ │ │ a │   │ r │
+    /// │       │ │   │ = │   │
+    /// │ E  0  │ │ w │   │ ū │
+    /// └       ┘ └   ┘   └   ┘
+    ///     A       x       b
+    /// ```
+    /// where a = (u, p) and w are the Lagrange multipliers
+    ///
+    /// Note that:
+    ///
+    /// ```text
+    /// nu = num(unknown)
+    /// np = num(prescribed)
+    /// na = nu + np = size(grid)
+    /// nw = np
+    /// nx = na + nw
+    /// ```
+    ///
+    /// The `source` function calculates r(x, y).
+    pub fn get_vectors_lmm<F>(&self, source: F) -> (Vector, Vector)
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let na = self.ebcs.get_grid().size(); // dimension of a = (u, p)
+        let nw = self.ebcs.num_prescribed(); // number of Lagrange multipliers
+        let nx = na + nw; // dimension of x = (u, p, w)
+        let x = Vector::new(nx);
+        let mut b = Vector::new(nx);
+        self.ebcs.get_grid().for_each_coord(|m, x, y| {
+            b[m] = source(x, y);
+        });
+        self.ebcs.for_each_prescribed_node(|ip, _, _, _, u_bar| {
+            b[na + ip] = u_bar;
+        });
+        (x, b)
     }
 
     /// Executes a loop over one row of the full coefficient matrix M
@@ -311,11 +465,16 @@ mod tests {
     use russell_lab::Matrix;
     use russell_sparse::Sym;
 
+    const LEF: f64 = 1.0;
+    const RIG: f64 = 2.0;
+    const BOT: f64 = 3.0;
+    const TOP: f64 = 4.0;
+
     #[test]
     fn new_captures_errors() {
         let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
         let ebcs = EssentialBcs2d::new(&grid);
-        let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0);
+        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
@@ -328,7 +487,7 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
         let ebcs = EssentialBcs2d::new(&grid);
 
-        let fdm = FdmLaplacian2dNew::new(&ebcs, 100.0, 300.0).unwrap();
+        let fdm = FdmLaplacian2dNew::new(ebcs, 100.0, 300.0).unwrap();
         assert_eq!(&fdm.molecule, &[-800.0, 100.0, 100.0, 300.0, 300.0]);
     }
 
@@ -345,11 +504,18 @@ mod tests {
         assert_eq!(lef(0.0, 0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0  4  8
 
-        let fdm = FdmLaplacian2dNew::new(&ebcs, 100.0, 300.0).unwrap();
+        let fdm = FdmLaplacian2dNew::new(ebcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
         let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
+
+        let (nu, np, na, nw, nx) = fdm.get_info();
+        assert_eq!(nu, 9);
+        assert_eq!(np, 3);
+        assert_eq!(na, 12);
+        assert_eq!(nw, 3);
+        assert_eq!(nx, 15);
 
         // The full matrix is:
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11
@@ -501,11 +667,18 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new(&grid);
         ebcs.set_homogeneous();
 
-        let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
         let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
+
+        let (nu, np, na, nw, nx) = fdm.get_info();
+        assert_eq!(nu, 4);
+        assert_eq!(np, 12);
+        assert_eq!(na, 16);
+        assert_eq!(nw, 12);
+        assert_eq!(nx, 28);
 
         // The full matrix is:
         //    0* 1* 2* 3* 4* 5  6  7* 8* 9 10 11*12*13*14*15*
@@ -684,11 +857,18 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new(&grid);
         ebcs.set_periodic(true, true);
 
-        let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
         let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());
+
+        let (nu, np, na, nw, nx) = fdm.get_info();
+        assert_eq!(nu, 12);
+        assert_eq!(np, 0);
+        assert_eq!(na, 12);
+        assert_eq!(nw, 0);
+        assert_eq!(nx, 12);
 
         // K = A =
         //    0  1  2  3  4  5  6  7  8  9 10 11
@@ -745,6 +925,82 @@ mod tests {
     }
 
     #[test]
+    fn get_vectors_works() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
+        let mut ebcs = EssentialBcs2d::new(&grid);
+
+        // 12* 13* 14* 15*
+        //  8*  9  10  11*
+        //  4*  5   6   7*
+        //  0*  1*  2*  3*
+        ebcs.set(Side::Xmin, |_, _| LEF);
+        ebcs.set(Side::Xmax, |_, _| RIG);
+        ebcs.set(Side::Ymin, |_, _| BOT);
+        ebcs.set(Side::Ymax, |_, _| TOP);
+
+        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+
+        let (u, p, f) = fdm.get_vectors(|_, _| 100.0);
+        assert_eq!(u.dim(), 4); // nu
+        assert_eq!(p.dim(), 12); // np
+        assert_eq!(f.dim(), 4); // nu
+        for i in 0..4 {
+            assert_eq!(u[i], 0.0);
+            assert_eq!(f[i], 100.0);
+        }
+        assert_eq!(p[0], BOT);
+        assert_eq!(p[1], BOT);
+        assert_eq!(p[2], BOT);
+        assert_eq!(p[3], BOT);
+        assert_eq!(p[4], LEF);
+        assert_eq!(p[5], RIG);
+        assert_eq!(p[6], LEF);
+        assert_eq!(p[7], RIG);
+        assert_eq!(p[8], TOP);
+        assert_eq!(p[9], TOP);
+        assert_eq!(p[10], TOP);
+        assert_eq!(p[11], TOP);
+
+        let a = fdm.get_composed_vector(&u, &p);
+        assert_eq!(a.dim(), 16); // na
+        assert_eq!(a[0], BOT);
+        assert_eq!(a[1], BOT);
+        assert_eq!(a[2], BOT);
+        assert_eq!(a[3], BOT);
+        assert_eq!(a[4], LEF);
+        assert_eq!(a[5], 0.0);
+        assert_eq!(a[6], 0.0);
+        assert_eq!(a[7], RIG);
+        assert_eq!(a[8], LEF);
+        assert_eq!(a[9], 0.0);
+        assert_eq!(a[10], 0.0);
+        assert_eq!(a[11], RIG);
+        assert_eq!(a[12], TOP);
+        assert_eq!(a[13], TOP);
+        assert_eq!(a[14], TOP);
+        assert_eq!(a[15], TOP);
+
+        let (x, b) = fdm.get_vectors_lmm(|_, _| 100.0);
+        assert_eq!(x.dim(), 16 + 12); // na + nw
+        assert_eq!(b.dim(), 16 + 12); // na + nw
+        for i in 0..16 {
+            assert_eq!(b[i], 100.0);
+        }
+        assert_eq!(b[16 + 0], BOT);
+        assert_eq!(b[16 + 1], BOT);
+        assert_eq!(b[16 + 2], BOT);
+        assert_eq!(b[16 + 3], BOT);
+        assert_eq!(b[16 + 4], LEF);
+        assert_eq!(b[16 + 5], RIG);
+        assert_eq!(b[16 + 6], LEF);
+        assert_eq!(b[16 + 7], RIG);
+        assert_eq!(b[16 + 8], TOP);
+        assert_eq!(b[16 + 9], TOP);
+        assert_eq!(b[16 + 10], TOP);
+        assert_eq!(b[16 + 11], TOP);
+    }
+
+    #[test]
     fn loop_over_mm_row_works() {
         // ┌                            ┐
         // │ -4  2  .  2  .  .  .  .  . │  0
@@ -760,7 +1016,7 @@ mod tests {
         //    0  1  2  3  4  5  6  7  8
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let ebcs = EssentialBcs2d::new(&grid);
-        let lap = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+        let lap = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_4 = Vec::new();
         let mut row_8 = Vec::new();
@@ -777,7 +1033,7 @@ mod tests {
         let (nx, ny) = (2, 3);
         let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let ebcs = EssentialBcs2d::new(&grid);
-        let lap = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+        let lap = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
         lap.loop_over_grid_points(|m, x, y| {

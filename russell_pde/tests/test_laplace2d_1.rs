@@ -30,7 +30,7 @@ fn test_laplace2d_1() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
     // solving K u = h from:
     // ┌       ┐ ┌   ┐   ┌   ┐
@@ -42,7 +42,7 @@ fn test_laplace2d_1() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-    let (mut u, p, mut h) = ebcs.get_system_vectors();
+    let (mut u, p, mut h) = fdm.get_vectors(|_, _| 0.0);
     let cc = cc_mat.unwrap();
 
     // set the right-hand side (note that f = 0)
@@ -54,7 +54,7 @@ fn test_laplace2d_1() {
     solver.actual.solve(&mut u, &h, false).unwrap();
 
     // results: a = (u, p)
-    let a = ebcs.get_composed_system_vector(&u, &p);
+    let a = fdm.get_composed_vector(&u, &p);
 
     // check
     let a_correct = [

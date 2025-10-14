@@ -26,6 +26,9 @@ fn test_poisson2d_2() {
     //
     // Reference: Olver PJ (2020) - page 210 - Introduction to Partial Differential Equations, Springer
 
+    // define the source term
+    let source = |x, y| -PI * PI * y * f64::sin(PI * x);
+
     // allocate the grid
     let (nx, ny) = (17, 17);
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
@@ -39,7 +42,7 @@ fn test_poisson2d_2() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
     // solving K u = h from:
     // ┌       ┐ ┌   ┐   ┌   ┐
@@ -51,16 +54,11 @@ fn test_poisson2d_2() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-    let (mut u, p, mut h) = ebcs.get_system_vectors();
+    let (mut u, p, mut h) = fdm.get_vectors(source);
     let cc = cc_mat.unwrap();
 
     // initialize the right-hand side
-    cc.mat_vec_mul(&mut h, -1.0, &p).unwrap(); // h = - C p
-
-    // add the source term to the right-hand side vector (h += f)
-    ebcs.for_each_unknown_node(|iu, _, x, y| {
-        h[iu] += -PI * PI * y * f64::sin(PI * x);
-    });
+    cc.mat_vec_mul_update(&mut h, -1.0, &p).unwrap(); // h -= C p
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
@@ -68,7 +66,7 @@ fn test_poisson2d_2() {
     solver.actual.solve(&mut u, &h, false).unwrap();
 
     // results: a = (u, p)
-    let a = ebcs.get_composed_system_vector(&u, &p);
+    let a = fdm.get_composed_vector(&u, &p);
 
     // check
     let analytical = |x, y| y * f64::sin(PI * x);

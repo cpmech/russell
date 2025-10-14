@@ -1,5 +1,4 @@
 use crate::{Grid2d, Side, StrError};
-use russell_lab::Vector;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -321,95 +320,6 @@ impl<'a> EssentialBcs2d<'a> {
             f(iu, m, x, y);
         });
     }
-
-    /// Returns the vectors for the solution of the system of equations
-    ///
-    /// Returns `(u, p, f)` from:
-    ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K   C │ │ u │   │ f │
-    /// │       │ │   │ = │   │
-    /// │ c   k │ │ p │   │ g │
-    /// └       ┘ └   ┘   └   ┘
-    /// ```
-    ///
-    /// Note that:
-    ///
-    /// ```text
-    /// nu = num(unknown)
-    /// np = num(prescribed)
-    /// nf = nu
-    /// ```
-    pub fn get_system_vectors(&self) -> (Vector, Vector, Vector) {
-        let nu = self.num_unknown();
-        let np = self.num_prescribed();
-        let u = Vector::new(nu);
-        let mut p = Vector::new(np);
-        let f = Vector::new(nu);
-        self.for_each_prescribed_node(|ip, _, _, _, u_bar| {
-            p[ip] = u_bar;
-        });
-        (u, p, f)
-    }
-
-    /// Returns the composed solution vector from the unknown and prescribed vectors
-    ///
-    /// Returns `a = (u, p)` from:
-    ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K   C │ │ u │   │ f │
-    /// │       │ │   │ = │   │
-    /// │ c   k │ │ p │   │ g │
-    /// └       ┘ └   ┘   └   ┘
-    /// ```
-    pub fn get_composed_system_vector(&self, u: &Vector, p: &Vector) -> Vector {
-        let na = self.grid.size();
-        let mut a = Vector::new(na);
-        self.unknown_sorted.iter().enumerate().for_each(|(iu, &m)| {
-            a[m] = u[iu];
-        });
-        self.prescribed_sorted.iter().enumerate().for_each(|(ip, &m)| {
-            a[m] = p[ip];
-        });
-        a
-    }
-
-    /// Returns the vectors for the solution of the system of equations using the Lagrange multipliers method (LMM)
-    ///
-    /// Returns `(x, b)` from:
-    ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ M  Eᵀ │ │ a │   │ r │
-    /// │       │ │   │ = │   │
-    /// │ E  0  │ │ w │   │ ū │
-    /// └       ┘ └   ┘   └   ┘
-    ///     A       x       b
-    /// ```
-    /// where a = (u, p) and w are the Lagrange multipliers
-    ///
-    /// Note that:
-    ///
-    /// ```text
-    /// nu = num(unknown)
-    /// np = num(prescribed)
-    /// na = nu + np = size(grid)
-    /// nw = np
-    /// nx = na + nw
-    /// ```
-    pub fn get_system_vectors_lmm(&self) -> (Vector, Vector) {
-        let na = self.grid.size(); // dimension of a = (u, p)
-        let nw = self.num_prescribed(); // number of Lagrange multipliers
-        let nx = na + nw; // dimension of x = (u, p, w)
-        let x = Vector::new(nx);
-        let mut b = Vector::new(nx);
-        self.for_each_prescribed_node(|ip, _, _, _, u_bar| {
-            b[na + ip] = u_bar;
-        });
-        (x, b)
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -668,62 +578,6 @@ mod tests {
                 (3, 10, 2.0 / 3.0, 2.0 / 3.0),
             ]
         );
-        let (u, p, f) = ebcs.get_system_vectors();
-        assert_eq!(u.dim(), 4); // nu
-        assert_eq!(p.dim(), 12); // np
-        assert_eq!(f.dim(), 4); // nu
-        for i in 0..4 {
-            assert_eq!(u[i], 0.0);
-            assert_eq!(f[i], 0.0);
-        }
-        assert_eq!(p[0], BOT);
-        assert_eq!(p[1], BOT);
-        assert_eq!(p[2], BOT);
-        assert_eq!(p[3], BOT);
-        assert_eq!(p[4], LEF);
-        assert_eq!(p[5], RIG);
-        assert_eq!(p[6], LEF);
-        assert_eq!(p[7], RIG);
-        assert_eq!(p[8], TOP);
-        assert_eq!(p[9], TOP);
-        assert_eq!(p[10], TOP);
-        assert_eq!(p[11], TOP);
-        let a = ebcs.get_composed_system_vector(&u, &p);
-        assert_eq!(a.dim(), 16); // na
-        assert_eq!(a[0], BOT);
-        assert_eq!(a[1], BOT);
-        assert_eq!(a[2], BOT);
-        assert_eq!(a[3], BOT);
-        assert_eq!(a[4], LEF);
-        assert_eq!(a[5], 0.0);
-        assert_eq!(a[6], 0.0);
-        assert_eq!(a[7], RIG);
-        assert_eq!(a[8], LEF);
-        assert_eq!(a[9], 0.0);
-        assert_eq!(a[10], 0.0);
-        assert_eq!(a[11], RIG);
-        assert_eq!(a[12], TOP);
-        assert_eq!(a[13], TOP);
-        assert_eq!(a[14], TOP);
-        assert_eq!(a[15], TOP);
-        let (x, b) = ebcs.get_system_vectors_lmm();
-        assert_eq!(x.dim(), 16 + 12); // na + nw
-        assert_eq!(b.dim(), 16 + 12); // na + nw
-        for i in 0..16 {
-            assert_eq!(b[i], 0.0);
-        }
-        assert_eq!(b[16 + 0], BOT);
-        assert_eq!(b[16 + 1], BOT);
-        assert_eq!(b[16 + 2], BOT);
-        assert_eq!(b[16 + 3], BOT);
-        assert_eq!(b[16 + 4], LEF);
-        assert_eq!(b[16 + 5], RIG);
-        assert_eq!(b[16 + 6], LEF);
-        assert_eq!(b[16 + 7], RIG);
-        assert_eq!(b[16 + 8], TOP);
-        assert_eq!(b[16 + 9], TOP);
-        assert_eq!(b[16 + 10], TOP);
-        assert_eq!(b[16 + 11], TOP);
 
         // --- set homogeneous boundary conditions ---
 

@@ -19,6 +19,9 @@ fn test_poisson2d_1_lag() {
     //
     // ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
 
+    // define the source term
+    let source = |x, y| 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
+
     // allocate the grid
     let (nx, ny) = (9, 9);
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
@@ -29,7 +32,7 @@ fn test_poisson2d_1_lag() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
     // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐
@@ -42,12 +45,7 @@ fn test_poisson2d_1_lag() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
-    let (mut x, mut b) = ebcs.get_system_vectors_lmm();
-
-    // add the source term to the right-hand side vector
-    grid.for_each_coord(|m, x, y| {
-        b[m] = 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
-    });
+    let (mut x, b) = fdm.get_vectors_lmm(source);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
@@ -55,7 +53,7 @@ fn test_poisson2d_1_lag() {
     solver.actual.solve(&mut x, &b, false).unwrap();
 
     // results
-    let na = ebcs.get_grid().size(); // dimension of a = (u, p)
+    let na = fdm.get_info().2;
     let a = &x.as_data()[..na];
 
     // check

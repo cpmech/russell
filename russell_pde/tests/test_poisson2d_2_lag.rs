@@ -26,6 +26,9 @@ fn test_poisson2d_2_lag() {
     //
     // Reference: Olver PJ (2020) - page 210 - Introduction to Partial Differential Equations, Springer
 
+    // define the source term
+    let source = |x, y| -PI * PI * y * f64::sin(PI * x);
+
     // allocate the grid
     let (nx, ny) = (17, 17);
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
@@ -39,7 +42,7 @@ fn test_poisson2d_2_lag() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
     // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐
@@ -52,12 +55,7 @@ fn test_poisson2d_2_lag() {
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
-    let (mut x, mut b) = ebcs.get_system_vectors_lmm();
-
-    // add the source term to the right-hand side vector
-    grid.for_each_coord(|m, x, y| {
-        b[m] = -PI * PI * y * f64::sin(PI * x);
-    });
+    let (mut x, b) = fdm.get_vectors_lmm(source);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
@@ -65,7 +63,7 @@ fn test_poisson2d_2_lag() {
     solver.actual.solve(&mut x, &b, false).unwrap();
 
     // results
-    let na = ebcs.get_grid().size(); // dimension of a = (u, p)
+    let na = fdm.get_info().2;
     let a = &x.as_data()[..na];
 
     // check

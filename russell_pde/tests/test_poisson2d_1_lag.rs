@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
-use russell_lab::{array_approx_eq, Vector};
-use russell_pde::FdmLaplacian2d;
+use russell_lab::approx_eq;
+use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
@@ -19,50 +19,50 @@ fn test_poisson2d_1_lag() {
     //
     // ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
 
-    // allocate the Laplacian operator
+    // allocate the grid
     let (nx, ny) = (9, 9);
-    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
-    // set zero essential boundary conditions
-    fdm.set_homogeneous_boundary_conditions();
+    // homogeneous essential boundary conditions
+    let mut ebcs = EssentialBcs2d::new(&grid);
+    ebcs.set_homogeneous();
 
-    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // allocate the Laplacian operator
+    let (kx, ky) = (1.0, 1.0);
+    let fdm = FdmLaplacian2dNew::new(&ebcs, kx, ky).unwrap();
+
+    // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ K  Eᵀ │ │ u │   │ f │
+    // │ M  Eᵀ │ │ a │   │ r │
     // │       │ │   │ = │   │
     // │ E  0  │ │ w │   │ ū │
     // └       ┘ └   ┘   └   ┘
-    //     A      lhs     rhs
-    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
+    //     A       x       b
+    // where a = (u, p) and w are the Lagrange multipliers
 
-    // allocate the left- and right-hand side vectors
-    let np = fdm.num_prescribed();
-    let dim = fdm.dim();
-    let mut lhs = Vector::new(dim + np);
-    let mut rhs = Vector::new(dim + np);
+    // assemble the coefficient matrix and the lhs and rhs vectors
+    let (aa, _) = fdm.get_aa_matrix(0, true);
+    let (mut x, mut b) = ebcs.get_lmm_vectors();
 
     // add the source term to the right-hand side vector
-    fdm.loop_over_grid_points(|m, x, y| {
-        rhs[m] = 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
-    });
-
-    // add the prescribed values to the right-hand side vector
-    fdm.loop_over_prescribed_values(|ip, _, value| {
-        rhs[dim + ip] = value;
+    grid.for_each_coord(|m, x, y| {
+        b[m] = 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
     });
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
     solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
+    solver.actual.solve(&mut x, &b, false).unwrap();
+
+    // results
+    let na = ebcs.get_grid().size(); // dimension of a = (u, p)
+    let a = &x.as_data()[..na];
 
     // check
-    let mut phi_correct = Vector::new(dim);
     let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);
-    fdm.loop_over_grid_points(|m, x, y| {
-        phi_correct[m] = analytical(x, y);
+    grid.for_each_coord(|m, x, y| {
+        approx_eq(a[m], analytical(x, y), 1e-3);
     });
-    array_approx_eq(&lhs.as_data()[..dim], phi_correct.as_data(), 1e-3);
 
     // plot results
     if SAVE_FIGURE {
@@ -72,12 +72,12 @@ fn test_poisson2d_1_lag() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        fdm.loop_over_grid_points(|m, x, y| {
+        grid.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;
             yy[row][col] = y;
-            zz_num[row][col] = lhs[m];
+            zz_num[row][col] = a[m];
             zz_ana[row][col] = analytical(x, y);
         });
         contour_num.set_no_lines(false).draw(&xx, &yy, &zz_num);

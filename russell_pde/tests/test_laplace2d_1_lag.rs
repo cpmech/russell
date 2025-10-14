@@ -22,7 +22,7 @@ fn test_laplace2d_1_lag() {
     let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(&grid);
+    let mut ebcs = EssentialBcs2d::new(grid);
     ebcs.set(Side::Xmin, |_, _| 1.0);
     ebcs.set(Side::Xmax, |_, _| 2.0);
     ebcs.set(Side::Ymin, |_, _| 1.0);

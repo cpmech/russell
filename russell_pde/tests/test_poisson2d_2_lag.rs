@@ -34,7 +34,7 @@ fn test_poisson2d_2_lag() {
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(&grid);
+    let mut ebcs = EssentialBcs2d::new(grid);
     ebcs.set(Side::Xmin, |_, _| 0.0);
     ebcs.set(Side::Xmax, |_, _| 0.0);
     ebcs.set(Side::Ymin, |_, _| 0.0);
@@ -68,7 +68,7 @@ fn test_poisson2d_2_lag() {
 
     // check
     let analytical = |x, y| y * f64::sin(PI * x);
-    grid.for_each_coord(|m, x, y| {
+    fdm.loop_over_grid_points(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 0.001036);
     });
 
@@ -80,7 +80,7 @@ fn test_poisson2d_2_lag() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        grid.for_each_coord(|m, x, y| {
+        fdm.loop_over_grid_points(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

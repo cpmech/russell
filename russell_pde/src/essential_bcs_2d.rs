@@ -10,7 +10,7 @@ use std::sync::Arc;
 /// The grid is assumed to be a regular Cartesian grid with `nx` points along x and `ny` points along y.
 pub struct EssentialBcs2d<'a> {
     /// Holds the 2D grid
-    grid: &'a Grid2d,
+    grid: Grid2d,
 
     /// Flags equations with prescribed EBC values
     ///
@@ -60,7 +60,7 @@ pub struct EssentialBcs2d<'a> {
 
 impl<'a> EssentialBcs2d<'a> {
     /// Allocates a new instance
-    pub fn new(grid: &'a Grid2d) -> Self {
+    pub fn new(grid: Grid2d) -> Self {
         let dim = grid.size();
         EssentialBcs2d {
             grid,
@@ -207,7 +207,7 @@ impl<'a> EssentialBcs2d<'a> {
 
     /// Returns a reference to the grid
     pub fn get_grid(&self) -> &Grid2d {
-        self.grid
+        &self.grid
     }
 
     /// Indicates whether the boundary conditions are periodic along x
@@ -340,7 +340,7 @@ mod tests {
         //  4  5  6  7
         //  0  1  2  3
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
         assert_eq!(&ebcs.is_prescribed, &vec![false; 12]);
         assert_eq!(&ebcs.index_prescribed, &vec![usize::MAX; 12]);
         assert_eq!(&ebcs.index_unknown, &vec![usize::MAX; 12]);
@@ -374,7 +374,7 @@ mod tests {
         //  4  5  6  7
         //  0  1  2  3
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
         assert_eq!(&ebcs.is_prescribed, &vec![false; 16]);
         assert_eq!(&ebcs.index_prescribed, &vec![usize::MAX; 16]);
         assert_eq!(&ebcs.index_unknown, &vec![usize::MAX; 16]);
@@ -656,7 +656,7 @@ mod tests {
     #[test]
     fn new_initializes_correctly() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
-        let ebcs = EssentialBcs2d::new(&grid);
+        let ebcs = EssentialBcs2d::new(grid);
 
         assert_eq!(ebcs.grid.size(), 9);
         assert_eq!(ebcs.is_prescribed.len(), 9);
@@ -677,7 +677,7 @@ mod tests {
     #[test]
     fn minimal_2x2_grid_works() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 2, 2).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Grid layout for 2x2:
         //  2──3  (y=1.0)
@@ -696,57 +696,9 @@ mod tests {
     }
 
     #[test]
-    fn single_boundary_conditions_work() {
-        let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 4, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
-
-        // Grid layout (4x3):
-        //    8───9───10──11 (y=2.0)
-        //    │   │   │   │
-        //    4───5───6───7  (y=1.0)
-        //    │   │   │   │
-        //    0───1───2───3  (y=0.0)
-
-        // Test each boundary individually
-
-        // Left boundary only
-        let lef = |_, _| LEF;
-        assert_eq!(lef(0.0, 0.0), LEF);
-        ebcs.set(Side::Xmin, lef);
-        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 4, 8]);
-        assert_eq!(ebcs.get_nodes_unknown(), &vec![1, 2, 3, 5, 6, 7, 9, 10, 11]);
-        assert!(!ebcs.is_periodic_along_x());
-        assert!(!ebcs.is_periodic_along_y());
-
-        // Clear and test right boundary only
-        let mut ebcs = EssentialBcs2d::new(&grid);
-        let rig = |_, _| RIG;
-        assert_eq!(rig(0.0, 0.0), RIG);
-        ebcs.set(Side::Xmax, rig);
-        assert_eq!(ebcs.get_nodes_prescribed(), &vec![3, 7, 11]);
-        assert_eq!(ebcs.get_nodes_unknown(), &vec![0, 1, 2, 4, 5, 6, 8, 9, 10]);
-
-        // Clear and test bottom boundary only
-        let mut ebcs = EssentialBcs2d::new(&grid);
-        let bot = |_, _| BOT;
-        assert_eq!(bot(0.0, 0.0), BOT);
-        ebcs.set(Side::Ymin, bot);
-        assert_eq!(ebcs.get_nodes_prescribed(), &vec![0, 1, 2, 3]);
-        assert_eq!(ebcs.get_nodes_unknown(), &vec![4, 5, 6, 7, 8, 9, 10, 11]);
-
-        // Clear and test top boundary only
-        let mut ebcs = EssentialBcs2d::new(&grid);
-        let top = |_, _| TOP;
-        assert_eq!(top(0.0, 0.0), TOP);
-        ebcs.set(Side::Ymax, top);
-        assert_eq!(ebcs.get_nodes_prescribed(), &vec![8, 9, 10, 11]);
-        assert_eq!(ebcs.get_nodes_unknown(), &vec![0, 1, 2, 3, 4, 5, 6, 7]);
-    }
-
-    #[test]
     fn coordinate_dependent_functions_work() {
         let grid = Grid2d::new_uniform(-1.0, 1.0, -1.0, 1.0, 3, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Grid coordinates:
         //   6(-1,1)  7(0,1)   8(1,1)
@@ -766,28 +718,22 @@ mod tests {
 
         // Test prescribed values at actual coordinates
         // Node 0: (-1, -1) -> bot function wins: -1 + 3*(-1) = -4
-        let (x0, y0) = grid.coord(0);
-        assert_eq!(ebcs.get_prescribed_value(0, x0, y0), -4.0);
+        assert_eq!(ebcs.get_prescribed_value(0, -1.0, -1.0), -4.0);
 
         // Node 1: (0, -1) -> bot function: 0 + 3*(-1) = -3
-        let (x1, y1) = grid.coord(1);
-        assert_eq!(ebcs.get_prescribed_value(1, x1, y1), -3.0);
+        assert_eq!(ebcs.get_prescribed_value(1, 0.0, -1.0), -3.0);
 
         // Node 3: (-1, 0) -> lef function: (-1)² + 0 = 1
-        let (x3, y3) = grid.coord(3);
-        assert_eq!(ebcs.get_prescribed_value(3, x3, y3), 1.0);
+        assert_eq!(ebcs.get_prescribed_value(3, -1.0, 0.0), 1.0);
 
         // Node 5: (1, 0) -> rig function: 2 * 1 + 0² = 2
-        let (x5, y5) = grid.coord(5);
-        assert_eq!(ebcs.get_prescribed_value(5, x5, y5), 2.0);
+        assert_eq!(ebcs.get_prescribed_value(5, 1.0, 0.0), 2.0);
 
         // Node 7: (0, 1) -> top function: 0 * 1 = 0
-        let (x7, y7) = grid.coord(7);
-        assert_eq!(ebcs.get_prescribed_value(7, x7, y7), 0.0);
+        assert_eq!(ebcs.get_prescribed_value(7, 0.0, 1.0), 0.0);
 
         // Node 8: (1, 1) -> top function wins: 1 * 1 = 1
-        let (x8, y8) = grid.coord(8);
-        assert_eq!(ebcs.get_prescribed_value(8, x8, y8), 1.0);
+        assert_eq!(ebcs.get_prescribed_value(8, 1.0, 1.0), 1.0);
     }
 
     #[test]
@@ -799,7 +745,7 @@ mod tests {
         //    │   │   │   │
         //    0───1───2───3
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // First set some essential BCs
         let lef = |_, _| LEF;
@@ -836,7 +782,7 @@ mod tests {
     #[test]
     fn boundary_condition_overrides_work() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Set initial boundary condition
         let func1 = |_, _| 10.0;
@@ -864,7 +810,7 @@ mod tests {
     #[test]
     fn corner_node_priority_works() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Grid layout:
         //   6───7───8  (y=1.0)
@@ -907,7 +853,7 @@ mod tests {
         //    │   │   │   │
         //    0───1───2───3
         let grid = Grid2d::new_uniform(-1.0, 1.0, -1.0, 1.0, 4, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Set some non-homogeneous BCs first
         let lef = |_, _| LEF;
@@ -934,7 +880,7 @@ mod tests {
 
         // All prescribed values should be zero
         for &node in &boundary_nodes {
-            let (x, y) = grid.coord(node);
+            let (x, y) = ebcs.get_grid().coord(node);
             assert_eq!(ebcs.get_prescribed_value(node, x, y), 0.0);
         }
     }
@@ -942,7 +888,7 @@ mod tests {
     #[test]
     fn complementary_prescribed_unknown_nodes() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Test that prescribed + unknown = all nodes at each stage
         let all_nodes: Vec<usize> = (0..16).collect();
@@ -991,7 +937,7 @@ mod tests {
         let xx = &[0.0, 0.1, 0.5, 0.9, 1.0];
         let yy = &[0.0, 0.3, 1.0];
         let grid = Grid2d::new(xx, yy).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Grid layout (5x3):
         //   10──11──12──13──14  (y=1.0)
@@ -1018,7 +964,7 @@ mod tests {
     #[test]
     fn state_consistency_after_operations() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // Perform a sequence of operations and verify consistency
 

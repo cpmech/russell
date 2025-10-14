@@ -27,7 +27,7 @@ fn test_poisson2d_1() {
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
 
     // homogeneous essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(&grid);
+    let mut ebcs = EssentialBcs2d::new(grid);
     ebcs.set_homogeneous();
 
     // allocate the Laplacian operator
@@ -60,7 +60,7 @@ fn test_poisson2d_1() {
 
     // check
     let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);
-    grid.for_each_coord(|m, x, y| {
+    fdm.loop_over_grid_points(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 1e-3);
     });
 
@@ -72,7 +72,7 @@ fn test_poisson2d_1() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        grid.for_each_coord(|m, x, y| {
+        fdm.loop_over_grid_points(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

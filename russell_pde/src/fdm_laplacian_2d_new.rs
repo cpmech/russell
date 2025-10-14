@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn new_captures_errors() {
         let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
-        let ebcs = EssentialBcs2d::new(&grid);
+        let ebcs = EssentialBcs2d::new(grid);
         let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
@@ -485,7 +485,7 @@ mod tests {
         //  0  1   2   3
         // dx = 1.0, dy = 1.0
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
-        let ebcs = EssentialBcs2d::new(&grid);
+        let ebcs = EssentialBcs2d::new(grid);
 
         let fdm = FdmLaplacian2dNew::new(ebcs, 100.0, 300.0).unwrap();
         assert_eq!(&fdm.molecule, &[-800.0, 100.0, 100.0, 300.0, 300.0]);
@@ -498,7 +498,7 @@ mod tests {
         //  0*  1   2   3
         // dx = 1.0, dy = 1.0
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
         const LEF: f64 = 1.0;
         let lef = |_, _| LEF;
         assert_eq!(lef(0.0, 0.0), LEF);
@@ -664,7 +664,7 @@ mod tests {
         //       4   5   6   7
         // dx = 1.0, dy = 1.0
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
         ebcs.set_homogeneous();
 
         let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
@@ -854,7 +854,7 @@ mod tests {
         //      9 10 11
 
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
         ebcs.set_periodic(true, true);
 
         let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
@@ -927,7 +927,7 @@ mod tests {
     #[test]
     fn get_vectors_works() {
         let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new(&grid);
+        let mut ebcs = EssentialBcs2d::new(grid);
 
         // 12* 13* 14* 15*
         //  8*  9  10  11*
@@ -1015,7 +1015,7 @@ mod tests {
         // └                            ┘
         //    0  1  2  3  4  5  6  7  8
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
-        let ebcs = EssentialBcs2d::new(&grid);
+        let ebcs = EssentialBcs2d::new(grid);
         let lap = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_4 = Vec::new();
@@ -1032,7 +1032,7 @@ mod tests {
     fn loop_over_grid_points_works() {
         let (nx, ny) = (2, 3);
         let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
-        let ebcs = EssentialBcs2d::new(&grid);
+        let ebcs = EssentialBcs2d::new(grid);
         let lap = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);

@@ -6,7 +6,7 @@ use russell_lab::{
 };
 use russell_lab::{Matrix, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Status, Stop, System};
-use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
+use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
@@ -87,7 +87,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let ndim = n_phi + n_psi;
 
     // allocate the Laplacian operator
-    let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+    let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
 
     // augmented coefficient matrix of the Laplacian operator
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);

@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
+use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
 use russell_sparse::{Genie, LinSolver, Sym};
 
 const SAVE_FIGURE: bool = false;
@@ -32,7 +32,7 @@ fn test_poisson2d_1() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2d::new(ebcs, kx, ky).unwrap();
 
     // solving K u = h from:
     // ┌       ┐ ┌   ┐   ┌   ┐

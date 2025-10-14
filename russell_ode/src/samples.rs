@@ -1,7 +1,7 @@
 use crate::{NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
-use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
+use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
 use russell_sparse::{CooMatrix, Genie, Sym};
 
 /// Holds a collection of sample ODE problems
@@ -499,7 +499,7 @@ impl Samples {
         npoint: usize,
         second_book: bool,
         ignore_diffusion: bool,
-    ) -> (System<'a, FdmLaplacian2dNew<'a>>, f64, Vector, FdmLaplacian2dNew<'a>) {
+    ) -> (System<'a, FdmLaplacian2d<'a>>, f64, Vector, FdmLaplacian2d<'a>) {
         // constants
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax) = (0.0, 1.0);
@@ -517,7 +517,7 @@ impl Samples {
         };
 
         // system
-        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2dNew<'a>| {
+        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2d<'a>| {
             fdm.loop_over_grid_points(|m, x, y| {
                 let um = yy[m];
                 let vm = yy[s + m];
@@ -549,7 +549,7 @@ impl Samples {
             .set_jacobian(
                 Some(jac_nnz),
                 Sym::No,
-                move |jj, aa, _x, yy, fdm: &mut FdmLaplacian2dNew<'a>| {
+                move |jj, aa, _x, yy, fdm: &mut FdmLaplacian2d<'a>| {
                     jj.reset();
                     let mut nnz_count = 0;
                     for m in 0..s {
@@ -585,7 +585,7 @@ impl Samples {
         }
 
         // discrete laplacian
-        let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
+        let fdm = FdmLaplacian2d::new(ebcs, kx, ky).unwrap();
 
         // initial values
         let t0 = 0.0;

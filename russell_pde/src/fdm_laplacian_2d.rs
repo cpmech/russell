@@ -88,7 +88,7 @@ const INI_Y: usize = 0;
 /// where `w` is the vector of Lagrange multipliers, `E` is the Lagrange matrix, and `ū` is the vector of
 /// prescribed values at EBC nodes. The Lagrange matrix `E` has a row for each EBC (prescribed) node and a column
 /// for every node. Each row in `E` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
-pub struct FdmLaplacian2dNew<'a> {
+pub struct FdmLaplacian2d<'a> {
     /// Holds a reference to the essential boundary conditions handler
     ebcs: EssentialBcs2d<'a>,
 
@@ -98,7 +98,7 @@ pub struct FdmLaplacian2dNew<'a> {
     molecule: Vec<f64>,
 }
 
-impl<'a> FdmLaplacian2dNew<'a> {
+impl<'a> FdmLaplacian2d<'a> {
     /// Allocates a new instance
     pub fn new(ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
         // check grid
@@ -115,7 +115,7 @@ impl<'a> FdmLaplacian2dNew<'a> {
         let gamma = ky / dy2;
 
         // done
-        Ok(FdmLaplacian2dNew {
+        Ok(FdmLaplacian2d {
             ebcs,
             molecule: vec![alpha, beta, beta, gamma, gamma],
         })
@@ -460,7 +460,7 @@ impl<'a> FdmLaplacian2dNew<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::FdmLaplacian2dNew;
+    use super::FdmLaplacian2d;
     use crate::{EssentialBcs2d, Grid2d, Side};
     use russell_lab::Matrix;
     use russell_sparse::Sym;
@@ -474,7 +474,7 @@ mod tests {
     fn new_captures_errors() {
         let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
         let ebcs = EssentialBcs2d::new(grid);
-        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0);
+        let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
@@ -487,7 +487,7 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
         let ebcs = EssentialBcs2d::new(grid);
 
-        let fdm = FdmLaplacian2dNew::new(ebcs, 100.0, 300.0).unwrap();
+        let fdm = FdmLaplacian2d::new(ebcs, 100.0, 300.0).unwrap();
         assert_eq!(&fdm.molecule, &[-800.0, 100.0, 100.0, 300.0, 300.0]);
     }
 
@@ -504,7 +504,7 @@ mod tests {
         assert_eq!(lef(0.0, 0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0  4  8
 
-        let fdm = FdmLaplacian2dNew::new(ebcs, 100.0, 300.0).unwrap();
+        let fdm = FdmLaplacian2d::new(ebcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
         let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         let cc = cc_mat.unwrap();
@@ -667,7 +667,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new(grid);
         ebcs.set_homogeneous();
 
-        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+        let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
         let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         let cc = cc_mat.unwrap();
@@ -857,7 +857,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new(grid);
         ebcs.set_periodic(true, true);
 
-        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+        let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
         let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
         assert!(cc_mat.is_none());
@@ -938,7 +938,7 @@ mod tests {
         ebcs.set(Side::Ymin, |_, _| BOT);
         ebcs.set(Side::Ymax, |_, _| TOP);
 
-        let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+        let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
 
         let (u, p, f) = fdm.get_vectors(|_, _| 100.0);
         assert_eq!(u.dim(), 4); // nu
@@ -1016,7 +1016,7 @@ mod tests {
         //    0  1  2  3  4  5  6  7  8
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let ebcs = EssentialBcs2d::new(grid);
-        let lap = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+        let lap = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_4 = Vec::new();
         let mut row_8 = Vec::new();
@@ -1033,7 +1033,7 @@ mod tests {
         let (nx, ny) = (2, 3);
         let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let ebcs = EssentialBcs2d::new(grid);
-        let lap = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+        let lap = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
         lap.loop_over_grid_points(|m, x, y| {

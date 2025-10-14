@@ -3,7 +3,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{mat_approx_eq, num_jacobian, read_table, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
-use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
+use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
@@ -26,7 +26,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let ndim = ebcs.num_unknown();
 
     // allocate the Laplacian operator
-    let fdm = FdmLaplacian2dNew::new(ebcs, 1.0, 1.0).unwrap();
+    let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
 
     // get the discrete operator: L{ϕ} ≈ D{ϕ} = K u + C p = K u + 0
     let (kk, _) = fdm.get_kk_and_cc_matrices(0, Sym::No);

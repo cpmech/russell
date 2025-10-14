@@ -1,7 +1,7 @@
 use crate::{NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
-use russell_pde::FdmLaplacian2d;
+use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
 use russell_sparse::{CooMatrix, Genie, Sym};
 
 /// Holds a collection of sample ODE problems
@@ -499,7 +499,7 @@ impl Samples {
         npoint: usize,
         second_book: bool,
         ignore_diffusion: bool,
-    ) -> (System<'a, FdmLaplacian2d<'a>>, f64, Vector, FdmLaplacian2d<'a>) {
+    ) -> (System<'a, FdmLaplacian2dNew<'a>>, f64, Vector, FdmLaplacian2dNew<'a>) {
         // constants
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax) = (0.0, 1.0);
@@ -517,7 +517,7 @@ impl Samples {
         };
 
         // system
-        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2d<'a>| {
+        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2dNew<'a>| {
             fdm.loop_over_grid_points(|m, x, y| {
                 let um = yy[m];
                 let vm = yy[s + m];
@@ -525,7 +525,7 @@ impl Samples {
                 f[m] = 1.0 - 4.4 * um + um2 * vm;
                 f[s + m] = 3.4 * um - um2 * vm;
                 if !ignore_diffusion {
-                    fdm.loop_over_coef_mat_row(m, |k, amk| {
+                    fdm.loop_over_full_coef_mat_row(m, |k, amk| {
                         let uk = yy[k];
                         let vk = yy[s + k];
                         f[m] += amk * uk;
@@ -549,7 +549,7 @@ impl Samples {
             .set_jacobian(
                 Some(jac_nnz),
                 Sym::No,
-                move |jj, aa, _x, yy, fdm: &mut FdmLaplacian2d<'a>| {
+                move |jj, aa, _x, yy, fdm: &mut FdmLaplacian2dNew<'a>| {
                     jj.reset();
                     let mut nnz_count = 0;
                     for m in 0..s {
@@ -562,7 +562,7 @@ impl Samples {
                         jj.put(s + m, s + m, aa * (-um2)).unwrap();
                         nnz_count += 4;
                         if !ignore_diffusion {
-                            fdm.loop_over_coef_mat_row(m, |n, amn| {
+                            fdm.loop_over_full_coef_mat_row(m, |n, amn| {
                                 jj.put(m, n, aa * (amn)).unwrap();
                                 jj.put(s + m, s + n, aa * (amn)).unwrap();
                                 nnz_count += 2;
@@ -575,11 +575,17 @@ impl Samples {
             )
             .unwrap();
 
-        // discrete laplacian
-        let mut fdm = FdmLaplacian2d::new(kx, ky, xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        // allocate the grid
+        let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny).unwrap();
+
+        // allocate the essential boundary conditions (EBCs) handler
+        let mut ebcs = EssentialBcs2d::new(grid);
         if second_book {
-            fdm.set_periodic_boundary_condition(true, true);
+            ebcs.set_periodic(true, true);
         }
+
+        // discrete laplacian
+        let fdm = FdmLaplacian2dNew::new(ebcs, kx, ky).unwrap();
 
         // initial values
         let t0 = 0.0;

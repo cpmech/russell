@@ -3,7 +3,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{mat_approx_eq, num_jacobian, read_table, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
-use russell_pde::FdmLaplacian2d;
+use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
@@ -11,74 +11,39 @@ const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
 fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep) {
+    // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
-    let stem = format!("/tmp/russell_nonlin/test_bratu_2d_npt{}_{}", npt, key);
+    let stem = format!("/tmp/russell_nonlin/test_new_bratu_2d_npt{}_{}", npt, key);
 
-    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
-    fdm.set_homogeneous_boundary_conditions();
-    let prescribed = fdm.prescribed_flags();
-    let nodes_unknown = fdm.get_nodes_unknown();
-    let nodes_prescribed = fdm.get_nodes_prescribed();
-    let ndim = nodes_unknown.len();
-    assert_eq!(fdm.dim() - fdm.num_prescribed(), ndim);
+    // allocate the grid
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
 
-    let (dx, dy) = fdm.get_dx_dy();
-    assert_eq!(dx, dy);
-    // let dxx = dx * dx;
-    let dxx = 1.0;
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs2d::new(&grid);
+    ebcs.set_homogeneous();
+    let ndim = ebcs.num_unknown();
 
-    // println!(
-    //     "\nfdm.dim = {}, n_unknown = {}, n_prescribed = {}, ndim = {}, dx = {}, dy = {}\n",
-    //     fdm.dim(),
-    //     ndim,
-    //     fdm.num_prescribed(),
-    //     ndim,
-    //     dx,
-    //     dy
-    // );
-    // println!("nodes_unknown = {:?}", nodes_unknown);
-    // println!("nodes_prescribed = {:?}\n", nodes_prescribed);
+    // allocate the Laplacian operator
+    let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
 
-    let mut node_to_local_index = vec![0; fdm.dim()];
-    for (k, m) in nodes_unknown.iter().enumerate() {
-        node_to_local_index[*m] = k;
-    }
+    // get the discrete operator: L{ϕ} ≈ D{ϕ} = K u + C p = K u + 0
+    let (kk, _) = fdm.get_kk_and_cc_matrices(0, Sym::No);
 
-    // let mut node_to_prescribed_value = vec![0.0; fdm.dim()];
-    // for m in nodes_prescribed {
-    //     node_to_prescribed_value[*m] = fdm.get_prescribed_value(*m).unwrap();
-    // }
-
+    // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
-        for (i, m) in nodes_unknown.iter().enumerate() {
-            gg[i] = 0.0;
-            fdm.loop_over_coef_mat_row_core(*m, |n, amn| {
-                let phi = if prescribed[n] {
-                    // print!("prescribed");
-                    fdm.get_prescribed_value(n).unwrap()
-                } else {
-                    // print!("----------");
-                    u[node_to_local_index[n]]
-                };
-                gg[i] += dxx * amn * phi;
-                // println!(": i = {}, m = {}, n = {}, amn = {}, phi = {}", i, m, n, amn, phi);
-            });
-            // println!();
-            gg[i] += dxx * l * f64::exp(u[i]);
+        kk.mat_vec_mul(gg, 1.0, &u).unwrap(); // G := K u
+        for i in 0..ndim {
+            gg[i] += l * f64::exp(u[i]); // G += λ exp(u)
         }
         Ok(())
     };
 
+    // function to calculate Gu = ∂G/∂u (Jacobian matrix)
     let calc_ggu = |ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, _args: &mut NoArgs| {
         ggu_or_aa.reset();
-        for (i, m) in nodes_unknown.iter().enumerate() {
-            fdm.loop_over_coef_mat_row_core(*m, |n, amn| {
-                if !prescribed[n] {
-                    let j = node_to_local_index[n];
-                    ggu_or_aa.put(i, j, dxx * amn).unwrap();
-                }
-            });
-            ggu_or_aa.put(i, i, dxx * l * f64::exp(u[i])).unwrap();
+        ggu_or_aa.add(1.0, &kk); // Gu := K
+        for i in 0..ndim {
+            ggu_or_aa.put(i, i, l * f64::exp(u[i])).unwrap();
         }
         if CHECK_JACOBIAN && bordering && npt <= 21 {
             let ana = ggu_or_aa.as_dense();
@@ -92,19 +57,26 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
         Ok(())
     };
 
+    // function to calculate Gl = ∂G/∂λ
     let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
         for i in 0..ndim {
-            ggl[i] = dxx * f64::exp(u[i]);
+            ggl[i] = f64::exp(u[i]);
         }
         Ok(())
     };
 
+    // allocate nonlinear problem
     let mut system = System::new(ndim, calc_gg).unwrap();
 
-    let nnz = ndim * 5 + ndim; // 5-point stencil + diagonal from nonlinearity
+    // max number of non-zeros in Gu
+    let nnz_kk = kk.get_info().2;
+    let nnz = nnz_kk + ndim; // + diagonal from nonlinearity
+
+    // set callback functions
     system.set_calc_ggu(Some(nnz), Sym::No, calc_ggu).unwrap();
     system.set_calc_ggl(calc_ggl);
 
+    // configuration
     let mut config = Config::new(Method::Arclength);
     config
         .set_n_cont_failure_max(5)
@@ -188,6 +160,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
         curve_ref.set_label("reference").draw(&x_ref, &y_ref);
 
         // generate the plot
+        let key = if auto.yes() { "auto" } else { "fixed" };
         let mut plot = Plot::new();
         plot.set_title(&title)
             .add(&curve_ref)

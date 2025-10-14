@@ -21,6 +21,8 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new(&grid);
     ebcs.set_homogeneous();
+
+    // auxiliary variable
     let ndim = ebcs.num_unknown();
 
     // allocate the Laplacian operator

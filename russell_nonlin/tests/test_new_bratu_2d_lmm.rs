@@ -6,7 +6,7 @@ use russell_lab::{
 };
 use russell_lab::{Matrix, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Status, Stop, System};
-use russell_pde::FdmLaplacian2d;
+use russell_pde::{EssentialBcs2d, FdmLaplacian2dNew, Grid2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
@@ -67,34 +67,35 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
     let stem = format!(
-        "/tmp/russell_nonlin/test_bratu_2d_lmm_alpha{}_npt{}_{}",
+        "/tmp/russell_nonlin/test_new_bratu_2d_lmm_alpha{}_npt{}_{}",
         alpha, npt, key
     );
 
     // check: alpha parameter in bₘ = exp(ϕₘ/(1 + α ϕₘ))
     assert!(alpha == 0.0 || alpha == 0.2, "alpha must be either 0.0 or 0.2");
 
-    // allocate the Laplacian operator
-    let mut fdm = FdmLaplacian2d::new(1.0, 1.0, 0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
-    fdm.set_homogeneous_boundary_conditions();
+    // allocate the grid
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
+
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs2d::new(&grid);
+    ebcs.set_homogeneous();
 
     // auxiliary variables
-    let n_phi = fdm.dim(); // number of unknowns
-    let n_psi = fdm.num_prescribed(); // number of Lagrange multipliers
+    let n_phi = ebcs.num_total();
+    let n_psi = ebcs.num_prescribed();
     let ndim = n_phi + n_psi;
 
+    // allocate the Laplacian operator
+    let fdm = FdmLaplacian2dNew::new(&ebcs, 1.0, 1.0).unwrap();
+
     // augmented coefficient matrix of the Laplacian operator
-    //     ┌       ┐
-    //     │ K  Eᵀ │
-    // A = │       │
-    //     │ E  0  │
-    //     └       ┘
-    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
+    let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         // ┌   ┐   ┌       ┐ ┌   ┐   ┌     ┐
-        // │ R │   │ K  Eᵀ │ │ ϕ │   │ λ b │
+        // │ R │   │ M  Eᵀ │ │ ϕ │   │ λ b │
         // │   │ = │       │ │   │ + │     │
         // │ S │   │ E  0  │ │ ψ │   │ -c  │
         // └   ┘   └       ┘ └   ┘   └     ┘
@@ -148,8 +149,8 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let mut system = System::new(ndim, calc_gg).unwrap();
 
     // max number of non-zeros in Gu
-    let nnz_a = aa.get_info().2;
-    let nnz = nnz_a + n_phi; // the λ B term
+    let nnz_aa = aa.get_info().2;
+    let nnz = nnz_aa + n_phi; // the λ B term
     let sym = Sym::No;
 
     // set callback functions

@@ -1,7 +1,7 @@
 use plotpy::{Plot, StrError, Surface};
 use russell_lab::Vector;
 use russell_ode::prelude::*;
-use russell_pde::FdmLaplacian2d;
+use russell_pde::Grid2d;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
@@ -62,11 +62,11 @@ impl ProblemData {
     }
 }
 
-struct Graph<'a> {
+struct Graph {
     second_book: bool,
     path_key: String,
     npoint: usize,
-    fdm: FdmLaplacian2d<'a>,
+    grid: Grid2d,
     grid_x: Vec<Vec<f64>>,
     grid_y: Vec<Vec<f64>>,
     grid_z: Vec<Vec<f64>>,
@@ -76,15 +76,14 @@ struct Graph<'a> {
     index: usize,
 }
 
-impl<'a> Graph<'a> {
+impl Graph {
     pub fn new(second_book: bool, path_key: &String, n_files: usize) -> Result<Self, StrError> {
         let problem_data = ProblemData::read_json(&format!("{}_problem_data.json", path_key))?;
-        let alpha = problem_data.alpha;
         let npoint = problem_data.npoint;
-        let fdm = FdmLaplacian2d::new(alpha, alpha, 0.0, 1.0, 0.0, 1.0, npoint, npoint)?;
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npoint, npoint)?;
         let mut grid_x = vec![vec![0.0; npoint]; npoint];
         let mut grid_y = vec![vec![0.0; npoint]; npoint];
-        fdm.loop_over_grid_points(|m, x, y| {
+        grid.for_each_coord(|m, x, y| {
             let i = m % npoint;
             let j = m / npoint;
             grid_x[i][j] = x;
@@ -98,7 +97,7 @@ impl<'a> Graph<'a> {
             second_book,
             path_key: path_key.clone(),
             npoint,
-            fdm,
+            grid,
             grid_x,
             grid_y,
             grid_z: vec![vec![0.0; npoint]; npoint],
@@ -111,7 +110,7 @@ impl<'a> Graph<'a> {
 
     pub fn draw(&mut self, t: f64, yy: &Vector, v_field: bool) -> Result<(), StrError> {
         let field = if v_field { "V" } else { "U" };
-        self.fdm.loop_over_grid_points(|m, _, _| {
+        self.grid.for_each_coord(|m, _, _| {
             let i = m % self.npoint;
             let j = m / self.npoint;
             let s = if v_field { self.npoint * self.npoint } else { 0 };

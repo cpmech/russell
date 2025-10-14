@@ -19,7 +19,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(&grid);
+    let mut ebcs = EssentialBcs2d::new(grid);
     ebcs.set_homogeneous();
 
     // auxiliary variable

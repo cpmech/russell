@@ -335,13 +335,13 @@ impl Grid2d {
                 if dx == f64::NEG_INFINITY {
                     dx = x - xl;
                     assert!(dx > 0.0);
-                } else if f64::abs(x - xl - dx) > f64::EPSILON {
+                } else if f64::abs(x - xl - dx) > 10.0 * f64::EPSILON {
                     return None; // non-uniform in x
                 }
                 if dy == f64::NEG_INFINITY {
                     dy = y - yb;
                     assert!(dy > 0.0);
-                } else if f64::abs(y - yb - dy) > f64::EPSILON {
+                } else if f64::abs(y - yb - dy) > 10.0 * f64::EPSILON {
                     return None; // non-uniform in y
                 }
             }
@@ -761,6 +761,13 @@ mod tests {
     }
 
     #[test]
+    fn get_dx_dy_works_31x31() {
+        let (nx, ny) = (31, 31);
+        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, nx, ny).unwrap();
+        assert_eq!(grid.get_dx_dy(), Some((0.1, 0.1)));
+    }
+
+    #[test]
     fn get_dx_dy_captures_non_uniform_levels() {
         //     8    9   10   11     y=8.0
         //     4    5    6    7     y=5.0
@@ -876,7 +883,7 @@ mod tests {
 
         // Test grid that's almost uniform but has tiny differences beyond epsilon
         let mut xx = vec![0.0, 1.0, 2.0, 3.0];
-        xx[2] += 2.0 * f64::EPSILON; // Add small perturbation beyond epsilon
+        xx[2] += 11.0 * f64::EPSILON; // Add small perturbation beyond epsilon
         let yy = &[0.0, 1.0, 2.0];
         let grid = Grid2d::new(&xx, yy).unwrap();
         assert_eq!(grid.get_dx_dy(), None); // Should detect as non-uniform

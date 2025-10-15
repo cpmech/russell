@@ -155,7 +155,7 @@ impl EquationHandler {
         }
     }
 
-    /// Returns the local index of the unknown node
+    /// Returns the local index of the unknown equation
     pub fn iu(&self, e: usize) -> Result<usize, StrError> {
         if self.e_to_iu[e] == usize::MAX {
             Err("global equation ID does not correspond to an unknown equation")
@@ -164,12 +164,20 @@ impl EquationHandler {
         }
     }
 
-    /// Returns the local index of the prescribed node
+    /// Returns the local index of the prescribed equation
     pub fn ip(&self, e: usize) -> Result<usize, StrError> {
         if self.e_to_ip[e] == usize::MAX {
             Err("global equation ID does not correspond to a prescribed equation")
         } else {
             Ok(self.e_to_ip[e])
+        }
+    }
+
+    /// Returns the external ID of a prescribed equation
+    pub fn external_id(&self, e: usize) -> Result<usize, StrError> {
+        match self.p_to_external_id.get(&e) {
+            None => return Err("global equation ID is not prescribed"),
+            Some(external_id) => Ok(*external_id),
         }
     }
 
@@ -574,5 +582,33 @@ mod tests {
         let prescribed = handler.prescribed();
         assert_eq!(prescribed, &vec![1, 2, 5, 7, 9]);
         assert!(prescribed.windows(2).all(|w| w[0] < w[1]));
+    }
+
+    #[test]
+    fn external_id_works_correctly() {
+        let mut handler = EquationHandler::new(6);
+
+        // Set equations with specific external IDs
+        let p_list = &[(0, 100), (3, 200), (5, 300)];
+        handler.recompute(p_list).unwrap();
+
+        // Check that external IDs can be retrieved correctly
+        assert_eq!(handler.external_id(0).unwrap(), 100);
+        assert_eq!(handler.external_id(3).unwrap(), 200);
+        assert_eq!(handler.external_id(5).unwrap(), 300);
+
+        // Unknown equations should error when asking for external ID
+        assert_eq!(
+            handler.external_id(1).err(),
+            Some("global equation ID is not prescribed")
+        );
+        assert_eq!(
+            handler.external_id(2).err(),
+            Some("global equation ID is not prescribed")
+        );
+        assert_eq!(
+            handler.external_id(4).err(),
+            Some("global equation ID is not prescribed")
+        );
     }
 }

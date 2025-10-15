@@ -13,7 +13,7 @@ const SAVE_FIGURE: bool = true;
 fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep) {
     // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
-    let stem = format!("/tmp/russell_nonlin/test_new_bratu_2d_npt{}_{}", npt, key);
+    let stem = format!("/tmp/russell_nonlin/test_bratu_2d_npt{}_{}", npt, key);
 
     // allocate the grid
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();

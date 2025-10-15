@@ -67,7 +67,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
     let stem = format!(
-        "/tmp/russell_nonlin/test_new_bratu_2d_lmm_alpha{}_npt{}_{}",
+        "/tmp/russell_nonlin/test_bratu_2d_lmm_alpha{}_npt{}_{}",
         alpha, npt, key
     );
 

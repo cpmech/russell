@@ -1,5 +1,5 @@
-use russell_lab::{array_approx_eq, Vector};
-use russell_pde::FdmLaplacian1d;
+use russell_lab::array_approx_eq;
+use russell_pde::{EssentialBcs1d, FdmLaplacian1d, Grid1d};
 use russell_sparse::{Genie, LinSolver};
 
 #[test]
@@ -12,50 +12,47 @@ fn test_laplace1d_1_lag() {
     //
     // on a unit interval with homogeneous boundary conditions
 
+    // allocate the grid
+    let grid = Grid1d::new_uniform(0.0, 1.0, 5).unwrap();
+
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs1d::new();
+    ebcs.set_homogeneous(&grid);
+
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
-    let mut fdm = FdmLaplacian1d::new(-1.0, 0.0, 1.0, 5, None).unwrap();
+    let kx = 1.0;
+    let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // set essential boundary conditions
-    fdm.set_homogeneous_boundary_conditions();
-
-    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ K  Eᵀ │ │ u │   │ f │
+    // │ M  Eᵀ │ │ a │   │ r │
     // │       │ │   │ = │   │
     // │ E  0  │ │ w │   │ ū │
     // └       ┘ └   ┘   └   ┘
-    //     A      lhs     rhs
-    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
+    //     A       h       b
+    // where a = (u, p) and w are the Lagrange multipliers
 
-    // allocate the left- and right-hand side vectors
-    let np = fdm.num_prescribed();
-    let dim = fdm.dim();
-    let mut lhs = Vector::new(dim + np);
-    let mut rhs = Vector::new(dim + np);
-
-    // add the source term to the right-hand side vector
-    fdm.loop_over_grid_points(|m, x| {
-        rhs[m] = x;
-    });
-
-    // add the prescribed values to the right-hand side vector
-    fdm.loop_over_prescribed_values(|ip, _, value| {
-        rhs[dim + ip] = value;
-    });
+    // assemble the coefficient matrix and the lhs and rhs vectors
+    let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
+    let (mut h, b) = fdm.get_vectors_lmm(|x| x);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
     solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
+    solver.actual.solve(&mut h, &b, false).unwrap();
 
     // results
-    let ana_phi = |x| (x - f64::powi(x, 3)) / 6.0;
+    let na = fdm.get_info().2;
+    let a = &h.as_data()[..na];
+
+    // analytical solution
+    let analytical = |x| (x - f64::powi(x, 3)) / 6.0;
     fdm.loop_over_grid_points(|m, x| {
-        println!("{}: 128 ϕ = {} ({})", m, 128.0 * lhs[m], 128.0 * ana_phi(x));
+        println!("{}: 128 ϕ = {} ({})", m, 128.0 * a[m], 128.0 * analytical(x));
     });
 
     // check
     let correct = [0.0, 5.0 / 128.0, 8.0 / 128.0, 7.0 / 128.0, 0.0];
-    array_approx_eq(&lhs.as_data()[..dim], &correct, 1e-15);
+    array_approx_eq(a, &correct, 1e-15);
 }

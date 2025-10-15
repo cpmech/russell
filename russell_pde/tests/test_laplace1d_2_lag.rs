@@ -1,6 +1,6 @@
 use plotpy::{linspace, Curve, Plot};
-use russell_lab::{approx_eq, math::PI, Vector};
-use russell_pde::{FdmLaplacian1d, Side};
+use russell_lab::{approx_eq, math::PI};
+use russell_pde::{EssentialBcs1d, FdmLaplacian1d, Grid1d, Side};
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
@@ -37,56 +37,58 @@ fn test_laplace1d_2_lag() {
     // where m = √(β / kx)
 
     // constants
+    let nx = 21;
     let lx = 0.05;
     let kx = 0.01571;
     let beta = 2.0 * PI;
     let phi_a = 320.0;
     let phi_inf = 20.0;
 
+    // allocate the grid
+    let grid = Grid1d::new_uniform(0.0, lx, nx).unwrap();
+
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs1d::new();
+    ebcs.set(&grid, Side::Xmin, |_| phi_a);
+
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
-    let nx = 21;
-    let mut fdm = FdmLaplacian1d::new(-kx, 0.0, lx, nx, Some(beta)).unwrap();
+    let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // set essential boundary conditions
-    fdm.set_essential_boundary_condition(Side::Xmin, |_| phi_a);
-
-    // compute the augmented coefficient matrix for the Lagrange multipliers method
+    // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ K  Eᵀ │ │ u │   │ f │
+    // │ M  Eᵀ │ │ a │   │ r │
     // │       │ │   │ = │   │
     // │ E  0  │ │ w │   │ ū │
     // └       ┘ └   ┘   └   ┘
-    //     A      lhs     rhs
-    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
+    //     A       h       b
+    // where a = (u, p) and w are the Lagrange multipliers
 
-    // allocate the left- and right-hand side vectors
-    let np = fdm.num_prescribed();
-    let dim = fdm.dim();
-    let mut lhs = Vector::new(dim + np);
-    let mut rhs = Vector::new(dim + np);
+    // assemble the coefficient matrix and the lhs and rhs vectors
+    let na = fdm.get_info().2;
+    let extra_nnz = na; // diagonal entries due to ϕ β
+    let (mut aa, _) = fdm.get_aa_and_ee_matrices(extra_nnz, false);
+    let (mut h, b) = fdm.get_vectors_lmm(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
 
-    // add the source term to the right-hand side vector
-    fdm.loop_over_grid_points(|m, _| {
-        rhs[m] = phi_inf * beta;
-    });
-
-    // add the prescribed values to the right-hand side vector
-    fdm.loop_over_prescribed_values(|ip, _, value| {
-        rhs[dim + ip] = value;
-    });
+    // add the diagonal entries due to ϕ β
+    for m in 0..na {
+        aa.put(m, m, beta).unwrap();
+    }
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
     solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
+    solver.actual.solve(&mut h, &b, false).unwrap();
 
     // results
+    let a = &h.as_data()[..na];
+
+    // analytical solution
     let m = f64::sqrt(beta / kx);
-    let ana_phi = |x| phi_inf + (phi_a - phi_inf) * f64::cosh(m * (lx - x)) / f64::cosh(m * lx);
+    let analytical = |x| phi_inf + (phi_a - phi_inf) * f64::cosh(m * (lx - x)) / f64::cosh(m * lx);
     fdm.loop_over_grid_points(|m, x| {
-        println!("{}: ϕ = {} ({})", m, lhs[m], ana_phi(x));
-        approx_eq(lhs[m], ana_phi(x), 0.0155);
+        println!("{}: ϕ = {} ({})", m, a[m], analytical(x));
+        approx_eq(a[m], analytical(x), 0.0155);
     });
 
     // plot
@@ -99,12 +101,12 @@ fn test_laplace1d_2_lag() {
             .set_marker_style("o")
             .set_line_style("None");
         let xx_ana = linspace(0.0, lx, 101);
-        let uu_ana = xx_ana.iter().map(|&x| ana_phi(x)).collect::<Vec<_>>();
+        let uu_ana = xx_ana.iter().map(|&x| analytical(x)).collect::<Vec<_>>();
         let mut xx_num = vec![0.0; nx];
         fdm.loop_over_grid_points(|i, x| {
             xx_num[i] = x;
         });
-        let uu_num = Vec::from(&lhs.as_data()[..dim]);
+        let uu_num = Vec::from(a);
         curve_ana.draw(&xx_ana, &uu_ana);
         curve_num.draw(&xx_num, &uu_num);
         let mut plot = Plot::new();

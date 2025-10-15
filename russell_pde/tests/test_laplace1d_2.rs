@@ -1,7 +1,7 @@
 use plotpy::{linspace, Curve, Plot};
-use russell_lab::{approx_eq, math::PI, Vector};
-use russell_pde::{FdmLaplacian1d, Side};
-use russell_sparse::{Genie, LinSolver};
+use russell_lab::{approx_eq, math::PI};
+use russell_pde::{EssentialBcs1d, FdmLaplacian1d, Grid1d, Side};
+use russell_sparse::{Genie, LinSolver, Sym};
 
 const SAVE_FIGURE: bool = false;
 
@@ -37,57 +37,61 @@ fn test_laplace1d_2() {
     // where m = √(β / kx)
 
     // constants
+    let nx = 21;
     let lx = 0.05;
     let kx = 0.01571;
     let beta = 2.0 * PI;
     let phi_a = 320.0;
     let phi_inf = 20.0;
 
+    // allocate the grid
+    let grid = Grid1d::new_uniform(0.0, lx, nx).unwrap();
+
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs1d::new();
+    ebcs.set(&grid, Side::Xmin, |_| phi_a);
+
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
-    let nx = 21;
-    let mut fdm = FdmLaplacian1d::new(-kx, 0.0, lx, nx, Some(beta)).unwrap();
+    let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // set essential boundary conditions
-    fdm.set_essential_boundary_condition(Side::Xmin, |_| phi_a);
+    // solving K u = F from:
+    // ┌       ┐ ┌   ┐   ┌   ┐
+    // │ K   C │ │ u │   │ f │
+    // │       │ │   │ = │   │
+    // │ c   k │ │ p │   │ g │
+    // └       ┘ └   ┘   └   ┘
+    // where F = f - C p
 
-    // compute the modified coefficient matrix and the correction matrix
-    let (aa, cc) = fdm.mod_coefficient_matrix().unwrap();
+    // assemble the coefficient matrix and the lhs and rhs vectors
+    let nu = fdm.get_info().0;
+    let extra_nnz = nu; // diagonal entries due to ϕ β
+    let (mut kk, cc_mat) = fdm.get_kk_and_cc_matrices(extra_nnz, Sym::No);
+    let (mut u, p, mut ff) = fdm.get_vectors(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
+    let cc = cc_mat.unwrap();
 
-    // allocate the left- and right-hand side vectors
-    let dim = fdm.dim();
-    let mut lhs = Vector::new(dim);
-    let mut rhs = Vector::new(dim);
+    // add the diagonal entries due to ϕ β
+    for i in 0..nu {
+        kk.put(i, i, beta).unwrap();
+    }
 
-    // set the 'prescribed' part of the left-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        lhs[m] = value; // u2 := ϕ₀
-    });
-
-    // initialize the right-hand side vector with the correction
-    cc.mat_vec_mul(&mut rhs, -1.0, &lhs).unwrap(); // f1 := -K12⋅u2
-
-    // set the right-hand side vector with the convection term
-    fdm.loop_over_grid_points(|m, _| {
-        rhs[m] += phi_inf * beta;
-    });
-
-    // set the 'prescribed' part of the right-hand side vector with the essential values
-    fdm.loop_over_prescribed_values(|_, m, value| {
-        rhs[m] = value; // f2 := ϕ₀
-    });
+    // update the right-hand side with the prescribed values
+    cc.mat_vec_mul_update(&mut ff, -1.0, &p).unwrap(); // F -= C p
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut lhs, &rhs, false).unwrap();
+    solver.actual.factorize(&kk, None).unwrap();
+    solver.actual.solve(&mut u, &ff, false).unwrap();
 
-    // results
+    // results: a = (u, p)
+    let a = fdm.get_composed_vector(&u, &p);
+
+    // analytical solution
     let m = f64::sqrt(beta / kx);
-    let ana_phi = |x| phi_inf + (phi_a - phi_inf) * f64::cosh(m * (lx - x)) / f64::cosh(m * lx);
+    let analytical = |x| phi_inf + (phi_a - phi_inf) * f64::cosh(m * (lx - x)) / f64::cosh(m * lx);
     fdm.loop_over_grid_points(|m, x| {
-        println!("{}: ϕ = {} ({})", m, lhs[m], ana_phi(x));
-        approx_eq(lhs[m], ana_phi(x), 0.0155);
+        println!("{}: ϕ = {} ({})", m, a[m], analytical(x));
+        approx_eq(a[m], analytical(x), 0.0155);
     });
 
     // plot
@@ -100,13 +104,14 @@ fn test_laplace1d_2() {
             .set_marker_style("o")
             .set_line_style("None");
         let xx_ana = linspace(0.0, lx, 101);
-        let uu_ana = xx_ana.iter().map(|&x| ana_phi(x)).collect::<Vec<_>>();
+        let uu_ana = xx_ana.iter().map(|&x| analytical(x)).collect::<Vec<_>>();
         let mut xx_num = vec![0.0; nx];
         fdm.loop_over_grid_points(|i, x| {
             xx_num[i] = x;
         });
+        let uu_num = a.as_data();
         curve_ana.draw(&xx_ana, &uu_ana);
-        curve_num.draw(&xx_num, &lhs.as_data());
+        curve_num.draw(&xx_num, &uu_num);
         let mut plot = Plot::new();
         plot.add(&curve_ana)
             .add(&curve_num)

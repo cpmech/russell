@@ -1,7 +1,7 @@
 use plotpy::{linspace, Curve, Plot, SuperTitleParams};
 use russell_lab::{approx_eq, mat_approx_eq, num_jacobian, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
-use russell_pde::FdmLaplacian1d;
+use russell_pde::{EssentialBcs1d, FdmLaplacian1d, Grid1d};
 use russell_sparse::{CooMatrix, Sym};
 
 const CHECK_JACOBIAN: bool = false;
@@ -57,9 +57,15 @@ fn test_bratu_1d_lmm() {
     // const NPT: usize = 101;
     assert_eq!(NPT % 2, 1, "NPT must be odd");
 
+    // allocate the grid
+    let grid = Grid1d::new_uniform(0.0, 1.0, NPT).unwrap();
+
+    // essential boundary conditions
+    let mut ebcs = EssentialBcs1d::new();
+    ebcs.set_homogeneous(&grid);
+
     // allocate the Laplacian operator
-    let mut fdm = FdmLaplacian1d::new(1.0, 0.0, 1.0, NPT, None).unwrap();
-    fdm.set_homogeneous_boundary_conditions();
+    let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
 
     // check if there is a middle point
     let m_middle = NPT / 2;
@@ -70,22 +76,15 @@ fn test_bratu_1d_lmm() {
     });
 
     // auxiliary variables
-    let n_phi = fdm.dim(); // number of unknowns
-    let n_psi = fdm.num_prescribed(); // number of Lagrange multipliers
-    let ndim = n_phi + n_psi;
+    let (_, _, n_phi, _, ndim) = fdm.get_info();
 
     // augmented coefficient matrix of the Laplacian operator
-    //     ┌       ┐
-    //     │ K  Eᵀ │
-    // A = │       │
-    //     │ E  0  │
-    //     └       ┘
-    let aa = fdm.augmented_coefficient_matrix(0).unwrap();
+    let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         // ┌   ┐   ┌       ┐ ┌   ┐   ┌     ┐
-        // │ R │   │ K  Eᵀ │ │ ϕ │   │ λ b │
+        // │ R │   │ M  Eᵀ │ │ ϕ │   │ λ b │
         // │   │ = │       │ │   │ + │     │
         // │ S │   │ E  0  │ │ ψ │   │ -c  │
         // └   ┘   └       ┘ └   ┘   └     ┘

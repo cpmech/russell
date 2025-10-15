@@ -85,7 +85,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
 
     // auxiliary variables
-    let (_, _, n_phi, n_psi, ndim) = fdm.get_info();
+    let (_, _, n_phi, _, ndim) = fdm.get_info();
 
     // augmented coefficient matrix of the Laplacian operator
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);

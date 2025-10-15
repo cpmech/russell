@@ -32,26 +32,26 @@ fn test_laplace2d_1() {
     let (kx, ky) = (1.0, 1.0);
     let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
 
-    // solving K u = h from:
+    // solving K u = F from:
     // ┌       ┐ ┌   ┐   ┌   ┐
     // │ K   C │ │ u │   │ f │
     // │       │ │   │ = │   │
     // │ c   k │ │ p │   │ g │
     // └       ┘ └   ┘   └   ┘
-    // where h = f - C p
+    // where F = f - C p
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-    let (mut u, p, mut h) = fdm.get_vectors(|_, _| 0.0);
+    let (mut u, p, mut ff) = fdm.get_vectors(|_, _| 0.0);
     let cc = cc_mat.unwrap();
 
     // set the right-hand side (note that f = 0)
-    cc.mat_vec_mul(&mut h, -1.0, &p).unwrap(); // h = - C p
+    cc.mat_vec_mul(&mut ff, -1.0, &p).unwrap(); // F = - C p
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
     solver.actual.factorize(&kk, None).unwrap();
-    solver.actual.solve(&mut u, &h, false).unwrap();
+    solver.actual.solve(&mut u, &ff, false).unwrap();
 
     // results: a = (u, p)
     let a = fdm.get_composed_vector(&u, &p);

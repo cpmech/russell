@@ -22,15 +22,15 @@ fn test_laplace2d_1_lag() {
     let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(grid);
-    ebcs.set(Side::Xmin, |_, _| 1.0);
-    ebcs.set(Side::Xmax, |_, _| 2.0);
-    ebcs.set(Side::Ymin, |_, _| 1.0);
-    ebcs.set(Side::Ymax, |_, _| 2.0);
+    let mut ebcs = EssentialBcs2d::new();
+    ebcs.set(&grid, Side::Xmin, |_, _| 1.0);
+    ebcs.set(&grid, Side::Xmax, |_, _| 2.0);
+    ebcs.set(&grid, Side::Ymin, |_, _| 1.0);
+    ebcs.set(&grid, Side::Ymax, |_, _| 2.0);
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2d::new(ebcs, kx, ky).unwrap();
+    let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
 
     // solving:
     // ┌       ┐ ┌   ┐   ┌   ┐

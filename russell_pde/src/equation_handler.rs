@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 /// Implements a tool to handle the equation numbering such as unknown and prescribed equations due to the essential boundary conditions.
 ///
@@ -31,13 +31,6 @@ use std::collections::HashMap;
 pub struct EquationHandler {
     /// Holds the total number of equations (= nu + np)
     neq: usize,
-
-    /// Maps the global ID of a prescribed equation (p) to some external ID
-    ///
-    /// For example, the external ID may be the function to calculate the essential boundary condition value.
-    ///
-    /// length = np
-    p_to_external_id: HashMap<usize, usize>,
 
     /// Flags the prescribed equations
     ///
@@ -82,7 +75,6 @@ impl EquationHandler {
         let all: Vec<_> = (0..neq).collect(); // initially, all are unknown
         EquationHandler {
             neq,
-            p_to_external_id: HashMap::new(),
             is_prescribed: vec![false; neq],
             e_to_iu: all.clone(),
             e_to_ip: vec![usize::MAX; neq],
@@ -95,27 +87,25 @@ impl EquationHandler {
     ///
     /// # Arguments
     ///
-    /// * `p_list` - list of global IDs of the prescribed equations. The list holds the global ID
-    ///   and the external ID; `(p, external_id)`. The external ID may be used to identify the
-    ///   function to compute the essential boundary condition value.
+    /// * `p_list` - list of global IDs of the prescribed equations (may have duplicates).
     ///
     /// # Panics
     ///
     /// Panics if any prescribed equation index is out of bounds.
-    pub fn recompute(&mut self, p_list: &[(usize, usize)]) {
-        self.p_to_external_id.clear();
-        for (p, external_id) in p_list {
+    pub fn recompute(&mut self, p_list: &[usize]) {
+        let mut p_set = HashSet::new();
+        for p in p_list {
             if *p >= self.neq {
                 panic!("prescribed equation index is out of bounds");
             }
-            self.p_to_external_id.insert(*p, *external_id);
+            p_set.insert(*p);
         }
         self.u_sorted.clear();
         self.p_sorted.clear();
         let mut iu = 0;
         let mut ip = 0;
         for e in 0..self.neq {
-            if self.p_to_external_id.contains_key(&e) {
+            if p_set.contains(&e) {
                 self.is_prescribed[e] = true;
                 self.e_to_iu[e] = usize::MAX;
                 self.e_to_ip[e] = ip;
@@ -181,15 +171,6 @@ impl EquationHandler {
         self.e_to_ip[e]
     }
 
-    /// Returns the external ID of a prescribed equation
-    ///
-    /// # Panics
-    ///
-    /// Panics if the global equation ID is not prescribed.
-    pub fn external_id(&self, e: usize) -> usize {
-        *self.p_to_external_id.get(&e).unwrap()
-    }
-
     /// Returns an access to the (sorted) indices of the unknown equations
     pub fn unknown(&self) -> &Vec<usize> {
         &self.u_sorted
@@ -249,8 +230,8 @@ mod tests {
     fn recompute_works_with_prescribed_equations() {
         let mut handler = EquationHandler::new(6);
 
-        // Set equations 0 and 3 as prescribed with external IDs 10 and 30
-        let p_list = &[(0, 10), (3, 30)];
+        // Set equations 0 and 3 as prescribed
+        let p_list = &[0, 3];
         handler.recompute(p_list);
 
         // Check counts
@@ -286,7 +267,7 @@ mod tests {
         let mut handler = EquationHandler::new(3);
 
         // Set all equations as prescribed
-        let p_list = &[(0, 100), (1, 200), (2, 300)];
+        let p_list = &[0, 1, 2];
         handler.recompute(p_list);
 
         assert_eq!(handler.nu(), 0);
@@ -306,7 +287,7 @@ mod tests {
         let mut handler = EquationHandler::new(4);
 
         // First set some prescribed
-        let p_list = &[(1, 10), (3, 30)];
+        let p_list = &[1, 3];
         handler.recompute(p_list);
         assert_eq!(handler.np(), 2);
 
@@ -329,8 +310,8 @@ mod tests {
     fn recompute_handles_duplicate_prescriptions() {
         let mut handler = EquationHandler::new(4);
 
-        // Include same equation multiple times (should use last external_id)
-        let p_list = &[(1, 10), (1, 20), (3, 30)];
+        // Include same equation multiple times (duplicates should be ignored)
+        let p_list = &[1, 1, 3, 1];
         handler.recompute(p_list);
 
         assert_eq!(handler.nu(), 2); // equations 0, 2
@@ -338,10 +319,6 @@ mod tests {
 
         assert_eq!(handler.unknown(), &vec![0, 2]);
         assert_eq!(handler.prescribed(), &vec![1, 3]);
-
-        // External ID should be the last one specified
-        assert_eq!(handler.p_to_external_id[&1], 20);
-        assert_eq!(handler.p_to_external_id[&3], 30);
     }
 
     #[test]
@@ -350,7 +327,7 @@ mod tests {
         let mut handler = EquationHandler::new(3);
 
         // Try to set equation beyond bounds
-        let p_list = &[(0, 10), (5, 50)]; // 5 is out of bounds
+        let p_list = &[0, 5]; // 5 is out of bounds
         handler.recompute(p_list);
     }
 
@@ -360,7 +337,7 @@ mod tests {
         let mut handler = EquationHandler::new(3);
 
         // Try with maximum usize
-        let p_list = &[(usize::MAX, 10)];
+        let p_list = &[usize::MAX];
         handler.recompute(p_list);
     }
 
@@ -384,7 +361,7 @@ mod tests {
         let mut handler = EquationHandler::new(4);
 
         // Set equation 1 as prescribed
-        handler.recompute(&[(1, 10)]);
+        handler.recompute(&[1]);
 
         // Valid unknown equations work
         assert_eq!(handler.iu(0), 0);
@@ -401,7 +378,7 @@ mod tests {
         let mut handler = EquationHandler::new(4);
 
         // Set equations 0 and 2 as prescribed
-        handler.recompute(&[(0, 10), (2, 20)]);
+        handler.recompute(&[0, 2]);
 
         // Valid prescribed equations work
         assert_eq!(handler.ip(0), 0);
@@ -417,7 +394,7 @@ mod tests {
         let mut handler = EquationHandler::new(4);
 
         // Set equations 0 and 2 as prescribed
-        handler.recompute(&[(0, 10), (2, 20)]);
+        handler.recompute(&[0, 2]);
 
         // Another unknown equation should panic
         let _ = handler.ip(3);
@@ -429,7 +406,7 @@ mod tests {
         let mut handler = EquationHandler::new(6);
 
         // Set equations 0 and 3 as prescribed (p)
-        let p_list = &[(0, 100), (3, 200)];
+        let p_list = &[0, 3];
         handler.recompute(p_list);
 
         // Verify the mapping from the documentation table:
@@ -473,14 +450,14 @@ mod tests {
         let mut handler = EquationHandler::new(8);
 
         // Stage 1: Set some prescribed equations
-        handler.recompute(&[(1, 10), (4, 40), (7, 70)]);
+        handler.recompute(&[1, 4, 7]);
         assert_eq!(handler.nu(), 5);
         assert_eq!(handler.np(), 3);
         assert_eq!(handler.unknown(), &vec![0, 2, 3, 5, 6]);
         assert_eq!(handler.prescribed(), &vec![1, 4, 7]);
 
         // Stage 2: Change prescribed equations completely
-        handler.recompute(&[(0, 5), (2, 25), (3, 35), (6, 65)]);
+        handler.recompute(&[0, 2, 3, 6]);
         assert_eq!(handler.nu(), 4);
         assert_eq!(handler.np(), 4);
         assert_eq!(handler.unknown(), &vec![1, 4, 5, 7]);
@@ -501,41 +478,11 @@ mod tests {
     }
 
     #[test]
-    fn external_id_mapping_works() {
-        let mut handler = EquationHandler::new(5);
-
-        // Use different external IDs
-        let p_list = &[(1, 100), (3, 300), (4, 400)];
-        handler.recompute(p_list);
-
-        // Check that external IDs are stored correctly
-        assert_eq!(handler.p_to_external_id[&1], 100);
-        assert_eq!(handler.p_to_external_id[&3], 300);
-        assert_eq!(handler.p_to_external_id[&4], 400);
-
-        // Non-prescribed equations shouldn't be in the map
-        assert!(!handler.p_to_external_id.contains_key(&0));
-        assert!(!handler.p_to_external_id.contains_key(&2));
-
-        // Update with different mapping
-        handler.recompute(&[(0, 50), (2, 250)]);
-
-        // Old mappings should be cleared
-        assert!(!handler.p_to_external_id.contains_key(&1));
-        assert!(!handler.p_to_external_id.contains_key(&3));
-        assert!(!handler.p_to_external_id.contains_key(&4));
-
-        // New mappings should be present
-        assert_eq!(handler.p_to_external_id[&0], 50);
-        assert_eq!(handler.p_to_external_id[&2], 250);
-    }
-
-    #[test]
     fn consistency_checks() {
         let mut handler = EquationHandler::new(10);
 
         // Set some prescribed equations
-        handler.recompute(&[(2, 20), (5, 50), (8, 80)]);
+        handler.recompute(&[2, 5, 8]);
 
         // Verify that nu + np = neq
         assert_eq!(handler.nu() + handler.np(), handler.neq());
@@ -574,7 +521,7 @@ mod tests {
         let mut handler = EquationHandler::new(10);
 
         // Set prescribed equations in non-sorted order
-        handler.recompute(&[(7, 70), (2, 20), (9, 90), (1, 10), (5, 50)]);
+        handler.recompute(&[7, 2, 9, 1, 5]);
 
         // Unknown list should be sorted
         let unknown = handler.unknown();
@@ -588,197 +535,32 @@ mod tests {
     }
 
     #[test]
-    fn external_id_works_correctly() {
-        let mut handler = EquationHandler::new(6);
-
-        // Set equations with specific external IDs
-        let p_list = &[(0, 100), (3, 200), (5, 300)];
-        handler.recompute(p_list);
-
-        // Check that external IDs can be retrieved correctly
-        assert_eq!(handler.external_id(0), 100);
-        assert_eq!(handler.external_id(3), 200);
-        assert_eq!(handler.external_id(5), 300);
-    }
-
-    #[test]
-    #[should_panic]
-    fn external_id_panics_on_unknown_equation() {
-        let mut handler = EquationHandler::new(6);
-
-        // Set equations with specific external IDs
-        let p_list = &[(0, 100), (3, 200), (5, 300)];
-        handler.recompute(p_list);
-
-        // Unknown equation should panic when asking for external ID
-        let _ = handler.external_id(1);
-    }
-
-    #[test]
-    #[should_panic]
-    fn external_id_panics_on_another_unknown_equation() {
-        let mut handler = EquationHandler::new(6);
-
-        // Set equations with specific external IDs
-        let p_list = &[(0, 100), (3, 200), (5, 300)];
-        handler.recompute(p_list);
-
-        // Another unknown equation should panic
-        let _ = handler.external_id(2);
-    }
-
-    #[test]
-    #[should_panic]
-    fn external_id_panics_on_third_unknown_equation() {
-        let mut handler = EquationHandler::new(6);
-
-        // Set equations with specific external IDs
-        let p_list = &[(0, 100), (3, 200), (5, 300)];
-        handler.recompute(p_list);
-
-        // Third unknown equation should panic
-        let _ = handler.external_id(4);
-    }
-
-    #[test]
-    fn external_id_updates_correctly_after_recompute() {
-        let mut handler = EquationHandler::new(5);
-
-        // Initial configuration
-        handler.recompute(&[(1, 100), (3, 300)]);
-        assert_eq!(handler.external_id(1), 100);
-        assert_eq!(handler.external_id(3), 300);
-
-        // Update with different external IDs
-        handler.recompute(&[(1, 150), (3, 350), (4, 450)]);
-        assert_eq!(handler.external_id(1), 150); // updated
-        assert_eq!(handler.external_id(3), 350); // updated
-        assert_eq!(handler.external_id(4), 450); // new
-
-        // Clear all prescribed equations
-        handler.recompute(&[]);
-        // Now all calls to external_id should panic
-    }
-
-    #[test]
-    #[should_panic]
-    fn external_id_panics_after_clearing_prescribed() {
-        let mut handler = EquationHandler::new(5);
-
-        // Set some prescribed equations
-        handler.recompute(&[(1, 100), (3, 300)]);
-
-        // Clear all prescribed equations
-        handler.recompute(&[]);
-
-        // Should panic since equation 1 is no longer prescribed
-        let _ = handler.external_id(1);
-    }
-
-    #[test]
-    fn external_id_handles_duplicate_equations_correctly() {
+    fn prescribed_set_handles_duplicates() {
         let mut handler = EquationHandler::new(4);
 
-        // Set same equation multiple times with different external IDs
-        let p_list = &[(1, 100), (1, 200), (1, 300), (3, 400)];
+        // Set same equation multiple times
+        let p_list = &[1, 1, 3, 1, 3];
         handler.recompute(p_list);
 
-        // Should use the last external ID for equation 1
-        assert_eq!(handler.external_id(1), 300);
-        assert_eq!(handler.external_id(3), 400);
+        // Results should be the same as if no duplicates
+        assert_eq!(handler.nu(), 2); // equations 0, 2
+        assert_eq!(handler.np(), 2); // equations 1, 3
+        assert_eq!(handler.unknown(), &vec![0, 2]);
+        assert_eq!(handler.prescribed(), &vec![1, 3]);
     }
 
     #[test]
-    fn external_id_works_with_zero_external_ids() {
-        let mut handler = EquationHandler::new(4);
-
-        // Test with external ID of 0 (valid value)
-        handler.recompute(&[(0, 0), (2, 0), (3, 100)]);
-
-        assert_eq!(handler.external_id(0), 0);
-        assert_eq!(handler.external_id(2), 0);
-        assert_eq!(handler.external_id(3), 100);
-    }
-
-    #[test]
-    #[should_panic]
-    fn external_id_panics_for_unknown_with_zero_ids() {
-        let mut handler = EquationHandler::new(4);
-
-        // Test with external ID of 0 (valid value)
-        handler.recompute(&[(0, 0), (2, 0), (3, 100)]);
-
-        // Unknown equation should still panic
-        let _ = handler.external_id(1);
-    }
-
-    #[test]
-    fn external_id_works_with_large_external_ids() {
-        let mut handler = EquationHandler::new(3);
-
-        // Test with large external IDs
-        let large_id = usize::MAX;
-        handler.recompute(&[(0, large_id), (2, large_id - 1)]);
-
-        assert_eq!(handler.external_id(0), large_id);
-        assert_eq!(handler.external_id(2), large_id - 1);
-    }
-
-    #[test]
-    fn external_id_consistency_with_other_methods() {
-        let mut handler = EquationHandler::new(6);
-
-        // Set prescribed equations with external IDs
-        let p_list = &[(0, 10), (2, 20), (4, 40)];
-        handler.recompute(p_list);
-
-        // For each prescribed equation, external_id should work
-        for &p in handler.prescribed() {
-            let _external_id = handler.external_id(p); // should not panic
-            assert!(handler.is_prescribed(p));
-            let _ip = handler.ip(p); // should not panic
-        }
-
-        // For each unknown equation, external_id should panic (tested separately)
-        for &u in handler.unknown() {
-            assert!(!handler.is_prescribed(u));
-            let _iu = handler.iu(u); // should not panic
-        }
-
-        // Verify specific external ID values match what was set
-        assert_eq!(handler.external_id(0), 10);
-        assert_eq!(handler.external_id(2), 20);
-        assert_eq!(handler.external_id(4), 40);
-    }
-
-    #[test]
-    fn external_id_comprehensive_example() {
+    fn comprehensive_boundary_condition_example() {
         let mut handler = EquationHandler::new(8);
 
-        // Complex scenario: multiple boundary condition types
-        let bc_dirichlet_left = 1;
-        let bc_dirichlet_right = 2;
-        let bc_neumann_top = 3;
-        let bc_robin_bottom = 4;
+        // Complex scenario: multiple boundary nodes
+        let boundary_nodes = &[0, 1, 6, 7, 2, 5]; // various boundary positions
+        handler.recompute(boundary_nodes);
 
-        let p_list = &[
-            (0, bc_dirichlet_left),  // left boundary
-            (1, bc_dirichlet_left),  // left boundary
-            (6, bc_dirichlet_right), // right boundary
-            (7, bc_dirichlet_right), // right boundary
-            (2, bc_neumann_top),     // top boundary
-            (5, bc_robin_bottom),    // bottom boundary
-        ];
-
-        handler.recompute(p_list);
-
-        // Check boundary condition types
-        assert_eq!(handler.external_id(0), bc_dirichlet_left);
-        assert_eq!(handler.external_id(1), bc_dirichlet_left);
-        assert_eq!(handler.external_id(6), bc_dirichlet_right);
-        assert_eq!(handler.external_id(7), bc_dirichlet_right);
-        assert_eq!(handler.external_id(2), bc_neumann_top);
-        assert_eq!(handler.external_id(5), bc_robin_bottom);
+        // Check that all boundary nodes are prescribed
+        for &node in boundary_nodes {
+            assert!(handler.is_prescribed(node));
+        }
 
         // Interior nodes should be unknown
         for &interior in &[3, 4] {
@@ -788,78 +570,60 @@ mod tests {
         // Verify counts
         assert_eq!(handler.np(), 6); // 6 prescribed equations
         assert_eq!(handler.nu(), 2); // 2 unknown equations (interior nodes)
+
+        // Check sorted lists
+        assert_eq!(handler.prescribed(), &vec![0, 1, 2, 5, 6, 7]);
+        assert_eq!(handler.unknown(), &vec![3, 4]);
     }
 
     #[test]
-    fn external_id_empty_system_edge_case() {
+    fn empty_system_edge_case() {
         let mut handler = EquationHandler::new(0);
 
         // Empty system - recompute with empty list should work
         handler.recompute(&[]);
 
-        // No equations to query external IDs for
+        // No equations to work with
         assert_eq!(handler.np(), 0);
         assert_eq!(handler.nu(), 0);
     }
 
     #[test]
-    fn external_id_single_equation_system() {
+    fn single_equation_system() {
         let mut handler = EquationHandler::new(1);
 
         // Single equation as prescribed
-        handler.recompute(&[(0, 42)]);
-        assert_eq!(handler.external_id(0), 42);
-
-        // Switch to unknown - external_id should now panic
-        handler.recompute(&[]);
-        // external_id(0) would panic now, but we test this separately
-    }
-
-    #[test]
-    #[should_panic]
-    fn external_id_panics_after_switching_to_unknown() {
-        let mut handler = EquationHandler::new(1);
-
-        // Single equation as prescribed
-        handler.recompute(&[(0, 42)]);
+        handler.recompute(&[0]);
+        assert!(handler.is_prescribed(0));
+        assert_eq!(handler.np(), 1);
+        assert_eq!(handler.nu(), 0);
 
         // Switch to unknown
         handler.recompute(&[]);
-
-        // Should panic since equation 0 is no longer prescribed
-        let _ = handler.external_id(0);
+        assert!(!handler.is_prescribed(0));
+        assert_eq!(handler.np(), 0);
+        assert_eq!(handler.nu(), 1);
     }
 
     #[test]
-    fn large_system_performance() {
-        let neq = 10000;
-        let mut handler = EquationHandler::new(neq);
+    fn recompute_clears_previous_state() {
+        let mut handler = EquationHandler::new(6);
 
-        // Set every 10th equation as prescribed
-        let p_list: Vec<_> = (0..neq).step_by(10).map(|i| (i, i * 10)).collect();
-        handler.recompute(&p_list);
+        // Initial state
+        handler.recompute(&[0, 2, 4]);
+        assert_eq!(handler.np(), 3);
 
-        assert_eq!(handler.neq(), 10000);
-        assert_eq!(handler.np(), 1000); // every 10th
-        assert_eq!(handler.nu(), 9000); // remaining
+        // New state should completely replace old state
+        handler.recompute(&[1, 3]);
+        assert_eq!(handler.np(), 2);
 
-        // Check a few mappings
-        assert!(handler.is_prescribed(0));
-        assert!(!handler.is_prescribed(1));
-        assert!(handler.is_prescribed(10));
-        assert!(!handler.is_prescribed(11));
+        // Old prescribed equations should no longer be prescribed
+        assert!(!handler.is_prescribed(0));
+        assert!(!handler.is_prescribed(2));
+        assert!(!handler.is_prescribed(4));
 
-        // Check that unknown list has correct size and is sorted
-        assert_eq!(handler.unknown().len(), 9000);
-        assert!(handler.unknown().windows(2).all(|w| w[0] < w[1])); // sorted
-
-        // Check that prescribed list has correct size and is sorted
-        assert_eq!(handler.prescribed().len(), 1000);
-        assert!(handler.prescribed().windows(2).all(|w| w[0] < w[1])); // sorted
-
-        // Test external_id for some prescribed equations
-        assert_eq!(handler.external_id(0), 0);
-        assert_eq!(handler.external_id(10), 100);
-        assert_eq!(handler.external_id(20), 200);
+        // New prescribed equations should be prescribed
+        assert!(handler.is_prescribed(1));
+        assert!(handler.is_prescribed(3));
     }
 }

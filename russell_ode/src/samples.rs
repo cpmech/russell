@@ -579,13 +579,13 @@ impl Samples {
         let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny).unwrap();
 
         // allocate the essential boundary conditions (EBCs) handler
-        let mut ebcs = EssentialBcs2d::new(grid);
+        let mut ebcs = EssentialBcs2d::new();
         if second_book {
-            ebcs.set_periodic(true, true);
+            ebcs.set_periodic(&grid, true, true);
         }
 
         // discrete laplacian
-        let fdm = FdmLaplacian2d::new(ebcs, kx, ky).unwrap();
+        let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
 
         // initial values
         let t0 = 0.0;

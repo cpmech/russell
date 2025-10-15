@@ -78,16 +78,14 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(grid);
-    ebcs.set_homogeneous();
-
-    // auxiliary variables
-    let n_phi = ebcs.num_total();
-    let n_psi = ebcs.num_prescribed();
-    let ndim = n_phi + n_psi;
+    let mut ebcs = EssentialBcs2d::new();
+    ebcs.set_homogeneous(&grid);
 
     // allocate the Laplacian operator
-    let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
+    let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+
+    // auxiliary variables
+    let (_, _, n_phi, n_psi, ndim) = fdm.get_info();
 
     // augmented coefficient matrix of the Laplacian operator
     let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);

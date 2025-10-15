@@ -19,14 +19,14 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(grid);
-    ebcs.set_homogeneous();
-
-    // auxiliary variable
-    let ndim = ebcs.num_unknown();
+    let mut ebcs = EssentialBcs2d::new();
+    ebcs.set_homogeneous(&grid);
 
     // allocate the Laplacian operator
-    let fdm = FdmLaplacian2d::new(ebcs, 1.0, 1.0).unwrap();
+    let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+
+    // number of unknowns
+    let ndim = fdm.get_info().0;
 
     // get the discrete operator: L{ϕ} ≈ D{ϕ} = K u + C p = K u + 0
     let (kk, _) = fdm.get_kk_and_cc_matrices(0, Sym::No);

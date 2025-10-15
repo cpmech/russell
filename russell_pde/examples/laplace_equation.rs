@@ -23,15 +23,15 @@ fn main() -> Result<(), StrError> {
     let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, nx, ny)?;
 
     // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new(grid);
-    ebcs.set(Side::Xmin, |_, _| 50.0);
-    ebcs.set(Side::Xmax, |_, _| 0.0);
-    ebcs.set(Side::Ymin, |_, _| 0.0);
-    ebcs.set(Side::Ymax, |_, _| 50.0);
+    let mut ebcs = EssentialBcs2d::new();
+    ebcs.set(&grid, Side::Xmin, |_, _| 50.0);
+    ebcs.set(&grid, Side::Xmax, |_, _| 0.0);
+    ebcs.set(&grid, Side::Ymin, |_, _| 0.0);
+    ebcs.set(&grid, Side::Ymax, |_, _| 50.0);
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2d::new(ebcs, kx, ky)?;
+    let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky)?;
 
     // solving K u = h from:
     // ┌       ┐ ┌   ┐   ┌   ┐

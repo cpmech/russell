@@ -2,12 +2,38 @@ use num_traits::Num;
 
 /// Finds the indices of the minimum and maximum values in a slice of generic numbers
 ///
-/// Returns `(index_min, index_max)`.
+/// Returns `(index_min, index_max)` where:
+/// - `index_min` is the index of the first occurrence of the minimum value
+/// - `index_max` is the index of the first occurrence of the maximum value
 ///
-/// **Warning:** `(usize::MAX, usize::MAX)` is returned if the slice is empty,
-/// even though these are not valid indices.
+/// # Arguments
 ///
-/// When there are multiple occurrences of min/max, the first occurrence is returned.
+/// * `x` - A slice of numeric values that implement `Num + PartialOrd`
+///
+/// # Returns
+///
+/// A tuple `(usize, usize)` containing the indices of the minimum and maximum values.
+///
+/// # Special Cases
+///
+/// - **Empty slice**: Returns `(usize::MAX, usize::MAX)` as invalid indices
+/// - **Single element**: Returns `(0, 0)` since the only element is both min and max
+/// - **Multiple occurrences**: Returns the index of the **first** occurrence of min/max values
+/// - **Equal elements**: If all elements are equal, returns `(0, 0)`
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::find_min_max;
+///
+/// let values = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5];
+/// let (min_idx, max_idx) = find_min_max(&values);
+///
+/// assert_eq!(min_idx, 1);  // First occurrence of minimum value 1
+/// assert_eq!(max_idx, 5);  // First occurrence of maximum value 9
+/// assert_eq!(values[min_idx], 1);
+/// assert_eq!(values[max_idx], 9);
+/// ```
 pub fn find_min_max<T>(x: &[T]) -> (usize, usize)
 where
     T: Num + PartialOrd,

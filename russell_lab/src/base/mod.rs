@@ -3,6 +3,7 @@
 mod as_array;
 mod auxiliary_blas;
 mod enums;
+mod find_min_max;
 mod formatters;
 mod generators;
 mod macros;
@@ -13,6 +14,7 @@ mod stopwatch;
 pub use as_array::*;
 pub use auxiliary_blas::*;
 pub use enums::*;
+pub use find_min_max::*;
 pub use formatters::*;
 pub use generators::*;
 pub use read_table::*;

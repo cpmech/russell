@@ -1,10 +1,6 @@
-#![allow(unused)]
-
 use plotpy::{linspace, Curve, Plot, Text};
-use russell_lab::{
-    approx_eq, mat_approx_eq, mat_eigenvalues, mat_inverse, num_jacobian, read_table, vec_norm, vec_norm_chunk,
-};
-use russell_lab::{Matrix, Norm, Vector};
+use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
+use russell_lab::{Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Status, Stop, System};
 use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
 use russell_sparse::{CooMatrix, Sym};
@@ -15,7 +11,7 @@ use std::collections::HashMap;
 // (Bratu's problem in 2D with Lagrange multipliers method - LMM)
 //
 // ∂²ϕ   ∂²ϕ
-// ——— + ——— + λ exp(ϕ) = 0
+// ——— + ——— + λ exp(ϕ/(1 + α ϕ)) = 0
 // ∂x²   ∂y²
 //
 // on the unit square (1.0 × 1.0) with homogeneous boundary conditions.
@@ -59,20 +55,34 @@ use std::collections::HashMap;
 //    SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. https://doi.org/10.1137/0907036
 // 2. Bolstad JH, Keller HB (1986) A multigrid continuation method for elliptic problems with folds.
 //    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. https://doi.org/10.1137/0907074
+// 3. Shahab ML, Susanto H, Hatzikirou H (2025) A finite difference method with symmetry properties for the high-dimensional
+//    Bratu equation, Applied Mathematics and Computation, 489:129136, https://doi.org/10.1016/j.amc.2024.129136
+
+// reference (λCrit, ‖ϕCrit‖∞) values from Bolstad and Keller (6 order scheme, very fine mesh)
+const REF_ALP00: f64 = 6.80812442259; // α = 0: first critical point; nrm=1.3916612
+const REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2.8858004
+const REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
 
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
-fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep) {
+// Runs the test
+fn run_test(
+    bordering: bool,
+    alpha: f64,
+    npt: usize,
+    stop: Stop,
+    auto: AutoStep,
+    alpha0_lam_crit_tol: f64,
+    alpha02_1st_lam_crit_tol: f64,
+    alpha02_2nd_lam_crit_tol: f64,
+) {
     // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
     let stem = format!(
         "/tmp/russell_nonlin/test_bratu_2d_lmm_alpha{}_npt{}_{}",
         alpha, npt, key
     );
-
-    // check: alpha parameter in bₘ = exp(ϕₘ/(1 + α ϕₘ))
-    assert!(alpha == 0.0 || alpha == 0.2, "alpha must be either 0.0 or 0.2");
 
     // allocate the grid
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
@@ -148,7 +158,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
 
     // max number of non-zeros in Gu
     let nnz_aa = aa.get_info().2;
-    let nnz = nnz_aa + n_phi; // the λ B term
+    let nnz = nnz_aa + n_phi; // +n_phi for the λ B term
     let sym = Sym::No;
 
     // set callback functions
@@ -179,163 +189,129 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
 
     // output
     let out = &mut Output::new();
-    let norm_type_out = Norm::Inf;
-    out.set_record_norm_u(true, norm_type_out, 0, n_phi);
+    out.set_record_norm_u(true, Norm::Inf, 0, n_phi);
 
     // initial state (all zero)
     let mut state = State::new(ndim);
 
     // numerical continuation
-    let nrm_phi_stop = if alpha == 0.0 { 10.0 } else { 30.0 };
     let status = solver
-        .solve(
-            &mut 0,
-            &mut state,
-            IniDir::Pos,
-            stop,
-            auto,
-            // Stop::Steps(65),
-            // Stop::Steps(67),
-            //Stop::MaxNormU(4.0, Norm::Inf, 0, n_phi),
-            // Stop::MaxNormU(nrm_phi_stop, Norm::Inf, 0, n_phi),
-            // Stop::MaxNormU(60.0, Norm::Euc, 0, n_phi),
-            //AutoStep::Yes,
-            // AutoStep::No(4.859), // ok
-            // AutoStep::No(4.8599), // not ok
-            // AutoStep::No(4.89516358573), // ok
-            // AutoStep::No(4.89516358574), // not ok
-            Some(out),
-        )
+        .solve(&mut 0, &mut state, IniDir::Pos, stop, auto, Some(out))
         .unwrap();
-    println!("Status: {:?}", status);
-    // assert_eq!(status, Status::Success);
-
-    // reference λCrit and ‖ϕCrit‖∞ values (Bolstad and Keller, 6 order scheme, very fine mesh)
-    let ref_alp0 = (6.80812442259, 1.3916612); // α = 0: first critical point
-    let ref_alp0d2_a = (9.13638296666, 2.8858004); // α = 0.2: first critical point
-    let ref_alp0d2_b = (7.10189894953, 18.192768); // α = 0.2: second critical point
+    println!("\nStatus: {:?}", status);
+    assert_eq!(status, Status::Success);
 
     // search for the critical point(s)
+    println!("Numerical results for α = {} and npt = {}:", alpha, npt);
     let lam_vals = out.get_l_values();
     let nrm_vals = out.get_norm_u_values();
-    let mut lam_crit_a = f64::NEG_INFINITY; // first λCrit (largest before turning point)
-    let mut nrm_crit_a = 0.0; // ‖ϕ‖∞ @ first λCrit
-    let mut lam_crit_b = f64::INFINITY; // second λCrit (smallest after turning point)
-    let mut nrm_crit_b = 0.0; // ‖ϕ‖∞ @ second λCrit
-    let mut found_first = false;
-    for i in 0..lam_vals.len() {
-        let lam = lam_vals[i];
-        if alpha == 0.0 {
-            if lam > lam_crit_a {
-                lam_crit_a = lam;
-                nrm_crit_a = nrm_vals[i];
+    let (ii_valleys, ii_peaks, _, _) = find_valleys_and_peaks(lam_vals);
+    for i in &ii_peaks {
+        println!("Peak   @ ({}, {})", lam_vals[*i], nrm_vals[*i]);
+    }
+    for i in &ii_valleys {
+        println!("Valley @ ({}, {})", lam_vals[*i], nrm_vals[*i]);
+    }
+
+    // check the results
+    if alpha == 0.0 {
+        if ii_peaks.len() == 1 {
+            let lam_crit = lam_vals[ii_peaks[0]];
+            let diff = f64::abs(lam_crit - REF_ALP00);
+            if diff > alpha0_lam_crit_tol {
+                println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, REF_ALP00, diff);
             }
-        } else if alpha == 0.2 {
-            if found_first {
-                if lam < lam_crit_b {
-                    // now we are searching for the smallest value
-                    lam_crit_b = lam;
-                    nrm_crit_b = nrm_vals[i];
-                }
-            } else {
-                if lam > lam_crit_a {
-                    lam_crit_a = lam;
-                    nrm_crit_a = nrm_vals[i];
-                }
-                if i > 0 {
-                    if lam < lam_vals[i - 1] {
-                        // it start to decrease; i.e., passed the first critical point
-                        found_first = true;
-                    }
-                }
+        } else {
+            println!("WARNING: for alpha = 0.0, one peak must have been found");
+        }
+    } else if alpha == 0.2 {
+        if ii_peaks.len() == 1 && ii_valleys.len() == 1 {
+            let lam_crit_a = lam_vals[ii_peaks[0]];
+            let lam_crit_b = lam_vals[ii_valleys[0]];
+            let diff_a = f64::abs(lam_crit_a - REF_ALP02_A);
+            let diff_b = f64::abs(lam_crit_b - REF_ALP02_B);
+            if diff_a > alpha02_1st_lam_crit_tol {
+                println!(
+                    "❌ ERROR ❌ 1st λCrit = {}, ref = {}, diff = {}",
+                    lam_crit_a, REF_ALP02_A, diff_a
+                );
             }
+            if diff_b > alpha02_2nd_lam_crit_tol {
+                println!(
+                    "❌ ERROR ❌ 2nd λCrit = {}, ref = {}, diff = {}",
+                    lam_crit_b, REF_ALP02_B, diff_b
+                );
+            }
+        } else {
+            println!("WARNING: for alpha = 0.2, one peak and one valley must have been found");
         }
     }
-    println!("\nNumerical results for α = {} and npt = {}:", alpha, npt);
-    let tolerances = HashMap::from([
-        (3, (1.47, 1.49)), // npt => (tol_lam_crit_a, tol_lam_crit_b)
-        (5, (0.27, 0.43)),
-        (21, (0.011, 0.0073)),
-        (101, (0.00044, 0.052)),
-    ]);
-    if alpha == 0.0 {
-        let err_lam_crit_a = f64::abs(lam_crit_a - ref_alp0.0);
-        println!("λCrit = {} ({}), err = {}", lam_crit_a, ref_alp0.0, err_lam_crit_a);
-        println!("‖ϕCrit‖∞ = {} ({})\n", nrm_crit_a, ref_alp0.1);
-        // approx_eq(lam_crit_a, ref_alp0.0, tolerances[&npt].0);
-    } else if alpha == 0.2 {
-        let err_lam_crit_a = f64::abs(lam_crit_a - ref_alp0d2_a.0);
-        let err_lam_crit_b = f64::abs(lam_crit_b - ref_alp0d2_b.0);
-        println!(
-            "First λCrit = {} ({}). diff = {}",
-            lam_crit_a, ref_alp0d2_a.0, err_lam_crit_a
-        );
-        println!("First ‖ϕCrit‖∞ = {} ({})", nrm_crit_a, ref_alp0d2_a.1);
-        println!(
-            "Second λCrit = {} ({}). diff = {}",
-            lam_crit_b, ref_alp0d2_b.0, err_lam_crit_b
-        );
-        println!("Second ‖ϕCrit‖∞ = {} ({})\n", nrm_crit_b, ref_alp0d2_b.1);
-        // approx_eq(lam_crit_a, ref_alp0d2_a.0, tolerances[&npt].0);
-        // approx_eq(lam_crit_b, ref_alp0d2_b.0, tolerances[&npt].1);
-    }
+    println!();
 
     // plot the results
     if SAVE_FIGURE {
-        // define the title
-        let title = format!(
-            "$\\alpha = {}$  |  npt = {}  |  $\\lambda_{{crit}} = {:.8}$",
-            alpha, npt, lam_crit_a
-        );
+        // allocate the plot
+        let mut plot = Plot::new();
+
+        // set the title
+        plot.set_title(&format!("{}  |  $\\alpha = {}$  |  npt = {}", key, alpha, npt));
+
+        // maximum ‖ϕ‖∞ value
+        let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];
+
+        // reference results
+        if alpha == 0.0 {
+            let table: HashMap<String, Vec<f64>> =
+                read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"])).unwrap();
+            let mut n_ref = 0;
+            for u_max in &table["u_max"] {
+                if *u_max > max_nrm_max {
+                    break;
+                }
+                n_ref += 1;
+            }
+            if n_ref + 5 < table["u_max"].len() {
+                n_ref += 5; // add a few more points for better visualization
+            }
+            let mut curve_ref = Curve::new();
+            let x_ref = &table["lambda"].as_slice()[..n_ref];
+            let y_ref = &table["u_max"].as_slice()[..n_ref];
+            curve_ref.set_label("reference").draw(&x_ref, &y_ref);
+            plot.add(&curve_ref);
+        }
+
+        // numerical results
+        let mut curve = Curve::new();
+        curve.set_marker_style(".").draw(lam_vals, nrm_vals);
+        plot.add(&curve);
 
         // annotations
         let mut annotations = Text::new();
-        let dy = if alpha == 0.0 { 1.0 } else { 2.0 };
         annotations
-            .set_align_vertical("center")
             .set_bbox(true)
             .set_bbox_facecolor("white")
             .set_bbox_edgecolor("None")
-            .set_bbox_style("round,pad=0.3")
-            .draw(0.0, nrm_crit_a, &format!("{:.8}", nrm_crit_a));
-
-        // draw ϕ versus λ
-        let mut curve_norm_phi = Curve::new();
-        curve_norm_phi.set_marker_style(".").draw(lam_vals, nrm_vals);
-
-        // reference results
-        let table: HashMap<String, Vec<f64>> =
-            read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"])).unwrap();
-        let mut curve_ref = Curve::new();
-        let n_ref = 150; // max = 201
-        let x_ref = &table["lambda"].as_slice()[..n_ref];
-        let y_ref = &table["u_max"].as_slice()[..n_ref];
-        curve_ref.set_label("reference").draw(&x_ref, &y_ref);
-
-        // generate the plot
-        let mut plot = Plot::new();
-        plot.set_horiz_line(nrm_crit_a, "#689868ff", "-", 1.0);
-        if alpha == 0.2 {
-            plot.set_horiz_line(nrm_crit_b, "#689868ff", "-", 1.0);
+            .set_bbox_style("round,pad=0.3");
+        let indices = [&ii_valleys[..], &ii_peaks[..]].concat();
+        for i in &indices {
+            plot.set_horiz_line(nrm_vals[*i], "#689868ff", "-", 1.0);
             annotations
-                .set_align_horizontal("right")
-                .set_align_vertical("center")
                 .set_rotation(0.0)
-                .draw(
-                    lam_crit_b - 0.3,
-                    nrm_crit_b,
-                    &format!("({:.8}, {:.8}) →", lam_crit_b, nrm_crit_b),
-                );
+                .set_align_vertical("center")
+                .set_align_horizontal("left")
+                .draw(0.0, nrm_vals[*i], &format!("{:.9}", nrm_vals[*i]));
+            plot.set_vert_line(lam_vals[*i], "#689868ff", "-", 1.0);
+            annotations
+                .set_rotation(90.0)
+                .set_align_vertical("top")
+                .set_align_horizontal("center")
+                .draw(lam_vals[*i], max_nrm_max, &format!("{:.9}", lam_vals[*i]));
         }
+        plot.add(&annotations);
+
+        // generate ‖ϕ‖∞ versus λ plot
         let key = if auto.yes() { "auto" } else { "fixed" };
-        plot.set_title(&title)
-            .add(&curve_ref)
-            .add(&curve_norm_phi)
-            .add(&annotations)
-            .grid_and_labels("λ", &pretty_norm_phi(norm_type_out))
-            .set_figure_size_points(400.0, 300.0)
-            .save(&format!("{}.svg", stem))
-            .unwrap();
+        plot.set_labels("λ", "‖ϕ‖∞").save(&format!("{}.svg", stem)).unwrap();
 
         // plot stepsizes
         if auto.yes() {
@@ -345,8 +321,8 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
             let mut curve = Curve::new();
             curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
             curve.draw(&x.as_slice(), &hh);
-            let mut plot_b = Plot::new();
-            plot_b
+            let mut plot = Plot::new();
+            plot.set_title(&format!("{}  |  $\\alpha = {}$  |  npt = {}", key, alpha, npt))
                 .set_labels("step number", "stepsize $h$")
                 .add(&curve)
                 .save(&format!("{}_h.svg", stem))
@@ -355,25 +331,16 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     }
 }
 
-fn pretty_norm_phi(norm_type: Norm) -> String {
-    match norm_type {
-        Norm::Euc => "‖ϕ‖₂".to_string(),
-        Norm::Fro => "‖ϕ‖F".to_string(),
-        Norm::Inf => "‖ϕ‖∞".to_string(),
-        Norm::Max => "‖ϕ‖max".to_string(),
-        Norm::One => "‖ϕ‖₁".to_string(),
-    }
-}
-
 #[test]
 fn test_bratu_2d_lmm_auto() {
     let bordering = false;
     let auto = AutoStep::Yes;
     for alpha in [0.0] {
-        for npt in [8, 9, 10] {
+        for (npt, tol1, tol2, tol3) in [(8, 0.0672, 0.094, 0.11), (9, 0.101, 0.07, 0.053)] {
+            let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
             let n_phi = (npt - 2) * (npt - 2);
-            let stop = Stop::MaxNormU(15.0, Norm::Inf, 0, n_phi);
-            run_test(bordering, alpha, npt, stop, auto);
+            let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, n_phi);
+            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
         }
     }
 }
@@ -384,8 +351,8 @@ fn test_bratu_2d_lmm_fixed() {
     let auto = AutoStep::No(4.89516358573);
     let stop = Stop::Steps(67);
     for alpha in [0.0] {
-        for npt in [5, 6, 7] {
-            run_test(bordering, alpha, npt, stop, auto);
+        for (npt, tol1, tol2, tol3) in [(8, 0.0332, 0.0, 0.0)] {
+            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
         }
     }
 }

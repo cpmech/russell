@@ -27,7 +27,7 @@ use std::collections::HashMap;
 // The vector of unknowns is expressed by u = [ϕ, ψ]ᵀ and the discretized system is
 // expressed by G(u, λ) = [R(u, λ), S(u, λ)]ᵀ, where:
 //
-// R(u, λ) = K ϕ + λ b + Eᵀψ = 0
+// R(u, λ) = M ϕ + λ b + Eᵀψ = 0
 // S(u, λ) = E ϕ - c = 0
 //
 // With bₘ = exp(ϕₘ/(1 + α ϕₘ)), the derivatives are:
@@ -37,7 +37,7 @@ use std::collections::HashMap;
 //                  ⎩ 0   otherwise
 //
 //      ┌              ┐   ┌              ┐
-//      │ ∂R/∂ϕ  ∂R/∂ψ │   │ K + λ B   Eᵀ │
+//      │ ∂R/∂ϕ  ∂R/∂ψ │   │ M + λ B   Eᵀ │
 // Gu = │              │ = │              │
 //      │ ∂S/∂ϕ  ∂S/∂ψ │   │ E         0  │
 //      └              ┘   └              ┘

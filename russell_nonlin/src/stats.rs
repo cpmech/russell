@@ -1,6 +1,6 @@
 use super::{Config, Method};
 use russell_lab::{format_nanoseconds, Stopwatch};
-use russell_stat::{statistics, Histogram};
+use russell_stat::{Histogram, Statistics};
 use std::fmt::{self, Write};
 
 /// Holds statistics and benchmarking data
@@ -277,7 +277,7 @@ impl Stats {
             if rates.is_empty() {
                 String::new()
             } else {
-                let res = statistics(&rates);
+                let res = Statistics::new(&rates);
                 format!(
                     "\n\nConvergence rates: (min, max) = ({:.3}, {:.3})\n(0.9 ≤ cr ≤ 2.1)       (μ, σ) = ({:.3}, {:.3})",
                     res.min, res.max, res.mean, res.std_dev

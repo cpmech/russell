@@ -22,6 +22,7 @@ pub fn get_rng() -> ThreadRng {
     rand::rng()
 }
 
+mod calculate_quartiles;
 mod distribution_frechet;
 mod distribution_gumbel;
 mod distribution_lognormal;
@@ -31,6 +32,7 @@ mod histogram;
 mod probability_distribution;
 mod statistics;
 
+pub use calculate_quartiles::*;
 pub use distribution_frechet::*;
 pub use distribution_gumbel::*;
 pub use distribution_lognormal::*;

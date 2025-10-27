@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use num_traits::{Num, NumCast};
 
 /// Calculates the first, second (median), and third quartiles.
 ///
@@ -11,14 +11,14 @@ use std::fmt::Debug;
 ///
 /// # Notes
 ///
-/// * The function employs the inclusive median method for quartile calculation.
+/// * The function uses the "linear" method of NumPy's `quantile` function.
 ///
 /// # Panics
 ///
 /// This function will panic if the input vector is empty.
-pub fn calculate_quartiles<T>(data: &mut Vec<T>) -> (T, T, T)
+pub fn calculate_quartiles<T>(data: &mut [T]) -> (f64, f64, f64)
 where
-    T: PartialOrd + Copy + std::ops::Add<Output = T> + std::ops::Div<Output = T> + From<u8> + Debug,
+    T: Num + NumCast + Copy + PartialOrd,
 {
     // Check for empty input
     let n = data.len();
@@ -29,45 +29,41 @@ where
     // Sort the dataset
     data.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-    // Calculate median (Q2)
-    let q2 = calculate_median(data);
-
-    // Split the data into lower and upper halves for Q1 and Q3 calculation
-    // NOTE: For odd n we include the median in both halves to match Python's numpy.
-    // Thus Q1 and Q3 are medians of [..=mid] and [mid..].
-    let (lower_half, upper_half) = if n % 2 == 1 {
-        let mid = n / 2;
-        (&data[..=mid], &data[mid..])
-    } else {
-        let mid = n / 2;
-        (&data[..mid], &data[mid..])
-    };
-
-    // Calculate Q1 (median of the lower half)
-    let q1 = calculate_median(lower_half);
-
-    // Calculate Q3 (median of the upper half)
-    let q3 = calculate_median(upper_half);
+    // Calculate quartiles using linear interpolation (NumPy's default method)
+    let q1 = calculate_quantile(data, 0.25);
+    let q2 = calculate_quantile(data, 0.50);
+    let q3 = calculate_quantile(data, 0.75);
 
     // Return the quartiles
     (q1, q2, q3)
 }
 
-/// Calculates the median of a slice of sorted data.
+/// Calculates a quantile of a sorted slice using linear interpolation.
 ///
-/// It is a helper function used by `calculate_quartiles`.
-fn calculate_median<T>(data: &[T]) -> T
+/// This matches NumPy's default `quantile` method (linear interpolation).
+///
+/// # Arguments
+///
+/// * `data` - A sorted slice of data points
+/// * `q` - The quantile to calculate (e.g., 0.25 for first quartile, 0.5 for median)
+pub fn calculate_quantile<T>(data: &[T], q: f64) -> f64
 where
-    T: PartialOrd + Copy + std::ops::Add<Output = T> + std::ops::Div<Output = T> + From<u8> + Debug,
+    T: Num + NumCast + Copy,
 {
     let n = data.len();
-    if n % 2 == 1 {
-        data[n / 2]
-    } else {
-        let mid_low = data[n / 2 - 1];
-        let mid_high = data[n / 2];
-        (mid_low + mid_high) / T::from(2)
-    }
+
+    // Calculate the virtual index using linear interpolation formula
+    // This matches NumPy: index = q * (n - 1)
+    let index = q * ((n - 1) as f64);
+    let lower_index = index.floor() as usize;
+    let upper_index = index.ceil() as usize;
+    let fraction = index - lower_index as f64;
+
+    // Linear interpolation between the two nearest data points
+    let lower_value = data[lower_index].to_f64().unwrap();
+    let upper_value = data[upper_index].to_f64().unwrap();
+
+    lower_value + fraction * (upper_value - lower_value)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,9 +79,9 @@ mod tests {
         // Out: array([3., 5., 7.])
         let mut data = vec![7, 1, 3, 9, 5];
         let (q1, q2, q3) = calculate_quartiles(&mut data);
-        assert_eq!(q1, 3);
-        assert_eq!(q2, 5);
-        assert_eq!(q3, 7);
+        assert_eq!(q1, 3.0);
+        assert_eq!(q2, 5.0);
+        assert_eq!(q3, 7.0);
 
         // Example with an odd number of elements
         // Python:
@@ -93,10 +89,9 @@ mod tests {
         // Out: array([ 6.5, 11. , 15.5])
         let mut data_odd = vec![17, 2, 5, 11, 14, 8, 20];
         let (q1, q2, q3) = calculate_quartiles(&mut data_odd);
-        println!("Q1: {}, Q2 (Median): {}, Q3: {}", q1, q2, q3);
-        // assert_eq!(q1, 6.5);
-        assert_eq!(q2, 11);
-        // assert_eq!(q3, 15.5);
+        assert_eq!(q1, 6.5);
+        assert_eq!(q2, 11.0);
+        assert_eq!(q3, 15.5);
 
         // Example with an even number of elements
         // Python:
@@ -104,9 +99,8 @@ mod tests {
         // Out: array([ 7.25, 12.5 , 17.75])
         let mut data_even = vec![2, 14, 17, 20, 5, 8, 11, 23];
         let (q1, q2, q3) = calculate_quartiles(&mut data_even);
-        // assert_eq!(q1, 7.25);
-        // assert_eq!(q2, 12.5);
-        // assert_eq!(q3, 17.75);
-        println!("Q1: {}, Q2 (Median): {}, Q3: {}", q1, q2, q3);
+        assert_eq!(q1, 7.25);
+        assert_eq!(q2, 12.5);
+        assert_eq!(q3, 17.75);
     }
 }

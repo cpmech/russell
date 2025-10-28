@@ -262,4 +262,122 @@ mod tests {
         assert_eq!(q2, 12.5);
         assert_eq!(q3, 17.75);
     }
+
+    #[test]
+    fn calculate_quartiles_single_element() {
+        // With only one element, all quartiles should be the same
+        let mut data = vec![42];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 42.0);
+        assert_eq!(q2, 42.0);
+        assert_eq!(q3, 42.0);
+    }
+
+    #[test]
+    fn calculate_quartiles_two_elements() {
+        // Python: np.quantile([10, 20], [0.25, 0.5, 0.75])
+        // Output: [12.5, 15.0, 17.5]
+        let mut data = vec![10, 20];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 12.5);
+        assert_eq!(q2, 15.0);
+        assert_eq!(q3, 17.5);
+    }
+
+    #[test]
+    fn calculate_quartiles_three_elements() {
+        // Python: np.quantile([1, 2, 3], [0.25, 0.5, 0.75])
+        // Output: [1.5, 2.0, 2.5]
+        let mut data = vec![1, 2, 3];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 1.5);
+        assert_eq!(q2, 2.0);
+        assert_eq!(q3, 2.5);
+    }
+
+    #[test]
+    fn calculate_quartiles_four_elements() {
+        // Python: np.quantile([1, 2, 3, 4], [0.25, 0.5, 0.75])
+        // Output: [1.75, 2.5, 3.25]
+        let mut data = vec![1, 2, 3, 4];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 1.75);
+        assert_eq!(q2, 2.5);
+        assert_eq!(q3, 3.25);
+    }
+
+    #[test]
+    fn calculate_quartiles_with_floats() {
+        // Python: np.quantile([1.5, 2.7, 3.2, 4.8, 5.1], [0.25, 0.5, 0.75])
+        // Output: [2.7, 3.2, 4.8]
+        let mut data = vec![1.5, 2.7, 3.2, 4.8, 5.1];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 2.7);
+        assert_eq!(q2, 3.2);
+        assert_eq!(q3, 4.8);
+    }
+
+    #[test]
+    fn calculate_quartiles_with_negative_values() {
+        // Python: np.quantile([-10, -5, 0, 5, 10], [0.25, 0.5, 0.75])
+        // Output: [-5.0, 0.0, 5.0]
+        let mut data = vec![-10, -5, 0, 5, 10];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, -5.0);
+        assert_eq!(q2, 0.0);
+        assert_eq!(q3, 5.0);
+    }
+
+    #[test]
+    fn calculate_quartiles_with_duplicates() {
+        // Python: np.quantile([1, 2, 2, 2, 3, 4, 5], [0.25, 0.5, 0.75])
+        // Output: [2.0, 2.0, 3.5]
+        let mut data = vec![1, 2, 2, 2, 3, 4, 5];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 2.0);
+        assert_eq!(q2, 2.0);
+        assert_eq!(q3, 3.5);
+    }
+
+    #[test]
+    fn calculate_quartiles_all_same_values() {
+        // When all values are the same, all quartiles should be that value
+        let mut data = vec![5, 5, 5, 5, 5];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 5.0);
+        assert_eq!(q2, 5.0);
+        assert_eq!(q3, 5.0);
+    }
+
+    #[test]
+    fn calculate_quartiles_unsorted_input() {
+        // Test that the function correctly sorts unsorted data
+        // Python: np.quantile([100, 1, 50, 25, 75], [0.25, 0.5, 0.75])
+        // Output: [25.0, 50.0, 75.0]
+        let mut data = vec![100, 1, 50, 25, 75];
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 25.0);
+        assert_eq!(q2, 50.0);
+        assert_eq!(q3, 75.0);
+    }
+
+    #[test]
+    fn calculate_quartiles_large_dataset() {
+        // Test with a larger dataset
+        // Python: np.quantile(list(range(1, 101)), [0.25, 0.5, 0.75])
+        // Output: [25.75, 50.5, 75.25]
+        let mut data: Vec<i32> = (1..=100).collect();
+        let (q1, q2, q3) = quartiles(&mut data);
+        assert_eq!(q1, 25.75);
+        assert_eq!(q2, 50.5);
+        assert_eq!(q3, 75.25);
+    }
+
+    #[test]
+    fn calculate_quartiles_verifies_sorting() {
+        // Verify that the data is actually sorted after the function call
+        let mut data = vec![5, 2, 8, 1, 9, 3, 7];
+        let _ = quartiles(&mut data);
+        assert_eq!(data, vec![1, 2, 3, 5, 7, 8, 9]);
+    }
 }

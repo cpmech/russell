@@ -17,6 +17,38 @@ use num_traits::{Num, NumCast};
 /// # Warnings
 ///
 /// This function does not check for NaNs or Infinities in the input data.
+///
+/// # Examples
+///
+/// ```
+/// use russell_stat::quantile;
+///
+/// // Python Numpy example:
+/// // np.quantile([1,2,3,4,5,6,7,8,9,10], [0.0, 0.25, 0.5, 0.75, 1.0])
+///
+/// // Define the dataset
+/// let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+///
+/// // Calculate the minimum (0th percentile)
+/// let min = quantile(&data, 0.0);
+/// assert_eq!(min, 1.0);
+///
+/// // Calculate the first quartile (25th percentile)
+/// let q1 = quantile(&data, 0.25);
+/// assert_eq!(q1, 3.25);
+///
+/// // Calculate the median (50th percentile)
+/// let median = quantile(&data, 0.5);
+/// assert_eq!(median, 5.5);
+///
+/// // Calculate the third quartile (75th percentile)
+/// let q3 = quantile(&data, 0.75);
+/// assert_eq!(q3, 7.75);
+///
+/// // Calculate the maximum (100th percentile)
+/// let max = quantile(&data, 1.0);
+/// assert_eq!(max, 10.0);
+/// ```
 pub fn quantile<T>(data: &[T], q: f64) -> f64
 where
     T: Num + NumCast + Copy,

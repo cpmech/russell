@@ -8,14 +8,13 @@ use num_traits::{Num, NumCast};
 ///
 /// # Arguments
 ///
-/// * `data` - A mutable reference to a slice of data points. It must be a slice of a
+/// * `data` - A reference to a slice of data points. It must be a slice of a
 ///   type that can be ordered and supports arithmetic operations.
-///
-/// **Warning**: This function modifies the input slice by sorting it.
 ///
 /// # Returns
 ///
-/// A vector containing all outliers found in the dataset.
+/// A vector of tuples `(index, value)` containing the index (in the **original array**)
+/// and value of each outlier found in the dataset.
 ///
 /// # Panics
 ///
@@ -27,14 +26,21 @@ use num_traits::{Num, NumCast};
 /// use russell_stat::outliers;
 ///
 /// // A dataset with clear outliers
-/// let mut data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
-/// let outlier_values = outliers(&mut data);
-/// assert_eq!(outlier_values, vec![100]);
+/// let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
+/// let outlier_info = outliers(&data);
+/// // Index 9 is the position of 100 in the original array
+/// assert_eq!(outlier_info, vec![(9, 100)]);
+///
+/// // Unsorted data - indices refer to original positions
+/// let data = vec![100, 2, 3, 4, 5, 6, 7, 8, 9, 1];
+/// let outlier_info = outliers(&data);
+/// // Index 0 is where 100 was in the original array
+/// assert_eq!(outlier_info, vec![(0, 100)]);
 ///
 /// // A dataset without outliers
-/// let mut data = vec![1, 2, 3, 4, 5];
-/// let outlier_values = outliers(&mut data);
-/// assert_eq!(outlier_values.len(), 0);
+/// let data = vec![1, 2, 3, 4, 5];
+/// let outlier_info = outliers(&data);
+/// assert_eq!(outlier_info.len(), 0);
 /// ```
 ///
 /// # Algorithm
@@ -44,28 +50,37 @@ use num_traits::{Num, NumCast};
 /// 3. Lower bound = Q1 - 1.5 * IQR
 /// 4. Upper bound = Q3 + 1.5 * IQR
 /// 5. Any value < lower bound or > upper bound is an outlier
-pub fn outliers<T>(data: &mut [T]) -> Vec<T>
+pub fn outliers<T>(data: &[T]) -> Vec<(usize, T)>
 where
     T: Num + NumCast + Copy + PartialOrd,
 {
+    // Create indexed pairs to track original positions
+    let mut indexed_data: Vec<(usize, T)> = data.iter().copied().enumerate().collect();
+
+    // Sort by value while keeping track of original indices
+    indexed_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+    // Extract sorted values for quartile calculation
+    let sorted_values: Vec<T> = indexed_data.iter().map(|(_, v)| *v).collect();
+
     // Get quartiles and IQR
-    let (q1, _, q3) = quartiles(data);
+    let (q1, _, q3) = quartiles(&mut sorted_values.clone());
     let iqr = q3 - q1;
 
     // Calculate outlier boundaries
     let lower_bound = q1 - 1.5 * iqr;
     let upper_bound = q3 + 1.5 * iqr;
 
-    // Find outliers
-    let mut outlier_values = Vec::new();
-    for &value in data.iter() {
+    // Find outliers with their original indices
+    let mut outlier_info = Vec::new();
+    for &(original_index, value) in indexed_data.iter() {
         let val_f64 = value.to_f64().unwrap();
         if val_f64 < lower_bound || val_f64 > upper_bound {
-            outlier_values.push(value);
+            outlier_info.push((original_index, value));
         }
     }
 
-    outlier_values
+    outlier_info
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,60 +92,64 @@ mod tests {
     #[test]
     #[should_panic(expected = "Input data slice must not be empty")]
     fn outliers_panics_on_empty_input() {
-        let mut data: Vec<i32> = vec![];
-        outliers(&mut data);
+        let data: Vec<i32> = vec![];
+        outliers(&data);
     }
 
     #[test]
     fn outliers_with_one_outlier() {
         // Dataset with one clear outlier
-        let mut data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values, vec![100]);
+        let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info, vec![(9, 100)]);
     }
 
     #[test]
     fn outliers_with_no_outliers() {
         // Dataset without outliers
-        let mut data = vec![1, 2, 3, 4, 5];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values.len(), 0);
+        let data = vec![1, 2, 3, 4, 5];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info.len(), 0);
     }
 
     #[test]
     fn outliers_with_multiple_outliers() {
         // Dataset with multiple outliers
-        let mut data = vec![-100, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 200];
-        let outlier_values = outliers(&mut data);
+        let data = vec![-100, 1, 2, 3, 4, 5, 6, 7, 8, 9, 100, 200];
+        let outlier_info = outliers(&data);
         // Lower bound: Q1 - 1.5*IQR, Upper bound: Q3 + 1.5*IQR
         // Should identify -100, 100, and 200 as outliers
-        assert!(outlier_values.contains(&-100));
-        assert!(outlier_values.contains(&100));
-        assert!(outlier_values.contains(&200));
+        assert_eq!(outlier_info.len(), 3);
+        // -100 is at index 0 in original array
+        assert!(outlier_info.contains(&(0, -100)));
+        // 100 is at index 10 in original array
+        assert!(outlier_info.contains(&(10, 100)));
+        // 200 is at index 11 in original array
+        assert!(outlier_info.contains(&(11, 200)));
     }
 
     #[test]
     fn outliers_with_uniform_data() {
         // All values are the same, no outliers
-        let mut data = vec![5, 5, 5, 5, 5];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values.len(), 0);
+        let data = vec![5, 5, 5, 5, 5];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info.len(), 0);
     }
 
     #[test]
     fn outliers_with_floats() {
         // Dataset with floating-point values
-        let mut data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 50.0];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values, vec![50.0]);
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 50.0];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info, vec![(9, 50.0)]);
     }
 
     #[test]
     fn outliers_with_negative_values() {
         // Dataset with negative outlier
-        let mut data = vec![-100, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values, vec![-100]);
+        let data = vec![-100, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info, vec![(0, -100)]);
     }
 
     #[test]
@@ -140,48 +159,71 @@ mod tests {
         // Q1=3.25, Q3=7.75, IQR=4.5
         // Lower: 3.25 - 1.5*4.5 = -3.5
         // Upper: 7.75 + 1.5*4.5 = 14.5
-        let mut data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values.len(), 0); // All values within bounds
+        let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info.len(), 0); // All values within bounds
     }
 
     #[test]
     fn outliers_single_element() {
         // Single element should not be an outlier (IQR = 0)
-        let mut data = vec![42];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values.len(), 0);
+        let data = vec![42];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info.len(), 0);
     }
 
     #[test]
     fn outliers_two_elements() {
         // Two elements, no outliers possible with standard IQR rule
-        let mut data = vec![1, 2];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values.len(), 0);
+        let data = vec![1, 2];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info.len(), 0);
     }
 
     #[test]
-    fn outliers_verifies_sorting() {
-        // Verify that the data is sorted after the function call
-        let mut data = vec![9, 1, 5, 3, 7];
-        let _ = outliers(&mut data);
-        assert_eq!(data, vec![1, 3, 5, 7, 9]);
+    fn outliers_does_not_modify_input() {
+        // Verify that the input data is not modified
+        let data = vec![9, 1, 5, 3, 7];
+        let _ = outliers(&data);
+        assert_eq!(data, vec![9, 1, 5, 3, 7]); // Data unchanged
     }
 
     #[test]
     fn outliers_with_duplicates() {
         // Dataset with duplicates and outliers
-        let mut data = vec![1, 2, 2, 3, 3, 3, 4, 4, 5, 100];
-        let outlier_values = outliers(&mut data);
-        assert_eq!(outlier_values, vec![100]);
+        let data = vec![1, 2, 2, 3, 3, 3, 4, 4, 5, 100];
+        let outlier_info = outliers(&data);
+        assert_eq!(outlier_info, vec![(9, 100)]);
     }
 
     #[test]
     fn outliers_realistic_example() {
         // More realistic example: test scores
-        let mut scores = vec![65, 70, 72, 75, 78, 80, 82, 85, 88, 90, 15]; // 15 is clearly an outlier
-        let outlier_values = outliers(&mut scores);
-        assert_eq!(outlier_values, vec![15]);
+        let scores = vec![65, 70, 72, 75, 78, 80, 82, 85, 88, 90, 15]; // 15 is clearly an outlier
+        let outlier_info = outliers(&scores);
+        // 15 was at index 10 in the original array
+        assert_eq!(outlier_info, vec![(10, 15)]);
+    }
+
+    #[test]
+    fn outliers_indices_are_from_original_array() {
+        // Verify that indices correspond to original positions before sorting
+        let data = vec![100, 2, 3, 4, 5, 6, 7, 8, 9, 1];
+        let outlier_info = outliers(&data);
+        // 100 was at index 0 in the original array
+        assert_eq!(outlier_info, vec![(0, 100)]);
+        // Verify data is NOT modified
+        assert_eq!(data, vec![100, 2, 3, 4, 5, 6, 7, 8, 9, 1]);
+    }
+
+    #[test]
+    fn outliers_multiple_with_original_indices() {
+        // Test multiple outliers with original index tracking
+        let data = vec![5, -100, 3, 200, 4, 6, 7];
+        let outlier_info = outliers(&data);
+        // -100 was at index 1, 200 was at index 3
+        assert_eq!(outlier_info.len(), 2);
+        assert!(outlier_info.contains(&(1, -100)));
+        assert!(outlier_info.contains(&(3, 200)));
     }
 }

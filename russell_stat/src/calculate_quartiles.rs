@@ -1,5 +1,40 @@
 use num_traits::{Num, NumCast};
 
+/// Calculates a quantile of a sorted slice using linear interpolation.
+///
+/// This matches NumPy's default `quantile` method (linear interpolation).
+///
+/// # Arguments
+///
+/// * `data` - A sorted slice of data points
+/// * `q` - The quantile to calculate (e.g., 0.25 for first quartile, 0.5 for median)
+///
+/// # Panics
+///
+/// This function will panic if the input slice is empty.
+pub fn calculate_quantile<T>(data: &[T], q: f64) -> f64
+where
+    T: Num + NumCast + Copy,
+{
+    let n = data.len();
+    if n == 0 {
+        panic!("Input data slice must not be empty");
+    }
+
+    // Calculate the virtual index using linear interpolation formula
+    // This matches NumPy: index = q * (n - 1)
+    let index = q * ((n - 1) as f64);
+    let lower_index = index.floor() as usize;
+    let upper_index = index.ceil() as usize;
+    let fraction = index - lower_index as f64;
+
+    // Linear interpolation between the two nearest data points
+    let lower_value = data[lower_index].to_f64().unwrap();
+    let upper_value = data[upper_index].to_f64().unwrap();
+
+    lower_value + fraction * (upper_value - lower_value)
+}
+
 /// Calculates the first, second (median), and third quartiles.
 ///
 /// # Arguments
@@ -23,7 +58,7 @@ where
     // Check for empty input
     let n = data.len();
     if n == 0 {
-        panic!("Input data vector must not be empty");
+        panic!("Input data slice must not be empty");
     }
 
     // Sort the dataset
@@ -38,39 +73,18 @@ where
     (q1, q2, q3)
 }
 
-/// Calculates a quantile of a sorted slice using linear interpolation.
-///
-/// This matches NumPy's default `quantile` method (linear interpolation).
-///
-/// # Arguments
-///
-/// * `data` - A sorted slice of data points
-/// * `q` - The quantile to calculate (e.g., 0.25 for first quartile, 0.5 for median)
-pub fn calculate_quantile<T>(data: &[T], q: f64) -> f64
-where
-    T: Num + NumCast + Copy,
-{
-    let n = data.len();
-
-    // Calculate the virtual index using linear interpolation formula
-    // This matches NumPy: index = q * (n - 1)
-    let index = q * ((n - 1) as f64);
-    let lower_index = index.floor() as usize;
-    let upper_index = index.ceil() as usize;
-    let fraction = index - lower_index as f64;
-
-    // Linear interpolation between the two nearest data points
-    let lower_value = data[lower_index].to_f64().unwrap();
-    let upper_value = data[upper_index].to_f64().unwrap();
-
-    lower_value + fraction * (upper_value - lower_value)
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{calculate_quantile, calculate_quartiles};
+
+    #[test]
+    #[should_panic(expected = "Input data slice must not be empty")]
+    fn calculate_quantile_panics_on_empty_input() {
+        let data: Vec<i32> = vec![];
+        calculate_quantile(&data, 0.5);
+    }
 
     #[test]
     fn calculate_quantile_works() {
@@ -190,6 +204,13 @@ mod tests {
         assert_eq!(calculate_quantile(&data, 0.25), 7.25);
         assert_eq!(calculate_quantile(&data, 0.5), 12.5);
         assert_eq!(calculate_quantile(&data, 0.75), 17.75);
+    }
+
+    #[test]
+    #[should_panic(expected = "Input data slice must not be empty")]
+    fn calculate_quartiles_panics_on_empty_input() {
+        let mut data: Vec<i32> = vec![];
+        calculate_quartiles(&mut data);
     }
 
     #[test]

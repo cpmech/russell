@@ -3,6 +3,10 @@ use num_traits::{Num, NumCast};
 
 /// Calculates the inter-quartile range (IQR) of a dataset.
 ///
+/// The inter-quartile range is a measure of statistical dispersion, defined as the
+/// difference between the third quartile (Q3) and the first quartile (Q1): IQR = Q3 - Q1.
+/// It represents the middle 50% of the data and is robust to outliers.
+///
 /// # Arguments
 ///
 /// * `data` - A mutable reference to a vector of data points. It must be a vector of a
@@ -21,6 +25,27 @@ use num_traits::{Num, NumCast};
 /// # Warnings
 ///
 /// This function does not check for NaNs or Infinities in the input data.
+///
+/// # Examples
+///
+/// ```
+/// use russell_stat::inter_quartile_range;
+///
+/// // Calculate IQR for a simple dataset
+/// let mut data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+/// let iqr = inter_quartile_range(&mut data);
+/// assert_eq!(iqr, 4.5);
+///
+/// // IQR is robust to outliers
+/// let mut data_with_outlier = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 100];
+/// let iqr_outlier = inter_quartile_range(&mut data_with_outlier);
+/// assert_eq!(iqr_outlier, 4.5); // Same IQR despite the outlier!
+///
+/// // IQR for a dataset with all identical values is 0
+/// let mut uniform_data = vec![5, 5, 5, 5, 5];
+/// let iqr_uniform = inter_quartile_range(&mut uniform_data);
+/// assert_eq!(iqr_uniform, 0.0);
+/// ```
 pub fn inter_quartile_range<T>(data: &mut [T]) -> f64
 where
     T: Num + NumCast + Copy + PartialOrd,

@@ -21,6 +21,24 @@ use num_traits::{Num, NumCast};
 /// # Warnings
 ///
 /// This function does not check for NaNs or Infinities in the input data.
+///
+/// # Examples
+///
+/// ```
+/// use russell_stat::quartiles;
+///
+/// // Python Numpy example:
+/// // np.quantile([1,2,3,4,5,6,7,8,9,10], [0.25, 0.5, 0.75])
+///
+/// // Define the dataset
+/// let mut data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+///
+/// // Calculate the quartiles
+/// let (q1, q2, q3) = quartiles(&mut data);
+/// assert_eq!(q1, 3.25);
+/// assert_eq!(q2, 5.5);
+/// assert_eq!(q3, 7.75);
+/// ```
 pub fn quartiles<T>(data: &mut [T]) -> (f64, f64, f64)
 where
     T: Num + NumCast + Copy + PartialOrd,

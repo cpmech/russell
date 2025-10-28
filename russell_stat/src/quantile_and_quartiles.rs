@@ -13,6 +13,10 @@ use num_traits::{Num, NumCast};
 ///
 /// * This function will panic if the input slice is empty.
 /// * This function will panic if `q` is not in the range [0.0, 1.0].
+///
+/// # Warnings
+///
+/// This function does not check for NaNs or Infinities in the input data.
 pub fn quantile<T>(data: &[T], q: f64) -> f64
 where
     T: Num + NumCast + Copy,
@@ -55,6 +59,10 @@ where
 /// # Panics
 ///
 /// This function will panic if the input vector is empty.
+///
+/// # Warnings
+///
+/// This function does not check for NaNs or Infinities in the input data.
 pub fn quartiles<T>(data: &mut [T]) -> (f64, f64, f64)
 where
     T: Num + NumCast + Copy + PartialOrd,

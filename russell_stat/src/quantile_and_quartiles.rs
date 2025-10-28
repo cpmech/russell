@@ -11,7 +11,8 @@ use num_traits::{Num, NumCast};
 ///
 /// # Panics
 ///
-/// This function will panic if the input slice is empty.
+/// * This function will panic if the input slice is empty.
+/// * This function will panic if `q` is not in the range [0.0, 1.0].
 pub fn quantile<T>(data: &[T], q: f64) -> f64
 where
     T: Num + NumCast + Copy,
@@ -19,6 +20,9 @@ where
     let n = data.len();
     if n == 0 {
         panic!("Input data slice must not be empty");
+    }
+    if q < 0.0 || q > 1.0 {
+        panic!("Quantile q must be in the range [0.0, 1.0]");
     }
 
     // Calculate the virtual index using linear interpolation formula
@@ -84,6 +88,20 @@ mod tests {
     fn calculate_quantile_panics_on_empty_input() {
         let data: Vec<i32> = vec![];
         quantile(&data, 0.5);
+    }
+
+    #[test]
+    #[should_panic(expected = "Quantile q must be in the range [0.0, 1.0]")]
+    fn calculate_quantile_panics_on_negative_q() {
+        let data: Vec<i32> = vec![1];
+        quantile(&data, -0.1);
+    }
+
+    #[test]
+    #[should_panic(expected = "Quantile q must be in the range [0.0, 1.0]")]
+    fn calculate_quantile_panics_on_greater_than_one_q() {
+        let data: Vec<i32> = vec![1];
+        quantile(&data, 1.1);
     }
 
     #[test]

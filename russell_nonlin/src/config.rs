@@ -129,12 +129,12 @@ pub struct Config {
     ///
     /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in nite element
     ///    simulation of incompressible flows and coupled reaction–convection–diffusion processes,
-    ///    International Journal for Numerical Methods in Fluids, 47:201-231, https://doi.org/10.1002/fld.805
+    ///    International Journal for Numerical Methods in Fluids, 47:201-231, <https://doi.org/10.1002/fld.805>
     /// 2. Barros GF, Cortes AMA, Coutinho ALGA (2021) Finite element solution of nonlocal Cahn–Hilliard
     ///    equations with feedback control time step size adaptivity, International Journal for Numerical Methods
-    ///    in Engineering, 122:5028-5052, https://doi.org/10.1002/nme.6755
+    ///    in Engineering, 122:5028-5052, <https://doi.org/10.1002/nme.6755>
     /// 3. Kubatschek T, Forster A (2025) Investigation of existing and new approaches to step size control in a
-    ///    continuation framework, Computers & Structures, 313:107747, https://doi.org/10.1016/j.compstruc.2025.107747
+    ///    continuation framework, Computers & Structures, 313:107747, <https://doi.org/10.1016/j.compstruc.2025.107747>
     pub(crate) tg_control_pid_vcc: bool,
 
     /// Optimal number of iterations for stepsize control using Newton-Raphson statistics
@@ -530,12 +530,12 @@ impl Config {
     ///
     /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in nite element
     ///    simulation of incompressible flows and coupled reaction–convection–diffusion processes,
-    ///    International Journal for Numerical Methods in Fluids, 47:201-231, https://doi.org/10.1002/fld.805
+    ///    International Journal for Numerical Methods in Fluids, 47:201-231, <https://doi.org/10.1002/fld.805>
     /// 2. Barros GF, Cortes AMA, Coutinho ALGA (2021) Finite element solution of nonlocal Cahn–Hilliard
     ///    equations with feedback control time step size adaptivity, International Journal for Numerical Methods
-    ///    in Engineering, 122:5028-5052, https://doi.org/10.1002/nme.6755
+    ///    in Engineering, 122:5028-5052, <https://doi.org/10.1002/nme.6755>
     /// 3. Kubatschek T, Forster A (2025) Investigation of existing and new approaches to step size control in a
-    ///    continuation framework, Computers & Structures, 313:107747, https://doi.org/10.1016/j.compstruc.2025.107747
+    ///    continuation framework, Computers & Structures, 313:107747, <https://doi.org/10.1016/j.compstruc.2025.107747>
     ///
     /// Default value: false
     pub fn set_tg_control_pid_vcc(&mut self, flag: bool) -> &mut Self {

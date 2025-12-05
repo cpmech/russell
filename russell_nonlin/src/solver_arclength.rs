@@ -139,12 +139,12 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 ///
 /// 1. Spence A, Graham IG (1999) Numerical Methods for Bifurcation Problems. In The Graduate Student’s Guide to
 ///    Numerical Analysis '98. Springer Series in Computational Mathematics. Ed. by Ainsworth M, Levesley J,
-///    Marletta M. vol 26. Springer, Berlin, Heidelberg. https://doi.org/10.1007/978-3-662-03972-4_5
+///    Marletta M. vol 26. Springer, Berlin, Heidelberg. <https://doi.org/10.1007/978-3-662-03972-4_5>
 /// 2. Doedel EJ (2007) Lecture Notes on Numerical Analysis of Nonlinear Equations. In Numerical Continuation
 ///    Methods for Dynamical Systems: Path following and boundary value problems. Ed. by Krauskopf B, Osinga HM,
-///    Galán-Vioque J. Springer Netherlands, https://doi.org/10.1007/978-1-4020-6356-5
+///    Galán-Vioque J. Springer Netherlands, <https://doi.org/10.1007/978-1-4020-6356-5>
 /// 3. Mittelmann HD (1986) A Pseudo-Arclength Continuation Method for Nonlinear Eigenvalue Problems,
-///    SIAM Journal on Numerical Analysis, 23:5, 1007-1016 https://doi.org/10.1137/0723068
+///    SIAM Journal on Numerical Analysis, 23:5, 1007-1016 <https://doi.org/10.1137/0723068>
 pub struct SolverArclength<'a, A> {
     /// Configuration options
     config: Config,

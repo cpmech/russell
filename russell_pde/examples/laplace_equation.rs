@@ -42,7 +42,7 @@ fn main() -> Result<(), StrError> {
     // where h = f - C p
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
+    let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
     let (mut u, p, mut h) = fdm.get_vectors(|_, _| 0.0);
     let cc = cc_mat.unwrap();
 

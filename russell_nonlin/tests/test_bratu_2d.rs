@@ -29,7 +29,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let ndim = fdm.get_info().0;
 
     // get the discrete operator: L{ϕ} ≈ D{ϕ} = K u + C p = K u + 0
-    let (kk, _) = fdm.get_kk_and_cc_matrices(0, Sym::No);
+    let (kk, _) = fdm.get_matrices_sps(0, Sym::No);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {

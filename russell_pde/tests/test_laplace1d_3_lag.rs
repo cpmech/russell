@@ -67,7 +67,7 @@ fn test_laplace1d_3_lag() {
     // assemble the coefficient matrix and the lhs and rhs vectors
     let na = fdm.get_info().2;
     let extra_nnz = na; // diagonal entries due to ϕ β
-    let (mut aa, _) = fdm.get_aa_and_ee_matrices(extra_nnz, false);
+    let (mut aa, _) = fdm.get_matrices_lmm(extra_nnz, false);
     let (mut h, mut b) = fdm.get_vectors_lmm(|x| x * x + phi_inf * beta); // (- ϕ∞ β) goes to the rhs
 
     // add the diagonal entries due to ϕ β

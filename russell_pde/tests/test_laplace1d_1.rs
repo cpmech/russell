@@ -33,7 +33,7 @@ fn test_laplace1d_1() {
     // where F = f - C p = f because p = 0 (homogeneous EBCs)
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk, _) = fdm.get_kk_and_cc_matrices(0, Sym::No);
+    let (kk, _) = fdm.get_matrices_sps(0, Sym::No);
     let (mut u, p, ff) = fdm.get_vectors(|x| x);
 
     // solve the linear system

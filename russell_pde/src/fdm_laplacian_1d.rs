@@ -39,7 +39,7 @@ const INI_X: usize = 0;
 /// are possible to apply the EBCs: (1) use a reduced coefficient matrix `K` and a reduced vector `u` containing
 /// only the unknown values; and (2) use the Lagrange multipliers method (LMM).
 ///
-/// ## Approach 1: Reduced system
+/// ## Approach 1: System partitioning strategy (SPS)
 ///
 /// Consider the following partitioning of the vector `a` and the matrix `M`:
 ///
@@ -181,7 +181,7 @@ impl<'a> FdmLaplacian1d<'a> {
         &self.equations
     }
 
-    /// Returns the reduced coefficient matrices
+    /// Returns the matrices for the system partitioning strategy (SPS)
     ///
     /// Returns `K` and `C` from:
     ///
@@ -194,8 +194,8 @@ impl<'a> FdmLaplacian1d<'a> {
     ///     M       a       r
     /// ```
     ///
-    /// Note that the `C` matrix is not available if there are no EBCs.
-    pub fn get_kk_and_cc_matrices(&self, extra_nnz: usize, sym_kk: Sym) -> (CooMatrix, Option<CooMatrix>) {
+    /// Note that the `C` matrix is only available if there are essential boundary conditions.
+    pub fn get_matrices_sps(&self, extra_nnz: usize, sym_kk: Sym) -> (CooMatrix, Option<CooMatrix>) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         let nnz_kk = 3 * nu + extra_nnz; // 3 is the bandwidth
@@ -240,7 +240,7 @@ impl<'a> FdmLaplacian1d<'a> {
     /// ```
     ///
     /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
-    pub fn get_aa_and_ee_matrices(&self, extra_nnz: usize, return_ee_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(&self, extra_nnz: usize, return_ee_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
         // build the A matrix
         let na = self.equations.neq();
         let np = self.equations.np();
@@ -508,8 +508,8 @@ mod tests {
         ebcs.set(&grid, Side::Xmin, lef); //  0
 
         let fdm = FdmLaplacian1d::new(grid, ebcs, 100.0).unwrap();
-        let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -608,8 +608,8 @@ mod tests {
         ebcs.set_homogeneous(&grid);
 
         let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -706,8 +706,8 @@ mod tests {
         ebcs.set_periodic(&grid, true);
 
         let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_kk_and_cc_matrices(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_aa_and_ee_matrices(0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());
 

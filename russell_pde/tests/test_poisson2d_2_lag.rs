@@ -54,7 +54,7 @@ fn test_poisson2d_2_lag() {
     // where a = (u, p) and w are the Lagrange multipliers
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (aa, _) = fdm.get_aa_and_ee_matrices(0, false);
+    let (aa, _) = fdm.get_matrices_lmm(0, false);
     let (mut x, b) = fdm.get_vectors_lmm(source);
 
     // solve the linear system

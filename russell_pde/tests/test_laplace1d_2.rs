@@ -64,7 +64,7 @@ fn test_laplace1d_2() {
     // where F = f - C p
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let nu = fdm.get_info().0;
+    let nu = fdm.get_dims_sps().0;
     let extra_nnz = nu; // diagonal entries due to ϕ β
     let (mut kk, cc_mat) = fdm.get_matrices_sps(extra_nnz, Sym::No);
     let (mut u, p, mut ff) = fdm.get_vectors(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs

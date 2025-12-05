@@ -43,7 +43,7 @@ fn test_laplace1d_1_lag() {
     solver.actual.solve(&mut h, &b, false).unwrap();
 
     // results
-    let na = fdm.get_info().2;
+    let na = fdm.get_dims_lmm().0;
     let a = &h.as_data()[..na];
 
     // analytical solution

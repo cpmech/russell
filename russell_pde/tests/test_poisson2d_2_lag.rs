@@ -63,7 +63,7 @@ fn test_poisson2d_2_lag() {
     solver.actual.solve(&mut x, &b, false).unwrap();
 
     // results
-    let na = fdm.get_info().2;
+    let na = fdm.get_dims_lmm().0;
     let a = &x.as_data()[..na];
 
     // check

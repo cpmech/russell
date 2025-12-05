@@ -65,7 +65,7 @@ fn test_laplace1d_2_lag() {
     // where a = (u, p) and w are the Lagrange multipliers
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let na = fdm.get_info().2;
+    let na = fdm.get_dims_lmm().0;
     let extra_nnz = na; // diagonal entries due to ϕ β
     let (mut aa, _) = fdm.get_matrices_lmm(extra_nnz, false);
     let (mut h, b) = fdm.get_vectors_lmm(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs

@@ -129,46 +129,30 @@ impl<'a> FdmLaplacian1d<'a> {
         })
     }
 
-    /// Returns the dimension of the various vectors and matrices used in the linear system
+    /// Returns the dimensions for the system partitioning strategy (SPS)
     ///
-    /// Returns `(nu, np, na, nw, nh)`.
+    /// Returns `(nu, np)` where:
     ///
-    /// (1) the reduced system:
-    ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K   C │ │ u │   │ f │
-    /// │       │ │   │ = │   │
-    /// │ c   k │ │ p │   │ g │
-    /// └       ┘ └   ┘   └   ┘
-    ///     M       a       r
-    /// ```
-    ///
-    /// (2) the Lagrange multipliers method (LMM):
-    ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ M  Eᵀ │ │ a │   │ r │
-    /// │       │ │   │ = │   │
-    /// │ E  0  │ │ w │   │ ū │
-    /// └       ┘ └   ┘   └   ┘
-    ///     A       h       b
-    /// ```
-    ///
-    /// The dimension of the various vectors and matrices are:
-    ///
-    /// * nu = num(unknown)
-    /// * np = num(prescribed)
-    /// * na = nu + np = size(grid)
-    /// * nw = np
-    /// * nh = na + nw
-    pub fn get_info(&self) -> (usize, usize, usize, usize, usize) {
+    /// * `nu` is the number of unknowns
+    /// * `np` is the number of prescribed values
+    pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let na = nu + np;
-        let nw = np;
-        let nh = na + nw;
-        (nu, np, na, nw, nh)
+        (nu, np)
+    }
+
+    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(neq, nlag, ndim)` where:
+    ///
+    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
+    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
+    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
+        let neq = self.equations.neq();
+        let nlag = self.equations.np();
+        let ndim = neq + nlag;
+        (neq, nlag, ndim)
     }
 
     /// Access the grid
@@ -491,7 +475,8 @@ mod tests {
         let fdm = FdmLaplacian1d::new(grid, ebcs, 100.0).unwrap();
         assert_eq!(&fdm.molecule, &[-200.0, 100.0, 100.0]);
 
-        assert_eq!(fdm.get_info(), (4, 0, 4, 0, 4));
+        assert_eq!(fdm.get_dims_sps(), (4, 0));
+        assert_eq!(fdm.get_dims_lmm(), (4, 0, 4));
         assert_eq!(fdm.get_grid().size(), 4);
         assert_eq!(fdm.get_equations().neq(), 4);
     }
@@ -513,12 +498,8 @@ mod tests {
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
-        let (nu, np, na, nw, nh) = fdm.get_info();
-        assert_eq!(nu, 3);
-        assert_eq!(np, 1);
-        assert_eq!(na, 4);
-        assert_eq!(nw, 1);
-        assert_eq!(nh, 5);
+        assert_eq!(fdm.get_dims_sps(), (3, 1));
+        assert_eq!(fdm.get_dims_lmm(), (4, 1, 5));
 
         // The full matrix is:
         //      0*   1    2    3
@@ -613,12 +594,8 @@ mod tests {
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
-        let (nu, np, na, nw, nh) = fdm.get_info();
-        assert_eq!(nu, 2);
-        assert_eq!(np, 2);
-        assert_eq!(na, 4);
-        assert_eq!(nw, 2);
-        assert_eq!(nh, 6);
+        assert_eq!(fdm.get_dims_sps(), (2, 2));
+        assert_eq!(fdm.get_dims_lmm(), (4, 2, 6));
 
         // The full matrix is:
         //    0* 1  2  3*
@@ -711,12 +688,8 @@ mod tests {
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());
 
-        let (nu, np, na, nw, nh) = fdm.get_info();
-        assert_eq!(nu, 4);
-        assert_eq!(np, 0);
-        assert_eq!(na, 4);
-        assert_eq!(nw, 0);
-        assert_eq!(nh, 4);
+        assert_eq!(fdm.get_dims_sps(), (4, 0));
+        assert_eq!(fdm.get_dims_lmm(), (4, 0, 4));
 
         // K = A =
         //    0  1  2  3

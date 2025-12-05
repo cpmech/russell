@@ -103,7 +103,7 @@ fn run_test(
     let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
 
     // auxiliary variables
-    let (_, _, na, _, ndim) = fdm.get_info();
+    let (na, _, ndim) = fdm.get_dims_lmm();
 
     // A matrix: augmented coefficient matrix of the Laplacian operator
     let (aa, _) = fdm.get_matrices_lmm(0, false);

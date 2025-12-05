@@ -26,7 +26,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
 
     // number of unknowns
-    let ndim = fdm.get_info().0;
+    let ndim = fdm.get_dims_sps().0;
 
     // get the discrete operator: L{ϕ} ≈ D{ϕ} = K u + C p = K u + 0
     let (kk, _) = fdm.get_matrices_sps(0, Sym::No);

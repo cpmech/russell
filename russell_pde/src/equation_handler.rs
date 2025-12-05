@@ -2,6 +2,36 @@ use std::collections::HashSet;
 
 /// Implements a tool to handle the equation numbering such as unknown and prescribed equations due to the essential boundary conditions.
 ///
+/// The system of equations can be conceptually represented as:
+///
+/// ```text
+/// ┌       ┐ ┌   ┐   ┌   ┐
+/// │ Ā   Ǎ │ │ x̄ │   │ b̄ │
+/// │       │ │   │ = │   │
+/// │ A̱   A̰ │ │ x̌ │   │ b̌ │
+/// └       ┘ └   ┘   └   ┘
+///     A       x       b
+/// ```
+///
+/// where `x̄` (x-bar) is a reduced vector containing only the unknown values (i.e., non-EBC nodes), and `x̌` (x-check)
+/// is a reduced vector containing only the prescribed values (i.e., EBC nodes). `b̄` and `b̌` are the associated reduced
+/// right-hand side vectors. The `Ā` (A-bar) matrix is the reduced discrete Laplacian operator and `Ǎ` (A-check) is a
+/// *correction* matrix. The `A̱` (A-underline) and `A̰` (A-under-tilde) matrices are often not needed.
+///
+/// Thus, the linear system to be solved is:
+///
+/// ```text
+/// Ā x̄ = b̄ - Ǎ x̌
+/// ```
+///
+/// If needed, the other right-hand side values can be post-calculated by means of
+///
+/// ```text
+/// b̌ = A̱ x̄ + A̰ x̌
+/// ```
+///
+/// This struct helps managing the indices associated with `x̄` (x-bar; unknown) and `x̌` (x-check; prescribed).
+///
 /// Example:
 ///
 /// ```text

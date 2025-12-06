@@ -18,18 +18,18 @@ use std::collections::HashMap;
 //
 // Below, "a" is a vector with the discretized ϕ values, i.e., a = [a₀, a₁, a₂, ..., aₙ₋₁]ᵀ, where n is the
 // number of grid points. The prescribed values are collected in the vector p = [p₀, p₁, p₂, ..., pₘ₋₁]ᵀ,
-// where m is the number of boundary points. The Laplacian operator is represented by the matrix M, thus
-// "M a" is the discretization of the Laplacian operator applied to ϕ(x,y).
+// where m is the number of boundary points. The Laplacian operator is represented by the matrix K, thus
+// "K a" is the discretization of the Laplacian operator applied to ϕ(x,y).
 //
 // The boundary conditions are enforced via Lagrange multipliers indicated by μ = [μ₀, μ₁, μ₂, ..., μₘ₋₁]ᵀ.
 // In this case, the prescribed values are all zero (homogeneous boundary conditions), thus p = [0, 0, ... 0]ᵀ.
-// The constraints matrix for the Lagrange multipliers method is E, thus E μ = p.
+// The constraints matrix for the Lagrange multipliers method is C, thus C μ = p.
 //
 // The solution of the nonlinear problem is expressed by u = [a, μ]ᵀ and the discretized system is
 // expressed by G(u, λ) = [R(u, λ), S(u, λ)]ᵀ, where:
 //
-// R(u, λ) = M a + λ b + Eᵀμ = 0
-// S(u, λ) = E μ - p = 0
+// R(u, λ) = K a + λ b + Cᵀμ = 0
+// S(u, λ) = C μ - p = 0
 //
 // With bₘ = exp(ϕₘ/(1 + α ϕₘ)), the derivatives are:
 //
@@ -38,9 +38,9 @@ use std::collections::HashMap;
 //                  ⎩ 0   otherwise
 //
 //      ┌              ┐   ┌              ┐
-//      │ ∂R/∂ϕ  ∂R/∂ψ │   │ M + λ B   Eᵀ │
+//      │ ∂R/∂ϕ  ∂R/∂ψ │   │ K + λ B   Cᵀ │
 // Gu = │              │ = │              │
-//      │ ∂S/∂ϕ  ∂S/∂ψ │   │ E         0  │
+//      │ ∂S/∂ϕ  ∂S/∂ψ │   │ C         0  │
 //      └              ┘   └              ┘
 //
 //      ┌       ┐   ┌   ┐
@@ -52,11 +52,11 @@ use std::collections::HashMap;
 // References:
 //
 // 1. Bank RE, Chan TF (1986) PLTMGC: A multi-grid continuation program for parametrized nonlinear elliptic systems.
-//    SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. https://doi.org/10.1137/0907036
+//    SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. <https://doi.org/10.1137/0907036>
 // 2. Bolstad JH, Keller HB (1986) A multigrid continuation method for elliptic problems with folds.
-//    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. https://doi.org/10.1137/0907074
+//    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. <https://doi.org/10.1137/0907074>
 // 3. Shahab ML, Susanto H, Hatzikirou H (2025) A finite difference method with symmetry properties for the high-dimensional
-//    Bratu equation, Applied Mathematics and Computation, 489:129136, https://doi.org/10.1016/j.amc.2024.129136
+//    Bratu equation, Applied Mathematics and Computation, 489:129136, <https://doi.org/10.1016/j.amc.2024.129136>
 
 // Analytical u(x) profile @ λCrit (from Mathematica)
 const REF_ALP00: f64 = 3.51383071912516; // λ critical for the α = 0.0 case
@@ -103,22 +103,22 @@ fn run_test(
     let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
 
     // auxiliary variables
-    let (na, _, ndim) = fdm.get_dims_lmm();
+    let (neq, _, ndim) = fdm.get_dims_lmm();
 
-    // A matrix: augmented coefficient matrix of the Laplacian operator
-    let (aa, _) = fdm.get_matrices_lmm(0, false);
+    // augmented coefficient matrix of the Laplacian operator
+    let (aug_mat, _) = fdm.get_matrices_lmm(0, false);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
         // ┌   ┐   ┌       ┐ ┌   ┐   ┌     ┐
-        // │ R │   │ M  Eᵀ │ │ a │   │ λ b │
+        // │ R │   │ K  Cᵀ │ │ a │   │ λ b │
         // │   │ = │       │ │   │ + │     │
-        // │ S │   │ E  0  │ │ μ │   │ -p  │
+        // │ S │   │ C  0  │ │ μ │   │ -p  │
         // └   ┘   └       ┘ └   ┘   └     ┘
-        //   G         A       u
-        aa.mat_vec_mul(gg, 1.0, u).unwrap();
+        //   G      aug_mat    u
+        aug_mat.mat_vec_mul(gg, 1.0, u).unwrap();
         // update R += λ b
-        for m in 0..na {
+        for m in 0..neq {
             let dm = 1.0 + alpha * u[m];
             let bm = f64::exp(u[m] / dm);
             gg[m] += l * bm;
@@ -131,14 +131,14 @@ fn run_test(
     let calc_ggu = |ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, _args: &mut NoArgs| {
         // note that ggu_or_aa may be the pseudo-arclength (larger) matrix
         //      ┌       ┐   ┌        ┐
-        //      │ M  Eᵀ │   │ λ B  0 │
+        //      │ K  Cᵀ │   │ λ B  0 │
         // Gu = │       │ + │        │
-        //      │ E  0  │   │   0  0 │
+        //      │ C  0  │   │   0  0 │
         //      └       ┘   └        ┘
         ggu_or_aa.reset();
-        ggu_or_aa.add(1.0, &aa).unwrap();
-        // add λ B to the M term
-        for m in 0..na {
+        ggu_or_aa.add(1.0, &aug_mat).unwrap();
+        // add λ B to the K term
+        for m in 0..neq {
             let dm = 1.0 + alpha * u[m];
             let bm = f64::exp(u[m] / dm);
             ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
@@ -158,7 +158,7 @@ fn run_test(
 
     // function to calculate Gl = ∂G/∂λ
     let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
-        for m in 0..na {
+        for m in 0..neq {
             let dm = 1.0 + alpha * u[m];
             let bm = f64::exp(u[m] / dm);
             ggl[m] = bm;
@@ -170,8 +170,8 @@ fn run_test(
     let mut system = System::new(ndim, calc_gg).unwrap();
 
     // max number of non-zeros in Gu
-    let nnz_aa = aa.get_info().2;
-    let nnz = nnz_aa + na; // +na for the λ B term
+    let nnz_aa = aug_mat.get_info().2;
+    let nnz = nnz_aa + neq; // +na for the λ B term
     let sym = Sym::No;
 
     // set callback functions
@@ -198,7 +198,7 @@ fn run_test(
     let out = &mut Output::new();
     let all_indices: Vec<usize> = (0..npt).collect();
     out.set_recording(true, &all_indices, &[])
-        .set_record_norm_u(true, Norm::Inf, 0, na);
+        .set_record_norm_u(true, Norm::Inf, 0, neq);
 
     // initial state (all zero)
     let mut state = State::new(ndim);

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{mat_approx_eq, num_jacobian, read_table, Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Stop, System};
@@ -7,10 +5,51 @@ use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
+// The nonlinear problem originates from the FDM discretization of the following equation:
+//
+// (Bratu's problem in 2D)
+//
+// ∂²ϕ   ∂²ϕ
+// ——— + ——— + λ exp(ϕ/(1 + α ϕ)) = 0
+// ∂x²   ∂y²
+//
+// on the unit square (1.0 × 1.0) with homogeneous boundary conditions.
+//
+// Below, "a" is a vector with the discretized ϕ values, i.e., a = [a₀, a₁, a₂, ..., aₙ₋₁]ᵀ, where n is the
+// number of grid points. The prescribed values are collected in the vector p = [p₀, p₁, p₂, ..., pₘ₋₁]ᵀ,
+// where m is the number of boundary points. The Laplacian operator is represented by the matrix K, thus
+// "K a" is the discretization of the Laplacian operator applied to ϕ(x,y).
+//
+// The essential boundary conditions are handled by partitioning the linear system into known (bar) and
+// unknown parts (check), with `ā` (a-bar) being the unknown values and `ǎ` (a-check) being the prescribed
+// values. In this case, since the boundary conditions are homogeneous, `ǎ` = 0.
+//
+// The solution of the nonlinear problem is expressed by u = ā (unknowns) and nonlinear problem is
+//
+// G(u, λ) = K̄ ̄a + λ b = K̄ ̄a + λ b
+//
+// With bₘ = exp(ϕₘ/(1 + α ϕₘ)), the derivatives are:
+//
+//                  ⎧ bₘ/(1 + α ϕₘ)²  if m = n
+// Bₘₙ := ∂bₘ/∂ϕₙ = ⎨
+//                  ⎩ 0   otherwise
+//
+// Gu = ∂G/∂u = K̄ + λ B
+// Gλ = ∂G/∂λ = b
+//
+// References:
+//
+// 1. Bank RE, Chan TF (1986) PLTMGC: A multi-grid continuation program for parametrized nonlinear elliptic systems.
+//    SIAM Journal on Scientific and Statistical Computing, 7(2):540-559. <https://doi.org/10.1137/0907036>
+// 2. Bolstad JH, Keller HB (1986) A multigrid continuation method for elliptic problems with folds.
+//    SIAM Journal on Scientific and Statistical Computing, 7(4):1081-1104. <https://doi.org/10.1137/0907074>
+// 3. Shahab ML, Susanto H, Hatzikirou H (2025) A finite difference method with symmetry properties for the high-dimensional
+//    Bratu equation, Applied Mathematics and Computation, 489:129136, <https://doi.org/10.1016/j.amc.2024.129136>
+
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
-fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep) {
+fn run_test(bordering: bool, _alpha: f64, npt: usize, stop: Stop, auto: AutoStep) {
     // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
     let stem = format!("/tmp/russell_nonlin/test_bratu_2d_npt{}_{}", npt, key);
@@ -28,12 +67,12 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // number of unknowns
     let ndim = fdm.get_dims_sps().0;
 
-    // get the discrete operator: L{ϕ} ≈ D{ϕ} = K u + C p = K u + 0
-    let (kk, _) = fdm.get_matrices_sps(0, Sym::No);
+    // get the discrete operator
+    let (kk_bar, _) = fdm.get_matrices_sps(0, Sym::No);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
-        kk.mat_vec_mul(gg, 1.0, &u).unwrap(); // G := K u
+        kk_bar.mat_vec_mul(gg, 1.0, &u).unwrap(); // G := K̄ ̄a
         for i in 0..ndim {
             gg[i] += l * f64::exp(u[i]); // G += λ exp(u)
         }
@@ -43,9 +82,9 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // function to calculate Gu = ∂G/∂u (Jacobian matrix)
     let calc_ggu = |ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, _args: &mut NoArgs| {
         ggu_or_aa.reset();
-        ggu_or_aa.add(1.0, &kk); // Gu := K
+        ggu_or_aa.add(1.0, &kk_bar).unwrap(); // Gu := K̄
         for i in 0..ndim {
-            ggu_or_aa.put(i, i, l * f64::exp(u[i])).unwrap();
+            ggu_or_aa.put(i, i, l * f64::exp(u[i])).unwrap(); // Gu += λ B (diagonal)
         }
         if CHECK_JACOBIAN && bordering && npt <= 21 {
             let ana = ggu_or_aa.as_dense();
@@ -62,7 +101,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // function to calculate Gl = ∂G/∂λ
     let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
         for i in 0..ndim {
-            ggl[i] = f64::exp(u[i]);
+            ggl[i] = f64::exp(u[i]); // Gλ = b
         }
         Ok(())
     };
@@ -71,7 +110,7 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     let mut system = System::new(ndim, calc_gg).unwrap();
 
     // max number of non-zeros in Gu
-    let nnz_kk = kk.get_info().2;
+    let nnz_kk = kk_bar.get_info().2;
     let nnz = nnz_kk + ndim; // + diagonal from nonlinearity
 
     // set callback functions
@@ -136,7 +175,8 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
     // plot the results
     if SAVE_FIGURE {
         // define the title
-        let title = format!("npt = {}  |  $\\lambda_{{crit}} = {:.8}$", npt, lam_crit);
+        let key = if auto.yes() { "auto" } else { "fixed" };
+        let title = format!("{}  |  npt = {}  |  $\\lambda_{{crit}} = {:.8}$", key, npt, lam_crit);
 
         // annotations
         let mut annotations = Text::new();
@@ -162,7 +202,6 @@ fn run_test(bordering: bool, alpha: f64, npt: usize, stop: Stop, auto: AutoStep)
         curve_ref.set_label("reference").draw(&x_ref, &y_ref);
 
         // generate the plot
-        let key = if auto.yes() { "auto" } else { "fixed" };
         let mut plot = Plot::new();
         plot.set_title(&title)
             .add(&curve_ref)

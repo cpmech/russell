@@ -19,48 +19,48 @@ const INI_X: usize = 0;
 /// ```
 ///
 /// we substitute the partial derivatives using central FDM over a linear grid.
-/// The resulting discrete Laplacian is expressed by the coefficient matrix `M` and the vector `a`:
+/// The resulting discrete Laplacian is expressed by the coefficient matrix `K` and the vector `a`:
 ///
 /// ```text
-/// D{ϕₘ} = M a
+/// D{ϕₘ} = K a
 /// ```
 ///
 /// ϕₘ are the discrete counterpart of ϕ(x) over the (nx) grid.
 ///
-/// Neglecting the essential boundary conditions (EBCs) for the moment, the discrete Laplacian operator `M`
-/// is built with a three-point stencil. For a linear problem with the right-hand side represented by `r`,
+/// Neglecting the essential boundary conditions (EBCs) for the moment, the discrete Laplacian operator `K`
+/// is built with a three-point stencil. For a linear problem with the right-hand side represented by `f`,
 /// the resulting linear system is:
 ///
 /// ```text
-/// M a = r
+/// K a = f
 /// ```
 ///
 /// However, the above linear system is singular, because the EBCs have not been applied yet. Two approaches
-/// are possible to apply the EBCs: (1) use a reduced coefficient matrix `K` and a reduced vector `u` containing
-/// only the unknown values; and (2) use the Lagrange multipliers method (LMM).
+/// are possible to apply the EBCs: (1) use the system partitioning strategy (SPS), and (2) use the Lagrange
+/// multipliers method (LMM).
 ///
 /// ## Approach 1: System partitioning strategy (SPS)
 ///
-/// Consider the following partitioning of the vector `a` and the matrix `M`:
+/// Consider the following partitioning of the vectors `a` and `f` and the matrix `K`:
 ///
 /// ```text
 /// ┌       ┐ ┌   ┐   ┌   ┐
-/// │ K   C │ │ u │   │ f │
+/// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
 /// │       │ │   │ = │   │
-/// │ c   k │ │ p │   │ g │
+/// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
 /// └       ┘ └   ┘   └   ┘
-///     M       a       r
+///     K       a       f
 /// ```
 ///
-/// where `u` is a reduced vector containing only the unknown values (i.e., non-EBC nodes), and `p` is a reduced
-/// vector containing only the prescribed values (i.e., EBC nodes). Likewise, `f` and `g` are the corresponding
-/// reduced right-hand side vectors. The `K` matrix is the reduced discrete Laplacian operator and `C` is a
-/// *correction* matrix. The `c` and `k` matrices are often not needed.
+/// where `ā` (a-bar) is a reduced vector containing only the unknown values (i.e., non-EBC nodes), and `ǎ` (a-check)
+/// is a reduced vector containing only the prescribed values (i.e., EBC nodes). `f̄` and `f̌` are the associated reduced
+/// right-hand side vectors. The `K̄` (K-bar) matrix is the reduced discrete Laplacian operator and `Ǩ` (K-check) is a
+/// *correction* matrix. The `Ḵ` (K-underline) and `K̰` (K-under-tilde) matrices are often not needed.
 ///
 /// Thus, the linear system to be solved is:
 ///
 /// ```text
-/// K u + C p = f
+/// K̄ ā = f̄ - Ǩ ǎ
 /// ```
 ///
 /// ## Approach 2: Lagrange multipliers method (LMM)
@@ -69,16 +69,16 @@ const INI_X: usize = 0;
 ///
 /// ```text
 /// ┌       ┐ ┌   ┐   ┌   ┐
-/// │ M  Eᵀ │ │ a │   │ r │
+/// │ K  Cᵀ │ │ a │   │ f │
 /// │       │ │   │ = │   │
-/// │ E  0  │ │ w │   │ ū │
+/// │ C  0  │ │ ℓ │   │ ǎ │
 /// └       ┘ └   ┘   └   ┘
-///     A       h       b
+///     M       g       h
 /// ```
 ///
-/// where `w` is the vector of Lagrange multipliers, `E` is the Lagrange matrix, and `ū` is the vector of
-/// prescribed values at EBC nodes. The Lagrange matrix `E` has a row for each EBC (prescribed) node and a column
-/// for every node. Each row in `E` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
+/// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
+/// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
+/// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
 pub struct FdmLaplacian1d<'a> {
     /// Defines the 1D grid
     grid: Grid1d,
@@ -167,93 +167,79 @@ impl<'a> FdmLaplacian1d<'a> {
 
     /// Returns the matrices for the system partitioning strategy (SPS)
     ///
-    /// Returns `K` and `C` from:
+    /// # Arguments
     ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K   C │ │ u │   │ f │
-    /// │       │ │   │ = │   │
-    /// │ c   k │ │ p │   │ g │
-    /// └       ┘ └   ┘   └   ┘
-    ///     M       a       r
-    /// ```
+    /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
+    /// * `sym_kk_bar` -- symmetry of the K-bar matrix
     ///
-    /// Note that the `C` matrix is only available if there are essential boundary conditions.
-    pub fn get_matrices_sps(&self, extra_nnz: usize, sym_kk: Sym) -> (CooMatrix, Option<CooMatrix>) {
+    /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
+    pub fn get_matrices_sps(&self, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let nnz_kk = 3 * nu + extra_nnz; // 3 is the bandwidth
-        let mut kk = CooMatrix::new(nu, nu, nnz_kk, sym_kk).unwrap();
-        let mut cc = if np == 0 {
+        let nnz_kk_bar = 3 * nu + extra_nnz; // 3 is the bandwidth
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
+        let mut kk_check = if np == 0 {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
             CooMatrix::new(1, 1, 1, Sym::No).unwrap()
         } else {
-            let nnz_cc = 2 * np; // 4 is the max number of neighbors (worst case)
-            CooMatrix::new(nu, np, nnz_cc, Sym::No).unwrap()
+            let nnz_kk_check = 2 * np; // 4 is the max number of neighbors (worst case)
+            CooMatrix::new(nu, np, nnz_kk_check, Sym::No).unwrap()
         };
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             self.loop_over_bandwidth(m, |b, n| {
                 if self.equations.is_prescribed(n) {
                     let jp = self.equations.ip(n);
-                    cc.put(iu, jp, self.molecule[b]).unwrap();
+                    kk_check.put(iu, jp, self.molecule[b]).unwrap();
                 } else {
                     let ju = self.equations.iu(n);
-                    kk.put(iu, ju, self.molecule[b]).unwrap();
+                    kk_bar.put(iu, ju, self.molecule[b]).unwrap();
                 }
             });
         });
         if np == 0 {
-            (kk, None)
+            (kk_bar, None)
         } else {
-            (kk, Some(cc))
+            (kk_bar, Some(kk_check))
         }
     }
 
     /// Returns the matrix for the Lagrange multipliers method (LMM)
     ///
-    /// Returns `A` and `E` from:
+    /// # Arguments
     ///
-    /// ```text
-    /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ M  Eᵀ │ │ a │   │ r │
-    /// │       │ │   │ = │   │
-    /// │ E  0  │ │ w │   │ ū │
-    /// └       ┘ └   ┘   └   ┘
-    ///     A       h       b
-    /// ```
+    /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
+    /// * `get_constraints_mat` -- whether to return the constraints matrix or not
     ///
     /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
-    pub fn get_matrices_lmm(&self, extra_nnz: usize, return_ee_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
-        // build the A matrix
-        let na = self.equations.neq();
-        let np = self.equations.np();
-        let naa = na + np;
-        let nnz = 3 * na + 2 * np + extra_nnz; // 3 is the bandwidth, 2*np is for E and Eᵀ
-        let mut aa = CooMatrix::new(naa, naa, nnz, Sym::No).unwrap();
-        for m in 0..na {
+    pub fn get_matrices_lmm(&self, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+        // build the augmented matrix
+        let (neq, nlag, ndim) = self.get_dims_lmm();
+        let nnz = 3 * neq + 2 * nlag + extra_nnz; // 3 is the bandwidth, 2*nlag is for C and Cᵀ
+        let mut mm = CooMatrix::new(ndim, ndim, nnz, Sym::No).unwrap();
+        for m in 0..neq {
             self.loop_over_bandwidth(m, |b, n| {
-                aa.put(m, n, self.molecule[b]).unwrap();
+                mm.put(m, n, self.molecule[b]).unwrap();
             });
         }
 
-        // assemble E and Eᵀ into A
+        // assemble C and Cᵀ into M
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
-            aa.put(na + ip, m, 1.0).unwrap(); // E
-            aa.put(m, na + ip, 1.0).unwrap(); // Eᵀ
+            mm.put(neq + ip, m, 1.0).unwrap(); // C
+            mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
         });
 
-        // build and return the E matrix, if requested and available
-        if return_ee_mat && np > 0 {
-            let mut ee = CooMatrix::new(np, na, np, Sym::No).unwrap();
+        // build and return the C matrix, if requested and available
+        if get_constraints_mat && nlag > 0 {
+            let mut cc = CooMatrix::new(nlag, neq, nlag, Sym::No).unwrap();
             self.equations.prescribed().iter().for_each(|&m| {
                 let ip = self.equations.ip(m);
-                ee.put(ip, m, 1.0).unwrap(); // E
+                cc.put(ip, m, 1.0).unwrap(); // C
             });
-            (aa, Some(ee))
+            (mm, Some(cc))
         } else {
-            (aa, None)
+            (mm, None)
         }
     }
 

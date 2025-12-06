@@ -55,36 +55,28 @@ fn test_laplace1d_2() {
     // (note that we have to use negative kx)
     let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // solving K u = F from:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ K   C │ │ u │   │ f │
-    // │       │ │   │ = │   │
-    // │ c   k │ │ p │   │ g │
-    // └       ┘ └   ┘   └   ┘
-    // where F = f - C p
-
     // assemble the coefficient matrix and the lhs and rhs vectors
     let nu = fdm.get_dims_sps().0;
     let extra_nnz = nu; // diagonal entries due to ϕ β
-    let (mut kk, cc_mat) = fdm.get_matrices_sps(extra_nnz, Sym::No);
-    let (mut u, p, mut ff) = fdm.get_vectors(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
-    let cc = cc_mat.unwrap();
+    let (mut kk_bar, kk_check) = fdm.get_matrices_sps(extra_nnz, Sym::No);
+    let (mut a_bar, a_check, mut f_bar) = fdm.get_vectors_sps(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
+    let kk_check = kk_check.unwrap();
 
     // add the diagonal entries due to ϕ β
     for i in 0..nu {
-        kk.put(i, i, beta).unwrap();
+        kk_bar.put(i, i, beta).unwrap();
     }
 
     // update the right-hand side with the prescribed values
-    cc.mat_vec_mul_update(&mut ff, -1.0, &p).unwrap(); // F -= C p
+    kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&kk, None).unwrap();
-    solver.actual.solve(&mut u, &ff, false).unwrap();
+    solver.actual.factorize(&kk_bar, None).unwrap();
+    solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
 
-    // results: a = (u, p)
-    let a = fdm.get_composed_vector(&u, &p);
+    // results
+    let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
 
     // analytical solution
     let m = f64::sqrt(beta / kx);

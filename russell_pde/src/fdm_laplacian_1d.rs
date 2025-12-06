@@ -73,7 +73,7 @@ const INI_X: usize = 0;
 /// │       │ │   │ = │   │
 /// │ C  0  │ │ ℓ │   │ ǎ │
 /// └       ┘ └   ┘   └   ┘
-///     M       g       h
+///     M       A       F
 /// ```
 ///
 /// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
@@ -167,6 +167,17 @@ impl<'a> FdmLaplacian1d<'a> {
 
     /// Returns the matrices for the system partitioning strategy (SPS)
     ///
+    /// Returns `(kk_bar, kk_check)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
+    /// │       │ │   │ = │   │
+    /// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     K       a       f
+    /// ```
+    ///
     /// # Arguments
     ///
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
@@ -206,6 +217,17 @@ impl<'a> FdmLaplacian1d<'a> {
 
     /// Returns the matrix for the Lagrange multipliers method (LMM)
     ///
+    /// Returns `(mm, cc)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
     /// # Arguments
     ///
     /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
@@ -243,122 +265,103 @@ impl<'a> FdmLaplacian1d<'a> {
         }
     }
 
-    /// Returns the vectors for the solution of the system of equations
+    /// Returns the vectors for the solution of the system of equations using the system partitioning strategy (SPS)
     ///
-    /// Returns `(u, p, f)` from:
+    /// Returns `(a_bar, a_check, f_bar)` from:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K   C │ │ u │   │ f │
+    /// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
     /// │       │ │   │ = │   │
-    /// │ c   k │ │ p │   │ g │
+    /// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
     /// └       ┘ └   ┘   └   ┘
-    /// ```
-    ///
-    /// Note that:
-    ///
-    /// ```text
-    /// nu = num(unknown)
-    /// np = num(prescribed)
-    /// nf = nu
+    ///     K       a       f
     /// ```
     ///
     /// The `source` function calculates f(x).
-    pub fn get_vectors<F>(&self, source: F) -> (Vector, Vector, Vector)
+    pub fn get_vectors_sps<F>(&self, source: F) -> (Vector, Vector, Vector)
     where
         F: Fn(f64) -> f64,
     {
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let u = Vector::new(nu);
-        let mut p = Vector::new(np);
-        let mut f = Vector::new(nu);
+        let a_bar = Vector::new(nu);
+        let mut a_check = Vector::new(np);
+        let mut f_bar = Vector::new(nu);
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             let x = self.grid.coord(m);
-            f[iu] = source(x);
+            f_bar[iu] = source(x);
         });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
-            let u_bar = self.ebcs.get_prescribed_value(m, x);
-            p[ip] = u_bar;
+            let val = self.ebcs.get_prescribed_value(m, x);
+            a_check[ip] = val;
         });
-        (u, p, f)
+        (a_bar, a_check, f_bar)
     }
 
-    /// Returns the composed solution vector from the unknown and prescribed vectors
+    /// Joins the a-bar and a-check vectors used in the system partitioning strategy (SPS)
     ///
-    /// Returns `a = (u, p)` from:
+    /// Returns `a` from:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ K   C │ │ u │   │ f │
+    /// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
     /// │       │ │   │ = │   │
-    /// │ c   k │ │ p │   │ g │
+    /// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
     /// └       ┘ └   ┘   └   ┘
+    ///     K       a       f
     /// ```
-    pub fn get_composed_vector(&self, u: &Vector, p: &Vector) -> Vector {
-        let na = self.equations.neq();
-        let mut a = Vector::new(na);
+    pub fn get_joined_vector_sps(&self, a_bar: &Vector, a_check: &Vector) -> Vector {
+        let neq = self.equations.neq();
+        let mut a = Vector::new(neq);
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
-            a[m] = u[iu];
+            a[m] = a_bar[iu];
         });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
-            a[m] = p[ip];
+            a[m] = a_check[ip];
         });
         a
     }
 
     /// Returns the vectors for the solution of the system of equations using the Lagrange multipliers method (LMM)
     ///
-    /// Returns `(h, b)` from:
+    /// Returns `(aa, ff)` from:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
-    /// │ M  Eᵀ │ │ a │   │ r │
+    /// │ K  Cᵀ │ │ a │   │ f │
     /// │       │ │   │ = │   │
-    /// │ E  0  │ │ w │   │ ū │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
     /// └       ┘ └   ┘   └   ┘
-    ///     A       h       b
-    /// ```
-    /// where a = (u, p) and w are the Lagrange multipliers
-    ///
-    /// Note that:
-    ///
-    /// ```text
-    /// nu = num(unknown)
-    /// np = num(prescribed)
-    /// na = nu + np = size(grid)
-    /// nw = np
-    /// nh = na + nw
+    ///     M       A       F
     /// ```
     ///
-    /// The `source` function calculates r(x).
+    /// The `source` function calculates f(x).
     pub fn get_vectors_lmm<F>(&self, source: F) -> (Vector, Vector)
     where
         F: Fn(f64) -> f64,
     {
-        let na = self.equations.neq(); // dimension of a = (u, p)
-        let nw = self.equations.np(); // number of Lagrange multipliers
-        let nh = na + nw; // dimension of h = (u, p, w)
-        let h = Vector::new(nh);
-        let mut b = Vector::new(nh);
+        let (neq, _, ndim) = self.get_dims_lmm();
+        let aa = Vector::new(ndim);
+        let mut ff = Vector::new(ndim);
         self.grid.for_each_coord(|m, x| {
-            b[m] = source(x);
+            ff[m] = source(x);
         });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
-            let u_bar = self.ebcs.get_prescribed_value(m, x);
-            b[na + ip] = u_bar;
+            let val = self.ebcs.get_prescribed_value(m, x);
+            ff[neq + ip] = val;
         });
-        (h, b)
+        (aa, ff)
     }
 
-    /// Executes a loop over one row of the full coefficient matrix M
+    /// Executes a loop over one row of the full coefficient matrix K
     ///
     /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
     /// This also allows the setting up of flux boundary conditions. Therefore, some
@@ -368,7 +371,7 @@ impl<'a> FdmLaplacian1d<'a> {
     ///
     /// * `m` -- the row of the coefficient matrix
     /// * `callback` -- a `function(n, val_mn)` where `n` is the column index and
-    ///   `Mmn` is the m-n-element of the coefficient matrix
+    ///   `val_mn` is the m-n-element of the coefficient matrix
     pub fn loop_over_full_coef_mat_row<F>(&self, m: usize, mut callback: F)
     where
         F: FnMut(usize, f64),
@@ -718,7 +721,7 @@ mod tests {
 
         let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
 
-        let (u, p, f) = fdm.get_vectors(|_| 100.0);
+        let (u, p, f) = fdm.get_vectors_sps(|_| 100.0);
         assert_eq!(u.dim(), 3); // nu
         assert_eq!(p.dim(), 2); // np
         assert_eq!(f.dim(), 3); // nu
@@ -726,7 +729,7 @@ mod tests {
         assert_eq!(p.as_data(), &[LEF, RIG]);
         assert_eq!(f.as_data(), &[100.0, 100.0, 100.0]);
 
-        let a = fdm.get_composed_vector(&u, &p);
+        let a = fdm.get_joined_vector_sps(&u, &p);
         assert_eq!(a.dim(), 5); // na
         assert_eq!(a.as_data(), &[LEF, 0.0, 0.0, 0.0, RIG]);
 

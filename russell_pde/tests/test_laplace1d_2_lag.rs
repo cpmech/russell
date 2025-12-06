@@ -55,33 +55,24 @@ fn test_laplace1d_2_lag() {
     // (note that we have to use negative kx)
     let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // solving:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ M  Eᵀ │ │ a │   │ r │
-    // │       │ │   │ = │   │
-    // │ E  0  │ │ w │   │ ū │
-    // └       ┘ └   ┘   └   ┘
-    //     A       h       b
-    // where a = (u, p) and w are the Lagrange multipliers
-
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let na = fdm.get_dims_lmm().0;
-    let extra_nnz = na; // diagonal entries due to ϕ β
-    let (mut aa, _) = fdm.get_matrices_lmm(extra_nnz, false);
-    let (mut h, b) = fdm.get_vectors_lmm(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
+    let neq = fdm.get_dims_lmm().0;
+    let extra_nnz = neq; // diagonal entries due to ϕ β
+    let (mut mm, _) = fdm.get_matrices_lmm(extra_nnz, false);
+    let (mut aa, ff) = fdm.get_vectors_lmm(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
 
     // add the diagonal entries due to ϕ β
-    for m in 0..na {
-        aa.put(m, m, beta).unwrap();
+    for m in 0..neq {
+        mm.put(m, m, beta).unwrap();
     }
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut h, &b, false).unwrap();
+    solver.actual.factorize(&mm, None).unwrap();
+    solver.actual.solve(&mut aa, &ff, false).unwrap();
 
     // results
-    let a = &h.as_data()[..na];
+    let a = &aa.as_data()[..neq];
 
     // analytical solution
     let m = f64::sqrt(beta / kx);

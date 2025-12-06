@@ -34,27 +34,18 @@ fn test_poisson2d_1_lag() {
     let (kx, ky) = (1.0, 1.0);
     let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
 
-    // solving:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ M  Eᵀ │ │ a │   │ r │
-    // │       │ │   │ = │   │
-    // │ E  0  │ │ w │   │ ū │
-    // └       ┘ └   ┘   └   ┘
-    //     A       x       b
-    // where a = (u, p) and w are the Lagrange multipliers
-
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (aa, _) = fdm.get_matrices_lmm(0, false);
-    let (mut x, b) = fdm.get_vectors_lmm(source);
+    let (mm, _) = fdm.get_matrices_lmm(0, false);
+    let (mut aa, ff) = fdm.get_vectors_lmm(source);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut x, &b, false).unwrap();
+    solver.actual.factorize(&mm, None).unwrap();
+    solver.actual.solve(&mut aa, &ff, false).unwrap();
 
     // results
-    let na = fdm.get_dims_lmm().0;
-    let a = &x.as_data()[..na];
+    let neq = fdm.get_dims_lmm().0;
+    let a = &aa.as_data()[..neq];
 
     // check
     let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);

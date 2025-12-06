@@ -55,24 +55,15 @@ fn test_laplace1d_3_lag() {
     // (note that we have to use negative kx)
     let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // solving:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ M  Eᵀ │ │ a │   │ r │
-    // │       │ │   │ = │   │
-    // │ E  0  │ │ w │   │ ū │
-    // └       ┘ └   ┘   └   ┘
-    //     A       h       b
-    // where a = (u, p) and w are the Lagrange multipliers
-
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let na = fdm.get_dims_lmm().0;
-    let extra_nnz = na; // diagonal entries due to ϕ β
-    let (mut aa, _) = fdm.get_matrices_lmm(extra_nnz, false);
-    let (mut h, mut b) = fdm.get_vectors_lmm(|x| x * x + phi_inf * beta); // (- ϕ∞ β) goes to the rhs
+    let neq = fdm.get_dims_lmm().0;
+    let extra_nnz = neq; // diagonal entries due to ϕ β
+    let (mut mm, _) = fdm.get_matrices_lmm(extra_nnz, false);
+    let (mut aa, mut ff) = fdm.get_vectors_lmm(|x| x * x + phi_inf * beta); // (- ϕ∞ β) goes to the rhs
 
     // add the diagonal entries due to ϕ β
-    for m in 0..na {
-        aa.put(m, m, beta).unwrap();
+    for m in 0..neq {
+        mm.put(m, m, beta).unwrap();
     }
 
     // add the flux term to the right-hand side vector
@@ -107,15 +98,15 @@ fn test_laplace1d_3_lag() {
     // Similar expression can be derived for the right-hand side of the rod
     let dx = fdm.get_grid().get_dx().unwrap();
     let m_right = fdm.get_grid().node_xmax(); // global index of the rightmost node (@ xmax)
-    b[m_right] += 2.0 * kx * flux / dx;
+    ff[m_right] += 2.0 * kx * flux / dx;
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut h, &b, false).unwrap();
+    solver.actual.factorize(&mm, None).unwrap();
+    solver.actual.solve(&mut aa, &ff, false).unwrap();
 
     // results
-    let a = &h.as_data()[..na];
+    let a = &aa.as_data()[..neq];
 
     // analytical solution
     let d = f64::cosh(1.0);

@@ -24,27 +24,18 @@ fn test_laplace1d_1_lag() {
     let kx = 1.0;
     let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // solving:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ M  Eᵀ │ │ a │   │ r │
-    // │       │ │   │ = │   │
-    // │ E  0  │ │ w │   │ ū │
-    // └       ┘ └   ┘   └   ┘
-    //     A       h       b
-    // where a = (u, p) and w are the Lagrange multipliers
-
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (aa, _) = fdm.get_matrices_lmm(0, false);
-    let (mut h, b) = fdm.get_vectors_lmm(|x| x);
+    let (mm, _) = fdm.get_matrices_lmm(0, false);
+    let (mut aa, ff) = fdm.get_vectors_lmm(|x| x);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&aa, None).unwrap();
-    solver.actual.solve(&mut h, &b, false).unwrap();
+    solver.actual.factorize(&mm, None).unwrap();
+    solver.actual.solve(&mut aa, &ff, false).unwrap();
 
     // results
-    let na = fdm.get_dims_lmm().0;
-    let a = &h.as_data()[..na];
+    let neq = fdm.get_dims_lmm().0;
+    let a = &aa.as_data()[..neq];
 
     // analytical solution
     let analytical = |x| (x - f64::powi(x, 3)) / 6.0;

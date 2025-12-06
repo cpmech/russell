@@ -42,29 +42,21 @@ fn test_poisson2d_3() {
     let (kx, ky) = (1.0, 1.0);
     let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
 
-    // solving K u = h from:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ K   C │ │ u │   │ f │
-    // │       │ │   │ = │   │
-    // │ c   k │ │ p │   │ g │
-    // └       ┘ └   ┘   └   ┘
-    // where h = f - C p
-
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
-    let (mut u, p, mut h) = fdm.get_vectors(source);
-    let cc = cc_mat.unwrap();
+    let (kk_bar, kk_check) = fdm.get_matrices_sps(0, Sym::No);
+    let (mut a_bar, a_check, mut f_bar) = fdm.get_vectors_sps(source);
+    let kk_check = kk_check.unwrap();
 
     // initialize the right-hand side
-    cc.mat_vec_mul_update(&mut h, -1.0, &p).unwrap(); // h -= C p
+    kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&kk, None).unwrap();
-    solver.actual.solve(&mut u, &h, false).unwrap();
+    solver.actual.factorize(&kk_bar, None).unwrap();
+    solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
 
-    // results: a = (u, p)
-    let a = fdm.get_composed_vector(&u, &p);
+    // results
+    let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
 
     // check
     let analytical = |x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y);

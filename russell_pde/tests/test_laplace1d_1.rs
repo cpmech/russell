@@ -24,25 +24,17 @@ fn test_laplace1d_1() {
     let kx = 1.0;
     let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
 
-    // solving K u = F from:
-    // ┌       ┐ ┌   ┐   ┌   ┐
-    // │ K   C │ │ u │   │ f │
-    // │       │ │   │ = │   │
-    // │ c   k │ │ p │   │ g │
-    // └       ┘ └   ┘   └   ┘
-    // where F = f - C p = f because p = 0 (homogeneous EBCs)
-
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk, _) = fdm.get_matrices_sps(0, Sym::No);
-    let (mut u, p, ff) = fdm.get_vectors(|x| x);
+    let (kk_bar, _) = fdm.get_matrices_sps(0, Sym::No);
+    let (mut a_bar, a_check, f_bar) = fdm.get_vectors_sps(|x| x);
 
     // solve the linear system
     let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&kk, None).unwrap();
-    solver.actual.solve(&mut u, &ff, false).unwrap();
+    solver.actual.factorize(&kk_bar, None).unwrap();
+    solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
 
-    // results: a = (u, p)
-    let a = fdm.get_composed_vector(&u, &p);
+    // results
+    let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
 
     // analytical solution
     let analytical = |x| (x - f64::powi(x, 3)) / 6.0;

@@ -2,35 +2,63 @@ use std::collections::HashSet;
 
 /// Implements a tool to handle the equation numbering such as unknown and prescribed equations due to the essential boundary conditions.
 ///
-/// The system of equations can be conceptually represented as:
+/// ## Essential boundary conditions (EBC) handling
+///
+/// Two approaches are considered for handling the essential boundary conditions:
+///
+/// 1. System partitioning strategy (SPS)
+/// 2. Lagrange multipliers method (LMM)
+///
+/// ### Approach 1: System partitioning strategy (SPS)
+///
+/// Consider the following partitioning of the vectors `a` and `f` and the matrix `K`:
 ///
 /// ```text
 /// ┌       ┐ ┌   ┐   ┌   ┐
-/// │ Ā   Ǎ │ │ x̄ │   │ b̄ │
+/// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
 /// │       │ │   │ = │   │
-/// │ A̱   A̰ │ │ x̌ │   │ b̌ │
+/// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
 /// └       ┘ └   ┘   └   ┘
-///     A       x       b
+///     K       a       f
 /// ```
 ///
-/// where `x̄` (x-bar) is a reduced vector containing only the unknown values (i.e., non-EBC nodes), and `x̌` (x-check)
-/// is a reduced vector containing only the prescribed values (i.e., EBC nodes). `b̄` and `b̌` are the associated reduced
-/// right-hand side vectors. The `Ā` (A-bar) matrix is the reduced discrete Laplacian operator and `Ǎ` (A-check) is a
-/// *correction* matrix. The `A̱` (A-underline) and `A̰` (A-under-tilde) matrices are often not needed.
+/// where `ā` (a-bar) is a reduced vector containing only the unknown values (i.e., non-EBC nodes), and `ǎ` (a-check)
+/// is a reduced vector containing only the prescribed values (i.e., EBC nodes). `f̄` and `f̌` are the associated reduced
+/// right-hand side vectors. The `K̄` (K-bar) matrix is the reduced discrete Laplacian operator and `Ǩ` (K-check) is a
+/// *correction* matrix. The `Ḵ` (K-underline) and `K̰` (K-under-tilde) matrices are often not needed.
 ///
 /// Thus, the linear system to be solved is:
 ///
 /// ```text
-/// Ā x̄ = b̄ - Ǎ x̌
+/// K̄ ā = f̄ - Ǩ ǎ
 /// ```
 ///
 /// If needed, the other right-hand side values can be post-calculated by means of
 ///
 /// ```text
-/// b̌ = A̱ x̄ + A̰ x̌
+/// f̌ = Ḵ ā + K̰ ǎ
 /// ```
 ///
-/// This struct helps managing the indices associated with `x̄` (x-bar; unknown) and `x̌` (x-check; prescribed).
+/// ### Approach 2: Lagrange multipliers method (LMM)
+///
+/// The LMM consists of augmenting the original linear system with additional equations:
+///
+/// ```text
+/// ┌       ┐ ┌   ┐   ┌   ┐
+/// │ K  Cᵀ │ │ a │   │ f │
+/// │       │ │   │ = │   │
+/// │ C  0  │ │ ℓ │   │ ǎ │
+/// └       ┘ └   ┘   └   ┘
+///     M       A       F
+/// ```
+///
+/// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
+/// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
+/// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
+///
+/// ## Constants and definitions
+///
+/// This struct helps managing the indices associated with `ā` (a-bar; unknown) and `ǎ` (a-check; prescribed).
 ///
 /// Example:
 ///
@@ -48,7 +76,7 @@ use std::collections::HashSet;
 /// TOTAL | 6 equations      | 4 unknown  | 2 prescribed
 /// ```
 ///
-/// # Notation
+/// Notation:
 ///
 /// * `neq`: total number of equations (= nu + np)
 /// * `nu`: number of unknown equations

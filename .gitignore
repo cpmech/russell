@@ -14,3 +14,4 @@ good.smat
 bad.smat
 rustc-ice-*.txt
 *.aider*
+*.go

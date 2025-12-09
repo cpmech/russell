@@ -18,6 +18,7 @@ mod grid_2d;
 mod metrics;
 mod spectral_laplacian_2d;
 mod transfinite;
+mod transfinite_samples;
 
 pub use enums::*;
 pub use equation_handler::*;
@@ -30,6 +31,7 @@ pub use grid_2d::*;
 pub use metrics::*;
 pub use spectral_laplacian_2d::*;
 pub use transfinite::*;
+pub use transfinite_samples::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

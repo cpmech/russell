@@ -1,9 +1,7 @@
-#![allow(unused)]
-
-use plotpy::{Contour, Plot};
-use russell_lab::{approx_eq, mat_approx_eq, math::PI, vec_approx_eq};
-use russell_pde::{EssentialBcs2d, Grid2d, Side, SpectralLaplacian2d, StrError};
-use russell_sparse::{Genie, LinSolver, Sym};
+use plotpy::{Plot, Surface};
+use russell_lab::vec_approx_eq;
+use russell_pde::{EssentialBcs2d, Grid2d, SpectralLaplacian2d, StrError};
+use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
 
@@ -15,7 +13,7 @@ fn test_spectral_laplace2d_1() -> Result<(), StrError> {
     //    ———  +  ——— = 10 sin(8x⋅(y-1))
     //    ∂x²     ∂y²
     //
-    // on a unit square with homogeneous essential boundary conditions.
+    // on a [-1,1] x [-1,1] square with homogeneous boundary conditions.
     //
     // This is Problem 16 on page 70 of Trefethen's book.
     //
@@ -25,7 +23,8 @@ fn test_spectral_laplace2d_1() -> Result<(), StrError> {
     let nn = 4;
 
     // allocate the grid
-    let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, nn + 1, nn + 1)?;
+    let (nx, ny) = (nn + 1, nn + 1);
+    let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, nx, ny)?;
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
@@ -60,5 +59,28 @@ fn test_spectral_laplace2d_1() -> Result<(), StrError> {
 		0.0,  0.000000000000000,  0.0,  0.000000000000000, 0.0,
     ];
     vec_approx_eq(&a, a_correct, 1e-14);
+
+    // plot
+    if SAVE_FIGURE {
+        let mut xx = vec![vec![0.0; nx]; ny];
+        let mut yy = vec![vec![0.0; nx]; ny];
+        let mut zz = vec![vec![0.0; nx]; ny];
+        spectral.get_grid().for_each_coord(|m, x, y| {
+            let row = m / nx;
+            let col = m % nx;
+            xx[row][col] = x;
+            yy[row][col] = y;
+            zz[row][col] = a[m];
+        });
+        let mut surf = Surface::new();
+        surf.set_with_surface(false)
+            .set_with_wireframe(true)
+            .draw(&xx, &yy, &zz);
+        let mut plot = Plot::new();
+        plot.add(&surf)
+            .set_figure_size_points(600.0, 600.0)
+            .set_camera(30.0, -120.0)
+            .save("/tmp/russell_pde/test_spectral_laplace2d_1.svg")?;
+    }
     Ok(())
 }

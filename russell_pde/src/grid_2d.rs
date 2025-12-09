@@ -85,6 +85,18 @@ use russell_lab::math::chebyshev_lobatto_points;
 /// }
 /// ```
 pub struct Grid2d {
+    /// Minimum x-coordinate
+    xmin: f64,
+
+    /// Maximum x-coordinate
+    xmax: f64,
+
+    /// Minimum y-coordinate
+    ymin: f64,
+
+    /// Maximum y-coordinate
+    ymax: f64,
+
     /// Number of points along the x-direction (≥ 2)
     ///
     /// This represents the number of columns in the grid.
@@ -129,8 +141,21 @@ pub struct Grid2d {
 
 impl Grid2d {
     /// Auxiliary function to allocate the grid
-    fn do_allocate(nx: usize, ny: usize, coords: Vec<(f64, f64)>, cgl_grid: bool) -> Self {
+    fn do_allocate(
+        xmin: f64,
+        xmax: f64,
+        ymin: f64,
+        ymax: f64,
+        nx: usize,
+        ny: usize,
+        coords: Vec<(f64, f64)>,
+        cgl_grid: bool,
+    ) -> Self {
         Self {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
             nx,
             ny,
             coords,
@@ -199,20 +224,36 @@ impl Grid2d {
             return Err("ny must be ≥ 2");
         }
         let mut coords = Vec::with_capacity(nx * ny);
+        let mut xmin = xx[0];
+        let mut xmax = xx[0];
+        let mut ymin = yy[0];
+        let mut ymax = yy[0];
         for i in 1..nx {
             if xx[i] <= xx[i - 1] {
                 return Err("xx must be strictly increasing");
+            }
+            if xx[i] < xmin {
+                xmin = xx[i];
+            }
+            if xx[i] > xmax {
+                xmax = xx[i];
             }
         }
         for j in 0..ny {
             if j > 0 && yy[j] <= yy[j - 1] {
                 return Err("yy must be strictly increasing");
             }
+            if yy[j] < ymin {
+                ymin = yy[j];
+            }
+            if yy[j] > ymax {
+                ymax = yy[j];
+            }
             for i in 0..nx {
                 coords.push((xx[i], yy[j]));
             }
         }
-        Ok(Grid2d::do_allocate(nx, ny, coords, false))
+        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, false))
     }
 
     /// Creates a new grid with uniform spacing
@@ -296,7 +337,7 @@ impl Grid2d {
                 coords.push((x, y));
             }
         }
-        Ok(Grid2d::do_allocate(nx, ny, coords, false))
+        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, false))
     }
 
     /// Creates a new grid using Chebyshev-Gauss-Lobatto points (tensor product)
@@ -340,12 +381,32 @@ impl Grid2d {
                 coords.push((x, y));
             }
         }
-        Ok(Grid2d::do_allocate(nx, ny, coords, true))
+        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, true))
     }
 
     /// Indicates if the grid uses Chebyshev-Gauss-Lobatto points
     pub fn is_chebyshev_gauss_lobatto(&self) -> bool {
         self.is_chebyshev_gauss_lobatto
+    }
+
+    /// Returns the minimum x-coordinate
+    pub fn xmin(&self) -> f64 {
+        self.xmin
+    }
+
+    /// Returns the maximum x-coordinate
+    pub fn xmax(&self) -> f64 {
+        self.xmax
+    }
+
+    /// Returns the minimum y-coordinate
+    pub fn ymin(&self) -> f64 {
+        self.ymin
+    }
+
+    /// Returns the maximum y-coordinate
+    pub fn ymax(&self) -> f64 {
+        self.ymax
     }
 
     /// Returns the number of grid points along the x-direction
@@ -735,6 +796,10 @@ mod tests {
         ];
 
         let grid = Grid2d::new(xx, yy).unwrap();
+        assert_eq!(grid.xmin, -3.0);
+        assert_eq!(grid.xmax, 3.0);
+        assert_eq!(grid.ymin, 2.0);
+        assert_eq!(grid.ymax, 8.0);
         assert_eq!(grid.nx, 4);
         assert_eq!(grid.ny, 3);
         assert_eq!(grid.coords, correct_coords);
@@ -785,6 +850,10 @@ mod tests {
         ];
 
         let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        assert_eq!(grid.xmin, -3.0);
+        assert_eq!(grid.xmax, 3.0);
+        assert_eq!(grid.ymin, 2.0);
+        assert_eq!(grid.ymax, 8.0);
         assert_eq!(grid.nx, 4);
         assert_eq!(grid.ny, 3);
         assert_eq!(grid.coords, correct_coords);
@@ -884,6 +953,10 @@ mod tests {
 
         let grid = Grid2d::new_chebyshev_gauss_lobatto(xmin, xmax, ymin, ymax, nx, ny).unwrap();
 
+        assert_eq!(grid.xmin, -3.0);
+        assert_eq!(grid.xmax, 3.0);
+        assert_eq!(grid.ymin, 2.0);
+        assert_eq!(grid.ymax, 8.0);
         assert_eq!(grid.nx, 4);
         assert_eq!(grid.ny, 3);
         assert_eq!(grid.nodes_xmin, &[0, 4, 8]);

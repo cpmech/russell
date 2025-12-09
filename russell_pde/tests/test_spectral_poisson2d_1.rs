@@ -7,7 +7,7 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_spectral_poisson2d_1() {
-    // Approximate (with the Finite Differences Method, FDM) the solution of
+    // Approximate the solution of
     //
     // ∂²ϕ   ∂²ϕ
     // ——— + ——— = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)

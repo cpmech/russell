@@ -19,7 +19,7 @@ impl TransfiniteSamples {
     ///           A───────B
     ///            Γ[2](r)
     /// ```
-    pub fn surf_2d_quad(xa: &[f64], xb: &[f64], xc: &[f64], xd: &[f64]) -> Transfinite {
+    pub fn quadrilateral_2d(xa: &[f64], xb: &[f64], xc: &[f64], xd: &[f64]) -> Transfinite {
         let u0 = vec![xd[0] - xa[0], xd[1] - xa[1]];
         let u1 = vec![xc[0] - xb[0], xc[1] - xb[1]];
         let u2 = vec![xb[0] - xa[0], xb[1] - xa[1]];
@@ -108,7 +108,7 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- outer radius
-    pub fn surf_2d_quarter_ring(a: f64, b: f64) -> Transfinite {
+    pub fn quarter_ring_2d(a: f64, b: f64) -> Transfinite {
         let e: Vec<Vs> = vec![
             // B[0](s)
             Box::new(move |x, s| {
@@ -203,7 +203,7 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- outer radius
-    pub fn surf_2d_half_ring(a: f64, b: f64) -> Transfinite {
+    pub fn half_ring_2d(a: f64, b: f64) -> Transfinite {
         let e: Vec<Vs> = vec![
             // B[0](s)
             Box::new(move |x, s| {
@@ -287,7 +287,7 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- diagonal of lozenge (diamond)
-    pub fn surf_2d_quarter_perf_lozenge(a: f64, b: f64) -> Transfinite {
+    pub fn quarter_perforated_lozenge_2d(a: f64, b: f64) -> Transfinite {
         let e: Vec<Vs> = vec![
             // B[0](s)
             Box::new(move |x, s| {
@@ -364,7 +364,7 @@ impl TransfiniteSamples {
     }
 
     /// Generates a transfinite mapping of a cube
-    pub fn solid_cube(lx: f64, ly: f64, lz: f64) -> Transfinite {
+    pub fn cube_3d(lx: f64, ly: f64, lz: f64) -> Transfinite {
         let b: Vec<Vss> = vec![
             // B[0](s,t)
             Box::new(move |x, s, t| {
@@ -469,8 +469,8 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- outer radius
     /// h -- thickness along x-direction
-    pub fn solid_quarter_ring(a: f64, b: f64, h: f64) -> Transfinite {
-        let surf = Arc::new(Mutex::new(TransfiniteSamples::surf_2d_quarter_ring(a, b)));
+    pub fn quarter_ring_3d(a: f64, b: f64, h: f64) -> Transfinite {
+        let surf = Arc::new(Mutex::new(TransfiniteSamples::quarter_ring_2d(a, b)));
 
         let surf_0 = surf.clone();
         let surf_1 = surf.clone();
@@ -758,5 +758,50 @@ impl TransfiniteSamples {
         ];
 
         Transfinite::new_3d(b_funcs, bd, Some(bdd))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::TransfiniteSamples;
+    use russell_lab::{vec_approx_eq, Vector};
+
+    #[test]
+    fn test_quadrilateral_2d() {
+        let xa = &[0.0, 0.0];
+        let xb = &[1.0, 0.0];
+        let xc = &[1.0, 1.0];
+        let xd = &[0.0, 1.0];
+        let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
+
+        let mut x = Vector::new(2);
+        let mut u = Vector::new(2);
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, xa, 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, xb, 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, xc, 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, xd, 1e-15);
+
+        u[0] = 0.0;
+        u[1] = 0.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.5, 0.5], 1e-15);
     }
 }

@@ -151,6 +151,11 @@ impl<'a> EssentialBcs2d<'a> {
         self.periodic_along_y
     }
 
+    /// Indicates whether the given node has a prescribed essential boundary condition or not
+    pub fn has_prescribed_value(&self, m: usize) -> bool {
+        self.node_to_function.contains_key(&m)
+    }
+
     /// Returns the prescribed value for the given node
     ///
     /// # Panics

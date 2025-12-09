@@ -437,6 +437,13 @@ impl Grid2d {
         self.coords[m]
     }
 
+    /// Returns the boundary node indices
+    ///
+    /// Returns `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)`
+    pub fn boundary_nodes(&self) -> (&[usize], &[usize], &[usize], &[usize]) {
+        (&self.nodes_xmin, &self.nodes_xmax, &self.nodes_ymin, &self.nodes_ymax)
+    }
+
     /// Iterates over all grid nodes with their coordinates
     ///
     /// The provided closure is called for each node with arguments `(m, x, y)`

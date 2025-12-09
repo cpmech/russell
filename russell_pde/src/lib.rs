@@ -15,6 +15,7 @@ mod fdm_laplacian_1d;
 mod fdm_laplacian_2d;
 mod grid_1d;
 mod grid_2d;
+mod spectral_laplacian_2d;
 
 pub use enums::*;
 pub use equation_handler::*;
@@ -24,6 +25,7 @@ pub use fdm_laplacian_1d::*;
 pub use fdm_laplacian_2d::*;
 pub use grid_1d::*;
 pub use grid_2d::*;
+pub use spectral_laplacian_2d::*;
 
 // run code from README file
 #[doc = include_str!("../README.md")]

@@ -203,6 +203,12 @@ impl<'a> SpectralLaplacian2d<'a> {
         let dd2x = self.interp_x.get_dd2().unwrap();
         let dd2y = self.interp_y.get_dd2().unwrap();
 
+        // scaling coefficients due to domain mapping (from [-1,1]×[-1,1] to [xmin,xmax]×[ymin,ymax])
+        let dr_dx = 2.0 / (self.grid.xmax() - self.grid.xmin());
+        let ds_dy = 2.0 / (self.grid.ymax() - self.grid.ymin());
+        let cx = dr_dx * dr_dx;
+        let cy = ds_dy * ds_dy;
+
         // noting that:
         // (∇²ϕ)ᵢⱼ := kx ∂²ϕ/∂x²|(xᵢ,xⱼ) + ky ∂²ϕ/∂y²|(xᵢ,yⱼ) = ∑ₖ ∑ₗ (kx D⁽²⁾ᵢₖ δⱼₗ + ky δᵢₖ D̄⁽²⁾ⱼₗ) ϕₖₗ
         // we need to build K such that:
@@ -220,10 +226,10 @@ impl<'a> SpectralLaplacian2d<'a> {
                             let n = k + l * nx;
                             let mut val = 0.0;
                             if j == l {
-                                val += self.kx * dd2x.get(i, k);
+                                val += self.kx * dd2x.get(i, k) * cx;
                             }
                             if i == k {
-                                val += self.ky * dd2y.get(j, l);
+                                val += self.ky * dd2y.get(j, l) * cy;
                             }
                             if !self.equations.is_prescribed(n) {
                                 // unknown column
@@ -306,6 +312,29 @@ impl<'a> SpectralLaplacian2d<'a> {
         });
         a
     }
+
+    /// Executes a loop over the grid points
+    ///
+    /// # Input
+    ///
+    /// * `callback` -- a function of `(m, x, y)` where `m` is the sequential point number,
+    ///   and `(x, y)` are the Cartesian coordinates of the grid point.
+    ///
+    /// Note that:
+    ///
+    /// ```text
+    /// m = i + j nx
+    /// i = m % nx
+    /// j = m / nx
+    /// ```
+    pub fn loop_over_grid_points<F>(&self, mut callback: F)
+    where
+        F: FnMut(usize, f64, f64),
+    {
+        self.grid.for_each_coord(|m, x, y| {
+            callback(m, x, y);
+        });
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -319,13 +348,13 @@ mod tests {
 
     #[test]
     fn get_matrices_lmm_works_1() {
-        let grid = Grid2d::new_chebyshev_gauss_lobatto(0.0, 1.0, 0.0, 1.0, 5, 5).unwrap();
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, 5, 5).unwrap();
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous(&grid);
         let spec = SpectralLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk_bar, kk_check) = spec.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
-        println!("{:.2}", kk_bar_dense);
+        // println!("{:.2}", kk_bar_dense);
 
         let ___ = 0.0;
         #[rustfmt::skip]
@@ -355,7 +384,7 @@ mod tests {
             [0.0, 0.0, 0.0, 0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, 0.757359312880714, 9.242640687119286, 0.0, 0.0, 0.0, 9.242640687119286, 0.0],
         ];
         let kk_check_dense = kk_check.as_dense();
-        println!("{:.3}", kk_check_dense);
+        // println!("{:.3}", kk_check_dense);
         mat_approx_eq(&kk_check_dense, correct_kk_check, 1e-14);
     }
 }

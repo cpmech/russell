@@ -10,16 +10,16 @@ fn test_laplace2d_1() {
     //  ———  +  ——— = 0
     //  ∂x²     ∂y²
     //
-    // on a (3.0 × 3.0) rectangle with the following
+    // on a [-1,1] × [-1,1] square with the following
     // essential (Dirichlet) boundary conditions:
     //
-    // left:    ϕ(0.0, y) = 1.0
-    // right:   ϕ(3.0, y) = 2.0
-    // bottom:  ϕ(x, 0.0) = 1.0
-    // top:     ϕ(x, 3.0) = 2.0
+    // left:    ϕ(-1.0, y) = 1.0
+    // right:   ϕ( 1.0, y) = 2.0
+    // bottom:  ϕ(x, -1.0) = 1.0
+    // top:     ϕ(x,  1.0) = 2.0
 
     // allocate the grid
-    let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
+    let grid = Grid2d::new_uniform(-1.0, 1.0, -1.0, 1.0, 4, 4).unwrap();
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();

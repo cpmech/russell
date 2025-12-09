@@ -193,14 +193,13 @@ impl<'a> SpectralLaplacian2d<'a> {
         // allocate matrices
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let nnz_kk_bar = nu * nu;
-        let nnz_kk_check = np * np;
-        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, Sym::No).unwrap();
-        let mut kk_check = CooMatrix::new(nu, np, nnz_kk_check, Sym::No).unwrap();
-
-        // spectral derivative matrices
         let nx = self.grid.nx();
         let ny = self.grid.ny();
+        let nnz_wcs = nx * nx * ny * ny; // worst-case scenario
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs, Sym::No).unwrap();
+        let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
+
+        // spectral derivative matrices
         let dd2x = self.interp_x.get_dd2().unwrap();
         let dd2y = self.interp_y.get_dd2().unwrap();
 
@@ -210,46 +209,31 @@ impl<'a> SpectralLaplacian2d<'a> {
         // K(i,j,k,l) = ∑ₖ ∑ₗ (kx D⁽²⁾ᵢₖ δⱼₗ + ky δᵢₖ D̄⁽²⁾ⱼₗ)
         // By using the `put` command, we are effectively summing the contributions to K
 
-        // add the kx D⁽²⁾ᵢₖ δⱼₗ contribution
         for i in 0..nx {
-            for k in 0..nx {
-                for jl in 0..ny {
-                    let m = i + jl * nx;
-                    let n = k + jl * nx;
-                    if !self.equations.is_prescribed(m) {
-                        // unknown row
-                        let r = self.equations.iu(m);
-                        if !self.equations.is_prescribed(n) {
-                            // unknown column
-                            let c = self.equations.iu(n);
-                            kk_bar.put(r, c, self.kx * dd2x.get(i, k)).unwrap();
-                        } else {
-                            // prescribed column
-                            let c = self.equations.ip(n);
-                            kk_check.put(r, c, self.kx * dd2x.get(i, k)).unwrap();
-                        }
-                    }
-                }
-            }
-        }
-
-        // add the ky δᵢₖ D̄⁽²⁾ⱼₗ contribution
-        for j in 0..ny {
-            for l in 0..ny {
-                for ik in 0..nx {
-                    let m = ik + j * nx;
-                    let n = ik + l * nx;
-                    if !self.equations.is_prescribed(m) {
-                        // unknown row
-                        let r = self.equations.iu(m);
-                        if !self.equations.is_prescribed(n) {
-                            // unknown column
-                            let c = self.equations.iu(n);
-                            kk_bar.put(r, c, self.ky * dd2y.get(j, l)).unwrap();
-                        } else {
-                            // prescribed column
-                            let c = self.equations.ip(n);
-                            kk_check.put(r, c, self.ky * dd2y.get(j, l)).unwrap();
+            for j in 0..ny {
+                let m = i + j * nx;
+                if !self.equations.is_prescribed(m) {
+                    // unknown rows
+                    let r = self.equations.iu(m);
+                    for k in 0..nx {
+                        for l in 0..ny {
+                            let n = k + l * nx;
+                            let mut val = 0.0;
+                            if j == l {
+                                val += self.kx * dd2x.get(i, k);
+                            }
+                            if i == k {
+                                val += self.ky * dd2y.get(j, l);
+                            }
+                            if !self.equations.is_prescribed(n) {
+                                // unknown column
+                                let c = self.equations.iu(n);
+                                kk_bar.put(r, c, val).unwrap();
+                            } else {
+                                // prescribed column
+                                let c = self.equations.ip(n);
+                                kk_check.put(r, c, val).unwrap();
+                            }
                         }
                     }
                 }

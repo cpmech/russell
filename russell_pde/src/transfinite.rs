@@ -1,62 +1,42 @@
 use russell_lab::Vector;
 
-/// Defines a vector function f(s) of a scalar argument s (vector scalar)
+/// Calculates a vector v(r) given one scalar parameter r
 ///
-/// Input:
-/// * `s` -- input scalar
-///
-/// Output:
-/// * `f` -- output vector
-pub type Vs = Box<dyn Fn(&mut Vector, f64) + Send + Sync>;
+/// The callback function is `f(v, r)`, where `v` is the output vector and `r` is the input parameter.
+pub type FnVec1Param1 = Box<dyn Fn(&mut Vector, f64) + Send + Sync>;
 
-/// Defines a vector function f(a,b) of two scalar arguments (vector scalar scalar)
+/// Calculates a vector v(r,s) given two scalar parameter r and s
 ///
-/// Input:
-/// * `a` -- first input scalar
-/// * `b` -- second input scalar
-///
-/// Output:
-/// * `f` -- output vector
-pub type Vss = Box<dyn Fn(&mut Vector, f64, f64) + Send + Sync>;
+/// The function is `f(v, r, s)`, where `v` is the output vector and `r`, `s` are the input parameters.
+pub type FnVec1Param2 = Box<dyn Fn(&mut Vector, f64, f64) + Send + Sync>;
 
-/// Defines two vector functions u(a,b) and v(a,b) of two scalar arguments
-/// (vector vector scalar scalar)
+/// Calculates two vectors u(r,s) and v(r,s) given two scalar parameters r and s
 ///
-/// Input:
-/// * `a` -- first input scalar
-/// * `b` -- second input scalar
-///
-/// Output:
-/// * `u` -- first output vector
-/// * `v` -- second output vector
-pub type Vvss = Box<dyn Fn(&mut Vector, &mut Vector, f64, f64) + Send + Sync>;
+/// The function is `f(u, v, r, s)`, where `u` and `v` are the output vectors and `r` and `s` are the input parameters.
+pub type FnVec2Param2 = Box<dyn Fn(&mut Vector, &mut Vector, f64, f64) + Send + Sync>;
 
-/// Defines three vector functions u(a,b), v(a,b) and w(a,b) of two scalar arguments
-/// (vector vector vector scalar scalar)
+/// Calculates three vectors u(r,s), v(r,s) and w(r,s) given two scalar parameters r and s
 ///
-/// Input:
-/// * `a` -- first input scalar
-/// * `b` -- second input scalar
-///
-/// Output:
-/// * `u` -- first output vector
-/// * `v` -- second output vector
-/// * `w` -- second output vector
-pub type Vvvss = Box<dyn Fn(&mut Vector, &mut Vector, &mut Vector, f64, f64) + Send + Sync>;
+/// The function is `f(u, v, w, r, s)`, where `u`, `v` and `w` are the output vectors and `r` and `s` are the input parameters.
+pub type FnVec3Param2 = Box<dyn Fn(&mut Vector, &mut Vector, &mut Vector, f64, f64) + Send + Sync>;
 
-/// Maps a reference square [-1,+1]×[-1,+1] into a curve-bounded quadrilateral
+/// Implements the transfinite mapping
+///
+/// * Maps a reference square [-1,+1]×[-1,+1] into a curve-bounded region in 2D
+/// * Maps a reference cube [-1,+1]×[-1,+1]×[-1,+1] into a curve-bounded region in 3D
 pub struct Transfinite {
-    ndim: usize, // space dimension
+    /// space dimension
+    ndim: usize,
 
     // input data for 2d
-    e: Vec<Vs>,           // [4] 2D boundary functions
-    ed: Vec<Vs>,          // [4] 2D 1st derivatives of boundary functions
-    edd: Option<Vec<Vs>>, // [4] 2D 2nd derivatives of boundary functions
+    boundary_functions: Vec<FnVec1Param1>,        // [4] 2D boundary functions
+    deriv1_boundary_functions: Vec<FnVec1Param1>, // [4] 2D 1st derivatives of boundary functions
+    deriv2_boundary_functions: Option<Vec<FnVec1Param1>>, // [4] 2D 2nd derivatives of boundary functions
 
     // input data for 3d
-    b: Vec<Vss>,             // [6] 3D boundary function
-    bd: Vec<Vvss>,           // [6] 3D 1st derivatives of boundary functions
-    bdd: Option<Vec<Vvvss>>, // [6] 3D 2nd derivatives of boundary functions
+    b: Vec<FnVec1Param2>,           // [6] 3D boundary function
+    bd: Vec<FnVec2Param2>,          // [6] 3D 1st derivatives of boundary functions
+    bdd: Option<Vec<FnVec3Param2>>, // [6] 3D 2nd derivatives of boundary functions
 
     // workspace for 2d
     p0: Vector,
@@ -166,7 +146,7 @@ pub struct Transfinite {
 
 impl Transfinite {
     /// Allocates a new structure for 2D
-    pub fn new_2d(e: Vec<Vs>, ed: Vec<Vs>, edd: Option<Vec<Vs>>) -> Self {
+    pub fn new_2d(e: Vec<FnVec1Param1>, ed: Vec<FnVec1Param1>, edd: Option<Vec<FnVec1Param1>>) -> Self {
         assert_eq!(e.len(), 4);
         assert_eq!(ed.len(), 4);
         if let Some(ref edd_val) = edd {
@@ -175,9 +155,9 @@ impl Transfinite {
 
         let mut o = Transfinite {
             ndim: 2,
-            e,
-            ed,
-            edd,
+            boundary_functions: e,
+            deriv1_boundary_functions: ed,
+            deriv2_boundary_functions: edd,
             b: Vec::new(),
             bd: Vec::new(),
             bdd: None,
@@ -279,15 +259,15 @@ impl Transfinite {
         };
 
         // compute corners
-        (o.e[0])(&mut o.p0, -1.0);
-        (o.e[0])(&mut o.p3, 1.0);
-        (o.e[1])(&mut o.p1, -1.0);
-        (o.e[1])(&mut o.p2, 1.0);
+        (o.boundary_functions[0])(&mut o.p0, -1.0);
+        (o.boundary_functions[0])(&mut o.p3, 1.0);
+        (o.boundary_functions[1])(&mut o.p1, -1.0);
+        (o.boundary_functions[1])(&mut o.p2, 1.0);
         o
     }
 
     /// Allocates a new structure for 3D
-    pub fn new_3d(b: Vec<Vss>, bd: Vec<Vvss>, bdd: Option<Vec<Vvvss>>) -> Self {
+    pub fn new_3d(b: Vec<FnVec1Param2>, bd: Vec<FnVec2Param2>, bdd: Option<Vec<FnVec3Param2>>) -> Self {
         assert_eq!(b.len(), 6);
         assert_eq!(bd.len(), 6);
         if let Some(ref bdd_val) = bdd {
@@ -296,9 +276,9 @@ impl Transfinite {
 
         let mut o = Transfinite {
             ndim: 3,
-            e: Vec::new(),
-            ed: Vec::new(),
-            edd: None,
+            boundary_functions: Vec::new(),
+            deriv1_boundary_functions: Vec::new(),
+            deriv2_boundary_functions: None,
             b,
             bd,
             bdd,
@@ -419,10 +399,10 @@ impl Transfinite {
             // compute boundary functions @ {r,s}
             let r = u[0];
             let s = u[1];
-            (self.e[0])(&mut self.e0s, s);
-            (self.e[1])(&mut self.e1s, s);
-            (self.e[2])(&mut self.e2r, r);
-            (self.e[3])(&mut self.e3r, r);
+            (self.boundary_functions[0])(&mut self.e0s, s);
+            (self.boundary_functions[1])(&mut self.e1s, s);
+            (self.boundary_functions[2])(&mut self.e2r, r);
+            (self.boundary_functions[3])(&mut self.e3r, r);
 
             // compute position
             for i in 0..self.ndim {
@@ -529,16 +509,16 @@ impl Transfinite {
             let s = u[1];
 
             // compute boundary functions @ {r,s}
-            (self.e[0])(&mut self.e0s, s);
-            (self.e[1])(&mut self.e1s, s);
-            (self.e[2])(&mut self.e2r, r);
-            (self.e[3])(&mut self.e3r, r);
+            (self.boundary_functions[0])(&mut self.e0s, s);
+            (self.boundary_functions[1])(&mut self.e1s, s);
+            (self.boundary_functions[2])(&mut self.e2r, r);
+            (self.boundary_functions[3])(&mut self.e3r, r);
 
             // compute derivatives @ {r,s}
-            (self.ed[0])(&mut self.de0s_ds, s);
-            (self.ed[1])(&mut self.de1s_ds, s);
-            (self.ed[2])(&mut self.de2r_dr, r);
-            (self.ed[3])(&mut self.de3r_dr, r);
+            (self.deriv1_boundary_functions[0])(&mut self.de0s_ds, s);
+            (self.deriv1_boundary_functions[1])(&mut self.de1s_ds, s);
+            (self.deriv1_boundary_functions[2])(&mut self.de2r_dr, r);
+            (self.deriv1_boundary_functions[3])(&mut self.de3r_dr, r);
 
             // position and first order derivatives
             for i in 0..self.ndim {
@@ -584,7 +564,7 @@ impl Transfinite {
             let ddx_drs = ddx_drs.unwrap();
 
             // only 2nd cross-derivatives may be non-zero
-            if self.edd.is_none() {
+            if self.deriv2_boundary_functions.is_none() {
                 for i in 0..self.ndim {
                     ddx_drr[i] = 0.0;
                     ddx_dss[i] = 0.0;
@@ -599,7 +579,7 @@ impl Transfinite {
             }
 
             // compute second derivatives @ {r,s,t}
-            let edd = self.edd.as_ref().unwrap();
+            let edd = self.deriv2_boundary_functions.as_ref().unwrap();
             (edd[0])(&mut self.dde0s_dss, s);
             (edd[1])(&mut self.dde1s_dss, s);
             (edd[2])(&mut self.dde2r_drr, r);
@@ -1036,47 +1016,47 @@ impl Transfinite {
 
 #[cfg(test)]
 mod tests {
-    use super::{Transfinite, Vs};
+    use super::{FnVec1Param1, Transfinite};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
     fn new_2d_works() {
         // identity mapping
         // e0(s) = (-1, s)
-        let e0: Vs = Box::new(|x, s| {
+        let e0: FnVec1Param1 = Box::new(|x, s| {
             x[0] = -1.0;
             x[1] = s;
         });
         // e1(s) = (+1, s)
-        let e1: Vs = Box::new(|x, s| {
+        let e1: FnVec1Param1 = Box::new(|x, s| {
             x[0] = 1.0;
             x[1] = s;
         });
         // e2(r) = (r, -1)
-        let e2: Vs = Box::new(|x, r| {
+        let e2: FnVec1Param1 = Box::new(|x, r| {
             x[0] = r;
             x[1] = -1.0;
         });
         // e3(r) = (r, +1)
-        let e3: Vs = Box::new(|x, r| {
+        let e3: FnVec1Param1 = Box::new(|x, r| {
             x[0] = r;
             x[1] = 1.0;
         });
 
         // derivatives
-        let ed0: Vs = Box::new(|dx, _| {
+        let ed0: FnVec1Param1 = Box::new(|dx, _| {
             dx[0] = 0.0;
             dx[1] = 1.0;
         });
-        let ed1: Vs = Box::new(|dx, _| {
+        let ed1: FnVec1Param1 = Box::new(|dx, _| {
             dx[0] = 0.0;
             dx[1] = 1.0;
         });
-        let ed2: Vs = Box::new(|dx, _| {
+        let ed2: FnVec1Param1 = Box::new(|dx, _| {
             dx[0] = 1.0;
             dx[1] = 0.0;
         });
-        let ed3: Vs = Box::new(|dx, _| {
+        let ed3: FnVec1Param1 = Box::new(|dx, _| {
             dx[0] = 1.0;
             dx[1] = 0.0;
         });

@@ -1,4 +1,4 @@
-use crate::transfinite::{Transfinite, Vs, Vss, Vvss, Vvvss};
+use crate::transfinite::{FnVec1Param1, FnVec1Param2, FnVec2Param2, FnVec3Param2, Transfinite};
 use russell_lab::Vector;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
@@ -32,7 +32,7 @@ impl TransfiniteSamples {
         let (scale2_0, scale2_1) = ((xb_0 - xa_0) / 2.0, (xb_1 - xa_1) / 2.0);
         let (scale3_0, scale3_1) = ((xc_0 - xd_0) / 2.0, (xc_1 - xd_1) / 2.0);
 
-        let boundary_functions: Vec<Vs> = vec![
+        let boundary_functions: Vec<FnVec1Param1> = vec![
             // Γ0(s) with s ϵ [-1,+1]
             Box::new(move |x, s| {
                 x[0] = xa_0 + (1.0 + s) * scale0_0;
@@ -55,7 +55,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv1_boundary_functions: Vec<Vs> = vec![
+        let deriv1_boundary_functions: Vec<FnVec1Param1> = vec![
             // dΓ0/ds
             Box::new(move |dx_ds, _| {
                 dx_ds[0] = scale0_0;
@@ -97,7 +97,7 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- outer radius
     pub fn quarter_ring_2d(a: f64, b: f64) -> Transfinite {
-        let boundary_functions: Vec<Vs> = vec![
+        let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
             Box::new(move |x, s| {
                 let theta = PI * (1.0 + s) / 4.0;
@@ -122,7 +122,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv1_boundary_functions: Vec<Vs> = vec![
+        let deriv1_boundary_functions: Vec<FnVec1Param1> = vec![
             // dB0/ds
             Box::new(move |dx_ds, s| {
                 let theta = PI * (1.0 + s) / 4.0;
@@ -147,7 +147,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv2_boundary_functions: Vec<Vs> = vec![
+        let deriv2_boundary_functions: Vec<FnVec1Param1> = vec![
             // d²B0/ds²
             Box::new(move |d2x_ds2, s| {
                 let theta = PI * (1.0 + s) / 4.0;
@@ -196,7 +196,7 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- outer radius
     pub fn half_ring_2d(a: f64, b: f64) -> Transfinite {
-        let boundary_functions: Vec<Vs> = vec![
+        let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
             Box::new(move |x, s| {
                 let theta = PI * (s + 1.0) / 2.0;
@@ -221,7 +221,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv1_boundary_functions: Vec<Vs> = vec![
+        let deriv1_boundary_functions: Vec<FnVec1Param1> = vec![
             // dB0/ds
             Box::new(move |dx_ds, s| {
                 let theta = PI * (s + 1.0) / 2.0;
@@ -246,7 +246,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv2_boundary_functions: Vec<Vs> = vec![
+        let deriv2_boundary_functions: Vec<FnVec1Param1> = vec![
             // d²B0/ds²
             Box::new(move |d2x_ds2, s| {
                 let theta = PI * (s + 1.0) / 2.0;
@@ -284,7 +284,7 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- diagonal of lozenge (diamond)
     pub fn quarter_perforated_lozenge_2d(a: f64, b: f64) -> Transfinite {
-        let boundary_functions: Vec<Vs> = vec![
+        let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
             Box::new(move |x, s| {
                 let theta = PI * (1.0 + s) / 4.0;
@@ -308,7 +308,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv1_boundary_functions: Vec<Vs> = vec![
+        let deriv1_boundary_functions: Vec<FnVec1Param1> = vec![
             // dB0/ds
             Box::new(move |dx_ds, s| {
                 let theta = PI * (1.0 + s) / 4.0;
@@ -332,7 +332,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv2_boundary_functions: Vec<Vs> = vec![
+        let deriv2_boundary_functions: Vec<FnVec1Param1> = vec![
             // d²B0/ds²
             Box::new(move |d2x_ds2, s| {
                 let theta = PI * (1.0 + s) / 4.0;
@@ -365,7 +365,7 @@ impl TransfiniteSamples {
 
     /// Generates a transfinite mapping of a "brick"
     pub fn brick_3d(lx: f64, ly: f64, lz: f64) -> Transfinite {
-        let boundary_functions: Vec<Vss> = vec![
+        let boundary_functions: Vec<FnVec1Param2> = vec![
             // B0(s,t)
             Box::new(move |x, s, t| {
                 x[0] = 0.0;
@@ -404,7 +404,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let deriv1_boundary_functions: Vec<Vvss> = vec![
+        let deriv1_boundary_functions: Vec<FnVec2Param2> = vec![
             // Bd0(s,t)
             Box::new(move |dx_ds, dx_dt, _, _| {
                 dx_ds[0] = 0.0;
@@ -474,7 +474,7 @@ impl TransfiniteSamples {
 
         let surf_0 = surf.clone();
         let surf_1 = surf.clone();
-        let boundary_functions: Vec<Vss> = vec![
+        let boundary_functions: Vec<FnVec1Param2> = vec![
             // B0(s,t)
             Box::new(move |x, s, t| {
                 let mut surf = surf_0.lock().unwrap();
@@ -525,7 +525,7 @@ impl TransfiniteSamples {
 
         let surf_d0 = surf.clone();
         let surf_d1 = surf.clone();
-        let deriv1_boundary_functions: Vec<Vvss> = vec![
+        let deriv1_boundary_functions: Vec<FnVec2Param2> = vec![
             // Bd0(s,t)
             Box::new(move |dx_ds, dx_dt, s, t| {
                 let mut surf = surf_d0.lock().unwrap();
@@ -624,7 +624,7 @@ impl TransfiniteSamples {
 
         let surf_dd0 = surf.clone();
         let surf_dd1 = surf.clone();
-        let deriv2_boundary_functions: Vec<Vvvss> = vec![
+        let deriv2_boundary_functions: Vec<FnVec3Param2> = vec![
             // Bdd0(s,t)
             Box::new(move |d2x_ds2, d2x_dt2, d2x_dst, s, t| {
                 let mut surf = surf_dd0.lock().unwrap();

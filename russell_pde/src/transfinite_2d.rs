@@ -98,7 +98,13 @@ impl Transfinite2d {
         map
     }
 
-    /// Computes "real" position x(r,s,t)
+    /// Calculates the position x(r,s) at reference location (r,s)
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - position vector (output)
+    /// * `r` - reference coordinate r (input)
+    /// * `s` - reference coordinate s (input)
     pub fn point(&mut self, x: &mut Vector, r: f64, s: f64) {
         // compute boundary functions @ {r,s}
         (self.boundary_functions[0])(&mut self.b0s, s);
@@ -120,7 +126,22 @@ impl Transfinite2d {
         }
     }
 
-    /// Computes position and the first and second order derivatives
+    /// Calculates the position x(r,s) at reference location (r,s) and its derivatives
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - position vector (output)
+    /// * `dx_dr` - derivative of position with respect to r (output)
+    /// * `dx_ds` - derivative of position with respect to s (output)
+    /// * `d2x_dr2` - 2nd derivative of position with respect to r (output, optional)
+    /// * `d2x_ds2` - 2nd derivative of position with respect to s (output, optional)
+    /// * `d2x_drs` - mixed 2nd derivative of position with respect to r and s (output, optional)
+    /// * `r` - reference coordinate r (input)
+    /// * `s` - reference coordinate s (input)
+    ///
+    /// # Notes
+    ///
+    /// If any of the second derivative arguments are `None`, then second derivatives are not computed
     pub fn point_and_derivs(
         &mut self,
         x: &mut Vector,
@@ -132,9 +153,6 @@ impl Transfinite2d {
         r: f64,
         s: f64,
     ) {
-        // auxiliary
-        let second_derivs = d2x_dr2.is_some();
-
         // compute boundary functions @ {r,s}
         (self.boundary_functions[0])(&mut self.b0s, s);
         (self.boundary_functions[1])(&mut self.b1s, s);
@@ -180,7 +198,7 @@ impl Transfinite2d {
         }
 
         // skip second order derivatives
-        if !second_derivs {
+        if d2x_dr2.is_none() || d2x_ds2.is_none() || d2x_drs.is_none() {
             return;
         }
 
@@ -189,7 +207,8 @@ impl Transfinite2d {
         let d2x_ds2 = d2x_ds2.unwrap();
         let d2x_drs = d2x_drs.unwrap();
 
-        // only 2nd cross-derivatives may be non-zero
+        // calculate the mixed derivative
+        // Note: Even if the 2nd boundary derivatives are nil, the mixed derivative may not non-zero
         if self.deriv2_boundary_functions.is_none() {
             for i in 0..2 {
                 d2x_dr2[i] = 0.0;
@@ -204,12 +223,12 @@ impl Transfinite2d {
             return;
         }
 
-        // compute second derivatives @ {r,s,t}
-        let edd = self.deriv2_boundary_functions.as_ref().unwrap();
-        (edd[0])(&mut self.ddb0s_dss, s);
-        (edd[1])(&mut self.ddb1s_dss, s);
-        (edd[2])(&mut self.ddb2r_drr, r);
-        (edd[3])(&mut self.ddb3r_drr, r);
+        // compute the 2nd boundary derivatives
+        let d2_bry_func = self.deriv2_boundary_functions.as_ref().unwrap();
+        (d2_bry_func[0])(&mut self.ddb0s_dss, s);
+        (d2_bry_func[1])(&mut self.ddb1s_dss, s);
+        (d2_bry_func[2])(&mut self.ddb2r_drr, r);
+        (d2_bry_func[3])(&mut self.ddb3r_drr, r);
 
         // second order derivatives
         for i in 0..2 {
@@ -296,7 +315,27 @@ mod tests {
     }
 
     #[test]
-    fn transfinite_2d_works_1() {
+    fn transfinite_2d_works_quadrilateral() {
+        // allocate transfinite map
+        let xa = &[1.0, 0.0];
+        let xb = &[6.0, 4.0];
+        let xc = &[1.0, 6.0];
+        let xd = &[0.0, 5.0];
+        let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
+
+        // check corners
+        let (p0, p1, p2, p3) = map.get_corners();
+        vec_approx_eq(&p0, xa, 1e-15);
+        vec_approx_eq(&p1, xb, 1e-15);
+        vec_approx_eq(&p2, xc, 1e-15);
+        vec_approx_eq(&p3, xd, 1e-15);
+
+        // check derivatives
+        check_derivs(&mut map, 1e-10, 1e-8);
+    }
+
+    #[test]
+    fn transfinite_2d_works_quarter_ring() {
         // allocate transfinite map
         let r_in = 2.0;
         let r_out = 6.0;
@@ -331,7 +370,7 @@ mod tests {
     }
 
     #[test]
-    fn transfinite_2d_works_2() {
+    fn transfinite_2d_works_half_ring() {
         // allocate transfinite map
         let r_in = 2.0;
         let r_out = 6.0;
@@ -362,7 +401,7 @@ mod tests {
     }
 
     #[test]
-    fn transfinite_2d_works_3() {
+    fn transfinite_2d_works_perforated_lozenge() {
         // allocate transfinite map
         let radius = 1.0;
         let diagonal = 3.0;

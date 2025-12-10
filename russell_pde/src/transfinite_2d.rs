@@ -251,6 +251,8 @@ mod tests {
         let mut d2x_dr2_ana = Vector::new(2);
         let mut d2x_ds2_ana = Vector::new(2);
         let mut d2x_drs_ana = Vector::new(2);
+        let mut x_tmp = Vector::new(2);
+        let mut dx_ds_tmp = Vector::new(2);
         let args = &mut 0_u8;
         for s_at in [-0.5, 0.0, 0.5] {
             for r_at in [-0.5, 0.0, 0.5] {
@@ -282,6 +284,11 @@ mod tests {
                 // d²x/ds²
                 vec_deriv2_approx_eq(&d2x_ds2_ana, s_at, args, tol_d2, |x, s, _| {
                     map.point(x, r_at, s);
+                    Ok(())
+                });
+                // d²x/(dr ds)
+                vec_deriv1_approx_eq(&d2x_drs_ana, s_at, args, tol_d2, |dx_dr, s, _| {
+                    map.point_and_derivs(&mut x_tmp, dx_dr, &mut dx_ds_tmp, None, None, None, r_at, s);
                     Ok(())
                 });
             }

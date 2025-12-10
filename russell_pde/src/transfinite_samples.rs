@@ -97,82 +97,86 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- outer radius
     pub fn quarter_ring_2d(a: f64, b: f64) -> Transfinite {
-        let e: Vec<Vs> = vec![
-            // B[0](s)
+        let boundary_functions: Vec<Vs> = vec![
+            // B0(s)
             Box::new(move |x, s| {
                 let theta = PI * (1.0 + s) / 4.0;
                 x[0] = a * theta.cos();
                 x[1] = a * theta.sin();
             }),
-            // B[1](s)
+            // B1(s)
             Box::new(move |x, s| {
                 let theta = PI * (1.0 + s) / 4.0;
                 x[0] = b * theta.cos();
                 x[1] = b * theta.sin();
             }),
-            // B[2](r)
+            // B2(r)
             Box::new(move |x, r| {
                 x[0] = a + 0.5 * (1.0 + r) * (b - a);
                 x[1] = 0.0;
             }),
-            // B[3](r)
+            // B3(r)
             Box::new(move |x, r| {
                 x[0] = 0.0;
                 x[1] = a + 0.5 * (1.0 + r) * (b - a);
             }),
         ];
 
-        let ed: Vec<Vs> = vec![
-            // dB[0]/ds
-            Box::new(move |dxds, s| {
+        let deriv1_boundary_functions: Vec<Vs> = vec![
+            // dB0/ds
+            Box::new(move |dx_ds, s| {
                 let theta = PI * (1.0 + s) / 4.0;
-                dxds[0] = -a * theta.sin() * PI / 4.0;
-                dxds[1] = a * theta.cos() * PI / 4.0;
+                dx_ds[0] = -a * theta.sin() * PI / 4.0;
+                dx_ds[1] = a * theta.cos() * PI / 4.0;
             }),
-            // dB[1]/ds
-            Box::new(move |dxds, s| {
+            // dB1/ds
+            Box::new(move |dx_ds, s| {
                 let theta = PI * (1.0 + s) / 4.0;
-                dxds[0] = -b * theta.sin() * PI / 4.0;
-                dxds[1] = b * theta.cos() * PI / 4.0;
+                dx_ds[0] = -b * theta.sin() * PI / 4.0;
+                dx_ds[1] = b * theta.cos() * PI / 4.0;
             }),
-            // dB[2]/dr
-            Box::new(move |dxdr, _| {
-                dxdr[0] = 0.5 * (b - a);
-                dxdr[1] = 0.0;
+            // dB2/dr
+            Box::new(move |dx_dr, _| {
+                dx_dr[0] = 0.5 * (b - a);
+                dx_dr[1] = 0.0;
             }),
-            // dB[3]/dr
-            Box::new(move |dxdr, _| {
-                dxdr[0] = 0.0;
-                dxdr[1] = 0.5 * (b - a);
+            // dB3/dr
+            Box::new(move |dx_dr, _| {
+                dx_dr[0] = 0.0;
+                dx_dr[1] = 0.5 * (b - a);
             }),
         ];
 
-        let edd: Vec<Vs> = vec![
-            // d²B[0]/ds²
-            Box::new(move |ddxdss, s| {
+        let deriv2_boundary_functions: Vec<Vs> = vec![
+            // d²B0/ds²
+            Box::new(move |d2x_ds2, s| {
                 let theta = PI * (1.0 + s) / 4.0;
-                ddxdss[0] = -a * theta.cos() * PI * PI / 16.0;
-                ddxdss[1] = -a * theta.sin() * PI * PI / 16.0;
+                d2x_ds2[0] = -a * theta.cos() * PI * PI / 16.0;
+                d2x_ds2[1] = -a * theta.sin() * PI * PI / 16.0;
             }),
-            // d²B[1]/ds²
-            Box::new(move |ddxdss, s| {
+            // d²B1/ds²
+            Box::new(move |d2x_ds2, s| {
                 let theta = PI * (1.0 + s) / 4.0;
-                ddxdss[0] = -b * theta.cos() * PI * PI / 16.0;
-                ddxdss[1] = -b * theta.sin() * PI * PI / 16.0;
+                d2x_ds2[0] = -b * theta.cos() * PI * PI / 16.0;
+                d2x_ds2[1] = -b * theta.sin() * PI * PI / 16.0;
             }),
-            // d²B[2]/dr²
-            Box::new(move |ddxdrr, _| {
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
+            // d²B2/dr²
+            Box::new(move |d2x_dr2, _| {
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
             }),
-            // d²B[3]/dr²
-            Box::new(move |ddxdrr, _| {
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
+            // d²B3/dr²
+            Box::new(move |d2x_dr2, _| {
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
             }),
         ];
 
-        Transfinite::new_2d(e, ed, Some(edd))
+        Transfinite::new_2d(
+            boundary_functions,
+            deriv1_boundary_functions,
+            Some(deriv2_boundary_functions),
+        )
     }
 
     /// Generates a transfinite mapping of a half of a ring centered @ (0,0)
@@ -761,6 +765,7 @@ mod tests {
     const SAVE_FIGURE: bool = false;
 
     fn draw_lines_2d(canvas: &mut Canvas, map: &mut Transfinite, np: usize, dot_size: f64) {
+        canvas.set_face_color("None");
         let mut x = Vector::new(2);
         let mut u = Vector::new(2);
         let rr = linspace(-1.0, 1.0, np);
@@ -848,12 +853,6 @@ mod tests {
         map.point(&mut x, &u);
         vec_approx_eq(&x, xd, 1e-15);
 
-        u[0] = 0.0;
-        u[1] = 0.0;
-        map.point(&mut x, &u);
-        println!("x = {:?}", x);
-        // vec_approx_eq(&x, &[0.5, 0.5], 1e-15);
-
         if SAVE_FIGURE {
             let mut canvas = Canvas::new();
             draw_lines_2d(&mut canvas, &mut map, 21, 0.03);
@@ -863,6 +862,53 @@ mod tests {
                 .set_equal_axes(true)
                 .set_figure_size_points(600.0, 600.0)
                 .save("/tmp/russell_pde/test_quadrilateral_2d.svg")
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn test_quarter_ring_2d() {
+        let r_in = 1.0;
+        let r_out = 6.0;
+        let mut map = TransfiniteSamples::quarter_ring_2d(r_in, r_out);
+
+        let mut x = Vector::new(2);
+        let mut u = Vector::new(2);
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[r_in, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[r_out, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, r_out], 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, r_in], 1e-15);
+
+        if SAVE_FIGURE {
+            let mut circles = Canvas::new();
+            circles.set_face_color("None").set_edge_color("red").set_line_width(2.0);
+            circles.draw_circle(0.0, 0.0, r_in);
+            circles.draw_circle(0.0, 0.0, r_out);
+            let mut canvas = Canvas::new();
+            draw_lines_2d(&mut canvas, &mut map, 21, 0.03);
+            let mut plot = Plot::new();
+            plot.add(&circles)
+                .add(&canvas)
+                .set_range(-1.05, 6.5, -1.05, 6.5)
+                .set_equal_axes(true)
+                .set_figure_size_points(600.0, 600.0)
+                .save("/tmp/russell_pde/test_quarter_ring_2d.svg")
                 .unwrap();
         }
     }

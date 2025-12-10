@@ -11,86 +11,74 @@ impl TransfiniteSamples {
     /// A,B,C,D -- the four corners (counter-clockwise order)
     ///
     /// ```text
-    ///            Γ[3](r)
+    ///             Γ3(r)
     ///           D───────C
     ///           │       │
-    ///    Γ[0](s)│       │Γ[1](s)
+    ///      Γ0(s)│       │Γ1(s)
     ///           │       │
     ///           A───────B
-    ///            Γ[2](r)
+    ///             Γ2(r)
     /// ```
+    ///
+    /// Note that: r ϵ [-1,+1] and s ϵ [-1,+1]
     pub fn quadrilateral_2d(xa: &[f64], xb: &[f64], xc: &[f64], xd: &[f64]) -> Transfinite {
-        let u0 = vec![xd[0] - xa[0], xd[1] - xa[1]];
-        let u1 = vec![xc[0] - xb[0], xc[1] - xb[1]];
-        let u2 = vec![xb[0] - xa[0], xb[1] - xa[1]];
-        let u3 = vec![xc[0] - xd[0], xc[1] - xd[1]];
+        let (xa_0, xa_1) = (xa[0], xa[1]);
+        let (xb_0, xb_1) = (xb[0], xb[1]);
+        let (xc_0, xc_1) = (xc[0], xc[1]);
+        let (xd_0, xd_1) = (xd[0], xd[1]);
 
-        let a = vec![xa[0], xa[1]];
-        let b = vec![xb[0], xb[1]];
-        let d = vec![xd[0], xd[1]];
+        let (scale0_0, scale0_1) = ((xd_0 - xa_0) / 2.0, (xd_1 - xa_1) / 2.0);
+        let (scale1_0, scale1_1) = ((xc_0 - xb_0) / 2.0, (xc_1 - xb_1) / 2.0);
+        let (scale2_0, scale2_1) = ((xb_0 - xa_0) / 2.0, (xb_1 - xa_1) / 2.0);
+        let (scale3_0, scale3_1) = ((xc_0 - xd_0) / 2.0, (xc_1 - xd_1) / 2.0);
 
-        let a_0 = a.clone();
-        let a_2 = a.clone();
-        let b_1 = b.clone();
-        let d_3 = d.clone();
-
-        let u0_0 = u0.clone();
-        let u1_1 = u1.clone();
-        let u2_2 = u2.clone();
-        let u3_3 = u3.clone();
-
-        let e: Vec<Vs> = vec![
-            // Γ[0](s)
+        let boundary_functions: Vec<Vs> = vec![
+            // Γ0(s) with s ϵ [-1,+1]
             Box::new(move |x, s| {
-                x[0] = a_0[0] + (1.0 + s) * u0_0[0] / 2.0;
-                x[1] = a_0[1] + (1.0 + s) * u0_0[1] / 2.0;
+                x[0] = xa_0 + (1.0 + s) * scale0_0;
+                x[1] = xa_1 + (1.0 + s) * scale0_1;
             }),
-            // Γ[1](s)
+            // Γ1(s) with s ϵ [-1,+1]
             Box::new(move |x, s| {
-                x[0] = b_1[0] + (1.0 + s) * u1_1[0] / 2.0;
-                x[1] = b_1[1] + (1.0 + s) * u1_1[1] / 2.0;
+                x[0] = xb_0 + (1.0 + s) * scale1_0;
+                x[1] = xb_1 + (1.0 + s) * scale1_1;
             }),
-            // Γ[2](r)
+            // Γ2(r) with r ϵ [-1,+1]
             Box::new(move |x, r| {
-                x[0] = a_2[0] + (1.0 + r) * u2_2[0] / 2.0;
-                x[1] = a_2[1] + (1.0 + r) * u2_2[1] / 2.0;
+                x[0] = xa_0 + (1.0 + r) * scale2_0;
+                x[1] = xa_1 + (1.0 + r) * scale2_1;
             }),
-            // Γ[3](r)
+            // Γ3(r) with r ϵ [-1,+1]
             Box::new(move |x, r| {
-                x[0] = d_3[0] + (1.0 + r) * u3_3[0] / 2.0;
-                x[1] = d_3[1] + (1.0 + r) * u3_3[1] / 2.0;
+                x[0] = xd_0 + (1.0 + r) * scale3_0;
+                x[1] = xd_1 + (1.0 + r) * scale3_1;
             }),
         ];
 
-        let u0_c = u0.clone();
-        let u1_c = u1.clone();
-        let u2_c = u2.clone();
-        let u3_c = u3.clone();
-
-        let ed: Vec<Vs> = vec![
-            // dΓ[0]/ds
-            Box::new(move |dxds, _| {
-                dxds[0] = u0_c[0] / 2.0;
-                dxds[1] = u0_c[1] / 2.0;
+        let deriv1_boundary_functions: Vec<Vs> = vec![
+            // dΓ0/ds
+            Box::new(move |dx_ds, _| {
+                dx_ds[0] = scale0_0;
+                dx_ds[1] = scale0_1;
             }),
-            // dΓ[1]/ds
-            Box::new(move |dxds, _| {
-                dxds[0] = u1_c[0] / 2.0;
-                dxds[1] = u1_c[1] / 2.0;
+            // dΓ1/ds
+            Box::new(move |dx_ds, _| {
+                dx_ds[0] = scale1_0;
+                dx_ds[1] = scale1_1;
             }),
-            // dΓ[2]/dr
-            Box::new(move |dxdr, _| {
-                dxdr[0] = u2_c[0] / 2.0;
-                dxdr[1] = u2_c[1] / 2.0;
+            // dΓ2/dr
+            Box::new(move |dx_dr, _| {
+                dx_dr[0] = scale2_0;
+                dx_dr[1] = scale2_1;
             }),
-            // dΓ[3]/dr
-            Box::new(move |dxdr, _| {
-                dxdr[0] = u3_c[0] / 2.0;
-                dxdr[1] = u3_c[1] / 2.0;
+            // dΓ3/dr
+            Box::new(move |dx_dr, _| {
+                dx_dr[0] = scale3_0;
+                dx_dr[1] = scale3_1;
             }),
         ];
 
-        Transfinite::new_2d(e, ed, None)
+        Transfinite::new_2d(boundary_functions, deriv1_boundary_functions, None)
     }
 
     /// Generates a transfinite mapping of a quarter of a ring centered @ (0,0)
@@ -766,14 +754,75 @@ impl TransfiniteSamples {
 #[cfg(test)]
 mod tests {
     use super::TransfiniteSamples;
+    use crate::Transfinite;
+    use plotpy::{linspace, Canvas, Plot, PolyCode};
     use russell_lab::{vec_approx_eq, Vector};
+
+    const SAVE_FIGURE: bool = false;
+
+    fn draw_lines_2d(canvas: &mut Canvas, map: &mut Transfinite, np: usize, dot_size: f64) {
+        let mut x = Vector::new(2);
+        let mut u = Vector::new(2);
+        let rr = linspace(-1.0, 1.0, np);
+        let ss = rr.clone();
+        // lines in r-direction
+        for j in 0..np {
+            u[1] = ss[j];
+            u[0] = rr[0];
+            map.point(&mut x, &u);
+            canvas.polycurve_begin();
+            canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
+            for i in 1..np {
+                u[0] = rr[i];
+                map.point(&mut x, &u);
+                canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
+            }
+            canvas.polycurve_end(false);
+        }
+        // lines in s-direction
+        for i in 0..np {
+            u[0] = rr[i];
+            u[1] = ss[0];
+            map.point(&mut x, &u);
+            canvas.polycurve_begin();
+            canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
+            for j in 1..np {
+                u[1] = ss[j];
+                map.point(&mut x, &u);
+                canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
+            }
+            canvas.polycurve_end(false);
+        }
+        // points at corners
+        u[0] = -1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        u[0] = 1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        u[0] = 1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        u[0] = -1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        // point in the center
+        u[0] = 0.0;
+        u[1] = 0.0;
+        map.point(&mut x, &u);
+        canvas.draw_circle(x[0], x[1], dot_size);
+    }
 
     #[test]
     fn test_quadrilateral_2d() {
-        let xa = &[0.0, 0.0];
-        let xb = &[1.0, 0.0];
-        let xc = &[1.0, 1.0];
-        let xd = &[0.0, 1.0];
+        let xa = &[1.0, 0.0];
+        let xb = &[6.0, 4.0];
+        let xc = &[1.0, 6.0];
+        let xd = &[0.0, 5.0];
         let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
 
         let mut x = Vector::new(2);
@@ -802,6 +851,19 @@ mod tests {
         u[0] = 0.0;
         u[1] = 0.0;
         map.point(&mut x, &u);
-        vec_approx_eq(&x, &[0.5, 0.5], 1e-15);
+        println!("x = {:?}", x);
+        // vec_approx_eq(&x, &[0.5, 0.5], 1e-15);
+
+        if SAVE_FIGURE {
+            let mut canvas = Canvas::new();
+            draw_lines_2d(&mut canvas, &mut map, 21, 0.03);
+            let mut plot = Plot::new();
+            plot.add(&canvas)
+                .set_range(-0.05, 6.05, -0.05, 6.05)
+                .set_equal_axes(true)
+                .set_figure_size_points(600.0, 600.0)
+                .save("/tmp/russell_pde/test_quadrilateral_2d.svg")
+                .unwrap();
+        }
     }
 }

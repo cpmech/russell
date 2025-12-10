@@ -363,40 +363,40 @@ impl TransfiniteSamples {
         )
     }
 
-    /// Generates a transfinite mapping of a cube
-    pub fn cube_3d(lx: f64, ly: f64, lz: f64) -> Transfinite {
-        let b: Vec<Vss> = vec![
-            // B[0](s,t)
+    /// Generates a transfinite mapping of a "brick"
+    pub fn brick_3d(lx: f64, ly: f64, lz: f64) -> Transfinite {
+        let boundary_functions: Vec<Vss> = vec![
+            // B0(s,t)
             Box::new(move |x, s, t| {
                 x[0] = 0.0;
                 x[1] = (1.0 + s) * ly / 2.0;
                 x[2] = (1.0 + t) * lz / 2.0;
             }),
-            // B[1](s,t)
+            // B1(s,t)
             Box::new(move |x, s, t| {
                 x[0] = lx;
                 x[1] = (1.0 + s) * ly / 2.0;
                 x[2] = (1.0 + t) * lz / 2.0;
             }),
-            // B[2](r,t)
+            // B2(r,t)
             Box::new(move |x, r, t| {
                 x[0] = (1.0 + r) * lx / 2.0;
                 x[1] = 0.0;
                 x[2] = (1.0 + t) * lz / 2.0;
             }),
-            // B[3](r,t)
+            // B3(r,t)
             Box::new(move |x, r, t| {
                 x[0] = (1.0 + r) * lx / 2.0;
                 x[1] = ly;
                 x[2] = (1.0 + t) * lz / 2.0;
             }),
-            // B[4](r,s)
+            // B4(r,s)
             Box::new(move |x, r, s| {
                 x[0] = (1.0 + r) * lx / 2.0;
                 x[1] = (1.0 + s) * ly / 2.0;
                 x[2] = 0.0;
             }),
-            // B[5](r,s)
+            // B5(r,s)
             Box::new(move |x, r, s| {
                 x[0] = (1.0 + r) * lx / 2.0;
                 x[1] = (1.0 + s) * ly / 2.0;
@@ -404,64 +404,64 @@ impl TransfiniteSamples {
             }),
         ];
 
-        let bd: Vec<Vvss> = vec![
-            // Bd[0](s,t)
-            Box::new(move |dxds, dxdt, _, _| {
-                dxds[0] = 0.0;
-                dxds[1] = ly / 2.0;
-                dxds[2] = 0.0;
-                dxdt[0] = 0.0;
-                dxdt[1] = 0.0;
-                dxdt[2] = lz / 2.0;
+        let deriv1_boundary_functions: Vec<Vvss> = vec![
+            // Bd0(s,t)
+            Box::new(move |dx_ds, dx_dt, _, _| {
+                dx_ds[0] = 0.0;
+                dx_ds[1] = ly / 2.0;
+                dx_ds[2] = 0.0;
+                dx_dt[0] = 0.0;
+                dx_dt[1] = 0.0;
+                dx_dt[2] = lz / 2.0;
             }),
-            // Bd[1](s,t)
-            Box::new(move |dxds, dxdt, _, _| {
-                dxds[0] = 0.0;
-                dxds[1] = ly / 2.0;
-                dxds[2] = 0.0;
-                dxdt[0] = 0.0;
-                dxdt[1] = 0.0;
-                dxdt[2] = lz / 2.0;
+            // Bd1(s,t)
+            Box::new(move |dx_ds, dx_dt, _, _| {
+                dx_ds[0] = 0.0;
+                dx_ds[1] = ly / 2.0;
+                dx_ds[2] = 0.0;
+                dx_dt[0] = 0.0;
+                dx_dt[1] = 0.0;
+                dx_dt[2] = lz / 2.0;
             }),
-            // Bd[2](r,t)
-            Box::new(move |dxdr, dxdt, _, _| {
-                dxdr[0] = lx / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxdt[0] = 0.0;
-                dxdt[1] = 0.0;
-                dxdt[2] = lz / 2.0;
+            // Bd2(r,t)
+            Box::new(move |dx_dr, dx_dt, _, _| {
+                dx_dr[0] = lx / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_dt[0] = 0.0;
+                dx_dt[1] = 0.0;
+                dx_dt[2] = lz / 2.0;
             }),
-            // Bd[3](r,t)
-            Box::new(move |dxdr, dxdt, _, _| {
-                dxdr[0] = lx / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxdt[0] = 0.0;
-                dxdt[1] = 0.0;
-                dxdt[2] = lz / 2.0;
+            // Bd3(r,t)
+            Box::new(move |dx_dr, dx_dt, _, _| {
+                dx_dr[0] = lx / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_dt[0] = 0.0;
+                dx_dt[1] = 0.0;
+                dx_dt[2] = lz / 2.0;
             }),
-            // Bd[4](r,s)
-            Box::new(move |dxdr, dxds, _, _| {
-                dxdr[0] = lx / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxds[0] = 0.0;
-                dxds[1] = ly / 2.0;
-                dxds[2] = 0.0;
+            // Bd4(r,s)
+            Box::new(move |dx_dr, dx_ds, _, _| {
+                dx_dr[0] = lx / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_ds[0] = 0.0;
+                dx_ds[1] = ly / 2.0;
+                dx_ds[2] = 0.0;
             }),
-            // Bd[5](r,s)
-            Box::new(move |dxdr, dxds, _, _| {
-                dxdr[0] = lx / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxds[0] = 0.0;
-                dxds[1] = ly / 2.0;
-                dxds[2] = 0.0;
+            // Bd5(r,s)
+            Box::new(move |dx_dr, dx_ds, _, _| {
+                dx_dr[0] = lx / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_ds[0] = 0.0;
+                dx_ds[1] = ly / 2.0;
+                dx_ds[2] = 0.0;
             }),
         ];
 
-        Transfinite::new_3d(b, bd, None)
+        Transfinite::new_3d(boundary_functions, deriv1_boundary_functions, None)
     }
 
     /// Generates a transfinite mapping of a quarter of a 3d ring centered @ (0,0)
@@ -776,17 +776,16 @@ mod tests {
         canvas.set_face_color("None");
         let mut x = Vector::new(2);
         let mut u = Vector::new(2);
-        let rr = linspace(-1.0, 1.0, np);
-        let ss = rr.clone();
+        let tt = linspace(-1.0, 1.0, np);
         // lines in r-direction
         for j in 0..np {
-            u[1] = ss[j];
-            u[0] = rr[0];
+            u[1] = tt[j];
+            u[0] = tt[0];
             map.point(&mut x, &u);
             canvas.polycurve_begin();
             canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
             for i in 1..np {
-                u[0] = rr[i];
+                u[0] = tt[i];
                 map.point(&mut x, &u);
                 canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
             }
@@ -794,13 +793,13 @@ mod tests {
         }
         // lines in s-direction
         for i in 0..np {
-            u[0] = rr[i];
-            u[1] = ss[0];
+            u[0] = tt[i];
+            u[1] = tt[0];
             map.point(&mut x, &u);
             canvas.polycurve_begin();
             canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
             for j in 1..np {
-                u[1] = ss[j];
+                u[1] = tt[j];
                 map.point(&mut x, &u);
                 canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
             }
@@ -828,6 +827,112 @@ mod tests {
         u[1] = 0.0;
         map.point(&mut x, &u);
         canvas.draw_circle(x[0], x[1], dot_size);
+    }
+
+    fn draw_surface_lines_3d(canvas: &mut Canvas, map: &mut Transfinite, np: usize) {
+        canvas.set_face_color("None");
+        let mut x = Vector::new(3);
+        let mut u = Vector::new(3);
+        let tt = linspace(-1.0, 1.0, np);
+
+        // surface @ xmin and xmax
+        for t in [-1.0, 1.0] {
+            u[0] = t;
+            // lines in r-direction
+            for j in 0..np {
+                u[2] = tt[j];
+                u[1] = tt[0];
+                map.point(&mut x, &u);
+                canvas.polyline_3d_begin();
+                canvas.polyline_3d_add(x[0], x[1], x[2]);
+                for i in 1..np {
+                    u[1] = tt[i];
+                    map.point(&mut x, &u);
+                    canvas.polyline_3d_add(x[0], x[1], x[2]);
+                }
+                canvas.polyline_3d_end();
+            }
+            // lines in s-direction
+            for i in 0..np {
+                u[1] = tt[i];
+                u[2] = tt[0];
+                map.point(&mut x, &u);
+                canvas.polyline_3d_begin();
+                canvas.polyline_3d_add(x[0], x[1], x[2]);
+                for j in 1..np {
+                    u[2] = tt[j];
+                    map.point(&mut x, &u);
+                    canvas.polyline_3d_add(x[0], x[1], x[2]);
+                }
+                canvas.polyline_3d_end();
+            }
+        }
+
+        // surface @ ymin and ymax
+        for t in [-1.0, 1.0] {
+            u[1] = t;
+            // lines in r-direction
+            for j in 0..np {
+                u[2] = tt[j];
+                u[0] = tt[0];
+                map.point(&mut x, &u);
+                canvas.polyline_3d_begin();
+                canvas.polyline_3d_add(x[0], x[1], x[2]);
+                for i in 1..np {
+                    u[0] = tt[i];
+                    map.point(&mut x, &u);
+                    canvas.polyline_3d_add(x[0], x[1], x[2]);
+                }
+                canvas.polyline_3d_end();
+            }
+            // lines in s-direction
+            for i in 0..np {
+                u[0] = tt[i];
+                u[2] = tt[0];
+                map.point(&mut x, &u);
+                canvas.polyline_3d_begin();
+                canvas.polyline_3d_add(x[0], x[1], x[2]);
+                for j in 1..np {
+                    u[2] = tt[j];
+                    map.point(&mut x, &u);
+                    canvas.polyline_3d_add(x[0], x[1], x[2]);
+                }
+                canvas.polyline_3d_end();
+            }
+        }
+
+        // surface @ zmin and zmax
+        for t in [-1.0, 1.0] {
+            u[2] = t;
+            // lines in r-direction
+            for j in 0..np {
+                u[1] = tt[j];
+                u[0] = tt[0];
+                map.point(&mut x, &u);
+                canvas.polyline_3d_begin();
+                canvas.polyline_3d_add(x[0], x[1], x[2]);
+                for i in 1..np {
+                    u[0] = tt[i];
+                    map.point(&mut x, &u);
+                    canvas.polyline_3d_add(x[0], x[1], x[2]);
+                }
+                canvas.polyline_3d_end();
+            }
+            // lines in s-direction
+            for i in 0..np {
+                u[0] = tt[i];
+                u[1] = tt[0];
+                map.point(&mut x, &u);
+                canvas.polyline_3d_begin();
+                canvas.polyline_3d_add(x[0], x[1], x[2]);
+                for j in 1..np {
+                    u[1] = tt[j];
+                    map.point(&mut x, &u);
+                    canvas.polyline_3d_add(x[0], x[1], x[2]);
+                }
+                canvas.polyline_3d_end();
+            }
+        }
     }
 
     #[test]
@@ -1002,7 +1107,7 @@ mod tests {
             circle.set_face_color("None").set_edge_color("red").set_line_width(2.0);
             circle.draw_circle(0.0, 0.0, radius);
             let mut canvas = Canvas::new();
-            draw_lines_2d(&mut canvas, &mut map, 21, 0.03);
+            draw_lines_2d(&mut canvas, &mut map, 21, 0.02);
             let mut plot = Plot::new();
             plot.add(&circle)
                 .add(&canvas)
@@ -1010,6 +1115,81 @@ mod tests {
                 .set_equal_axes(true)
                 .set_figure_size_points(600.0, 600.0)
                 .save("/tmp/russell_pde/test_quarter_perforated_lozenge_2d.svg")
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn test_brick_3d() {
+        let (lx, ly, lz) = (2.0, 3.0, 4.0);
+        let mut map = TransfiniteSamples::brick_3d(lx, ly, lz);
+
+        let mut x = Vector::new(3);
+        let mut u = Vector::new(3);
+
+        // z = 0 //////////
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, 0.0, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[lx, 0.0, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[lx, ly, 0.0], 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, ly, 0.0], 1e-15);
+
+        // z = lz //////////
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, 0.0, lz], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[lx, 0.0, lz], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[lx, ly, lz], 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, ly, lz], 1e-15);
+
+        if SAVE_FIGURE {
+            let mut canvas = Canvas::new();
+            draw_surface_lines_3d(&mut canvas, &mut map, 11);
+            let mut plot = Plot::new();
+            canvas.draw_glyph_3d(0.0, 0.0, 4.0);
+            plot.add(&canvas)
+                .set_camera(30.0, 30.0)
+                .set_hide_3d_grid(true)
+                .set_equal_axes(true)
+                .set_figure_size_points(800.0, 800.0)
+                .save("/tmp/russell_pde/test_brick_3d.svg")
                 .unwrap();
         }
     }

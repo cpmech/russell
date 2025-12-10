@@ -246,11 +246,8 @@ impl Transfinite3d {
     }
 
     /// Computes "real" position x(r,s,t)
-    pub fn point(&mut self, x: &mut Vector, u: &Vector) {
+    pub fn point(&mut self, x: &mut Vector, r: f64, s: f64, t: f64) {
         // auxiliary
-        let r = u[0];
-        let s = u[1];
-        let t = u[2];
         let m = -1.0;
         let p = 1.0;
 
@@ -323,15 +320,14 @@ impl Transfinite3d {
         d2x_drs: Option<&mut Vector>,
         d2x_drt: Option<&mut Vector>,
         d2x_dst: Option<&mut Vector>,
-        u: &Vector,
+        r: f64,
+        s: f64,
+        t: f64,
     ) {
         // auxiliary
         let second_derivs = d2x_dr2.is_some();
         let m = -1.0;
         let p = 1.0;
-        let r = u[0];
-        let s = u[1];
-        let t = u[2];
 
         // compute boundary functions @ {r,s,t}
         (self.boundary_functions[0])(&mut self.b0st, s, t);

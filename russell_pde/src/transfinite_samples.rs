@@ -478,9 +478,8 @@ impl TransfiniteSamples {
             // B0(s,t)
             Box::new(move |x, s, t| {
                 let mut surf = surf_0.lock().unwrap();
-                let u2d = Vector::from(&[s, t]);
                 let mut x2d = Vector::new(2);
-                surf.point(&mut x2d, &u2d);
+                surf.point(&mut x2d, s, t);
                 x[0] = 0.0;
                 x[1] = x2d[0];
                 x[2] = x2d[1];
@@ -488,9 +487,8 @@ impl TransfiniteSamples {
             // B1(s,t)
             Box::new(move |x, s, t| {
                 let mut surf = surf_1.lock().unwrap();
-                let u2d = Vector::from(&[s, t]);
                 let mut x2d = Vector::new(2);
-                surf.point(&mut x2d, &u2d);
+                surf.point(&mut x2d, s, t);
                 x[0] = h;
                 x[1] = x2d[0];
                 x[2] = x2d[1];
@@ -529,11 +527,10 @@ impl TransfiniteSamples {
             // Bd0(s,t)
             Box::new(move |dx_ds, dx_dt, s, t| {
                 let mut surf = surf_d0.lock().unwrap();
-                let u2d = Vector::from(&[s, t]);
                 let mut tmp = Vector::new(2);
                 let mut dx_dr_2d = Vector::new(2);
                 let mut dx_ds_2d = Vector::new(2);
-                surf.point_and_derivs(&mut tmp, &mut dx_dr_2d, &mut dx_ds_2d, None, None, None, &u2d);
+                surf.point_and_derivs(&mut tmp, &mut dx_dr_2d, &mut dx_ds_2d, None, None, None, s, t);
                 dx_ds[0] = 0.0;
                 dx_ds[1] = dx_dr_2d[0];
                 dx_ds[2] = dx_dr_2d[1];
@@ -544,11 +541,10 @@ impl TransfiniteSamples {
             // Bd1(s,t)
             Box::new(move |dx_ds, dx_dt, s, t| {
                 let mut surf = surf_d1.lock().unwrap();
-                let u2d = Vector::from(&[s, t]);
                 let mut tmp = Vector::new(2);
                 let mut dx_dr_2d = Vector::new(2);
                 let mut dx_ds_2d = Vector::new(2);
-                surf.point_and_derivs(&mut tmp, &mut dx_dr_2d, &mut dx_ds_2d, None, None, None, &u2d);
+                surf.point_and_derivs(&mut tmp, &mut dx_dr_2d, &mut dx_ds_2d, None, None, None, s, t);
                 dx_ds[0] = 0.0;
                 dx_ds[1] = dx_dr_2d[0];
                 dx_ds[2] = dx_dr_2d[1];
@@ -602,7 +598,6 @@ impl TransfiniteSamples {
             // Bdd0(s,t)
             Box::new(move |d2x_ds2, d2x_dt2, d2x_dst, s, t| {
                 let mut surf = surf_dd0.lock().unwrap();
-                let u2d = Vector::from(&[s, t]);
                 let mut x_tmp = Vector::new(2);
                 let mut dx_dr_tmp = Vector::new(2);
                 let mut dx_ds_tmp = Vector::new(2);
@@ -616,7 +611,8 @@ impl TransfiniteSamples {
                     Some(&mut d2x_dr2_2d),
                     Some(&mut d2x_ds2_2d),
                     Some(&mut d2x_drs_2d),
-                    &u2d,
+                    s,
+                    t,
                 );
                 d2x_ds2[0] = 0.0;
                 d2x_ds2[1] = d2x_dr2_2d[0];
@@ -633,7 +629,6 @@ impl TransfiniteSamples {
             // Bdd1(s,t)
             Box::new(move |d2x_ds2, d2x_dt2, d2x_dst, s, t| {
                 let mut surf = surf_dd1.lock().unwrap();
-                let u2d = Vector::from(&[s, t]);
                 let mut x_tmp = Vector::new(2);
                 let mut dx_dr_tmp = Vector::new(2);
                 let mut dx_ds_tmp = Vector::new(2);
@@ -647,7 +642,8 @@ impl TransfiniteSamples {
                     Some(&mut d2x_dr2_2d),
                     Some(&mut d2x_ds_2d),
                     Some(&mut d2x_drs_2d),
-                    &u2d,
+                    s,
+                    t,
                 );
                 d2x_ds2[0] = 0.0;
                 d2x_ds2[1] = d2x_dr2_2d[0];
@@ -743,159 +739,136 @@ mod tests {
     fn draw_lines_2d(canvas: &mut Canvas, map: &mut Transfinite2d, np: usize, dot_size: f64) {
         canvas.set_face_color("None");
         let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
         let tt = linspace(-1.0, 1.0, np);
         // lines in r-direction
         for j in 0..np {
-            u[1] = tt[j];
-            u[0] = tt[0];
-            map.point(&mut x, &u);
+            let s = tt[j];
+            map.point(&mut x, tt[0], s);
             canvas.polycurve_begin();
             canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
             for i in 1..np {
-                u[0] = tt[i];
-                map.point(&mut x, &u);
+                let r = tt[i];
+                map.point(&mut x, r, s);
                 canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
             }
             canvas.polycurve_end(false);
         }
         // lines in s-direction
         for i in 0..np {
-            u[0] = tt[i];
-            u[1] = tt[0];
-            map.point(&mut x, &u);
+            let r = tt[i];
+            map.point(&mut x, r, tt[0]);
             canvas.polycurve_begin();
             canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
             for j in 1..np {
-                u[1] = tt[j];
-                map.point(&mut x, &u);
+                let s = tt[j];
+                map.point(&mut x, r, s);
                 canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
             }
             canvas.polycurve_end(false);
         }
         // points at corners
-        u[0] = -1.0;
-        u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, -1.0, -1.0);
         canvas.draw_circle(x[0], x[1], dot_size);
-        u[0] = 1.0;
-        u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 1.0, -1.0);
         canvas.draw_circle(x[0], x[1], dot_size);
-        u[0] = 1.0;
-        u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 1.0, 1.0);
         canvas.draw_circle(x[0], x[1], dot_size);
-        u[0] = -1.0;
-        u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, -1.0, 1.0);
         canvas.draw_circle(x[0], x[1], dot_size);
         // point in the center
-        u[0] = 0.0;
-        u[1] = 0.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 0.0, 0.0);
         canvas.draw_circle(x[0], x[1], dot_size);
     }
 
     fn draw_surface_lines_3d(canvas: &mut Canvas, map: &mut Transfinite3d, np: usize) {
         canvas.set_face_color("None");
         let mut x = Vector::new(3);
-        let mut u = Vector::new(3);
-        let tt = linspace(-1.0, 1.0, np);
+        let param = linspace(-1.0, 1.0, np);
 
-        // surface @ xmin and xmax
-        for t in [-1.0, 1.0] {
-            u[0] = t;
-            // lines in r-direction
+        // surface @ r_min and r_max
+        for r in [-1.0, 1.0] {
+            // lines along s (varying s, fixed t)
             for j in 0..np {
-                u[2] = tt[j];
-                u[1] = tt[0];
-                map.point(&mut x, &u);
+                let t = param[j];
+                map.point(&mut x, r, -1.0, t);
                 canvas.polyline_3d_begin();
                 canvas.polyline_3d_add(x[0], x[1], x[2]);
                 for i in 1..np {
-                    u[1] = tt[i];
-                    map.point(&mut x, &u);
+                    let s = param[i];
+                    map.point(&mut x, r, s, t);
                     canvas.polyline_3d_add(x[0], x[1], x[2]);
                 }
                 canvas.polyline_3d_end();
             }
-            // lines in s-direction
+            // lines along t (varying t, fixed s)
             for i in 0..np {
-                u[1] = tt[i];
-                u[2] = tt[0];
-                map.point(&mut x, &u);
+                let s = param[i];
+                map.point(&mut x, r, s, -1.0);
                 canvas.polyline_3d_begin();
                 canvas.polyline_3d_add(x[0], x[1], x[2]);
                 for j in 1..np {
-                    u[2] = tt[j];
-                    map.point(&mut x, &u);
+                    let t = param[j];
+                    map.point(&mut x, r, s, t);
                     canvas.polyline_3d_add(x[0], x[1], x[2]);
                 }
                 canvas.polyline_3d_end();
             }
         }
 
-        // surface @ ymin and ymax
-        for t in [-1.0, 1.0] {
-            u[1] = t;
-            // lines in r-direction
+        // surface @ s_min and s_max
+        for s in [-1.0, 1.0] {
+            // lines along r (varying r, fixed t)
             for j in 0..np {
-                u[2] = tt[j];
-                u[0] = tt[0];
-                map.point(&mut x, &u);
+                let t = param[j];
+                map.point(&mut x, -1.0, s, t);
                 canvas.polyline_3d_begin();
                 canvas.polyline_3d_add(x[0], x[1], x[2]);
                 for i in 1..np {
-                    u[0] = tt[i];
-                    map.point(&mut x, &u);
+                    let r = param[i];
+                    map.point(&mut x, r, s, t);
                     canvas.polyline_3d_add(x[0], x[1], x[2]);
                 }
                 canvas.polyline_3d_end();
             }
-            // lines in s-direction
+            // lines along t (varying t, fixed r)
             for i in 0..np {
-                u[0] = tt[i];
-                u[2] = tt[0];
-                map.point(&mut x, &u);
+                let r = param[i];
+                map.point(&mut x, r, s, -1.0);
                 canvas.polyline_3d_begin();
                 canvas.polyline_3d_add(x[0], x[1], x[2]);
                 for j in 1..np {
-                    u[2] = tt[j];
-                    map.point(&mut x, &u);
+                    let t = param[j];
+                    map.point(&mut x, r, s, t);
                     canvas.polyline_3d_add(x[0], x[1], x[2]);
                 }
                 canvas.polyline_3d_end();
             }
         }
 
-        // surface @ zmin and zmax
+        // surface @ t_min and t_max
         for t in [-1.0, 1.0] {
-            u[2] = t;
-            // lines in r-direction
+            // lines along r (varying r, fixed s)
             for j in 0..np {
-                u[1] = tt[j];
-                u[0] = tt[0];
-                map.point(&mut x, &u);
+                let s = param[j];
+                map.point(&mut x, param[0], s, t);
                 canvas.polyline_3d_begin();
                 canvas.polyline_3d_add(x[0], x[1], x[2]);
                 for i in 1..np {
-                    u[0] = tt[i];
-                    map.point(&mut x, &u);
+                    let r = param[i];
+                    map.point(&mut x, r, s, t);
                     canvas.polyline_3d_add(x[0], x[1], x[2]);
                 }
                 canvas.polyline_3d_end();
             }
-            // lines in s-direction
+            // lines along s (varying s, fixed r)
             for i in 0..np {
-                u[0] = tt[i];
-                u[1] = tt[0];
-                map.point(&mut x, &u);
+                let r = param[i];
+                map.point(&mut x, r, param[0], t);
                 canvas.polyline_3d_begin();
                 canvas.polyline_3d_add(x[0], x[1], x[2]);
                 for j in 1..np {
-                    u[1] = tt[j];
-                    map.point(&mut x, &u);
+                    let s = param[j];
+                    map.point(&mut x, r, s, t);
                     canvas.polyline_3d_add(x[0], x[1], x[2]);
                 }
                 canvas.polyline_3d_end();
@@ -916,22 +889,22 @@ mod tests {
 
         u[0] = -1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, xa, 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, xb, 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, xc, 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, xd, 1e-15);
 
         if SAVE_FIGURE {
@@ -958,22 +931,22 @@ mod tests {
 
         u[0] = -1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[r_in, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[r_out, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[0.0, r_out], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[0.0, r_in], 1e-15);
 
         if SAVE_FIGURE {
@@ -1005,22 +978,22 @@ mod tests {
 
         u[0] = -1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[r_in, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[r_out, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[-r_out, 0.0], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[-r_in, 0.0], 1e-15);
 
         if SAVE_FIGURE {
@@ -1052,22 +1025,22 @@ mod tests {
 
         u[0] = -1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[radius, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[diagonal, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[0.0, diagonal], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1]);
         vec_approx_eq(&x, &[0.0, radius], 1e-15);
 
         if SAVE_FIGURE {
@@ -1100,25 +1073,25 @@ mod tests {
         u[0] = -1.0;
         u[1] = -1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, 0.0, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[lx, 0.0, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[lx, ly, 0.0], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, ly, 0.0], 1e-15);
 
         // z = lz //////////
@@ -1126,25 +1099,25 @@ mod tests {
         u[0] = -1.0;
         u[1] = -1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, 0.0, lz], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[lx, 0.0, lz], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[lx, ly, lz], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, ly, lz], 1e-15);
 
         if SAVE_FIGURE {
@@ -1177,25 +1150,25 @@ mod tests {
         u[0] = -1.0;
         u[1] = -1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, r_in, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[thickness, r_in, 0.0], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[thickness, r_out, 0.0], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
         u[2] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, r_out, 0.0], 1e-15);
 
         // y = 0 //////////
@@ -1203,25 +1176,25 @@ mod tests {
         u[0] = -1.0;
         u[1] = -1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, 0.0, r_in], 1e-15);
 
         u[0] = 1.0;
         u[1] = -1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[thickness, 0.0, r_in], 1e-15);
 
         u[0] = 1.0;
         u[1] = 1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[thickness, 0.0, r_out], 1e-15);
 
         u[0] = -1.0;
         u[1] = 1.0;
         u[2] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, u[0], u[1], u[2]);
         vec_approx_eq(&x, &[0.0, 0.0, r_out], 1e-15);
 
         if SAVE_FIGURE {

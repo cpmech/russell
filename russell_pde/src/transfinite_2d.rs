@@ -99,10 +99,8 @@ impl Transfinite2d {
     }
 
     /// Computes "real" position x(r,s,t)
-    pub fn point(&mut self, x: &mut Vector, u: &Vector) {
+    pub fn point(&mut self, x: &mut Vector, r: f64, s: f64) {
         // compute boundary functions @ {r,s}
-        let r = u[0];
-        let s = u[1];
         (self.boundary_functions[0])(&mut self.b0s, s);
         (self.boundary_functions[1])(&mut self.b1s, s);
         (self.boundary_functions[2])(&mut self.b2r, r);
@@ -131,12 +129,11 @@ impl Transfinite2d {
         d2x_dr2: Option<&mut Vector>,
         d2x_ds2: Option<&mut Vector>,
         d2x_drs: Option<&mut Vector>,
-        u: &Vector,
+        r: f64,
+        s: f64,
     ) {
         // auxiliary
         let second_derivs = d2x_dr2.is_some();
-        let r = u[0];
-        let s = u[1];
 
         // compute boundary functions @ {r,s}
         (self.boundary_functions[0])(&mut self.b0s, s);
@@ -242,9 +239,21 @@ impl Transfinite2d {
 
 #[cfg(test)]
 mod tests {
+    use super::Transfinite2d;
     use crate::TransfiniteSamples;
     use russell_lab::math::SQRT_2;
     use russell_lab::{vec_approx_eq, Vector};
+
+    fn check_deriv1(map: &mut Transfinite2d, rr: &[f64], ss: &[f64], tol_r: f64, tol_s: f64) {
+        let mut x = Vector::new(2);
+        let mut u = Vector::new(2);
+        for r in rr {
+            for s in ss {
+                //
+            }
+        }
+        //
+    }
 
     #[test]
     fn transfinite_2d_works_1() {
@@ -262,26 +271,15 @@ mod tests {
 
         // check some points
         let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
-        u[0] = 0.0;
-        u[1] = -1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 0.0, -1.0);
         vec_approx_eq(&x, &[0.5 * (r_in + r_out), 0.0], 1e-15);
-        u[0] = 1.0;
-        u[1] = 0.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 1.0, 0.0);
         vec_approx_eq(&x, &[r_out * SQRT_2 / 2.0, r_out * SQRT_2 / 2.0], 1e-15);
-        u[0] = 0.0;
-        u[1] = 1.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 0.0, 1.0);
         vec_approx_eq(&x, &[0.0, 0.5 * (r_in + r_out)], 1e-15);
-        u[0] = -1.0;
-        u[1] = 0.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, -1.0, 0.0);
         vec_approx_eq(&x, &[r_in * SQRT_2 / 2.0, r_in * SQRT_2 / 2.0], 1e-15);
-        u[0] = 0.0;
-        u[1] = 0.0;
-        map.point(&mut x, &u);
+        map.point(&mut x, 0.0, 0.0);
         vec_approx_eq(
             &x,
             &[(r_in + r_out) * SQRT_2 / 4.0, (r_in + r_out) * SQRT_2 / 4.0],

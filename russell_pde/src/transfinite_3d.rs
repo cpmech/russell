@@ -1,4 +1,5 @@
 use super::{FnVec1Param2, FnVec2Param2, FnVec3Param2};
+use crate::StrError;
 use russell_lab::Vector;
 
 /// Implements the transfinite mapping
@@ -137,12 +138,18 @@ impl Transfinite3d {
         boundary_functions: Vec<FnVec1Param2>,
         deriv1_boundary_functions: Vec<FnVec2Param2>,
         deriv2_boundary_functions: Option<Vec<FnVec3Param2>>,
-    ) -> Self {
+    ) -> Result<Self, StrError> {
         // checks
-        assert_eq!(boundary_functions.len(), 6);
-        assert_eq!(deriv1_boundary_functions.len(), 6);
+        if boundary_functions.len() != 6 {
+            return Err("boundary_functions must have length 6");
+        }
+        if deriv1_boundary_functions.len() != 6 {
+            return Err("deriv1_boundary_functions must have length 6");
+        }
         if let Some(ref bdd_val) = deriv2_boundary_functions {
-            assert_eq!(bdd_val.len(), 6);
+            if bdd_val.len() != 6 {
+                return Err("deriv2_boundary_functions must have length 6");
+            }
         }
 
         let mut map = Transfinite3d {
@@ -242,7 +249,7 @@ impl Transfinite3d {
         (map.boundary_functions[5])(&mut map.p5, 1.0, -1.0);
         (map.boundary_functions[5])(&mut map.p6, 1.0, 1.0);
         (map.boundary_functions[5])(&mut map.p7, -1.0, 1.0);
-        map
+        Ok(map)
     }
 
     /// Computes "real" position x(r,s,t)
@@ -736,8 +743,53 @@ impl Transfinite3d {
 
 #[cfg(test)]
 mod tests {
-    // use super::{FnVec1Param1, Transfinite3d};
+    use super::Transfinite3d;
     // use russell_lab::{vec_approx_eq, Vector};
 
-    // TODO
+    #[test]
+    fn transfinite_3d_captures_errors() {
+        assert_eq!(
+            Transfinite3d::new(vec![], vec![], None).err(),
+            Some("boundary_functions must have length 6")
+        );
+        assert_eq!(
+            Transfinite3d::new(
+                vec![
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {})
+                ],
+                vec![Box::new(|_, _, _, _| {})],
+                None
+            )
+            .err(),
+            Some("deriv1_boundary_functions must have length 6")
+        );
+        assert_eq!(
+            Transfinite3d::new(
+                vec![
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {}),
+                    Box::new(|_, _, _| {})
+                ],
+                vec![
+                    Box::new(|_, _, _, _| {}),
+                    Box::new(|_, _, _, _| {}),
+                    Box::new(|_, _, _, _| {}),
+                    Box::new(|_, _, _, _| {}),
+                    Box::new(|_, _, _, _| {}),
+                    Box::new(|_, _, _, _| {})
+                ],
+                Some(vec![Box::new(|_, _, _, _, _| {})])
+            )
+            .err(),
+            Some("deriv2_boundary_functions must have length 6")
+        );
+    }
 }

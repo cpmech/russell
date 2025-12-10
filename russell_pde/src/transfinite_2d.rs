@@ -1,4 +1,5 @@
 use super::FnVec1Param1;
+use crate::StrError;
 use russell_lab::Vector;
 
 /// Implements the transfinite mapping
@@ -56,16 +57,28 @@ pub struct Transfinite2d {
 
 impl Transfinite2d {
     /// Allocates a new instance
+    ///
+    /// # Arguments
+    ///
+    /// * `boundary_functions` - boundary functions [B0(s), B1(s), B2(r), B3(r)]
+    /// * `deriv1_boundary_functions` - 1st derivatives of boundary functions
+    /// * `deriv2_boundary_functions` - 2nd derivatives of boundary functions (optional)
     pub fn new(
         boundary_functions: Vec<FnVec1Param1>,
         deriv1_boundary_functions: Vec<FnVec1Param1>,
         deriv2_boundary_functions: Option<Vec<FnVec1Param1>>,
-    ) -> Self {
+    ) -> Result<Self, StrError> {
         // checks
-        assert_eq!(boundary_functions.len(), 4);
-        assert_eq!(deriv1_boundary_functions.len(), 4);
+        if boundary_functions.len() != 4 {
+            return Err("boundary_functions must have length 4");
+        }
+        if deriv1_boundary_functions.len() != 4 {
+            return Err("deriv1_boundary_functions must have length 4");
+        }
         if let Some(ref edd_val) = deriv2_boundary_functions {
-            assert_eq!(edd_val.len(), 4);
+            if edd_val.len() != 4 {
+                return Err("deriv2_boundary_functions must have length 4");
+            }
         }
 
         let mut map = Transfinite2d {
@@ -95,7 +108,7 @@ impl Transfinite2d {
         (map.boundary_functions[0])(&mut map.p3, 1.0);
         (map.boundary_functions[1])(&mut map.p1, -1.0);
         (map.boundary_functions[1])(&mut map.p2, 1.0);
-        map
+        Ok(map)
     }
 
     /// Calculates the position x(r,s) at reference location (r,s)
@@ -437,5 +450,46 @@ mod tests {
 
         // check derivatives
         check_derivs(&mut map, 1e-10, 1e-8);
+    }
+
+    #[test]
+    fn transfinite_2d_captures_errors() {
+        assert_eq!(
+            Transfinite2d::new(vec![], vec![], None).err(),
+            Some("boundary_functions must have length 4")
+        );
+        assert_eq!(
+            Transfinite2d::new(
+                vec![
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {})
+                ],
+                vec![Box::new(|_, _| {})],
+                None
+            )
+            .err(),
+            Some("deriv1_boundary_functions must have length 4")
+        );
+        assert_eq!(
+            Transfinite2d::new(
+                vec![
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {})
+                ],
+                vec![
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {}),
+                    Box::new(|_, _| {})
+                ],
+                Some(vec![Box::new(|_, _| {})])
+            )
+            .err(),
+            Some("deriv2_boundary_functions must have length 4")
+        );
     }
 }

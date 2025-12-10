@@ -134,6 +134,12 @@ pub struct Transfinite3d {
 
 impl Transfinite3d {
     /// Allocates a new instance
+    ///
+    /// # Arguments
+    ///
+    /// * `boundary_functions` - boundary functions B0..B5
+    /// * `deriv1_boundary_functions` - first derivatives of boundary functions
+    /// * `deriv2_boundary_functions` - second derivatives of boundary functions (optional)
     pub fn new(
         boundary_functions: Vec<FnVec1Param2>,
         deriv1_boundary_functions: Vec<FnVec2Param2>,
@@ -252,7 +258,14 @@ impl Transfinite3d {
         Ok(map)
     }
 
-    /// Computes "real" position x(r,s,t)
+    /// Calculates the position x(r,s,t) at reference location (r,s,t)
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - position vector (output)
+    /// * `r` - reference coordinate r (input)
+    /// * `s` - reference coordinate s (input)
+    /// * `t` - reference coordinate t (input)
     pub fn point(&mut self, x: &mut Vector, r: f64, s: f64, t: f64) {
         // auxiliary
         let m = -1.0;
@@ -314,7 +327,27 @@ impl Transfinite3d {
         }
     }
 
-    /// Computes position and the first and second order derivatives
+    /// Calculates the position x(r,s,t) at reference location (r,s,t) and its derivatives
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - position vector (output)
+    /// * `dx_dr` - derivative of position with respect to r (output)
+    /// * `dx_ds` - derivative of position with respect to s (output)
+    /// * `dx_dt` - derivative of position with respect to t (output)
+    /// * `d2x_dr2` - 2nd derivative of position with respect to r (output, optional)
+    /// * `d2x_ds2` - 2nd derivative of position with respect to s (output, optional)
+    /// * `d2x_dt2` - 2nd derivative of position with respect to t (output, optional)
+    /// * `d2x_drs` - mixed 2nd derivative of position with respect to r and s (output, optional)
+    /// * `d2x_drt` - mixed 2nd derivative of position with respect to r and t (output, optional)
+    /// * `d2x_dst` - mixed 2nd derivative of position with respect to s and t (output, optional)
+    /// * `r` - reference coordinate r (input)
+    /// * `s` - reference coordinate s (input)
+    /// * `t` - reference coordinate t (input)
+    ///
+    /// # Notes
+    ///
+    /// If any of the second derivative arguments are `None`, then second derivatives are not computed
     pub fn point_and_derivs(
         &mut self,
         x: &mut Vector,
@@ -332,7 +365,6 @@ impl Transfinite3d {
         t: f64,
     ) {
         // auxiliary
-        let second_derivs = d2x_dr2.is_some();
         let m = -1.0;
         let p = 1.0;
 
@@ -501,7 +533,13 @@ impl Transfinite3d {
         }
 
         // skip second order derivatives
-        if !second_derivs {
+        if d2x_dr2.is_none()
+            || d2x_ds2.is_none()
+            || d2x_dt2.is_none()
+            || d2x_drs.is_none()
+            || d2x_drt.is_none()
+            || d2x_dst.is_none()
+        {
             return;
         }
 
@@ -513,7 +551,8 @@ impl Transfinite3d {
         let d2x_drt = d2x_drt.unwrap();
         let d2x_dst = d2x_dst.unwrap();
 
-        // only 2nd cross-derivatives may be non-zero
+        // calculate the mixed derivative
+        // Note: Even if the 2nd boundary derivatives are nil, the mixed derivative may not non-zero
         if self.deriv2_boundary_functions.is_none() {
             for i in 0..3 {
                 d2x_dr2[i] = 0.0;
@@ -596,29 +635,29 @@ impl Transfinite3d {
         }
 
         // compute second derivatives @ {r,s,t}
-        let deriv2_boundary_functions = self.deriv2_boundary_functions.as_ref().unwrap();
-        (deriv2_boundary_functions[0])(&mut self.ddb0st_dss, &mut self.ddb0st_dtt, &mut self.ddb0st_dst, s, t);
-        (deriv2_boundary_functions[1])(&mut self.ddb1st_dss, &mut self.ddb1st_dtt, &mut self.ddb1st_dst, s, t);
-        (deriv2_boundary_functions[2])(&mut self.ddb2rt_drr, &mut self.ddb2rt_dtt, &mut self.ddb2rt_drt, r, t);
-        (deriv2_boundary_functions[3])(&mut self.ddb3rt_drr, &mut self.ddb3rt_dtt, &mut self.ddb3rt_drt, r, t);
-        (deriv2_boundary_functions[4])(&mut self.ddb4rs_drr, &mut self.ddb4rs_dss, &mut self.ddb4rs_drs, r, s);
-        (deriv2_boundary_functions[5])(&mut self.ddb5rs_drr, &mut self.ddb5rs_dss, &mut self.ddb5rs_drs, r, s);
+        let d2_bry_func = self.deriv2_boundary_functions.as_ref().unwrap();
+        (d2_bry_func[0])(&mut self.ddb0st_dss, &mut self.ddb0st_dtt, &mut self.ddb0st_dst, s, t);
+        (d2_bry_func[1])(&mut self.ddb1st_dss, &mut self.ddb1st_dtt, &mut self.ddb1st_dst, s, t);
+        (d2_bry_func[2])(&mut self.ddb2rt_drr, &mut self.ddb2rt_dtt, &mut self.ddb2rt_drt, r, t);
+        (d2_bry_func[3])(&mut self.ddb3rt_drr, &mut self.ddb3rt_dtt, &mut self.ddb3rt_drt, r, t);
+        (d2_bry_func[4])(&mut self.ddb4rs_drr, &mut self.ddb4rs_dss, &mut self.ddb4rs_drs, r, s);
+        (d2_bry_func[5])(&mut self.ddb5rs_drr, &mut self.ddb5rs_dss, &mut self.ddb5rs_drs, r, s);
 
         // compute second derivatives @ edges
-        (deriv2_boundary_functions[0])(&mut self.ddb0sm_dss, &mut self.tm1, &mut self.tm2, s, m);
-        (deriv2_boundary_functions[0])(&mut self.ddb0sp_dss, &mut self.tm1, &mut self.tm2, s, p);
-        (deriv2_boundary_functions[0])(&mut self.tm1, &mut self.ddb0mt_dtt, &mut self.tm2, m, t);
-        (deriv2_boundary_functions[0])(&mut self.tm1, &mut self.ddb0pt_dtt, &mut self.tm2, p, t);
+        (d2_bry_func[0])(&mut self.ddb0sm_dss, &mut self.tm1, &mut self.tm2, s, m);
+        (d2_bry_func[0])(&mut self.ddb0sp_dss, &mut self.tm1, &mut self.tm2, s, p);
+        (d2_bry_func[0])(&mut self.tm1, &mut self.ddb0mt_dtt, &mut self.tm2, m, t);
+        (d2_bry_func[0])(&mut self.tm1, &mut self.ddb0pt_dtt, &mut self.tm2, p, t);
 
-        (deriv2_boundary_functions[1])(&mut self.ddb1sm_dss, &mut self.tm1, &mut self.tm2, s, m);
-        (deriv2_boundary_functions[1])(&mut self.ddb1sp_dss, &mut self.tm1, &mut self.tm2, s, p);
-        (deriv2_boundary_functions[1])(&mut self.tm1, &mut self.ddb1mt_dtt, &mut self.tm2, m, t);
-        (deriv2_boundary_functions[1])(&mut self.tm1, &mut self.ddb1pt_dtt, &mut self.tm2, p, t);
+        (d2_bry_func[1])(&mut self.ddb1sm_dss, &mut self.tm1, &mut self.tm2, s, m);
+        (d2_bry_func[1])(&mut self.ddb1sp_dss, &mut self.tm1, &mut self.tm2, s, p);
+        (d2_bry_func[1])(&mut self.tm1, &mut self.ddb1mt_dtt, &mut self.tm2, m, t);
+        (d2_bry_func[1])(&mut self.tm1, &mut self.ddb1pt_dtt, &mut self.tm2, p, t);
 
-        (deriv2_boundary_functions[2])(&mut self.ddb2rm_drr, &mut self.tm1, &mut self.tm2, r, m);
-        (deriv2_boundary_functions[2])(&mut self.ddb2rp_drr, &mut self.tm1, &mut self.tm2, r, p);
-        (deriv2_boundary_functions[3])(&mut self.ddb3rm_drr, &mut self.tm1, &mut self.tm2, r, m);
-        (deriv2_boundary_functions[3])(&mut self.ddb3rp_drr, &mut self.tm1, &mut self.tm2, r, p);
+        (d2_bry_func[2])(&mut self.ddb2rm_drr, &mut self.tm1, &mut self.tm2, r, m);
+        (d2_bry_func[2])(&mut self.ddb2rp_drr, &mut self.tm1, &mut self.tm2, r, p);
+        (d2_bry_func[3])(&mut self.ddb3rm_drr, &mut self.tm1, &mut self.tm2, r, m);
+        (d2_bry_func[3])(&mut self.ddb3rp_drr, &mut self.tm1, &mut self.tm2, r, p);
 
         // second order derivatives
         for i in 0..3 {

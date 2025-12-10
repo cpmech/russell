@@ -329,4 +329,35 @@ mod tests {
         // check derivatives
         check_derivs(&mut map, 1e-9, 1e-8);
     }
+
+    #[test]
+    fn transfinite_2d_works_2() {
+        // allocate transfinite map for quarter ring
+        let r_in = 2.0;
+        let r_out = 6.0;
+        let mut map = TransfiniteSamples::half_ring_2d(r_in, r_out);
+
+        // check corners
+        let (p0, p1, p2, p3) = map.get_corners();
+        vec_approx_eq(&p0, &[r_in, 0.0], 1e-15);
+        vec_approx_eq(&p1, &[r_out, 0.0], 1e-15);
+        vec_approx_eq(&p2, &[-r_out, 0.0], 1e-15);
+        vec_approx_eq(&p3, &[-r_in, 0.0], 1e-15);
+
+        // check some points
+        let mut x = Vector::new(2);
+        map.point(&mut x, 0.0, -1.0);
+        vec_approx_eq(&x, &[0.5 * (r_in + r_out), 0.0], 1e-15);
+        map.point(&mut x, 1.0, 0.0);
+        vec_approx_eq(&x, &[0.0, r_out], 1e-15);
+        map.point(&mut x, 0.0, 1.0);
+        vec_approx_eq(&x, &[-0.5 * (r_in + r_out), 0.0], 1e-15);
+        map.point(&mut x, -1.0, 0.0);
+        vec_approx_eq(&x, &[0.0, r_in], 1e-15);
+        map.point(&mut x, 0.0, 0.0);
+        vec_approx_eq(&x, &[0.0, 0.5 * (r_in + r_out)], 1e-15);
+
+        // check derivatives
+        check_derivs(&mut map, 1e-8, 1e-8);
+    }
 }

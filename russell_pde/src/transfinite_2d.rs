@@ -120,7 +120,6 @@ impl Transfinite2d {
                 - (1.0 + r) * (1.0 + s) * self.p2[i] / 4.0
                 - (1.0 - r) * (1.0 + s) * self.p3[i] / 4.0;
         }
-        return;
     }
 
     /// Computes position and the first and second order derivatives
@@ -232,76 +231,61 @@ impl Transfinite2d {
                 + self.p3[i] / 4.0;
         }
     }
+
+    /// Returns the corner points
+    pub fn get_corners(&self) -> (&Vector, &Vector, &Vector, &Vector) {
+        (&self.p0, &self.p1, &self.p2, &self.p3)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{FnVec1Param1, Transfinite2d};
+    use crate::TransfiniteSamples;
+    use russell_lab::math::SQRT_2;
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
-    fn transfinite_2d_new_works() {
-        // identity mapping
-        // e0(s) = (-1, s)
-        let e0: FnVec1Param1 = Box::new(|x, s| {
-            x[0] = -1.0;
-            x[1] = s;
-        });
-        // e1(s) = (+1, s)
-        let e1: FnVec1Param1 = Box::new(|x, s| {
-            x[0] = 1.0;
-            x[1] = s;
-        });
-        // e2(r) = (r, -1)
-        let e2: FnVec1Param1 = Box::new(|x, r| {
-            x[0] = r;
-            x[1] = -1.0;
-        });
-        // e3(r) = (r, +1)
-        let e3: FnVec1Param1 = Box::new(|x, r| {
-            x[0] = r;
-            x[1] = 1.0;
-        });
+    fn transfinite_2d_works_1() {
+        // allocate transfinite map for quarter ring
+        let r_in = 2.0;
+        let r_out = 6.0;
+        let mut map = TransfiniteSamples::quarter_ring_2d(r_in, r_out);
 
-        // derivatives
-        let ed0: FnVec1Param1 = Box::new(|dx, _| {
-            dx[0] = 0.0;
-            dx[1] = 1.0;
-        });
-        let ed1: FnVec1Param1 = Box::new(|dx, _| {
-            dx[0] = 0.0;
-            dx[1] = 1.0;
-        });
-        let ed2: FnVec1Param1 = Box::new(|dx, _| {
-            dx[0] = 1.0;
-            dx[1] = 0.0;
-        });
-        let ed3: FnVec1Param1 = Box::new(|dx, _| {
-            dx[0] = 1.0;
-            dx[1] = 0.0;
-        });
+        // check corners
+        let (p0, p1, p2, p3) = map.get_corners();
+        vec_approx_eq(&p0, &[r_in, 0.0], 1e-15);
+        vec_approx_eq(&p1, &[r_out, 0.0], 1e-15);
+        vec_approx_eq(&p2, &[0.0, r_out], 1e-15);
+        vec_approx_eq(&p3, &[0.0, r_in], 1e-15);
 
-        let e = vec![e0, e1, e2, e3];
-        let ed = vec![ed0, ed1, ed2, ed3];
-
-        let mut tr = Transfinite2d::new(e, ed, None);
-
+        // check some points
         let mut x = Vector::new(2);
-        let u = Vector::from(&[0.0, 0.0]);
-        tr.point(&mut x, &u);
-        vec_approx_eq(&x, &[0.0, 0.0], 1e-15);
-
-        let u = Vector::from(&[0.5, 0.5]);
-        tr.point(&mut x, &u);
-        vec_approx_eq(&x, &[0.5, 0.5], 1e-15);
-
-        let mut dx_dr = Vector::new(2);
-        let mut dx_ds = Vector::new(2);
-        tr.point_and_derivs(&mut x, &mut dx_dr, &mut dx_ds, None, None, None, &u);
-        vec_approx_eq(&x, &[0.5, 0.5], 1e-15);
-        vec_approx_eq(&dx_dr, &[1.0, 0.0], 1e-15);
-        vec_approx_eq(&dx_ds, &[0.0, 1.0], 1e-15);
+        let mut u = Vector::new(2);
+        u[0] = 0.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.5 * (r_in + r_out), 0.0], 1e-15);
+        u[0] = 1.0;
+        u[1] = 0.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[r_out * SQRT_2 / 2.0, r_out * SQRT_2 / 2.0], 1e-15);
+        u[0] = 0.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, 0.5 * (r_in + r_out)], 1e-15);
+        u[0] = -1.0;
+        u[1] = 0.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[r_in * SQRT_2 / 2.0, r_in * SQRT_2 / 2.0], 1e-15);
+        u[0] = 0.0;
+        u[1] = 0.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(
+            &x,
+            &[(r_in + r_out) * SQRT_2 / 4.0, (r_in + r_out) * SQRT_2 / 4.0],
+            1e-15,
+        );
     }
 }

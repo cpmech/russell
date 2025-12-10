@@ -4,6 +4,26 @@ use russell_lab::Vector;
 /// Implements the transfinite mapping
 ///
 /// Maps a reference cube [-1,+1] × [-1,+1] × [-1,+1] into a curve-bounded region in 3D
+///
+/// ```text
+///
+///                                   +----------------+
+///                                 ,'|              ,'|
+///      t or z                   ,'  |  ___       ,'  |     B0(s,t)
+///         ↑                   ,'    |,'5,'  [0],'    |     B1(s,t)
+///         |                 ,'      |~~~     ,'      |     B2(r,t)
+///         |               +'===============+'  ,'|   |     B3(r,t)
+///         |               |   ,'|   |      |   |3|   |     B4(r,s)
+///         |     s or y    |   |2|   |      |   |,'   |     B5(r,s)
+///         +-------->      |   |,'   +- - - | +- - - -+
+///       ,'                |       ,'       |       ,'
+///     ,'                  |     ,' [1]  ___|     ,'
+/// r or x                  |   ,'      ,'4,'|   ,'
+///                         | ,'        ~~~  | ,'
+///                         +----------------+'
+/// ```
+///
+/// Note: The reference coordinates {r,s,t} ϵ [-1,+1]×[-1,+1]×[-1,+1] are also symbolized by `u`
 pub struct Transfinite3d {
     // boundary function
     // len = 6

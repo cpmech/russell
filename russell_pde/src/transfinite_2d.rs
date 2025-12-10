@@ -4,6 +4,20 @@ use russell_lab::Vector;
 /// Implements the transfinite mapping
 ///
 /// Maps a reference square [-1,+1] × [-1,+1] into a curve-bounded region in 2D
+///
+/// ```text
+///                                              B3(r(x,y)) _,'\
+///             B3(r)                                    _,'    \ B1(s(x,y))
+///            ┌───────┐                              _,'        \
+///            │       │                             \            \
+///       B0(s)│       │B1(s)  MAPS TO                \         _,'
+///  s         │       │                    B0(s(x,y)) \     _,'
+///  │         └───────┘               y                \ _,'  B2(r(x,y))
+///  └──r       B2(r)                  │                 '
+///                                    └──x
+/// ```
+///
+/// Note: The reference coordinates {r,s,t} ϵ [-1,+1]×[-1,+1]×[-1,+1] are also symbolized by `u`
 pub struct Transfinite2d {
     // boundary functions
     // len = 4

@@ -284,79 +284,83 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- diagonal of lozenge (diamond)
     pub fn quarter_perforated_lozenge_2d(a: f64, b: f64) -> Transfinite {
-        let e: Vec<Vs> = vec![
-            // B[0](s)
+        let boundary_functions: Vec<Vs> = vec![
+            // B0(s)
             Box::new(move |x, s| {
                 let theta = PI * (1.0 + s) / 4.0;
                 x[0] = a * theta.cos();
                 x[1] = a * theta.sin();
             }),
-            // B[1](s)
+            // B1(s)
             Box::new(move |x, s| {
                 x[0] = b * 0.5 * (1.0 - s);
                 x[1] = b * 0.5 * (1.0 + s);
             }),
-            // B[2](r)
+            // B2(r)
             Box::new(move |x, r| {
                 x[0] = a + 0.5 * (1.0 + r) * (b - a);
                 x[1] = 0.0;
             }),
-            // B[3](r)
+            // B3(r)
             Box::new(move |x, r| {
                 x[0] = 0.0;
                 x[1] = a + 0.5 * (1.0 + r) * (b - a);
             }),
         ];
 
-        let ed: Vec<Vs> = vec![
-            // dB[0]/ds
-            Box::new(move |dxds, s| {
+        let deriv1_boundary_functions: Vec<Vs> = vec![
+            // dB0/ds
+            Box::new(move |dx_ds, s| {
                 let theta = PI * (1.0 + s) / 4.0;
-                dxds[0] = -a * theta.sin() * PI / 4.0;
-                dxds[1] = a * theta.cos() * PI / 4.0;
+                dx_ds[0] = -a * theta.sin() * PI / 4.0;
+                dx_ds[1] = a * theta.cos() * PI / 4.0;
             }),
-            // dB[1]/ds
-            Box::new(move |dxds, _| {
-                dxds[0] = -b * 0.5;
-                dxds[1] = b * 0.5;
+            // dB1/ds
+            Box::new(move |dx_ds, _| {
+                dx_ds[0] = -b * 0.5;
+                dx_ds[1] = b * 0.5;
             }),
-            // dB[2]/dr
-            Box::new(move |dxdr, _| {
-                dxdr[0] = 0.5 * (b - a);
-                dxdr[1] = 0.0;
+            // dB2/dr
+            Box::new(move |dx_dr, _| {
+                dx_dr[0] = 0.5 * (b - a);
+                dx_dr[1] = 0.0;
             }),
-            // dB[3]/dr
-            Box::new(move |dxdr, _| {
-                dxdr[0] = 0.0;
-                dxdr[1] = 0.5 * (b - a);
+            // dB3/dr
+            Box::new(move |dx_dr, _| {
+                dx_dr[0] = 0.0;
+                dx_dr[1] = 0.5 * (b - a);
             }),
         ];
 
-        let edd: Vec<Vs> = vec![
-            // d²B[0]/ds²
-            Box::new(move |ddxdss, s| {
+        let deriv2_boundary_functions: Vec<Vs> = vec![
+            // d²B0/ds²
+            Box::new(move |d2x_ds2, s| {
                 let theta = PI * (1.0 + s) / 4.0;
-                ddxdss[0] = -a * theta.cos() * PI * PI / 16.0;
-                ddxdss[1] = -a * theta.sin() * PI * PI / 16.0;
+                d2x_ds2[0] = -a * theta.cos() * PI * PI / 16.0;
+                d2x_ds2[1] = -a * theta.sin() * PI * PI / 16.0;
             }),
-            // d²B[1]/ds²
-            Box::new(move |ddxdss, _| {
-                ddxdss[0] = 0.0;
-                ddxdss[1] = 0.0;
+            // d²B1/ds²
+            Box::new(move |d2x_ds2, _| {
+                d2x_ds2[0] = 0.0;
+                d2x_ds2[1] = 0.0;
             }),
-            // d²B[2]/dr²
-            Box::new(move |ddxdrr, _| {
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
+            // d²B2/dr²
+            Box::new(move |d2x_dr2, _| {
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
             }),
-            // d²B[3]/dr²
-            Box::new(move |ddxdrr, _| {
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
+            // d²B3/dr²
+            Box::new(move |d2x_dr2, _| {
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
             }),
         ];
 
-        Transfinite::new_2d(e, ed, Some(edd))
+        Transfinite::new_2d(
+            boundary_functions,
+            deriv1_boundary_functions,
+            Some(deriv2_boundary_functions),
+        )
     }
 
     /// Generates a transfinite mapping of a cube
@@ -960,6 +964,52 @@ mod tests {
                 .set_equal_axes(true)
                 .set_figure_size_points(800.0, 600.0)
                 .save("/tmp/russell_pde/test_half_ring_2d.svg")
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn test_quarter_perforated_lozenge_2d() {
+        let radius = 1.0;
+        let diagonal = 3.0;
+        let mut map = TransfiniteSamples::quarter_perforated_lozenge_2d(radius, diagonal);
+
+        let mut x = Vector::new(2);
+        let mut u = Vector::new(2);
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[radius, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[diagonal, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, diagonal], 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, radius], 1e-15);
+
+        if SAVE_FIGURE {
+            let mut circle = Canvas::new();
+            circle.set_face_color("None").set_edge_color("red").set_line_width(2.0);
+            circle.draw_circle(0.0, 0.0, radius);
+            let mut canvas = Canvas::new();
+            draw_lines_2d(&mut canvas, &mut map, 21, 0.03);
+            let mut plot = Plot::new();
+            plot.add(&circle)
+                .add(&canvas)
+                .set_range(-1.05, 3.05, -1.05, 3.05)
+                .set_equal_axes(true)
+                .set_figure_size_points(600.0, 600.0)
+                .save("/tmp/russell_pde/test_quarter_perforated_lozenge_2d.svg")
                 .unwrap();
         }
     }

@@ -1,4 +1,4 @@
-use crate::transfinite::{FnVec1Param1, FnVec1Param2, FnVec2Param2, FnVec3Param2, Transfinite};
+use super::{FnVec1Param1, FnVec1Param2, FnVec2Param2, FnVec3Param2, Transfinite2d, Transfinite3d};
 use russell_lab::Vector;
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
@@ -21,7 +21,7 @@ impl TransfiniteSamples {
     /// ```
     ///
     /// Note that: r ϵ [-1,+1] and s ϵ [-1,+1]
-    pub fn quadrilateral_2d(xa: &[f64], xb: &[f64], xc: &[f64], xd: &[f64]) -> Transfinite {
+    pub fn quadrilateral_2d(xa: &[f64], xb: &[f64], xc: &[f64], xd: &[f64]) -> Transfinite2d {
         let (xa_0, xa_1) = (xa[0], xa[1]);
         let (xb_0, xb_1) = (xb[0], xb[1]);
         let (xc_0, xc_1) = (xc[0], xc[1]);
@@ -78,7 +78,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite::new_2d(boundary_functions, deriv1_boundary_functions, None)
+        Transfinite2d::new(boundary_functions, deriv1_boundary_functions, None)
     }
 
     /// Generates a transfinite mapping of a quarter of a ring centered @ (0,0)
@@ -96,7 +96,7 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- outer radius
-    pub fn quarter_ring_2d(a: f64, b: f64) -> Transfinite {
+    pub fn quarter_ring_2d(a: f64, b: f64) -> Transfinite2d {
         let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
             Box::new(move |x, s| {
@@ -172,7 +172,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite::new_2d(
+        Transfinite2d::new(
             boundary_functions,
             deriv1_boundary_functions,
             Some(deriv2_boundary_functions),
@@ -195,7 +195,7 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- outer radius
-    pub fn half_ring_2d(a: f64, b: f64) -> Transfinite {
+    pub fn half_ring_2d(a: f64, b: f64) -> Transfinite2d {
         let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
             Box::new(move |x, s| {
@@ -271,7 +271,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite::new_2d(
+        Transfinite2d::new(
             boundary_functions,
             deriv1_boundary_functions,
             Some(deriv2_boundary_functions),
@@ -283,7 +283,7 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- diagonal of lozenge (diamond)
-    pub fn quarter_perforated_lozenge_2d(a: f64, b: f64) -> Transfinite {
+    pub fn quarter_perforated_lozenge_2d(a: f64, b: f64) -> Transfinite2d {
         let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
             Box::new(move |x, s| {
@@ -356,7 +356,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite::new_2d(
+        Transfinite2d::new(
             boundary_functions,
             deriv1_boundary_functions,
             Some(deriv2_boundary_functions),
@@ -364,7 +364,7 @@ impl TransfiniteSamples {
     }
 
     /// Generates a transfinite mapping of a "brick"
-    pub fn brick_3d(lx: f64, ly: f64, lz: f64) -> Transfinite {
+    pub fn brick_3d(lx: f64, ly: f64, lz: f64) -> Transfinite3d {
         let boundary_functions: Vec<FnVec1Param2> = vec![
             // B0(s,t)
             Box::new(move |x, s, t| {
@@ -461,7 +461,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite::new_3d(boundary_functions, deriv1_boundary_functions, None)
+        Transfinite3d::new(boundary_functions, deriv1_boundary_functions, None)
     }
 
     /// Generates a transfinite mapping of a quarter of a 3d ring centered @ (0,0)
@@ -469,7 +469,7 @@ impl TransfiniteSamples {
     /// a -- inner radius
     /// b -- outer radius
     /// h -- thickness along x-direction
-    pub fn quarter_ring_3d(a: f64, b: f64, h: f64) -> Transfinite {
+    pub fn quarter_ring_3d(a: f64, b: f64, h: f64) -> Transfinite3d {
         let surf = Arc::new(Mutex::new(TransfiniteSamples::quarter_ring_2d(a, b)));
 
         let surf_0 = surf.clone();
@@ -533,20 +533,7 @@ impl TransfiniteSamples {
                 let mut tmp = Vector::new(2);
                 let mut dx_dr_2d = Vector::new(2);
                 let mut dx_ds_2d = Vector::new(2);
-                let mut dummy = Vector::new(0);
-                surf.point_and_derivs(
-                    &mut tmp,
-                    &mut dx_dr_2d,
-                    &mut dx_ds_2d,
-                    &mut dummy,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    &u2d,
-                );
+                surf.point_and_derivs(&mut tmp, &mut dx_dr_2d, &mut dx_ds_2d, None, None, None, &u2d);
                 dx_ds[0] = 0.0;
                 dx_ds[1] = dx_dr_2d[0];
                 dx_ds[2] = dx_dr_2d[1];
@@ -561,20 +548,7 @@ impl TransfiniteSamples {
                 let mut tmp = Vector::new(2);
                 let mut dx_dr_2d = Vector::new(2);
                 let mut dx_ds_2d = Vector::new(2);
-                let mut dummy = Vector::new(0);
-                surf.point_and_derivs(
-                    &mut tmp,
-                    &mut dx_dr_2d,
-                    &mut dx_ds_2d,
-                    &mut dummy,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    &u2d,
-                );
+                surf.point_and_derivs(&mut tmp, &mut dx_dr_2d, &mut dx_ds_2d, None, None, None, &u2d);
                 dx_ds[0] = 0.0;
                 dx_ds[1] = dx_dr_2d[0];
                 dx_ds[2] = dx_dr_2d[1];
@@ -632,7 +606,6 @@ impl TransfiniteSamples {
                 let mut x_tmp = Vector::new(2);
                 let mut dx_dr_tmp = Vector::new(2);
                 let mut dx_ds_tmp = Vector::new(2);
-                let mut dx_dt_tmp = Vector::new(2);
                 let mut d2x_dr2_2d = Vector::new(2);
                 let mut d2x_ds2_2d = Vector::new(2);
                 let mut d2x_drs_2d = Vector::new(2);
@@ -640,13 +613,9 @@ impl TransfiniteSamples {
                     &mut x_tmp,
                     &mut dx_dr_tmp,
                     &mut dx_ds_tmp,
-                    &mut dx_dt_tmp,
                     Some(&mut d2x_dr2_2d),
                     Some(&mut d2x_ds2_2d),
-                    None,
                     Some(&mut d2x_drs_2d),
-                    None,
-                    None,
                     &u2d,
                 );
                 d2x_ds2[0] = 0.0;
@@ -668,7 +637,6 @@ impl TransfiniteSamples {
                 let mut x_tmp = Vector::new(2);
                 let mut dx_dr_tmp = Vector::new(2);
                 let mut dx_ds_tmp = Vector::new(2);
-                let mut dx_dt_tmp = Vector::new(2);
                 let mut d2x_dr2_2d = Vector::new(2);
                 let mut d2x_ds_2d = Vector::new(2);
                 let mut d2x_drs_2d = Vector::new(2);
@@ -676,13 +644,9 @@ impl TransfiniteSamples {
                     &mut x_tmp,
                     &mut dx_dr_tmp,
                     &mut dx_ds_tmp,
-                    &mut dx_dt_tmp,
                     Some(&mut d2x_dr2_2d),
                     Some(&mut d2x_ds_2d),
-                    None,
                     Some(&mut d2x_drs_2d),
-                    None,
-                    None,
                     &u2d,
                 );
                 d2x_ds2[0] = 0.0;
@@ -757,7 +721,7 @@ impl TransfiniteSamples {
             }),
         ];
 
-        Transfinite::new_3d(
+        Transfinite3d::new(
             boundary_functions,
             deriv1_boundary_functions,
             Some(deriv2_boundary_functions),
@@ -770,13 +734,13 @@ impl TransfiniteSamples {
 #[cfg(test)]
 mod tests {
     use super::TransfiniteSamples;
-    use crate::Transfinite;
+    use crate::{Transfinite2d, Transfinite3d};
     use plotpy::{linspace, Canvas, Plot, PolyCode};
     use russell_lab::{vec_approx_eq, Vector};
 
     const SAVE_FIGURE: bool = false;
 
-    fn draw_lines_2d(canvas: &mut Canvas, map: &mut Transfinite, np: usize, dot_size: f64) {
+    fn draw_lines_2d(canvas: &mut Canvas, map: &mut Transfinite2d, np: usize, dot_size: f64) {
         canvas.set_face_color("None");
         let mut x = Vector::new(2);
         let mut u = Vector::new(2);
@@ -833,7 +797,7 @@ mod tests {
         canvas.draw_circle(x[0], x[1], dot_size);
     }
 
-    fn draw_surface_lines_3d(canvas: &mut Canvas, map: &mut Transfinite, np: usize) {
+    fn draw_surface_lines_3d(canvas: &mut Canvas, map: &mut Transfinite3d, np: usize) {
         canvas.set_face_color("None");
         let mut x = Vector::new(3);
         let mut u = Vector::new(3);

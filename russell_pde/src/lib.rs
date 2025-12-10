@@ -7,6 +7,7 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
+mod constants;
 mod enums;
 mod equation_handler;
 mod essential_bcs_1d;
@@ -17,9 +18,11 @@ mod grid_1d;
 mod grid_2d;
 mod metrics;
 mod spectral_laplacian_2d;
-mod transfinite;
+mod transfinite_2d;
+mod transfinite_3d;
 mod transfinite_samples;
 
+pub use constants::*;
 pub use enums::*;
 pub use equation_handler::*;
 pub use essential_bcs_1d::*;
@@ -30,7 +33,8 @@ pub use grid_1d::*;
 pub use grid_2d::*;
 pub use metrics::*;
 pub use spectral_laplacian_2d::*;
-pub use transfinite::*;
+pub use transfinite_2d::*;
+pub use transfinite_3d::*;
 pub use transfinite_samples::*;
 
 // run code from README file

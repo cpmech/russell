@@ -737,6 +737,13 @@ impl Transfinite3d {
                 + (1.0 - r) * self.p7[i] / 8.0;
         }
     }
+
+    /// Returns the corner points
+    pub fn get_corners(&self) -> (&Vector, &Vector, &Vector, &Vector, &Vector, &Vector, &Vector, &Vector) {
+        (
+            &self.p0, &self.p1, &self.p2, &self.p3, &self.p4, &self.p5, &self.p6, &self.p7,
+        )
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -744,7 +751,117 @@ impl Transfinite3d {
 #[cfg(test)]
 mod tests {
     use super::Transfinite3d;
-    // use russell_lab::{vec_approx_eq, Vector};
+    use crate::TransfiniteSamples;
+    use russell_lab::{vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq, Vector};
+
+    fn check_derivs(map: &mut Transfinite3d, tol_d1: f64, tol_d2: f64) {
+        let mut x_ana = Vector::new(3);
+        let mut dx_dr_ana = Vector::new(3);
+        let mut dx_ds_ana = Vector::new(3);
+        let mut dx_dt_ana = Vector::new(3);
+        let mut d2x_dr2_ana = Vector::new(3);
+        let mut d2x_ds2_ana = Vector::new(3);
+        let mut d2x_dt2_ana = Vector::new(3);
+        let mut d2x_drs_ana = Vector::new(3);
+        let mut d2x_drt_ana = Vector::new(3);
+        let mut d2x_dst_ana = Vector::new(3);
+        let args = &mut 0_u8;
+        for s_at in [-0.5, 0.0, 0.5] {
+            for t_at in [-0.5, 0.0, 0.5] {
+                for r_at in [-0.5, 0.0, 0.5] {
+                    map.point_and_derivs(
+                        &mut x_ana,
+                        &mut dx_dr_ana,
+                        &mut dx_ds_ana,
+                        &mut dx_dt_ana,
+                        Some(&mut d2x_dr2_ana),
+                        Some(&mut d2x_ds2_ana),
+                        Some(&mut d2x_dt2_ana),
+                        Some(&mut d2x_drs_ana),
+                        Some(&mut d2x_drt_ana),
+                        Some(&mut d2x_dst_ana),
+                        r_at,
+                        s_at,
+                        t_at,
+                    );
+                    // dx/dr
+                    vec_deriv1_approx_eq(&dx_dr_ana, r_at, args, tol_d1, |x, r, _| {
+                        map.point(x, r, s_at, t_at);
+                        Ok(())
+                    });
+                    // dx/ds
+                    vec_deriv1_approx_eq(&dx_ds_ana, s_at, args, tol_d1, |x, s, _| {
+                        map.point(x, r_at, s, t_at);
+                        Ok(())
+                    });
+                    // dx/dt
+                    vec_deriv1_approx_eq(&dx_dt_ana, t_at, args, tol_d1, |x, t, _| {
+                        map.point(x, r_at, s_at, t);
+                        Ok(())
+                    });
+                    // d²x/dr²
+                    vec_deriv2_approx_eq(&d2x_dr2_ana, r_at, args, tol_d2, |x, r, _| {
+                        map.point(x, r, s_at, t_at);
+                        Ok(())
+                    });
+                    // d²x/ds²
+                    vec_deriv2_approx_eq(&d2x_ds2_ana, s_at, args, tol_d2, |x, s, _| {
+                        map.point(x, r_at, s, t_at);
+                        Ok(())
+                    });
+                    // d²x/dt²
+                    vec_deriv2_approx_eq(&d2x_dt2_ana, t_at, args, tol_d2, |x, t, _| {
+                        map.point(x, r_at, s_at, t);
+                        Ok(())
+                    });
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn transfinite_3d_works_brick() {
+        // allocate transfinite map
+        let (lx, ly, lz) = (2.0, 3.0, 4.0);
+        let mut map = TransfiniteSamples::brick_3d(lx, ly, lz);
+
+        // check corners
+        let (p0, p1, p2, p3, p4, p5, p6, p7) = map.get_corners();
+        vec_approx_eq(&p0, &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&p1, &[lx, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&p2, &[lx, ly, 0.0], 1e-15);
+        vec_approx_eq(&p3, &[0.0, ly, 0.0], 1e-15);
+        vec_approx_eq(&p4, &[0.0, 0.0, lz], 1e-15);
+        vec_approx_eq(&p5, &[lx, 0.0, lz], 1e-15);
+        vec_approx_eq(&p6, &[lx, ly, lz], 1e-15);
+        vec_approx_eq(&p7, &[0.0, ly, lz], 1e-15);
+
+        // check derivatives
+        check_derivs(&mut map, 1e-11, 1e-8);
+    }
+
+    #[test]
+    fn transfinite_3d_works_quarter_ring() {
+        // allocate transfinite map
+        let r_in = 1.0;
+        let r_out = 6.0;
+        let thickness = 2.0;
+        let mut map = TransfiniteSamples::quarter_ring_3d(r_in, r_out, thickness);
+
+        // check corners
+        let (p0, p1, p2, p3, p4, p5, p6, p7) = map.get_corners();
+        vec_approx_eq(&p0, &[0.0, r_in, 0.0], 1e-15);
+        vec_approx_eq(&p1, &[thickness, r_in, 0.0], 1e-15);
+        vec_approx_eq(&p2, &[thickness, r_out, 0.0], 1e-15);
+        vec_approx_eq(&p3, &[0.0, r_out, 0.0], 1e-15);
+        vec_approx_eq(&p4, &[0.0, 0.0, r_in], 1e-15);
+        vec_approx_eq(&p5, &[thickness, 0.0, r_in], 1e-15);
+        vec_approx_eq(&p6, &[thickness, 0.0, r_out], 1e-15);
+        vec_approx_eq(&p7, &[0.0, 0.0, r_out], 1e-15);
+
+        // check derivatives
+        check_derivs(&mut map, 1e-9, 1e-7);
+    }
 
     #[test]
     fn transfinite_3d_captures_errors() {

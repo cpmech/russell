@@ -1087,7 +1087,7 @@ mod tests {
 
         let mut x = Vector::new(3);
 
-        // z = 0 //////////
+        // t = -1.0 //////////
 
         map.point(&mut x, -1.0, -1.0, -1.0);
         vec_approx_eq(&x, &[0.0, r_in, 0.0], 1e-15);
@@ -1101,7 +1101,7 @@ mod tests {
         map.point(&mut x, -1.0, 1.0, -1.0);
         vec_approx_eq(&x, &[0.0, r_out, 0.0], 1e-15);
 
-        // y = 0 //////////
+        // t = 1.0 //////////
 
         map.point(&mut x, -1.0, -1.0, 1.0);
         vec_approx_eq(&x, &[0.0, 0.0, r_in], 1e-15);

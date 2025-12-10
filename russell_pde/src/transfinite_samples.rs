@@ -885,26 +885,17 @@ mod tests {
         let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
 
         let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, -1.0);
         vec_approx_eq(&x, xa, 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, -1.0);
         vec_approx_eq(&x, xb, 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, 1.0);
         vec_approx_eq(&x, xc, 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, 1.0);
         vec_approx_eq(&x, xd, 1e-15);
 
         if SAVE_FIGURE {
@@ -927,26 +918,17 @@ mod tests {
         let mut map = TransfiniteSamples::quarter_ring_2d(r_in, r_out);
 
         let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, -1.0);
         vec_approx_eq(&x, &[r_in, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, -1.0);
         vec_approx_eq(&x, &[r_out, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, 1.0);
         vec_approx_eq(&x, &[0.0, r_out], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, 1.0);
         vec_approx_eq(&x, &[0.0, r_in], 1e-15);
 
         if SAVE_FIGURE {
@@ -974,26 +956,17 @@ mod tests {
         let mut map = TransfiniteSamples::half_ring_2d(r_in, r_out);
 
         let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, -1.0);
         vec_approx_eq(&x, &[r_in, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, -1.0);
         vec_approx_eq(&x, &[r_out, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, 1.0);
         vec_approx_eq(&x, &[-r_out, 0.0], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, 1.0);
         vec_approx_eq(&x, &[-r_in, 0.0], 1e-15);
 
         if SAVE_FIGURE {
@@ -1021,26 +994,17 @@ mod tests {
         let mut map = TransfiniteSamples::quarter_perforated_lozenge_2d(radius, diagonal);
 
         let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, -1.0);
         vec_approx_eq(&x, &[radius, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, -1.0);
         vec_approx_eq(&x, &[diagonal, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, 1.0, 1.0);
         vec_approx_eq(&x, &[0.0, diagonal], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        map.point(&mut x, u[0], u[1]);
+        map.point(&mut x, -1.0, 1.0);
         vec_approx_eq(&x, &[0.0, radius], 1e-15);
 
         if SAVE_FIGURE {
@@ -1066,58 +1030,33 @@ mod tests {
         let mut map = TransfiniteSamples::brick_3d(lx, ly, lz);
 
         let mut x = Vector::new(3);
-        let mut u = Vector::new(3);
 
         // z = 0 //////////
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, -1.0, -1.0);
         vec_approx_eq(&x, &[0.0, 0.0, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, -1.0, -1.0);
         vec_approx_eq(&x, &[lx, 0.0, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, 1.0, -1.0);
         vec_approx_eq(&x, &[lx, ly, 0.0], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, 1.0, -1.0);
         vec_approx_eq(&x, &[0.0, ly, 0.0], 1e-15);
 
         // z = lz //////////
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, -1.0, 1.0);
         vec_approx_eq(&x, &[0.0, 0.0, lz], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, -1.0, 1.0);
         vec_approx_eq(&x, &[lx, 0.0, lz], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, 1.0, 1.0);
         vec_approx_eq(&x, &[lx, ly, lz], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, 1.0, 1.0);
         vec_approx_eq(&x, &[0.0, ly, lz], 1e-15);
 
         if SAVE_FIGURE {
@@ -1143,58 +1082,33 @@ mod tests {
         let mut map = TransfiniteSamples::quarter_ring_3d(r_in, r_out, thickness);
 
         let mut x = Vector::new(3);
-        let mut u = Vector::new(3);
 
         // z = 0 //////////
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, -1.0, -1.0);
         vec_approx_eq(&x, &[0.0, r_in, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, -1.0, -1.0);
         vec_approx_eq(&x, &[thickness, r_in, 0.0], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, 1.0, -1.0);
         vec_approx_eq(&x, &[thickness, r_out, 0.0], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        u[2] = -1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, 1.0, -1.0);
         vec_approx_eq(&x, &[0.0, r_out, 0.0], 1e-15);
 
         // y = 0 //////////
 
-        u[0] = -1.0;
-        u[1] = -1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, -1.0, 1.0);
         vec_approx_eq(&x, &[0.0, 0.0, r_in], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = -1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, -1.0, 1.0);
         vec_approx_eq(&x, &[thickness, 0.0, r_in], 1e-15);
 
-        u[0] = 1.0;
-        u[1] = 1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, 1.0, 1.0, 1.0);
         vec_approx_eq(&x, &[thickness, 0.0, r_out], 1e-15);
 
-        u[0] = -1.0;
-        u[1] = 1.0;
-        u[2] = 1.0;
-        map.point(&mut x, u[0], u[1], u[2]);
+        map.point(&mut x, -1.0, 1.0, 1.0);
         vec_approx_eq(&x, &[0.0, 0.0, r_out], 1e-15);
 
         if SAVE_FIGURE {

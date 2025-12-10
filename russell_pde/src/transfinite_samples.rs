@@ -474,8 +474,8 @@ impl TransfiniteSamples {
 
         let surf_0 = surf.clone();
         let surf_1 = surf.clone();
-        let b_funcs: Vec<Vss> = vec![
-            // B[0](s,t)
+        let boundary_functions: Vec<Vss> = vec![
+            // B0(s,t)
             Box::new(move |x, s, t| {
                 let mut surf = surf_0.lock().unwrap();
                 let u2d = Vector::from(&[s, t]);
@@ -485,7 +485,7 @@ impl TransfiniteSamples {
                 x[1] = x2d[0];
                 x[2] = x2d[1];
             }),
-            // B[1](s,t)
+            // B1(s,t)
             Box::new(move |x, s, t| {
                 let mut surf = surf_1.lock().unwrap();
                 let u2d = Vector::from(&[s, t]);
@@ -495,27 +495,27 @@ impl TransfiniteSamples {
                 x[1] = x2d[0];
                 x[2] = x2d[1];
             }),
-            // B[2](r,t)
+            // B2(r,t)
             Box::new(move |x, r, t| {
                 let theta = (1.0 + t) * PI / 4.0;
                 x[0] = (1.0 + r) * h / 2.0;
                 x[1] = a * theta.cos();
                 x[2] = a * theta.sin();
             }),
-            // B[3](r,t)
+            // B3(r,t)
             Box::new(move |x, r, t| {
                 let theta = (1.0 + t) * PI / 4.0;
                 x[0] = (1.0 + r) * h / 2.0;
                 x[1] = b * theta.cos();
                 x[2] = b * theta.sin();
             }),
-            // B[4](r,s)
+            // B4(r,s)
             Box::new(move |x, r, s| {
                 x[0] = (1.0 + r) * h / 2.0;
                 x[1] = a + (1.0 + s) * (b - a) / 2.0;
                 x[2] = 0.0;
             }),
-            // B[5](r,s)
+            // B5(r,s)
             Box::new(move |x, r, s| {
                 x[0] = (1.0 + r) * h / 2.0;
                 x[1] = 0.0;
@@ -525,19 +525,19 @@ impl TransfiniteSamples {
 
         let surf_d0 = surf.clone();
         let surf_d1 = surf.clone();
-        let bd: Vec<Vvss> = vec![
-            // Bd[0](s,t)
-            Box::new(move |dxds, dxdt, s, t| {
+        let deriv1_boundary_functions: Vec<Vvss> = vec![
+            // Bd0(s,t)
+            Box::new(move |dx_ds, dx_dt, s, t| {
                 let mut surf = surf_d0.lock().unwrap();
                 let u2d = Vector::from(&[s, t]);
                 let mut tmp = Vector::new(2);
-                let mut dxdr2d = Vector::new(2);
-                let mut dxds2d = Vector::new(2);
+                let mut dx_dr_2d = Vector::new(2);
+                let mut dx_ds_2d = Vector::new(2);
                 let mut dummy = Vector::new(0);
                 surf.point_and_derivs(
                     &mut tmp,
-                    &mut dxdr2d,
-                    &mut dxds2d,
+                    &mut dx_dr_2d,
+                    &mut dx_ds_2d,
                     &mut dummy,
                     None,
                     None,
@@ -547,25 +547,25 @@ impl TransfiniteSamples {
                     None,
                     &u2d,
                 );
-                dxds[0] = 0.0;
-                dxds[1] = dxdr2d[0];
-                dxds[2] = dxdr2d[1];
-                dxdt[0] = 0.0;
-                dxdt[1] = dxds2d[0];
-                dxdt[2] = dxds2d[1];
+                dx_ds[0] = 0.0;
+                dx_ds[1] = dx_dr_2d[0];
+                dx_ds[2] = dx_dr_2d[1];
+                dx_dt[0] = 0.0;
+                dx_dt[1] = dx_ds_2d[0];
+                dx_dt[2] = dx_ds_2d[1];
             }),
-            // Bd[1](s,t)
-            Box::new(move |dxds, dxdt, s, t| {
+            // Bd1(s,t)
+            Box::new(move |dx_ds, dx_dt, s, t| {
                 let mut surf = surf_d1.lock().unwrap();
                 let u2d = Vector::from(&[s, t]);
                 let mut tmp = Vector::new(2);
-                let mut dxdr2d = Vector::new(2);
-                let mut dxds2d = Vector::new(2);
+                let mut dx_dr_2d = Vector::new(2);
+                let mut dx_ds_2d = Vector::new(2);
                 let mut dummy = Vector::new(0);
                 surf.point_and_derivs(
                     &mut tmp,
-                    &mut dxdr2d,
-                    &mut dxds2d,
+                    &mut dx_dr_2d,
+                    &mut dx_ds_2d,
                     &mut dummy,
                     None,
                     None,
@@ -575,189 +575,193 @@ impl TransfiniteSamples {
                     None,
                     &u2d,
                 );
-                dxds[0] = 0.0;
-                dxds[1] = dxdr2d[0];
-                dxds[2] = dxdr2d[1];
-                dxdt[0] = 0.0;
-                dxdt[1] = dxds2d[0];
-                dxdt[2] = dxds2d[1];
+                dx_ds[0] = 0.0;
+                dx_ds[1] = dx_dr_2d[0];
+                dx_ds[2] = dx_dr_2d[1];
+                dx_dt[0] = 0.0;
+                dx_dt[1] = dx_ds_2d[0];
+                dx_dt[2] = dx_ds_2d[1];
             }),
-            // Bd[2](r,t)
-            Box::new(move |dxdr, dxdt, _, t| {
+            // Bd2(r,t)
+            Box::new(move |dx_dr, dx_dt, _, t| {
                 let theta = (1.0 + t) * PI / 4.0;
-                dxdr[0] = h / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxdt[0] = 0.0;
-                dxdt[1] = -a * theta.sin() * PI / 4.0;
-                dxdt[2] = a * theta.cos() * PI / 4.0;
+                dx_dr[0] = h / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_dt[0] = 0.0;
+                dx_dt[1] = -a * theta.sin() * PI / 4.0;
+                dx_dt[2] = a * theta.cos() * PI / 4.0;
             }),
-            // Bd[3](r,t)
-            Box::new(move |dxdr, dxdt, _, t| {
+            // Bd3(r,t)
+            Box::new(move |dx_dr, dx_dt, _, t| {
                 let theta = (1.0 + t) * PI / 4.0;
-                dxdr[0] = h / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxdt[0] = 0.0;
-                dxdt[1] = -b * theta.sin() * PI / 4.0;
-                dxdt[2] = b * theta.cos() * PI / 4.0;
+                dx_dr[0] = h / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_dt[0] = 0.0;
+                dx_dt[1] = -b * theta.sin() * PI / 4.0;
+                dx_dt[2] = b * theta.cos() * PI / 4.0;
             }),
-            // Bd[4](r,s)
-            Box::new(move |dxdr, dxds, _, _| {
-                dxdr[0] = h / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxds[0] = 0.0;
-                dxds[1] = (b - a) / 2.0;
-                dxds[2] = 0.0;
+            // Bd4(r,s)
+            Box::new(move |dx_dr, dx_ds, _, _| {
+                dx_dr[0] = h / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_ds[0] = 0.0;
+                dx_ds[1] = (b - a) / 2.0;
+                dx_ds[2] = 0.0;
             }),
-            // Bd[5](r,s)
-            Box::new(move |dxdr, dxds, _, _| {
-                dxdr[0] = h / 2.0;
-                dxdr[1] = 0.0;
-                dxdr[2] = 0.0;
-                dxds[0] = 0.0;
-                dxds[1] = 0.0;
-                dxds[2] = (b - a) / 2.0;
+            // Bd5(r,s)
+            Box::new(move |dx_dr, dx_ds, _, _| {
+                dx_dr[0] = h / 2.0;
+                dx_dr[1] = 0.0;
+                dx_dr[2] = 0.0;
+                dx_ds[0] = 0.0;
+                dx_ds[1] = 0.0;
+                dx_ds[2] = (b - a) / 2.0;
             }),
         ];
 
         let surf_dd0 = surf.clone();
         let surf_dd1 = surf.clone();
-        let bdd: Vec<Vvvss> = vec![
-            // Bdd[0](s,t)
-            Box::new(move |ddxdss, ddxdtt, ddxdst, s, t| {
+        let deriv2_boundary_functions: Vec<Vvvss> = vec![
+            // Bdd0(s,t)
+            Box::new(move |d2x_ds2, d2x_dt2, d2x_dst, s, t| {
                 let mut surf = surf_dd0.lock().unwrap();
                 let u2d = Vector::from(&[s, t]);
                 let mut x_tmp = Vector::new(2);
                 let mut dx_dr_tmp = Vector::new(2);
                 let mut dx_ds_tmp = Vector::new(2);
                 let mut dx_dt_tmp = Vector::new(2);
-                let mut ddxdrr2d = Vector::new(2);
-                let mut ddxdss2d = Vector::new(2);
-                let mut ddxdrs2d = Vector::new(2);
+                let mut d2x_dr2_2d = Vector::new(2);
+                let mut d2x_ds2_2d = Vector::new(2);
+                let mut d2x_drs_2d = Vector::new(2);
                 surf.point_and_derivs(
                     &mut x_tmp,
                     &mut dx_dr_tmp,
                     &mut dx_ds_tmp,
                     &mut dx_dt_tmp,
-                    Some(&mut ddxdrr2d),
-                    Some(&mut ddxdss2d),
+                    Some(&mut d2x_dr2_2d),
+                    Some(&mut d2x_ds2_2d),
                     None,
-                    Some(&mut ddxdrs2d),
+                    Some(&mut d2x_drs_2d),
                     None,
                     None,
                     &u2d,
                 );
-                ddxdss[0] = 0.0;
-                ddxdss[1] = ddxdrr2d[0];
-                ddxdss[2] = ddxdrr2d[1];
+                d2x_ds2[0] = 0.0;
+                d2x_ds2[1] = d2x_dr2_2d[0];
+                d2x_ds2[2] = d2x_dr2_2d[1];
 
-                ddxdtt[0] = 0.0;
-                ddxdtt[1] = ddxdss2d[0];
-                ddxdtt[2] = ddxdss2d[1];
+                d2x_dt2[0] = 0.0;
+                d2x_dt2[1] = d2x_ds2_2d[0];
+                d2x_dt2[2] = d2x_ds2_2d[1];
 
-                ddxdst[0] = 0.0;
-                ddxdst[1] = ddxdrs2d[0];
-                ddxdst[2] = ddxdrs2d[1];
+                d2x_dst[0] = 0.0;
+                d2x_dst[1] = d2x_drs_2d[0];
+                d2x_dst[2] = d2x_drs_2d[1];
             }),
-            // Bdd[1](s,t)
-            Box::new(move |ddxdss, ddxdtt, ddxdst, s, t| {
+            // Bdd1(s,t)
+            Box::new(move |d2x_ds2, d2x_dt2, d2x_dst, s, t| {
                 let mut surf = surf_dd1.lock().unwrap();
                 let u2d = Vector::from(&[s, t]);
                 let mut x_tmp = Vector::new(2);
                 let mut dx_dr_tmp = Vector::new(2);
                 let mut dx_ds_tmp = Vector::new(2);
                 let mut dx_dt_tmp = Vector::new(2);
-                let mut ddxdrr2d = Vector::new(2);
-                let mut ddxdss2d = Vector::new(2);
-                let mut ddxdrs2d = Vector::new(2);
+                let mut d2x_dr2_2d = Vector::new(2);
+                let mut d2x_ds_2d = Vector::new(2);
+                let mut d2x_drs_2d = Vector::new(2);
                 surf.point_and_derivs(
                     &mut x_tmp,
                     &mut dx_dr_tmp,
                     &mut dx_ds_tmp,
                     &mut dx_dt_tmp,
-                    Some(&mut ddxdrr2d),
-                    Some(&mut ddxdss2d),
+                    Some(&mut d2x_dr2_2d),
+                    Some(&mut d2x_ds_2d),
                     None,
-                    Some(&mut ddxdrs2d),
+                    Some(&mut d2x_drs_2d),
                     None,
                     None,
                     &u2d,
                 );
-                ddxdss[0] = 0.0;
-                ddxdss[1] = ddxdrr2d[0];
-                ddxdss[2] = ddxdrr2d[1];
+                d2x_ds2[0] = 0.0;
+                d2x_ds2[1] = d2x_dr2_2d[0];
+                d2x_ds2[2] = d2x_dr2_2d[1];
 
-                ddxdtt[0] = 0.0;
-                ddxdtt[1] = ddxdss2d[0];
-                ddxdtt[2] = ddxdss2d[1];
+                d2x_dt2[0] = 0.0;
+                d2x_dt2[1] = d2x_ds_2d[0];
+                d2x_dt2[2] = d2x_ds_2d[1];
 
-                ddxdst[0] = 0.0;
-                ddxdst[1] = ddxdrs2d[0];
-                ddxdst[2] = ddxdrs2d[1];
+                d2x_dst[0] = 0.0;
+                d2x_dst[1] = d2x_drs_2d[0];
+                d2x_dst[2] = d2x_drs_2d[1];
             }),
-            // Bdd[2](r,t)
-            Box::new(move |ddxdrr, ddxdtt, ddxdrt, _, t| {
+            // Bdd2(r,t)
+            Box::new(move |d2x_dr2, d2x_dt2, d2x_drt, _, t| {
                 let theta = (1.0 + t) * PI / 4.0;
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
-                ddxdrr[2] = 0.0;
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
+                d2x_dr2[2] = 0.0;
 
-                ddxdtt[0] = 0.0;
-                ddxdtt[1] = -a * theta.cos() * PI * PI / 16.0;
-                ddxdtt[2] = -a * theta.sin() * PI * PI / 16.0;
+                d2x_dt2[0] = 0.0;
+                d2x_dt2[1] = -a * theta.cos() * PI * PI / 16.0;
+                d2x_dt2[2] = -a * theta.sin() * PI * PI / 16.0;
 
-                ddxdrt[0] = 0.0;
-                ddxdrt[1] = 0.0;
-                ddxdrt[2] = 0.0;
+                d2x_drt[0] = 0.0;
+                d2x_drt[1] = 0.0;
+                d2x_drt[2] = 0.0;
             }),
-            // Bdd[3](r,t)
-            Box::new(move |ddxdrr, ddxdtt, ddxdrt, _, t| {
+            // Bdd3(r,t)
+            Box::new(move |d2x_dr2, d2x_dt2, d2x_drt, _, t| {
                 let theta = (1.0 + t) * PI / 4.0;
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
-                ddxdrr[2] = 0.0;
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
+                d2x_dr2[2] = 0.0;
 
-                ddxdtt[0] = 0.0;
-                ddxdtt[1] = -b * theta.cos() * PI * PI / 16.0;
-                ddxdtt[2] = -b * theta.sin() * PI * PI / 16.0;
+                d2x_dt2[0] = 0.0;
+                d2x_dt2[1] = -b * theta.cos() * PI * PI / 16.0;
+                d2x_dt2[2] = -b * theta.sin() * PI * PI / 16.0;
 
-                ddxdrt[0] = 0.0;
-                ddxdrt[1] = 0.0;
-                ddxdrt[2] = 0.0;
+                d2x_drt[0] = 0.0;
+                d2x_drt[1] = 0.0;
+                d2x_drt[2] = 0.0;
             }),
-            // Bdd[4](r,s)
-            Box::new(move |ddxdrr, ddxdss, ddxdrs, _, _| {
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
-                ddxdrr[2] = 0.0;
+            // Bdd4(r,s)
+            Box::new(move |d2x_dr2, d2x_ds2, d2x_drs, _, _| {
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
+                d2x_dr2[2] = 0.0;
 
-                ddxdss[0] = 0.0;
-                ddxdss[1] = 0.0;
-                ddxdss[2] = 0.0;
+                d2x_ds2[0] = 0.0;
+                d2x_ds2[1] = 0.0;
+                d2x_ds2[2] = 0.0;
 
-                ddxdrs[0] = 0.0;
-                ddxdrs[1] = 0.0;
-                ddxdrs[2] = 0.0;
+                d2x_drs[0] = 0.0;
+                d2x_drs[1] = 0.0;
+                d2x_drs[2] = 0.0;
             }),
-            // Bdd[5](r,s)
-            Box::new(move |ddxdrr, ddxdss, ddxdrs, _, _| {
-                ddxdrr[0] = 0.0;
-                ddxdrr[1] = 0.0;
-                ddxdrr[2] = 0.0;
+            // Bdd5(r,s)
+            Box::new(move |d2x_dr2, d2x_ds2, d2x_drs, _, _| {
+                d2x_dr2[0] = 0.0;
+                d2x_dr2[1] = 0.0;
+                d2x_dr2[2] = 0.0;
 
-                ddxdss[0] = 0.0;
-                ddxdss[1] = 0.0;
-                ddxdss[2] = 0.0;
+                d2x_ds2[0] = 0.0;
+                d2x_ds2[1] = 0.0;
+                d2x_ds2[2] = 0.0;
 
-                ddxdrs[0] = 0.0;
-                ddxdrs[1] = 0.0;
-                ddxdrs[2] = 0.0;
+                d2x_drs[0] = 0.0;
+                d2x_drs[1] = 0.0;
+                d2x_drs[2] = 0.0;
             }),
         ];
 
-        Transfinite::new_3d(b_funcs, bd, Some(bdd))
+        Transfinite::new_3d(
+            boundary_functions,
+            deriv1_boundary_functions,
+            Some(deriv2_boundary_functions),
+        )
     }
 }
 
@@ -1190,6 +1194,83 @@ mod tests {
                 .set_equal_axes(true)
                 .set_figure_size_points(800.0, 800.0)
                 .save("/tmp/russell_pde/test_brick_3d.svg")
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn test_quarter_ring_3d() {
+        let r_in = 1.0;
+        let r_out = 6.0;
+        let thickness = 2.0;
+        let mut map = TransfiniteSamples::quarter_ring_3d(r_in, r_out, thickness);
+
+        let mut x = Vector::new(3);
+        let mut u = Vector::new(3);
+
+        // z = 0 //////////
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, r_in, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[thickness, r_in, 0.0], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[thickness, r_out, 0.0], 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        u[2] = -1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, r_out, 0.0], 1e-15);
+
+        // y = 0 //////////
+
+        u[0] = -1.0;
+        u[1] = -1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, 0.0, r_in], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = -1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[thickness, 0.0, r_in], 1e-15);
+
+        u[0] = 1.0;
+        u[1] = 1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[thickness, 0.0, r_out], 1e-15);
+
+        u[0] = -1.0;
+        u[1] = 1.0;
+        u[2] = 1.0;
+        map.point(&mut x, &u);
+        vec_approx_eq(&x, &[0.0, 0.0, r_out], 1e-15);
+
+        if SAVE_FIGURE {
+            let mut canvas = Canvas::new();
+            draw_surface_lines_3d(&mut canvas, &mut map, 21);
+            let mut plot = Plot::new();
+            canvas.draw_glyph_3d(0.0, 0.0, r_out);
+            plot.add(&canvas)
+                .set_camera(30.0, 30.0)
+                .set_hide_3d_grid(true)
+                .set_equal_axes(true)
+                .set_figure_size_points(800.0, 800.0)
+                .save("/tmp/russell_pde/test_quarter_ring_3d.svg")
                 .unwrap();
         }
     }

@@ -297,7 +297,7 @@ mod tests {
 
     #[test]
     fn transfinite_2d_works_1() {
-        // allocate transfinite map for quarter ring
+        // allocate transfinite map
         let r_in = 2.0;
         let r_out = 6.0;
         let mut map = TransfiniteSamples::quarter_ring_2d(r_in, r_out);
@@ -332,7 +332,7 @@ mod tests {
 
     #[test]
     fn transfinite_2d_works_2() {
-        // allocate transfinite map for quarter ring
+        // allocate transfinite map
         let r_in = 2.0;
         let r_out = 6.0;
         let mut map = TransfiniteSamples::half_ring_2d(r_in, r_out);
@@ -359,5 +359,44 @@ mod tests {
 
         // check derivatives
         check_derivs(&mut map, 1e-8, 1e-8);
+    }
+
+    #[test]
+    fn transfinite_2d_works_3() {
+        // allocate transfinite map
+        let radius = 1.0;
+        let diagonal = 3.0;
+        let mut map = TransfiniteSamples::quarter_perforated_lozenge_2d(radius, diagonal);
+
+        // check corners
+        let (p0, p1, p2, p3) = map.get_corners();
+        vec_approx_eq(&p0, &[radius, 0.0], 1e-15);
+        vec_approx_eq(&p1, &[diagonal, 0.0], 1e-15);
+        vec_approx_eq(&p2, &[0.0, diagonal], 1e-15);
+        vec_approx_eq(&p3, &[0.0, radius], 1e-15);
+
+        // check some points
+        let mut x = Vector::new(2);
+        map.point(&mut x, 0.0, -1.0);
+        println!("x = {:?}", x);
+        vec_approx_eq(&x, &[radius + (diagonal - radius) / 2.0, 0.0], 1e-15);
+        map.point(&mut x, 1.0, 0.0);
+        vec_approx_eq(&x, &[diagonal / 2.0, diagonal / 2.0], 1e-15);
+        map.point(&mut x, 0.0, 1.0);
+        vec_approx_eq(&x, &[0.0, radius + (diagonal - radius) / 2.0], 1e-15);
+        map.point(&mut x, -1.0, 0.0);
+        vec_approx_eq(&x, &[radius / SQRT_2, radius / SQRT_2], 1e-15);
+        map.point(&mut x, 0.0, 0.0);
+        vec_approx_eq(
+            &x,
+            &[
+                (radius / SQRT_2 + diagonal / 2.0) / 2.0,
+                (radius / SQRT_2 + diagonal / 2.0) / 2.0,
+            ],
+            1e-15,
+        );
+
+        // check derivatives
+        check_derivs(&mut map, 1e-10, 1e-8);
     }
 }

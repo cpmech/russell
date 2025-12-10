@@ -1,38 +1,99 @@
 #![allow(unused)]
 
 use crate::StrError;
-use russell_lab::{mat_inverse, Matrix, Vector};
+use russell_lab::{mat_inverse, vec_inner, Matrix, Vector};
 
+/// Calculates and stores the 2D metrics for a given mapping between reference and physical coordinates
+///
+/// # Definitions
+///
+/// * Reference coordinates: `ξ = (r, s)`
+/// * Covariant base vectors: `gᵢ = ∂x/∂ξⁱ`
+/// * Contravariant base vectors: `gⁱ = ∂ξⁱ/∂x`
+/// * Covariant metric tensor: `gᵢⱼ = gᵢ ⋅ gⱼ`
+/// * Covariant matrix: `[g] = [gᵢⱼ]`
+/// * Contravariant matrix: `[G] = [g]⁻¹`
+/// * Determinant of the covariant matrix: `g = det([g])`
+/// * Calculation of contravariant base vectors: `gⁱ = gⁱʲ ⋅ gⱼ`
+/// * Christoffel vectors: `Cᵢⱼ = ∂gᵢ/∂ξʲ`
+/// * Christoffel symbols of the second kind: `Γᵏᵢⱼ = ∂gᵢ/∂ξʲ ⋅ gᵏ = Cᵢⱼ ⋅ gᵏ`
+///
+/// Note that the Einstein summation convention is used in the definitions above.
 pub struct Metrics2d {
     /// Indicates that the base vectors and metrics do not vary with position
     homogeneous: bool,
 
     /// Covariant base vectors gᵢ
+    ///
+    /// dim = 2
     pub g_cov: Vec<Vector>,
 
     /// Contravariant base vectors gⁱ
+    ///
+    /// dim = 2
     pub g_ctr: Vec<Vector>,
 
     /// Matrix with the covariant metric tensor gᵢⱼ
+    ///
+    /// dim = 2 x 2
     pub g_mat: Matrix,
 
     /// Matrix with the contravariant metric tensor gⁱʲ
+    ///
+    /// dim = 2 x 2
     pub gg_mat: Matrix,
+
+    /// Christoffel symbols of the second kind Γᵏᵢⱼ where the ij values equal the ji values
+    ///
+    /// The values can be obtained by calling `gamma[k].get(i, j)`
+    ///
+    /// Only available if `homogeneous` is `false`
+    ///
+    /// size = 2 x 2 x 2
+    pub christoffel_second: Vec<Vec<Vec<f64>>>,
 }
 
 impl Metrics2d {
     /// Creates a new instance
+    ///
+    /// If the coordinates are homogeneous, set `homogeneous` to `true` to skip the calculation of Christoffel symbols.
+    ///
+    /// If the coordinates are non-homogeneous, the second derivatives must be provided when calling [Metrics2d::calculate()].
     pub fn new(homogeneous: bool) -> Self {
+        let gamma = if homogeneous {
+            Vec::new()
+        } else {
+            vec![vec![vec![0.0; 2]; 2]; 2]
+        };
         Metrics2d {
             homogeneous,
             g_cov: vec![Vector::new(2), Vector::new(2)],
             g_ctr: vec![Vector::new(2), Vector::new(2)],
             g_mat: Matrix::new(2, 2),
             gg_mat: Matrix::new(2, 2),
+            christoffel_second: gamma,
         }
     }
 
     /// Calculates the metrics at a given position and returns the determinant of the covariant matrix
+    ///
+    /// If the coordinates are non-homogeneous, the second derivatives must be provided.
+    ///
+    /// The covariant base vectors are given by:
+    ///
+    /// ```text
+    /// g₁ = ∂x/∂r
+    /// g₂ = ∂x/∂s
+    /// ```
+    ///
+    /// The second derivatives must be provided if the coordinates are non-homogeneous. In this case,
+    /// note that the Christoffel vectors `Cᵢⱼ = ∂gᵢ/∂ξʲ` are:
+    ///
+    /// ```text
+    /// C₁₁ = ∂²x/∂r²
+    /// C₂₂ = ∂²x/∂s²
+    /// C₁₂ = ∂²x/∂r∂s = C₂₁
+    /// ```
     pub fn calculate(
         &mut self,
         dx_dr: &Vector,
@@ -79,8 +140,53 @@ impl Metrics2d {
             }
         }
 
+        // Christoffel symbols of the second kind
+        if !self.homogeneous {
+            if let (Some(d2x_dr2), Some(d2x_ds2), Some(d2x_drs)) = (d2x_dr2, d2x_ds2, d2x_drs) {
+                // Christoffel vectors
+                let mut cc = &[
+                    [d2x_dr2, d2x_drs], // C₁ⱼ
+                    [d2x_drs, d2x_ds2], // C₂ⱼ
+                ];
+
+                // Christoffel symbols of the second kind: Γᵏᵢⱼ = Cᵢⱼ ⋅ gᵏ
+                for k in 0..2 {
+                    for j in 0..2 {
+                        for i in 0..2 {
+                            self.christoffel_second[k][i][j] = vec_inner(cc[i][j], &self.g_ctr[k]);
+                        }
+                    }
+                }
+            } else {
+                return Err("second derivatives must be provided for non-homogeneous metrics");
+            }
+        }
+
         // return the determinant of the covariant matrix
         Ok(g)
+    }
+
+    /// Calculates the L-coefficient for the Laplacian operator
+    ///
+    /// Returns:
+    ///
+    /// ```text
+    /// Lᵏ = Γᵏᵢⱼ gⁱʲ
+    /// ```
+    ///
+    /// **Warning**: `homogeneous` must be true and [Metrics2d::calculate()] must be called before using this method.
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if `homogeneous` is false and the Christoffel symbols have not been calculated.
+    pub fn ell_coefficient_for_laplacian(&self, k: usize) -> f64 {
+        let mut ell = 0.0;
+        for i in 0..2 {
+            for j in 0..2 {
+                ell += self.christoffel_second[k][i][j] * self.gg_mat.get(i, j);
+            }
+        }
+        ell
     }
 }
 
@@ -111,7 +217,7 @@ mod tests {
         let dx_ds = Vector::from(&[0.0, (ymax - ymin) / 2.0]);
 
         // calculate metrics
-        let mut met = Metrics2d::new(false);
+        let mut met = Metrics2d::new(true);
         let g = met.calculate(&dx_dr, &dx_ds, None, None, None).unwrap();
 
         // check [g] and [G] matrices

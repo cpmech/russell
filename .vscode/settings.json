@@ -201,7 +201,8 @@
     "zpotrf",
     "zscal",
     "zsyrk",
-    "zticks"
+    "zticks",
+    "Γᵏᵢⱼ"
   ],
   "rust-analyzer.cargo.features": [
     "intel_mkl",

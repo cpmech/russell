@@ -242,17 +242,50 @@ mod tests {
     use super::Transfinite2d;
     use crate::TransfiniteSamples;
     use russell_lab::math::SQRT_2;
-    use russell_lab::{vec_approx_eq, Vector};
+    use russell_lab::{vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq, Vector};
 
-    fn check_deriv1(map: &mut Transfinite2d, rr: &[f64], ss: &[f64], tol_r: f64, tol_s: f64) {
-        let mut x = Vector::new(2);
-        let mut u = Vector::new(2);
-        for r in rr {
-            for s in ss {
-                //
+    fn check_derivs(map: &mut Transfinite2d, tol_d1: f64, tol_d2: f64) {
+        let mut x_ana = Vector::new(2);
+        let mut dx_dr_ana = Vector::new(2);
+        let mut dx_ds_ana = Vector::new(2);
+        let mut d2x_dr2_ana = Vector::new(2);
+        let mut d2x_ds2_ana = Vector::new(2);
+        let mut d2x_drs_ana = Vector::new(2);
+        let args = &mut 0_u8;
+        for s_at in [-0.5, 0.0, 0.5] {
+            for r_at in [-0.5, 0.0, 0.5] {
+                map.point_and_derivs(
+                    &mut x_ana,
+                    &mut dx_dr_ana,
+                    &mut dx_ds_ana,
+                    Some(&mut d2x_dr2_ana),
+                    Some(&mut d2x_ds2_ana),
+                    Some(&mut d2x_drs_ana),
+                    r_at,
+                    s_at,
+                );
+                // dx/dr
+                vec_deriv1_approx_eq(&dx_dr_ana, r_at, args, tol_d1, |x, r, _| {
+                    map.point(x, r, s_at);
+                    Ok(())
+                });
+                // dx/ds
+                vec_deriv1_approx_eq(&dx_ds_ana, s_at, args, tol_d1, |x, s, _| {
+                    map.point(x, r_at, s);
+                    Ok(())
+                });
+                // d²x/dr²
+                vec_deriv2_approx_eq(&d2x_dr2_ana, r_at, args, tol_d2, |x, r, _| {
+                    map.point(x, r, s_at);
+                    Ok(())
+                });
+                // d²x/ds²
+                vec_deriv2_approx_eq(&d2x_ds2_ana, s_at, args, tol_d2, |x, s, _| {
+                    map.point(x, r_at, s);
+                    Ok(())
+                });
             }
         }
-        //
     }
 
     #[test]
@@ -285,5 +318,8 @@ mod tests {
             &[(r_in + r_out) * SQRT_2 / 4.0, (r_in + r_out) * SQRT_2 / 4.0],
             1e-15,
         );
+
+        // check derivatives
+        check_derivs(&mut map, 1e-9, 1e-8);
     }
 }

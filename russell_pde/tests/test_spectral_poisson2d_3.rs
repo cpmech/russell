@@ -40,11 +40,11 @@ fn test_spectral_poisson2d_3() {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = SpectralLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
+    let spectral = SpectralLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk_bar, kk_check) = fdm.get_matrices();
-    let (mut a_bar, a_check, mut f_bar) = fdm.get_vectors(source);
+    let (kk_bar, kk_check) = spectral.get_matrices();
+    let (mut a_bar, a_check, mut f_bar) = spectral.get_vectors(source);
 
     // initialize the right-hand side
     kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -55,11 +55,11 @@ fn test_spectral_poisson2d_3() {
     solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
 
     // results
-    let a = fdm.get_joined_vector(&a_bar, &a_check);
+    let a = spectral.get_joined_vector(&a_bar, &a_check);
 
     // check
     let analytical = |x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y);
-    fdm.for_each_coord(|m, x, y| {
+    spectral.for_each_coord(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 1e-15);
     });
 
@@ -71,7 +71,7 @@ fn test_spectral_poisson2d_3() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        fdm.for_each_coord(|m, x, y| {
+        spectral.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

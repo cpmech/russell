@@ -384,8 +384,8 @@ mod tests {
         let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous(&grid);
-        let mut spec = SpectralLaplacianCurvilinear2d::new(grid, ebcs, map).unwrap();
-        let (kk_bar, kk_check) = spec.get_matrices();
+        let mut spectral = SpectralLaplacianCurvilinear2d::new(grid, ebcs, map).unwrap();
+        let (kk_bar, kk_check) = spectral.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 

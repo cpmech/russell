@@ -190,7 +190,7 @@ impl<'a> SpectralLaplacian2d<'a> {
                 let m = i + j * nx;
                 if !self.equations.is_prescribed(m) {
                     // unknown rows
-                    let r = self.equations.iu(m);
+                    let row = self.equations.iu(m);
                     for k in 0..nx {
                         for l in 0..ny {
                             let n = k + l * nx;
@@ -203,12 +203,12 @@ impl<'a> SpectralLaplacian2d<'a> {
                             }
                             if !self.equations.is_prescribed(n) {
                                 // unknown column
-                                let c = self.equations.iu(n);
-                                kk_bar.put(r, c, val).unwrap();
+                                let col = self.equations.iu(n);
+                                kk_bar.put(row, col, val).unwrap();
                             } else {
                                 // prescribed column
-                                let c = self.equations.ip(n);
-                                kk_check.put(r, c, val).unwrap();
+                                let col = self.equations.ip(n);
+                                kk_check.put(row, col, val).unwrap();
                             }
                         }
                     }

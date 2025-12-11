@@ -136,7 +136,7 @@ impl<'a> SpectralLaplacian2d<'a> {
     ///
     /// * `nu` is the number of unknowns
     /// * `np` is the number of prescribed values
-    pub fn get_dims_sps(&self) -> (usize, usize) {
+    pub fn get_dims(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)

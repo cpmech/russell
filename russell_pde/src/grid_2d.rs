@@ -1,4 +1,4 @@
-use crate::StrError;
+use crate::{Metrics, StrError, Transfinite2d};
 use russell_lab::math::chebyshev_lobatto_points;
 
 /// Defines a 2D Cartesian grid
@@ -137,36 +137,26 @@ pub struct Grid2d {
 
     /// Indicates if the grid uses Chebyshev-Gauss-Lobatto points
     is_chebyshev_gauss_lobatto: bool,
+
+    /// Holds the metrics information (for Transfinite mapping)
+    metrics: Option<Metrics>,
+
+    /// Holds the transfinite mapping information
+    transfinite: Option<Transfinite2d>,
+}
+
+/// Determines the boundary node indices for a grid of size (nx, ny)
+///
+/// Returns `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)`
+fn determine_boundary_nodes(nx: usize, ny: usize) -> (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>) {
+    let nodes_xmin: Vec<usize> = (0..ny).map(|j| j * nx).collect();
+    let nodes_xmax: Vec<usize> = (0..ny).map(|j| j * nx + (nx - 1)).collect();
+    let nodes_ymin: Vec<usize> = (0..nx).collect();
+    let nodes_ymax: Vec<usize> = (0..nx).map(|i| (ny - 1) * nx + i).collect();
+    (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)
 }
 
 impl Grid2d {
-    /// Auxiliary function to allocate the grid
-    fn do_allocate(
-        xmin: f64,
-        xmax: f64,
-        ymin: f64,
-        ymax: f64,
-        nx: usize,
-        ny: usize,
-        coords: Vec<(f64, f64)>,
-        cgl_grid: bool,
-    ) -> Self {
-        Self {
-            xmin,
-            xmax,
-            ymin,
-            ymax,
-            nx,
-            ny,
-            coords,
-            nodes_xmin: (0..ny).map(|j| j * nx).collect(),
-            nodes_xmax: (0..ny).map(|j| j * nx + (nx - 1)).collect(),
-            nodes_ymin: (0..nx).collect(),
-            nodes_ymax: (0..nx).map(|i| (ny - 1) * nx + i).collect(),
-            is_chebyshev_gauss_lobatto: cgl_grid,
-        }
-    }
-
     /// Creates a new grid with arbitrary coordinate arrays
     ///
     /// This constructor allows for non-uniform spacing by providing explicit
@@ -253,7 +243,23 @@ impl Grid2d {
                 coords.push((xx[i], yy[j]));
             }
         }
-        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, false))
+        let (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax) = determine_boundary_nodes(nx, ny);
+        Ok(Grid2d {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+            nx,
+            ny,
+            coords,
+            nodes_xmin,
+            nodes_xmax,
+            nodes_ymin,
+            nodes_ymax,
+            is_chebyshev_gauss_lobatto: false,
+            metrics: None,
+            transfinite: None,
+        })
     }
 
     /// Creates a new grid with uniform spacing
@@ -337,7 +343,23 @@ impl Grid2d {
                 coords.push((x, y));
             }
         }
-        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, false))
+        let (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax) = determine_boundary_nodes(nx, ny);
+        Ok(Grid2d {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+            nx,
+            ny,
+            coords,
+            nodes_xmin,
+            nodes_xmax,
+            nodes_ymin,
+            nodes_ymax,
+            is_chebyshev_gauss_lobatto: false,
+            metrics: None,
+            transfinite: None,
+        })
     }
 
     /// Creates a new grid using Chebyshev-Gauss-Lobatto points (tensor product)
@@ -381,7 +403,23 @@ impl Grid2d {
                 coords.push((x, y));
             }
         }
-        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, true))
+        let (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax) = determine_boundary_nodes(nx, ny);
+        Ok(Grid2d {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+            nx,
+            ny,
+            coords,
+            nodes_xmin,
+            nodes_xmax,
+            nodes_ymin,
+            nodes_ymax,
+            is_chebyshev_gauss_lobatto: true,
+            metrics: None,
+            transfinite: None,
+        })
     }
 
     /// Indicates if the grid uses Chebyshev-Gauss-Lobatto points

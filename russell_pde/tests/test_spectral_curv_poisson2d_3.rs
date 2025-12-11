@@ -33,7 +33,7 @@ fn test_spectral_curv_poisson2d_3() {
     // allocate the grid on [-1, 1] × [-1, 1] and then map to [0, 1] × [0, 1]
     let (nx, ny) = (5, 5);
     let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, nx, ny).unwrap();
-    let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+    let map = TransfiniteSamples::quadrilateral_2d(&[0.0, 0.0], &[1.0, 0.0], &[1.0, 1.0], &[0.0, 1.0]);
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
@@ -88,8 +88,9 @@ fn test_spectral_curv_poisson2d_3() {
             .set_line_style(":")
             .draw(&xx, &yy, &zz_ana);
         let mut plot = Plot::new();
-        plot.add(&contour_num).add(&contour_ana);
-        plot.set_equal_axes(true)
+        plot.add(&contour_num)
+            .add(&contour_ana)
+            .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
             .save("/tmp/russell_pde/test_spectral_curv_poisson2d_3.svg")
             .unwrap();

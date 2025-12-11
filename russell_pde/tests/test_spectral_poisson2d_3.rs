@@ -88,8 +88,9 @@ fn test_spectral_poisson2d_3() {
             .set_line_style(":")
             .draw(&xx, &yy, &zz_ana);
         let mut plot = Plot::new();
-        plot.add(&contour_num).add(&contour_ana);
-        plot.set_equal_axes(true)
+        plot.add(&contour_num)
+            .add(&contour_ana)
+            .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
             .save("/tmp/russell_pde/test_spectral_poisson2d_3.svg")
             .unwrap();

@@ -295,7 +295,7 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
     /// ```
     ///
     /// The `source` function calculates f(x, y).
-    pub fn get_vectors<F>(&self, source: F) -> (Vector, Vector, Vector)
+    pub fn get_vectors<F>(&mut self, source: F) -> (Vector, Vector, Vector)
     where
         F: Fn(f64, f64) -> f64,
     {
@@ -306,13 +306,15 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
         let mut f_bar = Vector::new(nu);
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
-            let (x, y) = self.grid.coord(m);
-            f_bar[iu] = source(x, y);
+            let (r, s) = self.grid.coord(m);
+            self.map.point(&mut self.x, r, s);
+            f_bar[iu] = source(self.x[0], self.x[1]);
         });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
-            let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_prescribed_value(m, x, y);
+            let (r, s) = self.grid.coord(m);
+            self.map.point(&mut self.x, r, s);
+            let val = self.ebcs.get_prescribed_value(m, self.x[0], self.x[1]);
             a_check[ip] = val;
         });
         (a_bar, a_check, f_bar)

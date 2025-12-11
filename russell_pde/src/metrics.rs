@@ -46,7 +46,7 @@ pub struct Metrics {
 
     /// Christoffel symbols of the second kind Γᵏᵢⱼ where the ij values equal the ji values
     ///
-    /// The values can be obtained by calling `gamma[k].get(i, j)`
+    /// The values can be obtained by calling `gamma[k][i][j]`
     ///
     /// Only available if `homogeneous` is `false`
     ///
@@ -343,6 +343,8 @@ impl Metrics {
 #[cfg(test)]
 mod tests {
     use super::Metrics;
+    use crate::TransfiniteSamples;
+    use russell_lab::math::PI;
     use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Vector};
 
     #[test]
@@ -446,5 +448,107 @@ mod tests {
         // no Christoffel symbols for homogeneous metrics
         assert_eq!(met.homogeneous, true);
         assert_eq!(met.christoffel_second.len(), 0);
+    }
+
+    #[test]
+    fn calculate_works_quarter_ring_2d() {
+        // Quarter ring with a 2D transfinite mapping
+        //
+        // Cylindrical coordinates (ρ, θ):
+        // a: inner radius
+        // b: outer radius
+        // x1(ρ(r),θ(s)) = ρ cos(θ)
+        // x2(ρ(r),θ(s)) = ρ sin(θ)
+        // ρ(r) = (b + a) / 2 + (b - a) r / 2
+        // θ(s) = (π / 4) (1 + s)
+        // dρ/dr = (b - a) / 2
+        // dθ/ds = π / 4
+        // dx/dr = dx/dρ dρ/dr = [cos(θ) dρ/dr, sin(θ) dρ/dr] = g₁
+        // dx/ds = dx/dθ dθ/ds = [-ρ sin(θ) dθ/ds, ρ cos(θ) dθ/ds] = g₂
+        let (a, b) = (1.0, 2.0);
+        let mut map = TransfiniteSamples::quarter_ring_2d(a, b);
+        let mut x = Vector::new(2);
+        let mut dx_dr = Vector::new(2);
+        let mut dx_ds = Vector::new(2);
+        let mut d2x_dr2 = Vector::new(2);
+        let mut d2x_ds2 = Vector::new(2);
+        let mut d2x_drs = Vector::new(2);
+
+        // allocate the metrics instance
+        let mut met = Metrics::new(2, false);
+
+        // auxiliary constants
+        let p = (b - a) / 2.0; // dρ/dr
+        let q = PI / 4.0; // dθ/ds
+
+        // loop over sample points
+        for r in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+            for s in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+                // calculate point and derivatives @ (r,s)
+                map.point_and_derivs(
+                    &mut x,
+                    &mut dx_dr,
+                    &mut dx_ds,
+                    Some(&mut d2x_dr2),
+                    Some(&mut d2x_ds2),
+                    Some(&mut d2x_drs),
+                    r,
+                    s,
+                );
+
+                // calculate the base vectors and metrics
+                let g = met
+                    .calculate_2d(&dx_dr, &dx_ds, Some(&d2x_dr2), Some(&d2x_ds2), Some(&d2x_drs))
+                    .unwrap();
+
+                // check x and g_cov
+                let rho = (b + a) / 2.0 + (b - a) * r / 2.0;
+                let theta = (PI / 4.0) * (1.0 + s);
+                let ct = f64::cos(theta);
+                let st = f64::sin(theta);
+                vec_approx_eq(&x, &[rho * ct, rho * st], 1e-15);
+                vec_approx_eq(&met.g_cov[0], &[ct * p, st * p], 1e-15);
+                vec_approx_eq(&met.g_cov[1], &[-rho * st * q, rho * ct * q], 1e-15);
+
+                // check [g] and [G] matrices
+                mat_approx_eq(
+                    &met.g_mat,
+                    &[
+                        [p * p, 0.0],             // g₁·g₁, 0.0
+                        [0.0, rho * rho * q * q], // 0.0, g₂·g₂
+                    ],
+                    1e-15,
+                );
+                approx_eq(g, p * p * rho * rho * q * q, 1e-15);
+                mat_approx_eq(
+                    &met.gg_mat,
+                    &[
+                        [1.0 / (p * p), 0.0],             //
+                        [0.0, 1.0 / (rho * rho * q * q)], //
+                    ],
+                    1e-14,
+                );
+
+                // check g_ctr
+                vec_approx_eq(&met.g_ctr[0], &[ct / p, st / p], 1e-15);
+                vec_approx_eq(
+                    &met.g_ctr[1],
+                    &[-rho * st / (rho * rho * q), rho * ct / (rho * rho * q)],
+                    1e-15,
+                );
+
+                // check Christoffel symbols of the second kind
+                // k = 0
+                approx_eq(met.christoffel_second[0][0][0], 0.0, 1e-15);
+                approx_eq(met.christoffel_second[0][0][1], 0.0, 1e-15);
+                approx_eq(met.christoffel_second[0][1][0], 0.0, 1e-15);
+                approx_eq(met.christoffel_second[0][1][1], -rho * q * q / p, 1e-15);
+                // k = 1
+                approx_eq(met.christoffel_second[1][0][0], 0.0, 1e-15);
+                approx_eq(met.christoffel_second[1][0][1], p / rho, 1e-15);
+                approx_eq(met.christoffel_second[1][1][0], p / rho, 1e-15);
+                approx_eq(met.christoffel_second[1][1][1], 0.0, 1e-15);
+            }
+        }
     }
 }

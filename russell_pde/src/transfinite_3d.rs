@@ -552,7 +552,7 @@ impl Transfinite3d {
         let d2x_dst = d2x_dst.unwrap();
 
         // calculate the mixed derivative
-        // Note: Even if the 2nd boundary derivatives are nil, the mixed derivative may not non-zero
+        // Note: Even if the 2nd boundary derivatives are nil, the mixed derivative may be non-zero
         if self.deriv2_boundary_functions.is_none() {
             for i in 0..3 {
                 d2x_dr2[i] = 0.0;

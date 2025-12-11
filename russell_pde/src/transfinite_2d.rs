@@ -221,7 +221,7 @@ impl Transfinite2d {
         let d2x_drs = d2x_drs.unwrap();
 
         // calculate the mixed derivative
-        // Note: Even if the 2nd boundary derivatives are nil, the mixed derivative may not non-zero
+        // Note: Even if the 2nd boundary derivatives are nil, the mixed derivative may be non-zero
         if self.deriv2_boundary_functions.is_none() {
             for i in 0..2 {
                 d2x_dr2[i] = 0.0;
@@ -264,6 +264,11 @@ impl Transfinite2d {
     /// Returns the corner points
     pub fn get_corners(&self) -> (&Vector, &Vector, &Vector, &Vector) {
         (&self.p0, &self.p1, &self.p2, &self.p3)
+    }
+
+    /// Indicates whether the mapping is homogeneous (all second derivatives are zero)
+    pub fn is_homogeneous(&self) -> bool {
+        self.deriv2_boundary_functions.is_none()
     }
 }
 

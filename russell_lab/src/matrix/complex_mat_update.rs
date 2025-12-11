@@ -55,7 +55,7 @@ pub fn complex_mat_update(b: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMa
 #[cfg(test)]
 mod tests {
     use super::complex_mat_update;
-    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
+    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
 
     #[test]
     fn complex_mat_update_fail_on_wrong_dims() {

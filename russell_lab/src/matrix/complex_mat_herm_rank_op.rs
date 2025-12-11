@@ -145,7 +145,7 @@ pub fn complex_mat_herm_rank_op(
 mod tests {
     use super::{complex_mat_herm_rank_op, ComplexMatrix};
     use crate::matrix::testing::check_hermitian_uplo;
-    use crate::{complex_mat_approx_eq, cpx, Complex64};
+    use crate::{complex_mat_approx_eq, cpx};
 
     #[test]
     fn complex_mat_herm_rank_op_fail_on_wrong_dims() {

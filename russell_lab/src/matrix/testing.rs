@@ -217,7 +217,7 @@ pub(crate) fn complex_check_gen_eigen<'a, T>(
 #[cfg(test)]
 mod tests {
     use super::{check_eigen, check_eigen_sym, complex_check_eigen};
-    use crate::{cpx, Complex64, ComplexMatrix, ComplexVector, Matrix, Vector};
+    use crate::{cpx, ComplexMatrix, ComplexVector, Matrix, Vector};
 
     #[test]
     #[should_panic]

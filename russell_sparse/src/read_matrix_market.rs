@@ -1,6 +1,6 @@
 use super::{CooMatrix, MMsym, Sym};
 use crate::{ComplexCooMatrix, StrError};
-use russell_lab::{cpx, Complex64};
+use russell_lab::cpx;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -468,7 +468,7 @@ where
 mod tests {
     use super::{read_matrix_market, MatrixMarketData};
     use crate::{MMsym, Sym};
-    use russell_lab::{cpx, Complex64, Matrix};
+    use russell_lab::{cpx, Matrix};
 
     #[test]
     fn parse_header_captures_errors() {

@@ -1,5 +1,6 @@
 use super::{ComplexCscMatrix, CscMatrix, Sym};
 use crate::StrError;
+use russell_lab::cpx;
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::fs::{self, File};
@@ -13,6 +14,7 @@ impl CscMatrix {
     ///
     /// * `full_path` -- may be a String, &str, or Path
     /// * `vismatrix` -- generate a SMAT file for Vismatrix instead of a MatrixMarket
+    /// * `tol` -- tolerance to consider a value as zero
     ///
     /// # Notes
     ///
@@ -27,7 +29,7 @@ impl CscMatrix {
     /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
     /// * MatrixMarket collection: <https://suitesparse-collection-website.herokuapp.com/>
     /// * Vismatrix: <https://github.com/cpmech/vismatrix>
-    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
+    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool, tol: f64) -> Result<(), StrError>
     where
         P: AsRef<OsStr> + ?Sized,
     {
@@ -82,7 +84,10 @@ impl CscMatrix {
             for j in 0..self.ncol {
                 for p in self.col_pointers[j]..self.col_pointers[j + 1] {
                     let i = self.row_indices[p as usize] as usize;
-                    let aij = self.values[p as usize];
+                    let mut aij = self.values[p as usize];
+                    if f64::abs(aij) < tol {
+                        aij = 0.0;
+                    }
                     write!(&mut buffer, "{} {} {:?}\n", i, j, aij).unwrap();
                     if self.symmetric == Sym::YesLower || self.symmetric == Sym::YesUpper {
                         if i != j {
@@ -96,7 +101,10 @@ impl CscMatrix {
             for j in 0..self.ncol {
                 for p in self.col_pointers[j]..self.col_pointers[j + 1] {
                     let i = self.row_indices[p as usize] as usize;
-                    let aij = self.values[p as usize];
+                    let mut aij = self.values[p as usize];
+                    if f64::abs(aij) < tol {
+                        aij = 0.0;
+                    }
                     match self.symmetric {
                         Sym::No => write!(&mut buffer, "{} {} {:?}\n", i + 1, j + 1, aij).unwrap(),
                         Sym::YesLower => write!(&mut buffer, "{} {} {:?}\n", i + 1, j + 1, aij).unwrap(),
@@ -135,6 +143,7 @@ impl ComplexCscMatrix {
     ///
     /// * `full_path` -- may be a String, &str, or Path
     /// * `vismatrix` -- generate a SMAT file for Vismatrix instead of a MatrixMarket
+    /// * `tol` -- tolerance to consider a value as zero
     ///
     /// # Notes
     ///
@@ -150,7 +159,7 @@ impl ComplexCscMatrix {
     ///
     /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
     /// * Vismatrix: <https://github.com/cpmech/vismatrix>
-    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool) -> Result<(), StrError>
+    pub fn write_matrix_market<P>(&self, full_path: &P, vismatrix: bool, tol: f64) -> Result<(), StrError>
     where
         P: AsRef<OsStr> + ?Sized,
     {
@@ -205,7 +214,10 @@ impl ComplexCscMatrix {
             for j in 0..self.ncol {
                 for p in self.col_pointers[j]..self.col_pointers[j + 1] {
                     let i = self.row_indices[p as usize] as usize;
-                    let aij = self.values[p as usize];
+                    let mut aij = self.values[p as usize];
+                    if f64::abs(aij.re) < tol && f64::abs(aij.im) < tol {
+                        aij = cpx!(0.0, 0.0);
+                    }
                     write!(&mut buffer, "{} {} {:?}\n", i, j, aij.norm()).unwrap();
                     if self.symmetric == Sym::YesLower || self.symmetric == Sym::YesUpper {
                         if i != j {
@@ -219,7 +231,10 @@ impl ComplexCscMatrix {
             for j in 0..self.ncol {
                 for p in self.col_pointers[j]..self.col_pointers[j + 1] {
                     let i = self.row_indices[p as usize] as usize;
-                    let aij = self.values[p as usize];
+                    let mut aij = self.values[p as usize];
+                    if f64::abs(aij.re) < tol && f64::abs(aij.im) < tol {
+                        aij = cpx!(0.0, 0.0);
+                    }
                     match self.symmetric {
                         Sym::No => write!(&mut buffer, "{} {} {:?} {:?}\n", i + 1, j + 1, aij.re, aij.im).unwrap(),
                         Sym::YesLower => {
@@ -272,7 +287,7 @@ mod tests {
         //  .  4  2  .  1
         let (_, csc, _, _) = Samples::umfpack_unsymmetric_5x5();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(
             contents,
@@ -307,7 +322,7 @@ mod tests {
         //     -1   2             -1   2
         let (_, csc, _, _) = Samples::positive_definite_3x3_lower();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc_sym_lower.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
         //  2  -1              2  -1
@@ -315,7 +330,7 @@ mod tests {
         //     -1   2          sym     2
         let (_, csc, _, _) = Samples::positive_definite_3x3_upper();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc_sym_upper.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
         //  2  -1
@@ -323,7 +338,7 @@ mod tests {
         //     -1   2
         let (_, csc, _, _) = Samples::positive_definite_3x3_full();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc_sym_full.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
     }
@@ -337,7 +352,7 @@ mod tests {
         //  .  4  2  .  1
         let (_, csc, _, _) = Samples::umfpack_unsymmetric_5x5();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(
             contents,
@@ -380,7 +395,7 @@ mod tests {
         //     -1   2             -1   2
         let (_, csc, _, _) = Samples::positive_definite_3x3_lower();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc_sym_lower.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
         //  2  -1              2  -1
@@ -388,7 +403,7 @@ mod tests {
         //     -1   2          sym     2
         let (_, csc, _, _) = Samples::positive_definite_3x3_upper();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc_sym_upper.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct_upper);
         //  2  -1
@@ -396,7 +411,7 @@ mod tests {
         //     -1   2
         let (_, csc, _, _) = Samples::positive_definite_3x3_full();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_csc_sym_full.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
     }
@@ -409,7 +424,7 @@ mod tests {
         //  1      .      .
         let (_, csc, _, _) = Samples::complex_rectangular_4x3();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(
             contents,
@@ -439,7 +454,7 @@ mod tests {
         //        -1+1i   2-1i                 -1+1i   2-1i
         let (_, csc, _, _) = Samples::complex_symmetric_3x3_lower();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc_sym_lower.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
         //  2+1i  -1-1i                  2+1i  -1-1i
@@ -447,7 +462,7 @@ mod tests {
         //        -1+1i   2-1i           sym           2-1i
         let (_, csc, _, _) = Samples::complex_symmetric_3x3_upper();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc_sym_upper.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
         //  2+1i  -1-1i
@@ -455,7 +470,7 @@ mod tests {
         //        -1+1i   2-1i
         let (_, csc, _, _) = Samples::complex_symmetric_3x3_full();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc_sym_full.mtx";
-        csc.write_matrix_market(full_path, false).unwrap();
+        csc.write_matrix_market(full_path, false, 1e-16).unwrap();
         let contents = fs::read_to_string(full_path).map_err(|_| "cannot open file").unwrap();
         assert_eq!(contents, correct);
     }
@@ -468,7 +483,7 @@ mod tests {
         //  1      .      .
         let (_, csc, _, _) = Samples::complex_rectangular_4x3();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let correct = &[
             [4.0, 3.0, 7.0],
             [0.0, 0.0, 5.656854249492381],
@@ -510,7 +525,7 @@ mod tests {
         //        -1+1i   2-1i                 -1+1i   2-1i
         let (_, csc, _, _) = Samples::complex_symmetric_3x3_lower();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc_sym_lower.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let res = Matrix::from_text_file(full_path).unwrap();
         mat_approx_eq(&res, correct, 1e-15);
         //  2+1i  -1-1i                  2+1i  -1-1i
@@ -518,7 +533,7 @@ mod tests {
         //        -1+1i   2-1i           sym           2-1i
         let (_, csc, _, _) = Samples::complex_symmetric_3x3_upper();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc_sym_upper.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let res = Matrix::from_text_file(full_path).unwrap();
         mat_approx_eq(&res, correct_upper, 1e-15);
         //  2+1i  -1-1i
@@ -526,7 +541,7 @@ mod tests {
         //        -1+1i   2-1i
         let (_, csc, _, _) = Samples::complex_symmetric_3x3_full();
         let full_path = "/tmp/russell_sparse/test_write_matrix_market_complex_csc_sym_full.smat";
-        csc.write_matrix_market(full_path, true).unwrap();
+        csc.write_matrix_market(full_path, true, 1e-16).unwrap();
         let res = Matrix::from_text_file(full_path).unwrap();
         mat_approx_eq(&res, correct, 1e-15);
     }

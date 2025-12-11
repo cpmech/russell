@@ -73,7 +73,7 @@ pub fn complex_vec_norm(v: &ComplexVector, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::complex_vec_norm;
-    use crate::{approx_eq, cpx, Complex64, ComplexVector, Norm};
+    use crate::{approx_eq, cpx, ComplexVector, Norm};
 
     #[test]
     fn complex_vec_norm_works() {

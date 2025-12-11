@@ -114,7 +114,7 @@ mod tests {
     use super::complex_mat_cholesky;
     use crate::math::SQRT_2;
     use crate::matrix::testing::check_hermitian_uplo;
-    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
+    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
 
     fn calc_l_times_lt(l_and_a: &ComplexMatrix) -> ComplexMatrix {
         let m = l_and_a.nrow();

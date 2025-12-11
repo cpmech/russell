@@ -7,7 +7,7 @@
 /// # Examples
 ///
 /// ```
-/// use russell_lab::{cpx, Complex64};
+/// use russell_lab::cpx;
 ///
 /// let x = cpx!(1.0, 2.0);
 /// let y = cpx!(3.0, 4.0);
@@ -18,7 +18,7 @@
 #[macro_export]
 macro_rules! cpx {
     ($real:expr, $imag:expr) => {{
-        Complex64::new($real, $imag)
+        $crate::Complex64::new($real, $imag)
     }};
 }
 
@@ -26,7 +26,7 @@ macro_rules! cpx {
 
 #[cfg(test)]
 mod tests {
-    use crate::{cpx, Complex64};
+    use crate::cpx;
 
     #[test]
     fn cpx_works() {

@@ -213,7 +213,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_inverse, ComplexMatrix, ZERO_DETERMINANT_NORM};
-    use crate::{complex_approx_eq, complex_mat_approx_eq, cpx, Complex64};
+    use crate::{complex_approx_eq, complex_mat_approx_eq, cpx};
 
     /// Computes a⋅ai that should equal I for a square matrix
     fn get_a_times_ai(a: &ComplexMatrix, ai: &ComplexMatrix) -> ComplexMatrix {

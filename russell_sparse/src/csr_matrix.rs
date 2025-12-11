@@ -814,9 +814,7 @@ where
 mod tests {
     use super::NumCsrMatrix;
     use crate::{CooMatrix, Samples, Sym};
-    use russell_lab::{
-        array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq, Complex64, ComplexVector, Matrix, Vector,
-    };
+    use russell_lab::{array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {

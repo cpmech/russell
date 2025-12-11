@@ -65,7 +65,7 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_norm, ComplexMatrix};
-    use crate::{approx_eq, cpx, Complex64, ComplexFloat, Norm};
+    use crate::{approx_eq, cpx, ComplexFloat, Norm};
 
     #[test]
     fn complex_mat_norm_works() {

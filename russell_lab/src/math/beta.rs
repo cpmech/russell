@@ -329,7 +329,7 @@ fn ln_beta_asymptotic(a: f64, b: f64) -> (f64, i32) {
 mod tests {
     use super::{beta, ln_beta, ASYMPTOTIC_FACTOR};
     use crate::math::{gamma, ln_gamma, PI};
-    use crate::{approx_eq, cpx, Complex64};
+    use crate::{approx_eq, cpx};
 
     #[test]
     fn beta_function_works_1() {

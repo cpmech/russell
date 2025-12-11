@@ -151,7 +151,7 @@ pub fn complex_mat_svd(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_svd;
-    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq, Complex64, ComplexMatrix, Vector};
+    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq, ComplexMatrix, Vector};
 
     #[test]
     fn complex_mat_svd_fails_on_wrong_dims() {

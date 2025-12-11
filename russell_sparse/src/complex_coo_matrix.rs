@@ -1,6 +1,6 @@
 use crate::StrError;
 use crate::{ComplexCooMatrix, CooMatrix};
-use russell_lab::{cpx, Complex64};
+use russell_lab::cpx;
 
 impl ComplexCooMatrix {
     /// Assigns this matrix to the values of another real matrix (scaled)
@@ -97,7 +97,7 @@ impl ComplexCooMatrix {
 #[cfg(test)]
 mod tests {
     use crate::{ComplexCooMatrix, CooMatrix, Sym};
-    use russell_lab::{cpx, Complex64};
+    use russell_lab::cpx;
 
     #[test]
     fn assign_real_capture_errors() {

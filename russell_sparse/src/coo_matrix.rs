@@ -921,7 +921,7 @@ where
 mod tests {
     use super::NumCooMatrix;
     use crate::{Samples, Sym};
-    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, Complex64, ComplexVector, NumMatrix, NumVector};
+    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, NumMatrix, NumVector};
 
     #[test]
     fn new_captures_errors() {

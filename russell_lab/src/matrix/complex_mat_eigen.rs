@@ -283,7 +283,7 @@ pub fn complex_mat_eigen_lr(
 mod tests {
     use super::{complex_mat_eigen, complex_mat_eigen_lr};
     use crate::matrix::testing::complex_check_eigen;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexMatrix, ComplexVector};
+    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
 
     #[test]
     fn complex_mat_eigen_fails_on_non_square() {

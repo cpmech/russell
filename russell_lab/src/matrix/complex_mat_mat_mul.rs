@@ -114,7 +114,7 @@ pub fn complex_mat_mat_mul(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_mat_mul;
-    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
+    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {

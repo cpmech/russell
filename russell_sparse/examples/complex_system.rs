@@ -1,4 +1,4 @@
-use russell_lab::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
+use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 

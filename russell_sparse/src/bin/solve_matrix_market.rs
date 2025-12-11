@@ -1,4 +1,4 @@
-use russell_lab::{cpx, set_num_threads, using_intel_mkl, Complex64, ComplexVector, Stopwatch, StrError, Vector};
+use russell_lab::{cpx, set_num_threads, using_intel_mkl, ComplexVector, Stopwatch, StrError, Vector};
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -115,7 +115,7 @@ fn main() -> Result<(), StrError> {
         // write vismatrix file
         if opt.vismatrix {
             let csc = CscMatrix::from_coo(&coo)?;
-            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_real.smat", true)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_real.smat", true, 1e-14)?;
         }
 
         // save information about the matrix
@@ -170,7 +170,7 @@ fn main() -> Result<(), StrError> {
         let coo = coo_complex.unwrap();
         if opt.vismatrix {
             let csc = ComplexCscMatrix::from_coo(&coo)?;
-            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_complex.smat", true)?;
+            csc.write_matrix_market("/tmp/russell_sparse/solve_matrix_market_complex.smat", true, 1e-14)?;
         }
 
         // save information about the matrix

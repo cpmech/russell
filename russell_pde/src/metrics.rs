@@ -483,7 +483,7 @@ mod tests {
         vec_approx_eq(&met.g_cov[0], &[ct, st], 1e-15);
         vec_approx_eq(&met.g_cov[1], &[-rho * st, rho * ct], 1e-15);
 
-        // check [g] matrix and it's determinant
+        // check [g] matrix and its determinant
         assert_eq!(g, rho * rho);
         mat_approx_eq(
             &met.g_mat,
@@ -519,6 +519,124 @@ mod tests {
         approx_eq(met.christoffel_second[1][0][1], 1.0 / rho, 1e-15);
         approx_eq(met.christoffel_second[1][1][0], 1.0 / rho, 1e-15);
         approx_eq(met.christoffel_second[1][1][1], 0.0, 1e-15);
+    }
+
+    #[test]
+    fn calculate_works_spherical_coords() {
+        // x1 = ρ sin(θ) cos(ɑ)
+        // x2 = ρ sin(θ) sin(ɑ)
+        // x3 = ρ cos(θ)
+        // with r = ρ, s = θ, and t = ɑ
+        // dx/dr = dx/dρ = [sin(θ) cos(ɑ), sin(θ) sin(ɑ), cos(θ)] = g₁
+        // dx/ds = dx/dθ = [ρ cos(θ) cos(ɑ), ρ cos(θ) sin(ɑ), -ρ sin(θ)] = g₂
+        // dx/dt = dx/dɑ = [-ρ sin(θ) sin(ɑ), ρ sin(θ) cos(ɑ), 0.0] = g₃
+        // d²x/dr² = d²x/dρ² = [0.0, 0.0, 0.0]
+        // d²x/ds² = d²x/dθ² = [-ρ sin(θ) cos(ɑ), -ρ sin(θ) sin(ɑ), -ρ cos(θ)]
+        // d²x/dt² = d²x/dɑ² = [-ρ sin(θ) cos(ɑ), -ρ sin(θ) sin(ɑ), 0.0]
+        // d²x/(dr ds) = (d/ds)(dx/dr) = [cos(θ) cos(ɑ), cos(θ) sin(ɑ), -sin(θ)]
+        // d²x/(dr dt) = (d/dt)(dx/dr) = [-sin(θ) sin(ɑ), sin(θ) cos(ɑ), 0.0]
+        // d²x/(ds dt) = (d/dt)(dx/ds) = [-ρ cos(θ) sin(ɑ), ρ cos(θ) cos(ɑ), 0.0]
+
+        // define derivatives at a given point
+        let rho = 2.0;
+        let theta = PI / 6.0;
+        let alpha = PI / 4.0;
+        let ct = f64::cos(theta);
+        let st = f64::sin(theta);
+        let ca = f64::cos(alpha);
+        let sa = f64::sin(alpha);
+        let dx_dr = Vector::from(&[st * ca, st * sa, ct]);
+        let dx_ds = Vector::from(&[rho * ct * ca, rho * ct * sa, -rho * st]);
+        let dx_dt = Vector::from(&[-rho * st * sa, rho * st * ca, 0.0]);
+        let d2x_dr2 = Vector::from(&[0.0, 0.0, 0.0]);
+        let d2x_ds2 = Vector::from(&[-rho * st * ca, -rho * st * sa, -rho * ct]);
+        let d2x_dt2 = Vector::from(&[-rho * st * ca, -rho * st * sa, 0.0]);
+        let d2x_drs = Vector::from(&[ct * ca, ct * sa, -st]);
+        let d2x_drt = Vector::from(&[-st * sa, st * ca, 0.0]);
+        let d2x_dst = Vector::from(&[-rho * ct * sa, rho * ct * ca, 0.0]);
+
+        // calculate metrics
+        let mut met = Metrics::new(3, false);
+        let g = met
+            .calculate_3d(
+                &dx_dr,
+                &dx_ds,
+                &dx_dt,
+                Some(&d2x_dr2),
+                Some(&d2x_ds2),
+                Some(&d2x_dt2),
+                Some(&d2x_drs),
+                Some(&d2x_drt),
+                Some(&d2x_dst),
+            )
+            .unwrap();
+
+        // check covariant vectors
+        vec_approx_eq(&met.g_cov[0], &[st * ca, st * sa, ct], 1e-15);
+        vec_approx_eq(&met.g_cov[1], &[rho * ct * ca, rho * ct * sa, -rho * st], 1e-15);
+        vec_approx_eq(&met.g_cov[2], &[-rho * st * sa, rho * st * ca, 0.0], 1e-15);
+
+        // check [g] matrix and its determinant
+        let a = rho * rho;
+        let b = a * st * st;
+        approx_eq(g, a * b, 1e-15);
+        mat_approx_eq(
+            &met.g_mat,
+            &[
+                [1.0, 0.0, 0.0], // g₁·g₁, 0.0, 0.0
+                [0.0, a, 0.0],   // 0.0, g₂·g₂, 0.0
+                [0.0, 0.0, b],   // 0.0, 0.0, g₃·g₃
+            ],
+            1e-15,
+        );
+
+        // check [G] matrix
+        mat_approx_eq(
+            &met.gg_mat,
+            &[
+                [1.0, 0.0, 0.0],     //
+                [0.0, 1.0 / a, 0.0], //
+                [0.0, 0.0, 1.0 / b], //
+            ],
+            1e-15,
+        );
+
+        // check contravariant vectors
+        vec_approx_eq(&met.g_ctr[0], &[st * ca, st * sa, ct], 1e-15);
+        vec_approx_eq(&met.g_ctr[1], &[ct * ca / rho, ct * sa / rho, -st / rho], 1e-15);
+        vec_approx_eq(&met.g_ctr[2], &[-sa / (rho * st), ca / (rho * st), 0.0], 1e-15);
+
+        // check Christoffel symbols of the second kind
+        // k = 0
+        approx_eq(met.christoffel_second[0][0][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][0][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][0][2], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][1][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][1][1], -rho, 1e-15);
+        approx_eq(met.christoffel_second[0][1][2], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][2][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][2][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][2][2], -rho * st * st, 1e-15);
+        // k = 1
+        approx_eq(met.christoffel_second[1][0][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][0][1], 1.0 / rho, 1e-15);
+        approx_eq(met.christoffel_second[1][0][2], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][1][0], 1.0 / rho, 1e-15);
+        approx_eq(met.christoffel_second[1][1][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][1][2], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][2][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][2][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][2][2], -st * ct, 1e-15);
+        // k = 2
+        approx_eq(met.christoffel_second[2][0][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[2][0][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[2][0][2], 1.0 / rho, 1e-15);
+        approx_eq(met.christoffel_second[2][1][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[2][1][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[2][1][2], ct / st, 1e-15);
+        approx_eq(met.christoffel_second[2][2][0], 1.0 / rho, 1e-15);
+        approx_eq(met.christoffel_second[2][2][1], ct / st, 1e-15);
+        approx_eq(met.christoffel_second[2][2][2], 0.0, 1e-15);
     }
 
     #[test]

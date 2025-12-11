@@ -316,7 +316,7 @@ mod tests {
     use russell_lab::mat_approx_eq;
 
     #[test]
-    fn get_matrices_lmm_works_1() {
+    fn get_matrices_works_1() {
         let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, 5, 5).unwrap();
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous(&grid);

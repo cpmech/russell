@@ -1,17 +1,6 @@
-#![allow(unused)]
-
 use crate::{EquationHandler, EssentialBcs2d, Grid2d, StrError};
 use russell_lab::{InterpLagrange, Vector};
 use russell_sparse::{CooMatrix, Sym};
-
-// constants for clarity/convenience
-const CUR: usize = 0; // current node
-const LEF: usize = 1; // left node
-const RIG: usize = 2; // right node
-const BOT: usize = 3; // bottom node
-const TOP: usize = 4; // top node
-const INI_X: usize = 0;
-const INI_Y: usize = 0;
 
 /// Approximates the Laplacian operator in 2D using the Spectral Collocation Method (without Neumann BCs)
 ///
@@ -342,9 +331,8 @@ impl<'a> SpectralLaplacian2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::SpectralLaplacian2d;
-    use crate::{EssentialBcs2d, Grid2d, Side};
-    use russell_lab::{mat_approx_eq, Matrix};
-    use russell_sparse::Sym;
+    use crate::{EssentialBcs2d, Grid2d};
+    use russell_lab::mat_approx_eq;
 
     #[test]
     fn get_matrices_lmm_works_1() {

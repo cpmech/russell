@@ -1,265 +1,340 @@
+use crate::StrError;
 use russell_lab::{mat_inverse, vec_inner, Matrix, Vector};
 
-/// Holds data related to a position in a space represented by curvilinear coordinates
+/// Calculates and stores the metrics coefficients for a given mapping between reference and physical coordinates
+///
+/// # Definitions
+///
+/// * Reference coordinates: `ξ = (r, s)`
+/// * Covariant base vectors: `gᵢ = ∂x/∂ξⁱ`
+/// * Contravariant base vectors: `gⁱ = ∂ξⁱ/∂x`
+/// * Covariant metric tensor: `gᵢⱼ = gᵢ ⋅ gⱼ`
+/// * Covariant matrix: `[g] = [gᵢⱼ]`
+/// * Contravariant matrix: `[G] = [g]⁻¹`
+/// * Determinant of the covariant matrix: `g = det([g])`
+/// * Calculation of contravariant base vectors: `gⁱ = gⁱʲ ⋅ gⱼ`
+/// * Christoffel vectors: `Cᵢⱼ = ∂gᵢ/∂ξʲ`
+/// * Christoffel symbols of the second kind: `Γᵏᵢⱼ = ∂gᵢ/∂ξʲ ⋅ gᵏ = Cᵢⱼ ⋅ gᵏ`
+///
+/// Note that the Einstein summation convention is used in the definitions above.
 pub struct Metrics {
-    pub u: Vector,                   // reference coordinates {r,s,t}
-    pub x: Vector,                   // physical coordinates {x,y,z}
-    pub cov_g0: Vector,              // covariant basis g_0 = d{x}/dr
-    pub cov_g1: Vector,              // covariant basis g_1 = d{x}/ds
-    pub cov_g2: Vector,              // covariant basis g_2 = d{x}/dt
-    pub cnt_g0: Vector,              // contravariant basis g_0 = dr/d{x} (gradients)
-    pub cnt_g1: Vector,              // contravariant basis g_1 = ds/d{x} (gradients)
-    pub cnt_g2: Vector,              // contravariant basis g_2 = dt/d{x} (gradients)
-    pub cov_g_mat: Matrix,           // covariant metrics g_ij = g_i ⋅ g_j
-    pub cnt_g_mat: Matrix,           // contravariant metrics g^ij = g^i ⋅ g^j
-    pub det_cov_g_mat: f64,          // determinant of covariant g matrix = det(CovGmat)
-    pub homogeneous: bool,           // homogeneous grid => nil second order derivatives and Christoffel symbols
-    pub gamma_s: Vec<Vec<Vec<f64>>>, // [k][i][j] Christoffel coefficients of second kind (non-homogeneous)
-    pub l: Vec<f64>,                 // [3] L-coefficients = sum(Γ_ij^k ⋅ g^ij) (non-homogeneous)
+    /// Dimension
+    ndim: usize,
+
+    /// Indicates that the base vectors and metrics do not vary with position
+    homogeneous: bool,
+
+    /// Covariant base vectors gᵢ
+    ///
+    /// dim = 2
+    pub g_cov: Vec<Vector>,
+
+    /// Contravariant base vectors gⁱ
+    ///
+    /// dim = 2
+    pub g_ctr: Vec<Vector>,
+
+    /// Matrix with the covariant metric tensor gᵢⱼ
+    ///
+    /// dim = 2 x 2
+    pub g_mat: Matrix,
+
+    /// Matrix with the contravariant metric tensor gⁱʲ
+    ///
+    /// dim = 2 x 2
+    pub gg_mat: Matrix,
+
+    /// Christoffel symbols of the second kind Γᵏᵢⱼ where the ij values equal the ji values
+    ///
+    /// The values can be obtained by calling `gamma[k].get(i, j)`
+    ///
+    /// Only available if `homogeneous` is `false`
+    ///
+    /// size = 2 x 2 x 2
+    pub christoffel_second: Vec<Vec<Vec<f64>>>,
+
+    /// Zero vector for internal algorithms
+    zero: Vector,
 }
 
 impl Metrics {
-    /// Allocates new 2D metrics structure
+    /// Creates a new instance
     ///
-    /// NOTE: the second order derivatives (from ddxdrr) may be None => homogeneous grid
-    pub fn new_2d(
-        u: &Vector,
-        x: &Vector,
-        dxdr: &Vector,
-        dxds: &Vector,
-        ddxdrr: Option<&Vector>,
-        ddxdss: Option<&Vector>,
-        ddxdrs: Option<&Vector>,
-    ) -> Self {
-        // input
-        let u_copy = u.clone();
-        let x_copy = x.clone();
-        let cov_g0 = dxdr.clone();
-        let cov_g1 = dxds.clone();
-        let cov_g2 = Vector::new(0); // unused in 2D
-
-        // covariant metrics
-        let mut cov_g_mat = Matrix::new(2, 2);
-        cov_g_mat.set(0, 0, vec_inner(&cov_g0, &cov_g0));
-        cov_g_mat.set(1, 1, vec_inner(&cov_g1, &cov_g1));
-        let g01 = vec_inner(&cov_g0, &cov_g1);
-        cov_g_mat.set(0, 1, g01);
-        cov_g_mat.set(1, 0, g01);
-
-        // contravariant metrics
-        let mut cnt_g_mat = Matrix::new(2, 2);
-        let det_cov_g_mat = mat_inverse(&mut cnt_g_mat, &cov_g_mat).unwrap();
-
-        // contravariant vectors
-        let mut cnt_g0 = Vector::new(2);
-        let mut cnt_g1 = Vector::new(2);
-        let cnt_g2 = Vector::new(0); // unused in 2D
-
-        for i in 0..2 {
-            cnt_g0[i] += cnt_g_mat.get(0, 0) * cov_g0[i] + cnt_g_mat.get(0, 1) * cov_g1[i];
-            cnt_g1[i] += cnt_g_mat.get(1, 0) * cov_g0[i] + cnt_g_mat.get(1, 1) * cov_g1[i];
-        }
-
-        // check if homogeneous grid
-        let homogeneous = ddxdrr.is_none();
-        let mut gamma_s = Vec::new();
-        let mut l = Vec::new();
-
-        if !homogeneous {
-            // Christoffel vectors
-            let gamma00 = ddxdrr.unwrap();
-            let gamma11 = ddxdss.unwrap();
-            let gamma01 = ddxdrs.unwrap();
-
-            // Christoffel symbols of second kind
-            // [k][i][j]
-            gamma_s = vec![vec![vec![0.0; 2]; 2]; 2];
-
-            gamma_s[0][0][0] = vec_inner(gamma00, &cnt_g0);
-            gamma_s[0][1][1] = vec_inner(gamma11, &cnt_g0);
-            gamma_s[0][0][1] = vec_inner(gamma01, &cnt_g0);
-            gamma_s[0][1][0] = gamma_s[0][0][1];
-
-            gamma_s[1][0][0] = vec_inner(gamma00, &cnt_g1);
-            gamma_s[1][1][1] = vec_inner(gamma11, &cnt_g1);
-            gamma_s[1][0][1] = vec_inner(gamma01, &cnt_g1);
-            gamma_s[1][1][0] = gamma_s[1][0][1];
-
-            // L-coefficients
-            l = vec![0.0; 2];
-            l[0] = gamma_s[0][0][0] * cnt_g_mat.get(0, 0)
-                + gamma_s[0][1][1] * cnt_g_mat.get(1, 1)
-                + 2.0 * gamma_s[0][0][1] * cnt_g_mat.get(0, 1);
-            l[1] = gamma_s[1][0][0] * cnt_g_mat.get(0, 0)
-                + gamma_s[1][1][1] * cnt_g_mat.get(1, 1)
-                + 2.0 * gamma_s[1][0][1] * cnt_g_mat.get(0, 1);
-        }
-
+    /// If the coordinates are homogeneous, set `homogeneous` to `true` to skip the calculation of Christoffel symbols.
+    ///
+    /// If the coordinates are non-homogeneous, the second derivatives must be provided when calling [Metrics2d::calculate()].
+    pub fn new(ndim: usize, homogeneous: bool) -> Self {
+        let gamma = if homogeneous {
+            Vec::new()
+        } else {
+            vec![vec![vec![0.0; ndim]; ndim]; ndim]
+        };
         Metrics {
-            u: u_copy,
-            x: x_copy,
-            cov_g0,
-            cov_g1,
-            cov_g2,
-            cnt_g0,
-            cnt_g1,
-            cnt_g2,
-            cov_g_mat,
-            cnt_g_mat,
-            det_cov_g_mat,
             homogeneous,
-            gamma_s,
-            l,
+            ndim,
+            g_cov: vec![Vector::new(ndim), Vector::new(ndim)],
+            g_ctr: vec![Vector::new(ndim), Vector::new(ndim)],
+            g_mat: Matrix::new(ndim, ndim),
+            gg_mat: Matrix::new(ndim, ndim),
+            christoffel_second: gamma,
+            zero: Vector::new(ndim),
         }
     }
 
-    /// Allocates new 3D metrics structure
+    /// Calculates the metrics at a given position and returns the determinant of the covariant matrix (2D version)
     ///
-    /// NOTE: the second order derivatives (from ddxdrr) may be None => homogeneous grid
-    pub fn new_3d(
-        u: &Vector,
-        x: &Vector,
-        dxdr: &Vector,
-        dxds: &Vector,
-        dxdt: &Vector,
-        ddxdrr: Option<&Vector>,
-        ddxdss: Option<&Vector>,
-        ddxdtt: Option<&Vector>,
-        ddxdrs: Option<&Vector>,
-        ddxdrt: Option<&Vector>,
-        ddxdst: Option<&Vector>,
-    ) -> Self {
-        // input
-        let u_copy = u.clone();
-        let x_copy = x.clone();
-        let cov_g0 = dxdr.clone();
-        let cov_g1 = dxds.clone();
-        let cov_g2 = dxdt.clone();
+    /// Returns the determinant of the covariant matrix.
+    ///
+    /// If the coordinates are non-homogeneous, the second derivatives must be provided.
+    ///
+    /// The covariant base vectors are given by:
+    ///
+    /// ```text
+    /// g₁ = ∂x/∂r
+    /// g₂ = ∂x/∂s
+    /// ```
+    ///
+    /// The second derivatives must be provided if the coordinates are non-homogeneous. In this case,
+    /// note that the Christoffel vectors `Cᵢⱼ = ∂gᵢ/∂ξʲ` are:
+    ///
+    /// ```text
+    /// C₁₁ = ∂²x/∂r²
+    /// C₂₂ = ∂²x/∂s²
+    /// C₁₂ = ∂²x/∂r∂s = C₂₁
+    /// ```
+    pub fn calculate_2d(
+        &mut self,
+        dx_dr: &Vector,
+        dx_ds: &Vector,
+        d2x_dr2: Option<&Vector>,
+        d2x_ds2: Option<&Vector>,
+        d2x_drs: Option<&Vector>,
+    ) -> Result<f64, StrError> {
+        if self.ndim != 2 {
+            return Err("calculate_2d only works for ndim = 2");
+        }
+        if dx_dr.dim() != 2 {
+            return Err("dx_dr must have dimension 2");
+        }
+        if dx_ds.dim() != 2 {
+            return Err("dx_ds must have dimension 2");
+        }
+        if !self.homogeneous {
+            if d2x_dr2.is_none() {
+                return Err("d2x_dr2 must be provided for non-homogeneous metrics");
+            }
+            if d2x_ds2.is_none() {
+                return Err("d2x_ds2 must be provided for non-homogeneous metrics");
+            }
+            if d2x_drs.is_none() {
+                return Err("d2x_drs must be provided for non-homogeneous metrics");
+            }
+        }
+        self.calculate(
+            dx_dr,   // dx_dr
+            dx_ds,   // dx_ds
+            None,    // dx_dt
+            d2x_dr2, // d2x_dr2
+            d2x_ds2, // d2x_ds2
+            None,    // d2x_dt2
+            d2x_drs, // d2x_drs
+            None,    // d2x_drt
+            None,    // d2x_dst
+        )
+    }
 
-        // covariant metrics
-        let mut cov_g_mat = Matrix::new(3, 3);
-        cov_g_mat.set(0, 0, vec_inner(&cov_g0, &cov_g0));
-        cov_g_mat.set(1, 1, vec_inner(&cov_g1, &cov_g1));
-        cov_g_mat.set(2, 2, vec_inner(&cov_g2, &cov_g2));
+    /// Calculates the metrics at a given position and returns the determinant of the covariant matrix (3D version)
+    ///
+    /// Returns the determinant of the covariant matrix.
+    ///
+    /// If the coordinates are non-homogeneous, the second derivatives must be provided.
+    ///
+    /// The covariant base vectors are given by:
+    ///
+    /// ```text
+    /// g₁ = ∂x/∂r
+    /// g₂ = ∂x/∂s
+    /// g₃ = ∂x/∂t
+    /// ```
+    ///
+    /// The second derivatives must be provided if the coordinates are non-homogeneous. In this case,
+    /// note that the Christoffel vectors `Cᵢⱼ = ∂gᵢ/∂ξʲ` are:
+    ///
+    /// ```text
+    /// C₁₁ = ∂²x/∂r²
+    /// C₂₂ = ∂²x/∂s²
+    /// C₃₃ = ∂²x/∂t²
+    /// C₁₂ = ∂²x/∂r∂s = C₂₁
+    /// C₁₃ = ∂²x/∂r∂t = C₃₁
+    /// C₂₃ = ∂²x/∂s∂t = C₃₂
+    /// ```
+    pub fn calculate_3d(
+        &mut self,
+        dx_dr: &Vector,
+        dx_ds: &Vector,
+        dx_dt: &Vector,
+        d2x_dr2: Option<&Vector>,
+        d2x_ds2: Option<&Vector>,
+        d2x_dt2: Option<&Vector>,
+        d2x_drs: Option<&Vector>,
+        d2x_drt: Option<&Vector>,
+        d2x_dst: Option<&Vector>,
+    ) -> Result<f64, StrError> {
+        if self.ndim != 3 {
+            return Err("calculate_3d only works for ndim = 3");
+        }
+        if dx_dr.dim() != 3 {
+            return Err("dx_dr must have dimension 3");
+        }
+        if dx_ds.dim() != 3 {
+            return Err("dx_ds must have dimension 3");
+        }
+        if dx_dt.dim() != 3 {
+            return Err("dx_dt must have dimension 3");
+        }
+        if !self.homogeneous {
+            if d2x_dr2.is_none() {
+                return Err("d2x_dr2 must be provided for non-homogeneous metrics");
+            }
+            if d2x_ds2.is_none() {
+                return Err("d2x_ds2 must be provided for non-homogeneous metrics");
+            }
+            if d2x_dt2.is_none() {
+                return Err("d2x_dt2 must be provided for non-homogeneous metrics");
+            }
+            if d2x_drs.is_none() {
+                return Err("d2x_drs must be provided for non-homogeneous metrics");
+            }
+            if d2x_drt.is_none() {
+                return Err("d2x_drt must be provided for non-homogeneous metrics");
+            }
+            if d2x_dst.is_none() {
+                return Err("d2x_dst must be provided for non-homogeneous metrics");
+            }
+        }
+        self.calculate(
+            dx_dr,
+            dx_ds,
+            Some(dx_dt),
+            d2x_dr2,
+            d2x_ds2,
+            d2x_dt2,
+            d2x_drs,
+            d2x_drt,
+            d2x_dst,
+        )
+    }
 
-        let g01 = vec_inner(&cov_g0, &cov_g1);
-        let g12 = vec_inner(&cov_g1, &cov_g2);
-        let g20 = vec_inner(&cov_g2, &cov_g0);
-
-        cov_g_mat.set(0, 1, g01);
-        cov_g_mat.set(1, 2, g12);
-        cov_g_mat.set(2, 0, g20);
-
-        cov_g_mat.set(1, 0, g01);
-        cov_g_mat.set(2, 1, g12);
-        cov_g_mat.set(0, 2, g20);
-
-        // contravariant metrics
-        let mut cnt_g_mat = Matrix::new(3, 3);
-        let det_cov_g_mat = mat_inverse(&mut cnt_g_mat, &cov_g_mat).unwrap();
-
-        // contravariant vectors
-        let mut cnt_g0 = Vector::new(3);
-        let mut cnt_g1 = Vector::new(3);
-        let mut cnt_g2 = Vector::new(3);
-
-        for i in 0..3 {
-            cnt_g0[i] +=
-                cnt_g_mat.get(0, 0) * cov_g0[i] + cnt_g_mat.get(0, 1) * cov_g1[i] + cnt_g_mat.get(0, 2) * cov_g2[i];
-            cnt_g1[i] +=
-                cnt_g_mat.get(1, 0) * cov_g0[i] + cnt_g_mat.get(1, 1) * cov_g1[i] + cnt_g_mat.get(1, 2) * cov_g2[i];
-            cnt_g2[i] +=
-                cnt_g_mat.get(2, 0) * cov_g0[i] + cnt_g_mat.get(2, 1) * cov_g1[i] + cnt_g_mat.get(2, 2) * cov_g2[i];
+    /// Calculates the metrics at a given position and returns the determinant of the covariant matrix
+    ///
+    /// Returns the determinant of the covariant matrix.
+    fn calculate(
+        &mut self,
+        dx_dr: &Vector,
+        dx_ds: &Vector,
+        dx_dt: Option<&Vector>,
+        d2x_dr2: Option<&Vector>,
+        d2x_ds2: Option<&Vector>,
+        d2x_dt2: Option<&Vector>,
+        d2x_drs: Option<&Vector>,
+        d2x_drt: Option<&Vector>,
+        d2x_dst: Option<&Vector>,
+    ) -> Result<f64, StrError> {
+        // covariant base vectors and metrics
+        for d in 0..self.ndim {
+            self.g_cov[0][d] = dx_dr[d];
+            self.g_cov[1][d] = dx_ds[d];
+        }
+        if self.ndim == 3 {
+            let dx_dt = dx_dt.unwrap();
+            for d in 0..self.ndim {
+                self.g_cov[2][d] = dx_dt[d];
+            }
         }
 
-        // check if homogeneous grid
-        let homogeneous = ddxdrr.is_none();
-        let mut gamma_s = Vec::new();
-        let mut l = Vec::new();
+        // covariant matrix
+        for i in 0..self.ndim {
+            for j in 0..self.ndim {
+                let mut g_ij = 0.0;
+                for d in 0..self.ndim {
+                    g_ij += self.g_cov[i][d] * self.g_cov[j][d];
+                }
+                self.g_mat.set(i, j, g_ij);
+            }
+        }
 
-        if !homogeneous {
+        // contravariant matrix and determinant of the covariant matrix
+        let g = mat_inverse(&mut self.gg_mat, &self.g_mat)?;
+
+        // contravariant base vectors
+        for d in 0..self.ndim {
+            for i in 0..self.ndim {
+                self.g_ctr[i][d] = 0.0;
+                for j in 0..self.ndim {
+                    self.g_ctr[i][d] += self.gg_mat.get(i, j) * self.g_cov[j][d];
+                }
+            }
+        }
+
+        // Christoffel symbols of the second kind
+        if !self.homogeneous {
+            let d2x_dr2 = d2x_dr2.unwrap();
+            let d2x_ds2 = d2x_ds2.unwrap();
+            let d2x_drs = d2x_drs.unwrap();
+
             // Christoffel vectors
-            let gamma00 = ddxdrr.unwrap();
-            let gamma11 = ddxdss.unwrap();
-            let gamma22 = ddxdtt.unwrap();
-            let gamma01 = ddxdrs.unwrap();
-            let gamma02 = ddxdrt.unwrap();
-            let gamma12 = ddxdst.unwrap();
+            let cc = if self.ndim == 2 {
+                &[
+                    [d2x_dr2, d2x_drs, &self.zero],       // C₁ⱼ
+                    [d2x_drs, d2x_ds2, &self.zero],       // C₂ⱼ
+                    [&self.zero, &self.zero, &self.zero], // C₃ⱼ
+                ]
+            } else {
+                let d2x_dt2 = d2x_dt2.unwrap();
+                let d2x_drt = d2x_drt.unwrap();
+                let d2x_dst = d2x_dst.unwrap();
+                &[
+                    [d2x_dr2, d2x_drs, d2x_drt], // C₁ⱼ
+                    [d2x_drs, d2x_ds2, d2x_dst], // C₂ⱼ
+                    [d2x_drt, d2x_dst, d2x_dt2], // C₃ⱼ
+                ]
+            };
 
-            // Christoffel symbols of second kind
-            gamma_s = vec![vec![vec![0.0; 3]; 3]; 3];
-
-            // k=0
-            gamma_s[0][0][0] = vec_inner(gamma00, &cnt_g0);
-            gamma_s[0][1][1] = vec_inner(gamma11, &cnt_g0);
-            gamma_s[0][2][2] = vec_inner(gamma22, &cnt_g0);
-            gamma_s[0][0][1] = vec_inner(gamma01, &cnt_g0);
-            gamma_s[0][0][2] = vec_inner(gamma02, &cnt_g0);
-            gamma_s[0][1][2] = vec_inner(gamma12, &cnt_g0);
-            gamma_s[0][1][0] = gamma_s[0][0][1];
-            gamma_s[0][2][0] = gamma_s[0][0][2];
-            gamma_s[0][2][1] = gamma_s[0][1][2];
-
-            // k=1
-            gamma_s[1][0][0] = vec_inner(gamma00, &cnt_g1);
-            gamma_s[1][1][1] = vec_inner(gamma11, &cnt_g1);
-            gamma_s[1][2][2] = vec_inner(gamma22, &cnt_g1);
-            gamma_s[1][0][1] = vec_inner(gamma01, &cnt_g1);
-            gamma_s[1][0][2] = vec_inner(gamma02, &cnt_g1);
-            gamma_s[1][1][2] = vec_inner(gamma12, &cnt_g1);
-            gamma_s[1][1][0] = gamma_s[1][0][1];
-            gamma_s[1][2][0] = gamma_s[1][0][2];
-            gamma_s[1][2][1] = gamma_s[1][1][2];
-
-            // k=2
-            gamma_s[2][0][0] = vec_inner(gamma00, &cnt_g2);
-            gamma_s[2][1][1] = vec_inner(gamma11, &cnt_g2);
-            gamma_s[2][2][2] = vec_inner(gamma22, &cnt_g2);
-            gamma_s[2][0][1] = vec_inner(gamma01, &cnt_g2);
-            gamma_s[2][0][2] = vec_inner(gamma02, &cnt_g2);
-            gamma_s[2][1][2] = vec_inner(gamma12, &cnt_g2);
-            gamma_s[2][1][0] = gamma_s[2][0][1];
-            gamma_s[2][2][0] = gamma_s[2][0][2];
-            gamma_s[2][2][1] = gamma_s[2][1][2];
-
-            // L-coefficients
-            l = vec![0.0; 3];
-            l[0] = gamma_s[0][0][0] * cnt_g_mat.get(0, 0)
-                + gamma_s[0][1][1] * cnt_g_mat.get(1, 1)
-                + gamma_s[0][2][2] * cnt_g_mat.get(2, 2)
-                + 2.0 * gamma_s[0][0][1] * cnt_g_mat.get(0, 1)
-                + 2.0 * gamma_s[0][0][2] * cnt_g_mat.get(0, 2)
-                + 2.0 * gamma_s[0][1][2] * cnt_g_mat.get(1, 2);
-            l[1] = gamma_s[1][0][0] * cnt_g_mat.get(0, 0)
-                + gamma_s[1][1][1] * cnt_g_mat.get(1, 1)
-                + gamma_s[1][2][2] * cnt_g_mat.get(2, 2)
-                + 2.0 * gamma_s[1][0][1] * cnt_g_mat.get(0, 1)
-                + 2.0 * gamma_s[1][0][2] * cnt_g_mat.get(0, 2)
-                + 2.0 * gamma_s[1][1][2] * cnt_g_mat.get(1, 2);
-            l[2] = gamma_s[2][0][0] * cnt_g_mat.get(0, 0)
-                + gamma_s[2][1][1] * cnt_g_mat.get(1, 1)
-                + gamma_s[2][2][2] * cnt_g_mat.get(2, 2)
-                + 2.0 * gamma_s[2][0][1] * cnt_g_mat.get(0, 1)
-                + 2.0 * gamma_s[2][0][2] * cnt_g_mat.get(0, 2)
-                + 2.0 * gamma_s[2][1][2] * cnt_g_mat.get(1, 2);
+            // Christoffel symbols of the second kind: Γᵏᵢⱼ = Cᵢⱼ ⋅ gᵏ
+            for k in 0..self.ndim {
+                for j in 0..self.ndim {
+                    for i in 0..self.ndim {
+                        self.christoffel_second[k][i][j] = vec_inner(cc[i][j], &self.g_ctr[k]);
+                    }
+                }
+            }
         }
 
-        Metrics {
-            u: u_copy,
-            x: x_copy,
-            cov_g0,
-            cov_g1,
-            cov_g2,
-            cnt_g0,
-            cnt_g1,
-            cnt_g2,
-            cov_g_mat,
-            cnt_g_mat,
-            det_cov_g_mat,
-            homogeneous,
-            gamma_s,
-            l,
+        // return the determinant of the covariant matrix
+        Ok(g)
+    }
+
+    /// Calculates the L-coefficient for the Laplacian operator
+    ///
+    /// Returns:
+    ///
+    /// ```text
+    /// Lᵏ = Γᵏᵢⱼ gⁱʲ
+    /// ```
+    ///
+    /// **Warning**: `homogeneous` must be true and [Metrics2d::calculate()] must be called before using this method.
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if `homogeneous` is false and the Christoffel symbols have not been calculated.
+    pub fn ell_coefficient_for_laplacian(&self, k: usize) -> f64 {
+        let mut ell = 0.0;
+        for i in 0..self.ndim {
+            for j in 0..self.ndim {
+                ell += self.christoffel_second[k][i][j] * self.gg_mat.get(i, j);
+            }
         }
+        ell
     }
 }
 
@@ -268,20 +343,45 @@ impl Metrics {
 #[cfg(test)]
 mod tests {
     use super::Metrics;
-    use russell_lab::Vector;
+    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Vector};
 
     #[test]
-    fn new_2d_works() {
-        let u = Vector::from(&[0.0, 0.0]);
-        let x = Vector::from(&[0.0, 0.0]);
-        let dxdr = Vector::from(&[1.0, 0.0]);
-        let dxds = Vector::from(&[0.0, 1.0]);
-        let ddxdrr = None;
-        let ddxdss = None;
-        let ddxdrs = None;
+    fn calculate_works_2d_1() {
+        // Consider the mapping:
+        //
+        // -1 ≤ r ≤ +1
+        // x(r) = (xb + xa) / 2 + (xb - xa) r / 2
+        // r(x) = (2x - xb - xa) / (xb - xa)
+        // dx/dr = (xb - xa) / 2
+        // dr/dx = 2 / (xb - xa)
+        //
+        // On a rectangular domain, similar expressions apply for y(s) and s(y).
 
-        let metrics = Metrics::new_2d(&u, &x, &dxdr, &dxds, ddxdrr, ddxdss, ddxdrs);
-        assert_eq!(metrics.homogeneous, true);
-        assert_eq!(metrics.det_cov_g_mat, 1.0);
+        // define derivatives
+        let (xa, xb) = (-6.0, 6.0);
+        let (ya, yb) = (-3.0, 3.0);
+        let dx_dr = Vector::from(&[(xb - xa) / 2.0, 0.0]);
+        let dx_ds = Vector::from(&[0.0, (yb - ya) / 2.0]);
+
+        // calculate metrics
+        let mut met = Metrics::new(2, true);
+        let g = met.calculate_2d(&dx_dr, &dx_ds, None, None, None).unwrap();
+
+        // check [g] and [G] matrices
+        println!("g = det([g]) = {}", g);
+        println!("[g] =\n{}", met.g_mat);
+        approx_eq(g, 36.0 * 9.0, 1e-15);
+        mat_approx_eq(&met.g_mat, &[[36.0, 0.0], [0.0, 9.0]], 1e-15);
+        mat_approx_eq(&met.gg_mat, &[[1.0 / 36.0, 0.0], [0.0, 1.0 / 9.0]], 1e-15);
+
+        // check covariant and contravariant vectors
+        assert_eq!(&met.g_cov[0].as_data(), &dx_dr.as_data());
+        assert_eq!(&met.g_cov[1].as_data(), &dx_ds.as_data());
+        vec_approx_eq(&met.g_ctr[0], &[1.0 / 6.0, 0.0], 1e-15);
+        vec_approx_eq(&met.g_ctr[1], &[0.0, 1.0 / 3.0], 1e-15);
+
+        // no Christoffel symbols for homogeneous metrics
+        assert_eq!(met.homogeneous, true);
+        assert_eq!(met.christoffel_second.len(), 0);
     }
 }

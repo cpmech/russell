@@ -720,11 +720,7 @@ mod tests {
 
                 // check g_ctr
                 vec_approx_eq(&met.g_ctr[0], &[ct / p, st / p], 1e-15);
-                vec_approx_eq(
-                    &met.g_ctr[1],
-                    &[-rho * st / (rho * rho * q), rho * ct / (rho * rho * q)],
-                    1e-15,
-                );
+                vec_approx_eq(&met.g_ctr[1], &[-st / (rho * q), ct / (rho * q)], 1e-15);
 
                 // check Christoffel symbols of the second kind
                 // k = 0

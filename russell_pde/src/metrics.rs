@@ -451,6 +451,77 @@ mod tests {
     }
 
     #[test]
+    fn calculate_works_cylindrical_coords() {
+        // x1 = ρ cos(θ)
+        // x2 = ρ sin(θ)
+        // x3 = z
+        // with r = ρ, s = θ, and t = z
+        // dx/dr = dx/dρ = [cos(θ), sin(θ)] = g₁
+        // dx/ds = dx/dθ = [-ρ sin(θ), ρ cos(θ)] = g₂
+        // d²x/dr² = d²x/dρ² = [0.0, 0.0]
+        // d²x/ds² = d²x/dθ² = [-ρ cos(θ), -ρ sin(θ)]
+        // d²x/(dr ds) = (d/ds)(dx/dr) = [-sin(θ), cos(θ)]]
+
+        // define derivatives at a given point
+        let rho = 2.0;
+        let theta = PI / 6.0;
+        let ct = f64::cos(theta);
+        let st = f64::sin(theta);
+        let dx_dr = Vector::from(&[ct, st]);
+        let dx_ds = Vector::from(&[-rho * st, rho * ct]);
+        let d2x_dr2 = Vector::from(&[0.0, 0.0]);
+        let d2x_ds2 = Vector::from(&[-rho * ct, -rho * st]);
+        let d2x_drs = Vector::from(&[-st, ct]);
+
+        // calculate metrics
+        let mut met = Metrics::new(2, false);
+        let g = met
+            .calculate_2d(&dx_dr, &dx_ds, Some(&d2x_dr2), Some(&d2x_ds2), Some(&d2x_drs))
+            .unwrap();
+
+        // check covariant vectors
+        vec_approx_eq(&met.g_cov[0], &[ct, st], 1e-15);
+        vec_approx_eq(&met.g_cov[1], &[-rho * st, rho * ct], 1e-15);
+
+        // check [g] matrix and it's determinant
+        assert_eq!(g, rho * rho);
+        mat_approx_eq(
+            &met.g_mat,
+            &[
+                [1.0, 0.0],       // g₁·g₁, 0.0
+                [0.0, rho * rho], // 0.0, g₂·g₂
+            ],
+            1e-15,
+        );
+
+        // check [G] matrix
+        mat_approx_eq(
+            &met.gg_mat,
+            &[
+                [1.0, 0.0], //
+                [0.0, 1.0 / (rho * rho)],
+            ],
+            1e-15,
+        );
+
+        // check contravariant vectors
+        vec_approx_eq(&met.g_ctr[0], &[ct, st], 1e-15);
+        vec_approx_eq(&met.g_ctr[1], &[-st / rho, ct / rho], 1e-15);
+
+        // check Christoffel symbols of the second kind
+        // k = 0
+        approx_eq(met.christoffel_second[0][0][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][0][1], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][1][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[0][1][1], -rho, 1e-15);
+        // k = 1
+        approx_eq(met.christoffel_second[1][0][0], 0.0, 1e-15);
+        approx_eq(met.christoffel_second[1][0][1], 1.0 / rho, 1e-15);
+        approx_eq(met.christoffel_second[1][1][0], 1.0 / rho, 1e-15);
+        approx_eq(met.christoffel_second[1][1][1], 0.0, 1e-15);
+    }
+
+    #[test]
     fn calculate_works_quarter_ring_2d() {
         // Quarter ring with a 2D transfinite mapping
         //

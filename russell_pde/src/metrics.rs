@@ -72,8 +72,8 @@ impl Metrics {
         Metrics {
             homogeneous,
             ndim,
-            g_cov: vec![Vector::new(ndim), Vector::new(ndim)],
-            g_ctr: vec![Vector::new(ndim), Vector::new(ndim)],
+            g_cov: vec![Vector::new(ndim); ndim],
+            g_ctr: vec![Vector::new(ndim); ndim],
             g_mat: Matrix::new(ndim, ndim),
             gg_mat: Matrix::new(ndim, ndim),
             christoffel_second: gamma,
@@ -379,6 +379,69 @@ mod tests {
         assert_eq!(&met.g_cov[1].as_data(), &dx_ds.as_data());
         vec_approx_eq(&met.g_ctr[0], &[1.0 / 6.0, 0.0], 1e-15);
         vec_approx_eq(&met.g_ctr[1], &[0.0, 1.0 / 3.0], 1e-15);
+
+        // no Christoffel symbols for homogeneous metrics
+        assert_eq!(met.homogeneous, true);
+        assert_eq!(met.christoffel_second.len(), 0);
+    }
+
+    #[test]
+    fn calculate_works_3d_1() {
+        // Consider the mapping:
+        //
+        // -1 ≤ r ≤ +1
+        // x(r) = (xb + xa) / 2 + (xb - xa) r / 2
+        // r(x) = (2x - xb - xa) / (xb - xa)
+        // dx/dr = (xb - xa) / 2
+        // dr/dx = 2 / (xb - xa)
+        //
+        // On a rectangular domain, similar expressions apply for y(s), s(y), z(t), and t(z).
+
+        // with:
+        //  (xa, xb) = (-2.0, -1.0)
+        //  (ya, yb) = (-2.0, 2.0)
+        //  (za, zb) = (-2.0, 0.0)
+
+        // define derivatives
+        let dx0_dr = 0.5; // (xb - xa) / 2.0
+        let dx1_ds = 2.0; // (yb - ya) / 2.0
+        let dx2_dt = 1.0; // (zb - za) / 2.0
+        let dx_dr = Vector::from(&[dx0_dr, 0.0, 0.0]);
+        let dx_ds = Vector::from(&[0.0, dx1_ds, 0.0]);
+        let dx_dt = Vector::from(&[0.0, 0.0, dx2_dt]);
+
+        // calculate metrics
+        let mut met = Metrics::new(3, true);
+        let g = met
+            .calculate_3d(&dx_dr, &dx_ds, &dx_dt, None, None, None, None, None, None)
+            .unwrap();
+
+        // check [g] and [G] matrices
+        println!("g = det([g]) = {}", g);
+        println!("[g] =\n{}", met.g_mat);
+        mat_approx_eq(
+            &met.g_mat,
+            &[
+                [0.25, 0.0, 0.0], // g0.g0 = 0.5*0.5
+                [0.0, 4.0, 0.0],  // g1.g1 = 2.0*2.0
+                [0.0, 0.0, 1.0],  // g2.g2 = 1.0*1.0
+            ],
+            1e-15,
+        );
+        approx_eq(g, 0.25 * 4.0 * 1.0, 1e-15);
+        mat_approx_eq(
+            &met.gg_mat,
+            &[[1.0 / 0.25, 0.0, 0.0], [0.0, 1.0 / 4.0, 0.0], [0.0, 0.0, 1.0 / 1.0]],
+            1e-15,
+        );
+
+        // check covariant and contravariant vectors
+        assert_eq!(&met.g_cov[0].as_data(), &dx_dr.as_data());
+        assert_eq!(&met.g_cov[1].as_data(), &dx_ds.as_data());
+        assert_eq!(&met.g_cov[2].as_data(), &dx_dt.as_data());
+        vec_approx_eq(&met.g_ctr[0], &[1.0 / 0.5, 0.0, 0.0], 1e-15);
+        vec_approx_eq(&met.g_ctr[1], &[0.0, 1.0 / 2.0, 0.0], 1e-15);
+        vec_approx_eq(&met.g_ctr[2], &[0.0, 0.0, 1.0 / 1.0], 1e-15);
 
         // no Christoffel symbols for homogeneous metrics
         assert_eq!(met.homogeneous, true);

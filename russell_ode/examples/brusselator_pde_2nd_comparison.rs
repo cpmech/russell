@@ -62,7 +62,7 @@ fn main() {
                 .set_wire_line_style("-")
                 .set_wire_line_color("red");
         }
-        args.loop_over_grid_points(|m, x, y| {
+        args.for_each_coord(|m, x, y| {
             let row = m / npoint;
             let col = m % npoint;
             grid_x[col][row] = x;

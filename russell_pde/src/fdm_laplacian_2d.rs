@@ -406,7 +406,7 @@ impl<'a> FdmLaplacian2d<'a> {
     /// i = m % nx
     /// j = m / nx
     /// ```
-    pub fn loop_over_grid_points<F>(&self, mut callback: F)
+    pub fn for_each_coord<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64, f64),
     {
@@ -1038,7 +1038,7 @@ mod tests {
         let lap = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
-        lap.loop_over_grid_points(|m, x, y| {
+        lap.for_each_coord(|m, x, y| {
             let i = m % nx;
             let j = m / nx;
             xx.set(j, i, x);

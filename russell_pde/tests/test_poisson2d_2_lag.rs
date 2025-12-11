@@ -59,7 +59,7 @@ fn test_poisson2d_2_lag() {
 
     // check
     let analytical = |x, y| y * f64::sin(PI * x);
-    fdm.loop_over_grid_points(|m, x, y| {
+    fdm.for_each_coord(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 0.001036);
     });
 
@@ -71,7 +71,7 @@ fn test_poisson2d_2_lag() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        fdm.loop_over_grid_points(|m, x, y| {
+        fdm.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

@@ -39,7 +39,7 @@ fn test_laplace1d_1_lag() {
 
     // analytical solution
     let analytical = |x| (x - f64::powi(x, 3)) / 6.0;
-    fdm.loop_over_grid_points(|m, x| {
+    fdm.for_each_coord(|m, x| {
         println!("{}: 128 ϕ = {} ({})", m, 128.0 * a[m], 128.0 * analytical(x));
     });
 

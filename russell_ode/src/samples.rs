@@ -518,7 +518,7 @@ impl Samples {
 
         // system
         let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2d<'a>| {
-            fdm.loop_over_grid_points(|m, x, y| {
+            fdm.for_each_coord(|m, x, y| {
                 let um = yy[m];
                 let vm = yy[s + m];
                 let um2 = um * um;
@@ -591,12 +591,12 @@ impl Samples {
         let t0 = 0.0;
         let mut yy0 = Vector::new(ndim);
         if second_book {
-            fdm.loop_over_grid_points(|m, x, y| {
+            fdm.for_each_coord(|m, x, y| {
                 yy0[m] = 22.0 * y * f64::powf(1.0 - y, 1.5);
                 yy0[s + m] = 27.0 * x * f64::powf(1.0 - x, 1.5);
             });
         } else {
-            fdm.loop_over_grid_points(|m, x, y| {
+            fdm.for_each_coord(|m, x, y| {
                 yy0[m] = 0.5 + y; // u0
                 yy0[s + m] = 1.0 + 5.0 * x; // v0
             });

@@ -65,7 +65,7 @@ fn test_spectral_poisson2d_4() -> Result<(), StrError> {
         let mut xx = vec![vec![0.0; nx]; ny];
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz = vec![vec![0.0; nx]; ny];
-        spectral.get_grid().for_each_coord(|m, x, y| {
+        spectral.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

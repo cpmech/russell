@@ -387,7 +387,7 @@ impl<'a> FdmLaplacian1d<'a> {
     ///
     /// * `callback` -- a function of `(m, x)` where `m` is the sequential point number,
     ///   and `x` is coordinate.
-    pub fn loop_over_grid_points<F>(&self, mut callback: F)
+    pub fn for_each_coord<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64),
     {
@@ -774,7 +774,7 @@ mod tests {
         let ebcs = EssentialBcs1d::new();
         let lap = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
         let mut xx = Vector::new(nx);
-        lap.loop_over_grid_points(|m, x| {
+        lap.for_each_coord(|m, x| {
             xx[m] = x;
         });
         assert_eq!(

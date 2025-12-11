@@ -59,7 +59,7 @@ fn test_radau5_brusselator_pde() {
             let mut grid_x = vec![vec![0.0; npoint]; npoint];
             let mut grid_y = vec![vec![0.0; npoint]; npoint];
             let mut grid_z = vec![vec![0.0; npoint]; npoint];
-            args.loop_over_grid_points(|m, x, y| {
+            args.for_each_coord(|m, x, y| {
                 let row = m / npoint;
                 let col = m % npoint;
                 grid_x[col][row] = x;

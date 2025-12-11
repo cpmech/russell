@@ -351,7 +351,7 @@ fn run_test(
                 .draw(&xx_ana, &phi_crit_ana);
             let mut xx_num = vec![0.0; npt];
             let mut phi_crit_num = vec![0.0; npt];
-            fdm.loop_over_grid_points(|m, x| {
+            fdm.for_each_coord(|m, x| {
                 xx_num[m] = x;
                 phi_crit_num[m] = out.get_u_values(m)[ii_peaks[0]];
             });

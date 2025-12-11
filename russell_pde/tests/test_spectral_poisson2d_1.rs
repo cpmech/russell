@@ -54,7 +54,7 @@ fn test_spectral_poisson2d_1() {
 
     // check
     let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);
-    spectral.loop_over_grid_points(|m, x, y| {
+    spectral.for_each_coord(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 1e-9);
     });
 
@@ -66,7 +66,7 @@ fn test_spectral_poisson2d_1() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        spectral.loop_over_grid_points(|m, x, y| {
+        spectral.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

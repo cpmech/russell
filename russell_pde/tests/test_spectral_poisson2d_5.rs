@@ -82,7 +82,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
     // check
     let analytical = |x, y| f64::cos(2.0 * PI * x) * f64::sin(2.0 * PI * y);
     let mut err_max = 0.0;
-    spectral.loop_over_grid_points(|m, x, y| {
+    spectral.for_each_coord(|m, x, y| {
         let err = f64::abs(a[m] - analytical(x, y));
         if err > err_max {
             err_max = err;
@@ -95,7 +95,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
         let mut xx = vec![vec![0.0; nx]; ny];
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz = vec![vec![0.0; nx]; ny];
-        spectral.get_grid().for_each_coord(|m, x, y| {
+        spectral.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

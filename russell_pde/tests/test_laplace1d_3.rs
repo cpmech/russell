@@ -116,7 +116,7 @@ fn test_laplace1d_3() {
     // analytical solution
     let d = f64::cosh(1.0);
     let analytical = |x| f64::sinh(x) / d + x * x + 2.0;
-    fdm.loop_over_grid_points(|m, x| {
+    fdm.for_each_coord(|m, x| {
         println!("{}: ϕ = {} ({})", m, a[m], analytical(x));
         approx_eq(a[m], analytical(x), 0.000282);
     });
@@ -133,7 +133,7 @@ fn test_laplace1d_3() {
         let xx_ana = linspace(0.0, lx, 101);
         let uu_ana = xx_ana.iter().map(|&x| analytical(x)).collect::<Vec<_>>();
         let mut xx_num = vec![0.0; nx];
-        fdm.loop_over_grid_points(|i, x| {
+        fdm.for_each_coord(|i, x| {
             xx_num[i] = x;
         });
         let uu_num = a.as_data();

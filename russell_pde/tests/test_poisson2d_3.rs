@@ -60,7 +60,7 @@ fn test_poisson2d_3() {
 
     // check
     let analytical = |x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y);
-    fdm.loop_over_grid_points(|m, x, y| {
+    fdm.for_each_coord(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 1e-15);
     });
 
@@ -72,7 +72,7 @@ fn test_poisson2d_3() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        fdm.loop_over_grid_points(|m, x, y| {
+        fdm.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;

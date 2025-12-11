@@ -54,7 +54,7 @@ fn main() -> Result<(), StrError> {
     let mut xx = vec![vec![0.0; nx]; ny];
     let mut yy = vec![vec![0.0; nx]; ny];
     let mut zz_num = vec![vec![0.0; nx]; ny];
-    fdm.loop_over_grid_points(|m, x, y| {
+    fdm.for_each_coord(|m, x, y| {
         let row = m / nx;
         let col = m % nx;
         xx[row][col] = x;

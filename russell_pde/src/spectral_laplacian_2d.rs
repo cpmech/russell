@@ -142,25 +142,6 @@ impl<'a> SpectralLaplacian2d<'a> {
         (nu, np)
     }
 
-    /// Returns the dimensions for the Lagrange multipliers method (LMM)
-    ///
-    /// Returns `(neq, nlag, ndim)` where:
-    ///
-    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
-    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
-    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
-    pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
-        let neq = self.equations.neq();
-        let nlag = self.equations.np();
-        let ndim = neq + nlag;
-        (neq, nlag, ndim)
-    }
-
-    /// Access the grid
-    pub fn get_grid(&self) -> &Grid2d {
-        &self.grid
-    }
-
     /// Access the equation numbering handler
     pub fn get_equations(&self) -> &EquationHandler {
         &self.equations
@@ -316,7 +297,7 @@ impl<'a> SpectralLaplacian2d<'a> {
     /// i = m % nx
     /// j = m / nx
     /// ```
-    pub fn loop_over_grid_points<F>(&self, mut callback: F)
+    pub fn for_each_coord<F>(&self, mut callback: F)
     where
         F: FnMut(usize, f64, f64),
     {

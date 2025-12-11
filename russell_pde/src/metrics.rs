@@ -551,4 +551,151 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn calculate_works_quarter_ring_3d() {
+        // Quarter ring with a 3D transfinite mapping
+        //
+        // Cylindrical coordinates on y-z (ρ, θ), extruded in x:
+        // a: inner radius
+        // b: outer radius
+        // h: thickness in x
+        // x1(r) = h / 2 + h r / 2
+        // x2(ρ(s),θ(t)) = ρ cos(θ)
+        // x3(ρ(s),θ(t)) = ρ sin(θ)
+        // ρ(s) = (b + a) / 2 + (b - a) s / 2
+        // θ(t) = (π / 4) (1 + t)
+        // dρ/ds = (b - a) / 2
+        // dθ/dt = π / 4
+        // dx/dr = [h / 2, 0.0, 0.0] = g₃
+        // dx/ds = dx/dρ dρ/ds = [0.0, cos(θ) dρ/ds, sin(θ) dρ/ds] = g₁
+        // dx/dt = dx/dθ dθ/dt = [0.0, -ρ sin(θ) dθ/dt, ρ cos(θ) dθ/dt] = g₂
+        let (a, b, h) = (1.0, 2.0, 3.0);
+        let mut map = TransfiniteSamples::quarter_ring_3d(a, b, h);
+        let mut x = Vector::new(3);
+        let mut dx_dr = Vector::new(3);
+        let mut dx_ds = Vector::new(3);
+        let mut dx_dt = Vector::new(3);
+        let mut d2x_dr2 = Vector::new(3);
+        let mut d2x_ds2 = Vector::new(3);
+        let mut d2x_dt2 = Vector::new(3);
+        let mut d2x_drs = Vector::new(3);
+        let mut d2x_drt = Vector::new(3);
+        let mut d2x_dst = Vector::new(3);
+
+        // allocate the metrics instance
+        let mut met = Metrics::new(3, false);
+
+        // auxiliary constants
+        let p = (b - a) / 2.0; // dρ/ds
+        let q = PI / 4.0; // dθ/dt
+
+        // loop over sample points
+        for t in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+            for r in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+                for s in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+                    // calculate point and derivatives @ (r,s)
+                    map.point_and_derivs(
+                        &mut x,
+                        &mut dx_dr,
+                        &mut dx_ds,
+                        &mut dx_dt,
+                        Some(&mut d2x_dr2),
+                        Some(&mut d2x_ds2),
+                        Some(&mut d2x_dt2),
+                        Some(&mut d2x_drs),
+                        Some(&mut d2x_drt),
+                        Some(&mut d2x_dst),
+                        r,
+                        s,
+                        t,
+                    );
+
+                    // calculate the base vectors and metrics
+                    let g = met
+                        .calculate_3d(
+                            &dx_dr,
+                            &dx_ds,
+                            &dx_dt,
+                            Some(&d2x_dr2),
+                            Some(&d2x_ds2),
+                            Some(&d2x_dt2),
+                            Some(&d2x_drs),
+                            Some(&d2x_drt),
+                            Some(&d2x_dst),
+                        )
+                        .unwrap();
+
+                    // check x and g_cov
+                    let x1 = h / 2.0 + h * r / 2.0;
+                    let rho = (b + a) / 2.0 + (b - a) * s / 2.0;
+                    let theta = (PI / 4.0) * (1.0 + t);
+                    let ct = f64::cos(theta);
+                    let st = f64::sin(theta);
+                    vec_approx_eq(&x, &[x1, rho * ct, rho * st], 1e-14);
+                    vec_approx_eq(&met.g_cov[0], &[h / 2.0, 0.0, 0.0], 1e-15);
+                    vec_approx_eq(&met.g_cov[1], &[0.0, ct * p, st * p], 1e-15);
+                    vec_approx_eq(&met.g_cov[2], &[0.0, -rho * st * q, rho * ct * q], 1e-14);
+
+                    // check [g] and [G] matrices
+                    mat_approx_eq(
+                        &met.g_mat,
+                        &[
+                            [h * h / 4.0, 0.0, 0.0],       // g₁·g₁, 0.0, 0.0
+                            [0.0, p * p, 0.0],             // 0.0, g₂·g₂, 0.0
+                            [0.0, 0.0, rho * rho * q * q], // 0.0, 0.0, g₃·g₃
+                        ],
+                        1e-14,
+                    );
+                    approx_eq(g, (h * h / 4.0) * p * p * rho * rho * q * q, 1e-14);
+                    mat_approx_eq(
+                        &met.gg_mat,
+                        &[
+                            [4.0 / (h * h), 0.0, 0.0],             //
+                            [0.0, 1.0 / (p * p), 0.0],             //
+                            [0.0, 0.0, 1.0 / (rho * rho * q * q)], //
+                        ],
+                        1e-14,
+                    );
+
+                    // check g_ctr
+                    vec_approx_eq(&met.g_ctr[0], &[2.0 / h, 0.0, 0.0], 1e-14);
+                    vec_approx_eq(&met.g_ctr[1], &[0.0, ct / p, st / p], 1e-14);
+                    vec_approx_eq(
+                        &met.g_ctr[2],
+                        &[0.0, -rho * st / (rho * rho * q), rho * ct / (rho * rho * q)],
+                        1e-15,
+                    );
+
+                    // check Christoffel symbols of the second kind
+                    // k = 0
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            approx_eq(met.christoffel_second[0][i][j], 0.0, 1e-15);
+                        }
+                    }
+                    // k = 1
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            if i == 2 && j == 2 {
+                                approx_eq(met.christoffel_second[1][2][2], -rho * q * q / p, 1e-14);
+                            } else {
+                                approx_eq(met.christoffel_second[1][i][j], 0.0, 1e-15);
+                            }
+                        }
+                    }
+                    // k = 2
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            if (i == 1 && j == 2) || (i == 2 && j == 1) {
+                                approx_eq(met.christoffel_second[2][i][j], p / rho, 1e-15);
+                            } else {
+                                approx_eq(met.christoffel_second[2][i][j], 0.0, 1e-15);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

@@ -1,12 +1,12 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, Grid2d, SpectralLaplacianCurvilinear2d, TransfiniteSamples};
+use russell_pde::{EssentialBcs2d, Grid2d, SpectralLaplacianCurv2d, TransfiniteSamples};
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_spectral_curvilinear_poisson2d_3() {
+fn test_spectral_curv_poisson2d_3() {
     // Approximate the solution of
     //
     //  ∂²ϕ     ∂²ϕ
@@ -40,11 +40,11 @@ fn test_spectral_curvilinear_poisson2d_3() {
     ebcs.set_homogeneous(&grid);
 
     // allocate the Laplacian operator
-    let mut spec = SpectralLaplacianCurvilinear2d::new(grid, ebcs, map).unwrap();
+    let mut spectral = SpectralLaplacianCurv2d::new(grid, ebcs, map).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk_bar, kk_check) = spec.get_matrices();
-    let (mut a_bar, a_check, mut f_bar) = spec.get_vectors(source);
+    let (kk_bar, kk_check) = spectral.get_matrices();
+    let (mut a_bar, a_check, mut f_bar) = spectral.get_vectors(source);
 
     // initialize the right-hand side
     kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -55,11 +55,11 @@ fn test_spectral_curvilinear_poisson2d_3() {
     solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
 
     // results
-    let a = spec.get_joined_vector(&a_bar, &a_check);
+    let a = spectral.get_joined_vector(&a_bar, &a_check);
 
     // check
     let analytical = |x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y);
-    spec.for_each_coord(|m, x, y| {
+    spectral.for_each_coord(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 1e-15);
     });
 
@@ -71,7 +71,7 @@ fn test_spectral_curvilinear_poisson2d_3() {
         let mut yy = vec![vec![0.0; nx]; ny];
         let mut zz_num = vec![vec![0.0; nx]; ny];
         let mut zz_ana = vec![vec![0.0; nx]; ny];
-        spec.for_each_coord(|m, x, y| {
+        spectral.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
             xx[row][col] = x;
@@ -91,7 +91,7 @@ fn test_spectral_curvilinear_poisson2d_3() {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/russell_pde/test_spectral_curvilinear_poisson2d_3.svg")
+            .save("/tmp/russell_pde/test_spectral_curv_poisson2d_3.svg")
             .unwrap();
     }
 }

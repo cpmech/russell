@@ -57,7 +57,7 @@ fn delta(i: usize, j: usize) -> f64 {
 /// ```text
 /// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
 /// ```
-pub struct SpectralLaplacianCurvilinear2d<'a> {
+pub struct SpectralLaplacianCurv2d<'a> {
     /// Defines the 2D grid on the reference domain [-1, 1] × [-1, 1]
     grid: Grid2d,
 
@@ -87,7 +87,7 @@ pub struct SpectralLaplacianCurvilinear2d<'a> {
     d2x_drs: Vector,
 }
 
-impl<'a> SpectralLaplacianCurvilinear2d<'a> {
+impl<'a> SpectralLaplacianCurv2d<'a> {
     /// Allocates a new instance
     ///
     /// **Important**:
@@ -157,7 +157,7 @@ impl<'a> SpectralLaplacianCurvilinear2d<'a> {
         let metrics = Metrics::new(2, false);
 
         // done
-        Ok(SpectralLaplacianCurvilinear2d {
+        Ok(SpectralLaplacianCurv2d {
             grid,
             ebcs,
             equations,
@@ -374,7 +374,7 @@ impl<'a> SpectralLaplacianCurvilinear2d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::SpectralLaplacianCurvilinear2d;
+    use super::SpectralLaplacianCurv2d;
     use crate::{EssentialBcs2d, Grid2d, TransfiniteSamples};
     use russell_lab::mat_approx_eq;
 
@@ -384,7 +384,7 @@ mod tests {
         let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous(&grid);
-        let mut spectral = SpectralLaplacianCurvilinear2d::new(grid, ebcs, map).unwrap();
+        let mut spectral = SpectralLaplacianCurv2d::new(grid, ebcs, map).unwrap();
         let (kk_bar, kk_check) = spectral.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);

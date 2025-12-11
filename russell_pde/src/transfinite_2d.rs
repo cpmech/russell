@@ -265,11 +265,6 @@ impl Transfinite2d {
     pub fn get_corners(&self) -> (&Vector, &Vector, &Vector, &Vector) {
         (&self.p0, &self.p1, &self.p2, &self.p3)
     }
-
-    /// Indicates whether the mapping is homogeneous (all second derivatives are zero)
-    pub fn is_homogeneous(&self) -> bool {
-        self.deriv2_boundary_functions.is_none()
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

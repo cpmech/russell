@@ -4,6 +4,29 @@ use russell_lab::math::PI;
 use russell_pde::{EssentialBcs2d, Grid2d, Side, SpectralLaplacian2d, StrError};
 use russell_sparse::{Genie, LinSolver};
 
+// This is the benchmark solution 5.2.1.7 on page 170 of Kopriva's book.
+//
+// Approximate the solution of the problem:
+//
+// ∂²ϕ   ∂²ϕ
+// ——— + ——— = -8 π² cos(2πx) sin(2πy)
+// ∂x²   ∂y²
+//
+// on a [-1,1] x [-1,1] square with the following essential boundary conditions:
+//
+// Xmin: ϕ(-1, y) = sin(2πy)
+// Xmax: ϕ( 1, y) = sin(2πy)
+// Ymin: ϕ(x, -1) = 0
+// Ymax: ϕ(x,  1) = 0
+//
+// The analytical solution is:
+//
+// ϕ(x, y) = cos(2πx) sin(2πy)
+//
+// # Reference
+//
+// * Kopriva LN (2009) - Implementing Spectral Methods for Partial Differential Equations, Springer
+
 const SAVE_FIGURE: bool = false;
 
 #[test]
@@ -27,27 +50,6 @@ fn test_spectral_poisson2d_5() -> Result<(), StrError> {
 
 /// Runs the test and returns max(error)
 fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
-    // Approximate the solution of the problem:
-    //
-    // ∂²ϕ   ∂²ϕ
-    // ——— + ——— = -8 π² cos(2πx) sin(2πy)
-    // ∂x²   ∂y²
-    //
-    // on a [-1,1] x [-1,1] square with the following essential boundary conditions:
-    //
-    // Xmin: ϕ(-1, y) = sin(2πy)
-    // Xmax: ϕ( 1, y) = sin(2πy)
-    // Ymin: ϕ(x, -1) = 0
-    // Ymax: ϕ(x,  1) = 0
-    //
-    // The analytical solution is:
-    //
-    // ϕ(x, y) = cos(2πx) sin(2πy)
-    //
-    // This is the benchmark solution 5.2.1.7 on page 170 of Kopriva's book.
-    //
-    // * Kopriva LN (2009) - Implementing Spectral Methods for Partial Differential Equations, Springer
-
     // allocate the grid
     let (nx, ny) = (nn + 1, nn + 1);
     let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, nx, ny)?;

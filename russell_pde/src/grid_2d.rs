@@ -430,6 +430,30 @@ impl Grid2d {
         self.nx * self.ny
     }
 
+    /// Returns the linear node index m for the specified (i, j) indices
+    ///
+    /// ```text
+    /// m = i + j × nx    (convert (i,j) to linear index m)
+    /// i = m % nx        (extract i-index from linear index m)
+    /// j = m / nx        (extract j-index from linear index m)
+    /// ```
+    pub fn get_m(&self, i: usize, j: usize) -> usize {
+        i + j * self.nx
+    }
+
+    /// Returns the (i, j) indices of the specified node m
+    ///
+    /// ```text
+    /// m = i + j × nx    (convert (i,j) to linear index m)
+    /// i = m % nx        (extract i-index from linear index m)
+    /// j = m / nx        (extract j-index from linear index m)
+    /// ```
+    pub fn get_ij(&self, m: usize) -> (usize, usize) {
+        let i = m % self.nx;
+        let j = m / self.nx;
+        (i, j)
+    }
+
     /// Returns the spacing (dx, dy) if the grid is uniform on both directions
     ///
     /// Returns `None` if the grid is non-uniform in any direction.
@@ -1147,5 +1171,36 @@ mod tests {
         // Grid with large coordinates
         let grid = Grid2d::new_uniform(1e6, 1e6 + 4.0, 1e9, 1e9 + 6.0, 3, 4).unwrap();
         assert_eq!(grid.get_dx_dy(), Some((2.0, 2.0)));
+    }
+
+    #[test]
+    fn get_m_and_get_ij_work() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        //      i=0     i=1     i=2
+        // j=2  6───────7───────8  j=2
+        //      │       │       │
+        // j=1  3───────4───────5  j=1
+        //      │       │       │
+        // j=0  0───────1───────2  j=0
+        //      i=0     i=1     i=2
+        assert_eq!(grid.get_m(0, 0), 0);
+        assert_eq!(grid.get_m(1, 0), 1);
+        assert_eq!(grid.get_m(2, 0), 2);
+        assert_eq!(grid.get_m(0, 1), 3);
+        assert_eq!(grid.get_m(1, 1), 4);
+        assert_eq!(grid.get_m(2, 1), 5);
+        assert_eq!(grid.get_m(0, 2), 6);
+        assert_eq!(grid.get_m(1, 2), 7);
+        assert_eq!(grid.get_m(2, 2), 8);
+
+        assert_eq!(grid.get_ij(0), (0, 0));
+        assert_eq!(grid.get_ij(1), (1, 0));
+        assert_eq!(grid.get_ij(2), (2, 0));
+        assert_eq!(grid.get_ij(3), (0, 1));
+        assert_eq!(grid.get_ij(4), (1, 1));
+        assert_eq!(grid.get_ij(5), (2, 1));
+        assert_eq!(grid.get_ij(6), (0, 2));
+        assert_eq!(grid.get_ij(7), (1, 2));
+        assert_eq!(grid.get_ij(8), (2, 2));
     }
 }

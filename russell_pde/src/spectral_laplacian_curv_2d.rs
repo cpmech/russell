@@ -213,39 +213,12 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
         let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs, Sym::No).unwrap();
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
-        // spectral derivative matrices
-        let dd1r = self.interp_r.get_dd1().unwrap();
-        let dd1s = self.interp_s.get_dd1().unwrap();
-        let dd2r = self.interp_r.get_dd2().unwrap();
-        let dd2s = self.interp_s.get_dd2().unwrap();
-
         // add all terms to the coefficient matrix
         for i in 0..nr {
             for j in 0..ns {
                 let m = i + j * nr;
                 if !self.equations.is_prescribed(m) {
-                    // map coordinates
-                    let (r, s) = self.grid.coord(m);
-                    self.map.point_and_derivs(
-                        &mut self.x,
-                        &mut self.dx_dr,
-                        &mut self.dx_ds,
-                        Some(&mut self.d2x_dr2),
-                        Some(&mut self.d2x_ds2),
-                        Some(&mut self.d2x_drs),
-                        r,
-                        s,
-                    );
-                    // calculate metrics
-                    self.metrics
-                        .calculate_2d(
-                            &self.dx_dr,
-                            &self.dx_ds,
-                            Some(&self.d2x_dr2),
-                            Some(&self.d2x_ds2),
-                            Some(&self.d2x_drs),
-                        )
-                        .unwrap();
+                    self.calculate_metrics(m);
                     let g11 = self.metrics.gg_mat.get(0, 0);
                     let g22 = self.metrics.gg_mat.get(1, 1);
                     let g12 = self.metrics.gg_mat.get(0, 1);
@@ -257,11 +230,11 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
                         for l in 0..ns {
                             let n = k + l * nr;
                             let val = 0.0
-                                + dd2r.get(i, k) * delta(j, l) * g11
-                                + delta(i, k) * dd2s.get(j, l) * g22
-                                + dd1r.get(i, k) * dd1s.get(j, l) * 2.0 * g12
-                                - dd1r.get(i, k) * delta(j, l) * ll1
-                                - delta(i, k) * dd1s.get(j, l) * ll2;
+                                + self.d2r(i, k) * delta(j, l) * g11
+                                + delta(i, k) * self.d2s(j, l) * g22
+                                + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                                - self.d1r(i, k) * delta(j, l) * ll1
+                                - delta(i, k) * self.d1s(j, l) * ll2;
                             if !self.equations.is_prescribed(n) {
                                 // unknown column
                                 let col = self.equations.iu(n);
@@ -369,6 +342,56 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
             self.map.point(&mut self.x, r, s);
             callback(m, self.x[0], self.x[1]);
         });
+    }
+
+    /// Maps the coordinates and calculates the metrics at point m
+    fn calculate_metrics(&mut self, m: usize) {
+        // map coordinates
+        let (r, s) = self.grid.coord(m);
+        self.map.point_and_derivs(
+            &mut self.x,
+            &mut self.dx_dr,
+            &mut self.dx_ds,
+            Some(&mut self.d2x_dr2),
+            Some(&mut self.d2x_ds2),
+            Some(&mut self.d2x_drs),
+            r,
+            s,
+        );
+        // calculate metrics
+        self.metrics
+            .calculate_2d(
+                &self.dx_dr,
+                &self.dx_ds,
+                Some(&self.d2x_dr2),
+                Some(&self.d2x_ds2),
+                Some(&self.d2x_drs),
+            )
+            .unwrap();
+    }
+
+    /// Returns the (i,j) component of the first derivative with respect to r
+    #[inline]
+    fn d1r(&self, i: usize, j: usize) -> f64 {
+        self.interp_r.get_dd1().unwrap().get(i, j)
+    }
+
+    /// Returns the (i,j) component of the first derivative with respect to s
+    #[inline]
+    fn d1s(&self, i: usize, j: usize) -> f64 {
+        self.interp_s.get_dd1().unwrap().get(i, j)
+    }
+
+    /// Returns the (i,j) component of the second derivative with respect to r
+    #[inline]
+    fn d2r(&self, i: usize, j: usize) -> f64 {
+        self.interp_r.get_dd2().unwrap().get(i, j)
+    }
+
+    /// Returns the (i,j) component of the second derivative with respect to s
+    #[inline]
+    fn d2s(&self, i: usize, j: usize) -> f64 {
+        self.interp_s.get_dd2().unwrap().get(i, j)
     }
 }
 

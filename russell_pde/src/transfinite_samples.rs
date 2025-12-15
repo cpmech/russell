@@ -96,6 +96,35 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- outer radius
+    ///
+    /// The mapping is as follows:
+    ///
+    /// ```text
+    /// Reference square [-1,+1] × [-1,+1]:
+    ///             B3
+    ///        ┌───────────┐
+    ///        │  (YMax)   │
+    ///   B0   │           │   B1
+    /// (Xmin) │           │ (Xmax)
+    ///        │  (Ymin)   │
+    ///        └───────────┘
+    ///             B2
+    ///
+    /// Mapped quarter ring (inner radius = a, outer radius = b):
+    ///     ┌──----__
+    ///     │        '*._
+    ///  B3 │ (YMax)     *._
+    ///     │               *.  B1 (Xmax)
+    ///     └──--__           *.
+    ///            '-.          *
+    ///               *.         *
+    ///            B0   *         *
+    ///          (Xmin)  *         *
+    ///                   *         *
+    ///                   │  (YMin) │
+    ///                   └─────────┘
+    ///                        B2
+    /// ```
     pub fn quarter_ring_2d(a: f64, b: f64) -> Transfinite2d {
         let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)
@@ -196,6 +225,35 @@ impl TransfiniteSamples {
     ///
     /// a -- inner radius
     /// b -- outer radius
+    ///
+    /// The mapping is as follows:
+    ///
+    /// ```text
+    /// Reference square [-1,+1] × [-1,+1]:
+    ///             B3
+    ///        ┌───────────┐
+    ///        │  (YMax)   │
+    ///   B0   │           │   B1
+    /// (Xmin) │           │ (Xmax)
+    ///        │  (Ymin)   │
+    ///        └───────────┘
+    ///             B2
+    ///
+    /// Mapped half ring (inner radius = a, outer radius = b):
+    ///                  __----──-──----__
+    ///              _.*'                 '*._
+    ///           _.*                         *._
+    ///         .*                               *.  B1 (Xmax)
+    ///       .*           __--──-──--__           *.
+    ///      *          .-'             '-.          *
+    ///     *         .*                   *.         *
+    ///    *         *                  B0   *         *
+    ///   *         *                 (Xmin)  *         *
+    ///  *         *                           *         *
+    ///  │  (Ymax) │                           │  (YMin) │
+    ///  └─────────┘                           └─────────┘
+    ///       B3                                    B2
+    /// ```
     pub fn half_ring_2d(a: f64, b: f64) -> Transfinite2d {
         let boundary_functions: Vec<FnVec1Param1> = vec![
             // B0(s)

@@ -2,7 +2,7 @@ use plotpy::{linspace, Canvas, Plot, PolyCode, Text};
 use russell_lab::{approx_eq, vec_approx_eq, vec_inner, Matrix, Vector};
 use russell_pde::{FnVec1Param1, Metrics, StrError, Transfinite2d};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 fn map_fun(x: &mut Vector, t: f64, xa: &[f64], xb: &[f64], cf: f64) {
     let u = [xb[0] - xa[0], xb[1] - xa[1]];
@@ -242,6 +242,12 @@ fn test_metrics_2d() -> Result<(), StrError> {
             .set_equal_axes(true)
             .set_hide_axes(true)
             //
+            .extra(
+                "plt.figtext(0.33,0.52,'(a)',ha='center',va='center',fontsize=14)\n\
+                 plt.figtext(0.70,0.52,'(b)',ha='center',va='center',fontsize=14)\n\
+                 plt.figtext(0.33,0.12,'(c)',ha='center',va='center',fontsize=14)\n\
+                 plt.figtext(0.70,0.12,'(d)',ha='center',va='center',fontsize=14)\n",
+            )
             .set_figure_size_points(800.0, 800.0)
             .save("/tmp/russell_pde/test_metrics_2d.svg")
             .unwrap();

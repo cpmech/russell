@@ -1,6 +1,6 @@
 use plotpy::{Plot, Surface};
 use russell_lab::vec_approx_eq;
-use russell_pde::{EssentialBcs2d, Grid2d, SpectralLaplacian2d, StrError};
+use russell_pde::{EssentialBcs2d, Grid2d, Spc2d, StrError};
 use russell_sparse::{Genie, LinSolver};
 
 const SAVE_FIGURE: bool = false;
@@ -32,7 +32,7 @@ fn test_spectral_poisson2d_4() -> Result<(), StrError> {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let spectral = SpectralLaplacian2d::new(grid, ebcs, kx, ky)?;
+    let spectral = Spc2d::new(grid, ebcs, kx, ky)?;
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spectral.get_matrices();

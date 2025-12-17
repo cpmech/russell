@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_pde::{EssentialBcs1d, FdmLaplacian1d, Grid1d};
+use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d};
 use russell_sparse::{Genie, LinSolver, Sym};
 
 #[test]
@@ -22,7 +22,7 @@ fn test_laplace1d_1() {
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
     let kx = 1.0;
-    let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
+    let fdm = Fdm1d::new(grid, ebcs, -kx).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, _) = fdm.get_matrices_sps(0, Sym::No);

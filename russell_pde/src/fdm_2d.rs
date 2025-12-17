@@ -11,21 +11,23 @@ const TOP: usize = 4; // top node
 const INI_X: usize = 0;
 const INI_Y: usize = 0;
 
-/// Implements the Finite Difference (FDM) Laplacian operator in 2D
+/// Implements the Finite Difference method (FDM) in 2D
 ///
-/// Given the (continuum) scalar field ϕ(x, y) and its Laplacian
+/// The FDM can be used to solve the following problem:
 ///
 /// ```text
-///           ∂²ϕ        ∂²ϕ
-/// L{ϕ} = kx ———  +  ky ———
-///           ∂x²        ∂y²
+///    ∂²ϕ      ∂²ϕ
+/// kx ——— + ky ——— = source(x, y)
+///    ∂x²      ∂y²
 /// ```
 ///
-/// we substitute the partial derivatives using central FDM over a rectangular grid.
-/// The resulting discrete Laplacian is expressed by the coefficient matrix `K` and the vector `a`:
+/// with essential (EBC) and natural (NBC) boundary conditions.
+///
+/// The method substitutes the partial derivatives using central differences over a linear grid.
+/// The resulting discrete problem is expressed by the coefficient matrix `K` and the vector `a`:
 ///
 /// ```text
-/// D{ϕᵢⱼ} = K a
+/// K a = f
 /// ```
 ///
 /// ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
@@ -35,17 +37,10 @@ const INI_Y: usize = 0;
 /// ϕᵢⱼ → aₘ   with   m = i + j nx
 /// ```
 ///
-/// Neglecting the essential boundary conditions (EBCs) for the moment, the discrete Laplacian operator `K`
-/// is built with a three-point stencil. For a linear problem with the right-hand side represented by `f`,
-/// the resulting linear system is:
+/// To account for the EBCs, two approaches are possible:
 ///
-/// ```text
-/// K a = f
-/// ```
-///
-/// However, the above linear system is singular, because the EBCs have not been applied yet. Two approaches
-/// are possible to apply the EBCs: (1) use the system partitioning strategy (SPS), and (2) use the Lagrange
-/// multipliers method (LMM).
+/// 1. Use the system partitioning strategy (SPS)
+/// 2. Use the Lagrange multipliers method (LMM)
 ///
 /// ## Approach 1: System partitioning strategy (SPS)
 ///
@@ -87,7 +82,7 @@ const INI_Y: usize = 0;
 /// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
 /// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
 /// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
-pub struct FdmLaplacian2d<'a> {
+pub struct Fdm2d<'a> {
     /// Defines the 2D grid
     grid: Grid2d,
 
@@ -103,7 +98,7 @@ pub struct FdmLaplacian2d<'a> {
     molecule: Vec<f64>,
 }
 
-impl<'a> FdmLaplacian2d<'a> {
+impl<'a> Fdm2d<'a> {
     /// Allocates a new instance
     ///
     /// # Arguments
@@ -132,7 +127,7 @@ impl<'a> FdmLaplacian2d<'a> {
         let gamma = ky / dy2;
 
         // done
-        Ok(FdmLaplacian2d {
+        Ok(Fdm2d {
             grid,
             ebcs,
             equations,
@@ -469,7 +464,7 @@ impl<'a> FdmLaplacian2d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::FdmLaplacian2d;
+    use super::Fdm2d;
     use crate::{EssentialBcs2d, Grid2d, Side};
     use russell_lab::Matrix;
     use russell_sparse::Sym;
@@ -483,7 +478,7 @@ mod tests {
     fn new_captures_errors() {
         let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
         let ebcs = EssentialBcs2d::new();
-        let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0);
+        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
@@ -496,7 +491,7 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
         let ebcs = EssentialBcs2d::new();
 
-        let fdm = FdmLaplacian2d::new(grid, ebcs, 100.0, 300.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, 100.0, 300.0).unwrap();
         assert_eq!(&fdm.molecule, &[-800.0, 100.0, 100.0, 300.0, 300.0]);
 
         assert_eq!(fdm.get_dims_sps(), (12, 0));
@@ -518,7 +513,7 @@ mod tests {
         assert_eq!(lef(0.0, 0.0), LEF);
         ebcs.set(&grid, Side::Xmin, lef); //  0  4  8
 
-        let fdm = FdmLaplacian2d::new(grid, ebcs, 100.0, 300.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -677,7 +672,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous(&grid);
 
-        let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -863,7 +858,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_periodic(&grid, true, true);
 
-        let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         assert!(cc_mat.is_none());
@@ -940,7 +935,7 @@ mod tests {
         ebcs.set(&grid, Side::Ymin, |_, _| BOT);
         ebcs.set(&grid, Side::Ymax, |_, _| TOP);
 
-        let fdm = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
 
         let (u, p, f) = fdm.get_vectors_sps(|_, _| 100.0);
         assert_eq!(u.dim(), 4); // nu
@@ -1018,7 +1013,7 @@ mod tests {
         //    0  1  2  3  4  5  6  7  8
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let ebcs = EssentialBcs2d::new();
-        let lap = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let lap = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_4 = Vec::new();
         let mut row_8 = Vec::new();
@@ -1035,7 +1030,7 @@ mod tests {
         let (nx, ny) = (2, 3);
         let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let ebcs = EssentialBcs2d::new();
-        let lap = FdmLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let lap = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
         lap.for_each_coord(|m, x, y| {

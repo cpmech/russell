@@ -1,7 +1,7 @@
 use plotpy::{Plot, Surface};
 use russell_lab::approx_eq;
 use russell_lab::math::PI;
-use russell_pde::{EssentialBcs2d, Grid2d, Side, SpectralLaplacian2d, StrError};
+use russell_pde::{EssentialBcs2d, Grid2d, Side, Spc2d, StrError};
 use russell_sparse::{Genie, LinSolver};
 
 // This is the benchmark solution 5.2.1.7 on page 170 of Kopriva's book.
@@ -63,7 +63,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let spectral = SpectralLaplacian2d::new(grid, ebcs, kx, ky)?;
+    let spectral = Spc2d::new(grid, ebcs, kx, ky)?;
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spectral.get_matrices();

@@ -1,7 +1,7 @@
 use crate::{NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
-use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d};
 use russell_sparse::{CooMatrix, Genie, Sym};
 
 /// Holds a collection of sample ODE problems
@@ -499,7 +499,7 @@ impl Samples {
         npoint: usize,
         second_book: bool,
         ignore_diffusion: bool,
-    ) -> (System<'a, FdmLaplacian2d<'a>>, f64, Vector, FdmLaplacian2d<'a>) {
+    ) -> (System<'a, Fdm2d<'a>>, f64, Vector, Fdm2d<'a>) {
         // constants
         let (kx, ky) = (alpha, alpha);
         let (xmin, xmax) = (0.0, 1.0);
@@ -517,7 +517,7 @@ impl Samples {
         };
 
         // system
-        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut FdmLaplacian2d<'a>| {
+        let mut system = System::new(ndim, move |f, t, yy, fdm: &mut Fdm2d<'a>| {
             fdm.for_each_coord(|m, x, y| {
                 let um = yy[m];
                 let vm = yy[s + m];
@@ -546,33 +546,29 @@ impl Samples {
 
         // function to compute the Jacobian matrix
         system
-            .set_jacobian(
-                Some(jac_nnz),
-                Sym::No,
-                move |jj, aa, _x, yy, fdm: &mut FdmLaplacian2d<'a>| {
-                    jj.reset();
-                    let mut nnz_count = 0;
-                    for m in 0..s {
-                        let um = yy[m];
-                        let vm = yy[s + m];
-                        let um2 = um * um;
-                        jj.put(m, m, aa * (-4.4 + 2.0 * um * vm)).unwrap();
-                        jj.put(m, s + m, aa * (um2)).unwrap();
-                        jj.put(s + m, m, aa * (3.4 - 2.0 * um * vm)).unwrap();
-                        jj.put(s + m, s + m, aa * (-um2)).unwrap();
-                        nnz_count += 4;
-                        if !ignore_diffusion {
-                            fdm.loop_over_full_coef_mat_row(m, |n, amn| {
-                                jj.put(m, n, aa * (amn)).unwrap();
-                                jj.put(s + m, s + n, aa * (amn)).unwrap();
-                                nnz_count += 2;
-                            });
-                        }
+            .set_jacobian(Some(jac_nnz), Sym::No, move |jj, aa, _x, yy, fdm: &mut Fdm2d<'a>| {
+                jj.reset();
+                let mut nnz_count = 0;
+                for m in 0..s {
+                    let um = yy[m];
+                    let vm = yy[s + m];
+                    let um2 = um * um;
+                    jj.put(m, m, aa * (-4.4 + 2.0 * um * vm)).unwrap();
+                    jj.put(m, s + m, aa * (um2)).unwrap();
+                    jj.put(s + m, m, aa * (3.4 - 2.0 * um * vm)).unwrap();
+                    jj.put(s + m, s + m, aa * (-um2)).unwrap();
+                    nnz_count += 4;
+                    if !ignore_diffusion {
+                        fdm.loop_over_full_coef_mat_row(m, |n, amn| {
+                            jj.put(m, n, aa * (amn)).unwrap();
+                            jj.put(s + m, s + n, aa * (amn)).unwrap();
+                            nnz_count += 2;
+                        });
                     }
-                    assert_eq!(nnz_count, jac_nnz);
-                    Ok(())
-                },
-            )
+                }
+                assert_eq!(nnz_count, jac_nnz);
+                Ok(())
+            })
             .unwrap();
 
         // allocate the grid
@@ -585,7 +581,7 @@ impl Samples {
         }
 
         // discrete laplacian
-        let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, kx, ky).unwrap();
 
         // initial values
         let t0 = 0.0;

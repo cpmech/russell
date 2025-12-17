@@ -2,9 +2,7 @@
 
 use plotpy::{linspace, Canvas, Contour, Plot, PolyCode};
 use russell_lab::{approx_eq, Vector};
-use russell_pde::{
-    EssentialBcs2d, Grid2d, NaturalBcs2d, Side, SpectralLaplacianCurv2d, StrError, Transfinite2d, TransfiniteSamples,
-};
+use russell_pde::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side, SpcMap2d, StrError, Transfinite2d, TransfiniteSamples};
 use russell_sparse::{Genie, LinSolver};
 
 // Example 7.1.4 on page 259 of Kopriva's book
@@ -39,9 +37,9 @@ const SAVE_FIGURE: bool = false;
 fn test_spectral_curv_half_ring() -> Result<(), StrError> {
     for (nn, tol, correct_log10_err_max) in vec![
         (10, 1.03e-1, -4.0), // Table 7.1 (Orthogonal column), page 261, Kopriva's book
-                            // (12, 3.05e-8, -8.0),
-                            // (16, 1.02e-11, -11.0),
-                            // (20, 3.47e-14, -14.0),
+                             // (12, 3.05e-8, -8.0),
+                             // (16, 1.02e-11, -11.0),
+                             // (20, 3.47e-14, -14.0),
     ] {
         let err_max = run_test(nn, tol)?;
         println!("err_max = {}", err_max);
@@ -85,7 +83,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
     nbcs.set_flux(&grid, Side::Ymax, |_, _| 0.0);
 
     // allocate the Laplacian operator
-    let mut spectral = SpectralLaplacianCurv2d::new(grid, ebcs, nbcs, map).unwrap();
+    let mut spectral = SpcMap2d::new(grid, ebcs, nbcs, map).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spectral.get_matrices();

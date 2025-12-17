@@ -1,6 +1,6 @@
 use plotpy::{Contour, Curve, Plot, Surface};
 use russell_lab::{approx_eq, math::PI};
-use russell_pde::{EssentialBcs2d, Grid2d, NaturalBcs2d, SpectralLaplacianCurv2d, StrError, TransfiniteSamples};
+use russell_pde::{EssentialBcs2d, Grid2d, NaturalBcs2d, SpcMap2d, StrError, TransfiniteSamples};
 use russell_sparse::{Genie, LinSolver};
 
 // Approximate the solution of
@@ -81,7 +81,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
     let nbcs = NaturalBcs2d::new();
 
     // allocate the Laplacian operator
-    let mut spc = SpectralLaplacianCurv2d::new(grid, ebcs, nbcs, map)?;
+    let mut spc = SpcMap2d::new(grid, ebcs, nbcs, map)?;
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spc.get_matrices();

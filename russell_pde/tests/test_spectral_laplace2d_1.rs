@@ -1,5 +1,5 @@
 use russell_lab::{mat_approx_eq, vec_approx_eq};
-use russell_pde::{EssentialBcs2d, Grid2d, Side, SpectralLaplacian2d, StrError};
+use russell_pde::{EssentialBcs2d, Grid2d, Side, Spc2d, StrError};
 use russell_sparse::{Genie, LinSolver};
 
 #[test]
@@ -34,7 +34,7 @@ fn test_spectral_laplace2d_4() -> Result<(), StrError> {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let spectral = SpectralLaplacian2d::new(grid, ebcs, kx, ky)?;
+    let spectral = Spc2d::new(grid, ebcs, kx, ky)?;
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spectral.get_matrices();

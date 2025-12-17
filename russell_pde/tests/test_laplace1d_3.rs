@@ -1,6 +1,6 @@
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs1d, FdmLaplacian1d, Grid1d, Side};
+use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, Side};
 use russell_sparse::{Genie, LinSolver, Sym};
 
 const SAVE_FIGURE: bool = false;
@@ -53,7 +53,7 @@ fn test_laplace1d_3() {
 
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
-    let fdm = FdmLaplacian1d::new(grid, ebcs, -kx).unwrap();
+    let fdm = Fdm1d::new(grid, ebcs, -kx).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let nu = fdm.get_dims_sps().0;

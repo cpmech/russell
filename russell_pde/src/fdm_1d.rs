@@ -8,36 +8,31 @@ const LEF: usize = 1; // left node
 const RIG: usize = 2; // right node
 const INI_X: usize = 0;
 
-/// Implements the Finite Difference (FDM) Laplacian operator in 1D
+/// Implements the Finite Difference method (FDM) in 1D
 ///
-/// Given the (continuum) scalar field ϕ(x) and its Laplacian
-///
-/// ```text
-///           ∂²ϕ
-/// L{ϕ} = kx ———
-///           ∂x²
-/// ```
-///
-/// we substitute the partial derivatives using central FDM over a linear grid.
-/// The resulting discrete Laplacian is expressed by the coefficient matrix `K` and the vector `a`:
+/// The FDM can be used to solve the following problem:
 ///
 /// ```text
-/// D{ϕₘ} = K a
+///    ∂²ϕ
+/// kx ——— = source(s)
+///    ∂x²
 /// ```
 ///
-/// ϕₘ are the discrete counterpart of ϕ(x) over the (nx) grid.
+/// with essential (EBC) and natural (NBC) boundary conditions.
 ///
-/// Neglecting the essential boundary conditions (EBCs) for the moment, the discrete Laplacian operator `K`
-/// is built with a three-point stencil. For a linear problem with the right-hand side represented by `f`,
-/// the resulting linear system is:
+/// The method substitutes the partial derivatives using central differences over a linear grid.
+/// The resulting discrete problem is expressed by the coefficient matrix `K` and the vector `a`:
 ///
 /// ```text
 /// K a = f
 /// ```
 ///
-/// However, the above linear system is singular, because the EBCs have not been applied yet. Two approaches
-/// are possible to apply the EBCs: (1) use the system partitioning strategy (SPS), and (2) use the Lagrange
-/// multipliers method (LMM).
+/// ϕₘ are the discrete counterpart of ϕ(x) over the (nx) grid.
+///
+/// To account for the EBCs, two approaches are possible:
+///
+/// 1. Use the system partitioning strategy (SPS)
+/// 2. Use the Lagrange multipliers method (LMM)
 ///
 /// ## Approach 1: System partitioning strategy (SPS)
 ///
@@ -79,7 +74,7 @@ const INI_X: usize = 0;
 /// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
 /// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
 /// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
-pub struct FdmLaplacian1d<'a> {
+pub struct Fdm1d<'a> {
     /// Defines the 1D grid
     grid: Grid1d,
 
@@ -95,7 +90,7 @@ pub struct FdmLaplacian1d<'a> {
     molecule: Vec<f64>,
 }
 
-impl<'a> FdmLaplacian1d<'a> {
+impl<'a> Fdm1d<'a> {
     /// Allocates a new instance
     ///
     /// # Arguments
@@ -121,7 +116,7 @@ impl<'a> FdmLaplacian1d<'a> {
         let beta = kx / dx2;
 
         // done
-        Ok(FdmLaplacian1d {
+        Ok(Fdm1d {
             grid,
             ebcs,
             equations,
@@ -438,7 +433,7 @@ impl<'a> FdmLaplacian1d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::FdmLaplacian1d;
+    use super::Fdm1d;
     use crate::{EssentialBcs1d, Grid1d, Side};
     use russell_lab::Vector;
     use russell_sparse::Sym;
@@ -450,7 +445,7 @@ mod tests {
     fn new_captures_errors() {
         let grid = Grid1d::new(&[0.0, 0.1, 0.4]).unwrap();
         let ebcs = EssentialBcs1d::new();
-        let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0);
+        let fdm = Fdm1d::new(grid, ebcs, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
@@ -461,7 +456,7 @@ mod tests {
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let ebcs = EssentialBcs1d::new();
 
-        let fdm = FdmLaplacian1d::new(grid, ebcs, 100.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, 100.0).unwrap();
         assert_eq!(&fdm.molecule, &[-200.0, 100.0, 100.0]);
 
         assert_eq!(fdm.get_dims_sps(), (4, 0));
@@ -481,7 +476,7 @@ mod tests {
         assert_eq!(lef(0.0), LEF);
         ebcs.set(&grid, Side::Xmin, lef); //  0
 
-        let fdm = FdmLaplacian1d::new(grid, ebcs, 100.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, 100.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -577,7 +572,7 @@ mod tests {
         let mut ebcs = EssentialBcs1d::new();
         ebcs.set_homogeneous(&grid);
 
-        let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -671,7 +666,7 @@ mod tests {
         let mut ebcs = EssentialBcs1d::new();
         ebcs.set_periodic(&grid, true);
 
-        let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         assert!(cc_mat.is_none());
@@ -719,7 +714,7 @@ mod tests {
         ebcs.set(&grid, Side::Xmin, |_| LEF);
         ebcs.set(&grid, Side::Xmax, |_| RIG);
 
-        let fdm = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
 
         let (u, p, f) = fdm.get_vectors_sps(|_| 100.0);
         assert_eq!(u.dim(), 3); // nu
@@ -752,7 +747,7 @@ mod tests {
         // └              ┘
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let ebcs = EssentialBcs1d::new();
-        let lap = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
+        let lap = Fdm1d::new(grid, ebcs, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_1 = Vec::new();
         let mut row_2 = Vec::new();
@@ -772,7 +767,7 @@ mod tests {
         let nx = 3;
         let grid = Grid1d::new_uniform(-1.0, 1.0, nx).unwrap();
         let ebcs = EssentialBcs1d::new();
-        let lap = FdmLaplacian1d::new(grid, ebcs, 1.0).unwrap();
+        let lap = Fdm1d::new(grid, ebcs, 1.0).unwrap();
         let mut xx = Vector::new(nx);
         lap.for_each_coord(|m, x| {
             xx[m] = x;

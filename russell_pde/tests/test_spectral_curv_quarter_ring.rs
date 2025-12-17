@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side, SpectralLaplacianCurv2d, StrError, TransfiniteSamples};
+use russell_pde::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side, SpcMap2d, StrError, TransfiniteSamples};
 use russell_sparse::{Genie, LinSolver};
 
 // Example 7.1.4 on page 259 of Kopriva's book
@@ -80,7 +80,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
     let nbcs = NaturalBcs2d::new();
 
     // allocate the Laplacian operator
-    let mut spectral = SpectralLaplacianCurv2d::new(grid, ebcs, nbcs, map).unwrap();
+    let mut spectral = SpcMap2d::new(grid, ebcs, nbcs, map).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spectral.get_matrices();

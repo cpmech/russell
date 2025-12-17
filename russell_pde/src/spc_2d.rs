@@ -2,15 +2,17 @@ use crate::{EquationHandler, EssentialBcs2d, Grid2d, StrError};
 use russell_lab::{InterpLagrange, Vector};
 use russell_sparse::{CooMatrix, Sym};
 
-/// Approximates the Laplacian operator in 2D using the Spectral Collocation Method (without Neumann BCs)
+/// Implements the Spectral Collocation method (SPC) in 2D
 ///
-/// Given the (continuum) scalar field ϕ(x, y) and its Laplacian
+/// The SPC can be used to solve the following problem:
 ///
 /// ```text
-///                 ∂²ϕ        ∂²ϕ
-/// L{ϕ} = ∇²ϕ = kx ———  +  ky ———
-///                 ∂x²        ∂y²
+/// ∂²ϕ   ∂²ϕ
+/// ——— + ——— = source(x, y)
+/// ∂x²   ∂y²
 /// ```
+///
+/// with essential (EBC) and natural (NBC) boundary conditions.
 ///
 /// The spectral collocation method approximates the Laplacian at the grid points (xᵢ, yⱼ) using:
 ///
@@ -32,7 +34,7 @@ use russell_sparse::{CooMatrix, Sym};
 /// ```text
 /// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
 /// ```
-pub struct SpectralLaplacian2d<'a> {
+pub struct Spc2d<'a> {
     /// Defines the 2D grid
     grid: Grid2d,
 
@@ -55,7 +57,7 @@ pub struct SpectralLaplacian2d<'a> {
     interp_y: InterpLagrange,
 }
 
-impl<'a> SpectralLaplacian2d<'a> {
+impl<'a> Spc2d<'a> {
     /// Allocates a new instance
     ///
     /// **Important**:
@@ -119,7 +121,7 @@ impl<'a> SpectralLaplacian2d<'a> {
         interp_y.calc_dd2_matrix();
 
         // done
-        Ok(SpectralLaplacian2d {
+        Ok(Spc2d {
             grid,
             ebcs,
             kx,
@@ -311,7 +313,7 @@ impl<'a> SpectralLaplacian2d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::SpectralLaplacian2d;
+    use super::Spc2d;
     use crate::{EssentialBcs2d, Grid2d};
     use russell_lab::mat_approx_eq;
 
@@ -320,7 +322,7 @@ mod tests {
         let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, 5, 5).unwrap();
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous(&grid);
-        let spec = SpectralLaplacian2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let spec = Spc2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk_bar, kk_check) = spec.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);

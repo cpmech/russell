@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::{StrError, Vector};
-use russell_pde::{EssentialBcs2d, FdmLaplacian2d, Grid2d, Side};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, Side};
 use russell_sparse::{Genie, LinSolver, Sym};
 
 fn main() -> Result<(), StrError> {
@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);
-    let fdm = FdmLaplacian2d::new(grid, ebcs, kx, ky)?;
+    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = fdm.get_matrices_sps(0, Sym::No);

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 /// Implements a handler for essential (Dirichlet) boundary conditions
 ///
-/// This struct helps to manage essential boundary conditions (ebc) for 2D problems.
+/// This struct helps to manage essential boundary conditions (EBC) for 2D problems.
 /// It holds the number of prescribed equations and the number of unknown equations.
 ///
 /// The grid is assumed to be a regular Cartesian grid with `nx` points along x and `ny` points along y.
@@ -19,11 +19,11 @@ pub struct EssentialBcs2d<'a> {
     /// If false, the bottom/top boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
     periodic_along_y: bool,
 
-    /// Holds the functions to compute essential boundary conditions (ebc)
+    /// Holds the functions to compute essential boundary conditions (EBC)
     ///
-    /// The function is `f(x, y) -> ebc`
+    /// The function is `f(x, y) -> value`
     ///
-    /// (4) → (xmin, xmax, ymin, ymax); corresponding to the 4 sides
+    /// (4) → (Xmin, Xmax, Ymin, Ymax); corresponding to the 4 sides
     functions: Vec<Arc<dyn Fn(f64, f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where essential boundary conditions are applied
@@ -35,7 +35,7 @@ pub struct EssentialBcs2d<'a> {
     /// Maps node to one of the four functions in `functions`
     ///
     /// length = number of nodes with EBCs
-    node_to_function: HashMap<usize, usize>,
+    node_to_function: HashMap<usize, Side>,
 }
 
 impl<'a> EssentialBcs2d<'a> {
@@ -45,10 +45,10 @@ impl<'a> EssentialBcs2d<'a> {
             periodic_along_x: false,
             periodic_along_y: false,
             functions: vec![
-                Arc::new(|_, _| 0.0), // xmin
-                Arc::new(|_, _| 0.0), // xmax
-                Arc::new(|_, _| 0.0), // ymin
-                Arc::new(|_, _| 0.0), // ymax
+                Arc::new(|_, _| 0.0), // Xmin
+                Arc::new(|_, _| 0.0), // Xmax
+                Arc::new(|_, _| 0.0), // Ymin
+                Arc::new(|_, _| 0.0), // Ymax
             ],
             sides: HashSet::new(),
             ready: false,
@@ -69,7 +69,7 @@ impl<'a> EssentialBcs2d<'a> {
 
     /// Sets essential (Dirichlet) boundary condition
     ///
-    /// The function is `f(x, y) -> ebc`
+    /// The function is `f(x, y) -> value`
     ///
     /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
     pub fn set(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
@@ -90,10 +90,10 @@ impl<'a> EssentialBcs2d<'a> {
         self.periodic_along_x = false;
         self.periodic_along_y = false;
         self.functions = vec![
-            Arc::new(|_, _| 0.0), // xmin
-            Arc::new(|_, _| 0.0), // xmax
-            Arc::new(|_, _| 0.0), // ymin
-            Arc::new(|_, _| 0.0), // ymax
+            Arc::new(|_, _| 0.0), // Xmin
+            Arc::new(|_, _| 0.0), // Xmax
+            Arc::new(|_, _| 0.0), // Ymin
+            Arc::new(|_, _| 0.0), // Ymax
         ];
         self.sides.insert(Side::Xmin);
         self.sides.insert(Side::Xmax);
@@ -116,8 +116,7 @@ impl<'a> EssentialBcs2d<'a> {
         let mut nodes_set = HashSet::with_capacity(2 * nx + 2 * ny);
         for &side in &self.sides {
             for &m in grid.get_nodes_on_side(side) {
-                let index = side as usize;
-                self.node_to_function.insert(m, index);
+                self.node_to_function.insert(m, side);
                 nodes_set.insert(m);
             }
         }
@@ -152,8 +151,8 @@ impl<'a> EssentialBcs2d<'a> {
     /// A panic may occur if the index is out of bounds.
     pub(crate) fn get_value(&self, m: usize, x: f64, y: f64) -> f64 {
         assert!(self.ready, "build must be called first");
-        let index = self.node_to_function.get(&m).unwrap();
-        (self.functions[*index])(x, y)
+        let index = *self.node_to_function.get(&m).unwrap() as usize;
+        (self.functions[index])(x, y)
     }
 
     /// Returns the list of nodes on all sides with EBCs

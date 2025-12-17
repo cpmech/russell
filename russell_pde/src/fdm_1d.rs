@@ -85,7 +85,9 @@ const INI_X: usize = 0;
 ///
 /// The FDM stencil uses the "molecule" {α, β, β} such that:
 ///
+/// ```text
 /// α ϕᵢ + β ϕᵢ₋₁ + β ϕᵢ₊₁ = sᵢ
+/// ```
 ///
 /// # Natural boundary conditions (NBC)
 ///

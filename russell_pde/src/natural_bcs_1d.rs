@@ -25,7 +25,7 @@ pub struct NaturalBcs1d<'a> {
     /// Maps node to one of the two functions in `functions`
     ///
     /// length = number of nodes with natural boundary conditions
-    node_to_function: HashMap<usize, usize>,
+    node_to_function: HashMap<usize, Side>,
 }
 
 impl<'a> NaturalBcs1d<'a> {
@@ -116,8 +116,7 @@ impl<'a> NaturalBcs1d<'a> {
         let mut nodes_set = HashSet::with_capacity(2);
         for &side in &self.sides {
             for &m in grid.get_nodes_on_side(side) {
-                let index = side as usize;
-                self.node_to_function.insert(m, index);
+                self.node_to_function.insert(m, side);
                 nodes_set.insert(m);
             }
         }
@@ -134,8 +133,8 @@ impl<'a> NaturalBcs1d<'a> {
     /// A panic may occur if the index is out of bounds.
     pub(crate) fn get_value(&self, m: usize, x: f64) -> f64 {
         assert!(self.ready, "build must be called first");
-        let index = self.node_to_function.get(&m).unwrap();
-        (self.functions[*index])(x)
+        let index = *self.node_to_function.get(&m).unwrap() as usize;
+        (self.functions[index])(x)
     }
 
     /// Returns the list of nodes on all sides with NBCs

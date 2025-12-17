@@ -82,6 +82,119 @@ const INI_Y: usize = 0;
 /// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
 /// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
 /// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
+///
+/// The FDM stencil uses the "molecule" {α, β, β, γ, γ} corresponding to the {CUR, LEF, RIG, BOT, TOP} nodes, such that:
+///
+/// ```text
+/// α ϕ_{cur} + β ϕ_{lef} + β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur}
+/// ```
+///
+/// # Natural boundary conditions (NBC)
+///
+/// In 2D, the flux vector reduces to `w = [wx, wy]ᵀ`, where
+///
+/// ```text
+/// wx = -kx ∂ϕ/∂x
+/// wy = -ky ∂ϕ/∂y
+/// ```
+///
+/// The normal vectors at the boundaries are illustrated below:
+///
+/// ```text
+///                          @ Ymax:
+///                               ┌    ┐   ┌    ┐
+///                               │ wx │   │  0 │
+///                          wₙ = │    │ · │    │
+///                               │ wy │   │  1 │
+///                               └    ┘   └    ┘
+///                             = -ky ∂ϕ/∂y
+///
+///                                   ↑
+/// @ Xmin:                  ┌─────────────────┐     @ Xmax:
+///      ┌    ┐   ┌    ┐     │                 │          ┌    ┐   ┌    ┐
+///      │ wx │   │ -1 │     │                 │          │ wx │   │  1 │
+/// wₙ = │    │ · │    │     │                 │     wₙ = │    │ · │    │
+///      │ wy │   │  0 │   ← │                 │ →        │ wy │   │  0 │
+///      └    ┘   └    ┘     │                 │          └    ┘   └    ┘
+///    = kx ∂ϕ/∂x            │                 │        = -kx ∂ϕ/∂x
+///                          │                 │
+///                          └─────────────────┘
+///                                   ↓
+///
+///                          @ Ymin:
+///                               ┌    ┐   ┌    ┐
+///                               │ wx │   │  0 │
+///                          wₙ = │    │ · │    │
+///                               │ wy │   │ -1 │
+///                               └    ┘   └    ┘
+///                             = ky ∂ϕ/∂y
+/// ```
+///
+/// The natural boundary conditions (NBC) are set by modifying the right-hand side vector.
+///
+/// The FDM stencil at the left side (Xmin) is:
+///
+/// ```text
+/// α ϕ_{cur} + β ϕ_{ghost} + β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur}
+/// ```
+///
+/// where `α = 2(kx/Δx²+ky/Δy²)`, `β = -kx/Δx²`, and `γ = -ky/Δy²`.
+///
+/// The central difference formula for the gradient @ Xmin is:
+///
+/// ```text
+/// ∂ϕ │      ϕ_{rig} - ϕ_{ghost}
+/// —— │    ≈ —————————————————— := g
+/// ∂x │cur          2 Δx
+/// ```
+///
+/// Thus, `ϕ_{ghost} = ϕ_{rig} - 2 g Δx`.
+///
+/// By substituting `ϕ_{ghost}` in the FDM stencil, we get:
+///
+/// ```text
+/// α ϕ_{cur} + β (ϕ_{rig} - 2 g Δx) + β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur}
+/// α ϕ_{cur} + 2 β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} + 2 β g Δx
+/// α ϕ_{cur} + 2 β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 (kx/Δx²) g Δx
+/// α ϕ_{cur} + 2 β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 (kx g) / Δx
+/// α ϕ_{cur} + 2 β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 wₙ / Δx
+///                                                          └───────────┘
+///                                                            extra term
+/// ```
+///
+/// Where `wₙ := kx g = q̄` at the left side (Xmin).
+///
+/// The FDM stencil at the right side (Xmax) is:
+///
+/// ```text
+/// α ϕ_{cur} + β ϕ_{lef} + β ϕ_{ghost} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur}
+/// ```
+///
+/// Analogously, at the right side (Xmax) the gradient is:
+///
+/// ```text
+/// ∂ϕ │        ϕ_{ghost} - ϕ_{lef}
+/// —— │      ≈ ——————————————————— := g
+/// ∂x │{cur}           2 Δx
+/// ```
+///
+/// Thus, `ϕ_{ghost} = ϕ_{lef} + 2 g Δx`.
+///
+/// By substituting `ϕ_{ghost}` in the FDM stencil, we get:
+///
+/// ```text
+/// α ϕ_{cur} + β ϕ_{lef} + β (ϕ_{lef} + 2 g Δx) + γ ϕ_{bot} + γ ϕ_{top} = s_{cur}
+/// α ϕ_{cur} + 2 β ϕ_{lef} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 β g Δx
+/// α ϕ_{cur} + 2 β ϕ_{lef} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 (-kx/Δx²) g Δx
+/// α ϕ_{cur} + 2 β ϕ_{lef} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 (-kx g) / Δx
+/// α ϕ_{cur} + 2 β ϕ_{lef} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur} - 2 wₙ / Δx
+///                                                          └───────────┘
+///                                                            extra term
+/// ```
+///
+/// where `wₙ := -kx g = q̄` at the right side (Xmax).
+///
+/// Similar expressions can be derived for the bottom (Ymin) and top (Ymax) sides.
 pub struct Fdm2d<'a> {
     /// Defines the 2D grid
     grid: Grid2d,

@@ -18,7 +18,7 @@ pub struct EssentialBcs1d<'a> {
     ///
     /// The function is `f(x) -> value`
     ///
-    /// (2) → (xmin, xmax); corresponding to the 2 sides
+    /// (2) → (Xmin, Xmax); corresponding to the 2 sides
     functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where essential boundary conditions are applied
@@ -30,7 +30,7 @@ pub struct EssentialBcs1d<'a> {
     /// Maps node to one of the two functions in `functions`
     ///
     /// length = number of nodes with essential boundary conditions (prescribed nodes)
-    node_to_function: HashMap<usize, usize>,
+    node_to_function: HashMap<usize, Side>,
 }
 
 impl<'a> EssentialBcs1d<'a> {
@@ -39,8 +39,8 @@ impl<'a> EssentialBcs1d<'a> {
         EssentialBcs1d {
             periodic_along_x: false,
             functions: vec![
-                Arc::new(|_| 0.0), // xmin
-                Arc::new(|_| 0.0), // xmax
+                Arc::new(|_| 0.0), // Xmin
+                Arc::new(|_| 0.0), // Xmax
             ],
             sides: HashSet::new(),
             ready: false,
@@ -84,8 +84,8 @@ impl<'a> EssentialBcs1d<'a> {
     pub fn set_homogeneous(&mut self) {
         self.periodic_along_x = false;
         self.functions = vec![
-            Arc::new(|_| 0.0), // xmin
-            Arc::new(|_| 0.0), // xmax
+            Arc::new(|_| 0.0), // Xmin
+            Arc::new(|_| 0.0), // Xmax
         ];
         self.sides.insert(Side::Xmin);
         self.sides.insert(Side::Xmax);
@@ -104,8 +104,7 @@ impl<'a> EssentialBcs1d<'a> {
         let mut nodes_set = HashSet::with_capacity(2);
         for &side in &self.sides {
             for &m in grid.get_nodes_on_side(side) {
-                let index = side as usize;
-                self.node_to_function.insert(m, index);
+                self.node_to_function.insert(m, side);
                 nodes_set.insert(m);
             }
         }
@@ -128,8 +127,8 @@ impl<'a> EssentialBcs1d<'a> {
     /// A panic may occur if the index is out of bounds.
     pub(crate) fn get_value(&self, m: usize, x: f64) -> f64 {
         assert!(self.ready, "build must be called first");
-        let index = self.node_to_function.get(&m).unwrap();
-        (self.functions[*index])(x)
+        let index = *self.node_to_function.get(&m).unwrap() as usize;
+        (self.functions[index])(x)
     }
 
     /// Returns the list of nodes on all sides with EBCs

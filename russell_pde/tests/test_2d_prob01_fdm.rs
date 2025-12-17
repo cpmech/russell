@@ -1,54 +1,47 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d};
-use russell_sparse::{Genie, LinSolver};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, StrError};
 
 const SAVE_FIGURE: bool = false;
 
+// Solve the following problem:
+//
+// ∂²ϕ   ∂²ϕ
+// ——— + ——— = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
+// ∂x²   ∂y²
+//
+// on a (1.0 × 1.0) square with the homogeneous boundary conditions.
+//
+// The analytical solution is:
+//
+// ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
+
+fn source(x: f64, y: f64) -> f64 {
+    2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y)
+}
+
+fn analytical(x: f64, y: f64) -> f64 {
+    x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y)
+}
+
 #[test]
-fn test_poisson2d_1_lag() {
-    // Approximate (with the Finite Differences Method, FDM) the solution of
-    //
-    // ∂²ϕ   ∂²ϕ
-    // ——— + ——— = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
-    // ∂x²   ∂y²
-    //
-    // on a (1.0 × 1.0) square with the homogeneous boundary conditions.
-    //
-    // The analytical solution is:
-    //
-    // ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
-
-    // define the source term
-    let source = |x, y| 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y);
-
+fn test_2d_prob01_fdm_sps() -> Result<(), StrError> {
     // allocate the grid
     let (nx, ny) = (9, 9);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny).unwrap();
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
 
     // homogeneous essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
     ebcs.set_homogeneous();
 
-    // allocate the Laplacian operator
+    // allocate the solver
     let (kx, ky) = (-1.0, -1.0);
-    let fdm = Fdm2d::new(grid, ebcs, kx, ky).unwrap();
+    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
 
-    // assemble the coefficient matrix and the lhs and rhs vectors
-    let (mm, _) = fdm.get_matrices_lmm(0, false);
-    let (mut aa, ff) = fdm.get_vectors_lmm(source);
-
-    // solve the linear system
-    let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&mm, None).unwrap();
-    solver.actual.solve(&mut aa, &ff, false).unwrap();
-
-    // results
-    let neq = fdm.get_dims_lmm().0;
-    let a = &aa.as_data()[..neq];
+    // solve the problem
+    let a = fdm.solve(source)?;
 
     // check
-    let analytical = |x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y);
     fdm.for_each_coord(|m, x, y| {
         approx_eq(a[m], analytical(x, y), 1e-3);
     });
@@ -82,7 +75,31 @@ fn test_poisson2d_1_lag() {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/russell_pde/test_poisson2d_1_lag.svg")
-            .unwrap();
+            .save("/tmp/russell_pde/test_2d_prob01_fdm.svg")?;
     }
+    Ok(())
+}
+
+#[test]
+fn test_2d_prob01_fdm_lmm() -> Result<(), StrError> {
+    // allocate the grid
+    let (nx, ny) = (9, 9);
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
+
+    // homogeneous essential boundary conditions
+    let mut ebcs = EssentialBcs2d::new();
+    ebcs.set_homogeneous();
+
+    // allocate the solver
+    let (kx, ky) = (-1.0, -1.0);
+    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
+
+    // solve the problem
+    let a = fdm.solve_lmm(source)?;
+
+    // check
+    fdm.for_each_coord(|m, x, y| {
+        approx_eq(a[m], analytical(x, y), 1e-3);
+    });
+    Ok(())
 }

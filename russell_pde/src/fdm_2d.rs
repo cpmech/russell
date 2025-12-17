@@ -1,6 +1,6 @@
 use crate::{EquationHandler, EssentialBcs2d, Grid2d, StrError};
 use russell_lab::Vector;
-use russell_sparse::{CooMatrix, Sym};
+use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
 // constants for clarity/convenience
 const CUR: usize = 0; // current node
@@ -249,6 +249,59 @@ impl<'a> Fdm2d<'a> {
             equations,
             molecule: vec![alpha, beta, beta, gamma, gamma],
         })
+    }
+
+    /// Solves the Poisson equation in 2D
+    ///
+    /// ```text
+    ///     ∂²ϕ      ∂²ϕ
+    /// -kx ——— - ky ——— = source(x, y)
+    ///     ∂x²      ∂y²
+    /// ```
+    pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (kk_bar, kk_check) = self.get_matrices_sps(0, Sym::No);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
+        let kk_check = kk_check.unwrap();
+
+        // initialize the right-hand side
+        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+        solver.actual.factorize(&kk_bar, None).unwrap();
+        solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
+
+        // results
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
+    }
+
+    /// Solves the Poisson equation in 2D (Lagrange multipliers method)
+    ///
+    /// ```text
+    ///     ∂²ϕ      ∂²ϕ
+    /// -kx ——— - ky ——— = source(x, y)
+    ///     ∂x²      ∂y²
+    /// ```
+    pub fn solve_lmm<F>(&self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (mm, _) = self.get_matrices_lmm(0, false);
+        let (mut aa, ff) = self.get_vectors_lmm(source);
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+        solver.actual.factorize(&mm, None).unwrap();
+        solver.actual.solve(&mut aa, &ff, false).unwrap();
+
+        // results
+        let neq = self.get_dims_lmm().0;
+        Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
     /// Returns the dimensions for the system partitioning strategy (SPS)

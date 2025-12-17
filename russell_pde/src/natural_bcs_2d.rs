@@ -36,7 +36,7 @@ impl<'a> NaturalBcs2d<'a> {
         }
     }
 
-    /// Sets natural (Neumann) boundary condition
+    /// Sets flux boundary condition
     ///
     /// ```text
     ///  →    →

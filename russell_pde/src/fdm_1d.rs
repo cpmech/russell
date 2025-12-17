@@ -1,4 +1,4 @@
-use crate::{EquationHandler, EssentialBcs1d, Grid1d, StrError};
+use crate::{EquationHandler, EssentialBcs1d, Grid1d, NaturalBcs1d, StrError};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
@@ -10,12 +10,20 @@ const INI_X: usize = 0;
 
 /// Implements the Finite Difference method (FDM) in 1D
 ///
-/// The FDM can be used to solve the following problem:
+/// The FDM can be used to solve the following problems:
 ///
 /// ```text
-///    ∂²ϕ
-/// kx ——— = source(x)
-///    ∂x²
+///     ∂²ϕ
+/// -kx ——— = source(x)
+///     ∂x²
+/// ```
+///
+/// or
+///
+/// ```text
+///     ∂²ϕ
+/// -kx ——— + (ϕ - ϕ∞) β = source(x)
+///     ∂x²
 /// ```
 ///
 /// with essential (EBC) and natural (NBC) boundary conditions.
@@ -74,20 +82,96 @@ const INI_X: usize = 0;
 /// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
 /// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
 /// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
+///
+/// The FDM stencil uses the "molecule" {α, β, β} such that:
+///
+/// α ϕᵢ + β ϕᵢ₋₁ + β ϕᵢ₊₁ = sᵢ
+///
+/// # Notes on natural boundary conditions (NBC)
+///
+/// The natural boundary conditions (NBC) are set by modifying the right-hand side vector.
+///
+/// The FDM stencil at the left side (xmin) is:
+///
+/// ```text
+/// α ϕ_{0} + β ϕ_{-1} + β ϕ_{1} = s_{0}
+/// ```
+///
+/// where `α = 2kx/Δx²` and `β = -kx/Δx²`.
+///
+/// The central difference formula for the gradient @ xmin is:
+///
+/// ```text
+/// ∂ϕ │    ϕ_{1} - ϕ_{-1}
+/// —— │  ≈ —————————————— := g
+/// ∂x │0        2 Δx
+/// ```
+///
+/// Thus, `ϕ_{-1} = ϕ_{1} - 2 g Δx`.
+///
+/// By substituting `ϕ_{-1}` in the FDM stencil, we get:
+///
+/// ```text
+/// α ϕ_{0} + β (ϕ_{1} - 2 g Δx) + β ϕ_{1} = s_{0}
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} + 2 β g Δx
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} - 2 (kx/Δx²) g Δx
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} - 2 (kx g) / Δx
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} - 2 wₙ / Δx
+///                            └───────────┘
+///                              extra term
+/// ```
+///
+/// Where `wₙ := kx g = q̄` at the left side (xmin).
+///
+/// The FDM stencil at the right side (xmax) is:
+///
+/// ```text
+/// α ϕ_{nx-1} + β ϕ_{nx-2} + β ϕ_{nx} = s_{nx-1}
+/// ```
+///
+/// Analogously, at the right side (xmax) the gradient is:
+///
+/// ```text
+/// ∂ϕ │         ϕ_{nx} - ϕ_{nx-2}
+/// —— │       ≈ ————————————————— := g
+/// ∂x │{nx-1}         2 Δx
+/// ```
+///
+/// Thus, `ϕ_{nx} = ϕ_{nx-2} + 2 g Δx`.
+///
+/// By substituting `ϕ_{nx}` in the FDM stencil, we get:
+///
+/// ```text
+/// α ϕ_{nx-1} + β ϕ_{nx-2} + β (ϕ_{nx-2} + 2 g Δx) = s_{nx-1}
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 β g Δx
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 (-kx/Δx²) g Δx
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 (-kx g) / Δx
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 wₙ / Δx
+///                                     └───────────┘
+///                                       extra term
+/// ```
+///
+/// where `wₙ := -kx g = q̄` at the right side (xmax).
 pub struct Fdm1d<'a> {
     /// Defines the 1D grid
     grid: Grid1d,
 
-    /// Holds a reference to the essential boundary conditions handler
+    /// Holds the essential boundary conditions handler
     ebcs: EssentialBcs1d<'a>,
+
+    /// Holds the natural boundary conditions handler
+    nbcs: NaturalBcs1d<'a>,
 
     /// Tool to handle the equation numbers such as unknowns prescribed
     equations: EquationHandler,
 
-    /// Holds the FDM coefficients (α, β, β, γ, γ) corresponding to (CUR, LEF, RIG, BOT, TOP)
+    /// Holds the FDM coefficients (α, β, β) corresponding to (CUR, LEF, RIG)
     ///
     /// These coefficients are applied over the "bandwidth" of the coefficient matrix
     molecule: Vec<f64>,
+
+    /// Grid spacing (uniform grid)
+    dx: f64,
 }
 
 impl<'a> Fdm1d<'a> {
@@ -97,16 +181,23 @@ impl<'a> Fdm1d<'a> {
     ///
     /// * `grid` -- the 1D grid
     /// * `ebcs` -- the essential boundary conditions handler
+    /// * `nbcs` -- the natural boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
-    pub fn new(grid: Grid1d, mut ebcs: EssentialBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
+    pub fn new(
+        grid: Grid1d,
+        mut ebcs: EssentialBcs1d<'a>,
+        mut nbcs: NaturalBcs1d<'a>,
+        kx: f64,
+    ) -> Result<Self, StrError> {
         // check grid
         let dx = match grid.get_dx() {
             Some(dx) => dx,
             None => return Err("grid must have uniform spacing"),
         };
 
-        // build EBC data
+        // build the boundary conditions data
         ebcs.build(&grid);
+        nbcs.build(&grid);
 
         // allocate equations handler
         let neq = grid.nx();
@@ -115,25 +206,31 @@ impl<'a> Fdm1d<'a> {
 
         // auxiliary variables
         let dx2 = dx * dx;
-        let alpha = -2.0 * kx / dx2;
-        let beta = kx / dx2;
+        let alpha = 2.0 * kx / dx2;
+        let beta = -kx / dx2;
 
         // done
         Ok(Fdm1d {
             grid,
             ebcs,
+            nbcs,
             equations,
             molecule: vec![alpha, beta, beta],
+            dx,
         })
     }
 
     /// Solves the Poisson equation in 1D
     ///
+    /// Returns `a`, the solution vector.
+    ///
     /// ```text
-    ///    ∂²ϕ
-    /// kx ——— = source(x)
-    ///    ∂x²
+    ///     ∂²ϕ
+    /// -kx ——— = source(x)
+    ///     ∂x²
     /// ```
+    ///
+    /// Note: This function employs the system partitioning strategy (SPS).
     pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
@@ -148,22 +245,48 @@ impl<'a> Fdm1d<'a> {
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
-        let a = self.get_joined_vector_sps(&a_bar, &a_check);
-        Ok(a)
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the convection-diffusion problem in 1D
+    /// Solves the Poisson equation in 1D (Lagrange multipliers method)
     ///
     /// Returns `a`, the solution vector.
     ///
-    /// The Model is:
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— = source(x)
+    ///     ∂x²
+    /// ```
+    pub fn solve_lmm<F>(&self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (mm, _) = self.get_matrices_lmm(0, false);
+        let (mut aa, ff) = self.get_vectors_lmm(source);
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+        solver.actual.factorize(&mm, None).unwrap();
+        solver.actual.solve(&mut aa, &ff, false).unwrap();
+
+        // results
+        let neq = self.get_dims_lmm().0;
+        Ok(Vector::from(&&aa.as_data()[..neq]))
+    }
+
+    /// Solves the extended Poisson equation in 1D
+    ///
+    /// Returns `a`, the solution vector.
     ///
     /// ```text
-    ///      ∂²ϕ
-    /// - kx ——— + (ϕ - ϕ∞) β = source(x)
-    ///      ∂x²
+    ///     ∂²ϕ
+    /// -kx ——— + (ϕ - ϕ∞) β = source(x)
+    ///     ∂x²
     /// ```
-    pub fn solve_convection<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
+    ///
+    /// Note: This function employs the system partitioning strategy (SPS).
+    pub fn solve_ext<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {
@@ -188,8 +311,41 @@ impl<'a> Fdm1d<'a> {
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
-        let a = self.get_joined_vector_sps(&a_bar, &a_check);
-        Ok(a)
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
+    }
+
+    /// Solves the extended Poisson equation in 1D (Lagrange multipliers method)
+    ///
+    /// Returns `a`, the solution vector.
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + (ϕ - ϕ∞) β = source(x)
+    ///     ∂x²
+    /// ```
+    pub fn solve_ext_lmm<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let neq = self.get_dims_lmm().0;
+        let extra_nnz = neq; // diagonal entries due to ϕ β
+        let (mut mm, _) = self.get_matrices_lmm(extra_nnz, false);
+        let (mut aa, ff) = self.get_vectors_lmm(|x| source(x) + phi_inf * beta);
+
+        // add the diagonal entries due to ϕ β
+        for m in 0..neq {
+            mm.put(m, m, beta).unwrap();
+        }
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+        solver.actual.factorize(&mm, None).unwrap();
+        solver.actual.solve(&mut aa, &ff, false).unwrap();
+
+        // results
+        let neq = self.get_dims_lmm().0;
+        Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
     /// Returns the dimensions for the system partitioning strategy (SPS)
@@ -356,6 +512,12 @@ impl<'a> Fdm1d<'a> {
             let x = self.grid.coord(m);
             f_bar[iu] = source(x);
         });
+        for m in self.nbcs.get_nodes() {
+            let iu = self.equations.iu(m);
+            let x = self.grid.coord(m);
+            let q_bar = self.nbcs.get_value(m, x);
+            f_bar[iu] += -2.0 * q_bar / self.dx;
+        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
@@ -415,6 +577,11 @@ impl<'a> Fdm1d<'a> {
         self.grid.for_each_coord(|m, x| {
             ff[m] = source(x);
         });
+        for m in self.nbcs.get_nodes() {
+            let x = self.grid.coord(m);
+            let q_bar = self.nbcs.get_value(m, x);
+            ff[m] += -2.0 * q_bar / self.dx;
+        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
@@ -502,7 +669,7 @@ impl<'a> Fdm1d<'a> {
 #[cfg(test)]
 mod tests {
     use super::Fdm1d;
-    use crate::{EssentialBcs1d, Grid1d, Side};
+    use crate::{EssentialBcs1d, Grid1d, NaturalBcs1d, Side};
     use russell_lab::Vector;
     use russell_sparse::Sym;
 
@@ -513,7 +680,8 @@ mod tests {
     fn new_captures_errors() {
         let grid = Grid1d::new(&[0.0, 0.1, 0.4]).unwrap();
         let ebcs = EssentialBcs1d::new();
-        let fdm = Fdm1d::new(grid, ebcs, 1.0);
+        let nbcs = NaturalBcs1d::new();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
@@ -523,9 +691,10 @@ mod tests {
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
 
-        let fdm = Fdm1d::new(grid, ebcs, 100.0).unwrap();
-        assert_eq!(&fdm.molecule, &[-200.0, 100.0, 100.0]);
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
+        assert_eq!(&fdm.molecule, &[200.0, -100.0, -100.0]);
 
         assert_eq!(fdm.get_dims_sps(), (4, 0));
         assert_eq!(fdm.get_dims_lmm(), (4, 0, 4));
@@ -539,12 +708,13 @@ mod tests {
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
         const LEF: f64 = 1.0;
         let lef = |_| LEF;
         assert_eq!(lef(0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0
 
-        let fdm = Fdm1d::new(grid, ebcs, 100.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -556,45 +726,45 @@ mod tests {
         // The full matrix is:
         //      0*   1    2    3
         // ┌                     ┐
-        // │ -200  200    .    . │  0*(p0)
-        // │  100 -200  100    . │  1→0
-        // │    .  100 -200  100 │  2→1
-        // │    .    .  200 -200 │  3→2
+        // │  200 -200    .    . │  0*(p0)
+        // │ -100  200 -100    . │  1→0
+        // │    . -100  200 -100 │  2→1
+        // │    .    . -200  200 │  3→2
         // └                     ┘
         //      0*   1    2    3
 
         // K =
         //      1    2    3
         // ┌                ┐
-        // │ -200  100    . │  1→0
-        // │  100 -200  100 │  2→1
-        // │    .  200 -200 │  3→2
+        // │  200 -100    . │  1→0
+        // │ -100  200 -100 │  2→1
+        // │    . -200  200 │  3→2
         // └                ┘
         //      1    2    3
         assert_eq!(
             format!("{}", kk.as_dense()),
             "┌                ┐\n\
-             │ -200  100    0 │\n\
-             │  100 -200  100 │\n\
-             │    0  200 -200 │\n\
+             │  200 -100    0 │\n\
+             │ -100  200 -100 │\n\
+             │    0 -200  200 │\n\
              └                ┘"
         );
 
         // C =
         //     0*
         // ┌     ┐
-        // │ 100 │  1→0
-        // │   . │  2→1
-        // │   . │  3→2
-        // └     ┘
+        // │ -100 │  1→0
+        // │    . │  2→1
+        // │    . │  3→2
+        // └      ┘
         //     0*
         assert_eq!(
             format!("{}", cc.as_dense()),
-            "┌     ┐\n\
-             │ 100 │\n\
-             │   0 │\n\
-             │   0 │\n\
-             └     ┘"
+            "┌      ┐\n\
+             │ -100 │\n\
+             │    0 │\n\
+             │    0 │\n\
+             └      ┘"
         );
 
         // E =
@@ -613,20 +783,20 @@ mod tests {
         // A =
         //      0*   1    2    3    4w
         // ┌                          ┐
-        // │ -200  200    .    .    1 │  0*
-        // │  100 -200  100    .    . │  1
-        // │    .  100 -200  100    . │  2
-        // │    .    .  200 -200    . │  3
+        // │  200 -200    .    .    1 │  0*
+        // │ -100  200 -100    .    . │  1
+        // │    . -100  200 -100    . │  2
+        // │    .    . -200  200    . │  3
         // │    1    .    .    .    . │  4w
         // └                          ┘
         //      0*   1    2    3    4w
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                          ┐\n\
-             │ -200  200    0    0    1 │\n\
-             │  100 -200  100    0    0 │\n\
-             │    0  100 -200  100    0 │\n\
-             │    0    0  200 -200    0 │\n\
+             │  200 -200    0    0    1 │\n\
+             │ -100  200 -100    0    0 │\n\
+             │    0 -100  200 -100    0 │\n\
+             │    0    0 -200  200    0 │\n\
              │    1    0    0    0    0 │\n\
              └                          ┘"
         );
@@ -638,9 +808,10 @@ mod tests {
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
         ebcs.set_homogeneous();
 
-        let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -652,25 +823,25 @@ mod tests {
         // The full matrix is:
         //    0* 1  2  3*
         // ┌              ┐
-        // │ -2  2  .  .  │  0*
-        // │  1 -2  1  .  │  1
-        // │  .  1 -2  1  │  2
-        // │  .  .  2 -2  │  3*
+        // │  2 -2  .  .  │  0*
+        // │ -1  2 -1  .  │  1
+        // │  . -1  2 -1  │  2
+        // │  .  . -2  2  │  3*
         // └              ┘
         //    0* 1  2  3*
 
         // K =
         //    1  2
         // ┌       ┐
-        // │ -2  1 │  1
-        // │  1 -2 │  2
+        // │  2 -1 │  1
+        // │ -1  2 │  2
         // └       ┘
         //    1  2
         assert_eq!(
             format!("{}", kk.as_dense()),
             "┌       ┐\n\
-             │ -2  1 │\n\
-             │  1 -2 │\n\
+             │  2 -1 │\n\
+             │ -1  2 │\n\
              └       ┘"
         );
 
@@ -683,10 +854,10 @@ mod tests {
         //    0* 3*
         assert_eq!(
             format!("{}", cc.as_dense()),
-            "┌     ┐\n\
-             │ 1 0 │\n\
-             │ 0 1 │\n\
-             └     ┘"
+            "┌       ┐\n\
+             │ -1  0 │\n\
+             │  0 -1 │\n\
+             └       ┘"
         );
 
         // E =
@@ -706,20 +877,20 @@ mod tests {
         // A =
         //    0* 1  2  3* 4w 5w
         // ┌                   ┐
-        // │ -2  2  .  .  1  . │  0*
-        // │  1 -2  1  .  .  . │  1
-        // │  .  1 -2  1  .  . │  2
-        // │  .  .  2 -2  .  1 │  3*
+        // │  2 -2  .  .  1  . │  0*
+        // │ -1  2 -1  .  .  . │  1
+        // │  . -1  2 -1  .  . │  2
+        // │  .  . -2  2  .  1 │  3*
         // │  1  .  .  .  .  . │  3*
         // │  .  .  .  1  .  . │  3*
         // └                   ┘
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                   ┐\n\
-             │ -2  2  0  0  1  0 │\n\
-             │  1 -2  1  0  0  0 │\n\
-             │  0  1 -2  1  0  0 │\n\
-             │  0  0  2 -2  0  1 │\n\
+             │  2 -2  0  0  1  0 │\n\
+             │ -1  2 -1  0  0  0 │\n\
+             │  0 -1  2 -1  0  0 │\n\
+             │  0  0 -2  2  0  1 │\n\
              │  1  0  0  0  0  0 │\n\
              │  0  0  0  1  0  0 │\n\
              └                   ┘"
@@ -732,9 +903,10 @@ mod tests {
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
         ebcs.set_periodic(true);
 
-        let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         assert!(cc_mat.is_none());
@@ -746,29 +918,29 @@ mod tests {
         // K = A =
         //    0  1  2  3
         // ┌             ┐
-        // │ -2  1  .  1 │  0
-        // │  1 -2  1  . │  1
-        // │  .  1 -2  1 │  2
-        // │  1  .  1 -2 │  3
+        // │  2 -1  . -1 │  0
+        // │ -1  2 -1  . │  1
+        // │  . -1  2 -1 │  2
+        // │ -1  . -1  2 │  3
         // └             ┘
         //    0  1  2  3
 
         assert_eq!(
             format!("{}", kk.as_dense()),
             "┌             ┐\n\
-             │ -2  1  0  1 │\n\
-             │  1 -2  1  0 │\n\
-             │  0  1 -2  1 │\n\
-             │  1  0  1 -2 │\n\
+             │  2 -1  0 -1 │\n\
+             │ -1  2 -1  0 │\n\
+             │  0 -1  2 -1 │\n\
+             │ -1  0 -1  2 │\n\
              └             ┘"
         );
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌             ┐\n\
-             │ -2  1  0  1 │\n\
-             │  1 -2  1  0 │\n\
-             │  0  1 -2  1 │\n\
-             │  1  0  1 -2 │\n\
+             │  2 -1  0 -1 │\n\
+             │ -1  2 -1  0 │\n\
+             │  0 -1  2 -1 │\n\
+             │ -1  0 -1  2 │\n\
              └             ┘"
         );
     }
@@ -777,12 +949,13 @@ mod tests {
     fn get_vectors_works() {
         let grid = Grid1d::new_uniform(0.0, 1.0, 5).unwrap();
         let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
 
         //  0*  1   2   3   4*
         ebcs.set(Side::Xmin, |_| LEF);
         ebcs.set(Side::Xmax, |_| RIG);
 
-        let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
 
         let (a_bar, a_check, f_bar) = fdm.get_vectors_sps(|_| 100.0);
         assert_eq!(a_bar.dim(), 3); // nu
@@ -808,14 +981,15 @@ mod tests {
         // The full matrix is:
         //    0  1  2  3
         // ┌              ┐
-        // │ -2  2  .  .  │  0
-        // │  1 -2  1  .  │  1
-        // │  .  1 -2  1  │  2
-        // │  .  .  2 -2  │  3
+        // │  2 -2  .  .  │  0
+        // │ -1  2 -1  .  │  1
+        // │  . -1  2 -1  │  2
+        // │  .  . -2  2  │  3
         // └              ┘
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let ebcs = EssentialBcs1d::new();
-        let lap = Fdm1d::new(grid, ebcs, 1.0).unwrap();
+        let nbcs = NaturalBcs1d::new();
+        let lap = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_1 = Vec::new();
         let mut row_2 = Vec::new();
@@ -824,10 +998,10 @@ mod tests {
         lap.loop_over_full_coef_mat_row(1, |n, val| row_1.push((n, val)));
         lap.loop_over_full_coef_mat_row(2, |n, val| row_2.push((n, val)));
         lap.loop_over_full_coef_mat_row(3, |n, val| row_3.push((n, val)));
-        assert_eq!(row_0, &[(0, -2.0), (1, 1.0), (1, 1.0)]);
-        assert_eq!(row_1, &[(1, -2.0), (0, 1.0), (2, 1.0)]);
-        assert_eq!(row_2, &[(2, -2.0), (1, 1.0), (3, 1.0)]);
-        assert_eq!(row_3, &[(3, -2.0), (2, 1.0), (2, 1.0)]);
+        assert_eq!(row_0, &[(0, 2.0), (1, -1.0), (1, -1.0)]);
+        assert_eq!(row_1, &[(1, 2.0), (0, -1.0), (2, -1.0)]);
+        assert_eq!(row_2, &[(2, 2.0), (1, -1.0), (3, -1.0)]);
+        assert_eq!(row_3, &[(3, 2.0), (2, -1.0), (2, -1.0)]);
     }
 
     #[test]
@@ -835,7 +1009,8 @@ mod tests {
         let nx = 3;
         let grid = Grid1d::new_uniform(-1.0, 1.0, nx).unwrap();
         let ebcs = EssentialBcs1d::new();
-        let lap = Fdm1d::new(grid, ebcs, 1.0).unwrap();
+        let nbcs = NaturalBcs1d::new();
+        let lap = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
         let mut xx = Vector::new(nx);
         lap.for_each_coord(|m, x| {
             xx[m] = x;

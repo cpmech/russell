@@ -2,26 +2,21 @@ use crate::{Grid1d, Side};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-/// Implements a handler for essential (Dirichlet) boundary conditions
+/// Implements a handler for natural (Neumann) boundary conditions
 ///
-/// This struct helps to manage essential boundary conditions (EBC) for 1D problems.
+/// This struct helps to manage natural boundary conditions (NBC) for 1D problems.
 /// It holds the number of prescribed equations and the number of unknown equations.
 ///
 /// The grid is assumed to be a regular Cartesian grid with `nx` points along x.
-pub struct EssentialBcs1d<'a> {
-    /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
-    ///
-    /// If false, the left/right boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
-    periodic_along_x: bool,
-
-    /// Holds the functions to compute essential boundary conditions (EBC)
+pub struct NaturalBcs1d<'a> {
+    /// Holds the functions to compute natural boundary conditions (NBC)
     ///
     /// The function is `f(x) -> value`
     ///
     /// (2) → (xmin, xmax); corresponding to the 2 sides
     functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
-    /// Holds the sides where essential boundary conditions are applied
+    /// Holds the sides where natural boundary conditions are applied
     sides: HashSet<Side>,
 
     /// Indicates whether the structure is built and ready to use
@@ -29,15 +24,14 @@ pub struct EssentialBcs1d<'a> {
 
     /// Maps node to one of the two functions in `functions`
     ///
-    /// length = number of nodes with essential boundary conditions (prescribed nodes)
+    /// length = number of nodes with natural boundary conditions (prescribed nodes)
     node_to_function: HashMap<usize, usize>,
 }
 
-impl<'a> EssentialBcs1d<'a> {
+impl<'a> NaturalBcs1d<'a> {
     /// Allocates a new instance
     pub fn new() -> Self {
-        EssentialBcs1d {
-            periodic_along_x: false,
+        NaturalBcs1d {
             functions: vec![
                 Arc::new(|_| 0.0), // xmin
                 Arc::new(|_| 0.0), // xmax
@@ -52,43 +46,78 @@ impl<'a> EssentialBcs1d<'a> {
     // setters
     // --------------------------------------------------------
 
-    /// Sets periodic boundary condition
+    /// Sets a flux boundary condition
     ///
-    /// **Note:** Any essential boundary condition on the corresponding side will be removed.
-    pub fn set_periodic(&mut self, along_x: bool) {
-        self.periodic_along_x = along_x;
-        self.ready = false;
-    }
-
-    /// Sets essential (Dirichlet) boundary condition
+    /// The boundary condition is then defined as:
     ///
-    /// The function is `f(x) -> value`
+    /// ```text
+    /// wₙ = f(x) = q̄
+    /// ```
     ///
-    /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
+    /// where a **positive** value of f(x) indicates a flux **leaving** the domain.
+    /// It is worth noting that this convention is opposite to the one commonly used
+    /// in the literature.
+    ///
+    /// The function is `f(x) -> q̄`
     ///
     /// # Panics
     ///
     /// A panic may occur if an invalid side is provided for a 1D grid. It must be
     /// either `Side::Xmin` or `Side::Xmax`.
-    pub fn set(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
-        self.periodic_along_x = false;
+    ///
+    /// # Theory
+    ///
+    /// The flux vector is defined by:
+    ///
+    /// ```text
+    /// →         →
+    /// w = - ḵ · ∇ϕ
+    /// ```
+    ///
+    /// The normal component of the flux crossing a boundary is denoted by:
+    ///
+    /// ```text
+    ///      →   →
+    /// wₙ = w · n̂
+    /// ```
+    ///       →
+    /// where n̂ is the unit outward normal vector on the boundary.
+    ///
+    /// In 1D, the flux vector reduces to `w = [wx, 0]ᵀ`, where
+    ///
+    /// ```text
+    /// wx = -kx ∂ϕ/∂x
+    /// ```
+    ///
+    /// The normal vectors at the boundaries are illustrated below:
+    ///
+    /// ```text
+    ///   ┌────────────────────────┐
+    /// ← │                        │ →
+    ///   └────────────────────────┘
+    /// ```
+    ///
+    /// Thus:
+    ///
+    /// ```text
+    /// At the left boundary (Xmin):
+    ///      ┌    ┐   ┌    ┐
+    ///      │ wx │   │ -1 │
+    /// wₙ = │    │ · │    │ = -wx = kx ∂ϕ/∂x
+    ///      │  0 │   │  0 │
+    ///      └    ┘   └    ┘
+    ///
+    /// At the right boundary (Xmax):
+    ///      ┌    ┐   ┌    ┐
+    ///      │ wx │   │  1 │
+    /// wₙ = │    │ · │    │ = wx = -kx ∂ϕ/∂x
+    ///      │  0 │   │  0 │
+    ///      └    ┘   └    ┘
+    /// ```
+    pub fn set_flux(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
         self.sides.insert(side);
-        self.ready = false;
-    }
-
-    /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
-    ///
-    /// **Note:** Periodic boundary conditions will be removed.
-    pub fn set_homogeneous(&mut self) {
-        self.periodic_along_x = false;
-        self.functions = vec![
-            Arc::new(|_| 0.0), // xmin
-            Arc::new(|_| 0.0), // xmax
-        ];
-        self.sides.insert(Side::Xmin);
-        self.sides.insert(Side::Xmax);
         self.ready = false;
     }
 
@@ -98,7 +127,7 @@ impl<'a> EssentialBcs1d<'a> {
 
     /// Builds the internal structures
     ///
-    /// Returns the list of boundary nodes with EBCs
+    /// Returns the list of boundary nodes with NBCs
     pub(crate) fn build(&mut self, grid: &Grid1d) -> Vec<usize> {
         assert_eq!(self.ready, false, "can only build once");
         let mut nodes_set = HashSet::with_capacity(2);
@@ -115,13 +144,7 @@ impl<'a> EssentialBcs1d<'a> {
         nodes
     }
 
-    /// Indicates whether the boundary conditions are periodic along x
-    pub(crate) fn is_periodic_along_x(&self) -> bool {
-        assert!(self.ready, "build must be called first");
-        self.periodic_along_x
-    }
-
-    /// Returns the EBC value
+    /// Returns the NBC value
     ///
     /// # Panics
     ///
@@ -132,7 +155,7 @@ impl<'a> EssentialBcs1d<'a> {
         (self.functions[*index])(x)
     }
 
-    /// Returns the list of nodes on all sides with EBCs
+    /// Returns the list of nodes on all sides with NBCs
     pub(crate) fn get_nodes(&self) -> Vec<usize> {
         assert!(self.ready, "build must be called first");
         self.node_to_function.keys().copied().collect()

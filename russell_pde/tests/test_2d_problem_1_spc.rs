@@ -36,7 +36,7 @@ const SAVE_FIGURE: bool = false;
 fn test_2d_problem_1_spc() -> Result<(), StrError> {
     for (nn, tol) in vec![
         (8, 1e-4), //
-                   // (24, 1e-5), // cannot get better precision because the analytical solution is approximated
+                   // (24, 1e-6), // cannot get better precision because the analytical solution is approximated
     ] {
         let err_max = run_test(nn, tol)?;
         println!("N = {:>2}, max(err) = {:>10.5e}", nn, err_max);
@@ -48,7 +48,8 @@ fn test_2d_problem_1_spc() -> Result<(), StrError> {
 fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
     // define the analytical solution
     let analytical = |x, y| {
-        let nk = 101; // for nk > 200, infinite values may appear in the sum
+        let nk = 101; // for nk > 227, infinite values appear in the sum
+                      // let nk = 227;
         let mut sum = 0.0;
         for k in (1..nk).step_by(2) {
             let k3 = (k * k * k) as f64;
@@ -56,7 +57,10 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
             let ak = kp * (1.0 + x) / 2.0;
             let bk = kp * (1.0 + y) / 2.0;
             let ck = kp * (1.0 - y) / 2.0;
-            sum += f64::sin(ak) * (f64::sinh(bk) + f64::sinh(ck)) / (k3 * f64::sinh(kp));
+            let sak = f64::sin(ak);
+            if sak != 0.0 {
+                sum += sak * (f64::sinh(bk) + f64::sinh(ck)) / (k3 * f64::sinh(kp));
+            }
         }
         (1.0 - x * x) / 2.0 - 16.0 * sum / (PI * PI * PI)
     };

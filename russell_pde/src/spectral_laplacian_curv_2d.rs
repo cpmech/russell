@@ -1,5 +1,7 @@
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, StrError, Transfinite2d};
-use russell_lab::{InterpLagrange, Vector};
+#![allow(unused)]
+
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, NaturalBcs2d, StrError, Transfinite2d};
+use russell_lab::{vec_copy_scaled, vec_inner, vec_norm, InterpLagrange, Norm, Vector};
 use russell_sparse::{CooMatrix, Sym};
 
 /// Kronecker delta function
@@ -64,6 +66,9 @@ pub struct SpectralLaplacianCurv2d<'a> {
     /// Holds a reference to the essential boundary conditions handler
     ebcs: EssentialBcs2d<'a>,
 
+    /// Holds a reference to the natural boundary conditions handler
+    nbcs: NaturalBcs2d<'a>,
+
     /// Tool to handle the equation numbers such as unknowns prescribed
     equations: EquationHandler,
 
@@ -99,7 +104,12 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
     /// * `grid` -- the 2D grid with Chebyshev-Gauss-Lobatto points on the reference square [-1, 1] x [-1, 1]
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `map` -- the transfinite mapping from reference to physical domain
-    pub fn new(grid: Grid2d, ebcs: EssentialBcs2d<'a>, map: Transfinite2d) -> Result<Self, StrError> {
+    pub fn new(
+        grid: Grid2d,
+        ebcs: EssentialBcs2d<'a>,
+        nbcs: NaturalBcs2d<'a>,
+        map: Transfinite2d,
+    ) -> Result<Self, StrError> {
         // check grid
         if !grid.is_chebyshev_gauss_lobatto() {
             return Err("grid must use Chebyshev-Gauss-Lobatto points");
@@ -113,6 +123,7 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
             return Err("essential BCs cannot be periodic");
         }
 
+        /*
         // check that all sides have essential BCs
         let (nodes_rmin, nodes_rmax, nodes_smin, nodes_smax) = grid.boundary_nodes();
         for m in nodes_rmin {
@@ -135,6 +146,7 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
                 return Err("essential BCs must be prescribed along s-max side");
             }
         }
+        */
 
         // allocate equations handler
         let neq = grid.size();
@@ -160,6 +172,7 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
         Ok(SpectralLaplacianCurv2d {
             grid,
             ebcs,
+            nbcs,
             equations,
             interp_r,
             interp_s,
@@ -191,6 +204,11 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
         &self.equations
     }
 
+    /// Access the transfinite mapping
+    pub fn get_map(&mut self) -> &mut Transfinite2d {
+        &mut self.map
+    }
+
     /// Returns the coefficient matrices
     ///
     /// Returns `(kk_bar, kk_check)` from:
@@ -218,31 +236,54 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
             for j in 0..ns {
                 let m = i + j * nr;
                 if !self.equations.is_prescribed(m) {
+                    // only unknown rows are considered
                     self.calculate_metrics(m);
                     let g11 = self.metrics.gg_mat.get(0, 0);
                     let g22 = self.metrics.gg_mat.get(1, 1);
                     let g12 = self.metrics.gg_mat.get(0, 1);
                     let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
                     let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
-                    // unknown rows
-                    let row = self.equations.iu(m);
-                    for k in 0..nr {
-                        for l in 0..ns {
-                            let n = k + l * nr;
-                            let val = 0.0
-                                + self.d2r(i, k) * delta(j, l) * g11
-                                + delta(i, k) * self.d2s(j, l) * g22
-                                + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
-                                - self.d1r(i, k) * delta(j, l) * ll1
-                                - delta(i, k) * self.d1s(j, l) * ll2;
-                            if !self.equations.is_prescribed(n) {
-                                // unknown column
-                                let col = self.equations.iu(n);
-                                kk_bar.put(row, col, val).unwrap();
-                            } else {
-                                // prescribed column
-                                let col = self.equations.ip(n);
-                                kk_check.put(row, col, val).unwrap();
+                    let (m_is_xmin, m_is_xmax, m_is_ymin, m_is_ymax) = (
+                        self.grid.is_xmin(m),
+                        self.grid.is_xmax(m),
+                        self.grid.is_ymin(m),
+                        self.grid.is_ymax(m),
+                    );
+                    if m_is_xmin || m_is_ymin || m_is_ymax {
+                        let mut un = Vector::new(2);
+                        if m_is_xmin {
+                            vec_copy_scaled(&mut un, -1.0, &self.metrics.g_ctr[0]);
+                        } else if m_is_xmax {
+                            vec_copy_scaled(&mut un, 1.0, &self.metrics.g_ctr[0]);
+                        } else if m_is_ymin {
+                            vec_copy_scaled(&mut un, -1.0, &self.metrics.g_ctr[1]);
+                        } else if m_is_ymax {
+                            vec_copy_scaled(&mut un, 1.0, &self.metrics.g_ctr[1]);
+                        };
+                        let norm_u = vec_norm(&un, Norm::Euc);
+                        un[0] /= norm_u;
+                        un[1] /= norm_u;
+                        let alpha = vec_inner(&un, &self.metrics.g_ctr[0]);
+                        let beta = vec_inner(&un, &self.metrics.g_ctr[1]);
+                        // println!( "m = {}, N={:?}, alpha = {:.8}, beta = {:.8}", m, un.as_data(), alpha, beta);
+                        for k in 0..nr {
+                            for l in 0..ns {
+                                let n = k + l * nr;
+                                let val = self.d1r(i, k) * delta(j, l) * alpha + delta(i, k) * self.d1s(j, l) * beta;
+                                self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                            }
+                        }
+                    } else {
+                        for k in 0..nr {
+                            for l in 0..ns {
+                                let n = k + l * nr;
+                                let val = 0.0
+                                    + self.d2r(i, k) * delta(j, l) * g11
+                                    + delta(i, k) * self.d2s(j, l) * g22
+                                    + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                                    - self.d1r(i, k) * delta(j, l) * ll1
+                                    - delta(i, k) * self.d1s(j, l) * ll2;
+                                self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                             }
                         }
                     }
@@ -252,6 +293,21 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
 
         // done
         (kk_bar, kk_check)
+    }
+
+    /// Puts the value into the correct position of the coefficient matrix
+    fn put_val(&mut self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
+        // unknown row
+        let row = self.equations.iu(m);
+        if !self.equations.is_prescribed(n) {
+            // unknown column
+            let col = self.equations.iu(n);
+            kk_bar.put(row, col, val).unwrap();
+        } else {
+            // prescribed column
+            let col = self.equations.ip(n);
+            kk_check.put(row, col, val).unwrap();
+        }
     }
 
     /// Returns the vectors for the solution of the system of equations
@@ -400,7 +456,7 @@ impl<'a> SpectralLaplacianCurv2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::SpectralLaplacianCurv2d;
-    use crate::{EssentialBcs2d, Grid2d, TransfiniteSamples};
+    use crate::{EssentialBcs2d, Grid2d, NaturalBcs2d, TransfiniteSamples};
     use russell_lab::mat_approx_eq;
 
     #[test]
@@ -408,8 +464,9 @@ mod tests {
         let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, 5, 5).unwrap();
         let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
         let mut ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
         ebcs.set_homogeneous(&grid);
-        let mut spectral = SpectralLaplacianCurv2d::new(grid, ebcs, map).unwrap();
+        let mut spectral = SpectralLaplacianCurv2d::new(grid, ebcs, nbcs, map).unwrap();
         let (kk_bar, kk_check) = spectral.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);

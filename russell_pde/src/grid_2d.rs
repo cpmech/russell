@@ -454,6 +454,22 @@ impl Grid2d {
         (i, j)
     }
 
+    pub fn is_xmin(&self, m: usize) -> bool {
+        m % self.nx == 0 // i == 0
+    }
+
+    pub fn is_xmax(&self, m: usize) -> bool {
+        m % self.nx == self.nx - 1 // i == nx - 1
+    }
+
+    pub fn is_ymin(&self, m: usize) -> bool {
+        m / self.nx == 0 // j == 0
+    }
+
+    pub fn is_ymax(&self, m: usize) -> bool {
+        m / self.nx == self.ny - 1 // j == ny - 1
+    }
+
     /// Returns the spacing (dx, dy) if the grid is uniform on both directions
     ///
     /// Returns `None` if the grid is non-uniform in any direction.

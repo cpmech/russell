@@ -150,6 +150,7 @@
     "quantiles",
     "qzero",
     "Radau",
+    "Reddy",
     "RINFOG",
     "rngs",
     "rootfinders",

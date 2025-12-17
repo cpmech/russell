@@ -256,13 +256,17 @@ impl<'a> Fdm1d<'a> {
         F: Fn(f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, _) = self.get_matrices_sps(0, Sym::No);
-        let (mut a_bar, a_check, f_bar) = self.get_vectors_sps(source);
+        let (kk_bar, kk_check) = self.get_matrices_sps(0, Sym::No);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
+        let kk_check = kk_check.unwrap();
+
+        // initialize the right-hand side
+        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
-        solver.actual.factorize(&kk_bar, None)?;
-        solver.actual.solve(&mut a_bar, &f_bar, false)?;
+        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
+        solver.actual.factorize(&kk_bar, None).unwrap();
+        solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
 
         // results
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))

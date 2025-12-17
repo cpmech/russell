@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d};
+use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, StrError};
 
 // Solve the following problem:
 //
@@ -16,7 +16,7 @@ use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d};
 //          6
 
 #[test]
-fn test_1d_prob01_fdm_sps() -> Result<(), String> {
+fn test_1d_prob01_fdm_sps() -> Result<(), StrError> {
     // allocate the grid
     let grid = Grid1d::new_uniform(0.0, 1.0, 5)?;
 
@@ -41,7 +41,7 @@ fn test_1d_prob01_fdm_sps() -> Result<(), String> {
 }
 
 #[test]
-fn test_1d_prob01_fdm_lmm() -> Result<(), String> {
+fn test_1d_prob01_fdm_lmm() -> Result<(), StrError> {
     // allocate the grid
     let grid = Grid1d::new_uniform(0.0, 1.0, 5)?;
 

@@ -1,6 +1,6 @@
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, Side};
+use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, Side, StrError};
 
 // This problem simulates the heat conduction-confection of a 1D rod.
 //
@@ -54,7 +54,7 @@ impl Model {
 }
 
 #[test]
-fn test_1d_prob03_fdm_sps() -> Result<(), String> {
+fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
     // constants
     let model = Model {
         lx: 1.0,
@@ -115,7 +115,7 @@ fn test_1d_prob03_fdm_sps() -> Result<(), String> {
 }
 
 #[test]
-fn test_1d_prob03_fdm_lmm() -> Result<(), String> {
+fn test_1d_prob03_fdm_lmm() -> Result<(), StrError> {
     // constants
     let model = Model {
         lx: 1.0,

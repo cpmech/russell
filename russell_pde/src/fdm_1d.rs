@@ -1,6 +1,6 @@
 use crate::{EquationHandler, EssentialBcs1d, Grid1d, StrError};
 use russell_lab::Vector;
-use russell_sparse::{CooMatrix, Sym};
+use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
 // constants for clarity/convenience
 const CUR: usize = 0; // current node
@@ -14,7 +14,7 @@ const INI_X: usize = 0;
 ///
 /// ```text
 ///    ∂²ϕ
-/// kx ——— = source(s)
+/// kx ——— = source(x)
 ///    ∂x²
 /// ```
 ///
@@ -125,6 +125,71 @@ impl<'a> Fdm1d<'a> {
             equations,
             molecule: vec![alpha, beta, beta],
         })
+    }
+
+    /// Solves the Poisson equation in 1D
+    ///
+    /// ```text
+    ///    ∂²ϕ
+    /// kx ——— = source(x)
+    ///    ∂x²
+    /// ```
+    pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (kk_bar, _) = self.get_matrices_sps(0, Sym::No);
+        let (mut a_bar, a_check, f_bar) = self.get_vectors_sps(source);
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.solve(&mut a_bar, &f_bar, false)?;
+
+        // results
+        let a = self.get_joined_vector_sps(&a_bar, &a_check);
+        Ok(a)
+    }
+
+    /// Solves the convection-diffusion problem in 1D
+    ///
+    /// Returns `a`, the solution vector.
+    ///
+    /// The Model is:
+    ///
+    /// ```text
+    ///      ∂²ϕ
+    /// - kx ——— + (ϕ - ϕ∞) β = source(x)
+    ///      ∂x²
+    /// ```
+    pub fn solve_convection<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let nu = self.get_dims_sps().0;
+        let extra_nnz = nu; // diagonal entries due to ϕ β
+        let (mut kk_bar, kk_check) = self.get_matrices_sps(extra_nnz, Sym::No);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(|x| source(x) + phi_inf * beta);
+        let kk_check = kk_check.unwrap();
+
+        // add the diagonal entries due to ϕ β
+        for i in 0..nu {
+            kk_bar.put(i, i, beta)?;
+        }
+
+        // update the right-hand side with the prescribed values
+        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check)?; // f̄ -= Ǩ ǎ
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.solve(&mut a_bar, &f_bar, false)?;
+
+        // results
+        let a = self.get_joined_vector_sps(&a_bar, &a_check);
+        Ok(a)
     }
 
     /// Returns the dimensions for the system partitioning strategy (SPS)

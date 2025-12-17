@@ -1,12 +1,11 @@
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::{approx_eq, math::PI};
 use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, Side};
-use russell_sparse::{Genie, LinSolver, Sym};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_laplace1d_2() {
+fn test_laplace1d_2() -> Result<(), String> {
     // This problem simulates the heat conduction-confection of 1D rod.
     //
     // The rod has a length of lx = 0.05 m and the conductivity coefficient
@@ -45,38 +44,18 @@ fn test_laplace1d_2() {
     let phi_inf = 20.0;
 
     // allocate the grid
-    let grid = Grid1d::new_uniform(0.0, lx, nx).unwrap();
+    let grid = Grid1d::new_uniform(0.0, lx, nx)?;
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs1d::new();
     ebcs.set(Side::Xmin, |_| phi_a);
 
-    // allocate the Laplacian operator
+    // allocate the FDM solver
     // (note that we have to use negative kx)
-    let fdm = Fdm1d::new(grid, ebcs, -kx).unwrap();
+    let fdm = Fdm1d::new(grid, ebcs, -kx)?;
 
-    // assemble the coefficient matrix and the lhs and rhs vectors
-    let nu = fdm.get_dims_sps().0;
-    let extra_nnz = nu; // diagonal entries due to ϕ β
-    let (mut kk_bar, kk_check) = fdm.get_matrices_sps(extra_nnz, Sym::No);
-    let (mut a_bar, a_check, mut f_bar) = fdm.get_vectors_sps(|_| phi_inf * beta); // (- ϕ∞ β) goes to the rhs
-    let kk_check = kk_check.unwrap();
-
-    // add the diagonal entries due to ϕ β
-    for i in 0..nu {
-        kk_bar.put(i, i, beta).unwrap();
-    }
-
-    // update the right-hand side with the prescribed values
-    kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
-
-    // solve the linear system
-    let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&kk_bar, None).unwrap();
-    solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
-
-    // results
-    let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
+    // solve the problem
+    let a = fdm.solve_convection(beta, phi_inf, |_| 0.0)?;
 
     // analytical solution
     let m = f64::sqrt(beta / kx);
@@ -108,7 +87,7 @@ fn test_laplace1d_2() {
         plot.add(&curve_ana)
             .add(&curve_num)
             .grid_labels_legend("$x$", "$\\phi$")
-            .save("/tmp/russell_pde/test_laplace1d_2.svg")
-            .unwrap();
+            .save("/tmp/russell_pde/test_laplace1d_2.svg")?;
     }
+    Ok(())
 }

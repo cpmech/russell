@@ -1,9 +1,8 @@
 use russell_lab::vec_approx_eq;
 use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d};
-use russell_sparse::{Genie, LinSolver, Sym};
 
 #[test]
-fn test_laplace1d_1() {
+fn test_laplace1d_1() -> Result<(), String> {
     // Approximate (with the Finite Differences Method, FDM) the solution of
     //
     //   ∂²ϕ
@@ -13,7 +12,7 @@ fn test_laplace1d_1() {
     // on a unit interval with homogeneous boundary conditions
 
     // allocate the grid
-    let grid = Grid1d::new_uniform(0.0, 1.0, 5).unwrap();
+    let grid = Grid1d::new_uniform(0.0, 1.0, 5)?;
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs1d::new();
@@ -22,19 +21,10 @@ fn test_laplace1d_1() {
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
     let kx = 1.0;
-    let fdm = Fdm1d::new(grid, ebcs, -kx).unwrap();
+    let fdm = Fdm1d::new(grid, ebcs, -kx)?;
 
-    // assemble the coefficient matrix and the lhs and rhs vectors
-    let (kk_bar, _) = fdm.get_matrices_sps(0, Sym::No);
-    let (mut a_bar, a_check, f_bar) = fdm.get_vectors_sps(|x| x);
-
-    // solve the linear system
-    let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-    solver.actual.factorize(&kk_bar, None).unwrap();
-    solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
-
-    // results
-    let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
+    // solve the problem
+    let a = fdm.solve(|x| x)?;
 
     // analytical solution
     let analytical = |x| (x - f64::powi(x, 3)) / 6.0;
@@ -45,4 +35,5 @@ fn test_laplace1d_1() {
     // check
     let correct = [0.0, 5.0 / 128.0, 8.0 / 128.0, 7.0 / 128.0, 0.0];
     vec_approx_eq(&a, &correct, 1e-15);
+    Ok(())
 }

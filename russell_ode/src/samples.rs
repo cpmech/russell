@@ -501,7 +501,7 @@ impl Samples {
         ignore_diffusion: bool,
     ) -> (System<'a, Fdm2d<'a>>, f64, Vector, Fdm2d<'a>) {
         // constants
-        let (kx, ky) = (alpha, alpha);
+        let (kx, ky) = (-alpha, -alpha);
         let (xmin, xmax) = (0.0, 1.0);
         let (ymin, ymax) = (0.0, 1.0);
         let (nx, ny) = (npoint, npoint);

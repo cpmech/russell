@@ -41,7 +41,7 @@ fn test_poisson2d_2() {
     ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
 
     // allocate the Laplacian operator
-    let (kx, ky) = (1.0, 1.0);
+    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, kx, ky).unwrap();
 
     // assemble the coefficient matrix and the lhs and rhs vectors

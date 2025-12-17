@@ -119,7 +119,8 @@ impl<'a> NaturalBcs2d<'a> {
     /// Returns the list of boundary nodes with NBCs
     pub(crate) fn build(&mut self, grid: &Grid2d) -> Vec<usize> {
         assert_eq!(self.ready, false, "can only build once");
-        let (nx, ny) = (grid.nx(), grid.ny());
+        let nx = grid.nx();
+        let ny = grid.ny();
         let mut nodes_set = HashSet::with_capacity(2 * nx + 2 * ny);
         for &side in &self.sides {
             for &m in grid.get_nodes_on_side(side) {

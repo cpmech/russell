@@ -66,6 +66,32 @@ const REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
+#[test]
+fn test_bratu_2d_lmm_auto() {
+    let bordering = false;
+    let auto = AutoStep::Yes;
+    for alpha in [0.0] {
+        for (npt, tol1, tol2, tol3) in [(8, 0.0672, 0.094, 0.11), (9, 0.101, 0.07, 0.053)] {
+            let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
+            let n_phi = (npt - 2) * (npt - 2);
+            let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, n_phi);
+            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
+        }
+    }
+}
+
+#[test]
+fn test_bratu_2d_lmm_fixed() {
+    let bordering = false;
+    let auto = AutoStep::No(4.89516358573);
+    let stop = Stop::Steps(67);
+    for alpha in [0.0] {
+        for (npt, tol1, tol2, tol3) in [(8, 0.0332, 0.0, 0.0)] {
+            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
+        }
+    }
+}
+
 // Runs the test
 fn run_test(
     bordering: bool,
@@ -92,7 +118,7 @@ fn run_test(
     ebcs.set_homogeneous();
 
     // allocate the Laplacian operator
-    let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+    let fdm = Fdm2d::new(grid, ebcs, -1.0, -1.0).unwrap();
 
     // auxiliary variables
     let (neq, _, ndim) = fdm.get_dims_lmm();
@@ -332,32 +358,6 @@ fn run_test(
                 .add(&curve)
                 .save(&format!("{}_h.svg", stem))
                 .unwrap();
-        }
-    }
-}
-
-#[test]
-fn test_bratu_2d_lmm_auto() {
-    let bordering = false;
-    let auto = AutoStep::Yes;
-    for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.0672, 0.094, 0.11), (9, 0.101, 0.07, 0.053)] {
-            let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
-            let n_phi = (npt - 2) * (npt - 2);
-            let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, n_phi);
-            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
-        }
-    }
-}
-
-#[test]
-fn test_bratu_2d_lmm_fixed() {
-    let bordering = false;
-    let auto = AutoStep::No(4.89516358573);
-    let stop = Stop::Steps(67);
-    for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.0332, 0.0, 0.0)] {
-            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
         }
     }
 }

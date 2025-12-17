@@ -49,6 +49,19 @@ use std::collections::HashMap;
 const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
+#[test]
+fn test_bratu_2d_auto() {
+    let bordering = false;
+    let auto = AutoStep::Yes;
+    for alpha in [0.0] {
+        for npt in [8, 9, 10] {
+            let ndim = (npt - 2) * (npt - 2);
+            let stop = Stop::MaxNormU(10.0, Norm::Inf, 0, ndim);
+            run_test(bordering, alpha, npt, stop, auto);
+        }
+    }
+}
+
 fn run_test(bordering: bool, _alpha: f64, npt: usize, stop: Stop, auto: AutoStep) {
     // filename stem
     let key = if auto.yes() { "auto" } else { "fixed" };
@@ -62,7 +75,7 @@ fn run_test(bordering: bool, _alpha: f64, npt: usize, stop: Stop, auto: AutoStep
     ebcs.set_homogeneous();
 
     // allocate the Laplacian operator
-    let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+    let fdm = Fdm2d::new(grid, ebcs, -1.0, -1.0).unwrap();
 
     // number of unknowns
     let ndim = fdm.get_dims_sps().0;
@@ -226,18 +239,5 @@ fn run_test(bordering: bool, _alpha: f64, npt: usize, stop: Stop, auto: AutoStep
             .add(&curve)
             .save(&format!("{}_h.svg", stem))
             .unwrap();
-    }
-}
-
-#[test]
-fn test_bratu_2d_auto() {
-    let bordering = false;
-    let auto = AutoStep::Yes;
-    for alpha in [0.0] {
-        for npt in [8, 9, 10] {
-            let ndim = (npt - 2) * (npt - 2);
-            let stop = Stop::MaxNormU(10.0, Norm::Inf, 0, ndim);
-            run_test(bordering, alpha, npt, stop, auto);
-        }
     }
 }

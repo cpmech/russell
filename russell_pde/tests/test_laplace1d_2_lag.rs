@@ -49,7 +49,7 @@ fn test_laplace1d_2_lag() {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs1d::new();
-    ebcs.set(&grid, Side::Xmin, |_| phi_a);
+    ebcs.set(Side::Xmin, |_| phi_a);
 
     // allocate the Laplacian operator
     // (note that we have to use negative kx)

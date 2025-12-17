@@ -1,3 +1,4 @@
+use crate::Side;
 use crate::StrError;
 
 /// Defines a 1D grid
@@ -54,6 +55,20 @@ pub struct Grid1d {
     ///
     /// Length = nx
     coords: Vec<f64>,
+
+    /// Holds the index of the left node, i.e., 0
+    ///
+    /// The reason for this data member is to have a consistent interface with higher-dimensional grids.
+    ///
+    /// length = 1
+    nodes_xmin: Vec<usize>,
+
+    /// Holds the index of the right node, i.e., nx - 1
+    ///
+    /// The reason for this data member is to have a consistent interface with higher-dimensional grids.
+    ///
+    /// length = 1
+    nodes_xmax: Vec<usize>,
 }
 
 impl Grid1d {
@@ -90,7 +105,7 @@ impl Grid1d {
     ///     //   0───1───2───3───4
     ///     // x=0.0 0.1 0.5 0.9 1.0
     ///
-    ///     assert_eq!(grid.size(), 5);
+    ///     assert_eq!(grid.nx(), 5);
     ///     Ok(())
     /// }
     /// ```
@@ -107,6 +122,8 @@ impl Grid1d {
         Ok(Self {
             nx,
             coords: xx.to_vec(),
+            nodes_xmin: vec![0],
+            nodes_xmax: vec![nx - 1],
         })
     }
 
@@ -168,14 +185,43 @@ impl Grid1d {
             let x = xmin + (i as f64) * dx;
             coords.push(x);
         }
-        Ok(Self { nx, coords })
+        Ok(Self {
+            nx,
+            coords,
+            nodes_xmin: vec![0],
+            nodes_xmax: vec![nx - 1],
+        })
     }
 
     /// Returns the total number of grid points
-    ///
-    /// This equals `nx`.
-    pub fn size(&self) -> usize {
+    pub fn nx(&self) -> usize {
         self.nx
+    }
+
+    /// Returns true if the specified node is on the left boundary (xmin edge)
+    pub fn is_xmin(&self, m: usize) -> bool {
+        m == 0
+    }
+
+    /// Returns true if the specified node is on the right boundary (xmax edge)
+    pub fn is_xmax(&self, m: usize) -> bool {
+        m == self.nx - 1
+    }
+
+    /// Returns the list of nodes on the specified side
+    pub fn get_nodes_on_side(&self, side: Side) -> &[usize] {
+        match side {
+            Side::Xmin => &self.nodes_xmin,
+            Side::Xmax => &self.nodes_xmax,
+            _ => panic!("invalid side for 1D grid"),
+        }
+    }
+
+    /// Returns the boundary node indices
+    ///
+    /// Returns `(nodes_xmin, nodes_xmax)`
+    pub fn get_boundary_nodes(&self) -> (&[usize], &[usize]) {
+        (&self.nodes_xmin, &self.nodes_xmax)
     }
 
     /// Returns the spacing (dx) if the grid is uniform
@@ -263,16 +309,6 @@ impl Grid1d {
             f(m, *x);
         }
     }
-
-    /// Returns the index of the first node (left boundary)
-    pub fn node_xmin(&self) -> usize {
-        0
-    }
-
-    /// Returns the index of the last node (right boundary)
-    pub fn node_xmax(&self) -> usize {
-        self.nx - 1
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +340,7 @@ mod tests {
         assert_eq!(grid.nx, 4);
         assert_eq!(grid.coords, correct_coords);
 
-        assert_eq!(grid.size(), 4);
+        assert_eq!(grid.nx(), 4);
         assert_eq!(grid.get_dx(), None); // non-uniform grid
 
         let mut coords = Vec::new();
@@ -324,7 +360,7 @@ mod tests {
         assert_eq!(grid.nx, 4);
         assert_eq!(grid.coords, correct_coords);
 
-        assert_eq!(grid.size(), 4);
+        assert_eq!(grid.nx(), 4);
         assert_eq!(grid.get_dx(), Some(2.0));
 
         let mut coords = Vec::new();
@@ -345,8 +381,11 @@ mod tests {
     #[test]
     fn boundary_nodes_work() {
         let grid = Grid1d::new_uniform(0.0, 10.0, 6).unwrap();
-        assert_eq!(grid.node_xmin(), 0);
-        assert_eq!(grid.node_xmax(), 5);
+        assert_eq!(grid.is_xmin(0), true);
+        assert_eq!(grid.is_xmin(1), false);
+        assert_eq!(grid.is_xmax(5), true);
+        assert_eq!(grid.is_xmax(4), false);
+        assert_eq!(grid.get_boundary_nodes(), (&[0][..], &[5][..]));
     }
 
     #[test]
@@ -501,14 +540,14 @@ mod tests {
     #[test]
     fn size_method_works() {
         let grid = Grid1d::new_uniform(0.0, 1.0, 5).unwrap();
-        assert_eq!(grid.size(), 5);
+        assert_eq!(grid.nx(), 5);
     }
 
     #[test]
     fn constructor_with_single_spacing() {
         // Test edge case with minimal grid
         let grid = Grid1d::new_uniform(5.0, 7.0, 2).unwrap();
-        assert_eq!(grid.size(), 2);
+        assert_eq!(grid.nx(), 2);
         assert_eq!(grid.coord(0), 5.0);
         assert_eq!(grid.coord(1), 7.0);
         assert_eq!(grid.get_dx(), Some(2.0));
@@ -527,13 +566,13 @@ mod tests {
         // Exponential-like spacing
         let xx = &[0.0, 0.1, 0.3, 0.7, 1.5];
         let grid = Grid1d::new(xx).unwrap();
-        assert_eq!(grid.size(), 5);
+        assert_eq!(grid.nx(), 5);
         assert_eq!(grid.get_dx(), None);
 
         // Reverse exponential-like spacing
         let xx = &[0.0, 0.8, 1.2, 1.4, 1.5];
         let grid = Grid1d::new(xx).unwrap();
-        assert_eq!(grid.size(), 5);
+        assert_eq!(grid.nx(), 5);
         assert_eq!(grid.get_dx(), None);
     }
 
@@ -541,16 +580,16 @@ mod tests {
     fn boundary_node_indices() {
         // Test various grid sizes
         let grid = Grid1d::new_uniform(0.0, 1.0, 2).unwrap();
-        assert_eq!(grid.node_xmin(), 0);
-        assert_eq!(grid.node_xmax(), 1);
+        assert_eq!(grid.is_xmin(0), true);
+        assert_eq!(grid.is_xmax(1), true);
 
         let grid = Grid1d::new_uniform(0.0, 1.0, 10).unwrap();
-        assert_eq!(grid.node_xmin(), 0);
-        assert_eq!(grid.node_xmax(), 9);
+        assert_eq!(grid.is_xmin(0), true);
+        assert_eq!(grid.is_xmax(9), true);
 
         let grid = Grid1d::new_uniform(0.0, 1.0, 100).unwrap();
-        assert_eq!(grid.node_xmin(), 0);
-        assert_eq!(grid.node_xmax(), 99);
+        assert_eq!(grid.is_xmin(0), true);
+        assert_eq!(grid.is_xmax(99), true);
     }
 
     #[test]
@@ -560,7 +599,7 @@ mod tests {
         // Example from Grid1d::new
         let xx = &[0.0, 0.1, 0.5, 0.9, 1.0];
         let grid = Grid1d::new(xx).unwrap();
-        assert_eq!(grid.size(), 5);
+        assert_eq!(grid.nx(), 5);
 
         // Example from Grid1d::new_uniform
         let grid = Grid1d::new_uniform(0.0, 1.0, 5).unwrap();

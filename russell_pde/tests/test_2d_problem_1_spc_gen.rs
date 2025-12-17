@@ -75,7 +75,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous(&grid);
+    ebcs.set_homogeneous();
 
     // natural boundary conditions
     let nbcs = NaturalBcs2d::new();

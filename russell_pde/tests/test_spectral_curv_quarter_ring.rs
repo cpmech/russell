@@ -73,8 +73,8 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous(&grid);
-    ebcs.set(&grid, Side::Xmax, |x, y| analytical(x, y));
+    ebcs.set_homogeneous();
+    ebcs.set(Side::Xmax, |x, y| analytical(x, y));
 
     // natural boundary conditions
     let nbcs = NaturalBcs2d::new();

@@ -98,17 +98,20 @@ impl<'a> Fdm1d<'a> {
     /// * `grid` -- the 1D grid
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
-    pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
+    pub fn new(grid: Grid1d, mut ebcs: EssentialBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
         // check grid
         let dx = match grid.get_dx() {
             Some(dx) => dx,
             None => return Err("grid must have uniform spacing"),
         };
 
+        // build EBC data
+        ebcs.build(&grid);
+
         // allocate equations handler
-        let neq = grid.size();
+        let neq = grid.nx();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_p_list());
+        equations.recompute(&ebcs.get_nodes());
 
         // auxiliary variables
         let dx2 = dx * dx;
@@ -291,7 +294,7 @@ impl<'a> Fdm1d<'a> {
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
-            let val = self.ebcs.get_prescribed_value(m, x);
+            let val = self.ebcs.get_value(m, x);
             a_check[ip] = val;
         });
         (a_bar, a_check, f_bar)
@@ -350,7 +353,7 @@ impl<'a> Fdm1d<'a> {
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
-            let val = self.ebcs.get_prescribed_value(m, x);
+            let val = self.ebcs.get_value(m, x);
             ff[neq + ip] = val;
         });
         (aa, ff)
@@ -408,7 +411,7 @@ impl<'a> Fdm1d<'a> {
         F: FnMut(usize, usize),
     {
         // constants for clarity/convenience
-        let fin_x = self.grid.node_xmax();
+        let fin_x = self.grid.nx() - 1;
 
         // n indices of the non-zero values on the row m of the coefficient matrix
         // (mirror or swap the indices of boundary nodes, as appropriate)
@@ -461,7 +464,7 @@ mod tests {
 
         assert_eq!(fdm.get_dims_sps(), (4, 0));
         assert_eq!(fdm.get_dims_lmm(), (4, 0, 4));
-        assert_eq!(fdm.get_grid().size(), 4);
+        assert_eq!(fdm.get_grid().nx(), 4);
         assert_eq!(fdm.get_equations().neq(), 4);
     }
 
@@ -474,7 +477,7 @@ mod tests {
         const LEF: f64 = 1.0;
         let lef = |_| LEF;
         assert_eq!(lef(0.0), LEF);
-        ebcs.set(&grid, Side::Xmin, lef); //  0
+        ebcs.set(Side::Xmin, lef); //  0
 
         let fdm = Fdm1d::new(grid, ebcs, 100.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
@@ -570,7 +573,7 @@ mod tests {
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let mut ebcs = EssentialBcs1d::new();
-        ebcs.set_homogeneous(&grid);
+        ebcs.set_homogeneous();
 
         let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
@@ -664,7 +667,7 @@ mod tests {
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let mut ebcs = EssentialBcs1d::new();
-        ebcs.set_periodic(&grid, true);
+        ebcs.set_periodic(true);
 
         let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
@@ -711,28 +714,28 @@ mod tests {
         let mut ebcs = EssentialBcs1d::new();
 
         //  0*  1   2   3   4*
-        ebcs.set(&grid, Side::Xmin, |_| LEF);
-        ebcs.set(&grid, Side::Xmax, |_| RIG);
+        ebcs.set(Side::Xmin, |_| LEF);
+        ebcs.set(Side::Xmax, |_| RIG);
 
         let fdm = Fdm1d::new(grid, ebcs, 1.0).unwrap();
 
-        let (u, p, f) = fdm.get_vectors_sps(|_| 100.0);
-        assert_eq!(u.dim(), 3); // nu
-        assert_eq!(p.dim(), 2); // np
-        assert_eq!(f.dim(), 3); // nu
-        assert_eq!(u.as_data(), &[0.0, 0.0, 0.0]);
-        assert_eq!(p.as_data(), &[LEF, RIG]);
-        assert_eq!(f.as_data(), &[100.0, 100.0, 100.0]);
+        let (a_bar, a_check, f_bar) = fdm.get_vectors_sps(|_| 100.0);
+        assert_eq!(a_bar.dim(), 3); // nu
+        assert_eq!(a_check.dim(), 2); // np
+        assert_eq!(f_bar.dim(), 3); // nu
+        assert_eq!(a_bar.as_data(), &[0.0, 0.0, 0.0]);
+        assert_eq!(a_check.as_data(), &[LEF, RIG]);
+        assert_eq!(f_bar.as_data(), &[100.0, 100.0, 100.0]);
 
-        let a = fdm.get_joined_vector_sps(&u, &p);
+        let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
         assert_eq!(a.dim(), 5); // na
         assert_eq!(a.as_data(), &[LEF, 0.0, 0.0, 0.0, RIG]);
 
-        let (h, b) = fdm.get_vectors_lmm(|_| 100.0);
-        assert_eq!(h.dim(), 5 + 2); // na + nw
-        assert_eq!(b.dim(), 5 + 2); // na + nw
-        assert_eq!(h.as_data(), &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
-        assert_eq!(b.as_data(), &[100.0, 100.0, 100.0, 100.0, 100.0, LEF, RIG]);
+        let (aa, ff) = fdm.get_vectors_lmm(|_| 100.0);
+        assert_eq!(aa.dim(), 5 + 2); // na + nw
+        assert_eq!(ff.dim(), 5 + 2); // na + nw
+        assert_eq!(aa.as_data(), &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(ff.as_data(), &[100.0, 100.0, 100.0, 100.0, 100.0, LEF, RIG]);
     }
 
     #[test]

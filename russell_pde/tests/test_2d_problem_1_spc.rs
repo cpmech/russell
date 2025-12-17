@@ -74,7 +74,7 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous(&grid);
+    ebcs.set_homogeneous();
 
     // allocate the Laplacian operator
     let spc = Spc2d::new(grid, ebcs, 1.0, 1.0)?;

@@ -49,7 +49,7 @@ fn test_laplace1d_3_lag() {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs1d::new();
-    ebcs.set(&grid, Side::Xmin, |_| phi_a);
+    ebcs.set(Side::Xmin, |_| phi_a);
 
     // allocate the Laplacian operator
     // (note that we have to use negative kx)
@@ -97,7 +97,7 @@ fn test_laplace1d_3_lag() {
     //
     // Similar expression can be derived for the right-hand side of the rod
     let dx = fdm.get_grid().get_dx().unwrap();
-    let m_right = fdm.get_grid().node_xmax(); // global index of the rightmost node (@ xmax)
+    let m_right = fdm.get_grid().nx() - 1; // global index of the rightmost node (@ xmax)
     ff[m_right] += 2.0 * kx * flux / dx;
 
     // solve the linear system

@@ -89,7 +89,7 @@ fn run_test(
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous(&grid);
+    ebcs.set_homogeneous();
 
     // allocate the Laplacian operator
     let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();

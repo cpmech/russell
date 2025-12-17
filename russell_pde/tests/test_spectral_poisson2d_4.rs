@@ -28,7 +28,7 @@ fn test_spectral_poisson2d_4() -> Result<(), StrError> {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous(&grid);
+    ebcs.set_homogeneous();
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);

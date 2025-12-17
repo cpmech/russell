@@ -577,7 +577,7 @@ impl Samples {
         // allocate the essential boundary conditions (EBCs) handler
         let mut ebcs = EssentialBcs2d::new();
         if second_book {
-            ebcs.set_periodic(&grid, true, true);
+            ebcs.set_periodic(true, true);
         }
 
         // discrete laplacian

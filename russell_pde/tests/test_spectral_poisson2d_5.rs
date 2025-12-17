@@ -56,10 +56,10 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set(&grid, Side::Xmin, |_, y| f64::sin(2.0 * PI * y));
-    ebcs.set(&grid, Side::Xmax, |_, y| f64::sin(2.0 * PI * y));
-    ebcs.set(&grid, Side::Ymin, |_, _| 0.0);
-    ebcs.set(&grid, Side::Ymax, |_, _| 0.0);
+    ebcs.set(Side::Xmin, |_, y| f64::sin(2.0 * PI * y));
+    ebcs.set(Side::Xmax, |_, y| f64::sin(2.0 * PI * y));
+    ebcs.set(Side::Ymin, |_, _| 0.0);
+    ebcs.set(Side::Ymax, |_, _| 0.0);
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);

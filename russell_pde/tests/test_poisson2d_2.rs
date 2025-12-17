@@ -35,10 +35,10 @@ fn test_poisson2d_2() {
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set(&grid, Side::Xmin, |_, _| 0.0);
-    ebcs.set(&grid, Side::Xmax, |_, _| 0.0);
-    ebcs.set(&grid, Side::Ymin, |_, _| 0.0);
-    ebcs.set(&grid, Side::Ymax, |x, _| f64::sin(PI * x));
+    ebcs.set(Side::Xmin, |_, _| 0.0);
+    ebcs.set(Side::Xmax, |_, _| 0.0);
+    ebcs.set(Side::Ymin, |_, _| 0.0);
+    ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
 
     // allocate the Laplacian operator
     let (kx, ky) = (1.0, 1.0);

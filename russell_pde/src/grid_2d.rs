@@ -1,3 +1,4 @@
+use crate::Side;
 use crate::StrError;
 use russell_lab::math::chebyshev_lobatto_points;
 
@@ -454,20 +455,41 @@ impl Grid2d {
         (i, j)
     }
 
+    /// Returns true if the specified node is on the left boundary (xmin edge)
     pub fn is_xmin(&self, m: usize) -> bool {
         m % self.nx == 0 // i == 0
     }
 
+    /// Returns true if the specified node is on the right boundary (xmax edge)
     pub fn is_xmax(&self, m: usize) -> bool {
         m % self.nx == self.nx - 1 // i == nx - 1
     }
 
+    /// Returns true if the specified node is on the bottom boundary (ymin edge)
     pub fn is_ymin(&self, m: usize) -> bool {
         m / self.nx == 0 // j == 0
     }
 
+    /// Returns true if the specified node is on the top boundary (ymax edge)
     pub fn is_ymax(&self, m: usize) -> bool {
         m / self.nx == self.ny - 1 // j == ny - 1
+    }
+
+    /// Returns the list of nodes on the specified side
+    pub fn get_nodes_on_side(&self, side: Side) -> &[usize] {
+        match side {
+            Side::Xmin => &self.nodes_xmin,
+            Side::Xmax => &self.nodes_xmax,
+            Side::Ymin => &self.nodes_ymin,
+            Side::Ymax => &self.nodes_ymax,
+        }
+    }
+
+    /// Returns the boundary node indices
+    ///
+    /// Returns `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)`
+    pub fn get_boundary_nodes(&self) -> (&[usize], &[usize], &[usize], &[usize]) {
+        (&self.nodes_xmin, &self.nodes_xmax, &self.nodes_ymin, &self.nodes_ymax)
     }
 
     /// Returns the spacing (dx, dy) if the grid is uniform on both directions
@@ -536,13 +558,6 @@ impl Grid2d {
     /// ```
     pub fn coord(&self, m: usize) -> (f64, f64) {
         self.coords[m]
-    }
-
-    /// Returns the boundary node indices
-    ///
-    /// Returns `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)`
-    pub fn boundary_nodes(&self) -> (&[usize], &[usize], &[usize], &[usize]) {
-        (&self.nodes_xmin, &self.nodes_xmax, &self.nodes_ymin, &self.nodes_ymax)
     }
 
     /// Iterates over all grid nodes with their coordinates

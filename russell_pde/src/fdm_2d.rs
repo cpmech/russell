@@ -107,17 +107,20 @@ impl<'a> Fdm2d<'a> {
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
-    pub fn new(grid: Grid2d, ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
+    pub fn new(grid: Grid2d, mut ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
         // check grid
         let (dx, dy) = match grid.get_dx_dy() {
             Some((dx, dy)) => (dx, dy),
             None => return Err("grid must have uniform spacing"),
         };
 
+        // build EBC data
+        ebcs.build(&grid);
+
         // allocate equations handler
         let neq = grid.size();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_p_list());
+        equations.recompute(&ebcs.get_nodes());
 
         // auxiliary variables
         let dx2 = dx * dx;
@@ -302,7 +305,7 @@ impl<'a> Fdm2d<'a> {
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_prescribed_value(m, x, y);
+            let val = self.ebcs.get_value(m, x, y);
             a_check[ip] = val;
         });
         (a_bar, a_check, f_bar)
@@ -361,7 +364,7 @@ impl<'a> Fdm2d<'a> {
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_prescribed_value(m, x, y);
+            let val = self.ebcs.get_value(m, x, y);
             ff[neq + ip] = val;
         });
         (aa, ff)
@@ -469,11 +472,6 @@ mod tests {
     use russell_lab::Matrix;
     use russell_sparse::Sym;
 
-    const LEF: f64 = 1.0;
-    const RIG: f64 = 2.0;
-    const BOT: f64 = 3.0;
-    const TOP: f64 = 4.0;
-
     #[test]
     fn new_captures_errors() {
         let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
@@ -511,7 +509,7 @@ mod tests {
         const LEF: f64 = 1.0;
         let lef = |_, _| LEF;
         assert_eq!(lef(0.0, 0.0), LEF);
-        ebcs.set(&grid, Side::Xmin, lef); //  0  4  8
+        ebcs.set(Side::Xmin, lef); //  0  4  8
 
         let fdm = Fdm2d::new(grid, ebcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
@@ -670,7 +668,7 @@ mod tests {
         // dx = 1.0, dy = 1.0
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_homogeneous(&grid);
+        ebcs.set_homogeneous();
 
         let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
@@ -856,7 +854,7 @@ mod tests {
 
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_periodic(&grid, true, true);
+        ebcs.set_periodic(true, true);
 
         let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
@@ -923,78 +921,98 @@ mod tests {
 
     #[test]
     fn get_vectors_works() {
-        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 4, 4).unwrap();
+        let grid = Grid2d::new_uniform(1.0, 4.0, 1.0, 3.0, 4, 3).unwrap();
         let mut ebcs = EssentialBcs2d::new();
 
-        // 12* 13* 14* 15*
-        //  8*  9  10  11*
+        //  8*  9* 10* 11*
         //  4*  5   6   7*
         //  0*  1*  2*  3*
-        ebcs.set(&grid, Side::Xmin, |_, _| LEF);
-        ebcs.set(&grid, Side::Xmax, |_, _| RIG);
-        ebcs.set(&grid, Side::Ymin, |_, _| BOT);
-        ebcs.set(&grid, Side::Ymax, |_, _| TOP);
+        ebcs.set(Side::Xmin, |x, y| x + y);
+        ebcs.set(Side::Xmax, |x, y| x + y);
+        ebcs.set(Side::Ymin, |x, y| x + y);
+        ebcs.set(Side::Ymax, |x, y| x + y);
 
         let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
 
-        let (u, p, f) = fdm.get_vectors_sps(|_, _| 100.0);
-        assert_eq!(u.dim(), 4); // nu
-        assert_eq!(p.dim(), 12); // np
-        assert_eq!(f.dim(), 4); // nu
-        for i in 0..4 {
-            assert_eq!(u[i], 0.0);
-            assert_eq!(f[i], 100.0);
-        }
-        assert_eq!(p[0], BOT);
-        assert_eq!(p[1], BOT);
-        assert_eq!(p[2], BOT);
-        assert_eq!(p[3], BOT);
-        assert_eq!(p[4], LEF);
-        assert_eq!(p[5], RIG);
-        assert_eq!(p[6], LEF);
-        assert_eq!(p[7], RIG);
-        assert_eq!(p[8], TOP);
-        assert_eq!(p[9], TOP);
-        assert_eq!(p[10], TOP);
-        assert_eq!(p[11], TOP);
+        let nu = 2;
+        let np = 10;
+        let neq = nu + np;
 
-        let a = fdm.get_joined_vector_sps(&u, &p);
-        assert_eq!(a.dim(), 16); // na
-        assert_eq!(a[0], BOT);
-        assert_eq!(a[1], BOT);
-        assert_eq!(a[2], BOT);
-        assert_eq!(a[3], BOT);
-        assert_eq!(a[4], LEF);
-        assert_eq!(a[5], 0.0);
-        assert_eq!(a[6], 0.0);
-        assert_eq!(a[7], RIG);
-        assert_eq!(a[8], LEF);
-        assert_eq!(a[9], 0.0);
-        assert_eq!(a[10], 0.0);
-        assert_eq!(a[11], RIG);
-        assert_eq!(a[12], TOP);
-        assert_eq!(a[13], TOP);
-        assert_eq!(a[14], TOP);
-        assert_eq!(a[15], TOP);
+        let (a_bar, a_check, f_bar) = fdm.get_vectors_sps(|_, _| 100.0);
+        assert_eq!(a_bar.dim(), nu);
+        assert_eq!(a_check.dim(), np);
+        assert_eq!(f_bar.dim(), nu);
 
-        let (x, b) = fdm.get_vectors_lmm(|_, _| 100.0);
-        assert_eq!(x.dim(), 16 + 12); // na + nw
-        assert_eq!(b.dim(), 16 + 12); // na + nw
-        for i in 0..16 {
-            assert_eq!(b[i], 100.0);
-        }
-        assert_eq!(b[16 + 0], BOT);
-        assert_eq!(b[16 + 1], BOT);
-        assert_eq!(b[16 + 2], BOT);
-        assert_eq!(b[16 + 3], BOT);
-        assert_eq!(b[16 + 4], LEF);
-        assert_eq!(b[16 + 5], RIG);
-        assert_eq!(b[16 + 6], LEF);
-        assert_eq!(b[16 + 7], RIG);
-        assert_eq!(b[16 + 8], TOP);
-        assert_eq!(b[16 + 9], TOP);
-        assert_eq!(b[16 + 10], TOP);
-        assert_eq!(b[16 + 11], TOP);
+        assert_eq!(a_bar.as_data(), &[0.0, 0.0]);
+        assert_eq!(
+            a_check.as_data(),
+            &[
+                1.0 + 1.0, //  0*
+                2.0 + 1.0, //  1*
+                3.0 + 1.0, //  2*
+                4.0 + 1.0, //  3*
+                1.0 + 2.0, //  4*
+                // 2.0 + 2.0, //  5
+                // 3.0 + 2.0, //  6
+                4.0 + 2.0, //  7*
+                1.0 + 3.0, //  8*
+                2.0 + 3.0, //  9*
+                3.0 + 3.0, // 10*
+                4.0 + 3.0, // 11*
+            ]
+        );
+        assert_eq!(f_bar.as_data(), &[100.0, 100.0]);
+
+        let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
+        assert_eq!(a.dim(), neq);
+        assert_eq!(
+            a.as_data(),
+            &[
+                1.0 + 1.0, //  0*
+                2.0 + 1.0, //  1*
+                3.0 + 1.0, //  2*
+                4.0 + 1.0, //  3*
+                1.0 + 2.0, //  4*
+                0.0,       //  5
+                0.0,       //  6
+                4.0 + 2.0, //  7*
+                1.0 + 3.0, //  8*
+                2.0 + 3.0, //  9*
+                3.0 + 3.0, // 10*
+                4.0 + 3.0, // 11*
+            ]
+        );
+
+        let (aa, ff) = fdm.get_vectors_lmm(|_, _| 100.0);
+        assert_eq!(aa.dim(), neq + np);
+        assert_eq!(aa.as_data(), &vec![0.0; neq + np]);
+        assert_eq!(
+            ff.as_data(),
+            &[
+                100.0,     // 0
+                100.0,     // 1
+                100.0,     // 2
+                100.0,     // 3
+                100.0,     // 4
+                100.0,     // 5
+                100.0,     // 6
+                100.0,     // 7
+                100.0,     // 8
+                100.0,     // 9
+                100.0,     // 10
+                100.0,     // 11
+                1.0 + 1.0, //  0*
+                2.0 + 1.0, //  1*
+                3.0 + 1.0, //  2*
+                4.0 + 1.0, //  3*
+                1.0 + 2.0, //  4*
+                4.0 + 2.0, //  7*
+                1.0 + 3.0, //  8*
+                2.0 + 3.0, //  9*
+                3.0 + 3.0, // 10*
+                4.0 + 3.0, // 11*
+            ]
+        );
     }
 
     #[test]

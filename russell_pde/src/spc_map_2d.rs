@@ -105,7 +105,7 @@ impl<'a> SpcMap2d<'a> {
     /// * `map` -- the transfinite mapping from reference to physical domain
     pub fn new(
         grid: Grid2d,
-        ebcs: EssentialBcs2d<'a>,
+        mut ebcs: EssentialBcs2d<'a>,
         nbcs: NaturalBcs2d<'a>,
         map: Transfinite2d,
     ) -> Result<Self, StrError> {
@@ -116,6 +116,9 @@ impl<'a> SpcMap2d<'a> {
         if grid.xmin() != -1.0 || grid.xmax() != 1.0 || grid.ymin() != -1.0 || grid.ymax() != 1.0 {
             return Err("grid must be defined on the reference square [-1, 1] x [-1, 1]");
         }
+
+        // build EBC data
+        ebcs.build(&grid);
 
         // check that the EBCs is not periodic
         if ebcs.is_periodic_along_x() || ebcs.is_periodic_along_y() {
@@ -150,7 +153,7 @@ impl<'a> SpcMap2d<'a> {
         // allocate equations handler
         let neq = grid.size();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_p_list());
+        equations.recompute(&ebcs.get_nodes());
 
         // polynomial degrees
         let nn_r = grid.nx() - 1;
@@ -342,7 +345,7 @@ impl<'a> SpcMap2d<'a> {
             let ip = self.equations.ip(m);
             let (r, s) = self.grid.coord(m);
             self.map.point(&mut self.x, r, s);
-            let val = self.ebcs.get_prescribed_value(m, self.x[0], self.x[1]);
+            let val = self.ebcs.get_value(m, self.x[0], self.x[1]);
             a_check[ip] = val;
         });
         (a_bar, a_check, f_bar)
@@ -464,7 +467,7 @@ mod tests {
         let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
         let mut ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
-        ebcs.set_homogeneous(&grid);
+        ebcs.set_homogeneous();
         let mut spectral = SpcMap2d::new(grid, ebcs, nbcs, map).unwrap();
         let (kk_bar, kk_check) = spectral.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();

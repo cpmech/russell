@@ -32,7 +32,7 @@ fn test_spectral_curv_poisson2d_1() {
 
     // homogeneous essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous(&grid);
+    ebcs.set_homogeneous();
 
     // natural boundary conditions
     let nbcs = NaturalBcs2d::new();

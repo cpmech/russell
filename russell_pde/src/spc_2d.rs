@@ -71,11 +71,14 @@ impl<'a> Spc2d<'a> {
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
-    pub fn new(grid: Grid2d, ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
+    pub fn new(grid: Grid2d, mut ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
         // check grid
         if !grid.is_chebyshev_gauss_lobatto() {
             return Err("grid must use Chebyshev-Gauss-Lobatto points");
         }
+
+        // build EBC data
+        ebcs.build(&grid);
 
         // check that the EBCs is not periodic
         if ebcs.is_periodic_along_x() || ebcs.is_periodic_along_y() {
@@ -83,24 +86,24 @@ impl<'a> Spc2d<'a> {
         }
 
         // check that all sides have essential BCs
-        let (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax) = grid.boundary_nodes();
+        let (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax) = grid.get_boundary_nodes();
         for m in nodes_xmin {
-            if !ebcs.has_prescribed_value(*m) {
+            if !ebcs.has_value(*m) {
                 return Err("essential BCs must be prescribed along x-min side");
             }
         }
         for m in nodes_xmax {
-            if !ebcs.has_prescribed_value(*m) {
+            if !ebcs.has_value(*m) {
                 return Err("essential BCs must be prescribed along x-max side");
             }
         }
         for m in nodes_ymin {
-            if !ebcs.has_prescribed_value(*m) {
+            if !ebcs.has_value(*m) {
                 return Err("essential BCs must be prescribed along y-min side");
             }
         }
         for m in nodes_ymax {
-            if !ebcs.has_prescribed_value(*m) {
+            if !ebcs.has_value(*m) {
                 return Err("essential BCs must be prescribed along y-max side");
             }
         }
@@ -108,7 +111,7 @@ impl<'a> Spc2d<'a> {
         // allocate equations handler
         let neq = grid.size();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_p_list());
+        equations.recompute(&ebcs.get_nodes());
 
         // polynomial degrees
         let nn_x = grid.nx() - 1;
@@ -253,7 +256,7 @@ impl<'a> Spc2d<'a> {
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_prescribed_value(m, x, y);
+            let val = self.ebcs.get_value(m, x, y);
             a_check[ip] = val;
         });
         (a_bar, a_check, f_bar)
@@ -321,7 +324,7 @@ mod tests {
     fn get_matrices_works_1() {
         let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, 5, 5).unwrap();
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_homogeneous(&grid);
+        ebcs.set_homogeneous();
         let spec = Spc2d::new(grid, ebcs, 1.0, 1.0).unwrap();
         let (kk_bar, kk_check) = spec.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();

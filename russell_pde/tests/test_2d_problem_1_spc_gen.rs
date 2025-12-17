@@ -1,6 +1,6 @@
 use plotpy::{Contour, Curve, Plot, Surface};
 use russell_lab::{approx_eq, math::PI};
-use russell_pde::{EssentialBcs2d, Grid2d, SpectralLaplacian2d, StrError};
+use russell_pde::{EssentialBcs2d, Grid2d, NaturalBcs2d, SpectralLaplacianCurv2d, StrError, TransfiniteSamples};
 use russell_sparse::{Genie, LinSolver};
 
 // Approximate the solution of
@@ -30,10 +30,10 @@ use russell_sparse::{Genie, LinSolver};
 // bₖ = k π (1 + y) / 2
 // cₖ = k π (1 - y) / 2
 
-const SAVE_FIGURE: bool = false;
+const SAVE_FIGURE: bool = true;
 
 #[test]
-fn test_2d_problem_1_spc() -> Result<(), StrError> {
+fn test_2d_problem_1_spc_curv() -> Result<(), StrError> {
     for (nn, tol) in vec![
         (8, 1e-4), //
                    // (24, 1e-5), // cannot get better precision because the analytical solution is approximated
@@ -68,16 +68,20 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
     // define the source term
     let source = |_x, _y| -1.0;
 
-    // allocate the grid on [-1, 1] × [-1, 1]
+    // allocate the grid on [-1, 1] × [-1, 1] and then map to a square
     let (nx, ny) = (nn + 1, nn + 1);
     let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, nx, ny)?;
+    let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
     ebcs.set_homogeneous(&grid);
 
+    // natural boundary conditions
+    let nbcs = NaturalBcs2d::new();
+
     // allocate the Laplacian operator
-    let spc = SpectralLaplacian2d::new(grid, ebcs, 1.0, 1.0)?;
+    let mut spc = SpectralLaplacianCurv2d::new(grid, ebcs, nbcs, map)?;
 
     // assemble the coefficient matrix and the lhs and rhs vectors
     let (kk_bar, kk_check) = spc.get_matrices();
@@ -106,8 +110,8 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // plot results
     if SAVE_FIGURE {
-        let fn_a = format!("/tmp/russell_pde/test_2d_problem_1_spc_{}_a.svg", nn);
-        let fn_b = format!("/tmp/russell_pde/test_2d_problem_1_spc_{}_b.svg", nn);
+        let fn_a = format!("/tmp/russell_pde/test_2d_problem_1_spc_curv_{}_a.svg", nn);
+        let fn_b = format!("/tmp/russell_pde/test_2d_problem_1_spc_curv_{}_b.svg", nn);
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();

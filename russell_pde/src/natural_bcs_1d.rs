@@ -24,7 +24,7 @@ pub struct NaturalBcs1d<'a> {
 
     /// Maps node to one of the two functions in `functions`
     ///
-    /// length = number of nodes with natural boundary conditions (prescribed nodes)
+    /// length = number of nodes with natural boundary conditions
     node_to_function: HashMap<usize, usize>,
 }
 
@@ -48,7 +48,7 @@ impl<'a> NaturalBcs1d<'a> {
 
     /// Sets a flux boundary condition
     ///
-    /// The boundary condition is then defined as:
+    /// The boundary condition is defined as:
     ///
     /// ```text
     /// wₙ = f(x) = q̄
@@ -96,24 +96,6 @@ impl<'a> NaturalBcs1d<'a> {
     ///   ┌────────────────────────┐
     /// ← │                        │ →
     ///   └────────────────────────┘
-    /// ```
-    ///
-    /// Thus:
-    ///
-    /// ```text
-    /// At the left boundary (Xmin):
-    ///      ┌    ┐   ┌    ┐
-    ///      │ wx │   │ -1 │
-    /// wₙ = │    │ · │    │ = -wx = kx ∂ϕ/∂x
-    ///      │  0 │   │  0 │
-    ///      └    ┘   └    ┘
-    ///
-    /// At the right boundary (Xmax):
-    ///      ┌    ┐   ┌    ┐
-    ///      │ wx │   │  1 │
-    /// wₙ = │    │ · │    │ = wx = -kx ∂ϕ/∂x
-    ///      │  0 │   │  0 │
-    ///      └    ┘   └    ┘
     /// ```
     pub fn set_flux(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
         let index = side as usize;

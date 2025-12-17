@@ -87,11 +87,29 @@ const INI_X: usize = 0;
 ///
 /// α ϕᵢ + β ϕᵢ₋₁ + β ϕᵢ₊₁ = sᵢ
 ///
-/// # Notes on natural boundary conditions (NBC)
+/// # Natural boundary conditions (NBC)
+///
+/// In 1D, the flux vector reduces to `w = [wx, 0]ᵀ`, where
+///
+/// ```text
+/// wx = -kx ∂ϕ/∂x
+/// ```
+///
+/// The normal vectors at the boundaries are illustrated below:
+///
+/// ```text
+/// @ Xmin:                                     @ Xmax:
+///      ┌    ┐   ┌    ┐                             ┌    ┐   ┌    ┐
+///      │ wx │   │ -1 │    ┌──────────────┐         │ wx │   │  1 │
+/// wₙ = │    │ · │    │  ← │              │ →  wₙ = │    │ · │    │
+///      │  0 │   │  0 │    └──────────────┘         │  0 │   │  0 │
+///      └    ┘   └    ┘                             └    ┘   └    ┘
+///    = kx ∂ϕ/∂x                                  = -kx ∂ϕ/∂x
+/// ```
 ///
 /// The natural boundary conditions (NBC) are set by modifying the right-hand side vector.
 ///
-/// The FDM stencil at the left side (xmin) is:
+/// The FDM stencil at the left side (Xmin) is:
 ///
 /// ```text
 /// α ϕ_{0} + β ϕ_{-1} + β ϕ_{1} = s_{0}
@@ -99,7 +117,7 @@ const INI_X: usize = 0;
 ///
 /// where `α = 2kx/Δx²` and `β = -kx/Δx²`.
 ///
-/// The central difference formula for the gradient @ xmin is:
+/// The central difference formula for the gradient @ Xmin is:
 ///
 /// ```text
 /// ∂ϕ │    ϕ_{1} - ϕ_{-1}
@@ -121,15 +139,15 @@ const INI_X: usize = 0;
 ///                              extra term
 /// ```
 ///
-/// Where `wₙ := kx g = q̄` at the left side (xmin).
+/// Where `wₙ := kx g = q̄` at the left side (Xmin).
 ///
-/// The FDM stencil at the right side (xmax) is:
+/// The FDM stencil at the right side (Xmax) is:
 ///
 /// ```text
 /// α ϕ_{nx-1} + β ϕ_{nx-2} + β ϕ_{nx} = s_{nx-1}
 /// ```
 ///
-/// Analogously, at the right side (xmax) the gradient is:
+/// Analogously, at the right side (Xmax) the gradient is:
 ///
 /// ```text
 /// ∂ϕ │         ϕ_{nx} - ϕ_{nx-2}
@@ -151,7 +169,7 @@ const INI_X: usize = 0;
 ///                                       extra term
 /// ```
 ///
-/// where `wₙ := -kx g = q̄` at the right side (xmax).
+/// where `wₙ := -kx g = q̄` at the right side (Xmax).
 pub struct Fdm1d<'a> {
     /// Defines the 1D grid
     grid: Grid1d,

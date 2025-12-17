@@ -56,7 +56,8 @@ impl<'a> NaturalBcs1d<'a> {
     ///
     /// where a **positive** value of f(x) indicates a flux **leaving** the domain.
     /// It is worth noting that this convention is opposite to the one commonly used
-    /// in the literature.
+    /// in the literature. The convention here is such that a positive flux is pointing
+    /// in the same direction as the outward normal vector on the boundary.
     ///
     /// The function is `f(x) -> q̄`
     ///

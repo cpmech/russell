@@ -264,9 +264,9 @@ impl<'a> Fdm1d<'a> {
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-        solver.actual.factorize(&kk_bar, None).unwrap();
-        solver.actual.solve(&mut a_bar, &f_bar, false).unwrap();
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
@@ -290,9 +290,9 @@ impl<'a> Fdm1d<'a> {
         let (mut aa, ff) = self.get_vectors_lmm(source);
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-        solver.actual.factorize(&mm, None).unwrap();
-        solver.actual.solve(&mut aa, &ff, false).unwrap();
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&mm, None)?;
+        solver.actual.solve(&mut aa, &ff, false)?;
 
         // results
         let neq = self.get_dims_lmm().0;
@@ -363,9 +363,9 @@ impl<'a> Fdm1d<'a> {
         }
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack).unwrap();
-        solver.actual.factorize(&mm, None).unwrap();
-        solver.actual.solve(&mut aa, &ff, false).unwrap();
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&mm, None)?;
+        solver.actual.solve(&mut aa, &ff, false)?;
 
         // results
         let neq = self.get_dims_lmm().0;

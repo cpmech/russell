@@ -1,5 +1,5 @@
-use russell_lab::vec_approx_eq;
-use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, StrError};
+use russell_lab::approx_eq;
+use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 
 // Solve the following problem:
 //
@@ -17,50 +17,42 @@ use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, StrError};
 
 #[test]
 fn test_1d_prob01_fdm_sps() -> Result<(), StrError> {
+    // problem setup
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+
     // allocate the grid
-    let grid = Grid1d::new_uniform(0.0, 1.0, 5)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs1d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs1d::new();
+    let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
 
     // allocate the solver
-    let kx = 1.0;
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve(|x| x)?;
+    let a = fdm.solve(source)?;
 
-    // check
-    let correct = [0.0, 5.0 / 128.0, 8.0 / 128.0, 7.0 / 128.0, 0.0];
-    vec_approx_eq(&a, &correct, 1e-15);
+    // analytical solution
+    fdm.for_each_coord(|m, x| {
+        approx_eq(a[m], analytical(x), 1e-15);
+    });
     Ok(())
 }
 
 #[test]
 fn test_1d_prob01_fdm_lmm() -> Result<(), StrError> {
+    // problem setup
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+
     // allocate the grid
-    let grid = Grid1d::new_uniform(0.0, 1.0, 5)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs1d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs1d::new();
+    let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
 
     // allocate the solver
-    let kx = 1.0;
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_lmm(|x| x)?;
+    let a = fdm.solve_lmm(source)?;
 
-    // check
-    let correct = [0.0, 5.0 / 128.0, 8.0 / 128.0, 7.0 / 128.0, 0.0];
-    vec_approx_eq(&a, &correct, 1e-15);
+    // analytical solution
+    fdm.for_each_coord(|m, x| {
+        approx_eq(a[m], analytical(x), 1e-15);
+    });
     Ok(())
 }

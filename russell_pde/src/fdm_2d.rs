@@ -229,6 +229,8 @@ impl<'a> Fdm2d<'a> {
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
+    ///
+    /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
     pub fn new(
         grid: Grid2d,
         mut ebcs: EssentialBcs2d<'a>,
@@ -488,6 +490,9 @@ impl<'a> Fdm2d<'a> {
             f_bar[iu] = source(x, y);
         });
         for m in self.nbcs.get_nodes() {
+            if self.equations.is_prescribed(m) {
+                continue;
+            }
             let iu = self.equations.iu(m);
             let (x, y) = self.grid.coord(m);
             let q_bar = self.nbcs.get_value(m, x, y);

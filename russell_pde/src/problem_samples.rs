@@ -234,12 +234,12 @@ impl ProblemSamples {
     /// Solve the equation:
     ///
     /// ```text
-    /// ∂²u     ∂²u
-    /// ———  +  ——— = s(x, y)
-    /// ∂x²     ∂y²
+    /// ∂²ϕ   ∂²ϕ
+    /// ——— + ——— = s(x, y)
+    /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a (1.0 × 1.0) square with homogeneous essential boundary conditions
+    /// on a [0,1]×[0,1] square with homogeneous essential boundary conditions
     ///
     /// The source term is given by (for a manufactured solution):
     ///
@@ -250,7 +250,7 @@ impl ProblemSamples {
     /// The analytical solution is:
     ///
     /// ```text
-    /// u(x, y) = x y (x - 1) (y - 1) exp(x - y)
+    /// ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
     /// ```
     pub fn d2_problem_01() -> (
         f64,
@@ -290,17 +290,17 @@ impl ProblemSamples {
     /// Solve the equation:
     ///
     /// ```text
-    /// ∂²u     ∂²u
-    /// ———  +  ——— = s(x, y)
-    /// ∂x²     ∂y²
+    /// ∂²ϕ   ∂²ϕ
+    /// ——— + ——— = s(x, y)
+    /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a (1.0 × 1.0) square with the following essential boundary conditions:
+    /// on a [0,1]×[0,1] square with the following essential boundary conditions:
     ///
-    /// * Left: u = 0
-    /// * Right: u = 0
-    /// * Bottom: u = 0
-    /// * Top: u = sin(π x)
+    /// * Left: ϕ = 0
+    /// * Right: ϕ = 0
+    /// * Bottom: ϕ = 0
+    /// * Top: ϕ = sin(π x)
     ///
     /// The source term is given by (for a manufactured solution):
     ///
@@ -311,7 +311,7 @@ impl ProblemSamples {
     /// The analytical solution is:
     ///
     /// ```text
-    /// u(x, y) = y sin(π x)
+    /// ϕ(x, y) = y sin(π x)
     /// ```
     pub fn d2_problem_02() -> (
         f64,
@@ -354,12 +354,12 @@ impl ProblemSamples {
     /// Solve the equation:
     ///
     /// ```text
-    /// ∂²u     ∂²u
-    /// ———  +  ——— = s(x, y)
-    /// ∂x²     ∂y²
+    /// ∂²ϕ   ∂²ϕ
+    /// ——— + ——— = s(x, y)
+    /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a (1.0 × 1.0) square with homogeneous essential boundary conditions
+    /// on a [0,1]×[0,1] square with homogeneous essential boundary conditions
     ///
     /// The source term is given by (for a manufactured solution):
     ///
@@ -370,7 +370,7 @@ impl ProblemSamples {
     /// The analytical solution is:
     ///
     /// ```text
-    /// u(x, y) = x (1 - x) y (1 - y) (1 + 2 x + 7 y)
+    /// ϕ(x, y) = x (1 - x) y (1 - y) (1 + 2 x + 7 y)
     /// ```
     pub fn d2_problem_03() -> (
         f64,
@@ -475,6 +475,140 @@ impl ProblemSamples {
             }
             (1.0 - x * x) / 2.0 - 16.0 * sum / (PI * PI * PI)
         });
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 05
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    ///   ∂²ϕ   ∂²ϕ
+    /// - ——— - ——— = -6 x
+    ///   ∂x²   ∂y²
+    /// ```
+    ///
+    /// on a [-1,1]×[-1,1] square with the following boundary conditions:
+    ///
+    /// * Xmin: ϕ(-1, y) = 0
+    /// * Xmax: ϕ(1, y) = 2
+    /// * Ymin: wₙ = 0
+    /// * Ymax: wₙ = 0
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// ϕ(x, y) = 1 + x³
+    /// ```
+    pub fn d2_problem_05() -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (-1.0, 1.0, -1.0, 1.0);
+        let (kx, ky) = (1.0, 1.0);
+
+        // analytical solution
+        let analytical = Box::new(|x, _| 1.0 + f64::powi(x, 3));
+
+        // essential boundary conditions
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        ebcs.set(Side::Xmax, |_, _| 2.0);
+
+        // natural boundary conditions
+        let mut nbcs = NaturalBcs2d::new();
+        nbcs.set_flux(Side::Ymin, |_, _| 0.0);
+        nbcs.set_flux(Side::Ymax, |_, _| 0.0);
+
+        // source term
+        let source = Box::new(|x, _| -6.0 * x);
+
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 06
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    ///   ∂²ϕ   ∂²ϕ   4 tanh(1 - x + y)
+    /// - ——— - ——— = —————————————————
+    ///   ∂x²   ∂y²    cosh(1 - x + y)²
+    /// ```
+    ///
+    /// on a [-1,1]×[-1,1] square with the following boundary conditions:
+    ///
+    /// * Xmin: ϕ(-1, y) = tanh(2+y)
+    /// * Xmax: wₙ(1, y) = 1/cosh(y)²
+    /// * Ymin: ϕ(x, -1) = -tanh(x)
+    /// * Ymax: ϕ(x, 1) = tanh(2-x)
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// ϕ(x, y) = tanh(1 - x + y)
+    /// ```
+    pub fn d2_problem_06() -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (-1.0, 1.0, -1.0, 1.0);
+        let (kx, ky) = (1.0, 1.0);
+
+        // analytical solution
+        let analytical = Box::new(|x, y| f64::tanh(1.0 - x + y));
+
+        // essential boundary conditions
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmin, |_, y| f64::tanh(2.0 + y));
+        ebcs.set(Side::Ymin, |x, _| -f64::tanh(x));
+        ebcs.set(Side::Ymax, |x, _| f64::tanh(2.0 - x));
+
+        // natural boundary conditions
+        let mut nbcs = NaturalBcs2d::new();
+        nbcs.set_flux(Side::Xmax, |_, y| 1.0 / f64::powi(f64::cosh(y), 2));
+
+        // source term
+        let source = Box::new(|x, y| 4.0 * f64::tanh(1.0 - x + y) / f64::powi(f64::cosh(1.0 - x + y), 2));
+
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 }

@@ -203,6 +203,8 @@ impl<'a> Fdm1d<'a> {
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `nbcs` -- the natural boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
+    ///
+    /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
     pub fn new(
         grid: Grid1d,
         mut ebcs: EssentialBcs1d<'a>,

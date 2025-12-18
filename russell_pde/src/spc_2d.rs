@@ -1,15 +1,15 @@
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, StrError};
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, StrError};
 use russell_lab::{InterpLagrange, Vector};
-use russell_sparse::{CooMatrix, Sym};
+use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
 /// Implements the Spectral Collocation method (SPC) in 2D
 ///
 /// The SPC can be used to solve the following problem:
 ///
 /// ```text
-/// ∂²ϕ   ∂²ϕ
-/// ——— + ——— = source(x, y)
-/// ∂x²   ∂y²
+///     ∂²ϕ      ∂²ϕ
+/// -kx ——— - ky ——— = source(x, y)
+///     ∂x²      ∂y²
 /// ```
 ///
 /// with essential (EBC) and natural (NBC) boundary conditions.
@@ -17,9 +17,11 @@ use russell_sparse::{CooMatrix, Sym};
 /// The spectral collocation method approximates the Laplacian at the grid points (xᵢ, yⱼ) using:
 ///
 /// ```text
-///              ∂²ϕ│              ∂²ϕ│
-/// (∇²ϕ)ᵢⱼ = kx ———│        +  ky ———│        = ∑ₖ ∑ₗ (kx D⁽²⁾ᵢₖ δⱼₗ + ky δᵢₖ D̄⁽²⁾ⱼₗ) ϕₖₗ
-///              ∂x²│(xᵢ,xⱼ)       ∂y²│(xᵢ,xⱼ)
+///               ∂²ϕ│             ∂²ϕ│
+/// (∇²ϕ)ᵢⱼ = -kx ———│        - ky ———│        = ∑ₖ ∑ₗ (mkx D⁽²⁾ᵢₖ δⱼₗ + mky δᵢₖ D̄⁽²⁾ⱼₗ) ϕₖₗ
+///               ∂x²│(xᵢ,xⱼ)      ∂y²│(xᵢ,xⱼ)
+///
+/// mkx = -kx, mky = -ky
 /// ```
 ///
 /// where ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
@@ -41,11 +43,19 @@ pub struct Spc2d<'a> {
     /// Holds a reference to the essential boundary conditions handler
     ebcs: EssentialBcs2d<'a>,
 
-    /// Diffusion coefficient along x
-    kx: f64,
+    /// Holds a reference to the natural boundary conditions handler
+    #[allow(dead_code)]
+    nbcs: NaturalBcs2d<'a>,
 
-    /// Diffusion coefficient along y
-    ky: f64,
+    /// Negative of the diffusion coefficient along x
+    ///
+    /// mkx = -kx
+    mkx: f64,
+
+    /// Negative of the diffusion coefficient along y
+    ///
+    /// mky = -ky
+    mky: f64,
 
     /// Tool to handle the equation numbers such as unknowns prescribed
     equations: EquationHandler,
@@ -60,52 +70,32 @@ pub struct Spc2d<'a> {
 impl<'a> Spc2d<'a> {
     /// Allocates a new instance
     ///
-    /// **Important**:
-    ///
-    /// 1. Only Chebyshev-Gauss-Lobatto grids are allowed.
-    /// 2. All sides must have essential BCs, i.e., Neumann BCs are **not** allowed.
-    ///
     /// # Arguments
     ///
-    /// * `grid` -- the 2D grid with Chebyshev-Gauss-Lobatto points
+    /// * `nx` -- number of grid points along x (for the Chebyshev-Gauss-Lobatto grid)
+    /// * `ny` -- number of grid points along y (for the Chebyshev-Gauss-Lobatto grid)
     /// * `ebcs` -- the essential boundary conditions handler
+    /// * `nbcs` -- the natural boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
-    pub fn new(grid: Grid2d, mut ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
-        // check grid
-        if !grid.is_chebyshev_gauss_lobatto() {
-            return Err("grid must use Chebyshev-Gauss-Lobatto points");
-        }
+    pub fn new(
+        nx: usize,
+        ny: usize,
+        mut ebcs: EssentialBcs2d<'a>,
+        mut nbcs: NaturalBcs2d<'a>,
+        kx: f64,
+        ky: f64,
+    ) -> Result<Self, StrError> {
+        // allocate the Chebyshev-Gauss-Lobatto grid
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny)?;
 
-        // build EBC data
+        // build the boundary conditions data
         ebcs.build(&grid);
+        nbcs.build(&grid);
 
-        // check that the EBCs is not periodic
+        // check that the EBCs are not periodic
         if ebcs.is_periodic_along_x() || ebcs.is_periodic_along_y() {
             return Err("essential BCs cannot be periodic");
-        }
-
-        // check that all sides have essential BCs
-        let (nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax) = grid.get_boundary_nodes();
-        for m in nodes_xmin {
-            if !ebcs.has_value(*m) {
-                return Err("essential BCs must be prescribed along x-min side");
-            }
-        }
-        for m in nodes_xmax {
-            if !ebcs.has_value(*m) {
-                return Err("essential BCs must be prescribed along x-max side");
-            }
-        }
-        for m in nodes_ymin {
-            if !ebcs.has_value(*m) {
-                return Err("essential BCs must be prescribed along y-min side");
-            }
-        }
-        for m in nodes_ymax {
-            if !ebcs.has_value(*m) {
-                return Err("essential BCs must be prescribed along y-max side");
-            }
         }
 
         // allocate equations handler
@@ -127,12 +117,34 @@ impl<'a> Spc2d<'a> {
         Ok(Spc2d {
             grid,
             ebcs,
-            kx,
-            ky,
+            nbcs,
+            mkx: -kx,
+            mky: -ky,
             equations,
             interp_x,
             interp_y,
         })
+    }
+
+    /// Solves problem
+    pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (kk_bar, kk_check) = self.get_matrices();
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+
+        // initialize the right-hand side
+        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.solve(&mut a_bar, &f_bar, false)?;
+
+        // results
+        Ok(self.get_joined_vector(&a_bar, &a_check))
     }
 
     /// Returns the dimensions for the system partitioning strategy (SPS)
@@ -201,10 +213,10 @@ impl<'a> Spc2d<'a> {
                             let n = k + l * nx;
                             let mut val = 0.0;
                             if j == l {
-                                val += self.kx * dd2x.get(i, k) * cx;
+                                val += self.mkx * dd2x.get(i, k) * cx;
                             }
                             if i == k {
-                                val += self.ky * dd2y.get(j, l) * cy;
+                                val += self.mky * dd2y.get(j, l) * cy;
                             }
                             if !self.equations.is_prescribed(n) {
                                 // unknown column
@@ -317,15 +329,15 @@ impl<'a> Spc2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::Spc2d;
-    use crate::{EssentialBcs2d, Grid2d};
+    use crate::{EssentialBcs2d, NaturalBcs2d};
     use russell_lab::mat_approx_eq;
 
     #[test]
     fn get_matrices_works_1() {
-        let grid = Grid2d::new_chebyshev_gauss_lobatto(-1.0, 1.0, -1.0, 1.0, 5, 5).unwrap();
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous();
-        let spec = Spc2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let nbcs = NaturalBcs2d::new();
+        let spec = Spc2d::new(5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
         let (kk_bar, kk_check) = spec.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
@@ -333,29 +345,29 @@ mod tests {
         let ___ = 0.0;
         #[rustfmt::skip]
         let correct_kk_bar = &[
-            [-28.0,   6.0,  -2.0,   6.0,   ___,   ___,  -2.0,   ___,   ___],
-            [  4.0, -20.0,   4.0,   ___,   6.0,   ___,   ___,  -2.0,   ___],
-            [ -2.0,   6.0, -28.0,   ___,   ___,   6.0,   ___,   ___,  -2.0],
-            [  4.0,   ___,   ___, -20.0,   6.0,  -2.0,   4.0,   ___,   ___],
-            [  ___,   4.0,   ___,   4.0, -12.0,   4.0,   ___,   4.0,   ___],
-            [  ___,   ___,   4.0,  -2.0,   6.0, -20.0,   ___,   ___,   4.0],
-            [ -2.0,   ___,   ___,   6.0,   ___,   ___, -28.0,   6.0,  -2.0],
-            [  ___,  -2.0,   ___,   ___,   6.0,   ___,   4.0, -20.0,   4.0],
-            [  ___,   ___,  -2.0,   ___,   ___,   6.0,  -2.0,   6.0, -28.0],
+            [ 28.0, -6.0,  2.0, -6.0,  ___,  ___,  2.0,  ___,  ___],
+            [ -4.0, 20.0, -4.0,  ___, -6.0,  ___,  ___,  2.0,  ___],
+            [  2.0, -6.0, 28.0,  ___,  ___, -6.0,  ___,  ___,  2.0],
+            [ -4.0, ___,   ___, 20.0, -6.0,  2.0, -4.0,  ___,  ___],
+            [  ___, -4.0,  ___, -4.0, 12.0, -4.0,  ___, -4.0,  ___],
+            [  ___, ___,  -4.0,  2.0, -6.0, 20.0,  ___,  ___, -4.0],
+            [  2.0, ___,   ___, -6.0,  ___,  ___, 28.0, -6.0,  2.0],
+            [  ___, 2.0,   ___,  ___, -6.0,  ___, -4.0, 20.0, -4.0],
+            [  ___, ___,   2.0,  ___,  ___, -6.0,  2.0, -6.0, 28.0],
         ];
         mat_approx_eq(&kk_bar_dense, correct_kk_bar, 1e-14);
 
         #[rustfmt::skip]
         let correct_kk_check = &[
-            [0.0, 9.242640687119286, 0.0, 0.0, 0.0, 9.242640687119286, 0.7573593128807143, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7573593128807143, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 9.242640687119286, 0.0, 0.0, -0.9999999999999998, -0.9999999999999993, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7573593128807143, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 9.242640687119286, 0.0, 0.757359312880714, 9.242640687119286, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7573593128807143, 0.0],
-            [0.0, -0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, 9.242640687119286, 0.7573593128807143, 0.0, 0.0, 0.0, -0.9999999999999993, 0.0, 0.0, 0.0],
-            [0.0, 0.0, -0.9999999999999998, 0.0, 0.0, 0.0, 0.0, -0.9999999999999998, -0.9999999999999993, 0.0, 0.0, 0.0, 0.0, -0.9999999999999993, 0.0, 0.0],
-            [0.0, 0.0, 0.0, -0.9999999999999998, 0.0, 0.0, 0.0, 0.757359312880714, 9.242640687119286, 0.0, 0.0, 0.0, 0.0, 0.0, -0.9999999999999993, 0.0],
-            [0.0, 0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.242640687119286, 0.7573593128807143, 0.0, 9.242640687119286, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.9999999999999998, -0.9999999999999993, 0.0, 0.0, 9.242640687119286, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, 0.757359312880714, 9.242640687119286, 0.0, 0.0, 0.0, 9.242640687119286, 0.0],
+            [0.0, -9.242640687119286, 0.0, 0.0, 0.0, -9.242640687119286, -0.7573593128807143, 0.0, 0.0, 0.0, 0.0, 0.0, -0.7573593128807143, 0.0, 0.0, 0.0],
+            [0.0, 0.0, -9.242640687119286, 0.0, 0.0, 0.9999999999999998, 0.9999999999999993, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.7573593128807143, 0.0, 0.0],
+            [0.0, 0.0, 0.0, -9.242640687119286, 0.0, -0.757359312880714, -9.242640687119286, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.7573593128807143, 0.0],
+            [0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, -9.242640687119286, -0.7573593128807143, 0.0, 0.0, 0.0, 0.9999999999999993, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.9999999999999993, 0.0, 0.0, 0.0, 0.0, 0.9999999999999993, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, -0.757359312880714, -9.242640687119286, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999993, 0.0],
+            [0.0, -0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -9.242640687119286, -0.7573593128807143, 0.0, -9.242640687119286, 0.0, 0.0, 0.0],
+            [0.0, 0.0, -0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.9999999999999993, 0.0, 0.0, -9.242640687119286, 0.0, 0.0],
+            [0.0, 0.0, 0.0, -0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, -0.757359312880714, -9.242640687119286, 0.0, 0.0, 0.0, -9.242640687119286, 0.0],
         ];
         let kk_check_dense = kk_check.as_dense();
         // println!("{:.3}", kk_check_dense);

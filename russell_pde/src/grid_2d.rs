@@ -342,25 +342,12 @@ impl Grid2d {
     }
 
     /// Creates a new grid using Chebyshev-Gauss-Lobatto points (tensor product)
-    pub fn new_chebyshev_gauss_lobatto(
-        xmin: f64,
-        xmax: f64,
-        ymin: f64,
-        ymax: f64,
-        nx: usize,
-        ny: usize,
-    ) -> Result<Self, StrError> {
+    pub fn new_chebyshev_gauss_lobatto(nx: usize, ny: usize) -> Result<Self, StrError> {
         if nx < 2 {
             return Err("nx must be ≥ 2");
         }
         if ny < 2 {
             return Err("ny must be ≥ 2");
-        }
-        if xmax <= xmin {
-            return Err("xmax must be > xmin");
-        }
-        if ymax <= ymin {
-            return Err("ymax must be > ymin");
         }
         //        xb + xa + (xb - xa) u
         // x(u) = —————————————————————
@@ -368,21 +355,15 @@ impl Grid2d {
         //        yb + ya + (yb - ya) v
         // y(v) = —————————————————————
         //                 2
-        let x_plus = (xmax + xmin) / 2.0;
-        let x_minus = (xmax - xmin) / 2.0;
-        let y_plus = (ymax + ymin) / 2.0;
-        let y_minus = (ymax - ymin) / 2.0;
         let uu = chebyshev_lobatto_points(nx - 1);
         let vv = chebyshev_lobatto_points(ny - 1);
         let mut coords = Vec::with_capacity(nx * ny);
         for j in 0..ny {
-            let y = y_plus + y_minus * vv[j];
             for i in 0..nx {
-                let x = x_plus + x_minus * uu[i];
-                coords.push((x, y));
+                coords.push((uu[i], vv[j]));
             }
         }
-        Ok(Grid2d::do_allocate(xmin, xmax, ymin, ymax, nx, ny, coords, true))
+        Ok(Grid2d::do_allocate(-1.0, 1.0, -1.0, 1.0, nx, ny, coords, true))
     }
 
     /// Indicates if the grid uses Chebyshev-Gauss-Lobatto points
@@ -807,22 +788,8 @@ mod tests {
 
     #[test]
     fn new_chebyshev_gauss_lobatto_fails_on_invalid_input() {
-        assert_eq!(
-            Grid2d::new_chebyshev_gauss_lobatto(0.0, 1.0, 0.0, 1.0, 1, 4).err(),
-            Some("nx must be ≥ 2")
-        );
-        assert_eq!(
-            Grid2d::new_chebyshev_gauss_lobatto(0.0, 1.0, 0.0, 1.0, 4, 1).err(),
-            Some("ny must be ≥ 2")
-        );
-        assert_eq!(
-            Grid2d::new_chebyshev_gauss_lobatto(1.0, 0.0, 0.0, 1.0, 4, 4).err(),
-            Some("xmax must be > xmin")
-        );
-        assert_eq!(
-            Grid2d::new_chebyshev_gauss_lobatto(0.0, 1.0, 1.0, 0.0, 4, 4).err(),
-            Some("ymax must be > ymin")
-        );
+        assert_eq!(Grid2d::new_chebyshev_gauss_lobatto(1, 4).err(), Some("nx must be ≥ 2"));
+        assert_eq!(Grid2d::new_chebyshev_gauss_lobatto(4, 1).err(), Some("ny must be ≥ 2"));
     }
 
     #[test]
@@ -970,10 +937,6 @@ mod tests {
         //  4  5  6  7
         //  0  1  2  3
 
-        let xmin = -3.0;
-        let xmax = 3.0;
-        let ymin = 2.0;
-        let ymax = 8.0;
         let nx = 4;
         let ny = 3;
 
@@ -984,34 +947,30 @@ mod tests {
         // j = 0 ... N
         let um1 = -f64::cos(PI / 3.0); // j = 1
         let um2 = -f64::cos(2.0 * PI / 3.0); // j = 2
-        let vm1 = -f64::cos(PI / 2.0); // j = 1
-        let xm1 = (xmax + xmin + (xmax - xmin) * um1) / 2.0;
-        let xm2 = (xmax + xmin + (xmax - xmin) * um2) / 2.0;
-        let ym1 = (ymax + ymin + (ymax - ymin) * vm1) / 2.0;
 
         let correct_coords = &[
-            (-3.0, 2.0), // 0
-            (xm1, 2.0),  // 1
-            (xm2, 2.0),  // 2
-            (3.0, 2.0),  // 3
+            (-1.0, -1.0), // 0
+            (um1, -1.0),  // 1
+            (um2, -1.0),  // 2
+            (1.0, -1.0),  // 3
             //
-            (-3.0, ym1), // 4
-            (xm1, ym1),  // 5
-            (xm2, ym1),  // 6
-            (3.0, ym1),  // 7
+            (-1.0, 0.0), // 4
+            (um1, 0.0),  // 5
+            (um2, 0.0),  // 6
+            (1.0, 0.0),  // 7
             //
-            (-3.0, 8.0), // 8
-            (xm1, 8.0),  // 9
-            (xm2, 8.0),  // 10
-            (3.0, 8.0),  // 11
+            (-1.0, 1.0), // 8
+            (um1, 1.0),  // 9
+            (um2, 1.0),  // 10
+            (1.0, 1.0),  // 11
         ];
 
-        let grid = Grid2d::new_chebyshev_gauss_lobatto(xmin, xmax, ymin, ymax, nx, ny).unwrap();
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny).unwrap();
 
-        assert_eq!(grid.xmin, -3.0);
-        assert_eq!(grid.xmax, 3.0);
-        assert_eq!(grid.ymin, 2.0);
-        assert_eq!(grid.ymax, 8.0);
+        assert_eq!(grid.xmin, -1.0);
+        assert_eq!(grid.xmax, 1.0);
+        assert_eq!(grid.ymin, -1.0);
+        assert_eq!(grid.ymax, 1.0);
         assert_eq!(grid.nx, 4);
         assert_eq!(grid.ny, 3);
         assert_eq!(grid.nodes_xmin, &[0, 4, 8]);

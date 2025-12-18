@@ -81,7 +81,7 @@ impl<'a> NaturalBcs1d<'a> {
     ///      →   →
     /// wₙ = w · n̂
     /// ```
-    ///       →
+    ///
     /// where n̂ is the unit outward normal vector on the boundary.
     ///
     /// In 1D, the flux vector reduces to `w = [wx, 0]ᵀ`, where

@@ -78,7 +78,7 @@ impl<'a> NaturalBcs2d<'a> {
     ///      →   →
     /// wₙ = w · n̂
     /// ```
-    ///       →
+    ///
     /// where n̂ is the unit outward normal vector on the boundary.
     ///
     /// In 2D, the flux vector reduces to `w = [wx, wy]ᵀ`, where

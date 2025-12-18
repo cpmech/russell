@@ -62,7 +62,7 @@ impl Metrics {
     ///
     /// If the coordinates are homogeneous, set `homogeneous` to `true` to skip the calculation of Christoffel symbols.
     ///
-    /// If the coordinates are non-homogeneous, the second derivatives must be provided when calling [Metrics2d::calculate()].
+    /// If the coordinates are non-homogeneous, the second derivatives must be provided when calling `calculate`.
     pub fn new(ndim: usize, homogeneous: bool) -> Self {
         let gamma = if homogeneous {
             Vec::new()

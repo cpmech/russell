@@ -53,7 +53,7 @@ fn test_2d_prob02_fdm_sps() -> Result<(), StrError> {
         plot.add(&contour_num).add(&contour_ana);
         plot.set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
-            .save("/tmp/russell_pde/test_poisson2d_2.svg")?;
+            .save("/tmp/russell_pde/test_2d_prob02_fdm_sps.svg")?;
     }
     Ok(())
 }

@@ -1,20 +1,6 @@
 use russell_lab::approx_eq;
 use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 
-// Solve the following problem:
-//
-//   ∂²ϕ
-// - ——— = x
-//   ∂x²
-//
-// on a unit interval with homogeneous boundary conditions
-//
-// The analytical solution is:
-//
-//        x - x³
-// ϕ(x) = ——————
-//          6
-
 #[test]
 fn test_1d_prob01_fdm_sps() -> Result<(), StrError> {
     // problem setup

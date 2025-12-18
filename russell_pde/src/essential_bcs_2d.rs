@@ -138,12 +138,6 @@ impl<'a> EssentialBcs2d<'a> {
         self.periodic_along_y
     }
 
-    /// Indicates whether the given node has a prescribed essential boundary condition or not
-    pub(crate) fn has_value(&self, m: usize) -> bool {
-        assert!(self.ready, "build must be called first");
-        self.node_to_function.contains_key(&m)
-    }
-
     /// Returns the EBC value
     ///
     /// # Panics

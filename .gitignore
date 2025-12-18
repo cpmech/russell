@@ -15,3 +15,4 @@ bad.smat
 rustc-ice-*.txt
 *.aider*
 *.go
+*.rsa

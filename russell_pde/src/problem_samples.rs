@@ -15,7 +15,9 @@ impl ProblemSamples {
     /// * `ebcs` are the essential boundary conditions
     /// * `nbcs` are the natural boundary conditions
     ///
-    /// The problem is:
+    /// # Problem
+    ///
+    /// Solve the equation:
     ///
     /// ```text
     ///   ∂²ϕ
@@ -74,7 +76,9 @@ impl ProblemSamples {
     /// the right-hand side is insulated. The goal is to find the temperature
     /// distribution along the rod.
     ///
-    /// The Model is:
+    /// # Problem
+    ///
+    /// Solve the equation:
     ///
     /// ```text
     ///      ∂²ϕ
@@ -153,7 +157,9 @@ impl ProblemSamples {
     /// (source) generation equal to x². The goal is to find the temperature
     /// distribution along the rod.
     ///
-    /// The Model is:
+    /// # Problem
+    ///
+    /// Solve the equation:
     ///
     /// ```text
     ///     ∂²ϕ
@@ -221,11 +227,11 @@ impl ProblemSamples {
     /// * `ebcs` -- essential boundary conditions
     /// * `nbcs` -- natural boundary conditions
     /// * `source` -- source term function `s(x, y)`
-    /// * `analytical` -- analytical solution function `u(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
     ///
     /// # Problem
     ///
-    /// Solve the Poisson equation:
+    /// Solve the equation:
     ///
     /// ```text
     /// ∂²u     ∂²u
@@ -277,11 +283,11 @@ impl ProblemSamples {
     /// * `ebcs` -- essential boundary conditions
     /// * `nbcs` -- natural boundary conditions
     /// * `source` -- source term function `s(x, y)`
-    /// * `analytical` -- analytical solution function `u(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
     ///
     /// # Problem
     ///
-    /// Solve the Poisson equation:
+    /// Solve the equation:
     ///
     /// ```text
     /// ∂²u     ∂²u
@@ -341,11 +347,11 @@ impl ProblemSamples {
     /// * `ebcs` -- essential boundary conditions
     /// * `nbcs` -- natural boundary conditions
     /// * `source` -- source term function `s(x, y)`
-    /// * `analytical` -- analytical solution function `u(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
     ///
     /// # Problem
     ///
-    /// Solve the Poisson equation:
+    /// Solve the equation:
     ///
     /// ```text
     /// ∂²u     ∂²u
@@ -389,6 +395,86 @@ impl ProblemSamples {
             14.0 * yyy - (16.0 - 12.0 * x) * yy - (-42.0 * xx + 54.0 * x - 2.0) * y + 4.0 * xxx - 16.0 * xx + 12.0 * x
         });
         let analytical = Box::new(|x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y));
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 04
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    ///
+    /// # Input
+    ///
+    /// * `ana_nsum` -- number of summation terms in the analytical solution.
+    ///  **Warning:** For `ana_nsum > 227`, infinite values appear in the sum.
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    /// ∇²ϕ = -1
+    /// ```
+    ///
+    /// on a [-1,1]×[-1,1] square with homogeneous boundary conditions.
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    ///          1 - x²   16    ∞
+    /// ϕ(x,y) = —————— - ——    Σ    mₖ(x,y)
+    ///            2      π³  k = 1
+    ///                       k odd
+    /// where
+    ///           sin(aₖ) (sinh(bₖ) + sinh(cₖ))
+    /// mₖ(x,y) = —————————————————————————————
+    ///                   k³ sinh(k π)
+    ///
+    /// aₖ = k π (1 + x) / 2
+    /// bₖ = k π (1 + y) / 2
+    /// cₖ = k π (1 - y) / 2
+    /// ```
+    pub fn d2_problem_04(
+        ana_nsum: usize,
+    ) -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (-1.0, 1.0, -1.0, 1.0);
+        let (kx, ky) = (-1.0, -1.0);
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_homogeneous();
+        let nbcs = NaturalBcs2d::new();
+        let source = Box::new(|_, _| -1.0);
+        let analytical = Box::new(move |x, y| {
+            let mut sum = 0.0;
+            for k in (1..ana_nsum).step_by(2) {
+                let k3 = (k * k * k) as f64;
+                let kp = (k as f64) * PI;
+                let ak = kp * (1.0 + x) / 2.0;
+                let bk = kp * (1.0 + y) / 2.0;
+                let ck = kp * (1.0 - y) / 2.0;
+                let sak = f64::sin(ak);
+                if sak != 0.0 {
+                    sum += sak * (f64::sinh(bk) + f64::sinh(ck)) / (k3 * f64::sinh(kp));
+                }
+            }
+            (1.0 - x * x) / 2.0 - 16.0 * sum / (PI * PI * PI)
+        });
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 }

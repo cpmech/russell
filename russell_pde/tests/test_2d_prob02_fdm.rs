@@ -1,58 +1,23 @@
 use plotpy::{Contour, Plot};
-use russell_lab::{approx_eq, math::PI};
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, Side, StrError};
+use russell_lab::approx_eq;
+use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 
 const SAVE_FIGURE: bool = false;
 
-// Solve the following problem:
-//
-// ∂²ϕ   ∂²ϕ
-// ——— + ——— = - π² y sin(π x)
-// ∂x²   ∂y²
-//
-// on a (1.0 × 1.0) square with the following essential boundary conditions:
-//
-// left:    ϕ(0.0, y) = 0.0
-// right:   ϕ(1.0, y) = 0.0
-// bottom:  ϕ(x, 0.0) = 0.0
-// top:     ϕ(x, 1.0) = sin(π x)
-//
-// The analytical solution is:
-//
-// ϕ(x, y) = y sin(π x)
-//
-// Reference: Olver PJ (2020) - page 210 - Introduction to Partial Differential Equations, Springer
-
-fn source(x: f64, y: f64) -> f64 {
-    -PI * PI * y * f64::sin(PI * x)
-}
-
-fn analytical(x: f64, y: f64) -> f64 {
-    y * f64::sin(PI * x)
-}
-
 #[test]
 fn test_2d_prob02_fdm_sps() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_02();
+
     // allocate the grid
     let (nx, ny) = (17, 17);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set(Side::Xmin, |_, _| 0.0);
-    ebcs.set(Side::Xmax, |_, _| 0.0);
-    ebcs.set(Side::Ymin, |_, _| 0.0);
-    ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs2d::new();
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve(source)?;
+    let a = fdm.solve(&source)?;
 
     // check
     fdm.for_each_coord(|m, x, y| {
@@ -95,26 +60,18 @@ fn test_2d_prob02_fdm_sps() -> Result<(), StrError> {
 
 #[test]
 fn test_2d_prob02_fdm_lmm() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_02();
+
     // allocate the grid
     let (nx, ny) = (17, 17);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set(Side::Xmin, |_, _| 0.0);
-    ebcs.set(Side::Xmax, |_, _| 0.0);
-    ebcs.set(Side::Ymin, |_, _| 0.0);
-    ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs2d::new();
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_lmm(source)?;
+    let a = fdm.solve_lmm(&source)?;
 
     // check
     fdm.for_each_coord(|m, x, y| {

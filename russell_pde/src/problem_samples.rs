@@ -1,4 +1,4 @@
-use crate::{EssentialBcs1d, NaturalBcs1d, Side};
+use crate::{EssentialBcs1d, EssentialBcs2d, NaturalBcs1d, NaturalBcs2d, Side};
 use russell_lab::math::PI;
 
 pub struct ProblemSamples;
@@ -210,5 +210,185 @@ impl ProblemSamples {
             f64::sinh(x) / d + x * x + 2.0
         });
         (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 01
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `u(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the Poisson equation:
+    ///
+    /// ```text
+    /// ∂²u     ∂²u
+    /// ———  +  ——— = s(x, y)
+    /// ∂x²     ∂y²
+    /// ```
+    ///
+    /// on a (1.0 × 1.0) square with homogeneous essential boundary conditions
+    ///
+    /// The source term is given by (for a manufactured solution):
+    ///
+    /// ```text
+    /// s(x, y) = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
+    /// ```
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// u(x, y) = x y (x - 1) (y - 1) exp(x - y)
+    /// ```
+    pub fn d2_problem_01() -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
+        let (kx, ky) = (-1.0, -1.0);
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_homogeneous();
+        let nbcs = NaturalBcs2d::new();
+        let source = Box::new(|x, y| 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y));
+        let analytical = Box::new(|x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y));
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 02
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `u(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the Poisson equation:
+    ///
+    /// ```text
+    /// ∂²u     ∂²u
+    /// ———  +  ——— = s(x, y)
+    /// ∂x²     ∂y²
+    /// ```
+    ///
+    /// on a (1.0 × 1.0) square with the following essential boundary conditions:
+    ///
+    /// * Left: u = 0
+    /// * Right: u = 0
+    /// * Bottom: u = 0
+    /// * Top: u = sin(π x)
+    ///
+    /// The source term is given by (for a manufactured solution):
+    ///
+    /// ```text
+    /// s(x, y) = -π² y sin(π x)
+    /// ```
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// u(x, y) = y sin(π x)
+    /// ```
+    pub fn d2_problem_02() -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
+        let (kx, ky) = (-1.0, -1.0);
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        ebcs.set(Side::Xmax, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
+        let nbcs = NaturalBcs2d::new();
+        let source = Box::new(|x, y| -PI * PI * y * f64::sin(PI * x));
+        let analytical = Box::new(|x, y| y * f64::sin(PI * x));
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 03
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `u(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the Poisson equation:
+    ///
+    /// ```text
+    /// ∂²u     ∂²u
+    /// ———  +  ——— = s(x, y)
+    /// ∂x²     ∂y²
+    /// ```
+    ///
+    /// on a (1.0 × 1.0) square with homogeneous essential boundary conditions
+    ///
+    /// The source term is given by (for a manufactured solution):
+    ///
+    /// ```text
+    /// s(x, y) = 14 y³ - (16 - 12 x) y² - (-42 x² + 54 x - 2) y + 4 x³ - 16 x² + 12 x
+    /// ```
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// u(x, y) = x (1 - x) y (1 - y) (1 + 2 x + 7 y)
+    /// ```
+    pub fn d2_problem_03() -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
+        let (kx, ky) = (-1.0, -1.0);
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_homogeneous();
+        let nbcs = NaturalBcs2d::new();
+        let source = Box::new(|x, y| {
+            let (xx, yy) = (x * x, y * y);
+            let (xxx, yyy) = (xx * x, yy * y);
+            14.0 * yyy - (16.0 - 12.0 * x) * yy - (-42.0 * xx + 54.0 * x - 2.0) * y + 4.0 * xxx - 16.0 * xx + 12.0 * x
+        });
+        let analytical = Box::new(|x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y));
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 }

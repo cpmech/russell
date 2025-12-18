@@ -1,48 +1,23 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, StrError};
+use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 
 const SAVE_FIGURE: bool = false;
 
-// Solve the following problem:
-//
-// ∂²ϕ   ∂²ϕ
-// ——— + ——— = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
-// ∂x²   ∂y²
-//
-// on a (1.0 × 1.0) square with the homogeneous boundary conditions.
-//
-// The analytical solution is:
-//
-// ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
-
-fn source(x: f64, y: f64) -> f64 {
-    2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y)
-}
-
-fn analytical(x: f64, y: f64) -> f64 {
-    x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y)
-}
-
 #[test]
 fn test_2d_prob01_fdm_sps() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_01();
+
     // allocate the grid
     let (nx, ny) = (9, 9);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
-
-    // homogeneous essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs2d::new();
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve(source)?;
+    let a = fdm.solve(&source)?;
 
     // check
     fdm.for_each_coord(|m, x, y| {
@@ -85,23 +60,18 @@ fn test_2d_prob01_fdm_sps() -> Result<(), StrError> {
 
 #[test]
 fn test_2d_prob01_fdm_lmm() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_01();
+
     // allocate the grid
     let (nx, ny) = (9, 9);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
-
-    // homogeneous essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs2d::new();
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_lmm(source)?;
+    let a = fdm.solve_lmm(&source)?;
 
     // check
     fdm.for_each_coord(|m, x, y| {

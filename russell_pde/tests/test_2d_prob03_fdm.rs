@@ -1,55 +1,23 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, StrError};
+use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 
 const SAVE_FIGURE: bool = false;
 
-// Solve the following problem:
-//
-// ∂²ϕ     ∂²ϕ
-// ———  +  ——— =  source(x, y)
-// ∂x²     ∂y²
-//
-// on a (1.0 × 1.0) square with homogeneous essential boundary conditions
-//
-// The source term is given by (for a manufactured solution):
-//
-// source(x, y) = 14y³ - (16 - 12x) y² - (-42x² + 54x - 2) y + 4x³ - 16x² + 12x
-//
-// The analytical solution is:
-//
-// ϕ(x, y) = x (1 - x) y (1 - y) (1 + 2x + 7y)
-
-// define the source term
-fn source(x: f64, y: f64) -> f64 {
-    let (xx, yy) = (x * x, y * y);
-    let (xxx, yyy) = (xx * x, yy * y);
-    14.0 * yyy - (16.0 - 12.0 * x) * yy - (-42.0 * xx + 54.0 * x - 2.0) * y + 4.0 * xxx - 16.0 * xx + 12.0 * x
-}
-
-fn analytical(x: f64, y: f64) -> f64 {
-    x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y)
-}
-
 #[test]
 fn test_2d_prob03_fdm_sps() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_03();
+
     // allocate the grid
     let (nx, ny) = (11, 11);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs2d::new();
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve(source)?;
+    let a = fdm.solve(&source)?;
 
     // check
     fdm.for_each_coord(|m, x, y| {
@@ -91,23 +59,18 @@ fn test_2d_prob03_fdm_sps() -> Result<(), StrError> {
 
 #[test]
 fn test_2d_prob03_fdm_lmm() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_03();
+
     // allocate the grid
     let (nx, ny) = (11, 11);
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, nx, ny)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions
-    let nbcs = NaturalBcs2d::new();
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let (kx, ky) = (-1.0, -1.0);
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_lmm(source)?;
+    let a = fdm.solve_lmm(&source)?;
 
     // check
     fdm.for_each_coord(|m, x, y| {

@@ -78,9 +78,9 @@ fn run_test(nn: usize, tol: f64) -> Result<f64, StrError> {
 
     // natural boundary conditions
     let mut nbcs = NaturalBcs2d::new();
-    nbcs.set_flux(&grid, Side::Xmin, |_, _| 0.0);
-    nbcs.set_flux(&grid, Side::Ymin, |_, _| 0.0);
-    nbcs.set_flux(&grid, Side::Ymax, |_, _| 0.0);
+    nbcs.set_flux(Side::Xmin, |_, _| 0.0);
+    nbcs.set_flux(Side::Ymin, |_, _| 0.0);
+    nbcs.set_flux(Side::Ymax, |_, _| 0.0);
 
     // allocate the Laplacian operator
     let mut spectral = SpcMap2d::new(grid, ebcs, nbcs, map).unwrap();

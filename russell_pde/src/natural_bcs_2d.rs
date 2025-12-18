@@ -103,7 +103,7 @@ impl<'a> NaturalBcs2d<'a> {
     ///    └─────────────────┘
     ///             ↓
     /// ```
-    pub fn set_flux(&mut self, grid: &Grid2d, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
+    pub fn set_flux(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
         self.sides.insert(side);

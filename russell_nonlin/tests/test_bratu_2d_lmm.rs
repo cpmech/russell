@@ -2,7 +2,7 @@ use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Status, Stop, System};
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
@@ -117,8 +117,11 @@ fn run_test(
     let mut ebcs = EssentialBcs2d::new();
     ebcs.set_homogeneous();
 
+    // natural boundary conditions (NBCs) handler
+    let nbcs = NaturalBcs2d::new();
+
     // allocate the Laplacian operator
-    let fdm = Fdm2d::new(grid, ebcs, -1.0, -1.0).unwrap();
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0).unwrap();
 
     // auxiliary variables
     let (neq, _, ndim) = fdm.get_dims_lmm();

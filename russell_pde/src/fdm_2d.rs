@@ -1,4 +1,4 @@
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, StrError};
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, StrError};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
@@ -202,6 +202,9 @@ pub struct Fdm2d<'a> {
     /// Holds a reference to the essential boundary conditions handler
     ebcs: EssentialBcs2d<'a>,
 
+    /// Holds the natural boundary conditions handler
+    nbcs: NaturalBcs2d<'a>,
+
     /// Tool to handle the equation numbers such as unknowns prescribed
     equations: EquationHandler,
 
@@ -209,6 +212,12 @@ pub struct Fdm2d<'a> {
     ///
     /// These coefficients are applied over the "bandwidth" of the coefficient matrix
     molecule: Vec<f64>,
+
+    /// Grid spacing (uniform grid)
+    dx: f64,
+
+    /// Grid spacing (uniform grid)
+    dy: f64,
 }
 
 impl<'a> Fdm2d<'a> {
@@ -220,15 +229,22 @@ impl<'a> Fdm2d<'a> {
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
-    pub fn new(grid: Grid2d, mut ebcs: EssentialBcs2d<'a>, kx: f64, ky: f64) -> Result<Self, StrError> {
+    pub fn new(
+        grid: Grid2d,
+        mut ebcs: EssentialBcs2d<'a>,
+        mut nbcs: NaturalBcs2d<'a>,
+        kx: f64,
+        ky: f64,
+    ) -> Result<Self, StrError> {
         // check grid
         let (dx, dy) = match grid.get_dx_dy() {
             Some((dx, dy)) => (dx, dy),
             None => return Err("grid must have uniform spacing"),
         };
 
-        // build EBC data
+        // build the boundary conditions data
         ebcs.build(&grid);
+        nbcs.build(&grid);
 
         // allocate equations handler
         let neq = grid.size();
@@ -246,8 +262,11 @@ impl<'a> Fdm2d<'a> {
         Ok(Fdm2d {
             grid,
             ebcs,
+            nbcs,
             equations,
             molecule: vec![alpha, beta, beta, gamma, gamma],
+            dx,
+            dy,
         })
     }
 
@@ -468,6 +487,17 @@ impl<'a> Fdm2d<'a> {
             let (x, y) = self.grid.coord(m);
             f_bar[iu] = source(x, y);
         });
+        for m in self.nbcs.get_nodes() {
+            let iu = self.equations.iu(m);
+            let (x, y) = self.grid.coord(m);
+            let q_bar = self.nbcs.get_value(m, x, y);
+            let den = if self.grid.is_xmin(m) || self.grid.is_xmax(m) {
+                self.dx
+            } else {
+                self.dy
+            };
+            f_bar[iu] += -2.0 * q_bar / den;
+        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);
@@ -527,6 +557,16 @@ impl<'a> Fdm2d<'a> {
         self.grid.for_each_coord(|m, x, y| {
             ff[m] = source(x, y);
         });
+        for m in self.nbcs.get_nodes() {
+            let (x, y) = self.grid.coord(m);
+            let q_bar = self.nbcs.get_value(m, x, y);
+            let den = if self.grid.is_xmin(m) || self.grid.is_xmax(m) {
+                self.dx
+            } else {
+                self.dy
+            };
+            ff[m] += -2.0 * q_bar / den;
+        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);
@@ -634,7 +674,7 @@ impl<'a> Fdm2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::Fdm2d;
-    use crate::{EssentialBcs2d, Grid2d, Side};
+    use crate::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side};
     use russell_lab::Matrix;
     use russell_sparse::Sym;
 
@@ -642,7 +682,8 @@ mod tests {
     fn new_captures_errors() {
         let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
         let ebcs = EssentialBcs2d::new();
-        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0);
+        let nbcs = NaturalBcs2d::new();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
@@ -654,8 +695,9 @@ mod tests {
         // dx = 1.0, dy = 1.0
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
         let ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
 
-        let fdm = Fdm2d::new(grid, ebcs, 100.0, 300.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
         assert_eq!(&fdm.molecule, &[800.0, -100.0, -100.0, -300.0, -300.0]);
 
         assert_eq!(fdm.get_dims_sps(), (12, 0));
@@ -676,8 +718,9 @@ mod tests {
         let lef = |_, _| LEF;
         assert_eq!(lef(0.0, 0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0  4  8
+        let nbcs = NaturalBcs2d::new();
 
-        let fdm = Fdm2d::new(grid, ebcs, 100.0, 300.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -835,8 +878,9 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous();
+        let nbcs = NaturalBcs2d::new();
 
-        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
@@ -1021,8 +1065,9 @@ mod tests {
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_periodic(true, true);
+        let nbcs = NaturalBcs2d::new();
 
-        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         assert!(cc_mat.is_none());
@@ -1097,8 +1142,9 @@ mod tests {
         ebcs.set(Side::Xmax, |x, y| x + y);
         ebcs.set(Side::Ymin, |x, y| x + y);
         ebcs.set(Side::Ymax, |x, y| x + y);
+        let nbcs = NaturalBcs2d::new();
 
-        let fdm = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
 
         let nu = 2;
         let np = 10;
@@ -1197,7 +1243,8 @@ mod tests {
         //    0  1  2  3  4  5  6  7  8
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
         let ebcs = EssentialBcs2d::new();
-        let lap = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let nbcs = NaturalBcs2d::new();
+        let lap = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
         let mut row_0 = Vec::new();
         let mut row_4 = Vec::new();
         let mut row_8 = Vec::new();
@@ -1214,7 +1261,8 @@ mod tests {
         let (nx, ny) = (2, 3);
         let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
         let ebcs = EssentialBcs2d::new();
-        let lap = Fdm2d::new(grid, ebcs, 1.0, 1.0).unwrap();
+        let nbcs = NaturalBcs2d::new();
+        let lap = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
         let mut xx = Matrix::new(ny, nx);
         let mut yy = Matrix::new(ny, nx);
         lap.for_each_coord(|m, x, y| {

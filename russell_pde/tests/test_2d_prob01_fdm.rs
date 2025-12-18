@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::approx_eq;
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, StrError};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, StrError};
 
 const SAVE_FIGURE: bool = false;
 
@@ -34,9 +34,12 @@ fn test_2d_prob01_fdm_sps() -> Result<(), StrError> {
     let mut ebcs = EssentialBcs2d::new();
     ebcs.set_homogeneous();
 
+    // natural boundary conditions
+    let nbcs = NaturalBcs2d::new();
+
     // allocate the solver
     let (kx, ky) = (-1.0, -1.0);
-    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
     let a = fdm.solve(source)?;
@@ -90,9 +93,12 @@ fn test_2d_prob01_fdm_lmm() -> Result<(), StrError> {
     let mut ebcs = EssentialBcs2d::new();
     ebcs.set_homogeneous();
 
+    // natural boundary conditions
+    let nbcs = NaturalBcs2d::new();
+
     // allocate the solver
     let (kx, ky) = (-1.0, -1.0);
-    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
     let a = fdm.solve_lmm(source)?;

@@ -1,6 +1,6 @@
 use plotpy::{Contour, Plot};
 use russell_lab::{approx_eq, math::PI};
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, Side, StrError};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, Side, StrError};
 
 const SAVE_FIGURE: bool = false;
 
@@ -44,9 +44,12 @@ fn test_2d_prob02_fdm_sps() -> Result<(), StrError> {
     ebcs.set(Side::Ymin, |_, _| 0.0);
     ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
 
+    // natural boundary conditions
+    let nbcs = NaturalBcs2d::new();
+
     // allocate the solver
     let (kx, ky) = (-1.0, -1.0);
-    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
     let a = fdm.solve(source)?;
@@ -103,9 +106,12 @@ fn test_2d_prob02_fdm_lmm() -> Result<(), StrError> {
     ebcs.set(Side::Ymin, |_, _| 0.0);
     ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x));
 
+    // natural boundary conditions
+    let nbcs = NaturalBcs2d::new();
+
     // allocate the solver
     let (kx, ky) = (-1.0, -1.0);
-    let fdm = Fdm2d::new(grid, ebcs, kx, ky)?;
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
     let a = fdm.solve_lmm(source)?;

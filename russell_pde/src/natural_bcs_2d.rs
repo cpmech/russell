@@ -134,6 +134,12 @@ impl<'a> NaturalBcs2d<'a> {
         nodes
     }
 
+    /// Checks if a node has a NBC value
+    pub(crate) fn has_value(&self, m: usize) -> bool {
+        assert!(self.ready, "build must be called first");
+        self.node_to_function.contains_key(&m)
+    }
+
     /// Returns the NBC value
     ///
     /// # Panics

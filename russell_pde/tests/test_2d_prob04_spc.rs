@@ -1,6 +1,6 @@
 use plotpy::{Contour, Curve, Plot, Surface};
 use russell_lab::approx_eq;
-use russell_pde::{ProblemSamples, Spc2d, StrError};
+use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
 
 const SAVE_FIGURE: bool = false;
 
@@ -102,5 +102,37 @@ fn test_2d_prob04_spc() -> Result<(), StrError> {
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_b)?;
     }
+    Ok(())
+}
+
+#[test]
+fn test_2d_prob04_spc_map() -> Result<(), StrError> {
+    // parameters
+    let (nn, tol) = (8, 1e-4);
+    // let (nn, tol) = (24, 1e-5);
+
+    // get the problem data
+    let (_, _, _, _, k, _, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_04(101);
+
+    // transfinite map
+    let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+
+    // allocate the solver
+    let (nr, ns) = (nn + 1, nn + 1);
+    let mut spc = SpcMap2d::new(nr, ns, ebcs, nbcs, k, map)?;
+
+    // solve the problem
+    let a = spc.solve(&source)?;
+
+    // check
+    let mut err_max = 0.0;
+    spc.for_each_coord(|m, x, y| {
+        let err = f64::abs(a[m] - analytical(x, y));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x, y), tol);
+    });
+    println!("N = {}, max(err) = {:>10.5e}", nn, err_max);
     Ok(())
 }

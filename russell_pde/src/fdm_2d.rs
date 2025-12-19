@@ -490,18 +490,17 @@ impl<'a> Fdm2d<'a> {
             f_bar[iu] = source(x, y);
         });
         for m in self.nbcs.get_nodes() {
-            if self.equations.is_prescribed(m) {
-                continue;
+            if !self.equations.is_prescribed(m) {
+                let iu = self.equations.iu(m);
+                let (x, y) = self.grid.coord(m);
+                let q_bar = self.nbcs.get_value(m, x, y);
+                let den = if self.grid.is_xmin(m) || self.grid.is_xmax(m) {
+                    self.dx
+                } else {
+                    self.dy
+                };
+                f_bar[iu] += -2.0 * q_bar / den;
             }
-            let iu = self.equations.iu(m);
-            let (x, y) = self.grid.coord(m);
-            let q_bar = self.nbcs.get_value(m, x, y);
-            let den = if self.grid.is_xmin(m) || self.grid.is_xmax(m) {
-                self.dx
-            } else {
-                self.dy
-            };
-            f_bar[iu] += -2.0 * q_bar / den;
         }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);

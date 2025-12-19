@@ -131,6 +131,7 @@
     "nroot",
     "nstage",
     "nstep",
+    "nsum",
     "numpy",
     "NURBS",
     "odyad",

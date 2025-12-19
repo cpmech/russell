@@ -1,36 +1,52 @@
-#![allow(unused)]
-
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, StrError};
-use russell_lab::{InterpLagrange, Vector};
+use crate::util::delta;
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, NaturalBcs2d, StrError, Transfinite2d};
+use russell_lab::{vec_copy_scaled, vec_inner, vec_norm, InterpLagrange, Norm, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
-/// Implements the Spectral Collocation method (SPC) in 2D
+/// Implements the Spectral Collocation method (SPC) in 2D with Transfinite Mapping for curvilinear coordinates
 ///
 /// The SPC can be used to solve the following problem:
 ///
 /// ```text
-///     ∂²ϕ      ∂²ϕ
-/// -kx ——— - ky ——— = source(x, y)
-///     ∂x²      ∂y²
+/// -k ∇²ϕ = source(x,y)
 /// ```
 ///
-/// with essential (EBC) and natural (NBC) boundary conditions.
-///
-/// The spectral collocation method approximates the Laplacian at the grid points (xᵢ, yⱼ) using:
+/// where
 ///
 /// ```text
-///               ∂²ϕ│             ∂²ϕ│
-/// (∇²ϕ)ᵢⱼ = -kx ———│        - ky ———│        = ∑ₖ ∑ₗ (mkx D⁽²⁾ᵢₖ δⱼₗ + mky δᵢₖ D̄⁽²⁾ⱼₗ) ϕₖₗ
-///               ∂x²│(xᵢ,xⱼ)      ∂y²│(xᵢ,xⱼ)
+///       ∂²ϕ       ∂²ϕ        ∂²ϕ          ∂ϕ      ∂ϕ
+/// ∇²ϕ = ——— g¹¹ + ——— g²² + ————— 2 g¹² - —— L¹ - —— L²
+///       ∂r²       ∂s²       ∂r ∂s         ∂r      ∂r
 ///
-/// mkx = -kx, mky = -ky
+/// L¹ = Γ¹₁₁ g¹¹ + Γ¹₂₂ g²² + 2 Γ¹₁₂ g¹²
+/// L² = Γ²₁₁ g¹¹ + Γ²₂₂ g²² + 2 Γ²₁₂ g¹²
 /// ```
 ///
-/// where ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
-/// values are "sequentially" mapped onto to the vector `a` using the following formula:
+/// where `gᵢⱼ` are the covariant metric coefficients and `Γᵏᵢⱼ` are the Christoffel
+/// symbols of the second kind.
+///
+/// The reference coordinates (r, s) in [-1, 1] × [-1, 1] are mapped onto the physical
+/// coordinates (x, y) using Transfinite Mapping.
+///
+/// The spectral collocation method approximates the Laplacian at the grid points
+/// (xᵢ, yⱼ) using:
 ///
 /// ```text
-/// ϕᵢⱼ → aₘ   with   m = i + j nx
+/// (∇²ϕ)ᵢⱼ = ∑ₖ ∑ₗ (
+///       D⁽²⁾ᵢₖ δⱼₗ g¹¹
+///     + δᵢₖ D̄⁽²⁾ⱼₗ g²²
+///     + Dᵢₖ D̄ⱼₗ 2 g¹²
+///     - Dᵢₖ δⱼₗ L¹
+///     - δᵢₖ D̄ⱼₗ L²
+/// ) ϕₖₗ
+/// ```
+///
+/// where ϕᵢⱼ are the discrete counterpart of ϕ(x(r,s), y(r,s)) over the (nr, ns) grid.
+/// However, these values are "sequentially" mapped onto to the vector `a` using the
+/// following formula:
+///
+/// ```text
+/// ϕᵢⱼ → aₘ   with   m = i + j nr
 /// ```
 ///
 /// thus, we can write the discrete Laplacian operator as:
@@ -38,8 +54,8 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// ```text
 /// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
 /// ```
-pub struct Spc2d<'a> {
-    /// Defines the 2D grid
+pub struct SpcMap2d<'a> {
+    /// Defines the 2D grid on the reference domain [-1, 1] × [-1, 1]
     grid: Grid2d,
 
     /// Holds a reference to the essential boundary conditions handler
@@ -48,53 +64,65 @@ pub struct Spc2d<'a> {
     /// Holds a reference to the natural boundary conditions handler
     nbcs: NaturalBcs2d<'a>,
 
-    /// Negative of the diffusion coefficient along x
+    /// Negative of the diffusion coefficient
     ///
-    /// mkx = -kx
-    mkx: f64,
-
-    /// Negative of the diffusion coefficient along y
-    ///
-    /// mky = -ky
-    mky: f64,
+    /// mk = -k
+    mk: f64,
 
     /// Tool to handle the equation numbers such as unknowns prescribed
     equations: EquationHandler,
 
-    /// Polynomial interpolator along x
-    interp_x: InterpLagrange,
+    /// Polynomial interpolator along r
+    interp_r: InterpLagrange,
 
-    /// Polynomial interpolator along y
-    interp_y: InterpLagrange,
+    /// Polynomial interpolator along s
+    interp_s: InterpLagrange,
+
+    /// Base vectors and metrics related to the curvilinear coordinates
+    metrics: Metrics,
+
+    /// Transfinite mapping from reference to physical domain (r, s) → (x, y)
+    map: Transfinite2d,
+
+    x: Vector,
+    dx_dr: Vector,
+    dx_ds: Vector,
+    d2x_dr2: Vector,
+    d2x_ds2: Vector,
+    d2x_drs: Vector,
 }
 
-impl<'a> Spc2d<'a> {
+impl<'a> SpcMap2d<'a> {
     /// Allocates a new instance
+    ///
+    /// **Important**:
+    ///
+    /// 1. All sides must have essential BCs, i.e., Neumann BCs are **not** allowed.
     ///
     /// # Arguments
     ///
-    /// * `nx` -- number of grid points along x (for the Chebyshev-Gauss-Lobatto grid)
-    /// * `ny` -- number of grid points along y (for the Chebyshev-Gauss-Lobatto grid)
+    /// * `nr` -- number of grid points along r (for the Chebyshev-Gauss-Lobatto grid)
+    /// * `ns` -- number of grid points along s (for the Chebyshev-Gauss-Lobatto grid)
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `nbcs` -- the natural boundary conditions handler
-    /// * `kx` -- the diffusion coefficient along x
-    /// * `ky` -- the diffusion coefficient along y
+    /// * `k` -- the diffusion coefficient
+    /// * `map` -- the transfinite mapping from reference to physical domain
     pub fn new(
-        nx: usize,
-        ny: usize,
+        nr: usize,
+        ns: usize,
         mut ebcs: EssentialBcs2d<'a>,
         mut nbcs: NaturalBcs2d<'a>,
-        kx: f64,
-        ky: f64,
+        k: f64,
+        map: Transfinite2d,
     ) -> Result<Self, StrError> {
         // allocate the Chebyshev-Gauss-Lobatto grid
-        let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny)?;
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(nr, ns)?;
 
         // build the boundary conditions data
         ebcs.build(&grid);
         nbcs.build(&grid);
 
-        // check that the EBCs are not periodic
+        // check that the EBCs is not periodic
         if ebcs.is_periodic_along_x() || ebcs.is_periodic_along_y() {
             return Err("essential BCs cannot be periodic");
         }
@@ -105,32 +133,42 @@ impl<'a> Spc2d<'a> {
         equations.recompute(&ebcs.get_nodes());
 
         // polynomial degrees
-        let nn_x = grid.nx() - 1;
-        let nn_y = grid.ny() - 1;
+        let nn_r = grid.nx() - 1;
+        let nn_s = grid.ny() - 1;
 
         // interpolators
-        let mut interp_x = InterpLagrange::new(nn_x, None)?;
-        let mut interp_y = InterpLagrange::new(nn_y, None)?;
-        interp_x.calc_dd1_matrix();
-        interp_y.calc_dd1_matrix();
-        interp_x.calc_dd2_matrix();
-        interp_y.calc_dd2_matrix();
+        let mut interp_r = InterpLagrange::new(nn_r, None)?;
+        let mut interp_s = InterpLagrange::new(nn_s, None)?;
+        interp_r.calc_dd1_matrix();
+        interp_s.calc_dd1_matrix();
+        interp_r.calc_dd2_matrix();
+        interp_s.calc_dd2_matrix();
+
+        // metrics
+        let metrics = Metrics::new(2, false);
 
         // done
-        Ok(Spc2d {
+        Ok(SpcMap2d {
             grid,
             ebcs,
             nbcs,
-            mkx: -kx,
-            mky: -ky,
+            mk: -k,
             equations,
-            interp_x,
-            interp_y,
+            interp_r,
+            interp_s,
+            metrics,
+            map,
+            x: Vector::new(2),
+            dx_dr: Vector::new(2),
+            dx_ds: Vector::new(2),
+            d2x_dr2: Vector::new(2),
+            d2x_ds2: Vector::new(2),
+            d2x_drs: Vector::new(2),
         })
     }
 
     /// Solves problem
-    pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
+    pub fn solve<F>(&mut self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
@@ -167,6 +205,11 @@ impl<'a> Spc2d<'a> {
         &self.equations
     }
 
+    /// Access the transfinite mapping
+    pub fn get_map(&mut self) -> &mut Transfinite2d {
+        &mut self.map
+    }
+
     /// Returns the coefficient matrices
     ///
     /// Returns `(kk_bar, kk_check)` from:
@@ -179,73 +222,64 @@ impl<'a> Spc2d<'a> {
     /// └       ┘ └   ┘   └   ┘
     ///     K       a       f
     /// ```
-    pub fn get_matrices(&self) -> (CooMatrix, CooMatrix) {
+    pub fn get_matrices(&mut self) -> (CooMatrix, CooMatrix) {
         // allocate matrices
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let nx = self.grid.nx();
-        let ny = self.grid.ny();
-        let nnz_wcs = nx * nx * ny * ny; // worst-case scenario
+        let nr = self.grid.nx();
+        let ns = self.grid.ny();
+        let nnz_wcs = nr * nr * ns * ns; // worst-case scenario
         let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs, Sym::No).unwrap();
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
-        // spectral derivative matrices
-        let dd1x = self.interp_x.get_dd1().unwrap();
-        let dd1y = self.interp_y.get_dd1().unwrap();
-        let dd2x = self.interp_x.get_dd2().unwrap();
-        let dd2y = self.interp_y.get_dd2().unwrap();
-
-        // scaling coefficients due to domain mapping (from [-1,1]×[-1,1] to [xmin,xmax]×[ymin,ymax])
-        let dr_dx = 2.0 / (self.grid.xmax() - self.grid.xmin());
-        let ds_dy = 2.0 / (self.grid.ymax() - self.grid.ymin());
-        let cx = dr_dx * dr_dx;
-        let cy = ds_dy * ds_dy;
-
-        // add terms to the coefficient matrix
-        for i in 0..nx {
-            for j in 0..ny {
-                let m = i + j * nx;
+        // add all terms to the coefficient matrix
+        for i in 0..nr {
+            for j in 0..ns {
+                let m = i + j * nr;
                 if !self.equations.is_prescribed(m) {
-                    let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                    self.calculate_metrics(m);
+                    let g11 = self.metrics.gg_mat.get(0, 0);
+                    let g22 = self.metrics.gg_mat.get(1, 1);
+                    let g12 = self.metrics.gg_mat.get(0, 1);
+                    let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
+                    let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
+                    let has_nbc = if i == 0 || i == nr - 1 || j == 0 || j == ns - 1 {
                         self.nbcs.has_value(m)
                     } else {
                         false
                     };
                     if has_nbc {
-                        let (unx, uny) = self.grid.outward_unit_normal(m);
-                        if uny == 0.0 {
-                            for k in 0..nx {
-                                for l in 0..ny {
-                                    let n = k + l * nx;
-                                    if j == l {
-                                        let val = unx * self.mkx * dd1x.get(i, k) * cx;
-                                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
-                                    }
-                                }
-                            }
+                        let (ex, ey) = self.grid.outward_unit_normal(m);
+                        let mut un = Vector::new(2);
+                        if ey == 0.0 {
+                            vec_copy_scaled(&mut un, ex, &self.metrics.g_ctr[0]).unwrap();
                         } else {
-                            for k in 0..nx {
-                                for l in 0..ny {
-                                    let n = k + l * nx;
-                                    if i == k {
-                                        let val = uny * self.mky * dd1y.get(j, l) * cy;
-                                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
-                                    }
-                                }
+                            vec_copy_scaled(&mut un, ey, &self.metrics.g_ctr[1]).unwrap();
+                        }
+                        let norm_u = vec_norm(&un, Norm::Euc);
+                        un[0] /= norm_u;
+                        un[1] /= norm_u;
+                        let alpha = vec_inner(&un, &self.metrics.g_ctr[0]);
+                        let beta = vec_inner(&un, &self.metrics.g_ctr[1]);
+                        // println!( "m = {}, N={:?}, alpha = {:.8}, beta = {:.8}", m, un.as_data(), alpha, beta);
+                        for k in 0..nr {
+                            for l in 0..ns {
+                                let n = k + l * nr;
+                                let val = self.d1r(i, k) * delta(j, l) * alpha + delta(i, k) * self.d1s(j, l) * beta;
+                                self.put_val(&mut kk_bar, &mut kk_check, m, n, self.mk * val);
                             }
                         }
                     } else {
-                        for k in 0..nx {
-                            for l in 0..ny {
-                                let n = k + l * nx;
-                                let mut val = 0.0;
-                                if j == l {
-                                    val += self.mkx * dd2x.get(i, k) * cx;
-                                }
-                                if i == k {
-                                    val += self.mky * dd2y.get(j, l) * cy;
-                                }
-                                self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                        for k in 0..nr {
+                            for l in 0..ns {
+                                let n = k + l * nr;
+                                let val = 0.0
+                                    + self.d2r(i, k) * delta(j, l) * g11
+                                    + delta(i, k) * self.d2s(j, l) * g22
+                                    + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                                    - self.d1r(i, k) * delta(j, l) * ll1
+                                    - delta(i, k) * self.d1s(j, l) * ll2;
+                                self.put_val(&mut kk_bar, &mut kk_check, m, n, self.mk * val);
                             }
                         }
                     }
@@ -258,7 +292,7 @@ impl<'a> Spc2d<'a> {
     }
 
     /// Puts the value into the correct position of the coefficient matrix
-    fn put_val(&self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
+    fn put_val(&mut self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
         // unknown row
         let row = self.equations.iu(m);
         if !self.equations.is_prescribed(n) {
@@ -286,7 +320,7 @@ impl<'a> Spc2d<'a> {
     /// ```
     ///
     /// The `source` function calculates f(x, y).
-    pub fn get_vectors<F>(&self, source: F) -> (Vector, Vector, Vector)
+    pub fn get_vectors<F>(&mut self, source: F) -> (Vector, Vector, Vector)
     where
         F: Fn(f64, f64) -> f64,
     {
@@ -297,8 +331,9 @@ impl<'a> Spc2d<'a> {
         let mut f_bar = Vector::new(nu);
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
-            let (x, y) = self.grid.coord(m);
-            f_bar[iu] = source(x, y);
+            let (r, s) = self.grid.coord(m);
+            self.map.point(&mut self.x, r, s);
+            f_bar[iu] = source(self.x[0], self.x[1]);
         });
         for m in self.nbcs.get_nodes() {
             if !self.equations.is_prescribed(m) {
@@ -310,8 +345,9 @@ impl<'a> Spc2d<'a> {
         }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
-            let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_value(m, x, y);
+            let (r, s) = self.grid.coord(m);
+            self.map.point(&mut self.x, r, s);
+            let val = self.ebcs.get_value(m, self.x[0], self.x[1]);
             a_check[ip] = val;
         });
         (a_bar, a_check, f_bar)
@@ -357,13 +393,65 @@ impl<'a> Spc2d<'a> {
     /// i = m % nx
     /// j = m / nx
     /// ```
-    pub fn for_each_coord<F>(&self, mut callback: F)
+    pub fn for_each_coord<F>(&mut self, mut callback: F)
     where
         F: FnMut(usize, f64, f64),
     {
-        self.grid.for_each_coord(|m, x, y| {
-            callback(m, x, y);
+        self.grid.for_each_coord(|m, r, s| {
+            // map coordinates
+            self.map.point(&mut self.x, r, s);
+            callback(m, self.x[0], self.x[1]);
         });
+    }
+
+    /// Maps the coordinates and calculates the metrics at point m
+    fn calculate_metrics(&mut self, m: usize) {
+        // map coordinates
+        let (r, s) = self.grid.coord(m);
+        self.map.point_and_derivs(
+            &mut self.x,
+            &mut self.dx_dr,
+            &mut self.dx_ds,
+            Some(&mut self.d2x_dr2),
+            Some(&mut self.d2x_ds2),
+            Some(&mut self.d2x_drs),
+            r,
+            s,
+        );
+        // calculate metrics
+        self.metrics
+            .calculate_2d(
+                &self.dx_dr,
+                &self.dx_ds,
+                Some(&self.d2x_dr2),
+                Some(&self.d2x_ds2),
+                Some(&self.d2x_drs),
+            )
+            .unwrap();
+    }
+
+    /// Returns the (i,j) component of the first derivative with respect to r
+    #[inline]
+    fn d1r(&self, i: usize, j: usize) -> f64 {
+        self.interp_r.get_dd1().unwrap().get(i, j)
+    }
+
+    /// Returns the (i,j) component of the first derivative with respect to s
+    #[inline]
+    fn d1s(&self, i: usize, j: usize) -> f64 {
+        self.interp_s.get_dd1().unwrap().get(i, j)
+    }
+
+    /// Returns the (i,j) component of the second derivative with respect to r
+    #[inline]
+    fn d2r(&self, i: usize, j: usize) -> f64 {
+        self.interp_r.get_dd2().unwrap().get(i, j)
+    }
+
+    /// Returns the (i,j) component of the second derivative with respect to s
+    #[inline]
+    fn d2s(&self, i: usize, j: usize) -> f64 {
+        self.interp_s.get_dd2().unwrap().get(i, j)
     }
 }
 
@@ -371,17 +459,18 @@ impl<'a> Spc2d<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::Spc2d;
-    use crate::{EssentialBcs2d, NaturalBcs2d};
+    use super::SpcMap2d;
+    use crate::{EssentialBcs2d, NaturalBcs2d, TransfiniteSamples};
     use russell_lab::mat_approx_eq;
 
     #[test]
     fn get_matrices_works_1() {
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
-        let spec = Spc2d::new(5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk_bar, kk_check) = spec.get_matrices();
+        ebcs.set_homogeneous();
+        let mut spectral = SpcMap2d::new(5, 5, ebcs, nbcs, 1.0, map).unwrap();
+        let (kk_bar, kk_check) = spectral.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 
@@ -398,7 +487,7 @@ mod tests {
             [  ___, 2.0,   ___,  ___, -6.0,  ___, -4.0, 20.0, -4.0],
             [  ___, ___,   2.0,  ___,  ___, -6.0,  2.0, -6.0, 28.0],
         ];
-        mat_approx_eq(&kk_bar_dense, correct_kk_bar, 1e-14);
+        mat_approx_eq(&kk_bar_dense, correct_kk_bar, 1e-13);
 
         #[rustfmt::skip]
         let correct_kk_check = &[

@@ -541,6 +541,41 @@ impl Grid2d {
         self.coords[m]
     }
 
+    /// Returns the outward unit normal at the boundary
+    ///
+    /// Returns `(unx, uny)`
+    ///
+    /// ```text
+    ///             (0, 1)
+    ///                ↑
+    ///           ┌─────────┐
+    ///           │         │
+    /// (-1, 0) ← │         │ → (1, 0)
+    ///           │         │
+    ///           └─────────┘
+    ///                ↓
+    ///             (0, -1)
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// A panic occurs if `m` is not on any boundary
+    pub fn outward_unit_normal(&self, m: usize) -> (f64, f64) {
+        let i = m % self.nx;
+        let j = m / self.nx;
+        if i == 0 {
+            (-1.0, 0.0)
+        } else if i == self.nx - 1 {
+            (1.0, 0.0)
+        } else if j == 0 {
+            (0.0, -1.0)
+        } else if j == self.ny - 1 {
+            (0.0, 1.0)
+        } else {
+            panic!("node {} is not on any boundary", m);
+        }
+    }
+
     /// Iterates over all grid nodes with their coordinates
     ///
     /// The provided closure is called for each node with arguments `(m, x, y)`

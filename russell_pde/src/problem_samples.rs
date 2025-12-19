@@ -419,7 +419,7 @@ impl ProblemSamples {
     /// Solve the equation:
     ///
     /// ```text
-    /// ∇²ϕ = -1
+    /// -∇²ϕ = 1
     /// ```
     ///
     /// on a [-1,1]×[-1,1] square with homogeneous boundary conditions.
@@ -455,11 +455,11 @@ impl ProblemSamples {
         Box<dyn Fn(f64, f64) -> f64>,
     ) {
         let (xmin, xmax, ymin, ymax) = (-1.0, 1.0, -1.0, 1.0);
-        let (kx, ky) = (-1.0, -1.0);
+        let (kx, ky) = (1.0, 1.0);
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
-        let source = Box::new(|_, _| -1.0);
+        let source = Box::new(|_, _| 1.0);
         let analytical = Box::new(move |x, y| {
             let mut sum = 0.0;
             for k in (1..ana_nsum).step_by(2) {

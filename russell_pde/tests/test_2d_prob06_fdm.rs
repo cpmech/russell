@@ -10,8 +10,9 @@ fn test_2d_prob06_fdm() -> Result<(), StrError> {
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_06();
 
     // allocate the grid
-    let nx = 8;
-    let ny = 8;
+    let n = 8;
+    let nx = n;
+    let ny = n;
     let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver

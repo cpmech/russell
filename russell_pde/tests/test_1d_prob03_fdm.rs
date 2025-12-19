@@ -17,7 +17,7 @@ fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_ext(beta, phi_inf, source)?;
+    let a = fdm.solve_hz(beta, phi_inf, source)?;
 
     // analytical solution
     fdm.for_each_coord(|m, x| {
@@ -64,7 +64,7 @@ fn test_1d_prob03_fdm_lmm() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_ext_lmm(beta, phi_inf, source)?;
+    let a = fdm.solve_hz_lmm(beta, phi_inf, source)?;
 
     // analytical solution
     fdm.for_each_coord(|m, x| {

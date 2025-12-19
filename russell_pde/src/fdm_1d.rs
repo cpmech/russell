@@ -13,6 +13,8 @@ const INI_X: usize = 0;
 /// The FDM can be used to solve the following problems:
 ///
 /// ```text
+/// Poisson:
+///
 ///     ∂²ϕ
 /// -kx ——— = source(x)
 ///     ∂x²
@@ -21,6 +23,8 @@ const INI_X: usize = 0;
 /// or
 ///
 /// ```text
+/// Helmholtz:
+///
 ///     ∂²ϕ
 /// -kx ——— + (ϕ - ϕ∞) β = source(x)
 ///     ∂x²
@@ -301,7 +305,7 @@ impl<'a> Fdm1d<'a> {
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
-    /// Solves the extended Poisson equation in 1D
+    /// Solves the Helmholtz (HZ) equation in 1D
     ///
     /// Returns `a`, the solution vector.
     ///
@@ -312,7 +316,7 @@ impl<'a> Fdm1d<'a> {
     /// ```
     ///
     /// Note: This function employs the system partitioning strategy (SPS).
-    pub fn solve_ext<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
+    pub fn solve_hz<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {
@@ -340,7 +344,7 @@ impl<'a> Fdm1d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the extended Poisson equation in 1D (Lagrange multipliers method)
+    /// Solves the Helmholtz equation in 1D (Lagrange multipliers method)
     ///
     /// Returns `a`, the solution vector.
     ///
@@ -349,7 +353,7 @@ impl<'a> Fdm1d<'a> {
     /// -kx ——— + (ϕ - ϕ∞) β = source(x)
     ///     ∂x²
     /// ```
-    pub fn solve_ext_lmm<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
+    pub fn solve_hz_lmm<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {

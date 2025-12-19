@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;

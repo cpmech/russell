@@ -218,6 +218,67 @@ impl ProblemSamples {
         (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)
     }
 
+    /// 1D Problem # 04
+    ///
+    /// This is Program 33, page 138, of Trefethen's book
+    ///
+    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin` and `xmax` are the domain limits
+    /// * `kx` is the diffusion coefficient
+    /// * `source` is the source function `f(x)`
+    /// * `analytical` is the analytical solution function `ϕ(x)`
+    /// * `ebcs` are the essential boundary conditions
+    /// * `nbcs` are the natural boundary conditions
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    /// ∂²ϕ
+    /// ——— = exp(4x)
+    /// ∂x²
+    /// ```
+    ///
+    /// on a [-1,1] interval with the following boundary conditions:
+    ///
+    /// * Xmin(left):  ∂ϕ/∂x = 0  thus  wₙ(-1) = 0
+    /// * Xmax(right): ϕ(1) = 0
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    ///        exp(4x) - 4 exp(-4) (x - 1) - exp(4)
+    /// ϕ(x) = ————————————————————————————————————
+    ///                         16
+    /// ```
+    ///
+    /// # Reference
+    ///
+    /// * Trefethen LN (2000) - Spectral Methods in MATLAB, SIAM
+    pub fn d1_problem_04<'a>() -> (
+        f64,
+        f64,
+        f64,
+        EssentialBcs1d<'a>,
+        NaturalBcs1d<'a>,
+        Box<dyn Fn(f64) -> f64>,
+        Box<dyn Fn(f64) -> f64>,
+    ) {
+        let xmin = -1.0;
+        let xmax = 1.0;
+        let kx = -1.0;
+        let mut ebcs = EssentialBcs1d::new();
+        ebcs.set(Side::Xmax, |_| 0.0);
+        let mut nbcs = NaturalBcs1d::new();
+        nbcs.set_flux(Side::Xmin, |_| 0.0);
+        let source = Box::new(|x: f64| f64::exp(4.0 * x));
+        let analytical =
+            Box::new(|x: f64| (f64::exp(4.0 * x) - 4.0 * f64::exp(-4.0) * (x - 1.0) - f64::exp(4.0)) / 16.0);
+        (xmin, xmax, kx, ebcs, nbcs, source, analytical)
+    }
+
     /// 2D Problem # 01
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, StrError};
 use russell_lab::{InterpLagrange, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};

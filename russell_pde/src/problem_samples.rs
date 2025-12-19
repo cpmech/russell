@@ -611,4 +611,77 @@ impl ProblemSamples {
 
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
+
+    /// 2D Problem # 07
+    ///
+    /// This is the benchmark solution 5.2.1.7 on page 170 of Kopriva's book.
+    ///
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
+    /// * `kx`, `ky` -- diffusion coefficients
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    /// ∂²ϕ   ∂²ϕ
+    /// ——— + ——— = -8 π² cos(2πx) sin(2πy)
+    /// ∂x²   ∂y²
+    /// ```
+    ///
+    /// on a [-1,1]×[-1,1] square with the following boundary conditions:
+    ///
+    /// * Xmin: ϕ(-1, y) = sin(2πy)
+    /// * Xmax: ϕ( 1, y) = sin(2πy)
+    /// * Ymin: ϕ(x, -1) = 0
+    /// * Ymax: ϕ(x,  1) = 0
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// ϕ(x, y) = cos(2πx) sin(2πy)
+    /// ```
+    ///
+    /// # Reference
+    ///
+    /// * Kopriva LN (2009) - Implementing Spectral Methods for Partial Differential Equations, Springer
+    pub fn d2_problem_07() -> (
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        let (xmin, xmax, ymin, ymax) = (-1.0, 1.0, -1.0, 1.0);
+        let (kx, ky) = (-1.0, -1.0);
+
+        // analytical solution
+        let analytical = Box::new(|x, y| f64::cos(2.0 * PI * x) * f64::sin(2.0 * PI * y));
+
+        // essential boundary conditions
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmin, |_, y| f64::sin(2.0 * PI * y));
+        ebcs.set(Side::Xmax, |_, y| f64::sin(2.0 * PI * y));
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        ebcs.set(Side::Ymax, |_, _| 0.0);
+
+        // natural boundary conditions
+        let nbcs = NaturalBcs2d::new();
+
+        // source term
+        let source = Box::new(|x, y| -8.0 * PI * PI * f64::cos(2.0 * PI * x) * f64::sin(2.0 * PI * y));
+
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
 }

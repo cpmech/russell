@@ -2,7 +2,7 @@ use plotpy::{Contour, Curve, Plot, Surface};
 use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_2d_prob05_spc() -> Result<(), StrError> {

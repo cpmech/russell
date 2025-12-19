@@ -2,7 +2,7 @@ use plotpy::{Contour, Curve, Plot, Surface};
 use russell_lab::approx_eq;
 use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_2d_prob05_fdm() -> Result<(), StrError> {

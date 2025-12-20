@@ -4,7 +4,7 @@ use russell_lab::math::PI;
 pub struct ProblemSamples;
 
 impl ProblemSamples {
-    /// 1D Problem # 01
+    /// 1D Problem # 01 - Poisson
     ///
     /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -54,7 +54,7 @@ impl ProblemSamples {
         (xmin, xmax, kx, ebcs, nbcs, source, analytical)
     }
 
-    /// 1D Problem # 02
+    /// 1D Problem # 02 - Helmholtz
     ///
     /// Returns `(xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -132,7 +132,7 @@ impl ProblemSamples {
         (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)
     }
 
-    /// 1D Problem # 03
+    /// 1D Problem # 03 - Helmholtz
     ///
     /// Returns `(xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -216,7 +216,7 @@ impl ProblemSamples {
         (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)
     }
 
-    /// 1D Problem # 04
+    /// 1D Problem # 04 - Poisson
     ///
     /// This is Program 33, page 138, of Trefethen's book
     ///
@@ -274,6 +274,81 @@ impl ProblemSamples {
         let source = Box::new(|x: f64| f64::exp(4.0 * x));
         let analytical =
             Box::new(|x: f64| (f64::exp(4.0 * x) - 4.0 * f64::exp(-4.0) * (x - 1.0) - f64::exp(4.0)) / 16.0);
+        (xmin, xmax, kx, ebcs, nbcs, source, analytical)
+    }
+
+    /// 1D Problem # 05 - Helmholtz
+    ///
+    /// This is Equation 1.4.1, page 45, of Pozrikidis' book.
+    /// To generate Figure 1.4.1, page 49, use: β = sqrt(87.4), L = 1.0, g0 = 1.0, ϕL = 0.2
+    /// (note that the signs written in the caption of the figure in the book are incorrect)
+    ///
+    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin` and `xmax` are the domain limits
+    /// * `kx` is the diffusion coefficient
+    /// * `source` is the source function `f(x)`
+    /// * `analytical` is the analytical solution function `ϕ(x)`
+    /// * `ebcs` are the essential boundary conditions
+    /// * `nbcs` are the natural boundary conditions
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    /// ∂²ϕ
+    /// ——— + β² ϕ = 0
+    /// ∂x²
+    /// ```
+    ///
+    /// on a [0,L] interval with the following boundary conditions:
+    ///
+    /// * Xmin(left):  ∂ϕ/∂x = g0  thus  wₙ = -k ∂ϕ/∂x · nx = -(-1) g0 · (-1) = -g0
+    /// * Xmax(right): ϕ(L) = ϕL
+    ///
+    /// The analytical solution is (for β = sqrt(α), α > 0):
+    ///
+    /// ```text
+    /// ϕ(x) = c1 sin(β x) + c2 cos(β x)
+    ///
+    /// where
+    ///
+    ///      g0              ϕL - c1 sin(β L)
+    /// c1 = ——   and   c2 = ————————————————
+    ///      β                   cos(β L)
+    /// ```
+    ///
+    /// # Reference
+    ///
+    /// Pozrikidis, Constantine (2014) Introduction to Finite and Spectral Element Methods Using MATLAB, Second Edition, CRC Press
+    pub fn d1_problem_05<'a>(
+        beta: f64,
+        ll: f64,
+        g0: f64,
+        phi_ll: f64,
+    ) -> (
+        f64,
+        f64,
+        f64,
+        EssentialBcs1d<'a>,
+        NaturalBcs1d<'a>,
+        Box<dyn Fn(f64) -> f64>,
+        Box<dyn Fn(f64) -> f64>,
+    ) {
+        let xmin = 0.0;
+        let xmax = ll;
+        let kx = -1.0;
+        let mut ebcs = EssentialBcs1d::new();
+        ebcs.set(Side::Xmax, move |_| phi_ll);
+        let mut nbcs = NaturalBcs1d::new();
+        nbcs.set_flux(Side::Xmin, move |_| -g0);
+        let source = Box::new(|_| 0.0);
+        let analytical = Box::new(move |x: f64| {
+            let c1 = g0 / beta;
+            let c2 = (phi_ll - c1 * f64::sin(beta * ll)) / f64::cos(beta * ll);
+            c1 * f64::sin(beta * x) + c2 * f64::cos(beta * x)
+        });
         (xmin, xmax, kx, ebcs, nbcs, source, analytical)
     }
 

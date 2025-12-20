@@ -162,14 +162,12 @@ impl ProblemSamples {
     /// Solve the equation:
     ///
     /// ```text
-    ///     ∂²ϕ
-    /// -kx ——— + (ϕ - ϕ∞) β = x²
-    ///     ∂x²
+    ///   ∂²ϕ
+    /// - ——— + ϕ = x²
+    ///   ∂x²
     /// ```
     ///
-    /// where ϕ∞ = 0°C is the temperature of the surrounding environment and
-    /// β = 1 W/m/°C is the convection coefficient. The essential boundary
-    /// condition is:
+    /// The essential boundary condition is:
     ///
     /// ```text
     /// ϕ(0) = ϕₐ = 2°C
@@ -181,7 +179,7 @@ impl ProblemSamples {
     /// -kx ∂ϕ/∂x |_(x=1) = q̄ = -3 W
     /// ```
     ///
-    /// The closed-form solution is:
+    /// The closed-form solution is (valid for thes parameters only):
     ///
     /// ```text
     ///        sinh(x)

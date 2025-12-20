@@ -1,5 +1,5 @@
 use crate::{Grid1d, Side};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Implements a handler for natural (Neumann) boundary conditions
@@ -17,7 +17,7 @@ pub struct NaturalBcs1d<'a> {
     functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where natural boundary conditions are applied
-    sides: HashSet<Side>,
+    sides: [bool; 2], // Xmin, Xmax
 
     /// Indicates whether the structure is built and ready to use
     ready: bool,
@@ -36,7 +36,7 @@ impl<'a> NaturalBcs1d<'a> {
                 Arc::new(|_| 0.0), // xmin
                 Arc::new(|_| 0.0), // xmax
             ],
-            sides: HashSet::new(),
+            sides: [false; 2],
             ready: false,
             node_to_function: HashMap::new(),
         }
@@ -93,14 +93,18 @@ impl<'a> NaturalBcs1d<'a> {
     /// The normal vectors at the boundaries are illustrated below:
     ///
     /// ```text
-    ///   ┌────────────────────────┐
-    /// ← │                        │ →
-    ///   └────────────────────────┘
+    /// @ Xmin:                                     @ Xmax:
+    ///      ┌    ┐   ┌    ┐                             ┌    ┐   ┌    ┐
+    ///      │ wx │   │ -1 │    ┌──────────────┐         │ wx │   │  1 │
+    /// wₙ = │    │ · │    │  ← │              │ →  wₙ = │    │ · │    │
+    ///      │  0 │   │  0 │    └──────────────┘         │  0 │   │  0 │
+    ///      └    ┘   └    ┘                             └    ┘   └    ┘
+    ///    = kx ∂ϕ/∂x                                  = -kx ∂ϕ/∂x
     /// ```
-    pub fn set_flux(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
+    pub fn set(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
-        self.sides.insert(side);
+        self.sides[index] = true;
         self.ready = false;
     }
 
@@ -109,21 +113,17 @@ impl<'a> NaturalBcs1d<'a> {
     // --------------------------------------------------------
 
     /// Builds the internal structures
-    ///
-    /// Returns the list of boundary nodes with NBCs
-    pub(crate) fn build(&mut self, grid: &Grid1d) -> Vec<usize> {
+    pub(crate) fn build(&mut self, grid: &Grid1d) {
         assert_eq!(self.ready, false, "can only build once");
-        let mut nodes_set = HashSet::with_capacity(2);
-        for &side in &self.sides {
-            for &m in grid.get_nodes_on_side(side) {
-                self.node_to_function.insert(m, side);
-                nodes_set.insert(m);
+        for index in 0..2 {
+            if self.sides[index] {
+                let side = Side::from_index(index);
+                for &m in grid.get_nodes_on_side(side) {
+                    self.node_to_function.insert(m, side);
+                }
             }
         }
         self.ready = true;
-        let mut nodes: Vec<_> = nodes_set.iter().copied().collect();
-        nodes.sort();
-        nodes
     }
 
     /// Returns the NBC value

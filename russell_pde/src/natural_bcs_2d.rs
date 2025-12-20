@@ -1,5 +1,5 @@
 use crate::{Grid2d, Side};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Implements a handler for natural (Neumann) boundary conditions
@@ -17,7 +17,7 @@ pub struct NaturalBcs2d<'a> {
     functions: Vec<Arc<dyn Fn(f64, f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where natural boundary conditions are applied
-    sides: HashSet<Side>,
+    sides: [bool; 4], // Xmin, Xmax, Ymin, Ymax
 
     /// Indicates whether the structure is built and ready to use
     ready: bool,
@@ -38,7 +38,7 @@ impl<'a> NaturalBcs2d<'a> {
                 Arc::new(|_, _| 0.0), // ymin
                 Arc::new(|_, _| 0.0), // ymax
             ],
-            sides: HashSet::new(),
+            sides: [false; 4],
             ready: false,
             node_to_function: HashMap::new(),
         }
@@ -76,7 +76,7 @@ impl<'a> NaturalBcs2d<'a> {
     ///
     /// ```text
     ///      →   →
-    /// wₙ = w · n̂
+    /// wₙ = w ·
     /// ```
     ///
     /// where n̂ is the unit outward normal vector on the boundary.
@@ -91,22 +91,38 @@ impl<'a> NaturalBcs2d<'a> {
     /// The normal vectors at the boundaries are illustrated below:
     ///
     /// ```text
-    ///             ↑
-    ///    ┌─────────────────┐
-    ///    │                 │
-    ///    │                 │
-    ///    │                 │
-    ///  ← │                 │ →
-    ///    │                 │
-    ///    │                 │
-    ///    │                 │
-    ///    └─────────────────┘
-    ///             ↓
+    ///                          @ Ymax:
+    ///                               ┌    ┐   ┌    ┐
+    ///                               │ wx │   │  0 │
+    ///                          wₙ = │    │ · │    │
+    ///                               │ wy │   │  1 │
+    ///                               └    ┘   └    ┘
+    ///                             = -ky ∂ϕ/∂y
+    ///
+    ///                                   ↑
+    /// @ Xmin:                  ┌─────────────────┐     @ Xmax:
+    ///      ┌    ┐   ┌    ┐     │                 │          ┌    ┐   ┌    ┐
+    ///      │ wx │   │ -1 │     │                 │          │ wx │   │  1 │
+    /// wₙ = │    │ · │    │     │                 │     wₙ = │    │ · │    │
+    ///      │ wy │   │  0 │   ← │                 │ →        │ wy │   │  0 │
+    ///      └    ┘   └    ┘     │                 │          └    ┘   └    ┘
+    ///    = kx ∂ϕ/∂x            │                 │        = -kx ∂ϕ/∂x
+    ///                          │                 │
+    ///                          └─────────────────┘
+    ///                                   ↓
+    ///
+    ///                          @ Ymin:
+    ///                               ┌    ┐   ┌    ┐
+    ///                               │ wx │   │  0 │
+    ///                          wₙ = │    │ · │    │
+    ///                               │ wy │   │ -1 │
+    ///                               └    ┘   └    ┘
+    ///                             = ky ∂ϕ/∂y
     /// ```
-    pub fn set_flux(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
+    pub fn set(&mut self, side: Side, f: impl Fn(f64, f64) -> f64 + Send + Sync + 'a) {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
-        self.sides.insert(side);
+        self.sides[index] = true;
         self.ready = false;
     }
 
@@ -115,23 +131,17 @@ impl<'a> NaturalBcs2d<'a> {
     // --------------------------------------------------------
 
     /// Builds the internal structures
-    ///
-    /// Returns the list of boundary nodes with NBCs
-    pub(crate) fn build(&mut self, grid: &Grid2d) -> Vec<usize> {
+    pub(crate) fn build(&mut self, grid: &Grid2d) {
         assert_eq!(self.ready, false, "can only build once");
-        let nx = grid.nx();
-        let ny = grid.ny();
-        let mut nodes_set = HashSet::with_capacity(2 * nx + 2 * ny);
-        for &side in &self.sides {
-            for &m in grid.get_nodes_on_side(side) {
-                self.node_to_function.insert(m, side);
-                nodes_set.insert(m);
+        for index in 0..4 {
+            if self.sides[index] {
+                let side = Side::from_index(index);
+                for &m in grid.get_nodes_on_side(side) {
+                    self.node_to_function.insert(m, side);
+                }
             }
         }
         self.ready = true;
-        let mut nodes: Vec<_> = nodes_set.iter().copied().collect();
-        nodes.sort();
-        nodes
     }
 
     /// Checks if a node has a NBC value

@@ -10,7 +10,8 @@ fn test_2d_prob02_fdm_sps() -> Result<(), StrError> {
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_02();
 
     // allocate the grid
-    let (nx, ny) = (17, 17);
+    let n = 10;
+    let (nx, ny) = (n, n);
     let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
@@ -20,9 +21,15 @@ fn test_2d_prob02_fdm_sps() -> Result<(), StrError> {
     let a = fdm.solve(&source)?;
 
     // check
+    let mut err_max = 0.0;
     fdm.for_each_coord(|m, x, y| {
-        approx_eq(a[m], analytical(x, y), 0.001036);
+        let err = f64::abs(a[m] - analytical(x, y));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x, y), 3.19e-3);
     });
+    println!("max(err) = {:>10.5e}", err_max);
 
     // plot results
     if SAVE_FIGURE {

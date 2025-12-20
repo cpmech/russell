@@ -207,7 +207,7 @@ impl ProblemSamples {
         let mut ebcs = EssentialBcs1d::new();
         ebcs.set(Side::Xmin, move |_| phi_a);
         let mut nbcs = NaturalBcs1d::new();
-        nbcs.set_flux(Side::Xmax, |_| -3.0);
+        nbcs.set(Side::Xmax, |_| -3.0);
         let source = Box::new(|x: f64| x * x);
         let analytical = Box::new(|x: f64| {
             let d = f64::cosh(1.0);
@@ -270,7 +270,7 @@ impl ProblemSamples {
         let mut ebcs = EssentialBcs1d::new();
         ebcs.set(Side::Xmax, |_| 0.0);
         let mut nbcs = NaturalBcs1d::new();
-        nbcs.set_flux(Side::Xmin, |_| 0.0);
+        nbcs.set(Side::Xmin, |_| 0.0);
         let source = Box::new(|x: f64| f64::exp(4.0 * x));
         let analytical =
             Box::new(|x: f64| (f64::exp(4.0 * x) - 4.0 * f64::exp(-4.0) * (x - 1.0) - f64::exp(4.0)) / 16.0);
@@ -342,7 +342,7 @@ impl ProblemSamples {
         let mut ebcs = EssentialBcs1d::new();
         ebcs.set(Side::Xmax, move |_| phi_ll);
         let mut nbcs = NaturalBcs1d::new();
-        nbcs.set_flux(Side::Xmin, move |_| -g0);
+        nbcs.set(Side::Xmin, move |_| -g0);
         let source = Box::new(|_| 0.0);
         let analytical = Box::new(move |x: f64| {
             let c1 = g0 / beta;
@@ -352,7 +352,7 @@ impl ProblemSamples {
         (xmin, xmax, kx, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 01
+    /// 2D Problem # 01 - Poisson
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -375,7 +375,7 @@ impl ProblemSamples {
     ///
     /// on a [0,1]×[0,1] square with homogeneous essential boundary conditions
     ///
-    /// The source term is given by (for a manufactured solution):
+    /// The source term is given by:
     ///
     /// ```text
     /// s(x, y) = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
@@ -408,7 +408,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 02
+    /// 2D Problem # 02 - Poisson
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -436,7 +436,7 @@ impl ProblemSamples {
     /// * Bottom: ϕ = 0
     /// * Top: ϕ = sin(π x)
     ///
-    /// The source term is given by (for a manufactured solution):
+    /// The source term is given by:
     ///
     /// ```text
     /// s(x, y) = -π² y sin(π x)
@@ -472,7 +472,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 03
+    /// 2D Problem # 03 - Helmholtz/Poisson
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -488,25 +488,32 @@ impl ProblemSamples {
     /// Solve the equation:
     ///
     /// ```text
-    /// ∂²ϕ   ∂²ϕ
-    /// ——— + ——— = s(x, y)
-    /// ∂x²   ∂y²
+    /// -k ∇²ϕ + α ϕ = s(x, y)
     /// ```
     ///
-    /// on a [0,1]×[0,1] square with homogeneous essential boundary conditions
+    /// on a [0,1]×[0,1] square with the following boundary conditions
+    /// (N,N,D,D: N-right, N-top, D-left, D-bottom):
     ///
-    /// The source term is given by (for a manufactured solution):
+    /// * Right  (Xmax): ∂ϕ/∂x = 2 π sin(2 π y)
+    /// * Top    (Ymax): ∂ϕ/∂y = 2 π sin(2 π x)
+    /// * Left   (Xmin): ϕ = 0
+    /// * Bottom (Ymin): ϕ = 0
+    ///
+    /// The source term is given by:
     ///
     /// ```text
-    /// s(x, y) = 14 y³ - (16 - 12 x) y² - (-42 x² + 54 x - 2) y + 4 x³ - 16 x² + 12 x
+    /// s(x, y) = (8 k π² + α) sin(2 π x) sin(2 π y)
     /// ```
     ///
     /// The analytical solution is:
     ///
     /// ```text
-    /// ϕ(x, y) = x (1 - x) y (1 - y) (1 + 2 x + 7 y)
+    /// ϕ(x, y) = sin(2 π x) sin(2 π y)
     /// ```
-    pub fn d2_problem_03() -> (
+    pub fn d2_problem_03(
+        k: f64,
+        alpha: f64,
+    ) -> (
         f64,
         f64,
         f64,
@@ -519,16 +526,16 @@ impl ProblemSamples {
         Box<dyn Fn(f64, f64) -> f64>,
     ) {
         let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
-        let (kx, ky) = (-1.0, -1.0);
+        let (kx, ky) = (k, k);
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_homogeneous();
-        let nbcs = NaturalBcs2d::new();
-        let source = Box::new(|x, y| {
-            let (xx, yy) = (x * x, y * y);
-            let (xxx, yyy) = (xx * x, yy * y);
-            14.0 * yyy - (16.0 - 12.0 * x) * yy - (-42.0 * xx + 54.0 * x - 2.0) * y + 4.0 * xxx - 16.0 * xx + 12.0 * x
-        });
-        let analytical = Box::new(|x, y| x * (1.0 - x) * y * (1.0 - y) * (1.0 + 2.0 * x + 7.0 * y));
+        let mut nbcs = NaturalBcs2d::new();
+        nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::sin(2.0 * PI * y));
+        nbcs.set(Side::Ymax, move |x, _| -k * 2.0 * PI * f64::sin(2.0 * PI * x));
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        let source =
+            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y));
+        let analytical = Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y));
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
@@ -670,8 +677,8 @@ impl ProblemSamples {
 
         // natural boundary conditions
         let mut nbcs = NaturalBcs2d::new();
-        nbcs.set_flux(Side::Ymin, |_, _| 0.0);
-        nbcs.set_flux(Side::Ymax, |_, _| 0.0);
+        nbcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
 
         // source term
         let source = Box::new(|x, _| -6.0 * x);
@@ -738,7 +745,7 @@ impl ProblemSamples {
 
         // natural boundary conditions
         let mut nbcs = NaturalBcs2d::new();
-        nbcs.set_flux(Side::Xmax, |_, y| 1.0 / f64::powi(f64::cosh(y), 2));
+        nbcs.set(Side::Xmax, |_, y| 1.0 / f64::powi(f64::cosh(y), 2));
 
         // source term
         let source = Box::new(|x, y| 4.0 * f64::tanh(1.0 - x + y) / f64::powi(f64::cosh(1.0 - x + y), 2));

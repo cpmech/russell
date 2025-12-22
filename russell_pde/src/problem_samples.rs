@@ -179,7 +179,7 @@ impl ProblemSamples {
     /// -kx ∂ϕ/∂x |_(x=1) = q̄ = -3 W
     /// ```
     ///
-    /// The closed-form solution is (valid for thes parameters only):
+    /// The closed-form solution is (valid for these parameters only):
     ///
     /// ```text
     ///        sinh(x)

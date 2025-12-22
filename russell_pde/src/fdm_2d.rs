@@ -488,20 +488,23 @@ impl<'a> Fdm2d<'a> {
             let iu = self.equations.iu(m);
             let (x, y) = self.grid.coord(m);
             f_bar[iu] = source(x, y);
-        });
-        for m in self.nbcs.get_nodes() {
-            if !self.equations.is_prescribed(m) {
-                let iu = self.equations.iu(m);
-                let (x, y) = self.grid.coord(m);
-                let q_bar = self.nbcs.get_value(m, x, y);
-                let den = if self.grid.is_xmin(m) || self.grid.is_xmax(m) {
-                    self.dx
-                } else {
-                    self.dy
-                };
-                f_bar[iu] += -2.0 * q_bar / den;
+            if self.grid.is_xmin(m) {
+                let wn = self.nbcs.functions[0](x, y);
+                f_bar[iu] += -2.0 * wn / self.dx;
             }
-        }
+            if self.grid.is_xmax(m) {
+                let wn = self.nbcs.functions[1](x, y);
+                f_bar[iu] += -2.0 * wn / self.dx;
+            }
+            if self.grid.is_ymin(m) {
+                let wn = self.nbcs.functions[2](x, y);
+                f_bar[iu] += -2.0 * wn / self.dy;
+            }
+            if self.grid.is_ymax(m) {
+                let wn = self.nbcs.functions[3](x, y);
+                f_bar[iu] += -2.0 * wn / self.dy;
+            }
+        });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);
@@ -560,17 +563,23 @@ impl<'a> Fdm2d<'a> {
         let mut ff = Vector::new(ndim);
         self.grid.for_each_coord(|m, x, y| {
             ff[m] = source(x, y);
+            if self.grid.is_xmin(m) {
+                let wn = self.nbcs.functions[0](x, y);
+                ff[m] += -2.0 * wn / self.dx;
+            }
+            if self.grid.is_xmax(m) {
+                let wn = self.nbcs.functions[1](x, y);
+                ff[m] += -2.0 * wn / self.dx;
+            }
+            if self.grid.is_ymin(m) {
+                let wn = self.nbcs.functions[2](x, y);
+                ff[m] += -2.0 * wn / self.dy;
+            }
+            if self.grid.is_ymax(m) {
+                let wn = self.nbcs.functions[3](x, y);
+                ff[m] += -2.0 * wn / self.dy;
+            }
         });
-        for m in self.nbcs.get_nodes() {
-            let (x, y) = self.grid.coord(m);
-            let q_bar = self.nbcs.get_value(m, x, y);
-            let den = if self.grid.is_xmin(m) || self.grid.is_xmax(m) {
-                self.dx
-            } else {
-                self.dy
-            };
-            ff[m] += -2.0 * q_bar / den;
-        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (x, y) = self.grid.coord(m);

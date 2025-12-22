@@ -456,6 +456,13 @@ impl Grid2d {
         m / self.nx == self.ny - 1 // j == ny - 1
     }
 
+    /// Indicates whether node m is on any boundary or not
+    pub fn on_boundary(&self, m: usize) -> bool {
+        let i = m % self.nx;
+        let j = m / self.nx;
+        i == 0 || i == self.nx - 1 || j == 0 || j == self.ny - 1
+    }
+
     /// Returns the list of nodes on the specified side
     pub fn get_nodes_on_side(&self, side: Side) -> &[usize] {
         match side {

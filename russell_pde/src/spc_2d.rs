@@ -37,6 +37,18 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
 /// ```
 pub struct Spc2d<'a> {
+    /// Minimum x-coordinate
+    xmin: f64,
+
+    /// Maximum x-coordinate
+    xmax: f64,
+
+    /// Minimum y-coordinate
+    ymin: f64,
+
+    /// Maximum y-coordinate
+    ymax: f64,
+
     /// Defines the 2D grid
     grid: Grid2d,
 
@@ -78,6 +90,10 @@ impl<'a> Spc2d<'a> {
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
     pub fn new(
+        xmin: f64,
+        xmax: f64,
+        ymin: f64,
+        ymax: f64,
         nx: usize,
         ny: usize,
         mut ebcs: EssentialBcs2d<'a>,
@@ -116,6 +132,10 @@ impl<'a> Spc2d<'a> {
 
         // done
         Ok(Spc2d {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
             grid,
             ebcs,
             nbcs,
@@ -194,58 +214,63 @@ impl<'a> Spc2d<'a> {
         let dd2y = self.interp_y.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1]×[-1,1] to [xmin,xmax]×[ymin,ymax])
-        let dr_dx = 2.0 / (self.grid.xmax() - self.grid.xmin());
-        let ds_dy = 2.0 / (self.grid.ymax() - self.grid.ymin());
+        let dr_dx = 2.0 / (self.xmax - self.xmin);
+        let ds_dy = 2.0 / (self.ymax - self.ymin);
         let cx = dr_dx * dr_dx;
         let cy = ds_dy * ds_dy;
 
         // add terms to the coefficient matrix
-        for i in 0..nx {
-            for j in 0..ny {
-                let m = i + j * nx;
-                if !self.equations.is_prescribed(m) {
-                    let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                        self.nbcs.has_value(m)
-                    } else {
-                        false
-                    };
-                    if has_nbc {
-                        let (unx, uny) = self.grid.outward_unit_normal(m);
-                        if uny == 0.0 {
-                            for k in 0..nx {
-                                for l in 0..ny {
-                                    let n = k + l * nx;
-                                    if j == l {
-                                        let val = unx * self.mkx * dd1x.get(i, k) * cx;
-                                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
-                                    }
-                                }
-                            }
-                        } else {
-                            for k in 0..nx {
-                                for l in 0..ny {
-                                    let n = k + l * nx;
-                                    if i == k {
-                                        let val = uny * self.mky * dd1y.get(j, l) * cy;
-                                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
-                                    }
-                                }
+        for &m in self.equations.unknown() {
+            let (i, j) = self.grid.get_ij(m);
+            let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                self.nbcs.has_value(m)
+            } else {
+                false
+            };
+            if has_nbc {
+                for k in 0..nx {
+                    for l in 0..ny {
+                        let n = k + l * nx;
+                        let mut val = 0.0;
+                        if i == 0 {
+                            // Xmin
+                            if j == l {
+                                val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
                             }
                         }
-                    } else {
-                        for k in 0..nx {
-                            for l in 0..ny {
-                                let n = k + l * nx;
-                                let mut val = 0.0;
-                                if j == l {
-                                    val += self.mkx * dd2x.get(i, k) * cx;
-                                }
-                                if i == k {
-                                    val += self.mky * dd2y.get(j, l) * cy;
-                                }
-                                self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                        if i == nx - 1 {
+                            // Xmax
+                            if j == l {
+                                val += self.mkx * dd1x.get(i, k) * dr_dx;
                             }
                         }
+                        if j == 0 {
+                            // Ymin
+                            if i == k {
+                                val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
+                            }
+                        }
+                        if j == ny - 1 {
+                            // Ymax
+                            if i == k {
+                                val += self.mky * dd1y.get(j, l) * ds_dy;
+                            }
+                        }
+                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                    }
+                }
+            } else {
+                for k in 0..nx {
+                    for l in 0..ny {
+                        let n = k + l * nx;
+                        let mut val = 0.0;
+                        if j == l {
+                            val += self.mkx * dd2x.get(i, k) * cx;
+                        }
+                        if i == k {
+                            val += self.mky * dd2y.get(j, l) * cy;
+                        }
+                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                     }
                 }
             }
@@ -295,20 +320,37 @@ impl<'a> Spc2d<'a> {
         let mut f_bar = Vector::new(nu);
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
-            let (x, y) = self.grid.coord(m);
-            f_bar[iu] = source(x, y);
-        });
-        for m in self.nbcs.get_nodes() {
-            if !self.equations.is_prescribed(m) {
-                let iu = self.equations.iu(m);
-                let (x, y) = self.grid.coord(m);
-                let q_bar = self.nbcs.get_value(m, x, y);
-                f_bar[iu] = q_bar;
+            let (r, s) = self.grid.coord(m);
+            let (x, y) = self.map_coord(r, s);
+            if self.grid.on_boundary(m) {
+                // In the SPC, on the Neumann boundary, we solve -k∂ϕ/∂n = q̄ which is different than the
+                // FDM approach which still solves the original equation -k ∇²ϕ = source(x,y). Therefore,
+                // we must NOT add the source term to f̄ in the SPC.
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x, y);
+                    f_bar[iu] += wn;
+                }
+                if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x, y);
+                    f_bar[iu] += wn;
+                }
+                if self.grid.is_ymin(m) {
+                    let wn = self.nbcs.functions[2](x, y);
+                    f_bar[iu] += wn;
+                }
+                if self.grid.is_ymax(m) {
+                    let wn = self.nbcs.functions[3](x, y);
+                    f_bar[iu] += wn;
+                }
+            } else {
+                // Solving the original equation -k ∇²ϕ = source(x,y)
+                f_bar[iu] = source(x, y);
             }
-        }
+        });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
-            let (x, y) = self.grid.coord(m);
+            let (r, s) = self.grid.coord(m);
+            let (x, y) = self.map_coord(r, s);
             let val = self.ebcs.get_value(m, x, y);
             a_check[ip] = val;
         });
@@ -359,9 +401,17 @@ impl<'a> Spc2d<'a> {
     where
         F: FnMut(usize, f64, f64),
     {
-        self.grid.for_each_coord(|m, x, y| {
+        self.grid.for_each_coord(|m, r, s| {
+            let (x, y) = self.map_coord(r, s);
             callback(m, x, y);
         });
+    }
+
+    /// Maps the reference coordinates (r,s) in [-1,1]×[-1,1] to the physical coordinates (x,y)
+    fn map_coord(&self, r: f64, s: f64) -> (f64, f64) {
+        let x = (self.xmax + self.xmin + (self.xmax - self.xmin) * r) / 2.0;
+        let y = (self.ymax + self.ymin + (self.ymax - self.ymin) * s) / 2.0;
+        (x, y)
     }
 }
 
@@ -378,7 +428,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
-        let spec = Spc2d::new(5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
+        let spec = Spc2d::new(-1.0, 1.0, -1.0, 1.0, 5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
         let (kk_bar, kk_check) = spec.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);

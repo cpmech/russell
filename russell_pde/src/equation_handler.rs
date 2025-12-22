@@ -196,6 +196,15 @@ impl EquationHandler {
         self.p_sorted.len()
     }
 
+    /// Indicates whether a node has an unknown value or not
+    ///
+    /// # Panics
+    ///
+    /// Panics if the global equation ID is out of bounds.
+    pub fn is_unknown(&self, e: usize) -> bool {
+        !self.is_prescribed[e]
+    }
+
     /// Indicates whether a node has a prescribed value or not
     ///
     /// # Panics

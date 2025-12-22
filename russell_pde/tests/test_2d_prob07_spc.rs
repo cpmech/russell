@@ -17,11 +17,11 @@ fn test_2d_prob07_spc() -> Result<(), StrError> {
     // let (nn, tol, l10) = (20, 1e-9, -9.8774);
 
     // get the problem data
-    let (_, _, _, _, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_07();
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_07();
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
-    let spc = Spc2d::new(nx, ny, ebcs, nbcs, kx, ky)?;
+    let spc = Spc2d::new(xmin, xmax, ymin, ymax, nx, ny, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
     let a = spc.solve(&source)?;
@@ -51,14 +51,14 @@ fn test_2d_prob05_spc_map() -> Result<(), StrError> {
     // let (nn, tol, l10) = (20, 1e-9, -9.8774);
 
     // get the problem data
-    let (_, _, _, _, k, _, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_07();
+    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_07();
 
     // transfinite map
-    let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+    let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
-    let mut spc = SpcMap2d::new(nx, ny, ebcs, nbcs, k, map)?;
+    let mut spc = SpcMap2d::new(map, nx, ny, ebcs, nbcs, k)?;
 
     // solve the problem
     let a = spc.solve(&source)?;

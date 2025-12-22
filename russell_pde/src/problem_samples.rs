@@ -513,6 +513,7 @@ impl ProblemSamples {
     pub fn d2_problem_03(
         k: f64,
         alpha: f64,
+        use_cos: bool,
     ) -> (
         f64,
         f64,
@@ -529,13 +530,27 @@ impl ProblemSamples {
         let (kx, ky) = (k, k);
         let mut ebcs = EssentialBcs2d::new();
         let mut nbcs = NaturalBcs2d::new();
-        nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::sin(2.0 * PI * y));
-        nbcs.set(Side::Ymax, move |x, _| -k * 2.0 * PI * f64::sin(2.0 * PI * x));
-        ebcs.set(Side::Xmin, |_, _| 0.0);
-        ebcs.set(Side::Ymin, |_, _| 0.0);
-        let source =
-            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y));
-        let analytical = Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y));
+        if use_cos {
+            nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::cos(2.0 * PI * y));
+            nbcs.set(Side::Ymax, |_, _| 0.0);
+            ebcs.set(Side::Xmin, |_, _| 0.0);
+            ebcs.set(Side::Ymin, |x, _| f64::sin(2.0 * PI * x));
+        } else {
+            nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::sin(2.0 * PI * y));
+            nbcs.set(Side::Ymax, move |x, _| -k * 2.0 * PI * f64::sin(2.0 * PI * x));
+            ebcs.set(Side::Xmin, |_, _| 0.0);
+            ebcs.set(Side::Ymin, |_, _| 0.0);
+        }
+        let source: Box<dyn Fn(f64, f64) -> f64> = if use_cos {
+            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y))
+        } else {
+            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))
+        };
+        let analytical: Box<dyn Fn(f64, f64) -> f64> = if use_cos {
+            Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y))
+        } else {
+            Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))
+        };
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 

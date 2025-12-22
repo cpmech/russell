@@ -5,12 +5,14 @@ use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples}
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_2d_prob06_spc() -> Result<(), StrError> {
+fn test_2d_prob03_spc() -> Result<(), StrError> {
     // parameters
-    let (nn, tol) = (8, 1e-4);
+    let (nn, tol) = (5, 0.140518);
+    // let (nn, tol) = (15, 1e-8);
 
     // get the problem data
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_06();
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
+        ProblemSamples::d2_problem_03(1.0, 0.0, true);
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
@@ -32,8 +34,8 @@ fn test_2d_prob06_spc() -> Result<(), StrError> {
 
     // plot results
     if SAVE_FIGURE {
-        let fn_a = format!("/tmp/russell_pde/test_2d_prob06_spc_a.svg");
-        let fn_b = format!("/tmp/russell_pde/test_2d_prob06_spc_b.svg");
+        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_a.svg");
+        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_b.svg");
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();
@@ -109,12 +111,13 @@ fn test_2d_prob06_spc() -> Result<(), StrError> {
 }
 
 #[test]
-fn test_2d_prob06_spc_map() -> Result<(), StrError> {
+fn test_2d_prob03_spc_map() -> Result<(), StrError> {
     // parameters
-    let (nn, tol) = (8, 1e-4);
+    let (nn, tol) = (5, 0.140518);
+    // let (nn, tol) = (15, 1e-8);
 
     // get the problem data
-    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_06();
+    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_03(1.0, 0.0, true);
 
     // transfinite map
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
@@ -136,5 +139,81 @@ fn test_2d_prob06_spc_map() -> Result<(), StrError> {
         approx_eq(a[m], analytical(x, y), tol);
     });
     println!("max(err) = {:>10.5e}", err_max);
+
+    // plot results
+    if SAVE_FIGURE {
+        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_map_a.svg");
+        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_map_b.svg");
+        let mut points = Curve::new();
+        let mut surf_num = Surface::new();
+        let mut surf_ana = Surface::new();
+        let mut contour_num = Contour::new();
+        let mut contour_ana = Contour::new();
+        let mut xx = vec![vec![0.0; nx]; ny];
+        let mut yy = vec![vec![0.0; nx]; ny];
+        let mut zz_num = vec![vec![0.0; nx]; ny];
+        let mut zz_ana = vec![vec![0.0; nx]; ny];
+        let mut xx_serial = Vec::with_capacity(nx * ny);
+        let mut yy_serial = Vec::with_capacity(nx * ny);
+        spc.for_each_coord(|m, x, y| {
+            let row = m / nx;
+            let col = m % nx;
+            xx[row][col] = x;
+            yy[row][col] = y;
+            zz_num[row][col] = a[m];
+            zz_ana[row][col] = analytical(x, y);
+            xx_serial.push(x);
+            yy_serial.push(y);
+        });
+        points
+            .set_line_style("None")
+            .set_marker_size(2.0)
+            .set_marker_style(".")
+            .set_marker_color("red")
+            .set_marker_line_color("red")
+            .draw(&xx_serial, &yy_serial);
+        contour_num
+            .set_colors(&["None"])
+            .set_no_colorbar(true)
+            .set_line_color("black")
+            .set_line_width(5.0)
+            .set_line_style("-")
+            .draw(&xx, &yy, &zz_num);
+        contour_ana
+            .set_colors(&["None"])
+            .set_no_colorbar(true)
+            .set_no_labels(true)
+            .set_line_color("orange")
+            .set_line_style("-")
+            .draw(&xx, &yy, &zz_ana);
+        surf_num
+            .set_with_surface(false)
+            .set_with_wireframe(false)
+            .set_point_style(".")
+            .set_with_points(true)
+            .set_point_color("black")
+            .set_point_size(70.0)
+            .set_wire_line_width(1.0)
+            .set_wire_line_color("black")
+            .draw(&xx, &yy, &zz_num);
+        surf_ana
+            .set_with_surface(false)
+            .set_with_wireframe(true)
+            .set_wire_line_width(2.0)
+            .set_wire_line_color("orange")
+            .draw(&xx, &yy, &zz_ana);
+        let mut plot = Plot::new();
+        plot.add(&contour_num)
+            .add(&contour_ana)
+            .add(&points)
+            .set_equal_axes(true)
+            .set_figure_size_points(600.0, 600.0)
+            .save(&fn_a)
+            .unwrap();
+        plot.add(&surf_ana)
+            .add(&surf_num)
+            .set_figure_size_points(600.0, 600.0)
+            .save(&fn_b)?;
+    }
     Ok(())
 }

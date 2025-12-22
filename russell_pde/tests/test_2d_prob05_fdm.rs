@@ -5,7 +5,7 @@ use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_2d_prob05_fdm() -> Result<(), StrError> {
+fn test_2d_prob05_fdm_sps() -> Result<(), StrError> {
     // get the problem data
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_05();
 
@@ -102,5 +102,34 @@ fn test_2d_prob05_fdm() -> Result<(), StrError> {
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_b)?;
     }
+    Ok(())
+}
+
+#[test]
+fn test_2d_prob05_fdm_lmm() -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_05();
+
+    // allocate the grid
+    let nx = 5;
+    let ny = 5;
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
+
+    // allocate the solver
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
+
+    // solve the problem
+    let a = fdm.solve_lmm(&source)?;
+
+    // check
+    let mut err_max = 0.0;
+    fdm.for_each_coord(|m, x, y| {
+        let err = f64::abs(a[m] - analytical(x, y));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x, y), 1e-15);
+    });
+    println!("max(err) = {:>10.5e}", err_max);
     Ok(())
 }

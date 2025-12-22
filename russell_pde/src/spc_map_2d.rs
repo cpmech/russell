@@ -1,5 +1,5 @@
 use crate::util::delta;
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, NaturalBcs2d, StrError, Transfinite2d};
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, NaturalBcs2d, Side, StrError, Transfinite2d};
 use russell_lab::{vec_copy_scaled, vec_inner, vec_norm, InterpLagrange, Norm, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
@@ -90,6 +90,7 @@ pub struct SpcMap2d<'a> {
     d2x_dr2: Vector,
     d2x_ds2: Vector,
     d2x_drs: Vector,
+    un: Vector,
 }
 
 impl<'a> SpcMap2d<'a> {
@@ -101,19 +102,19 @@ impl<'a> SpcMap2d<'a> {
     ///
     /// # Arguments
     ///
+    /// * `map` -- the transfinite mapping from reference to physical domain
     /// * `nr` -- number of grid points along r (for the Chebyshev-Gauss-Lobatto grid)
     /// * `ns` -- number of grid points along s (for the Chebyshev-Gauss-Lobatto grid)
     /// * `ebcs` -- the essential boundary conditions handler
     /// * `nbcs` -- the natural boundary conditions handler
     /// * `k` -- the diffusion coefficient
-    /// * `map` -- the transfinite mapping from reference to physical domain
     pub fn new(
+        map: Transfinite2d,
         nr: usize,
         ns: usize,
         mut ebcs: EssentialBcs2d<'a>,
         mut nbcs: NaturalBcs2d<'a>,
         k: f64,
-        map: Transfinite2d,
     ) -> Result<Self, StrError> {
         // allocate the Chebyshev-Gauss-Lobatto grid
         let grid = Grid2d::new_chebyshev_gauss_lobatto(nr, ns)?;
@@ -164,6 +165,7 @@ impl<'a> SpcMap2d<'a> {
             d2x_dr2: Vector::new(2),
             d2x_ds2: Vector::new(2),
             d2x_drs: Vector::new(2),
+            un: Vector::new(2),
         })
     }
 
@@ -233,55 +235,54 @@ impl<'a> SpcMap2d<'a> {
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
         // add all terms to the coefficient matrix
-        for i in 0..nr {
-            for j in 0..ns {
-                let m = i + j * nr;
-                if !self.equations.is_prescribed(m) {
-                    self.calculate_metrics(m);
-                    let g11 = self.metrics.gg_mat.get(0, 0);
-                    let g22 = self.metrics.gg_mat.get(1, 1);
-                    let g12 = self.metrics.gg_mat.get(0, 1);
-                    let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
-                    let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
-                    let has_nbc = if i == 0 || i == nr - 1 || j == 0 || j == ns - 1 {
-                        self.nbcs.has_value(m)
-                    } else {
-                        false
-                    };
-                    if has_nbc {
-                        let (ex, ey) = self.grid.outward_unit_normal(m);
-                        let mut un = Vector::new(2);
-                        if ey == 0.0 {
-                            vec_copy_scaled(&mut un, ex, &self.metrics.g_ctr[0]).unwrap();
-                        } else {
-                            vec_copy_scaled(&mut un, ey, &self.metrics.g_ctr[1]).unwrap();
-                        }
-                        let norm_u = vec_norm(&un, Norm::Euc);
-                        un[0] /= norm_u;
-                        un[1] /= norm_u;
-                        let alpha = vec_inner(&un, &self.metrics.g_ctr[0]);
-                        let beta = vec_inner(&un, &self.metrics.g_ctr[1]);
-                        // println!( "m = {}, N={:?}, alpha = {:.8}, beta = {:.8}", m, un.as_data(), alpha, beta);
-                        for k in 0..nr {
-                            for l in 0..ns {
-                                let n = k + l * nr;
-                                let val = self.d1r(i, k) * delta(j, l) * alpha + delta(i, k) * self.d1s(j, l) * beta;
-                                self.put_val(&mut kk_bar, &mut kk_check, m, n, self.mk * val);
+        for m in self.equations.unknown().clone() {
+            let (i, j) = self.grid.get_ij(m);
+            self.calculate_metrics(m);
+            let g11 = self.metrics.gg_mat.get(0, 0);
+            let g22 = self.metrics.gg_mat.get(1, 1);
+            let g12 = self.metrics.gg_mat.get(0, 1);
+            let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
+            let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
+            let has_nbc = if i == 0 || i == nr - 1 || j == 0 || j == ns - 1 {
+                self.nbcs.has_value(m)
+            } else {
+                false
+            };
+            if has_nbc {
+                for k in 0..nr {
+                    for l in 0..ns {
+                        let n = k + l * nr;
+                        let mut val = 0.0;
+                        if i == 0 || i == nr - 1 {
+                            // Xmin or Xmax
+                            if j == l {
+                                self.calc_unit_normal(Side::Xmax);
+                                let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
+                                val += self.mk * self.d1r(i, k) * alpha;
                             }
                         }
-                    } else {
-                        for k in 0..nr {
-                            for l in 0..ns {
-                                let n = k + l * nr;
-                                let val = 0.0
-                                    + self.d2r(i, k) * delta(j, l) * g11
-                                    + delta(i, k) * self.d2s(j, l) * g22
-                                    + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
-                                    - self.d1r(i, k) * delta(j, l) * ll1
-                                    - delta(i, k) * self.d1s(j, l) * ll2;
-                                self.put_val(&mut kk_bar, &mut kk_check, m, n, self.mk * val);
+                        if j == 0 || j == ns - 1 {
+                            // Ymin or Ymax
+                            if i == k {
+                                self.calc_unit_normal(Side::Ymax);
+                                let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
+                                val += self.mk * self.d1s(j, l) * beta;
                             }
                         }
+                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                    }
+                }
+            } else {
+                for k in 0..nr {
+                    for l in 0..ns {
+                        let n = k + l * nr;
+                        let val = 0.0
+                            + self.d2r(i, k) * delta(j, l) * g11
+                            + delta(i, k) * self.d2s(j, l) * g22
+                            + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                            - self.d1r(i, k) * delta(j, l) * ll1
+                            - delta(i, k) * self.d1s(j, l) * ll2;
+                        self.put_val(&mut kk_bar, &mut kk_check, m, n, self.mk * val);
                     }
                 }
             }
@@ -289,6 +290,19 @@ impl<'a> SpcMap2d<'a> {
 
         // done
         (kk_bar, kk_check)
+    }
+
+    /// Calculates the unit normal at boundary
+    fn calc_unit_normal(&mut self, side: Side) {
+        match side {
+            Side::Xmin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[0]).unwrap(),
+            Side::Xmax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[0]).unwrap(),
+            Side::Ymin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[1]).unwrap(),
+            Side::Ymax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[1]).unwrap(),
+        }
+        let norm_u = vec_norm(&mut self.un, Norm::Euc);
+        self.un[0] /= norm_u;
+        self.un[1] /= norm_u;
     }
 
     /// Puts the value into the correct position of the coefficient matrix
@@ -333,16 +347,31 @@ impl<'a> SpcMap2d<'a> {
             let iu = self.equations.iu(m);
             let (r, s) = self.grid.coord(m);
             self.map.point(&mut self.x, r, s);
-            f_bar[iu] = source(self.x[0], self.x[1]);
-        });
-        for m in self.nbcs.get_nodes() {
-            if !self.equations.is_prescribed(m) {
-                let iu = self.equations.iu(m);
-                let (x, y) = self.grid.coord(m);
-                let q_bar = self.nbcs.get_value(m, x, y);
-                f_bar[iu] = q_bar;
+            if self.grid.on_boundary(m) {
+                // In the SPC, on the Neumann boundary, we solve -k∂ϕ/∂n = q̄ which is different than the
+                // FDM approach which still solves the original equation -k ∇²ϕ = source(x,y). Therefore,
+                // we must NOT add the source term to f̄ in the SPC.
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](self.x[0], self.x[1]);
+                    f_bar[iu] += wn;
+                }
+                if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](self.x[0], self.x[1]);
+                    f_bar[iu] += wn;
+                }
+                if self.grid.is_ymin(m) {
+                    let wn = self.nbcs.functions[2](self.x[0], self.x[1]);
+                    f_bar[iu] += wn;
+                }
+                if self.grid.is_ymax(m) {
+                    let wn = self.nbcs.functions[3](self.x[0], self.x[1]);
+                    f_bar[iu] += wn;
+                }
+            } else {
+                // Solving the original equation -k ∇²ϕ = source(x,y)
+                f_bar[iu] = source(self.x[0], self.x[1]);
             }
-        }
+        });
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let (r, s) = self.grid.coord(m);
@@ -469,7 +498,7 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
         ebcs.set_homogeneous();
-        let mut spectral = SpcMap2d::new(5, 5, ebcs, nbcs, 1.0, map).unwrap();
+        let mut spectral = SpcMap2d::new(map, 5, 5, ebcs, nbcs, 1.0).unwrap();
         let (kk_bar, kk_check) = spectral.get_matrices();
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);

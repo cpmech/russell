@@ -13,10 +13,14 @@ fn test_2d_prob03_spc() -> Result<(), StrError> {
                      // (20, 1e-13),  //
     ] {
         let (nn, tol) = *nn_tol;
-        run_spc(true, true, nn, tol)?;
-        run_spc(true, false, nn, tol)?;
-        run_spc(false, true, nn, tol)?;
-        run_spc(false, false, nn, tol)?;
+        // SPS
+        run_spc(true, true, false, nn, tol)?;
+        run_spc(true, false, false, nn, tol)?;
+        run_spc(false, true, false, nn, tol)?;
+        run_spc(false, false, false, nn, tol)?;
+        // LMM
+        run_spc(true, false, true, nn, tol)?;
+        run_spc(false, false, true, nn, tol)?;
     }
     Ok(())
 }
@@ -38,7 +42,7 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
     Ok(())
 }
 
-fn run_spc(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
@@ -50,9 +54,13 @@ fn run_spc(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), Str
 
     // solve the problem
     let a = if helmholtz {
-        spc.solve_hz(alpha, &source)?
+        spc.solve_helmholtz_sps(alpha, &source)?
     } else {
-        spc.solve(&source)?
+        if lmm {
+            spc.solve_poisson_lmm(&source)?
+        } else {
+            spc.solve_poisson_sps(&source)?
+        }
     };
 
     // check

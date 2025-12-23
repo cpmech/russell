@@ -147,20 +147,20 @@ impl<'a> Spc2d<'a> {
         })
     }
 
-    /// Solves problem (Poisson equation)
+    /// Solves the Poisson equation using the system partitioning strategy (SPS)
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
     /// -kx ——— - ky ——— = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
-    pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
+    pub fn solve_poisson_sps<F>(&self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices(0);
-        let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+        let (kk_bar, kk_check) = self.get_matrices_sps(0);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
 
         // initialize the right-hand side
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -171,25 +171,25 @@ impl<'a> Spc2d<'a> {
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
-        Ok(self.get_joined_vector(&a_bar, &a_check))
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves problem (Helmholtz equation)
+    /// Solves the Helmholtz equation using the system partitioning strategy (SPS)
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
     /// -kx ——— - ky ——— + α ϕ = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
-    pub fn solve_hz<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
+    pub fn solve_helmholtz_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
         let nu = self.equations.nu();
         let extra_nnz = nu; // diagonal entries due to α ϕ
-        let (mut kk_bar, kk_check) = self.get_matrices(extra_nnz);
-        let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+        let (mut kk_bar, kk_check) = self.get_matrices_sps(extra_nnz);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
 
         // add the diagonal entries due to α ϕ
         for &m in self.equations.unknown() {
@@ -208,7 +208,32 @@ impl<'a> Spc2d<'a> {
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
-        Ok(self.get_joined_vector(&a_bar, &a_check))
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
+    }
+
+    /// Solves the Poisson equation using the Lagrange multipliers method (LMM)
+    ///
+    /// ```text
+    ///     ∂²ϕ      ∂²ϕ
+    /// -kx ——— - ky ——— = source(x, y)
+    ///     ∂x²      ∂y²
+    /// ```
+    pub fn solve_poisson_lmm<F>(&self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (mm, _) = self.get_matrices_lmm(0, false);
+        let (mut aa, ff) = self.get_vectors_lmm(source);
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&mm, None)?;
+        solver.actual.solve(&mut aa, &ff, false)?;
+
+        // results
+        let neq = self.equations.neq();
+        Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
     /// Returns the dimensions for the system partitioning strategy (SPS)
@@ -217,10 +242,24 @@ impl<'a> Spc2d<'a> {
     ///
     /// * `nu` is the number of unknowns
     /// * `np` is the number of prescribed values
-    pub fn get_dims(&self) -> (usize, usize) {
+    pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)
+    }
+
+    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(neq, nlag, ndim)` where:
+    ///
+    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
+    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
+    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
+        let neq = self.equations.neq();
+        let nlag = self.equations.np();
+        let ndim = neq + nlag;
+        (neq, nlag, ndim)
     }
 
     /// Access the equation numbering handler
@@ -228,7 +267,7 @@ impl<'a> Spc2d<'a> {
         &self.equations
     }
 
-    /// Returns the coefficient matrices
+    /// Returns the coefficient matrices for the system partitioning strategy (SPS)
     ///
     /// Returns `(kk_bar, kk_check)` from:
     ///
@@ -244,7 +283,7 @@ impl<'a> Spc2d<'a> {
     /// # Arguments
     ///
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
-    pub fn get_matrices(&self, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
+    pub fn get_matrices_sps(&self, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
         // allocate matrices
         let nu = self.equations.nu();
         let np = self.equations.np();
@@ -327,22 +366,105 @@ impl<'a> Spc2d<'a> {
         (kk_bar, kk_check)
     }
 
-    /// Puts the value into the correct position of the coefficient matrix
-    fn put_val(&self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
-        // unknown row
-        let row = self.equations.iu(m);
-        if !self.equations.is_prescribed(n) {
-            // unknown column
-            let col = self.equations.iu(n);
-            kk_bar.put(row, col, val).unwrap();
+    /// Returns the coefficient matrix for the Lagrange multipliers method (LMM)
+    pub fn get_matrices_lmm(&self, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+        // allocate matrices
+        let (neq, nlag, ndim) = self.get_dims_lmm();
+        let nx = self.grid.nx();
+        let ny = self.grid.ny();
+        let nnz_wcs = nx * nx * ny * ny; // worst-case scenario
+        let mut mm = CooMatrix::new(ndim, ndim, nnz_wcs + extra_nnz + 2 * nlag, Sym::No).unwrap();
+
+        // spectral derivative matrices
+        let dd1x = self.interp_x.get_dd1().unwrap();
+        let dd1y = self.interp_y.get_dd1().unwrap();
+        let dd2x = self.interp_x.get_dd2().unwrap();
+        let dd2y = self.interp_y.get_dd2().unwrap();
+
+        // scaling coefficients due to domain mapping (from [-1,1]×[-1,1] to [xmin,xmax]×[ymin,ymax])
+        let dr_dx = 2.0 / (self.xmax - self.xmin);
+        let ds_dy = 2.0 / (self.ymax - self.ymin);
+        let cx = dr_dx * dr_dx;
+        let cy = ds_dy * ds_dy;
+
+        // add terms to the coefficient matrix
+        for m in 0..neq {
+            let (i, j) = self.grid.get_ij(m);
+            let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                self.nbcs.has_value(m)
+            } else {
+                false
+            };
+            if has_nbc {
+                for k in 0..nx {
+                    for l in 0..ny {
+                        let n = k + l * nx;
+                        let mut val = 0.0;
+                        if i == 0 {
+                            // Xmin
+                            if j == l {
+                                val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
+                            }
+                        }
+                        if i == nx - 1 {
+                            // Xmax
+                            if j == l {
+                                val += self.mkx * dd1x.get(i, k) * dr_dx;
+                            }
+                        }
+                        if j == 0 {
+                            // Ymin
+                            if i == k {
+                                val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
+                            }
+                        }
+                        if j == ny - 1 {
+                            // Ymax
+                            if i == k {
+                                val += self.mky * dd1y.get(j, l) * ds_dy;
+                            }
+                        }
+                        mm.put(m, n, val).unwrap();
+                    }
+                }
+            } else {
+                for k in 0..nx {
+                    for l in 0..ny {
+                        let n = k + l * nx;
+                        let mut val = 0.0;
+                        if j == l {
+                            val += self.mkx * dd2x.get(i, k) * cx;
+                        }
+                        if i == k {
+                            val += self.mky * dd2y.get(j, l) * cy;
+                        }
+                        mm.put(m, n, val).unwrap();
+                    }
+                }
+            }
+        }
+
+        // assemble C and Cᵀ into M
+        self.equations.prescribed().iter().for_each(|&m| {
+            let ip = self.equations.ip(m);
+            mm.put(neq + ip, m, 1.0).unwrap(); // C
+            mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+        });
+
+        // build and return the C matrix, if requested and available
+        if get_constraints_mat && nlag > 0 {
+            let mut cc = CooMatrix::new(nlag, neq, nlag, Sym::No).unwrap();
+            self.equations.prescribed().iter().for_each(|&m| {
+                let ip = self.equations.ip(m);
+                cc.put(ip, m, 1.0).unwrap(); // C
+            });
+            (mm, Some(cc))
         } else {
-            // prescribed column
-            let col = self.equations.ip(n);
-            kk_check.put(row, col, val).unwrap();
+            (mm, None)
         }
     }
 
-    /// Returns the vectors for the solution of the system of equations
+    /// Returns the vectors for the solution of the system of equations using the system partitioning strategy (SPS)
     ///
     /// Returns `(a_bar, a_check, f_bar)` from:
     ///
@@ -356,7 +478,7 @@ impl<'a> Spc2d<'a> {
     /// ```
     ///
     /// The `source` function calculates f(x, y).
-    pub fn get_vectors<F>(&self, source: F) -> (Vector, Vector, Vector)
+    pub fn get_vectors_sps<F>(&self, source: F) -> (Vector, Vector, Vector)
     where
         F: Fn(f64, f64) -> f64,
     {
@@ -404,7 +526,7 @@ impl<'a> Spc2d<'a> {
         (a_bar, a_check, f_bar)
     }
 
-    /// Joins the a-bar and a-check vectors
+    /// Joins the a-bar and a-check vectors used in the system partitioning strategy (SPS)
     ///
     /// Returns `a` from:
     ///
@@ -416,7 +538,7 @@ impl<'a> Spc2d<'a> {
     /// └       ┘ └   ┘   └   ┘
     ///     K       a       f
     /// ```
-    pub fn get_joined_vector(&self, a_bar: &Vector, a_check: &Vector) -> Vector {
+    pub fn get_joined_vector_sps(&self, a_bar: &Vector, a_check: &Vector) -> Vector {
         let neq = self.equations.neq();
         let mut a = Vector::new(neq);
         self.equations.unknown().iter().for_each(|&m| {
@@ -428,6 +550,64 @@ impl<'a> Spc2d<'a> {
             a[m] = a_check[ip];
         });
         a
+    }
+
+    /// Returns the vectors for the solution of the system of equations using the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(aa, ff)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
+    /// The `source` function calculates f(x, y).
+    pub fn get_vectors_lmm<F>(&self, source: F) -> (Vector, Vector)
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let (neq, _, ndim) = self.get_dims_lmm();
+        let aa = Vector::new(ndim);
+        let mut ff = Vector::new(ndim);
+        self.grid.for_each_coord(|m, r, s| {
+            let (x, y) = self.map_coord(r, s);
+            if self.grid.on_boundary(m) {
+                // In the SPC, on the Neumann boundary, we solve -k∂ϕ/∂n = q̄ which is different than the
+                // FDM approach which still solves the original equation -k ∇²ϕ = source(x,y). Therefore,
+                // we must NOT add the source term to f̄ in the SPC.
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x, y);
+                    ff[m] += wn;
+                }
+                if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x, y);
+                    ff[m] += wn;
+                }
+                if self.grid.is_ymin(m) {
+                    let wn = self.nbcs.functions[2](x, y);
+                    ff[m] += wn;
+                }
+                if self.grid.is_ymax(m) {
+                    let wn = self.nbcs.functions[3](x, y);
+                    ff[m] += wn;
+                }
+            } else {
+                // Solving the original equation -k ∇²ϕ = source(x,y)
+                ff[m] = source(x, y);
+            }
+        });
+        self.equations.prescribed().iter().for_each(|&m| {
+            let ip = self.equations.ip(m);
+            let (r, s) = self.grid.coord(m);
+            let (x, y) = self.map_coord(r, s);
+            let val = self.ebcs.get_value(m, x, y);
+            ff[neq + ip] = val;
+        });
+        (aa, ff)
     }
 
     /// Executes a loop over the grid points
@@ -454,6 +634,21 @@ impl<'a> Spc2d<'a> {
         });
     }
 
+    /// Puts the value into the correct position of the coefficient matrix (SPS)
+    fn put_val(&self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
+        // unknown row
+        let row = self.equations.iu(m);
+        if !self.equations.is_prescribed(n) {
+            // unknown column
+            let col = self.equations.iu(n);
+            kk_bar.put(row, col, val).unwrap();
+        } else {
+            // prescribed column
+            let col = self.equations.ip(n);
+            kk_check.put(row, col, val).unwrap();
+        }
+    }
+
     /// Maps the reference coordinates (r,s) in [-1,1]×[-1,1] to the physical coordinates (x,y)
     fn map_coord(&self, r: f64, s: f64) -> (f64, f64) {
         let x = (self.xmax + self.xmin + (self.xmax - self.xmin) * r) / 2.0;
@@ -476,7 +671,7 @@ mod tests {
         ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
         let spec = Spc2d::new(-1.0, 1.0, -1.0, 1.0, 5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk_bar, kk_check) = spec.get_matrices(0);
+        let (kk_bar, kk_check) = spec.get_matrices_sps(0);
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 

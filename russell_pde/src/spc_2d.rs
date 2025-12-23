@@ -147,14 +147,65 @@ impl<'a> Spc2d<'a> {
         })
     }
 
-    /// Solves problem
+    /// Solves problem (Poisson equation)
+    ///
+    /// ```text
+    ///     ∂²ϕ      ∂²ϕ
+    /// -kx ——— - ky ——— = source(x, y)
+    ///     ∂x²      ∂y²
+    /// ```
     pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices();
+        let (kk_bar, kk_check) = self.get_matrices(0);
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+
+        // initialize the right-hand side
+        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.solve(&mut a_bar, &f_bar, false)?;
+
+        // results
+        Ok(self.get_joined_vector(&a_bar, &a_check))
+    }
+
+    /// Solves problem (Helmholtz equation)
+    ///
+    /// ```text
+    ///     ∂²ϕ      ∂²ϕ
+    /// -kx ——— - ky ——— + α ϕ = source(x, y)
+    ///     ∂x²      ∂y²
+    /// ```
+    pub fn solve_hz<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let nu = self.equations.nu();
+        let extra_nnz = nu; // diagonal entries due to α ϕ
+        let (mut kk_bar, kk_check) = self.get_matrices(extra_nnz);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+
+        // add the diagonal entries due to α ϕ
+        let nx = self.grid.nx();
+        let ny = self.grid.ny();
+        for &m in self.equations.unknown() {
+            let (i, j) = self.grid.get_ij(m);
+            let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
+                self.nbcs.has_value(m)
+            } else {
+                false
+            };
+            if !has_nbc {
+                let row = self.equations.iu(m);
+                kk_bar.put(row, row, alpha).unwrap();
+            }
+        }
 
         // initialize the right-hand side
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -197,14 +248,18 @@ impl<'a> Spc2d<'a> {
     /// └       ┘ └   ┘   └   ┘
     ///     K       a       f
     /// ```
-    pub fn get_matrices(&self) -> (CooMatrix, CooMatrix) {
+    ///
+    /// # Arguments
+    ///
+    /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
+    pub fn get_matrices(&self, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
         // allocate matrices
         let nu = self.equations.nu();
         let np = self.equations.np();
         let nx = self.grid.nx();
         let ny = self.grid.ny();
         let nnz_wcs = nx * nx * ny * ny; // worst-case scenario
-        let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs, Sym::No).unwrap();
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs + extra_nnz, Sym::No).unwrap();
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
         // spectral derivative matrices
@@ -429,7 +484,7 @@ mod tests {
         ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
         let spec = Spc2d::new(-1.0, 1.0, -1.0, 1.0, 5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk_bar, kk_check) = spec.get_matrices();
+        let (kk_bar, kk_check) = spec.get_matrices(0);
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 

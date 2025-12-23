@@ -373,7 +373,7 @@ impl ProblemSamples {
     /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a [0,1]×[0,1] square with homogeneous essential boundary conditions
+    /// on a [0,1]×[0,1] square with homogeneous boundary conditions
     ///
     /// The source term is given by:
     ///
@@ -491,8 +491,32 @@ impl ProblemSamples {
     /// -k ∇²ϕ + α ϕ = s(x, y)
     /// ```
     ///
-    /// on a [0,1]×[0,1] square with the following boundary conditions
-    /// (N,N,D,D: N-right, N-top, D-left, D-bottom):
+    /// on a [0,1]×[0,1] square with Dirichlet and Neumann boundary conditions.
+    ///
+    /// ## Case A: sin-cos
+    ///
+    /// The boundary conditions are:
+    ///
+    /// * Right  (Xmax): ∂ϕ/∂x = 2 π cos(2 π y)
+    /// * Top    (Ymax): ∂ϕ/∂y = 0
+    /// * Left   (Xmin): ϕ = 0
+    /// * Bottom (Ymin): ϕ = sin(2 π x)
+    ///
+    /// The source term is given by:
+    ///
+    /// ```text
+    /// s(x, y) = (8 k π² + α) sin(2 π x) cos(2 π y)
+    /// ```
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// ϕ(x, y) = sin(2 π x) cos(2 π y)
+    /// ```
+    ///
+    /// ## Case B: sin-sin
+    ///
+    /// The boundary conditions are:
     ///
     /// * Right  (Xmax): ∂ϕ/∂x = 2 π sin(2 π y)
     /// * Top    (Ymax): ∂ϕ/∂y = 2 π sin(2 π x)
@@ -513,7 +537,7 @@ impl ProblemSamples {
     pub fn d2_problem_03(
         k: f64,
         alpha: f64,
-        use_cos: bool,
+        case_a: bool,
     ) -> (
         f64,
         f64,
@@ -530,7 +554,7 @@ impl ProblemSamples {
         let (kx, ky) = (k, k);
         let mut ebcs = EssentialBcs2d::new();
         let mut nbcs = NaturalBcs2d::new();
-        if use_cos {
+        if case_a {
             nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::cos(2.0 * PI * y));
             nbcs.set(Side::Ymax, |_, _| 0.0);
             ebcs.set(Side::Xmin, |_, _| 0.0);
@@ -541,12 +565,12 @@ impl ProblemSamples {
             ebcs.set(Side::Xmin, |_, _| 0.0);
             ebcs.set(Side::Ymin, |_, _| 0.0);
         }
-        let source: Box<dyn Fn(f64, f64) -> f64> = if use_cos {
+        let source: Box<dyn Fn(f64, f64) -> f64> = if case_a {
             Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y))
         } else {
             Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))
         };
-        let analytical: Box<dyn Fn(f64, f64) -> f64> = if use_cos {
+        let analytical: Box<dyn Fn(f64, f64) -> f64> = if case_a {
             Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y))
         } else {
             Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))

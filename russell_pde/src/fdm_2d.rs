@@ -321,7 +321,7 @@ impl<'a> Fdm2d<'a> {
         solver.actual.solve(&mut aa, &ff, false)?;
 
         // results
-        let neq = self.get_dims_lmm().0;
+        let neq = self.equations.neq();
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 

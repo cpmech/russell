@@ -13,15 +13,32 @@ fn test_2d_prob03_spc() -> Result<(), StrError> {
                      // (20, 1e-13),  //
     ] {
         let (nn, tol) = *nn_tol;
-        run_test(true, true, nn, tol)?;
-        run_test(true, false, nn, tol)?;
-        run_test(false, true, nn, tol)?;
-        run_test(false, false, nn, tol)?;
+        run_spc(true, true, nn, tol)?;
+        run_spc(true, false, nn, tol)?;
+        run_spc(false, true, nn, tol)?;
+        run_spc(false, false, nn, tol)?;
     }
     Ok(())
 }
 
-fn run_test(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+#[test]
+fn test_2d_prob03_spc_map() -> Result<(), StrError> {
+    for nn_tol in &[
+        (8, 4.2e-2), //
+                     // (12, 1.0e-5), //
+                     // (15, 1e-8),   //
+                     // (20, 1e-13),  //
+    ] {
+        let (nn, tol) = *nn_tol;
+        run_spc_map(true, true, nn, tol)?;
+        run_spc_map(true, false, nn, tol)?;
+        run_spc_map(false, true, nn, tol)?;
+        run_spc_map(false, false, nn, tol)?;
+    }
+    Ok(())
+}
+
+fn run_spc(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
@@ -129,14 +146,11 @@ fn run_test(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), St
     Ok(())
 }
 
-#[test]
-fn test_2d_prob03_spc_map() -> Result<(), StrError> {
-    // parameters
-    let (nn, tol) = (5, 0.140518);
-    // let (nn, tol) = (15, 1e-8);
-
+fn run_spc_map(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
-    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_03(1.0, 0.0, true);
+    let alpha = if helmholtz { 1.0 } else { 0.0 };
+    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) =
+        ProblemSamples::d2_problem_03(1.0, alpha, case_a);
 
     // transfinite map
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
@@ -146,7 +160,11 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
     let mut spc = SpcMap2d::new(map, nx, ny, ebcs, nbcs, k)?;
 
     // solve the problem
-    let a = spc.solve(&source)?;
+    let a = if helmholtz {
+        spc.solve_hz(alpha, &source)?
+    } else {
+        spc.solve(&source)?
+    };
 
     // check
     let mut err_max = 0.0;
@@ -161,8 +179,10 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
 
     // plot results
     if SAVE_FIGURE {
-        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_map_a.svg");
-        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_map_b.svg");
+        let case = if case_a { "a" } else { "b" };
+        let prob = if helmholtz { "hz" } else { "ps" };
+        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_contour.svg", case, prob);
+        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_surface.svg", case, prob);
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();

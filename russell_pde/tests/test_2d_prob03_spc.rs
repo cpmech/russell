@@ -7,10 +7,10 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_2d_prob03_spc() -> Result<(), StrError> {
     for nn_tol in &[
-        (8, 4.2e-2),  //
-        // (12, 1.0e-5), //
-        // (15, 1e-8),   //
-        // (20, 1e-13),  //
+        (8, 4.2e-2), //
+                     // (12, 1.0e-5), //
+                     // (15, 1e-8),   //
+                     // (20, 1e-13),  //
     ] {
         let (nn, tol) = *nn_tol;
         run_test(true, true, nn, tol)?;

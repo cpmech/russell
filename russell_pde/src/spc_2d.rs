@@ -192,16 +192,8 @@ impl<'a> Spc2d<'a> {
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
 
         // add the diagonal entries due to α ϕ
-        let nx = self.grid.nx();
-        let ny = self.grid.ny();
         for &m in self.equations.unknown() {
-            let (i, j) = self.grid.get_ij(m);
-            let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                self.nbcs.has_value(m)
-            } else {
-                false
-            };
-            if !has_nbc {
+            if !self.nbcs.has_value(m) {
                 let row = self.equations.iu(m);
                 kk_bar.put(row, row, alpha).unwrap();
             }

@@ -322,7 +322,7 @@ impl Metrics {
     /// Lᵏ = Γᵏᵢⱼ gⁱʲ
     /// ```
     ///
-    /// **Warning**: `homogeneous` must be true and [Metrics2d::calculate()] must be called before using this method.
+    /// **Warning**: `homogeneous` must be true and `calculate()` must be called before using this method.
     ///
     /// # Panics
     ///

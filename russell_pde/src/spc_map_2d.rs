@@ -169,18 +169,18 @@ impl<'a> SpcMap2d<'a> {
         })
     }
 
-    /// Solves problem (Poisson equation)
+    /// Solves the Poisson equation using the system partitioning strategy (SPS)
     ///
     /// ```text
     /// -k ∇²ϕ = source(x,y)
     /// ```
-    pub fn solve<F>(&mut self, source: F) -> Result<Vector, StrError>
+    pub fn solve_poisson_sps<F>(&mut self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices(0);
-        let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+        let (kk_bar, kk_check) = self.get_matrices_sps(0);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
 
         // initialize the right-hand side
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -191,23 +191,23 @@ impl<'a> SpcMap2d<'a> {
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
-        Ok(self.get_joined_vector(&a_bar, &a_check))
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves problem (Helmholtz equation)
+    /// Solves the Helmholtz equation using the system partitioning strategy (SPS)
     ///
     /// ```text
     /// -k ∇²ϕ + α ϕ = source(x,y)
     /// ```
-    pub fn solve_hz<F>(&mut self, alpha: f64, source: F) -> Result<Vector, StrError>
+    pub fn solve_helmholtz_sps<F>(&mut self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
         let nu = self.equations.nu();
         let extra_nnz = nu; // diagonal entries due to α ϕ
-        let (mut kk_bar, kk_check) = self.get_matrices(extra_nnz);
-        let (mut a_bar, a_check, mut f_bar) = self.get_vectors(source);
+        let (mut kk_bar, kk_check) = self.get_matrices_sps(extra_nnz);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
 
         // initialize the right-hand side
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -226,7 +226,7 @@ impl<'a> SpcMap2d<'a> {
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
         // results
-        Ok(self.get_joined_vector(&a_bar, &a_check))
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
     /// Returns the dimensions for the system partitioning strategy (SPS)
@@ -251,7 +251,7 @@ impl<'a> SpcMap2d<'a> {
         &mut self.map
     }
 
-    /// Returns the coefficient matrices
+    /// Returns the coefficient matrices for the system partitioning strategy (SPS)
     ///
     /// Returns `(kk_bar, kk_check)` from:
     ///
@@ -263,7 +263,7 @@ impl<'a> SpcMap2d<'a> {
     /// └       ┘ └   ┘   └   ┘
     ///     K       a       f
     /// ```
-    pub fn get_matrices(&mut self, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
+    pub fn get_matrices_sps(&mut self, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
         // allocate matrices
         let nu = self.equations.nu();
         let np = self.equations.np();
@@ -331,35 +331,7 @@ impl<'a> SpcMap2d<'a> {
         (kk_bar, kk_check)
     }
 
-    /// Calculates the unit normal at boundary
-    fn calc_unit_normal(&mut self, side: Side) {
-        match side {
-            Side::Xmin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[0]).unwrap(),
-            Side::Xmax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[0]).unwrap(),
-            Side::Ymin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[1]).unwrap(),
-            Side::Ymax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[1]).unwrap(),
-        }
-        let norm_u = vec_norm(&mut self.un, Norm::Euc);
-        self.un[0] /= norm_u;
-        self.un[1] /= norm_u;
-    }
-
-    /// Puts the value into the correct position of the coefficient matrix
-    fn put_val(&mut self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
-        // unknown row
-        let row = self.equations.iu(m);
-        if !self.equations.is_prescribed(n) {
-            // unknown column
-            let col = self.equations.iu(n);
-            kk_bar.put(row, col, val).unwrap();
-        } else {
-            // prescribed column
-            let col = self.equations.ip(n);
-            kk_check.put(row, col, val).unwrap();
-        }
-    }
-
-    /// Returns the vectors for the solution of the system of equations
+    /// Returns the vectors for the solution of the system of equations using the system partitioning strategy (SPS)
     ///
     /// Returns `(a_bar, a_check, f_bar)` from:
     ///
@@ -373,7 +345,7 @@ impl<'a> SpcMap2d<'a> {
     /// ```
     ///
     /// The `source` function calculates f(x, y).
-    pub fn get_vectors<F>(&mut self, source: F) -> (Vector, Vector, Vector)
+    pub fn get_vectors_sps<F>(&mut self, source: F) -> (Vector, Vector, Vector)
     where
         F: Fn(f64, f64) -> f64,
     {
@@ -421,7 +393,7 @@ impl<'a> SpcMap2d<'a> {
         (a_bar, a_check, f_bar)
     }
 
-    /// Joins the a-bar and a-check vectors
+    /// Joins the a-bar and a-check vectors used in the system partitioning strategy (SPS)
     ///
     /// Returns `a` from:
     ///
@@ -433,7 +405,7 @@ impl<'a> SpcMap2d<'a> {
     /// └       ┘ └   ┘   └   ┘
     ///     K       a       f
     /// ```
-    pub fn get_joined_vector(&self, a_bar: &Vector, a_check: &Vector) -> Vector {
+    pub fn get_joined_vector_sps(&self, a_bar: &Vector, a_check: &Vector) -> Vector {
         let neq = self.equations.neq();
         let mut a = Vector::new(neq);
         self.equations.unknown().iter().for_each(|&m| {
@@ -470,6 +442,34 @@ impl<'a> SpcMap2d<'a> {
             self.map.point(&mut self.x, r, s);
             callback(m, self.x[0], self.x[1]);
         });
+    }
+
+    /// Calculates the unit normal at boundary
+    fn calc_unit_normal(&mut self, side: Side) {
+        match side {
+            Side::Xmin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[0]).unwrap(),
+            Side::Xmax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[0]).unwrap(),
+            Side::Ymin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[1]).unwrap(),
+            Side::Ymax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[1]).unwrap(),
+        }
+        let norm_u = vec_norm(&mut self.un, Norm::Euc);
+        self.un[0] /= norm_u;
+        self.un[1] /= norm_u;
+    }
+
+    /// Puts the value into the correct position of the coefficient matrix
+    fn put_val(&mut self, kk_bar: &mut CooMatrix, kk_check: &mut CooMatrix, m: usize, n: usize, val: f64) {
+        // unknown row
+        let row = self.equations.iu(m);
+        if !self.equations.is_prescribed(n) {
+            // unknown column
+            let col = self.equations.iu(n);
+            kk_bar.put(row, col, val).unwrap();
+        } else {
+            // prescribed column
+            let col = self.equations.ip(n);
+            kk_check.put(row, col, val).unwrap();
+        }
     }
 
     /// Maps the coordinates and calculates the metrics at point m
@@ -538,7 +538,7 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
         ebcs.set_homogeneous();
         let mut spectral = SpcMap2d::new(map, 5, 5, ebcs, nbcs, 1.0).unwrap();
-        let (kk_bar, kk_check) = spectral.get_matrices(0);
+        let (kk_bar, kk_check) = spectral.get_matrices_sps(0);
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 

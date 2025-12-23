@@ -169,9 +169,9 @@ fn run_spc_map(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(),
 
     // solve the problem
     let a = if helmholtz {
-        spc.solve_hz(alpha, &source)?
+        spc.solve_helmholtz_sps(alpha, &source)?
     } else {
-        spc.solve(&source)?
+        spc.solve_poisson_sps(&source)?
     };
 
     // check

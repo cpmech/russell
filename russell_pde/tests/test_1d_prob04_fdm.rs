@@ -13,7 +13,7 @@ fn test_1d_prob04_fdm() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve(source)?;
+    let a = fdm.solve_poisson_sps(source)?;
 
     // analytical solution
     let mut max_err = 0.0;

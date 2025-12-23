@@ -302,7 +302,7 @@ impl ProblemSamples {
     /// ∂x²
     /// ```
     ///
-    /// on a [0,L] interval with the following boundary conditions:
+    /// on a `[0,L]` interval with the following boundary conditions:
     ///
     /// * Xmin(left):  ∂ϕ/∂x = g0  thus  wₙ = -k ∂ϕ/∂x · nx = -(-1) g0 · (-1) = -g0
     /// * Xmax(right): ϕ(L) = ϕL
@@ -373,7 +373,7 @@ impl ProblemSamples {
     /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a [0,1]×[0,1] square with homogeneous boundary conditions
+    /// on a `[0,1]×[0,1]` square with homogeneous boundary conditions
     ///
     /// The source term is given by:
     ///
@@ -429,7 +429,7 @@ impl ProblemSamples {
     /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a [0,1]×[0,1] square with the following essential boundary conditions:
+    /// on a `[0,1]×[0,1]` square with the following essential boundary conditions:
     ///
     /// * Left: ϕ = 0
     /// * Right: ϕ = 0
@@ -491,7 +491,7 @@ impl ProblemSamples {
     /// -k ∇²ϕ + α ϕ = s(x, y)
     /// ```
     ///
-    /// on a [0,1]×[0,1] square with Dirichlet and Neumann boundary conditions.
+    /// on a `[0,1]×[0,1]` square with Dirichlet and Neumann boundary conditions.
     ///
     /// ## Case A: sin-cos
     ///

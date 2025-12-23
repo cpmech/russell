@@ -37,52 +37,6 @@ const INI_Y: usize = 0;
 /// ϕᵢⱼ → aₘ   with   m = i + j nx
 /// ```
 ///
-/// To account for the EBCs, two approaches are possible:
-///
-/// 1. Use the system partitioning strategy (SPS)
-/// 2. Use the Lagrange multipliers method (LMM)
-///
-/// ## Approach 1: System partitioning strategy (SPS)
-///
-/// Consider the following partitioning of the vectors `a` and `f` and the matrix `K`:
-///
-/// ```text
-/// ┌       ┐ ┌   ┐   ┌   ┐
-/// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
-/// │       │ │   │ = │   │
-/// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
-/// └       ┘ └   ┘   └   ┘
-///     K       a       f
-/// ```
-///
-/// where `ā` (a-bar) is a reduced vector containing only the unknown values (i.e., non-EBC nodes), and `ǎ` (a-check)
-/// is a reduced vector containing only the prescribed values (i.e., EBC nodes). `f̄` and `f̌` are the associated reduced
-/// right-hand side vectors. The `K̄` (K-bar) matrix is the reduced discrete Laplacian operator and `Ǩ` (K-check) is a
-/// *correction* matrix. The `Ḵ` (K-underline) and `K̰` (K-under-tilde) matrices are often not needed.
-///
-/// Thus, the linear system to be solved is:
-///
-/// ```text
-/// K̄ ā = f̄ - Ǩ ǎ
-/// ```
-///
-/// ## Approach 2: Lagrange multipliers method (LMM)
-///
-/// The LMM consists of augmenting the original linear system with additional equations:
-///
-/// ```text
-/// ┌       ┐ ┌   ┐   ┌   ┐
-/// │ K  Cᵀ │ │ a │   │ f │
-/// │       │ │   │ = │   │
-/// │ C  0  │ │ ℓ │   │ ǎ │
-/// └       ┘ └   ┘   └   ┘
-///     M       A       F
-/// ```
-///
-/// where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
-/// prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
-/// for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
-///
 /// The FDM stencil uses the "molecule" {α, β, β, γ, γ} corresponding to the {CUR, LEF, RIG, BOT, TOP} nodes, such that:
 ///
 /// ```text
@@ -272,14 +226,14 @@ impl<'a> Fdm2d<'a> {
         })
     }
 
-    /// Solves the Poisson equation in 2D
+    /// Solves the Poisson equation in 2D (System Partitioning Strategy - SPS)
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
     /// -kx ——— - ky ——— = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
-    pub fn solve<F>(&self, source: F) -> Result<Vector, StrError>
+    pub fn solve_poisson_sps<F>(&self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
@@ -300,14 +254,14 @@ impl<'a> Fdm2d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Poisson equation in 2D (Lagrange multipliers method)
+    /// Solves the Poisson equation in 2D (Lagrange multipliers method - LMM)
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
     /// -kx ——— - ky ——— = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
-    pub fn solve_lmm<F>(&self, source: F) -> Result<Vector, StrError>
+    pub fn solve_poisson_lmm<F>(&self, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {

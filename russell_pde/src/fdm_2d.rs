@@ -238,7 +238,7 @@ impl<'a> Fdm2d<'a> {
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices_sps(0, Sym::No);
+        let (kk_bar, kk_check) = self.get_matrices_sps(0);
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
         let kk_check = kk_check.unwrap();
 
@@ -331,14 +331,13 @@ impl<'a> Fdm2d<'a> {
     /// # Arguments
     ///
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
-    /// * `sym_kk_bar` -- symmetry of the K-bar matrix
     ///
     /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
-    pub fn get_matrices_sps(&self, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_sps(&self, extra_nnz: usize) -> (CooMatrix, Option<CooMatrix>) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         let nnz_kk_bar = 5 * nu + extra_nnz; // 5 is the bandwidth
-        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, Sym::No).unwrap();
         let mut kk_check = if np == 0 {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
             CooMatrix::new(1, 1, 1, Sym::No).unwrap()
@@ -643,7 +642,6 @@ mod tests {
     use super::Fdm2d;
     use crate::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side};
     use russell_lab::Matrix;
-    use russell_sparse::Sym;
 
     #[test]
     fn new_captures_errors() {
@@ -688,7 +686,7 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
@@ -848,7 +846,7 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
@@ -1035,7 +1033,7 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0);
         let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());

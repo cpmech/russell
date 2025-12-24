@@ -42,7 +42,9 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
         run_spc_map(false, true, false, nn, tol)?;
         run_spc_map(false, false, false, nn, tol)?;
         // LMM
+        run_spc_map(true, true, true, nn, tol)?;
         run_spc_map(true, false, true, nn, tol)?;
+        run_spc_map(false, true, true, nn, tol)?;
         run_spc_map(false, false, true, nn, tol)?;
     }
     Ok(())
@@ -170,14 +172,10 @@ fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) ->
     let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, k)?;
 
     // solve the problem
-    let a = if helmholtz {
-        spc.solve_helmholtz_sps(alpha, &source)?
+    let a = if lmm {
+        spc.solve_lmm(alpha, &source)?
     } else {
-        if lmm {
-            spc.solve_poisson_lmm(&source)?
-        } else {
-            spc.solve_poisson_sps(&source)?
-        }
+        spc.solve_sps(alpha, &source)?
     };
 
     // check

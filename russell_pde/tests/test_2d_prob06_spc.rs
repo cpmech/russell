@@ -124,7 +124,7 @@ fn test_2d_prob06_spc_map() -> Result<(), StrError> {
     let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, k)?;
 
     // solve the problem
-    let a = spc.solve_poisson_sps(&source)?;
+    let a = spc.solve_sps(0.0, &source)?;
 
     // check
     let mut err_max = 0.0;

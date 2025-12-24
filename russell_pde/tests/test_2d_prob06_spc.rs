@@ -120,8 +120,8 @@ fn test_2d_prob06_spc_map() -> Result<(), StrError> {
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
 
     // allocate the solver
-    let (nx, ny) = (nn + 1, nn + 1);
-    let mut spc = SpcMap2d::new(map, nx, ny, ebcs, nbcs, k)?;
+    let (nr, ns) = (nn + 1, nn + 1);
+    let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, k)?;
 
     // solve the problem
     let a = spc.solve_poisson_sps(&source)?;

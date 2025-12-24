@@ -34,10 +34,14 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
                      // (20, 1e-13),  //
     ] {
         let (nn, tol) = *nn_tol;
-        run_spc_map(true, true, nn, tol)?;
-        run_spc_map(true, false, nn, tol)?;
-        run_spc_map(false, true, nn, tol)?;
-        run_spc_map(false, false, nn, tol)?;
+        // SPS
+        run_spc_map(true, true, false, nn, tol)?;
+        run_spc_map(true, false, false, nn, tol)?;
+        run_spc_map(false, true, false, nn, tol)?;
+        run_spc_map(false, false, false, nn, tol)?;
+        // LMM
+        run_spc_map(true, false, true, nn, tol)?;
+        run_spc_map(false, false, true, nn, tol)?;
     }
     Ok(())
 }
@@ -154,7 +158,7 @@ fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Res
     Ok(())
 }
 
-fn run_spc_map(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) =
@@ -164,14 +168,18 @@ fn run_spc_map(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(),
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
 
     // allocate the solver
-    let (nx, ny) = (nn + 1, nn + 1);
-    let mut spc = SpcMap2d::new(map, nx, ny, ebcs, nbcs, k)?;
+    let (nr, ns) = (nn + 1, nn + 1);
+    let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, k)?;
 
     // solve the problem
     let a = if helmholtz {
         spc.solve_helmholtz_sps(alpha, &source)?
     } else {
-        spc.solve_poisson_sps(&source)?
+        if lmm {
+            spc.solve_poisson_lmm(&source)?
+        } else {
+            spc.solve_poisson_sps(&source)?
+        }
     };
 
     // check
@@ -196,15 +204,15 @@ fn run_spc_map(case_a: bool, helmholtz: bool, nn: usize, tol: f64) -> Result<(),
         let mut surf_ana = Surface::new();
         let mut contour_num = Contour::new();
         let mut contour_ana = Contour::new();
-        let mut xx = vec![vec![0.0; nx]; ny];
-        let mut yy = vec![vec![0.0; nx]; ny];
-        let mut zz_num = vec![vec![0.0; nx]; ny];
-        let mut zz_ana = vec![vec![0.0; nx]; ny];
-        let mut xx_serial = Vec::with_capacity(nx * ny);
-        let mut yy_serial = Vec::with_capacity(nx * ny);
+        let mut xx = vec![vec![0.0; nr]; ns];
+        let mut yy = vec![vec![0.0; nr]; ns];
+        let mut zz_num = vec![vec![0.0; nr]; ns];
+        let mut zz_ana = vec![vec![0.0; nr]; ns];
+        let mut xx_serial = Vec::with_capacity(nr * ns);
+        let mut yy_serial = Vec::with_capacity(nr * ns);
         spc.for_each_coord(|m, x, y| {
-            let row = m / nx;
-            let col = m % nx;
+            let row = m / nr;
+            let col = m % nr;
             xx[row][col] = x;
             yy[row][col] = y;
             zz_num[row][col] = a[m];

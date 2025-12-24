@@ -229,16 +229,53 @@ impl<'a> SpcMap2d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
+    /// Solves the Poisson equation using the Lagrange multipliers method (LMM)
+    ///
+    /// ```text
+    /// -k ∇²ϕ = source(x,y)
+    /// ```
+    pub fn solve_poisson_lmm<F>(&mut self, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let (mm, _) = self.get_matrices_lmm(0, false);
+        let (mut aa, ff) = self.get_vectors_lmm(source);
+
+        // solve the linear system
+        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        solver.actual.factorize(&mm, None)?;
+        solver.actual.solve(&mut aa, &ff, false)?;
+
+        // results
+        let neq = self.equations.neq();
+        Ok(Vector::from(&&aa.as_data()[..neq]))
+    }
+
     /// Returns the dimensions for the system partitioning strategy (SPS)
     ///
     /// Returns `(nu, np)` where:
     ///
     /// * `nu` is the number of unknowns
     /// * `np` is the number of prescribed values
-    pub fn get_dims(&self) -> (usize, usize) {
+    pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)
+    }
+
+    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(neq, nlag, ndim)` where:
+    ///
+    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
+    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
+    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
+        let neq = self.equations.neq();
+        let nlag = self.equations.np();
+        let ndim = neq + nlag;
+        (neq, nlag, ndim)
     }
 
     /// Access the equation numbering handler
@@ -331,6 +368,105 @@ impl<'a> SpcMap2d<'a> {
         (kk_bar, kk_check)
     }
 
+    /// Returns the matrix for the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(mm, cc)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
+    /// * `get_constraints_mat` -- whether to return the constraints matrix or not
+    pub fn get_matrices_lmm(&mut self, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+        // allocate matrices
+        let (neq, nlag, ndim) = self.get_dims_lmm();
+        let nr = self.grid.nx();
+        let ns = self.grid.ny();
+        let nnz_wcs = nr * nr * ns * ns; // worst-case scenario
+        let mut mm = CooMatrix::new(ndim, ndim, nnz_wcs + extra_nnz + 2 * nlag, Sym::No).unwrap();
+
+        // add all terms to the coefficient matrix
+        for m in 0..neq {
+            let (i, j) = self.grid.get_ij(m);
+            self.calculate_metrics(m);
+            let g11 = self.metrics.gg_mat.get(0, 0);
+            let g22 = self.metrics.gg_mat.get(1, 1);
+            let g12 = self.metrics.gg_mat.get(0, 1);
+            let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
+            let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
+            let has_nbc = if i == 0 || i == nr - 1 || j == 0 || j == ns - 1 {
+                self.nbcs.has_value(m)
+            } else {
+                false
+            };
+            if has_nbc {
+                for k in 0..nr {
+                    for l in 0..ns {
+                        let n = k + l * nr;
+                        let mut val = 0.0;
+                        if i == 0 || i == nr - 1 {
+                            // Xmin or Xmax
+                            if j == l {
+                                self.calc_unit_normal(Side::Xmax);
+                                let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
+                                val += self.mk * self.d1r(i, k) * alpha;
+                            }
+                        }
+                        if j == 0 || j == ns - 1 {
+                            // Ymin or Ymax
+                            if i == k {
+                                self.calc_unit_normal(Side::Ymax);
+                                let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
+                                val += self.mk * self.d1s(j, l) * beta;
+                            }
+                        }
+                        mm.put(m, n, val).unwrap();
+                    }
+                }
+            } else {
+                for k in 0..nr {
+                    for l in 0..ns {
+                        let n = k + l * nr;
+                        let val = 0.0
+                            + self.d2r(i, k) * delta(j, l) * g11
+                            + delta(i, k) * self.d2s(j, l) * g22
+                            + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                            - self.d1r(i, k) * delta(j, l) * ll1
+                            - delta(i, k) * self.d1s(j, l) * ll2;
+                        mm.put(m, n, self.mk * val).unwrap();
+                    }
+                }
+            }
+        }
+
+        // assemble C and Cᵀ into M
+        self.equations.prescribed().iter().for_each(|&m| {
+            let ip = self.equations.ip(m);
+            mm.put(neq + ip, m, 1.0).unwrap(); // C
+            mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+        });
+
+        // build and return the C matrix, if requested and available
+        if get_constraints_mat && nlag > 0 {
+            let mut cc = CooMatrix::new(nlag, neq, nlag, Sym::No).unwrap();
+            self.equations.prescribed().iter().for_each(|&m| {
+                let ip = self.equations.ip(m);
+                cc.put(ip, m, 1.0).unwrap(); // C
+            });
+            (mm, Some(cc))
+        } else {
+            (mm, None)
+        }
+    }
+
     /// Returns the vectors for the solution of the system of equations using the system partitioning strategy (SPS)
     ///
     /// Returns `(a_bar, a_check, f_bar)` from:
@@ -417,6 +553,64 @@ impl<'a> SpcMap2d<'a> {
             a[m] = a_check[ip];
         });
         a
+    }
+
+    /// Returns the vectors for the solution of the system of equations using the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(aa, ff)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
+    /// The `source` function calculates f(x, y).
+    pub fn get_vectors_lmm<F>(&mut self, source: F) -> (Vector, Vector)
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        let (neq, _, ndim) = self.get_dims_lmm();
+        let aa = Vector::new(ndim);
+        let mut ff = Vector::new(ndim);
+        self.grid.for_each_coord(|m, r, s| {
+            self.map.point(&mut self.x, r, s);
+            if self.grid.on_boundary(m) {
+                // In the SPC, on the Neumann boundary, we solve -k∂ϕ/∂n = q̄ which is different than the
+                // FDM approach which still solves the original equation -k ∇²ϕ = source(x,y). Therefore,
+                // we must NOT add the source term to f̄ in the SPC.
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](self.x[0], self.x[1]);
+                    ff[m] += wn;
+                }
+                if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](self.x[0], self.x[1]);
+                    ff[m] += wn;
+                }
+                if self.grid.is_ymin(m) {
+                    let wn = self.nbcs.functions[2](self.x[0], self.x[1]);
+                    ff[m] += wn;
+                }
+                if self.grid.is_ymax(m) {
+                    let wn = self.nbcs.functions[3](self.x[0], self.x[1]);
+                    ff[m] += wn;
+                }
+            } else {
+                // Solving the original equation -k ∇²ϕ = source(x,y)
+                ff[m] = source(self.x[0], self.x[1]);
+            }
+        });
+        self.equations.prescribed().iter().for_each(|&m| {
+            let ip = self.equations.ip(m);
+            let (r, s) = self.grid.coord(m);
+            self.map.point(&mut self.x, r, s);
+            let val = self.ebcs.get_value(m, self.x[0], self.x[1]);
+            ff[neq + ip] = val;
+        });
+        (aa, ff)
     }
 
     /// Executes a loop over the grid points

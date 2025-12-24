@@ -164,9 +164,7 @@ impl<'a> Spc2d<'a> {
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let nu = self.equations.nu();
-        let extra_nnz = nu; // diagonal entries due to α ϕ
-        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, extra_nnz);
+        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0);
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
 
         // initialize the right-hand side

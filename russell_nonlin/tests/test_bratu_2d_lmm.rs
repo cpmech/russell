@@ -127,7 +127,7 @@ fn run_test(
     let (neq, _, ndim) = fdm.get_dims_lmm();
 
     // augmented coefficient matrix of the Laplacian operator
-    let (aug_mat, _) = fdm.get_matrices_lmm(0, false);
+    let (aug_mat, _) = fdm.get_matrices_lmm(0.0, 0, false);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {

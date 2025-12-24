@@ -18,7 +18,7 @@ fn test_2d_prob05_fdm_sps() -> Result<(), StrError> {
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_poisson_sps(&source)?;
+    let a = fdm.solve_sps(0.0, &source)?;
 
     // check
     let mut err_max = 0.0;
@@ -119,7 +119,7 @@ fn test_2d_prob05_fdm_lmm() -> Result<(), StrError> {
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_poisson_lmm(&source)?;
+    let a = fdm.solve_lmm(0.0, &source)?;
 
     // check
     let mut err_max = 0.0;

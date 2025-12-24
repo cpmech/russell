@@ -5,21 +5,45 @@ use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_2d_prob03_fdm_sps() -> Result<(), StrError> {
+fn test_2d_prob03_fdm() -> Result<(), StrError> {
+    for nd_tol in &[
+        (11, 1.0055e-1), //
+                         // (101, 1.043e-3), //
+    ] {
+        let (nd, tol) = *nd_tol;
+        // SPS
+        run(true, true, false, nd, tol)?;
+        run(true, false, false, nd, tol)?;
+        run(false, true, false, nd, tol)?;
+        run(false, false, false, nd, tol)?;
+        // LMM
+        run(true, true, true, nd, tol)?;
+        run(true, false, true, nd, tol)?;
+        run(false, true, true, nd, tol)?;
+        run(false, false, true, nd, tol)?;
+    }
+    Ok(())
+}
+
+fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
+    let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
-        ProblemSamples::d2_problem_03(1.0, 0.0, false);
+        ProblemSamples::d2_problem_03(1.0, alpha, case_a);
 
     // allocate the grid
-    let n = 11;
-    let (nx, ny) = (n, n);
+    let (nx, ny) = (nd, nd);
     let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_poisson_sps(&source)?;
+    let a = if lmm {
+        fdm.solve_lmm(alpha, &source)?
+    } else {
+        fdm.solve_sps(alpha, &source)?
+    };
 
     // check
     let mut err_max = 0.0;
@@ -28,7 +52,7 @@ fn test_2d_prob03_fdm_sps() -> Result<(), StrError> {
         if err > err_max {
             err_max = err;
         }
-        approx_eq(a[m], analytical(x, y), 1.0055e-1);
+        approx_eq(a[m], analytical(x, y), tol);
     });
     println!("max(err) = {:>10.5e}", err_max);
 
@@ -108,36 +132,5 @@ fn test_2d_prob03_fdm_sps() -> Result<(), StrError> {
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_b)?;
     }
-    Ok(())
-}
-
-#[test]
-fn test_2d_prob03_fdm_lmm() -> Result<(), StrError> {
-    // get the problem data
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
-        ProblemSamples::d2_problem_03(1.0, 0.0, false);
-
-    // allocate the grid
-    let n = 11;
-    let (nx, ny) = (n, n);
-    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
-
-    // allocate the solver
-    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
-
-    // solve the problem
-    let a = fdm.solve_poisson_lmm(&source)?;
-
-    // check
-    let mut err_max = 0.0;
-    fdm.for_each_coord(|m, x, y| {
-        let err = f64::abs(a[m] - analytical(x, y));
-        if err > err_max {
-            err_max = err;
-        }
-        // approx_eq(a[m], analytical(x, y), 1.0055e-1);
-    });
-    println!("max(err) = {:>10.5e}", err_max);
-
     Ok(())
 }

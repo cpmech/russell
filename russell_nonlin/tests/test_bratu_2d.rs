@@ -84,7 +84,7 @@ fn run_test(bordering: bool, _alpha: f64, npt: usize, stop: Stop, auto: AutoStep
     let ndim = fdm.get_dims_sps().0;
 
     // get the discrete operator
-    let (kk_bar, _) = fdm.get_matrices_sps(0);
+    let (kk_bar, _) = fdm.get_matrices_sps(0.0, 0);
 
     // function to calculate G(u, λ)
     let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {

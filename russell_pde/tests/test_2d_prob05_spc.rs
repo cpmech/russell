@@ -17,7 +17,7 @@ fn test_2d_prob05_spc() -> Result<(), StrError> {
     let spc = Spc2d::new(xmin, xmax, ymin, ymax, nx, ny, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = spc.solve_poisson_sps(&source)?;
+    let a = spc.solve_sps(0.0, &source)?;
 
     // check
     let mut err_max = 0.0;

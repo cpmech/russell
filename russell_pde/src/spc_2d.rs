@@ -4,11 +4,11 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
 /// Implements the Spectral Collocation method (SPC) in 2D
 ///
-/// The SPC can be used to solve the following problem:
+/// The SPC can be used to solve the following problem (Poisson or Helmholtz equation):
 ///
 /// ```text
 ///     ∂²ϕ      ∂²ϕ
-/// -kx ——— - ky ——— = source(x, y)
+/// -kx ——— - ky ——— + α ϕ = source(x, y)
 ///     ∂x²      ∂y²
 /// ```
 ///
@@ -36,6 +36,11 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// ```text
 /// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
 /// ```
+///
+/// Two methods are implemented to handle the essential boundary conditions:
+///
+/// 1. System Partitioning Strategy (SPS)
+/// 2. Lagrange Multipliers Method (LMM)
 pub struct Spc2d<'a> {
     /// Minimum x-coordinate
     xmin: f64,
@@ -147,57 +152,22 @@ impl<'a> Spc2d<'a> {
         })
     }
 
-    /// Solves the Poisson equation using the system partitioning strategy (SPS)
-    ///
-    /// ```text
-    ///     ∂²ϕ      ∂²ϕ
-    /// -kx ——— - ky ——— = source(x, y)
-    ///     ∂x²      ∂y²
-    /// ```
-    pub fn solve_poisson_sps<F>(&self, source: F) -> Result<Vector, StrError>
-    where
-        F: Fn(f64, f64) -> f64,
-    {
-        // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices_sps(0);
-        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
-
-        // initialize the right-hand side
-        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
-
-        // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
-        solver.actual.factorize(&kk_bar, None)?;
-        solver.actual.solve(&mut a_bar, &f_bar, false)?;
-
-        // results
-        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
-    }
-
-    /// Solves the Helmholtz equation using the system partitioning strategy (SPS)
+    /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
     /// -kx ——— - ky ——— + α ϕ = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
-    pub fn solve_helmholtz_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
+    pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
         let nu = self.equations.nu();
         let extra_nnz = nu; // diagonal entries due to α ϕ
-        let (mut kk_bar, kk_check) = self.get_matrices_sps(extra_nnz);
+        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, extra_nnz);
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
-
-        // add the diagonal entries due to α ϕ
-        for &m in self.equations.unknown() {
-            if !self.nbcs.has_value(m) {
-                let row = self.equations.iu(m);
-                kk_bar.put(row, row, alpha).unwrap();
-            }
-        }
 
         // initialize the right-hand side
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
@@ -211,19 +181,19 @@ impl<'a> Spc2d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Poisson equation using the Lagrange multipliers method (LMM)
+    /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
-    /// -kx ——— - ky ——— = source(x, y)
+    /// -kx ——— - ky ——— + α ϕ = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
-    pub fn solve_poisson_lmm<F>(&self, source: F) -> Result<Vector, StrError>
+    pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (mm, _) = self.get_matrices_lmm(0, false);
+        let (mm, _) = self.get_matrices_lmm(alpha, 0, false);
         let (mut aa, ff) = self.get_vectors_lmm(source);
 
         // solve the linear system
@@ -282,8 +252,9 @@ impl<'a> Spc2d<'a> {
     ///
     /// # Arguments
     ///
+    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
-    pub fn get_matrices_sps(&self, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
+    pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
         // allocate matrices
         let nu = self.equations.nu();
         let np = self.equations.np();
@@ -356,6 +327,9 @@ impl<'a> Spc2d<'a> {
                         if i == k {
                             val += self.mky * dd2y.get(j, l) * cy;
                         }
+                        if m == n {
+                            val += alpha; // diagonal entries due to α ϕ
+                        }
                         self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                     }
                 }
@@ -381,9 +355,15 @@ impl<'a> Spc2d<'a> {
     ///
     /// # Arguments
     ///
+    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
     /// * `get_constraints_mat` -- whether to return the constraints matrix or not
-    pub fn get_matrices_lmm(&self, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(
+        &self,
+        alpha: f64,
+        extra_nnz: usize,
+        get_constraints_mat: bool,
+    ) -> (CooMatrix, Option<CooMatrix>) {
         // allocate matrices
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nx = self.grid.nx();
@@ -453,6 +433,9 @@ impl<'a> Spc2d<'a> {
                         }
                         if i == k {
                             val += self.mky * dd2y.get(j, l) * cy;
+                        }
+                        if m == n {
+                            val += alpha; // diagonal entries due to α ϕ
                         }
                         mm.put(m, n, val).unwrap();
                     }
@@ -687,7 +670,7 @@ mod tests {
         ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
         let spec = Spc2d::new(-1.0, 1.0, -1.0, 1.0, 5, 5, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk_bar, kk_check) = spec.get_matrices_sps(0);
+        let (kk_bar, kk_check) = spec.get_matrices_sps(0.0, 0);
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 

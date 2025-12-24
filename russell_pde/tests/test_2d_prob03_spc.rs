@@ -19,7 +19,9 @@ fn test_2d_prob03_spc() -> Result<(), StrError> {
         run_spc(false, true, false, nn, tol)?;
         run_spc(false, false, false, nn, tol)?;
         // LMM
+        run_spc(true, true, true, nn, tol)?;
         run_spc(true, false, true, nn, tol)?;
+        run_spc(false, true, true, nn, tol)?;
         run_spc(false, false, true, nn, tol)?;
     }
     Ok(())
@@ -57,14 +59,10 @@ fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Res
     let spc = Spc2d::new(xmin, xmax, ymin, ymax, nx, ny, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = if helmholtz {
-        spc.solve_helmholtz_sps(alpha, &source)?
+    let a = if lmm {
+        spc.solve_lmm(alpha, &source)?
     } else {
-        if lmm {
-            spc.solve_poisson_lmm(&source)?
-        } else {
-            spc.solve_poisson_sps(&source)?
-        }
+        spc.solve_sps(alpha, &source)?
     };
 
     // check

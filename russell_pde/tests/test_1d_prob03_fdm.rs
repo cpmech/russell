@@ -7,7 +7,7 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_03();
+    let (xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_03();
     let nx = 21;
 
     // allocate the grid
@@ -17,7 +17,7 @@ fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_helmholtz_sps(beta, phi_inf, source)?;
+    let a = fdm.solve_sps(alpha, source)?;
 
     // analytical solution
     fdm.for_each_coord(|m, x| {
@@ -54,7 +54,7 @@ fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
 #[test]
 fn test_1d_prob03_fdm_lmm() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_03();
+    let (xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_03();
     let nx = 21;
 
     // allocate the grid
@@ -64,7 +64,7 @@ fn test_1d_prob03_fdm_lmm() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_helmholtz_lmm(beta, phi_inf, source)?;
+    let a = fdm.solve_lmm(alpha, source)?;
 
     // analytical solution
     fdm.for_each_coord(|m, x| {

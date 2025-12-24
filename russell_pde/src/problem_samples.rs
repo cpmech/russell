@@ -56,12 +56,11 @@ impl ProblemSamples {
 
     /// 1D Problem # 02 - Helmholtz
     ///
-    /// Returns `(xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)`, where:
+    /// Returns `(xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical)`, where:
     ///
     /// * `xmin` and `xmax` are the domain limits
     /// * `kx` is the diffusion coefficient
-    /// * `beta` is the convection coefficient
-    /// * `phi_inf` is the temperature of the surrounding environment
+    /// * `alpha` is the convection coefficient
     /// * `source` is the source function `f(x)`
     /// * `analytical` is the analytical solution function `ϕ(x)`
     /// * `ebcs` are the essential boundary conditions
@@ -82,12 +81,18 @@ impl ProblemSamples {
     ///
     /// ```text
     ///      ∂²ϕ
-    /// - kx ——— + (ϕ - ϕ∞) β = 0
+    /// - kx ——— + (ϕ - ϕ∞) α = 0
     ///      ∂x²
+    ///
+    ///
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ =   α ϕ∞
+    ///     ∂x²        └────────┘
+    ///                 source(x)
     /// ```
     ///
     /// where ϕ∞ = 20°C is the temperature of the surrounding environment and
-    /// β = 2 π W/m/°C is the convection coefficient. The essential boundary
+    /// α = 2 π W/m/°C is the convection coefficient. The essential boundary
     /// condition is:
     ///
     /// ```text
@@ -108,7 +113,6 @@ impl ProblemSamples {
         f64,
         f64,
         f64,
-        f64,
         EssentialBcs1d<'a>,
         NaturalBcs1d<'a>,
         Box<dyn Fn(f64) -> f64>,
@@ -116,7 +120,7 @@ impl ProblemSamples {
     ) {
         let lx = 0.05;
         let kx = 0.01571;
-        let beta = 2.0 * PI;
+        let alpha = 2.0 * PI;
         let phi_a = 320.0;
         let phi_inf = 20.0;
         let xmin = 0.0;
@@ -124,22 +128,21 @@ impl ProblemSamples {
         let mut ebcs = EssentialBcs1d::new();
         ebcs.set(Side::Xmin, move |_| phi_a);
         let nbcs = NaturalBcs1d::new();
-        let source = Box::new(|_| 0.0);
+        let source = Box::new(move |_| alpha * phi_inf);
         let analytical = Box::new(move |x: f64| {
-            let m = f64::sqrt(beta / kx);
+            let m = f64::sqrt(alpha / kx);
             phi_inf + (phi_a - phi_inf) * f64::cosh(m * (lx - x)) / f64::cosh(m * lx)
         });
-        (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)
+        (xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical)
     }
 
     /// 1D Problem # 03 - Helmholtz
     ///
-    /// Returns `(xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)`, where:
+    /// Returns `(xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical)`, where:
     ///
     /// * `xmin` and `xmax` are the domain limits
     /// * `kx` is the diffusion coefficient
-    /// * `beta` is the convection coefficient
-    /// * `phi_inf` is the temperature of the surrounding environment
+    /// * `alpha` is the convection coefficient
     /// * `source` is the source function `f(x)`
     /// * `analytical` is the analytical solution function `ϕ(x)`
     /// * `ebcs` are the essential boundary conditions
@@ -191,7 +194,6 @@ impl ProblemSamples {
         f64,
         f64,
         f64,
-        f64,
         EssentialBcs1d<'a>,
         NaturalBcs1d<'a>,
         Box<dyn Fn(f64) -> f64>,
@@ -199,9 +201,8 @@ impl ProblemSamples {
     ) {
         let lx = 1.0;
         let kx = 1.0;
-        let beta = 1.0;
+        let alpha = 1.0;
         let phi_a = 2.0;
-        let phi_inf = 0.0;
         let xmin = 0.0;
         let xmax = lx;
         let mut ebcs = EssentialBcs1d::new();
@@ -213,7 +214,7 @@ impl ProblemSamples {
             let d = f64::cosh(1.0);
             f64::sinh(x) / d + x * x + 2.0
         });
-        (xmin, xmax, kx, beta, phi_inf, ebcs, nbcs, source, analytical)
+        (xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical)
     }
 
     /// 1D Problem # 04 - Poisson

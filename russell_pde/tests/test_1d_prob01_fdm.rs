@@ -13,7 +13,7 @@ fn test_1d_prob01_fdm_sps() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_poisson_sps(source)?;
+    let a = fdm.solve_sps(0.0, source)?;
 
     // analytical solution
     fdm.for_each_coord(|m, x| {
@@ -34,7 +34,7 @@ fn test_1d_prob01_fdm_lmm() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_poisson_lmm(source)?;
+    let a = fdm.solve_lmm(0.0, source)?;
 
     // analytical solution
     fdm.for_each_coord(|m, x| {

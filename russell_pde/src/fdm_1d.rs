@@ -10,23 +10,13 @@ const INI_X: usize = 0;
 
 /// Implements the Finite Difference method (FDM) in 1D
 ///
-/// The FDM can be used to solve the following problems:
+/// The FDM can be used to solve the following problem (Poisson or Helmholtz equation):
 ///
 /// ```text
 /// Poisson:
 ///
 ///     ∂²ϕ
-/// -kx ——— = source(x)
-///     ∂x²
-/// ```
-///
-/// or
-///
-/// ```text
-/// Helmholtz:
-///
-///     ∂²ϕ
-/// -kx ——— + (ϕ - ϕ∞) β = source(x)
+/// -kx ——— + α ϕ = source(x)
 ///     ∂x²
 /// ```
 ///
@@ -200,91 +190,36 @@ impl<'a> Fdm1d<'a> {
         })
     }
 
-    /// Solves the Poisson equation in 1D (System Partitioning Strategy - SPS)
+    /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
     ///
-    /// Returns `a`, the solution vector.
+    /// Returns the solution vector `a`.
     ///
     /// ```text
     ///     ∂²ϕ
-    /// -kx ——— = source(x)
+    /// -kx ——— + α ϕ = source(x)
     ///     ∂x²
     /// ```
     ///
-    /// Note: This function employs the system partitioning strategy (SPS).
-    pub fn solve_poisson_sps<F>(&self, source: F) -> Result<Vector, StrError>
+    /// For the convection problem, the equation can be rearranged as:
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + (ϕ - ϕ∞) α = f(x)
+    ///     ∂x²
+    ///
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = f(x) + α ϕ∞
+    ///     ∂x²        └───────────┘
+    ///                  source(x)
+    /// ```
+    pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices_sps(0, Sym::No);
+        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0);
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
         let kk_check = kk_check.unwrap();
-
-        // initialize the right-hand side
-        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
-
-        // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
-        solver.actual.factorize(&kk_bar, None)?;
-        solver.actual.solve(&mut a_bar, &f_bar, false)?;
-
-        // results
-        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
-    }
-
-    /// Solves the Poisson equation in 1D (Lagrange multipliers method)
-    ///
-    /// Returns `a`, the solution vector.
-    ///
-    /// ```text
-    ///     ∂²ϕ
-    /// -kx ——— = source(x)
-    ///     ∂x²
-    /// ```
-    pub fn solve_poisson_lmm<F>(&self, source: F) -> Result<Vector, StrError>
-    where
-        F: Fn(f64) -> f64,
-    {
-        // assemble the coefficient matrix and the lhs and rhs vectors
-        let (mm, _) = self.get_matrices_lmm(0, false);
-        let (mut aa, ff) = self.get_vectors_lmm(source);
-
-        // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
-        solver.actual.factorize(&mm, None)?;
-        solver.actual.solve(&mut aa, &ff, false)?;
-
-        // results
-        let neq = self.equations.neq();
-        Ok(Vector::from(&&aa.as_data()[..neq]))
-    }
-
-    /// Solves the Helmholtz (HZ) equation in 1D
-    ///
-    /// Returns `a`, the solution vector.
-    ///
-    /// ```text
-    ///     ∂²ϕ
-    /// -kx ——— + (ϕ - ϕ∞) β = source(x)
-    ///     ∂x²
-    /// ```
-    ///
-    /// Note: This function employs the system partitioning strategy (SPS).
-    pub fn solve_helmholtz_sps<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
-    where
-        F: Fn(f64) -> f64,
-    {
-        // assemble the coefficient matrix and the lhs and rhs vectors
-        let nu = self.get_dims_sps().0;
-        let extra_nnz = nu; // diagonal entries due to ϕ β
-        let (mut kk_bar, kk_check) = self.get_matrices_sps(extra_nnz, Sym::No);
-        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(|x| source(x) + phi_inf * beta);
-        let kk_check = kk_check.unwrap();
-
-        // add the diagonal entries due to ϕ β
-        for i in 0..nu {
-            kk_bar.put(i, i, beta)?;
-        }
 
         // update the right-hand side with the prescribed values
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check)?; // f̄ -= Ǩ ǎ
@@ -298,29 +233,31 @@ impl<'a> Fdm1d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Helmholtz equation in 1D (Lagrange multipliers method)
+    /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
     ///
-    /// Returns `a`, the solution vector.
+    /// Returns the solution vector `a`.
+    ///
+    /// For the convection problem, the equation can be rearranged as:
     ///
     /// ```text
     ///     ∂²ϕ
-    /// -kx ——— + (ϕ - ϕ∞) β = source(x)
+    /// -kx ——— + (ϕ - ϕ∞) α = f(x)
     ///     ∂x²
+    ///
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = f(x) + α ϕ∞
+    ///     ∂x²        └───────────┘
+    ///                  source(x)
     /// ```
-    pub fn solve_helmholtz_lmm<F>(&self, beta: f64, phi_inf: f64, source: F) -> Result<Vector, StrError>
+    pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
         let neq = self.equations.neq();
         let extra_nnz = neq; // diagonal entries due to ϕ β
-        let (mut mm, _) = self.get_matrices_lmm(extra_nnz, false);
-        let (mut aa, ff) = self.get_vectors_lmm(|x| source(x) + phi_inf * beta);
-
-        // add the diagonal entries due to ϕ β
-        for m in 0..neq {
-            mm.put(m, m, beta).unwrap();
-        }
+        let (mm, _) = self.get_matrices_lmm(alpha, extra_nnz, false);
+        let (mut aa, ff) = self.get_vectors_lmm(source);
 
         // solve the linear system
         let mut solver = LinSolver::new(Genie::Umfpack)?;
@@ -383,15 +320,15 @@ impl<'a> Fdm1d<'a> {
     ///
     /// # Arguments
     ///
+    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
-    /// * `sym_kk_bar` -- symmetry of the K-bar matrix
     ///
     /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
-    pub fn get_matrices_sps(&self, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize) -> (CooMatrix, Option<CooMatrix>) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         let nnz_kk_bar = 3 * nu + extra_nnz; // 3 is the bandwidth
-        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, Sym::No).unwrap();
         let mut kk_check = if np == 0 {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
             CooMatrix::new(1, 1, 1, Sym::No).unwrap()
@@ -402,12 +339,16 @@ impl<'a> Fdm1d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             self.loop_over_bandwidth(m, |b, n| {
+                let mut val = self.molecule[b];
+                if m == n {
+                    val += alpha; // Helmholtz term
+                }
                 if self.equations.is_prescribed(n) {
                     let jp = self.equations.ip(n);
-                    kk_check.put(iu, jp, self.molecule[b]).unwrap();
+                    kk_check.put(iu, jp, val).unwrap();
                 } else {
                     let ju = self.equations.iu(n);
-                    kk_bar.put(iu, ju, self.molecule[b]).unwrap();
+                    kk_bar.put(iu, ju, val).unwrap();
                 }
             });
         });
@@ -433,18 +374,28 @@ impl<'a> Fdm1d<'a> {
     ///
     /// # Arguments
     ///
+    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
     /// * `get_constraints_mat` -- whether to return the constraints matrix or not
     ///
     /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
-    pub fn get_matrices_lmm(&self, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_lmm(
+        &self,
+        alpha: f64,
+        extra_nnz: usize,
+        get_constraints_mat: bool,
+    ) -> (CooMatrix, Option<CooMatrix>) {
         // build the augmented matrix
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nnz = 3 * neq + 2 * nlag + extra_nnz; // 3 is the bandwidth, 2*nlag is for C and Cᵀ
         let mut mm = CooMatrix::new(ndim, ndim, nnz, Sym::No).unwrap();
         for m in 0..neq {
             self.loop_over_bandwidth(m, |b, n| {
-                mm.put(m, n, self.molecule[b]).unwrap();
+                let mut val = self.molecule[b];
+                if m == n {
+                    val += alpha;
+                }
+                mm.put(m, n, val).unwrap();
             });
         }
 
@@ -655,7 +606,6 @@ mod tests {
     use super::Fdm1d;
     use crate::{EssentialBcs1d, Grid1d, NaturalBcs1d, Side};
     use russell_lab::Vector;
-    use russell_sparse::Sym;
 
     const LEF: f64 = 1.0;
     const RIG: f64 = 2.0;
@@ -699,8 +649,8 @@ mod tests {
         ebcs.set(Side::Xmin, lef); //  0
 
         let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -796,8 +746,8 @@ mod tests {
         ebcs.set_homogeneous();
 
         let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -891,8 +841,8 @@ mod tests {
         ebcs.set_periodic(true);
 
         let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0, Sym::No);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true);
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());
 

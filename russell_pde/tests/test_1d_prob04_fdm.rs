@@ -2,7 +2,7 @@ use russell_lab::approx_eq;
 use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 
 #[test]
-fn test_1d_prob04_fdm() -> Result<(), StrError> {
+fn test_1d_prob04_fdm_sps() -> Result<(), StrError> {
     // problem setup
     let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_04();
 
@@ -13,7 +13,7 @@ fn test_1d_prob04_fdm() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_poisson_sps(source)?;
+    let a = fdm.solve_sps(0.0, source)?;
 
     // analytical solution
     let mut max_err = 0.0;

@@ -21,7 +21,7 @@ fn test_1d_prob05_fdm() -> Result<(), StrError> {
     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // solve the problem
-    let a = fdm.solve_helmholtz_sps(beta * beta, 0.0, source)?;
+    let a = fdm.solve_sps(beta * beta, source)?;
 
     // analytical solution
     let mut max_err = 0.0;

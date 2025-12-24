@@ -154,6 +154,8 @@ impl<'a> Spc2d<'a> {
 
     /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
     ///
+    /// Returns the solution vector `a`.
+    ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
     /// -kx ——— - ky ——— + α ϕ = source(x, y)
@@ -180,6 +182,8 @@ impl<'a> Spc2d<'a> {
     }
 
     /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
+    ///
+    /// Returns the solution vector `a`.
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ

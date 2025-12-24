@@ -366,7 +366,23 @@ impl<'a> Spc2d<'a> {
         (kk_bar, kk_check)
     }
 
-    /// Returns the coefficient matrix for the Lagrange multipliers method (LMM)
+    /// Returns the matrix for the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(mm, cc)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
+    /// * `get_constraints_mat` -- whether to return the constraints matrix or not
     pub fn get_matrices_lmm(&self, extra_nnz: usize, get_constraints_mat: bool) -> (CooMatrix, Option<CooMatrix>) {
         // allocate matrices
         let (neq, nlag, ndim) = self.get_dims_lmm();

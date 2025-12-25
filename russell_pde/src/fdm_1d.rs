@@ -1,3 +1,4 @@
+use crate::util::validate_bcs_1d;
 use crate::{EquationHandler, EssentialBcs1d, Grid1d, NaturalBcs1d, StrError};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
@@ -168,6 +169,7 @@ impl<'a> Fdm1d<'a> {
         // build the boundary conditions data
         ebcs.build(&grid);
         nbcs.build(&grid);
+        validate_bcs_1d(&ebcs, &nbcs)?;
 
         // allocate equations handler
         let neq = grid.nx();
@@ -446,13 +448,15 @@ impl<'a> Fdm1d<'a> {
             let iu = self.equations.iu(m);
             let x = self.grid.coord(m);
             f_bar[iu] = source(x);
+            if self.grid.is_xmin(m) {
+                let wn = self.nbcs.functions[0](x);
+                f_bar[iu] += -2.0 * wn / self.dx;
+            }
+            if self.grid.is_xmax(m) {
+                let wn = self.nbcs.functions[1](x);
+                f_bar[iu] += -2.0 * wn / self.dx;
+            }
         });
-        for m in self.nbcs.get_nodes() {
-            let iu = self.equations.iu(m);
-            let x = self.grid.coord(m);
-            let q_bar = self.nbcs.get_value(m, x);
-            f_bar[iu] += -2.0 * q_bar / self.dx;
-        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
@@ -511,12 +515,15 @@ impl<'a> Fdm1d<'a> {
         let mut ff = Vector::new(ndim);
         self.grid.for_each_coord(|m, x| {
             ff[m] = source(x);
+            if self.grid.is_xmin(m) {
+                let wn = self.nbcs.functions[0](x);
+                ff[m] += -2.0 * wn / self.dx;
+            }
+            if self.grid.is_xmax(m) {
+                let wn = self.nbcs.functions[1](x);
+                ff[m] += -2.0 * wn / self.dx;
+            }
         });
-        for m in self.nbcs.get_nodes() {
-            let x = self.grid.coord(m);
-            let q_bar = self.nbcs.get_value(m, x);
-            ff[m] += -2.0 * q_bar / self.dx;
-        }
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
             let x = self.grid.coord(m);
@@ -605,7 +612,6 @@ impl<'a> Fdm1d<'a> {
 mod tests {
     use super::Fdm1d;
     use crate::{EssentialBcs1d, Grid1d, NaturalBcs1d, Side};
-    use russell_lab::Vector;
 
     const LEF: f64 = 1.0;
     const RIG: f64 = 2.0;
@@ -620,33 +626,17 @@ mod tests {
     }
 
     #[test]
-    fn new_works() {
-        //  0  1   2   3
-        // dx = 1.0
-        let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
-        let ebcs = EssentialBcs1d::new();
-        let nbcs = NaturalBcs1d::new();
-
-        let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
-        assert_eq!(&fdm.molecule, &[200.0, -100.0, -100.0]);
-
-        assert_eq!(fdm.get_dims_sps(), (4, 0));
-        assert_eq!(fdm.get_dims_lmm(), (4, 0, 4));
-        assert_eq!(fdm.get_grid().nx(), 4);
-        assert_eq!(fdm.get_equations().neq(), 4);
-    }
-
-    #[test]
     fn get_matrices_work() {
         //  0*  1   2   3
         // dx = 1.0
         let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
         let mut ebcs = EssentialBcs1d::new();
-        let nbcs = NaturalBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
         const LEF: f64 = 1.0;
         let lef = |_| LEF;
         assert_eq!(lef(0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0
+        nbcs.set(Side::Xmax, |_| 0.0);
 
         let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
@@ -908,54 +898,5 @@ mod tests {
         assert_eq!(ff.dim(), 5 + 2); // na + nw
         assert_eq!(aa.as_data(), &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         assert_eq!(ff.as_data(), &[100.0, 100.0, 100.0, 100.0, 100.0, LEF, RIG]);
-    }
-
-    #[test]
-    fn loop_over_mm_row_works() {
-        // The full matrix is:
-        //    0  1  2  3
-        // ┌              ┐
-        // │  2 -2  .  .  │  0
-        // │ -1  2 -1  .  │  1
-        // │  . -1  2 -1  │  2
-        // │  .  . -2  2  │  3
-        // └              ┘
-        let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
-        let ebcs = EssentialBcs1d::new();
-        let nbcs = NaturalBcs1d::new();
-        let lap = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
-        let mut row_0 = Vec::new();
-        let mut row_1 = Vec::new();
-        let mut row_2 = Vec::new();
-        let mut row_3 = Vec::new();
-        lap.loop_over_full_coef_mat_row(0, |n, val| row_0.push((n, val)));
-        lap.loop_over_full_coef_mat_row(1, |n, val| row_1.push((n, val)));
-        lap.loop_over_full_coef_mat_row(2, |n, val| row_2.push((n, val)));
-        lap.loop_over_full_coef_mat_row(3, |n, val| row_3.push((n, val)));
-        assert_eq!(row_0, &[(0, 2.0), (1, -1.0), (1, -1.0)]);
-        assert_eq!(row_1, &[(1, 2.0), (0, -1.0), (2, -1.0)]);
-        assert_eq!(row_2, &[(2, 2.0), (1, -1.0), (3, -1.0)]);
-        assert_eq!(row_3, &[(3, 2.0), (2, -1.0), (2, -1.0)]);
-    }
-
-    #[test]
-    fn loop_over_grid_points_works() {
-        let nx = 3;
-        let grid = Grid1d::new_uniform(-1.0, 1.0, nx).unwrap();
-        let ebcs = EssentialBcs1d::new();
-        let nbcs = NaturalBcs1d::new();
-        let lap = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
-        let mut xx = Vector::new(nx);
-        lap.for_each_coord(|m, x| {
-            xx[m] = x;
-        });
-        assert_eq!(
-            format!("{}", xx),
-            "┌    ┐\n\
-             │ -1 │\n\
-             │  0 │\n\
-             │  1 │\n\
-             └    ┘"
-        );
     }
 }

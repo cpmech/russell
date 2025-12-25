@@ -22,7 +22,7 @@ pub struct EssentialBcs1d<'a> {
     functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where essential boundary conditions are applied
-    sides: [bool; 2], // Xmin, Xmax
+    pub(crate) sides: [bool; 2], // Xmin, Xmax
 
     /// Indicates whether the structure is built and ready to use
     ready: bool,

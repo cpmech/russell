@@ -17,14 +17,12 @@ pub struct NaturalBcs2d<'a> {
     pub(crate) functions: Vec<Arc<dyn Fn(f64, f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where natural boundary conditions are applied
-    sides: [bool; 4], // Xmin, Xmax, Ymin, Ymax
+    pub(crate) sides: [bool; 4], // Xmin, Xmax, Ymin, Ymax
 
     /// Indicates whether the structure is built and ready to use
     ready: bool,
 
-    /// Maps node to one of the four functions in `functions`
-    ///
-    /// length = number of nodes with natural boundary conditions
+    /// Indicates whether a node has a NBC value
     has_value: HashSet<usize>,
 }
 
@@ -150,3 +148,8 @@ impl<'a> NaturalBcs2d<'a> {
         self.has_value.contains(&m)
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {}

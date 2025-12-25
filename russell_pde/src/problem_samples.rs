@@ -47,8 +47,8 @@ impl ProblemSamples {
         let xmax = 1.0;
         let kx = 1.0;
         let mut ebcs = EssentialBcs1d::new();
-        ebcs.set_homogeneous();
         let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
         let source = Box::new(|x: f64| x);
         let analytical = Box::new(|x: f64| (x - x.powi(3)) / 6.0);
         (xmin, xmax, kx, ebcs, nbcs, source, analytical)
@@ -96,7 +96,13 @@ impl ProblemSamples {
     /// condition is:
     ///
     /// ```text
-    /// ϕ(0) = ϕₐ = 320°C
+    /// Xmin: ϕ(0) = ϕₐ = 320°C
+    /// ```
+    ///
+    /// The natural boundary condition is:
+    ///
+    /// ```text
+    /// Xmax: -kx ∂ϕ/∂x |_(x=lx) = 0
     /// ```
     ///
     /// The closed-form solution is:
@@ -126,8 +132,9 @@ impl ProblemSamples {
         let xmin = 0.0;
         let xmax = lx;
         let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
         ebcs.set(Side::Xmin, move |_| phi_a);
-        let nbcs = NaturalBcs1d::new();
+        nbcs.set(Side::Xmax, |_| 0.0);
         let source = Box::new(move |_| alpha * phi_inf);
         let analytical = Box::new(move |x: f64| {
             let m = f64::sqrt(alpha / kx);
@@ -173,13 +180,13 @@ impl ProblemSamples {
     /// The essential boundary condition is:
     ///
     /// ```text
-    /// ϕ(0) = ϕₐ = 2°C
+    /// Xmin: ϕ(0) = ϕₐ = 2°C
     /// ```
     ///
     /// The natural boundary condition is:
     ///
     /// ```text
-    /// -kx ∂ϕ/∂x |_(x=1) = q̄ = -3 W
+    /// Xmax: -kx ∂ϕ/∂x |_(x=1) = q̄ = -3 W
     /// ```
     ///
     /// The closed-form solution is (valid for these parameters only):
@@ -206,8 +213,8 @@ impl ProblemSamples {
         let xmin = 0.0;
         let xmax = lx;
         let mut ebcs = EssentialBcs1d::new();
-        ebcs.set(Side::Xmin, move |_| phi_a);
         let mut nbcs = NaturalBcs1d::new();
+        ebcs.set(Side::Xmin, move |_| phi_a);
         nbcs.set(Side::Xmax, |_| -3.0);
         let source = Box::new(|x: f64| x * x);
         let analytical = Box::new(|x: f64| {
@@ -269,8 +276,8 @@ impl ProblemSamples {
         let xmax = 1.0;
         let kx = -1.0;
         let mut ebcs = EssentialBcs1d::new();
-        ebcs.set(Side::Xmax, |_| 0.0);
         let mut nbcs = NaturalBcs1d::new();
+        ebcs.set(Side::Xmax, |_| 0.0);
         nbcs.set(Side::Xmin, |_| 0.0);
         let source = Box::new(|x: f64| f64::exp(4.0 * x));
         let analytical =
@@ -341,8 +348,8 @@ impl ProblemSamples {
         let xmax = ll;
         let kx = -1.0;
         let mut ebcs = EssentialBcs1d::new();
-        ebcs.set(Side::Xmax, move |_| phi_ll);
         let mut nbcs = NaturalBcs1d::new();
+        ebcs.set(Side::Xmax, move |_| phi_ll);
         nbcs.set(Side::Xmin, move |_| -g0);
         let source = Box::new(|_| 0.0);
         let analytical = Box::new(move |x: f64| {

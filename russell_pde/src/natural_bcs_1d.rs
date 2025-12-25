@@ -1,5 +1,5 @@
 use crate::{Grid1d, Side};
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Implements a handler for natural (Neumann) boundary conditions
@@ -14,18 +14,16 @@ pub struct NaturalBcs1d<'a> {
     /// The function is `f(x) -> value`
     ///
     /// (2) → (xmin, xmax); corresponding to the 2 sides
-    functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
+    pub(crate) functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where natural boundary conditions are applied
-    sides: [bool; 2], // Xmin, Xmax
+    pub(crate) sides: [bool; 2], // Xmin, Xmax
 
     /// Indicates whether the structure is built and ready to use
     ready: bool,
 
-    /// Maps node to one of the two functions in `functions`
-    ///
-    /// length = number of nodes with natural boundary conditions
-    node_to_function: HashMap<usize, Side>,
+    /// Indicates whether a node has a NBC value
+    has_value: HashSet<usize>,
 }
 
 impl<'a> NaturalBcs1d<'a> {
@@ -38,7 +36,7 @@ impl<'a> NaturalBcs1d<'a> {
             ],
             sides: [false; 2],
             ready: false,
-            node_to_function: HashMap::new(),
+            has_value: HashSet::new(),
         }
     }
 
@@ -119,28 +117,11 @@ impl<'a> NaturalBcs1d<'a> {
             if self.sides[index] {
                 let side = Side::from_index(index);
                 for &m in grid.get_nodes_on_side(side) {
-                    self.node_to_function.insert(m, side);
+                    self.has_value.insert(m);
                 }
             }
         }
         self.ready = true;
-    }
-
-    /// Returns the NBC value
-    ///
-    /// # Panics
-    ///
-    /// A panic may occur if the index is out of bounds.
-    pub(crate) fn get_value(&self, m: usize, x: f64) -> f64 {
-        assert!(self.ready, "build must be called first");
-        let index = *self.node_to_function.get(&m).unwrap() as usize;
-        (self.functions[index])(x)
-    }
-
-    /// Returns the list of nodes on all sides with NBCs
-    pub(crate) fn get_nodes(&self) -> Vec<usize> {
-        assert!(self.ready, "build must be called first");
-        self.node_to_function.keys().copied().collect()
     }
 }
 

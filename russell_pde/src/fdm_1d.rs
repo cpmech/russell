@@ -153,7 +153,7 @@ impl<'a> Fdm1d<'a> {
     /// * `kx` -- the diffusion coefficient along x
     ///
     /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
-    pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, mut nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
+    pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
         // check grid
         let dx = match grid.get_dx() {
             Some(dx) => dx,
@@ -161,7 +161,6 @@ impl<'a> Fdm1d<'a> {
         };
 
         // validates the boundary conditions data
-        nbcs.build(&grid);
         ebcs.validate(&nbcs)?;
 
         // allocate equations handler

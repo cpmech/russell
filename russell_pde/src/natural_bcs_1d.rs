@@ -1,5 +1,4 @@
 use crate::{Grid1d, Side};
-use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Implements a handler for natural (Neumann) boundary conditions
@@ -18,12 +17,6 @@ pub struct NaturalBcs1d<'a> {
 
     /// Holds the sides where natural boundary conditions are applied
     pub(crate) sides: [bool; 2], // Xmin, Xmax
-
-    /// Indicates whether the structure is built and ready to use
-    ready: bool,
-
-    /// Indicates whether a node has a NBC value
-    has_value: HashSet<usize>,
 }
 
 impl<'a> NaturalBcs1d<'a> {
@@ -35,14 +28,8 @@ impl<'a> NaturalBcs1d<'a> {
                 Arc::new(|_| 0.0), // xmax
             ],
             sides: [false; 2],
-            ready: false,
-            has_value: HashSet::new(),
         }
     }
-
-    // --------------------------------------------------------
-    // setters
-    // --------------------------------------------------------
 
     /// Sets a flux boundary condition
     ///
@@ -103,25 +90,20 @@ impl<'a> NaturalBcs1d<'a> {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
         self.sides[index] = true;
-        self.ready = false;
     }
 
-    // --------------------------------------------------------
-    // crate
-    // --------------------------------------------------------
-
-    /// Builds the internal structures
-    pub(crate) fn build(&mut self, grid: &Grid1d) {
-        assert_eq!(self.ready, false, "can only build once");
-        for index in 0..2 {
-            if self.sides[index] {
-                let side = Side::from_index(index);
-                for &m in grid.get_nodes_on_side(side) {
-                    self.has_value.insert(m);
-                }
-            }
+    /// Indicates whether a natural boundary condition is enabled at the given m location
+    pub(crate) fn enabled_m(&self, m: usize, grid: &Grid1d) -> bool {
+        if m == 0 {
+            // Xmin
+            self.sides[0]
+        } else if m == grid.nx() - 1 {
+            // Xmax
+            self.sides[1]
+        } else {
+            // Interior
+            false
         }
-        self.ready = true;
     }
 }
 

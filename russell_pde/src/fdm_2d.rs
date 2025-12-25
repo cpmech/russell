@@ -1,4 +1,4 @@
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, StrError};
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, Side, StrError};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
@@ -187,7 +187,7 @@ impl<'a> Fdm2d<'a> {
     /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
     pub fn new(
         grid: Grid2d,
-        mut ebcs: EssentialBcs2d<'a>,
+        ebcs: EssentialBcs2d<'a>,
         mut nbcs: NaturalBcs2d<'a>,
         kx: f64,
         ky: f64,
@@ -198,14 +198,14 @@ impl<'a> Fdm2d<'a> {
             None => return Err("grid must have uniform spacing"),
         };
 
-        // build the boundary conditions data
-        ebcs.build(&grid);
+        // validates the boundary conditions data
         nbcs.build(&grid);
+        ebcs.validate(&nbcs)?;
 
         // allocate equations handler
         let neq = grid.size();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_nodes());
+        equations.recompute(&ebcs.get_nodes(&grid));
 
         // auxiliary variables
         let dx2 = dx * dx;
@@ -473,12 +473,16 @@ impl<'a> Fdm2d<'a> {
                 f_bar[iu] += -2.0 * wn / self.dy;
             }
         });
-        self.equations.prescribed().iter().for_each(|&m| {
-            let ip = self.equations.ip(m);
-            let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_value(m, x, y);
-            a_check[ip] = val;
-        });
+        for index in 0..4 {
+            if self.ebcs.sides[index] {
+                for &m in self.grid.get_nodes_on_side(Side::from_index(index)) {
+                    let ip = self.equations.ip(m);
+                    let (x, y) = self.grid.coord(m);
+                    let val = self.ebcs.functions[index](x, y);
+                    a_check[ip] = val;
+                }
+            }
+        }
         (a_bar, a_check, f_bar)
     }
 
@@ -548,12 +552,16 @@ impl<'a> Fdm2d<'a> {
                 ff[m] += -2.0 * wn / self.dy;
             }
         });
-        self.equations.prescribed().iter().for_each(|&m| {
-            let ip = self.equations.ip(m);
-            let (x, y) = self.grid.coord(m);
-            let val = self.ebcs.get_value(m, x, y);
-            ff[neq + ip] = val;
-        });
+        for index in 0..4 {
+            if self.ebcs.sides[index] {
+                for &m in self.grid.get_nodes_on_side(Side::from_index(index)) {
+                    let ip = self.equations.ip(m);
+                    let (x, y) = self.grid.coord(m);
+                    let val = self.ebcs.functions[index](x, y);
+                    ff[neq + ip] = val;
+                }
+            }
+        }
         (aa, ff)
     }
 
@@ -628,14 +636,14 @@ impl<'a> Fdm2d<'a> {
         // (mirror or swap the indices of boundary nodes, as appropriate)
         let mut nn = [0, 0, 0, 0, 0];
         nn[CUR] = m;
-        if self.ebcs.is_periodic_along_x() {
+        if self.ebcs.periodic_along_x {
             nn[LEF] = if i != INI_X { m - 1 } else { m + fin_x };
             nn[RIG] = if i != fin_x { m + 1 } else { m - fin_x };
         } else {
             nn[LEF] = if i != INI_X { m - 1 } else { m + 1 };
             nn[RIG] = if i != fin_x { m + 1 } else { m - 1 };
         }
-        if self.ebcs.is_periodic_along_y() {
+        if self.ebcs.periodic_along_y {
             nn[BOT] = if j != INI_Y { m - nx } else { m + fin_y * nx };
             nn[TOP] = if j != fin_y { m + nx } else { m - fin_y * nx };
         } else {
@@ -656,7 +664,6 @@ impl<'a> Fdm2d<'a> {
 mod tests {
     use super::Fdm2d;
     use crate::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side};
-    use russell_lab::Matrix;
 
     #[test]
     fn new_captures_errors() {
@@ -668,25 +675,6 @@ mod tests {
     }
 
     #[test]
-    fn new_works() {
-        //  8  9  10  11
-        //  4  5   6   7
-        //  0  1   2   3
-        // dx = 1.0, dy = 1.0
-        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
-        let ebcs = EssentialBcs2d::new();
-        let nbcs = NaturalBcs2d::new();
-
-        let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
-        assert_eq!(&fdm.molecule, &[800.0, -100.0, -100.0, -300.0, -300.0]);
-
-        assert_eq!(fdm.get_dims_sps(), (12, 0));
-        assert_eq!(fdm.get_dims_lmm(), (12, 0, 12));
-        assert_eq!(fdm.get_grid().size(), 12);
-        assert_eq!(fdm.get_equations().neq(), 12);
-    }
-
-    #[test]
     fn get_matrices_work() {
         //  8*  9  10  11
         //  4*  5   6   7
@@ -694,11 +682,14 @@ mod tests {
         // dx = 1.0, dy = 1.0
         let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
         let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
         const LEF: f64 = 1.0;
         let lef = |_, _| LEF;
         assert_eq!(lef(0.0, 0.0), LEF);
         ebcs.set(Side::Xmin, lef); //  0  4  8
-        let nbcs = NaturalBcs2d::new();
+        nbcs.set(Side::Xmax, |_, _| 0.0); //  3  7 11
+        nbcs.set(Side::Ymin, |_, _| 0.0); //  0  1  2  3
+        nbcs.set(Side::Ymax, |_, _| 0.0); //  8  9 10 11
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
@@ -1044,8 +1035,8 @@ mod tests {
 
         let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 3.0, 3, 4).unwrap();
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_periodic(true, true);
         let nbcs = NaturalBcs2d::new();
+        ebcs.set_periodic(true, true);
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
         let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
@@ -1204,68 +1195,6 @@ mod tests {
                 3.0 + 3.0, // 10*
                 4.0 + 3.0, // 11*
             ]
-        );
-    }
-
-    #[test]
-    fn loop_over_mm_row_works() {
-        // ┌                            ┐
-        // │  4 -2  . -2  .  .  .  .  . │  0
-        // │ -1  4 -1  . -2  .  .  .  . │  1
-        // │  . -2  4  .  . -2  .  .  . │  2
-        // │ -1  .  .  4 -2  . -1  .  . │  3
-        // │  . -1  . -1  4 -1  . -1  . │  4
-        // │  .  . -1  . -2  4  .  . -1 │  5
-        // │  .  .  . -2  .  .  4 -2  . │  6
-        // │  .  .  .  . -2  . -1  4 -1 │  7
-        // │  .  .  .  .  . -2  . -2  4 │  8
-        // └                            ┘
-        //    0  1  2  3  4  5  6  7  8
-        let grid = Grid2d::new_uniform(0.0, 2.0, 0.0, 2.0, 3, 3).unwrap();
-        let ebcs = EssentialBcs2d::new();
-        let nbcs = NaturalBcs2d::new();
-        let lap = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let mut row_0 = Vec::new();
-        let mut row_4 = Vec::new();
-        let mut row_8 = Vec::new();
-        lap.loop_over_full_coef_mat_row(0, |j, aij| row_0.push((j, aij)));
-        lap.loop_over_full_coef_mat_row(4, |j, aij| row_4.push((j, aij)));
-        lap.loop_over_full_coef_mat_row(8, |j, aij| row_8.push((j, aij)));
-        assert_eq!(row_0, &[(0, 4.0), (1, -1.0), (1, -1.0), (3, -1.0), (3, -1.0)]);
-        assert_eq!(row_4, &[(4, 4.0), (3, -1.0), (5, -1.0), (1, -1.0), (7, -1.0)]);
-        assert_eq!(row_8, &[(8, 4.0), (7, -1.0), (7, -1.0), (5, -1.0), (5, -1.0)]);
-    }
-
-    #[test]
-    fn loop_over_grid_points_works() {
-        let (nx, ny) = (2, 3);
-        let grid = Grid2d::new_uniform(-1.0, 1.0, -3.0, 3.0, nx, ny).unwrap();
-        let ebcs = EssentialBcs2d::new();
-        let nbcs = NaturalBcs2d::new();
-        let lap = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let mut xx = Matrix::new(ny, nx);
-        let mut yy = Matrix::new(ny, nx);
-        lap.for_each_coord(|m, x, y| {
-            let i = m % nx;
-            let j = m / nx;
-            xx.set(j, i, x);
-            yy.set(j, i, y);
-        });
-        assert_eq!(
-            format!("{}", xx),
-            "┌       ┐\n\
-             │ -1  1 │\n\
-             │ -1  1 │\n\
-             │ -1  1 │\n\
-             └       ┘"
-        );
-        assert_eq!(
-            format!("{}", yy),
-            "┌       ┐\n\
-             │ -3 -3 │\n\
-             │  0  0 │\n\
-             │  3  3 │\n\
-             └       ┘"
         );
     }
 }

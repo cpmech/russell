@@ -1,4 +1,4 @@
-use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, StrError};
+use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, Side, StrError};
 use russell_lab::{InterpLagrange, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
@@ -101,7 +101,7 @@ impl<'a> Spc2d<'a> {
         ymax: f64,
         nx: usize,
         ny: usize,
-        mut ebcs: EssentialBcs2d<'a>,
+        ebcs: EssentialBcs2d<'a>,
         mut nbcs: NaturalBcs2d<'a>,
         kx: f64,
         ky: f64,
@@ -109,19 +109,19 @@ impl<'a> Spc2d<'a> {
         // allocate the Chebyshev-Gauss-Lobatto grid
         let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny)?;
 
-        // build the boundary conditions data
-        ebcs.build(&grid);
+        // validates the boundary conditions data
         nbcs.build(&grid);
+        ebcs.validate(&nbcs)?;
 
         // check that the EBCs are not periodic
-        if ebcs.is_periodic_along_x() || ebcs.is_periodic_along_y() {
+        if ebcs.periodic_along_x || ebcs.periodic_along_y {
             return Err("essential BCs cannot be periodic");
         }
 
         // allocate equations handler
         let neq = grid.size();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_nodes());
+        equations.recompute(&ebcs.get_nodes(&grid));
 
         // polynomial degrees
         let nn_x = grid.nx() - 1;
@@ -517,13 +517,17 @@ impl<'a> Spc2d<'a> {
                 f_bar[iu] = source(x, y);
             }
         });
-        self.equations.prescribed().iter().for_each(|&m| {
-            let ip = self.equations.ip(m);
-            let (r, s) = self.grid.coord(m);
-            let (x, y) = self.map_coord(r, s);
-            let val = self.ebcs.get_value(m, x, y);
-            a_check[ip] = val;
-        });
+        for index in 0..4 {
+            if self.ebcs.sides[index] {
+                for &m in self.grid.get_nodes_on_side(Side::from_index(index)) {
+                    let ip = self.equations.ip(m);
+                    let (r, s) = self.grid.coord(m);
+                    let (x, y) = self.map_coord(r, s);
+                    let val = self.ebcs.functions[index](x, y);
+                    a_check[ip] = val;
+                }
+            }
+        }
         (a_bar, a_check, f_bar)
     }
 
@@ -601,13 +605,17 @@ impl<'a> Spc2d<'a> {
                 ff[m] = source(x, y);
             }
         });
-        self.equations.prescribed().iter().for_each(|&m| {
-            let ip = self.equations.ip(m);
-            let (r, s) = self.grid.coord(m);
-            let (x, y) = self.map_coord(r, s);
-            let val = self.ebcs.get_value(m, x, y);
-            ff[neq + ip] = val;
-        });
+        for index in 0..4 {
+            if self.ebcs.sides[index] {
+                for &m in self.grid.get_nodes_on_side(Side::from_index(index)) {
+                    let ip = self.equations.ip(m);
+                    let (r, s) = self.grid.coord(m);
+                    let (x, y) = self.map_coord(r, s);
+                    let val = self.ebcs.functions[index](x, y);
+                    ff[neq + ip] = val;
+                }
+            }
+        }
         (aa, ff)
     }
 

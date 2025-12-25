@@ -1,4 +1,3 @@
-use crate::util::validate_bcs_1d;
 use crate::{EquationHandler, EssentialBcs1d, Grid1d, NaturalBcs1d, StrError};
 use russell_lab::Vector;
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
@@ -161,23 +160,16 @@ impl<'a> Fdm1d<'a> {
             None => return Err("grid must have uniform spacing"),
         };
 
-        // build the boundary conditions data
+        // validates the boundary conditions data
         nbcs.build(&grid);
-        validate_bcs_1d(&ebcs, &nbcs)?;
+        ebcs.validate(&nbcs)?;
 
         // allocate equations handler
         let neq = grid.nx();
         let mut equations = EquationHandler::new(neq);
 
         // set prescribed equations
-        let mut p_list = Vec::new();
-        for side in 0..2 {
-            if ebcs.sides[side] {
-                let m = if side == 0 { 0 } else { grid.nx() - 1 };
-                p_list.push(m);
-            }
-        }
-        equations.recompute(&p_list);
+        equations.recompute(&ebcs.get_nodes(&grid));
 
         // auxiliary variables
         let dx2 = dx * dx;
@@ -460,12 +452,12 @@ impl<'a> Fdm1d<'a> {
                 f_bar[iu] += -2.0 * wn / self.dx;
             }
         });
-        for side in 0..2 {
-            if self.ebcs.sides[side] {
-                let m = if side == 0 { 0 } else { self.grid.nx() - 1 };
+        for index in 0..2 {
+            if self.ebcs.sides[index] {
+                let m = if index == 0 { 0 } else { self.grid.nx() - 1 };
                 let ip = self.equations.ip(m);
                 let x = self.grid.coord(m);
-                let val = self.ebcs.functions[side](x);
+                let val = self.ebcs.functions[index](x);
                 a_check[ip] = val;
             }
         }
@@ -530,12 +522,12 @@ impl<'a> Fdm1d<'a> {
                 ff[m] += -2.0 * wn / self.dx;
             }
         });
-        for side in 0..2 {
-            if self.ebcs.sides[side] {
-                let m = if side == 0 { 0 } else { self.grid.nx() - 1 };
+        for index in 0..2 {
+            if self.ebcs.sides[index] {
+                let m = if index == 0 { 0 } else { self.grid.nx() - 1 };
                 let ip = self.equations.ip(m);
                 let x = self.grid.coord(m);
-                let val = self.ebcs.functions[side](x);
+                let val = self.ebcs.functions[index](x);
                 ff[neq + ip] = val;
             }
         }

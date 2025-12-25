@@ -1,4 +1,5 @@
-use crate::Side;
+use crate::StrError;
+use crate::{Grid1d, NaturalBcs1d, Side};
 use std::sync::Arc;
 
 /// Implements a handler for essential (Dirichlet) boundary conditions
@@ -37,10 +38,6 @@ impl<'a> EssentialBcs1d<'a> {
         }
     }
 
-    // --------------------------------------------------------
-    // setters
-    // --------------------------------------------------------
-
     /// Sets periodic boundary condition
     ///
     /// **Note:** Any essential boundary condition on the corresponding side will be removed.
@@ -77,4 +74,40 @@ impl<'a> EssentialBcs1d<'a> {
         self.sides[0] = true;
         self.sides[1] = true;
     }
+
+    /// Makes sure that all sides have either EBC or NBC, but not both
+    pub(crate) fn validate(&self, nbcs: &NaturalBcs1d) -> Result<(), StrError> {
+        if self.sides[0] && nbcs.sides[0] {
+            return Err("Xmin side must not have both EBC and NBC");
+        }
+        if self.sides[1] && nbcs.sides[1] {
+            return Err("Xmax side must not have both EBC and NBC");
+        }
+        if !self.periodic_along_x {
+            if !self.sides[0] && !nbcs.sides[0] {
+                return Err("Xmin side is missing either EBC or NBC");
+            }
+            if !self.sides[1] && !nbcs.sides[1] {
+                return Err("Xmax side is missing either EBC or NBC");
+            }
+        }
+        Ok(())
+    }
+
+    /// Returns the nodes with EBCs
+    pub(crate) fn get_nodes(&self, grid: &Grid1d) -> Vec<usize> {
+        let mut nodes = Vec::new();
+        for side in 0..2 {
+            if self.sides[side] {
+                let m = if side == 0 { 0 } else { grid.nx() - 1 };
+                nodes.push(m);
+            }
+        }
+        nodes
+    }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {}

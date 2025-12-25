@@ -265,6 +265,38 @@ impl Transfinite2d {
     pub fn get_corners(&self) -> (&Vector, &Vector, &Vector, &Vector) {
         (&self.p0, &self.p1, &self.p2, &self.p3)
     }
+
+    /// Generates a triangulation of the mapped region
+    ///
+    /// Returns `(xx, yy, triangles)` where `xx` and `yy` are the x- and y-coordinates of the points,
+    /// and `triangles` is a list of triangles (connectivity).
+    ///
+    /// # Arguments
+    ///
+    /// * `nt` - number of points along each edge
+    pub fn triangulate(&mut self, nt: usize) -> (Vec<f64>, Vec<f64>, Vec<Vec<usize>>) {
+        let np = nt * nt;
+        let mut xx = Vec::with_capacity(np);
+        let mut yy = Vec::with_capacity(np);
+        let mut triangles = Vec::with_capacity((nt - 1) * (nt - 1) * 2);
+        let tt = Vector::linspace(-1.0, 1.0, nt).unwrap();
+        let mut x = Vector::new(2);
+        for j in 0..nt {
+            let s = tt[j];
+            for i in 0..nt {
+                let r = tt[i];
+                self.point(&mut x, r, s);
+                xx.push(x[0]);
+                yy.push(x[1]);
+                if i > 0 && j > 0 {
+                    let m = i + j * nt;
+                    triangles.push(vec![m - nt - 1, m - nt, m]);
+                    triangles.push(vec![m - nt - 1, m, m - 1]);
+                }
+            }
+        }
+        (xx, yy, triangles)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -273,8 +305,55 @@ impl Transfinite2d {
 mod tests {
     use super::Transfinite2d;
     use crate::TransfiniteSamples;
+    use plotpy::{linspace, Canvas, Plot, PolyCode};
     use russell_lab::math::SQRT_2;
     use russell_lab::{vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq, Vector};
+
+    const SAVE_FIGURE: bool = false;
+
+    fn draw_lines_2d(canvas: &mut Canvas, map: &mut Transfinite2d, np: usize, dot_size: f64) {
+        canvas.set_face_color("None");
+        let mut x = Vector::new(2);
+        let tt = linspace(-1.0, 1.0, np);
+        // lines in r-direction
+        for j in 0..np {
+            let s = tt[j];
+            map.point(&mut x, tt[0], s);
+            canvas.polycurve_begin();
+            canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
+            for i in 1..np {
+                let r = tt[i];
+                map.point(&mut x, r, s);
+                canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
+            }
+            canvas.polycurve_end(false);
+        }
+        // lines in s-direction
+        for i in 0..np {
+            let r = tt[i];
+            map.point(&mut x, r, tt[0]);
+            canvas.polycurve_begin();
+            canvas.polycurve_add(x[0], x[1], PolyCode::MoveTo);
+            for j in 1..np {
+                let s = tt[j];
+                map.point(&mut x, r, s);
+                canvas.polycurve_add(x[0], x[1], PolyCode::LineTo);
+            }
+            canvas.polycurve_end(false);
+        }
+        // points at corners
+        map.point(&mut x, -1.0, -1.0);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        map.point(&mut x, 1.0, -1.0);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        map.point(&mut x, 1.0, 1.0);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        map.point(&mut x, -1.0, 1.0);
+        canvas.draw_circle(x[0], x[1], dot_size);
+        // point in the center
+        map.point(&mut x, 0.0, 0.0);
+        canvas.draw_circle(x[0], x[1], dot_size);
+    }
 
     fn check_derivs(map: &mut Transfinite2d, tol_d1: f64, tol_d2: f64) {
         let mut x_ana = Vector::new(2);
@@ -430,7 +509,6 @@ mod tests {
         // check some points
         let mut x = Vector::new(2);
         map.point(&mut x, 0.0, -1.0);
-        println!("x = {:?}", x);
         vec_approx_eq(&x, &[radius + (diagonal - radius) / 2.0, 0.0], 1e-15);
         map.point(&mut x, 1.0, 0.0);
         vec_approx_eq(&x, &[diagonal / 2.0, diagonal / 2.0], 1e-15);
@@ -491,5 +569,44 @@ mod tests {
             .err(),
             Some("deriv2_boundary_functions must have length 4")
         );
+    }
+
+    #[test]
+    fn triangulation_works() {
+        // allocate transfinite map
+        let xa = &[1.0, 0.0];
+        let xb = &[6.0, 4.0];
+        let xc = &[1.0, 6.0];
+        let xd = &[0.0, 5.0];
+        let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
+
+        // triangulate
+        let (xx, yy, triangles) = map.triangulate(2);
+
+        // check sizes
+        assert_eq!(xx.len(), 4);
+        assert_eq!(yy.len(), 4);
+        assert_eq!(triangles.len(), 2);
+        assert_eq!(&xx, &[1.0, 6.0, 0.0, 1.0]); // corners
+        assert_eq!(&yy, &[0.0, 4.0, 5.0, 6.0]); // corners
+        assert_eq!(triangles[0], vec![0, 1, 3]);
+        assert_eq!(triangles[1], vec![0, 3, 2]);
+
+        // draw
+        if SAVE_FIGURE {
+            let mut canvas = Canvas::new();
+            let mut canvas_tri = Canvas::new();
+            canvas_tri.set_edge_color("green").set_line_width(2.0);
+            canvas_tri.draw_triangles(&xx, &yy, &triangles);
+            draw_lines_2d(&mut canvas, &mut map, 21, 0.03);
+            let mut plot = Plot::new();
+            plot.add(&canvas)
+                .add(&canvas_tri)
+                .set_range(0.0, 6.5, 0.0, 6.5)
+                .set_equal_axes(true)
+                .set_figure_size_points(600.0, 600.0)
+                .save("/tmp/russell_pde/test_triangulation_works.svg")
+                .unwrap();
+        }
     }
 }

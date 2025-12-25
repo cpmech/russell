@@ -1,4 +1,4 @@
-use crate::{EssentialBcs1d, EssentialBcs2d, NaturalBcs1d, NaturalBcs2d, Side};
+use crate::{EssentialBcs1d, EssentialBcs2d, NaturalBcs1d, NaturalBcs2d, Side, Transfinite2d, TransfiniteSamples};
 use russell_lab::math::PI;
 
 pub struct ProblemSamples;
@@ -642,7 +642,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 04
+    /// 2D Problem # 04 - Poisson
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -722,7 +722,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 05
+    /// 2D Problem # 05 - Poisson
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -789,7 +789,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 06
+    /// 2D Problem # 06 - Poisson
     ///
     /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
     ///
@@ -856,7 +856,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 07
+    /// 2D Problem # 07 - Poisson
     ///
     /// This is the benchmark solution 5.2.1.7 on page 170 of Kopriva's book.
     ///
@@ -927,5 +927,94 @@ impl ProblemSamples {
         let source = Box::new(|x, y| -8.0 * PI * PI * f64::cos(2.0 * PI * x) * f64::sin(2.0 * PI * y));
 
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 08 - Poisson - Curvilinear grid
+    ///
+    /// This is the benchmark solution 7.1.4 on page 259 of Kopriva's book.
+    ///
+    /// Returns `(map, k, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `map` -- transfinite mapping defining the curvilinear grid
+    /// * `k` -- diffusion coefficient
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    ///         16 ln(r)
+    /// ∇²ϕ = - ———————— sin(4θ)
+    ///            r²
+    ///
+    /// where: r = √(x² + y²) and θ = arctan(y/x)
+    /// ```
+    ///
+    /// on a half ring domain defined by `ra ≤ r ≤ rb`, `0 ≤ θ ≤ π/2` with the following boundary conditions:
+    ///
+    /// * R-min (Xmin): ϕ = ln(ra) sin(4θ)   on r = ra
+    /// * R-max (Xmax): ϕ = ln(rb) sin(4θ)   on r = rb
+    /// * S-min (Ymin): ϕ = 0                on θ = 0
+    /// * S-max (Ymax): ϕ = 0                on θ = π/2
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// ϕ(x(r, θ), y(r, θ)) = ln(r) sin(4θ)
+    /// ```
+    ///
+    /// # Reference
+    ///
+    /// * Kopriva LN (2009) - Implementing Spectral Methods for Partial Differential Equations, Springer
+    pub fn d2_problem_08(
+        ra: f64,
+        rb: f64,
+    ) -> (
+        Transfinite2d,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        // map and diffusion coefficient
+        let map = TransfiniteSamples::quarter_ring_2d(ra, rb);
+        let k = -1.0;
+
+        // analytical solution
+        let analytical = Box::new(|x, y| {
+            let r = f64::sqrt(x * x + y * y);
+            let theta = f64::atan2(y, x);
+            f64::ln(r) * f64::sin(4.0 * theta)
+        });
+
+        // essential boundary conditions
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmin, move |x, y| {
+            let theta = f64::atan2(y, x);
+            f64::ln(ra) * f64::sin(4.0 * theta)
+        });
+        ebcs.set(Side::Xmax, move |x, y| {
+            let theta = f64::atan2(y, x);
+            f64::ln(rb) * f64::sin(4.0 * theta)
+        });
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        ebcs.set(Side::Ymax, |_, _| 0.0);
+
+        // natural boundary conditions
+        let nbcs = NaturalBcs2d::new();
+
+        // source term
+        let source = Box::new(|x, y| {
+            let r = f64::sqrt(x * x + y * y);
+            let theta = f64::atan2(y, x);
+            -16.0 * f64::ln(r) * f64::sin(4.0 * theta) / (r * r)
+        });
+
+        (map, k, ebcs, nbcs, source, analytical)
     }
 }

@@ -502,15 +502,19 @@ impl<'a> Fdm1d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             let x = self.grid.coord(m);
-            if self.grid.is_xmin(m) {
-                let wn = self.nbcs.functions[0](x);
-                f_bar[iu] = source(x) / 2.0 - wn / self.dx;
-            } else if self.grid.is_xmax(m) {
-                let wn = self.nbcs.functions[1](x);
-                f_bar[iu] = source(x) / 2.0 - wn / self.dx;
-            } else {
-                f_bar[iu] = source(x);
+            let mut den = 1.0;
+            if !self.ebcs.periodic_along_x {
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x);
+                    f_bar[iu] += -wn / self.dx;
+                    den *= 2.0;
+                } else if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x);
+                    f_bar[iu] += -wn / self.dx;
+                    den *= 2.0;
+                }
             }
+            f_bar[iu] += source(x) / den;
         });
         for index in 0..2 {
             if self.ebcs.sides[index] {
@@ -572,15 +576,19 @@ impl<'a> Fdm1d<'a> {
         let aa = Vector::new(ndim);
         let mut ff = Vector::new(ndim);
         self.grid.for_each_coord(|m, x| {
-            if self.grid.is_xmin(m) {
-                let wn = self.nbcs.functions[0](x);
-                ff[m] = source(x) / 2.0 - wn / self.dx;
-            } else if self.grid.is_xmax(m) {
-                let wn = self.nbcs.functions[1](x);
-                ff[m] = source(x) / 2.0 - wn / self.dx;
-            } else {
-                ff[m] = source(x);
+            let mut den = 1.0;
+            if !self.ebcs.periodic_along_x {
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x);
+                    ff[m] += -wn / self.dx;
+                    den *= 2.0;
+                } else if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x);
+                    ff[m] += -wn / self.dx;
+                    den *= 2.0;
+                }
             }
+            ff[m] += source(x) / den;
         });
         for index in 0..2 {
             if self.ebcs.sides[index] {

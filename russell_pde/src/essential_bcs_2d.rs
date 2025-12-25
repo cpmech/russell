@@ -99,7 +99,11 @@ impl<'a> EssentialBcs2d<'a> {
         if self.sides[3] && nbcs.sides[3] {
             return Err("Ymax side must not have both EBC and NBC");
         }
-        if !self.periodic_along_x {
+        if self.periodic_along_x {
+            if nbcs.sides[0] || nbcs.sides[1] {
+                return Err("Periodic X does not allow NBC on Xmin or Xmax");
+            }
+        } else {
             if !self.sides[0] && !nbcs.sides[0] {
                 return Err("Xmin side is missing either EBC or NBC");
             }
@@ -107,7 +111,11 @@ impl<'a> EssentialBcs2d<'a> {
                 return Err("Xmax side is missing either EBC or NBC");
             }
         }
-        if !self.periodic_along_y {
+        if self.periodic_along_y {
+            if nbcs.sides[2] || nbcs.sides[3] {
+                return Err("Periodic Y does not allow NBC on Ymin or Ymax");
+            }
+        } else {
             if !self.sides[2] && !nbcs.sides[2] {
                 return Err("Ymin side is missing either EBC or NBC");
             }

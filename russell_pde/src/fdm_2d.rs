@@ -520,8 +520,7 @@ impl<'a> Fdm2d<'a> {
                     let wn = self.nbcs.functions[0](x, y);
                     f_bar[iu] += -cf * wn / self.dx;
                     den *= 2.0;
-                }
-                if self.grid.is_xmax(m) {
+                } else if self.grid.is_xmax(m) {
                     let wn = self.nbcs.functions[1](x, y);
                     f_bar[iu] += -cf * wn / self.dx;
                     den *= 2.0;
@@ -532,8 +531,7 @@ impl<'a> Fdm2d<'a> {
                     let wn = self.nbcs.functions[2](x, y);
                     f_bar[iu] += -cf * wn / self.dy;
                     den *= 2.0;
-                }
-                if self.grid.is_ymax(m) {
+                } else if self.grid.is_ymax(m) {
                     let wn = self.nbcs.functions[3](x, y);
                     f_bar[iu] += -cf * wn / self.dy;
                     den *= 2.0;

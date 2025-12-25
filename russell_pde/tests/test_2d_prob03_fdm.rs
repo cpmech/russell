@@ -1,6 +1,8 @@
 use plotpy::{Contour, Curve, Plot, Surface};
 use russell_lab::approx_eq;
 use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
+use russell_sparse::Genie;
+use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;
 
@@ -12,20 +14,43 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
     ] {
         let (nd, tol) = *nd_tol;
         // SPS
-        run(true, true, false, nd, tol)?;
-        run(true, false, false, nd, tol)?;
-        run(false, true, false, nd, tol)?;
-        run(false, false, false, nd, tol)?;
+        run(true, true, false, nd, tol, false)?;
+        run(true, false, false, nd, tol, false)?;
+        run(false, true, false, nd, tol, false)?;
+        run(false, false, false, nd, tol, false)?;
         // LMM
-        run(true, true, true, nd, tol)?;
-        run(true, false, true, nd, tol)?;
-        run(false, true, true, nd, tol)?;
-        run(false, false, true, nd, tol)?;
+        run(true, true, true, nd, tol, false)?;
+        run(true, false, true, nd, tol, false)?;
+        run(false, true, true, nd, tol, false)?;
+        run(false, false, true, nd, tol, false)?;
     }
     Ok(())
 }
 
-fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64) -> Result<(), StrError> {
+#[cfg(feature = "with_mumps")]
+#[test]
+#[serial]
+fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {
+    for nd_tol in &[
+        (11, 1.0055e-1), //
+                         // (101, 1.043e-3), //
+    ] {
+        let (nd, tol) = *nd_tol;
+        // SPS
+        run(true, true, false, nd, tol, true)?;
+        // run(true, false, false, nd, tol, true)?;
+        // run(false, true, false, nd, tol, true)?;
+        // run(false, false, false, nd, tol, true)?;
+        // LMM
+        run(true, true, true, nd, tol, true)?;
+        // run(true, false, true, nd, tol, true)?;
+        // run(false, true, true, nd, tol, true)?;
+        // run(false, false, true, nd, tol, true)?;
+    }
+    Ok(())
+}
+
+fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64, mumps_sym: bool) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
@@ -36,7 +61,10 @@ fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64) -> Result<
     let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
 
     // allocate the solver
-    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
+    let mut fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
+    if mumps_sym {
+        fdm.set_solver_options(Genie::Mumps, true);
+    }
 
     // solve the problem
     let a = if lmm {

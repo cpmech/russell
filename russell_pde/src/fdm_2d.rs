@@ -213,6 +213,16 @@ pub struct Fdm2d<'a> {
 
     /// Grid spacing (uniform grid)
     dy: f64,
+
+    /// Sparse solver type
+    ///
+    /// default = Umfpack
+    genie: Genie,
+
+    /// Use symmetric matrices with the sparse solver
+    ///
+    /// default = true
+    symmetric: bool,
 }
 
 impl<'a> Fdm2d<'a> {
@@ -263,7 +273,15 @@ impl<'a> Fdm2d<'a> {
             molecule: vec![alpha, beta, beta, gamma, gamma],
             dx,
             dy,
+            genie: Genie::Umfpack,
+            symmetric: true,
         })
+    }
+
+    /// Sets solver options
+    pub fn set_solver_options(&mut self, genie: Genie, symmetric: bool) {
+        self.genie = genie;
+        self.symmetric = symmetric;
     }
 
     /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
@@ -278,7 +296,8 @@ impl<'a> Fdm2d<'a> {
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0);
+        let sym_kk_bar = self.genie.get_sym(self.symmetric);
+        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0, sym_kk_bar);
         let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
         let kk_check = kk_check.unwrap();
 
@@ -286,7 +305,7 @@ impl<'a> Fdm2d<'a> {
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        let mut solver = LinSolver::new(self.genie)?;
         solver.actual.factorize(&kk_bar, None)?;
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
@@ -306,11 +325,12 @@ impl<'a> Fdm2d<'a> {
         F: Fn(f64, f64) -> f64,
     {
         // assemble the coefficient matrix and the lhs and rhs vectors
-        let (mm, _) = self.get_matrices_lmm(alpha, 0, false);
+        let sym_mm = self.genie.get_sym(self.symmetric);
+        let (mm, _) = self.get_matrices_lmm(alpha, 0, false, sym_mm);
         let (mut aa, ff) = self.get_vectors_lmm(source);
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        let mut solver = LinSolver::new(self.genie)?;
         solver.actual.factorize(&mm, None)?;
         solver.actual.solve(&mut aa, &ff, false)?;
 
@@ -372,15 +392,16 @@ impl<'a> Fdm2d<'a> {
     ///
     /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
+    /// * `sym_kk_bar` -- symmetry of the K-bar matrix
     ///
     /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
-    pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize) -> (CooMatrix, Option<CooMatrix>) {
+    pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
         let nx = self.grid.nx();
         let ny = self.grid.ny();
         let nu = self.equations.nu();
         let np = self.equations.np();
         let nnz_kk_bar = 5 * nu + extra_nnz; // 5 is the bandwidth
-        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, Sym::No).unwrap();
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
         let mut kk_check = if np == 0 {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
             CooMatrix::new(1, 1, 1, Sym::No).unwrap()
@@ -391,6 +412,9 @@ impl<'a> Fdm2d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             self.loop_over_bandwidth(m, |b, n| {
+                if (sym_kk_bar == Sym::YesLower && m < n) || (sym_kk_bar == Sym::YesUpper && m > n) {
+                    return;
+                }
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha;
@@ -436,6 +460,7 @@ impl<'a> Fdm2d<'a> {
     /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
     /// * `get_constraints_mat` -- whether to return the constraints matrix or not
+    /// * `sym_mm` -- symmetry of the M matrix
     ///
     /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
     pub fn get_matrices_lmm(
@@ -443,15 +468,19 @@ impl<'a> Fdm2d<'a> {
         alpha: f64,
         extra_nnz: usize,
         get_constraints_mat: bool,
+        sym_mm: Sym,
     ) -> (CooMatrix, Option<CooMatrix>) {
         // build the augmented matrix
         let nx = self.grid.nx();
         let ny = self.grid.ny();
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nnz = 5 * neq + 2 * nlag + extra_nnz; // 5 is the bandwidth, 2*nlag is for C and Cᵀ
-        let mut mm = CooMatrix::new(ndim, ndim, nnz, Sym::No).unwrap();
+        let mut mm = CooMatrix::new(ndim, ndim, nnz, sym_mm).unwrap();
         for m in 0..neq {
             self.loop_over_bandwidth(m, |b, n| {
+                if (sym_mm == Sym::YesLower && m < n) || (sym_mm == Sym::YesUpper && m > n) {
+                    return;
+                }
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha;
@@ -470,8 +499,18 @@ impl<'a> Fdm2d<'a> {
         // assemble C and Cᵀ into M
         self.equations.prescribed().iter().for_each(|&m| {
             let ip = self.equations.ip(m);
-            mm.put(neq + ip, m, 1.0).unwrap(); // C
-            mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+            match sym_mm {
+                Sym::YesLower => {
+                    mm.put(neq + ip, m, 1.0).unwrap(); // C
+                }
+                Sym::YesUpper => {
+                    mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+                }
+                Sym::YesFull | Sym::No => {
+                    mm.put(neq + ip, m, 1.0).unwrap(); // C
+                    mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+                }
+            }
         });
 
         // build and return the C matrix, if requested and available
@@ -741,15 +780,7 @@ mod tests {
     use super::Fdm2d;
     use crate::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side};
     use russell_lab::Matrix;
-
-    #[test]
-    fn new_captures_errors() {
-        let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
-        let ebcs = EssentialBcs2d::new();
-        let nbcs = NaturalBcs2d::new();
-        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0);
-        assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
-    }
+    use russell_sparse::Sym;
 
     fn assert_symmetric(mat: &Matrix) {
         let (nrow, ncol) = mat.dims();
@@ -759,6 +790,15 @@ mod tests {
                 assert_eq!(mat.get(i, j), mat.get(j, i));
             }
         }
+    }
+
+    #[test]
+    fn new_captures_errors() {
+        let grid = Grid2d::new(&[0.0, 0.1, 0.4], &[0.0, 0.2, 0.5]).unwrap();
+        let ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0);
+        assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
     }
 
     #[test]
@@ -779,8 +819,8 @@ mod tests {
         nbcs.set(Side::Ymax, |_, _| 0.0); //  8  9 10 11
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
         let cc = cc_mat.unwrap();
         let ee = ee_mat.unwrap();
 
@@ -944,8 +984,8 @@ mod tests {
         ebcs.set_periodic(true, true);
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true);
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
         assert!(cc_mat.is_none());
         assert!(ee_mat.is_none());
 

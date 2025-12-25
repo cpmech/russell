@@ -102,7 +102,7 @@ impl<'a> Spc2d<'a> {
         nx: usize,
         ny: usize,
         ebcs: EssentialBcs2d<'a>,
-        mut nbcs: NaturalBcs2d<'a>,
+        nbcs: NaturalBcs2d<'a>,
         kx: f64,
         ky: f64,
     ) -> Result<Self, StrError> {
@@ -110,7 +110,6 @@ impl<'a> Spc2d<'a> {
         let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny)?;
 
         // validates the boundary conditions data
-        nbcs.build(&grid);
         ebcs.validate(&nbcs)?;
 
         // check that the EBCs are not periodic
@@ -281,12 +280,7 @@ impl<'a> Spc2d<'a> {
         // add terms to the coefficient matrix
         for &m in self.equations.unknown() {
             let (i, j) = self.grid.get_ij(m);
-            let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                self.nbcs.has_value(m)
-            } else {
-                false
-            };
-            if has_nbc {
+            if self.nbcs.enabled_ij(i, j, &self.grid) {
                 for k in 0..nx {
                     for l in 0..ny {
                         let n = k + l * nx;
@@ -388,12 +382,7 @@ impl<'a> Spc2d<'a> {
         // add terms to the coefficient matrix
         for m in 0..neq {
             let (i, j) = self.grid.get_ij(m);
-            let has_nbc = if i == 0 || i == nx - 1 || j == 0 || j == ny - 1 {
-                self.nbcs.has_value(m)
-            } else {
-                false
-            };
-            if has_nbc {
+            if self.nbcs.enabled_ij(i, j, &self.grid) {
                 for k in 0..nx {
                     for l in 0..ny {
                         let n = k + l * nx;

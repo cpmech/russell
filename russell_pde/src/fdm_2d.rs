@@ -188,7 +188,7 @@ impl<'a> Fdm2d<'a> {
     pub fn new(
         grid: Grid2d,
         ebcs: EssentialBcs2d<'a>,
-        mut nbcs: NaturalBcs2d<'a>,
+        nbcs: NaturalBcs2d<'a>,
         kx: f64,
         ky: f64,
     ) -> Result<Self, StrError> {
@@ -199,7 +199,6 @@ impl<'a> Fdm2d<'a> {
         };
 
         // validates the boundary conditions data
-        nbcs.build(&grid);
         ebcs.validate(&nbcs)?;
 
         // allocate equations handler

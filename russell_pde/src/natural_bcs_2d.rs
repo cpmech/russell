@@ -1,5 +1,4 @@
 use crate::{Grid2d, Side};
-use std::collections::HashSet;
 use std::sync::Arc;
 
 /// Implements a handler for natural (Neumann) boundary conditions
@@ -18,12 +17,6 @@ pub struct NaturalBcs2d<'a> {
 
     /// Holds the sides where natural boundary conditions are applied
     pub(crate) sides: [bool; 4], // Xmin, Xmax, Ymin, Ymax
-
-    /// Indicates whether the structure is built and ready to use
-    ready: bool,
-
-    /// Indicates whether a node has a NBC value
-    has_value: HashSet<usize>,
 }
 
 impl<'a> NaturalBcs2d<'a> {
@@ -37,14 +30,8 @@ impl<'a> NaturalBcs2d<'a> {
                 Arc::new(|_, _| 0.0), // ymax
             ],
             sides: [false; 4],
-            ready: false,
-            has_value: HashSet::new(),
         }
     }
-
-    // --------------------------------------------------------
-    // setters
-    // --------------------------------------------------------
 
     /// Sets a flux boundary condition
     ///
@@ -121,31 +108,26 @@ impl<'a> NaturalBcs2d<'a> {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
         self.sides[index] = true;
-        self.ready = false;
     }
 
-    // --------------------------------------------------------
-    // crate
-    // --------------------------------------------------------
-
-    /// Builds the internal structures
-    pub(crate) fn build(&mut self, grid: &Grid2d) {
-        assert_eq!(self.ready, false, "can only build once");
-        for index in 0..4 {
-            if self.sides[index] {
-                let side = Side::from_index(index);
-                for &m in grid.get_nodes_on_side(side) {
-                    self.has_value.insert(m);
-                }
-            }
+    /// Indicates whether a natural boundary condition is enabled at the given (i, j) location
+    pub(crate) fn enabled_ij(&self, i: usize, j: usize, grid: &Grid2d) -> bool {
+        if i == 0 {
+            // Xmin
+            self.sides[0]
+        } else if i == grid.nx() - 1 {
+            // Xmax
+            self.sides[1]
+        } else if j == 0 {
+            // Ymin
+            self.sides[2]
+        } else if j == grid.ny() - 1 {
+            // Ymax
+            self.sides[3]
+        } else {
+            // Interior
+            false
         }
-        self.ready = true;
-    }
-
-    /// Checks if a node has a NBC value
-    pub(crate) fn has_value(&self, m: usize) -> bool {
-        assert!(self.ready, "build must be called first");
-        self.has_value.contains(&m)
     }
 }
 

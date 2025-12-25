@@ -131,14 +131,13 @@ impl<'a> SpcMap2d<'a> {
         nr: usize,
         ns: usize,
         ebcs: EssentialBcs2d<'a>,
-        mut nbcs: NaturalBcs2d<'a>,
+        nbcs: NaturalBcs2d<'a>,
         k: f64,
     ) -> Result<Self, StrError> {
         // allocate the Chebyshev-Gauss-Lobatto grid
         let grid = Grid2d::new_chebyshev_gauss_lobatto(nr, ns)?;
 
         // validates the boundary conditions data
-        nbcs.build(&grid);
         ebcs.validate(&nbcs)?;
 
         // check that the EBCs is not periodic
@@ -311,12 +310,7 @@ impl<'a> SpcMap2d<'a> {
             let g12 = self.metrics.gg_mat.get(0, 1);
             let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
             let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
-            let has_nbc = if i == 0 || i == nr - 1 || j == 0 || j == ns - 1 {
-                self.nbcs.has_value(m)
-            } else {
-                false
-            };
-            if has_nbc {
+            if self.nbcs.enabled_ij(i, j, &self.grid) {
                 for k in 0..nr {
                     for l in 0..ns {
                         let n = k + l * nr;
@@ -404,12 +398,7 @@ impl<'a> SpcMap2d<'a> {
             let g12 = self.metrics.gg_mat.get(0, 1);
             let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
             let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
-            let has_nbc = if i == 0 || i == nr - 1 || j == 0 || j == ns - 1 {
-                self.nbcs.has_value(m)
-            } else {
-                false
-            };
-            if has_nbc {
+            if self.nbcs.enabled_ij(i, j, &self.grid) {
                 for k in 0..nr {
                     for l in 0..ns {
                         let n = k + l * nr;
@@ -536,7 +525,6 @@ impl<'a> SpcMap2d<'a> {
                 }
             }
         }
-        self.equations.prescribed().iter().for_each(|&m| {});
         (a_bar, a_check, f_bar)
     }
 

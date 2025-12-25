@@ -400,7 +400,8 @@ impl<'a> Fdm2d<'a> {
         let ny = self.grid.ny();
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let nnz_kk_bar = 5 * nu + extra_nnz; // 5 is the bandwidth
+        let band = if sym_kk_bar.triangular() { 3 } else { 5 };
+        let nnz_kk_bar = band * nu + extra_nnz;
         let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
         let mut kk_check = if np == 0 {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
@@ -474,7 +475,8 @@ impl<'a> Fdm2d<'a> {
         let nx = self.grid.nx();
         let ny = self.grid.ny();
         let (neq, nlag, ndim) = self.get_dims_lmm();
-        let nnz = 5 * neq + 2 * nlag + extra_nnz; // 5 is the bandwidth, 2*nlag is for C and Cᵀ
+        let band = if sym_mm.triangular() { 3 } else { 5 };
+        let nnz = band * neq + 2 * nlag + extra_nnz; // 2*nlag is for C and Cᵀ
         let mut mm = CooMatrix::new(ndim, ndim, nnz, sym_mm).unwrap();
         for m in 0..neq {
             self.loop_over_bandwidth(m, |b, n| {

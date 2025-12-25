@@ -360,7 +360,8 @@ impl<'a> Fdm1d<'a> {
     pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
         let nu = self.equations.nu();
         let np = self.equations.np();
-        let nnz_kk_bar = 3 * nu + extra_nnz; // 3 is the bandwidth
+        let band = if sym_kk_bar.triangular() { 2 } else { 3 };
+        let nnz_kk_bar = band * nu + extra_nnz;
         let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
         let mut kk_check = if np == 0 {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
@@ -428,7 +429,8 @@ impl<'a> Fdm1d<'a> {
     ) -> (CooMatrix, Option<CooMatrix>) {
         // build the augmented matrix
         let (neq, nlag, ndim) = self.get_dims_lmm();
-        let nnz = 3 * neq + 2 * nlag + extra_nnz; // 3 is the bandwidth, 2*nlag is for C and Cᵀ
+        let band = if sym_mm.triangular() { 2 } else { 3 };
+        let nnz = band * neq + 2 * nlag + extra_nnz; // 2*nlag is for C and Cᵀ
         let mut mm = CooMatrix::new(ndim, ndim, nnz, sym_mm).unwrap();
         for m in 0..neq {
             self.loop_over_bandwidth(m, |b, n| {

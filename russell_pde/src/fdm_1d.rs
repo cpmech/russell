@@ -154,12 +154,7 @@ impl<'a> Fdm1d<'a> {
     /// * `kx` -- the diffusion coefficient along x
     ///
     /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
-    pub fn new(
-        grid: Grid1d,
-        mut ebcs: EssentialBcs1d<'a>,
-        mut nbcs: NaturalBcs1d<'a>,
-        kx: f64,
-    ) -> Result<Self, StrError> {
+    pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, mut nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
         // check grid
         let dx = match grid.get_dx() {
             Some(dx) => dx,
@@ -167,14 +162,22 @@ impl<'a> Fdm1d<'a> {
         };
 
         // build the boundary conditions data
-        ebcs.build(&grid);
         nbcs.build(&grid);
         validate_bcs_1d(&ebcs, &nbcs)?;
 
         // allocate equations handler
         let neq = grid.nx();
         let mut equations = EquationHandler::new(neq);
-        equations.recompute(&ebcs.get_nodes());
+
+        // set prescribed equations
+        let mut p_list = Vec::new();
+        for side in 0..2 {
+            if ebcs.sides[side] {
+                let m = if side == 0 { 0 } else { grid.nx() - 1 };
+                p_list.push(m);
+            }
+        }
+        equations.recompute(&p_list);
 
         // auxiliary variables
         let dx2 = dx * dx;
@@ -457,12 +460,15 @@ impl<'a> Fdm1d<'a> {
                 f_bar[iu] += -2.0 * wn / self.dx;
             }
         });
-        self.equations.prescribed().iter().for_each(|&m| {
-            let ip = self.equations.ip(m);
-            let x = self.grid.coord(m);
-            let val = self.ebcs.get_value(m, x);
-            a_check[ip] = val;
-        });
+        for side in 0..2 {
+            if self.ebcs.sides[side] {
+                let m = if side == 0 { 0 } else { self.grid.nx() - 1 };
+                let ip = self.equations.ip(m);
+                let x = self.grid.coord(m);
+                let val = self.ebcs.functions[side](x);
+                a_check[ip] = val;
+            }
+        }
         (a_bar, a_check, f_bar)
     }
 
@@ -524,12 +530,15 @@ impl<'a> Fdm1d<'a> {
                 ff[m] += -2.0 * wn / self.dx;
             }
         });
-        self.equations.prescribed().iter().for_each(|&m| {
-            let ip = self.equations.ip(m);
-            let x = self.grid.coord(m);
-            let val = self.ebcs.get_value(m, x);
-            ff[neq + ip] = val;
-        });
+        for side in 0..2 {
+            if self.ebcs.sides[side] {
+                let m = if side == 0 { 0 } else { self.grid.nx() - 1 };
+                let ip = self.equations.ip(m);
+                let x = self.grid.coord(m);
+                let val = self.ebcs.functions[side](x);
+                ff[neq + ip] = val;
+            }
+        }
         (aa, ff)
     }
 
@@ -591,7 +600,7 @@ impl<'a> Fdm1d<'a> {
         // (mirror or swap the indices of boundary nodes, as appropriate)
         let mut nn = [0, 0, 0];
         nn[CUR] = m;
-        if self.ebcs.is_periodic_along_x() {
+        if self.ebcs.periodic_along_x {
             nn[LEF] = if m != INI_X { m - 1 } else { m + fin_x };
             nn[RIG] = if m != fin_x { m + 1 } else { m - fin_x };
         } else {

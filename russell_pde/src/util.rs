@@ -19,7 +19,7 @@ pub(crate) fn validate_bcs_1d(ebcs: &EssentialBcs1d, nbcs: &NaturalBcs1d) -> Res
     if ebcs.sides[1] && nbcs.sides[1] {
         return Err("Xmax side has both EBC and NBC");
     }
-    if !ebcs.is_periodic_along_x() {
+    if !ebcs.periodic_along_x {
         if !ebcs.sides[0] && !nbcs.sides[0] {
             return Err("Xmin side is missing either EBC or NBC");
         }

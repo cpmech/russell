@@ -1,5 +1,4 @@
-use crate::{Grid1d, Side};
-use std::collections::HashMap;
+use crate::Side;
 use std::sync::Arc;
 
 /// Implements a handler for essential (Dirichlet) boundary conditions
@@ -12,25 +11,17 @@ pub struct EssentialBcs1d<'a> {
     /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
     ///
     /// If false, the left/right boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
-    periodic_along_x: bool,
+    pub(crate) periodic_along_x: bool,
 
     /// Holds the functions to compute essential boundary conditions (EBC)
     ///
     /// The function is `f(x) -> value`
     ///
     /// (2) → (Xmin, Xmax); corresponding to the 2 sides
-    functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
+    pub(crate) functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
     /// Holds the sides where essential boundary conditions are applied
     pub(crate) sides: [bool; 2], // Xmin, Xmax
-
-    /// Indicates whether the structure is built and ready to use
-    ready: bool,
-
-    /// Maps node to one of the two functions in `functions`
-    ///
-    /// length = number of nodes with essential boundary conditions (prescribed nodes)
-    node_to_function: HashMap<usize, Side>,
 }
 
 impl<'a> EssentialBcs1d<'a> {
@@ -43,8 +34,6 @@ impl<'a> EssentialBcs1d<'a> {
                 Arc::new(|_| 0.0), // Xmax
             ],
             sides: [false; 2],
-            ready: false,
-            node_to_function: HashMap::new(),
         }
     }
 
@@ -57,7 +46,6 @@ impl<'a> EssentialBcs1d<'a> {
     /// **Note:** Any essential boundary condition on the corresponding side will be removed.
     pub fn set_periodic(&mut self, along_x: bool) {
         self.periodic_along_x = along_x;
-        self.ready = false;
     }
 
     /// Sets essential (Dirichlet) boundary condition
@@ -75,7 +63,6 @@ impl<'a> EssentialBcs1d<'a> {
         let index = side as usize;
         self.functions[index] = Arc::new(f);
         self.sides[index] = true;
-        self.ready = false;
     }
 
     /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
@@ -89,52 +76,5 @@ impl<'a> EssentialBcs1d<'a> {
         ];
         self.sides[0] = true;
         self.sides[1] = true;
-        self.ready = false;
-    }
-
-    // --------------------------------------------------------
-    // crate
-    // --------------------------------------------------------
-
-    /// Builds the internal structures
-    pub(crate) fn build(&mut self, grid: &Grid1d) {
-        assert_eq!(self.ready, false, "can only build once");
-        for index in 0..2 {
-            if self.sides[index] {
-                let side = Side::from_index(index);
-                for &m in grid.get_nodes_on_side(side) {
-                    self.node_to_function.insert(m, side);
-                }
-            }
-        }
-        self.ready = true;
-    }
-
-    /// Indicates whether the boundary conditions are periodic along x
-    pub(crate) fn is_periodic_along_x(&self) -> bool {
-        assert!(self.ready, "build must be called first");
-        self.periodic_along_x
-    }
-
-    /// Returns the EBC value
-    ///
-    /// # Panics
-    ///
-    /// A panic may occur if the index is out of bounds.
-    pub(crate) fn get_value(&self, m: usize, x: f64) -> f64 {
-        assert!(self.ready, "build must be called first");
-        let index = *self.node_to_function.get(&m).unwrap() as usize;
-        (self.functions[index])(x)
-    }
-
-    /// Returns the list of nodes on all sides with EBCs
-    pub(crate) fn get_nodes(&self) -> Vec<usize> {
-        assert!(self.ready, "build must be called first");
-        self.node_to_function.keys().copied().collect()
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(test)]
-mod tests {}

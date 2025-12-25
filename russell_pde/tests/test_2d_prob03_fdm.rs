@@ -13,16 +13,26 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
                          // (101, 1.043e-3), //
     ] {
         let (nd, tol) = *nd_tol;
-        // SPS
-        run(true, true, false, nd, tol, false)?;
-        run(true, false, false, nd, tol, false)?;
-        run(false, true, false, nd, tol, false)?;
-        run(false, false, false, nd, tol, false)?;
-        // LMM
-        run(true, true, true, nd, tol, false)?;
-        run(true, false, true, nd, tol, false)?;
-        run(false, true, true, nd, tol, false)?;
-        run(false, false, true, nd, tol, false)?;
+        // SPS - symmetric
+        run(true, true, false, nd, tol, Genie::Umfpack, true)?;
+        run(true, false, false, nd, tol, Genie::Umfpack, true)?;
+        run(false, true, false, nd, tol, Genie::Umfpack, true)?;
+        run(false, false, false, nd, tol, Genie::Umfpack, true)?;
+        // LMM - symmetric
+        run(true, true, true, nd, tol, Genie::Umfpack, true)?;
+        run(true, false, true, nd, tol, Genie::Umfpack, true)?;
+        run(false, true, true, nd, tol, Genie::Umfpack, true)?;
+        run(false, false, true, nd, tol, Genie::Umfpack, true)?;
+        // SPS - unsymmetric
+        run(true, true, false, nd, tol, Genie::Umfpack, false)?;
+        // run(true, false, false, nd, tol, Genie::Umfpack, false)?;
+        // run(false, true, false, nd, tol, Genie::Umfpack, false)?;
+        // run(false, false, false, nd, tol, Genie::Umfpack, false)?;
+        // LMM - unsymmetric
+        run(true, true, true, nd, tol, Genie::Umfpack, false)?;
+        // run(true, false, true, nd, tol, Genie::Umfpack, false)?;
+        // run(false, true, true, nd, tol, Genie::Umfpack, false)?;
+        // run(false, false, true, nd, tol, Genie::Umfpack, false)?;
     }
     Ok(())
 }
@@ -36,21 +46,31 @@ fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {
                          // (101, 1.043e-3), //
     ] {
         let (nd, tol) = *nd_tol;
-        // SPS
-        run(true, true, false, nd, tol, true)?;
-        // run(true, false, false, nd, tol, true)?;
-        // run(false, true, false, nd, tol, true)?;
-        // run(false, false, false, nd, tol, true)?;
-        // LMM
-        run(true, true, true, nd, tol, true)?;
-        // run(true, false, true, nd, tol, true)?;
-        // run(false, true, true, nd, tol, true)?;
-        // run(false, false, true, nd, tol, true)?;
+        // SPS - symmetric
+        run(true, true, false, nd, tol, Genie::Mumps, true)?;
+        run(true, false, false, nd, tol, Genie::Mumps, true)?;
+        run(false, true, false, nd, tol, Genie::Mumps, true)?;
+        run(false, false, false, nd, tol, Genie::Mumps, true)?;
+        // LMM - symmetric
+        run(true, true, true, nd, tol, Genie::Mumps, true)?;
+        run(true, false, true, nd, tol, Genie::Mumps, true)?;
+        run(false, true, true, nd, tol, Genie::Mumps, true)?;
+        run(false, false, true, nd, tol, Genie::Mumps, true)?;
+        // SPS - unsymmetric
+        run(true, true, false, nd, tol, Genie::Mumps, false)?;
+        // run(true, false, false, nd, tol, Genie::Mumps, false)?;
+        // run(false, true, false, nd, tol, Genie::Mumps, false)?;
+        // run(false, false, false, nd, tol, Genie::Mumps, false)?;
+        // LMM - unsymmetric
+        run(true, true, true, nd, tol, Genie::Mumps, false)?;
+        // run(true, false, true, nd, tol, Genie::Mumps, false)?;
+        // run(false, true, true, nd, tol, Genie::Mumps, false)?;
+        // run(false, false, true, nd, tol, Genie::Mumps, false)?;
     }
     Ok(())
 }
 
-fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64, mumps_sym: bool) -> Result<(), StrError> {
+fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64, genie: Genie, sym: bool) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
@@ -62,9 +82,7 @@ fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64, mumps_sym:
 
     // allocate the solver
     let mut fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
-    if mumps_sym {
-        fdm.set_solver_options(Genie::Mumps, true);
-    }
+    fdm.set_solver_options(genie, sym);
 
     // solve the problem
     let a = if lmm {

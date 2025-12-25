@@ -108,6 +108,9 @@ pub struct Grid2d {
     /// This represents the number of rows in the grid.
     ny: usize,
 
+    /// Total number of points (nx times ny)
+    npoint: usize,
+
     /// Node coordinates stored as (x, y) pairs
     ///
     /// The coordinates are stored in row-major order, so:
@@ -159,6 +162,7 @@ impl Grid2d {
             ymax,
             nx,
             ny,
+            npoint: nx * ny,
             coords,
             nodes_xmin: (0..ny).map(|j| j * nx).collect(),
             nodes_xmax: (0..ny).map(|j| j * nx + (nx - 1)).collect(),
@@ -409,7 +413,7 @@ impl Grid2d {
     ///
     /// This equals `nx × ny`.
     pub fn size(&self) -> usize {
-        self.nx * self.ny
+        self.npoint
     }
 
     /// Returns the linear node index m for the specified (i, j) indices
@@ -478,6 +482,17 @@ impl Grid2d {
     /// Returns `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)`
     pub fn get_boundary_nodes(&self) -> (&[usize], &[usize], &[usize], &[usize]) {
         (&self.nodes_xmin, &self.nodes_xmax, &self.nodes_ymin, &self.nodes_ymax)
+    }
+
+    /// Indicates whether node m is a corner or not
+    pub fn is_corner(&self, m: usize) -> bool {
+        if m == 0 || m == self.npoint - 1 {
+            true
+        } else {
+            let i = m % self.nx;
+            let j = m / self.nx;
+            (i == 0 && j == self.ny - 1) || (i == self.nx - 1 && j == 0)
+        }
     }
 
     /// Returns the spacing (dx, dy) if the grid is uniform on both directions

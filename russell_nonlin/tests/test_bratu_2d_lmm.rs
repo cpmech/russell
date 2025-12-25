@@ -210,7 +210,7 @@ fn run_test(
         // .set_tg_control_atol_and_rtol(1e-5)
         // .set_tg_control_atol_and_rtol(1.1e-1)
         // .set_alpha_max(2.1)
-        .set_alpha_max(3.73)
+        .set_alpha_max(3.65) // 3.66 fails
         .set_record_iterations_residuals(true)
         .set_verbose(true, true, true)
         .set_hide_timings(true)

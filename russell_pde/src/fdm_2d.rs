@@ -86,6 +86,8 @@ const INI_Y: usize = 0;
 ///
 /// The natural boundary conditions (NBC) are set by modifying the right-hand side vector.
 ///
+/// ## Left side (Xmin)
+///
 /// The FDM stencil at the left side (Xmin) is:
 ///
 /// ```text
@@ -118,6 +120,14 @@ const INI_Y: usize = 0;
 ///
 /// Where `wₙ := kx g = q̄` at the left side (Xmin).
 ///
+/// Let us divide the above expression by two so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ½ α ϕ_{cur} + β ϕ_{rig} + ½ γ ϕ_{bot} + ½ γ ϕ_{top} = ½ s_{cur} - wₙ / Δx
+/// ```
+///
+/// ## Right side (Xmax)
+///
 /// The FDM stencil at the right side (Xmax) is:
 ///
 /// ```text
@@ -148,7 +158,38 @@ const INI_Y: usize = 0;
 ///
 /// where `wₙ := -kx g = q̄` at the right side (Xmax).
 ///
+/// Let us divide the above expression by two so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ½ α ϕ_{cur} + β ϕ_{lef} + ½ γ ϕ_{bot} + ½ γ ϕ_{top} = ½ s_{cur} - wₙ / Δx
+/// ```
+///
 /// Similar expressions can be derived for the bottom (Ymin) and top (Ymax) sides.
+///
+/// ## Corners
+///
+/// At a corner (e.g., Xmin and Ymin):
+///
+/// ```text
+/// α ϕ_{cur} + β ϕ_{ghostX} + β ϕ_{rig} + γ ϕ_{ghostY} + γ ϕ_{top} = s_{cur}
+/// ```
+///
+/// By considering `ϕ_{ghostX} = ϕ_{rig} - 2 gx Δx` and `ϕ_{ghostY} = ϕ_{top} - 2 gy Δy`:
+///
+/// ```text
+/// α ϕ_{cur} + β ϕ_{rig} + β ϕ_{rig} + γ ϕ_{top} + γ ϕ_{top} = s_{cur} + 2 β gx Δx + 2 γ gy Δy
+/// α ϕ_{cur} + 2 β ϕ_{rig} + 2 γ ϕ_{top} = s_{cur} - 2 (kx/Δx²) gx Δx - 2 (ky/Δy²) gy Δy
+/// α ϕ_{cur} + 2 β ϕ_{rig} + 2 γ ϕ_{top} = s_{cur} - 2 (kx gx) / Δx - 2 (ky gy) / Δy
+/// α ϕ_{cur} + 2 β ϕ_{rig} + 2 γ ϕ_{top} = s_{cur} - 2 wₙL / Δx - 2 wₙB / Δy
+/// ```
+///
+/// Let us divide the above expression by four so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ¼ α ϕ_{cur} + ½ β ϕ_{rig} + ½ γ ϕ_{top} = ¼ s_{cur} - ½ wₙL / Δx - ½ wₙB / Δy
+/// ```
+///
+/// Similar expressions can be derived for the other corners.
 pub struct Fdm2d<'a> {
     /// Defines the 2D grid
     grid: Grid2d,
@@ -334,6 +375,8 @@ impl<'a> Fdm2d<'a> {
     ///
     /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
     pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize) -> (CooMatrix, Option<CooMatrix>) {
+        let nx = self.grid.nx();
+        let ny = self.grid.ny();
         let nu = self.equations.nu();
         let np = self.equations.np();
         let nnz_kk_bar = 5 * nu + extra_nnz; // 5 is the bandwidth
@@ -351,6 +394,13 @@ impl<'a> Fdm2d<'a> {
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha;
+                }
+                let (i, j) = self.grid.get_ij(m);
+                if !self.ebcs.periodic_along_x && (i == 0 || i == nx - 1) {
+                    val /= 2.0;
+                }
+                if !self.ebcs.periodic_along_y && (j == 0 || j == ny - 1) {
+                    val /= 2.0;
                 }
                 if self.equations.is_prescribed(n) {
                     let jp = self.equations.ip(n);
@@ -395,6 +445,8 @@ impl<'a> Fdm2d<'a> {
         get_constraints_mat: bool,
     ) -> (CooMatrix, Option<CooMatrix>) {
         // build the augmented matrix
+        let nx = self.grid.nx();
+        let ny = self.grid.ny();
         let (neq, nlag, ndim) = self.get_dims_lmm();
         let nnz = 5 * neq + 2 * nlag + extra_nnz; // 5 is the bandwidth, 2*nlag is for C and Cᵀ
         let mut mm = CooMatrix::new(ndim, ndim, nnz, Sym::No).unwrap();
@@ -403,6 +455,13 @@ impl<'a> Fdm2d<'a> {
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha;
+                }
+                let (i, j) = self.grid.get_ij(m);
+                if !self.ebcs.periodic_along_x && (i == 0 || i == nx - 1) {
+                    val /= 2.0;
+                }
+                if !self.ebcs.periodic_along_y && (j == 0 || j == ny - 1) {
+                    val /= 2.0;
                 }
                 mm.put(m, n, val).unwrap();
             });
@@ -454,23 +513,33 @@ impl<'a> Fdm2d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             let (x, y) = self.grid.coord(m);
-            f_bar[iu] = source(x, y);
-            if self.grid.is_xmin(m) {
-                let wn = self.nbcs.functions[0](x, y);
-                f_bar[iu] += -2.0 * wn / self.dx;
+            let mut den = 1.0;
+            let cf = if self.grid.is_corner(m) { 0.5 } else { 1.0 };
+            if !self.ebcs.periodic_along_x {
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x, y);
+                    f_bar[iu] += -cf * wn / self.dx;
+                    den *= 2.0;
+                }
+                if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x, y);
+                    f_bar[iu] += -cf * wn / self.dx;
+                    den *= 2.0;
+                }
             }
-            if self.grid.is_xmax(m) {
-                let wn = self.nbcs.functions[1](x, y);
-                f_bar[iu] += -2.0 * wn / self.dx;
+            if !self.ebcs.periodic_along_y {
+                if self.grid.is_ymin(m) {
+                    let wn = self.nbcs.functions[2](x, y);
+                    f_bar[iu] += -cf * wn / self.dy;
+                    den *= 2.0;
+                }
+                if self.grid.is_ymax(m) {
+                    let wn = self.nbcs.functions[3](x, y);
+                    f_bar[iu] += -cf * wn / self.dy;
+                    den *= 2.0;
+                }
             }
-            if self.grid.is_ymin(m) {
-                let wn = self.nbcs.functions[2](x, y);
-                f_bar[iu] += -2.0 * wn / self.dy;
-            }
-            if self.grid.is_ymax(m) {
-                let wn = self.nbcs.functions[3](x, y);
-                f_bar[iu] += -2.0 * wn / self.dy;
-            }
+            f_bar[iu] += source(x, y) / den;
         });
         for index in 0..4 {
             if self.ebcs.sides[index] {
@@ -533,23 +602,33 @@ impl<'a> Fdm2d<'a> {
         let aa = Vector::new(ndim);
         let mut ff = Vector::new(ndim);
         self.grid.for_each_coord(|m, x, y| {
-            ff[m] = source(x, y);
-            if self.grid.is_xmin(m) {
-                let wn = self.nbcs.functions[0](x, y);
-                ff[m] += -2.0 * wn / self.dx;
+            let mut den = 1.0;
+            let cf = if self.grid.is_corner(m) { 0.5 } else { 1.0 };
+            if !self.ebcs.periodic_along_x {
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x, y);
+                    ff[m] += -cf * wn / self.dx;
+                    den *= 2.0;
+                }
+                if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x, y);
+                    ff[m] += -cf * wn / self.dx;
+                    den *= 2.0;
+                }
             }
-            if self.grid.is_xmax(m) {
-                let wn = self.nbcs.functions[1](x, y);
-                ff[m] += -2.0 * wn / self.dx;
+            if !self.ebcs.periodic_along_y {
+                if self.grid.is_ymin(m) {
+                    let wn = self.nbcs.functions[2](x, y);
+                    ff[m] += -cf * wn / self.dy;
+                    den *= 2.0;
+                }
+                if self.grid.is_ymax(m) {
+                    let wn = self.nbcs.functions[3](x, y);
+                    ff[m] += -cf * wn / self.dy;
+                    den *= 2.0;
+                }
             }
-            if self.grid.is_ymin(m) {
-                let wn = self.nbcs.functions[2](x, y);
-                ff[m] += -2.0 * wn / self.dy;
-            }
-            if self.grid.is_ymax(m) {
-                let wn = self.nbcs.functions[3](x, y);
-                ff[m] += -2.0 * wn / self.dy;
-            }
+            ff[m] += source(x, y) / den;
         });
         for index in 0..4 {
             if self.ebcs.sides[index] {
@@ -663,6 +742,7 @@ impl<'a> Fdm2d<'a> {
 mod tests {
     use super::Fdm2d;
     use crate::{EssentialBcs2d, Grid2d, NaturalBcs2d, Side};
+    use russell_lab::Matrix;
 
     #[test]
     fn new_captures_errors() {
@@ -671,6 +751,16 @@ mod tests {
         let nbcs = NaturalBcs2d::new();
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0);
         assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
+    }
+
+    fn assert_symmetric(mat: &Matrix) {
+        let (nrow, ncol) = mat.dims();
+        assert_eq!(nrow, ncol);
+        for i in 0..nrow {
+            for j in (i + 1)..ncol {
+                assert_eq!(mat.get(i, j), mat.get(j, i));
+            }
+        }
     }
 
     #[test]
@@ -699,77 +789,82 @@ mod tests {
         assert_eq!(fdm.get_dims_sps(), (9, 3));
         assert_eq!(fdm.get_dims_lmm(), (12, 3, 15));
 
+        let aa_dense = aa.as_dense();
+        let kk_dense = kk.as_dense();
+        assert_symmetric(&aa_dense);
+        assert_symmetric(&kk_dense);
+
         // The full matrix is:
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11
         // ┌                                                             ┐
-        // │  800 -200    .    . -600    .    .    .    .    .    .    . │  0*(p0)
-        // │ -100  800 -100    .    . -600    .    .    .    .    .    . │  1→0
-        // │    . -100  800 -100    .    . -600    .    .    .    .    . │  2→1
-        // │    .    . -200  800    .    .    . -600    .    .    .    . │  3→2
-        // │ -300    .    .    .  800 -200    .    . -300    .    .    . │  4*(p1)
+        // │  200  -50    .    . -150    .    .    .    .    .    .    . │  0*(p0)   corner
+        // │  -50  400  -50    .    . -300    .    .    .    .    .    . │  1→0      B
+        // │    .  -50  400  -50    .    . -300    .    .    .    .    . │  2→1      B
+        // │    .    .  -50  200    .    .    . -150    .    .    .    . │  3→2      corner
+        // │ -150    .    .    .  400 -100    .    . -150    .    .    . │  4*(p1)   L
         // │    . -300    .    . -100  800 -100    .    . -300    .    . │  5→3
         // │    .    . -300    .    . -100  800 -100    .    . -300    . │  6→4
-        // │    .    .    . -300    .    . -200  800    .    .    . -300 │  7→5
-        // │    .    .    .    . -600    .    .    .  800 -200    .    . │  8*(p3)
-        // │    .    .    .    .    . -600    .    . -100  800 -100    . │  9→6
-        // │    .    .    .    .    .    . -600    .    . -100  800 -100 │ 10→7
-        // │    .    .    .    .    .    .    . -600    .    . -200  800 │ 11→8
+        // │    .    .    . -150    .    . -100  400    .    .    . -150 │  7→5      R
+        // │    .    .    .    . -150    .    .    .  200  -50    .    . │  8*(p3)   corner
+        // │    .    .    .    .    . -300    .    .  -50  400  -50    . │  9→6      T
+        // │    .    .    .    .    .    . -300    .    .  -50  400  -50 │ 10→7      T
+        // │    .    .    .    .    .    .    . -150    .    .  -50  200 │ 11→8      corner
         // └                                                             ┘
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11
 
         // K =
         //      1    2    3    5    6    7    9   10   11
         // ┌                                              ┐
-        // │  800 -100    . -600    .    .    .    .    . │  1→0
-        // │ -100  800 -100    . -600    .    .    .    . │  2→1
-        // │    . -200  800    .    . -600    .    .    . │  3→2
+        // │  400  -50    . -300    .    .    .    .    . │  1→0    B
+        // │  -50  400  -50    . -300    .    .    .    . │  2→1    B
+        // │    .  -50  200    .    . -150    .    .    . │  3→2    corner
         // │ -300    .    .  800 -100    . -300    .    . │  5→3
         // │    . -300    . -100  800 -100    . -300    . │  6→4
-        // │    .    . -300    . -200  800    .    . -300 │  7→5
-        // │    .    .    . -600    .    .  800 -100    . │  9→6
-        // │    .    .    .    . -600    . -100  800 -100 │ 10→7
-        // │    .    .    .    .    . -600    . -200  800 │ 11→8
+        // │    .    . -150    . -100  400    .    . -150 │  7→5    R
+        // │    .    .    . -300    .    .  400  -50    . │  9→6    T
+        // │    .    .    .    . -300    .  -50  400  -50 │ 10→7    T
+        // │    .    .    .    .    . -150    .  -50  200 │ 11→8    corner
         // └                                              ┘
         //      1    2    3    5    6    7    9   10   11
         assert_eq!(
-            format!("{}", kk.as_dense()),
+            format!("{}", kk_dense),
             "┌                                              ┐\n\
-             │  800 -100    0 -600    0    0    0    0    0 │\n\
-             │ -100  800 -100    0 -600    0    0    0    0 │\n\
-             │    0 -200  800    0    0 -600    0    0    0 │\n\
+             │  400  -50    0 -300    0    0    0    0    0 │\n\
+             │  -50  400  -50    0 -300    0    0    0    0 │\n\
+             │    0  -50  200    0    0 -150    0    0    0 │\n\
              │ -300    0    0  800 -100    0 -300    0    0 │\n\
              │    0 -300    0 -100  800 -100    0 -300    0 │\n\
-             │    0    0 -300    0 -200  800    0    0 -300 │\n\
-             │    0    0    0 -600    0    0  800 -100    0 │\n\
-             │    0    0    0    0 -600    0 -100  800 -100 │\n\
-             │    0    0    0    0    0 -600    0 -200  800 │\n\
+             │    0    0 -150    0 -100  400    0    0 -150 │\n\
+             │    0    0    0 -300    0    0  400  -50    0 │\n\
+             │    0    0    0    0 -300    0  -50  400  -50 │\n\
+             │    0    0    0    0    0 -150    0  -50  200 │\n\
              └                                              ┘"
         );
 
         // C =
         //     0*  4*  8*
-        // ┌             ┐
-        // │ -100   .   . │  1→0
+        // ┌              ┐
+        // │  -50   .   . │  1→0
         // │    .   .   . │  2→1
         // │    .   .   . │  3→2
         // │    . -100  . │  5→3
         // │    .   .   . │  6→4
         // │    .   .   . │  7→5
-        // │    .   . -100│  9→6
+        // │    .   .  -50│  9→6
         // │    .   .   . │ 10→7
         // │    .   .   . │ 11→8
-        // └             ┘
+        // └              ┘
         //     0*  4*  8*
         assert_eq!(
             format!("{}", cc.as_dense()),
             "┌                ┐\n\
-             │ -100    0    0 │\n\
+             │  -50    0    0 │\n\
              │    0    0    0 │\n\
              │    0    0    0 │\n\
              │    0 -100    0 │\n\
              │    0    0    0 │\n\
              │    0    0    0 │\n\
-             │    0    0 -100 │\n\
+             │    0    0  -50 │\n\
              │    0    0    0 │\n\
              │    0    0    0 │\n\
              └                ┘"
@@ -795,229 +890,42 @@ mod tests {
         // A =
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11   12w  13w  14w
         // ┌                                                                            ┐
-        // │  800 -200    .    . -600    .    .    .    .    .    .    .    1    .    . │  0*
-        // │ -100  800 -100    .    . -600    .    .    .    .    .    .    .    .    . │  1
-        // │    . -100  800 -100    .    . -600    .    .    .    .    .    .    .    . │  2
-        // │    .    . -200  800    .    .    . -600    .    .    .    .    .    .    . │  3
-        // │ -300    .    .    .  800 -200    .    . -300    .    .    .    .    1    . │  4*
-        // │    . -300    .    . -100  800 -100    .    . -300    .    .    .    .    . │  5
-        // │    .    . -300    .    . -100  800 -100    .    . -300    .    .    .    . │  6
-        // │    .    .    . -300    .    . -200  800    .    .    . -300    .    .    . │  7
-        // │    .    .    .    . -600    .    .    .  800 -200    .    .    .    .    1 │  8*
-        // │    .    .    .    .    . -600    .    . -100  800 -100    .    .    .    . │  9
-        // │    .    .    .    .    .    . -600    .    . -100  800 -100    .    .    . │ 10
-        // │    .    .    .    .    .    .    . -600    .    . -200  800    .    .    . │ 11
+        // │  200  -50    .    . -150    .    .    .    .    .    .    .    1    .    . │  0*(p0)   corner
+        // │  -50  400  -50    .    . -300    .    .    .    .    .    .    .    .    . │  1→0      B
+        // │    .  -50  400  -50    .    . -300    .    .    .    .    .    .    .    . │  2→1      B
+        // │    .    .  -50  200    .    .    . -150    .    .    .    .    .    .    . │  3→2      corner
+        // │ -150    .    .    .  400 -100    .    . -150    .    .    .    .    1    . │  4*(p1)   L
+        // │    . -300    .    . -100  800 -100    .    . -300    .    .    .    .    . │  5→3
+        // │    .    . -300    .    . -100  800 -100    .    . -300    .    .    .    . │  6→4
+        // │    .    .    . -150    .    . -100  400    .    .    . -150    .    .    . │  7→5      R
+        // │    .    .    .    . -150    .    .    .  200  -50    .    .    .    .    1 │  8*(p3)   corner
+        // │    .    .    .    .    . -300    .    .  -50  400  -50    .    .    .    . │  9→6      T
+        // │    .    .    .    .    .    . -300    .    .  -50  400  -50    .    .    . │ 10→7      T
+        // │    .    .    .    .    .    .    . -150    .    .  -50  200    .    .    . │ 11→8      corner
         // │    1    .    .    .    .    .    .    .    .    .    .    .    .    .    . │ 12w
         // │    .    .    .    .    1    .    .    .    .    .    .    .    .    .    . │ 13w
         // │    .    .    .    .    .    .    .    .    1    .    .    .    .    .    . │ 14w
         // └                                                                            ┘
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11   12w  13w  14w
         assert_eq!(
-            format!("{}", aa.as_dense()),
+            format!("{}", aa_dense),
             "┌                                                                            ┐\n\
-             │  800 -200    0    0 -600    0    0    0    0    0    0    0    1    0    0 │\n\
-             │ -100  800 -100    0    0 -600    0    0    0    0    0    0    0    0    0 │\n\
-             │    0 -100  800 -100    0    0 -600    0    0    0    0    0    0    0    0 │\n\
-             │    0    0 -200  800    0    0    0 -600    0    0    0    0    0    0    0 │\n\
-             │ -300    0    0    0  800 -200    0    0 -300    0    0    0    0    1    0 │\n\
+             │  200  -50    0    0 -150    0    0    0    0    0    0    0    1    0    0 │\n\
+             │  -50  400  -50    0    0 -300    0    0    0    0    0    0    0    0    0 │\n\
+             │    0  -50  400  -50    0    0 -300    0    0    0    0    0    0    0    0 │\n\
+             │    0    0  -50  200    0    0    0 -150    0    0    0    0    0    0    0 │\n\
+             │ -150    0    0    0  400 -100    0    0 -150    0    0    0    0    1    0 │\n\
              │    0 -300    0    0 -100  800 -100    0    0 -300    0    0    0    0    0 │\n\
              │    0    0 -300    0    0 -100  800 -100    0    0 -300    0    0    0    0 │\n\
-             │    0    0    0 -300    0    0 -200  800    0    0    0 -300    0    0    0 │\n\
-             │    0    0    0    0 -600    0    0    0  800 -200    0    0    0    0    1 │\n\
-             │    0    0    0    0    0 -600    0    0 -100  800 -100    0    0    0    0 │\n\
-             │    0    0    0    0    0    0 -600    0    0 -100  800 -100    0    0    0 │\n\
-             │    0    0    0    0    0    0    0 -600    0    0 -200  800    0    0    0 │\n\
+             │    0    0    0 -150    0    0 -100  400    0    0    0 -150    0    0    0 │\n\
+             │    0    0    0    0 -150    0    0    0  200  -50    0    0    0    0    1 │\n\
+             │    0    0    0    0    0 -300    0    0  -50  400  -50    0    0    0    0 │\n\
+             │    0    0    0    0    0    0 -300    0    0  -50  400  -50    0    0    0 │\n\
+             │    0    0    0    0    0    0    0 -150    0    0  -50  200    0    0    0 │\n\
              │    1    0    0    0    0    0    0    0    0    0    0    0    0    0    0 │\n\
              │    0    0    0    0    1    0    0    0    0    0    0    0    0    0    0 │\n\
              │    0    0    0    0    0    0    0    0    1    0    0    0    0    0    0 │\n\
              └                                                                            ┘"
-        );
-    }
-
-    #[test]
-    fn get_matrices_homogeneous_bcs_work() {
-        //       8   9  10  11
-        //      ---------------
-        // 13 | 12* 13* 14* 15* | 14
-        //  9 |  8*  9  10  11* | 10
-        //  5 |  4*  5   6   7* |  6
-        //  1 |  0*  1*  2*  3* |  2
-        //      ---------------
-        //       4   5   6   7
-        // dx = 1.0, dy = 1.0
-        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 3.0, 4, 4).unwrap();
-        let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_homogeneous();
-        let nbcs = NaturalBcs2d::new();
-
-        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true);
-        let cc = cc_mat.unwrap();
-        let ee = ee_mat.unwrap();
-
-        assert_eq!(fdm.get_dims_sps(), (4, 12));
-        assert_eq!(fdm.get_dims_lmm(), (16, 12, 28));
-
-        // The full matrix is:
-        //    0* 1* 2* 3* 4* 5  6  7* 8* 9 10 11*12*13*14*15*
-        // ┌                                                 ┐
-        // │  4 -2  .  . -2  .  .  .  .  .  .  .  .  .  .  . │  0*
-        // │ -1  4 -1  .  . -2  .  .  .  .  .  .  .  .  .  . │  1*
-        // │  . -1  4 -1  .  . -2  .  .  .  .  .  .  .  .  . │  2*
-        // │  .  . -2  4  .  .  . -2  .  .  .  .  .  .  .  . │  3*
-        // │ -1  .  .  .  4 -2  .  . -1  .  .  .  .  .  .  . │  4*
-        // │  . -1  .  . -1  4 -1  .  . -1  .  .  .  .  .  . │  5
-        // │  .  . -1  .  . -1  4 -1  .  . -1  .  .  .  .  . │  6
-        // │  .  .  . -1  .  . -2  4  .  .  . -1  .  .  .  . │  7*
-        // │  .  .  .  . -1  .  .  .  4 -2  .  . -1  .  .  . │  8*
-        // │  .  .  .  .  . -1  .  . -1  4 -1  .  . -1  .  . │  9
-        // │  .  .  .  .  .  . -1  .  . -1  4 -1  .  . -1  . │ 10
-        // │  .  .  .  .  .  .  . -1  .  . -2  4  .  .  . -1 │ 11*
-        // │  .  .  .  .  .  .  .  . -2  .  .  .  4 -2  .  . │ 12*
-        // │  .  .  .  .  .  .  .  .  . -2  .  . -1  4 -1  . │ 13*
-        // │  .  .  .  .  .  .  .  .  .  . -2  .  . -1  4 -1 │ 14*
-        // │  .  .  .  .  .  .  .  .  .  .  . -2  .  . -2  4 │ 15*
-        // └                                                 ┘
-        //    0* 1* 2* 3* 4* 5  6  7* 8* 9 10 11*12*13*14*15*
-
-        // K =
-        //    5  6  9 10 *
-        // ┌              ┐
-        // │  4 -1 -1  .  │  5
-        // │ -1  4  . -1  │  6
-        // │ -1  .  4 -1  │  9
-        // │  . -1 -1  4  │ 10
-        // └              ┘
-        //    5  6  9 10 *
-        assert_eq!(
-            format!("{}", kk.as_dense()),
-            "┌             ┐\n\
-             │  4 -1 -1  0 │\n\
-             │ -1  4  0 -1 │\n\
-             │ -1  0  4 -1 │\n\
-             │  0 -1 -1  4 │\n\
-             └             ┘"
-        );
-
-        // C =
-        //    0* 1* 2* 3* 4* 7* 8*11*12*13*14*15*
-        // ┌                                     ┐
-        // │  . -1  .  . -1  .  .  .  .  .  .  . │  5
-        // │  .  . -1  .  . -1  .  .  .  .  .  . │  6
-        // │  .  .  .  .  .  . -1  .  . -1  .  . │  9
-        // │  .  .  .  .  .  .  . -1  .  . -1  . │ 10
-        // └                                     ┘
-        //    0* 1* 2* 3* 4* 7* 8*11*12*13*14*15*
-        //
-        assert_eq!(
-            format!("{}", cc.as_dense()),
-            "┌                                     ┐\n\
-             │  0 -1  0  0 -1  0  0  0  0  0  0  0 │\n\
-             │  0  0 -1  0  0 -1  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0 -1  0  0 -1  0  0 │\n\
-             │  0  0  0  0  0  0  0 -1  0  0 -1  0 │\n\
-             └                                     ┘"
-        );
-
-        // E =
-        //    0* 1* 2* 3* 4* 5  6  7* 8* 9 10 11*12*13*14*15*
-        // ┌                                                 ┐
-        // │  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │  0*
-        // │  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  . │  1*
-        // │  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  . │  2*
-        // │  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  . │  3*
-        // │  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  . │  4*
-        // │  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  . │  7*
-        // │  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  . │  8*
-        // │  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  . │ 11*
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  1  .  .  . │ 12*
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  .  1  .  . │ 13*
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  .  .  1  . │ 14*
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  1 │ 15*
-        // └                                                 ┘
-        assert_eq!(
-            format!("{}", ee.as_dense()),
-            "┌                                 ┐\n\
-             │ 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 │\n\
-             │ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 │\n\
-             └                                 ┘"
-        );
-
-        // A =
-        //    0* 1* 2* 3* 4* 5  6  7* 8* 9 10 11*12*13*14*15*16w17w18w19w20w21w22w23w24w25w26w27w
-        // ┌                                                                                     ┐
-        // │  4 -2  .  . -2  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  . │  0*
-        // │ -1  4 -1  .  . -2  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  . │  1*
-        // │  . -1  4 -1  .  . -2  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  . │  2*
-        // │  .  . -2  4  .  .  . -2  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  . │  3*
-        // │ -1  .  .  .  4 -2  .  . -1  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  . │  4*
-        // │  . -1  .  . -1  4 -1  .  . -1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │  5
-        // │  .  . -1  .  . -1  4 -1  .  . -1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │  6
-        // │  .  .  . -1  .  . -2  4  .  .  . -1  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  . │  7*
-        // │  .  .  .  . -1  .  .  .  4 -2  .  . -1  .  .  .  .  .  .  .  .  .  1  .  .  .  .  . │  8*
-        // │  .  .  .  .  . -1  .  . -1  4 -1  .  . -1  .  .  .  .  .  .  .  .  .  .  .  .  .  . │  9
-        // │  .  .  .  .  .  . -1  .  . -1  4 -1  .  . -1  .  .  .  .  .  .  .  .  .  .  .  .  . │ 10
-        // │  .  .  .  .  .  .  . -1  .  . -2  4  .  .  . -1  .  .  .  .  .  .  .  1  .  .  .  . │ 11*
-        // │  .  .  .  .  .  .  .  . -2  .  .  .  4 -2  .  .  .  .  .  .  .  .  .  .  1  .  .  . │ 12*
-        // │  .  .  .  .  .  .  .  .  . -2  .  . -1  4 -1  .  .  .  .  .  .  .  .  .  .  1  .  . │ 13*
-        // │  .  .  .  .  .  .  .  .  .  . -2  .  . -1  4 -1  .  .  .  .  .  .  .  .  .  .  1  . │ 14*
-        // │  .  .  .  .  .  .  .  .  .  .  . -2  .  . -2  4  .  .  .  .  .  .  .  .  .  .  .  1 │ 15*
-        // │  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 16w
-        // │  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 17w
-        // │  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 18w
-        // │  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 19w
-        // │  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 20w
-        // │  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 21w
-        // │  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 22w
-        // │  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 23w
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 24w
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  .  . │ 25w
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  .  . │ 26w
-        // │  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  1  .  .  .  .  .  .  .  .  .  .  .  . │ 27w
-        // └                                                                                     ┘
-        assert_eq!(
-            format!("{}", aa.as_dense()),
-            "┌                                                                                     ┐\n\
-             │  4 -2  0  0 -2  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │ -1  4 -1  0  0 -2  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0 -1  4 -1  0  0 -2  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0 -2  4  0  0  0 -2  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0 │\n\
-             │ -1  0  0  0  4 -2  0  0 -1  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0 │\n\
-             │  0 -1  0  0 -1  4 -1  0  0 -1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0 -1  0  0 -1  4 -1  0  0 -1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0 -1  0  0 -2  4  0  0  0 -1  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0 │\n\
-             │  0  0  0  0 -1  0  0  0  4 -2  0  0 -1  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0 │\n\
-             │  0  0  0  0  0 -1  0  0 -1  4 -1  0  0 -1  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0 -1  0  0 -1  4 -1  0  0 -1  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0 -1  0  0 -2  4  0  0  0 -1  0  0  0  0  0  0  0  1  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0 -2  0  0  0  4 -2  0  0  0  0  0  0  0  0  0  0  1  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0 -2  0  0 -1  4 -1  0  0  0  0  0  0  0  0  0  0  1  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0 -2  0  0 -1  4 -1  0  0  0  0  0  0  0  0  0  0  1  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0  0 -2  0  0 -2  4  0  0  0  0  0  0  0  0  0  0  0  1 │\n\
-             │  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             │  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  0  0  0  0  0  0  0  0  0  0  0  0 │\n\
-             └                                                                                     ┘"
         );
     }
 
@@ -1171,18 +1079,18 @@ mod tests {
         assert_eq!(
             ff.as_data(),
             &[
-                100.0,     // 0
-                100.0,     // 1
-                100.0,     // 2
-                100.0,     // 3
-                100.0,     // 4
+                25.0,      // 0   corner
+                50.0,      // 1   B
+                50.0,      // 2   B
+                25.0,      // 3   corner
+                50.0,      // 4   L
                 100.0,     // 5
                 100.0,     // 6
-                100.0,     // 7
-                100.0,     // 8
-                100.0,     // 9
-                100.0,     // 10
-                100.0,     // 11
+                50.0,      // 7   R
+                25.0,      // 8   corner
+                50.0,      // 9   T
+                50.0,      // 10  T
+                25.0,      // 11  corner
                 1.0 + 1.0, //  0*
                 2.0 + 1.0, //  1*
                 3.0 + 1.0, //  2*

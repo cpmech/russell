@@ -4,7 +4,7 @@ use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 #[test]
 fn test_1d_prob04_fdm_sps() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_04();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_04b();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 11)?;

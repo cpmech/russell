@@ -224,7 +224,63 @@ impl ProblemSamples {
         (xmin, xmax, kx, alpha, ebcs, nbcs, source, analytical)
     }
 
-    /// 1D Problem # 04 - Poisson
+    /// 1D Problem # 04a - Poisson
+    ///
+    /// This is Program 13, page 64, of Trefethen's book
+    ///
+    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `xmin` and `xmax` are the domain limits
+    /// * `kx` is the diffusion coefficient
+    /// * `source` is the source function `f(x)`
+    /// * `analytical` is the analytical solution function `ϕ(x)`
+    /// * `ebcs` are the essential boundary conditions
+    /// * `nbcs` are the natural boundary conditions
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    /// ∂²ϕ
+    /// ——— = exp(4x)
+    /// ∂x²
+    /// ```
+    ///
+    /// on a `[-1,1]` interval with homogeneous boundary conditions.
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    ///        exp(4x) - sinh(4) x - cosh(4)
+    /// ϕ(x) = —————————————————————————————
+    ///                     16
+    /// ```
+    ///
+    /// # Reference
+    ///
+    /// * Trefethen LN (2000) - Spectral Methods in MATLAB, SIAM
+    pub fn d1_problem_04a<'a>() -> (
+        f64,
+        f64,
+        f64,
+        EssentialBcs1d<'a>,
+        NaturalBcs1d<'a>,
+        Box<dyn Fn(f64) -> f64>,
+        Box<dyn Fn(f64) -> f64>,
+    ) {
+        let xmin = -1.0;
+        let xmax = 1.0;
+        let kx = -1.0;
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+        let source = Box::new(|x: f64| f64::exp(4.0 * x));
+        let analytical = Box::new(|x: f64| (f64::exp(4.0 * x) - f64::sinh(4.0) * x - f64::cosh(4.0)) / 16.0);
+        (xmin, xmax, kx, ebcs, nbcs, source, analytical)
+    }
+
+    /// 1D Problem # 04b - Poisson
     ///
     /// This is Program 33, page 138, of Trefethen's book
     ///
@@ -247,7 +303,7 @@ impl ProblemSamples {
     /// ∂x²
     /// ```
     ///
-    /// on a [-1,1] interval with the following boundary conditions:
+    /// on a `[-1,1]` interval with the following boundary conditions:
     ///
     /// * Xmin(left):  ∂ϕ/∂x = 0  thus  wₙ(-1) = 0
     /// * Xmax(right): ϕ(1) = 0
@@ -263,7 +319,7 @@ impl ProblemSamples {
     /// # Reference
     ///
     /// * Trefethen LN (2000) - Spectral Methods in MATLAB, SIAM
-    pub fn d1_problem_04<'a>() -> (
+    pub fn d1_problem_04b<'a>() -> (
         f64,
         f64,
         f64,
@@ -610,7 +666,7 @@ impl ProblemSamples {
     /// -∇²ϕ = 1
     /// ```
     ///
-    /// on a [-1,1]×[-1,1] square with homogeneous boundary conditions.
+    /// on a `[-1,1]×[-1,1]` square with homogeneous boundary conditions.
     ///
     /// The analytical solution is:
     ///
@@ -687,7 +743,7 @@ impl ProblemSamples {
     ///   ∂x²   ∂y²
     /// ```
     ///
-    /// on a [-1,1]×[-1,1] square with the following boundary conditions:
+    /// on a `[-1,1]×[-1,1]` square with the following boundary conditions:
     ///
     /// * Xmin: ϕ(-1, y) = 0
     /// * Xmax: ϕ(1, y) = 2
@@ -754,7 +810,7 @@ impl ProblemSamples {
     ///   ∂x²   ∂y²    cosh(1 - x + y)²
     /// ```
     ///
-    /// on a [-1,1]×[-1,1] square with the following boundary conditions:
+    /// on a `[-1,1]×[-1,1]` square with the following boundary conditions:
     ///
     /// * Xmin: ϕ(-1, y) = tanh(2+y)
     /// * Xmax: wₙ(1, y) = 1/cosh(y)²
@@ -823,7 +879,7 @@ impl ProblemSamples {
     /// ∂x²   ∂y²
     /// ```
     ///
-    /// on a [-1,1]×[-1,1] square with the following boundary conditions:
+    /// on a `[-1,1]×[-1,1]` square with the following boundary conditions:
     ///
     /// * Xmin: ϕ(-1, y) = sin(2πy)
     /// * Xmax: ϕ( 1, y) = sin(2πy)

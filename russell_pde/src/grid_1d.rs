@@ -1,5 +1,7 @@
 use crate::Side;
 use crate::StrError;
+use russell_lab::math::chebyshev_lobatto_points;
+use russell_lab::Vector;
 
 /// Defines a 1D grid
 ///
@@ -54,7 +56,7 @@ pub struct Grid1d {
     /// Node coordinates
     ///
     /// Length = nx
-    coords: Vec<f64>,
+    coords: Vector,
 
     /// Holds the index of the left node, i.e., 0
     ///
@@ -121,7 +123,7 @@ impl Grid1d {
         }
         Ok(Self {
             nx,
-            coords: xx.to_vec(),
+            coords: Vector::from(&xx),
             nodes_xmin: vec![0],
             nodes_xmax: vec![nx - 1],
         })
@@ -180,14 +182,30 @@ impl Grid1d {
             return Err("xmax must be > xmin");
         }
         let dx = (xmax - xmin) / ((nx - 1) as f64);
-        let mut coords = Vec::with_capacity(nx);
+        let mut coords = Vector::new(nx);
         for i in 0..nx {
             let x = xmin + (i as f64) * dx;
-            coords.push(x);
+            coords[i] = x;
         }
         Ok(Self {
             nx,
             coords,
+            nodes_xmin: vec![0],
+            nodes_xmax: vec![nx - 1],
+        })
+    }
+
+    /// Creates a new grid using Chebyshev-Gauss-Lobatto points (tensor product)
+    pub fn new_chebyshev_gauss_lobatto(nx: usize) -> Result<Self, StrError> {
+        if nx < 2 {
+            return Err("nx must be ≥ 2");
+        }
+        //        xb + xa + (xb - xa) u
+        // x(u) = —————————————————————
+        //                 2
+        Ok(Self {
+            nx,
+            coords: chebyshev_lobatto_points(nx - 1),
             nodes_xmin: vec![0],
             nodes_xmax: vec![nx - 1],
         })
@@ -206,6 +224,11 @@ impl Grid1d {
     /// Returns true if the specified node is on the right boundary (xmax edge)
     pub fn is_xmax(&self, m: usize) -> bool {
         m == self.nx - 1
+    }
+
+    /// Indicates whether node m is on any boundary or not
+    pub fn on_boundary(&self, m: usize) -> bool {
+        m == 0 || m == self.nx - 1
     }
 
     /// Returns the list of nodes on the specified side
@@ -305,8 +328,8 @@ impl Grid1d {
     /// }
     /// ```
     pub fn for_each_coord(&self, mut f: impl FnMut(usize, f64)) {
-        for (m, x) in self.coords.iter().enumerate() {
-            f(m, *x);
+        for m in 0..self.nx {
+            f(m, self.coords[m]);
         }
     }
 }
@@ -338,7 +361,7 @@ mod tests {
 
         let grid = Grid1d::new(xx).unwrap();
         assert_eq!(grid.nx, 4);
-        assert_eq!(grid.coords, correct_coords);
+        assert_eq!(grid.coords.as_data(), &correct_coords);
 
         assert_eq!(grid.nx(), 4);
         assert_eq!(grid.get_dx(), None); // non-uniform grid
@@ -358,7 +381,7 @@ mod tests {
 
         let grid = Grid1d::new_uniform(xmin, xmax, nx).unwrap();
         assert_eq!(grid.nx, 4);
-        assert_eq!(grid.coords, correct_coords);
+        assert_eq!(grid.coords.as_data(), &correct_coords);
 
         assert_eq!(grid.nx(), 4);
         assert_eq!(grid.get_dx(), Some(2.0));

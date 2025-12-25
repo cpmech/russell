@@ -59,6 +59,8 @@ const INI_X: usize = 0;
 ///
 /// The natural boundary conditions (NBC) are set by modifying the right-hand side vector.
 ///
+/// ## Left side (Xmin)
+///
 /// The FDM stencil at the left side (Xmin) is:
 ///
 /// ```text
@@ -91,6 +93,14 @@ const INI_X: usize = 0;
 ///
 /// Where `wₙ := kx g = q̄` at the left side (Xmin).
 ///
+/// Let us divide the above expression by two so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ½ α ϕ_{0} + β ϕ_{1} = ½ s_{0} - wₙ / Δx
+/// ```
+///
+/// ## Right side (Xmax)
+///
 /// The FDM stencil at the right side (Xmax) is:
 ///
 /// ```text
@@ -120,6 +130,12 @@ const INI_X: usize = 0;
 /// ```
 ///
 /// where `wₙ := -kx g = q̄` at the right side (Xmax).
+///
+/// Let us divide the above expression by two so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ½ α ϕ_{nx-1} + β ϕ_{nx-2} = ½ s_{nx-1} - wₙ / Δx
+/// ```
 pub struct Fdm1d<'a> {
     /// Defines the 1D grid
     grid: Grid1d,
@@ -329,7 +345,7 @@ impl<'a> Fdm1d<'a> {
             // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
             CooMatrix::new(1, 1, 1, Sym::No).unwrap()
         } else {
-            let nnz_kk_check = 2 * np; // 4 is the max number of neighbors (worst case)
+            let nnz_kk_check = 2 * np; // 2 is the max number of neighbors (worst case)
             CooMatrix::new(nu, np, nnz_kk_check, Sym::No).unwrap()
         };
         self.equations.unknown().iter().for_each(|&m| {
@@ -338,6 +354,9 @@ impl<'a> Fdm1d<'a> {
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha; // Helmholtz term
+                }
+                if !self.ebcs.periodic_along_x && (m == 0 || m == self.grid.nx() - 1) {
+                    val /= 2.0;
                 }
                 if self.equations.is_prescribed(n) {
                     let jp = self.equations.ip(n);
@@ -391,6 +410,9 @@ impl<'a> Fdm1d<'a> {
                 if m == n {
                     val += alpha;
                 }
+                if !self.ebcs.periodic_along_x && (m == 0 || m == self.grid.nx() - 1) {
+                    val /= 2.0;
+                }
                 mm.put(m, n, val).unwrap();
             });
         }
@@ -441,14 +463,14 @@ impl<'a> Fdm1d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             let x = self.grid.coord(m);
-            f_bar[iu] = source(x);
             if self.grid.is_xmin(m) {
                 let wn = self.nbcs.functions[0](x);
-                f_bar[iu] += -2.0 * wn / self.dx;
-            }
-            if self.grid.is_xmax(m) {
+                f_bar[iu] = source(x) / 2.0 - wn / self.dx;
+            } else if self.grid.is_xmax(m) {
                 let wn = self.nbcs.functions[1](x);
-                f_bar[iu] += -2.0 * wn / self.dx;
+                f_bar[iu] = source(x) / 2.0 - wn / self.dx;
+            } else {
+                f_bar[iu] = source(x);
             }
         });
         for index in 0..2 {
@@ -511,14 +533,14 @@ impl<'a> Fdm1d<'a> {
         let aa = Vector::new(ndim);
         let mut ff = Vector::new(ndim);
         self.grid.for_each_coord(|m, x| {
-            ff[m] = source(x);
             if self.grid.is_xmin(m) {
                 let wn = self.nbcs.functions[0](x);
-                ff[m] += -2.0 * wn / self.dx;
-            }
-            if self.grid.is_xmax(m) {
+                ff[m] = source(x) / 2.0 - wn / self.dx;
+            } else if self.grid.is_xmax(m) {
                 let wn = self.nbcs.functions[1](x);
-                ff[m] += -2.0 * wn / self.dx;
+                ff[m] = source(x) / 2.0 - wn / self.dx;
+            } else {
+                ff[m] = source(x);
             }
         });
         for index in 0..2 {
@@ -650,10 +672,10 @@ mod tests {
         // The full matrix is:
         //      0*   1    2    3
         // ┌                     ┐
-        // │  200 -200    .    . │  0*(p0)
+        // │  100 -100    .    . │  0*(p0)  // divided by 2 due to EBC at Xmin
         // │ -100  200 -100    . │  1→0
         // │    . -100  200 -100 │  2→1
-        // │    .    . -200  200 │  3→2
+        // │    .    . -100  100 │  3→2     // divided by 2 due to NBC at Xmax
         // └                     ┘
         //      0*   1    2    3
 
@@ -662,7 +684,7 @@ mod tests {
         // ┌                ┐
         // │  200 -100    . │  1→0
         // │ -100  200 -100 │  2→1
-        // │    . -200  200 │  3→2
+        // │    . -100  100 │  3→2
         // └                ┘
         //      1    2    3
         assert_eq!(
@@ -670,13 +692,13 @@ mod tests {
             "┌                ┐\n\
              │  200 -100    0 │\n\
              │ -100  200 -100 │\n\
-             │    0 -200  200 │\n\
+             │    0 -100  100 │\n\
              └                ┘"
         );
 
         // C =
         //     0*
-        // ┌     ┐
+        // ┌      ┐
         // │ -100 │  1→0
         // │    . │  2→1
         // │    . │  3→2
@@ -707,20 +729,20 @@ mod tests {
         // A =
         //      0*   1    2    3    4w
         // ┌                          ┐
-        // │  200 -200    .    .    1 │  0*
+        // │  100 -100    .    .    1 │  0*    // divided by 2 due to EBC at Xmin
         // │ -100  200 -100    .    . │  1
         // │    . -100  200 -100    . │  2
-        // │    .    . -200  200    . │  3
+        // │    .    . -100  100    . │  3     // divided by 2 due to NBC at Xmax
         // │    1    .    .    .    . │  4w
         // └                          ┘
         //      0*   1    2    3    4w
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                          ┐\n\
-             │  200 -200    0    0    1 │\n\
+             │  100 -100    0    0    1 │\n\
              │ -100  200 -100    0    0 │\n\
              │    0 -100  200 -100    0 │\n\
-             │    0    0 -200  200    0 │\n\
+             │    0    0 -100  100    0 │\n\
              │    1    0    0    0    0 │\n\
              └                          ┘"
         );
@@ -747,7 +769,7 @@ mod tests {
         // The full matrix is:
         //    0* 1  2  3*
         // ┌              ┐
-        // │  2 -2  .  .  │  0*
+        // │  1 -1  .  .  │  0*
         // │ -1  2 -1  .  │  1
         // │  . -1  2 -1  │  2
         // │  .  . -2  2  │  3*
@@ -801,20 +823,20 @@ mod tests {
         // A =
         //    0* 1  2  3* 4w 5w
         // ┌                   ┐
-        // │  2 -2  .  .  1  . │  0*
+        // │  1 -1  .  .  1  . │  0*
         // │ -1  2 -1  .  .  . │  1
         // │  . -1  2 -1  .  . │  2
-        // │  .  . -2  2  .  1 │  3*
+        // │  .  . -1  1  .  1 │  3*
         // │  1  .  .  .  .  . │  3*
         // │  .  .  .  1  .  . │  3*
         // └                   ┘
         assert_eq!(
             format!("{}", aa.as_dense()),
             "┌                   ┐\n\
-             │  2 -2  0  0  1  0 │\n\
+             │  1 -1  0  0  1  0 │\n\
              │ -1  2 -1  0  0  0 │\n\
              │  0 -1  2 -1  0  0 │\n\
-             │  0  0 -2  2  0  1 │\n\
+             │  0  0 -1  1  0  1 │\n\
              │  1  0  0  0  0  0 │\n\
              │  0  0  0  1  0  0 │\n\
              └                   ┘"
@@ -897,6 +919,6 @@ mod tests {
         assert_eq!(aa.dim(), 5 + 2); // na + nw
         assert_eq!(ff.dim(), 5 + 2); // na + nw
         assert_eq!(aa.as_data(), &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
-        assert_eq!(ff.as_data(), &[100.0, 100.0, 100.0, 100.0, 100.0, LEF, RIG]);
+        assert_eq!(ff.as_data(), &[100.0 / 2.0, 100.0, 100.0, 100.0, 100.0 / 2.0, LEF, RIG]);
     }
 }

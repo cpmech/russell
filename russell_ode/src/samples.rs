@@ -1,7 +1,7 @@
 use crate::{NoArgs, System};
 use russell_lab::math::PI;
 use russell_lab::Vector;
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d};
+use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, Side};
 use russell_sparse::{CooMatrix, Genie, Sym};
 
 /// Holds a collection of sample ODE problems
@@ -581,7 +581,13 @@ impl Samples {
         }
 
         // natural boundary conditions (NBCs) handler
-        let nbcs = NaturalBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+        if !second_book {
+            nbcs.set(Side::Xmin, |_, _| 0.0);
+            nbcs.set(Side::Xmax, |_, _| 0.0);
+            nbcs.set(Side::Ymin, |_, _| 0.0);
+            nbcs.set(Side::Ymax, |_, _| 0.0);
+        }
 
         // discrete laplacian
         let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky).unwrap();

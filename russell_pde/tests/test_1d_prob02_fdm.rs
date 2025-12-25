@@ -20,10 +20,15 @@ fn test_1d_prob02_fdm_sps() -> Result<(), StrError> {
     let a = fdm.solve_sps(alpha, source)?;
 
     // analytical solution
+    let mut err_max = 0.0;
     fdm.for_each_coord(|m, x| {
-        // println!("{}: ϕ = {} ({})", m, a[m], analytical(x));
-        approx_eq(a[m], analytical(x), 0.0155);
+        let err = f64::abs(a[m] - analytical(x));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x), 0.01542);
     });
+    println!("N = {}, max(err) = {:>10.5e}", nx - 1, err_max);
 
     // plot
     if SAVE_FIGURE {
@@ -70,7 +75,7 @@ fn test_1d_prob02_fdm_lmm() -> Result<(), StrError> {
     // analytical solution
     fdm.for_each_coord(|m, x| {
         // println!("{}: ϕ = {} ({})", m, a[m], analytical(x));
-        approx_eq(a[m], analytical(x), 0.0155);
+        approx_eq(a[m], analytical(x), 0.01542);
     });
     Ok(())
 }

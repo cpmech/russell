@@ -681,10 +681,21 @@ impl<'a> Fdm1d<'a> {
 mod tests {
     use super::Fdm1d;
     use crate::{EssentialBcs1d, Grid1d, NaturalBcs1d, Side};
+    use russell_lab::Matrix;
     use russell_sparse::Sym;
 
     const LEF: f64 = 1.0;
     const RIG: f64 = 2.0;
+
+    fn assert_symmetric(mat: &Matrix) {
+        let (nrow, ncol) = mat.dims();
+        assert_eq!(nrow, ncol);
+        for i in 0..nrow {
+            for j in (i + 1)..ncol {
+                assert_eq!(mat.get(i, j), mat.get(j, i));
+            }
+        }
+    }
 
     #[test]
     fn new_captures_errors() {
@@ -717,6 +728,11 @@ mod tests {
         assert_eq!(fdm.get_dims_sps(), (3, 1));
         assert_eq!(fdm.get_dims_lmm(), (4, 1, 5));
 
+        let kk_dense = kk.as_dense();
+        let aa_dense = aa.as_dense();
+        assert_symmetric(&kk_dense);
+        assert_symmetric(&aa_dense);
+
         // The full matrix is:
         //      0*   1    2    3
         // ┌                     ┐
@@ -736,7 +752,7 @@ mod tests {
         // └                ┘
         //      1    2    3
         assert_eq!(
-            format!("{}", kk.as_dense()),
+            format!("{}", kk_dense),
             "┌                ┐\n\
              │  200 -100    0 │\n\
              │ -100  200 -100 │\n\
@@ -785,7 +801,7 @@ mod tests {
         // └                          ┘
         //      0*   1    2    3    4w
         assert_eq!(
-            format!("{}", aa.as_dense()),
+            format!("{}", aa_dense),
             "┌                          ┐\n\
              │  100 -100    0    0    1 │\n\
              │ -100  200 -100    0    0 │\n\

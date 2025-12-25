@@ -1075,9 +1075,16 @@ mod tests {
             circle.draw_circle(0.0, 0.0, radius);
             let mut canvas = Canvas::new();
             draw_lines_2d(&mut canvas, &mut map, 21, 0.02);
+            let mut canvas_tri = Canvas::new();
+            let (xx, yy, triangles) = map.triangulate(11);
+            canvas_tri
+                .set_edge_color("green")
+                .set_line_width(0.5)
+                .draw_triangles(&xx, &yy, &triangles);
             let mut plot = Plot::new();
             plot.add(&circle)
                 .add(&canvas)
+                .add(&canvas_tri)
                 .set_range(-1.05, 3.05, -1.05, 3.05)
                 .set_equal_axes(true)
                 .set_figure_size_points(600.0, 600.0)

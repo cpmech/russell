@@ -35,5 +35,5 @@ structopt = "0.3"
 ctm_demo = "0.2"
 russell_pde = { path = "../russell_pde", version = "0.1.0" }
 russell_ode = "1.10"
-plotpy = "1.13"
+plotpy = "1.15"
 rayon = "1.10"

@@ -1076,7 +1076,7 @@ mod tests {
             let mut canvas = Canvas::new();
             draw_lines_2d(&mut canvas, &mut map, 21, 0.02);
             let mut canvas_tri = Canvas::new();
-            let (xx, yy, triangles) = map.triangulate(11);
+            let (xx, yy, triangles) = map.triangulate(11, 11, false, false);
             canvas_tri
                 .set_edge_color("green")
                 .set_line_width(0.5)

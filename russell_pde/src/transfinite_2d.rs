@@ -1,5 +1,6 @@
 use super::FnVec1Param1;
 use crate::StrError;
+use russell_lab::math::chebyshev_lobatto_points;
 use russell_lab::Vector;
 
 /// Implements the transfinite mapping
@@ -273,25 +274,45 @@ impl Transfinite2d {
     ///
     /// # Arguments
     ///
-    /// * `nt` - number of points along each edge
-    pub fn triangulate(&mut self, nt: usize) -> (Vec<f64>, Vec<f64>, Vec<Vec<usize>>) {
-        let np = nt * nt;
+    /// * `nr` - number of points along the r-direction
+    /// * `ns` - number of points along the s-direction
+    /// * `cgl_r` - whether to use Chebyshev-Gauss-Lobatto points in the r-direction
+    /// * `cgl_s` - whether to use Chebyshev-Gauss-Lobatto points in the s-direction
+    pub fn triangulate(
+        &mut self,
+        nr: usize,
+        ns: usize,
+        cgl_r: bool,
+        cgl_s: bool,
+    ) -> (Vec<f64>, Vec<f64>, Vec<Vec<usize>>) {
+        assert!(nr >= 2, "nr must be at least 2");
+        assert!(ns >= 2, "ns must be at least 2");
+        let np = nr * ns;
         let mut xx = Vec::with_capacity(np);
         let mut yy = Vec::with_capacity(np);
-        let mut triangles = Vec::with_capacity((nt - 1) * (nt - 1) * 2);
-        let tt = Vector::linspace(-1.0, 1.0, nt).unwrap();
+        let mut triangles = Vec::with_capacity((nr - 1) * (ns - 1) * 2);
+        let ksi = if cgl_r {
+            chebyshev_lobatto_points(nr - 1)
+        } else {
+            Vector::linspace(-1.0, 1.0, nr).unwrap()
+        };
+        let eta = if cgl_s {
+            chebyshev_lobatto_points(ns - 1)
+        } else {
+            Vector::linspace(-1.0, 1.0, ns).unwrap()
+        };
         let mut x = Vector::new(2);
-        for j in 0..nt {
-            let s = tt[j];
-            for i in 0..nt {
-                let r = tt[i];
+        for j in 0..ns {
+            let s = eta[j];
+            for i in 0..nr {
+                let r = ksi[i];
                 self.point(&mut x, r, s);
                 xx.push(x[0]);
                 yy.push(x[1]);
                 if i > 0 && j > 0 {
-                    let m = i + j * nt;
-                    triangles.push(vec![m - nt - 1, m - nt, m]);
-                    triangles.push(vec![m - nt - 1, m, m - 1]);
+                    let m = i + j * nr;
+                    triangles.push(vec![m - nr - 1, m - nr, m]);
+                    triangles.push(vec![m - nr - 1, m, m - 1]);
                 }
             }
         }
@@ -581,14 +602,12 @@ mod tests {
         let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
 
         // triangulate
-        let (xx, yy, triangles) = map.triangulate(2);
+        // let (xx, yy, triangles) = map.triangulate(4, 5, true, false);
+        let (xx, yy, triangles) = map.triangulate(2, 2, true, false);
 
         // check sizes
-        assert_eq!(xx.len(), 4);
-        assert_eq!(yy.len(), 4);
-        assert_eq!(triangles.len(), 2);
-        assert_eq!(&xx, &[1.0, 6.0, 0.0, 1.0]); // corners
-        assert_eq!(&yy, &[0.0, 4.0, 5.0, 6.0]); // corners
+        assert_eq!(&xx, &[1.0, 6.0, 0.0, 1.0]);
+        assert_eq!(&yy, &[0.0, 4.0, 5.0, 6.0]);
         assert_eq!(triangles[0], vec![0, 1, 3]);
         assert_eq!(triangles[1], vec![0, 3, 2]);
 

@@ -954,7 +954,8 @@ impl ProblemSamples {
     /// where: r = √(x² + y²) and θ = arctan(y/x)
     /// ```
     ///
-    /// on a half ring domain defined by `ra ≤ r ≤ rb`, `0 ≤ θ ≤ π/2` with the following boundary conditions:
+    /// on a quarter ring or quarter perforated lozenge domain defined by `ra ≤ r ≤ rb`, `0 ≤ θ ≤ π/2`
+    /// with the following boundary conditions:
     ///
     /// * R-min (Xmin): ϕ = ln(ra) sin(4θ)   on r = ra
     /// * R-max (Xmax): ϕ = ln(rb) sin(4θ)   on r = rb
@@ -973,6 +974,7 @@ impl ProblemSamples {
     pub fn d2_problem_08(
         ra: f64,
         rb: f64,
+        lozenge: bool,
     ) -> (
         Transfinite2d,
         f64,
@@ -982,7 +984,11 @@ impl ProblemSamples {
         Box<dyn Fn(f64, f64) -> f64>,
     ) {
         // map and diffusion coefficient
-        let map = TransfiniteSamples::quarter_ring_2d(ra, rb);
+        let map = if lozenge {
+            TransfiniteSamples::quarter_perforated_lozenge_2d(ra, rb)
+        } else {
+            TransfiniteSamples::quarter_ring_2d(ra, rb)
+        };
         let k = -1.0;
 
         // analytical solution
@@ -996,11 +1002,13 @@ impl ProblemSamples {
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set(Side::Xmin, move |x, y| {
             let theta = f64::atan2(y, x);
-            f64::ln(ra) * f64::sin(4.0 * theta)
+            let r = f64::sqrt(x * x + y * y);
+            f64::ln(r) * f64::sin(4.0 * theta)
         });
         ebcs.set(Side::Xmax, move |x, y| {
             let theta = f64::atan2(y, x);
-            f64::ln(rb) * f64::sin(4.0 * theta)
+            let r = f64::sqrt(x * x + y * y);
+            f64::ln(r) * f64::sin(4.0 * theta)
         });
         ebcs.set(Side::Ymin, |_, _| 0.0);
         ebcs.set(Side::Ymax, |_, _| 0.0);

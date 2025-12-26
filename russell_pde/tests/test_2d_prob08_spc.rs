@@ -80,7 +80,7 @@ fn run_spc_map(lmm: bool, nn: usize, tol: f64, lozenge: bool) -> Result<(), StrE
     });
     println!("N = {} max(err) = {:>10.5e}", nn, err_max);
 
-    // plot contour
+    // plot the results
     if SAVE_FIGURE {
         let key = if lozenge { "lozenge" } else { "ring" };
         let (xx_num, yy_num, tri_num) = spc.get_map().triangulate(nr, ns, true, true);

@@ -929,7 +929,7 @@ impl ProblemSamples {
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
     }
 
-    /// 2D Problem # 08 - Poisson - Curvilinear grid
+    /// 2D Problem # 08 - Poisson - Curvilinear domain
     ///
     /// This is the benchmark solution 7.1.4 on page 259 of Kopriva's book.
     ///
@@ -1022,6 +1022,94 @@ impl ProblemSamples {
             let theta = f64::atan2(y, x);
             -16.0 * f64::ln(r) * f64::sin(4.0 * theta) / (r * r)
         });
+
+        (map, k, ebcs, nbcs, source, analytical)
+    }
+
+    /// 2D Problem # 09 - Poisson - Curvilinear domain
+    ///
+    /// This is the benchmark solution 7.1.5 on page 261 of Kopriva's book.
+    ///
+    /// Returns `(map, k, ebcs, nbcs, source, analytical)`, where:
+    ///
+    /// * `map` -- transfinite mapping defining the curvilinear grid
+    /// * `k` -- diffusion coefficient
+    /// * `ebcs` -- essential boundary conditions
+    /// * `nbcs` -- natural boundary conditions
+    /// * `source` -- source term function `s(x, y)`
+    /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    ///
+    /// # Problem
+    ///
+    /// Solve the equation:
+    ///
+    /// ```text
+    /// ∇²ϕ = 0
+    /// ```
+    ///
+    /// on a half ring domain defined by `ra ≤ r ≤ rb`, `0 ≤ θ ≤ π`
+    /// with the following boundary conditions:
+    ///
+    /// * R-min (Xmin): ∂ϕ/∂n = 0             on r = ra
+    /// * R-max (Xmax): ϕ = analytical(rb,θ)  on r = rb
+    /// * S-min (Ymin): ∂ϕ/∂n = 0             on θ = 0
+    /// * S-max (Ymax): ∂ϕ/∂n = 0             on θ = π
+    ///
+    /// Note: We must use the analytical solution to set the Dirichlet condition on the outer radius
+    /// because the analytical solution is also an approximation to the flow around the cylinder at infinity.
+    ///
+    /// The analytical solution is:
+    ///
+    /// ```text
+    /// ϕ(x(r, θ), y(r, θ)) = (r + ra²/r) v∞ cos(θ)
+    ///
+    /// where: r = √(x² + y²) and θ = arctan(y/x)
+    /// ```
+    ///
+    /// Note that the exponent in `ra²` is missing in the book's formula, but it's corrected in the Errata.
+    ///
+    /// # Reference
+    ///
+    /// * Kopriva LN (2009) - Implementing Spectral Methods for Partial Differential Equations, Springer
+    pub fn d2_problem_09(
+        ra: f64,
+        rb: f64,
+        v_inf: f64,
+    ) -> (
+        Transfinite2d,
+        f64,
+        EssentialBcs2d<'static>,
+        NaturalBcs2d<'static>,
+        Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> f64>,
+    ) {
+        // map and diffusion coefficient
+        let map = TransfiniteSamples::half_ring_2d(ra, rb);
+        let k = -1.0;
+
+        // analytical solution
+        let analytical = Box::new(move |x, y| {
+            let r = f64::sqrt(x * x + y * y);
+            let theta = f64::atan2(y, x);
+            (r + ra * ra / r) * v_inf * f64::cos(theta)
+        });
+
+        // essential boundary conditions
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmax, move |x, y| {
+            let theta = f64::atan2(y, x);
+            let r = f64::sqrt(x * x + y * y);
+            (r + ra * ra / r) * v_inf * f64::cos(theta)
+        });
+
+        // natural boundary conditions
+        let mut nbcs = NaturalBcs2d::new();
+        nbcs.set(Side::Xmin, |_, _| 0.0);
+        nbcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+
+        // source term
+        let source = Box::new(|_, _| 0.0);
 
         (map, k, ebcs, nbcs, source, analytical)
     }

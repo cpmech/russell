@@ -635,4 +635,45 @@ mod tests {
         grid.for_each_coord(|_m, x| coords.push(x));
         assert_eq!(coords.len(), 3);
     }
+
+    #[test]
+    fn new_chebyshev_gauss_lobatto_works() {
+        let grid = Grid1d::new_chebyshev_gauss_lobatto(3).unwrap();
+        assert_eq!(grid.nx(), 3);
+        // Points for N=2 (3 points) in [-1, 1]:
+        // x_j = -cos(j * pi / 2), j=0,1,2
+        // x_0 = -cos(0) = -1
+        // x_1 = -cos(pi/2) = 0
+        // x_2 = -cos(pi) = 1
+        assert!((grid.coord(0) - (-1.0)).abs() < 1e-15);
+        assert!((grid.coord(1) - 0.0).abs() < 1e-15);
+        assert!((grid.coord(2) - 1.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn new_chebyshev_gauss_lobatto_fails_on_invalid_input() {
+        assert_eq!(Grid1d::new_chebyshev_gauss_lobatto(1).err(), Some("nx must be ≥ 2"));
+    }
+
+    #[test]
+    fn on_boundary_works() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 3).unwrap();
+        assert!(grid.on_boundary(0));
+        assert!(!grid.on_boundary(1));
+        assert!(grid.on_boundary(2));
+    }
+
+    #[test]
+    fn get_nodes_on_side_works() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 3).unwrap();
+        assert_eq!(grid.get_nodes_on_side(crate::Side::Xmin), &[0]);
+        assert_eq!(grid.get_nodes_on_side(crate::Side::Xmax), &[2]);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid side for 1D grid")]
+    fn get_nodes_on_side_panics_on_invalid_side() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 3).unwrap();
+        grid.get_nodes_on_side(crate::Side::Ymin);
+    }
 }

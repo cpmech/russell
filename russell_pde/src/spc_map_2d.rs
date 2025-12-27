@@ -338,6 +338,7 @@ impl<'a> SpcMap2d<'a> {
         let np = self.equations.np();
         let nr = self.grid.nx();
         let ns = self.grid.ny();
+        let neq = self.equations.neq();
         let nnz_wcs = nr * nr * ns * ns; // worst-case scenario
         let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs + extra_nnz, Sym::No).unwrap();
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
@@ -352,45 +353,41 @@ impl<'a> SpcMap2d<'a> {
             let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
             let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
             if self.nbcs.enabled_ij(i, j, &self.grid) {
-                for k in 0..nr {
-                    for l in 0..ns {
-                        let n = k + l * nr;
-                        let mut val = 0.0;
-                        if i == 0 || i == nr - 1 {
-                            // Xmin or Xmax
-                            if j == l {
-                                self.calc_unit_normal(Side::Xmax);
-                                let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
-                                val += self.mk * self.d1r(i, k) * alpha;
-                            }
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0;
+                    if i == 0 || i == nr - 1 {
+                        // Xmin or Xmax
+                        if j == l {
+                            self.calc_unit_normal(Side::Xmax);
+                            let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
+                            val += self.mk * self.d1r(i, k) * alpha;
                         }
-                        if j == 0 || j == ns - 1 {
-                            // Ymin or Ymax
-                            if i == k {
-                                self.calc_unit_normal(Side::Ymax);
-                                let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
-                                val += self.mk * self.d1s(j, l) * beta;
-                            }
-                        }
-                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                     }
+                    if j == 0 || j == ns - 1 {
+                        // Ymin or Ymax
+                        if i == k {
+                            self.calc_unit_normal(Side::Ymax);
+                            let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
+                            val += self.mk * self.d1s(j, l) * beta;
+                        }
+                    }
+                    self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                 }
             } else {
-                for k in 0..nr {
-                    for l in 0..ns {
-                        let n = k + l * nr;
-                        let mut val = 0.0
-                            + self.d2r(i, k) * delta(j, l) * g11
-                            + delta(i, k) * self.d2s(j, l) * g22
-                            + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
-                            - self.d1r(i, k) * delta(j, l) * ll1
-                            - delta(i, k) * self.d1s(j, l) * ll2;
-                        val *= self.mk;
-                        if m == n {
-                            val += alpha; // diagonal entries due to α ϕ
-                        }
-                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0
+                        + self.d2r(i, k) * delta(j, l) * g11
+                        + delta(i, k) * self.d2s(j, l) * g22
+                        + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                        - self.d1r(i, k) * delta(j, l) * ll1
+                        - delta(i, k) * self.d1s(j, l) * ll2;
+                    val *= self.mk;
+                    if m == n {
+                        val += alpha; // diagonal entries due to α ϕ
                     }
+                    self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                 }
             }
         }
@@ -440,45 +437,41 @@ impl<'a> SpcMap2d<'a> {
             let ll1 = self.metrics.ell_coefficient_for_laplacian(0);
             let ll2 = self.metrics.ell_coefficient_for_laplacian(1);
             if self.nbcs.enabled_ij(i, j, &self.grid) {
-                for k in 0..nr {
-                    for l in 0..ns {
-                        let n = k + l * nr;
-                        let mut val = 0.0;
-                        if i == 0 || i == nr - 1 {
-                            // Xmin or Xmax
-                            if j == l {
-                                self.calc_unit_normal(Side::Xmax);
-                                let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
-                                val += self.mk * self.d1r(i, k) * alpha;
-                            }
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0;
+                    if i == 0 || i == nr - 1 {
+                        // Xmin or Xmax
+                        if j == l {
+                            self.calc_unit_normal(Side::Xmax);
+                            let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
+                            val += self.mk * self.d1r(i, k) * alpha;
                         }
-                        if j == 0 || j == ns - 1 {
-                            // Ymin or Ymax
-                            if i == k {
-                                self.calc_unit_normal(Side::Ymax);
-                                let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
-                                val += self.mk * self.d1s(j, l) * beta;
-                            }
-                        }
-                        mm.put(m, n, val).unwrap();
                     }
+                    if j == 0 || j == ns - 1 {
+                        // Ymin or Ymax
+                        if i == k {
+                            self.calc_unit_normal(Side::Ymax);
+                            let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
+                            val += self.mk * self.d1s(j, l) * beta;
+                        }
+                    }
+                    mm.put(m, n, val).unwrap();
                 }
             } else {
-                for k in 0..nr {
-                    for l in 0..ns {
-                        let n = k + l * nr;
-                        let mut val = 0.0
-                            + self.d2r(i, k) * delta(j, l) * g11
-                            + delta(i, k) * self.d2s(j, l) * g22
-                            + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
-                            - self.d1r(i, k) * delta(j, l) * ll1
-                            - delta(i, k) * self.d1s(j, l) * ll2;
-                        val *= self.mk;
-                        if m == n {
-                            val += alpha; // diagonal entries due to α ϕ
-                        }
-                        mm.put(m, n, val).unwrap();
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0
+                        + self.d2r(i, k) * delta(j, l) * g11
+                        + delta(i, k) * self.d2s(j, l) * g22
+                        + self.d1r(i, k) * self.d1s(j, l) * 2.0 * g12
+                        - self.d1r(i, k) * delta(j, l) * ll1
+                        - delta(i, k) * self.d1s(j, l) * ll2;
+                    val *= self.mk;
+                    if m == n {
+                        val += alpha; // diagonal entries due to α ϕ
                     }
+                    mm.put(m, n, val).unwrap();
                 }
             }
         }

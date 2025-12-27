@@ -261,6 +261,7 @@ impl<'a> Spc2d<'a> {
         let np = self.equations.np();
         let nx = self.grid.nx();
         let ny = self.grid.ny();
+        let neq = self.equations.neq();
         let nnz_wcs = nx * nx * ny * ny; // worst-case scenario
         let mut kk_bar = CooMatrix::new(nu, nu, nnz_wcs + extra_nnz, Sym::No).unwrap();
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
@@ -281,53 +282,49 @@ impl<'a> Spc2d<'a> {
         for &m in self.equations.unknown() {
             let (i, j) = self.grid.get_ij(m);
             if self.nbcs.enabled_ij(i, j, &self.grid) {
-                for k in 0..nx {
-                    for l in 0..ny {
-                        let n = k + l * nx;
-                        let mut val = 0.0;
-                        if i == 0 {
-                            // Xmin
-                            if j == l {
-                                val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
-                            }
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0;
+                    if i == 0 {
+                        // Xmin
+                        if j == l {
+                            val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
                         }
-                        if i == nx - 1 {
-                            // Xmax
-                            if j == l {
-                                val += self.mkx * dd1x.get(i, k) * dr_dx;
-                            }
-                        }
-                        if j == 0 {
-                            // Ymin
-                            if i == k {
-                                val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
-                            }
-                        }
-                        if j == ny - 1 {
-                            // Ymax
-                            if i == k {
-                                val += self.mky * dd1y.get(j, l) * ds_dy;
-                            }
-                        }
-                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                     }
+                    if i == nx - 1 {
+                        // Xmax
+                        if j == l {
+                            val += self.mkx * dd1x.get(i, k) * dr_dx;
+                        }
+                    }
+                    if j == 0 {
+                        // Ymin
+                        if i == k {
+                            val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
+                        }
+                    }
+                    if j == ny - 1 {
+                        // Ymax
+                        if i == k {
+                            val += self.mky * dd1y.get(j, l) * ds_dy;
+                        }
+                    }
+                    self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                 }
             } else {
-                for k in 0..nx {
-                    for l in 0..ny {
-                        let n = k + l * nx;
-                        let mut val = 0.0;
-                        if j == l {
-                            val += self.mkx * dd2x.get(i, k) * cx;
-                        }
-                        if i == k {
-                            val += self.mky * dd2y.get(j, l) * cy;
-                        }
-                        if m == n {
-                            val += alpha; // diagonal entries due to α ϕ
-                        }
-                        self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0;
+                    if j == l {
+                        val += self.mkx * dd2x.get(i, k) * cx;
                     }
+                    if i == k {
+                        val += self.mky * dd2y.get(j, l) * cy;
+                    }
+                    if m == n {
+                        val += alpha; // diagonal entries due to α ϕ
+                    }
+                    self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                 }
             }
         }
@@ -383,53 +380,50 @@ impl<'a> Spc2d<'a> {
         for m in 0..neq {
             let (i, j) = self.grid.get_ij(m);
             if self.nbcs.enabled_ij(i, j, &self.grid) {
-                for k in 0..nx {
-                    for l in 0..ny {
-                        let n = k + l * nx;
-                        let mut val = 0.0;
-                        if i == 0 {
-                            // Xmin
-                            if j == l {
-                                val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
-                            }
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let mut val = 0.0;
+                    if i == 0 {
+                        // Xmin
+                        if j == l {
+                            val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
                         }
-                        if i == nx - 1 {
-                            // Xmax
-                            if j == l {
-                                val += self.mkx * dd1x.get(i, k) * dr_dx;
-                            }
-                        }
-                        if j == 0 {
-                            // Ymin
-                            if i == k {
-                                val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
-                            }
-                        }
-                        if j == ny - 1 {
-                            // Ymax
-                            if i == k {
-                                val += self.mky * dd1y.get(j, l) * ds_dy;
-                            }
-                        }
-                        mm.put(m, n, val).unwrap();
                     }
+                    if i == nx - 1 {
+                        // Xmax
+                        if j == l {
+                            val += self.mkx * dd1x.get(i, k) * dr_dx;
+                        }
+                    }
+                    if j == 0 {
+                        // Ymin
+                        if i == k {
+                            val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
+                        }
+                    }
+                    if j == ny - 1 {
+                        // Ymax
+                        if i == k {
+                            val += self.mky * dd1y.get(j, l) * ds_dy;
+                        }
+                    }
+                    mm.put(m, n, val).unwrap();
                 }
             } else {
-                for k in 0..nx {
-                    for l in 0..ny {
-                        let n = k + l * nx;
-                        let mut val = 0.0;
-                        if j == l {
-                            val += self.mkx * dd2x.get(i, k) * cx;
-                        }
-                        if i == k {
-                            val += self.mky * dd2y.get(j, l) * cy;
-                        }
-                        if m == n {
-                            val += alpha; // diagonal entries due to α ϕ
-                        }
-                        mm.put(m, n, val).unwrap();
+                for n in 0..neq {
+                    let (k, l) = self.grid.get_ij(n);
+                    let n = k + l * nx;
+                    let mut val = 0.0;
+                    if j == l {
+                        val += self.mkx * dd2x.get(i, k) * cx;
                     }
+                    if i == k {
+                        val += self.mky * dd2y.get(j, l) * cy;
+                    }
+                    if m == n {
+                        val += alpha; // diagonal entries due to α ϕ
+                    }
+                    mm.put(m, n, val).unwrap();
                 }
             }
         }

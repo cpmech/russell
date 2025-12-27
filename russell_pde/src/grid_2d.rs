@@ -861,6 +861,11 @@ mod tests {
         let mut coords = Vec::new();
         grid.for_each_coord(|_m, x, y| coords.push((x, y)));
         assert_eq!(coords, correct_coords);
+
+        assert_eq!(grid.xmin(), -3.0);
+        assert_eq!(grid.xmax(), 3.0);
+        assert_eq!(grid.ymin(), 2.0);
+        assert_eq!(grid.ymax(), 8.0);
     }
 
     #[test]

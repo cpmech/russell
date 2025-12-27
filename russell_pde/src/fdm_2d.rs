@@ -1144,4 +1144,16 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn get_grid_and_get_equations_work() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        let mut ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        ebcs.set_homogeneous();
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, 1.0, 1.0).unwrap();
+
+        assert_eq!(fdm.get_grid().nx(), 3);
+        assert_eq!(fdm.get_equations().neq(), 9);
+    }
 }

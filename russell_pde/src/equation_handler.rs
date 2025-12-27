@@ -693,4 +693,21 @@ mod tests {
         assert!(handler.is_prescribed(1));
         assert!(handler.is_prescribed(3));
     }
+
+    #[test]
+    fn is_unknown_works() {
+        let mut handler = EquationHandler::new(4);
+        handler.recompute(&[1]);
+        assert!(handler.is_unknown(0));
+        assert!(!handler.is_unknown(1));
+        assert!(handler.is_unknown(2));
+        assert!(handler.is_unknown(3));
+    }
+
+    #[test]
+    #[should_panic]
+    fn is_unknown_panics_on_out_of_bounds() {
+        let handler = EquationHandler::new(3);
+        let _ = handler.is_unknown(3);
+    }
 }

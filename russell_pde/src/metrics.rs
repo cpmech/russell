@@ -883,4 +883,114 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn calculate_2d_captures_errors() {
+        let mut metrics = Metrics::new(3, false);
+        let v2 = Vector::new(2);
+        let v3 = Vector::new(3);
+        assert_eq!(
+            metrics.calculate_2d(&v2, &v2, None, None, None).err(),
+            Some("calculate_2d only works for ndim = 2")
+        );
+        let mut metrics = Metrics::new(2, false);
+        assert_eq!(
+            metrics.calculate_2d(&v3, &v2, None, None, None).err(),
+            Some("dx_dr must have dimension 2")
+        );
+        assert_eq!(
+            metrics.calculate_2d(&v2, &v3, None, None, None).err(),
+            Some("dx_ds must have dimension 2")
+        );
+        assert_eq!(
+            metrics.calculate_2d(&v2, &v2, None, None, None).err(),
+            Some("d2x_dr2 must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics.calculate_2d(&v2, &v2, Some(&v2), None, None).err(),
+            Some("d2x_ds2 must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics.calculate_2d(&v2, &v2, Some(&v2), Some(&v2), None).err(),
+            Some("d2x_drs must be provided for non-homogeneous metrics")
+        );
+    }
+
+    #[test]
+    fn calculate_3d_captures_errors() {
+        let mut metrics = Metrics::new(2, false);
+        let v2 = Vector::new(2);
+        let v3 = Vector::new(3);
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v3, None, None, None, None, None, None)
+                .err(),
+            Some("calculate_3d only works for ndim = 3")
+        );
+        let mut metrics = Metrics::new(3, false);
+        assert_eq!(
+            metrics
+                .calculate_3d(&v2, &v3, &v3, None, None, None, None, None, None)
+                .err(),
+            Some("dx_dr must have dimension 3")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v2, &v3, None, None, None, None, None, None)
+                .err(),
+            Some("dx_ds must have dimension 3")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v2, None, None, None, None, None, None)
+                .err(),
+            Some("dx_dt must have dimension 3")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v3, None, None, None, None, None, None)
+                .err(),
+            Some("d2x_dr2 must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v3, Some(&v3), None, None, None, None, None)
+                .err(),
+            Some("d2x_ds2 must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v3, Some(&v3), Some(&v3), None, None, None, None)
+                .err(),
+            Some("d2x_dt2 must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v3, Some(&v3), Some(&v3), Some(&v3), None, None, None)
+                .err(),
+            Some("d2x_drs must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(&v3, &v3, &v3, Some(&v3), Some(&v3), Some(&v3), Some(&v3), None, None)
+                .err(),
+            Some("d2x_drt must be provided for non-homogeneous metrics")
+        );
+        assert_eq!(
+            metrics
+                .calculate_3d(
+                    &v3,
+                    &v3,
+                    &v3,
+                    Some(&v3),
+                    Some(&v3),
+                    Some(&v3),
+                    Some(&v3),
+                    Some(&v3),
+                    None
+                )
+                .err(),
+            Some("d2x_dst must be provided for non-homogeneous metrics")
+        );
+    }
 }

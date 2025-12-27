@@ -229,30 +229,18 @@ impl Grid2d {
             return Err("ny must be ≥ 2");
         }
         let mut coords = Vec::with_capacity(nx * ny);
-        let mut xmin = xx[0];
-        let mut xmax = xx[0];
-        let mut ymin = yy[0];
-        let mut ymax = yy[0];
+        let xmin = xx[0];
+        let xmax = xx[nx - 1];
+        let ymin = yy[0];
+        let ymax = yy[ny - 1];
         for i in 1..nx {
             if xx[i] <= xx[i - 1] {
                 return Err("xx must be strictly increasing");
-            }
-            if xx[i] < xmin {
-                xmin = xx[i];
-            }
-            if xx[i] > xmax {
-                xmax = xx[i];
             }
         }
         for j in 0..ny {
             if j > 0 && yy[j] <= yy[j - 1] {
                 return Err("yy must be strictly increasing");
-            }
-            if yy[j] < ymin {
-                ymin = yy[j];
-            }
-            if yy[j] > ymax {
-                ymax = yy[j];
             }
             for i in 0..nx {
                 coords.push((xx[i], yy[j]));

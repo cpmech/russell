@@ -238,6 +238,47 @@ impl<'a> SpcMap2d<'a> {
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
+    /// Calculates the flow vectors at each grid point
+    ///
+    /// Returns `(wwx, wwy)` where:
+    ///
+    /// * `wwx` contains all x components of the flow vectors (len = number of equations = a.dim())
+    /// * `wwy` contains all y components of the flow vectors (len = number of equations = a.dim())
+    ///
+    /// The flow vector is defined by:
+    ///
+    /// ```text
+    /// →         →
+    /// w = - ḵ · ∇ϕ
+    /// ```
+    pub fn calculate_flow_vectors(&mut self, a: &Vector) -> Result<(Vec<f64>, Vec<f64>), StrError> {
+        let neq = self.equations.neq();
+        if a.dim() != neq {
+            return Err("a.dim() must equal the number of equations");
+        }
+        let mut wwx = vec![0.0; neq];
+        let mut wwy = vec![0.0; neq];
+        let mut w = Vector::new(2);
+        for m in 0..neq {
+            self.calculate_metrics(m);
+            let (i, j) = self.grid.get_ij(m);
+            w.fill(0.0);
+            for n in 0..neq {
+                let (k, l) = self.grid.get_ij(n);
+                let akl = a[n];
+                for d in 0..2 {
+                    w[d] += self.mk
+                        * (self.d1r(i, k) * delta(j, l) * self.metrics.g_ctr[0][d]
+                            + delta(i, k) * self.d1s(j, l) * self.metrics.g_ctr[1][d])
+                        * akl
+                }
+            }
+            wwx[m] = w[0];
+            wwy[m] = w[1];
+        }
+        Ok((wwx, wwy))
+    }
+
     /// Returns the dimensions for the system partitioning strategy (SPS)
     ///
     /// Returns `(nu, np)` where:

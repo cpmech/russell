@@ -806,6 +806,7 @@ impl Grid2d {
 #[cfg(test)]
 mod tests {
     use super::Grid2d;
+    use crate::Side;
     use russell_lab::approx_eq;
     use std::f64::consts::PI;
 
@@ -1249,5 +1250,116 @@ mod tests {
         assert_eq!(grid.get_ij(6), (0, 2));
         assert_eq!(grid.get_ij(7), (1, 2));
         assert_eq!(grid.get_ij(8), (2, 2));
+    }
+
+    #[test]
+    fn is_chebyshev_gauss_lobatto_works() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 2, 2).unwrap();
+        assert_eq!(grid.is_chebyshev_gauss_lobatto(), false);
+
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(2, 2).unwrap();
+        assert_eq!(grid.is_chebyshev_gauss_lobatto(), true);
+    }
+
+    #[test]
+    fn boundary_methods_work() {
+        //  8  9 10 11
+        //  4  5  6  7
+        //  0  1  2  3
+        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
+
+        assert!(grid.is_xmin(0));
+        assert!(grid.is_xmin(4));
+        assert!(grid.is_xmin(8));
+        assert!(!grid.is_xmin(1));
+
+        assert!(grid.is_xmax(3));
+        assert!(grid.is_xmax(7));
+        assert!(grid.is_xmax(11));
+        assert!(!grid.is_xmax(2));
+
+        assert!(grid.is_ymin(0));
+        assert!(grid.is_ymin(1));
+        assert!(grid.is_ymin(2));
+        assert!(grid.is_ymin(3));
+        assert!(!grid.is_ymin(4));
+
+        assert!(grid.is_ymax(8));
+        assert!(grid.is_ymax(9));
+        assert!(grid.is_ymax(10));
+        assert!(grid.is_ymax(11));
+        assert!(!grid.is_ymax(7));
+
+        assert!(grid.on_boundary(0));
+        assert!(grid.on_boundary(1));
+        assert!(grid.on_boundary(3));
+        assert!(grid.on_boundary(4));
+        assert!(grid.on_boundary(7));
+        assert!(grid.on_boundary(8));
+        assert!(grid.on_boundary(11));
+        assert!(!grid.on_boundary(5));
+        assert!(!grid.on_boundary(6));
+
+        assert_eq!(grid.get_nodes_on_side(Side::Xmin), &[0, 4, 8]);
+        assert_eq!(grid.get_nodes_on_side(Side::Xmax), &[3, 7, 11]);
+        assert_eq!(grid.get_nodes_on_side(Side::Ymin), &[0, 1, 2, 3]);
+        assert_eq!(grid.get_nodes_on_side(Side::Ymax), &[8, 9, 10, 11]);
+
+        let (l, r, b, t) = grid.get_boundary_nodes();
+        assert_eq!(l, &[0, 4, 8]);
+        assert_eq!(r, &[3, 7, 11]);
+        assert_eq!(b, &[0, 1, 2, 3]);
+        assert_eq!(t, &[8, 9, 10, 11]);
+    }
+
+    #[test]
+    fn is_corner_works() {
+        //  8  9 10 11
+        //  4  5  6  7
+        //  0  1  2  3
+        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
+
+        assert!(grid.is_corner(0));
+        assert!(grid.is_corner(3));
+        assert!(grid.is_corner(8));
+        assert!(grid.is_corner(11));
+
+        assert!(!grid.is_corner(1));
+        assert!(!grid.is_corner(2));
+        assert!(!grid.is_corner(4));
+        assert!(!grid.is_corner(5));
+        assert!(!grid.is_corner(6));
+        assert!(!grid.is_corner(7));
+        assert!(!grid.is_corner(9));
+        assert!(!grid.is_corner(10));
+    }
+
+    #[test]
+    fn outward_unit_normal_works() {
+        //  8  9 10 11
+        //  4  5  6  7
+        //  0  1  2  3
+        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
+
+        assert_eq!(grid.outward_unit_normal(0), (-1.0, 0.0)); // xmin (priority over ymin)
+        assert_eq!(grid.outward_unit_normal(4), (-1.0, 0.0)); // xmin
+        assert_eq!(grid.outward_unit_normal(8), (-1.0, 0.0)); // xmin (priority over ymax)
+
+        assert_eq!(grid.outward_unit_normal(3), (1.0, 0.0)); // xmax (priority over ymin)
+        assert_eq!(grid.outward_unit_normal(7), (1.0, 0.0)); // xmax
+        assert_eq!(grid.outward_unit_normal(11), (1.0, 0.0)); // xmax (priority over ymax)
+
+        assert_eq!(grid.outward_unit_normal(1), (0.0, -1.0)); // ymin
+        assert_eq!(grid.outward_unit_normal(2), (0.0, -1.0)); // ymin
+
+        assert_eq!(grid.outward_unit_normal(9), (0.0, 1.0)); // ymax
+        assert_eq!(grid.outward_unit_normal(10), (0.0, 1.0)); // ymax
+    }
+
+    #[test]
+    #[should_panic(expected = "node 5 is not on any boundary")]
+    fn outward_unit_normal_panics_on_interior() {
+        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
+        grid.outward_unit_normal(5);
     }
 }

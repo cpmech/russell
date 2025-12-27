@@ -563,41 +563,6 @@ impl Grid2d {
         self.coords[m]
     }
 
-    /// Returns the outward unit normal at the boundary
-    ///
-    /// Returns `(unx, uny)`
-    ///
-    /// ```text
-    ///             (0, 1)
-    ///                ↑
-    ///           ┌─────────┐
-    ///           │         │
-    /// (-1, 0) ← │         │ → (1, 0)
-    ///           │         │
-    ///           └─────────┘
-    ///                ↓
-    ///             (0, -1)
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// A panic occurs if `m` is not on any boundary
-    pub fn outward_unit_normal(&self, m: usize) -> (f64, f64) {
-        let i = m % self.nx;
-        let j = m / self.nx;
-        if i == 0 {
-            (-1.0, 0.0)
-        } else if i == self.nx - 1 {
-            (1.0, 0.0)
-        } else if j == 0 {
-            (0.0, -1.0)
-        } else if j == self.ny - 1 {
-            (0.0, 1.0)
-        } else {
-            panic!("node {} is not on any boundary", m);
-        }
-    }
-
     /// Iterates over all grid nodes with their coordinates
     ///
     /// The provided closure is called for each node with arguments `(m, x, y)`
@@ -1332,34 +1297,5 @@ mod tests {
         assert!(!grid.is_corner(7));
         assert!(!grid.is_corner(9));
         assert!(!grid.is_corner(10));
-    }
-
-    #[test]
-    fn outward_unit_normal_works() {
-        //  8  9 10 11
-        //  4  5  6  7
-        //  0  1  2  3
-        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
-
-        assert_eq!(grid.outward_unit_normal(0), (-1.0, 0.0)); // xmin (priority over ymin)
-        assert_eq!(grid.outward_unit_normal(4), (-1.0, 0.0)); // xmin
-        assert_eq!(grid.outward_unit_normal(8), (-1.0, 0.0)); // xmin (priority over ymax)
-
-        assert_eq!(grid.outward_unit_normal(3), (1.0, 0.0)); // xmax (priority over ymin)
-        assert_eq!(grid.outward_unit_normal(7), (1.0, 0.0)); // xmax
-        assert_eq!(grid.outward_unit_normal(11), (1.0, 0.0)); // xmax (priority over ymax)
-
-        assert_eq!(grid.outward_unit_normal(1), (0.0, -1.0)); // ymin
-        assert_eq!(grid.outward_unit_normal(2), (0.0, -1.0)); // ymin
-
-        assert_eq!(grid.outward_unit_normal(9), (0.0, 1.0)); // ymax
-        assert_eq!(grid.outward_unit_normal(10), (0.0, 1.0)); // ymax
-    }
-
-    #[test]
-    #[should_panic(expected = "node 5 is not on any boundary")]
-    fn outward_unit_normal_panics_on_interior() {
-        let grid = Grid2d::new_uniform(0.0, 3.0, 0.0, 2.0, 4, 3).unwrap();
-        grid.outward_unit_normal(5);
     }
 }

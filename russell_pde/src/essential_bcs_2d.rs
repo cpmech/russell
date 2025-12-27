@@ -133,7 +133,9 @@ impl<'a> EssentialBcs2d<'a> {
             if self.sides[index] {
                 let side = Side::from_index(index);
                 for &m in grid.get_nodes_on_side(side) {
-                    nodes.push(m);
+                    if !nodes.contains(&m) {
+                        nodes.push(m);
+                    }
                 }
             }
         }
@@ -144,4 +146,131 @@ impl<'a> EssentialBcs2d<'a> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::EssentialBcs2d;
+    use crate::{Grid2d, NaturalBcs2d, Side};
+
+    #[test]
+    fn new_works() {
+        let ebcs = EssentialBcs2d::new();
+        assert!(!ebcs.periodic_along_x);
+        assert!(!ebcs.periodic_along_y);
+        assert!(!ebcs.sides[0]);
+        assert!(!ebcs.sides[1]);
+        assert!(!ebcs.sides[2]);
+        assert!(!ebcs.sides[3]);
+    }
+
+    #[test]
+    fn set_periodic_works() {
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_periodic(true, true);
+        assert!(ebcs.periodic_along_x);
+        assert!(ebcs.periodic_along_y);
+        ebcs.set_periodic(false, false);
+        assert!(!ebcs.periodic_along_x);
+        assert!(!ebcs.periodic_along_y);
+    }
+
+    #[test]
+    fn set_works() {
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_periodic(true, true); // should be reset
+        ebcs.set(Side::Xmin, |_, _| 1.0);
+        assert!(!ebcs.periodic_along_x);
+        assert!(ebcs.periodic_along_y); // Y should remain periodic
+        assert!(ebcs.sides[0]);
+        assert!(!ebcs.sides[1]);
+        assert_eq!((ebcs.functions[0])(0.0, 0.0), 1.0);
+
+        ebcs.set(Side::Ymax, |_, _| 2.0);
+        assert!(!ebcs.periodic_along_y); // Y should be reset now
+        assert!(ebcs.sides[3]);
+        assert_eq!((ebcs.functions[3])(0.0, 0.0), 2.0);
+    }
+
+    #[test]
+    fn set_homogeneous_works() {
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_periodic(true, true); // should be reset
+        ebcs.set_homogeneous();
+        assert!(!ebcs.periodic_along_x);
+        assert!(!ebcs.periodic_along_y);
+        for i in 0..4 {
+            assert!(ebcs.sides[i]);
+            assert_eq!((ebcs.functions[i])(123.0, 456.0), 0.0);
+        }
+    }
+
+    #[test]
+    fn validate_works() {
+        let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+
+        // 1. Missing BCs
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Xmin side is missing either EBC or NBC")
+        );
+
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Xmax side is missing either EBC or NBC")
+        );
+
+        // 2. Valid configuration (mixed)
+        nbcs.set(Side::Xmax, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+        assert_eq!(ebcs.validate(&nbcs), Ok(()));
+
+        // 3. Both EBC and NBC on same side
+        ebcs.set(Side::Xmax, |_, _| 0.0);
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Xmax side must not have both EBC and NBC")
+        );
+
+        // 4. Periodic with NBC
+        let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+        ebcs.set_periodic(true, false);
+        nbcs.set(Side::Xmin, |_, _| 0.0);
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Periodic X does not allow NBC on Xmin or Xmax")
+        );
+
+        // 5. Periodic without NBC (Valid)
+        let mut nbcs = NaturalBcs2d::new();
+        // Need to set Y BCs to pass validation
+        nbcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+        assert_eq!(ebcs.validate(&nbcs), Ok(()));
+    }
+
+    #[test]
+    fn get_nodes_works() {
+        let mut ebcs = EssentialBcs2d::new();
+        let grid = Grid2d::new(&[0.0, 0.5, 1.0], &[0.0, 0.5, 1.0]).unwrap();
+        // Grid 3x3:
+        // 6 7 8
+        // 3 4 5
+        // 0 1 2
+
+        assert_eq!(ebcs.get_nodes(&grid).len(), 0);
+
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        // Xmin nodes: 0, 3, 6
+        let mut nodes = ebcs.get_nodes(&grid);
+        nodes.sort();
+        assert_eq!(nodes, &[0, 3, 6]);
+
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        // Ymin nodes: 0, 1, 2. Combined with Xmin: 0, 1, 2, 3, 6
+        let mut nodes = ebcs.get_nodes(&grid);
+        nodes.sort();
+        assert_eq!(nodes, &[0, 1, 2, 3, 6]);
+    }
+}

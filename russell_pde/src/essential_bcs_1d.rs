@@ -114,4 +114,109 @@ impl<'a> EssentialBcs1d<'a> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::EssentialBcs1d;
+    use crate::{Grid1d, NaturalBcs1d, Side};
+
+    #[test]
+    fn new_works() {
+        let ebcs = EssentialBcs1d::new();
+        assert!(!ebcs.periodic_along_x);
+        assert!(!ebcs.sides[0]);
+        assert!(!ebcs.sides[1]);
+    }
+
+    #[test]
+    fn set_periodic_works() {
+        let mut ebcs = EssentialBcs1d::new();
+        ebcs.set_periodic(true);
+        assert!(ebcs.periodic_along_x);
+        ebcs.set_periodic(false);
+        assert!(!ebcs.periodic_along_x);
+    }
+
+    #[test]
+    fn set_works() {
+        let mut ebcs = EssentialBcs1d::new();
+        ebcs.set_periodic(true); // should be reset
+        ebcs.set(Side::Xmin, |_| 1.0);
+        assert!(!ebcs.periodic_along_x);
+        assert!(ebcs.sides[0]);
+        assert!(!ebcs.sides[1]);
+        assert_eq!((ebcs.functions[0])(0.0), 1.0);
+
+        ebcs.set(Side::Xmax, |_| 2.0);
+        assert!(ebcs.sides[0]);
+        assert!(ebcs.sides[1]);
+        assert_eq!((ebcs.functions[1])(0.0), 2.0);
+    }
+
+    #[test]
+    fn set_homogeneous_works() {
+        let mut ebcs = EssentialBcs1d::new();
+        ebcs.set_periodic(true); // should be reset
+        ebcs.set_homogeneous();
+        assert!(!ebcs.periodic_along_x);
+        assert!(ebcs.sides[0]);
+        assert!(ebcs.sides[1]);
+        assert_eq!((ebcs.functions[0])(123.0), 0.0);
+        assert_eq!((ebcs.functions[1])(123.0), 0.0);
+    }
+
+    #[test]
+    fn validate_works() {
+        let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
+
+        // 1. Missing BCs
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Xmin side is missing either EBC or NBC")
+        );
+
+        ebcs.set(Side::Xmin, |_| 0.0);
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Xmax side is missing either EBC or NBC")
+        );
+
+        // 2. Valid configuration (one EBC, one NBC)
+        nbcs.set(Side::Xmax, |_| 0.0);
+        assert_eq!(ebcs.validate(&nbcs), Ok(()));
+
+        // 3. Both EBC and NBC on same side
+        ebcs.set(Side::Xmax, |_| 0.0);
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Xmax side must not have both EBC and NBC")
+        );
+
+        // 4. Periodic with NBC
+        let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
+        ebcs.set_periodic(true);
+        nbcs.set(Side::Xmin, |_| 0.0);
+        assert_eq!(
+            ebcs.validate(&nbcs).err(),
+            Some("Periodic X does not allow NBC on Xmin or Xmax")
+        );
+
+        // 5. Periodic without NBC (Valid)
+        let nbcs = NaturalBcs1d::new();
+        assert_eq!(ebcs.validate(&nbcs), Ok(()));
+    }
+
+    #[test]
+    fn get_nodes_works() {
+        let mut ebcs = EssentialBcs1d::new();
+        let grid = Grid1d::new(&[0.0, 0.5, 1.0]).unwrap(); // nodes: 0, 1, 2
+
+        assert_eq!(ebcs.get_nodes(&grid).len(), 0);
+
+        ebcs.set(Side::Xmin, |_| 0.0);
+        assert_eq!(ebcs.get_nodes(&grid), &[0]);
+
+        ebcs.set(Side::Xmax, |_| 0.0);
+        assert_eq!(ebcs.get_nodes(&grid), &[0, 2]);
+    }
+}

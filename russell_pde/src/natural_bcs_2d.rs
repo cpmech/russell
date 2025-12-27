@@ -134,4 +134,62 @@ impl<'a> NaturalBcs2d<'a> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::NaturalBcs2d;
+    use crate::{Grid2d, Side};
+
+    #[test]
+    fn new_works() {
+        let natural_bcs = NaturalBcs2d::new();
+        assert_eq!(natural_bcs.sides, [false, false, false, false]);
+        assert_eq!((natural_bcs.functions[0])(0.0, 0.0), 0.0);
+        assert_eq!((natural_bcs.functions[1])(0.0, 0.0), 0.0);
+        assert_eq!((natural_bcs.functions[2])(0.0, 0.0), 0.0);
+        assert_eq!((natural_bcs.functions[3])(0.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn set_works() {
+        let mut natural_bcs = NaturalBcs2d::new();
+        natural_bcs.set(Side::Xmin, |_, _| -10.0);
+        natural_bcs.set(Side::Xmax, |_, _| 10.0);
+        natural_bcs.set(Side::Ymin, |_, _| -20.0);
+        natural_bcs.set(Side::Ymax, |_, _| 20.0);
+        assert_eq!(natural_bcs.sides, [true, true, true, true]);
+        assert_eq!((natural_bcs.functions[0])(0.0, 0.0), -10.0);
+        assert_eq!((natural_bcs.functions[1])(0.0, 0.0), 10.0);
+        assert_eq!((natural_bcs.functions[2])(0.0, 0.0), -20.0);
+        assert_eq!((natural_bcs.functions[3])(0.0, 0.0), 20.0);
+    }
+
+    #[test]
+    fn enabled_ij_works() {
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, 3, 3).unwrap();
+        let mut natural_bcs = NaturalBcs2d::new();
+        natural_bcs.set(Side::Xmin, |_, _| -10.0);
+        assert!(natural_bcs.enabled_ij(0, 0, &grid)); // corner
+        assert!(natural_bcs.enabled_ij(0, 1, &grid));
+        assert!(natural_bcs.enabled_ij(0, 2, &grid)); // corner
+        assert!(!natural_bcs.enabled_ij(1, 0, &grid));
+        assert!(!natural_bcs.enabled_ij(1, 1, &grid));
+        assert!(!natural_bcs.enabled_ij(1, 2, &grid));
+        assert!(!natural_bcs.enabled_ij(2, 0, &grid));
+        assert!(!natural_bcs.enabled_ij(2, 1, &grid));
+        assert!(!natural_bcs.enabled_ij(2, 2, &grid));
+
+        natural_bcs.set(Side::Xmax, |_, _| 10.0);
+        assert!(natural_bcs.enabled_ij(2, 0, &grid)); // corner
+        assert!(natural_bcs.enabled_ij(2, 1, &grid));
+        assert!(natural_bcs.enabled_ij(2, 2, &grid)); // corner
+
+        natural_bcs.set(Side::Ymin, |_, _| -20.0);
+        assert!(natural_bcs.enabled_ij(0, 0, &grid)); // corner
+        assert!(natural_bcs.enabled_ij(1, 0, &grid));
+        assert!(natural_bcs.enabled_ij(2, 0, &grid)); // corner
+
+        natural_bcs.set(Side::Ymax, |_, _| 20.0);
+        assert!(natural_bcs.enabled_ij(0, 2, &grid)); // corner
+        assert!(natural_bcs.enabled_ij(1, 2, &grid));
+        assert!(natural_bcs.enabled_ij(2, 2, &grid)); // corner
+    }
+}

@@ -23,3 +23,39 @@ impl Side {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Side;
+
+    #[test]
+    fn test_side_from_index() {
+        assert_eq!(Side::from_index(0), Side::Xmin);
+        assert_eq!(Side::from_index(1), Side::Xmax);
+        assert_eq!(Side::from_index(2), Side::Ymin);
+        assert_eq!(Side::from_index(3), Side::Ymax);
+    }
+
+    #[test]
+    #[should_panic(expected = "Side::from_index(): invalid index 123")]
+    fn test_side_from_index_error() {
+        Side::from_index(123);
+    }
+
+    #[test]
+    fn test_side_debug() {
+        assert_eq!(format!("{:?}", Side::Xmin), "Xmin");
+        assert_eq!(format!("{:?}", Side::Xmax), "Xmax");
+        assert_eq!(format!("{:?}", Side::Ymin), "Ymin");
+        assert_eq!(format!("{:?}", Side::Ymax), "Ymax");
+    }
+
+    #[test]
+    fn test_side_clone_copy() {
+        let side = Side::Xmin;
+        let copy = side;
+        assert_eq!(side, copy);
+    }
+}

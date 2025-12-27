@@ -207,6 +207,50 @@ impl<'a> Spc2d<'a> {
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
+    /// Calculates the flow vectors at each grid point
+    ///
+    /// Returns `(wwx, wwy)` where:
+    ///
+    /// * `wwx` contains all x components of the flow vectors (len = number of equations = a.dim())
+    /// * `wwy` contains all y components of the flow vectors (len = number of equations = a.dim())
+    ///
+    /// The flow vector is defined by:
+    ///
+    /// ```text
+    /// →         →
+    /// w = - ḵ · ∇ϕ
+    /// ```
+    pub fn calculate_flow_vectors(&self, a: &Vector) -> Result<(Vec<f64>, Vec<f64>), StrError> {
+        let neq = self.equations.neq();
+        if a.dim() != neq {
+            return Err("a.dim() must equal the number of equations");
+        }
+        let d1r = self.interp_x.get_dd1().unwrap();
+        let d1s = self.interp_y.get_dd1().unwrap();
+        let dr_dx = 2.0 / (self.xmax - self.xmin);
+        let ds_dy = 2.0 / (self.ymax - self.ymin);
+        let mut wwx = vec![0.0; neq];
+        let mut wwy = vec![0.0; neq];
+        let mut w = Vector::new(2);
+        for m in 0..neq {
+            let (i, j) = self.grid.get_ij(m);
+            w.fill(0.0);
+            for n in 0..neq {
+                let (k, l) = self.grid.get_ij(n);
+                let akl = a[n];
+                if j == l {
+                    w[0] += self.mkx * d1r.get(i, k) * dr_dx * akl;
+                }
+                if i == k {
+                    w[1] += self.mky * d1s.get(j, l) * ds_dy * akl;
+                }
+            }
+            wwx[m] = w[0];
+            wwy[m] = w[1];
+        }
+        Ok((wwx, wwy))
+    }
+
     /// Returns the dimensions for the system partitioning strategy (SPS)
     ///
     /// Returns `(nu, np)` where:
@@ -267,10 +311,10 @@ impl<'a> Spc2d<'a> {
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
         // spectral derivative matrices
-        let dd1x = self.interp_x.get_dd1().unwrap();
-        let dd1y = self.interp_y.get_dd1().unwrap();
-        let dd2x = self.interp_x.get_dd2().unwrap();
-        let dd2y = self.interp_y.get_dd2().unwrap();
+        let d1r = self.interp_x.get_dd1().unwrap();
+        let d1s = self.interp_y.get_dd1().unwrap();
+        let d2r = self.interp_x.get_dd2().unwrap();
+        let d2s = self.interp_y.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1]×[-1,1] to [xmin,xmax]×[ymin,ymax])
         let dr_dx = 2.0 / (self.xmax - self.xmin);
@@ -288,25 +332,25 @@ impl<'a> Spc2d<'a> {
                     if i == 0 {
                         // Xmin
                         if j == l {
-                            val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
+                            val += -self.mkx * d1r.get(i, k) * dr_dx; // -1 due to the normal pointing left
                         }
                     }
                     if i == nx - 1 {
                         // Xmax
                         if j == l {
-                            val += self.mkx * dd1x.get(i, k) * dr_dx;
+                            val += self.mkx * d1r.get(i, k) * dr_dx;
                         }
                     }
                     if j == 0 {
                         // Ymin
                         if i == k {
-                            val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
+                            val += -self.mky * d1s.get(j, l) * ds_dy; // -1 due to the normal pointing down
                         }
                     }
                     if j == ny - 1 {
                         // Ymax
                         if i == k {
-                            val += self.mky * dd1y.get(j, l) * ds_dy;
+                            val += self.mky * d1s.get(j, l) * ds_dy;
                         }
                     }
                     self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
@@ -316,10 +360,10 @@ impl<'a> Spc2d<'a> {
                     let (k, l) = self.grid.get_ij(n);
                     let mut val = 0.0;
                     if j == l {
-                        val += self.mkx * dd2x.get(i, k) * cx;
+                        val += self.mkx * d2r.get(i, k) * cx;
                     }
                     if i == k {
-                        val += self.mky * dd2y.get(j, l) * cy;
+                        val += self.mky * d2s.get(j, l) * cy;
                     }
                     if m == n {
                         val += alpha; // diagonal entries due to α ϕ
@@ -365,10 +409,10 @@ impl<'a> Spc2d<'a> {
         let mut mm = CooMatrix::new(ndim, ndim, nnz_wcs + extra_nnz + 2 * nlag, Sym::No).unwrap();
 
         // spectral derivative matrices
-        let dd1x = self.interp_x.get_dd1().unwrap();
-        let dd1y = self.interp_y.get_dd1().unwrap();
-        let dd2x = self.interp_x.get_dd2().unwrap();
-        let dd2y = self.interp_y.get_dd2().unwrap();
+        let d1r = self.interp_x.get_dd1().unwrap();
+        let d1s = self.interp_y.get_dd1().unwrap();
+        let d2r = self.interp_x.get_dd2().unwrap();
+        let d2s = self.interp_y.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1]×[-1,1] to [xmin,xmax]×[ymin,ymax])
         let dr_dx = 2.0 / (self.xmax - self.xmin);
@@ -386,25 +430,25 @@ impl<'a> Spc2d<'a> {
                     if i == 0 {
                         // Xmin
                         if j == l {
-                            val += -self.mkx * dd1x.get(i, k) * dr_dx; // -1 due to the normal pointing left
+                            val += -self.mkx * d1r.get(i, k) * dr_dx; // -1 due to the normal pointing left
                         }
                     }
                     if i == nx - 1 {
                         // Xmax
                         if j == l {
-                            val += self.mkx * dd1x.get(i, k) * dr_dx;
+                            val += self.mkx * d1r.get(i, k) * dr_dx;
                         }
                     }
                     if j == 0 {
                         // Ymin
                         if i == k {
-                            val += -self.mky * dd1y.get(j, l) * ds_dy; // -1 due to the normal pointing down
+                            val += -self.mky * d1s.get(j, l) * ds_dy; // -1 due to the normal pointing down
                         }
                     }
                     if j == ny - 1 {
                         // Ymax
                         if i == k {
-                            val += self.mky * dd1y.get(j, l) * ds_dy;
+                            val += self.mky * d1s.get(j, l) * ds_dy;
                         }
                     }
                     mm.put(m, n, val).unwrap();
@@ -415,10 +459,10 @@ impl<'a> Spc2d<'a> {
                     let n = k + l * nx;
                     let mut val = 0.0;
                     if j == l {
-                        val += self.mkx * dd2x.get(i, k) * cx;
+                        val += self.mkx * d2r.get(i, k) * cx;
                     }
                     if i == k {
-                        val += self.mky * dd2y.get(j, l) * cy;
+                        val += self.mky * d2s.get(j, l) * cy;
                     }
                     if m == n {
                         val += alpha; // diagonal entries due to α ϕ

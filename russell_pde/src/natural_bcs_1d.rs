@@ -110,4 +110,47 @@ impl<'a> NaturalBcs1d<'a> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::NaturalBcs1d;
+    use crate::{Grid1d, Side};
+
+    #[test]
+    fn new_works() {
+        let natural_bcs = NaturalBcs1d::new();
+        assert_eq!(natural_bcs.sides, [false, false]);
+        assert_eq!((natural_bcs.functions[0])(0.0), 0.0);
+        assert_eq!((natural_bcs.functions[1])(0.0), 0.0);
+    }
+
+    #[test]
+    fn set_works() {
+        let mut natural_bcs = NaturalBcs1d::new();
+        natural_bcs.set(Side::Xmin, |_| -10.0);
+        natural_bcs.set(Side::Xmax, |_| 10.0);
+        assert_eq!(natural_bcs.sides, [true, true]);
+        assert_eq!((natural_bcs.functions[0])(0.0), -10.0);
+        assert_eq!((natural_bcs.functions[1])(0.0), 10.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_panics_on_invalid_side() {
+        let mut natural_bcs = NaturalBcs1d::new();
+        natural_bcs.set(Side::Ymin, |_| 0.0);
+    }
+
+    #[test]
+    fn enabled_m_works() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 3).unwrap();
+        let mut natural_bcs = NaturalBcs1d::new();
+        natural_bcs.set(Side::Xmin, |_| -10.0);
+        assert!(natural_bcs.enabled_m(0, &grid));
+        assert!(!natural_bcs.enabled_m(1, &grid));
+        assert!(!natural_bcs.enabled_m(2, &grid));
+
+        natural_bcs.set(Side::Xmax, |_| 10.0);
+        assert!(natural_bcs.enabled_m(0, &grid));
+        assert!(!natural_bcs.enabled_m(1, &grid));
+        assert!(natural_bcs.enabled_m(2, &grid));
+    }
+}

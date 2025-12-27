@@ -613,6 +613,7 @@ impl ProblemSamples {
         NaturalBcs2d<'static>,
         Box<dyn Fn(f64, f64) -> f64>,
         Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> (f64, f64)>,
     ) {
         let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
         let (kx, ky) = (k, k);
@@ -639,7 +640,22 @@ impl ProblemSamples {
         } else {
             Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))
         };
-        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+        let ana_flow: Box<dyn Fn(f64, f64) -> (f64, f64)> = if case_a {
+            Box::new(move |x, y| {
+                (
+                    (-k) * 2.0 * PI * f64::cos(2.0 * PI * x) * f64::cos(2.0 * PI * y),
+                    (-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y) * (-1.0),
+                )
+            })
+        } else {
+            Box::new(move |x, y| {
+                (
+                    (-k) * 2.0 * PI * f64::cos(2.0 * PI * x) * f64::sin(2.0 * PI * y),
+                    (-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y),
+                )
+            })
+        };
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow)
     }
 
     /// 2D Problem # 04 - Poisson

@@ -1,4 +1,4 @@
-use plotpy::{Contour, Curve, Plot, Surface};
+use plotpy::{Contour, Curve, Plot, Stream, Surface};
 use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
 
@@ -53,7 +53,7 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
 fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) =
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, _) =
         ProblemSamples::d2_problem_03(1.0, alpha, case_a);
 
     // allocate the solver
@@ -161,7 +161,7 @@ fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Res
 fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
-    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical) =
+    let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) =
         ProblemSamples::d2_problem_03(1.0, alpha, case_a);
 
     // transfinite map
@@ -187,7 +187,27 @@ fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) ->
         }
         approx_eq(a[m], analytical(x, y), tol);
     });
-    println!("max(err) = {:>10.5e}", err_max);
+
+    // check flow vectors
+    let mut flow_err_max = 0.0;
+    let (wwx, wwy) = spc.calculate_flow_vectors(&a)?;
+    spc.for_each_coord(|m, x, y| {
+        let (ana_wx, ana_wy) = ana_flow(x, y);
+        approx_eq(wwx[m], ana_wx, 1.6 * tol);
+        approx_eq(wwy[m], ana_wy, 1.6 * tol);
+        let err_wx = f64::abs(wwx[m] - ana_wx);
+        let err_wy = f64::abs(wwy[m] - ana_wy);
+        if err_wx > flow_err_max {
+            flow_err_max = err_wx;
+        }
+        if err_wy > flow_err_max {
+            flow_err_max = err_wy;
+        }
+    });
+    println!(
+        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
+        nn, err_max, flow_err_max
+    );
 
     // plot results
     if SAVE_FIGURE {
@@ -200,6 +220,7 @@ fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) ->
         let mut surf_ana = Surface::new();
         let mut contour_num = Contour::new();
         let mut contour_ana = Contour::new();
+        let mut quiver = Stream::new();
         let mut xx = vec![vec![0.0; nr]; ns];
         let mut yy = vec![vec![0.0; nr]; ns];
         let mut zz_num = vec![vec![0.0; nr]; ns];
@@ -253,10 +274,15 @@ fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) ->
             .set_wire_line_width(2.0)
             .set_wire_line_color("orange")
             .draw(&xx, &yy, &zz_ana);
+        quiver
+            .set_color("#4c6ae0ff")
+            .set_quiver_inv_scale(75.0)
+            .draw_arrows_alt(&xx_serial, &yy_serial, &wwx, &wwy);
         let mut plot = Plot::new();
         plot.add(&contour_num)
             .add(&contour_ana)
             .add(&points)
+            .add(&quiver)
             .set_equal_axes(true)
             .set_figure_size_points(600.0, 600.0)
             .save(&fn_a)

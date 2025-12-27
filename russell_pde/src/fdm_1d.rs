@@ -987,4 +987,16 @@ mod tests {
         assert_eq!(aa.as_data(), &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         assert_eq!(ff.as_data(), &[100.0 / 2.0, 100.0, 100.0, 100.0, 100.0 / 2.0, LEF, RIG]);
     }
+
+    #[test]
+    fn get_grid_and_get_equations_work() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 3).unwrap();
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
+
+        assert_eq!(fdm.get_grid().nx(), 3);
+        assert_eq!(fdm.get_equations().neq(), 3);
+    }
 }

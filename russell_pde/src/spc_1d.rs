@@ -184,6 +184,36 @@ impl<'a> Spc1d<'a> {
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
+    /// Calculates the flow vectors at each grid point
+    ///
+    /// Returns `wwx` where:
+    ///
+    /// * `wwx` contains all x components of the flow vectors (len = number of equations = a.dim())
+    ///
+    /// The flow vector is defined by:
+    ///
+    /// ```text
+    /// →         →
+    /// w = - ḵ · ∇ϕ
+    /// ```
+    pub fn calculate_flow_vectors(&self, a: &Vector) -> Result<Vec<f64>, StrError> {
+        let neq = self.equations.neq();
+        if a.dim() != neq {
+            return Err("a.dim() must equal the number of equations");
+        }
+        let d1r = self.interp.get_dd1().unwrap();
+        let dr_dx = 2.0 / (self.xmax - self.xmin);
+        let mut wwx = vec![0.0; neq];
+        for m in 0..neq {
+            let mut wx = 0.0;
+            for n in 0..neq {
+                wx += self.mkx * d1r.get(m, n) * dr_dx * a[n];
+            }
+            wwx[m] = wx;
+        }
+        Ok(wwx)
+    }
+
     /// Returns the dimensions for the system partitioning strategy (SPS)
     ///
     /// Returns `(nu, np)` where:
@@ -242,8 +272,8 @@ impl<'a> Spc1d<'a> {
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
         // spectral derivative matrices
-        let dd1x = self.interp.get_dd1().unwrap();
-        let dd2x = self.interp.get_dd2().unwrap();
+        let d1r = self.interp.get_dd1().unwrap();
+        let d2r = self.interp.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1] to [xmin,xmax])
         let dr_dx = 2.0 / (self.xmax - self.xmin);
@@ -256,17 +286,17 @@ impl<'a> Spc1d<'a> {
                     let mut val = 0.0;
                     if m == 0 {
                         // Xmin
-                        val += -self.mkx * dd1x.get(m, n) * dr_dx; // -1 due to the normal pointing left
+                        val += -self.mkx * d1r.get(m, n) * dr_dx; // -1 due to the normal pointing left
                     }
                     if m == nx - 1 {
                         // Xmax
-                        val += self.mkx * dd1x.get(m, n) * dr_dx;
+                        val += self.mkx * d1r.get(m, n) * dr_dx;
                     }
                     self.put_val(&mut kk_bar, &mut kk_check, m, n, val);
                 }
             } else {
                 for n in 0..nx {
-                    let mut val = self.mkx * dd2x.get(m, n) * cx;
+                    let mut val = self.mkx * d2r.get(m, n) * cx;
                     if m == n {
                         val += alpha; // diagonal entries due to α ϕ
                     }
@@ -310,8 +340,8 @@ impl<'a> Spc1d<'a> {
         let mut mm = CooMatrix::new(ndim, ndim, nnz_wcs + extra_nnz + 2 * nlag, Sym::No).unwrap();
 
         // spectral derivative matrices
-        let dd1x = self.interp.get_dd1().unwrap();
-        let dd2x = self.interp.get_dd2().unwrap();
+        let d1r = self.interp.get_dd1().unwrap();
+        let d2r = self.interp.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1] to [xmin,xmax])
         let dr_dx = 2.0 / (self.xmax - self.xmin);
@@ -324,17 +354,17 @@ impl<'a> Spc1d<'a> {
                     let mut val = 0.0;
                     if m == 0 {
                         // Xmin
-                        val += -self.mkx * dd1x.get(m, n) * dr_dx; // -1 due to the normal pointing left
+                        val += -self.mkx * d1r.get(m, n) * dr_dx; // -1 due to the normal pointing left
                     }
                     if m == nx - 1 {
                         // Xmax
-                        val += self.mkx * dd1x.get(m, n) * dr_dx;
+                        val += self.mkx * d1r.get(m, n) * dr_dx;
                     }
                     mm.put(m, n, val).unwrap();
                 }
             } else {
                 for n in 0..nx {
-                    let mut val = self.mkx * dd2x.get(m, n) * cx;
+                    let mut val = self.mkx * d2r.get(m, n) * cx;
                     if m == n {
                         val += alpha; // diagonal entries due to α ϕ
                     }

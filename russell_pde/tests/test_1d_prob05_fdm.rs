@@ -11,7 +11,7 @@ fn test_1d_prob05_fdm() -> Result<(), StrError> {
     let ll = 1.0;
     let g0 = 1.0;
     let phi_ll = 0.2;
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_05(beta, ll, g0, phi_ll);
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_05(beta, ll, g0, phi_ll);
 
     // allocate the grid
     let nx = 15;

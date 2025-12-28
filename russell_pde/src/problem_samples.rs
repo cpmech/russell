@@ -6,7 +6,7 @@ pub struct ProblemSamples;
 impl ProblemSamples {
     /// 1D Problem # 01 - Poisson
     ///
-    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical)`, where:
+    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow)`, where:
     ///
     /// * `xmin` and `xmax` are the domain limits
     /// * `kx` is the diffusion coefficient
@@ -14,6 +14,7 @@ impl ProblemSamples {
     /// * `analytical` is the analytical solution function `ϕ(x)`
     /// * `ebcs` are the essential boundary conditions
     /// * `nbcs` are the natural boundary conditions
+    /// * `ana_flow` -- analytical function to calculate the wx component of the flow vector
     ///
     /// # Problem
     ///
@@ -42,6 +43,7 @@ impl ProblemSamples {
         NaturalBcs1d<'a>,
         Box<dyn Fn(f64) -> f64>,
         Box<dyn Fn(f64) -> f64>,
+        Box<dyn Fn(f64) -> f64>,
     ) {
         let xmin = 0.0;
         let xmax = 1.0;
@@ -51,7 +53,8 @@ impl ProblemSamples {
         ebcs.set_homogeneous();
         let source = Box::new(|x: f64| x);
         let analytical = Box::new(|x: f64| (x - x.powi(3)) / 6.0);
-        (xmin, xmax, kx, ebcs, nbcs, source, analytical)
+        let ana_flow = Box::new(move |x: f64| (-kx) * (1.0 - 3.0 * x * x) / 6.0);
+        (xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow)
     }
 
     /// 1D Problem # 02 - Helmholtz
@@ -347,7 +350,7 @@ impl ProblemSamples {
     /// To generate Figure 1.4.1, page 49, use: β = sqrt(87.4), L = 1.0, g0 = 1.0, ϕL = 0.2
     /// (note that the signs written in the caption of the figure in the book are incorrect)
     ///
-    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical)`, where:
+    /// Returns `(xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow)`, where:
     ///
     /// * `xmin` and `xmax` are the domain limits
     /// * `kx` is the diffusion coefficient
@@ -355,6 +358,7 @@ impl ProblemSamples {
     /// * `analytical` is the analytical solution function `ϕ(x)`
     /// * `ebcs` are the essential boundary conditions
     /// * `nbcs` are the natural boundary conditions
+    /// * `ana_flow` -- analytical function to calculate the wx component of the flow vector
     ///
     /// # Problem
     ///
@@ -399,6 +403,7 @@ impl ProblemSamples {
         NaturalBcs1d<'a>,
         Box<dyn Fn(f64) -> f64>,
         Box<dyn Fn(f64) -> f64>,
+        Box<dyn Fn(f64) -> f64>,
     ) {
         let xmin = 0.0;
         let xmax = ll;
@@ -413,7 +418,10 @@ impl ProblemSamples {
             let c2 = (phi_ll - c1 * f64::sin(beta * ll)) / f64::cos(beta * ll);
             c1 * f64::sin(beta * x) + c2 * f64::cos(beta * x)
         });
-        (xmin, xmax, kx, ebcs, nbcs, source, analytical)
+        let ana_flow = Box::new(move |x: f64| {
+            (-kx) * ((g0 * f64::cos(beta * (ll - x)) - beta * phi_ll * f64::sin(beta * x)) / f64::cos(beta * ll))
+        });
+        (xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow)
     }
 
     /// 2D Problem # 01 - Poisson
@@ -474,7 +482,7 @@ impl ProblemSamples {
 
     /// 2D Problem # 02 - Poisson
     ///
-    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow)`, where:
     ///
     /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
     /// * `kx`, `ky` -- diffusion coefficients
@@ -482,6 +490,7 @@ impl ProblemSamples {
     /// * `nbcs` -- natural boundary conditions
     /// * `source` -- source term function `s(x, y)`
     /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    /// * `ana_flow` -- analytical flow vector function `w(x, y)`
     ///
     /// # Problem
     ///

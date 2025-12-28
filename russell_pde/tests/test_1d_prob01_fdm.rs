@@ -6,7 +6,7 @@ use serial_test::serial;
 #[test]
 fn test_1d_prob01_fdm_sps_umfpack() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -27,7 +27,7 @@ fn test_1d_prob01_fdm_sps_umfpack() -> Result<(), StrError> {
 #[test]
 fn test_1d_prob01_fdm_lmm_umfpack() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -48,7 +48,7 @@ fn test_1d_prob01_fdm_lmm_umfpack() -> Result<(), StrError> {
 #[test]
 fn test_1d_prob01_fdm_sps_umfpack_symmetric() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -70,7 +70,7 @@ fn test_1d_prob01_fdm_sps_umfpack_symmetric() -> Result<(), StrError> {
 #[test]
 fn test_1d_prob01_fdm_lmm_umfpack_symmetric() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -94,7 +94,7 @@ fn test_1d_prob01_fdm_lmm_umfpack_symmetric() -> Result<(), StrError> {
 #[serial]
 fn test_1d_prob01_fdm_sps_mumps() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -118,7 +118,7 @@ fn test_1d_prob01_fdm_sps_mumps() -> Result<(), StrError> {
 #[serial]
 fn test_1d_prob01_fdm_lmm_mumps() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -142,7 +142,7 @@ fn test_1d_prob01_fdm_lmm_mumps() -> Result<(), StrError> {
 #[serial]
 fn test_1d_prob01_fdm_sps_mumps_symmetric() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;
@@ -166,7 +166,7 @@ fn test_1d_prob01_fdm_sps_mumps_symmetric() -> Result<(), StrError> {
 #[serial]
 fn test_1d_prob01_fdm_lmm_mumps_symmetric() -> Result<(), StrError> {
     // problem setup
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_01();
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, _) = ProblemSamples::d1_problem_01();
 
     // allocate the grid
     let grid = Grid1d::new_uniform(xmin, xmax, 5)?;

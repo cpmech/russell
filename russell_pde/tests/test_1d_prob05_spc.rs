@@ -11,25 +11,42 @@ fn test_1d_prob05_spc() -> Result<(), StrError> {
     let ll = 1.0;
     let g0 = 1.0;
     let phi_ll = 0.2;
-    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_05(beta, ll, g0, phi_ll);
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical, ana_flow) =
+        ProblemSamples::d1_problem_05(beta, ll, g0, phi_ll);
 
     // allocate the solver
-    let nx = 8;
+    let nx = 11;
     let spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx)?;
 
     // solve the problem
     let a = spc.solve_sps(beta * beta, source)?;
 
     // analytical solution
-    let mut max_err = 0.0;
+    let mut err_max = 0.0;
     spc.for_each_coord(|m, x| {
         let diff = f64::abs(a[m] - analytical(x));
-        if diff > max_err {
-            max_err = diff;
+        if diff > err_max {
+            err_max = diff;
         }
-        approx_eq(a[m], analytical(x), 6.56e-3);
+        approx_eq(a[m], analytical(x), 3.663e-4);
     });
-    println!("max_err = {:e}", max_err);
+
+    // check flow vectors
+    let mut flow_err_max = 0.0;
+    let wwx = spc.calculate_flow_vectors(&a)?;
+    spc.for_each_coord(|m, x| {
+        let ana_wx = ana_flow(x);
+        approx_eq(wwx[m], ana_wx, 6.872e-3);
+        let err_wx = f64::abs(wwx[m] - ana_wx);
+        if err_wx > flow_err_max {
+            flow_err_max = err_wx;
+        }
+    });
+    let nn = nx - 1;
+    println!(
+        "N = {:>2}, max(err) = {:>10.5e}, max(flow_err) = {:>10.5e}",
+        nn, err_max, flow_err_max
+    );
 
     // plot
     if SAVE_FIGURE {

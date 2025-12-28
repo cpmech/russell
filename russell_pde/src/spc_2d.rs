@@ -106,8 +106,23 @@ impl<'a> Spc2d<'a> {
         kx: f64,
         ky: f64,
     ) -> Result<Self, StrError> {
+        // check
+        if nx < 2 {
+            return Err("nx must be ≥ 2");
+        }
+        if ny < 2 {
+            return Err("ny must be ≥ 2");
+        }
+
+        // polynomial degrees
+        let nn_x = nx - 1;
+        let nn_y = ny - 1;
+        if nn_x > 2048 || nn_y > 2048 {
+            return Err("the maximum allowed polynomial degree is 2048");
+        }
+
         // allocate the Chebyshev-Gauss-Lobatto grid
-        let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny)?;
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(nx, ny).unwrap();
 
         // validates the boundary conditions data
         ebcs.validate(&nbcs)?;
@@ -122,13 +137,9 @@ impl<'a> Spc2d<'a> {
         let mut equations = EquationHandler::new(neq);
         equations.recompute(&ebcs.get_nodes(&grid));
 
-        // polynomial degrees
-        let nn_x = grid.nx() - 1;
-        let nn_y = grid.ny() - 1;
-
         // interpolators
-        let mut interp_x = InterpLagrange::new(nn_x, None)?;
-        let mut interp_y = InterpLagrange::new(nn_y, None)?;
+        let mut interp_x = InterpLagrange::new(nn_x, None).unwrap();
+        let mut interp_y = InterpLagrange::new(nn_y, None).unwrap();
         interp_x.calc_dd1_matrix();
         interp_y.calc_dd1_matrix();
         interp_x.calc_dd2_matrix();
@@ -698,8 +709,55 @@ impl<'a> Spc2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::Spc2d;
-    use crate::{EssentialBcs2d, NaturalBcs2d};
+    use crate::{EssentialBcs2d, NaturalBcs2d, Side};
     use russell_lab::mat_approx_eq;
+
+    #[test]
+    fn new_captures_errors() {
+        let ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        assert_eq!(
+            Spc2d::new(0.0, 1.0, 0.0, 1.0, 1, 2, ebcs, nbcs, 1.0, 1.0).err(),
+            Some("nx must be ≥ 2")
+        );
+
+        let ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        assert_eq!(
+            Spc2d::new(0.0, 1.0, 0.0, 1.0, 2, 1, ebcs, nbcs, 1.0, 1.0).err(),
+            Some("ny must be ≥ 2")
+        );
+
+        let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        nbcs.set(Side::Xmax, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+        assert_eq!(
+            Spc2d::new(0.0, 1.0, 0.0, 1.0, 2050, 2, ebcs, nbcs, 1.0, 1.0).err(),
+            Some("the maximum allowed polynomial degree is 2048")
+        );
+
+        let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        nbcs.set(Side::Xmax, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+        assert_eq!(
+            Spc2d::new(0.0, 1.0, 0.0, 1.0, 2, 2050, ebcs, nbcs, 1.0, 1.0).err(),
+            Some("the maximum allowed polynomial degree is 2048")
+        );
+
+        let mut ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        ebcs.set_periodic(true, true);
+        assert_eq!(
+            Spc2d::new(0.0, 1.0, 0.0, 1.0, 3, 3, ebcs, nbcs, 1.0, 1.0).err(),
+            Some("essential BCs cannot be periodic")
+        );
+    }
 
     #[test]
     fn get_matrices_works_1() {

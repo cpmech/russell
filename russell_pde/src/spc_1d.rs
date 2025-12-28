@@ -60,8 +60,8 @@ pub struct Spc1d<'a> {
     /// Tool to handle the equation numbers such as unknowns prescribed
     equations: EquationHandler,
 
-    /// Polynomial interpolator along x
-    interp_x: InterpLagrange,
+    /// Polynomial interpolator
+    interp: InterpLagrange,
 }
 
 impl<'a> Spc1d<'a> {
@@ -83,8 +83,19 @@ impl<'a> Spc1d<'a> {
         nbcs: NaturalBcs1d<'a>,
         kx: f64,
     ) -> Result<Self, StrError> {
+        // check
+        if nx < 2 {
+            return Err("nx must be ≥ 2");
+        }
+
+        // polynomial degree
+        let nn = nx - 1;
+        if nn > 2048 {
+            return Err("the maximum allowed polynomial degree is 2048");
+        }
+
         // allocate the Chebyshev-Gauss-Lobatto grid
-        let grid = Grid1d::new_chebyshev_gauss_lobatto(nx)?;
+        let grid = Grid1d::new_chebyshev_gauss_lobatto(nx).unwrap();
 
         // validates the boundary conditions data
         ebcs.validate(&nbcs)?;
@@ -99,11 +110,8 @@ impl<'a> Spc1d<'a> {
         let mut equations = EquationHandler::new(neq);
         equations.recompute(&ebcs.get_nodes(&grid));
 
-        // polynomial degree
-        let nn_x = grid.nx() - 1;
-
         // interpolators
-        let mut interp_x = InterpLagrange::new(nn_x, None)?;
+        let mut interp_x = InterpLagrange::new(nn, None).unwrap();
         interp_x.calc_dd1_matrix();
         interp_x.calc_dd2_matrix();
 
@@ -116,7 +124,7 @@ impl<'a> Spc1d<'a> {
             nbcs,
             mkx: -kx,
             equations,
-            interp_x,
+            interp: interp_x,
         })
     }
 
@@ -234,8 +242,8 @@ impl<'a> Spc1d<'a> {
         let mut kk_check = CooMatrix::new(nu, np, nnz_wcs, Sym::No).unwrap();
 
         // spectral derivative matrices
-        let dd1x = self.interp_x.get_dd1().unwrap();
-        let dd2x = self.interp_x.get_dd2().unwrap();
+        let dd1x = self.interp.get_dd1().unwrap();
+        let dd2x = self.interp.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1] to [xmin,xmax])
         let dr_dx = 2.0 / (self.xmax - self.xmin);
@@ -302,8 +310,8 @@ impl<'a> Spc1d<'a> {
         let mut mm = CooMatrix::new(ndim, ndim, nnz_wcs + extra_nnz + 2 * nlag, Sym::No).unwrap();
 
         // spectral derivative matrices
-        let dd1x = self.interp_x.get_dd1().unwrap();
-        let dd2x = self.interp_x.get_dd2().unwrap();
+        let dd1x = self.interp.get_dd1().unwrap();
+        let dd2x = self.interp.get_dd2().unwrap();
 
         // scaling coefficients due to domain mapping (from [-1,1] to [xmin,xmax])
         let dr_dx = 2.0 / (self.xmax - self.xmin);
@@ -536,6 +544,30 @@ impl<'a> Spc1d<'a> {
 mod tests {
     use super::Spc1d;
     use crate::{EssentialBcs1d, NaturalBcs1d, Side};
+
+    #[test]
+    fn new_captures_errors() {
+        let ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        assert_eq!(Spc1d::new(0.0, 1.0, 1, ebcs, nbcs, 1.0).err(), Some("nx must be ≥ 2"));
+
+        let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
+        ebcs.set(Side::Xmin, |_| 0.0);
+        nbcs.set(Side::Xmax, |_| 0.0);
+        assert_eq!(
+            Spc1d::new(0.0, 1.0, 2050, ebcs, nbcs, 1.0).err(),
+            Some("the maximum allowed polynomial degree is 2048")
+        );
+
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_periodic(true);
+        assert_eq!(
+            Spc1d::new(0.0, 1.0, 3, ebcs, nbcs, 1.0).err(),
+            Some("essential BCs cannot be periodic")
+        );
+    }
 
     #[test]
     fn get_dims_sps_and_get_equations_work() {

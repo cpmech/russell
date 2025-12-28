@@ -134,8 +134,23 @@ impl<'a> SpcMap2d<'a> {
         nbcs: NaturalBcs2d<'a>,
         k: f64,
     ) -> Result<Self, StrError> {
+        // check
+        if nr < 2 {
+            return Err("nr must be ≥ 2");
+        }
+        if ns < 2 {
+            return Err("ns must be ≥ 2");
+        }
+
+        // polynomial degrees
+        let nn_r = nr - 1;
+        let nn_s = ns - 1;
+        if nn_r > 2048 || nn_s > 2048 {
+            return Err("the maximum allowed polynomial degree is 2048");
+        }
+
         // allocate the Chebyshev-Gauss-Lobatto grid
-        let grid = Grid2d::new_chebyshev_gauss_lobatto(nr, ns)?;
+        let grid = Grid2d::new_chebyshev_gauss_lobatto(nr, ns).unwrap();
 
         // validates the boundary conditions data
         ebcs.validate(&nbcs)?;
@@ -150,13 +165,9 @@ impl<'a> SpcMap2d<'a> {
         let mut equations = EquationHandler::new(neq);
         equations.recompute(&ebcs.get_nodes(&grid));
 
-        // polynomial degrees
-        let nn_r = grid.nx() - 1;
-        let nn_s = grid.ny() - 1;
-
         // interpolators
-        let mut interp_r = InterpLagrange::new(nn_r, None)?;
-        let mut interp_s = InterpLagrange::new(nn_s, None)?;
+        let mut interp_r = InterpLagrange::new(nn_r, None).unwrap();
+        let mut interp_s = InterpLagrange::new(nn_s, None).unwrap();
         interp_r.calc_dd1_matrix();
         interp_s.calc_dd1_matrix();
         interp_r.calc_dd2_matrix();
@@ -759,8 +770,54 @@ impl<'a> SpcMap2d<'a> {
 #[cfg(test)]
 mod tests {
     use super::SpcMap2d;
-    use crate::{EssentialBcs2d, NaturalBcs2d, TransfiniteSamples};
+    use crate::{EssentialBcs2d, NaturalBcs2d, Side, TransfiniteSamples};
     use russell_lab::mat_approx_eq;
+
+    #[test]
+    fn new_captures_errors() {
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+        let ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        assert_eq!(SpcMap2d::new(map, 1, 2, ebcs, nbcs, 1.0).err(), Some("nr must be ≥ 2"));
+
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+        let ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        assert_eq!(SpcMap2d::new(map, 2, 1, ebcs, nbcs, 1.0).err(), Some("ns must be ≥ 2"));
+
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+        let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        nbcs.set(Side::Xmax, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+        assert_eq!(
+            SpcMap2d::new(map, 2050, 2, ebcs, nbcs, 1.0).err(),
+            Some("the maximum allowed polynomial degree is 2048")
+        );
+
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+        let mut ebcs = EssentialBcs2d::new();
+        let mut nbcs = NaturalBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 0.0);
+        nbcs.set(Side::Xmax, |_, _| 0.0);
+        ebcs.set(Side::Ymin, |_, _| 0.0);
+        nbcs.set(Side::Ymax, |_, _| 0.0);
+        assert_eq!(
+            SpcMap2d::new(map, 2, 2050, ebcs, nbcs, 1.0).err(),
+            Some("the maximum allowed polynomial degree is 2048")
+        );
+
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+        let mut ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        ebcs.set_periodic(true, true);
+        assert_eq!(
+            SpcMap2d::new(map, 3, 3, ebcs, nbcs, 1.0).err(),
+            Some("essential BCs cannot be periodic")
+        );
+    }
 
     #[test]
     fn get_matrices_works_1() {

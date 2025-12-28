@@ -624,8 +624,32 @@ mod tests {
                 .set_range(0.0, 6.5, 0.0, 6.5)
                 .set_equal_axes(true)
                 .set_figure_size_points(600.0, 600.0)
-                .save("/tmp/russell_pde/test_triangulation_works.svg")
+                .save("/tmp/russell_pde/test_triangulate_works.svg")
                 .unwrap();
+        }
+    }
+
+    #[test]
+    fn triangulation_works_with_cgl() {
+        // allocate transfinite map
+        let xa = &[0.0, 0.0];
+        let xb = &[1.0, 0.0];
+        let xc = &[1.0, 1.0];
+        let xd = &[0.0, 1.0];
+        let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
+
+        let nr = 3;
+        let ns = 3;
+        let np = nr * ns;
+        let n_tri = (nr - 1) * (ns - 1) * 2;
+
+        for cgl_r in [false, true] {
+            for cgl_s in [false, true] {
+                let (xx, yy, triangles) = map.triangulate(nr, ns, cgl_r, cgl_s);
+                assert_eq!(xx.len(), np);
+                assert_eq!(yy.len(), np);
+                assert_eq!(triangles.len(), n_tri);
+            }
         }
     }
 }

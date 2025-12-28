@@ -824,6 +824,7 @@ mod tests {
         let nlag = np;
         let ndim = neq + nlag;
         assert_eq!(spc.get_dims_lmm(), (neq, nlag, ndim));
+
         let nnz = neq * neq + 2 * nlag;
         let (mm, cc) = spc.get_matrices_lmm(0.0, 0, true);
         assert_eq!(mm.get_info(), (ndim, ndim, nnz, Sym::No));

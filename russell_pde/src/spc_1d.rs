@@ -575,6 +575,7 @@ mod tests {
     use super::Spc1d;
     use crate::{EssentialBcs1d, NaturalBcs1d, Side};
     use russell_lab::Vector;
+    use russell_sparse::Sym;
 
     #[test]
     fn new_captures_errors() {
@@ -626,5 +627,33 @@ mod tests {
         assert_eq!(spc.get_equations().neq(), 3);
         assert_eq!(spc.get_equations().nu(), 2);
         assert_eq!(spc.get_equations().np(), 1);
+    }
+
+    #[test]
+    fn get_matrices_works() {
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+        let spc = Spc1d::new(-1.0, 1.0, 5, ebcs, nbcs, -1.0).unwrap();
+
+        let (nu, np) = (3, 2);
+        assert_eq!(spc.get_dims_sps(), (nu, np));
+        assert_eq!(spc.get_equations().nu(), nu);
+        assert_eq!(spc.get_equations().np(), np);
+
+        let (kk_bar, kk_check) = spc.get_matrices_sps(0.0, 0);
+        assert_eq!(kk_bar.get_info(), (nu, nu, 9, Sym::No));
+        assert_eq!(kk_check.get_info(), (nu, np, 6, Sym::No));
+
+        let neq = nu + np;
+        let nlag = np;
+        let ndim = neq + nlag;
+        assert_eq!(spc.get_dims_lmm(), (neq, nlag, ndim));
+
+        let nnz = neq * neq + 2 * nlag;
+        let (mm, cc) = spc.get_matrices_lmm(0.0, 0, true);
+        assert_eq!(mm.get_info(), (ndim, ndim, nnz, Sym::No));
+        let cc = cc.unwrap();
+        assert_eq!(cc.get_info(), (nlag, neq, nlag, Sym::No));
     }
 }

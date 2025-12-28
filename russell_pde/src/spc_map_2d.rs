@@ -771,7 +771,7 @@ impl<'a> SpcMap2d<'a> {
 mod tests {
     use super::SpcMap2d;
     use crate::{EssentialBcs2d, NaturalBcs2d, Side, TransfiniteSamples};
-    use russell_lab::mat_approx_eq;
+    use russell_lab::{mat_approx_eq, Vector};
 
     #[test]
     fn new_captures_errors() {
@@ -816,6 +816,20 @@ mod tests {
         assert_eq!(
             SpcMap2d::new(map, 3, 3, ebcs, nbcs, 1.0).err(),
             Some("essential BCs cannot be periodic")
+        );
+    }
+
+    #[test]
+    fn calculate_flow_vectors_captures_errors() {
+        let map = TransfiniteSamples::quadrilateral_2d(&[-1.0, -1.0], &[1.0, -1.0], &[1.0, 1.0], &[-1.0, 1.0]);
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_homogeneous();
+        let nbcs = NaturalBcs2d::new();
+        let mut spec = SpcMap2d::new(map, 2, 2, ebcs, nbcs, 1.0).unwrap();
+        let a = Vector::from(&[0.0]); // wrong size
+        assert_eq!(
+            spec.calculate_flow_vectors(&a).err(),
+            Some("a.dim() must equal the number of equations")
         );
     }
 

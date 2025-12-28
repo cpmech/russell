@@ -710,7 +710,7 @@ impl<'a> Spc2d<'a> {
 mod tests {
     use super::Spc2d;
     use crate::{EssentialBcs2d, NaturalBcs2d, Side};
-    use russell_lab::mat_approx_eq;
+    use russell_lab::{mat_approx_eq, Vector};
 
     #[test]
     fn new_captures_errors() {
@@ -756,6 +756,19 @@ mod tests {
         assert_eq!(
             Spc2d::new(0.0, 1.0, 0.0, 1.0, 3, 3, ebcs, nbcs, 1.0, 1.0).err(),
             Some("essential BCs cannot be periodic")
+        );
+    }
+
+    #[test]
+    fn calculate_flow_vectors_captures_errors() {
+        let mut ebcs = EssentialBcs2d::new();
+        ebcs.set_homogeneous();
+        let nbcs = NaturalBcs2d::new();
+        let spec = Spc2d::new(-1.0, 1.0, -1.0, 1.0, 2, 2, ebcs, nbcs, 1.0, 1.0).unwrap();
+        let a = Vector::from(&[0.0]); // wrong size
+        assert_eq!(
+            spec.calculate_flow_vectors(&a).err(),
+            Some("a.dim() must equal the number of equations")
         );
     }
 

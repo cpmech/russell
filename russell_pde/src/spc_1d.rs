@@ -574,6 +574,7 @@ impl<'a> Spc1d<'a> {
 mod tests {
     use super::Spc1d;
     use crate::{EssentialBcs1d, NaturalBcs1d, Side};
+    use russell_lab::Vector;
 
     #[test]
     fn new_captures_errors() {
@@ -596,6 +597,20 @@ mod tests {
         assert_eq!(
             Spc1d::new(0.0, 1.0, 3, ebcs, nbcs, 1.0).err(),
             Some("essential BCs cannot be periodic")
+        );
+    }
+
+    #[test]
+    fn calculate_flow_vectors_captures_errors() {
+        let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
+        ebcs.set(Side::Xmin, |_| 0.0);
+        nbcs.set(Side::Xmax, |_| 0.0);
+        let spc = Spc1d::new(0.0, 1.0, 2, ebcs, nbcs, 1.0).unwrap();
+        let a = Vector::from(&[0.0]); // wrong size
+        assert_eq!(
+            spc.calculate_flow_vectors(&a.into()).err(),
+            Some("a.dim() must equal the number of equations")
         );
     }
 

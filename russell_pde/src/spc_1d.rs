@@ -36,6 +36,52 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 ///
 /// 1. System Partitioning Strategy (SPS)
 /// 2. Lagrange Multipliers Method (LMM)
+///
+/// # Examples
+///
+/// Solves the Poisson equation in 1D:
+///
+/// ```text
+/// -d²ϕ/dx² = 1   on  x ∈ [0, 1]
+///
+/// ϕ(0) = 0
+/// ϕ(1) = 0
+/// ```
+///
+/// The analytical solution is `ϕ(x) = (x - x²) / 2`.
+/// ```
+/// use russell_lab::approx_eq;
+/// use russell_pde::{EssentialBcs1d, NaturalBcs1d, Side, Spc1d, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // Essential BCs
+///     let mut ebcs = EssentialBcs1d::new();
+///     ebcs.set(Side::Xmin, |_| 0.0);
+///     ebcs.set(Side::Xmax, |_| 0.0);
+///
+///     // Natural BCs (none)
+///     let nbcs = NaturalBcs1d::new();
+///
+///     // SPC solver
+///     let xmin = 0.0;
+///     let xmax = 1.0;
+///     let nx = 4;
+///     let kx = 1.0;
+///     let spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx).unwrap();
+///
+///     // Solve system
+///     let alpha = 0.0; // Poisson
+///     let source = |_| 1.0;
+///     let phi = spc.solve_sps(alpha, source).unwrap();
+///
+///     // Check
+///     spc.for_each_coord(|m, x| {
+///         let analytical = x * (1.0 - x) / 2.0;
+///         approx_eq(phi[m], analytical, 1e-14);
+///     });
+///     Ok(())
+/// }
+/// ```
 pub struct Spc1d<'a> {
     /// Minimum x-coordinate
     xmin: f64,

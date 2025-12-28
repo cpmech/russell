@@ -136,6 +136,59 @@ const INI_X: usize = 0;
 /// ```text
 /// ½ α ϕ_{nx-1} + β ϕ_{nx-2} = ½ s_{nx-1} - wₙ / Δx
 /// ```
+///
+/// # Examples
+///
+/// Solves the Poisson equation in 1D:
+///
+/// ```text
+/// -d²ϕ/dx² = 1   on  x ∈ [0, 1]
+///
+/// ϕ(0) = 0
+/// ϕ(1) = 0
+/// ```
+///
+/// The analytical solution is `ϕ(x) = (x - x²) / 2`.
+/// ```
+/// use russell_lab::approx_eq;
+/// use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, Side, StrError};
+/// use russell_sparse::Genie;
+///
+/// fn main() -> Result<(), StrError> {
+///     // grid
+///     let xmin = 0.0;
+///     let xmax = 1.0;
+///     let nx = 4;
+///     let mut grid = Grid1d::new_uniform(xmin, xmax, nx).unwrap();
+///
+///     // Essential BCs
+///     let mut ebcs = EssentialBcs1d::new();
+///     ebcs.set(Side::Xmin, |_| 0.0);
+///     ebcs.set(Side::Xmax, |_| 0.0);
+///
+///     // Natural BCs (none)
+///     let nbcs = NaturalBcs1d::new();
+///
+///     // FDM solver
+///     let kx = 1.0;
+///     let mut fdm = Fdm1d::new(grid, ebcs, nbcs, kx).unwrap();
+///     fdm.set_solver_options(Genie::Umfpack, true);
+///
+///     // Solve system
+///     let alpha = 0.0; // Poisson
+///     let source = |_| 1.0;
+///     let phi = fdm.solve_sps(alpha, source).unwrap();
+///
+///     // Check
+///     let grid = fdm.get_grid();
+///     for m in 0..grid.nx() {
+///         let x = grid.coord(m);
+///         let analytical = x * (1.0 - x) / 2.0;
+///         approx_eq(phi[m], analytical, 1e-14);
+///     }
+///     Ok(())
+/// }
+/// ```
 pub struct Fdm1d<'a> {
     /// Defines the 1D grid
     grid: Grid1d,

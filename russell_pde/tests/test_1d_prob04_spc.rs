@@ -109,3 +109,31 @@ fn test_1d_prob04b_spc_sps() -> Result<(), StrError> {
     }
     Ok(())
 }
+
+#[test]
+fn test_1d_prob04b_spc_lmm() -> Result<(), StrError> {
+    let (nn, tol) = (7, 2.26e-2);
+    // let (nn, tol) = (16, 3.0965e-9); // Trefethen, page 138, Output 33
+
+    // problem setup
+    let (xmin, xmax, kx, ebcs, nbcs, source, analytical) = ProblemSamples::d1_problem_04b();
+
+    // allocate the solver
+    let nx = nn + 1;
+    let spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx)?;
+
+    // solve the problem
+    let a = spc.solve_lmm(0.0, source)?;
+
+    // analytical solution
+    let mut err_max = 0.0;
+    spc.for_each_coord(|m, x| {
+        let err = f64::abs(a[m] - analytical(x));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x), tol);
+    });
+    println!("N = {}, max(err) = {:>10.5e}", nn, err_max);
+    Ok(())
+}

@@ -8,31 +8,20 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_2d_prob03_fdm() -> Result<(), StrError> {
-    for nd_tol in &[
-        (11, 1.0055e-1), //
-                         // (101, 1.043e-3), //
-    ] {
-        let (nd, tol) = *nd_tol;
-        // SPS - symmetric
-        run(true, true, false, nd, tol, Genie::Umfpack, true)?;
-        run(true, false, false, nd, tol, Genie::Umfpack, true)?;
-        run(false, true, false, nd, tol, Genie::Umfpack, true)?;
-        run(false, false, false, nd, tol, Genie::Umfpack, true)?;
-        // LMM - symmetric
-        run(true, true, true, nd, tol, Genie::Umfpack, true)?;
-        run(true, false, true, nd, tol, Genie::Umfpack, true)?;
-        run(false, true, true, nd, tol, Genie::Umfpack, true)?;
-        run(false, false, true, nd, tol, Genie::Umfpack, true)?;
-        // SPS - unsymmetric
-        run(true, true, false, nd, tol, Genie::Umfpack, false)?;
-        // run(true, false, false, nd, tol, Genie::Umfpack, false)?;
-        // run(false, true, false, nd, tol, Genie::Umfpack, false)?;
-        // run(false, false, false, nd, tol, Genie::Umfpack, false)?;
-        // LMM - unsymmetric
-        run(true, true, true, nd, tol, Genie::Umfpack, false)?;
-        // run(true, false, true, nd, tol, Genie::Umfpack, false)?;
-        // run(false, true, true, nd, tol, Genie::Umfpack, false)?;
-        // run(false, false, true, nd, tol, Genie::Umfpack, false)?;
+    for bc_case in &["DDDD", "NNDD", "NDND", "DNND", "DDNN"] {
+        for helmholtz in &[true, false] {
+            for lmm in &[true, false] {
+                for sym in &[true, false] {
+                    for nd_tol in &[
+                        (11, 1.0055e-1), //
+                                         // (101, 1.043e-3), //
+                    ] {
+                        let (nd, tol) = *nd_tol;
+                        run(bc_case, *helmholtz, *lmm, nd, tol, Genie::Umfpack, *sym)?;
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -41,40 +30,37 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
 #[test]
 #[serial]
 fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {
-    for nd_tol in &[
-        (11, 1.0055e-1), //
-                         // (101, 1.043e-3), //
-    ] {
-        let (nd, tol) = *nd_tol;
-        // SPS - symmetric
-        run(true, true, false, nd, tol, Genie::Mumps, true)?;
-        run(true, false, false, nd, tol, Genie::Mumps, true)?;
-        run(false, true, false, nd, tol, Genie::Mumps, true)?;
-        run(false, false, false, nd, tol, Genie::Mumps, true)?;
-        // LMM - symmetric
-        run(true, true, true, nd, tol, Genie::Mumps, true)?;
-        run(true, false, true, nd, tol, Genie::Mumps, true)?;
-        run(false, true, true, nd, tol, Genie::Mumps, true)?;
-        run(false, false, true, nd, tol, Genie::Mumps, true)?;
-        // SPS - unsymmetric
-        run(true, true, false, nd, tol, Genie::Mumps, false)?;
-        // run(true, false, false, nd, tol, Genie::Mumps, false)?;
-        // run(false, true, false, nd, tol, Genie::Mumps, false)?;
-        // run(false, false, false, nd, tol, Genie::Mumps, false)?;
-        // LMM - unsymmetric
-        run(true, true, true, nd, tol, Genie::Mumps, false)?;
-        // run(true, false, true, nd, tol, Genie::Mumps, false)?;
-        // run(false, true, true, nd, tol, Genie::Mumps, false)?;
-        // run(false, false, true, nd, tol, Genie::Mumps, false)?;
+    for bc_case in &["DDDD", "NNDD", "NDND", "DNND", "DDNN"] {
+        for helmholtz in &[true, false] {
+            for lmm in &[true, false] {
+                for sym in &[true, false] {
+                    for nd_tol in &[
+                        (11, 1.0055e-1), //
+                                         // (101, 1.043e-3), //
+                    ] {
+                        let (nd, tol) = *nd_tol;
+                        run(bc_case, *helmholtz, *lmm, nd, tol, Genie::Mumps, *sym)?;
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
 
-fn run(case_a: bool, helmholtz: bool, lmm: bool, nd: usize, tol: f64, genie: Genie, sym: bool) -> Result<(), StrError> {
+fn run(
+    bc_combo: &str,
+    helmholtz: bool,
+    lmm: bool,
+    nd: usize,
+    tol: f64,
+    genie: Genie,
+    sym: bool,
+) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, _) =
-        ProblemSamples::d2_problem_03(1.0, alpha, case_a);
+        ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
 
     // allocate the grid
     let (nx, ny) = (nd, nd);

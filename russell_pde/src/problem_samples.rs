@@ -590,14 +590,19 @@ impl ProblemSamples {
     ///
     /// on a `[0,1]×[0,1]` square with Dirichlet and Neumann boundary conditions.
     ///
-    /// ## Case A: sin-cos
+    /// # Combination of boundary conditions
     ///
-    /// The boundary conditions are:
+    /// The function considers a counter-clockwise combination of boundary conditions starting
+    /// from the right side (Xmax). A keyword `bc_combo` is used to identify such combination
+    /// and corresponds to Right-Top-Left-Bottom sides (Xmax, Ymax, Xmin, Ymin).
     ///
-    /// * Right  (Xmax): ∂ϕ/∂n = 2 π cos(2 π y)
-    /// * Top    (Ymax): ∂ϕ/∂n = 0
-    /// * Left   (Xmin): ϕ = 0
-    /// * Bottom (Ymin): ϕ = sin(2 π x)
+    /// Set `bc_combo` to:
+    ///
+    /// * `DDDD` -- Dirichlet (Xmax), Dirichlet (Ymax), Dirichlet (Xmin), Dirichlet (Ymin)
+    /// * `NNDD` -- Neumann (Xmax), Neumann (Ymax), Dirichlet (Xmin), Dirichlet (Ymin)
+    /// * `NDND` -- Neumann (Xmax), Dirichlet (Ymax), Neumann (Xmin), Dirichlet (Ymin)
+    /// * `DNND` -- Dirichlet (Xmax), Neumann (Ymax), Neumann (Xmin), Dirichlet (Ymin)
+    /// * `DDNN` -- Dirichlet (Xmax), Dirichlet (Ymax), Neumann (Xmin), Neumann (Ymin)
     ///
     /// The source term is given by:
     ///
@@ -610,31 +615,10 @@ impl ProblemSamples {
     /// ```text
     /// ϕ(x, y) = sin(2 π x) cos(2 π y)
     /// ```
-    ///
-    /// ## Case B: sin-sin
-    ///
-    /// The boundary conditions are:
-    ///
-    /// * Right  (Xmax): ∂ϕ/∂n = 2 π sin(2 π y)
-    /// * Top    (Ymax): ∂ϕ/∂n = 2 π sin(2 π x)
-    /// * Left   (Xmin): ϕ = 0
-    /// * Bottom (Ymin): ϕ = 0
-    ///
-    /// The source term is given by:
-    ///
-    /// ```text
-    /// s(x, y) = (8 k π² + α) sin(2 π x) sin(2 π y)
-    /// ```
-    ///
-    /// The analytical solution is:
-    ///
-    /// ```text
-    /// ϕ(x, y) = sin(2 π x) sin(2 π y)
-    /// ```
     pub fn d2_problem_03(
         k: f64,
         alpha: f64,
-        case_a: bool,
+        bc_combo: &str,
     ) -> (
         f64,
         f64,
@@ -648,46 +632,56 @@ impl ProblemSamples {
         Box<dyn Fn(f64, f64) -> f64>,
         Box<dyn Fn(f64, f64) -> (f64, f64)>,
     ) {
+        // check input
+        assert!(bc_combo == "NNDD"
+            || bc_combo == "NDND"
+            || bc_combo == "DNND"
+            || bc_combo == "DDNN"
+            || bc_combo == "DDDD", "Invalid boundary condition combination keyword. Allowed keywords are: 'NNDD', 'NDND', 'DNND', 'DDNN', 'DDDD'");
+        let key_right = bc_combo.chars().nth(0).unwrap();
+        let key_top = bc_combo.chars().nth(1).unwrap();
+        let key_left = bc_combo.chars().nth(2).unwrap();
+        let key_bottom = bc_combo.chars().nth(3).unwrap();
+        // set constants
         let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
         let (kx, ky) = (k, k);
+        // boundary conditions
         let mut ebcs = EssentialBcs2d::new();
         let mut nbcs = NaturalBcs2d::new();
-        if case_a {
-            nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::cos(2.0 * PI * y));
-            nbcs.set(Side::Ymax, |_, _| 0.0);
+        // Left (Xmin)
+        if key_left == 'D' {
             ebcs.set(Side::Xmin, |_, _| 0.0);
+        } else {
+            nbcs.set(Side::Xmin, move |_, y| -k * (-2.0) * PI * f64::cos(2.0 * PI * y));
+        }
+        // Right (Xmax)
+        if key_right == 'D' {
+            ebcs.set(Side::Xmax, |_, _| 0.0);
+        } else {
+            nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::cos(2.0 * PI * y));
+        }
+        // Bottom (Ymin)
+        if key_bottom == 'D' {
             ebcs.set(Side::Ymin, |x, _| f64::sin(2.0 * PI * x));
         } else {
-            nbcs.set(Side::Xmax, move |_, y| -k * 2.0 * PI * f64::sin(2.0 * PI * y));
-            nbcs.set(Side::Ymax, move |x, _| -k * 2.0 * PI * f64::sin(2.0 * PI * x));
-            ebcs.set(Side::Xmin, |_, _| 0.0);
-            ebcs.set(Side::Ymin, |_, _| 0.0);
+            nbcs.set(Side::Ymin, |_, _| 0.0);
         }
-        let source: Box<dyn Fn(f64, f64) -> f64> = if case_a {
-            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y))
+        // Top (Ymax)
+        if key_top == 'D' {
+            ebcs.set(Side::Ymax, |x, _| f64::sin(2.0 * PI * x));
         } else {
-            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))
-        };
-        let analytical: Box<dyn Fn(f64, f64) -> f64> = if case_a {
-            Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y))
-        } else {
-            Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y))
-        };
-        let ana_flow: Box<dyn Fn(f64, f64) -> (f64, f64)> = if case_a {
-            Box::new(move |x, y| {
-                (
-                    (-k) * 2.0 * PI * f64::cos(2.0 * PI * x) * f64::cos(2.0 * PI * y),
-                    (-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y) * (-1.0),
-                )
-            })
-        } else {
-            Box::new(move |x, y| {
-                (
-                    (-k) * 2.0 * PI * f64::cos(2.0 * PI * x) * f64::sin(2.0 * PI * y),
-                    (-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y),
-                )
-            })
-        };
+            nbcs.set(Side::Ymax, |_, _| 0.0);
+        }
+        // source and analytical solution
+        let source =
+            Box::new(move |x, y| (8.0 * k * PI * PI + alpha) * f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y));
+        let analytical = Box::new(|x, y| f64::sin(2.0 * PI * x) * f64::cos(2.0 * PI * y));
+        let ana_flow = Box::new(move |x, y| {
+            (
+                (-k) * 2.0 * PI * f64::cos(2.0 * PI * x) * f64::cos(2.0 * PI * y),
+                (-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y) * (-1.0),
+            )
+        });
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow)
     }
 

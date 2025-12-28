@@ -6,55 +6,49 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_2d_prob03_spc() -> Result<(), StrError> {
-    for nn_tol in &[
-        (8, 4.2e-2), //
-                     // (12, 1.0e-5), //
-                     // (15, 1e-8),   //
-                     // (20, 1e-13), //
-    ] {
-        let (nn, tol) = *nn_tol;
-        // SPS
-        run_spc(true, true, false, nn, tol)?;
-        run_spc(true, false, false, nn, tol)?;
-        run_spc(false, true, false, nn, tol)?;
-        run_spc(false, false, false, nn, tol)?;
-        // LMM
-        run_spc(true, true, true, nn, tol)?;
-        run_spc(true, false, true, nn, tol)?;
-        run_spc(false, true, true, nn, tol)?;
-        run_spc(false, false, true, nn, tol)?;
+    for bc_case in &["DDDD", "NNDD", "NDND", "DNND", "DDNN"] {
+        for helmholtz in &[true, false] {
+            for lmm in &[true, false] {
+                for nn_tol in &[
+                    (8, 4.2e-2), //
+                                 // (12, 1.0e-5), //
+                                 // (15, 1e-8),   //
+                                 // (20, 1e-12),  //
+                ] {
+                    let (nn, tol) = *nn_tol;
+                    run_spc(bc_case, *helmholtz, *lmm, nn, tol)?;
+                }
+            }
+        }
     }
     Ok(())
 }
 
 #[test]
 fn test_2d_prob03_spc_map() -> Result<(), StrError> {
-    for nn_tol in &[
-        (8, 4.2e-2), //
-                     // (12, 1.0e-5), //
-                     // (15, 1e-8),   //
-                     // (20, 1e-13),  //
-    ] {
-        let (nn, tol) = *nn_tol;
-        // SPS
-        run_spc_map(true, true, false, nn, tol)?;
-        run_spc_map(true, false, false, nn, tol)?;
-        run_spc_map(false, true, false, nn, tol)?;
-        run_spc_map(false, false, false, nn, tol)?;
-        // LMM
-        run_spc_map(true, true, true, nn, tol)?;
-        run_spc_map(true, false, true, nn, tol)?;
-        run_spc_map(false, true, true, nn, tol)?;
-        run_spc_map(false, false, true, nn, tol)?;
+    for bc_case in &["DDDD", "NNDD", "NDND", "DNND", "DDNN"] {
+        for helmholtz in &[true, false] {
+            for lmm in &[true, false] {
+                for nn_tol in &[
+                    (8, 4.2e-2), //
+                                 // (12, 1.0e-5), //
+                                 // (15, 1e-8),   //
+                                 // (20, 1e-12),  //
+                ] {
+                    let (nn, tol) = *nn_tol;
+                    run_spc_map(bc_case, *helmholtz, *lmm, nn, tol)?;
+                }
+            }
+        }
     }
     Ok(())
 }
 
-fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+fn run_spc(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d2_problem_03(1.0, alpha, case_a);
+        ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
@@ -100,10 +94,9 @@ fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Res
 
     // plot results
     if SAVE_FIGURE {
-        let case = if case_a { "a" } else { "b" };
         let prob = if helmholtz { "hz" } else { "ps" };
-        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_{}_{}_contour.svg", case, prob);
-        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_{}_{}_surface.svg", case, prob);
+        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_{}_{}_contour.svg", bc_combo, prob);
+        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_{}_{}_surface.svg", bc_combo, prob);
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();
@@ -184,11 +177,11 @@ fn run_spc(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Res
     Ok(())
 }
 
-fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+fn run_spc_map(bc_combo: &str, helmholtz: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
     let alpha = if helmholtz { 1.0 } else { 0.0 };
     let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) =
-        ProblemSamples::d2_problem_03(1.0, alpha, case_a);
+        ProblemSamples::d2_problem_03(1.0, alpha, bc_combo);
 
     // transfinite map
     let map = TransfiniteSamples::quadrilateral_2d(&[xmin, ymin], &[xmax, ymin], &[xmax, ymax], &[xmin, ymax]);
@@ -237,10 +230,15 @@ fn run_spc_map(case_a: bool, helmholtz: bool, lmm: bool, nn: usize, tol: f64) ->
 
     // plot results
     if SAVE_FIGURE {
-        let case = if case_a { "a" } else { "b" };
         let prob = if helmholtz { "hz" } else { "ps" };
-        let fn_a = format!("/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_contour.svg", case, prob);
-        let fn_b = format!("/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_surface.svg", case, prob);
+        let fn_a = format!(
+            "/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_contour.svg",
+            bc_combo, prob
+        );
+        let fn_b = format!(
+            "/tmp/russell_pde/test_2d_prob03_spc_map_{}_{}_surface.svg",
+            bc_combo, prob
+        );
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();

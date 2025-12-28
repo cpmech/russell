@@ -922,5 +922,8 @@ mod tests {
         assert_eq!(mm.get_info(), (ndim, ndim, nnz, Sym::No));
         let cc = cc.unwrap();
         assert_eq!(cc.get_info(), (nlag, neq, nlag, Sym::No));
+
+        // check that get_map works
+        let _ = spc.get_map();
     }
 }

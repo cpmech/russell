@@ -711,6 +711,10 @@ mod tests {
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 
+        assert_eq!(spec.get_dims_sps(), (9, 16));
+        assert_eq!(spec.get_equations().nu(), 9);
+        assert_eq!(spec.get_equations().np(), 16);
+
         let ___ = 0.0;
         #[rustfmt::skip]
         let correct_kk_bar = &[

@@ -413,9 +413,6 @@ impl<'a> Fdm2d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             self.loop_over_bandwidth(m, |b, n| {
-                if (sym_kk_bar == Sym::YesLower && m < n) || (sym_kk_bar == Sym::YesUpper && m > n) {
-                    return;
-                }
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha;
@@ -431,9 +428,12 @@ impl<'a> Fdm2d<'a> {
                     let jp = self.equations.ip(n);
                     kk_check.put(iu, jp, val).unwrap();
                 } else {
-                    let ju = self.equations.iu(n);
-                    kk_bar.put(iu, ju, val).unwrap();
-                }
+                    let skip = (sym_kk_bar == Sym::YesLower && m < n) || (sym_kk_bar == Sym::YesUpper && m > n);
+                    if !skip {
+                        let ju = self.equations.iu(n);
+                        kk_bar.put(iu, ju, val).unwrap();
+                    }
+                };
             });
         });
         if np == 0 {
@@ -821,18 +821,8 @@ mod tests {
         nbcs.set(Side::Ymax, |_, _| 0.0); //  8  9 10 11
 
         let fdm = Fdm2d::new(grid, ebcs, nbcs, 100.0, 300.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0, Sym::No);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
-        let cc = cc_mat.unwrap();
-        let ee = ee_mat.unwrap();
-
         assert_eq!(fdm.get_dims_sps(), (9, 3));
         assert_eq!(fdm.get_dims_lmm(), (12, 3, 15));
-
-        let aa_dense = aa.as_dense();
-        let kk_dense = kk.as_dense();
-        assert_symmetric(&aa_dense);
-        assert_symmetric(&kk_dense);
 
         // The full matrix is:
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11
@@ -852,72 +842,45 @@ mod tests {
         // └                                                             ┘
         //      0*   1    2    3    4*   5    6    7    8*   9   10   11
 
-        // K =
-        //      1    2    3    5    6    7    9   10   11
-        // ┌                                              ┐
-        // │  400  -50    . -300    .    .    .    .    . │  1→0    B
-        // │  -50  400  -50    . -300    .    .    .    . │  2→1    B
-        // │    .  -50  200    .    . -150    .    .    . │  3→2    corner
-        // │ -300    .    .  800 -100    . -300    .    . │  5→3
-        // │    . -300    . -100  800 -100    . -300    . │  6→4
-        // │    .    . -150    . -100  400    .    . -150 │  7→5    R
-        // │    .    .    . -300    .    .  400  -50    . │  9→6    T
-        // │    .    .    .    . -300    .  -50  400  -50 │ 10→7    T
-        // │    .    .    .    .    . -150    .  -50  200 │ 11→8    corner
-        // └                                              ┘
-        //      1    2    3    5    6    7    9   10   11
-        assert_eq!(
-            format!("{}", kk_dense),
-            "┌                                              ┐\n\
-             │  400  -50    0 -300    0    0    0    0    0 │\n\
-             │  -50  400  -50    0 -300    0    0    0    0 │\n\
-             │    0  -50  200    0    0 -150    0    0    0 │\n\
-             │ -300    0    0  800 -100    0 -300    0    0 │\n\
-             │    0 -300    0 -100  800 -100    0 -300    0 │\n\
-             │    0    0 -150    0 -100  400    0    0 -150 │\n\
-             │    0    0    0 -300    0    0  400  -50    0 │\n\
-             │    0    0    0    0 -300    0  -50  400  -50 │\n\
-             │    0    0    0    0    0 -150    0  -50  200 │\n\
-             └                                              ┘"
-        );
+        for sym_kk_bar in [Sym::No, Sym::YesLower, Sym::YesUpper, Sym::YesFull] {
+            let (kk_bar, kk_check) = fdm.get_matrices_sps(0.0, 0, sym_kk_bar);
+            let kk_check = kk_check.unwrap();
+            let kk_bar_dense = kk_bar.as_dense();
+            assert_symmetric(&kk_bar_dense);
+            assert_eq!(
+                format!("{}", kk_bar_dense),
+                "┌                                              ┐\n\
+                 │  400  -50    0 -300    0    0    0    0    0 │\n\
+                 │  -50  400  -50    0 -300    0    0    0    0 │\n\
+                 │    0  -50  200    0    0 -150    0    0    0 │\n\
+                 │ -300    0    0  800 -100    0 -300    0    0 │\n\
+                 │    0 -300    0 -100  800 -100    0 -300    0 │\n\
+                 │    0    0 -150    0 -100  400    0    0 -150 │\n\
+                 │    0    0    0 -300    0    0  400  -50    0 │\n\
+                 │    0    0    0    0 -300    0  -50  400  -50 │\n\
+                 │    0    0    0    0    0 -150    0  -50  200 │\n\
+                 └                                              ┘"
+            );
+            assert_eq!(
+                format!("{}", kk_check.as_dense()),
+                "┌                ┐\n\
+                 │  -50    0    0 │\n\
+                 │    0    0    0 │\n\
+                 │    0    0    0 │\n\
+                 │    0 -100    0 │\n\
+                 │    0    0    0 │\n\
+                 │    0    0    0 │\n\
+                 │    0    0  -50 │\n\
+                 │    0    0    0 │\n\
+                 │    0    0    0 │\n\
+                 └                ┘"
+            );
+        }
 
-        // C =
-        //     0*  4*  8*
-        // ┌              ┐
-        // │  -50   .   . │  1→0
-        // │    .   .   . │  2→1
-        // │    .   .   . │  3→2
-        // │    . -100  . │  5→3
-        // │    .   .   . │  6→4
-        // │    .   .   . │  7→5
-        // │    .   .  -50│  9→6
-        // │    .   .   . │ 10→7
-        // │    .   .   . │ 11→8
-        // └              ┘
-        //     0*  4*  8*
-        assert_eq!(
-            format!("{}", cc.as_dense()),
-            "┌                ┐\n\
-             │  -50    0    0 │\n\
-             │    0    0    0 │\n\
-             │    0    0    0 │\n\
-             │    0 -100    0 │\n\
-             │    0    0    0 │\n\
-             │    0    0    0 │\n\
-             │    0    0  -50 │\n\
-             │    0    0    0 │\n\
-             │    0    0    0 │\n\
-             └                ┘"
-        );
-
-        // E =
-        //      0*   1    2    3    4*   5    6    7    8*   9   10   11
-        // ┌                                                             ┐
-        // │    1    .    .    .    .    .    .    .    .    .    .    . │  0*
-        // │    .    .    .    .    1    .    .    .    .    .    .    . │  4*
-        // │    .    .    .    .    .    .    .    .    1    .    .    . │  8*
-        // └                                                             ┘
-        //      0*   1    2    3    4*   5    6    7    8*   9   10   11
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
+        let aa_dense = aa.as_dense();
+        assert_symmetric(&aa_dense);
+        let ee = ee_mat.unwrap();
         assert_eq!(
             format!("{}", ee.as_dense()),
             "┌                         ┐\n\
@@ -926,27 +889,6 @@ mod tests {
              │ 0 0 0 0 0 0 0 0 1 0 0 0 │\n\
              └                         ┘"
         );
-
-        // A =
-        //      0*   1    2    3    4*   5    6    7    8*   9   10   11   12w  13w  14w
-        // ┌                                                                            ┐
-        // │  200  -50    .    . -150    .    .    .    .    .    .    .    1    .    . │  0*(p0)   corner
-        // │  -50  400  -50    .    . -300    .    .    .    .    .    .    .    .    . │  1→0      B
-        // │    .  -50  400  -50    .    . -300    .    .    .    .    .    .    .    . │  2→1      B
-        // │    .    .  -50  200    .    .    . -150    .    .    .    .    .    .    . │  3→2      corner
-        // │ -150    .    .    .  400 -100    .    . -150    .    .    .    .    1    . │  4*(p1)   L
-        // │    . -300    .    . -100  800 -100    .    . -300    .    .    .    .    . │  5→3
-        // │    .    . -300    .    . -100  800 -100    .    . -300    .    .    .    . │  6→4
-        // │    .    .    . -150    .    . -100  400    .    .    . -150    .    .    . │  7→5      R
-        // │    .    .    .    . -150    .    .    .  200  -50    .    .    .    .    1 │  8*(p3)   corner
-        // │    .    .    .    .    . -300    .    .  -50  400  -50    .    .    .    . │  9→6      T
-        // │    .    .    .    .    .    . -300    .    .  -50  400  -50    .    .    . │ 10→7      T
-        // │    .    .    .    .    .    .    . -150    .    .  -50  200    .    .    . │ 11→8      corner
-        // │    1    .    .    .    .    .    .    .    .    .    .    .    .    .    . │ 12w
-        // │    .    .    .    .    1    .    .    .    .    .    .    .    .    .    . │ 13w
-        // │    .    .    .    .    .    .    .    .    1    .    .    .    .    .    . │ 14w
-        // └                                                                            ┘
-        //      0*   1    2    3    4*   5    6    7    8*   9   10   11   12w  13w  14w
         assert_eq!(
             format!("{}", aa_dense),
             "┌                                                                            ┐\n\

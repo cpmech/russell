@@ -373,9 +373,6 @@ impl<'a> Fdm1d<'a> {
         self.equations.unknown().iter().for_each(|&m| {
             let iu = self.equations.iu(m);
             self.loop_over_bandwidth(m, |b, n| {
-                if (sym_kk_bar == Sym::YesLower && m < n) || (sym_kk_bar == Sym::YesUpper && m > n) {
-                    return;
-                }
                 let mut val = self.molecule[b];
                 if m == n {
                     val += alpha; // Helmholtz term
@@ -387,8 +384,11 @@ impl<'a> Fdm1d<'a> {
                     let jp = self.equations.ip(n);
                     kk_check.put(iu, jp, val).unwrap();
                 } else {
-                    let ju = self.equations.iu(n);
-                    kk_bar.put(iu, ju, val).unwrap();
+                    let skip = (sym_kk_bar == Sym::YesLower && m < n) || (sym_kk_bar == Sym::YesUpper && m > n);
+                    if !skip {
+                        let ju = self.equations.iu(n);
+                        kk_bar.put(iu, ju, val).unwrap();
+                    }
                 }
             });
         });
@@ -722,18 +722,8 @@ mod tests {
         nbcs.set(Side::Xmax, |_| 0.0);
 
         let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
-        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0, Sym::No);
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
-        let cc = cc_mat.unwrap();
-        let ee = ee_mat.unwrap();
-
         assert_eq!(fdm.get_dims_sps(), (3, 1));
         assert_eq!(fdm.get_dims_lmm(), (4, 1, 5));
-
-        let kk_dense = kk.as_dense();
-        let aa_dense = aa.as_dense();
-        assert_symmetric(&kk_dense);
-        assert_symmetric(&aa_dense);
 
         // The full matrix is:
         //      0*   1    2    3
@@ -745,63 +735,39 @@ mod tests {
         // └                     ┘
         //      0*   1    2    3
 
-        // K =
-        //      1    2    3
-        // ┌                ┐
-        // │  200 -100    . │  1→0
-        // │ -100  200 -100 │  2→1
-        // │    . -100  100 │  3→2
-        // └                ┘
-        //      1    2    3
-        assert_eq!(
-            format!("{}", kk_dense),
-            "┌                ┐\n\
-             │  200 -100    0 │\n\
-             │ -100  200 -100 │\n\
-             │    0 -100  100 │\n\
-             └                ┘"
-        );
+        for sym_kk_bar in [Sym::No, Sym::YesLower, Sym::YesUpper, Sym::YesFull] {
+            let (kk_bar, kk_check) = fdm.get_matrices_sps(0.0, 0, sym_kk_bar);
+            let kk_check = kk_check.unwrap();
+            let kk_bar_dense = kk_bar.as_dense();
+            assert_symmetric(&kk_bar_dense);
+            assert_eq!(
+                format!("{}", kk_bar_dense),
+                "┌                ┐\n\
+                 │  200 -100    0 │\n\
+                 │ -100  200 -100 │\n\
+                 │    0 -100  100 │\n\
+                 └                ┘"
+            );
+            assert_eq!(
+                format!("{}", kk_check.as_dense()),
+                "┌      ┐\n\
+                 │ -100 │\n\
+                 │    0 │\n\
+                 │    0 │\n\
+                 └      ┘"
+            );
+        }
 
-        // C =
-        //     0*
-        // ┌      ┐
-        // │ -100 │  1→0
-        // │    . │  2→1
-        // │    . │  3→2
-        // └      ┘
-        //     0*
-        assert_eq!(
-            format!("{}", cc.as_dense()),
-            "┌      ┐\n\
-             │ -100 │\n\
-             │    0 │\n\
-             │    0 │\n\
-             └      ┘"
-        );
-
-        // E =
-        //      0*   1    2    3
-        // ┌                     ┐
-        // │    1    .    .    . │  0*
-        // └                     ┘
-        //      0*   1    2    3
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
+        let ee = ee_mat.unwrap();
+        let aa_dense = aa.as_dense();
+        assert_symmetric(&aa_dense);
         assert_eq!(
             format!("{}", ee.as_dense()),
             "┌         ┐\n\
              │ 1 0 0 0 │\n\
              └         ┘"
         );
-
-        // A =
-        //      0*   1    2    3    4w
-        // ┌                          ┐
-        // │  100 -100    .    .    1 │  0*    // divided by 2 due to EBC at Xmin
-        // │ -100  200 -100    .    . │  1
-        // │    . -100  200 -100    . │  2
-        // │    .    . -100  100    . │  3     // divided by 2 due to NBC at Xmax
-        // │    1    .    .    .    . │  4w
-        // └                          ┘
-        //      0*   1    2    3    4w
         assert_eq!(
             format!("{}", aa_dense),
             "┌                          ┐\n\

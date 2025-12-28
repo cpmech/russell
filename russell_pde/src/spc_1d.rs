@@ -533,4 +533,21 @@ impl<'a> Spc1d<'a> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::Spc1d;
+    use crate::{EssentialBcs1d, NaturalBcs1d, Side};
+
+    #[test]
+    fn get_dims_sps_and_get_equations_work() {
+        let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
+        ebcs.set(Side::Xmin, |_| 0.0);
+        nbcs.set(Side::Xmax, |_| 0.0);
+        let spc = Spc1d::new(0.0, 1.0, 3, ebcs, nbcs, 1.0).unwrap();
+
+        assert_eq!(spc.get_dims_sps(), (2, 1));
+        assert_eq!(spc.get_equations().neq(), 3);
+        assert_eq!(spc.get_equations().nu(), 2);
+        assert_eq!(spc.get_equations().np(), 1);
+    }
+}

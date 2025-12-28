@@ -525,7 +525,7 @@ impl Samples {
                 f[m] = 1.0 - 4.4 * um + um2 * vm;
                 f[s + m] = 3.4 * um - um2 * vm;
                 if !ignore_diffusion {
-                    fdm.loop_over_full_coef_mat_row(m, |k, amk| {
+                    fdm.loop_over_molecule(m, |k, amk| {
                         let uk = yy[k];
                         let vk = yy[s + k];
                         f[m] += amk * uk;
@@ -559,7 +559,7 @@ impl Samples {
                     jj.put(s + m, s + m, aa * (-um2)).unwrap();
                     nnz_count += 4;
                     if !ignore_diffusion {
-                        fdm.loop_over_full_coef_mat_row(m, |n, amn| {
+                        fdm.loop_over_molecule(m, |n, amn| {
                             jj.put(m, n, aa * (amn)).unwrap();
                             jj.put(s + m, s + n, aa * (amn)).unwrap();
                             nnz_count += 2;

@@ -604,18 +604,17 @@ impl<'a> Fdm1d<'a> {
         (aa, ff)
     }
 
-    /// Executes a loop over one row of the full coefficient matrix K
+    /// Executes a loop over the molecule values at row `m` of the coefficient matrix
     ///
     /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
-    /// This also allows the setting up of flux boundary conditions. Therefore, some
-    /// column indices may appear repeated; e.g. due to the zero-flux boundaries.
+    /// Therefore, some column indices may appear repeated.
     ///
     /// # Input
     ///
     /// * `m` -- the row of the coefficient matrix
     /// * `callback` -- a `function(n, val_mn)` where `n` is the column index and
-    ///   `val_mn` is the m-n-element of the coefficient matrix
-    pub fn loop_over_full_coef_mat_row<F>(&self, m: usize, mut callback: F)
+    ///   `val_mn` is the molecule value at row `m` and column `n`.
+    pub fn loop_over_molecule<F>(&self, m: usize, mut callback: F)
     where
         F: FnMut(usize, f64),
     {
@@ -724,6 +723,16 @@ mod tests {
         let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
         assert_eq!(fdm.get_dims_sps(), (3, 1));
         assert_eq!(fdm.get_dims_lmm(), (4, 1, 5));
+
+        fdm.loop_over_molecule(0, |n, val_mn| {
+            if n == 0 {
+                assert_eq!(val_mn, 200.0);
+            } else if n == 1 {
+                assert_eq!(val_mn, -100.0);
+            } else {
+                assert_eq!(val_mn, -100.0);
+            }
+        });
 
         // The full matrix is:
         //      0*   1    2    3

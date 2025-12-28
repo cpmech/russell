@@ -939,6 +939,17 @@ mod tests {
     }
 
     #[test]
+    fn test_draw_functions_work() {
+        let mut canvas_2d = Canvas::new();
+        let mut map_2d = TransfiniteSamples::quadrilateral_2d(&[0.0, 0.0], &[1.0, 0.0], &[1.0, 1.0], &[0.0, 1.0]);
+        draw_lines_2d(&mut canvas_2d, &mut map_2d, 1, 0.02);
+
+        let mut canvas_3d = Canvas::new();
+        let mut map_3d = TransfiniteSamples::brick_3d(1.0, 1.0, 1.0);
+        draw_surface_lines_3d(&mut canvas_3d, &mut map_3d, 1);
+    }
+
+    #[test]
     fn test_quadrilateral_2d() {
         let xa = &[1.0, 0.0];
         let xb = &[6.0, 4.0];

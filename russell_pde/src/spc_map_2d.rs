@@ -772,6 +772,7 @@ mod tests {
     use super::SpcMap2d;
     use crate::{EssentialBcs2d, NaturalBcs2d, Side, TransfiniteSamples};
     use russell_lab::{mat_approx_eq, Vector};
+    use russell_sparse::Sym;
 
     #[test]
     fn new_captures_errors() {
@@ -825,10 +826,10 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         ebcs.set_homogeneous();
         let nbcs = NaturalBcs2d::new();
-        let mut spec = SpcMap2d::new(map, 2, 2, ebcs, nbcs, 1.0).unwrap();
+        let mut spc = SpcMap2d::new(map, 2, 2, ebcs, nbcs, 1.0).unwrap();
         let a = Vector::from(&[0.0]); // wrong size
         assert_eq!(
-            spec.calculate_flow_vectors(&a).err(),
+            spc.calculate_flow_vectors(&a).err(),
             Some("a.dim() must equal the number of equations")
         );
     }
@@ -839,14 +840,16 @@ mod tests {
         let mut ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
         ebcs.set_homogeneous();
-        let mut spectral = SpcMap2d::new(map, 5, 5, ebcs, nbcs, 1.0).unwrap();
-        let (kk_bar, kk_check) = spectral.get_matrices_sps(0.0, 0);
+        let (nr, ns) = (5, 5);
+        let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, 1.0).unwrap();
+        let (kk_bar, kk_check) = spc.get_matrices_sps(0.0, 0);
         let kk_bar_dense = kk_bar.as_dense();
         // println!("{:.2}", kk_bar_dense);
 
-        assert_eq!(spectral.get_dims_sps(), (9, 16));
-        assert_eq!(spectral.get_equations().nu(), 9);
-        assert_eq!(spectral.get_equations().np(), 16);
+        let (nu, np) = (9, 16);
+        assert_eq!(spc.get_dims_sps(), (nu, np));
+        assert_eq!(spc.get_equations().nu(), nu);
+        assert_eq!(spc.get_equations().np(), np);
 
         let ___ = 0.0;
         #[rustfmt::skip]
@@ -878,5 +881,15 @@ mod tests {
         let kk_check_dense = kk_check.as_dense();
         // println!("{:.3}", kk_check_dense);
         mat_approx_eq(&kk_check_dense, correct_kk_check, 1e-14);
+
+        let neq = nu + np;
+        let nlag = np;
+        let ndim = neq + nlag;
+        assert_eq!(spc.get_dims_lmm(), (neq, nlag, ndim));
+        let nnz = neq * neq + 2 * nlag;
+        let (mm, cc) = spc.get_matrices_lmm(0.0, 0, true);
+        assert_eq!(mm.get_info(), (ndim, ndim, nnz, Sym::No));
+        let cc = cc.unwrap();
+        assert_eq!(cc.get_info(), (nlag, neq, nlag, Sym::No));
     }
 }

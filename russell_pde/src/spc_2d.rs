@@ -782,7 +782,6 @@ mod tests {
         let spc = Spc2d::new(-1.0, 1.0, -1.0, 1.0, nx, ny, ebcs, nbcs, 1.0, 1.0).unwrap();
         let (kk_bar, kk_check) = spc.get_matrices_sps(0.0, 0);
         let kk_bar_dense = kk_bar.as_dense();
-        // println!("{:.2}", kk_bar_dense);
 
         let (nu, np) = (9, 16);
         assert_eq!(spc.get_dims_sps(), (nu, np));
@@ -817,7 +816,6 @@ mod tests {
             [0.0, 0.0, 0.0, -0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, -0.757359312880714, -9.242640687119286, 0.0, 0.0, 0.0, -9.242640687119286, 0.0],
         ];
         let kk_check_dense = kk_check.as_dense();
-        // println!("{:.3}", kk_check_dense);
         mat_approx_eq(&kk_check_dense, correct_kk_check, 1e-14);
 
         let neq = nu + np;

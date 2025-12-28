@@ -5,33 +5,58 @@ use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_2d_prob01_fdm_sps() -> Result<(), StrError> {
+fn test_2d_prob01_fdm() -> Result<(), StrError> {
+    for nx_tol in &[
+        (9, 2.45e-3), //
+                      // (101, 1.59e-5), //
+    ] {
+        let (nx, tol) = *nx_tol;
+        // SPS
+        run_sps(true, false, nx, tol)?;
+        run_sps(false, false, nx, tol)?;
+        // LMM
+        run_sps(true, true, nx, tol)?;
+        run_sps(false, true, nx, tol)?;
+    }
+    Ok(())
+}
+
+fn run_sps(case_a: bool, lmm: bool, nx: usize, tol: f64) -> Result<(), StrError> {
     // get the problem data
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_01();
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, _) = ProblemSamples::d2_problem_01(case_a);
 
     // allocate the grid
-    let (nx, ny) = (9, 9);
-    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, nx)?;
 
     // allocate the solver
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
 
     // solve the problem
-    let a = fdm.solve_sps(0.0, &source)?;
+    let a = if lmm {
+        fdm.solve_lmm(0.0, &source)?
+    } else {
+        fdm.solve_sps(0.0, &source)?
+    };
 
     // check
+    let mut err_max = 0.0;
     fdm.for_each_coord(|m, x, y| {
-        approx_eq(a[m], analytical(x, y), 1e-3);
+        let err = f64::abs(a[m] - analytical(x, y));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x, y), tol);
     });
+    println!("nx = {} max(err) = {:>10.5e}", nx, err_max);
 
     // plot results
     if SAVE_FIGURE {
         let mut contour_num = Contour::new();
         let mut contour_ana = Contour::new();
-        let mut xx = vec![vec![0.0; nx]; ny];
-        let mut yy = vec![vec![0.0; nx]; ny];
-        let mut zz_num = vec![vec![0.0; nx]; ny];
-        let mut zz_ana = vec![vec![0.0; nx]; ny];
+        let mut xx = vec![vec![0.0; nx]; nx];
+        let mut yy = vec![vec![0.0; nx]; nx];
+        let mut zz_num = vec![vec![0.0; nx]; nx];
+        let mut zz_ana = vec![vec![0.0; nx]; nx];
         fdm.for_each_coord(|m, x, y| {
             let row = m / nx;
             let col = m % nx;
@@ -55,27 +80,5 @@ fn test_2d_prob01_fdm_sps() -> Result<(), StrError> {
             .set_figure_size_points(600.0, 600.0)
             .save("/tmp/russell_pde/test_2d_prob01_fdm_sps.svg")?;
     }
-    Ok(())
-}
-
-#[test]
-fn test_2d_prob01_fdm_lmm() -> Result<(), StrError> {
-    // get the problem data
-    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical) = ProblemSamples::d2_problem_01();
-
-    // allocate the grid
-    let (nx, ny) = (9, 9);
-    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
-
-    // allocate the solver
-    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
-
-    // solve the problem
-    let a = fdm.solve_lmm(0.0, &source)?;
-
-    // check
-    fdm.for_each_coord(|m, x, y| {
-        approx_eq(a[m], analytical(x, y), 1e-3);
-    });
     Ok(())
 }

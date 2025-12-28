@@ -112,20 +112,28 @@ impl<'a> NaturalBcs2d<'a> {
 
     /// Indicates whether a natural boundary condition is enabled at the given (i, j) location
     pub(crate) fn enabled_ij(&self, i: usize, j: usize, grid: &Grid2d) -> bool {
+        // edges
         if i == 0 {
-            // Xmin
             self.sides[0]
         } else if i == grid.nx() - 1 {
-            // Xmax
             self.sides[1]
         } else if j == 0 {
-            // Ymin
             self.sides[2]
         } else if j == grid.ny() - 1 {
-            // Ymax
             self.sides[3]
-        } else {
-            // Interior
+        }
+        // corners
+        else if i == 0 && j == 0 {
+            self.sides[0] || self.sides[2]
+        } else if i == 0 && j == grid.ny() - 1 {
+            self.sides[0] || self.sides[3]
+        } else if i == grid.nx() - 1 && j == 0 {
+            self.sides[1] || self.sides[2]
+        } else if i == grid.nx() - 1 && j == grid.ny() - 1 {
+            self.sides[1] || self.sides[3]
+        }
+        // Interior
+        else {
             false
         }
     }

@@ -426,7 +426,7 @@ impl ProblemSamples {
 
     /// 2D Problem # 01 - Poisson
     ///
-    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)`, where:
+    /// Returns `(xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow)`, where:
     ///
     /// * `xmin`, `xmax`, `ymin`, `ymax` -- domain limits
     /// * `kx`, `ky` -- diffusion coefficients
@@ -434,23 +434,31 @@ impl ProblemSamples {
     /// * `nbcs` -- natural boundary conditions
     /// * `source` -- source term function `s(x, y)`
     /// * `analytical` -- analytical solution function `ϕ(x, y)`
+    /// * `ana_flow` -- analytical function to calculate the wx component of the flow vector
     ///
     /// # Problem
     ///
     /// Solve the equation:
     ///
     /// ```text
-    /// ∂²ϕ   ∂²ϕ
-    /// ——— + ——— = s(x, y)
-    /// ∂x²   ∂y²
+    ///   ∂²ϕ   ∂²ϕ
+    /// - ——— - ——— = s(x, y)
+    ///   ∂x²   ∂y²
     /// ```
     ///
-    /// on a `[0,1]×[0,1]` square with homogeneous boundary conditions
+    /// on a `[0,1]×[0,1]` square with the following boundary conditions:
+    ///
+    /// * `case_a == true`: homogeneous Dirichlet (essential) boundary conditions on all sides
+    /// * `case_b == false`:
+    ///  - Left   (Xmin): ∂ϕ/∂n = exp(-y) (y-1) y
+    ///  - Bottom (Ymin): ∂ϕ/∂n = exp( x) (x-1) x
+    ///  - Right  (Xmax): ϕ = 0
+    ///  - Top    (Ymax): ϕ = 0
     ///
     /// The source term is given by:
     ///
     /// ```text
-    /// s(x, y) = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
+    /// s(x, y) = 2 x (1 - y) (y - 2 x + x y + 2) exp(x - y)
     /// ```
     ///
     /// The analytical solution is:
@@ -458,7 +466,9 @@ impl ProblemSamples {
     /// ```text
     /// ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
     /// ```
-    pub fn d2_problem_01() -> (
+    pub fn d2_problem_01(
+        case_a: bool,
+    ) -> (
         f64,
         f64,
         f64,
@@ -469,15 +479,29 @@ impl ProblemSamples {
         NaturalBcs2d<'static>,
         Box<dyn Fn(f64, f64) -> f64>,
         Box<dyn Fn(f64, f64) -> f64>,
+        Box<dyn Fn(f64, f64) -> (f64, f64)>,
     ) {
         let (xmin, xmax, ymin, ymax) = (0.0, 1.0, 0.0, 1.0);
-        let (kx, ky) = (-1.0, -1.0);
+        let (kx, ky) = (1.0, 1.0);
         let mut ebcs = EssentialBcs2d::new();
-        ebcs.set_homogeneous();
-        let nbcs = NaturalBcs2d::new();
-        let source = Box::new(|x, y| 2.0 * x * (y - 1.0) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y));
+        let mut nbcs = NaturalBcs2d::new();
+        if case_a {
+            ebcs.set_homogeneous();
+        } else {
+            nbcs.set(Side::Xmin, move |_, y| -kx * f64::exp(-y) * (y - 1.0) * y);
+            nbcs.set(Side::Ymin, move |x, _| -ky * f64::exp(x) * (x - 1.0) * x);
+            ebcs.set(Side::Xmax, |_, _| 0.0);
+            ebcs.set(Side::Ymax, |_, _| 0.0);
+        }
+        let source = Box::new(|x, y| 2.0 * x * (1.0 - y) * (y - 2.0 * x + x * y + 2.0) * f64::exp(x - y));
         let analytical = Box::new(|x, y| x * y * (x - 1.0) * (y - 1.0) * f64::exp(x - y));
-        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical)
+        let ana_flow = Box::new(move |x, y| {
+            (
+                (-kx) * f64::exp(x - y) * (x * x + x - 1.0) * (y - 1.0) * y,
+                (-ky) * f64::exp(x - y) * (y * y - 3.0 * y + 1.0) * (1.0 - x) * x,
+            )
+        });
+        (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow)
     }
 
     /// 2D Problem # 02 - Poisson
@@ -570,8 +594,8 @@ impl ProblemSamples {
     ///
     /// The boundary conditions are:
     ///
-    /// * Right  (Xmax): ∂ϕ/∂x = 2 π cos(2 π y)
-    /// * Top    (Ymax): ∂ϕ/∂y = 0
+    /// * Right  (Xmax): ∂ϕ/∂n = 2 π cos(2 π y)
+    /// * Top    (Ymax): ∂ϕ/∂n = 0
     /// * Left   (Xmin): ϕ = 0
     /// * Bottom (Ymin): ϕ = sin(2 π x)
     ///
@@ -591,8 +615,8 @@ impl ProblemSamples {
     ///
     /// The boundary conditions are:
     ///
-    /// * Right  (Xmax): ∂ϕ/∂x = 2 π sin(2 π y)
-    /// * Top    (Ymax): ∂ϕ/∂y = 2 π sin(2 π x)
+    /// * Right  (Xmax): ∂ϕ/∂n = 2 π sin(2 π y)
+    /// * Top    (Ymax): ∂ϕ/∂n = 2 π sin(2 π x)
     /// * Left   (Xmin): ϕ = 0
     /// * Bottom (Ymin): ϕ = 0
     ///

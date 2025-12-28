@@ -367,16 +367,32 @@ impl<'a> SpcMap2d<'a> {
                 for n in 0..neq {
                     let (k, l) = self.grid.get_ij(n);
                     let mut val = 0.0;
-                    if i == 0 || i == nr - 1 {
-                        // Xmin or Xmax
+                    if i == 0 {
+                        // Xmin
+                        if j == l {
+                            self.calc_unit_normal(Side::Xmin);
+                            let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
+                            val += self.mk * self.d1r(i, k) * alpha;
+                        }
+                    }
+                    if i == nr - 1 {
+                        // Xmax
                         if j == l {
                             self.calc_unit_normal(Side::Xmax);
                             let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
                             val += self.mk * self.d1r(i, k) * alpha;
                         }
                     }
-                    if j == 0 || j == ns - 1 {
-                        // Ymin or Ymax
+                    if j == 0 {
+                        // Ymin
+                        if i == k {
+                            self.calc_unit_normal(Side::Ymin);
+                            let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
+                            val += self.mk * self.d1s(j, l) * beta;
+                        }
+                    }
+                    if j == ns - 1 {
+                        // Ymax
                         if i == k {
                             self.calc_unit_normal(Side::Ymax);
                             let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
@@ -451,16 +467,32 @@ impl<'a> SpcMap2d<'a> {
                 for n in 0..neq {
                     let (k, l) = self.grid.get_ij(n);
                     let mut val = 0.0;
-                    if i == 0 || i == nr - 1 {
-                        // Xmin or Xmax
+                    if i == 0 {
+                        // Xmin
+                        if j == l {
+                            self.calc_unit_normal(Side::Xmin);
+                            let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
+                            val += self.mk * self.d1r(i, k) * alpha;
+                        }
+                    }
+                    if i == nr - 1 {
+                        // Xmax
                         if j == l {
                             self.calc_unit_normal(Side::Xmax);
                             let alpha = vec_inner(&self.un, &self.metrics.g_ctr[0]);
                             val += self.mk * self.d1r(i, k) * alpha;
                         }
                     }
-                    if j == 0 || j == ns - 1 {
-                        // Ymin or Ymax
+                    if j == 0 {
+                        // Ymin
+                        if i == k {
+                            self.calc_unit_normal(Side::Ymin);
+                            let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
+                            val += self.mk * self.d1s(j, l) * beta;
+                        }
+                    }
+                    if j == ns - 1 {
+                        // Ymax
                         if i == k {
                             self.calc_unit_normal(Side::Ymax);
                             let beta = vec_inner(&self.un, &self.metrics.g_ctr[1]);
@@ -844,7 +876,6 @@ mod tests {
         let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, 1.0).unwrap();
         let (kk_bar, kk_check) = spc.get_matrices_sps(0.0, 0);
         let kk_bar_dense = kk_bar.as_dense();
-        // println!("{:.2}", kk_bar_dense);
 
         let (nu, np) = (9, 16);
         assert_eq!(spc.get_dims_sps(), (nu, np));
@@ -879,7 +910,6 @@ mod tests {
             [0.0, 0.0, 0.0, -0.757359312880714, 0.0, 0.0, 0.0, 0.0, 0.0, -0.757359312880714, -9.242640687119286, 0.0, 0.0, 0.0, -9.242640687119286, 0.0],
         ];
         let kk_check_dense = kk_check.as_dense();
-        // println!("{:.3}", kk_check_dense);
         mat_approx_eq(&kk_check_dense, correct_kk_check, 1e-14);
 
         let neq = nu + np;

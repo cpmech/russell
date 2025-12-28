@@ -758,26 +758,28 @@ mod tests {
             );
         }
 
-        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
-        let ee = ee_mat.unwrap();
-        let aa_dense = aa.as_dense();
-        assert_symmetric(&aa_dense);
-        assert_eq!(
-            format!("{}", ee.as_dense()),
-            "┌         ┐\n\
-             │ 1 0 0 0 │\n\
-             └         ┘"
-        );
-        assert_eq!(
-            format!("{}", aa_dense),
-            "┌                          ┐\n\
-             │  100 -100    0    0    1 │\n\
-             │ -100  200 -100    0    0 │\n\
-             │    0 -100  200 -100    0 │\n\
-             │    0    0 -100  100    0 │\n\
-             │    1    0    0    0    0 │\n\
-             └                          ┘"
-        );
+        for sym_mm in [Sym::No, Sym::YesLower, Sym::YesUpper, Sym::YesFull] {
+            let (mm, cc) = fdm.get_matrices_lmm(0.0, 0, true, sym_mm);
+            let cc = cc.unwrap();
+            let mm_dense = mm.as_dense();
+            assert_symmetric(&mm_dense);
+            assert_eq!(
+                format!("{}", cc.as_dense()),
+                "┌         ┐\n\
+                 │ 1 0 0 0 │\n\
+                 └         ┘"
+            );
+            assert_eq!(
+                format!("{}", mm_dense),
+                "┌                          ┐\n\
+                 │  100 -100    0    0    1 │\n\
+                 │ -100  200 -100    0    0 │\n\
+                 │    0 -100  200 -100    0 │\n\
+                 │    0    0 -100  100    0 │\n\
+                 │    1    0    0    0    0 │\n\
+                 └                          ┘"
+            );
+        }
     }
 
     #[test]

@@ -67,12 +67,12 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 ///     let xmax = 1.0;
 ///     let nx = 4;
 ///     let kx = 1.0;
-///     let spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx).unwrap();
+///     let spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx)?;
 ///
 ///     // Solve system
 ///     let alpha = 0.0; // Poisson
 ///     let source = |_| 1.0;
-///     let phi = spc.solve_sps(alpha, source).unwrap();
+///     let phi = spc.solve_sps(alpha, source)?;
 ///
 ///     // Check
 ///     spc.for_each_coord(|m, x| {

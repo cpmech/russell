@@ -159,7 +159,7 @@ const INI_X: usize = 0;
 ///     let xmin = 0.0;
 ///     let xmax = 1.0;
 ///     let nx = 4;
-///     let mut grid = Grid1d::new_uniform(xmin, xmax, nx).unwrap();
+///     let mut grid = Grid1d::new_uniform(xmin, xmax, nx)?;
 ///
 ///     // Essential BCs
 ///     let mut ebcs = EssentialBcs1d::new();
@@ -171,13 +171,13 @@ const INI_X: usize = 0;
 ///
 ///     // FDM solver
 ///     let kx = 1.0;
-///     let mut fdm = Fdm1d::new(grid, ebcs, nbcs, kx).unwrap();
+///     let mut fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 ///     fdm.set_solver_options(Genie::Umfpack, true);
 ///
 ///     // Solve system
 ///     let alpha = 0.0; // Poisson
 ///     let source = |_| 1.0;
-///     let phi = fdm.solve_sps(alpha, source).unwrap();
+///     let phi = fdm.solve_sps(alpha, source)?;
 ///
 ///     // Check
 ///     let grid = fdm.get_grid();

@@ -59,6 +59,77 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 ///
 /// 1. System Partitioning Strategy (SPS)
 /// 2. Lagrange Multipliers Method (LMM)
+///
+/// # Examples
+///
+/// Solves the Poisson equation in 2D:
+///
+/// ```text
+///   ∂²ϕ   ∂²ϕ
+/// - ——— - ——— = 0    on  a rotated [0, 1] × [0, 1] domain by α
+///   ∂x²   ∂y²
+///
+/// ϕ(0, y) = 0
+/// ϕ(1, y) = 0
+/// ϕ(x, 0) = sin(π x / cos(α))
+/// ϕ(x, 1) = sin(π (x + sin(α)) / cos(α)) exp(π)
+/// ```
+///
+/// The analytical solution is:
+///
+/// ```text
+/// ϕ(x, y) = sin(π x cos(α) + π y sin(α)) * exp(π y cos(α) - π x sin(α))
+/// ```
+///
+/// ```
+/// use russell_lab::math::PI;
+/// use russell_lab::{approx_eq, Vector};
+/// use russell_pde::{EssentialBcs2d, NaturalBcs2d, Side, SpcMap2d, StrError, TransfiniteSamples};
+///
+/// fn main() -> Result<(), StrError> {
+///     // Polynomial degree and tolerance for error checking
+///     let nn = 8;
+///     let tol = 1.0e-5;
+///     let alpha = PI / 6.0;
+///     let (ca, sa) = (f64::cos(alpha), f64::sin(alpha));
+///
+///     // Transfinite map
+///     let xa = &[0.0, 0.0];
+///     let xb = &[ca, sa];
+///     let xc = &[ca - sa, ca + sa];
+///     let xd = &[-sa, ca];
+///     let mut map = TransfiniteSamples::quadrilateral_2d(xa, xb, xc, xd);
+///
+///     // Analytical solution
+///     let analytical = move |x: f64, y: f64| f64::sin(PI * x * ca + PI * y * sa) * f64::exp(PI * y * ca - PI * x * sa);
+///
+///     // Essential boundary conditions
+///     let mut ebcs = EssentialBcs2d::new();
+///     ebcs.set(Side::Xmin, |_, _| 0.0);
+///     ebcs.set(Side::Xmax, |_, _| 0.0);
+///     ebcs.set(Side::Ymin, move |x, _| f64::sin(PI * x / ca));
+///     ebcs.set(Side::Ymax, move |x, _| f64::sin(PI * (x + sa) / ca) * f64::exp(PI));
+///
+///     // Natural boundary conditions
+///     let nbcs = NaturalBcs2d::new();
+///
+///     // Allocate the solver
+///     let (nr, ns) = (nn + 1, nn + 1);
+///     let k = 1.0;
+///     let mut spc = SpcMap2d::new(map, nr, ns, ebcs, nbcs, k)?;
+///
+///     // Solve the problem
+///     let a = spc.solve_sps(0.0, |_, _| 0.0)?;
+///
+///     // check
+///     spc.for_each_coord(|m, x, y| {
+///         approx_eq(a[m], analytical(x, y), tol);
+///     });
+///     Ok(())
+/// }
+/// ```
+///
+/// ![Results](data/figures/doc_example_spc_map.svg)
 pub struct SpcMap2d<'a> {
     /// Defines the 2D grid on the reference domain [-1, 1] × [-1, 1]
     grid: Grid2d,

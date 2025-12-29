@@ -152,7 +152,6 @@ const INI_X: usize = 0;
 /// ```
 /// use russell_lab::approx_eq;
 /// use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, Side, StrError};
-/// use russell_sparse::Genie;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // grid
@@ -171,8 +170,7 @@ const INI_X: usize = 0;
 ///
 ///     // FDM solver
 ///     let kx = 1.0;
-///     let mut fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
-///     fdm.set_solver_options(Genie::Umfpack, true);
+///     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 ///
 ///     // Solve system
 ///     let alpha = 0.0; // Poisson
@@ -180,12 +178,10 @@ const INI_X: usize = 0;
 ///     let phi = fdm.solve_sps(alpha, source)?;
 ///
 ///     // Check
-///     let grid = fdm.get_grid();
-///     for m in 0..grid.nx() {
-///         let x = grid.coord(m);
+///     fdm.for_each_coord(|m, x| {
 ///         let analytical = x * (1.0 - x) / 2.0;
 ///         approx_eq(phi[m], analytical, 1e-14);
-///     }
+///     });
 ///     Ok(())
 /// }
 /// ```

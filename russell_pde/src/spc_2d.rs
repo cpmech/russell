@@ -41,6 +41,60 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 ///
 /// 1. System Partitioning Strategy (SPS)
 /// 2. Lagrange Multipliers Method (LMM)
+///
+/// # Examples
+///
+/// Solves the Poisson equation in 2D:
+///
+/// ```text
+///   ∂²ϕ   ∂²ϕ
+/// - ——— - ——— = 0    on  x ∈ [0, 1] × [0, 1]
+///   ∂x²   ∂y²
+///
+/// ϕ(0, y) = 0
+/// ϕ(1, y) = 0
+/// ϕ(x, 0) = sin(πx)
+/// ϕ(x, 1) = sin(πx) exp(π)
+/// ```
+///
+/// The analytical solution is `ϕ(x, y) = sin(πx) exp(πy)`.
+///
+/// ```
+/// use russell_lab::approx_eq;
+/// use russell_lab::math::PI;
+/// use russell_pde::{EssentialBcs2d, NaturalBcs2d, Side, Spc2d, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // Essential BCs
+///     let mut ebcs = EssentialBcs2d::new();
+///     ebcs.set(Side::Xmin, |_, _| 0.0);
+///     ebcs.set(Side::Xmax, |_, _| 0.0);
+///     ebcs.set(Side::Ymin, |x, _| f64::sin(PI * x));
+///     ebcs.set(Side::Ymax, |x, _| f64::sin(PI * x) * f64::exp(PI));
+///
+///     // Natural BCs (none)
+///     let nbcs = NaturalBcs2d::new();
+///
+///     // Spectral Collocation solver
+///     let (xmin, xmax) = (0.0, 1.0);
+///     let (ymin, ymax) = (0.0, 1.0);
+///     let (nx, ny) = (6, 6);
+///     let (kx, ky) = (1.0, 1.0);
+///     let spc = Spc2d::new(xmin, xmax, ymin, ymax, nx, ny, ebcs, nbcs, kx, ky)?;
+///
+///     // Solve system
+///     let alpha = 0.0; // 0 => Poisson; otherwise Helmholtz
+///     let source = |_, _| 0.0; // no source term
+///     let a = spc.solve_sps(alpha, source)?;
+///
+///     // Check
+///     spc.for_each_coord(|m, x, y| {
+///         let analytical = f64::sin(PI * x) * f64::exp(PI * y);
+///         approx_eq(a[m], analytical, 4e-3);
+///     });
+///     Ok(())
+/// }
+/// ```
 pub struct Spc2d<'a> {
     /// Minimum x-coordinate
     xmin: f64,

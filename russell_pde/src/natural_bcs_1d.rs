@@ -7,8 +7,8 @@ use std::sync::Arc;
 /// specify the flux or derivative of the solution at the domain boundaries. For a 1D domain,
 /// these conditions take the form:
 ///
-/// * At x = xₘᵢₙ: wₙ(xₘᵢₙ) = f(xₘᵢₙ)
-/// * At x = xₘₐₓ: wₙ(xₘₐₓ) = f(xₘₐₓ)
+/// * At `x = xₘᵢₙ`: `wₙ(xₘᵢₙ) = f(xₘᵢₙ)`
+/// * At `x = xₘₐₓ`: `wₙ(xₘₐₓ) = f(xₘₐₓ)`
 ///
 /// where wₙ is the normal component of the flux and f is a user-defined function.
 ///
@@ -31,6 +31,8 @@ use std::sync::Arc;
 /// where n̂ is the unit outward normal vector on the boundary.
 ///
 /// A **positive** flux value indicates flow **leaving** the domain (outward direction).
+///
+/// **Important:** This convention is opposite to what is commonly found in some literature.
 ///
 /// # Notes
 ///
@@ -100,25 +102,25 @@ impl<'a> NaturalBcs1d<'a> {
         }
     }
 
-    /// Sets a flux boundary condition
+    /// Sets a natural (Neumann) boundary condition specifying the flux at a boundary
     ///
-    /// The boundary condition is defined as:
+    /// # Input
     ///
-    /// ```text
-    /// wₙ = f(x) = q̄
-    /// ```
+    /// * `side` - The boundary side (must be `Side::Xmin` or `Side::Xmax`)
+    /// * `f` - Function with signature `f(x) -> flux` that computes the normal flux value
+    ///   * `x`: Spatial coordinate at the boundary
+    ///   * `flux`: Normal flux component wₙ = f(x) = q̄
     ///
-    /// where a **positive** value of f(x) indicates a flux **leaving** the domain.
-    /// It is worth noting that this convention is opposite to the one commonly used
-    /// in the literature. The convention here is such that a positive flux is pointing
-    /// in the same direction as the outward normal vector on the boundary.
+    /// # Flux Convention
     ///
-    /// The function is `f(x) -> q̄`
+    /// A **positive** value of f(x) indicates a flux **leaving** the domain. This convention
+    /// ensures that the flux direction aligns with the outward normal vector on the boundary.
+    ///
+    /// **Important:** This convention is opposite to what is commonly used in some literature.
     ///
     /// # Panics
     ///
-    /// A panic may occur if an invalid side is provided for a 1D grid. It must be
-    /// either `Side::Xmin` or `Side::Xmax`.
+    /// Panics if an invalid side is provided (only `Side::Xmin` and `Side::Xmax` are valid for 1D).
     ///
     /// # Theory
     ///
@@ -154,6 +156,23 @@ impl<'a> NaturalBcs1d<'a> {
     ///      │  0 │   │  0 │    └──────────────┘         │  0 │   │  0 │
     ///      └    ┘   └    ┘                             └    ┘   └    ┘
     ///    = kx ∂ϕ/∂x                                  = -kx ∂ϕ/∂x
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_pde::{NaturalBcs1d, Side};
+    ///
+    /// let mut nbcs = NaturalBcs1d::new();
+    ///
+    /// // Insulated boundary (zero flux)
+    /// nbcs.set(Side::Xmin, |_x| 0.0);
+    ///
+    /// // Constant heat flux entering the domain
+    /// nbcs.set(Side::Xmax, |_x| -5.0);
+    ///
+    /// // Spatially-varying flux
+    /// nbcs.set(Side::Xmin, |x| 2.0 * x);
     /// ```
     pub fn set(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
         let index = side as usize;

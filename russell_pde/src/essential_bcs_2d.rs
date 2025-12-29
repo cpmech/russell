@@ -8,10 +8,10 @@ use std::sync::Arc;
 /// specify the values of the solution at the domain boundaries. For a 2D domain,
 /// these conditions take the form:
 ///
-/// * At x = xₘᵢₙ: ϕ(xₘᵢₙ, y) = f(xₘᵢₙ, y)
-/// * At x = xₘₐₓ: ϕ(xₘₐₓ, y) = f(xₘₐₓ, y)
-/// * At y = yₘᵢₙ: ϕ(x, yₘᵢₙ) = f(x, yₘᵢₙ)
-/// * At y = yₘₐₓ: ϕ(x, yₘₐₓ) = f(x, yₘₐₓ)
+/// * At `x = xₘᵢₙ`: `ϕ(xₘᵢₙ, y) = f(xₘᵢₙ, y)`
+/// * At `x = xₘₐₓ`: `ϕ(xₘₐₓ, y) = f(xₘₐₓ, y)`
+/// * At `y = yₘᵢₙ`: `ϕ(x, yₘᵢₙ) = f(x, yₘᵢₙ)`
+/// * At `y = yₘₐₓ`: `ϕ(x, yₘₐₓ) = f(x, yₘₐₓ)`
 ///
 /// where f is a user-defined function that computes the boundary value.
 ///

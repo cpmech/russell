@@ -86,7 +86,7 @@ impl<'a> EssentialBcs2d<'a> {
     }
 
     /// Makes sure that all sides have either EBC or NBC, but not both
-    pub(crate) fn validate(&self, nbcs: &NaturalBcs2d) -> Result<(), StrError> {
+    pub fn validate(&self, nbcs: &NaturalBcs2d) -> Result<(), StrError> {
         if self.sides[0] && nbcs.sides[0] {
             return Err("Xmin side must not have both EBC and NBC");
         }

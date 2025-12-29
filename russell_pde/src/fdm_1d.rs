@@ -227,16 +227,14 @@ impl<'a> Fdm1d<'a> {
     /// * `nbcs` -- the natural boundary conditions handler
     /// * `kx` -- the diffusion coefficient along x
     ///
-    /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
+    /// **Note:** Make sure to call [EssentialBcs1d::validate()] to ensure the boundary
+    /// conditions are consistent. This function ignores such validation.
     pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
         // check grid
         let dx = match grid.get_dx() {
             Some(dx) => dx,
             None => return Err("grid must have uniform spacing"),
         };
-
-        // validates the boundary conditions data
-        ebcs.validate(&nbcs)?;
 
         // allocate equations handler
         let neq = grid.nx();
@@ -291,10 +289,15 @@ impl<'a> Fdm1d<'a> {
     ///     ∂x²        └───────────┘
     ///                  source(x)
     /// ```
+    ///
+    /// **Note:** This function calls [EssentialBcs1d::validate()] to ensure the boundary conditions are consistent.
     pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {
+        // validates the boundary conditions data
+        self.ebcs.validate(&self.nbcs)?;
+
         // assemble the coefficient matrix and the lhs and rhs vectors
         let sym_kk_bar = self.genie.get_sym(self.symmetric);
         let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0, sym_kk_bar);
@@ -329,10 +332,15 @@ impl<'a> Fdm1d<'a> {
     ///     ∂x²        └───────────┘
     ///                  source(x)
     /// ```
+    ///
+    /// **Note:** This function calls [EssentialBcs1d::validate()] to ensure the boundary conditions are consistent.
     pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
     {
+        // validates the boundary conditions data
+        self.ebcs.validate(&self.nbcs)?;
+
         // assemble the coefficient matrix and the lhs and rhs vectors
         let sym_mm = self.genie.get_sym(self.symmetric);
         let neq = self.equations.neq();

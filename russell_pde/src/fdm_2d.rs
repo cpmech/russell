@@ -292,7 +292,8 @@ impl<'a> Fdm2d<'a> {
     /// * `kx` -- the diffusion coefficient along x
     /// * `ky` -- the diffusion coefficient along y
     ///
-    /// **Note:** Zero Natural (Neumann) boundary conditions are assumed for boundaries with no explicit condition set.
+    /// **Note:** Make sure to call [EssentialBcs2d::validate()] to ensure the boundary
+    /// conditions are consistent. This function ignores such validation.
     pub fn new(
         grid: Grid2d,
         ebcs: EssentialBcs2d<'a>,
@@ -305,9 +306,6 @@ impl<'a> Fdm2d<'a> {
             Some((dx, dy)) => (dx, dy),
             None => return Err("grid must have uniform spacing"),
         };
-
-        // validates the boundary conditions data
-        ebcs.validate(&nbcs)?;
 
         // allocate equations handler
         let neq = grid.size();
@@ -348,10 +346,15 @@ impl<'a> Fdm2d<'a> {
     /// -kx ——— - ky ——— + α ϕ = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
+    ///
+    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
     pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
+        // validates the boundary conditions data
+        self.ebcs.validate(&self.nbcs)?;
+
         // assemble the coefficient matrix and the lhs and rhs vectors
         let sym_kk_bar = self.genie.get_sym(self.symmetric);
         let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0, sym_kk_bar);
@@ -377,10 +380,15 @@ impl<'a> Fdm2d<'a> {
     /// -kx ——— - ky ——— + α ϕ = source(x, y)
     ///     ∂x²      ∂y²
     /// ```
+    ///
+    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
     pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
     {
+        // validates the boundary conditions data
+        self.ebcs.validate(&self.nbcs)?;
+
         // assemble the coefficient matrix and the lhs and rhs vectors
         let sym_mm = self.genie.get_sym(self.symmetric);
         let (mm, _) = self.get_matrices_lmm(alpha, 0, false, sym_mm);

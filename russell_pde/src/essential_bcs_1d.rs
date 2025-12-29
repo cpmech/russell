@@ -2,31 +2,73 @@ use crate::StrError;
 use crate::{Grid1d, NaturalBcs1d, Side};
 use std::sync::Arc;
 
-/// Implements a handler for essential (Dirichlet) boundary conditions
+/// Manages essential (Dirichlet) boundary conditions for 1D PDE problems
 ///
-/// This struct helps to manage essential boundary conditions (EBC) for 1D problems.
-/// It holds the number of prescribed equations and the number of unknown equations.
+/// Essential boundary conditions (EBCs), also known as Dirichlet boundary conditions,
+/// specify the values of the solution at the domain boundaries. For a 1D domain,
+/// these conditions take the form:
 ///
-/// The grid is assumed to be a regular Cartesian grid with `nx` points along x.
+/// * At x = xₘᵢₙ: ϕ(xₘᵢₙ) = f(xₘᵢₙ)
+/// * At x = xₘₐₓ: ϕ(xₘₐₓ) = f(xₘₐₓ)
+///
+/// where f is a user-defined function that computes the boundary value.
+///
+/// # Examples
+///
+/// ```
+/// use russell_pde::{EssentialBcs1d, Side};
+///
+/// let mut ebcs = EssentialBcs1d::new();
+///
+/// // Set a constant value at the left boundary
+/// ebcs.set(Side::Xmin, |_x| 10.0);
+///
+/// // Set a spatially-varying value at the right boundary
+/// ebcs.set(Side::Xmax, |x| x * x);
+/// ```
 pub struct EssentialBcs1d<'a> {
-    /// Indicates that the boundary is periodic along x (left ϕ values equal right ϕ values)
+    /// Indicates that the boundary is periodic along x
     ///
-    /// If false, the left/right boundaries are zero-flux (Neumann with ∂ϕ/dx = 0)
+    /// When `true`, the solution satisfies ϕ(xₘᵢₙ) = ϕ(xₘₐₓ), creating a periodic domain.
+    /// This is commonly used for problems with cyclic symmetry or when simulating
+    /// infinite domains.
     pub(crate) periodic_along_x: bool,
 
-    /// Holds the functions to compute essential boundary conditions (EBC)
+    /// Functions to compute essential boundary condition values
     ///
-    /// The function is `f(x) -> value`
+    /// Each function has the signature `f(x) -> value` where:
+    /// * `x` is the spatial coordinate at the boundary
+    /// * `value` is the prescribed solution value at that location
     ///
-    /// (2) → (Xmin, Xmax); corresponding to the 2 sides
+    /// The vector contains 2 functions corresponding to `[Xmin, Xmax]` boundaries.
     pub(crate) functions: Vec<Arc<dyn Fn(f64) -> f64 + Send + Sync + 'a>>,
 
-    /// Holds the sides where essential boundary conditions are applied
-    pub(crate) sides: [bool; 2], // Xmin, Xmax
+    /// Flags indicating which sides have essential boundary conditions
+    ///
+    /// Array of 2 booleans: `[Xmin, Xmax]`
+    /// * `true`: Essential boundary condition is active on this side
+    /// * `false`: No essential boundary condition on this side
+    pub(crate) sides: [bool; 2],
 }
 
 impl<'a> EssentialBcs1d<'a> {
-    /// Allocates a new instance
+    /// Creates a new instance with no boundary conditions set
+    ///
+    /// # Returns
+    ///
+    /// Returns an `EssentialBcs1d` instance with:
+    /// * No periodic boundaries
+    /// * No active essential boundary conditions
+    /// * Default zero-valued functions for all sides
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_pde::EssentialBcs1d;
+    ///
+    /// let ebcs = EssentialBcs1d::new();
+    /// // Initially, no boundary conditions are active
+    /// ```
     pub fn new() -> Self {
         EssentialBcs1d {
             periodic_along_x: false,
@@ -38,23 +80,67 @@ impl<'a> EssentialBcs1d<'a> {
         }
     }
 
-    /// Sets periodic boundary condition
+    /// Sets or un-sets periodic boundary conditions along x
     ///
-    /// **Note:** Any essential boundary condition on the corresponding side will be removed.
+    /// When enabled, this enforces ϕ(xₘᵢₙ) = ϕ(xₘₐₓ), making the domain periodic.
+    ///
+    /// # Input
+    ///
+    /// * `along_x` - If `true`, enables periodic boundaries; if `false`, disables them
+    ///
+    /// # Note
+    ///
+    /// Setting periodic boundary conditions will automatically clear any existing
+    /// essential boundary conditions on the x boundaries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_pde::{EssentialBcs1d, Side};
+    ///
+    /// let mut ebcs = EssentialBcs1d::new();
+    /// ebcs.set_periodic(true);
+    /// // Now the solution is periodic: ϕ(xₘᵢₙ) = ϕ(xₘₐₓ)
+    /// ```
     pub fn set_periodic(&mut self, along_x: bool) {
         self.periodic_along_x = along_x;
     }
 
-    /// Sets essential (Dirichlet) boundary condition
+    /// Sets an essential (Dirichlet) boundary condition on a specified side
     ///
-    /// The function is `f(x) -> value`
+    /// This method prescribes the solution value at a boundary using a function that
+    /// can depend on the spatial coordinate.
     ///
-    /// **Note:** Any periodic boundary condition on the corresponding side will be removed.
+    /// # Input
+    ///
+    /// * `side` - The boundary side (must be `Side::Xmin` or `Side::Xmax`)
+    /// * `f` - Function with signature `f(x) -> value` that computes the boundary value
+    ///   * `x`: Spatial coordinate at the boundary
+    ///   * `value`: The prescribed solution value ϕ(x)
+    ///
+    /// # Notes
+    ///
+    /// * Setting an essential boundary condition will disable any periodic boundary condition
+    /// * The function `f` is stored and will be called during boundary condition assembly
+    /// * The function must be thread-safe (`Send + Sync`)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_pde::{EssentialBcs1d, Side};
+    ///
+    /// let mut ebcs = EssentialBcs1d::new();
+    ///
+    /// // Constant boundary value
+    /// ebcs.set(Side::Xmin, |_x| 5.0);
+    ///
+    /// // Spatially-varying boundary value
+    /// ebcs.set(Side::Xmax, |x| x.sin());
+    /// ```
     ///
     /// # Panics
     ///
-    /// A panic may occur if an invalid side is provided for a 1D grid. It must be
-    /// either `Side::Xmin` or `Side::Xmax`.
+    /// Panics if an invalid side is provided (only `Side::Xmin` and `Side::Xmax` are valid for 1D).
     pub fn set(&mut self, side: Side, f: impl Fn(f64) -> f64 + Send + Sync + 'a) {
         self.periodic_along_x = false;
         let index = side as usize;
@@ -62,9 +148,25 @@ impl<'a> EssentialBcs1d<'a> {
         self.sides[index] = true;
     }
 
-    /// Sets homogeneous boundary conditions (i.e., zero essential values at the borders)
+    /// Sets homogeneous (zero) essential boundary conditions on all boundaries
     ///
-    /// **Note:** Periodic boundary conditions will be removed.
+    /// This is a convenience method that sets ϕ(xₘᵢₙ) = 0 and ϕ(xₘₐₓ) = 0.
+    ///
+    /// # Notes
+    ///
+    /// * This method disables any periodic boundary conditions
+    /// * Both left and right boundaries are set to zero
+    /// * Equivalent to calling `set(Side::Xmin, |_| 0.0)` and `set(Side::Xmax, |_| 0.0)`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_pde::EssentialBcs1d;
+    ///
+    /// let mut ebcs = EssentialBcs1d::new();
+    /// ebcs.set_homogeneous();
+    /// // Now ϕ(xₘᵢₙ) = 0 and ϕ(xₘₐₓ) = 0
+    /// ```
     pub fn set_homogeneous(&mut self) {
         self.periodic_along_x = false;
         self.functions = vec![
@@ -75,8 +177,45 @@ impl<'a> EssentialBcs1d<'a> {
         self.sides[1] = true;
     }
 
-    /// Makes sure that all sides have either EBC or NBC, but not both
-    pub(crate) fn validate(&self, nbcs: &NaturalBcs1d) -> Result<(), StrError> {
+    /// Validates boundary conditions against natural boundary conditions
+    ///
+    /// This method ensures that the boundary conditions are properly specified by checking:
+    ///
+    /// 1. Each boundary side has either an essential BC (EBC) or a natural BC (NBC), but not both
+    /// 2. If periodic boundaries are set, no natural BCs are specified on those boundaries
+    /// 3. If not periodic, all boundaries must have either an EBC or NBC defined
+    ///
+    /// # Input
+    ///
+    /// * `nbcs` - Reference to the natural boundary conditions to validate against
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the boundary conditions are valid
+    /// * `Err(StrError)` with a descriptive message if validation fails
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * A side has both EBC and NBC
+    /// * Periodic boundaries are combined with NBCs
+    /// * A side is missing both EBC and NBC
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_pde::{EssentialBcs1d, NaturalBcs1d, Side};
+    ///
+    /// let mut ebcs = EssentialBcs1d::new();
+    /// let mut nbcs = NaturalBcs1d::new();
+    ///
+    /// ebcs.set(Side::Xmin, |_| 0.0);
+    /// nbcs.set(Side::Xmax, |_| 0.0);
+    ///
+    /// // Valid: Xmin has EBC, Xmax has NBC
+    /// assert!(ebcs.validate(&nbcs).is_ok());
+    /// ```
+    pub fn validate(&self, nbcs: &NaturalBcs1d) -> Result<(), StrError> {
         if self.sides[0] && nbcs.sides[0] {
             return Err("Xmin side must not have both EBC and NBC");
         }
@@ -98,7 +237,17 @@ impl<'a> EssentialBcs1d<'a> {
         Ok(())
     }
 
-    /// Returns the nodes with EBCs
+    /// Returns the grid node indices where essential boundary conditions are applied
+    ///
+    /// # Input
+    ///
+    /// * `grid` - Reference to the 1D grid
+    ///
+    /// # Returns
+    ///
+    /// A vector of node indices where EBCs are active. For a 1D grid:
+    /// * Node 0 corresponds to Xmin
+    /// * Node (nx-1) corresponds to Xmax
     pub(crate) fn get_nodes(&self, grid: &Grid1d) -> Vec<usize> {
         let mut nodes = Vec::new();
         for side in 0..2 {

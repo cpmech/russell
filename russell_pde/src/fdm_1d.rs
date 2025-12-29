@@ -8,34 +8,53 @@ const LEF: usize = 1; // left node
 const RIG: usize = 2; // right node
 const INI_X: usize = 0;
 
-/// Implements the Finite Difference method (FDM) in 1D
+/// Implements the Finite Difference Method (FDM) for 1D problems
 ///
-/// The FDM can be used to solve the following problem (Poisson or Helmholtz equation):
+/// This solver handles elliptic partial differential equations in one dimension,
+/// specifically the Poisson and Helmholtz equations with mixed boundary conditions.
+///
+/// # Problem Formulation
+///
+/// The FDM solves the following equation:
 ///
 /// ```text
-/// Poisson:
-///
 ///     ∂²ϕ
 /// -kx ——— + α ϕ = source(x)
 ///     ∂x²
 /// ```
 ///
-/// with essential (EBC) and natural (NBC) boundary conditions.
+/// where:
+/// * `kx` is the diffusion coefficient
+/// * `α` is the Helmholtz coefficient (α = 0 for Poisson equation)
+/// * `source(x)` is the source term
+/// * `ϕ(x)` is the unknown solution
 ///
-/// The method substitutes the partial derivatives using central differences over a linear grid.
-/// The resulting discrete problem is expressed by the coefficient matrix `K` and the vector `a`:
+/// # Boundary Conditions
+///
+/// The solver supports:
+/// * **Essential (Dirichlet)**: Prescribed values at boundaries
+/// * **Natural (Neumann)**: Prescribed flux at boundaries
+/// * **Periodic**: Solution wraps around domain boundaries
+///
+/// # Discretization
+///
+/// The method uses central differences on a uniform grid, resulting in a discrete system:
 ///
 /// ```text
 /// K a = f
 /// ```
 ///
-/// ϕₘ are the discrete counterpart of ϕ(x) over the (nx) grid.
+/// where `K` is the coefficient matrix, `a` is the solution vector, and `f` is the right-hand side.
 ///
-/// The FDM stencil uses the "molecule" {α, β, β} such that:
+/// ## FDM Stencil
+///
+/// The method uses the "molecule" {α, β, β} for interior nodes:
 ///
 /// ```text
 /// α ϕᵢ + β ϕᵢ₋₁ + β ϕᵢ₊₁ = sᵢ
 /// ```
+///
+/// where `α = 2kx/Δx²` and `β = -kx/Δx²`.
 ///
 /// # Natural boundary conditions (NBC)
 ///
@@ -186,49 +205,74 @@ const INI_X: usize = 0;
 /// }
 /// ```
 pub struct Fdm1d<'a> {
-    /// Defines the 1D grid
+    /// The 1D computational grid
+    ///
+    /// Must be a uniform grid with equally-spaced points.
     grid: Grid1d,
 
-    /// Holds the essential boundary conditions handler
+    /// Essential (Dirichlet) boundary conditions handler
+    ///
+    /// Manages prescribed solution values at domain boundaries.
     ebcs: EssentialBcs1d<'a>,
 
-    /// Holds the natural boundary conditions handler
+    /// Natural (Neumann) boundary conditions handler
+    ///
+    /// Manages prescribed flux values at domain boundaries.
     nbcs: NaturalBcs1d<'a>,
 
-    /// Tool to handle the equation numbers such as unknowns prescribed
+    /// Equation numbering handler
+    ///
+    /// Manages the mapping between grid nodes and equation indices,
+    /// distinguishing between unknown and prescribed degrees of freedom.
     equations: EquationHandler,
 
-    /// Holds the FDM coefficients (α, β, β) corresponding to (CUR, LEF, RIG)
+    /// FDM stencil coefficients: [α, β, β]
     ///
-    /// These coefficients are applied over the "bandwidth" of the coefficient matrix
+    /// Corresponds to the current node, left neighbor, and right neighbor:
+    /// * `molecule[CUR]` = α = 2kx/Δx²
+    /// * `molecule[LEF]` = β = -kx/Δx²
+    /// * `molecule[RIG]` = β = -kx/Δx²
     molecule: Vec<f64>,
 
-    /// Grid spacing (uniform grid)
+    /// Grid spacing (Δx)
+    ///
+    /// Distance between consecutive grid points (uniform grid).
     dx: f64,
 
-    /// Sparse solver type
+    /// Sparse linear solver type
     ///
-    /// default = Umfpack
+    /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
+    /// Default: `Genie::Umfpack`
     genie: Genie,
 
-    /// Use symmetric matrices with the sparse solver
+    /// Use symmetric matrix storage
     ///
-    /// default = true
+    /// When `true`, exploits matrix symmetry to reduce memory usage and improve performance.
+    /// Default: `true`
     symmetric: bool,
 }
 
 impl<'a> Fdm1d<'a> {
-    /// Allocates a new instance
+    /// Creates a new FDM solver instance
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `grid` -- the 1D grid
-    /// * `ebcs` -- the essential boundary conditions handler
-    /// * `nbcs` -- the natural boundary conditions handler
-    /// * `kx` -- the diffusion coefficient along x
+    /// * `grid` - The 1D computational grid (must be uniform)
+    /// * `ebcs` - Essential (Dirichlet) boundary conditions handler
+    /// * `nbcs` - Natural (Neumann) boundary conditions handler
+    /// * `kx` - Diffusion coefficient along x (must be positive)
     ///
-    /// **Note:** Make sure to call [EssentialBcs1d::validate()] to ensure the boundary
-    /// conditions are consistent. This function ignores such validation.
+    /// # Returns
+    ///
+    /// * `Ok(Fdm1d)` - Successfully initialized solver
+    /// * `Err` - If the grid is not uniform
+    ///
+    /// # Notes
+    ///
+    /// * The grid must have uniform spacing
+    /// * Boundary conditions are validated when solving, not during construction
+    /// * Default solver: UMFPACK with symmetric matrices
+    /// * Call [EssentialBcs1d::validate()] before solving to check boundary condition consistency
     pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
         // check grid
         let dx = match grid.get_dx() {
@@ -261,15 +305,39 @@ impl<'a> Fdm1d<'a> {
         })
     }
 
-    /// Sets solver options
+    /// Configures the sparse linear solver options
+    ///
+    /// # Input
+    ///
+    /// * `genie` - Sparse solver type (e.g., `Genie::Umfpack`, `Genie::Mumps`)
+    /// * `symmetric` - Whether to exploit matrix symmetry
+    ///   * `true`: Store only lower/upper triangle (saves memory)
+    ///   * `false`: Store full matrix
     pub fn set_solver_options(&mut self, genie: Genie, symmetric: bool) {
         self.genie = genie;
         self.symmetric = symmetric;
     }
 
-    /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
+    /// Solves the Poisson or Helmholtz equation using System Partitioning Strategy (SPS)
     ///
-    /// Returns the solution vector `a`.
+    /// This method partitions the system into unknown and prescribed degrees of freedom,
+    /// solving only for the unknowns while enforcing essential boundary conditions.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    ///   * Use positive value for Helmholtz equation
+    /// * `source` - Source term function `f(x) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `a` at all grid points
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     ///     ∂²ϕ
@@ -277,7 +345,7 @@ impl<'a> Fdm1d<'a> {
     ///     ∂x²
     /// ```
     ///
-    /// For the convection problem, the equation can be rearranged as:
+    /// For convection problems with far-field value ϕ∞:
     ///
     /// ```text
     ///     ∂²ϕ
@@ -290,7 +358,10 @@ impl<'a> Fdm1d<'a> {
     ///                  source(x)
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs1d::validate()] to ensure the boundary conditions are consistent.
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
     pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
@@ -316,11 +387,34 @@ impl<'a> Fdm1d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
+    /// Solves the Poisson or Helmholtz equation using Lagrange Multipliers Method (LMM)
     ///
-    /// Returns the solution vector `a`.
+    /// This method enforces essential boundary conditions through Lagrange multipliers,
+    /// resulting in a larger but simpler system structure.
     ///
-    /// For the convection problem, the equation can be rearranged as:
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    ///   * Use positive value for Helmholtz equation
+    /// * `source` - Source term function `f(x) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `a` at all grid points
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = source(x)
+    ///     ∂x²
+    /// ```
+    ///
+    /// For convection problems with far-field value ϕ∞:
     ///
     /// ```text
     ///     ∂²ϕ
@@ -333,7 +427,10 @@ impl<'a> Fdm1d<'a> {
     ///                  source(x)
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs1d::validate()] to ensure the boundary conditions are consistent.
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
     pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64) -> f64,
@@ -358,25 +455,36 @@ impl<'a> Fdm1d<'a> {
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
-    /// Returns the dimensions for the system partitioning strategy (SPS)
+    /// Returns the system dimensions for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(nu, np)` where:
+    /// # Returns
     ///
-    /// * `nu` is the number of unknowns
-    /// * `np` is the number of prescribed values
+    /// A tuple `(nu, np)` where:
+    /// * `nu` - Number of unknown degrees of freedom (to be solved for)
+    /// * `np` - Number of prescribed degrees of freedom (essential BCs)
+    ///
+    /// # Notes
+    ///
+    /// The total number of equations is `nu + np`, which equals the number of grid points.
     pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)
     }
 
-    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    /// Returns the system dimensions for the Lagrange Multipliers Method (LMM)
     ///
-    /// Returns `(neq, nlag, ndim)` where:
+    /// # Returns
     ///
-    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
-    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
-    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    /// A tuple `(neq, nlag, ndim)` where:
+    /// * `neq` - Number of equations (= unknown DOFs + prescribed DOFs = grid points)
+    /// * `nlag` - Number of Lagrange multipliers (= prescribed DOFs = essential BCs)
+    /// * `ndim` - Total system dimension (= neq + nlag)
+    ///
+    /// # Notes
+    ///
+    /// The augmented system has dimension `ndim = neq + nlag`, which is larger than
+    /// the original problem size due to the Lagrange multipliers.
     pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
         let neq = self.equations.neq();
         let nlag = self.equations.np();
@@ -384,19 +492,28 @@ impl<'a> Fdm1d<'a> {
         (neq, nlag, ndim)
     }
 
-    /// Access the grid
+    /// Returns a reference to the computational grid
+    ///
+    /// # Returns
+    ///
+    /// Reference to the 1D grid used by the solver.
     pub fn get_grid(&self) -> &Grid1d {
         &self.grid
     }
 
-    /// Access the equation numbering handler
+    /// Returns a reference to the equation numbering handler
+    ///
+    /// # Returns
+    ///
+    /// Reference to the [`EquationHandler`] that manages the mapping between
+    /// grid nodes and equation indices.
     pub fn get_equations(&self) -> &EquationHandler {
         &self.equations
     }
 
-    /// Returns the matrices for the system partitioning strategy (SPS)
+    /// Assembles the coefficient matrices for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(kk_bar, kk_check)` from:
+    /// Returns `(kk_bar, kk_check)` corresponding to the partitioned system:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
@@ -407,13 +524,20 @@ impl<'a> Fdm1d<'a> {
     ///     K       a       f
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
-    /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
-    /// * `sym_kk_bar` -- symmetry of the K-bar matrix
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in K̄ matrix
+    /// * `sym_kk_bar` - Symmetry type for the K̄ matrix (e.g., `Sym::YesLower`)
     ///
-    /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
+    /// # Returns
+    ///
+    /// * `kk_bar` - K̄ matrix (unknown-unknown block)
+    /// * `kk_check` - Ǩ matrix (unknown-prescribed block), or `None` if no essential BCs
+    ///
+    /// # Notes
+    ///
+    /// * The Ǩ matrix is only created when there are essential boundary conditions (np > 0)
     pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
         let nu = self.equations.nu();
         let np = self.equations.np();
@@ -456,9 +580,9 @@ impl<'a> Fdm1d<'a> {
         }
     }
 
-    /// Returns the matrix for the Lagrange multipliers method (LMM)
+    /// Assembles the augmented matrix for the Lagrange Multipliers Method (LMM)
     ///
-    /// Returns `(mm, cc)` from:
+    /// Returns `(mm, cc)` corresponding to the augmented system:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
@@ -469,14 +593,21 @@ impl<'a> Fdm1d<'a> {
     ///     M       A       F
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
-    /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
-    /// * `get_constraints_mat` -- whether to return the constraints matrix or not
-    /// * `sym_mm` -- symmetry of the M matrix
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in the matrix
+    /// * `get_constraints_mat` - Whether to return the constraints matrix C separately
+    /// * `sym_mm` - Symmetry type for the M matrix
     ///
-    /// Note: this matrix is not symmetric because of the flipping (mirroring) strategy for boundary nodes.
+    /// # Returns
+    ///
+    /// * `mm` - Augmented M matrix containing K, C, and Cᵀ blocks
+    /// * `cc` - Constraints matrix C, or `None` if not requested
+    ///
+    /// # Notes
+    ///
+    /// * The augmented system size is (neq + nlag) × (neq + nlag)
     pub fn get_matrices_lmm(
         &self,
         alpha: f64,

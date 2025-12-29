@@ -104,6 +104,10 @@ impl<'a> EssentialBcs1d<'a> {
     /// ```
     pub fn set_periodic(&mut self, along_x: bool) {
         self.periodic_along_x = along_x;
+        if along_x {
+            self.sides[0] = false; // Xmin
+            self.sides[1] = false; // Xmax
+        }
     }
 
     /// Sets an essential (Dirichlet) boundary condition on a specified side
@@ -278,8 +282,12 @@ mod tests {
     #[test]
     fn set_periodic_works() {
         let mut ebcs = EssentialBcs1d::new();
+        ebcs.set(Side::Xmin, |_| 123.0);
+        ebcs.set(Side::Xmax, |_| 123.0);
         ebcs.set_periodic(true);
         assert!(ebcs.periodic_along_x);
+        assert_eq!(ebcs.sides[0], false); // Xmin EBC should be reset
+        assert_eq!(ebcs.sides[1], false); // Xmax EBC should be reset
         ebcs.set_periodic(false);
         assert!(!ebcs.periodic_along_x);
     }

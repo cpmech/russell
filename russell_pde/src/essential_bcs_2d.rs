@@ -109,7 +109,7 @@ impl<'a> EssentialBcs2d<'a> {
     /// # Notes
     ///
     /// * Periodic boundaries can be set independently in each direction
-    /// * Setting periodic boundaries does not automatically clear existing essential BCs
+    /// * Setting periodic boundaries automatically clears existing essential BCs on those sides
     ///
     /// # Examples
     ///
@@ -127,6 +127,14 @@ impl<'a> EssentialBcs2d<'a> {
     pub fn set_periodic(&mut self, along_x: bool, along_y: bool) {
         self.periodic_along_x = along_x;
         self.periodic_along_y = along_y;
+        if along_x {
+            self.sides[0] = false; // Xmin
+            self.sides[1] = false; // Xmax
+        }
+        if along_y {
+            self.sides[2] = false; // Ymin
+            self.sides[3] = false; // Ymax
+        }
     }
 
     /// Sets an essential (Dirichlet) boundary condition on a specified side
@@ -350,9 +358,19 @@ mod tests {
     #[test]
     fn set_periodic_works() {
         let mut ebcs = EssentialBcs2d::new();
+        ebcs.set(Side::Xmin, |_, _| 123.0); // to ensure it is reset
+        ebcs.set(Side::Xmax, |_, _| 123.0); // to ensure it is reset
+        ebcs.set(Side::Ymin, |_, _| 123.0); // to ensure it is reset
+        ebcs.set(Side::Ymax, |_, _| 123.0); // to ensure it is reset
+
         ebcs.set_periodic(true, true);
         assert!(ebcs.periodic_along_x);
         assert!(ebcs.periodic_along_y);
+        assert_eq!(ebcs.sides[0], false); // Xmin EBC should be reset
+        assert_eq!(ebcs.sides[1], false); // Xmax EBC should be reset
+        assert_eq!(ebcs.sides[2], false); // Ymin EBC should be reset
+        assert_eq!(ebcs.sides[3], false); // Ymax EBC should be reset
+
         ebcs.set_periodic(false, false);
         assert!(!ebcs.periodic_along_x);
         assert!(!ebcs.periodic_along_y);

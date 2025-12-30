@@ -5,7 +5,8 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// Implements the Spectral Collocation Method (SPC) for 2D problems
 ///
 /// This solver handles elliptic partial differential equations in two dimensions
-/// using spectral collocation on Chebyshev-Gauss-Lobatto grids.
+/// using spectral collocation on Chebyshev-Gauss-Lobatto grids, providing
+/// high-order accuracy for smooth solutions.
 ///
 /// # Problem Formulation
 ///
@@ -283,8 +284,7 @@ impl<'a> Spc2d<'a> {
     ///
     /// # Input
     ///
-    /// * `alpha` - Helmholtz coefficient (α)
-    ///   * Set to 0.0 for Poisson equation
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
     /// * `source` - Source term function `f(x, y) -> value`
     ///
     /// # Returns
@@ -337,8 +337,7 @@ impl<'a> Spc2d<'a> {
     ///
     /// # Input
     ///
-    /// * `alpha` - Helmholtz coefficient (α)
-    ///   * Set to 0.0 for Poisson equation
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
     /// * `source` - Source term function `f(x, y) -> value`
     ///
     /// # Returns

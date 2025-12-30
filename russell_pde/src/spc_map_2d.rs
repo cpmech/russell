@@ -3,15 +3,21 @@ use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, NaturalBcs2d, Side
 use russell_lab::{vec_copy_scaled, vec_inner, vec_norm, InterpLagrange, Norm, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
-/// Implements the Spectral Collocation method (SPC) in 2D with Transfinite Mapping for curvilinear coordinates
+/// Implements the Spectral Collocation Method (SPC) for 2D problems with curvilinear coordinates
 ///
-/// The SPC can be used to solve the following problem (Poisson or Helmholtz equation):
+/// This solver handles elliptic partial differential equations in two dimensions
+/// on mapped domains using spectral collocation with Transfinite Mapping, providing
+/// high-order accuracy for smooth solutions on complex geometries.
+///
+/// # Problem Formulation
+///
+/// The SPC solves the following equation on curvilinear coordinates:
 ///
 /// ```text
 /// -k ∇²ϕ + α ϕ = source(x,y)
 /// ```
 ///
-/// where
+/// where the Laplacian in curvilinear coordinates is:
 ///
 /// ```text
 ///       ∂²ϕ       ∂²ϕ        ∂²ϕ          ∂ϕ      ∂ϕ
@@ -22,14 +28,23 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// L² = Γ²₁₁ g¹¹ + Γ²₂₂ g²² + 2 Γ²₁₂ g¹²
 /// ```
 ///
-/// where `gᵢⱼ` are the covariant metric coefficients and `Γᵏᵢⱼ` are the Christoffel
-/// symbols of the second kind.
+/// where:
+/// * `gᵢⱼ` are the contravariant metric coefficients
+/// * `Γᵏᵢⱼ` are the Christoffel symbols of the second kind
+/// * `k` is the diffusion coefficient
+/// * `α` is the Helmholtz coefficient (α = 0 for Poisson equation)
+/// * `source(x,y)` is the source term
+/// * `ϕ(x,y)` is the unknown solution
+///
+/// # Coordinate Mapping
 ///
 /// The reference coordinates (r, s) in [-1, 1] × [-1, 1] are mapped onto the physical
-/// coordinates (x, y) using Transfinite Mapping.
+/// coordinates (x, y) using Transfinite Mapping, enabling solution of problems on
+/// complex geometries with curved boundaries.
 ///
-/// The spectral collocation method approximates the Laplacian at the grid points
-/// (xᵢ, yⱼ) using:
+/// # Discretization
+///
+/// The spectral collocation method approximates the Laplacian at grid points using:
 ///
 /// ```text
 /// (∇²ϕ)ᵢⱼ = ∑ₖ ∑ₗ (
@@ -41,24 +56,37 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// ) ϕₖₗ
 /// ```
 ///
-/// where ϕᵢⱼ are the discrete counterpart of ϕ(x(r,s), y(r,s)) over the (nr, ns) grid.
-/// However, these values are "sequentially" mapped onto to the vector `a` using the
-/// following formula:
+/// where ϕᵢⱼ are the discrete values at grid points (rᵢ, sⱼ) mapped to (x, y).
+///
+/// ## Grid Indexing
+///
+/// The 2D grid values ϕᵢⱼ are mapped to a 1D solution vector using:
 ///
 /// ```text
 /// ϕᵢⱼ → aₘ   with   m = i + j nr
 /// ```
 ///
-/// thus, we can write the discrete Laplacian operator as:
+/// where `i` is the r-index, `j` is the s-index, and `nr` is the number of grid points along r.
 ///
-/// ```text
-/// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
-/// ```
+/// # Boundary Conditions
 ///
-/// Two methods are implemented to handle the essential boundary conditions:
+/// The solver supports:
+/// * **Essential (Dirichlet)**: Prescribed values at boundaries (all sides must have essential BCs)
+/// * **Natural (Neumann)**: Prescribed flux at boundaries (limited support)
+/// * **Note**: Periodic boundary conditions are not supported
 ///
-/// 1. System Partitioning Strategy (SPS)
-/// 2. Lagrange Multipliers Method (LMM)
+/// # Solution Methods
+///
+/// Two methods are implemented to handle essential boundary conditions:
+///
+/// 1. **System Partitioning Strategy (SPS)**: Partitions unknowns and prescribed values
+/// 2. **Lagrange Multipliers Method (LMM)**: Uses augmented system with multipliers
+///
+/// # Grid Properties
+///
+/// * Uses Chebyshev-Gauss-Lobatto points for optimal spectral accuracy
+/// * Grid is clustered near boundaries in reference domain
+/// * Maximum polynomial degree: 2048 (limited by interpolator)
 ///
 /// # Examples
 ///
@@ -131,75 +159,106 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 ///
 /// ![Results](data/figures/doc_example_spc_map.svg)
 pub struct SpcMap2d<'a> {
-    /// Defines the 2D grid on the reference domain [-1, 1] × [-1, 1]
+    /// The 2D Chebyshev-Gauss-Lobatto grid on the reference domain [-1, 1] × [-1, 1]
+    ///
+    /// Grid points are clustered near boundaries in the reference domain for better spectral accuracy.
     grid: Grid2d,
 
-    /// Holds a reference to the essential boundary conditions handler
+    /// Essential (Dirichlet) boundary conditions handler
+    ///
+    /// Manages prescribed solution values at domain boundaries.
+    /// All sides must have essential BCs for proper functioning.
+    /// Periodic boundary conditions are not supported.
     ebcs: EssentialBcs2d<'a>,
 
-    /// Holds a reference to the natural boundary conditions handler
+    /// Natural (Neumann) boundary conditions handler
+    ///
+    /// Manages prescribed flux values at domain boundaries (limited support).
     nbcs: NaturalBcs2d<'a>,
 
     /// Negative of the diffusion coefficient
     ///
-    /// mk = -k
+    /// Stored as mk = -k for direct use in Laplacian assembly.
     mk: f64,
 
-    /// Tool to handle the equation numbers such as unknowns prescribed
+    /// Equation numbering handler
+    ///
+    /// Manages the mapping between grid nodes and equation indices,
+    /// distinguishing between unknown and prescribed degrees of freedom.
     equations: EquationHandler,
 
-    /// Polynomial interpolator along r
+    /// Lagrange polynomial interpolator along r-direction (reference coordinate)
+    ///
+    /// Computes spectral derivative matrices D⁽¹⁾ and D⁽²⁾ for r.
     interp_r: InterpLagrange,
 
-    /// Polynomial interpolator along s
+    /// Lagrange polynomial interpolator along s-direction (reference coordinate)
+    ///
+    /// Computes spectral derivative matrices D̄⁽¹⁾ and D̄⁽²⁾ for s.
     interp_s: InterpLagrange,
 
-    /// Base vectors and metrics related to the curvilinear coordinates
+    /// Metrics calculator for curvilinear coordinates
+    ///
+    /// Computes contravariant metric coefficients (gᵢⱼ) and Christoffel symbols (Γᵏᵢⱼ)
+    /// needed for the Laplacian in curvilinear coordinates.
     metrics: Metrics,
 
-    /// Transfinite mapping from reference to physical domain (r, s) → (x, y)
+    /// Transfinite mapping from reference to physical domain
+    ///
+    /// Maps reference coordinates (r, s) ∈ [-1, 1] × [-1, 1] to physical coordinates (x, y).
     map: Transfinite2d,
 
-    /// Temporary: Physical coordinates
+    /// Temporary storage for physical coordinates (x, y)
     x: Vector,
 
-    /// Temporary: Derivative of x with respect to r
+    /// Temporary storage for derivative of x with respect to r
     dx_dr: Vector,
 
-    /// Temporary: Derivative of x with respect to s
+    /// Temporary storage for derivative of x with respect to s
     dx_ds: Vector,
 
-    /// Temporary: Second derivative of x with respect to r
+    /// Temporary storage for second derivative of x with respect to r
     d2x_dr2: Vector,
 
-    /// Temporary: Second derivative of x with respect to s
+    /// Temporary storage for second derivative of x with respect to s
     d2x_ds2: Vector,
 
-    /// Temporary: Mixed second derivative of x with respect to r and s
+    /// Temporary storage for mixed second derivative of x with respect to r and s
     d2x_drs: Vector,
 
-    /// Temporary: Unit normal vector
+    /// Temporary storage for unit normal vector at boundaries
     un: Vector,
 }
 
 impl<'a> SpcMap2d<'a> {
-    /// Allocates a new instance
+    /// Creates a new spectral collocation solver instance for 2D problems with curvilinear coordinates
     ///
-    /// **Important**:
+    /// # Input
     ///
-    /// 1. All sides must have essential BCs, i.e., Neumann BCs are **not** allowed.
+    /// * `map` - Transfinite mapping from reference to physical domain
+    /// * `nr` - Number of grid points along r (must be ≥ 2, max polynomial degree: 2048)
+    /// * `ns` - Number of grid points along s (must be ≥ 2, max polynomial degree: 2048)
+    /// * `ebcs` - Essential (Dirichlet) boundary conditions handler
+    /// * `nbcs` - Natural (Neumann) boundary conditions handler
+    /// * `k` - Diffusion coefficient
     ///
-    /// # Arguments
+    /// # Returns
     ///
-    /// * `map` -- the transfinite mapping from reference to physical domain
-    /// * `nr` -- number of grid points along r (for the Chebyshev-Gauss-Lobatto grid)
-    /// * `ns` -- number of grid points along s (for the Chebyshev-Gauss-Lobatto grid)
-    /// * `ebcs` -- the essential boundary conditions handler
-    /// * `nbcs` -- the natural boundary conditions handler
-    /// * `k` -- the diffusion coefficient
+    /// * `Ok(SpcMap2d)` - Successfully initialized solver
+    /// * `Err` - If:
+    ///   * `nr` or `ns` < 2
+    ///   * Polynomial degree > 2048
+    ///   * Periodic boundary conditions are specified
     ///
-    /// **Note:** Make sure to call [EssentialBcs2d::validate()] to ensure the boundary
-    /// conditions are consistent. This function ignores such validation.
+    /// # Notes
+    ///
+    /// * Uses Chebyshev-Gauss-Lobatto grid points in reference domain [-1,1] × [-1,1]
+    /// * All sides must have essential boundary conditions
+    /// * Natural (Neumann) boundary conditions have limited support
+    /// * Grid is automatically generated based on nr and ns
+    /// * Boundary conditions are validated when solving, not during construction
+    /// * Call [EssentialBcs2d::validate()] before solving to check boundary condition consistency
+    /// * Periodic boundary conditions are not supported and will return an error
     pub fn new(
         map: Transfinite2d,
         nr: usize,
@@ -268,15 +327,38 @@ impl<'a> SpcMap2d<'a> {
         })
     }
 
-    /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
+    /// Solves the Poisson or Helmholtz equation using System Partitioning Strategy (SPS)
     ///
-    /// Returns the solution vector `a`.
+    /// This method partitions the system into unknown and prescribed degrees of freedom,
+    /// solving only for the unknowns while enforcing essential boundary conditions on
+    /// the curvilinear domain.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x, y) -> value` in physical coordinates
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `ϕ` at all grid points (stored sequentially)
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     /// -k ∇²ϕ + α ϕ = source(x,y)
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
+    /// where the Laplacian includes curvilinear metric terms.
+    ///
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    /// * Solution is stored sequentially: index m = i + j*nr
+    /// * Requires mutable self for metric calculations
     pub fn solve_sps<F>(&mut self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
@@ -300,15 +382,37 @@ impl<'a> SpcMap2d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
+    /// Solves the Poisson or Helmholtz equation using Lagrange Multipliers Method (LMM)
     ///
-    /// Returns the solution vector `a`.
+    /// This method enforces essential boundary conditions through Lagrange multipliers,
+    /// resulting in a larger but simpler system structure on the curvilinear domain.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x, y) -> value` in physical coordinates
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `ϕ` at all grid points (stored sequentially)
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     /// -k ∇²ϕ + α ϕ = source(x,y)
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
+    /// where the Laplacian includes curvilinear metric terms.
+    ///
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    /// * Solution is stored sequentially: index m = i + j*nr
+    /// * Requires mutable self for metric calculations
     pub fn solve_lmm<F>(&mut self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
@@ -371,25 +475,36 @@ impl<'a> SpcMap2d<'a> {
         Ok((wwx, wwy))
     }
 
-    /// Returns the dimensions for the system partitioning strategy (SPS)
+    /// Returns the system dimensions for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(nu, np)` where:
+    /// # Returns
     ///
-    /// * `nu` is the number of unknowns
-    /// * `np` is the number of prescribed values
+    /// A tuple `(nu, np)` where:
+    /// * `nu` - Number of unknown degrees of freedom (to be solved for)
+    /// * `np` - Number of prescribed degrees of freedom (essential BCs)
+    ///
+    /// # Notes
+    ///
+    /// The total number of equations is `nu + np`, which equals nr*ns (total grid points).
     pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)
     }
 
-    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    /// Returns the system dimensions for the Lagrange Multipliers Method (LMM)
     ///
-    /// Returns `(neq, nlag, ndim)` where:
+    /// # Returns
     ///
-    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
-    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
-    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    /// A tuple `(neq, nlag, ndim)` where:
+    /// * `neq` - Number of equations (= unknown DOFs + prescribed DOFs = nr*ns)
+    /// * `nlag` - Number of Lagrange multipliers (= prescribed DOFs = essential BCs)
+    /// * `ndim` - Total system dimension (= neq + nlag)
+    ///
+    /// # Notes
+    ///
+    /// The augmented system has dimension `ndim = neq + nlag`, which is larger than
+    /// the original problem size due to the Lagrange multipliers.
     pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
         let neq = self.equations.neq();
         let nlag = self.equations.np();
@@ -397,12 +512,22 @@ impl<'a> SpcMap2d<'a> {
         (neq, nlag, ndim)
     }
 
-    /// Access the equation numbering handler
+    /// Returns a reference to the equation numbering handler
+    ///
+    /// # Returns
+    ///
+    /// Reference to the [`EquationHandler`] that manages the mapping between
+    /// grid nodes and equation indices.
     pub fn get_equations(&self) -> &EquationHandler {
         &self.equations
     }
 
-    /// Access the transfinite mapping
+    /// Returns a mutable reference to the transfinite mapping
+    ///
+    /// # Returns
+    ///
+    /// Mutable reference to the [`Transfinite2d`] mapping that transforms reference
+    /// coordinates (r, s) to physical coordinates (x, y).
     pub fn get_map(&mut self) -> &mut Transfinite2d {
         &mut self.map
     }
@@ -422,7 +547,7 @@ impl<'a> SpcMap2d<'a> {
     ///
     /// # Arguments
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
+    /// * `alpha` -- Helmholtz coefficient (α); set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
     pub fn get_matrices_sps(&mut self, alpha: f64, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
         // allocate matrices
@@ -519,7 +644,7 @@ impl<'a> SpcMap2d<'a> {
     ///
     /// # Arguments
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
+    /// * `alpha` -- Helmholtz coefficient (α); set to 0.0 for the Poisson equation
     /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
     /// * `get_constraints_mat` -- whether to return the constraints matrix or not
     pub fn get_matrices_lmm(

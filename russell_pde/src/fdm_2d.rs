@@ -11,37 +11,66 @@ const TOP: usize = 4; // top node
 const INI_X: usize = 0;
 const INI_Y: usize = 0;
 
-/// Implements the Finite Difference method (FDM) in 2D
+/// Implements the Finite Difference Method (FDM) for 2D problems
 ///
-/// The FDM can be used to solve the following problem:
+/// This solver handles elliptic partial differential equations in two dimensions,
+/// specifically the Poisson and Helmholtz equations with mixed boundary conditions.
+///
+/// # Problem Formulation
+///
+/// The FDM solves the following equation:
 ///
 /// ```text
 ///     ∂²ϕ      ∂²ϕ
-/// -kx ——— - ky ——— = source(x, y)
+/// -kx ——— - ky ——— + α ϕ = source(x, y)
 ///     ∂x²      ∂y²
 /// ```
 ///
-/// with essential (EBC) and natural (NBC) boundary conditions.
+/// where:
+/// * `kx`, `ky` are the diffusion coefficients in x and y directions
+/// * `α` is the Helmholtz coefficient (α = 0 for Poisson equation)
+/// * `source(x, y)` is the source term
+/// * `ϕ(x, y)` is the unknown solution
 ///
-/// The method substitutes the partial derivatives using central differences over a linear grid.
-/// The resulting discrete problem is expressed by the coefficient matrix `K` and the vector `a`:
+/// # Boundary Conditions
+///
+/// The solver supports:
+/// * **Essential (Dirichlet)**: Prescribed values at boundaries
+/// * **Natural (Neumann)**: Prescribed flux at boundaries
+/// * **Periodic**: Solution wraps around domain boundaries (in x, y, or both)
+///
+/// # Discretization
+///
+/// The method uses central differences on a uniform 2D grid, resulting in a discrete system:
 ///
 /// ```text
 /// K a = f
 /// ```
 ///
-/// ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
-/// values are "sequentially" mapped onto to the vector `a` using the following formula:
+/// where `K` is the coefficient matrix, `a` is the solution vector, and `f` is the right-hand side.
+///
+/// ## Grid Indexing
+///
+/// The 2D grid values ϕᵢⱼ are mapped to a 1D solution vector using:
 ///
 /// ```text
 /// ϕᵢⱼ → aₘ   with   m = i + j nx
 /// ```
 ///
-/// The FDM stencil uses the "molecule" {α, β, β, γ, γ} corresponding to the {CUR, LEF, RIG, BOT, TOP} nodes, such that:
+/// where `i` is the x-index, `j` is the y-index, and `nx` is the number of grid points along x.
+///
+/// ## FDM Stencil
+///
+/// The method uses the "molecule" {α, β, β, γ, γ} for interior nodes:
 ///
 /// ```text
-/// α ϕ_{cur} + β ϕ_{lef} + β ϕ_{rig} + γ ϕ_{bot} + γ ϕ_{top} = s_{cur}
+/// α ϕ_cur + β ϕ_lef + β ϕ_rig + γ ϕ_bot + γ ϕ_top = s_cur
 /// ```
+///
+/// where:
+/// * `α = 2(kx/Δx² + ky/Δy²)`
+/// * `β = -kx/Δx²`
+/// * `γ = -ky/Δy²`
 ///
 /// # Natural boundary conditions (NBC)
 ///
@@ -248,52 +277,81 @@ const INI_Y: usize = 0;
 /// }
 /// ```
 pub struct Fdm2d<'a> {
-    /// Defines the 2D grid
+    /// The 2D computational grid
+    ///
+    /// Must be a uniform grid with equally-spaced points in both x and y directions.
     grid: Grid2d,
 
-    /// Holds a reference to the essential boundary conditions handler
+    /// Essential (Dirichlet) boundary conditions handler
+    ///
+    /// Manages prescribed solution values at domain boundaries.
     ebcs: EssentialBcs2d<'a>,
 
-    /// Holds the natural boundary conditions handler
+    /// Natural (Neumann) boundary conditions handler
+    ///
+    /// Manages prescribed flux values at domain boundaries.
     nbcs: NaturalBcs2d<'a>,
 
-    /// Tool to handle the equation numbers such as unknowns prescribed
+    /// Equation numbering handler
+    ///
+    /// Manages the mapping between grid nodes and equation indices,
+    /// distinguishing between unknown and prescribed degrees of freedom.
     equations: EquationHandler,
 
-    /// Holds the FDM coefficients (α, β, β, γ, γ) corresponding to (CUR, LEF, RIG, BOT, TOP)
+    /// FDM stencil coefficients: [α, β, β, γ, γ]
     ///
-    /// These coefficients are applied over the "bandwidth" of the coefficient matrix
+    /// Corresponds to current node, left, right, bottom, and top neighbors:
+    /// * `molecule[CUR]` = α = 2(kx/Δx² + ky/Δy²)
+    /// * `molecule[LEF]` = β = -kx/Δx²
+    /// * `molecule[RIG]` = β = -kx/Δx²
+    /// * `molecule[BOT]` = γ = -ky/Δy²
+    /// * `molecule[TOP]` = γ = -ky/Δy²
     molecule: Vec<f64>,
 
-    /// Grid spacing (uniform grid)
+    /// Grid spacing in x-direction (Δx)
+    ///
+    /// Distance between consecutive grid points along x (uniform grid).
     dx: f64,
 
-    /// Grid spacing (uniform grid)
+    /// Grid spacing in y-direction (Δy)
+    ///
+    /// Distance between consecutive grid points along y (uniform grid).
     dy: f64,
 
-    /// Sparse solver type
+    /// Sparse linear solver type
     ///
-    /// default = Umfpack
+    /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
+    /// Default: `Genie::Umfpack`
     genie: Genie,
 
-    /// Use symmetric matrices with the sparse solver
+    /// Use symmetric matrix storage
     ///
-    /// default = true
+    /// Default: `true`
     symmetric: bool,
 }
 
 impl<'a> Fdm2d<'a> {
-    /// Allocates a new instance
+    /// Creates a new FDM solver instance for 2D problems
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `grid` -- the 2D grid
-    /// * `ebcs` -- the essential boundary conditions handler
-    /// * `kx` -- the diffusion coefficient along x
-    /// * `ky` -- the diffusion coefficient along y
+    /// * `grid` - The 2D computational grid (must be uniform in both directions)
+    /// * `ebcs` - Essential (Dirichlet) boundary conditions handler
+    /// * `nbcs` - Natural (Neumann) boundary conditions handler
+    /// * `kx` - Diffusion coefficient along x
+    /// * `ky` - Diffusion coefficient along y
     ///
-    /// **Note:** Make sure to call [EssentialBcs2d::validate()] to ensure the boundary
-    /// conditions are consistent. This function ignores such validation.
+    /// # Returns
+    ///
+    /// * `Ok(Fdm2d)` - Successfully initialized solver
+    /// * `Err` - If the grid is not uniform
+    ///
+    /// # Notes
+    ///
+    /// * The grid must have uniform spacing in both x and y directions
+    /// * Boundary conditions are validated when solving, not during construction
+    /// * Default solver: UMFPACK with symmetric matrices
+    /// * Call [EssentialBcs2d::validate()] before solving to check boundary condition consistency
     pub fn new(
         grid: Grid2d,
         ebcs: EssentialBcs2d<'a>,
@@ -333,13 +391,38 @@ impl<'a> Fdm2d<'a> {
         })
     }
 
-    /// Sets solver options
+    /// Configures the sparse linear solver options
+    ///
+    /// # Input
+    ///
+    /// * `genie` - Sparse solver type (e.g., `Genie::Umfpack`, `Genie::Mumps`)
+    /// * `symmetric` - Whether to exploit matrix symmetry
+    ///   * `true`: Store only lower/upper triangle (saves memory)
+    ///   * `false`: Store full matrix
     pub fn set_solver_options(&mut self, genie: Genie, symmetric: bool) {
         self.genie = genie;
         self.symmetric = symmetric;
     }
 
-    /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
+    /// Solves the Poisson or Helmholtz equation using System Partitioning Strategy (SPS)
+    ///
+    /// This method partitions the system into unknown and prescribed degrees of freedom,
+    /// solving only for the unknowns while enforcing essential boundary conditions.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x, y) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `ϕ` at all grid points (stored sequentially)
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
@@ -347,7 +430,12 @@ impl<'a> Fdm2d<'a> {
     ///     ∂x²      ∂y²
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * More efficient than LMM for problems with many essential BCs
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    /// * Solution is stored sequentially: index m = i + j*nx
     pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
@@ -373,7 +461,25 @@ impl<'a> Fdm2d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
+    /// Solves the Poisson or Helmholtz equation using Lagrange Multipliers Method (LMM)
+    ///
+    /// This method enforces essential boundary conditions through Lagrange multipliers,
+    /// resulting in a larger but simpler system structure.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x, y) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `ϕ` at all grid points (stored sequentially)
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
@@ -381,7 +487,13 @@ impl<'a> Fdm2d<'a> {
     ///     ∂x²      ∂y²
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Uses augmented system with Lagrange multipliers for essential BCs
+    /// * More flexible than SPS but creates larger system
+    /// * Suitable when essential BCs need to be modified frequently
+    /// * Solution is stored sequentially: index m = i + j*nx
     pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
@@ -404,25 +516,36 @@ impl<'a> Fdm2d<'a> {
         Ok(Vector::from(&&aa.as_data()[..neq]))
     }
 
-    /// Returns the dimensions for the system partitioning strategy (SPS)
+    /// Returns the system dimensions for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(nu, np)` where:
+    /// # Returns
     ///
-    /// * `nu` is the number of unknowns
-    /// * `np` is the number of prescribed values
+    /// A tuple `(nu, np)` where:
+    /// * `nu` - Number of unknown degrees of freedom (to be solved for)
+    /// * `np` - Number of prescribed degrees of freedom (essential BCs)
+    ///
+    /// # Notes
+    ///
+    /// The total number of equations is `nu + np`, which equals nx*ny (total grid points).
     pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)
     }
 
-    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    /// Returns the system dimensions for the Lagrange Multipliers Method (LMM)
     ///
-    /// Returns `(neq, nlag, ndim)` where:
+    /// # Returns
     ///
-    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
-    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
-    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    /// A tuple `(neq, nlag, ndim)` where:
+    /// * `neq` - Number of equations (= unknown DOFs + prescribed DOFs = nx*ny)
+    /// * `nlag` - Number of Lagrange multipliers (= prescribed DOFs = essential BCs)
+    /// * `ndim` - Total system dimension (= neq + nlag)
+    ///
+    /// # Notes
+    ///
+    /// The augmented system has dimension `ndim = neq + nlag`, which is larger than
+    /// the original problem size due to the Lagrange multipliers.
     pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
         let neq = self.equations.neq();
         let nlag = self.equations.np();
@@ -430,19 +553,28 @@ impl<'a> Fdm2d<'a> {
         (neq, nlag, ndim)
     }
 
-    /// Access the grid
+    /// Returns a reference to the computational grid
+    ///
+    /// # Returns
+    ///
+    /// Reference to the 2D grid used by the solver.
     pub fn get_grid(&self) -> &Grid2d {
         &self.grid
     }
 
-    /// Access the equation numbering handler
+    /// Returns a reference to the equation numbering handler
+    ///
+    /// # Returns
+    ///
+    /// Reference to the [`EquationHandler`] that manages the mapping between
+    /// grid nodes and equation indices.
     pub fn get_equations(&self) -> &EquationHandler {
         &self.equations
     }
 
-    /// Returns the matrices for the system partitioning strategy (SPS)
+    /// Assembles the coefficient matrices for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(kk_bar, kk_check)` from:
+    /// Returns `(kk_bar, kk_check)` corresponding to the partitioned system:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
@@ -453,13 +585,21 @@ impl<'a> Fdm2d<'a> {
     ///     K       a       f
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
-    /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
-    /// * `sym_kk_bar` -- symmetry of the K-bar matrix
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in K̄ matrix
+    /// * `sym_kk_bar` - Symmetry type for the K̄ matrix (e.g., `Sym::YesLower`)
     ///
-    /// Note that the `K` (K-check) matrix is only available if there are essential boundary conditions.
+    /// # Returns
+    ///
+    /// * `kk_bar` - K̄ matrix (unknown-unknown block)
+    /// * `kk_check` - Ǩ matrix (unknown-prescribed block), or `None` if no essential BCs
+    ///
+    /// # Notes
+    ///
+    /// * The Ǩ matrix is only created when there are essential boundary conditions (np > 0)
+    /// * The 2D stencil has up to 5 neighbors per node
     pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
         let nx = self.grid.nx();
         let ny = self.grid.ny();

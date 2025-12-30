@@ -247,7 +247,6 @@ pub struct Fdm1d<'a> {
 
     /// Use symmetric matrix storage
     ///
-    /// When `true`, exploits matrix symmetry to reduce memory usage and improve performance.
     /// Default: `true`
     symmetric: bool,
 }
@@ -260,7 +259,7 @@ impl<'a> Fdm1d<'a> {
     /// * `grid` - The 1D computational grid (must be uniform)
     /// * `ebcs` - Essential (Dirichlet) boundary conditions handler
     /// * `nbcs` - Natural (Neumann) boundary conditions handler
-    /// * `kx` - Diffusion coefficient along x (must be positive)
+    /// * `kx` - Diffusion coefficient along x
     ///
     /// # Returns
     ///
@@ -327,7 +326,6 @@ impl<'a> Fdm1d<'a> {
     ///
     /// * `alpha` - Helmholtz coefficient (α)
     ///   * Set to 0.0 for Poisson equation
-    ///   * Use positive value for Helmholtz equation
     /// * `source` - Source term function `f(x) -> value`
     ///
     /// # Returns
@@ -396,7 +394,6 @@ impl<'a> Fdm1d<'a> {
     ///
     /// * `alpha` - Helmholtz coefficient (α)
     ///   * Set to 0.0 for Poisson equation
-    ///   * Use positive value for Helmholtz equation
     /// * `source` - Source term function `f(x) -> value`
     ///
     /// # Returns

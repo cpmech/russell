@@ -376,6 +376,13 @@ mod tests {
         canvas.draw_circle(x[0], x[1], dot_size);
     }
 
+    #[test]
+    fn test_draw_functions_work() {
+        let mut canvas_2d = Canvas::new();
+        let mut map_2d = TransfiniteSamples::quadrilateral_2d(&[0.0, 0.0], &[1.0, 0.0], &[1.0, 1.0], &[0.0, 1.0]);
+        draw_lines_2d(&mut canvas_2d, &mut map_2d, 1, 0.02);
+    }
+
     fn check_derivs(map: &mut Transfinite2d, tol_d1: f64, tol_d2: f64) {
         let mut x_ana = Vector::new(2);
         let mut dx_dr_ana = Vector::new(2);

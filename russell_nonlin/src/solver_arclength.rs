@@ -5,7 +5,7 @@ use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_
 use russell_lab::{math::PI, Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
-/// Implements the natural parameter continuation method to solve G(u, λ) = 0
+/// Implements the pseudo-arclength continuation method to solve G(u, λ) = 0
 ///
 /// The nonlinear problem is:
 ///

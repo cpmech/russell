@@ -334,6 +334,52 @@ impl Grid2d {
     }
 
     /// Creates a new grid using Chebyshev-Gauss-Lobatto points (tensor product)
+    ///
+    /// This constructor generates a spectral grid on the reference domain [-1, 1] × [-1, 1]
+    /// using Chebyshev-Gauss-Lobatto (CGL) points, which are optimal for spectral methods.
+    ///
+    /// # Input
+    ///
+    /// * `nx` - Number of points along x-direction (≥ 2, polynomial degree = nx-1)
+    /// * `ny` - Number of points along y-direction (≥ 2, polynomial degree = ny-1)
+    ///
+    /// # Returns
+    ///
+    /// A new `Grid2d` instance with CGL points on [-1, 1] × [-1, 1].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `nx < 2` or `ny < 2`.
+    ///
+    /// # Chebyshev-Gauss-Lobatto Points
+    ///
+    /// The CGL points are the extrema of Chebyshev polynomials:
+    ///
+    /// ```text
+    /// uᵢ = -cos(π i / (nx-1))  for i = 0, 1, ..., nx-1
+    /// vⱼ = -cos(π j / (ny-1))  for j = 0, 1, ..., ny-1
+    /// ```
+    ///
+    /// These points are:
+    /// - Clustered near the boundaries (±1)
+    /// - Optimal for polynomial interpolation and spectral collocation
+    /// - Used in high-order spectral methods for PDEs
+    ///
+    /// # Coordinate Mapping
+    ///
+    /// To map CGL points from [-1, 1] to physical domain [xa, xb]:
+    ///
+    /// ```text
+    ///        xb + xa + (xb - xa) u
+    /// x(u) = —————————————————————
+    ///                 2
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// * The reference domain is always `[-1, 1] × [-1, 1]`
+    /// * Use `is_chebyshev_gauss_lobatto()` to check if a grid is CGL-based
+    /// * For physical domains, apply coordinate transformations
     pub fn new_chebyshev_gauss_lobatto(nx: usize, ny: usize) -> Result<Self, StrError> {
         if nx < 2 {
             return Err("nx must be ≥ 2");
@@ -358,27 +404,32 @@ impl Grid2d {
         Ok(Grid2d::do_allocate(-1.0, 1.0, -1.0, 1.0, nx, ny, coords, true))
     }
 
-    /// Indicates if the grid uses Chebyshev-Gauss-Lobatto points
+    /// Returns true if the grid uses Chebyshev-Gauss-Lobatto points
+    ///
+    /// # Returns
+    ///
+    /// `true` if the grid was created with `new_chebyshev_gauss_lobatto()`,
+    /// `false` otherwise (uniform or arbitrary grids).
     pub fn is_chebyshev_gauss_lobatto(&self) -> bool {
         self.is_chebyshev_gauss_lobatto
     }
 
-    /// Returns the minimum x-coordinate
+    /// Returns the minimum x-coordinate (left boundary)
     pub fn xmin(&self) -> f64 {
         self.xmin
     }
 
-    /// Returns the maximum x-coordinate
+    /// Returns the maximum x-coordinate (right boundary)
     pub fn xmax(&self) -> f64 {
         self.xmax
     }
 
-    /// Returns the minimum y-coordinate
+    /// Returns the minimum y-coordinate (bottom boundary)
     pub fn ymin(&self) -> f64 {
         self.ymin
     }
 
-    /// Returns the maximum y-coordinate
+    /// Returns the maximum y-coordinate (top boundary)
     pub fn ymax(&self) -> f64 {
         self.ymax
     }
@@ -404,8 +455,20 @@ impl Grid2d {
         self.npoint
     }
 
-    /// Returns the linear node index m for the specified (i, j) indices
+    /// Converts 2D indices (i, j) to linear node index m
     ///
+    /// # Input
+    ///
+    /// * `i` - Column index (0 ≤ i < nx)
+    /// * `j` - Row index (0 ≤ j < ny)
+    ///
+    /// # Returns
+    ///
+    /// Linear node index: m = i + j × nx
+    ///
+    /// # Notes
+    ///
+    /// The conversion formula implements row-major ordering:
     /// ```text
     /// m = i + j × nx    (convert (i,j) to linear index m)
     /// i = m % nx        (extract i-index from linear index m)
@@ -415,8 +478,21 @@ impl Grid2d {
         i + j * self.nx
     }
 
-    /// Returns the (i, j) indices of the specified node m
+    /// Converts linear node index m to 2D indices (i, j)
     ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index (0 ≤ m < nx×ny)
+    ///
+    /// # Returns
+    ///
+    /// A tuple `(i, j)` where:
+    /// * `i` is the column index (0 ≤ i < nx)
+    /// * `j` is the row index (0 ≤ j < ny)
+    ///
+    /// # Notes
+    ///
+    /// The conversion formula implements row-major ordering:
     /// ```text
     /// m = i + j × nx    (convert (i,j) to linear index m)
     /// i = m % nx        (extract i-index from linear index m)
@@ -428,34 +504,95 @@ impl Grid2d {
         (i, j)
     }
 
-    /// Returns true if the specified node is on the left boundary (xmin edge)
+    /// Checks if the specified node is on the left boundary (xmin edge)
+    ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index
+    ///
+    /// # Returns
+    ///
+    /// `true` if node m has i = 0 (leftmost column), `false` otherwise.
     pub fn is_xmin(&self, m: usize) -> bool {
         m % self.nx == 0 // i == 0
     }
 
-    /// Returns true if the specified node is on the right boundary (xmax edge)
+    /// Checks if the specified node is on the right boundary (xmax edge)
+    ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index
+    ///
+    /// # Returns
+    ///
+    /// `true` if node m has i = nx-1 (rightmost column), `false` otherwise.
     pub fn is_xmax(&self, m: usize) -> bool {
         m % self.nx == self.nx - 1 // i == nx - 1
     }
 
-    /// Returns true if the specified node is on the bottom boundary (ymin edge)
+    /// Checks if the specified node is on the bottom boundary (ymin edge)
+    ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index
+    ///
+    /// # Returns
+    ///
+    /// `true` if node m has j = 0 (bottom row), `false` otherwise.
     pub fn is_ymin(&self, m: usize) -> bool {
         m / self.nx == 0 // j == 0
     }
 
-    /// Returns true if the specified node is on the top boundary (ymax edge)
+    /// Checks if the specified node is on the top boundary (ymax edge)
+    ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index
+    ///
+    /// # Returns
+    ///
+    /// `true` if node m has j = ny-1 (top row), `false` otherwise.
     pub fn is_ymax(&self, m: usize) -> bool {
         m / self.nx == self.ny - 1 // j == ny - 1
     }
 
-    /// Indicates whether node m is on any boundary or not
+    /// Checks if the specified node is on any boundary edge
+    ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index
+    ///
+    /// # Returns
+    ///
+    /// `true` if the node is on any of the four boundaries (xmin, xmax, ymin, or ymax),
+    /// `false` if the node is strictly interior.
+    ///
+    /// # Notes
+    ///
+    /// Corner nodes (which lie on two boundaries) return `true`.
     pub fn on_boundary(&self, m: usize) -> bool {
         let i = m % self.nx;
         let j = m / self.nx;
         i == 0 || i == self.nx - 1 || j == 0 || j == self.ny - 1
     }
 
-    /// Returns the list of nodes on the specified side
+    /// Returns the list of node indices on the specified boundary side
+    ///
+    /// # Input
+    ///
+    /// * `side` - Boundary side identifier (Xmin, Xmax, Ymin, or Ymax)
+    ///
+    /// # Returns
+    ///
+    /// A slice containing the linear node indices on the specified boundary:
+    /// * `Side::Xmin` - Left boundary nodes (i = 0)
+    /// * `Side::Xmax` - Right boundary nodes (i = nx-1)
+    /// * `Side::Ymin` - Bottom boundary nodes (j = 0)
+    /// * `Side::Ymax` - Top boundary nodes (j = ny-1)
+    ///
+    /// # Notes
+    ///
+    /// Corner nodes appear in multiple boundary lists.
     pub fn get_nodes_on_side(&self, side: Side) -> &[usize] {
         match side {
             Side::Xmin => &self.nodes_xmin,
@@ -465,14 +602,37 @@ impl Grid2d {
         }
     }
 
-    /// Returns the boundary node indices
+    /// Returns all boundary node indices for all four sides
     ///
-    /// Returns `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)`
+    /// # Returns
+    ///
+    /// A tuple `(nodes_xmin, nodes_xmax, nodes_ymin, nodes_ymax)` where each element
+    /// is a slice containing the node indices for that boundary:
+    /// * `nodes_xmin` - Left boundary nodes (i = 0)
+    /// * `nodes_xmax` - Right boundary nodes (i = nx-1)
+    /// * `nodes_ymin` - Bottom boundary nodes (j = 0)
+    /// * `nodes_ymax` - Top boundary nodes (j = ny-1)
+    ///
+    /// # Notes
+    ///
+    /// Corner nodes appear in two of the returned slices.
     pub fn get_boundary_nodes(&self) -> (&[usize], &[usize], &[usize], &[usize]) {
         (&self.nodes_xmin, &self.nodes_xmax, &self.nodes_ymin, &self.nodes_ymax)
     }
 
-    /// Indicates whether node m is a corner or not
+    /// Checks if the specified node is a corner node
+    ///
+    /// # Input
+    ///
+    /// * `m` - Linear node index
+    ///
+    /// # Returns
+    ///
+    /// `true` if the node is one of the four corner nodes:
+    /// * Bottom-left: m = 0 (i = 0, j = 0)
+    /// * Bottom-right: m = nx-1 (i = nx-1, j = 0)
+    /// * Top-left: m = (ny-1)×nx (i = 0, j = ny-1)
+    /// * Top-right: m = ny×nx-1 (i = nx-1, j = ny-1)
     pub fn is_corner(&self, m: usize) -> bool {
         if m == 0 || m == self.npoint - 1 {
             true
@@ -483,9 +643,19 @@ impl Grid2d {
         }
     }
 
-    /// Returns the spacing (dx, dy) if the grid is uniform on both directions
+    /// Returns the uniform grid spacing if the grid has constant spacing
     ///
-    /// Returns `None` if the grid is non-uniform in any direction.
+    /// # Returns
+    ///
+    /// * `Some((dx, dy))` - Uniform spacing in x and y directions if the grid has
+    ///   constant spacing in both directions
+    /// * `None` - If the grid has non-uniform spacing in either direction
+    ///
+    /// # Notes
+    ///
+    /// * For uniform grids: dx = (xmax - xmin) / (nx - 1), dy = (ymax - ymin) / (ny - 1)
+    /// * Chebyshev-Gauss-Lobatto grids are non-uniform and return `None`
+    /// * Uses a tolerance of 10×ε to check for uniform spacing
     pub fn get_dx_dy(&self) -> Option<(f64, f64)> {
         let mut dx = f64::NEG_INFINITY;
         let mut dy = f64::NEG_INFINITY;

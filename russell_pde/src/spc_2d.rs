@@ -2,9 +2,14 @@ use crate::{EquationHandler, EssentialBcs2d, Grid2d, NaturalBcs2d, Side, StrErro
 use russell_lab::{InterpLagrange, Vector};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
-/// Implements the Spectral Collocation method (SPC) in 2D
+/// Implements the Spectral Collocation Method (SPC) for 2D problems
 ///
-/// The SPC can be used to solve the following problem (Poisson or Helmholtz equation):
+/// This solver handles elliptic partial differential equations in two dimensions
+/// using spectral collocation on Chebyshev-Gauss-Lobatto grids.
+///
+/// # Problem Formulation
+///
+/// The SPC solves the following equation:
 ///
 /// ```text
 ///     ∂²ϕ      ∂²ϕ
@@ -12,9 +17,22 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 ///     ∂x²      ∂y²
 /// ```
 ///
-/// with essential (EBC) and natural (NBC) boundary conditions.
+/// where:
+/// * `kx`, `ky` are the diffusion coefficients in x and y directions
+/// * `α` is the Helmholtz coefficient (α = 0 for Poisson equation)
+/// * `source(x, y)` is the source term
+/// * `ϕ(x, y)` is the unknown solution
 ///
-/// The spectral collocation method approximates the Laplacian at the grid points (xᵢ, yⱼ) using:
+/// # Boundary Conditions
+///
+/// The solver supports:
+/// * **Essential (Dirichlet)**: Prescribed values at boundaries
+/// * **Natural (Neumann)**: Prescribed flux at boundaries
+/// * **Note**: Periodic boundary conditions are not supported for spectral collocation
+///
+/// # Discretization
+///
+/// The spectral collocation method approximates the Laplacian at grid points (xᵢ, yⱼ) using:
 ///
 /// ```text
 ///               ∂²ϕ│             ∂²ϕ│
@@ -24,23 +42,36 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// mkx = -kx, mky = -ky
 /// ```
 ///
-/// where ϕᵢⱼ are the discrete counterpart of ϕ(x, y) over the (nx, ny) grid. However, these
-/// values are "sequentially" mapped onto to the vector `a` using the following formula:
+/// where D⁽²⁾ are the second derivative matrices for the spectral collocation method.
+///
+/// ## Grid Indexing
+///
+/// The 2D grid values ϕᵢⱼ are mapped to a 1D solution vector using:
 ///
 /// ```text
 /// ϕᵢⱼ → aₘ   with   m = i + j nx
 /// ```
 ///
-/// thus, we can write the discrete Laplacian operator as:
+/// where `i` is the x-index, `j` is the y-index, and `nx` is the number of grid points along x.
+///
+/// The discrete Laplacian operator can then be written as:
 ///
 /// ```text
 /// (∇²a)ₘ = ∑ₙ Kₘₙ aₙ
 /// ```
 ///
-/// Two methods are implemented to handle the essential boundary conditions:
+/// # Solution Methods
 ///
-/// 1. System Partitioning Strategy (SPS)
-/// 2. Lagrange Multipliers Method (LMM)
+/// Two methods are implemented to handle essential boundary conditions:
+///
+/// 1. **System Partitioning Strategy (SPS)**: Partitions unknowns and prescribed values
+/// 2. **Lagrange Multipliers Method (LMM)**: Uses augmented system with multipliers
+///
+/// # Grid Properties
+///
+/// * Uses Chebyshev-Gauss-Lobatto points for optimal spectral accuracy
+/// * Grid is clustered near boundaries for better resolution
+/// * Maximum polynomial degree: 2048 (limited by interpolator)
 ///
 /// # Examples
 ///
@@ -96,25 +127,32 @@ use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 /// }
 /// ```
 pub struct Spc2d<'a> {
-    /// Minimum x-coordinate
+    /// Minimum x-coordinate of the computational domain
     xmin: f64,
 
-    /// Maximum x-coordinate
+    /// Maximum x-coordinate of the computational domain
     xmax: f64,
 
-    /// Minimum y-coordinate
+    /// Minimum y-coordinate of the computational domain
     ymin: f64,
 
-    /// Maximum y-coordinate
+    /// Maximum y-coordinate of the computational domain
     ymax: f64,
 
-    /// Defines the 2D grid
+    /// The 2D Chebyshev-Gauss-Lobatto grid
+    ///
+    /// Grid points are clustered near boundaries for better spectral accuracy.
     grid: Grid2d,
 
-    /// Holds a reference to the essential boundary conditions handler
+    /// Essential (Dirichlet) boundary conditions handler
+    ///
+    /// Manages prescribed solution values at domain boundaries.
+    /// Periodic boundary conditions are not supported.
     ebcs: EssentialBcs2d<'a>,
 
-    /// Holds a reference to the natural boundary conditions handler
+    /// Natural (Neumann) boundary conditions handler
+    ///
+    /// Manages prescribed flux values at domain boundaries.
     nbcs: NaturalBcs2d<'a>,
 
     /// Negative of the diffusion coefficient along x
@@ -127,30 +165,52 @@ pub struct Spc2d<'a> {
     /// mky = -ky
     mky: f64,
 
-    /// Tool to handle the equation numbers such as unknowns prescribed
+    /// Equation numbering handler
+    ///
+    /// Manages the mapping between grid nodes and equation indices,
+    /// distinguishing between unknown and prescribed degrees of freedom.
     equations: EquationHandler,
 
-    /// Polynomial interpolator along x
+    /// Lagrange polynomial interpolator along x-direction
+    ///
+    /// Computes spectral derivative matrices D⁽¹⁾ and D⁽²⁾ for x.
     interp_x: InterpLagrange,
 
-    /// Polynomial interpolator along y
+    /// Lagrange polynomial interpolator along y-direction
+    ///
+    /// Computes spectral derivative matrices D̄⁽¹⁾ and D̄⁽²⁾ for y.
     interp_y: InterpLagrange,
 }
 
 impl<'a> Spc2d<'a> {
-    /// Allocates a new instance
+    /// Creates a new spectral collocation solver instance for 2D problems
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `nx` -- number of grid points along x (for the Chebyshev-Gauss-Lobatto grid)
-    /// * `ny` -- number of grid points along y (for the Chebyshev-Gauss-Lobatto grid)
-    /// * `ebcs` -- the essential boundary conditions handler
-    /// * `nbcs` -- the natural boundary conditions handler
-    /// * `kx` -- the diffusion coefficient along x
-    /// * `ky` -- the diffusion coefficient along y
+    /// * `xmin`, `xmax` - Domain boundaries in x-direction
+    /// * `ymin`, `ymax` - Domain boundaries in y-direction
+    /// * `nx` - Number of grid points along x (must be ≥ 2, max polynomial degree: 2048)
+    /// * `ny` - Number of grid points along y (must be ≥ 2, max polynomial degree: 2048)
+    /// * `ebcs` - Essential (Dirichlet) boundary conditions handler
+    /// * `nbcs` - Natural (Neumann) boundary conditions handler
+    /// * `kx` - Diffusion coefficient along x (must be positive)
+    /// * `ky` - Diffusion coefficient along y (must be positive)
     ///
-    /// **Note:** Make sure to call [EssentialBcs2d::validate()] to ensure the boundary
-    /// conditions are consistent. This function ignores such validation.
+    /// # Returns
+    ///
+    /// * `Ok(Spc2d)` - Successfully initialized solver
+    /// * `Err` - If:
+    ///   * `nx` or `ny` < 2
+    ///   * Polynomial degree > 2048
+    ///   * Periodic boundary conditions are specified
+    ///
+    /// # Notes
+    ///
+    /// * Uses Chebyshev-Gauss-Lobatto grid points for optimal spectral accuracy
+    /// * Grid is automatically generated based on nx and ny
+    /// * Boundary conditions are validated when solving, not during construction
+    /// * Call [EssentialBcs2d::validate()] before solving to check boundary condition consistency
+    /// * Periodic boundary conditions are not supported and will return an error
     pub fn new(
         xmin: f64,
         xmax: f64,
@@ -216,9 +276,25 @@ impl<'a> Spc2d<'a> {
         })
     }
 
-    /// Solves the Poisson or Helmholtz equation using the system partitioning strategy (SPS)
+    /// Solves the Poisson or Helmholtz equation using System Partitioning Strategy (SPS)
     ///
-    /// Returns the solution vector `a`.
+    /// This method partitions the system into unknown and prescribed degrees of freedom,
+    /// solving only for the unknowns while enforcing essential boundary conditions.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x, y) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `a` at all grid points (stored sequentially)
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
@@ -226,7 +302,11 @@ impl<'a> Spc2d<'a> {
     ///     ∂x²      ∂y²
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    /// * Solution is stored sequentially: index m = i + j*nx
     pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
@@ -250,9 +330,25 @@ impl<'a> Spc2d<'a> {
         Ok(self.get_joined_vector_sps(&a_bar, &a_check))
     }
 
-    /// Solves the Poisson or Helmholtz equation using the Lagrange multipliers method (LMM)
+    /// Solves the Poisson or Helmholtz equation using Lagrange Multipliers Method (LMM)
     ///
-    /// Returns the solution vector `a`.
+    /// This method enforces essential boundary conditions through Lagrange multipliers,
+    /// resulting in a larger but simpler system structure.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x, y) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `a` at all grid points (stored sequentially)
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
     ///
     /// ```text
     ///     ∂²ϕ      ∂²ϕ
@@ -260,7 +356,11 @@ impl<'a> Spc2d<'a> {
     ///     ∂x²      ∂y²
     /// ```
     ///
-    /// **Note:** This function calls [EssentialBcs2d::validate()] to ensure the boundary conditions are consistent.
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    /// * Solution is stored sequentially: index m = i + j*nx
     pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
     where
         F: Fn(f64, f64) -> f64,
@@ -284,17 +384,29 @@ impl<'a> Spc2d<'a> {
 
     /// Calculates the flow vectors at each grid point
     ///
-    /// Returns `(wwx, wwy)` where:
+    /// Computes the components of the flow vector field based on the solution (stored in `a`).
     ///
-    /// * `wwx` contains all x components of the flow vectors (len = number of equations = a.dim())
-    /// * `wwy` contains all y components of the flow vectors (len = number of equations = a.dim())
+    /// # Input
+    ///
+    /// * `a` - Solution vector (must have dimension equal to number of equations)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok((wwx, wwy))` - Tuple of flow vector components:
+    ///   * `wwx` - x-components of flow vectors (length = neq)
+    ///   * `wwy` - y-components of flow vectors (length = neq)
+    /// * `Err` - If `a.dim()` does not match the number of equations
+    ///
+    /// # Flow Vector Definition
     ///
     /// The flow vector is defined by:
     ///
     /// ```text
     /// →         →
-    /// w = - ḵ · ∇ϕ
+    /// w = - ḵ · ∇ϕ
     /// ```
+    ///
+    /// where `ḵ` is the diffusion coefficient tensor and `∇ϕ` is the gradient of the solution.
     pub fn calculate_flow_vectors(&self, a: &Vector) -> Result<(Vec<f64>, Vec<f64>), StrError> {
         let neq = self.equations.neq();
         if a.dim() != neq {
@@ -326,25 +438,36 @@ impl<'a> Spc2d<'a> {
         Ok((wwx, wwy))
     }
 
-    /// Returns the dimensions for the system partitioning strategy (SPS)
+    /// Returns the system dimensions for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(nu, np)` where:
+    /// # Returns
     ///
-    /// * `nu` is the number of unknowns
-    /// * `np` is the number of prescribed values
+    /// A tuple `(nu, np)` where:
+    /// * `nu` - Number of unknown degrees of freedom (to be solved for)
+    /// * `np` - Number of prescribed degrees of freedom (essential BCs)
+    ///
+    /// # Notes
+    ///
+    /// The total number of equations is `nu + np`, which equals nx*ny (total grid points).
     pub fn get_dims_sps(&self) -> (usize, usize) {
         let nu = self.equations.nu();
         let np = self.equations.np();
         (nu, np)
     }
 
-    /// Returns the dimensions for the Lagrange multipliers method (LMM)
+    /// Returns the system dimensions for the Lagrange Multipliers Method (LMM)
     ///
-    /// Returns `(neq, nlag, ndim)` where:
+    /// # Returns
     ///
-    /// * `neq` is the number of equations = number of unknowns + number of prescribed values.
-    /// * `nlag` is the number of Lagrange multipliers = number of prescribed values.
-    /// * `ndim` is the system dimension = number of equations + number of Lagrange multipliers,
+    /// A tuple `(neq, nlag, ndim)` where:
+    /// * `neq` - Number of equations (= unknown DOFs + prescribed DOFs = nx*ny)
+    /// * `nlag` - Number of Lagrange multipliers (= prescribed DOFs = essential BCs)
+    /// * `ndim` - Total system dimension (= neq + nlag)
+    ///
+    /// # Notes
+    ///
+    /// The augmented system has dimension `ndim = neq + nlag`, which is larger than
+    /// the original problem size due to the Lagrange multipliers.
     pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
         let neq = self.equations.neq();
         let nlag = self.equations.np();
@@ -352,14 +475,19 @@ impl<'a> Spc2d<'a> {
         (neq, nlag, ndim)
     }
 
-    /// Access the equation numbering handler
+    /// Returns a reference to the equation numbering handler
+    ///
+    /// # Returns
+    ///
+    /// Reference to the [EquationHandler] that manages the mapping between
+    /// grid nodes and equation indices.
     pub fn get_equations(&self) -> &EquationHandler {
         &self.equations
     }
 
-    /// Returns the coefficient matrices for the system partitioning strategy (SPS)
+    /// Assembles the coefficient matrices for the System Partitioning Strategy (SPS)
     ///
-    /// Returns `(kk_bar, kk_check)` from:
+    /// Returns `(kk_bar, kk_check)` corresponding to the partitioned system:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
@@ -370,10 +498,21 @@ impl<'a> Spc2d<'a> {
     ///     K       a       f
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
-    /// * `extra_nnz` -- extra non-zeros to allocate in the K-bar matrix
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in K̄ matrix
+    ///
+    /// # Returns
+    ///
+    /// * `kk_bar` - K̄ matrix (unknown-unknown block)
+    /// * `kk_check` - Ǩ matrix (unknown-prescribed block)
+    ///
+    /// # Notes
+    ///
+    /// * Uses spectral derivative matrices D⁽²⁾ for high-order accuracy
+    /// * Matrix is generally dense due to spectral method
+    /// * Includes domain mapping scaling from `[-1,1]×[-1,1]` to `[xmin,xmax]×[ymin,ymax]`
     pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize) -> (CooMatrix, CooMatrix) {
         // allocate matrices
         let nu = self.equations.nu();
@@ -452,9 +591,9 @@ impl<'a> Spc2d<'a> {
         (kk_bar, kk_check)
     }
 
-    /// Returns the matrix for the Lagrange multipliers method (LMM)
+    /// Assembles the augmented matrix for the Lagrange Multipliers Method (LMM)
     ///
-    /// Returns `(mm, cc)` from:
+    /// Returns `(mm, cc)` corresponding to the augmented system:
     ///
     /// ```text
     /// ┌       ┐ ┌   ┐   ┌   ┐
@@ -465,11 +604,23 @@ impl<'a> Spc2d<'a> {
     ///     M       A       F
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `alpha` -- Helmholtz coefficient (α). Set to 0.0 for the Poisson equation
-    /// * `extra_nnz` -- extra non-zeros to allocate in the A matrix
-    /// * `get_constraints_mat` -- whether to return the constraints matrix or not
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in the matrix
+    /// * `get_constraints_mat` - Whether to return the constraints matrix C separately
+    ///
+    /// # Returns
+    ///
+    /// * `mm` - Augmented M matrix containing K, C, and Cᵀ blocks
+    /// * `cc` - Constraints matrix C, or `None` if not requested
+    ///
+    /// # Notes
+    ///
+    /// * Uses spectral derivative matrices for high-order accuracy
+    /// * The augmented system size is (neq + nlag) × (neq + nlag)
+    /// * Matrix is generally dense due to spectral method
+    /// * Includes domain mapping scaling from `[-1,1]×[-1,1]` to `[xmin,xmax]×[ymin,ymax]`
     pub fn get_matrices_lmm(
         &self,
         alpha: f64,

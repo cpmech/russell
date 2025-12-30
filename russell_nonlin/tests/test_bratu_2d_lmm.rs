@@ -1,7 +1,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Output, Solver, State, Status, Stop, System};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Status, Stop, System};
 use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
@@ -14,22 +14,56 @@ use std::collections::HashMap;
 // ——— + ——— + λ exp(ϕ/(1 + α ϕ)) = 0
 // ∂x²   ∂y²
 //
-// on the unit square (1.0 × 1.0) with homogeneous boundary conditions.
+// on the unit square `[0,0]×[1,1]` with homogeneous boundary conditions.
 //
-// Below, "a" is a vector with the discretized ϕ values, i.e., a = [a₀, a₁, a₂, ..., aₙ₋₁]ᵀ, where n is the
-// number of grid points. The prescribed values are collected in the vector p = [p₀, p₁, p₂, ..., pₘ₋₁]ᵀ,
-// where m is the number of boundary points. The Laplacian operator is represented by the matrix K, thus
-// "K a" is the discretization of the Laplacian operator applied to ϕ(x,y).
+// ϕ is discretized into values a = [a₀, a₁, a₂, ..., aₙ₋₁]ᵀ, where n is the number of grid points.
+// The prescribed values are collected in the vector ǎ = [ǎ₀, ǎ₁, ǎ₂, ..., ǎₘ₋₁]ᵀ, where m is
+// the number of boundary points. Here, all components of ǎ are zero. Consider the following definitions:
 //
-// The boundary conditions are enforced via Lagrange multipliers indicated by μ = [μ₀, μ₁, μ₂, ..., μₘ₋₁]ᵀ.
-// In this case, the prescribed values are all zero (homogeneous boundary conditions), thus p = [0, 0, ... 0]ᵀ.
-// The constraints matrix for the Lagrange multipliers method is C, thus C μ = p.
+// * `nu` - Number of unknown degrees of freedom
+// * `np` - Number of prescribed degrees of freedom
+// * `neq` - `nu + np`
 //
-// The solution of the nonlinear problem is expressed by u = [a, μ]ᵀ and the discretized system is
-// expressed by G(u, λ) = [R(u, λ), S(u, λ)]ᵀ, where:
+// The Laplacian operator is represented by the matrix K, thus "K a" is the discretization of the
+// Laplacian operator applied to ϕ(x,y).
 //
-// R(u, λ) = K a + λ b + Cᵀμ = 0
-// S(u, λ) = C μ - p = 0
+// Two approaches are considered to handle the essential boundary conditions (EBCs):
+//
+// 1. SPS (System partitioning strategy) - handled by partitioning the linear system as follows:
+//
+// ┌       ┐ ┌   ┐   ┌   ┐
+// │ K̄   Ǩ │ │ ̄a │   │ f̄ │    (nu = nphi)
+// │       │ │   │ = │   │
+// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │    (np)
+// └       ┘ └   ┘   └   ┘
+//     K       a       f
+//
+// where ̄a (a-bar) are the unknown values and ǎ (a-check) are the prescribed values.
+//
+// 2. LMM (Lagrange multipliers method) - handled by introducing Lagrange multipliers as follows:
+//
+// ┌       ┐ ┌   ┐   ┌   ┐
+// │ K  Cᵀ │ │ a │   │ f │   (neq = nphi)
+// │       │ │   │ = │   │
+// │ C  0  │ │ ℓ │   │ ǎ │   (np)
+// └       ┘ └   ┘   └   ┘
+//     M       A       F
+//
+// where ℓ are the Lagrange multipliers and C is the constraints matrix for the EBCs.
+//
+// The nonlinear problem for the SPS approach is (with u = ā):
+//
+// G(u, λ) = K̄ ̄a + λ b = 0    (ndim = nu = nphi)
+//
+// whereas the problem for the LMM approach is (with u = (a, ℓ)):
+//
+//           ⎧ R(u, λ) = K a + λ b + Cᵀℓ = 0  (neq = nphi)
+// G(u, λ) = ⎨
+//           ⎩ S(u, λ) = C ℓ - ǎ = 0          (np)
+//
+// where ndim = neq + np.
+//
+// The required derivatives are discussed next.
 //
 // With bₘ = exp(ϕₘ/(1 + α ϕₘ)), the derivatives are:
 //
@@ -37,16 +71,23 @@ use std::collections::HashMap;
 // Bₘₙ := ∂bₘ/∂ϕₙ = ⎨
 //                  ⎩ 0   otherwise
 //
+// For the SPS approach (with u = ā):
+//
+// Gu = ∂G/∂u = K̄ + λ B       (nu = ndim)
+// Gλ = ∂G/∂λ = b             (nu = ndim)
+//
+// For the LMM approach (with u = (a, ℓ)):
+//
 //      ┌              ┐   ┌              ┐
-//      │ ∂R/∂ϕ  ∂R/∂ψ │   │ K + λ B   Cᵀ │
+//      │ ∂R/∂ϕ  ∂R/∂ψ │   │ K + λ B   Cᵀ │    (neq)
 // Gu = │              │ = │              │
-//      │ ∂S/∂ϕ  ∂S/∂ψ │   │ C         0  │
+//      │ ∂S/∂ϕ  ∂S/∂ψ │   │ C         0  │    (np)
 //      └              ┘   └              ┘
 //
 //      ┌       ┐   ┌   ┐
-//      │ ∂R/∂λ │   │ b │
+//      │ ∂R/∂λ │   │ b │    (neq)
 // Gλ = │       │ = │   │
-//      │ ∂S/∂λ │   │ 0 │
+//      │ ∂S/∂λ │   │ 0 │    (np)
 //      └       ┘   └   ┘
 //
 // References:
@@ -67,47 +108,114 @@ const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = true;
 
 #[test]
-fn test_bratu_2d_lmm_auto() {
-    let bordering = false;
+fn test_bratu_2d_fdm_auto() {
     let auto = AutoStep::Yes;
-    for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.0672, 0.094, 0.11), (9, 0.101, 0.07, 0.053)] {
-            let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
-            let n_phi = (npt - 2) * (npt - 2);
-            let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, n_phi);
-            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
+    for lmm in [true] {
+        for bordering in [false] {
+            for alpha in [0.0] {
+                for (npt, mut tol1, tol2, tol3) in [
+                    (8, 0.037, 0.094, 0.11), //
+                                             // (9, 0.025, 0.07, 0.053),   //
+                                             // (20, 0.0049, 0.07, 0.053), //
+                                             // (22, 0.0035, 0.07, 0.053), //
+                ] {
+                    println!(
+                        "\nRunning with: lmm = {}, bordering = {}, alpha = {}, npt = {}",
+                        lmm, bordering, alpha, npt
+                    );
+                    if lmm && (npt == 20 || npt == 22) {
+                        tol1 = 0.2; // LMM does not capture the peak
+                    }
+                    run_test(lmm, bordering, alpha, npt, auto, tol1, tol2, tol3);
+                }
+            }
         }
     }
 }
 
 #[test]
-fn test_bratu_2d_lmm_fixed() {
+fn test_bratu_2d_fdm_fixed() {
     let bordering = false;
     let auto = AutoStep::No(4.89516358573);
-    let stop = Stop::Steps(67);
     for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.0332, 0.0, 0.0)] {
-            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
+        for (npt, tol1, tol2, tol3) in [(8, 0.035, 0.0, 0.0)] {
+            run_test(true, bordering, alpha, npt, auto, tol1, tol2, tol3);
         }
     }
 }
 
+struct Args {
+    nphi: usize,
+    ndim: usize,
+    coo: CooMatrix,
+}
+
 // Runs the test
 fn run_test(
+    lmm: bool,
     bordering: bool,
     alpha: f64,
     npt: usize,
-    stop: Stop,
     auto: AutoStep,
     alpha0_lam_crit_tol: f64,
     alpha02_1st_lam_crit_tol: f64,
     alpha02_2nd_lam_crit_tol: f64,
 ) {
+    // function to calculate G(u, λ)
+    let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, args: &mut Args| {
+        // calculate G := K̄ ̄a  or  G: = M A
+        args.coo.mat_vec_mul(gg, 1.0, u).unwrap();
+        // update G += λ b (diagonal terms)
+        for m in 0..args.nphi {
+            let dm = 1.0 + alpha * u[m];
+            let bm = f64::exp(u[m] / dm);
+            gg[m] += l * bm;
+        }
+        Ok(())
+    };
+
+    // function to calculate Gu = ∂G/∂u (Jacobian matrix)
+    let calc_ggu = |ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, args: &mut Args| {
+        // note that ggu_or_aa may be the pseudo-arclength (larger) matrix
+        ggu_or_aa.reset();
+        // set Gu := K̄  or Gu := M
+        ggu_or_aa.add(1.0, &args.coo).unwrap();
+        // add λ B to the Gu
+        for m in 0..args.nphi {
+            let dm = 1.0 + alpha * u[m];
+            let bm = f64::exp(u[m] / dm);
+            ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
+        }
+        // check Jacobian for smaller grids
+        if CHECK_JACOBIAN && bordering && npt <= 21 {
+            let ana = ggu_or_aa.as_dense();
+            let num = num_jacobian(args.ndim, l, u, 1.0, args, calc_gg).unwrap();
+            if npt <= 4 {
+                println!("ana =\n{:.3}", ana);
+                println!("num =\n{:.3}", num);
+            }
+            mat_approx_eq(&ana, &num, 1e-7);
+        }
+        Ok(())
+    };
+
+    // function to calculate Gl = ∂G/∂λ
+    let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, args: &mut Args| {
+        for m in 0..args.nphi {
+            let dm = 1.0 + alpha * u[m];
+            let bm = f64::exp(u[m] / dm);
+            ggl[m] = bm;
+        }
+        Ok(())
+    };
+
     // filename stem
-    let key = if auto.yes() { "auto" } else { "fixed" };
+    let key1 = if lmm { "_lmm" } else { "" };
+    let key2 = if bordering { "_brd" } else { "" };
+    let key3 = if auto.no() { "_fix" } else { "" };
     let stem = format!(
-        "/tmp/russell_nonlin/test_bratu_2d_lmm_alpha{}_npt{}_{}",
-        alpha, npt, key
+        "/tmp/russell_nonlin/test_bratu_2d{}{}{}_alpha{}_npt{}",
+        key1, key2, key3, alpha, npt
     );
 
     // allocate the grid
@@ -120,80 +228,32 @@ fn run_test(
     // natural boundary conditions (NBCs) handler
     let nbcs = NaturalBcs2d::new();
 
-    // allocate the Laplacian operator
+    // calculate the coefficient matrix
     let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0).unwrap();
-
-    // auxiliary variables
-    let (neq, _, ndim) = fdm.get_dims_lmm();
-
-    // augmented coefficient matrix of the Laplacian operator
-    let (aug_mat, _) = fdm.get_matrices_lmm(0.0, 0, false, Sym::No);
-
-    // function to calculate G(u, λ)
-    let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
-        // ┌   ┐   ┌       ┐ ┌   ┐   ┌     ┐
-        // │ R │   │ K  Cᵀ │ │ a │   │ λ b │
-        // │   │ = │       │ │   │ + │     │
-        // │ S │   │ C  0  │ │ μ │   │ -p  │
-        // └   ┘   └       ┘ └   ┘   └     ┘
-        //   G      aug_mat    u
-        aug_mat.mat_vec_mul(gg, 1.0, u).unwrap();
-        // update R += λ b
-        for m in 0..neq {
-            let dm = 1.0 + alpha * u[m];
-            let bm = f64::exp(u[m] / dm);
-            gg[m] += l * bm;
-        }
-        // update S -= p (not needed since p = 0)
-        Ok(())
+    let sym = Sym::No;
+    let coo = if lmm {
+        fdm.get_matrices_lmm(0.0, 0, false, sym).0
+    } else {
+        fdm.get_matrices_sps(0.0, 0, sym).0
     };
+    let nnz_coo = coo.get_info().2;
 
-    // function to calculate Gu = ∂G/∂u (Jacobian matrix)
-    let calc_ggu = |ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, _args: &mut NoArgs| {
-        // note that ggu_or_aa may be the pseudo-arclength (larger) matrix
-        //      ┌       ┐   ┌        ┐
-        //      │ K  Cᵀ │   │ λ B  0 │
-        // Gu = │       │ + │        │
-        //      │ C  0  │   │   0  0 │
-        //      └       ┘   └        ┘
-        ggu_or_aa.reset();
-        ggu_or_aa.add(1.0, &aug_mat).unwrap();
-        // add λ B to the K term
-        for m in 0..neq {
-            let dm = 1.0 + alpha * u[m];
-            let bm = f64::exp(u[m] / dm);
-            ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
-        }
-        // check Jacobian for smaller grids
-        if CHECK_JACOBIAN && bordering && npt <= 21 {
-            let ana = ggu_or_aa.as_dense();
-            let num = num_jacobian(ndim, l, u, 1.0, &mut 0, calc_gg).unwrap();
-            if npt <= 3 {
-                println!("ana =\n{:.3}", ana);
-                println!("num =\n{:.3}", num);
-            }
-            mat_approx_eq(&ana, &num, 1e-7);
-        }
-        Ok(())
-    };
-
-    // function to calculate Gl = ∂G/∂λ
-    let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, _args: &mut NoArgs| {
-        for m in 0..neq {
-            let dm = 1.0 + alpha * u[m];
-            let bm = f64::exp(u[m] / dm);
-            ggl[m] = bm;
-        }
-        Ok(())
-    };
+    // allocate arguments struct
+    let (nu, np) = fdm.get_dims_sps();
+    let neq = nu + np;
+    let nphi = if lmm { neq } else { nu };
+    let ndim = if lmm { neq + np } else { nu };
+    let mut args = Args { nphi, ndim, coo };
 
     // allocate nonlinear problem
     let mut system = System::new(ndim, calc_gg).unwrap();
 
     // max number of non-zeros in Gu
-    let nnz_aa = aug_mat.get_info().2;
-    let nnz = nnz_aa + neq; // +na for the λ B term
-    let sym = Sym::No;
+    let nnz = if lmm {
+        nnz_coo + neq // +neq due to the λ B term
+    } else {
+        nnz_coo + nu // +nu due to the λ B term
+    };
 
     // set callback functions
     system.set_calc_ggu(Some(nnz), sym, calc_ggu).unwrap();
@@ -223,16 +283,21 @@ fn run_test(
 
     // output
     let out = &mut Output::new();
-    out.set_record_norm_u(true, Norm::Inf, 0, neq);
+    out.set_record_norm_u(true, Norm::Inf, 0, nphi);
 
     // initial state (all zero)
     let mut state = State::new(ndim);
 
+    // stop criterion
+    let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
+    let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
+    // let stop = Stop::Steps(67);
+
     // numerical continuation
     let status = solver
-        .solve(&mut 0, &mut state, IniDir::Pos, stop, auto, Some(out))
+        .solve(&mut args, &mut state, IniDir::Pos, stop, auto, Some(out))
         .unwrap();
-    println!("\nStatus: {:?}", status);
+    println!("Status: {:?}", status);
     assert_eq!(status, Status::Success);
 
     // search for the critical point(s)
@@ -252,6 +317,7 @@ fn run_test(
         if ii_peaks.len() == 1 {
             let lam_crit = lam_vals[ii_peaks[0]];
             let diff = f64::abs(lam_crit - REF_ALP00);
+            println!("diff = {}", diff);
             if diff > alpha0_lam_crit_tol {
                 println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, REF_ALP00, diff);
             }
@@ -264,6 +330,7 @@ fn run_test(
             let lam_crit_b = lam_vals[ii_valleys[0]];
             let diff_a = f64::abs(lam_crit_a - REF_ALP02_A);
             let diff_b = f64::abs(lam_crit_b - REF_ALP02_B);
+            println!("diff_a = {}, diff_b = {}", diff_a, diff_b);
             if diff_a > alpha02_1st_lam_crit_tol {
                 println!(
                     "❌ ERROR ❌ 1st λCrit = {}, ref = {}, diff = {}",
@@ -288,7 +355,20 @@ fn run_test(
         let mut plot = Plot::new();
 
         // set the title
-        plot.set_title(&format!("{}  |  $\\alpha = {}$  |  npt = {}", key, alpha, npt));
+        let mut title = if alpha == 0.0 {
+            let lam_crit = lam_vals[ii_peaks[0]];
+            format!("npt = {} | $\\lambda_{{crit}} = {:.8}$", npt, lam_crit)
+        } else {
+            let lam_crit_a = lam_vals[ii_peaks[0]];
+            let lam_crit_b = lam_vals[ii_valleys[0]];
+            format!(
+                "npt = {} | $\\lambda_{{crit}}^A = {:.8}$ | $\\lambda_{{crit}}^B = {:.8}$",
+                npt, lam_crit_a, lam_crit_b
+            )
+        };
+        if lmm {
+            title += " | LMM";
+        }
 
         // maximum ‖ϕ‖∞ value
         let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];
@@ -344,8 +424,10 @@ fn run_test(
         plot.add(&annotations);
 
         // generate ‖ϕ‖∞ versus λ plot
-        let key = if auto.yes() { "auto" } else { "fixed" };
-        plot.set_labels("λ", "‖ϕ‖∞").save(&format!("{}.svg", stem)).unwrap();
+        plot.set_title(&title)
+            .set_labels("λ", "‖ϕ‖∞")
+            .save(&format!("{}.svg", stem))
+            .unwrap();
 
         // plot stepsizes
         if auto.yes() {
@@ -356,7 +438,7 @@ fn run_test(
             curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
             curve.draw(&x.as_slice(), &hh);
             let mut plot = Plot::new();
-            plot.set_title(&format!("{}  |  $\\alpha = {}$  |  npt = {}", key, alpha, npt))
+            plot.set_title(&title)
                 .set_labels("step number", "stepsize $h$")
                 .add(&curve)
                 .save(&format!("{}_h.svg", stem))

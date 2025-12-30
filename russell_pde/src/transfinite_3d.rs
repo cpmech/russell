@@ -24,7 +24,7 @@ use russell_lab::Vector;
 ///                         +----------------+'
 /// ```
 ///
-/// Note: The reference coordinates {r,s,t} ϵ [-1,+1]×[-1,+1]×[-1,+1] are also symbolized by `u`
+/// Note: The reference coordinates `{r,s,t} ϵ [-1,+1]×[-1,+1]×[-1,+1]` are also symbolized by `u`
 pub struct Transfinite3d {
     // boundary function
     // len = 6

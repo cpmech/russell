@@ -19,7 +19,7 @@ use russell_lab::Vector;
 ///                                    └──x
 /// ```
 ///
-/// Note: The reference coordinates {r,s,t} ϵ [-1,+1]×[-1,+1]×[-1,+1] are also symbolized by `u`
+/// Note: The reference coordinates `{r,s,t} ϵ [-1,+1]×[-1,+1]×[-1,+1]` are also symbolized by `u`
 pub struct Transfinite2d {
     // boundary functions
     // len = 4

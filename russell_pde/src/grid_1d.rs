@@ -3,7 +3,13 @@ use crate::StrError;
 use russell_lab::math::chebyshev_lobatto_points;
 use russell_lab::Vector;
 
-/// Defines a 1D grid
+/// Defines a one-dimensional grid with node coordinates
+///
+/// This structure stores the nodes of a 1D computational grid and provides
+/// methods for grid construction, coordinate access, and boundary node identification.
+///
+/// The grid can be uniform (equally-spaced) or non-uniform, and supports
+/// both Cartesian coordinates and Chebyshev-Gauss-Lobatto (CGL) points.
 ///
 /// ## Grid Layout and Indexing
 ///
@@ -48,50 +54,52 @@ use russell_lab::Vector;
 /// }
 /// ```
 pub struct Grid1d {
-    /// Number of points (≥ 2)
+    /// Number of grid nodes (nx ≥ 2)
     ///
-    /// This represents the number of columns in the grid.
+    /// Represents the total count of nodes in the 1D grid.
+    /// Valid node indices are 0 ≤ m < nx.
     nx: usize,
 
-    /// Node coordinates
+    /// Node coordinates in ascending order (len = nx)
     ///
-    /// Length = nx
+    /// Stores the x-coordinate of each node. The coordinates are strictly
+    /// increasing: coords[0] < coords[1] < ... < coords[nx-1].
     coords: Vector,
 
-    /// Holds the index of the left node, i.e., 0
+    /// Indices of nodes on the xmin boundary (len = 1; always = [0])
     ///
-    /// The reason for this data member is to have a consistent interface with higher-dimensional grids.
-    ///
-    /// length = 1
+    /// Contains the index of the leftmost boundary node.
+    /// In 1D, this is always a single-element vector [0].
+    /// This data member ensures a consistent interface with higher-dimensional grids.
     nodes_xmin: Vec<usize>,
 
-    /// Holds the index of the right node, i.e., nx - 1
+    /// Indices of nodes on the xmax boundary (len = 1; always = [nx-1])
     ///
-    /// The reason for this data member is to have a consistent interface with higher-dimensional grids.
-    ///
-    /// length = 1
+    /// Contains the index of the rightmost boundary node.
+    /// In 1D, this is always a single-element vector [nx-1].
+    /// This data member ensures a consistent interface with higher-dimensional grids.
     nodes_xmax: Vec<usize>,
 }
 
 impl Grid1d {
-    /// Creates a new grid
+    /// Creates a new 1D grid from arbitrary x-coordinates
     ///
-    /// This constructor allows for non-uniform spacing by providing explicit
-    /// coordinate arrays.
+    /// Constructs a grid with specified node coordinates, which must be
+    /// strictly increasing. This allows for non-uniform (arbitrary) spacing.
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `xx` - Array of x-coordinates (must be strictly increasing, length ≥ 2)
+    /// * `xx` - Array of x-coordinates (must be strictly increasing with length ≥ 2)
     ///
     /// # Returns
     ///
-    /// A new `Grid1d` instance with `nx = xx.len()` points.
+    /// Returns a new Grid1d instance with nx = xx.len() points.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - `xx.len() < 2`
-    /// - `xx` array is not strictly increasing
+    /// * nx < 2 (need at least two nodes)
+    /// * Coordinates are not strictly increasing
     ///
     /// # Examples
     ///
@@ -129,31 +137,28 @@ impl Grid1d {
         })
     }
 
-    /// Creates a new grid with uniform spacing
+    /// Creates a new uniformly-spaced (equally-spaced) grid
     ///
-    /// This constructor creates a structured grid with uniform spacing. The spacing
-    /// is calculated automatically based on the domain size and number of points.
+    /// Constructs a grid with uniform spacing between consecutive nodes:
+    /// dx = (xmax - xmin) / (nx - 1)
     ///
-    /// # Arguments
+    /// The grid spans from xmin to xmax with nx equally-spaced nodes.
     ///
-    /// * `xmin` - Minimum x-coordinate (left boundary)
-    /// * `xmax` - Maximum x-coordinate (right boundary)
-    /// * `nx` - Number of points (≥ 2)
+    /// # Input
     ///
-    /// # Grid Spacing
-    ///
-    /// The uniform spacing is calculated as:
-    /// - `dx = (xmax - xmin) / (nx - 1)`
+    /// * `xmin` - Coordinate of the leftmost node (at x = xmin)
+    /// * `xmax` - Coordinate of the rightmost node (at x = xmax); must satisfy xmax > xmin
+    /// * `nx` - Number of nodes (must satisfy nx ≥ 2)
     ///
     /// # Returns
     ///
-    /// A new `Grid1d` instance with uniformly spaced coordinates.
+    /// Returns a new Grid1d instance with uniform spacing.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// - `nx < 2`
-    /// - `xmax ≤ xmin`
+    /// * nx < 2 (need at least two nodes)
+    /// * xmax ≤ xmin (invalid domain)
     ///
     /// # Examples
     ///
@@ -195,7 +200,44 @@ impl Grid1d {
         })
     }
 
-    /// Creates a new grid using Chebyshev-Gauss-Lobatto points (tensor product)
+    /// Creates a new grid using Chebyshev-Gauss-Lobatto (CGL) points
+    ///
+    /// The Chebyshev-Gauss-Lobatto points are defined in the interval [-1, 1] and are given by:
+    ///
+    /// ```text
+    /// x_j = -cos(j·π / N),  j = 0, 1, ..., N
+    /// ```
+    ///
+    /// where N = nx - 1 is the polynomial degree.
+    ///
+    /// **Properties:**
+    /// * The points include both endpoints: x₀ = -1 and xₙ = 1
+    /// * The spacing is denser near the boundaries, with more points clustered at the endpoints
+    /// * CGL points are optimal for spectral collocation methods as they minimize
+    ///   interpolation errors and the Lebesgue constant
+    /// * The point distribution corresponds to the projection of equally-spaced points
+    ///   on a semicircle onto the diameter
+    ///
+    /// CGL points are particularly useful for spectral methods where high accuracy
+    /// is needed for smooth solutions, and the clustered boundary points help
+    /// resolve boundary layers.
+    ///
+    /// # Input
+    ///
+    /// * `nx` - Number of nodes (must satisfy nx ≥ 2)
+    ///
+    /// # Returns
+    ///
+    /// Returns a new Grid1d instance with CGL points in [-1, 1].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if nx < 2.
+    ///
+    /// # Notes
+    ///
+    /// * For a different domain [a, b], use the transformation: ξ = (2x - b - a) / (b - a)
+    /// * The grid is non-uniform with denser spacing at x = ±1
     pub fn new_chebyshev_gauss_lobatto(nx: usize) -> Result<Self, StrError> {
         if nx < 2 {
             return Err("nx must be ≥ 2");
@@ -211,27 +253,74 @@ impl Grid1d {
         })
     }
 
-    /// Returns the total number of grid points
+    /// Returns the number of nodes in the grid
+    ///
+    /// # Returns
+    ///
+    /// The total count of nodes (nx ≥ 2)
     pub fn nx(&self) -> usize {
         self.nx
     }
 
-    /// Returns true if the specified node is on the left boundary (xmin edge)
+    /// Returns whether a node lies on the xmin (left) boundary
+    ///
+    /// # Input
+    ///
+    /// * `m` - Node index to check
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if node m is at x = xmin (i.e., m == 0), `false` otherwise.
     pub fn is_xmin(&self, m: usize) -> bool {
         m == 0
     }
 
-    /// Returns true if the specified node is on the right boundary (xmax edge)
+    /// Returns whether a node lies on the xmax (right) boundary
+    ///
+    /// # Input
+    ///
+    /// * `m` - Node index to check
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if node m is at x = xmax (i.e., m == nx-1), `false` otherwise.
     pub fn is_xmax(&self, m: usize) -> bool {
         m == self.nx - 1
     }
 
-    /// Indicates whether node m is on any boundary or not
+    /// Returns whether a node lies on any boundary
+    ///
+    /// In 1D, a node is on the boundary if it is at either endpoint.
+    ///
+    /// # Input
+    ///
+    /// * `m` - Node index to check
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if node m is at either x = xmin or x = xmax, `false` otherwise.
     pub fn on_boundary(&self, m: usize) -> bool {
         m == 0 || m == self.nx - 1
     }
 
-    /// Returns the list of nodes on the specified side
+    /// Returns the indices of nodes on a specified boundary side
+    ///
+    /// # Input
+    ///
+    /// * `side` - The boundary side to query. Valid values are:
+    ///   - `Side::Xmin` - Returns nodes at x = xmin (left boundary)
+    ///   - `Side::Xmax` - Returns nodes at x = xmax (right boundary)
+    ///
+    /// # Returns
+    ///
+    /// A slice containing node indices on the specified side.
+    /// In 1D, this is always a single-element slice:
+    /// * `[0]` for Xmin
+    /// * `[nx-1]` for Xmax
+    ///
+    /// # Panics
+    ///
+    /// Panics if side is Ymin, Ymax, Zmin, or Zmax (invalid for 1D grids).
     pub fn get_nodes_on_side(&self, side: Side) -> &[usize] {
         match side {
             Side::Xmin => &self.nodes_xmin,
@@ -240,16 +329,34 @@ impl Grid1d {
         }
     }
 
-    /// Returns the boundary node indices
+    /// Returns slices with the indices of nodes on both boundaries
     ///
-    /// Returns `(nodes_xmin, nodes_xmax)`
+    /// # Returns
+    ///
+    /// A tuple `(nodes_xmin, nodes_xmax)` where:
+    /// * `nodes_xmin` - Slice of node indices on the xmin (left) boundary: [0]
+    /// * `nodes_xmax` - Slice of node indices on the xmax (right) boundary: [nx-1]
+    ///
+    /// In 1D, each slice contains exactly one node index.
     pub fn get_boundary_nodes(&self) -> (&[usize], &[usize]) {
         (&self.nodes_xmin, &self.nodes_xmax)
     }
 
-    /// Returns the spacing (dx) if the grid is uniform
+    /// Returns the uniform spacing (dx) if the grid has constant spacing
     ///
-    /// Returns `None` if the grid is non-uniform
+    /// Checks whether all consecutive node spacings are equal (within numerical tolerance)
+    /// and returns the spacing value if uniform.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(dx)` - If the grid is uniformly spaced, returns the constant spacing
+    /// * `None` - If the grid is non-uniform (varying spacing between nodes)
+    ///
+    /// # Notes
+    ///
+    /// * The method uses a tolerance of 10·ε to account for floating-point precision
+    /// * For grids created with `new_uniform()`, this always returns `Some(dx)`
+    /// * For CGL grids or arbitrary grids, this typically returns `None`
     pub fn get_dx(&self) -> Option<f64> {
         let mut dx = f64::NEG_INFINITY;
         for i in 1..self.nx {
@@ -265,19 +372,19 @@ impl Grid1d {
         Some(dx)
     }
 
-    /// Returns the x-coordinate of the specified node
+    /// Returns the x-coordinate of a specified node
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `m` - Node index (0 ≤ m < nx)
+    /// * `m` - Node index (must satisfy 0 ≤ m < nx)
     ///
     /// # Returns
     ///
-    /// The x-coordinate of node `m`.
+    /// The x-coordinate of node m.
     ///
     /// # Panics
     ///
-    /// Panics if `m` is out of bounds (≥ nx).
+    /// Panics if m ≥ nx (index out of bounds).
     ///
     /// # Examples
     ///
@@ -301,12 +408,19 @@ impl Grid1d {
 
     /// Iterates over all grid nodes with their coordinates
     ///
-    /// The provided closure is called for each node with arguments `(m, x)`
-    /// where `m` is the linear node index and `x` is the coordinate.
+    /// Calls the provided closure for each node in order (from left to right),
+    /// passing the node index and its x-coordinate as arguments.
     ///
-    /// # Arguments
+    /// # Input
     ///
-    /// * `f` - Closure that accepts `(node_index: usize, x: f64)`
+    /// * `f` - Closure that accepts `(m: usize, x: f64)` where:
+    ///   - `m` is the node index (0 to nx-1)
+    ///   - `x` is the x-coordinate of node m
+    ///
+    /// # Notes
+    ///
+    /// * Nodes are visited in ascending order: m = 0, 1, ..., nx-1
+    /// * Useful for operations that need both the index and coordinate of each node
     ///
     /// # Examples
     ///

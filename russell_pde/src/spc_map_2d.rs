@@ -197,6 +197,12 @@ pub struct SpcMap2d<'a> {
     /// Computes spectral derivative matrices D̄⁽¹⁾ and D̄⁽²⁾ for s.
     interp_s: InterpLagrange,
 
+    /// Sparse linear solver type
+    ///
+    /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
+    /// Default: `Genie::Umfpack`
+    genie: Genie,
+
     /// Metrics calculator for curvilinear coordinates
     ///
     /// Computes contravariant metric coefficients (gᵢⱼ) and Christoffel symbols (Γᵏᵢⱼ)
@@ -315,6 +321,7 @@ impl<'a> SpcMap2d<'a> {
             equations,
             interp_r,
             interp_s,
+            genie: Genie::Umfpack,
             metrics,
             map,
             x: Vector::new(2),
@@ -325,6 +332,15 @@ impl<'a> SpcMap2d<'a> {
             d2x_drs: Vector::new(2),
             un: Vector::new(2),
         })
+    }
+
+    /// Configures the sparse linear solver
+    ///
+    /// # Input
+    ///
+    /// * `genie` - Sparse solver type (e.g., `Genie::Umfpack`, `Genie::Mumps`)
+    pub fn set_solver_options(&mut self, genie: Genie) {
+        self.genie = genie;
     }
 
     /// Solves the Poisson or Helmholtz equation using System Partitioning Strategy (SPS)
@@ -374,7 +390,7 @@ impl<'a> SpcMap2d<'a> {
         kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check).unwrap(); // f̄ -= Ǩ ǎ
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        let mut solver = LinSolver::new(self.genie)?;
         solver.actual.factorize(&kk_bar, None)?;
         solver.actual.solve(&mut a_bar, &f_bar, false)?;
 
@@ -425,7 +441,7 @@ impl<'a> SpcMap2d<'a> {
         let (mut aa, ff) = self.get_vectors_lmm(source);
 
         // solve the linear system
-        let mut solver = LinSolver::new(Genie::Umfpack)?;
+        let mut solver = LinSolver::new(self.genie)?;
         solver.actual.factorize(&mm, None)?;
         solver.actual.solve(&mut aa, &ff, false)?;
 

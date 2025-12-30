@@ -1,6 +1,8 @@
 use plotpy::{Contour, Curve, Plot, Stream, Surface};
 use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
+use russell_sparse::Genie;
+use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;
 
@@ -11,11 +13,11 @@ fn test_2d_prob01_spc() -> Result<(), StrError> {
     ] {
         let (nn, tol) = *nn_tol;
         // SPS
-        run_spc(true, false, nn, tol)?;
-        run_spc(false, false, nn, tol)?;
+        run_spc(true, false, nn, tol, Genie::Umfpack)?;
+        run_spc(false, false, nn, tol, Genie::Umfpack)?;
         // LMM
-        run_spc(true, true, nn, tol)?;
-        run_spc(false, true, nn, tol)?;
+        run_spc(true, true, nn, tol, Genie::Umfpack)?;
+        run_spc(false, true, nn, tol, Genie::Umfpack)?;
     }
     Ok(())
 }
@@ -27,23 +29,56 @@ fn test_2d_prob01_spc_map() -> Result<(), StrError> {
     ] {
         let (nn, tol) = *nn_tol;
         // SPS
-        run_spc_map(true, false, nn, tol)?;
-        run_spc_map(false, false, nn, tol)?;
+        run_spc_map(true, false, nn, tol, Genie::Umfpack)?;
+        run_spc_map(false, false, nn, tol, Genie::Umfpack)?;
         // LMM
-        run_spc_map(true, true, nn, tol)?;
-        run_spc_map(false, true, nn, tol)?;
+        run_spc_map(true, true, nn, tol, Genie::Umfpack)?;
+        run_spc_map(false, true, nn, tol, Genie::Umfpack)?;
     }
     Ok(())
 }
 
-fn run_spc(case_a: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+#[cfg(feature = "with_mumps")]
+#[test]
+#[serial]
+fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
+    for nn_tol in &[
+        (8, 1e-8), //
+    ] {
+        let (nn, tol) = *nn_tol;
+        // SPS
+        run_spc(true, false, nn, tol, Genie::Mumps)?;
+        // LMM
+        run_spc(true, true, nn, tol, Genie::Mumps)?;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "with_mumps")]
+#[test]
+#[serial]
+fn test_2d_prob01_spc_map_mumps() -> Result<(), StrError> {
+    for nn_tol in &[
+        (8, 1e-8), //
+    ] {
+        let (nn, tol) = *nn_tol;
+        // SPS
+        run_spc_map(true, false, nn, tol, Genie::Mumps)?;
+        // LMM
+        run_spc_map(true, true, nn, tol, Genie::Mumps)?;
+    }
+    Ok(())
+}
+
+fn run_spc(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Result<(), StrError> {
     // get the problem data
     let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow) =
         ProblemSamples::d2_problem_01(case_a);
 
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
-    let spc = Spc2d::new(xmin, xmax, ymin, ymax, nx, ny, ebcs, nbcs, kx, ky)?;
+    let mut spc = Spc2d::new(xmin, xmax, ymin, ymax, nx, ny, ebcs, nbcs, kx, ky)?;
+    spc.set_solver_options(genie);
 
     // solve the problem
     let a = if lmm {
@@ -168,7 +203,7 @@ fn run_spc(case_a: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError>
     Ok(())
 }
 
-fn run_spc_map(case_a: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrError> {
+fn run_spc_map(case_a: bool, lmm: bool, nn: usize, tol: f64, genie: Genie) -> Result<(), StrError> {
     // get the problem data
     let (xmin, xmax, ymin, ymax, k, _, ebcs, nbcs, source, analytical, ana_flow) =
         ProblemSamples::d2_problem_01(case_a);
@@ -179,6 +214,7 @@ fn run_spc_map(case_a: bool, lmm: bool, nn: usize, tol: f64) -> Result<(), StrEr
     // allocate the solver
     let (nx, ny) = (nn + 1, nn + 1);
     let mut spc = SpcMap2d::new(map, nx, ny, ebcs, nbcs, k)?;
+    spc.set_solver_options(genie);
 
     // solve the problem
     let a = if lmm {

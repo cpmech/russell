@@ -1,7 +1,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Status, Stop, System};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Status, Stop, StrError, System};
 use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
@@ -105,10 +105,10 @@ const REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2
 const REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
 
 const CHECK_JACOBIAN: bool = false;
-const SAVE_FIGURE: bool = false;
+const SAVE_FIGURE: bool = true;
 
 #[test]
-fn test_bratu_2d_fdm_auto() {
+fn test_bratu_2d_fdm_auto() -> Result<(), StrError> {
     let auto = AutoStep::Yes;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.034, 0.0, 0.0), //
@@ -124,25 +124,30 @@ fn test_bratu_2d_fdm_auto() {
             for lmm in [true, false] {
                 for bordering in [true, false] {
                     println!("{}", gen_file_stem(npt, alpha, lmm, bordering, auto));
-                    run_test(lmm, bordering, alpha, npt, auto, tol1, tol2, tol3);
+                    run_test(lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
                 }
             }
         }
     }
+    Ok(())
 }
 
 #[test]
-fn test_bratu_2d_fdm_fixed() {
+fn test_bratu_2d_fdm_fixed() -> Result<(), StrError> {
     let bordering = false;
-    let auto = AutoStep::No(4.89516358573);
+    let auto = AutoStep::No(10.0);
     for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.035, 0.0, 0.0)] {
-            run_test(true, bordering, alpha, npt, auto, tol1, tol2, tol3);
+        for (npt, tol1, tol2, tol3) in [(8, 0.034, 0.0, 0.0)] {
+            run_test(true, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
         }
     }
+    Ok(())
 }
 
 struct Args {
+    alpha: f64,
+    bordering: bool,
+    npt: usize,
     nphi: usize,
     ndim: usize,
     coo: CooMatrix,
@@ -158,55 +163,7 @@ fn run_test(
     alpha0_lam_crit_tol: f64,
     alpha02_1st_lam_crit_tol: f64,
     alpha02_2nd_lam_crit_tol: f64,
-) {
-    // function to calculate G(u, λ)
-    let calc_gg = |gg: &mut Vector, l: f64, u: &Vector, args: &mut Args| {
-        // calculate G := K̄ ̄a  or  G: = M A
-        args.coo.mat_vec_mul(gg, 1.0, u).unwrap();
-        // update G += λ b (diagonal terms)
-        for m in 0..args.nphi {
-            let dm = 1.0 + alpha * u[m];
-            let bm = f64::exp(u[m] / dm);
-            gg[m] += l * bm;
-        }
-        Ok(())
-    };
-
-    // function to calculate Gu = ∂G/∂u (Jacobian matrix)
-    let calc_ggu = |ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, args: &mut Args| {
-        // note that ggu_or_aa may be the pseudo-arclength (larger) matrix
-        ggu_or_aa.reset();
-        // set Gu := K̄  or Gu := M
-        ggu_or_aa.add(1.0, &args.coo).unwrap();
-        // add λ B to the Gu
-        for m in 0..args.nphi {
-            let dm = 1.0 + alpha * u[m];
-            let bm = f64::exp(u[m] / dm);
-            ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
-        }
-        // check Jacobian for smaller grids
-        if CHECK_JACOBIAN && bordering && npt <= 21 {
-            let ana = ggu_or_aa.as_dense();
-            let num = num_jacobian(args.ndim, l, u, 1.0, args, calc_gg).unwrap();
-            if npt <= 4 {
-                println!("ana =\n{:.3}", ana);
-                println!("num =\n{:.3}", num);
-            }
-            mat_approx_eq(&ana, &num, 1e-7);
-        }
-        Ok(())
-    };
-
-    // function to calculate Gl = ∂G/∂λ
-    let calc_ggl = |ggl: &mut Vector, _l: f64, u: &Vector, args: &mut Args| {
-        for m in 0..args.nphi {
-            let dm = 1.0 + alpha * u[m];
-            let bm = f64::exp(u[m] / dm);
-            ggl[m] = bm;
-        }
-        Ok(())
-    };
-
+) -> Result<(), StrError> {
     // stem
     let stem = gen_file_stem(npt, alpha, lmm, bordering, auto);
 
@@ -228,7 +185,7 @@ fn run_test(
         .set_bordering(bordering);
 
     // allocate the grid
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
+    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt)?;
 
     // essential boundary conditions
     let mut ebcs = EssentialBcs2d::new();
@@ -238,7 +195,7 @@ fn run_test(
     let nbcs = NaturalBcs2d::new();
 
     // calculate the coefficient matrix
-    let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0).unwrap();
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
     let sym = Sym::No;
     let coo = if lmm {
         fdm.get_matrices_lmm(0.0, 0, false, sym).0
@@ -252,10 +209,17 @@ fn run_test(
     let neq = nu + np;
     let nphi = if lmm { neq } else { nu };
     let ndim = if lmm { neq + np } else { nu };
-    let mut args = Args { nphi, ndim, coo };
+    let mut args = Args {
+        alpha,
+        bordering,
+        npt,
+        nphi,
+        ndim,
+        coo,
+    };
 
     // allocate nonlinear problem
-    let mut system = System::new(ndim, calc_gg).unwrap();
+    let mut system = System::new(ndim, calc_gg)?;
 
     // max number of non-zeros in Gu
     let nnz = if lmm {
@@ -265,11 +229,11 @@ fn run_test(
     };
 
     // set callback functions
-    system.set_calc_ggu(Some(nnz), sym, calc_ggu).unwrap();
+    system.set_calc_ggu(Some(nnz), sym, calc_ggu)?;
     system.set_calc_ggl(calc_ggl);
 
     // define the solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(config, system)?;
 
     // output
     let out = &mut Output::new();
@@ -281,12 +245,9 @@ fn run_test(
     // stop criterion
     let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
     let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
-    // let stop = Stop::Steps(67);
 
     // numerical continuation
-    let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, stop, auto, Some(out))
-        .unwrap();
+    let status = solver.solve(&mut args, &mut state, IniDir::Pos, stop, auto, Some(out))?;
     println!("Status: {:?}", status);
     assert_eq!(status, Status::Success);
 
@@ -343,96 +304,70 @@ fn run_test(
 
     // plot the results
     if SAVE_FIGURE {
-        // allocate the plot
-        let mut plot = Plot::new();
-
-        // set the title
-        let mut title = format!("n = {}", npt);
-        if lmm {
-            title += " | LMM";
-        }
-        if bordering {
-            title += " | BRD";
-        }
-        if alpha > 0.0 {
-            title += &format!(" | $\\alpha$ = {:.2} | ", alpha);
-        }
-
-        // maximum ‖ϕ‖∞ value
-        let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];
-
-        // reference results
-        if alpha == 0.0 {
-            let table: HashMap<String, Vec<f64>> =
-                read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"])).unwrap();
-            let mut n_ref = 0;
-            for u_max in &table["u_max"] {
-                if *u_max > max_nrm_max {
-                    break;
-                }
-                n_ref += 1;
-            }
-            if n_ref + 5 < table["u_max"].len() {
-                n_ref += 5; // add a few more points for better visualization
-            }
-            let mut curve_ref = Curve::new();
-            let x_ref = &table["lambda"].as_slice()[..n_ref];
-            let y_ref = &table["u_max"].as_slice()[..n_ref];
-            curve_ref.set_label("reference").draw(&x_ref, &y_ref);
-            plot.add(&curve_ref);
-        }
-
-        // numerical results
-        let mut curve = Curve::new();
-        curve.set_marker_style(".").draw(lam_vals, nrm_vals);
-        plot.add(&curve);
-
-        // annotations
-        let mut annotations = Text::new();
-        annotations
-            .set_bbox(true)
-            .set_bbox_facecolor("white")
-            .set_bbox_edgecolor("None")
-            .set_bbox_style("round,pad=0.3");
-        let indices = [&ii_valleys[..], &ii_peaks[..]].concat();
-        for i in &indices {
-            plot.set_horiz_line(nrm_vals[*i], "#689868ff", "-", 1.0);
-            annotations
-                .set_rotation(0.0)
-                .set_align_vertical("center")
-                .set_align_horizontal("left")
-                .draw(0.0, nrm_vals[*i], &format!("{:.9}", nrm_vals[*i]));
-            plot.set_vert_line(lam_vals[*i], "#689868ff", "-", 1.0);
-            annotations
-                .set_rotation(90.0)
-                .set_align_vertical("top")
-                .set_align_horizontal("center")
-                .draw(lam_vals[*i], max_nrm_max, &format!("{:.9}", lam_vals[*i]));
-        }
-        plot.add(&annotations);
-
-        // generate ‖ϕ‖∞ versus λ plot
-        plot.set_title(&title)
-            .set_labels("λ", "‖ϕ‖∞")
-            .save(&format!("{}.svg", stem))
-            .unwrap();
-
-        // plot stepsizes
-        if auto.yes() {
-            let hh = &out.get_h_values()[1..]; // the first one is duplicated
-            let n = hh.len();
-            let x = linspace(1.0, n as f64, n);
-            let mut curve = Curve::new();
-            curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
-            curve.draw(&x.as_slice(), &hh);
-            let mut plot = Plot::new();
-            plot.set_title(&title)
-                .set_labels("step number", "stepsize $h$")
-                .add(&curve)
-                .save(&format!("{}_h.svg", stem))
-                .unwrap();
-        }
+        let stepsizes = &out.get_h_values()[1..];
+        do_plot(
+            lmm,
+            bordering,
+            alpha,
+            npt,
+            auto,
+            &stem,
+            &lam_vals,
+            &nrm_vals,
+            &ii_peaks,
+            &ii_valleys,
+            &stepsizes,
+        )?;
     }
+    Ok(())
+}
+
+// function to calculate G(u, λ)
+fn calc_gg(gg: &mut Vector, l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
+    // calculate G := K̄ ̄a  or  G: = M A
+    args.coo.mat_vec_mul(gg, 1.0, u).unwrap();
+    // update G += λ b (diagonal terms)
+    for m in 0..args.nphi {
+        let dm = 1.0 + args.alpha * u[m];
+        let bm = f64::exp(u[m] / dm);
+        gg[m] += l * bm;
+    }
+    Ok(())
+}
+
+// function to calculate Gu = ∂G/∂u (Jacobian matrix)
+fn calc_ggu(ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
+    // note that ggu_or_aa may be the pseudo-arclength (larger) matrix
+    ggu_or_aa.reset();
+    // set Gu := K̄  or Gu := M
+    ggu_or_aa.add(1.0, &args.coo).unwrap();
+    // add λ B to the Gu
+    for m in 0..args.nphi {
+        let dm = 1.0 + args.alpha * u[m];
+        let bm = f64::exp(u[m] / dm);
+        ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
+    }
+    // check Jacobian for smaller grids
+    if CHECK_JACOBIAN && args.bordering && args.npt <= 21 {
+        let ana = ggu_or_aa.as_dense();
+        let num = num_jacobian(args.ndim, l, u, 1.0, args, calc_gg).unwrap();
+        if args.npt <= 4 {
+            println!("ana =\n{:.3}", ana);
+            println!("num =\n{:.3}", num);
+        }
+        mat_approx_eq(&ana, &num, 1e-7);
+    }
+    Ok(())
+}
+
+// function to calculate Gl = ∂G/∂λ
+fn calc_ggl(ggl: &mut Vector, _l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
+    for m in 0..args.nphi {
+        let dm = 1.0 + args.alpha * u[m];
+        let bm = f64::exp(u[m] / dm);
+        ggl[m] = bm;
+    }
+    Ok(())
 }
 
 fn gen_file_stem(npt: usize, alpha: f64, lmm: bool, bordering: bool, auto: AutoStep) -> String {
@@ -445,4 +380,106 @@ fn gen_file_stem(npt: usize, alpha: f64, lmm: bool, bordering: bool, auto: AutoS
         "/tmp/russell_nonlin/test_bratu_2d_n{}_{}_{}_{}_{}",
         npt, key0, key1, key2, key3
     )
+}
+
+fn do_plot(
+    lmm: bool,
+    bordering: bool,
+    alpha: f64,
+    npt: usize,
+    auto: AutoStep,
+    stem: &str,
+    lam_vals: &Vec<f64>,
+    nrm_vals: &Vec<f64>,
+    ii_peaks: &[usize],
+    ii_valleys: &[usize],
+    stepsizes: &[f64],
+) -> Result<(), StrError> {
+    // allocate the plot
+    let mut plot = Plot::new();
+
+    // set the title
+    let mut title = format!("n = {}", npt);
+    if lmm {
+        title += " | LMM";
+    }
+    if bordering {
+        title += " | BRD";
+    }
+    if alpha > 0.0 {
+        title += &format!(" | $\\alpha$ = {:.2} | ", alpha);
+    }
+
+    // maximum ‖ϕ‖∞ value
+    let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];
+
+    // reference results
+    if alpha == 0.0 {
+        let table: HashMap<String, Vec<f64>> =
+            read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"]))?;
+        let mut n_ref = 0;
+        for u_max in &table["u_max"] {
+            if *u_max > max_nrm_max {
+                break;
+            }
+            n_ref += 1;
+        }
+        if n_ref + 5 < table["u_max"].len() {
+            n_ref += 5; // add a few more points for better visualization
+        }
+        let mut curve_ref = Curve::new();
+        let x_ref = &table["lambda"].as_slice()[..n_ref];
+        let y_ref = &table["u_max"].as_slice()[..n_ref];
+        curve_ref.set_label("reference").draw(&x_ref, &y_ref);
+        plot.add(&curve_ref);
+    }
+
+    // numerical results
+    let mut curve = Curve::new();
+    curve.set_marker_style(".").draw(lam_vals, nrm_vals);
+    plot.add(&curve);
+
+    // annotations
+    let mut annotations = Text::new();
+    annotations
+        .set_bbox(true)
+        .set_bbox_facecolor("white")
+        .set_bbox_edgecolor("None")
+        .set_bbox_style("round,pad=0.3");
+    let indices = [&ii_valleys[..], &ii_peaks[..]].concat();
+    for i in &indices {
+        plot.set_horiz_line(nrm_vals[*i], "#689868ff", "-", 1.0);
+        annotations
+            .set_rotation(0.0)
+            .set_align_vertical("center")
+            .set_align_horizontal("left")
+            .draw(0.0, nrm_vals[*i], &format!("{:.9}", nrm_vals[*i]));
+        plot.set_vert_line(lam_vals[*i], "#689868ff", "-", 1.0);
+        annotations
+            .set_rotation(90.0)
+            .set_align_vertical("top")
+            .set_align_horizontal("center")
+            .draw(lam_vals[*i], max_nrm_max, &format!("{:.9}", lam_vals[*i]));
+    }
+    plot.add(&annotations);
+
+    // generate ‖ϕ‖∞ versus λ plot
+    plot.set_title(&title)
+        .set_labels("λ", "‖ϕ‖∞")
+        .save(&format!("{}.svg", stem))?;
+
+    // plot stepsizes
+    if auto.yes() {
+        let n = stepsizes.len();
+        let x = linspace(1.0, n as f64, n);
+        let mut curve = Curve::new();
+        curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
+        curve.draw(&x.as_slice(), &stepsizes);
+        let mut plot = Plot::new();
+        plot.set_title(&title)
+            .set_labels("step number", "stepsize $h$")
+            .add(&curve)
+            .save(&format!("{}_h.svg", stem))?;
+    }
+    Ok(())
 }

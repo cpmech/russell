@@ -15,9 +15,8 @@ pub struct SolverNatural<'a, A> {
     /// Sign of the step size to maintain the direction of the continuation
     sign0: f64,
 
-    // variables for the curvature estimation
-    prev_u: Vector,
-    prev_l: f64,
+    /// Previous u variable for the curvature estimation
+    u_prev: Vector,
 }
 
 impl<'a, A> SolverNatural<'a, A> {
@@ -29,8 +28,7 @@ impl<'a, A> SolverNatural<'a, A> {
             config,
             system,
             sign0: 1.0,
-            prev_u: Vector::new(ndim),
-            prev_l: 0.0,
+            u_prev: Vector::new(ndim),
         }
     }
 
@@ -152,15 +150,19 @@ impl<'a, A> SolverNatural<'a, A> {
     /// Note that `state` corresponds to the initial values `x₀ = (u₀, λ₀)`
     /// and `work` corresponds to the updated values `x₁ = (u₁, λ₁)`.
     fn calculate_rerr(&mut self, work: &mut Workspace, state: &State) -> f64 {
-        let ndim = self.system.ndim;
-        let mut sum = 0.0;
-        for i in 0..ndim {
-            let v = work.u[i] - 2.0 * state.u[i] + self.prev_u[i]; // u₁ - 2u₀ + u₋₁
-            let r = work.u[i] - state.u[i]; // u₁ - u₀
-            let den = self.config.tg_control_atol + self.config.tg_control_rtol * f64::abs(r);
-            sum += v * v / (den * den);
+        if work.stats.n_accepted > 1 {
+            let ndim = self.system.ndim;
+            let mut sum = 0.0;
+            for i in 0..ndim {
+                let v = work.u[i] - 2.0 * state.u[i] + self.u_prev[i]; // u₁ - 2u₀ + u₋₁
+                let r = work.u[i] - state.u[i]; // u₁ - u₀
+                let den = self.config.tg_control_atol + self.config.tg_control_rtol * f64::abs(r);
+                sum += v * v / (den * den);
+            }
+            f64::sqrt(sum / (ndim as f64))
+        } else {
+            0.0
         }
-        f64::sqrt(sum / (ndim as f64))
     }
 }
 
@@ -288,21 +290,10 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     /// Returns `rerr` the relative error used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, state: &mut State, _args: &mut A) -> Result<f64, StrError> {
         // calculate the relative error
-        // let mut rerr = 0.0;
-        // if work.stats.n_accepted > 1 {
-        //     if let Some(gamma) = self.calculate_gamma(work, state) {
-        //         rerr = gamma / self.config.tg_control_rtol;
-        //     }
-        // }
-        let rerr = if work.stats.n_accepted > 1 {
-            self.calculate_rerr(work, state)
-        } else {
-            0.0
-        };
+        let rerr = self.calculate_rerr(work, state);
 
-        // save previous u and l
-        vec_copy(&mut self.prev_u, &state.u).unwrap();
-        self.prev_l = state.l;
+        // save previous u
+        vec_copy(&mut self.u_prev, &state.u).unwrap();
 
         // update the state
         vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁

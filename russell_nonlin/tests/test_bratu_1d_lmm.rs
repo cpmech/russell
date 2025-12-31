@@ -72,7 +72,24 @@ fn analytical_profile(x: f64) -> f64 {
 }
 
 const CHECK_JACOBIAN: bool = false;
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
+
+#[test]
+fn test_bratu_1d_lmm_auto() {
+    let bordering = false;
+    let auto = AutoStep::Yes;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.0377, 0.0592, 0.0587), //
+                                     // (100, 0.0002, 0.00036, 0.0003), //
+                                     // (101, 0.0002, 0.00035, 0.0009), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            let max_nrm_max = if alpha == 0.0 { 9.0 } else { 30.0 };
+            let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, npt);
+            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
+        }
+    }
+}
 
 // Runs the test
 fn run_test(
@@ -228,6 +245,7 @@ fn run_test(
         if ii_peaks.len() == 1 {
             let lam_crit = lam_vals[ii_peaks[0]];
             let diff = f64::abs(lam_crit - REF_ALP00);
+            println!("diff = {}", diff);
             if diff > alpha0_lam_crit_tol {
                 println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, REF_ALP00, diff);
             }
@@ -240,6 +258,7 @@ fn run_test(
             let lam_crit_b = lam_vals[ii_valleys[0]];
             let diff_a = f64::abs(lam_crit_a - REF_ALP02_A);
             let diff_b = f64::abs(lam_crit_b - REF_ALP02_B);
+            println!("diff_a = {}, diff_b = {}", diff_a, diff_b);
             if diff_a > alpha02_1st_lam_crit_tol {
                 println!(
                     "❌ ERROR ❌ 1st λCrit = {}, ref = {}, diff = {}",
@@ -370,19 +389,6 @@ fn run_test(
                 .grid_labels_legend("x", "$\\phi_{crit}(x)$")
                 .save(&format!("{}_profile.svg", stem))
                 .unwrap();
-        }
-    }
-}
-
-#[test]
-fn test_bratu_1d_lmm_auto() {
-    let bordering = false;
-    let auto = AutoStep::Yes;
-    for alpha in [0.0, 0.2] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.0646, 0.06, 0.0071)] {
-            let max_nrm_max = if alpha == 0.0 { 9.0 } else { 30.0 };
-            let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, npt);
-            run_test(bordering, alpha, npt, stop, auto, tol1, tol2, tol3);
         }
     }
 }

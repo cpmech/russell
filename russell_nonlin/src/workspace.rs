@@ -105,9 +105,6 @@ pub(crate) struct Workspace<'a> {
     /// Auxiliary u vector #2 (e.g., for the numerical Jacobian)
     pub(crate) u_aux2: Vector,
 
-    /// Indicates whether this step results were acceptable or not
-    pub(crate) acceptable: bool,
-
     /// Holds the predictor values for debugging
     ///
     /// Holds λ and the first two components of u (if available), calculated by the predictor step.
@@ -175,7 +172,6 @@ impl<'a> Workspace<'a> {
             mdu: Vector::new(system.ndim),
             u_aux1: Vector::new(ndim_aux1),
             u_aux2: Vector::new(ndim_aux2),
-            acceptable: true,
 
             // debugging
             predictor_values_debug: None,

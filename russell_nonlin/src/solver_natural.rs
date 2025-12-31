@@ -1,7 +1,6 @@
 use super::{AutoStep, Config, IniDir, Method, Status};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::math::PI;
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::numerical_jacobian;
 
@@ -17,7 +16,6 @@ pub struct SolverNatural<'a, A> {
     sign0: f64,
 
     // variables for the curvature estimation
-    ddu: Vector,
     prev_u: Vector,
     prev_l: f64,
 }
@@ -31,7 +29,6 @@ impl<'a, A> SolverNatural<'a, A> {
             config,
             system,
             sign0: 1.0,
-            ddu: Vector::new(ndim),
             prev_u: Vector::new(ndim),
             prev_l: 0.0,
         }
@@ -128,61 +125,6 @@ impl<'a, A> SolverNatural<'a, A> {
 
         // success
         Ok(Status::Success)
-    }
-
-    /// Calculates the angle between the secant vectors passing through the previous, current, and updated points
-    ///
-    /// Returns `alpha` where:
-    ///
-    /// * `alpha` -- is  the curvature angle in degrees, if available.
-    ///
-    /// The secant vectors are:
-    ///
-    /// ```text
-    /// previous: s₋₁ = x₀ - x₋₁
-    /// current:  s₀  = x₁ - x₀
-    /// ```
-    ///
-    /// Thus:
-    ///
-    /// ```text
-    ///         ⎛  s₋₁ · s₀  ⎞
-    /// α = acos⎜ —————————— ⎟
-    ///         ⎝ ‖s₋₁‖ ‖s₀‖ ⎠
-    /// ```
-    ///
-    /// Note that `state` corresponds to the initial values `x₀ = (u₀, λ₀)`
-    /// and `work` corresponds to the updated values `x₁ = (u₁, λ₁)`.
-    fn calculate_alpha(&mut self, work: &mut Workspace, state: &State) -> Option<f64> {
-        let ndim = self.system.ndim;
-        let mut norm_prev = 0.0; // norm of the previous secant vector
-        let mut norm_curr = 0.0; // norm of the current secant vector
-        for i in 0..ndim {
-            work.mdu[i] = state.u[i] - self.prev_u[i]; // s₋₁ = u₀ - u₋₁ (previous secant vector)
-            self.ddu[i] = work.u[i] - state.u[i]; //      s₀  = u₁ - u₀  (current secant vector)
-            norm_prev += work.mdu[i] * work.mdu[i];
-            norm_curr += self.ddu[i] * self.ddu[i];
-        }
-        let mdl = state.l - self.prev_l; // s₋₁ = λ₀ - λ₋₁ (previous secant vector)
-        let ddl = work.l - state.l; //      s₀  = λ₁ - λ₀  (current secant vector)
-        norm_prev += mdl * mdl;
-        norm_curr += ddl * ddl;
-        norm_prev = f64::sqrt(norm_prev);
-        norm_curr = f64::sqrt(norm_curr);
-        if norm_prev > 0.0 && norm_curr > 0.0 {
-            let mut cos_alpha = 0.0;
-            for i in 0..ndim {
-                cos_alpha += work.mdu[i] * self.ddu[i];
-            }
-            cos_alpha += mdl * ddl;
-            cos_alpha /= norm_prev * norm_curr;
-            cos_alpha = f64::clamp(cos_alpha, -1.0, 1.0);
-            let alpha = f64::acos(cos_alpha) * 180.0 / PI;
-            assert!(f64::is_finite(alpha)); // make sure alpha is finite
-            Some(alpha)
-        } else {
-            None
-        }
     }
 
     /// Calculates the normalized change between the secant vectors passing through the previous, current, and updated points
@@ -335,40 +277,6 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         // log divergence
         if !work.err.converged() {
             work.log.did_not_converge();
-        }
-
-        // exit on failure (may try again)
-        if status.failure() {
-            work.acceptable = false;
-            return Ok(status);
-        }
-
-        // return if not auto mode (fixed stepsize; accept by default)
-        if !work.auto {
-            work.acceptable = true;
-            return Ok(status);
-        }
-
-        //
-        // adaptivity --- check if the angle (alpha) between previous secant and the current
-        // secant vectors is below the tolerance
-        //
-
-        work.acceptable = true;
-        if work.stats.n_accepted > 0 {
-            if let Some(alpha) = self.calculate_alpha(work, state) {
-                // check if alpha is acceptable
-                work.acceptable = alpha >= 0.0 && alpha <= self.config.alpha_max;
-                if !work.acceptable {
-                    work.log.alpha_is_not_acceptable();
-                    status = Status::LargeAlpha;
-                }
-
-                // check if alpha is way out of bounds
-                if alpha > self.config.alpha_max_ultimate {
-                    status = Status::ExtremelyLargeAlpha(alpha.to_string());
-                }
-            }
         }
 
         // done

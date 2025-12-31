@@ -176,7 +176,7 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.n_steps += 1;
                 status = self.actual.step(&mut self.work, state, stop, args)?;
 
-                // handle failures
+                // check for failures
                 if status.failure() {
                     if status.try_again() {
                         self.work.n_continued_failure += 1;
@@ -186,20 +186,30 @@ impl<'a, A> Solver<'a, A> {
                     }
                 }
 
-                // handle continued failure (allowed to "try again")
+                // handle continued failure
                 if self.work.n_continued_failure >= self.config.n_cont_failure_max {
                     status = Status::ContinuedFailure;
                     break;
                 }
 
-                // handle rejections (due to large curvatures, etc.)
+                // handle continued rejections
                 if self.work.n_continued_rejection >= self.config.n_cont_rejection_max {
                     status = Status::ContinuedRejection;
                     break;
                 }
 
-                // accept step
-                if self.work.acceptable {
+                // reject or accept
+                if status.failure() {
+                    // set flags
+                    self.work.stats.n_rejected += 1;
+                    self.work.follows_rejection = true;
+
+                    // perform the reject operations (e.g., restore external vars) and recompute stepsize
+                    self.actual.reject(&mut self.work, args);
+
+                    // adapt stepsize
+                    self.work.h *= self.config.m_failure;
+                } else {
                     // update u and λ
                     self.work.stats.n_accepted += 1;
                     let rerr = self.actual.accept(&mut self.work, state, args)?;
@@ -207,7 +217,7 @@ impl<'a, A> Solver<'a, A> {
                     // check for anomalies
                     vec_all_finite(&state.u, self.config.verbose)?;
 
-                    // handle target u or λ reached
+                    // exit point: target u or λ reached
                     if self.work.target_reached {
                         break;
                     }
@@ -241,18 +251,6 @@ impl<'a, A> Solver<'a, A> {
                     if stop.now(i, state) {
                         break;
                     }
-
-                // reject step
-                } else {
-                    // set flags
-                    self.work.stats.n_rejected += 1;
-                    self.work.follows_rejection = true;
-
-                    // perform the reject operations (e.g., restore external vars) and recompute stepsize
-                    self.actual.reject(&mut self.work, args);
-
-                    // adapt stepsize
-                    self.work.h *= self.config.m_failure;
                 }
 
                 // check allowed stepsize change

@@ -354,16 +354,6 @@ pub enum Status {
     /// (may try again)
     SecondaryUpdateError(StrError),
 
-    /// Failure: The curvature angle becomes too large
-    ///
-    /// (may tray again)
-    LargeAlpha,
-
-    /// Failure: The curvature angle became extremely large
-    ///
-    /// (must stop)
-    ExtremelyLargeAlpha(String),
-
     /// Failure: The stepsize became too small.
     ///
     /// (must stop)
@@ -419,9 +409,7 @@ impl Status {
             Status::ContinuedDivergence => true,
             Status::Rejection => true,
             Status::SecondaryUpdateError(_) => true,
-            Status::LargeAlpha => true,
             // must stop
-            Status::ExtremelyLargeAlpha(_) => false,
             Status::SmallStepsize => false,
             Status::SecondaryUpdateTerminate => false,
             Status::ContinuedFailure => false,

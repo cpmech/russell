@@ -7,6 +7,9 @@ use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
 use std::collections::HashMap;
 
+/// Defines whether to generate the plot or not
+const SAVE_FIGURE: bool = false;
+
 /// Defines the stress(y)-strain(x) state for the Hardening-Softening model
 #[derive(Clone)]
 struct StressStrainState {
@@ -263,9 +266,6 @@ fn do_plot_stepsizes(name: &str, stepsizes: &[f64]) {
         .unwrap();
 }
 
-/// Defines whether to generate the plot or not
-const SAVE_FIGURE: bool = true;
-
 /// Defines a function to run the Hardening-Softening model
 ///
 /// Returns `(stats, max_err)` where `max_err` is the maximum error in lambda
@@ -291,7 +291,6 @@ fn run_hs_model(
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)
-        .set_alpha_max(5.0)
         .set_debug_predictor(true)
         .set_record_iterations_residuals(true);
 
@@ -409,9 +408,9 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 48);
-    assert_eq!(stats.n_rejected, 52);
-    assert_eq!(stats.n_steps, 100);
+    assert_eq!(stats.n_accepted, 35);
+    assert_eq!(stats.n_rejected, 42);
+    assert_eq!(stats.n_steps, 77);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -483,8 +482,8 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 14);
-    assert_eq!(stats.n_rejected, 3);
-    assert_eq!(stats.n_steps, 17);
+    assert_eq!(stats.n_accepted, 9);
+    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_steps, 9);
     Ok(())
 }

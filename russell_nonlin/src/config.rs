@@ -96,12 +96,6 @@ pub struct Config {
     /// Use the bordering algorithm throughout the entire simulation
     pub(crate) bordering: bool,
 
-    /// Max angle between the tangent and the secant (to try again)
-    pub(crate) alpha_max: f64,
-
-    /// Ultimate max angle between the tangent and the secant (to stop the simulation)
-    pub(crate) alpha_max_ultimate: f64,
-
     /// Records the predictor values for debugging
     pub(crate) debug_predictor: bool,
 
@@ -241,8 +235,6 @@ impl Config {
             use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: false,
-            alpha_max: 15.0,
-            alpha_max_ultimate: 30.0,
             debug_predictor: false,
             // stepsize control
             nr_control_enabled: true,
@@ -472,22 +464,6 @@ impl Config {
         self
     }
 
-    /// Sets the maximum angle between the tangent and the secant (to try again)
-    ///
-    /// Default value: 5.0
-    pub fn set_alpha_max(&mut self, value: f64) -> &mut Self {
-        self.alpha_max = value;
-        self
-    }
-
-    /// Sets the ultimate max angle between the tangent and the secant (to stop the simulation)
-    ///
-    /// Default value: 30.0
-    pub fn set_alpha_max_ultimate(&mut self, value: f64) -> &mut Self {
-        self.alpha_max_ultimate = value;
-        self
-    }
-
     /// Records the predictor values for debugging
     pub fn set_debug_predictor(&mut self, flag: bool) -> &mut Self {
         self.debug_predictor = flag;
@@ -706,13 +682,6 @@ impl Config {
             return Err("requirement: allowed_iterations ≥ 1");
         }
 
-        // pseudo-arclength
-        if self.alpha_max <= 0.0 {
-            return Err("requirement: alpha_max > 0");
-        }
-        if self.alpha_max_ultimate <= 0.0 {
-            return Err("requirement: alpha_max_ultimate > 0");
-        }
         Ok(())
     }
 }

@@ -165,21 +165,6 @@ impl Logger {
         }
     }
 
-    /// Prints a message when the step is rejected because alpha is not acceptable
-    pub fn alpha_is_not_acceptable(&mut self) {
-        if !self.enabled {
-            return;
-        }
-
-        let message = format!("{:^w$}", "(rejected: alpha is not acceptable)", w = NCHAR);
-
-        if self.full_path.is_none() {
-            println!("{}", message);
-        } else {
-            writeln!(&mut self.buffer, "{}", message).unwrap();
-        }
-    }
-
     /// Prints statistics and eventual errors
     pub fn footer(&mut self, stats: &Stats, status: &Status) -> Result<(), StrError> {
         if !self.enabled {
@@ -305,7 +290,6 @@ mod tests {
         err.residual_converged = true;
         logger.iteration(0, &err);
         logger.did_not_converge();
-        logger.alpha_is_not_acceptable();
         let stats = Stats::new(&config);
         logger.footer(&stats, &Status::SmallStepsize).unwrap();
 
@@ -322,7 +306,6 @@ Legend:
  5.000E-01  1.000E-01
          ·          ·     1   1.00E-08 ✅          ·            ·
                     (rejected: did not converge)                    
-                (rejected: alpha is not acceptable)                 
 ────────────────────────────────────────────────────────────────────
 
 Natural parameter continuation; solves G(u, λ) = 0 (fixed)
@@ -373,7 +356,6 @@ Total time                       = 0ns
         err.residual_converged = true;
         logger.iteration(0, &err);
         logger.did_not_converge();
-        logger.alpha_is_not_acceptable();
         let stats = Stats::new(&config);
         logger.footer(&stats, &Status::SmallStepsize).unwrap();
 
@@ -390,7 +372,6 @@ Legend:
  5.000E-01  1.000E-01
          ·          ·     1   1.00E-08 ✅   0.00E+00     0.00E+00   
                     (rejected: did not converge)                    
-                (rejected: alpha is not acceptable)                 
 ────────────────────────────────────────────────────────────────────
 
 Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)

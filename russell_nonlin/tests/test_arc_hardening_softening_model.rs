@@ -7,6 +7,9 @@ use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
 use std::collections::HashMap;
 
+/// Defines whether to generate the plot or not
+const SAVE_FIGURE: bool = false;
+
 /// Defines the stress(y)-strain(x) state for the Hardening-Softening model
 #[derive(Clone)]
 struct StressStrainState {
@@ -259,12 +262,9 @@ fn do_plot_stepsizes(name: &str, stepsizes: &[f64]) {
     let mut plot = Plot::new();
     plot.set_labels("step number", "stepsize $h$")
         .add(&curve)
-        .save(&format!("/tmp/russell_nonlin/{}_stepsizes.svg", name))
+        .save(&format!("/tmp/russell_nonlin/{}_h.svg", name))
         .unwrap();
 }
-
-/// Defines whether to generate the plot or not
-const SAVE_FIGURE: bool = true;
 
 /// Defines a function to run the Hardening-Softening model
 ///
@@ -290,7 +290,6 @@ fn run_hs_model(
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)
-        .set_alpha_max(5.0)
         .set_debug_predictor(true)
         .set_record_iterations_residuals(true)
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name));
@@ -319,6 +318,8 @@ fn run_hs_model(
     if let Some(so_class) = so_class {
         config.set_tg_control_soderlind(so_class);
     }
+
+    config.set_tg_control_atol(0.04).set_tg_control_rtol(0.04);
 
     // Define the nonlinear solver
     let mut solver = Solver::new(config, system)?;
@@ -408,15 +409,16 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
         auto,
         fig_width,
     )?;
+    println!("{}", stats);
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 60);
-    assert_eq!(stats.n_rejected, 2);
-    assert_eq!(stats.n_steps, 62);
+    assert_eq!(stats.n_accepted, 36);
+    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_steps, 36);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.03525, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.03523, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -448,13 +450,13 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 53);
-    assert_eq!(stats.n_rejected, 7);
-    assert_eq!(stats.n_steps, 60);
+    assert_eq!(stats.n_accepted, 31);
+    assert_eq!(stats.n_rejected, 4);
+    assert_eq!(stats.n_steps, 35);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.0292, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -486,13 +488,13 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 13);
+    assert_eq!(stats.n_accepted, 30);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 13);
+    assert_eq!(stats.n_steps, 30);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.0739, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.02553, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -529,12 +531,12 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 60);
-    assert_eq!(stats.n_rejected, 2);
-    assert_eq!(stats.n_steps, 62);
+    assert_eq!(stats.n_accepted, 36);
+    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_steps, 36);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.03525, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.03523, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }

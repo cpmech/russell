@@ -1,16 +1,29 @@
 use plotpy::{linspace, Curve, Plot};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
+
+#[test]
+fn test_arc_bspline_2_default() {
+    run_test("test_arc_bspline_2_default", false, None, 420, 0, Status::Success);
+}
+
+#[test]
+fn test_arc_bspline_2_custom() {
+    run_test("test_arc_bspline_2_custom", false, Some(0.05), 70, 3, Status::Success);
+}
+
+#[test]
+fn test_arc_bspline_2_bordering() {
+    run_test("test_arc_bspline_2_bordering", true, Some(0.05), 70, 3, Status::Success);
+}
 
 fn run_test(
     name: &str,
     bordering: bool,
     atol_and_rtol: Option<f64>,
-    alpha_max: Option<f64>,
     expected_n_accepted: usize,
     expected_n_rejected: usize,
-    expected_n_steps: usize,
     expected_status: Status,
 ) {
     // nonlinear problem
@@ -28,9 +41,6 @@ fn run_test(
         .set_h_ini(0.04);
     if let Some(tol) = atol_and_rtol {
         config.set_tg_control_atol_and_rtol(tol);
-    }
-    if let Some(alpha) = alpha_max {
-        config.set_alpha_max(alpha);
     }
 
     // define solver
@@ -57,7 +67,7 @@ fn run_test(
     let stats = solver.get_stats();
     assert_eq!(stats.n_accepted, expected_n_accepted);
     assert_eq!(stats.n_rejected, expected_n_rejected);
-    assert_eq!(stats.n_steps, expected_n_steps);
+    assert_eq!(stats.n_steps, expected_n_accepted + expected_n_rejected);
 
     // plot
     if SAVE_FIGURE {
@@ -98,46 +108,4 @@ fn run_test(
             .save(&format!("/tmp/russell_nonlin/{}.svg", name))
             .unwrap()
     }
-}
-
-#[test]
-fn test_arc_bspline_2_default() {
-    run_test(
-        "test_arc_bspline_2_default",
-        false,
-        None,
-        None,
-        87,
-        0,
-        87,
-        Status::Success,
-    );
-}
-
-#[test]
-fn test_arc_bspline_2_custom() {
-    run_test(
-        "test_arc_bspline_2_custom",
-        false,
-        Some(1e-1),
-        Some(3.0),
-        82,
-        36,
-        118,
-        Status::Success,
-    );
-}
-
-#[test]
-fn test_arc_bspline_2_bordering() {
-    run_test(
-        "test_arc_bspline_2_bordering",
-        true,
-        None,
-        None,
-        87,
-        0,
-        87,
-        Status::Success,
-    );
 }

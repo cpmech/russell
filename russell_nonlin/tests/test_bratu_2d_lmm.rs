@@ -105,27 +105,25 @@ const REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2
 const REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
 
 const CHECK_JACOBIAN: bool = false;
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_bratu_2d_fdm_auto() {
     let auto = AutoStep::Yes;
-    for lmm in [true] {
-        for bordering in [false] {
-            for alpha in [0.0] {
-                for (npt, mut tol1, tol2, tol3) in [
-                    (8, 0.037, 0.094, 0.11), //
-                                             // (9, 0.025, 0.07, 0.053),   //
-                                             // (20, 0.0049, 0.07, 0.053), //
-                                             // (22, 0.0035, 0.07, 0.053), //
-                ] {
-                    println!(
-                        "\nRunning with: lmm = {}, bordering = {}, alpha = {}, npt = {}",
-                        lmm, bordering, alpha, npt
-                    );
-                    if lmm && (npt == 20 || npt == 22) {
-                        tol1 = 0.2; // LMM does not capture the peak
-                    }
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.034, 0.0, 0.0), //
+                              // (9, 0.027, 0.0, 0.0),     //
+                              // (20, 0.0052, 0.0, 0.0),   //
+                              // (22, 0.0059, 0.0, 0.0),   //
+                              // (40, 0.0026, 0.0, 0.0),   //
+                              // (41, 0.0020, 0.0, 0.0),   //
+                              // (100, 0.00095, 0.0, 0.0), //
+                              // (101, 0.0012, 0.0, 0.0),  //
+    ] {
+        for alpha in [0.0] {
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    println!("{}", gen_file_stem(npt, alpha, lmm, bordering, auto));
                     run_test(lmm, bordering, alpha, npt, auto, tol1, tol2, tol3);
                 }
             }
@@ -209,14 +207,25 @@ fn run_test(
         Ok(())
     };
 
-    // filename stem
-    let key1 = if lmm { "_lmm" } else { "" };
-    let key2 = if bordering { "_brd" } else { "" };
-    let key3 = if auto.no() { "_fix" } else { "" };
-    let stem = format!(
-        "/tmp/russell_nonlin/test_bratu_2d{}{}{}_alpha{}_npt{}",
-        key1, key2, key3, alpha, npt
-    );
+    // stem
+    let stem = gen_file_stem(npt, alpha, lmm, bordering, auto);
+
+    // configuration
+    let mut config = Config::new(Method::Arclength);
+    config
+        .set_n_cont_failure_max(8)
+        .set_n_cont_rejection_max(5)
+        .set_nr_control_enabled(true)
+        .set_tg_control_enabled(true)
+        .set_tg_control_pid_vcc(true)
+        .set_tg_control_atol(0.04)
+        .set_tg_control_rtol(0.04)
+        .set_record_iterations_residuals(true)
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_debug_predictor(true)
+        .set_log_file(&format!("{}.txt", stem))
+        .set_bordering(bordering);
 
     // allocate the grid
     let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt).unwrap();
@@ -259,25 +268,6 @@ fn run_test(
     system.set_calc_ggu(Some(nnz), sym, calc_ggu).unwrap();
     system.set_calc_ggl(calc_ggl);
 
-    // configuration
-    let mut config = Config::new(Method::Arclength);
-    config
-        .set_n_cont_failure_max(5)
-        .set_n_cont_rejection_max(5)
-        .set_nr_control_enabled(true)
-        .set_tg_control_enabled(true)
-        .set_tg_control_pid_vcc(true)
-        // .set_tg_control_atol_and_rtol(1e-5)
-        // .set_tg_control_atol_and_rtol(1.1e-1)
-        // .set_alpha_max(2.1)
-        .set_alpha_max(3.65) // 3.66 fails
-        .set_record_iterations_residuals(true)
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_debug_predictor(true)
-        .set_log_file(&format!("{}.txt", stem))
-        .set_bordering(bordering);
-
     // define the solver
     let mut solver = Solver::new(config, system).unwrap();
 
@@ -304,7 +294,9 @@ fn run_test(
     println!("Numerical results for α = {} and npt = {}:", alpha, npt);
     let lam_vals = out.get_l_values();
     let nrm_vals = out.get_norm_u_values();
-    let (ii_valleys, ii_peaks, _, _) = find_valleys_and_peaks(lam_vals);
+    let (mut ii_valleys, mut ii_peaks, _, _) = find_valleys_and_peaks(lam_vals);
+    ii_valleys.retain(|&i| lam_vals[i] > 0.3);
+    ii_peaks.retain(|&i| lam_vals[i] > 0.3);
     for i in &ii_peaks {
         println!("Peak   @ ({}, {})", lam_vals[*i], nrm_vals[*i]);
     }
@@ -322,7 +314,7 @@ fn run_test(
                 println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, REF_ALP00, diff);
             }
         } else {
-            println!("WARNING: for alpha = 0.0, one peak must have been found");
+            // println!("WARNING: for alpha = 0.0, one peak must have been found");
         }
     } else if alpha == 0.2 {
         if ii_peaks.len() == 1 && ii_valleys.len() == 1 {
@@ -355,19 +347,15 @@ fn run_test(
         let mut plot = Plot::new();
 
         // set the title
-        let mut title = if alpha == 0.0 {
-            let lam_crit = lam_vals[ii_peaks[0]];
-            format!("npt = {} | $\\lambda_{{crit}} = {:.8}$", npt, lam_crit)
-        } else {
-            let lam_crit_a = lam_vals[ii_peaks[0]];
-            let lam_crit_b = lam_vals[ii_valleys[0]];
-            format!(
-                "npt = {} | $\\lambda_{{crit}}^A = {:.8}$ | $\\lambda_{{crit}}^B = {:.8}$",
-                npt, lam_crit_a, lam_crit_b
-            )
-        };
+        let mut title = format!("n = {}", npt);
         if lmm {
             title += " | LMM";
+        }
+        if bordering {
+            title += " | BRD";
+        }
+        if alpha > 0.0 {
+            title += &format!(" | $\\alpha$ = {:.2} | ", alpha);
         }
 
         // maximum ‖ϕ‖∞ value
@@ -445,4 +433,16 @@ fn run_test(
                 .unwrap();
         }
     }
+}
+
+fn gen_file_stem(npt: usize, alpha: f64, lmm: bool, bordering: bool, auto: AutoStep) -> String {
+    let mut key0 = format!("a{:.1}", alpha);
+    key0 = key0.replace('.', "d");
+    let key1 = if lmm { "lmm" } else { "sps" };
+    let key2 = if bordering { "brd" } else { "full" };
+    let key3 = if auto.no() { "fix" } else { "auto" };
+    format!(
+        "/tmp/russell_nonlin/test_bratu_2d_n{}_{}_{}_{}_{}",
+        npt, key0, key1, key2, key3
+    )
 }

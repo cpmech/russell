@@ -2,75 +2,7 @@ use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
-const SAVE_FIGURE: bool = true;
-
-fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], stepsizes: &[f64]) {
-    let mut curve_ana = Curve::new();
-    curve_ana.set_label("analytical");
-    let uu_ana = linspace(0.0, 3.0, 101);
-    let ll_ana = uu_ana.iter().map(|&u| u).collect();
-    curve_ana.draw(&uu_ana, &ll_ana);
-
-    let mut curve_num = Curve::new();
-    curve_num
-        .set_label("numerical")
-        .set_line_style("None")
-        .set_marker_style(".");
-    curve_num.draw(&uu, &ll);
-
-    let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(10.0)
-        .set_edge_color("None")
-        .set_face_color("black");
-    let na = uu.len() - 1; // there are one less arrow than points.
-    for i in 0..na {
-        let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
-        let xf = uu[i] + sigma * duds[i];
-        let yf = ll[i] + sigma * dlds[i];
-        arrows.draw_arrow(uu[i], ll[i], xf, yf);
-    }
-
-    let mut hyperplanes = Curve::new();
-    hyperplanes.set_line_style("--").set_line_color("gray");
-    for i in 0..na {
-        let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
-        let xa = uu[i] + sigma * duds[i];
-        let ya = ll[i] + sigma * dlds[i];
-        let phi = f64::atan2(dlds[i], duds[i]);
-        let xb = xa - f64::sin(phi);
-        let yb = ya + f64::cos(phi);
-        let ep = RayEndpoint::Coords(xb, yb);
-        hyperplanes.draw_ray(xa, ya, ep);
-    }
-
-    let mut plot = Plot::new();
-    plot.set_labels("$u$", "$\\lambda$")
-        .add(&hyperplanes)
-        .add(&curve_ana)
-        .add(&curve_num)
-        .add(&arrows)
-        .set_range(-0.1, 2.0, -0.1, 2.0)
-        .set_equal_axes(true)
-        .save(&format!("/tmp/russell_nonlin/{}.svg", name))
-        .unwrap()
-}
-
-fn do_plot_stepsizes(name: &str, stepsizes: &[f64]) {
-    let n = stepsizes.len();
-    let x = linspace(1.0, n as f64, n);
-
-    let mut curve = Curve::new();
-    curve.set_label("stepsize").set_line_style("-").set_marker_style("o");
-    curve.draw(&x.as_slice(), &stepsizes);
-
-    let mut plot = Plot::new();
-    plot.grid_labels_legend("step number", "stepsize $h$")
-        .set_ticks_x(1.0, -1.0, "%d")
-        .add(&curve)
-        .save(&format!("/tmp/russell_nonlin/{}_stepsizes.svg", name))
-        .unwrap();
-}
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_linear_problem() {
@@ -376,4 +308,72 @@ fn test_arc_linear_problem_auto_backward() {
         do_plot(name, uu, ll, duds, dlds, hh);
         do_plot_stepsizes(name, hh);
     }
+}
+
+fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], stepsizes: &[f64]) {
+    let mut curve_ana = Curve::new();
+    curve_ana.set_label("analytical");
+    let uu_ana = linspace(0.0, 3.0, 101);
+    let ll_ana = uu_ana.iter().map(|&u| u).collect();
+    curve_ana.draw(&uu_ana, &ll_ana);
+
+    let mut curve_num = Curve::new();
+    curve_num
+        .set_label("numerical")
+        .set_line_style("None")
+        .set_marker_style(".");
+    curve_num.draw(&uu, &ll);
+
+    let mut arrows = Canvas::new();
+    arrows
+        .set_arrow_scale(10.0)
+        .set_edge_color("None")
+        .set_face_color("black");
+    let na = uu.len() - 1; // there are one less arrow than points.
+    for i in 0..na {
+        let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
+        let xf = uu[i] + sigma * duds[i];
+        let yf = ll[i] + sigma * dlds[i];
+        arrows.draw_arrow(uu[i], ll[i], xf, yf);
+    }
+
+    let mut hyperplanes = Curve::new();
+    hyperplanes.set_line_style("--").set_line_color("gray");
+    for i in 0..na {
+        let sigma = stepsizes[1 + i]; // the first stepsize is duplicated because of the initial state
+        let xa = uu[i] + sigma * duds[i];
+        let ya = ll[i] + sigma * dlds[i];
+        let phi = f64::atan2(dlds[i], duds[i]);
+        let xb = xa - f64::sin(phi);
+        let yb = ya + f64::cos(phi);
+        let ep = RayEndpoint::Coords(xb, yb);
+        hyperplanes.draw_ray(xa, ya, ep);
+    }
+
+    let mut plot = Plot::new();
+    plot.set_labels("$u$", "$\\lambda$")
+        .add(&hyperplanes)
+        .add(&curve_ana)
+        .add(&curve_num)
+        .add(&arrows)
+        .set_range(-0.1, 2.0, -0.1, 2.0)
+        .set_equal_axes(true)
+        .save(&format!("/tmp/russell_nonlin/{}.svg", name))
+        .unwrap()
+}
+
+fn do_plot_stepsizes(name: &str, stepsizes: &[f64]) {
+    let n = stepsizes.len();
+    let x = linspace(1.0, n as f64, n);
+
+    let mut curve = Curve::new();
+    curve.set_label("stepsize").set_line_style("-").set_marker_style("o");
+    curve.draw(&x.as_slice(), &stepsizes);
+
+    let mut plot = Plot::new();
+    plot.grid_labels_legend("step number", "stepsize $h$")
+        .set_ticks_x(1.0, -1.0, "%d")
+        .add(&curve)
+        .save(&format!("/tmp/russell_nonlin/{}_stepsizes.svg", name))
+        .unwrap();
 }

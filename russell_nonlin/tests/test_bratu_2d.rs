@@ -47,7 +47,7 @@ use std::collections::HashMap;
 //    Bratu equation, Applied Mathematics and Computation, 489:129136, <https://doi.org/10.1016/j.amc.2024.129136>
 
 const CHECK_JACOBIAN: bool = false;
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_bratu_2d_auto() {
@@ -141,12 +141,6 @@ fn run_test(bordering: bool, _alpha: f64, npt: usize, stop: Stop, auto: AutoStep
         .set_nr_control_enabled(true)
         .set_tg_control_enabled(true)
         .set_tg_control_pid_vcc(true)
-        // .set_tg_control_atol_and_rtol(1e-5)
-        // .set_tol_residual(1e-10)
-        // .set_tol_delta(1e-10, 1e-10)
-        // .set_alpha_max(2.1)
-        // .set_alpha_max(1.0)
-        .set_alpha_max(3.73)
         .set_record_iterations_residuals(true)
         .set_verbose(true, true, true)
         .set_hide_timings(true)

@@ -2,7 +2,7 @@ use super::{AutoStep, Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, State, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
-use russell_lab::{math::PI, Norm, Vector};
+use russell_lab::{Norm, Vector};
 use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 
 /// Implements the pseudo-arclength continuation method to solve G(u, λ) = 0
@@ -698,59 +698,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.log.did_not_converge();
         }
 
-        // exit on failure (may try again)
-        if status.failure() {
-            work.acceptable = false;
-            return Ok(status);
-        }
-
-        // return if not auto mode (fixed stepsize; accept by default)
-        if !work.auto {
-            work.acceptable = true;
-            return Ok(status);
-        }
-
-        //
-        // curvature control --- calculate the angle between the tangent and increment vectors
-        //
-
-        // with:
-        //   dx := (u₁ - u₀, λ₁ - λ₀)  → increment vector
-        //   t0 := (duds₀, dlds₀)      → tangent vector at the initial point
-        // calculate:
-        //   norm_dx := ‖dx‖ = √((u₁ - u₀)ᵀ (u₁ - u₀) + (λ₁ - λ₀)²)
-        //   dx_dot_t0 := dxᵀ t0 = (u₁ - u₀)ᵀ (du/ds|₀) + (λ₁ - λ₀) dλ/ds|₀
-        let mut dx;
-        let mut dx_dot_dx = 0.0;
-        let mut dx_dot_t0 = 0.0;
-        for i in 0..self.system.ndim {
-            dx = work.u[i] - state.u[i]; // u₁ - u₀
-            dx_dot_dx += dx * dx; // + (u₁ - u₀)ᵀ (u₁ - u₀)
-            dx_dot_t0 += dx * work.duds[i]; // + (u₁ - u₀)ᵀ (du/ds|₀)
-        }
-        dx = work.l - state.l; // λ₁ - λ₀
-        dx_dot_dx += dx * dx;
-        dx_dot_t0 += dx * work.dlds; // + (λ₁ - λ₀) dλ/ds|₀
-        let norm_dx = f64::sqrt(dx_dot_dx);
-
-        // angle between the increment and the tangent vector:
-        //   α = acos((tgᵀ dx) / (‖tg‖ ‖dx‖)) = acos(tgᵀ dx / ‖dx‖)
-        // Note that ‖tg‖ = 1 because of the normalization condition
-        let ratio = f64::min(dx_dot_t0 / norm_dx, 1.0); // need to truncate to 1.0
-        let alpha = f64::acos(ratio) * 180.0 / PI; // alpha in degrees
-        assert!(f64::is_finite(alpha)); // make sure alpha is finite
-
-        // check if alpha is acceptable
-        work.acceptable = alpha >= 0.0 && alpha <= self.config.alpha_max;
-        if !work.acceptable {
-            work.log.alpha_is_not_acceptable();
-        }
-
-        // check if alpha is way out of bounds
-        if alpha > self.config.alpha_max_ultimate {
-            status = Status::ExtremelyLargeAlpha(alpha.to_string());
-        }
-
         // done
         Ok(status)
     }
@@ -836,20 +783,29 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // stepsize control --- calculate the relative change in the tangent vector
         //
 
-        // calculate the relative difference between tangent vectors (RMS of the error)
+        // calculate the relative difference between dλ/du vectors (RMS of the error)
         let (atol, rtol) = (self.config.tg_control_atol, self.config.tg_control_rtol);
-        let mut delta_tg; // (du/ds|₁ - du/ds|₀, dλ/ds|₁ - dλ/ds|₀)
+        let mut slope_prev; // previous (dλ/ds|₁) / (du/ds|₁) = dλ/du
+        let mut slope; // (dλ/ds|₁) / (du/ds|₁) = dλ/du
+        let mut delta;
         let mut den;
         let mut sum = 0.0;
         for i in 0..ndim {
-            delta_tg = work.duds[i] - self.duds_prev[i];
-            den = atol + rtol * f64::abs(self.duds_prev[i]);
-            sum += delta_tg * delta_tg / (den * den);
+            slope_prev = if f64::abs(self.duds_prev[i]) > CONFIG_H_MIN {
+                self.dlds_prev / self.duds_prev[i]
+            } else {
+                1.0
+            };
+            slope = if f64::abs(work.duds[i]) > CONFIG_H_MIN {
+                work.dlds / work.duds[i]
+            } else {
+                1.0
+            };
+            delta = slope - slope_prev;
+            den = atol + rtol * f64::abs(slope_prev);
+            sum += delta * delta / (den * den);
         }
-        delta_tg = work.dlds - self.dlds_prev;
-        den = atol + rtol * f64::abs(self.dlds_prev);
-        sum += delta_tg * delta_tg / (den * den);
-        let rerr = f64::sqrt(sum / ((ndim + 1) as f64));
+        let rerr = f64::sqrt(sum / (ndim as f64));
 
         // done
         Ok(rerr)

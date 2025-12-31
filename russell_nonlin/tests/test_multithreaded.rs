@@ -5,6 +5,16 @@ use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
 
+#[test]
+fn test_multithreaded() {
+    // run simulations concurrently
+    let mut runners: Vec<Box<dyn Runner>> = vec![
+        Box::new(Simulator::new(Method::Natural)),
+        Box::new(Simulator::new(Method::Natural)),
+    ];
+    runners.par_iter_mut().for_each(|r| r.run_and_check());
+}
+
 struct SimData<'a> {
     solver: Solver<'a, NoArgs>,
     args: NoArgs,
@@ -92,14 +102,4 @@ impl<'a> Runner for Simulator<'a> {
         assert_eq!(stats.n_jacobian, nstep);
         assert_eq!(stats.n_iteration_total, niter);
     }
-}
-
-#[test]
-fn test_multithreaded() {
-    // run simulations concurrently
-    let mut runners: Vec<Box<dyn Runner>> = vec![
-        Box::new(Simulator::new(Method::Natural)),
-        Box::new(Simulator::new(Method::Natural)),
-    ];
-    runners.par_iter_mut().for_each(|r| r.run_and_check());
 }

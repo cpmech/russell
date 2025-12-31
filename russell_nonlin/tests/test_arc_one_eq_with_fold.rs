@@ -3,66 +3,8 @@ use russell_lab::math::{NAPIER, SQRT_2};
 use russell_lab::{approx_eq, array_approx_eq};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
 const NAME: &str = "test_arc_one_eq_with_fold";
-
-fn do_plot(
-    index: usize,
-    lambda_ana: impl Fn(f64) -> f64,
-    dds: f64,
-    uu: &[f64],
-    ll: &[f64],
-    duds: &[f64],
-    dlds: &[f64],
-) {
-    let mut curve_ana = Curve::new();
-    curve_ana.set_label("analytical");
-    let uu_ana = linspace(0.0, 3.0, 101);
-    let ll_ana = uu_ana.iter().map(|&u| lambda_ana(u)).collect();
-    curve_ana.draw(&uu_ana, &ll_ana);
-
-    let mut curve_num = Curve::new();
-    curve_num
-        .set_label("numerical")
-        .set_line_style("None")
-        .set_marker_style("o");
-    curve_num.draw(&uu, &ll);
-
-    let mut arrows = Canvas::new();
-    arrows
-        .set_arrow_scale(10.0)
-        .set_edge_color("None")
-        .set_face_color("black");
-    for i in 0..uu.len() {
-        let xf = uu[i] + dds * duds[i];
-        let yf = ll[i] + dds * dlds[i];
-        arrows.draw_arrow(uu[i], ll[i], xf, yf);
-    }
-
-    let mut hyperplanes = Curve::new();
-    hyperplanes.set_line_style("--").set_line_color("gray");
-    for i in 0..uu.len() {
-        let xa = uu[i] + dds * duds[i];
-        let ya = ll[i] + dds * dlds[i];
-        let phi = f64::atan2(dlds[i], duds[i]);
-        let xb = xa - f64::sin(phi);
-        let yb = ya + f64::cos(phi);
-        let ep = RayEndpoint::Coords(xb, yb);
-        hyperplanes.draw_ray(xa, ya, ep);
-    }
-
-    let mut plot = Plot::new();
-    plot.set_labels("$u$", "$\\lambda$")
-        .add(&hyperplanes)
-        .add(&curve_ana)
-        .add(&curve_num)
-        .add(&arrows)
-        .set_range(-0.1, 3.1, -0.1, 1.0)
-        .set_equal_axes(true)
-        .set_figure_size_points(800.0, 800.0)
-        .save(&format!("/tmp/russell_nonlin/{}_{}.svg", NAME, index))
-        .unwrap()
-}
 
 #[test]
 fn test_arc_one_eq_with_fold_1() {
@@ -208,4 +150,62 @@ fn test_arc_one_eq_with_fold_2() {
     if SAVE_FIGURE {
         do_plot(2, lambda_ana, dds, uu, ll, duds, dlds);
     }
+}
+
+fn do_plot(
+    index: usize,
+    lambda_ana: impl Fn(f64) -> f64,
+    dds: f64,
+    uu: &[f64],
+    ll: &[f64],
+    duds: &[f64],
+    dlds: &[f64],
+) {
+    let mut curve_ana = Curve::new();
+    curve_ana.set_label("analytical");
+    let uu_ana = linspace(0.0, 3.0, 101);
+    let ll_ana = uu_ana.iter().map(|&u| lambda_ana(u)).collect();
+    curve_ana.draw(&uu_ana, &ll_ana);
+
+    let mut curve_num = Curve::new();
+    curve_num
+        .set_label("numerical")
+        .set_line_style("None")
+        .set_marker_style("o");
+    curve_num.draw(&uu, &ll);
+
+    let mut arrows = Canvas::new();
+    arrows
+        .set_arrow_scale(10.0)
+        .set_edge_color("None")
+        .set_face_color("black");
+    for i in 0..uu.len() {
+        let xf = uu[i] + dds * duds[i];
+        let yf = ll[i] + dds * dlds[i];
+        arrows.draw_arrow(uu[i], ll[i], xf, yf);
+    }
+
+    let mut hyperplanes = Curve::new();
+    hyperplanes.set_line_style("--").set_line_color("gray");
+    for i in 0..uu.len() {
+        let xa = uu[i] + dds * duds[i];
+        let ya = ll[i] + dds * dlds[i];
+        let phi = f64::atan2(dlds[i], duds[i]);
+        let xb = xa - f64::sin(phi);
+        let yb = ya + f64::cos(phi);
+        let ep = RayEndpoint::Coords(xb, yb);
+        hyperplanes.draw_ray(xa, ya, ep);
+    }
+
+    let mut plot = Plot::new();
+    plot.set_labels("$u$", "$\\lambda$")
+        .add(&hyperplanes)
+        .add(&curve_ana)
+        .add(&curve_num)
+        .add(&arrows)
+        .set_range(-0.1, 3.1, -0.1, 1.0)
+        .set_equal_axes(true)
+        .set_figure_size_points(800.0, 800.0)
+        .save(&format!("/tmp/russell_nonlin/{}_{}.svg", NAME, index))
+        .unwrap()
 }

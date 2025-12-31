@@ -80,6 +80,9 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
 /// assert_eq!(res, " 3.723E+06");
 /// ```
 pub fn format_scientific(num: f64, width: usize, precision: usize) -> String {
+    if !num.is_finite() {
+        return format!("{:>width$}", num, width = width);
+    }
     // based on <https://stackoverflow.com/questions/65264069/alignment-of-floating-point-numbers-printed-in-scientific-notation>
     const EXP_PAD: usize = 2;
     let mut result = format!("{:.precision$e}", num, precision = precision);
@@ -287,6 +290,21 @@ mod tests {
     #[test]
     fn write_formatted_number_works() {
         let mut buffer = String::new();
+
+        // Test with NaN
+        write_formatted_number(&mut buffer, f64::NAN, 10, None, None);
+        assert_eq!(buffer, "       NaN");
+        buffer.clear();
+
+        // Test with infinity
+        write_formatted_number(&mut buffer, f64::INFINITY, 10, None, None);
+        assert_eq!(buffer, "       inf");
+        buffer.clear();
+
+        // Test with negative infinity
+        write_formatted_number(&mut buffer, f64::NEG_INFINITY, 10, None, None);
+        assert_eq!(buffer, "      -inf");
+        buffer.clear();
 
         // Test with no precision, no scientific, no width
         write_formatted_number(&mut buffer, 42.0, 0, None, None);

@@ -50,9 +50,9 @@ fn test_arc_circle_max_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 12);
+    assert_eq!(stats.n_accepted, 5);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 12);
+    assert_eq!(stats.n_steps, 5);
 
     // plot
     if SAVE_FIGURE {
@@ -107,9 +107,9 @@ fn test_arc_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 73);
+    assert_eq!(stats.n_accepted, 13);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 73);
+    assert_eq!(stats.n_steps, 13);
 
     // plot
     if SAVE_FIGURE {
@@ -217,13 +217,13 @@ fn test_arc_circle_min_u() {
     println!("u final = {}", state.u[0]);
     println!("λ final = {:.7e}", state.l);
     assert!(state.u[0] > 0.0 && state.u[0] < 0.4);
-    approx_eq(state.u[0] * state.u[0] + state.l * state.l, RADIUS * RADIUS, 1e-9);
+    approx_eq(state.u[0] * state.u[0] + state.l * state.l, RADIUS * RADIUS, 1e-8);
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 4);
+    assert_eq!(stats.n_accepted, 3);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 4);
+    assert_eq!(stats.n_steps, 3);
 
     // plot
     if SAVE_FIGURE {
@@ -280,9 +280,9 @@ fn test_arc_circle_max_lambda_num_jac() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 12);
+    assert_eq!(stats.n_accepted, 5);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 12);
+    assert_eq!(stats.n_steps, 5);
 
     // plot
     if SAVE_FIGURE {

@@ -408,9 +408,9 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 35);
-    assert_eq!(stats.n_rejected, 42);
-    assert_eq!(stats.n_steps, 77);
+    assert_eq!(stats.n_accepted, 44);
+    assert_eq!(stats.n_rejected, 40);
+    assert_eq!(stats.n_steps, 84);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -482,8 +482,8 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 9);
+    assert_eq!(stats.n_accepted, 16);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 9);
+    assert_eq!(stats.n_steps, 16);
     Ok(())
 }

@@ -239,7 +239,7 @@ impl Config {
             // stepsize control
             nr_control_enabled: true,
             tg_control_enabled: true,
-            tg_control_pid_vcc: false,
+            tg_control_pid_vcc: true,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
             tg_control_atol: 1e-2,
@@ -513,7 +513,7 @@ impl Config {
     /// 3. Kubatschek T, Forster A (2025) Investigation of existing and new approaches to step size control in a
     ///    continuation framework, Computers & Structures, 313:107747, <https://doi.org/10.1016/j.compstruc.2025.107747>
     ///
-    /// Default value: false
+    /// Default value: true
     pub fn set_tg_control_pid_vcc(&mut self, flag: bool) -> &mut Self {
         self.tg_control_pid_vcc = flag;
         self

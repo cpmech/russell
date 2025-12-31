@@ -5,17 +5,17 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", false, None, 420, 0, Status::Success);
+    run_test("test_arc_bspline_2_default", false, None, 125, 0, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_2_custom() {
-    run_test("test_arc_bspline_2_custom", false, Some(0.05), 70, 3, Status::Success);
+    run_test("test_arc_bspline_2_custom", false, Some(0.05), 46, 1, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_2_bordering() {
-    run_test("test_arc_bspline_2_bordering", true, Some(0.05), 70, 3, Status::Success);
+    run_test("test_arc_bspline_2_bordering", true, Some(0.05), 46, 1, Status::Success);
 }
 
 fn run_test(

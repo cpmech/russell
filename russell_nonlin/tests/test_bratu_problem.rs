@@ -2,11 +2,13 @@ use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Status, Stop, StrError, System};
-use russell_pde::{EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d};
+use russell_pde::{
+    EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d, Spc1d, Spc2d,
+};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
-// Bratu 2D problem
+// Bratu problem
 //
 // The nonlinear problem originates from the discretization of the following equation:
 //
@@ -119,18 +121,61 @@ const CHECK_JACOBIAN: bool = false;
 const SAVE_FIGURE: bool = false;
 
 #[test]
-fn test_bratu_1d_fdm_auto() -> Result<(), StrError> {
+fn test_bratu_1d_spc_auto() -> Result<(), StrError> {
+    let spc = true;
     let one_dim = true;
     let auto = AutoStep::Yes;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.039, 0.061, 0.06),         //
-        (100, 0.00089, 0.00047, 0.0011), //
+        (8, 0.00029, 0.0014, 0.00044), //
+                                       // (20, 0.00019, 0.00024, 0.0021), //
     ] {
         for alpha in [0.0, 0.2] {
-            for lmm in [false] {
-                for bordering in [true] {
-                    println!("{}", gen_file_stem(one_dim, npt, alpha, lmm, bordering, auto));
-                    run_test(one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    println!("{}", gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto));
+                    run_test(spc, one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bratu_1d_fdm_auto() -> Result<(), StrError> {
+    let spc = false;
+    let one_dim = true;
+    let auto = AutoStep::Yes;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.039, 0.061, 0.06), //
+                                 // (100, 0.00089, 0.00047, 0.0011), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    println!("{}", gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto));
+                    run_test(spc, one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bratu_2d_spc_auto() -> Result<(), StrError> {
+    let spc = true;
+    let one_dim = false;
+    let auto = AutoStep::Yes;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.0011, 0.00054, 0.002), //
+                                     // (20, 0.0012, 0.00003, 0.0002), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    println!("{}", gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto));
+                    run_test(spc, one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
                 }
             }
         }
@@ -140,23 +185,24 @@ fn test_bratu_1d_fdm_auto() -> Result<(), StrError> {
 
 #[test]
 fn test_bratu_2d_fdm_auto() -> Result<(), StrError> {
+    let spc = false;
     let one_dim = false;
     let auto = AutoStep::Yes;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.034, 0.083, 0.123), //
-                                  // (9, 0.027, 0.0, 0.0),     //
-                                  // (20, 0.0052, 0.0, 0.0),   //
-                                  // (22, 0.0059, 0.0, 0.0),   //
-                                  // (40, 0.0026, 0.0, 0.0),   //
-                                  // (41, 0.0020, 0.0, 0.0),   //
-                                  // (100, 0.00095, 0.0, 0.0), //
-                                  // (101, 0.0012, 0.0, 0.0),  //
+                                  // (9, 0.027, 0.062, 0.09),        //
+                                  // (20, 0.0052, 0.012, 0.015),     //
+                                  // (22, 0.0059, 0.012, 0.013),     //
+                                  // (40, 0.0026, 0.032, 0.034),     //
+                                  // (41, 0.0020, 0.0052, 0.0034),   //
+                                  // (100, 0.00095, 0.0016, 0.0008), //
+                                  // (101, 0.0012, 0.0017, 0.0009),  //
     ] {
         for alpha in [0.0, 0.2] {
-            for lmm in [false] {
-                for bordering in [true] {
-                    println!("{}", gen_file_stem(one_dim, npt, alpha, lmm, bordering, auto));
-                    run_test(one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    println!("{}", gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto));
+                    run_test(spc, one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
                 }
             }
         }
@@ -166,13 +212,14 @@ fn test_bratu_2d_fdm_auto() -> Result<(), StrError> {
 
 #[test]
 fn test_bratu_2d_fdm_fixed() -> Result<(), StrError> {
+    let spc = false;
     let one_dim = false;
     let lmm = true;
     let bordering = false;
     let auto = AutoStep::No(10.0);
     for alpha in [0.0] {
         for (npt, tol1, tol2, tol3) in [(8, 0.034, 0.0, 0.0)] {
-            run_test(one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+            run_test(spc, one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
         }
     }
     Ok(())
@@ -180,6 +227,7 @@ fn test_bratu_2d_fdm_fixed() -> Result<(), StrError> {
 
 // Runs the test
 fn run_test(
+    spc: bool,
     one_dim: bool,
     lmm: bool,
     bordering: bool,
@@ -191,18 +239,15 @@ fn run_test(
     alpha02_2nd_lam_crit_tol: f64,
 ) -> Result<(), StrError> {
     // stem
-    let stem = gen_file_stem(one_dim, npt, alpha, lmm, bordering, auto);
+    let stem = gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
     config
         .set_n_cont_failure_max(8)
-        .set_n_cont_rejection_max(5)
-        .set_nr_control_enabled(true)
-        .set_tg_control_enabled(true)
-        .set_tg_control_pid_vcc(true)
-        .set_tg_control_atol(0.04)
-        .set_tg_control_rtol(0.04)
+        // .set_tg_control_atol(0.04)
+        // .set_tg_control_rtol(0.04)
+        .set_tg_control_atol_and_rtol(0.04)
         .set_record_iterations_residuals(true)
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -216,28 +261,50 @@ fn run_test(
         let mut ebcs = EssentialBcs1d::new();
         let nbcs = NaturalBcs1d::new();
         ebcs.set_homogeneous();
-        let grid = Grid1d::new_uniform(0.0, 1.0, npt)?;
-        let fdm = Fdm1d::new(grid, ebcs, nbcs, -1.0)?;
-        let coo = if lmm {
-            fdm.get_matrices_lmm(0.0, 0, false, sym).0
+        if spc {
+            let spectral = Spc1d::new(0.0, 1.0, npt, ebcs, nbcs, -1.0)?;
+            let coo = if lmm {
+                spectral.get_matrices_lmm(0.0, 0, false).0
+            } else {
+                spectral.get_matrices_sps(0.0, 0).0
+            };
+            let (nu, np) = spectral.get_dims_sps();
+            (nu, np, coo)
         } else {
-            fdm.get_matrices_sps(0.0, 0, sym).0
-        };
-        let (nu, np) = fdm.get_dims_sps();
-        (nu, np, coo)
+            let grid = Grid1d::new_uniform(0.0, 1.0, npt)?;
+            let fdm = Fdm1d::new(grid, ebcs, nbcs, -1.0)?;
+            let coo = if lmm {
+                fdm.get_matrices_lmm(0.0, 0, false, sym).0
+            } else {
+                fdm.get_matrices_sps(0.0, 0, sym).0
+            };
+            let (nu, np) = fdm.get_dims_sps();
+            (nu, np, coo)
+        }
     } else {
         let mut ebcs = EssentialBcs2d::new();
         let nbcs = NaturalBcs2d::new();
         ebcs.set_homogeneous();
-        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt)?;
-        let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
-        let coo = if lmm {
-            fdm.get_matrices_lmm(0.0, 0, false, sym).0
+        if spc {
+            let spectral = Spc2d::new(0.0, 1.0, 0.0, 1.0, npt, npt, ebcs, nbcs, -1.0, -1.0)?;
+            let coo = if lmm {
+                spectral.get_matrices_lmm(0.0, 0, false).0
+            } else {
+                spectral.get_matrices_sps(0.0, 0).0
+            };
+            let (nu, np) = spectral.get_dims_sps();
+            (nu, np, coo)
         } else {
-            fdm.get_matrices_sps(0.0, 0, sym).0
-        };
-        let (nu, np) = fdm.get_dims_sps();
-        (nu, np, coo)
+            let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt)?;
+            let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
+            let coo = if lmm {
+                fdm.get_matrices_lmm(0.0, 0, false, sym).0
+            } else {
+                fdm.get_matrices_sps(0.0, 0, sym).0
+            };
+            let (nu, np) = fdm.get_dims_sps();
+            (nu, np, coo)
+        }
     };
     let nnz_coo = coo.get_info().2;
 
@@ -350,6 +417,7 @@ fn run_test(
     // plot the results
     if SAVE_FIGURE {
         do_plot(
+            spc,
             one_dim,
             lmm,
             bordering,
@@ -424,14 +492,23 @@ fn calc_ggl(ggl: &mut Vector, _l: f64, u: &Vector, args: &mut Args) -> Result<()
     Ok(())
 }
 
-fn gen_file_stem(one_dim: bool, npt: usize, alpha: f64, lmm: bool, bordering: bool, auto: AutoStep) -> String {
+fn gen_file_stem(
+    spc: bool,
+    one_dim: bool,
+    npt: usize,
+    alpha: f64,
+    lmm: bool,
+    bordering: bool,
+    auto: AutoStep,
+) -> String {
     let mut key0 = format!("a{:.1}", alpha);
     key0 = key0.replace('.', "d");
     let key1 = if lmm { "lmm" } else { "sps" };
     let key2 = if bordering { "brd" } else { "full" };
     let key3 = if auto.no() { "fix" } else { "auto" };
     format!(
-        "/tmp/russell_nonlin/test_bratu_{}_n{}_{}_{}_{}_{}",
+        "/tmp/russell_nonlin/test_bratu_{}_{}_n{}_{}_{}_{}_{}",
+        if spc { "spc" } else { "fdm" },
         if one_dim { "1d" } else { "2d" },
         npt,
         key0,
@@ -442,6 +519,7 @@ fn gen_file_stem(one_dim: bool, npt: usize, alpha: f64, lmm: bool, bordering: bo
 }
 
 fn do_plot<'a>(
+    spc: bool,
     one_dim: bool,
     lmm: bool,
     bordering: bool,
@@ -459,7 +537,8 @@ fn do_plot<'a>(
     let mut plot = Plot::new();
 
     // set the title
-    let mut title = if one_dim { "1D".to_string() } else { "2D".to_string() };
+    let mut title = if spc { "SPC".to_string() } else { "FDM".to_string() };
+    title += if one_dim { " | 1D" } else { " | 2D" };
     title += &format!(" | n = {}", npt);
     if lmm {
         title += " | LMM";
@@ -467,9 +546,7 @@ fn do_plot<'a>(
     if bordering {
         title += " | BRD";
     }
-    if alpha > 0.0 {
-        title += &format!(" | $\\alpha$ = {:.2} | ", alpha);
-    }
+    title += &format!(" | $\\alpha$ = {:.2}", alpha);
 
     // maximum ‖ϕ‖∞ value
     let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];

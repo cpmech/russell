@@ -2,13 +2,13 @@ use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Status, Stop, StrError, System};
-use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d};
+use russell_pde::{EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d};
 use russell_sparse::{CooMatrix, Sym};
 use std::collections::HashMap;
 
-// The nonlinear problem originates from the FDM discretization of the following equation:
+// Bratu 2D problem
 //
-// (Bratu's problem in 2D with Lagrange multipliers method - LMM)
+// The nonlinear problem originates from the discretization of the following equation:
 //
 // ∂²ϕ   ∂²ϕ
 // ——— + ——— + λ exp(ϕ/(1 + α ϕ)) = 0
@@ -99,32 +99,64 @@ use std::collections::HashMap;
 // 3. Shahab ML, Susanto H, Hatzikirou H (2025) A finite difference method with symmetry properties for the high-dimensional
 //    Bratu equation, Applied Mathematics and Computation, 489:129136, <https://doi.org/10.1016/j.amc.2024.129136>
 
-// reference (λCrit, ‖ϕCrit‖∞) values from Bolstad and Keller (6 order scheme, very fine mesh)
-const REF_ALP00: f64 = 6.80812442259; // α = 0: first critical point; nrm=1.3916612
-const REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2.8858004
-const REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
+// 1D: Analytical u(x) profile @ λCrit (from Mathematica)
+const D1_REF_ALP00: f64 = 3.51383071912516; // λ critical for the α = 0.0 case
+const D1_REF_THETA: f64 = 4.79871456103094; // θ critical (for the analytical profile); α = 0.0 case
+const D1_REF_ALP02_A: f64 = 4.647906373918411; // 1st λ critical for α = 0.2 (from npt = 500 and tol = 1e-8); nrm=2.3548402404342146
+const D1_REF_ALP02_B: f64 = 3.509919925802271; // 2nd λ critical for α = 0.2 (from npt = 500 and tol = 1e-8); nrm=15.440772685670549
+
+// 2D:reference (λCrit, ‖ϕCrit‖∞) values from Bolstad and Keller (6 order scheme, very fine mesh)
+const D2_REF_ALP00: f64 = 6.80812442259; // α = 0: first critical point; nrm=1.3916612
+const D2_REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2.8858004
+const D2_REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
+
+// Calculates the analytical solution at λCrit
+fn d1_analytical_profile(x: f64) -> f64 {
+    -2.0 * f64::ln(f64::cosh((x - 0.5) * D1_REF_THETA / 2.0) / f64::cosh(D1_REF_THETA / 4.0))
+}
 
 const CHECK_JACOBIAN: bool = false;
-const SAVE_FIGURE: bool = true;
+const SAVE_FIGURE: bool = false;
+
+#[test]
+fn test_bratu_1d_fdm_auto() -> Result<(), StrError> {
+    let one_dim = true;
+    let auto = AutoStep::Yes;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.039, 0.061, 0.06),         //
+        (100, 0.00089, 0.00047, 0.0011), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [false] {
+                for bordering in [true] {
+                    println!("{}", gen_file_stem(one_dim, npt, alpha, lmm, bordering, auto));
+                    run_test(one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
 
 #[test]
 fn test_bratu_2d_fdm_auto() -> Result<(), StrError> {
+    let one_dim = false;
     let auto = AutoStep::Yes;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.034, 0.0, 0.0), //
-                              // (9, 0.027, 0.0, 0.0),     //
-                              // (20, 0.0052, 0.0, 0.0),   //
-                              // (22, 0.0059, 0.0, 0.0),   //
-                              // (40, 0.0026, 0.0, 0.0),   //
-                              // (41, 0.0020, 0.0, 0.0),   //
-                              // (100, 0.00095, 0.0, 0.0), //
-                              // (101, 0.0012, 0.0, 0.0),  //
+        (8, 0.034, 0.083, 0.123), //
+                                  // (9, 0.027, 0.0, 0.0),     //
+                                  // (20, 0.0052, 0.0, 0.0),   //
+                                  // (22, 0.0059, 0.0, 0.0),   //
+                                  // (40, 0.0026, 0.0, 0.0),   //
+                                  // (41, 0.0020, 0.0, 0.0),   //
+                                  // (100, 0.00095, 0.0, 0.0), //
+                                  // (101, 0.0012, 0.0, 0.0),  //
     ] {
-        for alpha in [0.0] {
-            for lmm in [true, false] {
-                for bordering in [true, false] {
-                    println!("{}", gen_file_stem(npt, alpha, lmm, bordering, auto));
-                    run_test(lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+        for alpha in [0.0, 0.2] {
+            for lmm in [false] {
+                for bordering in [true] {
+                    println!("{}", gen_file_stem(one_dim, npt, alpha, lmm, bordering, auto));
+                    run_test(one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
                 }
             }
         }
@@ -134,27 +166,21 @@ fn test_bratu_2d_fdm_auto() -> Result<(), StrError> {
 
 #[test]
 fn test_bratu_2d_fdm_fixed() -> Result<(), StrError> {
+    let one_dim = false;
+    let lmm = true;
     let bordering = false;
     let auto = AutoStep::No(10.0);
     for alpha in [0.0] {
         for (npt, tol1, tol2, tol3) in [(8, 0.034, 0.0, 0.0)] {
-            run_test(true, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
+            run_test(one_dim, lmm, bordering, alpha, npt, auto, tol1, tol2, tol3)?;
         }
     }
     Ok(())
 }
 
-struct Args {
-    alpha: f64,
-    bordering: bool,
-    npt: usize,
-    nphi: usize,
-    ndim: usize,
-    coo: CooMatrix,
-}
-
 // Runs the test
 fn run_test(
+    one_dim: bool,
     lmm: bool,
     bordering: bool,
     alpha: f64,
@@ -165,7 +191,7 @@ fn run_test(
     alpha02_2nd_lam_crit_tol: f64,
 ) -> Result<(), StrError> {
     // stem
-    let stem = gen_file_stem(npt, alpha, lmm, bordering, auto);
+    let stem = gen_file_stem(one_dim, npt, alpha, lmm, bordering, auto);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -184,28 +210,38 @@ fn run_test(
         .set_log_file(&format!("{}.txt", stem))
         .set_bordering(bordering);
 
-    // allocate the grid
-    let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt)?;
-
-    // essential boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set_homogeneous();
-
-    // natural boundary conditions (NBCs) handler
-    let nbcs = NaturalBcs2d::new();
-
     // calculate the coefficient matrix
-    let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
     let sym = Sym::No;
-    let coo = if lmm {
-        fdm.get_matrices_lmm(0.0, 0, false, sym).0
+    let (nu, np, coo) = if one_dim {
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+        let grid = Grid1d::new_uniform(0.0, 1.0, npt)?;
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, -1.0)?;
+        let coo = if lmm {
+            fdm.get_matrices_lmm(0.0, 0, false, sym).0
+        } else {
+            fdm.get_matrices_sps(0.0, 0, sym).0
+        };
+        let (nu, np) = fdm.get_dims_sps();
+        (nu, np, coo)
     } else {
-        fdm.get_matrices_sps(0.0, 0, sym).0
+        let mut ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        ebcs.set_homogeneous();
+        let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt)?;
+        let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
+        let coo = if lmm {
+            fdm.get_matrices_lmm(0.0, 0, false, sym).0
+        } else {
+            fdm.get_matrices_sps(0.0, 0, sym).0
+        };
+        let (nu, np) = fdm.get_dims_sps();
+        (nu, np, coo)
     };
     let nnz_coo = coo.get_info().2;
 
     // allocate arguments struct
-    let (nu, np) = fdm.get_dims_sps();
     let neq = nu + np;
     let nphi = if lmm { neq } else { nu };
     let ndim = if lmm { neq + np } else { nu };
@@ -236,8 +272,12 @@ fn run_test(
     let mut solver = Solver::new(config, system)?;
 
     // output
-    let out = &mut Output::new();
-    out.set_record_norm_u(true, Norm::Inf, 0, nphi);
+    let output = &mut Output::new();
+    output.set_record_norm_u(true, Norm::Inf, 0, nphi);
+    if one_dim {
+        let all_indices: Vec<usize> = (0..nphi).collect();
+        output.set_recording(true, &all_indices, &[]);
+    }
 
     // initial state (all zero)
     let mut state = State::new(ndim);
@@ -247,14 +287,14 @@ fn run_test(
     let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
 
     // numerical continuation
-    let status = solver.solve(&mut args, &mut state, IniDir::Pos, stop, auto, Some(out))?;
+    let status = solver.solve(&mut args, &mut state, IniDir::Pos, stop, auto, Some(output))?;
     println!("Status: {:?}", status);
     assert_eq!(status, Status::Success);
 
     // search for the critical point(s)
     println!("Numerical results for α = {} and npt = {}:", alpha, npt);
-    let lam_vals = out.get_l_values();
-    let nrm_vals = out.get_norm_u_values();
+    let lam_vals = output.get_l_values();
+    let nrm_vals = output.get_norm_u_values();
     let (mut ii_valleys, mut ii_peaks, _, _) = find_valleys_and_peaks(lam_vals);
     ii_valleys.retain(|&i| lam_vals[i] > 0.3);
     ii_peaks.retain(|&i| lam_vals[i] > 0.3);
@@ -266,34 +306,39 @@ fn run_test(
     }
 
     // check the results
+    let (ref_alp00, ref_alp02a, ref_alp02b) = if one_dim {
+        (D1_REF_ALP00, D1_REF_ALP02_A, D1_REF_ALP02_B)
+    } else {
+        (D2_REF_ALP00, D2_REF_ALP02_A, D2_REF_ALP02_B)
+    };
     if alpha == 0.0 {
         if ii_peaks.len() == 1 {
             let lam_crit = lam_vals[ii_peaks[0]];
-            let diff = f64::abs(lam_crit - REF_ALP00);
+            let diff = f64::abs(lam_crit - ref_alp00);
             println!("diff = {}", diff);
             if diff > alpha0_lam_crit_tol {
-                println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, REF_ALP00, diff);
+                println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, ref_alp00, diff);
             }
         } else {
-            // println!("WARNING: for alpha = 0.0, one peak must have been found");
+            println!("WARNING: for alpha = 0.0, one peak must have been found");
         }
     } else if alpha == 0.2 {
         if ii_peaks.len() == 1 && ii_valleys.len() == 1 {
             let lam_crit_a = lam_vals[ii_peaks[0]];
             let lam_crit_b = lam_vals[ii_valleys[0]];
-            let diff_a = f64::abs(lam_crit_a - REF_ALP02_A);
-            let diff_b = f64::abs(lam_crit_b - REF_ALP02_B);
+            let diff_a = f64::abs(lam_crit_a - ref_alp02a);
+            let diff_b = f64::abs(lam_crit_b - ref_alp02b);
             println!("diff_a = {}, diff_b = {}", diff_a, diff_b);
             if diff_a > alpha02_1st_lam_crit_tol {
                 println!(
                     "❌ ERROR ❌ 1st λCrit = {}, ref = {}, diff = {}",
-                    lam_crit_a, REF_ALP02_A, diff_a
+                    lam_crit_a, ref_alp02a, diff_a
                 );
             }
             if diff_b > alpha02_2nd_lam_crit_tol {
                 println!(
                     "❌ ERROR ❌ 2nd λCrit = {}, ref = {}, diff = {}",
-                    lam_crit_b, REF_ALP02_B, diff_b
+                    lam_crit_b, ref_alp02b, diff_b
                 );
             }
         } else {
@@ -304,8 +349,8 @@ fn run_test(
 
     // plot the results
     if SAVE_FIGURE {
-        let stepsizes = &out.get_h_values()[1..];
         do_plot(
+            one_dim,
             lmm,
             bordering,
             alpha,
@@ -316,10 +361,19 @@ fn run_test(
             &nrm_vals,
             &ii_peaks,
             &ii_valleys,
-            &stepsizes,
+            &output,
         )?;
     }
     Ok(())
+}
+
+struct Args {
+    alpha: f64,
+    bordering: bool,
+    npt: usize,
+    nphi: usize,
+    ndim: usize,
+    coo: CooMatrix,
 }
 
 // function to calculate G(u, λ)
@@ -370,19 +424,25 @@ fn calc_ggl(ggl: &mut Vector, _l: f64, u: &Vector, args: &mut Args) -> Result<()
     Ok(())
 }
 
-fn gen_file_stem(npt: usize, alpha: f64, lmm: bool, bordering: bool, auto: AutoStep) -> String {
+fn gen_file_stem(one_dim: bool, npt: usize, alpha: f64, lmm: bool, bordering: bool, auto: AutoStep) -> String {
     let mut key0 = format!("a{:.1}", alpha);
     key0 = key0.replace('.', "d");
     let key1 = if lmm { "lmm" } else { "sps" };
     let key2 = if bordering { "brd" } else { "full" };
     let key3 = if auto.no() { "fix" } else { "auto" };
     format!(
-        "/tmp/russell_nonlin/test_bratu_2d_n{}_{}_{}_{}_{}",
-        npt, key0, key1, key2, key3
+        "/tmp/russell_nonlin/test_bratu_{}_n{}_{}_{}_{}_{}",
+        if one_dim { "1d" } else { "2d" },
+        npt,
+        key0,
+        key1,
+        key2,
+        key3
     )
 }
 
-fn do_plot(
+fn do_plot<'a>(
+    one_dim: bool,
     lmm: bool,
     bordering: bool,
     alpha: f64,
@@ -393,13 +453,14 @@ fn do_plot(
     nrm_vals: &Vec<f64>,
     ii_peaks: &[usize],
     ii_valleys: &[usize],
-    stepsizes: &[f64],
+    output: &Output<'a, Args>,
 ) -> Result<(), StrError> {
     // allocate the plot
     let mut plot = Plot::new();
 
     // set the title
-    let mut title = format!("n = {}", npt);
+    let mut title = if one_dim { "1D".to_string() } else { "2D".to_string() };
+    title += &format!(" | n = {}", npt);
     if lmm {
         title += " | LMM";
     }
@@ -415,8 +476,11 @@ fn do_plot(
 
     // reference results
     if alpha == 0.0 {
-        let table: HashMap<String, Vec<f64>> =
-            read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"]))?;
+        let table: HashMap<String, Vec<f64>> = if one_dim {
+            read_table(&"data/ref-bratu-1d-shahab-2025.txt", Some(&["lambda", "u_max"]))?
+        } else {
+            read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"]))?
+        };
         let mut n_ref = 0;
         for u_max in &table["u_max"] {
             if *u_max > max_nrm_max {
@@ -470,6 +534,7 @@ fn do_plot(
 
     // plot stepsizes
     if auto.yes() {
+        let stepsizes = &output.get_h_values()[1..];
         let n = stepsizes.len();
         let x = linspace(1.0, n as f64, n);
         let mut curve = Curve::new();
@@ -480,6 +545,46 @@ fn do_plot(
             .set_labels("step number", "stepsize $h$")
             .add(&curve)
             .save(&format!("{}_h.svg", stem))?;
+    }
+
+    // profile: draw ϕ along x @ λCrit
+    if one_dim && alpha == 0.0 && ii_peaks.len() == 1 {
+        let mut curve = Curve::new();
+        let mut curve_profile_crit_num = Curve::new();
+        let xx_ana = linspace(0.0, 1.0, 201);
+        let phi_crit_ana: Vec<_> = xx_ana.iter().map(|&x| d1_analytical_profile(x)).collect();
+        curve
+            .set_label("Mathematica")
+            .set_line_style("-")
+            .set_line_color("#1f53d6ff")
+            .draw(&xx_ana, &phi_crit_ana);
+        let mut xx_num = vec![0.0; npt];
+        let mut phi_crit_num = vec![0.0; npt];
+        let grid = Grid1d::new_uniform(0.0, 1.0, npt)?;
+        grid.for_each_coord(|m, x| {
+            xx_num[m] = x;
+            if lmm {
+                phi_crit_num[m] = output.get_u_values(m)[ii_peaks[0]];
+            } else {
+                if m > 0 && m < npt - 1 {
+                    let iu = m - 1;
+                    phi_crit_num[m] = output.get_u_values(iu)[ii_peaks[0]];
+                }
+            }
+        });
+        curve_profile_crit_num
+            .set_label("Russell")
+            .set_line_style("None")
+            .set_marker_style(".")
+            .set_marker_color("#d8211aff")
+            .set_marker_line_color("#d8211aff")
+            .draw(&xx_num, &phi_crit_num);
+        let mut plot = Plot::new();
+        plot.set_title(&title)
+            .add(&curve)
+            .add(&curve_profile_crit_num)
+            .grid_labels_legend("x", "$\\phi_{crit}(x)$")
+            .save(&format!("{}_profile.svg", stem))?;
     }
     Ok(())
 }

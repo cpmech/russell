@@ -1,5 +1,6 @@
-use super::{AutoStep, IniDir, State, Status, Stop, Workspace};
+use super::{AutoStep, IniDir, Status, Stop, Workspace};
 use crate::StrError;
+use russell_lab::Vector;
 
 /// Defines the numerical solver
 pub(crate) trait SolverTrait<A>: Send {
@@ -10,7 +11,8 @@ pub(crate) trait SolverTrait<A>: Send {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        state: &mut State,
+        u: &Vector,
+        l: f64,
         dir: IniDir,
         stop: Stop,
         auto: AutoStep,
@@ -18,12 +20,12 @@ pub(crate) trait SolverTrait<A>: Send {
     ) -> Result<(), StrError>;
 
     /// Calculates u, λ and s such that G(u(s), λ(s)) = 0
-    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<Status, StrError>;
+    fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError>;
 
-    /// Handles the accept case by updating the state and calculating a new stepsize
+    /// Handles the accept case by updating (u, l) and calculating a new stepsize
     ///
     /// Returns `rerr` the relative error used in stepsize adaptation
-    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<f64, StrError>;
+    fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError>;
 
     /// Handles the reject case by calculating a new stepsize
     fn reject(&mut self, work: &mut Workspace, args: &mut A);

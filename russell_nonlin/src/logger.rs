@@ -1,4 +1,4 @@
-use super::{Config, IterationError, Method, State, Stats, Status};
+use super::{Config, IterationError, Method, Stats, Status};
 use crate::StrError;
 use russell_lab::format_scientific;
 use std::fmt::Write;
@@ -88,12 +88,12 @@ impl Logger {
     }
 
     /// Prints step information
-    pub fn step(&mut self, h: f64, state: &State) {
+    pub fn step(&mut self, h: f64, l: f64) {
         if !self.enabled {
             return;
         }
 
-        let str_l = format_scientific(state.l, 10, 3);
+        let str_l = format_scientific(l, 10, 3);
         let str_h = format_scientific(h, 10, 3);
         let output = format!("{} {}", str_l, str_h);
 
@@ -238,7 +238,7 @@ impl Logger {
 #[cfg(test)]
 mod tests {
     use super::Logger;
-    use crate::{Config, IterationError, Method, State, Stats, Status};
+    use crate::{Config, IterationError, Method, Stats, Status};
     use std::fs;
 
     #[test]
@@ -280,12 +280,11 @@ mod tests {
 
         // Simulate a complete workflow
         let mut logger = Logger::new(&config);
-        let mut state = State::new(1);
         let mut err = IterationError::new(&config, 1);
 
         logger.header();
-        state.l = 0.5;
-        logger.step(0.1, &state);
+        let l = 0.5;
+        logger.step(0.1, l);
         err.residual_max = 1e-8;
         err.residual_converged = true;
         logger.iteration(0, &err);
@@ -346,12 +345,11 @@ Total time                       = 0ns
 
         // Simulate a complete workflow
         let mut logger = Logger::new(&config);
-        let mut state = State::new(1);
         let mut err = IterationError::new(&config, 1);
 
         logger.header();
-        state.l = 0.5;
-        logger.step(0.1, &state);
+        let l = 0.5;
+        logger.step(0.1, l);
         err.residual_max = 1e-8;
         err.residual_converged = true;
         logger.iteration(0, &err);

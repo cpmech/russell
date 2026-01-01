@@ -1,5 +1,5 @@
 use super::{AutoStep, Config, IniDir, Method, Status, CONFIG_H_MIN};
-use super::{SolverTrait, State, Stop, System, Workspace};
+use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{Norm, Vector};
@@ -419,7 +419,7 @@ impl<'a, A> SolverArclength<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<Status, StrError> {
+    fn iterate(&mut self, work: &mut Workspace, u: &Vector, l: f64, args: &mut A) -> Result<Status, StrError> {
         // calculate G(u(s), λ(s))
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
@@ -429,11 +429,11 @@ impl<'a, A> SolverArclength<'a, A> {
         let mut du_part = 0.0; // (u - u₀)ᵀ du/ds|₀
         if self.theta > 0.0 {
             for i in 0..ndim {
-                du_part += (work.u[i] - state.u[i]) * work.duds[i];
+                du_part += (work.u[i] - u[i]) * work.duds[i];
             }
         }
         let sigma = work.h;
-        let nn = self.theta * du_part + (2.0 - self.theta) * (work.l - state.l) * work.dlds - sigma;
+        let nn = self.theta * du_part + (2.0 - self.theta) * (work.l - l) * work.dlds - sigma;
 
         // check convergence on (G, N)
         let nan_or_inf = work.err.analyze_residual(work.n_iteration, &work.gg, nn);
@@ -533,7 +533,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // external: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &state.u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -554,7 +554,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        state: &mut State,
+        u: &Vector,
+        l: f64,
         dir: IniDir,
         stop: Stop,
         auto: AutoStep,
@@ -562,13 +563,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ) -> Result<(), StrError> {
         // initial stepsize (σ₀)
         work.h = match auto {
-            AutoStep::Yes => stop.h_ini(self.config.h_ini, state),
-            AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
+            AutoStep::Yes => stop.h_ini(self.config.h_ini, l),
+            AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
         };
 
         // set initial values
-        vec_copy(&mut work.u, &state.u).unwrap(); // u₀ = u
-        work.l = state.l; // λ₀ = λ
+        vec_copy(&mut work.u, &u).unwrap(); // u₀ = u
+        work.l = l; // λ₀ = λ
 
         // calculate Gλ = ∂G/∂λ
         self.calc_ggl(work, args)?;
@@ -590,7 +591,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     /// Note also that `work.auto` indicates that automatic stepsize control is in use.
     /// On auto mode, a large (δu,δλ) is not an error; otherwise, it is an error.
-    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<Status, StrError> {
+    fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
@@ -604,39 +605,39 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         }
 
         // reset iteration error control
-        work.err.reset(state);
+        work.err.reset(u, l);
 
         // start the recording of iteration errors
         work.stats.record_iterations_residuals_start();
 
         // predictor: λ₁ = λ₀ + (2 - θ) σ · dλds₀
-        work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
+        work.l = l + (2.0 - self.theta) * work.h * work.dlds;
 
         // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
                 self.theta = 0.0; // set θ to targeting lambda mode
-                work.h = 2.0 * (l1 - state.l) * work.dlds; // the sign of dlds will correct the difference
-                work.l = state.l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
+                work.h = 2.0 * (l1 - l) * work.dlds; // the sign of dlds will correct the difference
+                work.l = l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀
             }
         }
 
         // predictor: u₁ = u₀ + θ σ · du/ds₀
         if self.theta > 0.0 {
             // u₁ = u₀ + θ σ · duds₀
-            vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
+            vec_add(&mut work.u, 1.0, &u, self.theta * work.h, &work.duds).unwrap();
         } else {
             // u₁ = u₀
-            vec_copy(&mut work.u, &state.u).unwrap();
+            vec_copy(&mut work.u, &u).unwrap();
         }
 
         // recalculate the predictor by truncating the stepsize if required and possible
         if let Some((i, u1, is_min)) = stop.u_comp() {
             if (work.u[i] < u1 && is_min) || (work.u[i] > u1 && !is_min) {
                 if f64::abs(work.duds[i]) > CONFIG_H_MIN {
-                    work.h = (u1 - state.u[i]) / work.duds[i];
-                    work.l = state.l + (2.0 - self.theta) * work.h * work.dlds;
-                    vec_add(&mut work.u, 1.0, &state.u, self.theta * work.h, &work.duds).unwrap();
+                    work.h = (u1 - u[i]) / work.duds[i];
+                    work.l = l + (2.0 - self.theta) * work.h * work.dlds;
+                    vec_add(&mut work.u, 1.0, &u, self.theta * work.h, &work.duds).unwrap();
                 } else {
                     return Err("INTERNAL ERROR: duds[i] is too small");
                 }
@@ -646,7 +647,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let status = Status::from_sup(f(do_backup, &state.u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -673,7 +674,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.stats.n_iteration_total += 1;
 
             // run Newton-Raphson iteration
-            status = self.iterate(work, state, args)?;
+            status = self.iterate(work, u, l, args)?;
             if status.failure() {
                 break;
             }
@@ -702,15 +703,15 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         Ok(status)
     }
 
-    /// Handles the accept case by updating the state and calculating a new stepsize
+    /// Handles the accept case by updating (u, l) and calculating a new stepsize
     ///
     /// Note that:
     ///
     ///  * `work` -- contains the updated values (u₁, λ₁)
-    ///  * `state` -- will be updated from (u₀, λ₀) to (u₁, λ₁)
+    ///  * `(u, l)` -- will be updated from (u₀, λ₀) to (u₁, λ₁)
     ///
     /// Returns `rerr` the relative error used in stepsize adaptation
-    fn accept(&mut self, work: &mut Workspace, state: &mut State, args: &mut A) -> Result<f64, StrError> {
+    fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError> {
         // create a copy of the tangent vector at the initial point
         vec_copy(&mut self.duds_prev, &work.duds).unwrap();
         self.dlds_prev = work.dlds;
@@ -776,8 +777,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         approx_eq(vec_inner(&work.duds, &work.duds) + work.dlds * work.dlds, 1.0, 1e-14);
 
         // update the state
-        vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
-        state.l = work.l; // λ := λ₁
+        vec_copy(u, &work.u).unwrap(); // u := u₁
+        *l = work.l; // λ := λ₁
 
         //
         // stepsize control --- calculate the relative change in the tangent vector
@@ -843,7 +844,7 @@ mod tests {
     fn new_captures_errors() {
         let mut config = Config::new(Method::Arclength);
         config.set_use_numerical_jacobian(true);
-        let (mut system, _, _) = Samples::simple_linear_problem(false, false);
+        let (mut system, _, _, _) = Samples::simple_linear_problem(false, false);
         system.set_update_secondary_state(|_, _, _, _| Ok(false));
         assert_eq!(
             SolverArclength::new(config, system).err(),

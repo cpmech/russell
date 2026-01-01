@@ -4,7 +4,7 @@ use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Status, 
 #[test]
 fn test_newton_problems_ok_1_auto() {
     // problem
-    let (system, mut state, _, _, u_ref, mut args) = Samples::cubic_poly_1();
+    let (system, mut u, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -14,8 +14,17 @@ fn test_newton_problems_ok_1_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -31,13 +40,13 @@ fn test_newton_problems_ok_1_auto() {
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_iteration_total, n_iter);
-    vec_approx_eq(&state.u, &u_ref, 1e-10);
+    vec_approx_eq(&u, &u_ref, 1e-10);
 }
 
 #[test]
 fn test_newton_problems_fail_due_to_continued_failure_auto() {
     // problem
-    let (system, mut state, _, _, _, mut args) = Samples::cubic_poly_1();
+    let (system, mut u, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -50,8 +59,17 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -59,7 +77,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
 #[test]
 fn test_newton_problems_fail_oscillation_auto() {
     // problem
-    let (system, _, mut state, _, _, mut args) = Samples::cubic_poly_1();
+    let (system, _, mut u, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -69,8 +87,17 @@ fn test_newton_problems_fail_oscillation_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -78,7 +105,7 @@ fn test_newton_problems_fail_oscillation_auto() {
 #[test]
 fn test_newton_problems_indeterminate_auto() {
     // problem
-    let (system, _, _, mut state, _, mut args) = Samples::cubic_poly_1();
+    let (system, _, _, mut u, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -88,8 +115,17 @@ fn test_newton_problems_indeterminate_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -97,7 +133,7 @@ fn test_newton_problems_indeterminate_auto() {
 #[test]
 fn test_newton_problems_ok_2_auto() {
     // problem
-    let (system, mut state, u_ref, mut args) = Samples::cubic_poly_2();
+    let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -111,8 +147,17 @@ fn test_newton_problems_ok_2_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::Success);
 
@@ -128,13 +173,13 @@ fn test_newton_problems_ok_2_auto() {
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_iteration_total, n_iter);
-    vec_approx_eq(&state.u, &u_ref, 1e-12);
+    vec_approx_eq(&u, &u_ref, 1e-12);
 }
 
 #[test]
 fn test_simple_fixed_continued_divergence_auto() {
     // problem
-    let (system, mut state, _, mut args) = Samples::cubic_poly_2();
+    let (system, mut u, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -147,8 +192,17 @@ fn test_simple_fixed_continued_divergence_auto() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::ContinuedFailure);
 }
@@ -156,7 +210,7 @@ fn test_simple_fixed_continued_divergence_auto() {
 #[test]
 fn test_newton_problems_stepsize_becomes_small() {
     // problem
-    let (system, mut state, _, mut args) = Samples::cubic_poly_2();
+    let (system, mut u, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -170,8 +224,17 @@ fn test_newton_problems_stepsize_becomes_small() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
-        .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(1),
+            AutoStep::Yes,
+            None,
+        )
         .unwrap();
     assert_eq!(status, Status::SmallStepsize);
 }

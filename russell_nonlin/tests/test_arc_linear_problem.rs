@@ -9,7 +9,7 @@ fn test_arc_linear_problem() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -28,7 +28,8 @@ fn test_arc_linear_problem() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(dds),
@@ -80,11 +81,11 @@ fn test_arc_linear_problem_backward() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // initial state
-    state.u[0] = 5.0 * 0.5 / SQRT_2;
-    state.l = 5.0 * 0.5 / SQRT_2;
+    u[0] = 5.0 * 0.5 / SQRT_2;
+    let mut l = 5.0 * 0.5 / SQRT_2;
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -103,7 +104,8 @@ fn test_arc_linear_problem_backward() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Neg,
             Stop::Steps(nstep),
             AutoStep::No(dds),
@@ -154,7 +156,7 @@ fn test_arc_linear_problem_large_step() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -172,7 +174,8 @@ fn test_arc_linear_problem_large_step() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::No(dds),
@@ -207,7 +210,7 @@ fn test_arc_linear_problem_auto() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -227,7 +230,8 @@ fn test_arc_linear_problem_auto() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::Yes,
@@ -258,11 +262,11 @@ fn test_arc_linear_problem_auto_backward() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // initial state
-    state.u[0] = 5.0 * 0.5 / SQRT_2;
-    state.l = 5.0 * 0.5 / SQRT_2;
+    u[0] = 5.0 * 0.5 / SQRT_2;
+    let mut l = 5.0 * 0.5 / SQRT_2;
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -282,7 +286,8 @@ fn test_arc_linear_problem_auto_backward() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
             AutoStep::Yes,

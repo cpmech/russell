@@ -10,7 +10,7 @@ fn test_arc_singular_initial_state_1() {
     // system
     let alpha = 1.0 / 3.0;
     let perturbation = 1e-6;
-    let (system, mut state, lambda_ana, mut args) = Samples::singular_initial_state(alpha, perturbation);
+    let (system, mut u, mut l, lambda_ana, mut args) = Samples::singular_initial_state(alpha, perturbation);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -32,7 +32,8 @@ fn test_arc_singular_initial_state_1() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(dds),
@@ -63,7 +64,7 @@ fn test_arc_singular_initial_state_2() {
     // system
     let alpha = 1.0 / 3.0;
     let perturbation = 0.05;
-    let (system, mut state, lambda_ana, mut args) = Samples::singular_initial_state(alpha, perturbation);
+    let (system, mut u, mut l, lambda_ana, mut args) = Samples::singular_initial_state(alpha, perturbation);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -85,7 +86,8 @@ fn test_arc_singular_initial_state_2() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(dds),

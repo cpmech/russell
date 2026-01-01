@@ -6,7 +6,7 @@ fn test_linear_no_auto_ana_jac() {
     // system
     let with_ggu = true; // with ∂G/∂u => analytical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -26,7 +26,8 @@ fn test_linear_no_auto_ana_jac() {
     solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::No(0.1),
@@ -74,7 +75,7 @@ fn test_linear_no_auto_num_jac() {
     // system
     let with_ggu = false; // no ∂G/∂u => numerical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -94,7 +95,8 @@ fn test_linear_no_auto_num_jac() {
     solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::No(0.1),
@@ -144,7 +146,7 @@ fn test_linear_auto_ana_jac() {
     // system
     let with_ggu = true; // with ∂G/∂u => analytical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -164,7 +166,8 @@ fn test_linear_auto_ana_jac() {
     solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::Yes,
@@ -184,11 +187,11 @@ fn test_linear_no_auto_ana_jac_backward() {
     // system
     let with_ggu = true; // with ∂G/∂u => analytical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut state, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // initial state
-    state.u[0] = 1.0;
-    state.l = 1.0;
+    u[0] = 1.0;
+    let mut l = 1.0;
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -208,7 +211,8 @@ fn test_linear_no_auto_ana_jac_backward() {
     solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
             AutoStep::No(0.1),

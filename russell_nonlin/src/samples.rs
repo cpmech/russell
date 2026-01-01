@@ -1,4 +1,4 @@
-use super::{NoArgs, State, System};
+use super::{NoArgs, System};
 use russell_lab::math::{SQRT_2, SQRT_2_BY_3, SQRT_3};
 use russell_lab::{Bspline, Vector};
 use russell_sparse::{CooMatrix, Sym};
@@ -15,14 +15,14 @@ pub struct SampleBsplineArgs {
 impl Samples {
     /// Simple linear problem: G(u, λ) = u - λ
     ///
-    /// Returns `(system, state, args)`
+    /// Returns `(system, u, args)`
     ///
     /// ```text
     /// G(u, λ) = u - λ
     /// Gu = ∂G/∂u = 1
     /// Gl = ∂G/∂λ = -1
     /// ```
-    pub fn simple_linear_problem<'a>(with_ggu: bool, with_ggl: bool) -> (System<'a, NoArgs>, State, NoArgs) {
+    pub fn simple_linear_problem<'a>(with_ggu: bool, with_ggl: bool) -> (System<'a, NoArgs>, Vector, f64, NoArgs) {
         // nonlinear problem: G(u, λ) = u - λ
         let ndim = 1;
         let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
@@ -57,24 +57,23 @@ impl Samples {
         }
 
         // initial state
-        let mut state = State::new(ndim);
-        state.u[0] = 0.0;
-        state.l = 0.0;
+        let u = Vector::from(&[0.0]);
+        let l = 0.0;
 
         // done
         let args = 0;
-        (system, state, args)
+        (system, u, l, args)
     }
 
     /// Cubic polynomial (causing problems to Newton's method)
     ///
-    /// Returns `(system, state_ok, state_oscillation, state_indeterminate, u_ref, args)`
+    /// Returns `(system, u_ok, u_oscillation, u_indeterminate, u_ref, args)`
     ///
     /// ```text
     /// f = x³ - 2 x - 2
     /// J = 3 x² - 2
     /// ```
-    pub fn cubic_poly_1<'a>() -> (System<'a, NoArgs>, State, State, State, Vector, NoArgs) {
+    pub fn cubic_poly_1<'a>() -> (System<'a, NoArgs>, Vector, Vector, Vector, Vector, NoArgs) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, |gg, _l, u, _args| {
@@ -93,37 +92,27 @@ impl Samples {
             .unwrap();
 
         // initial states = trial for Newton's method
-        let mut state_ok = State::new(ndim);
-        let mut state_oscillation = State::new(ndim);
-        let mut state_indeterminate = State::new(ndim);
-        state_ok.u[0] = 1.0;
-        state_oscillation.u[0] = 0.0;
-        state_indeterminate.u[0] = SQRT_2_BY_3;
+        let u_ok = Vector::from(&[1.0]);
+        let u_oscillation = Vector::from(&[0.0]);
+        let u_indeterminate = Vector::from(&[SQRT_2_BY_3]);
 
         // reference solution
         let u_reference = Vector::from(&[1.76929235423863]);
 
         // done
         let args = 0;
-        (
-            system,
-            state_ok,
-            state_oscillation,
-            state_indeterminate,
-            u_reference,
-            args,
-        )
+        (system, u_ok, u_oscillation, u_indeterminate, u_reference, args)
     }
 
     /// Cubic polynomial (causing divergence problems to Newton's method)
     ///
-    /// Returns `(system, state, u_reference,  args)`
+    /// Returns `(system, u, u_reference,  args)`
     ///
     /// ```text
     /// f = (x - 1)³ + 0.512
     /// J = 3 (x - 1)²
     /// ```
-    pub fn cubic_poly_2<'a>() -> (System<'a, NoArgs>, State, Vector, NoArgs) {
+    pub fn cubic_poly_2<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, |gg, _l, u, _args| {
@@ -142,21 +131,20 @@ impl Samples {
             .unwrap();
 
         // initial state = trial for Newton's method
-        let mut state = State::new(ndim);
-        state.u[0] = 5.0;
+        let u = Vector::from(&[5.0]);
 
         // reference solution
         let u_reference = Vector::from(&[0.2]);
 
         // done
         let args = 0;
-        (system, state, u_reference, args)
+        (system, u, u_reference, args)
     }
 
     /// Simple two-equation system with reference solution
     ///
-    /// Returns `(system, state, u_reference, args)`
-    pub fn two_eq_ref<'a>() -> (System<'a, NoArgs>, State, Vector, NoArgs) {
+    /// Returns `(system, u, u_reference, args)`
+    pub fn two_eq_ref<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
         let mut system = System::new(ndim, |gg, _l, u, _args| {
@@ -179,24 +167,22 @@ impl Samples {
             .unwrap();
 
         // initial state = trial for Newton's method
-        let mut state = State::new(ndim);
-        state.u[0] = 0.5;
-        state.u[1] = 0.5;
+        let u = Vector::from(&[0.5, 0.5]);
 
         // reference solution
         let u_reference = Vector::from(&[1.0, 0.0]);
 
         // done
         let args = 0;
-        (system, state, u_reference, args)
+        (system, u, u_reference, args)
     }
 
     /// Two-equation system causing problems to Newton-Raphson (singular)
     ///
-    /// Returns `(system, state, u_reference, args)`
+    /// Returns `(system, u, u_reference, args)`
     ///
     /// The solution is (0,0) and the Jacobian is singular at this point.
-    pub fn two_eq_nr_prob_1<'a>() -> (System<'a, NoArgs>, State, Vector, NoArgs) {
+    pub fn two_eq_nr_prob_1<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
         let mut system = System::new(ndim, |gg, _l, u, _args| {
@@ -220,22 +206,20 @@ impl Samples {
 
         // initial state = trial for Newton's method
         let eps = 1e-5;
-        let mut state = State::new(ndim);
-        state.u[0] = 0.0;
-        state.u[1] = eps;
+        let u = Vector::from(&[0.0, eps]);
 
         // reference solution
         let u_reference = Vector::from(&[0.0, 0.0]);
 
         // done
         let args = 0;
-        (system, state, u_reference, args)
+        (system, u, u_reference, args)
     }
 
     /// Two-equation system with two solutions and causing problems to Newton-Raphson
     ///
-    /// Returns `(system, state_ok1, state_ok2, state_bad, u_ref1, u_ref2, args)`
-    pub fn two_eq_nr_prob_2<'a>() -> (System<'a, NoArgs>, State, State, State, Vector, Vector, NoArgs) {
+    /// Returns `(system, u_ok1, u_ok2, u_bad, u_ref1, u_ref2, args)`
+    pub fn two_eq_nr_prob_2<'a>() -> (System<'a, NoArgs>, Vector, Vector, Vector, Vector, Vector, NoArgs) {
         // system
         let ndim = 2;
         let mut system = System::new(ndim, |gg, _l, u, _args| {
@@ -259,15 +243,9 @@ impl Samples {
 
         // initial state = trial for Newton's method
         // Note: det(J) = -4 u₀ + 4 u₁, thus, it may be zero when u₀ = u₁
-        let mut state_ok1 = State::new(ndim);
-        let mut state_ok2 = State::new(ndim);
-        let mut state_bad = State::new(ndim);
-        state_ok1.u[0] = -0.1;
-        state_ok1.u[1] = 0.1;
-        state_ok2.u[0] = 0.1;
-        state_ok2.u[1] = -0.1;
-        state_bad.u[0] = 0.0;
-        state_bad.u[1] = 0.0;
+        let u_ok1 = Vector::from(&[-0.1, 0.1]);
+        let u_ok2 = Vector::from(&[0.1, -0.1]);
+        let u_bad = Vector::from(&[0.0, 0.0]);
 
         // reference solutions
         let u_ref1 = Vector::from(&[(1.0 - SQRT_3) / 2.0, (1.0 + SQRT_3) / 2.0]);
@@ -275,18 +253,18 @@ impl Samples {
 
         // done
         let args = 0;
-        (system, state_ok1, state_ok2, state_bad, u_ref1, u_ref2, args)
+        (system, u_ok1, u_ok2, u_bad, u_ref1, u_ref2, args)
     }
 
     /// One equation with a fold point
     ///
-    /// Returns `(system, state, lambda_ana, args)` where `lambda_ana` is `f(u) -> λ`
+    /// Returns `(system, u, l, lambda_ana, args)` where `lambda_ana` is `f(u) -> λ`
     ///
     /// See Reference 1, page 70.
     ///
     /// 1. Bank RE and Mittelmann HD (1990) Stepsize selection in continuation procedures and damped Newton's method.
     ///    In Continuation Techniques and Bifurcation Problems, Ed. by Mittelmann HD and Roose D (1990), Springer.
-    pub fn one_eq_with_fold_point<'a>() -> (System<'a, NoArgs>, State, fn(f64) -> f64, NoArgs) {
+    pub fn one_eq_with_fold_point<'a>() -> (System<'a, NoArgs>, Vector, f64, fn(f64) -> f64, NoArgs) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, |gg, l, u, _args| {
@@ -311,23 +289,24 @@ impl Samples {
         });
 
         // initial state
-        let mut state = State::new(ndim);
-        state.u[0] = 0.0;
-        state.l = 0.0;
+        let u = Vector::from(&[0.0]);
+        let l = 0.0;
 
         // reference solution
         let lambda_ana = |u: f64| f64::exp(-u) * u;
 
         // done
         let args = 0;
-        (system, state, lambda_ana, args)
+        (system, u, l, lambda_ana, args)
     }
 
     /// One equation with singular initial state
+    ///
+    /// Returns `(system, u, l, lambda_ana, args)` where `lambda_ana` is `f(u) -> λ`
     pub fn singular_initial_state<'a>(
         alpha: f64,
         perturbation: f64,
-    ) -> (System<'a, NoArgs>, State, impl Fn(f64) -> f64, NoArgs) {
+    ) -> (System<'a, NoArgs>, Vector, f64, impl Fn(f64) -> f64, NoArgs) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, move |gg, l, u, _args| {
@@ -353,20 +332,23 @@ impl Samples {
         });
 
         // initial state
-        let mut state = State::new(ndim);
-        state.u[0] = perturbation;
-        state.l = 0.0;
+        let u = Vector::from(&[perturbation]);
+        let l = 0.0;
 
         // reference solution
         let lambda_ana = move |u: f64| f64::powf(u, alpha);
 
         // done
         let args = 0;
-        (system, state, lambda_ana, args)
+        (system, u, l, lambda_ana, args)
     }
 
     /// B-spline problem # 1
-    pub fn bspline_problem_1<'a>(snap_back_delta: f64) -> (System<'a, SampleBsplineArgs>, State, SampleBsplineArgs) {
+    ///
+    /// Returns `(system, u, l, args)`
+    pub fn bspline_problem_1<'a>(
+        snap_back_delta: f64,
+    ) -> (System<'a, SampleBsplineArgs>, Vector, f64, SampleBsplineArgs) {
         // define the nonlinear system: G(u, λ)
         let ndim = 2;
         let mut system = System::new(
@@ -419,17 +401,17 @@ impl Samples {
         args.bspline.set_control_points(control).unwrap();
 
         // initial state
-        let mut state = State::new(ndim);
-        state.u[0] = 0.0;
-        state.u[1] = 0.0;
-        state.l = 0.0;
+        let u = Vector::from(&[0.0, 0.0]);
+        let l = 0.0;
 
         // done
-        (system, state, args)
+        (system, u, l, args)
     }
 
     /// Circle on the u-λ space
-    pub fn circle_ul<'a>(radius: f64) -> (System<'a, NoArgs>, State, NoArgs) {
+    ///
+    /// Returns `(system, u, l, args)`
+    pub fn circle_ul<'a>(radius: f64) -> (System<'a, NoArgs>, Vector, f64, NoArgs) {
         // system
         let ndim = 1;
         let mut system = System::new(ndim, move |gg, l, u, _args| {
@@ -454,13 +436,12 @@ impl Samples {
         });
 
         // initial state: point on the first quadrant with u = l
-        let mut state = State::new(ndim);
-        state.u[0] = radius / SQRT_2;
-        state.l = radius / SQRT_2;
+        let u = Vector::from(&[radius / SQRT_2]);
+        let l = radius / SQRT_2;
 
         // done
         let args = 0;
-        (system, state, args)
+        (system, u, l, args)
     }
 }
 
@@ -477,15 +458,15 @@ mod tests {
     #[test]
     fn test_samples_cubic_poly_1() {
         // system
-        let (system, state, _, _, _, mut args) = Samples::cubic_poly_1();
+        let (system, u, _, _, _, mut args) = Samples::cubic_poly_1();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, 0.0, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, 0.0, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, 0.0, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, 0.0, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check
@@ -497,15 +478,15 @@ mod tests {
     #[test]
     fn test_samples_cubic_poly_2() {
         // system
-        let (system, state, _, mut args) = Samples::cubic_poly_2();
+        let (system, u, _, mut args) = Samples::cubic_poly_2();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, 0.0, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, 0.0, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, 0.0, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, 0.0, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check
@@ -517,15 +498,15 @@ mod tests {
     #[test]
     fn test_samples_simple_two_equations() {
         // system
-        let (system, state, _, mut args) = Samples::two_eq_ref();
+        let (system, u, _, mut args) = Samples::two_eq_ref();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, 0.0, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, 0.0, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, 0.0, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, 0.0, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check
@@ -537,15 +518,15 @@ mod tests {
     #[test]
     fn test_samples_two_eq_nr_prob_1() {
         // system
-        let (system, state, _, mut args) = Samples::two_eq_nr_prob_1();
+        let (system, u, _, mut args) = Samples::two_eq_nr_prob_1();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, 0.0, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, 0.0, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, 0.0, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, 0.0, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check
@@ -557,15 +538,15 @@ mod tests {
     #[test]
     fn test_samples_two_eq_nr_prob_2() {
         // system
-        let (system, state, _, _, _, _, mut args) = Samples::two_eq_nr_prob_2();
+        let (system, u, _, _, _, _, mut args) = Samples::two_eq_nr_prob_2();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(2, 2, 4, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, 0.0, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, 0.0, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, 0.0, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, 0.0, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check
@@ -577,15 +558,15 @@ mod tests {
     #[test]
     fn test_samples_one_eq_with_fold_point() {
         // system
-        let (system, state, _, mut args) = Samples::one_eq_with_fold_point();
+        let (system, u, l, _, mut args) = Samples::one_eq_with_fold_point();
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, state.l, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, l, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, l, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check Gu
@@ -596,22 +577,22 @@ mod tests {
         // check Gl
         let ggl_fn = system.calc_ggl.as_ref().unwrap();
         let mut ggl = Vector::new(1);
-        ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        ggl_fn(&mut ggl, l, &u, &mut args).unwrap();
         vec_approx_eq(&ggl, &[-1.0], 1e-15);
     }
 
     #[test]
     fn test_samples_arc_singular_initial_state() {
         // system
-        let (system, state, _, mut args) = Samples::singular_initial_state(2.0, 1e-2);
+        let (system, u, l, _, mut args) = Samples::singular_initial_state(2.0, 1e-2);
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, state.l, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, l, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, l, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check Gu
@@ -622,22 +603,22 @@ mod tests {
         // check Gl
         let ggl_fn = system.calc_ggl.as_ref().unwrap();
         let mut ggl = Vector::new(1);
-        ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        ggl_fn(&mut ggl, l, &u, &mut args).unwrap();
         vec_approx_eq(&ggl, &[-1.0], 1e-15);
     }
 
     #[test]
     fn test_samples_bspline_problem_1() {
         // system
-        let (system, state, mut args) = Samples::bspline_problem_1(0.5);
+        let (system, u, l, mut args) = Samples::bspline_problem_1(0.5);
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, state.l, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, l, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, l, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check Gu
@@ -648,7 +629,7 @@ mod tests {
         // check Gl
         let ggl_fn = system.calc_ggl.as_ref().unwrap();
         let mut ggl = Vector::new(2);
-        ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        ggl_fn(&mut ggl, l, &u, &mut args).unwrap();
         println!("{}", ggl);
         vec_approx_eq(&ggl, &[-2.5, -5.0], 1e-15);
     }
@@ -657,24 +638,24 @@ mod tests {
     fn test_samples_circle_ul() {
         // system
         let radius = SQRT_2;
-        let (system, state, mut args) = Samples::circle_ul(radius);
-        println!("Initial state: l = {}, u = {}", state.l, state.u[0]);
+        let (system, u, l, mut args) = Samples::circle_ul(radius);
+        println!("Initial state: l = {}, u = {}", l, u[0]);
 
         // check initial G(u, λ) = 0
         let ndim = system.get_ndim();
         let gg_fn = system.calc_gg.as_ref();
         let mut gg = Vector::new(ndim);
-        gg_fn(&mut gg, state.l, &state.u, &mut args).unwrap();
+        gg_fn(&mut gg, l, &u, &mut args).unwrap();
         println!("gg =\n{}", gg);
         approx_eq(gg[0], 0.0, 1e-15);
 
         // analytical Jacobian
         let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
         let ggu_fn = system.calc_ggu.as_ref().unwrap();
-        ggu_fn(&mut ggu, state.l, &state.u, &mut args).unwrap();
+        ggu_fn(&mut ggu, l, &u, &mut args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(system.ndim, state.l, &state.u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(system.ndim, l, &u, 1.0, &mut args, system.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check Gu
@@ -685,8 +666,8 @@ mod tests {
         // check Gl
         let ggl_fn = system.calc_ggl.as_ref().unwrap();
         let mut ggl = Vector::new(ndim);
-        ggl_fn(&mut ggl, state.l, &state.u, &mut args).unwrap();
+        ggl_fn(&mut ggl, l, &u, &mut args).unwrap();
         println!("Gl = \n{}", ggl);
-        vec_approx_eq(&ggl, &[2.0 * state.l], 1e-15);
+        vec_approx_eq(&ggl, &[2.0 * l], 1e-15);
     }
 }

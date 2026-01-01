@@ -1,7 +1,7 @@
-use super::{AutoStep, Config, IniDir, Method, SolverTrait, State, Stop, System};
+use super::{AutoStep, Config, IniDir, Method, SolverTrait, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
-use russell_lab::vec_all_finite;
+use russell_lab::{vec_all_finite, Vector};
 
 /// Default number of steps
 pub const N_EQUAL_STEPS: usize = 10;
@@ -79,7 +79,7 @@ impl<'a, A> Solver<'a, A> {
     /// # Input
     ///
     /// * `args` -- extra arguments to be passed to the system functions
-    /// * `state` -- the initial state `(u₀, λ₀)` with a non-singular `Gu₀ = ∂u/∂λ|₀` (Jacobian) matrix.
+    /// * `(u, l)` -- the initial state `(u₀, λ₀)` with a non-singular `Gu₀ = ∂u/∂λ|₀` (Jacobian) matrix.
     ///    The state will be updated with the new solution (u, λ) util a stop criterion is reached.
     /// * `dir` -- the direction to follow on the solution branch (pseudo-arclength method).
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
@@ -92,28 +92,29 @@ impl<'a, A> Solver<'a, A> {
     pub fn solve<'b>(
         &mut self,
         args: &mut A,
-        state: &mut State,
+        u: &mut Vector,
+        l: &mut f64,
         dir: IniDir,
         stop: Stop,
         auto: AutoStep,
         mut output: Option<&mut Output<'b, A>>,
     ) -> Result<Status, StrError> {
         // validate input
-        if state.u.dim() != self.ndim {
+        if u.dim() != self.ndim {
             return Err("u.dim() must be equal to ndim");
         }
-        stop.validate(state)?;
+        stop.validate(u, *l)?;
         auto.validate()?;
 
         // reset stats and flags
         self.work.reset_stats_and_flags(auto.yes());
 
         // perform initialization (compute initial stepsize and tangent vector)
-        self.actual.initialize(&mut self.work, state, dir, stop, auto, args)?;
+        self.actual.initialize(&mut self.work, u, *l, dir, stop, auto, args)?;
 
         // first output
         if let Some(out) = output.as_deref_mut() {
-            let stop_gracefully = out.execute(&self.work, &state, args)?;
+            let stop_gracefully = out.execute(&self.work, u, *l, args)?;
             if stop_gracefully {
                 return Ok(Status::Success);
             }
@@ -132,11 +133,11 @@ impl<'a, A> Solver<'a, A> {
             for i in 0..self.config.n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
-                self.work.log.step(self.work.h, &state);
+                self.work.log.step(self.work.h, *l);
 
                 // step
                 self.work.stats.n_steps += 1;
-                status = self.actual.step(&mut self.work, state, stop, args)?;
+                status = self.actual.step(&mut self.work, u, *l, stop, args)?;
 
                 // handle failures
                 if status.failure() {
@@ -145,14 +146,14 @@ impl<'a, A> Solver<'a, A> {
 
                 // update u and λ
                 self.work.stats.n_accepted += 1;
-                self.actual.accept(&mut self.work, state, args)?;
+                self.actual.accept(&mut self.work, u, l, args)?;
 
                 // check for anomalies
-                vec_all_finite(&state.u, self.config.verbose)?;
+                vec_all_finite(&u, self.config.verbose)?;
 
                 // output
                 if let Some(out) = output.as_deref_mut() {
-                    let stop_gracefully = out.execute(&self.work, &state, args)?;
+                    let stop_gracefully = out.execute(&self.work, u, *l, args)?;
                     if stop_gracefully {
                         self.work.stats.stop_sw_step();
                         break;
@@ -161,7 +162,7 @@ impl<'a, A> Solver<'a, A> {
 
                 // exit point
                 self.work.stats.stop_sw_step();
-                if stop.now(i, state) {
+                if stop.now(i, u, *l) {
                     break;
                 }
             }
@@ -170,11 +171,11 @@ impl<'a, A> Solver<'a, A> {
             for i in 0..self.config.n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
-                self.work.log.step(self.work.h, &state);
+                self.work.log.step(self.work.h, *l);
 
                 // step
                 self.work.stats.n_steps += 1;
-                status = self.actual.step(&mut self.work, state, stop, args)?;
+                status = self.actual.step(&mut self.work, u, *l, stop, args)?;
 
                 // check for failures
                 if status.failure() {
@@ -212,10 +213,10 @@ impl<'a, A> Solver<'a, A> {
                 } else {
                     // update u and λ
                     self.work.stats.n_accepted += 1;
-                    let rerr = self.actual.accept(&mut self.work, state, args)?;
+                    let rerr = self.actual.accept(&mut self.work, u, l, args)?;
 
                     // check for anomalies
-                    vec_all_finite(&state.u, self.config.verbose)?;
+                    vec_all_finite(&u, self.config.verbose)?;
 
                     // exit point: target u or λ reached
                     if self.work.target_reached {
@@ -239,7 +240,7 @@ impl<'a, A> Solver<'a, A> {
 
                     // output
                     if let Some(out) = output.as_deref_mut() {
-                        let stop_gracefully = out.execute(&self.work, &state, args)?;
+                        let stop_gracefully = out.execute(&self.work, u, *l, args)?;
                         if stop_gracefully {
                             self.work.stats.stop_sw_step();
                             break;
@@ -248,7 +249,7 @@ impl<'a, A> Solver<'a, A> {
 
                     // exit point
                     self.work.stats.stop_sw_step();
-                    if stop.now(i, state) {
+                    if stop.now(i, u, *l) {
                         break;
                     }
                 }
@@ -261,13 +262,8 @@ impl<'a, A> Solver<'a, A> {
             }
         }
 
-        // last output
-        if let Some(out) = output.as_deref_mut() {
-            out.last()?;
-        }
-
         // print last message and footer
-        self.work.log.step(self.work.h, &state);
+        self.work.log.step(self.work.h, *l);
         self.work.stats.stop_sw_total();
         self.work.log.footer(&self.work.stats, &status)?;
 
@@ -338,7 +334,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{AutoStep, Config, IniDir, Method, Samples, State, Status, Stop};
+    use crate::{AutoStep, Config, IniDir, Method, Samples, Status, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -355,7 +351,8 @@ mod tests {
     #[test]
     fn solve_captures_errors() {
         let (system, _, _, mut args) = Samples::two_eq_ref();
-        let mut state = State::new(system.ndim + 1); // wrong dim
+        let mut u = Vector::new(system.ndim + 1); // wrong dim
+        let mut l = 0.0;
         let ndim = system.ndim;
         let config = Config::new(Method::Natural);
         let mut solver = Solver::new(config, system).unwrap();
@@ -363,7 +360,8 @@ mod tests {
             solver
                 .solve(
                     &mut args,
-                    &mut state,
+                    &mut u,
+                    &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
                     AutoStep::Yes,
@@ -372,12 +370,13 @@ mod tests {
                 .err(),
             Some("u.dim() must be equal to ndim")
         );
-        state.u = Vector::new(ndim); // fix dim
+        u = Vector::new(ndim); // fix dim
         assert_eq!(
             solver
                 .solve(
                     &mut args,
-                    &mut state,
+                    &mut u,
+                    &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(0.0),
                     AutoStep::Yes,
@@ -390,7 +389,8 @@ mod tests {
             solver
                 .solve(
                     &mut args,
-                    &mut state,
+                    &mut u,
+                    &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
                     AutoStep::No(f64::EPSILON), // will cause an error
@@ -403,15 +403,17 @@ mod tests {
 
     #[test]
     fn lack_of_convergence_is_captured() {
-        let (system, mut state, _u_ref, mut args) = Samples::two_eq_ref();
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.n_step_max = 1; // will make the solver to fail (too few steps)
         let mut solver = Solver::new(config, system).unwrap();
+        let mut l = 0.0;
         assert_eq!(
             solver
                 .solve(
                     &mut args,
-                    &mut state,
+                    &mut u,
+                    &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
                     AutoStep::Yes,
@@ -424,21 +426,23 @@ mod tests {
 
     #[test]
     fn solve_with_one_step_works_fixed() {
-        let (system, mut state, u_ref, mut args) = Samples::two_eq_ref();
+        let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
+        let mut l = 0.0;
         solver
             .solve(
                 &mut args,
-                &mut state,
+                &mut u,
+                &mut l,
                 IniDir::Pos,
                 Stop::Steps(1),
                 AutoStep::No(1.0),
                 None,
             )
             .unwrap();
-        vec_approx_eq(&state.u, &u_ref, 1e-15);
+        vec_approx_eq(&u, &u_ref, 1e-15);
         let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
         assert_eq!(stats.n_jacobian, 6);
@@ -452,14 +456,23 @@ mod tests {
 
     #[test]
     fn solve_with_one_step_works_auto() {
-        let (system, mut state, u_ref, mut args) = Samples::two_eq_ref();
+        let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(config, system).unwrap();
+        let mut l = 0.0;
         solver
-            .solve(&mut args, &mut state, IniDir::Pos, Stop::Steps(1), AutoStep::Yes, None)
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(1),
+                AutoStep::Yes,
+                None,
+            )
             .unwrap();
-        vec_approx_eq(&state.u, &u_ref, 1e-15);
+        vec_approx_eq(&u, &u_ref, 1e-15);
         let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
         assert_eq!(stats.n_jacobian, 6);

@@ -1,19 +1,7 @@
-use super::{State, Stats, StrError, Workspace};
+use super::{Stats, StrError, Workspace};
 use russell_lab::{vec_norm_chunk, Norm, Vector};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::BufReader;
-use std::path::Path;
 use std::sync::Arc;
-
-/// Holds a counter of how many output files have been written
-///
-/// This data structure is useful to read back all generated files
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct OutCount {
-    pub n: usize,
-}
 
 /// Holds the results at accepted steps
 pub struct Output<'a, A> {
@@ -29,12 +17,6 @@ pub struct Output<'a, A> {
     ///
     /// The function is `fn (stats, u, λ, h, args) -> stop_gracefully`
     callback: Option<Arc<dyn Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
-
-    /// Save the results to a file (step)
-    file_key: Option<String>,
-
-    /// Counts the number of file saves (step)
-    file_count: usize,
 
     /// Holds the Euclidean norm of u computed at accepted steps
     norm_u: Vec<f64>,
@@ -55,28 +37,6 @@ pub struct Output<'a, A> {
     dlds: Vec<f64>,
 }
 
-impl OutCount {
-    /// Reads a JSON file containing the results
-    pub fn read_json(full_path: &str) -> Result<Self, StrError> {
-        let path = Path::new(full_path).to_path_buf();
-        let input = File::open(path).map_err(|_| "cannot open file")?;
-        let buffered = BufReader::new(input);
-        let stat = serde_json::from_reader(buffered).map_err(|_| "cannot parse JSON file")?;
-        Ok(stat)
-    }
-
-    /// Writes a JSON file with the results
-    pub fn write_json(&self, full_path: &str) -> Result<(), StrError> {
-        let path = Path::new(full_path).to_path_buf();
-        if let Some(p) = path.parent() {
-            fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
-        }
-        let mut file = File::create(&path).map_err(|_| "cannot create file")?;
-        serde_json::to_writer(&mut file, &self).map_err(|_| "cannot write file")?;
-        Ok(())
-    }
-}
-
 impl<'a, A> Output<'a, A> {
     /// Allocates a new instance
     pub fn new() -> Self {
@@ -84,8 +44,6 @@ impl<'a, A> Output<'a, A> {
             recording: false,
             record_norm_u: None,
             callback: None,
-            file_key: None,
-            file_count: 0,
             norm_u: Vec::new(),
             u: HashMap::new(),
             l: Vec::new(),
@@ -111,16 +69,6 @@ impl<'a, A> Output<'a, A> {
         callback: impl Fn(&Stats, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
         self.callback = Some(Arc::new(callback));
-        self
-    }
-
-    /// Sets the generation of files with the results at accepted steps
-    ///
-    /// # Input
-    ///
-    /// * `filepath_without_extension` -- example: `/tmp/russell_ode/my_simulation`
-    pub fn set_file_writing(&mut self, filepath_without_extension: &str) -> &mut Self {
-        self.file_key = Some(filepath_without_extension.to_string());
         self
     }
 
@@ -190,34 +138,27 @@ impl<'a, A> Output<'a, A> {
     // internal ---------------------------------------------------------------------------------------------------------
 
     /// Executes the output at an accepted step
-    pub(crate) fn execute(&mut self, work: &Workspace, state: &State, args: &mut A) -> Result<bool, StrError> {
+    pub(crate) fn execute(&mut self, work: &Workspace, u: &Vector, l: f64, args: &mut A) -> Result<bool, StrError> {
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop_gracefully = cb(&work.stats, &state.u, state.l, work.h, args)?;
+            let stop_gracefully = cb(&work.stats, &u, l, work.h, args)?;
             if stop_gracefully {
                 return Ok(stop_gracefully);
             }
         }
 
-        // write file
-        if let Some(fp) = &self.file_key {
-            let full_path = format!("{}_{}.json", fp, self.file_count).to_string();
-            state.write_json(&full_path)?;
-            self.file_count += 1;
-        }
-
         // record results
         if self.recording {
             if let Some((norm_type, start, stop)) = self.record_norm_u {
-                let norm = vec_norm_chunk(&state.u, norm_type, start, stop);
+                let norm = vec_norm_chunk(&u, norm_type, start, stop);
                 self.norm_u.push(norm);
             }
             for (m, um) in self.u.iter_mut() {
-                um.push(state.u[*m]);
+                um.push(u[*m]);
             }
-            self.l.push(state.l);
+            self.l.push(l);
             self.h.push(work.h);
-            if work.duds.dim() == state.u.dim() {
+            if work.duds.dim() == u.dim() {
                 // only for pseudo-arclength with available du/ds and dλ/ds
                 for (m, duds_m) in self.duds.iter_mut() {
                     duds_m.push(work.duds[*m]);
@@ -228,77 +169,5 @@ impl<'a, A> Output<'a, A> {
 
         // done
         Ok(false) // do not stop
-    }
-
-    /// Saves the count file
-    pub(crate) fn last(&mut self) -> Result<(), StrError> {
-        if let Some(fp) = &self.file_key {
-            let full_path = format!("{}_count.json", fp).to_string();
-            let count = OutCount { n: self.file_count };
-            count.write_json(&full_path)?;
-        }
-        Ok(())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(test)]
-mod tests {
-    use super::{OutCount, State};
-    use russell_lab::Vector;
-
-    #[test]
-    fn derive_methods_work() {
-        // State: read from JSON
-        let out_data = State {
-            u: Vector::new(1),
-            l: 0.5,
-        };
-        let clone = out_data.clone();
-        assert_eq!(format!("{:?}", clone), "State { u: NumVector { data: [0.0] }, l: 0.5 }");
-        let json = "{\"u\":{\"data\":[3.0]},\"l\":0.2}";
-        let from_json: State = serde_json::from_str(&json).unwrap();
-        assert_eq!(from_json.u.as_data(), &[3.0]);
-        assert_eq!(from_json.l, 0.2);
-
-        // State: write to JSON
-        let state = State {
-            u: Vector::from(&[10.0]),
-            l: 0.5,
-        };
-        let json = serde_json::to_string(&state).unwrap();
-        assert_eq!(json, "{\"u\":{\"data\":[10.0]},\"l\":0.5}");
-
-        // OutCount
-        let count = OutCount { n: 123 };
-        let clone = count.clone();
-        assert_eq!(format!("{:?}", clone), "OutCount { n: 123 }");
-        let json = serde_json::to_string(&count).unwrap();
-        let from_json: OutCount = serde_json::from_str(&json).unwrap();
-        assert_eq!(from_json.n, count.n);
-    }
-
-    #[test]
-    fn read_write_files_work() {
-        // Write State
-        let data_out = State {
-            u: Vector::from(&[6.6]),
-            l: 0.5,
-        };
-        let path = "/tmp/russell_nonlin/test_out_data.json";
-        data_out.write_json(path).unwrap();
-
-        // Read State
-        let data_in = State::read_json(path).unwrap();
-        assert_eq!(data_in.u.as_data(), &[6.6]);
-        assert_eq!(data_in.l, 0.5);
-
-        // Write OutCount
-        let sum_out = OutCount { n: 456 };
-        let path = "/tmp/russell_nonlin/test_out_count.json";
-        sum_out.write_json(path).unwrap();
-        let sum_in = OutCount::read_json(path).unwrap();
-        assert_eq!(sum_in.n, 456);
     }
 }

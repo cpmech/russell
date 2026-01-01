@@ -27,7 +27,7 @@ fn run_test(
     expected_status: Status,
 ) {
     // nonlinear problem
-    let (system, mut state, mut args) = Samples::bspline_problem_1(1.5);
+    let (system, mut u, mut l, mut args) = Samples::bspline_problem_1(1.5);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -54,7 +54,8 @@ fn run_test(
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
             AutoStep::Yes,

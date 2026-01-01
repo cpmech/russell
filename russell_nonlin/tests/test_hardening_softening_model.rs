@@ -1,7 +1,7 @@
 use ctm_demo::{Model, ModelType};
 use plotpy::{linspace, Curve, Plot};
-use russell_lab::{approx_eq, InterpChebyshev};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, SoderlindClass, Solver, State};
+use russell_lab::{approx_eq, InterpChebyshev, Vector};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, SoderlindClass, Solver};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
@@ -284,7 +284,6 @@ fn run_hs_model(
 ) -> Result<(Stats, f64), StrError> {
     // Allocate the system and arguments
     let (system, mut args) = new_hs_model_problem(use_continuous_modulus)?;
-    let ndim = system.get_ndim();
 
     // Prepare the configuration
     let mut config = Config::new(Method::Natural);
@@ -332,16 +331,13 @@ fn run_hs_model(
     out.set_recording(true, &[0], &[0]);
 
     // Allocate the (global) state
-    let mut state = State::new(ndim);
-
-    // Initial values
-    state.u[0] = initial_u;
-    state.l = initial_l;
-    args.local_state.strain = state.u[0] * B;
-    args.local_state.stress = state.l;
+    let mut u = Vector::from(&[initial_u]);
+    let mut l = initial_l;
+    args.local_state.strain = u[0] * B;
+    args.local_state.stress = l;
 
     // Perform the numerical continuation
-    let status = solver.solve(&mut args, &mut state, direction, stop, auto, Some(out))?;
+    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, auto, Some(out))?;
     assert_eq!(status, expected_status);
 
     // results

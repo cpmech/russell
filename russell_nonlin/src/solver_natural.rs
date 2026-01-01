@@ -1,5 +1,5 @@
 use super::{AutoStep, Config, IniDir, Method, Status};
-use super::{SolverTrait, State, Stop, System, Workspace};
+use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update, Vector};
 use russell_sparse::numerical_jacobian;
@@ -33,7 +33,7 @@ impl<'a, A> SolverNatural<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(&mut self, work: &mut Workspace, state: &State, args: &mut A) -> Result<Status, StrError> {
+    fn iterate(&mut self, work: &mut Workspace, u: &Vector, args: &mut A) -> Result<Status, StrError> {
         // calculate G(u, λ)
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
@@ -115,7 +115,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // external: update secondary variables
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &state.u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -147,15 +147,15 @@ impl<'a, A> SolverNatural<'a, A> {
     ///        ‖ s₀ ‖             ‖ x₁ - x₀ ‖              ‖ x₁ - x₀ ‖
     /// ```
     ///
-    /// Note that `state` corresponds to the initial values `x₀ = (u₀, λ₀)`
+    /// Note that `(u, l)` corresponds to the initial values `x₀ = (u₀, λ₀)`
     /// and `work` corresponds to the updated values `x₁ = (u₁, λ₁)`.
-    fn calculate_rerr(&mut self, work: &mut Workspace, state: &State) -> f64 {
+    fn calculate_rerr(&mut self, work: &mut Workspace, u: &Vector) -> f64 {
         if work.stats.n_accepted > 1 {
             let ndim = self.system.ndim;
             let mut sum = 0.0;
             for i in 0..ndim {
-                let v = work.u[i] - 2.0 * state.u[i] + self.u_prev[i]; // u₁ - 2u₀ + u₋₁
-                let r = work.u[i] - state.u[i]; // u₁ - u₀
+                let v = work.u[i] - 2.0 * u[i] + self.u_prev[i]; // u₁ - 2u₀ + u₋₁
+                let r = work.u[i] - u[i]; // u₁ - u₀
                 let den = self.config.tg_control_atol + self.config.tg_control_rtol * f64::abs(r);
                 sum += v * v / (den * den);
             }
@@ -174,15 +174,16 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        state: &mut State,
+        _u: &Vector,
+        l: f64,
         dir: IniDir,
         stop: Stop,
         auto: AutoStep,
         _args: &mut A,
     ) -> Result<(), StrError> {
         work.h = match auto {
-            AutoStep::Yes => stop.h_ini(self.config.h_ini, state),
-            AutoStep::No(h_eq) => stop.h_eq(h_eq, state),
+            AutoStep::Yes => stop.h_ini(self.config.h_ini, l),
+            AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
         };
         self.sign0 = match dir {
             IniDir::Pos => 1.0,
@@ -195,7 +196,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     ///
     /// * `auto` indicates that automatic stepsize control is used.
     ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
-    fn step(&mut self, work: &mut Workspace, state: &State, stop: Stop, args: &mut A) -> Result<Status, StrError> {
+    fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
         // external: create a copy of external state variables
         if work.auto {
             if let Some(f) = self.system.backup_secondary_state.as_ref() {
@@ -209,27 +210,27 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         }
 
         // reset iteration error control
-        work.err.reset(state);
+        work.err.reset(u, l);
 
         // start the recording of iteration errors
         work.stats.record_iterations_residuals_start();
 
         // predictor: set workspace with trial values
-        vec_copy(&mut work.u, &state.u).unwrap(); // u_trial ← u0
-        work.l = state.l + self.sign0 * work.h; // λ_trial ← λ0 + h
+        vec_copy(&mut work.u, &u).unwrap(); // u_trial ← u0
+        work.l = l + self.sign0 * work.h; // λ_trial ← λ0 + h
 
         // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
-                work.h = (l1 - state.l) * self.sign0; // dir_mult will correct the difference
-                work.l = state.l + self.sign0 * work.h; // λ_trial ← λ0 + h
+                work.h = (l1 - l) * self.sign0; // dir_mult will correct the difference
+                work.l = l + self.sign0 * work.h; // λ_trial ← λ0 + h
             }
         }
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let status = Status::from_sup(f(do_backup, &state.u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -256,7 +257,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             work.stats.n_iteration_total += 1;
 
             // run Newton-Raphson iteration
-            status = self.iterate(work, state, args)?;
+            status = self.iterate(work, u, args)?;
             if status.failure() {
                 break;
             }
@@ -285,19 +286,19 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         Ok(status)
     }
 
-    /// Handles the accept case by updating the state and calculating a new stepsize
+    /// Handles the accept case by updating (u, l) and calculating a new stepsize
     ///
     /// Returns `rerr` the relative error used in stepsize adaptation
-    fn accept(&mut self, work: &mut Workspace, state: &mut State, _args: &mut A) -> Result<f64, StrError> {
+    fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, _args: &mut A) -> Result<f64, StrError> {
         // calculate the relative error
-        let rerr = self.calculate_rerr(work, state);
+        let rerr = self.calculate_rerr(work, u);
 
         // save previous u
-        vec_copy(&mut self.u_prev, &state.u).unwrap();
+        vec_copy(&mut self.u_prev, &u).unwrap();
 
         // update the state
-        vec_copy(&mut state.u, &work.u).unwrap(); // u := u₁
-        state.l = work.l; // λ := λ₁
+        vec_copy(u, &work.u).unwrap(); // u := u₁
+        *l = work.l; // λ := λ₁
 
         // done
         Ok(rerr)

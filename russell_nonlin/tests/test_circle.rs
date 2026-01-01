@@ -9,7 +9,7 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_circle_max_lambda() {
     // system
-    let (system, mut state, mut args) = Samples::circle_ul(RADIUS);
+    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -31,7 +31,8 @@ fn test_circle_max_lambda() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(RADIUS),
             AutoStep::Yes,
@@ -43,10 +44,10 @@ fn test_circle_max_lambda() {
     // check the results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    println!("u final = {:.3e}", state.u[0]);
-    println!("λ final = {}, err = {:.3e}", state.l, f64::abs(state.l - RADIUS));
-    approx_eq(state.u[0], 0.0, 1e-5);
-    approx_eq(state.l, RADIUS, 1e-14);
+    println!("u final = {:.3e}", u[0]);
+    println!("λ final = {}, err = {:.3e}", l, f64::abs(l - RADIUS));
+    approx_eq(u[0], 0.0, 1e-5);
+    approx_eq(l, RADIUS, 1e-14);
 
     // check stats
     let stats = solver.get_stats();
@@ -65,7 +66,7 @@ fn test_circle_max_lambda() {
 #[test]
 fn test_circle_min_lambda() {
     // system
-    let (system, mut state, mut args) = Samples::circle_ul(RADIUS);
+    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -86,7 +87,8 @@ fn test_circle_min_lambda() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
             AutoStep::Yes,
@@ -98,10 +100,10 @@ fn test_circle_min_lambda() {
     // check the results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    println!("u final = {}", state.u[0]);
-    println!("λ final = {:.7e}", state.l);
-    approx_eq(state.u[0], RADIUS, 1e-8);
-    approx_eq(state.l, 0.0, 1e-14);
+    println!("u final = {}", u[0]);
+    println!("λ final = {:.7e}", l);
+    approx_eq(u[0], RADIUS, 1e-8);
+    approx_eq(l, 0.0, 1e-14);
 
     // check stats
     let stats = solver.get_stats();
@@ -120,7 +122,7 @@ fn test_circle_min_lambda() {
 #[test]
 fn test_circle_max_u() {
     // system
-    let (system, mut state, mut args) = Samples::circle_ul(RADIUS);
+    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -141,7 +143,8 @@ fn test_circle_max_u() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Neg,
             Stop::MaxCompU(0, 1.3),
             AutoStep::Yes,
@@ -153,10 +156,10 @@ fn test_circle_max_u() {
     // check the results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    println!("u final = {}", state.u[0]);
-    println!("λ final = {:.7e}", state.l);
-    assert!(state.u[0] > 1.3 && state.u[0] < RADIUS);
-    approx_eq(state.u[0] * state.u[0] + state.l * state.l, RADIUS * RADIUS, 1e-8);
+    println!("u final = {}", u[0]);
+    println!("λ final = {:.7e}", l);
+    assert!(u[0] > 1.3 && u[0] < RADIUS);
+    approx_eq(u[0] * u[0] + l * l, RADIUS * RADIUS, 1e-8);
 
     // check stats
     let stats = solver.get_stats();
@@ -175,7 +178,7 @@ fn test_circle_max_u() {
 #[test]
 fn test_circle_min_u() {
     // system
-    let (system, mut state, mut args) = Samples::circle_ul(RADIUS);
+    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -196,7 +199,8 @@ fn test_circle_min_u() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MinCompU(0, 0.4),
             AutoStep::Yes,
@@ -208,10 +212,10 @@ fn test_circle_min_u() {
     // check the results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    println!("u final = {}", state.u[0]);
-    println!("λ final = {}, err = {:.3e}", state.l, f64::abs(state.l - RADIUS));
-    assert!(state.u[0] > 0.0 && state.u[0] < 0.4);
-    approx_eq(state.u[0] * state.u[0] + state.l * state.l, RADIUS * RADIUS, 1e-8);
+    println!("u final = {}", u[0]);
+    println!("λ final = {}, err = {:.3e}", l, f64::abs(l - RADIUS));
+    assert!(u[0] > 0.0 && u[0] < 0.4);
+    approx_eq(u[0] * u[0] + l * l, RADIUS * RADIUS, 1e-8);
 
     // check stats
     let stats = solver.get_stats();
@@ -230,7 +234,7 @@ fn test_circle_min_u() {
 #[test]
 fn test_circle_max_lambda_num_jac() {
     // system
-    let (system, mut state, mut args) = Samples::circle_ul(RADIUS);
+    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -253,7 +257,8 @@ fn test_circle_max_lambda_num_jac() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::MaxLambda(RADIUS),
             AutoStep::Yes,
@@ -265,10 +270,10 @@ fn test_circle_max_lambda_num_jac() {
     // check the results
     let uu = out.get_u_values(0);
     let ll = out.get_l_values();
-    println!("u final = {:.3e}", state.u[0]);
-    println!("λ final = {}, err = {:.3e}", state.l, f64::abs(state.l - RADIUS));
-    approx_eq(state.u[0], 0.0, 1e-5);
-    approx_eq(state.l, RADIUS, 1e-14);
+    println!("u final = {:.3e}", u[0]);
+    println!("λ final = {}, err = {:.3e}", l, f64::abs(l - RADIUS));
+    approx_eq(u[0], 0.0, 1e-5);
+    approx_eq(l, RADIUS, 1e-14);
 
     // check stats
     let stats = solver.get_stats();

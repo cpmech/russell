@@ -23,7 +23,7 @@ fn test_arc_bspline_1_bordering() {
 
 fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
     // nonlinear problem
-    let (system, mut state, mut args) = Samples::bspline_problem_1(0.0);
+    let (system, mut u, mut l, mut args) = Samples::bspline_problem_1(0.0);
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -46,7 +46,8 @@ fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
             AutoStep::No(sigma),

@@ -9,7 +9,7 @@ const NAME: &str = "test_arc_one_eq_with_fold";
 #[test]
 fn test_arc_one_eq_with_fold_1() {
     // nonlinear problem
-    let (system, mut state, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
+    let (system, mut u, mut l, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -27,7 +27,8 @@ fn test_arc_one_eq_with_fold_1() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(5),
             AutoStep::No(dds),
@@ -92,7 +93,7 @@ fn test_arc_one_eq_with_fold_1() {
 #[test]
 fn test_arc_one_eq_with_fold_2() {
     // nonlinear problem
-    let (system, mut state, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
+    let (system, mut u, mut l, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
 
     // configuration
     let mut config = Config::new(Method::Arclength);
@@ -116,7 +117,8 @@ fn test_arc_one_eq_with_fold_2() {
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(2),
             AutoStep::No(dds),

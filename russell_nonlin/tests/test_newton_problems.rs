@@ -4,7 +4,7 @@ use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Status, 
 #[test]
 fn test_newton_problems_ok_1() {
     // problem
-    let (system, mut state, _, _, u_ref, mut args) = Samples::cubic_poly_1();
+    let (system, mut u, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -14,10 +14,12 @@ fn test_newton_problems_ok_1() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -37,13 +39,13 @@ fn test_newton_problems_ok_1() {
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_iteration_total, n_iter);
-    vec_approx_eq(&state.u, &u_ref, 1e-10);
+    vec_approx_eq(&u, &u_ref, 1e-10);
 }
 
 #[test]
 fn test_newton_problems_fail_due_to_max_iter() {
     // problem
-    let (system, mut state, _, _, _, mut args) = Samples::cubic_poly_1();
+    let (system, mut u, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -56,10 +58,12 @@ fn test_newton_problems_fail_due_to_max_iter() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -72,7 +76,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
 #[test]
 fn test_newton_problems_fail_oscillation() {
     // problem
-    let (system, _, mut state, _, _, mut args) = Samples::cubic_poly_1();
+    let (system, _, mut u, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -82,10 +86,12 @@ fn test_newton_problems_fail_oscillation() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -98,7 +104,7 @@ fn test_newton_problems_fail_oscillation() {
 #[test]
 fn test_newton_problems_indeterminate() {
     // problem
-    let (system, _, _, mut state, _, mut args) = Samples::cubic_poly_1();
+    let (system, _, _, mut u, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -108,10 +114,12 @@ fn test_newton_problems_indeterminate() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -124,7 +132,7 @@ fn test_newton_problems_indeterminate() {
 #[test]
 fn test_newton_problems_ok_2() {
     // problem
-    let (system, mut state, u_ref, mut args) = Samples::cubic_poly_2();
+    let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -138,10 +146,12 @@ fn test_newton_problems_ok_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -162,13 +172,13 @@ fn test_newton_problems_ok_2() {
     assert_eq!(stats.n_accepted, 1);
     assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_iteration_total, n_iter);
-    vec_approx_eq(&state.u, &u_ref, 1e-12);
+    vec_approx_eq(&u, &u_ref, 1e-12);
 }
 
 #[test]
 fn test_simple_fixed_continued_divergence() {
     // problem
-    let (system, mut state, _, mut args) = Samples::cubic_poly_2();
+    let (system, mut u, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -181,10 +191,12 @@ fn test_simple_fixed_continued_divergence() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let status = solver
         .solve(
             &mut args,
-            &mut state,
+            &mut u,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -197,7 +209,7 @@ fn test_simple_fixed_continued_divergence() {
 #[test]
 fn test_two_eq_nr_prob_1_singular() {
     // problem
-    let (system, mut state, _, mut args) = Samples::two_eq_nr_prob_1();
+    let (system, mut u, _, mut args) = Samples::two_eq_nr_prob_1();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -207,9 +219,11 @@ fn test_two_eq_nr_prob_1_singular() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem
+    let mut l = 0.0;
     let res = solver.solve(
         &mut args,
-        &mut state,
+        &mut u,
+        &mut l,
         IniDir::Pos,
         Stop::Steps(1),
         AutoStep::No(1.0),
@@ -221,7 +235,7 @@ fn test_two_eq_nr_prob_1_singular() {
 #[test]
 fn test_two_eq_nr_prob_2() {
     // problem
-    let (system, mut state_ok1, mut state_ok2, mut state_bad, u_ref1, u_ref2, mut args) = Samples::two_eq_nr_prob_2();
+    let (system, mut u_ok1, mut u_ok2, mut u_bad, u_ref1, u_ref2, mut args) = Samples::two_eq_nr_prob_2();
 
     // configuration
     let mut config = Config::new(Method::Natural);
@@ -234,10 +248,12 @@ fn test_two_eq_nr_prob_2() {
     let mut solver = Solver::new(config, system).unwrap();
 
     // solve problem: first solution
+    let mut l = 0.0;
     let status = solver
         .solve(
             &mut args,
-            &mut state_ok1,
+            &mut u_ok1,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -245,13 +261,14 @@ fn test_two_eq_nr_prob_2() {
         )
         .unwrap();
     assert_eq!(status, Status::Success);
-    vec_approx_eq(&state_ok1.u, &u_ref1, 1e-9);
+    vec_approx_eq(&u_ok1, &u_ref1, 1e-9);
 
     // solve problem: second solution
     let status = solver
         .solve(
             &mut args,
-            &mut state_ok2,
+            &mut u_ok2,
+            &mut l,
             IniDir::Pos,
             Stop::Steps(1),
             AutoStep::No(1.0),
@@ -259,12 +276,13 @@ fn test_two_eq_nr_prob_2() {
         )
         .unwrap();
     assert_eq!(status, Status::Success);
-    vec_approx_eq(&state_ok2.u, &u_ref2, 1e-9);
+    vec_approx_eq(&u_ok2, &u_ref2, 1e-9);
 
     // singular case
     let res = solver.solve(
         &mut args,
-        &mut state_bad,
+        &mut u_bad,
+        &mut l,
         IniDir::Pos,
         Stop::Steps(1),
         AutoStep::No(1.0),

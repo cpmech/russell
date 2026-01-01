@@ -1,4 +1,4 @@
-use super::{Config, State, Status};
+use super::{Config, Status};
 use russell_lab::{vec_norm, Norm, Vector};
 
 /// Calculates the iteration error
@@ -88,7 +88,7 @@ impl IterationError {
     }
 
     /// Resets the convergence flags and divergence counter
-    pub fn reset(&mut self, state: &State) {
+    pub fn reset(&mut self, u: &Vector, l: f64) {
         self.residual_converged = false;
         self.residual_diverging = false;
         self.delta_converged = false;
@@ -98,9 +98,9 @@ impl IterationError {
         self.n_continued_delta_diverging = 0;
         let ndim = self.scaling.dim() - 1; // -1 due to λ
         for i in 0..ndim {
-            self.scaling[i] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.u[i]);
+            self.scaling[i] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(u[i]);
         }
-        self.scaling[ndim] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(state.l);
+        self.scaling[ndim] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(l);
     }
 
     /// Checks if the solution has converged based on any criterion

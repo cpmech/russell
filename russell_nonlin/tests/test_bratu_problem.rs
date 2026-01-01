@@ -1,7 +1,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, State, Status, Stop, StrError, System};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, Status, Stop, StrError, System};
 use russell_pde::{
     EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d, Spc1d, Spc2d,
 };
@@ -347,14 +347,15 @@ fn run_test(
     }
 
     // initial state (all zero)
-    let mut state = State::new(ndim);
+    let mut u = Vector::new(ndim);
+    let mut l = 0.0;
 
     // stop criterion
     let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
     let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
 
     // numerical continuation
-    let status = solver.solve(&mut args, &mut state, IniDir::Pos, stop, auto, Some(output))?;
+    let status = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, stop, auto, Some(output))?;
     println!("Status: {:?}", status);
     assert_eq!(status, Status::Success);
 

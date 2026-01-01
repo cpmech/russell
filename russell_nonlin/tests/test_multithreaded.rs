@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Solver, State, Stop, System};
+use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Solver, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
@@ -18,7 +18,8 @@ fn test_multithreaded() {
 struct SimData<'a> {
     solver: Solver<'a, NoArgs>,
     args: NoArgs,
-    state: State,
+    u: Vector,
+    l: f64,
     dir: IniDir,
     stop: Stop,
     auto_step: AutoStep,
@@ -57,7 +58,8 @@ impl<'a> SimData<'a> {
         SimData {
             solver: Solver::new(config, system).unwrap(),
             args: 0,
-            state: State::new(ndim),
+            u: Vector::new(ndim),
+            l: 0.0,
             dir: IniDir::Pos,
             stop: Stop::MaxLambda(LAMBDA_FINAL),
             auto_step: AutoStep::No(0.1),
@@ -87,14 +89,15 @@ impl<'a> Runner for Simulator<'a> {
             .solver
             .solve(
                 &mut self.data.args,
-                &mut self.data.state,
+                &mut self.data.u,
+                &mut self.data.l,
                 self.data.dir,
                 self.data.stop,
                 self.data.auto_step,
                 None,
             )
             .unwrap();
-        approx_eq(self.data.state.u[0], LAMBDA_FINAL, 1e-15);
+        approx_eq(self.data.u[0], LAMBDA_FINAL, 1e-15);
         let stats = self.data.solver.get_stats();
         let nstep = 10;
         let niter = 10 * 2;

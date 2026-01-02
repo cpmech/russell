@@ -334,13 +334,13 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{AutoStep, Config, IniDir, Method, Samples, Status, Stop};
+    use crate::{AutoStep, Config, IniDir, Samples, Status, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
     fn new_captures_errors() {
         let (system, _, _, _) = Samples::two_eq_ref();
-        let mut config = Config::new(Method::Natural);
+        let mut config = Config::new();
         config.tol_abs_residual = 0.0; // wrong
         assert_eq!(
             Solver::new(&config, system).err(),
@@ -354,7 +354,7 @@ mod tests {
         let mut u = Vector::new(system.ndim + 1); // wrong dim
         let mut l = 0.0;
         let ndim = system.ndim;
-        let config = Config::new(Method::Natural);
+        let config = Config::new();
         let mut solver = Solver::new(&config, system).unwrap();
         assert_eq!(
             solver
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn lack_of_convergence_is_captured() {
         let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
-        let mut config = Config::new(Method::Natural);
+        let mut config = Config::new();
         config.n_step_max = 1; // will make the solver to fail (too few steps)
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
@@ -427,7 +427,7 @@ mod tests {
     #[test]
     fn solve_with_one_step_works_fixed() {
         let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
-        let mut config = Config::new(Method::Natural);
+        let mut config = Config::new();
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
@@ -457,7 +457,7 @@ mod tests {
     #[test]
     fn solve_with_one_step_works_auto() {
         let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
-        let mut config = Config::new(Method::Natural);
+        let mut config = Config::new();
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;

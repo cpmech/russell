@@ -367,7 +367,8 @@ mod tests {
 
     #[test]
     fn clone_copy_and_debug_work() {
-        let config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         let mut stats = Stats::new(&config);
         stats.n_accepted += 1;
         let clone = stats.clone();
@@ -378,7 +379,8 @@ mod tests {
     #[test]
     fn convergence_rate_works() {
         // check empty vector due to false flag
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         let stats = Stats::new(&config);
         assert!(stats.get_convergence_rates(0.0, 10.0).is_empty());
         // check empty vector due to no values added
@@ -403,7 +405,8 @@ mod tests {
 
     #[test]
     fn histogram_works() {
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         // check empty string due to false flag
         let stats = Stats::new(&config);
         assert_eq!(stats.get_histogram_of_iterations(13, '*', 40).get_counts(), &[0]);
@@ -444,7 +447,8 @@ mod tests {
 
     #[test]
     fn summary_works_basic() {
-        let config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         let mut stats = Stats::new(&config);
         stats.n_accepted = 8;
         stats.n_rejected = 2;
@@ -467,7 +471,8 @@ mod tests {
 
     #[test]
     fn summary_works_with_convergence_rate_info() {
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         config.record_iterations_residuals = true;
         let mut stats = Stats::new(&config);
         stats.record_iterations_residuals_start();
@@ -511,7 +516,7 @@ mod tests {
 
     #[test]
     fn display_works() {
-        let mut config = Config::new(Method::Natural);
+        let mut config = Config::new();
         let stats = Stats::new(&config);
         assert_eq!(
             format!("{}", stats),

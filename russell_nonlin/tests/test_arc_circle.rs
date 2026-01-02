@@ -12,7 +12,8 @@ fn test_arc_circle_max_lambda() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -71,7 +72,8 @@ fn test_arc_circle_min_lambda() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -129,7 +131,8 @@ fn test_arc_circle_max_u() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -187,7 +190,8 @@ fn test_arc_circle_min_u() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -245,7 +249,8 @@ fn test_arc_circle_max_lambda_num_jac() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

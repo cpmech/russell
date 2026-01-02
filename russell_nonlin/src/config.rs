@@ -202,11 +202,13 @@ pub struct Config {
 
 impl Config {
     /// Allocates a new instance
-    pub fn new(method: Method) -> Self {
+    ///
+    /// The default method is [Method::Natural]; use [Config::set_method()] to change it.
+    pub fn new() -> Self {
         let (b1, b2, b3, a2, a3) = SoderlindClass::H211PI.params();
         Config {
             // basic options
-            method,
+            method: Method::Natural,
             log_file: None,
             verbose: false,
             verbose_iterations: false,
@@ -253,6 +255,12 @@ impl Config {
     }
 
     // basic options ----------------------------------------------------------------------
+
+    /// Sets the method
+    pub fn set_method(&mut self, method: Method) -> &mut Self {
+        self.method = method;
+        self
+    }
 
     /// Sets the log file path, to save the output instead of stdout
     pub fn set_log_file(&mut self, full_path: &str) -> &mut Self {
@@ -695,14 +703,16 @@ mod tests {
 
     #[test]
     fn derive_methods_work() {
-        let config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         let clone_config = config.clone();
         assert_eq!(format!("{:?}", config), format!("{:?}", clone_config));
     }
 
     #[test]
     fn config_validate_works() {
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
 
         // automatic stepsize
 

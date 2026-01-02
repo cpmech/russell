@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1_auto() {
@@ -7,7 +7,7 @@ fn test_newton_problems_ok_1_auto() {
     let (system, mut u, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -49,7 +49,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
     let (system, mut u, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -80,7 +80,7 @@ fn test_newton_problems_fail_oscillation_auto() {
     let (system, _, mut u, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -108,7 +108,7 @@ fn test_newton_problems_indeterminate_auto() {
     let (system, _, _, mut u, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -136,7 +136,7 @@ fn test_newton_problems_ok_2_auto() {
     let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -182,7 +182,7 @@ fn test_simple_fixed_continued_divergence_auto() {
     let (system, mut u, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -213,7 +213,7 @@ fn test_newton_problems_stepsize_becomes_small() {
     let (system, mut u, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

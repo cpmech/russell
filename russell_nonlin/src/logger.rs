@@ -244,7 +244,8 @@ mod tests {
     #[test]
     fn logger_new_works() {
         // Test with Arclength method
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         config.verbose = true;
         config.verbose_iterations = true;
         config.verbose_legend = true;
@@ -258,7 +259,7 @@ mod tests {
         assert!(logger.with_statistics);
 
         // Test with Natural method
-        let config = Config::new(Method::Natural);
+        let config = Config::new();
         let logger = Logger::new(&config);
         assert_eq!(logger.method, Method::Natural);
         assert!(!logger.enabled); // default is false
@@ -269,7 +270,7 @@ mod tests {
 
     #[test]
     fn logger_complete_workflow_natural() {
-        let mut config = Config::new(Method::Natural);
+        let mut config = Config::new();
         config.verbose = true;
         config.verbose_iterations = true;
         config.verbose_legend = true;
@@ -334,7 +335,8 @@ Total time                       = 0ns
 
     #[test]
     fn logger_complete_workflow_arclength() {
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         config.verbose = true;
         config.verbose_iterations = true;
         config.verbose_legend = true;

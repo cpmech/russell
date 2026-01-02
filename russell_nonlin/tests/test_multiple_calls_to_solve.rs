@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Samples, Solver, Stop};
 
 #[test]
 fn test_multiple_calls_to_solve_1() {
@@ -7,7 +7,7 @@ fn test_multiple_calls_to_solve_1() {
     let (system, mut u, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true);
 
     // solver
@@ -80,7 +80,7 @@ fn test_multiple_calls_to_solve_2() {
     let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)
@@ -156,7 +156,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     let (system, mut u, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true);
 
     // solver
@@ -229,7 +229,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)

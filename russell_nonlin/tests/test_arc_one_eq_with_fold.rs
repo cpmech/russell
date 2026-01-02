@@ -12,7 +12,8 @@ fn test_arc_one_eq_with_fold_1() {
     let (system, mut u, mut l, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -96,7 +97,8 @@ fn test_arc_one_eq_with_fold_2() {
     let (system, mut u, mut l, lambda_ana, mut args) = Samples::one_eq_with_fold_point();
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver

@@ -30,7 +30,8 @@ fn run_test(
     let (system, mut u, mut l, mut args) = Samples::bspline_problem_1(1.5);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

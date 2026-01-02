@@ -1,5 +1,5 @@
 use russell_lab::array_approx_eq;
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Output, Samples, Solver, Stop};
 
 #[test]
 fn test_linear_no_auto_ana_jac() {
@@ -9,7 +9,7 @@ fn test_linear_no_auto_ana_jac() {
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -78,7 +78,7 @@ fn test_linear_no_auto_num_jac() {
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -149,7 +149,7 @@ fn test_linear_auto_ana_jac() {
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -194,7 +194,7 @@ fn test_linear_no_auto_ana_jac_backward() {
     let mut l = 1.0;
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

@@ -447,7 +447,8 @@ fn run_hs_model(
     let (system, mut args) = new_hs_model_problem(use_continuous_modulus)?;
 
     // Prepare the configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)

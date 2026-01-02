@@ -12,7 +12,8 @@ fn test_arc_linear_problem() {
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
@@ -88,7 +89,8 @@ fn test_arc_linear_problem_backward() {
     let mut l = 5.0 * 0.5 / SQRT_2;
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
@@ -159,7 +161,8 @@ fn test_arc_linear_problem_large_step() {
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
@@ -213,7 +216,8 @@ fn test_arc_linear_problem_auto() {
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -269,7 +273,8 @@ fn test_arc_linear_problem_auto_backward() {
     let mut l = 5.0 * 0.5 / SQRT_2;
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

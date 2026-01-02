@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, NoArgs, Solver, Stop, System};
+use russell_nonlin::{AutoStep, Config, IniDir, NoArgs, Solver, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
@@ -8,7 +8,7 @@ const LAMBDA_FINAL: f64 = 1.0;
 #[test]
 fn test_multithreaded() {
     // configuration
-    let config = Config::new(Method::Natural);
+    let config = Config::new();
 
     // run simulations concurrently
     let mut runners: Vec<Box<dyn Runner>> = vec![Box::new(Simulator::new(&config)), Box::new(Simulator::new(&config))];

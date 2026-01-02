@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1() {
@@ -7,7 +7,7 @@ fn test_newton_problems_ok_1() {
     let (system, mut u, _, _, u_ref, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -48,7 +48,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
     let (system, mut u, _, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -79,7 +79,7 @@ fn test_newton_problems_fail_oscillation() {
     let (system, _, mut u, _, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -107,7 +107,7 @@ fn test_newton_problems_indeterminate() {
     let (system, _, _, mut u, _, mut args) = Samples::cubic_poly_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -135,7 +135,7 @@ fn test_newton_problems_ok_2() {
     let (system, mut u, u_ref, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -181,7 +181,7 @@ fn test_simple_fixed_continued_divergence() {
     let (system, mut u, _, mut args) = Samples::cubic_poly_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -212,7 +212,7 @@ fn test_two_eq_nr_prob_1_singular() {
     let (system, mut u, _, mut args) = Samples::two_eq_nr_prob_1();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
@@ -238,7 +238,7 @@ fn test_two_eq_nr_prob_2() {
     let (system, mut u_ok1, mut u_ok2, mut u_bad, u_ref1, u_ref2, mut args) = Samples::two_eq_nr_prob_2();
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, false)
         .set_hide_timings(true)

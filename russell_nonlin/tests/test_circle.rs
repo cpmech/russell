@@ -1,6 +1,6 @@
 use plotpy::{linspace, Canvas, Curve, Plot};
 use russell_lab::{approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{AutoStep, Config, IniDir, Output, Samples, Solver, Status, Stop};
 
 const RADIUS: f64 = SQRT_2;
 
@@ -12,7 +12,7 @@ fn test_circle_max_lambda() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -69,7 +69,7 @@ fn test_circle_min_lambda() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -125,7 +125,7 @@ fn test_circle_max_u() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -181,7 +181,7 @@ fn test_circle_min_u() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -237,7 +237,7 @@ fn test_circle_max_lambda_num_jac() {
     let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
 
     // configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

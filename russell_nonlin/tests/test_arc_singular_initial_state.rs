@@ -13,7 +13,8 @@ fn test_arc_singular_initial_state_1() {
     let (system, mut u, mut l, lambda_ana, mut args) = Samples::singular_initial_state(alpha, perturbation);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
@@ -67,7 +68,8 @@ fn test_arc_singular_initial_state_2() {
     let (system, mut u, mut l, lambda_ana, mut args) = Samples::singular_initial_state(alpha, perturbation);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)

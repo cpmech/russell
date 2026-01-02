@@ -242,7 +242,8 @@ fn run_test(
     let stem = gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto);
 
     // configuration
-    let mut config = Config::new(Method::Arclength);
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
     config
         .set_n_cont_failure_max(8)
         // .set_tg_control_atol(0.04)

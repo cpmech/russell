@@ -842,7 +842,8 @@ mod tests {
 
     #[test]
     fn new_captures_errors() {
-        let mut config = Config::new(Method::Arclength);
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
         config.set_use_numerical_jacobian(true);
         let (mut system, _, _, _) = Samples::simple_linear_problem(false, false);
         system.set_update_secondary_state(|_, _, _, _| Ok(false));

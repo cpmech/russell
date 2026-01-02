@@ -1,7 +1,7 @@
 use ctm_demo::{Model, ModelType};
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::{approx_eq, InterpChebyshev, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, SoderlindClass, Solver};
+use russell_nonlin::{AutoStep, Config, IniDir, Output, SoderlindClass, Solver};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
@@ -286,7 +286,7 @@ fn run_hs_model(
     let (system, mut args) = new_hs_model_problem(use_continuous_modulus)?;
 
     // Prepare the configuration
-    let mut config = Config::new(Method::Natural);
+    let mut config = Config::new();
     config
         .set_verbose(true, true, true)
         .set_h_ini(0.1)

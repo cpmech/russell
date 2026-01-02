@@ -21,7 +21,7 @@ fn test_arc_circle_max_lambda() {
         .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda.txt");
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -79,7 +79,7 @@ fn test_arc_circle_min_lambda() {
         .set_record_iterations_residuals(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -137,7 +137,7 @@ fn test_arc_circle_max_u() {
         .set_record_iterations_residuals(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -195,7 +195,7 @@ fn test_arc_circle_min_u() {
         .set_record_iterations_residuals(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -255,7 +255,7 @@ fn test_arc_circle_max_lambda_num_jac() {
         .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda_num_jac.txt");
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();

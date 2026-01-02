@@ -7,11 +7,11 @@ const LAMBDA_FINAL: f64 = 1.0;
 
 #[test]
 fn test_multithreaded() {
+    // configuration
+    let config = Config::new(Method::Natural);
+
     // run simulations concurrently
-    let mut runners: Vec<Box<dyn Runner>> = vec![
-        Box::new(Simulator::new(Method::Natural)),
-        Box::new(Simulator::new(Method::Natural)),
-    ];
+    let mut runners: Vec<Box<dyn Runner>> = vec![Box::new(Simulator::new(&config)), Box::new(Simulator::new(&config))];
     runners.par_iter_mut().for_each(|r| r.run_and_check());
 }
 
@@ -26,7 +26,7 @@ struct SimData<'a> {
 }
 
 impl<'a> SimData<'a> {
-    fn new(method: Method) -> Self {
+    fn new(config: &'a Config) -> Self {
         // define nonlinear system: G(u, λ) = u - λ
         let ndim = 1;
         let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
@@ -51,9 +51,6 @@ impl<'a> SimData<'a> {
             )
             .unwrap();
 
-        // configuration
-        let config = Config::new(method);
-
         // return data
         SimData {
             solver: Solver::new(config, system).unwrap(),
@@ -72,9 +69,9 @@ struct Simulator<'a> {
 }
 
 impl<'a> Simulator<'a> {
-    fn new(method: Method) -> Self {
+    fn new(config: &'a Config) -> Self {
         Simulator {
-            data: SimData::new(method),
+            data: SimData::new(config),
         }
     }
 }

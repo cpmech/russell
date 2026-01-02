@@ -44,7 +44,7 @@ fn run_test(
     }
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();

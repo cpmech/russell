@@ -317,7 +317,7 @@ fn run_hs_model(
     }
 
     // Define the nonlinear solver
-    let mut solver = Solver::new(config, system)?;
+    let mut solver = Solver::new(&config, system)?;
 
     // Define the output data
     let out = &mut Output::new();

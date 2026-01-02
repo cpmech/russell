@@ -20,7 +20,7 @@ fn test_arc_singular_initial_state_1() {
         .set_n_cont_divergence_max(2);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -74,7 +74,7 @@ fn test_arc_singular_initial_state_2() {
         .set_n_cont_divergence_max(2);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();

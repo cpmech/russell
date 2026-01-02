@@ -16,7 +16,7 @@ fn test_arc_one_eq_with_fold_1() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output data
     let out = &mut Output::new();
@@ -100,7 +100,7 @@ fn test_arc_one_eq_with_fold_2() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output data
     let out = &mut Output::new();

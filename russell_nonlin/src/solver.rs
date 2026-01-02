@@ -8,7 +8,7 @@ pub const N_EQUAL_STEPS: usize = 10;
 
 pub struct Solver<'a, A> {
     /// Configuration options
-    config: Config,
+    config: &'a Config,
 
     /// Dimension of the ODE system
     ndim: usize,
@@ -28,7 +28,7 @@ pub struct Solver<'a, A> {
 
 impl<'a, A> Solver<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: Config, system: System<'a, A>) -> Result<Self, StrError>
+    pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
     {
@@ -36,8 +36,8 @@ impl<'a, A> Solver<'a, A> {
         let ndim = system.ndim;
         let work = Workspace::new(&config, &system);
         let actual: Box<dyn SolverTrait<A>> = match config.method {
-            Method::Arclength => Box::new(SolverArclength::new(config.clone(), system.clone())?),
-            Method::Natural => Box::new(SolverNatural::new(config.clone(), system.clone())),
+            Method::Arclength => Box::new(SolverArclength::new(&config, system.clone())?),
+            Method::Natural => Box::new(SolverNatural::new(&config, system.clone())),
         };
         Ok(Solver {
             config,
@@ -343,7 +343,7 @@ mod tests {
         let mut config = Config::new(Method::Natural);
         config.tol_abs_residual = 0.0; // wrong
         assert_eq!(
-            Solver::new(config, system).err(),
+            Solver::new(&config, system).err(),
             Some("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN")
         );
     }
@@ -355,7 +355,7 @@ mod tests {
         let mut l = 0.0;
         let ndim = system.ndim;
         let config = Config::new(Method::Natural);
-        let mut solver = Solver::new(config, system).unwrap();
+        let mut solver = Solver::new(&config, system).unwrap();
         assert_eq!(
             solver
                 .solve(
@@ -406,7 +406,7 @@ mod tests {
         let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.n_step_max = 1; // will make the solver to fail (too few steps)
-        let mut solver = Solver::new(config, system).unwrap();
+        let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         assert_eq!(
             solver
@@ -429,7 +429,7 @@ mod tests {
         let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
-        let mut solver = Solver::new(config, system).unwrap();
+        let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
             .solve(
@@ -459,7 +459,7 @@ mod tests {
         let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new(Method::Natural);
         config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
-        let mut solver = Solver::new(config, system).unwrap();
+        let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
             .solve(

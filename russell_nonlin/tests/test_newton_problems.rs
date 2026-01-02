@@ -11,7 +11,7 @@ fn test_newton_problems_ok_1() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -55,7 +55,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
         .set_n_iteration_max(3);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -83,7 +83,7 @@ fn test_newton_problems_fail_oscillation() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -111,7 +111,7 @@ fn test_newton_problems_indeterminate() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -143,7 +143,7 @@ fn test_newton_problems_ok_2() {
         .set_n_cont_divergence_max(2);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -188,7 +188,7 @@ fn test_simple_fixed_continued_divergence() {
         .set_n_cont_divergence_max(1);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -216,7 +216,7 @@ fn test_two_eq_nr_prob_1_singular() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -245,7 +245,7 @@ fn test_two_eq_nr_prob_2() {
         .set_n_iteration_max(20);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem: first solution
     let mut l = 0.0;

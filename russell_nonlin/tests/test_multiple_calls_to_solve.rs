@@ -11,7 +11,7 @@ fn test_multiple_calls_to_solve_1() {
     config.set_verbose(true, true, true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // --------------- first call to solve ---------------
 
@@ -87,7 +87,7 @@ fn test_multiple_calls_to_solve_2() {
         .set_n_cont_divergence_max(2);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // --------------- first call to solve ---------------
 
@@ -160,7 +160,7 @@ fn test_multiple_calls_to_solve_1_auto() {
     config.set_verbose(true, true, true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // --------------- first call to solve ---------------
 
@@ -236,7 +236,7 @@ fn test_multiple_calls_to_solve_2_auto() {
         .set_n_cont_divergence_max(2);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // --------------- first call to solve ---------------
 

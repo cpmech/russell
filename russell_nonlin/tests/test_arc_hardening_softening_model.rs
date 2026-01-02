@@ -483,7 +483,7 @@ fn run_hs_model(
     config.set_tg_control_atol(0.04).set_tg_control_rtol(0.04);
 
     // Define the nonlinear solver
-    let mut solver = Solver::new(config, system)?;
+    let mut solver = Solver::new(&config, system)?;
 
     // Define the output data
     let out = &mut Output::new();

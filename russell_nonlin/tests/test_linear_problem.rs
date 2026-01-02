@@ -16,7 +16,7 @@ fn test_linear_no_auto_ana_jac() {
         .set_record_iterations_residuals(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -85,7 +85,7 @@ fn test_linear_no_auto_num_jac() {
         .set_tol_delta(1e-9, 1e-7);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -156,7 +156,7 @@ fn test_linear_auto_ana_jac() {
         .set_h_ini(0.1);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -201,7 +201,7 @@ fn test_linear_no_auto_ana_jac_backward() {
         .set_record_iterations_residuals(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();

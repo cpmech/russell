@@ -147,7 +147,7 @@ use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
 ///    SIAM Journal on Numerical Analysis, 23:5, 1007-1016 <https://doi.org/10.1137/0723068>
 pub struct SolverArclength<'a, A> {
     /// Configuration options
-    config: Config,
+    config: &'a Config,
 
     /// System
     system: System<'a, A>,
@@ -195,7 +195,7 @@ pub struct SolverArclength<'a, A> {
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: Config, system: System<'a, A>) -> Result<Self, StrError> {
+    pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError> {
         assert_eq!(config.method, Method::Arclength);
         let genie = config.genie;
         let use_num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
@@ -847,7 +847,7 @@ mod tests {
         let (mut system, _, _, _) = Samples::simple_linear_problem(false, false);
         system.set_update_secondary_state(|_, _, _, _| Ok(false));
         assert_eq!(
-            SolverArclength::new(config, system).err(),
+            SolverArclength::new(&config, system).err(),
             Some("The Arclength method cannot use numerical Jacobian with the secondary update function")
         );
     }

@@ -11,7 +11,7 @@ fn test_newton_problems_ok_1_auto() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -56,7 +56,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
         .set_n_iteration_max(3);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -84,7 +84,7 @@ fn test_newton_problems_fail_oscillation_auto() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -112,7 +112,7 @@ fn test_newton_problems_indeterminate_auto() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -144,7 +144,7 @@ fn test_newton_problems_ok_2_auto() {
         .set_n_cont_divergence_max(2);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -189,7 +189,7 @@ fn test_simple_fixed_continued_divergence_auto() {
         .set_n_cont_divergence_max(1);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;
@@ -221,7 +221,7 @@ fn test_newton_problems_stepsize_becomes_small() {
         .set_m_failure(0.01);
 
     // solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // solve problem
     let mut l = 0.0;

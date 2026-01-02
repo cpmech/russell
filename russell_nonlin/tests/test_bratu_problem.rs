@@ -336,7 +336,7 @@ fn run_test(
     system.set_calc_ggl(calc_ggl);
 
     // define the solver
-    let mut solver = Solver::new(config, system)?;
+    let mut solver = Solver::new(&config, system)?;
 
     // output
     let output = &mut Output::new();

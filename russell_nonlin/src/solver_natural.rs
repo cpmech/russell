@@ -7,7 +7,7 @@ use russell_sparse::numerical_jacobian;
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
 pub struct SolverNatural<'a, A> {
     /// Configuration options
-    config: Config,
+    config: &'a Config,
 
     /// System
     system: System<'a, A>,
@@ -21,7 +21,7 @@ pub struct SolverNatural<'a, A> {
 
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: Config, system: System<'a, A>) -> Self {
+    pub fn new(config: &'a Config, system: System<'a, A>) -> Self {
         assert_eq!(config.method, Method::Natural);
         let ndim = system.ndim;
         SolverNatural {

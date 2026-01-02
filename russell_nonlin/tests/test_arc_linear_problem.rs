@@ -16,7 +16,7 @@ fn test_arc_linear_problem() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -92,7 +92,7 @@ fn test_arc_linear_problem_backward() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -163,7 +163,7 @@ fn test_arc_linear_problem_large_step() {
     config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -220,7 +220,7 @@ fn test_arc_linear_problem_auto() {
         .set_h_ini(0.1);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();
@@ -276,7 +276,7 @@ fn test_arc_linear_problem_auto_backward() {
         .set_h_ini(0.1);
 
     // define solver
-    let mut solver = Solver::new(config, system).unwrap();
+    let mut solver = Solver::new(&config, system).unwrap();
 
     // output
     let out = &mut Output::new();

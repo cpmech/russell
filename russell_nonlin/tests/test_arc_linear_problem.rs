@@ -8,19 +8,19 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_linear_problem() {
-    run_test(Genie::Umfpack, false);
-    run_test(Genie::Umfpack, true);
+    run_test(Genie::Umfpack, false, false);
+    run_test(Genie::Umfpack, true, true);
 }
 
 #[cfg(feature = "with_mumps")]
 #[test]
 #[serial]
 fn test_arc_linear_problem_mumps() {
-    run_test(Genie::Mumps, false);
-    run_test(Genie::Mumps, true);
+    run_test(Genie::Mumps, false, false);
+    run_test(Genie::Mumps, true, true);
 }
 
-fn run_test(genie: Genie, symmetric: bool) {
+fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
     // system
     let sym = genie.get_sym(symmetric);
     let with_ggu = true; // with ∂G/∂u
@@ -31,6 +31,7 @@ fn run_test(genie: Genie, symmetric: bool) {
     let mut config = Config::new();
     config
         .set_method(Method::Arclength)
+        .set_bordering(bordering)
         .set_genie(genie)
         .set_verbose(true, true, true)
         .set_hide_timings(true);

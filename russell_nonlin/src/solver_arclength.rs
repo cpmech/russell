@@ -202,6 +202,9 @@ impl<'a, A> SolverArclength<'a, A> {
         if use_num_ggu && system.update_secondary_state.is_some() {
             return Err("The Arclength method cannot use numerical Jacobian with the secondary update function");
         }
+        if !config.bordering && system.sym_ggu != Sym::No {
+            return Err("The Arclength method without bordering cannot use symmetric Gu matrix");
+        }
         let ndim = system.ndim;
         let nnz_aa = if config.bordering {
             1 // this should be 0, but russell_sparse requires at least one non-zero

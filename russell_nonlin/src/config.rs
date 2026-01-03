@@ -269,6 +269,8 @@ impl Config {
     }
 
     /// Sets the verbose flag
+    ///
+    /// Default value: false
     pub fn set_verbose(&mut self, flag: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
         self.verbose = flag;
         self.verbose_iterations = show_iterations;
@@ -277,18 +279,24 @@ impl Config {
     }
 
     /// Shows the legend
+    ///
+    /// Default value: false
     pub fn set_show_legend(&mut self, flag: bool) -> &mut Self {
         self.verbose_legend = flag;
         self
     }
 
     /// Hides timings when displaying statistics
+    ///
+    /// Default value: false
     pub fn set_hide_timings(&mut self, flag: bool) -> &mut Self {
         self.hide_timings = flag;
         self
     }
 
     /// Indicates whether to record the iterations residuals or not (in statistics)
+    ///
+    /// Default value: false
     pub fn set_record_iterations_residuals(&mut self, flag: bool) -> &mut Self {
         self.record_iterations_residuals = flag;
         self
@@ -301,6 +309,8 @@ impl Config {
     /// ```text
     /// m_failure ≥ 0.001   (recommended = 0.5)
     /// ```
+    ///
+    /// Default value: 0.5
     pub fn set_m_failure(&mut self, value: f64) -> &mut Self {
         self.m_failure = value;
         self
@@ -312,7 +322,10 @@ impl Config {
     /// h_ini > CONFIG_H_MIN
     /// ```
     ///
+    ///
     /// See [CONFIG_H_MIN]
+    ///
+    /// Default value: 1e-4
     pub fn set_h_ini(&mut self, value: f64) -> &mut Self {
         self.h_ini = value;
         self
@@ -323,6 +336,8 @@ impl Config {
     /// ```text
     /// n_step_max ≥ 1
     /// ```
+    ///
+    /// Default value: 100000
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
         self
@@ -347,6 +362,8 @@ impl Config {
     // linear solver ----------------------------------------------------------------------
 
     /// Sets the linear solver kind
+    ///
+    /// Default value: Genie::Umfpack
     pub fn set_genie(&mut self, genie: Genie) -> &mut Self {
         self.genie = genie;
         self
@@ -473,6 +490,8 @@ impl Config {
     }
 
     /// Records the predictor values for debugging
+    ///
+    /// Default value: false
     pub fn set_debug_predictor(&mut self, flag: bool) -> &mut Self {
         self.debug_predictor = flag;
         self
@@ -578,6 +597,8 @@ impl Config {
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
     /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
     ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    ///
+    /// Default value: 1/6 (from SoderlindClass::H211PI)
     pub fn set_tg_control_beta1(&mut self, value: f64) -> &mut Self {
         self.tg_control_beta1 = value;
         self
@@ -593,6 +614,8 @@ impl Config {
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
     /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
     ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    ///
+    /// Default value: 1/6 (from SoderlindClass::H211PI)
     pub fn set_tg_control_beta2(&mut self, value: f64) -> &mut Self {
         self.tg_control_beta2 = value;
         self
@@ -608,6 +631,8 @@ impl Config {
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
     /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
     ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    ///
+    /// Default value: 0.0 (from SoderlindClass::H211PI)
     pub fn set_tg_control_beta3(&mut self, value: f64) -> &mut Self {
         self.tg_control_beta3 = value;
         self
@@ -623,6 +648,8 @@ impl Config {
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
     /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
     ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    ///
+    /// Default value: 0.0 (from SoderlindClass::H211PI)
     pub fn set_tg_control_alpha2(&mut self, value: f64) -> &mut Self {
         self.tg_control_alpha2 = value;
         self
@@ -638,6 +665,8 @@ impl Config {
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
     /// * Soderlind and Wang (2006) Adaptive time-stepping and computational stability,
     ///   Journal of Computational and Applied Mathematics, 185, 225-243.
+    ///
+    /// Default value: 0.0 (from SoderlindClass::H211PI)
     pub fn set_tg_control_alpha3(&mut self, value: f64) -> &mut Self {
         self.tg_control_alpha3 = value;
         self

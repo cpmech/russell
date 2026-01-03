@@ -274,7 +274,7 @@ impl<'a, A> Solver<'a, A> {
     /// Adapts the stepsize
     fn adapt_stepsize(&mut self, rerr: f64) -> f64 {
         // calculate the relative convergence behavior of the Newton-Raphson iterations
-        let ksi = if self.config.nr_control_enabled {
+        let ksi = if self.config.nr_control_enabled && self.work.n_iteration > 0 {
             let nn = self.work.n_iteration as f64;
             let nn_opt = self.config.nr_control_n_opt as f64;
             f64::powf(nn_opt / nn, self.config.nr_control_beta)

@@ -666,28 +666,52 @@ impl Config {
             return Err("requirement: m_failure ≥ 0.001");
         }
         if self.h_ini <= CONFIG_H_MIN {
-            return Err("requirement: h_ini > CONFIG_H_MIN");
+            return Err("requirement: h_ini > 1e-10");
         }
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
+        }
+        if self.n_cont_failure_max < 1 {
+            return Err("requirement: n_cont_failure_max ≥ 1");
+        }
+        if self.n_cont_rejection_max < 1 {
+            return Err("requirement: n_cont_rejection_max ≥ 1");
         }
 
         // iterations
 
         if self.tol_abs_residual < CONFIG_TOL_MIN {
-            return Err("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN");
+            return Err("requirement: tol_abs_residual ≥ 1e-12");
         }
         if self.tol_abs_delta < CONFIG_TOL_MIN {
-            return Err("requirement: tol_abs_delta ≥ CONFIG_TOL_MIN");
+            return Err("requirement: tol_abs_delta ≥ 1e-12");
         }
         if self.tol_rel_delta < CONFIG_TOL_MIN {
-            return Err("requirement: tol_rel_delta ≥ CONFIG_TOL_MIN");
+            return Err("requirement: tol_rel_delta ≥ 1e-12");
         }
         if self.delta_max_allowed <= 0.0 {
-            return Err("requirement: allowed_delta_max > 0");
+            return Err("requirement: allowed_delta_max > 0.0");
         }
         if self.n_iteration_max < 1 {
             return Err("requirement: allowed_iterations ≥ 1");
+        }
+        if self.n_cont_divergence_max < 1 {
+            return Err("requirement: n_cont_divergence_max ≥ 1");
+        }
+
+        // stepsize control
+
+        if self.nr_control_n_opt < 1 {
+            return Err("requirement: nr_control_n_opt ≥ 1");
+        }
+        if self.nr_control_beta <= 0.0 {
+            return Err("requirement: nr_control_beta > 0.0");
+        }
+        if self.tg_control_atol < CONFIG_TOL_MIN {
+            return Err("requirement: tg_control_atol ≥ 1e-12");
+        }
+        if self.tg_control_rtol < CONFIG_TOL_MIN {
+            return Err("requirement: tg_control_rtol ≥ 1e-12");
         }
 
         Ok(())
@@ -717,11 +741,17 @@ mod tests {
         // automatic stepsize
 
         config.h_ini = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: h_ini > CONFIG_H_MIN"));
+        assert_eq!(config.validate().err(), Some("requirement: h_ini > 1e-10"));
         config.h_ini = 1e-4;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;
+        config.n_cont_failure_max = 0;
+        assert_eq!(config.validate().err(), Some("requirement: n_cont_failure_max ≥ 1"));
+        config.n_cont_failure_max = 5;
+        config.n_cont_rejection_max = 0;
+        assert_eq!(config.validate().err(), Some("requirement: n_cont_rejection_max ≥ 1"));
+        config.n_cont_rejection_max = 5;
 
         // iterations
 
@@ -729,26 +759,35 @@ mod tests {
         assert_eq!(config.validate().err(), Some("requirement: allowed_iterations ≥ 1"));
         config.n_iteration_max = 10;
         config.tol_abs_residual = 0.0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN")
-        );
+        assert_eq!(config.validate().err(), Some("requirement: tol_abs_residual ≥ 1e-12"));
         config.tol_abs_residual = 1e-10;
         config.tol_abs_delta = 0.0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: tol_abs_delta ≥ CONFIG_TOL_MIN")
-        );
+        assert_eq!(config.validate().err(), Some("requirement: tol_abs_delta ≥ 1e-12"));
         config.tol_abs_delta = 1e-10;
         config.tol_rel_delta = 0.0;
-        assert_eq!(
-            config.validate().err(),
-            Some("requirement: tol_rel_delta ≥ CONFIG_TOL_MIN")
-        );
+        assert_eq!(config.validate().err(), Some("requirement: tol_rel_delta ≥ 1e-12"));
         config.tol_rel_delta = 1e-10;
         config.delta_max_allowed = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0"));
+        assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0.0"));
         config.delta_max_allowed = 1e10;
+        config.n_cont_divergence_max = 0;
+        assert_eq!(config.validate().err(), Some("requirement: n_cont_divergence_max ≥ 1"));
+        config.n_cont_divergence_max = 2;
+
+        // stepsize control
+
+        config.nr_control_n_opt = 0;
+        assert_eq!(config.validate().err(), Some("requirement: nr_control_n_opt ≥ 1"));
+        config.nr_control_n_opt = 3;
+        config.nr_control_beta = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: nr_control_beta > 0.0"));
+        config.nr_control_beta = 0.5;
+        config.tg_control_atol = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: tg_control_atol ≥ 1e-12"));
+        config.tg_control_atol = 1e-2;
+        config.tg_control_rtol = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: tg_control_rtol ≥ 1e-12"));
+        config.tg_control_rtol = 1e-2;
 
         // all good
         assert_eq!(config.validate().is_err(), false);

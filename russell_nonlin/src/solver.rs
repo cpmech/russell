@@ -344,7 +344,7 @@ mod tests {
         config.tol_abs_residual = 0.0; // wrong
         assert_eq!(
             Solver::new(&config, system).err(),
-            Some("requirement: tol_abs_residual ≥ CONFIG_TOL_MIN")
+            Some("requirement: tol_abs_residual ≥ 1e-12")
         );
     }
 

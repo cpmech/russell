@@ -1,12 +1,13 @@
 use russell_lab::array_approx_eq;
 use russell_nonlin::{AutoStep, Config, IniDir, Output, Samples, Solver, Stop};
+use russell_sparse::Sym;
 
 #[test]
 fn test_linear_no_auto_ana_jac() {
     // system
     let with_ggu = true; // with ∂G/∂u => analytical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -75,7 +76,7 @@ fn test_linear_no_auto_num_jac() {
     // system
     let with_ggu = false; // no ∂G/∂u => numerical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -146,7 +147,7 @@ fn test_linear_auto_ana_jac() {
     // system
     let with_ggu = true; // with ∂G/∂u => analytical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -187,7 +188,7 @@ fn test_linear_no_auto_ana_jac_backward() {
     // system
     let with_ggu = true; // with ∂G/∂u => analytical Jacobian
     let with_ggl = false; // no ∂G/∂λ
-    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // initial state
     u[0] = 1.0;

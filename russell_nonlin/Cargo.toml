@@ -37,3 +37,4 @@ russell_pde = { path = "../russell_pde", version = "0.1.0" }
 russell_ode = "1.10"
 plotpy = "1.19"
 rayon = "1.10"
+serial_test = "3.2"

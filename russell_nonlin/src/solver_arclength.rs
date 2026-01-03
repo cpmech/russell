@@ -839,13 +839,14 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 mod tests {
     use super::SolverArclength;
     use crate::{Config, Method, Samples};
+    use russell_sparse::Sym;
 
     #[test]
     fn new_captures_errors() {
         let mut config = Config::new();
         config.set_method(Method::Arclength);
         config.set_use_numerical_jacobian(true);
-        let (mut system, _, _, _) = Samples::simple_linear_problem(false, false);
+        let (mut system, _, _, _) = Samples::simple_linear_problem(false, false, Sym::No);
         system.set_update_secondary_state(|_, _, _, _| Ok(false));
         assert_eq!(
             SolverArclength::new(&config, system).err(),

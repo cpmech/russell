@@ -22,7 +22,11 @@ impl Samples {
     /// Gu = ∂G/∂u = 1
     /// Gl = ∂G/∂λ = -1
     /// ```
-    pub fn simple_linear_problem<'a>(with_ggu: bool, with_ggl: bool) -> (System<'a, NoArgs>, Vector, f64, NoArgs) {
+    pub fn simple_linear_problem<'a>(
+        with_ggu: bool,
+        with_ggl: bool,
+        sym: Sym,
+    ) -> (System<'a, NoArgs>, Vector, f64, NoArgs) {
         // nonlinear problem: G(u, λ) = u - λ
         let ndim = 1;
         let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut NoArgs| {
@@ -33,7 +37,6 @@ impl Samples {
 
         // analytical Jacobian: Gu = ∂G/∂u
         let nnz = Some(1);
-        let sym = Sym::No;
         if with_ggu {
             system
                 .set_calc_ggu(

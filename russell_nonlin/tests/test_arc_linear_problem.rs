@@ -1,20 +1,39 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
 use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_sparse::{Genie, Sym};
+use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_linear_problem() {
+    run_test(Genie::Umfpack, false);
+    run_test(Genie::Umfpack, true);
+}
+
+#[cfg(feature = "with_mumps")]
+#[test]
+#[serial]
+fn test_arc_linear_problem_mumps() {
+    run_test(Genie::Mumps, false);
+    run_test(Genie::Mumps, true);
+}
+
+fn run_test(genie: Genie, symmetric: bool) {
     // system
+    let sym = genie.get_sym(symmetric);
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, sym);
 
     // configuration
     let mut config = Config::new();
-    config.set_method(Method::Arclength);
-    config.set_verbose(true, true, true).set_hide_timings(true);
+    config
+        .set_method(Method::Arclength)
+        .set_genie(genie)
+        .set_verbose(true, true, true)
+        .set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -82,7 +101,7 @@ fn test_arc_linear_problem_backward() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // initial state
     u[0] = 5.0 * 0.5 / SQRT_2;
@@ -158,7 +177,7 @@ fn test_arc_linear_problem_large_step() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -213,7 +232,7 @@ fn test_arc_linear_problem_auto() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -266,7 +285,7 @@ fn test_arc_linear_problem_auto_backward() {
     // system
     let with_ggu = true; // with ∂G/∂u
     let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // initial state
     u[0] = 5.0 * 0.5 / SQRT_2;

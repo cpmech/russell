@@ -236,7 +236,7 @@ impl Config {
             constant_tangent: false,
             use_numerical_jacobian: false,
             // pseudo-arclength
-            bordering: false,
+            bordering: true,
             debug_predictor: false,
             // stepsize control
             nr_control_enabled: true,
@@ -483,7 +483,7 @@ impl Config {
     ///
     /// Use the bordering algorithm throughout the entire simulation
     ///
-    /// Default value: false
+    /// Default value: true
     pub fn set_bordering(&mut self, flag: bool) -> &mut Self {
         self.bordering = flag;
         self

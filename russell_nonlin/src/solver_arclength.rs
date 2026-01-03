@@ -203,7 +203,7 @@ impl<'a, A> SolverArclength<'a, A> {
             return Err("The Arclength method cannot use numerical Jacobian with the secondary update function");
         }
         if !config.bordering && system.sym_ggu != Sym::No {
-            return Err("The Arclength method without bordering cannot use symmetric Gu matrix");
+            return Err("The Arclength method requires sym_ggu = Sym::No when not using bordering, even if Gu is symmetric. This requirement is because the augmented matrix A is not symmetric in general.");
         }
         let ndim = system.ndim;
         let nnz_aa = if config.bordering {

@@ -115,7 +115,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // external: update secondary variables
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, work.l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -230,7 +230,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }

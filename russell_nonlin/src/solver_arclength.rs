@@ -536,7 +536,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // external: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -650,7 +650,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let status = Status::from_sup(f(do_backup, &u, &work.u, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -850,7 +850,7 @@ mod tests {
         config.set_method(Method::Arclength);
         config.set_use_numerical_jacobian(true);
         let (mut system, _, _, _) = Samples::simple_linear_problem(false, false, Sym::No);
-        system.set_update_secondary_state(|_, _, _, _| Ok(false));
+        system.set_update_secondary_state(|_, _, _, _, _, _| Ok(false));
         assert_eq!(
             SolverArclength::new(&config, system).err(),
             Some("The Arclength method cannot use numerical Jacobian with the secondary update function")

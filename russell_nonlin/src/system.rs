@@ -69,10 +69,10 @@ pub struct System<'a, A> {
 
     /// Updates secondary variables (e.g., FEM stresses and starred variables)
     ///
-    /// The function is `fn (do_backup, u0, u1, args) -> stop_gracefully` with `u0` being the
-    /// value at the beginning of the step and `u1` the value at the updated step.
+    /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> stop_gracefully` with `(u0, l0)` being the
+    /// value at the beginning of the step and `(u1, l1)` the value at the updated step.
     pub(crate) update_secondary_state:
-        Option<Arc<dyn Fn(bool, &Vector, &Vector, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
+        Option<Arc<dyn Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
 }
 
 impl<'a, A> System<'a, A> {
@@ -204,11 +204,11 @@ impl<'a, A> System<'a, A> {
 
     /// Sets a function to update secondary variables (e.g., FEM stresses and starred variables)
     ///
-    /// The function is `fn (do_backup, u0, u1, args) -> stop_gracefully` with `u0` being the
-    /// value at the beginning of the step and `u1` the value at the updated step.
+    /// The function is `fn (do_backup, u0, u1, l0, l1, args) -> stop_gracefully` with `(u0, l0)` being the
+    /// value at the beginning of the step and `(u1, l1)` the value at the updated step.
     pub fn set_update_secondary_state(
         &mut self,
-        callback: impl Fn(bool, &Vector, &Vector, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
+        callback: impl Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a,
     ) -> &mut Self {
         self.update_secondary_state = Some(Arc::new(callback));
         self

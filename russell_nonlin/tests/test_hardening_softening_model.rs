@@ -138,7 +138,7 @@ fn new_hs_model_problem<'a>(
         .set_prepare_to_iterate(|args| {
             args.ddx = 0.0;
         })
-        .set_update_secondary_state(|do_backup, u0, u1, args| {
+        .set_update_secondary_state(|do_backup, u0, u1, _l0, _l1, args| {
             if do_backup {
                 args.local_state.iter_backup();
             } else {

@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, IniDir, Method, Status};
+use super::{AutoStep, Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update, Vector};
@@ -182,7 +182,13 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         args: &mut A,
     ) -> Result<(), StrError> {
         work.h = match auto {
-            AutoStep::Yes => stop.h_ini(self.system.get_h_ini(self.config.h_ini, args), l),
+            AutoStep::Yes => {
+                let h_ini = self.system.get_h_ini(self.config.h_ini, args);
+                if h_ini <= CONFIG_H_MIN {
+                    return Err("requirement: h_ini > 1e-10");
+                }
+                stop.h_ini(h_ini, l)
+            }
             AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
         };
         self.sign0 = match dir {

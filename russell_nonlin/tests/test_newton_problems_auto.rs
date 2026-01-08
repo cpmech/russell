@@ -141,7 +141,7 @@ fn test_newton_problems_ok_2_auto() {
         .set_verbose(true, true, true)
         .set_hide_timings(true)
         .set_n_iteration_max(20)
-        .set_n_cont_divergence_max(2);
+        .set_n_cont_delta_div_max(2);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -186,7 +186,7 @@ fn test_simple_fixed_continued_divergence_auto() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_n_cont_divergence_max(1);
+        .set_n_cont_delta_div_max(1);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();

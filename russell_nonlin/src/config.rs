@@ -85,8 +85,11 @@ pub struct Config {
     /// Maximum allowed number of iterations
     pub(crate) n_iteration_max: usize,
 
+    /// Maximum allowed number of continued divergence on ‖G,N‖∞
+    pub(crate) n_cont_residual_div_max: usize,
+
     /// Maximum allowed number of continued divergence on ‖δu,δλ‖∞
-    pub(crate) n_cont_divergence_max: usize,
+    pub(crate) n_cont_delta_div_max: usize,
 
     /// Modified Newton's method with constant tangent matrix
     pub(crate) constant_tangent: bool,
@@ -236,7 +239,8 @@ impl Config {
             tol_rel_delta: 1e-7,
             delta_max_allowed: 1e8,
             n_iteration_max: 20,
-            n_cont_divergence_max: 3,
+            n_cont_residual_div_max: 3,
+            n_cont_delta_div_max: 5,
             constant_tangent: false,
             use_numerical_jacobian: false,
             // pseudo-arclength
@@ -461,11 +465,19 @@ impl Config {
         self
     }
 
-    /// Sets the maximum allowed number of continued divergence on ‖δu,δλ‖∞
+    /// Sets the maximum allowed number of continued divergence on ‖G,N‖∞
     ///
     /// Default value: 3
-    pub fn set_n_cont_divergence_max(&mut self, value: usize) -> &mut Self {
-        self.n_cont_divergence_max = value;
+    pub fn set_n_cont_residual_div_max(&mut self, value: usize) -> &mut Self {
+        self.n_cont_residual_div_max = value;
+        self
+    }
+
+    /// Sets the maximum allowed number of continued divergence on ‖δu,δλ‖∞
+    ///
+    /// Default value: 5
+    pub fn set_n_cont_delta_div_max(&mut self, value: usize) -> &mut Self {
+        self.n_cont_delta_div_max = value;
         self
     }
 
@@ -736,8 +748,11 @@ impl Config {
         if self.n_iteration_max < 1 {
             return Err("requirement: allowed_iterations ≥ 1");
         }
-        if self.n_cont_divergence_max < 1 {
-            return Err("requirement: n_cont_divergence_max ≥ 1");
+        if self.n_cont_residual_div_max < 1 {
+            return Err("requirement: n_cont_residual_div_max ≥ 1");
+        }
+        if self.n_cont_delta_div_max < 1 {
+            return Err("requirement: n_cont_delta_div_max ≥ 1");
         }
 
         // stepsize control
@@ -811,9 +826,15 @@ mod tests {
         config.delta_max_allowed = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: allowed_delta_max > 0.0"));
         config.delta_max_allowed = 1e10;
-        config.n_cont_divergence_max = 0;
-        assert_eq!(config.validate().err(), Some("requirement: n_cont_divergence_max ≥ 1"));
-        config.n_cont_divergence_max = 2;
+        config.n_cont_residual_div_max = 0;
+        assert_eq!(
+            config.validate().err(),
+            Some("requirement: n_cont_residual_div_max ≥ 1")
+        );
+        config.n_cont_residual_div_max = 2;
+        config.n_cont_delta_div_max = 0;
+        assert_eq!(config.validate().err(), Some("requirement: n_cont_delta_div_max ≥ 1"));
+        config.n_cont_delta_div_max = 2;
 
         // stepsize control
 

@@ -339,10 +339,15 @@ pub enum Status {
     /// (may try again)
     ReachedMaxIterations,
 
-    /// Failure: Newton-Raphson iteration detected continued divergence over one step
+    /// Failure: Newton-Raphson iteration detected continued residual divergence over one step
     ///
     /// (may try again)
-    ContinuedDivergence,
+    ContinuedResidualDivergence,
+
+    /// Failure: Newton-Raphson iteration detected continued delta divergence over one step
+    ///
+    /// (may try again)
+    ContinuedDeltaDivergence,
 
     /// Failure: The step is rejected
     ///
@@ -406,7 +411,8 @@ impl Status {
             Status::BorderingSmallDenominator => true,
             Status::LargeDelta => true,
             Status::ReachedMaxIterations => true,
-            Status::ContinuedDivergence => true,
+            Status::ContinuedResidualDivergence => true,
+            Status::ContinuedDeltaDivergence => true,
             Status::Rejection => true,
             Status::SecondaryUpdateError(_) => true,
             // must stop

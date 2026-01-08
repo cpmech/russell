@@ -18,7 +18,7 @@ fn test_arc_singular_initial_state_1() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_n_cont_divergence_max(2);
+        .set_n_cont_delta_div_max(2);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -73,7 +73,7 @@ fn test_arc_singular_initial_state_2() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_n_cont_divergence_max(2);
+        .set_n_cont_delta_div_max(2);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();

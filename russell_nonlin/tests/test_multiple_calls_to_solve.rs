@@ -84,7 +84,7 @@ fn test_multiple_calls_to_solve_2() {
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)
-        .set_n_cont_divergence_max(2);
+        .set_n_cont_delta_div_max(2);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -233,7 +233,7 @@ fn test_multiple_calls_to_solve_2_auto() {
     config
         .set_verbose(true, true, true)
         .set_n_iteration_max(20)
-        .set_n_cont_divergence_max(2);
+        .set_n_cont_delta_div_max(2);
 
     // solver
     let mut solver = Solver::new(&config, system).unwrap();

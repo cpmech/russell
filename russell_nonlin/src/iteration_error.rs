@@ -42,20 +42,29 @@ pub(crate) struct IterationError {
     /// Allowed `delta_max`
     allowed_delta_max: f64,
 
+    /// Previous `residual_diverging`
+    prev_residual_diverging: bool,
+
     /// Previous `delta_diverging`
-    delta_diverging_prev: bool,
+    prev_delta_diverging: bool,
 
     /// Number of large max(‖δu‖∞,|δλ|)
     n_large_delta: usize,
 
+    /// Number of continued `residual_diverging`
+    n_continued_residual_div: usize,
+
     /// Number of continued `delta_diverging`
-    n_continued_delta_diverging: usize,
+    n_continued_delta_div: usize,
 
-    /// Allowed `n_cont_delta_diverging`
-    allowed_continued_divergence: usize,
+    /// Maximum allowed number of continued divergence on ‖G,N‖∞
+    n_cont_residual_div_max: usize,
 
-    /// Allowed number of iterations
-    allowed_iterations: usize,
+    /// Maximum allowed number of continued divergence on ‖δu,δλ‖∞
+    n_cont_delta_div_max: usize,
+
+    /// Maximum allowed number of iterations
+    n_iteration_max: usize,
 
     /// Scaling vector for RMS(δu,δλ)
     scaling: Vector,
@@ -78,11 +87,14 @@ impl IterationError {
             tol_abs_delta: config.tol_abs_delta,
             tol_rel_delta: config.tol_rel_delta,
             allowed_delta_max: config.delta_max_allowed,
-            delta_diverging_prev: false,
+            prev_residual_diverging: false,
+            prev_delta_diverging: false,
             n_large_delta: 0,
-            n_continued_delta_diverging: 0,
-            allowed_continued_divergence: config.n_cont_divergence_max,
-            allowed_iterations: config.n_iteration_max,
+            n_continued_residual_div: 0,
+            n_continued_delta_div: 0,
+            n_cont_residual_div_max: config.n_cont_residual_div_max,
+            n_cont_delta_div_max: config.n_cont_delta_div_max,
+            n_iteration_max: config.n_iteration_max,
             scaling: Vector::new(ndim + 1), // +1 for λ
         }
     }
@@ -93,9 +105,11 @@ impl IterationError {
         self.residual_diverging = false;
         self.delta_converged = false;
         self.delta_diverging = false;
-        self.delta_diverging_prev = false;
+        self.prev_residual_diverging = false;
+        self.prev_delta_diverging = false;
         self.n_large_delta = 0;
-        self.n_continued_delta_diverging = 0;
+        self.n_continued_residual_div = 0;
+        self.n_continued_delta_div = 0;
         let ndim = self.scaling.dim() - 1; // -1 due to λ
         for i in 0..ndim {
             self.scaling[i] = self.tol_abs_delta + self.tol_rel_delta * f64::abs(u[i]);
@@ -124,11 +138,17 @@ impl IterationError {
         self.residual_converged = self.residual_max < self.tol_abs_residual;
 
         // check if diverging
+        self.prev_residual_diverging = self.residual_diverging;
         self.residual_diverging = if iteration == 0 {
             false
         } else {
             self.residual_max > self.residual_max_prev
         };
+
+        // increment continued divergence counter
+        if self.prev_residual_diverging && self.residual_diverging {
+            self.n_continued_residual_div += 1;
+        }
 
         // for subsequent iterations
         self.residual_max_prev = self.residual_max;
@@ -162,7 +182,7 @@ impl IterationError {
         self.delta_converged = self.delta_rms <= 1.0;
 
         // check if diverging
-        self.delta_diverging_prev = self.delta_diverging;
+        self.prev_delta_diverging = self.delta_diverging;
         self.delta_diverging = if iteration == 0 {
             false
         } else {
@@ -170,8 +190,8 @@ impl IterationError {
         };
 
         // increment continued divergence counter
-        if self.delta_diverging_prev && self.delta_diverging {
-            self.n_continued_delta_diverging += 1;
+        if self.prev_delta_diverging && self.delta_diverging {
+            self.n_continued_delta_div += 1;
         }
 
         // for subsequent iterations
@@ -189,13 +209,18 @@ impl IterationError {
             return Status::LargeDelta;
         }
 
-        // continued divergence
-        if self.n_continued_delta_diverging >= self.allowed_continued_divergence {
-            return Status::ContinuedDivergence;
+        // continued divergence on residual
+        if self.n_continued_residual_div >= self.n_cont_residual_div_max {
+            return Status::ContinuedResidualDivergence;
+        }
+
+        // continued divergence on delta
+        if self.n_continued_delta_div >= self.n_cont_delta_div_max {
+            return Status::ContinuedDeltaDivergence;
         }
 
         // max number of iterations reached
-        if iteration == self.allowed_iterations - 1 {
+        if iteration == self.n_iteration_max - 1 {
             return Status::ReachedMaxIterations;
         }
 

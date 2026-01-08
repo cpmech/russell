@@ -167,7 +167,17 @@ impl Stats {
     pub fn get_histogram_of_iterations(&self, niter_upper: usize, character: char, bar_len: usize) -> Histogram<usize> {
         if self.record_iterations_residuals {
             if let Some(residuals) = &self.iterations_residuals {
-                let n_iter_data = residuals.iter().map(|res| res.len()).collect::<Vec<usize>>();
+                let n_iter_data: Vec<usize> = residuals
+                    .iter()
+                    .map(|res| {
+                        let n = res.len();
+                        if n >= 2 {
+                            n - 1 // exclude the last residual because it should be near zero for converged steps
+                        } else {
+                            n
+                        }
+                    })
+                    .collect();
                 let stations = (0..niter_upper).collect::<Vec<usize>>();
                 let mut histogram = Histogram::new(&stations).unwrap();
                 histogram.set_bar_char(character).set_bar_max_len(bar_len);
@@ -431,8 +441,8 @@ mod tests {
             format!("{}", hist),
             "[ 0,  1) | 0 \n\
              [ 1,  2) | 0 \n\
-             [ 2,  3) | 0 \n\
-             [ 3,  4) | 2 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 2,  3) | 2 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 3,  4) | 0 \n\
              [ 4,  5) | 0 \n\
              [ 5,  6) | 0 \n\
              [ 6,  7) | 0 \n\
@@ -480,6 +490,7 @@ mod tests {
         stats.record_iterations_residuals_append(1.0e-4);
         stats.record_iterations_residuals_append(1.0e-8);
         stats.record_iterations_residuals_stop(true);
+        println!("{}", stats.summary());
         assert_eq!(
             format!("{}", stats.summary()),
             "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)\n\
@@ -500,8 +511,8 @@ mod tests {
              Distribution of the number of converged iterations across all steps:\n\
              [ 0,  1) | 0 \n\
              [ 1,  2) | 0 \n\
-             [ 2,  3) | 0 \n\
-             [ 3,  4) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 2,  3) | 1 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■\n\
+             [ 3,  4) | 0 \n\
              [ 4,  5) | 0 \n\
              [ 5,  6) | 0 \n\
              [ 6,  7) | 0 \n\

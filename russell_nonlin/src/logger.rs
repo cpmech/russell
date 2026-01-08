@@ -117,7 +117,7 @@ impl Logger {
 
         let icon_gh = self.icon(iter, err.residual_converged, err.residual_diverging);
         let icon_ul = self.icon(iter, err.delta_converged, err.delta_diverging);
-        let k = iter + 1;
+        let k = iter;
 
         let output = match self.method {
             Method::Arclength => {
@@ -309,7 +309,7 @@ Legend:
          λ         Δλ  iter       ‖G‖∞ ➖      ‖δu‖∞      Rel(δu) ➖
 ────────────────────────────────────────────────────────────────────
  5.000E-01  1.000E-01
-         ·          ·     1   1.00E-08 ✅          ·            ·
+         ·          ·     0   1.00E-08 ✅          ·            ·
                     (rejected: did not converge)                    
 ────────────────────────────────────────────────────────────────────
 
@@ -375,7 +375,7 @@ Legend:
          λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
 ────────────────────────────────────────────────────────────────────
  5.000E-01  1.000E-01
-         ·          ·     1   1.00E-08 ✅   0.00E+00     0.00E+00   
+         ·          ·     0   1.00E-08 ✅   0.00E+00     0.00E+00   
                     (rejected: did not converge)                    
 ────────────────────────────────────────────────────────────────────
 

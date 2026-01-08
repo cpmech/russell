@@ -236,7 +236,7 @@ impl Config {
             tol_rel_delta: 1e-7,
             delta_max_allowed: 1e8,
             n_iteration_max: 20,
-            n_cont_divergence_max: 2,
+            n_cont_divergence_max: 3,
             constant_tangent: false,
             use_numerical_jacobian: false,
             // pseudo-arclength
@@ -463,7 +463,7 @@ impl Config {
 
     /// Sets the maximum allowed number of continued divergence on ‖δu,δλ‖∞
     ///
-    /// Default value: 2
+    /// Default value: 3
     pub fn set_n_cont_divergence_max(&mut self, value: usize) -> &mut Self {
         self.n_cont_divergence_max = value;
         self

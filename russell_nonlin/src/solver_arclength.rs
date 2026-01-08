@@ -566,7 +566,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ) -> Result<(), StrError> {
         // initial stepsize (σ₀)
         work.h = match auto {
-            AutoStep::Yes => stop.h_ini(self.config.h_ini, l),
+            AutoStep::Yes => stop.h_ini(self.system.get_h_ini(self.config.h_ini, args), l),
             AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
         };
 

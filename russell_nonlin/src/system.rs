@@ -73,6 +73,11 @@ pub struct System<'a, A> {
     /// value at the beginning of the step and `(u1, l1)` the value at the updated step.
     pub(crate) update_secondary_state:
         Option<Arc<dyn Fn(bool, &Vector, &Vector, f64, f64, &mut A) -> Result<bool, StrError> + Send + Sync + 'a>>,
+
+    /// Defines a function to calculate the initial stepsize h (either Δλ or Δs initial)
+    ///
+    /// The function is `fn (args) -> h_ini`
+    pub(crate) calc_h_ini: Option<Arc<dyn Fn(&mut A) -> f64 + Send + Sync + 'a>>,
 }
 
 impl<'a, A> System<'a, A> {
@@ -97,6 +102,7 @@ impl<'a, A> System<'a, A> {
             restore_secondary_state: None,
             prepare_to_iterate: None,
             update_secondary_state: None,
+            calc_h_ini: None,
         })
     }
 
@@ -113,6 +119,7 @@ impl<'a, A> System<'a, A> {
             restore_secondary_state: self.restore_secondary_state.clone(),
             prepare_to_iterate: self.prepare_to_iterate.clone(),
             update_secondary_state: self.update_secondary_state.clone(),
+            calc_h_ini: self.calc_h_ini.clone(),
         }
     }
 
@@ -214,6 +221,14 @@ impl<'a, A> System<'a, A> {
         self
     }
 
+    /// Sets a function to calculate the initial stepsize h (either Δλ or Δs initial)
+    ///
+    /// The function is `fn (args) -> h_ini`
+    pub fn set_calc_h_ini(&mut self, callback: impl Fn(&mut A) -> f64 + Send + Sync + 'a) -> &mut Self {
+        self.calc_h_ini = Some(Arc::new(callback));
+        self
+    }
+
     /// Returns the dimension of the ODE system
     pub fn get_ndim(&self) -> usize {
         self.ndim
@@ -222,5 +237,14 @@ impl<'a, A> System<'a, A> {
     /// Returns the number of non-zero values in the Gu matrix
     pub fn get_nnz_ggu(&self) -> usize {
         self.nnz_ggu
+    }
+
+    /// Calculates the initial stepsize h (either Δλ or Δs initial)
+    pub fn get_h_ini(&self, default_h_ini: f64, args: &mut A) -> f64 {
+        if let Some(callback) = &self.calc_h_ini {
+            callback(args)
+        } else {
+            default_h_ini
+        }
     }
 }

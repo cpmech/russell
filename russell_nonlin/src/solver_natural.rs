@@ -179,10 +179,10 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         dir: IniDir,
         stop: Stop,
         auto: AutoStep,
-        _args: &mut A,
+        args: &mut A,
     ) -> Result<(), StrError> {
         work.h = match auto {
-            AutoStep::Yes => stop.h_ini(self.config.h_ini, l),
+            AutoStep::Yes => stop.h_ini(self.system.get_h_ini(self.config.h_ini, args), l),
             AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
         };
         self.sign0 = match dir {

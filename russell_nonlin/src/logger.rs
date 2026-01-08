@@ -88,14 +88,19 @@ impl Logger {
     }
 
     /// Prints step information
-    pub fn step(&mut self, h: f64, l: f64) {
+    pub fn step(&mut self, h: f64, l: f64, last: bool) {
         if !self.enabled {
             return;
         }
 
-        let str_l = format_scientific(l, 10, 3);
-        let str_h = format_scientific(h, 10, 3);
-        let output = format!("{} {}", str_l, str_h);
+        let output = if last {
+            let str_l = format_scientific(l, 10, 3);
+            format!("{}", str_l)
+        } else {
+            let str_l = format_scientific(l, 10, 3);
+            let str_h = format_scientific(h, 10, 3);
+            format!("{} {}", str_l, str_h)
+        };
 
         if self.full_path.is_none() {
             println!("{}", output);
@@ -285,7 +290,7 @@ mod tests {
 
         logger.header();
         let l = 0.5;
-        logger.step(0.1, l);
+        logger.step(0.1, l, false);
         err.residual_max = 1e-8;
         err.residual_converged = true;
         logger.iteration(0, &err);
@@ -351,7 +356,7 @@ Total time                       = 0ns
 
         logger.header();
         let l = 0.5;
-        logger.step(0.1, l);
+        logger.step(0.1, l, false);
         err.residual_max = 1e-8;
         err.residual_converged = true;
         logger.iteration(0, &err);

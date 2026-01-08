@@ -28,6 +28,9 @@ pub struct Config {
     /// Show legend
     pub(crate) verbose_legend: bool,
 
+    /// Show header and footer
+    pub(crate) verbose_header_footer: bool,
+
     /// Show statistics
     pub(crate) verbose_stats: bool,
 
@@ -42,7 +45,7 @@ pub struct Config {
     /// Coefficient to multiply the stepsize if the iterations are failing
     pub(crate) m_failure: f64,
 
-    /// Initial stepsize
+    /// Initial stepsize (either Δλ or Δs initial)
     pub(crate) h_ini: f64,
 
     /// Max number of steps
@@ -213,6 +216,7 @@ impl Config {
             verbose: false,
             verbose_iterations: false,
             verbose_legend: false,
+            verbose_header_footer: true,
             verbose_stats: false,
             hide_timings: false,
             record_iterations_residuals: false,
@@ -286,6 +290,14 @@ impl Config {
         self
     }
 
+    /// Shows the header and footer
+    ///
+    /// Default value: true
+    pub fn set_show_header_footer(&mut self, flag: bool) -> &mut Self {
+        self.verbose_header_footer = flag;
+        self
+    }
+
     /// Hides timings when displaying statistics
     ///
     /// Default value: false
@@ -316,7 +328,7 @@ impl Config {
         self
     }
 
-    /// Sets the initial stepsize
+    /// Sets the initial stepsize (either Δλ or Δs initial)
     ///
     /// ```text
     /// h_ini > CONFIG_H_MIN

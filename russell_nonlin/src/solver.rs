@@ -121,7 +121,9 @@ impl<'a, A> Solver<'a, A> {
         }
 
         // message
-        self.work.log.header();
+        if self.config.verbose_header_footer {
+            self.work.log.header();
+        }
 
         // default status
         let mut status = Status::Success;
@@ -133,7 +135,7 @@ impl<'a, A> Solver<'a, A> {
             for i in 0..self.config.n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
-                self.work.log.step(self.work.h, *l);
+                self.work.log.step(self.work.h, *l, false);
 
                 // step
                 self.work.stats.n_steps += 1;
@@ -171,7 +173,7 @@ impl<'a, A> Solver<'a, A> {
             for i in 0..self.config.n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
-                self.work.log.step(self.work.h, *l);
+                self.work.log.step(self.work.h, *l, false);
 
                 // step
                 self.work.stats.n_steps += 1;
@@ -263,12 +265,24 @@ impl<'a, A> Solver<'a, A> {
         }
 
         // print last message and footer
-        self.work.log.step(self.work.h, *l);
-        self.work.stats.stop_sw_total();
-        self.work.log.footer(&self.work.stats, &status)?;
+        if self.config.verbose_header_footer {
+            self.work.log.step(self.work.h, *l, true);
+            self.work.stats.stop_sw_total();
+            self.work.log.footer(&self.work.stats, &status)?;
+        }
 
         // done
         Ok(status)
+    }
+
+    /// Logs the header
+    pub fn log_header(&mut self) {
+        self.work.log.header();
+    }
+
+    /// Logs the footer
+    pub fn log_footer(&mut self) {
+        self.work.log.footer(&self.work.stats, &Status::Success).unwrap();
     }
 
     /// Adapts the stepsize

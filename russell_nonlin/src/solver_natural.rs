@@ -193,9 +193,6 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     }
 
     /// Calculates u such that G(u, λ) = 0
-    ///
-    /// * `auto` indicates that automatic stepsize control is used.
-    ///   On auto mode, large (δu,δλ) is not an error; otherwise, it is an error
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
         // external: create a copy of external state variables
         if work.auto {

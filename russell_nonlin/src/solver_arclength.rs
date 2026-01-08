@@ -586,14 +586,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     }
 
     /// Calculates (u,λ) such that G(u(s), λ(s)) = 0 and N = 0
-    ///
-    /// Note that:
-    ///
-    ///  * `state` -- corresponds to the initial values (u₀, λ₀)
-    ///  * `work` -- will contain the updated values (u₁, λ₁) by the end of iterations
-    ///
-    /// Note also that `work.auto` indicates that automatic stepsize control is in use.
-    /// On auto mode, a large (δu,δλ) is not an error; otherwise, it is an error.
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError> {
         // external: create a copy of external state variables
         if work.auto {

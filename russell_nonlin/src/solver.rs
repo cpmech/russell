@@ -289,10 +289,12 @@ impl<'a, A> Solver<'a, A> {
             }
         }
 
+        // stop total stopwatch
+        self.work.stats.stop_sw_total();
+
         // print last message and footer
         if self.config.verbose_header_footer {
             self.work.log.step(self.work.h, *l, true);
-            self.work.stats.stop_sw_total();
             self.work.log.footer(&self.work.stats, &status)?;
         }
 

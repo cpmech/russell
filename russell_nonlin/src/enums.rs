@@ -256,6 +256,15 @@ pub enum Method {
 }
 
 impl Method {
+    /// Returns the name of the method
+    pub fn name(&self) -> &'static str {
+        match self {
+            Method::Arclength => "Arclength",
+            Method::Natural => "Natural",
+        }
+    }
+
+    /// Returns a brief description of the method
     pub fn description(&self) -> &'static str {
         match self {
             Method::Arclength => "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0",

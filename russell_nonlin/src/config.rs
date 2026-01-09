@@ -264,6 +264,11 @@ impl Config {
 
     // basic options ----------------------------------------------------------------------
 
+    /// Returns the method
+    pub fn get_method(&self) -> Method {
+        self.method
+    }
+
     /// Sets the method
     pub fn set_method(&mut self, method: Method) -> &mut Self {
         self.method = method;

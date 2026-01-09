@@ -2,6 +2,7 @@ use super::{AutoStep, Config, IniDir, Method, SolverTrait, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::{vec_all_finite, Vector};
+use std::sync::Arc;
 
 /// Default number of steps
 pub const N_EQUAL_STEPS: usize = 10;
@@ -18,6 +19,11 @@ pub struct Solver<'a, A> {
 
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace<'a>,
+
+    /// Function to calculate the initial stepsize h (either Δλ or Δs initial)
+    ///
+    /// The function is `fn (args) -> h_ini`
+    calc_h_ini: Option<Arc<dyn Fn(&mut A) -> f64 + Send + Sync + 'a>>,
 
     // variables for the stepsize adaptation
     rerr_prev: f64,
@@ -44,11 +50,20 @@ impl<'a, A> Solver<'a, A> {
             ndim,
             actual,
             work,
+            calc_h_ini: None,
             rerr_prev: 0.0,
             rerr_anc: 0.0,
             h_prev: 0.0,
             h_anc: 0.0,
         })
+    }
+
+    /// Sets a function to calculate the initial stepsize h (either Δλ or Δs initial)
+    ///
+    /// The function is `fn (args) -> h_ini`
+    pub fn set_calc_h_ini(&mut self, callback: impl Fn(&mut A) -> f64 + Send + Sync + 'a) -> &mut Self {
+        self.calc_h_ini = Some(Arc::new(callback));
+        self
     }
 
     /// Returns some benchmarking data
@@ -109,8 +124,18 @@ impl<'a, A> Solver<'a, A> {
         // reset stats and flags
         self.work.reset_stats_and_flags(auto.yes());
 
-        // perform initialization (compute initial stepsize and tangent vector)
-        self.actual.initialize(&mut self.work, u, *l, dir, stop, auto, args)?;
+        // calculate the default initial stepsize h (either Δλ or Δs initial)
+        let mut h_ini = self.config.h_ini;
+        if let Some(callback) = &self.calc_h_ini {
+            h_ini = callback(args);
+            if h_ini <= CONFIG_H_MIN {
+                return Err("requirement: h_ini > 1e-10");
+            }
+        }
+
+        // perform initialization (compute the actual initial stepsize and tangent vector)
+        self.actual
+            .initialize(&mut self.work, h_ini, u, *l, dir, stop, auto, args)?;
 
         // first output
         if let Some(out) = output.as_deref_mut() {

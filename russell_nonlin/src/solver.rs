@@ -315,8 +315,8 @@ impl<'a, A> Solver<'a, A> {
     /// Adapts the stepsize
     fn adapt_stepsize(&mut self, rerr: f64) -> f64 {
         // calculate the relative convergence behavior of the Newton-Raphson iterations
-        let ksi = if self.config.nr_control_enabled && self.work.n_iteration > 0 {
-            let nn = self.work.n_iteration as f64;
+        let ksi = if self.config.nr_control_enabled {
+            let nn = f64::max(1.0, self.work.n_iteration as f64);
             let nn_opt = self.config.nr_control_n_opt as f64;
             f64::powf(nn_opt / nn, self.config.nr_control_beta)
         } else {
@@ -324,22 +324,19 @@ impl<'a, A> Solver<'a, A> {
         };
 
         // calculates the the relative changes on the tangent vector
-        let rho = if self.config.tg_control_enabled {
+        let rho = if self.config.tg_control_enabled && rerr > 0.0 {
             if self.config.tg_control_pid_vcc {
                 const KP: f64 = 0.075;
                 const KI: f64 = 0.175;
                 const KD: f64 = 0.01;
                 let mut p = 1.0;
-                let mut i = 1.0;
                 let mut d = 1.0;
-                if rerr > 0.0 {
-                    i = 1.0 / rerr;
-                    if self.work.stats.n_accepted > 1 {
-                        p = self.rerr_prev / rerr;
-                    }
-                    if self.work.stats.n_accepted > 2 && self.rerr_anc > 0.0 {
-                        d = self.rerr_prev * self.rerr_prev / (rerr * self.rerr_anc);
-                    }
+                let i = 1.0 / rerr;
+                if self.work.stats.n_accepted > 1 {
+                    p = self.rerr_prev / rerr;
+                }
+                if self.work.stats.n_accepted > 2 && self.rerr_anc > 0.0 {
+                    d = self.rerr_prev * self.rerr_prev / (rerr * self.rerr_anc);
                 }
                 f64::powf(p, KP) * f64::powf(i, KI) * f64::powf(d, KD)
             } else {

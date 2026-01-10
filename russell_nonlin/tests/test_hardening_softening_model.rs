@@ -10,6 +10,119 @@ use std::collections::HashMap;
 /// Defines whether to generate the plot or not
 const SAVE_FIGURE: bool = false;
 
+#[test]
+fn test_hardening_softening_model_full() -> Result<(), StrError> {
+    // Settings
+    let settings = HashMap::from([
+        ("tg_control_atol_and_rtol", 1e-2),
+        ("nr_control_n_opt", 3.0),
+        ("nr_control_beta", 0.5),
+    ]);
+
+    // Input data
+    let use_continuous_modulus = false;
+    let initial_u = 0.0;
+    let initial_l = 0.0;
+    let stop = Stop::MaxCompU(0, 0.5);
+    let auto = AutoStep::Yes;
+    let fig_width = 600.0;
+
+    // Simulation
+    let (stats, max_err) = run_hs_model(
+        "test_hardening_softening_model_full",
+        &settings,
+        Some(SoderlindClass::H211PI),
+        use_continuous_modulus,
+        initial_u,
+        initial_l,
+        IniDir::Pos,
+        stop,
+        auto,
+        Status::SmallStepsize,
+        fig_width,
+    )?;
+
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 38);
+    assert_eq!(stats.n_rejected, 36);
+    assert_eq!(stats.n_steps, 74);
+
+    // Check the maximum error on lambda
+    println!("\nMaximum error on lambda = {}\n", max_err);
+    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
+    Ok(())
+}
+
+#[test]
+fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
+    // Settings
+    let settings = HashMap::new();
+
+    // Input data
+    let use_continuous_modulus = false;
+    let initial_u = MATHEMATICA_UU[10];
+    let initial_l = MATHEMATICA_LL[10];
+    let stop = Stop::MaxCompU(0, 0.5);
+    let auto = AutoStep::Yes;
+    let fig_width = 600.0;
+
+    // Simulation
+    let (stats, _) = run_hs_model(
+        "test_hardening_softening_model_from_peak",
+        &settings,
+        None,
+        use_continuous_modulus,
+        initial_u,
+        initial_l,
+        IniDir::Pos,
+        stop,
+        auto,
+        Status::ContinuedFailure,
+        fig_width,
+    )?;
+
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 0);
+    assert_eq!(stats.n_rejected, 4);
+    assert_eq!(stats.n_steps, 5);
+    Ok(())
+}
+
+#[test]
+fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
+    // Settings
+    let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-1)]);
+
+    // Input data
+    let use_continuous_modulus = false;
+    let initial_u = MATHEMATICA_UU[10];
+    let initial_l = MATHEMATICA_LL[10];
+    let stop = Stop::MinCompU(0, 0.0);
+    let auto = AutoStep::Yes;
+    let fig_width = 600.0;
+
+    // Simulation
+    let (stats, _) = run_hs_model(
+        "test_hs_model_from_peak_backward",
+        &settings,
+        None,
+        use_continuous_modulus,
+        initial_u,
+        initial_l,
+        IniDir::Neg,
+        stop,
+        auto,
+        Status::Success,
+        fig_width,
+    )?;
+
+    // Check the solver statistics
+    assert_eq!(stats.n_accepted, 15);
+    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_steps, 15);
+    Ok(())
+}
+
 /// Defines the stress(y)-strain(x) state for the Hardening-Softening model
 #[derive(Clone)]
 struct StressStrainState {
@@ -369,117 +482,4 @@ fn run_hs_model(
 
     // done
     Ok((solver.get_stats().clone(), max_err))
-}
-
-#[test]
-fn test_hardening_softening_model_full() -> Result<(), StrError> {
-    // Settings
-    let settings = HashMap::from([
-        ("tg_control_atol_and_rtol", 1e-2),
-        ("nr_control_n_opt", 3.0),
-        ("nr_control_beta", 0.5),
-    ]);
-
-    // Input data
-    let use_continuous_modulus = false;
-    let initial_u = 0.0;
-    let initial_l = 0.0;
-    let stop = Stop::MaxCompU(0, 0.5);
-    let auto = AutoStep::Yes;
-    let fig_width = 600.0;
-
-    // Simulation
-    let (stats, max_err) = run_hs_model(
-        "test_hardening_softening_model_full",
-        &settings,
-        Some(SoderlindClass::H211PI),
-        use_continuous_modulus,
-        initial_u,
-        initial_l,
-        IniDir::Pos,
-        stop,
-        auto,
-        Status::SmallStepsize,
-        fig_width,
-    )?;
-
-    // Check the solver statistics
-    assert_eq!(stats.n_accepted, 44);
-    assert_eq!(stats.n_rejected, 40);
-    assert_eq!(stats.n_steps, 84);
-
-    // Check the maximum error on lambda
-    println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
-    Ok(())
-}
-
-#[test]
-fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
-    // Settings
-    let settings = HashMap::new();
-
-    // Input data
-    let use_continuous_modulus = false;
-    let initial_u = MATHEMATICA_UU[10];
-    let initial_l = MATHEMATICA_LL[10];
-    let stop = Stop::MaxCompU(0, 0.5);
-    let auto = AutoStep::Yes;
-    let fig_width = 600.0;
-
-    // Simulation
-    let (stats, _) = run_hs_model(
-        "test_hardening_softening_model_from_peak",
-        &settings,
-        None,
-        use_continuous_modulus,
-        initial_u,
-        initial_l,
-        IniDir::Pos,
-        stop,
-        auto,
-        Status::ContinuedFailure,
-        fig_width,
-    )?;
-
-    // Check the solver statistics
-    assert_eq!(stats.n_accepted, 0);
-    assert_eq!(stats.n_rejected, 4);
-    assert_eq!(stats.n_steps, 5);
-    Ok(())
-}
-
-#[test]
-fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
-    // Settings
-    let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-1)]);
-
-    // Input data
-    let use_continuous_modulus = false;
-    let initial_u = MATHEMATICA_UU[10];
-    let initial_l = MATHEMATICA_LL[10];
-    let stop = Stop::MinCompU(0, 0.0);
-    let auto = AutoStep::Yes;
-    let fig_width = 600.0;
-
-    // Simulation
-    let (stats, _) = run_hs_model(
-        "test_hs_model_from_peak_backward",
-        &settings,
-        None,
-        use_continuous_modulus,
-        initial_u,
-        initial_l,
-        IniDir::Neg,
-        stop,
-        auto,
-        Status::Success,
-        fig_width,
-    )?;
-
-    // Check the solver statistics
-    assert_eq!(stats.n_accepted, 16);
-    assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 16);
-    Ok(())
 }

@@ -402,9 +402,9 @@ impl AuxDeriv2InvariantLode {
 /// Calculates the second derivative of the Lode invariant w.r.t. the stress tensor
 ///
 /// ```text
-///  d²l      d²J3         d²J2        dJ3   dJ2   dJ2   dJ3          dJ2   dJ2
-/// ───── = a ───── - b J3 ───── - b ( ─── ⊗ ─── + ─── ⊗ ─── ) + c J3 ─── ⊗ ───
-/// dσ⊗dσ     dσ⊗dσ        dσ⊗dσ        dσ    dσ    dσ    dσ           dσ    dσ
+///  d²l      d²J3         d²J2      ⎛ dJ3   dJ2   dJ2   dJ3 ⎞        dJ2   dJ2
+/// ───── = a ───── - b J3 ───── - b ⎜ ─── ⊗ ─── + ─── ⊗ ─── ⎟ + c J3 ─── ⊗ ───
+/// dσ⊗dσ     dσ⊗dσ        dσ⊗dσ     ⎝  dσ    dσ    dσ    dσ ⎠         dσ    dσ
 ///
 /// (σ must be symmetric)
 /// ```

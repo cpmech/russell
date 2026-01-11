@@ -105,12 +105,12 @@ pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) 
     d1.vec[2] -= TWO_BY_3 * jj2;
 }
 
-/// Calculates the first derivative of the mean stress invariant w.r.t. the stress tensor
+/// Calculates the first derivative of p w.r.t. the stress tensor
 ///
 /// ```text
-/// dσm   1
-/// ─── = ─ I
-///  dσ   3
+/// dp   1
+/// ── = ─ I
+/// dσ   3
 /// ```
 ///
 /// # Output
@@ -124,7 +124,7 @@ pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) 
 /// # Panics
 ///
 /// A panic will occur if the tensors have different [Mandel].
-pub fn deriv1_invariant_sigma_m(d1: &mut Tensor2, sigma: &Tensor2) {
+pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
     assert_eq!(d1.mandel, sigma.mandel);
     let dim = d1.vec.dim();
     d1.vec[0] = ONE_BY_3;
@@ -135,14 +135,14 @@ pub fn deriv1_invariant_sigma_m(d1: &mut Tensor2, sigma: &Tensor2) {
     }
 }
 
-/// Calculates the first derivative of the deviatoric stress invariant (von Mises) w.r.t. the stress tensor
+/// Calculates the first derivative of q (von Mises) w.r.t. the stress tensor
 ///
 /// ```text
 /// s = deviator(σ)
 ///
-/// dσd        √3       dJ2
-/// ─── = ───────────── ───
-///  dσ   2 pow(J2,0.5)  dσ
+/// dq     √3  dJ2
+/// ── = ───── ───
+/// dσ   2 √J2  dσ
 ///
 /// (σ is symmetric)
 /// ```
@@ -160,7 +160,7 @@ pub fn deriv1_invariant_sigma_m(d1: &mut Tensor2, sigma: &Tensor2) {
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
 /// 2. A panic will occur if the tensors have different [Mandel].
-pub fn deriv1_invariant_sigma_d(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
+pub fn deriv1_invariant_q(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
     assert!(sigma.mandel.symmetric());
     assert_eq!(d1.mandel, sigma.mandel);
     let dim = sigma.vec.dim();
@@ -243,8 +243,8 @@ mod tests {
         Norm,
         J2,
         J3,
-        SigmaM,
-        SigmaD,
+        P,
+        Q,
         Lode,
     }
 
@@ -265,9 +265,9 @@ mod tests {
                 let mut s = Tensor2::new(sigma.mandel);
                 deriv1_invariant_jj3(d1, &mut s, sigma);
             }
-            F::SigmaM => deriv1_invariant_sigma_m(d1, sigma),
-            F::SigmaD => {
-                deriv1_invariant_sigma_d(d1, sigma).unwrap();
+            F::P => deriv1_invariant_p(d1, sigma),
+            F::Q => {
+                deriv1_invariant_q(d1, sigma).unwrap();
             }
             F::Lode => {
                 let mut s = Tensor2::new(sigma.mandel);
@@ -301,8 +301,8 @@ mod tests {
             F::Norm => args.sigma.norm(),
             F::J2 => args.sigma.invariant_jj2(),
             F::J3 => args.sigma.invariant_jj3(),
-            F::SigmaM => args.sigma.invariant_sigma_m(),
-            F::SigmaD => args.sigma.invariant_sigma_d(),
+            F::P => args.sigma.invariant_p(),
+            F::Q => args.sigma.invariant_q(),
             F::Lode => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma_mat.set(args.i, args.j, original);
@@ -317,8 +317,8 @@ mod tests {
             F::Norm => args.sigma.norm(),
             F::J2 => args.sigma.invariant_jj2(),
             F::J3 => args.sigma.invariant_jj3(),
-            F::SigmaM => args.sigma.invariant_sigma_m(),
-            F::SigmaD => args.sigma.invariant_sigma_d(),
+            F::P => args.sigma.invariant_p(),
+            F::Q => args.sigma.invariant_q(),
             F::Lode => args.sigma.invariant_lode().unwrap(),
         };
         args.sigma.vec[args.m] = original;
@@ -412,19 +412,19 @@ mod tests {
     #[test]
     fn deriv_sigma_m_works() {
         let v = false;
-        check_deriv(F::SigmaM, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-12, v);
-        check_deriv(F::SigmaM, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
-        check_deriv(F::SigmaM, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, v);
+        check_deriv(F::P, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-12, v);
+        check_deriv(F::P, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
+        check_deriv(F::P, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, v);
     }
 
     #[test]
     fn deriv_sigma_d_works() {
         let v = false;
-        check_deriv(F::SigmaD, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
-        check_deriv(F::SigmaD, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
-        check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
-        check_deriv(F::SigmaD, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv(F::Q, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv(F::Q, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::Q, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
+        check_deriv(F::Q, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv(F::Q, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
     #[test]
@@ -443,7 +443,7 @@ mod tests {
         let mut d1 = Tensor2::new(Mandel::Symmetric);
         let mut s = Tensor2::new(Mandel::Symmetric);
         assert_eq!(deriv1_norm(&mut d1, &sigma), None);
-        assert_eq!(deriv1_invariant_sigma_d(&mut d1, &sigma), None);
+        assert_eq!(deriv1_invariant_q(&mut d1, &sigma), None);
         assert_eq!(deriv1_invariant_lode(&mut d1, &mut s, &sigma), None);
     }
 
@@ -505,7 +505,7 @@ mod tests {
     fn deriv1_invariant_sigma_m_panics_on_different_mandel() {
         let mut d1_gen = Tensor2::new(Mandel::General);
         let sigma_sym = Tensor2::new(Mandel::Symmetric);
-        deriv1_invariant_sigma_m(&mut d1_gen, &sigma_sym);
+        deriv1_invariant_p(&mut d1_gen, &sigma_sym);
     }
 
     #[test]
@@ -513,7 +513,7 @@ mod tests {
     fn deriv1_invariant_sigma_d_panics_on_non_sym() {
         let mut d1_gen = Tensor2::new(Mandel::General);
         let sigma_gen = Tensor2::new(Mandel::General);
-        deriv1_invariant_sigma_d(&mut d1_gen, &sigma_gen);
+        deriv1_invariant_q(&mut d1_gen, &sigma_gen);
     }
 
     #[test]
@@ -521,7 +521,7 @@ mod tests {
     fn deriv1_invariant_sigma_d_panics_on_different_mandel() {
         let mut d1_gen = Tensor2::new(Mandel::General);
         let sigma_sym = Tensor2::new(Mandel::Symmetric);
-        deriv1_invariant_sigma_d(&mut d1_gen, &sigma_sym);
+        deriv1_invariant_q(&mut d1_gen, &sigma_sym);
     }
 
     #[test]

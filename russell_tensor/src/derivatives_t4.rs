@@ -466,7 +466,7 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{deriv1_invariant_lode, deriv1_invariant_sigma_d};
+    use crate::{deriv1_invariant_lode, deriv1_invariant_q};
     use crate::{SamplesTensor2, StrError, MN_TO_IJKL, SQRT_2};
     use russell_lab::{approx_eq, deriv1_central5, mat_approx_eq, Matrix};
 
@@ -903,7 +903,7 @@ mod tests {
                 deriv1_invariant_jj3(&mut args.d1, &mut args.s, &args.sigma);
             }
             Invariant::SigmaD => {
-                deriv1_invariant_sigma_d(&mut args.d1, &args.sigma).unwrap();
+                deriv1_invariant_q(&mut args.d1, &args.sigma).unwrap();
             }
             Invariant::Lode => {
                 deriv1_invariant_lode(&mut args.d1, &mut args.s, &args.sigma);

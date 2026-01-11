@@ -418,7 +418,7 @@ mod tests {
     }
 
     #[test]
-    fn deriv_sigma_d_works() {
+    fn deriv_q_works() {
         let v = false;
         check_deriv(F::Q, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
         check_deriv(F::Q, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "sigma.mandel.symmetric()")]
-    fn deriv1_invariant_sigma_d_panics_on_non_sym() {
+    fn deriv1_invariant_q_panics_on_non_sym() {
         let mut d1_gen = Tensor2::new(Mandel::General);
         let sigma_gen = Tensor2::new(Mandel::General);
         deriv1_invariant_q(&mut d1_gen, &sigma_gen);
@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_sigma_d_panics_on_different_mandel() {
+    fn deriv1_invariant_q_panics_on_different_mandel() {
         let mut d1_gen = Tensor2::new(Mandel::General);
         let sigma_sym = Tensor2::new(Mandel::Symmetric);
         deriv1_invariant_q(&mut d1_gen, &sigma_sym);

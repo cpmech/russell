@@ -33,7 +33,7 @@ impl<'a, A> SolverNatural<'a, A> {
     }
 
     /// Performs a single iteration
-    fn iterate(&mut self, work: &mut Workspace, u: &Vector, args: &mut A) -> Result<Status, StrError> {
+    fn iterate(&mut self, work: &mut Workspace, u: &Vector, l: f64, args: &mut A) -> Result<Status, StrError> {
         // calculate G(u, λ)
         work.stats.n_function += 1;
         (self.system.calc_gg)(&mut work.gg, work.l, &work.u, args)?;
@@ -115,7 +115,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // external: update secondary variables
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &u, &work.u, work.l, work.l, args));
+            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -255,7 +255,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
             work.stats.n_iteration_total += 1;
 
             // run Newton-Raphson iteration
-            status = self.iterate(work, u, args)?;
+            status = self.iterate(work, u, l, args)?;
             if status.failure() {
                 break;
             }

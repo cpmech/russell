@@ -82,6 +82,9 @@ pub struct Config {
     /// Maximum allowed ‖δu,δλ‖∞ max
     pub(crate) delta_max_allowed: f64,
 
+    /// Disables the relative delta analysis
+    pub(crate) disable_rel_delta_analysis: bool,
+
     /// Maximum allowed number of iterations
     pub(crate) n_iteration_max: usize,
 
@@ -241,6 +244,7 @@ impl Config {
             tol_abs_delta: 1e-10,
             tol_rel_delta: 1e-7,
             delta_max_allowed: 1e8,
+            disable_rel_delta_analysis: false,
             n_iteration_max: 20,
             n_cont_residual_divergence_max: 3,
             n_cont_delta_divergence_max: 5,
@@ -459,6 +463,14 @@ impl Config {
     /// Default value: 1e8
     pub fn set_delta_max_allowed(&mut self, value: f64) -> &mut Self {
         self.delta_max_allowed = value;
+        self
+    }
+
+    /// Disables the relative delta analysis
+    ///
+    /// Default value: false
+    pub fn set_disable_rel_delta_analysis(&mut self, flag: bool) -> &mut Self {
+        self.disable_rel_delta_analysis = flag;
         self
     }
 

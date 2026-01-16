@@ -66,6 +66,9 @@ pub(crate) struct IterationError {
     /// Maximum allowed number of iterations
     n_iteration_max: usize,
 
+    /// Disables the relative delta analysis
+    disable_rel_delta_analysis: bool,
+
     /// Scaling vector for RMS(δu,δλ)
     scaling: Vector,
 }
@@ -95,6 +98,7 @@ impl IterationError {
             n_cont_residual_divergence_max: config.n_cont_residual_divergence_max,
             n_cont_delta_divergence_max: config.n_cont_delta_divergence_max,
             n_iteration_max: config.n_iteration_max,
+            disable_rel_delta_analysis: config.disable_rel_delta_analysis,
             scaling: Vector::new(ndim + 1), // +1 for λ
         }
     }
@@ -163,6 +167,10 @@ impl IterationError {
     ///
     /// Returns true if NaN or Inf is found, false otherwise (success)
     pub fn analyze_delta(&mut self, iteration: usize, x: &Vector) -> bool {
+        if self.disable_rel_delta_analysis {
+            return false; // ok
+        }
+
         // compute max norm
         self.delta_max = vec_norm(x, Norm::Max);
 

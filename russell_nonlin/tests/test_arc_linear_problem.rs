@@ -45,7 +45,7 @@ fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
 
     // numerical continuation
     let nstep = 5;
-    let dds = 0.5; // Δs ≡ h
+    let ddl = 0.5 / SQRT_2; // Δλ
     let status = solver
         .solve(
             &mut args,
@@ -53,7 +53,7 @@ fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -65,10 +65,10 @@ fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
     let hh = out.get_h_values();
 
     // check
-    let d = dds / SQRT_2;
+    let dds = ddl * SQRT_2;
     assert_eq!(hh, &vec![dds; nstep + 1]);
-    array_approx_eq(&ll, &[0.0, d, 2.0 * d, 3.0 * d, 4.0 * d, 5.0 * d], 1e-15);
-    array_approx_eq(&uu, &[0.0, d, 2.0 * d, 3.0 * d, 4.0 * d, 5.0 * d], 1e-15);
+    array_approx_eq(&ll, &[0.0, ddl, 2.0 * ddl, 3.0 * ddl, 4.0 * ddl, 5.0 * ddl], 1e-15);
+    array_approx_eq(&uu, &ll, 1e-15);
 
     // check stats
     let niter = nstep; // 1 iteration per step because the Euler predictor gives the exact answer
@@ -105,8 +105,9 @@ fn test_arc_linear_problem_backward() {
     let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
 
     // initial state
-    u[0] = 5.0 * 0.5 / SQRT_2;
-    let mut l = 5.0 * 0.5 / SQRT_2;
+    let ddl = 0.5 / SQRT_2; // Δλ
+    u[0] = 5.0 * ddl;
+    let mut l = u[0];
 
     // configuration
     let mut config = Config::new();
@@ -122,7 +123,6 @@ fn test_arc_linear_problem_backward() {
 
     // numerical continuation
     let nstep = 5;
-    let dds = 0.5; // Δs ≡ h
     let status = solver
         .solve(
             &mut args,
@@ -130,7 +130,7 @@ fn test_arc_linear_problem_backward() {
             &mut l,
             IniDir::Neg,
             Stop::Steps(nstep),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -142,10 +142,10 @@ fn test_arc_linear_problem_backward() {
     let hh = out.get_h_values();
 
     // check
-    let d = dds / SQRT_2;
+    let dds = ddl * SQRT_2;
     assert_eq!(hh, &vec![dds; nstep + 1]);
-    array_approx_eq(&ll, &[5.0 * d, 4.0 * d, 3.0 * d, 2.0 * d, d, 0.0], 1e-15);
-    array_approx_eq(&uu, &[5.0 * d, 4.0 * d, 3.0 * d, 2.0 * d, d, 0.0], 1e-15);
+    array_approx_eq(&ll, &[5.0 * ddl, 4.0 * ddl, 3.0 * ddl, 2.0 * ddl, ddl, 0.0], 1e-15);
+    array_approx_eq(&uu, &ll, 1e-15);
 
     // check stats
     let niter = nstep; // 1 iteration per step because the Euler predictor gives the exact answer
@@ -193,7 +193,7 @@ fn test_arc_linear_problem_large_step() {
     out.set_recording(true, &[0], &[0]);
 
     // numerical continuation
-    let dds = 1.2; // Δs ≡ h
+    let ddl = 1.2 / SQRT_2; // Δλ
     let status = solver
         .solve(
             &mut args,
@@ -201,7 +201,7 @@ fn test_arc_linear_problem_large_step() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -241,7 +241,7 @@ fn test_arc_linear_problem_auto() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.1);
+        .set_ddl_ini(0.07);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -298,7 +298,7 @@ fn test_arc_linear_problem_auto_backward() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.1);
+        .set_ddl_ini(0.07);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();

@@ -45,8 +45,8 @@ pub struct Config {
     /// Coefficient to multiply the stepsize if the iterations are failing
     pub(crate) m_failure: f64,
 
-    /// Initial stepsize (either Δλ or Δs initial)
-    pub(crate) h_ini: f64,
+    /// Initial Δλ
+    pub(crate) ddl_ini: f64,
 
     /// Max number of steps
     pub(crate) n_step_max: usize,
@@ -231,7 +231,7 @@ impl Config {
             record_iterations_residuals: false,
             // automatic stepsize
             m_failure: 0.5,
-            h_ini: 1e-4,
+            ddl_ini: 1e-4,
             n_step_max: 100_000,
             n_cont_failure_max: 5,
             n_cont_rejection_max: 5,
@@ -345,18 +345,17 @@ impl Config {
         self
     }
 
-    /// Sets the initial stepsize (either Δλ or Δs initial)
+    /// Sets the initial Δλ
     ///
     /// ```text
-    /// h_ini > CONFIG_H_MIN
+    /// ddl_ini > CONFIG_H_MIN
     /// ```
-    ///
     ///
     /// See [CONFIG_H_MIN]
     ///
     /// Default value: 1e-4
-    pub fn set_h_ini(&mut self, value: f64) -> &mut Self {
-        self.h_ini = value;
+    pub fn set_ddl_ini(&mut self, value: f64) -> &mut Self {
+        self.ddl_ini = value;
         self
     }
 
@@ -747,8 +746,8 @@ impl Config {
         if self.m_failure < 0.001 {
             return Err("requirement: m_failure ≥ 0.001");
         }
-        if self.h_ini <= CONFIG_H_MIN {
-            return Err("requirement: h_ini > 1e-10");
+        if self.ddl_ini <= CONFIG_H_MIN {
+            return Err("requirement: ddl_ini > 1e-10");
         }
         if self.n_step_max < 1 {
             return Err("requirement: n_step_max ≥ 1");
@@ -825,9 +824,9 @@ mod tests {
 
         // automatic stepsize
 
-        config.h_ini = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: h_ini > 1e-10"));
-        config.h_ini = 1e-4;
+        config.ddl_ini = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: ddl_ini > 1e-10"));
+        config.ddl_ini = 1e-4;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;

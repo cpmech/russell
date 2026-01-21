@@ -557,7 +557,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        h_ini: f64,
+        ddl_ini: f64,
         u: &Vector,
         l: f64,
         dir: IniDir,
@@ -565,12 +565,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         auto: AutoStep,
         args: &mut A,
     ) -> Result<(), StrError> {
-        // initial stepsize (σ₀)
-        work.h = match auto {
-            AutoStep::Yes => stop.h_ini(h_ini, l),
-            AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
-        };
-
         // set initial values
         vec_copy(&mut work.u, &u).unwrap(); // u₀ = u
         work.l = l; // λ₀ = λ
@@ -583,6 +577,18 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             IniDir::Pos => self.calc_initial_tangent(work, 1.0, args)?,
             IniDir::Neg => self.calc_initial_tangent(work, -1.0, args)?,
         }
+        if f64::abs(work.dlds) < CONFIG_H_MIN {
+            return Err("Initial dλ/ds₀ is too small");
+        }
+
+        // initial stepsize: Δλ₀
+        let ddl_ini = match auto {
+            AutoStep::Yes => stop.ddl_ini(ddl_ini, l),
+            AutoStep::No(ddl) => stop.ddl_eq(ddl, l),
+        };
+
+        // initial pseudo-arclength: σ₀
+        work.h = ddl_ini / f64::abs(work.dlds);
         Ok(())
     }
 

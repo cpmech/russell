@@ -24,7 +24,7 @@ fn test_arc_one_eq_with_fold_1() {
     out.set_recording(true, &[0], &[0]);
 
     // numerical continuation
-    let dds = 0.5; // Δs ≡ h
+    let ddl = 0.3535533; // Δλ
     let status = solver
         .solve(
             &mut args,
@@ -32,7 +32,7 @@ fn test_arc_one_eq_with_fold_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(5),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -87,7 +87,7 @@ fn test_arc_one_eq_with_fold_1() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot(1, lambda_ana, dds, uu, ll, duds, dlds);
+        do_plot(1, lambda_ana, ddl, uu, ll, duds, dlds);
     }
 }
 
@@ -112,10 +112,11 @@ fn test_arc_one_eq_with_fold_2() {
     // uf = 1  and  λf = 1/e  thus  G = u - λ exp(u) = 1 - (1/e) e = 0
     // Δs = (uf - u0) duds0 + (λf - λ0) dλds0
     // duds0 = 1/√2  and  dλds0 = 1/√2
-    // thus  Δs = (1 - 0)/√2 + (1/e - 0)/√2 = (1 + 1/e)/√2
+    // thus  Δs₀ = (1 - 0)/√2 + (1/e - 0)/√2 = (1 + 1/e)/√2
+    // and Δλ₀ = Δs₀ dλds0 = Δs₀ / √2 = (1 + 1/e)/2
 
     // numerical continuation with the first step reaching the fold point
-    let dds = (1.0 + 1.0 / NAPIER) / SQRT_2; // Δs ≡ h (0.967236828697992)
+    let ddl = (1.0 + 1.0 / NAPIER) / 2.0; // Δλ₀
     let status = solver
         .solve(
             &mut args,
@@ -123,7 +124,7 @@ fn test_arc_one_eq_with_fold_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(2),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -152,7 +153,7 @@ fn test_arc_one_eq_with_fold_2() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot(2, lambda_ana, dds, uu, ll, duds, dlds);
+        do_plot(2, lambda_ana, ddl, uu, ll, duds, dlds);
     }
 }
 

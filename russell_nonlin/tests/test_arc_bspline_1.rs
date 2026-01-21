@@ -5,23 +5,23 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_bspline_1_success() {
-    let sigma = 0.4742; // σ ≡ h
-    run_test("test_arc_bspline_1_success", sigma, false, Status::Success);
+    let ddl_ini = 0.0835; // Δλ₀ ≡ initial step size
+    run_test("test_arc_bspline_1_success", ddl_ini, false, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_1_fail() {
-    let sigma = 0.4743; // σ ≡ h (this value causes problems; Newton's method diverges)
-    run_test("test_arc_bspline_1_fail", sigma, false, Status::ReachedMaxIterations);
+    let ddl_ini = 0.08351; // Δλ₀ ≡ initial step size (this value causes problems; Newton's method diverges)
+    run_test("test_arc_bspline_1_fail", ddl_ini, false, Status::ReachedMaxIterations);
 }
 
 #[test]
 fn test_arc_bspline_1_bordering() {
-    let sigma = 0.4742; // σ ≡ h
-    run_test("test_arc_bspline_1_bordering", sigma, true, Status::Success);
+    let ddl_ini = 0.0835; // Δλ₀ ≡ initial step size
+    run_test("test_arc_bspline_1_bordering", ddl_ini, true, Status::Success);
 }
 
-fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
+fn run_test(name: &str, ddl_ini: f64, bordering: bool, expected_status: Status) {
     // nonlinear problem
     let (system, mut u, mut l, mut args) = Samples::bspline_problem_1(0.0);
 
@@ -51,7 +51,7 @@ fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            AutoStep::No(sigma),
+            AutoStep::No(ddl_ini),
             Some(out),
         )
         .unwrap();
@@ -108,8 +108,8 @@ fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
             .set_edge_color("None")
             .set_face_color("black");
         for i in 0..uu0.len() {
-            let xf = uu0[i] + sigma * du0ds[i];
-            let yf = uu1[i] + sigma * du1ds[i];
+            let xf = uu0[i] + ddl_ini * du0ds[i];
+            let yf = uu1[i] + ddl_ini * du1ds[i];
             arrows.draw_arrow(uu0[i], uu1[i], xf, yf);
         }
 
@@ -117,8 +117,8 @@ fn run_test(name: &str, sigma: f64, bordering: bool, expected_status: Status) {
         let mut hyperplanes = Curve::new();
         hyperplanes.set_line_style("--").set_line_color("#d0d0d0");
         for i in 0..uu0.len() {
-            let xa = uu0[i] + sigma * du0ds[i];
-            let ya = uu1[i] + sigma * du1ds[i];
+            let xa = uu0[i] + ddl_ini * du0ds[i];
+            let ya = uu1[i] + ddl_ini * du1ds[i];
             let phi = f64::atan2(du1ds[i], du0ds[i]);
             let xb = xa - f64::sin(phi);
             let yb = ya + f64::cos(phi);

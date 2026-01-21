@@ -402,14 +402,14 @@ fn run_hs_model(
     let mut config = Config::new();
     config
         .set_verbose(true, true, true)
-        .set_h_ini(0.1)
+        .set_ddl_ini(0.1)
         .set_debug_predictor(true)
         .set_record_iterations_residuals(true);
 
     // Override the default settings
     for (&key, value) in settings.iter() {
         match key {
-            "h_ini" => config.set_h_ini(*value),
+            "h_ini" => config.set_ddl_ini(*value),
             "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),
             "nr_control_beta" => config.set_nr_control_beta(*value),
             "tg_control_atol" => config.set_tg_control_atol(*value),

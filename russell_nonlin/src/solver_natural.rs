@@ -174,7 +174,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        h_ini: f64,
+        ddl_ini: f64,
         _u: &Vector,
         l: f64,
         dir: IniDir,
@@ -183,8 +183,8 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         _args: &mut A,
     ) -> Result<(), StrError> {
         work.h = match auto {
-            AutoStep::Yes => stop.h_ini(h_ini, l),
-            AutoStep::No(h_eq) => stop.h_eq(h_eq, l),
+            AutoStep::Yes => stop.ddl_ini(ddl_ini, l),
+            AutoStep::No(h_eq) => stop.ddl_eq(h_eq, l),
         };
         self.sign0 = match dir {
             IniDir::Pos => 1.0,

@@ -20,10 +20,10 @@ pub struct Solver<'a, A> {
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace<'a>,
 
-    /// Function to calculate the initial stepsize h (either Δλ or Δs initial)
+    /// Function to calculate the initial Δλ
     ///
-    /// The function is `fn (args) -> h_ini`
-    calc_h_ini: Option<Arc<dyn Fn(&mut A) -> f64 + Send + Sync + 'a>>,
+    /// The function is `fn (args) -> ddl_ini`
+    calc_ddl_ini: Option<Arc<dyn Fn(&mut A) -> f64 + Send + Sync + 'a>>,
 
     // variables for the stepsize adaptation
     rerr_prev: f64,
@@ -50,7 +50,7 @@ impl<'a, A> Solver<'a, A> {
             ndim,
             actual,
             work,
-            calc_h_ini: None,
+            calc_ddl_ini: None,
             rerr_prev: 0.0,
             rerr_anc: 0.0,
             h_prev: 0.0,
@@ -58,11 +58,11 @@ impl<'a, A> Solver<'a, A> {
         })
     }
 
-    /// Sets a function to calculate the initial stepsize h (either Δλ or Δs initial)
+    /// Sets a function to calculate the initial Δλ
     ///
-    /// The function is `fn (args) -> h_ini`
-    pub fn set_calc_h_ini(&mut self, callback: impl Fn(&mut A) -> f64 + Send + Sync + 'a) -> &mut Self {
-        self.calc_h_ini = Some(Arc::new(callback));
+    /// The function is `fn (args) -> ddl_ini`
+    pub fn set_calc_ddl_ini(&mut self, callback: impl Fn(&mut A) -> f64 + Send + Sync + 'a) -> &mut Self {
+        self.calc_ddl_ini = Some(Arc::new(callback));
         self
     }
 
@@ -124,18 +124,18 @@ impl<'a, A> Solver<'a, A> {
         // reset stats and flags
         self.work.reset_stats_and_flags(auto.yes());
 
-        // calculate the default initial stepsize h (either Δλ or Δs initial)
-        let mut h_ini = self.config.h_ini;
-        if let Some(callback) = &self.calc_h_ini {
-            h_ini = callback(args);
-            if h_ini <= CONFIG_H_MIN {
-                return Err("requirement: h_ini > 1e-10");
+        // calculate the default initial Δλ
+        let mut ddl_ini = self.config.ddl_ini;
+        if let Some(callback) = &self.calc_ddl_ini {
+            ddl_ini = callback(args);
+            if ddl_ini <= CONFIG_H_MIN {
+                return Err("requirement: ddl_ini > 1e-10");
             }
         }
 
         // perform initialization (compute the actual initial stepsize and tangent vector)
         self.actual
-            .initialize(&mut self.work, h_ini, u, *l, dir, stop, auto, args)?;
+            .initialize(&mut self.work, ddl_ini, u, *l, dir, stop, auto, args)?;
 
         // first output
         if let Some(out) = output.as_deref_mut() {

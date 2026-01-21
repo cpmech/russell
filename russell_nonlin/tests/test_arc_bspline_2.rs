@@ -5,7 +5,7 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", false, None, 125, 0, Status::Success);
+    run_test("test_arc_bspline_2_default", false, None, 124, 0, Status::Success);
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn run_test(
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name))
         .set_record_iterations_residuals(true)
         .set_n_cont_delta_divergence_max(1)
-        .set_h_ini(0.04);
+        .set_ddl_ini(0.007);
     if let Some(tol) = atol_and_rtol {
         config.set_tg_control_atol_and_rtol(tol);
     }

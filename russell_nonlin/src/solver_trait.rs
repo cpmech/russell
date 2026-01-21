@@ -11,7 +11,7 @@ pub(crate) trait SolverTrait<A>: Send {
     fn initialize(
         &mut self,
         work: &mut Workspace,
-        h_ini: f64,
+        ddl_ini: f64,
         u: &Vector,
         l: f64,
         dir: IniDir,

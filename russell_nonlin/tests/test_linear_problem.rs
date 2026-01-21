@@ -154,7 +154,7 @@ fn test_linear_auto_ana_jac() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.1);
+        .set_ddl_ini(0.1);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();

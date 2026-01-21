@@ -164,7 +164,7 @@ impl<'a> Workspace<'a> {
             // state variables
             gg: Vector::new(system.ndim),
             ggu,
-            h: config.h_ini,
+            h: 0.0,
             u: Vector::new(system.ndim),
             l: 0.0,
             duds: Vector::new(ndim_tangent),

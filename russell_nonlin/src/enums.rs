@@ -82,7 +82,7 @@ pub enum Stop {
 
 impl Stop {
     /// Validates the stopping criterion against the initial state.
-    pub fn validate(&self, u: &Vector, l: f64) -> Result<(), StrError> {
+    pub(crate) fn validate(&self, u: &Vector, l: f64) -> Result<(), StrError> {
         match self {
             Stop::MinCompU(i, u1) => {
                 if *i >= u.dim() {
@@ -133,7 +133,7 @@ impl Stop {
     /// Returns the target lambda value, if specified
     ///
     /// Returns `(lambda, is_min)` where `is_min` indicates if it is a minimum or maximum lambda target.
-    pub fn lambda(&self) -> Option<(f64, bool)> {
+    pub(crate) fn lambda(&self) -> Option<(f64, bool)> {
         match self {
             Stop::MinCompU(_, _) => None,
             Stop::MaxCompU(_, _) => None,
@@ -147,7 +147,7 @@ impl Stop {
     /// Returns the target u-component value, if specified
     ///
     /// Returns `(i, uᵢ, is_min)` where `is_min` indicates if it is a minimum or maximum uᵢ target.
-    pub fn u_comp(&self) -> Option<(usize, f64, bool)> {
+    pub(crate) fn u_comp(&self) -> Option<(usize, f64, bool)> {
         match self {
             Stop::MinCompU(i, u1) => Some((*i, *u1, true)),
             Stop::MaxCompU(i, u1) => Some((*i, *u1, false)),
@@ -159,7 +159,7 @@ impl Stop {
     }
 
     /// Indicates if the stopping criterion is met at the current step
-    pub fn now(&self, step: usize, u: &Vector, l: f64) -> bool {
+    pub(crate) fn now(&self, step: usize, u: &Vector, l: f64) -> bool {
         match self {
             Stop::MinCompU(i, u1) => u[*i] < *u1 || f64::abs(u[*i] - *u1) < CONFIG_H_MIN,
             Stop::MaxCompU(i, u1) => u[*i] > *u1 || f64::abs(*u1 - u[*i]) < CONFIG_H_MIN,
@@ -173,33 +173,33 @@ impl Stop {
         }
     }
 
-    /// Returns the initial stepsize `h_ini` based on the stopping criterion and the current lambda
-    pub fn h_ini(&self, h_ini_default: f64, l: f64) -> f64 {
+    /// Returns the initial Δλ
+    pub(crate) fn ddl_ini(&self, ddl_ini_default: f64, l: f64) -> f64 {
         match self {
-            Stop::MinCompU(_, _) => h_ini_default,
-            Stop::MaxCompU(_, _) => h_ini_default,
-            Stop::MaxNormU(_, _, _, _) => h_ini_default,
-            Stop::MinLambda(l1) => f64::min(h_ini_default, f64::abs(l - *l1)),
-            Stop::MaxLambda(l1) => f64::min(h_ini_default, f64::abs(*l1 - l)),
-            Stop::Steps(_) => h_ini_default,
+            Stop::MinCompU(_, _) => ddl_ini_default,
+            Stop::MaxCompU(_, _) => ddl_ini_default,
+            Stop::MaxNormU(_, _, _, _) => ddl_ini_default,
+            Stop::MinLambda(l1) => f64::min(ddl_ini_default, f64::abs(l - *l1)),
+            Stop::MaxLambda(l1) => f64::min(ddl_ini_default, f64::abs(*l1 - l)),
+            Stop::Steps(_) => ddl_ini_default,
         }
     }
 
-    /// Returns the equal/fixed stepsize `h_eq` based on the stopping criterion and the current lambda
-    pub fn h_eq(&self, h_eq_default: f64, l: f64) -> f64 {
+    /// Returns the constant Δλ
+    pub(crate) fn ddl_eq(&self, ddl_eq_default: f64, l: f64) -> f64 {
         match self {
-            Stop::MinCompU(_, _) => h_eq_default,
-            Stop::MaxCompU(_, _) => h_eq_default,
-            Stop::MaxNormU(_, _, _, _) => h_eq_default,
+            Stop::MinCompU(_, _) => ddl_eq_default,
+            Stop::MaxCompU(_, _) => ddl_eq_default,
+            Stop::MaxNormU(_, _, _, _) => ddl_eq_default,
             Stop::MinLambda(l1) => {
-                let n = f64::ceil(f64::abs(l - *l1) / h_eq_default) as usize;
+                let n = f64::ceil(f64::abs(l - *l1) / ddl_eq_default) as usize;
                 (l - *l1) / (n as f64)
             }
             Stop::MaxLambda(l1) => {
-                let n = f64::ceil(f64::abs(*l1 - l) / h_eq_default) as usize;
+                let n = f64::ceil(f64::abs(*l1 - l) / ddl_eq_default) as usize;
                 (*l1 - l) / (n as f64)
             }
-            Stop::Steps(_) => h_eq_default,
+            Stop::Steps(_) => ddl_eq_default,
         }
     }
 }
@@ -588,29 +588,29 @@ mod tests {
 
         // MinCompU - returns default
         let stop = Stop::MinCompU(0, 1.0);
-        assert_eq!(stop.h_ini(h_default, l), h_default);
+        assert_eq!(stop.ddl_ini(h_default, l), h_default);
 
         // MaxCompU - returns default
         let stop = Stop::MaxCompU(0, 15.0);
-        assert_eq!(stop.h_ini(h_default, l), h_default);
+        assert_eq!(stop.ddl_ini(h_default, l), h_default);
 
         // MinLambda - returns min(default, abs(current - target))
         let stop = Stop::MinLambda(7.0);
-        assert_eq!(stop.h_ini(h_default, l), 2.0); // min(2.0, abs(10.0 - 7.0)) = min(2.0, 3.0) = 2.0
+        assert_eq!(stop.ddl_ini(h_default, l), 2.0); // min(2.0, abs(10.0 - 7.0)) = min(2.0, 3.0) = 2.0
 
         let stop = Stop::MinLambda(9.5);
-        assert_eq!(stop.h_ini(h_default, l), 0.5); // min(2.0, abs(10.0 - 9.5)) = min(2.0, 0.5) = 0.5
+        assert_eq!(stop.ddl_ini(h_default, l), 0.5); // min(2.0, abs(10.0 - 9.5)) = min(2.0, 0.5) = 0.5
 
         // MaxLambda - returns min(default, abs(target - current))
         let stop = Stop::MaxLambda(13.0);
-        assert_eq!(stop.h_ini(h_default, l), 2.0); // min(2.0, abs(13.0 - 10.0)) = min(2.0, 3.0) = 2.0
+        assert_eq!(stop.ddl_ini(h_default, l), 2.0); // min(2.0, abs(13.0 - 10.0)) = min(2.0, 3.0) = 2.0
 
         let stop = Stop::MaxLambda(10.5);
-        assert_eq!(stop.h_ini(h_default, l), 0.5); // min(2.0, abs(10.5 - 10.0)) = min(2.0, 0.5) = 0.5
+        assert_eq!(stop.ddl_ini(h_default, l), 0.5); // min(2.0, abs(10.5 - 10.0)) = min(2.0, 0.5) = 0.5
 
         // Steps - returns default
         let stop = Stop::Steps(10);
-        assert_eq!(stop.h_ini(h_default, l), h_default);
+        assert_eq!(stop.ddl_ini(h_default, l), h_default);
     }
 
     #[test]
@@ -620,40 +620,40 @@ mod tests {
 
         // MinCompU - returns default
         let stop = Stop::MinCompU(0, 1.0);
-        assert_eq!(stop.h_eq(h_default, l), h_default);
+        assert_eq!(stop.ddl_eq(h_default, l), h_default);
 
         // MaxCompU - returns default
         let stop = Stop::MaxCompU(0, 15.0);
-        assert_eq!(stop.h_eq(h_default, l), h_default);
+        assert_eq!(stop.ddl_eq(h_default, l), h_default);
 
         // MinLambda - calculates equal stepsize
         let stop = Stop::MinLambda(7.0);
         // Distance: 10.0 - 7.0 = 3.0
         // n = ceil(3.0 / 1.5) = ceil(2.0) = 2
         // h_eq = (10.0 - 7.0) / 2 = 1.5
-        assert_eq!(stop.h_eq(h_default, l), 1.5);
+        assert_eq!(stop.ddl_eq(h_default, l), 1.5);
 
         let stop = Stop::MinLambda(8.0);
         // Distance: 10.0 - 8.0 = 2.0
         // n = ceil(2.0 / 1.5) = ceil(1.33) = 2
         // h_eq = (10.0 - 8.0) / 2 = 1.0
-        assert_eq!(stop.h_eq(h_default, l), 1.0);
+        assert_eq!(stop.ddl_eq(h_default, l), 1.0);
 
         // MaxLambda - calculates equal stepsize
         let stop = Stop::MaxLambda(13.0);
         // Distance: 13.0 - 10.0 = 3.0
         // n = ceil(3.0 / 1.5) = ceil(2.0) = 2
         // h_eq = (13.0 - 10.0) / 2 = 1.5
-        assert_eq!(stop.h_eq(h_default, l), 1.5);
+        assert_eq!(stop.ddl_eq(h_default, l), 1.5);
 
         let stop = Stop::MaxLambda(12.0);
         // Distance: 12.0 - 10.0 = 2.0
         // n = ceil(2.0 / 1.5) = ceil(1.33) = 2
         // h_eq = (12.0 - 10.0) / 2 = 1.0
-        assert_eq!(stop.h_eq(h_default, l), 1.0);
+        assert_eq!(stop.ddl_eq(h_default, l), 1.0);
 
         // Steps - returns default
         let stop = Stop::Steps(5);
-        assert_eq!(stop.h_eq(h_default, l), h_default);
+        assert_eq!(stop.ddl_eq(h_default, l), h_default);
     }
 }

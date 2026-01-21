@@ -29,7 +29,7 @@ fn test_arc_singular_initial_state_1() {
 
     // numerical continuation
     let nstep = 5;
-    let dds = 0.5; // Δs ≡ h
+    let ddl = 0.5; // Δλ
     let status = solver
         .solve(
             &mut args,
@@ -37,7 +37,7 @@ fn test_arc_singular_initial_state_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -56,7 +56,7 @@ fn test_arc_singular_initial_state_1() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot(1, perturbation, lambda_ana, dds, uu, ll, duds, dlds);
+        do_plot(1, perturbation, lambda_ana, ddl, uu, ll, duds, dlds);
     }
 }
 
@@ -84,7 +84,7 @@ fn test_arc_singular_initial_state_2() {
 
     // numerical continuation
     let nstep = 5;
-    let dds = 0.5; // Δs ≡ h
+    let ddl = 0.5; // Δλ
     let status = solver
         .solve(
             &mut args,
@@ -92,7 +92,7 @@ fn test_arc_singular_initial_state_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            AutoStep::No(dds),
+            AutoStep::No(ddl),
             Some(out),
         )
         .unwrap();
@@ -111,7 +111,7 @@ fn test_arc_singular_initial_state_2() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot(2, perturbation, lambda_ana, dds, uu, ll, duds, dlds);
+        do_plot(2, perturbation, lambda_ana, ddl, uu, ll, duds, dlds);
     }
 }
 

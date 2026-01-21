@@ -43,9 +43,8 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
     println!("{}", stats);
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 40);
+    assert_eq!(stats.n_accepted, 37);
     assert_eq!(stats.n_rejected, 1);
-    assert_eq!(stats.n_steps, 41);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -81,9 +80,8 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 30);
+    assert_eq!(stats.n_accepted, 33);
     assert_eq!(stats.n_rejected, 4);
-    assert_eq!(stats.n_steps, 34);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -119,9 +117,8 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 26);
+    assert_eq!(stats.n_accepted, 24);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 26);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -162,9 +159,8 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 40);
+    assert_eq!(stats.n_accepted, 37);
     assert_eq!(stats.n_rejected, 1);
-    assert_eq!(stats.n_steps, 41);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
@@ -451,7 +447,7 @@ fn run_hs_model(
     config.set_method(Method::Arclength);
     config
         .set_verbose(true, true, true)
-        .set_h_ini(0.1)
+        .set_ddl_ini(0.05)
         .set_debug_predictor(true)
         .set_record_iterations_residuals(true)
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name));
@@ -459,7 +455,7 @@ fn run_hs_model(
     // Override the default settings
     for (&key, value) in settings.iter() {
         match key {
-            "h_ini" => config.set_h_ini(*value),
+            "h_ini" => config.set_ddl_ini(*value),
             "bordering" => config.set_bordering(*value != 0.0),
             "n_step_max" => config.set_n_step_max(*value as usize),
             "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),

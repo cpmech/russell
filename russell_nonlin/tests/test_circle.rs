@@ -16,7 +16,7 @@ fn test_circle_max_lambda() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.3)
+        .set_ddl_ini(0.3)
         .set_record_iterations_residuals(true)
         .set_log_file("/tmp/russell_nonlin/test_circle_max_lambda.txt");
 
@@ -73,7 +73,7 @@ fn test_circle_min_lambda() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.3)
+        .set_ddl_ini(0.3)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -129,7 +129,7 @@ fn test_circle_max_u() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.3)
+        .set_ddl_ini(0.3)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -185,7 +185,7 @@ fn test_circle_min_u() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.3)
+        .set_ddl_ini(0.3)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -241,7 +241,7 @@ fn test_circle_max_lambda_num_jac() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_h_ini(0.3)
+        .set_ddl_ini(0.3)
         .set_use_numerical_jacobian(true)
         .set_record_iterations_residuals(true)
         .set_log_file("/tmp/russell_nonlin/test_circle_max_lambda_num_jac.txt");

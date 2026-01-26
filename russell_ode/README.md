@@ -114,7 +114,7 @@ Solve the simple ODE with Dormand-Prince 8(5,3):
 
 ```text
       dy
-y' = —— = 1   with   y(x=0)=0    thus   y(x) = x
+y' = —— = x + y   with   y(x=0)=0    thus   y(x) = eˣ - x - 1
       dx
 ```
 

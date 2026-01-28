@@ -418,7 +418,15 @@ impl<'a, A> SolverArclength<'a, A> {
                 work.duds[i] = work.dlds * self.x[i];
             }
         }
-        Ok(())
+
+        // check that the tangent vector is not zero
+        if f64::abs(work.dlds) < CONFIG_H_MIN {
+            Err("Initial dλ/ds is zero")
+        } else if vec_norm(&work.duds, Norm::Max) < CONFIG_H_MIN {
+            Err("Initial du/ds vector is zero")
+        } else {
+            Ok(())
+        }
     }
 
     /// Performs a single iteration

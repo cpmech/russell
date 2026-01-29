@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, IniDir, Method, Status};
+use super::{Config, IniDir, Method, Status};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update, Vector};
@@ -168,20 +168,18 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         work: &mut Workspace,
         ddl_ini: f64,
         _u: &Vector,
-        l: f64,
+        _l: f64,
         dir: IniDir,
-        stop: Stop,
-        auto: AutoStep,
         _args: &mut A,
     ) -> Result<(), StrError> {
-        work.h = match auto {
-            AutoStep::Yes => stop.ddl_ini(ddl_ini, l),
-            AutoStep::No(h_eq) => stop.ddl_eq(h_eq, l),
-        };
+        // set the initial direction
         self.sign0 = match dir {
             IniDir::Pos => 1.0,
             IniDir::Neg => -1.0,
         };
+
+        // initial stepsize: Δλ₀
+        work.h = ddl_ini;
         Ok(())
     }
 

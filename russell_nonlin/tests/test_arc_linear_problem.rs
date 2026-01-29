@@ -1,6 +1,6 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};
 use russell_sparse::{Genie, Sym};
 use serial_test::serial;
 
@@ -51,7 +51,7 @@ fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            AutoStep::No(ddl),
+            DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -126,7 +126,7 @@ fn test_arc_linear_problem_backward() {
             &mut l,
             IniDir::Neg,
             Stop::Steps(nstep),
-            AutoStep::No(ddl),
+            DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -195,7 +195,7 @@ fn test_arc_linear_problem_large_step() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            AutoStep::No(ddl),
+            DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -250,7 +250,7 @@ fn test_arc_linear_problem_auto() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();
@@ -305,7 +305,7 @@ fn test_arc_linear_problem_auto_backward() {
             &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();

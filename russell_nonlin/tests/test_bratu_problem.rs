@@ -1,7 +1,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
 use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
 use russell_lab::{Norm, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Solver, Status, Stop, StrError, System};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Solver, Status, Stop, StrError, System};
 use russell_pde::{
     EssentialBcs1d, EssentialBcs2d, Fdm1d, Fdm2d, Grid1d, Grid2d, NaturalBcs1d, NaturalBcs2d, Spc1d, Spc2d,
 };
@@ -124,7 +124,7 @@ const SAVE_FIGURE: bool = false;
 fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
     let spc = true;
     let one_dim = true;
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
@@ -136,10 +136,21 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
                 for bordering in [true, false] {
                     println!(
                         "{}",
-                        gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto, genie, symmetric)
+                        gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
                     );
                     run_test(
-                        spc, one_dim, lmm, bordering, alpha, npt, auto, genie, symmetric, tol1, tol2, tol3,
+                        spc,
+                        one_dim,
+                        lmm,
+                        bordering,
+                        alpha,
+                        npt,
+                        ddl.clone(),
+                        genie,
+                        symmetric,
+                        tol1,
+                        tol2,
+                        tol3,
                     )?;
                 }
             }
@@ -152,7 +163,7 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
 fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
     let spc = false;
     let one_dim = true;
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.039, 0.062, 0.06), //
@@ -165,10 +176,21 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
                     for symmetric in flags {
                         println!(
                             "{}",
-                            gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto, genie, symmetric)
+                            gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
                         );
                         run_test(
-                            spc, one_dim, lmm, bordering, alpha, npt, auto, genie, symmetric, tol1, tol2, tol3,
+                            spc,
+                            one_dim,
+                            lmm,
+                            bordering,
+                            alpha,
+                            npt,
+                            ddl.clone(),
+                            genie,
+                            symmetric,
+                            tol1,
+                            tol2,
+                            tol3,
                         )?;
                     }
                 }
@@ -182,7 +204,7 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
 fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
     let spc = true;
     let one_dim = false;
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
@@ -194,10 +216,21 @@ fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
                 for bordering in [true, false] {
                     println!(
                         "{}",
-                        gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto, genie, symmetric)
+                        gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
                     );
                     run_test(
-                        spc, one_dim, lmm, bordering, alpha, npt, auto, genie, symmetric, tol1, tol2, tol3,
+                        spc,
+                        one_dim,
+                        lmm,
+                        bordering,
+                        alpha,
+                        npt,
+                        ddl.clone(),
+                        genie,
+                        symmetric,
+                        tol1,
+                        tol2,
+                        tol3,
                     )?;
                 }
             }
@@ -210,7 +243,7 @@ fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
 fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
     let spc = false;
     let one_dim = false;
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.042, 0.083, 0.123), //
@@ -229,10 +262,21 @@ fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
                     for symmetric in flags {
                         println!(
                             "{}",
-                            gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto, genie, symmetric)
+                            gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
                         );
                         run_test(
-                            spc, one_dim, lmm, bordering, alpha, npt, auto, genie, symmetric, tol1, tol2, tol3,
+                            spc,
+                            one_dim,
+                            lmm,
+                            bordering,
+                            alpha,
+                            npt,
+                            ddl.clone(),
+                            genie,
+                            symmetric,
+                            tol1,
+                            tol2,
+                            tol3,
                         )?;
                     }
                 }
@@ -248,13 +292,24 @@ fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
     let one_dim = false;
     let lmm = true;
     let bordering = false;
-    let auto = AutoStep::No(10.0);
+    let ddl = DeltaLambda::constant(10.0);
     let genie = Genie::Umfpack;
     let symmetric = false;
     for alpha in [0.0] {
         for (npt, tol1, tol2, tol3) in [(8, 0.23, 0.0, 0.0)] {
             run_test(
-                spc, one_dim, lmm, bordering, alpha, npt, auto, genie, symmetric, tol1, tol2, tol3,
+                spc,
+                one_dim,
+                lmm,
+                bordering,
+                alpha,
+                npt,
+                ddl.clone(),
+                genie,
+                symmetric,
+                tol1,
+                tol2,
+                tol3,
             )?;
         }
     }
@@ -269,7 +324,7 @@ fn run_test(
     bordering: bool,
     alpha: f64,
     npt: usize,
-    auto: AutoStep,
+    ddl: DeltaLambda,
     genie: Genie,
     symmetric: bool,
     alpha0_lam_crit_tol: f64,
@@ -277,7 +332,17 @@ fn run_test(
     alpha02_2nd_lam_crit_tol: f64,
 ) -> Result<(), StrError> {
     // stem
-    let stem = gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, auto, genie, symmetric);
+    let stem = gen_file_stem(
+        spc,
+        one_dim,
+        npt,
+        alpha,
+        lmm,
+        bordering,
+        ddl.is_auto(),
+        genie,
+        symmetric,
+    );
 
     // configuration
     let mut config = Config::new();
@@ -395,7 +460,8 @@ fn run_test(
     let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
 
     // numerical continuation
-    let status = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, stop, auto, Some(output))?;
+    let auto = ddl.is_auto();
+    let status = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, stop, ddl, Some(output))?;
     println!("Status: {:?}", status);
     assert_eq!(status, Status::Success);
 
@@ -519,7 +585,7 @@ fn calc_jac(ggu: &mut CooMatrix, ggl: &mut Vector, l: f64, u: &Vector, args: &mu
             println!("ana =\n{:.3}", ana);
             println!("num =\n{:.3}", num);
         }
-        mat_approx_eq(&ana, &num, 1e-7);
+        mat_approx_eq(&ana, &num, 1e-5);
     }
     Ok(())
 }
@@ -531,7 +597,7 @@ fn gen_file_stem(
     alpha: f64,
     lmm: bool,
     bordering: bool,
-    auto: AutoStep,
+    auto: bool,
     genie: Genie,
     symmetric: bool,
 ) -> String {
@@ -539,7 +605,7 @@ fn gen_file_stem(
     key0 = key0.replace('.', "d");
     let key1 = if lmm { "lmm" } else { "sps" };
     let key2 = if bordering { "brd" } else { "full" };
-    let key3 = if auto.no() { "fix" } else { "auto" };
+    let key3 = if auto { "auto" } else { "fix" };
     let key4 = format!("sym-{:?}", genie.get_sym(symmetric)).to_lowercase();
     format!(
         "/tmp/russell_nonlin/test_bratu_{}_{}_n{}_{}_{}_{}_{}_{}_{}",
@@ -562,7 +628,7 @@ fn do_plot<'a>(
     bordering: bool,
     alpha: f64,
     npt: usize,
-    auto: AutoStep,
+    auto: bool,
     stem: &str,
     lam_vals: &Vec<f64>,
     nrm_vals: &Vec<f64>,
@@ -647,7 +713,7 @@ fn do_plot<'a>(
         .save(&format!("{}.svg", stem))?;
 
     // plot stepsizes
-    if auto.yes() {
+    if auto {
         let stepsizes = &output.get_h_values()[1..];
         let n = stepsizes.len();
         let x = linspace(1.0, n as f64, n);

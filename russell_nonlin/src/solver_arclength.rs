@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, IniDir, Method, Status, CONFIG_H_MIN};
+use super::{Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
@@ -548,8 +548,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         u: &Vector,
         l: f64,
         dir: IniDir,
-        stop: Stop,
-        auto: AutoStep,
         args: &mut A,
     ) -> Result<(), StrError> {
         // set initial values
@@ -564,12 +562,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         if f64::abs(work.dlds) < CONFIG_H_MIN {
             return Err("initial dλ/ds₀ is too small");
         }
-
-        // initial stepsize: Δλ₀
-        let ddl_ini = match auto {
-            AutoStep::Yes => stop.ddl_ini(ddl_ini, l),
-            AutoStep::No(ddl) => stop.ddl_eq(ddl, l),
-        };
 
         // initial pseudo-arclength: σ₀
         work.h = ddl_ini / f64::abs(work.dlds);

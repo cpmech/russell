@@ -1,7 +1,7 @@
 use ctm_demo::{Model, ModelType};
 use plotpy::{linspace, Curve, Plot};
 use russell_lab::{approx_eq, InterpChebyshev, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, SoderlindClass, Solver};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, SoderlindClass, Solver};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
 use russell_sparse::Sym;
@@ -24,7 +24,7 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
     let initial_u = 0.0;
     let initial_l = 0.0;
     let stop = Stop::MaxCompU(0, 0.5);
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let fig_width = 600.0;
 
     // Simulation
@@ -37,7 +37,7 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
         initial_l,
         IniDir::Pos,
         stop,
-        auto,
+        ddl,
         fig_width,
     )?;
     println!("{}", stats);
@@ -62,7 +62,7 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     let initial_u = MATHEMATICA_UU[10];
     let initial_l = MATHEMATICA_LL[10];
     let stop = Stop::MaxCompU(0, 0.5);
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let fig_width = 600.0;
 
     // Simulation
@@ -75,7 +75,7 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
         initial_l,
         IniDir::Pos,
         stop,
-        auto,
+        ddl,
         fig_width,
     )?;
 
@@ -99,7 +99,7 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     let initial_u = MATHEMATICA_UU[10];
     let initial_l = MATHEMATICA_LL[10];
     let stop = Stop::MinCompU(0, 0.0);
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let fig_width = 600.0;
 
     // Simulation
@@ -112,7 +112,7 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
         initial_l,
         IniDir::Neg,
         stop,
-        auto,
+        ddl,
         fig_width,
     )?;
 
@@ -141,7 +141,7 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     let initial_u = 0.0;
     let initial_l = 0.0;
     let stop = Stop::MaxCompU(0, 0.5);
-    let auto = AutoStep::Yes;
+    let ddl = DeltaLambda::auto();
     let fig_width = 600.0;
 
     // Simulation
@@ -154,7 +154,7 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
         initial_l,
         IniDir::Pos,
         stop,
-        auto,
+        ddl,
         fig_width,
     )?;
 
@@ -433,7 +433,7 @@ fn run_hs_model(
     initial_l: f64,
     direction: IniDir,
     stop: Stop,
-    auto: AutoStep,
+    ddl: DeltaLambda,
     fig_width: f64,
 ) -> Result<(Stats, f64), StrError> {
     // Allocate the system and arguments
@@ -497,7 +497,7 @@ fn run_hs_model(
     args.local_state.stress = l;
 
     // Perform the numerical continuation
-    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, auto, Some(out))?;
+    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, ddl, Some(out))?;
     assert_eq!(status, Status::Success);
 
     // results

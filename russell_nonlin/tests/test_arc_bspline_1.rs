@@ -1,27 +1,27 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_bspline_1_success() {
-    let ddl_ini = 0.0835; // Δλ₀ ≡ initial step size
-    run_test("test_arc_bspline_1_success", ddl_ini, false, Status::Success);
+    let ddl = 0.0835;
+    run_test("test_arc_bspline_1_success", ddl, false, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_1_fail() {
-    let ddl_ini = 0.08351; // Δλ₀ ≡ initial step size (this value causes problems; Newton's method diverges)
-    run_test("test_arc_bspline_1_fail", ddl_ini, false, Status::ReachedMaxIterations);
+    let ddl = 0.08351; // this value causes problems; Newton's method diverges
+    run_test("test_arc_bspline_1_fail", ddl, false, Status::ReachedMaxIterations);
 }
 
 #[test]
 fn test_arc_bspline_1_bordering() {
-    let ddl_ini = 0.0835; // Δλ₀ ≡ initial step size
-    run_test("test_arc_bspline_1_bordering", ddl_ini, true, Status::Success);
+    let ddl = 0.0835;
+    run_test("test_arc_bspline_1_bordering", ddl, true, Status::Success);
 }
 
-fn run_test(name: &str, ddl_ini: f64, bordering: bool, expected_status: Status) {
+fn run_test(name: &str, ddl: f64, bordering: bool, expected_status: Status) {
     // nonlinear problem
     let (system, mut u, mut l, mut args) = Samples::bspline_problem_1(0.0);
 
@@ -51,7 +51,7 @@ fn run_test(name: &str, ddl_ini: f64, bordering: bool, expected_status: Status) 
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            AutoStep::No(ddl_ini),
+            DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -64,6 +64,7 @@ fn run_test(name: &str, ddl_ini: f64, bordering: bool, expected_status: Status) 
         let uu1 = out.get_u_values(1);
         let du0ds = out.get_duds_values(0);
         let du1ds = out.get_duds_values(1);
+        let stepsizes = out.get_h_values(); // arclength stepsizes
 
         // debug data
         let (_, u0_predictor, u1_predictor) = solver.get_debug_predictor_values();
@@ -108,8 +109,9 @@ fn run_test(name: &str, ddl_ini: f64, bordering: bool, expected_status: Status) 
             .set_edge_color("None")
             .set_face_color("black");
         for i in 0..uu0.len() {
-            let xf = uu0[i] + ddl_ini * du0ds[i];
-            let yf = uu1[i] + ddl_ini * du1ds[i];
+            let dds = stepsizes[i];
+            let xf = uu0[i] + dds * du0ds[i];
+            let yf = uu1[i] + dds * du1ds[i];
             arrows.draw_arrow(uu0[i], uu1[i], xf, yf);
         }
 
@@ -117,8 +119,9 @@ fn run_test(name: &str, ddl_ini: f64, bordering: bool, expected_status: Status) 
         let mut hyperplanes = Curve::new();
         hyperplanes.set_line_style("--").set_line_color("#d0d0d0");
         for i in 0..uu0.len() {
-            let xa = uu0[i] + ddl_ini * du0ds[i];
-            let ya = uu1[i] + ddl_ini * du1ds[i];
+            let dds = stepsizes[i];
+            let xa = uu0[i] + dds * du0ds[i];
+            let ya = uu1[i] + dds * du1ds[i];
             let phi = f64::atan2(du1ds[i], du0ds[i]);
             let xb = xa - f64::sin(phi);
             let yb = ya + f64::cos(phi);

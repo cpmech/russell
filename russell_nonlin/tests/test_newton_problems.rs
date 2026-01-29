@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, IniDir, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Samples, Solver, Status, Stop};
 
 #[test]
 fn test_newton_problems_ok_1() {
@@ -22,7 +22,7 @@ fn test_newton_problems_ok_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -66,7 +66,7 @@ fn test_newton_problems_fail_due_to_max_iter() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -94,7 +94,7 @@ fn test_newton_problems_fail_oscillation() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -122,7 +122,7 @@ fn test_newton_problems_indeterminate() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -154,7 +154,7 @@ fn test_newton_problems_ok_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -199,7 +199,7 @@ fn test_simple_fixed_continued_divergence() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -226,7 +226,7 @@ fn test_two_eq_nr_prob_1_singular() {
         &mut l,
         IniDir::Pos,
         Stop::Steps(1),
-        AutoStep::No(1.0),
+        DeltaLambda::constant(1.0),
         None,
     );
     assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
@@ -256,7 +256,7 @@ fn test_two_eq_nr_prob_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -271,7 +271,7 @@ fn test_two_eq_nr_prob_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -285,7 +285,7 @@ fn test_two_eq_nr_prob_2() {
         &mut l,
         IniDir::Pos,
         Stop::Steps(1),
-        AutoStep::No(1.0),
+        DeltaLambda::constant(1.0),
         None,
     );
     assert_eq!(res.err(), Some("Error(1): Matrix is singular"));

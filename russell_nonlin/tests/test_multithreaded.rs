@@ -1,6 +1,6 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use russell_lab::{approx_eq, Vector};
-use russell_nonlin::{AutoStep, Config, IniDir, NoArgs, Solver, Stop, System};
+use russell_nonlin::{Config, DeltaLambda, IniDir, NoArgs, Solver, Stop, System};
 use russell_sparse::{CooMatrix, Sym};
 
 const LAMBDA_FINAL: f64 = 1.0;
@@ -22,7 +22,7 @@ struct SimData<'a> {
     l: f64,
     dir: IniDir,
     stop: Stop,
-    auto_step: AutoStep,
+    ddl: DeltaLambda,
 }
 
 impl<'a> SimData<'a> {
@@ -58,7 +58,7 @@ impl<'a> SimData<'a> {
             l: 0.0,
             dir: IniDir::Pos,
             stop: Stop::MaxLambda(LAMBDA_FINAL),
-            auto_step: AutoStep::No(0.1),
+            ddl: DeltaLambda::constant(0.1),
         }
     }
 }
@@ -89,7 +89,7 @@ impl<'a> Runner for Simulator<'a> {
                 &mut self.data.l,
                 self.data.dir,
                 self.data.stop,
-                self.data.auto_step,
+                self.data.ddl.clone(),
                 None,
             )
             .unwrap();

@@ -1,5 +1,5 @@
 use plotpy::{linspace, Curve, Plot};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = false;
 
@@ -59,7 +59,7 @@ fn run_test(
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();

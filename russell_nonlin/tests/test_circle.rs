@@ -1,6 +1,6 @@
 use plotpy::{linspace, Canvas, Curve, Plot};
 use russell_lab::{approx_eq, math::SQRT_2};
-use russell_nonlin::{AutoStep, Config, IniDir, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Output, Samples, Solver, Status, Stop};
 
 const RADIUS: f64 = SQRT_2;
 
@@ -35,7 +35,7 @@ fn test_circle_max_lambda() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(RADIUS),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();
@@ -91,7 +91,7 @@ fn test_circle_min_lambda() {
             &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();
@@ -147,7 +147,7 @@ fn test_circle_max_u() {
             &mut l,
             IniDir::Neg,
             Stop::MaxCompU(0, 1.3),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();
@@ -203,7 +203,7 @@ fn test_circle_min_u() {
             &mut l,
             IniDir::Pos,
             Stop::MinCompU(0, 0.4),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             Some(out),
         )
         .unwrap();

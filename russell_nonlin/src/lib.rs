@@ -4,6 +4,7 @@
 pub type StrError = &'static str;
 
 mod config;
+mod delta_lambda;
 mod enums;
 mod iteration_error;
 mod logger;
@@ -18,6 +19,7 @@ mod system;
 mod workspace;
 
 pub use config::*;
+pub use delta_lambda::*;
 pub use enums::*;
 use iteration_error::*;
 use logger::*;

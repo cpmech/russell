@@ -1,7 +1,7 @@
 use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
 use russell_lab::math::{NAPIER, SQRT_2};
 use russell_lab::{approx_eq, array_approx_eq};
-use russell_nonlin::{AutoStep, Config, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = false;
 const NAME: &str = "test_arc_one_eq_with_fold";
@@ -32,7 +32,7 @@ fn test_arc_one_eq_with_fold_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(5),
-            AutoStep::No(ddl),
+            DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -87,7 +87,8 @@ fn test_arc_one_eq_with_fold_1() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot(1, lambda_ana, ddl, uu, ll, duds, dlds);
+        let hh = out.get_h_values();
+        do_plot(1, lambda_ana, uu, ll, hh, duds, dlds);
     }
 }
 
@@ -124,7 +125,7 @@ fn test_arc_one_eq_with_fold_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(2),
-            AutoStep::No(ddl),
+            DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -153,16 +154,17 @@ fn test_arc_one_eq_with_fold_2() {
 
     // plot
     if SAVE_FIGURE {
-        do_plot(2, lambda_ana, ddl, uu, ll, duds, dlds);
+        let hh = out.get_h_values();
+        do_plot(2, lambda_ana, uu, ll, hh, duds, dlds);
     }
 }
 
 fn do_plot(
     index: usize,
     lambda_ana: impl Fn(f64) -> f64,
-    dds: f64,
     uu: &[f64],
     ll: &[f64],
+    hh: &[f64],
     duds: &[f64],
     dlds: &[f64],
 ) {
@@ -185,16 +187,16 @@ fn do_plot(
         .set_edge_color("None")
         .set_face_color("black");
     for i in 0..uu.len() {
-        let xf = uu[i] + dds * duds[i];
-        let yf = ll[i] + dds * dlds[i];
+        let xf = uu[i] + hh[i] * duds[i];
+        let yf = ll[i] + hh[i] * dlds[i];
         arrows.draw_arrow(uu[i], ll[i], xf, yf);
     }
 
     let mut hyperplanes = Curve::new();
     hyperplanes.set_line_style("--").set_line_color("gray");
     for i in 0..uu.len() {
-        let xa = uu[i] + dds * duds[i];
-        let ya = ll[i] + dds * dlds[i];
+        let xa = uu[i] + hh[i] * duds[i];
+        let ya = ll[i] + hh[i] * dlds[i];
         let phi = f64::atan2(dlds[i], duds[i]);
         let xb = xa - f64::sin(phi);
         let yb = ya + f64::cos(phi);

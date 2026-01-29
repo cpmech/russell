@@ -1,4 +1,4 @@
-use super::{AutoStep, IniDir, Status, Stop, Workspace};
+use super::{IniDir, Status, Stop, Workspace};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -15,8 +15,6 @@ pub(crate) trait SolverTrait<A>: Send {
         u: &Vector,
         l: f64,
         dir: IniDir,
-        stop: Stop,
-        auto: AutoStep,
         args: &mut A,
     ) -> Result<(), StrError>;
 

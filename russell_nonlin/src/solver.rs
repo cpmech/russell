@@ -1,4 +1,4 @@
-use super::{AutoStep, Config, IniDir, Method, SolverTrait, Stop, System};
+use super::{Config, DeltaLambda, IniDir, Method, SolverTrait, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::{vec_all_finite, Vector};
@@ -14,7 +14,7 @@ pub struct Solver<'a, A> {
     /// Dimension of the ODE system
     ndim: usize,
 
-    /// Holds a pointer to the actual ODE system solver
+    /// Holds a pointer to the actual solver
     actual: Box<dyn SolverTrait<A> + 'a>,
 
     /// Holds statistics, benchmarking and "work" variables
@@ -98,6 +98,7 @@ impl<'a, A> Solver<'a, A> {
     ///    The state will be updated with the new solution (u, λ) util a stop criterion is reached.
     /// * `dir` -- the direction to follow on the solution branch (pseudo-arclength method).
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
+    /// * `ddl` -- specifies how Δλ is adjusted
     /// * `auto` -- defines the stepsize control method (variable stepsize control or fixed stepsize)
     /// * `output` -- output object to write results files, record the results, or execute a callback function
     ///
@@ -111,7 +112,7 @@ impl<'a, A> Solver<'a, A> {
         l: &mut f64,
         dir: IniDir,
         stop: Stop,
-        auto: AutoStep,
+        ddl: DeltaLambda,
         mut output: Option<&mut Output<'b, A>>,
     ) -> Result<Status, StrError> {
         // validate input
@@ -119,23 +120,15 @@ impl<'a, A> Solver<'a, A> {
             return Err("u.dim() must be equal to ndim");
         }
         stop.validate(u, *l)?;
-        auto.validate()?;
 
         // reset stats and flags
-        self.work.reset_stats_and_flags(auto.yes());
+        self.work.reset_stats_and_flags(ddl.auto);
 
         // calculate the default initial Δλ
-        let mut ddl_ini = self.config.ddl_ini;
-        if let Some(callback) = &self.calc_ddl_ini {
-            ddl_ini = callback(args);
-            if ddl_ini <= CONFIG_H_MIN {
-                return Err("requirement: ddl_ini > 1e-10");
-            }
-        }
+        let ddl_ini = ddl.ini(&self.config, &stop, *l)?;
 
         // perform initialization (compute the actual initial stepsize and tangent vector)
-        self.actual
-            .initialize(&mut self.work, ddl_ini, u, *l, dir, stop, auto, args)?;
+        self.actual.initialize(&mut self.work, ddl_ini, u, *l, dir, args)?;
 
         // first output
         if let Some(out) = output.as_deref_mut() {
@@ -154,9 +147,8 @@ impl<'a, A> Solver<'a, A> {
         let mut status = Status::Success;
 
         // perform continuation
-        if auto.no() {
-            // fixed/equal stepsize
-            self.work.stats.h_accepted = self.work.h;
+        if !ddl.auto {
+            // constant or list-based stepsize
             for i in 0..self.config.n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
@@ -174,6 +166,22 @@ impl<'a, A> Solver<'a, A> {
                 // update u and λ
                 self.work.stats.n_accepted += 1;
                 self.actual.accept(&mut self.work, u, l, args)?;
+
+                // update the stepsize if a list is given
+                if i + 1 < ddl.list.len() {
+                    let ddl_next = ddl.list[i + 1];
+                    self.work.h = match self.config.method {
+                        Method::Arclength => {
+                            let den = f64::abs(self.work.dlds);
+                            if den < CONFIG_H_MIN {
+                                return Err("dλ/ds is too small to calculate the stepsize");
+                            }
+                            ddl_next / den
+                        }
+                        Method::Natural => ddl_next,
+                    };
+                }
+                self.work.stats.h_accepted = self.work.h;
 
                 // check for anomalies
                 vec_all_finite(&u, self.config.verbose)?;
@@ -374,7 +382,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{AutoStep, Config, IniDir, Samples, Status, Stop};
+    use crate::{Config, DeltaLambda, IniDir, Samples, Status, Stop};
     use russell_lab::{vec_approx_eq, Vector};
 
     #[test]
@@ -404,7 +412,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    AutoStep::Yes,
+                    DeltaLambda::auto(),
                     None
                 )
                 .err(),
@@ -419,7 +427,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(0.0),
-                    AutoStep::Yes,
+                    DeltaLambda::auto(),
                     None,
                 )
                 .err(),
@@ -433,11 +441,11 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    AutoStep::No(f64::EPSILON), // will cause an error
+                    DeltaLambda::constant(f64::EPSILON), // will cause an error
                     None,
                 )
                 .err(),
-            Some("AutoStep enum error: fixed stepsize h_eq must be ≥ 10.0 * f64::EPSILON")
+            Some("requirement: ddl_ini > 1e-10")
         );
     }
 
@@ -456,7 +464,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    AutoStep::Yes,
+                    DeltaLambda::auto(),
                     None,
                 )
                 .unwrap(),
@@ -468,7 +476,7 @@ mod tests {
     fn solve_with_one_step_works_fixed() {
         let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new();
-        config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
+        config.set_verbose(false, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
@@ -478,7 +486,7 @@ mod tests {
                 &mut l,
                 IniDir::Pos,
                 Stop::Steps(1),
-                AutoStep::No(1.0),
+                DeltaLambda::constant(1.0),
                 None,
             )
             .unwrap();
@@ -498,7 +506,7 @@ mod tests {
     fn solve_with_one_step_works_auto() {
         let (system, mut u, u_ref, mut args) = Samples::two_eq_ref();
         let mut config = Config::new();
-        config.set_verbose(true, true, true).set_tol_delta(1e-12, 1e-10);
+        config.set_verbose(false, true, true).set_tol_delta(1e-12, 1e-10);
         let mut solver = Solver::new(&config, system).unwrap();
         let mut l = 0.0;
         solver
@@ -508,7 +516,7 @@ mod tests {
                 &mut l,
                 IniDir::Pos,
                 Stop::Steps(1),
-                AutoStep::Yes,
+                DeltaLambda::auto(),
                 None,
             )
             .unwrap();

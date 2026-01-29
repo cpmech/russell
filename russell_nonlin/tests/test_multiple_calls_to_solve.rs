@@ -1,5 +1,5 @@
 use russell_lab::vec_approx_eq;
-use russell_nonlin::{AutoStep, Config, IniDir, Samples, Solver, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Samples, Solver, Stop};
 
 #[test]
 fn test_multiple_calls_to_solve_1() {
@@ -24,7 +24,7 @@ fn test_multiple_calls_to_solve_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -54,7 +54,7 @@ fn test_multiple_calls_to_solve_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -100,7 +100,7 @@ fn test_multiple_calls_to_solve_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -130,7 +130,7 @@ fn test_multiple_calls_to_solve_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::No(1.0),
+            DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -173,7 +173,7 @@ fn test_multiple_calls_to_solve_1_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             None,
         )
         .unwrap();
@@ -203,7 +203,7 @@ fn test_multiple_calls_to_solve_1_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             None,
         )
         .unwrap();
@@ -249,7 +249,7 @@ fn test_multiple_calls_to_solve_2_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             None,
         )
         .unwrap();
@@ -279,7 +279,7 @@ fn test_multiple_calls_to_solve_2_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            AutoStep::Yes,
+            DeltaLambda::auto(),
             None,
         )
         .unwrap();

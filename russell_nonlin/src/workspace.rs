@@ -1,21 +1,10 @@
 use super::{Config, IterationError, Logger, Method, Stats, System};
 use russell_lab::Vector;
-use russell_sparse::{CooMatrix, LinSolver};
 
 /// Holds workspace data shared among the ODE solver and actual implementations
-pub(crate) struct Workspace<'a> {
+pub(crate) struct Workspace {
     // control variables and structures ------------------------------------------
     //
-    /// Indicates that the Gu matrix has been allocated
-    ///
-    /// Gu is always allocated for the Natural method. Nonetheless, for the
-    /// Arclength method, Gu is allocated only if either the bordering algorithm
-    /// is activated or the Gu matrix is symmetric (triangular storage).
-    pub(crate) with_ggu: bool,
-
-    /// Linear solver
-    pub(crate) ls: LinSolver<'a>,
-
     /// Iteration error
     pub(crate) err: IterationError,
 
@@ -67,16 +56,6 @@ pub(crate) struct Workspace<'a> {
 
     // state variables -----------------------------------------------------------
     //
-    /// Holds G(u, λ)
-    ///
-    /// (ndim)
-    pub(crate) gg: Vector,
-
-    /// Holds the Gu = ∂G/∂u matrix
-    ///
-    /// (ndim x ndim)
-    pub(crate) ggu: CooMatrix,
-
     /// Stepsize: either σ (pseudo-arclength) or Δλ (natural parameter)
     pub(crate) h: f64,
 
@@ -86,24 +65,14 @@ pub(crate) struct Workspace<'a> {
     /// Holds current λ
     pub(crate) l: f64,
 
-    /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
-    ///
-    /// **Note**: this vector is only allocated for the pseudo-arclength method
-    ///
-    /// (ndim)
+    /// Holds G(u, λ)
+    pub(crate) gg: Vector,
+
+    /// Part of the tangent vector (duds,dλds) (pseudo-arclength only)
     pub(crate) duds: Vector,
 
-    /// Part of the tangent vector (duds,dλds) for the pseudo-arclength method
+    /// Part of the tangent vector (duds,dλds) (pseudo-arclength only)
     pub(crate) dlds: f64,
-
-    /// Holds -δu (negative of iteration increment)
-    pub(crate) mdu: Vector,
-
-    /// Auxiliary u vector #1 (e.g., for the numerical Jacobian or bordering algorithm)
-    pub(crate) u_aux1: Vector,
-
-    /// Auxiliary u vector #2 (e.g., for the numerical Jacobian)
-    pub(crate) u_aux2: Vector,
 
     /// Holds the predictor values for debugging
     ///
@@ -111,42 +80,18 @@ pub(crate) struct Workspace<'a> {
     pub(crate) predictor_values_debug: Option<(Vec<f64>, Vec<f64>, Vec<f64>)>,
 }
 
-impl<'a> Workspace<'a> {
+impl Workspace {
     /// Allocates a new instance
     pub(crate) fn new<'b, A>(config: &Config, system: &System<'b, A>) -> Self {
-        // allocate Gu matrix
-        let (ggu, with_ggu, with_tangent) = match config.method {
-            Method::Arclength => {
-                if config.bordering || system.sym_ggu.triangular() {
-                    (
-                        CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
-                        true,
-                        true,
-                    )
-                } else {
-                    (CooMatrix::new(1, 1, 1, system.sym_ggu).unwrap(), false, true)
-                }
-            }
-            Method::Natural => (
-                CooMatrix::new(system.ndim, system.ndim, system.nnz_ggu, system.sym_ggu).unwrap(),
-                true,
-                false,
-            ),
+        // allocate duds vector
+        let duds = match config.method {
+            Method::Arclength => Vector::new(system.ndim),
+            Method::Natural => Vector::new(0),
         };
-
-        // determine the dimensions of auxiliary variables
-        let num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
-        let ndim_aux1 = if num_ggu || config.bordering { system.ndim } else { 0 };
-        let ndim_aux2 = if num_ggu { system.ndim } else { 0 };
-
-        // auxiliary variable
-        let ndim_tangent = if with_tangent { system.ndim } else { 0 };
 
         // allocate the workspace
         Workspace {
             // control variables and structures
-            with_ggu,
-            ls: LinSolver::new(config.genie).unwrap(),
             err: IterationError::new(config, system.ndim),
             log: Logger::new(config),
 
@@ -162,16 +107,12 @@ impl<'a> Workspace<'a> {
             stop_gracefully: false,
 
             // state variables
-            gg: Vector::new(system.ndim),
-            ggu,
             h: 0.0,
             u: Vector::new(system.ndim),
             l: 0.0,
-            duds: Vector::new(ndim_tangent),
+            gg: Vector::new(system.ndim),
+            duds,
             dlds: 0.0,
-            mdu: Vector::new(system.ndim),
-            u_aux1: Vector::new(ndim_aux1),
-            u_aux2: Vector::new(ndim_aux2),
 
             // debugging
             predictor_values_debug: None,

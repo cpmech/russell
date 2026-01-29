@@ -1,5 +1,5 @@
 use crate::StrError;
-use russell_lab::Vector;
+use russell_lab::{algo::num_jacobian, mat_approx_eq, Vector};
 use russell_sparse::{CooMatrix, Sym};
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ pub type NoArgs = u8;
 /// Arclength: G(u(s), λ(s)) = 0
 /// ```
 ///
-/// Here, we use `gg` to represent `G` because capital letters are const in Rust.
+/// Here, `gg` corresponds to `G` and `l` to `λ` (lambda).
 ///
 /// The required derivatives are:
 ///
@@ -27,30 +27,22 @@ pub struct System<'a, A> {
     /// Dimension of `u` and `G`
     pub(crate) ndim: usize,
 
-    /// Calculates the function G(u) or G(u, λ) or G(u(s), λ(s))
-    ///
-    /// The function is `fn (gg, λ, u, args)` where λ can be ignored for the simple case.
-    pub(crate) calc_gg: Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
-
-    /// Calculates the Gu = dG/du derivative
-    ///
-    /// The function is `fn (ggu, λ, u, args)` where λ can be ignored for the simple case.
-    ///
-    /// **Note:** there is no need to call `reset` on the `CooMatrix` object because this is done already.
-    pub(crate) calc_ggu:
-        Option<Arc<dyn Fn(&mut CooMatrix, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
-
-    /// Calculates the Gλ = dG/dλ derivative
-    ///
-    /// The function is `fn (ggl, λ, u, args)`
-    pub(crate) calc_ggl:
-        Option<Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>>,
-
     /// Number of non-zeros in the Gu matrix
     pub(crate) nnz_ggu: usize,
 
     /// Symmetric type of the Gu matrix
     pub(crate) sym_ggu: Sym,
+
+    /// Calculates the function G(u) or G(u, λ) or G(u(s), λ(s))
+    ///
+    /// The function is `calc_gg(gg, l, u, args)`
+    pub(crate) calc_gg: Arc<dyn Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
+
+    /// Calculates the Gu = dG/du and Gλ = dG/dλ derivatives
+    ///
+    /// The function is `calc_jac(ggu, ggl, l, u, args)`
+    pub(crate) calc_jac:
+        Arc<dyn Fn(&mut CooMatrix, &mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a>,
 
     /// Creates a copy of external state variables at the beginning of a step
     ///
@@ -78,21 +70,66 @@ pub struct System<'a, A> {
 impl<'a, A> System<'a, A> {
     /// Allocates a new instance
     ///
-    /// use `|gg, l, u, args|` or `|gg: &mut Vector, l: f64, u: &Vector, args: &mut A|`
+    /// The functions are: `calc_gg(gg, l, u, args)` and `calc_jac(ggu, ggl, l, u, args)`.
+    ///
+    /// For simple nonlinear systems, l may be ignored (i.e., not a continuation problem).
+    ///
+    /// In the Natural method, only `ggu` is needed, so `ggl` may be ignored.
+    ///
+    /// In the Arclength method, if `bordering = true`, then `ggu` is the actual Gu matrix,
+    /// otherwise, `ggu` is either the Gu matrix or the A matrix, depending on the context.
+    /// This is necessary to build the system shown below:
+    ///
+    /// ```text
+    /// ┌           ┐ ┌    ┐   ┌    ┐
+    /// │ Gu    Gλ  │ │ δu │   │ -G │
+    /// │           │ │    │ = │    │
+    /// │ Nu₀ᵀ  Nλ₀ │ │ δλ │   │ -N │
+    /// └           ┘ └    ┘   └    ┘
+    ///       A         x         b
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * `ndim` -- the dimension of the nonlinear system
+    /// * `nnz_ggu` -- the number of non-zeros in the Gu matrix. If None, a **dense** matrix is assumed with:
+    ///     * `nnz = (ndim + ndim²) / 2` if triangular
+    ///     * `nnz = ndim²` otherwise
+    /// * `sym_ggu` -- specifies the symmetry of the Gu matrix
+    /// * `calc_gg` -- the callback function to calculate G (in `gg`)
+    /// * `calc_jac` -- the callback function to calculate Gu (in `ggu`) and Gλ (in `ggl`). There is no need
+    ///   to call `ggu.reset()` inside this function, as it is done already before the call.
     pub fn new(
         ndim: usize,
+        nnz_ggu: Option<usize>,
+        sym_ggu: Sym,
         calc_gg: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
+        calc_jac: impl Fn(&mut CooMatrix, &mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
     ) -> Result<Self, StrError> {
         if ndim < 1 {
             return Err("ndim must be at least 1");
         }
+        let nnz_ggu = match nnz_ggu {
+            Some(nnz) => {
+                if nnz < 1 {
+                    return Err("nnz_ggu must be at least 1");
+                }
+                nnz
+            }
+            None => {
+                if sym_ggu.triangular() {
+                    (ndim + ndim * ndim) / 2
+                } else {
+                    ndim * ndim
+                }
+            }
+        };
         Ok(System {
             ndim,
+            nnz_ggu,
+            sym_ggu,
             calc_gg: Arc::new(calc_gg),
-            calc_ggu: None,
-            calc_ggl: None,
-            nnz_ggu: ndim * ndim,
-            sym_ggu: Sym::No,
+            calc_jac: Arc::new(calc_jac),
             backup_secondary_state: None,
             restore_secondary_state: None,
             prepare_to_iterate: None,
@@ -104,78 +141,15 @@ impl<'a, A> System<'a, A> {
     pub fn clone(&self) -> Self {
         System {
             ndim: self.ndim,
-            calc_gg: self.calc_gg.clone(),
-            calc_ggu: self.calc_ggu.clone(),
-            calc_ggl: self.calc_ggl.clone(),
             nnz_ggu: self.nnz_ggu,
             sym_ggu: self.sym_ggu,
+            calc_gg: self.calc_gg.clone(),
+            calc_jac: self.calc_jac.clone(),
             backup_secondary_state: self.backup_secondary_state.clone(),
             restore_secondary_state: self.restore_secondary_state.clone(),
             prepare_to_iterate: self.prepare_to_iterate.clone(),
             update_secondary_state: self.update_secondary_state.clone(),
         }
-    }
-
-    /// Sets a function to calculate the `Gu = dG/du` matrix
-    ///
-    /// Use `|ggu_or_aa, λ, u, args|` or `|ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, args: &mut A|`
-    ///
-    /// **Important:** If `bordering = true`, then `ggu_or_aa` is called with the actual `Gu` matrix.
-    /// Otherwise, the function may be called with either the `Gu` matrix or the `A` matrix, so we can
-    /// build the system shown below:
-    ///
-    /// ```text
-    /// ┌           ┐ ┌    ┐   ┌    ┐
-    /// │ Gu    Gλ  │ │ δu │   │ -G │
-    /// │           │ │    │ = │    │
-    /// │ Nu₀ᵀ  Nλ₀ │ │ δλ │   │ -N │
-    /// └           ┘ └    ┘   └    ┘
-    ///       A         x         b
-    /// ```
-    ///
-    /// # Input
-    ///
-    /// * `nnz` -- the number of non-zeros in the Gu matrix; use None to indicate a dense matrix with:
-    ///     * `nnz = (ndim + ndim²) / 2` if triangular
-    ///     * `nnz = ndim²` otherwise
-    /// * `symmetric` -- specifies the symmetric type of the Gu matrix
-    /// * `callback` -- the function to calculate the Gu matrix
-    pub fn set_calc_ggu(
-        &mut self,
-        nnz: Option<usize>,
-        symmetric: Sym,
-        callback: impl Fn(&mut CooMatrix, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
-    ) -> Result<&mut Self, StrError> {
-        self.nnz_ggu = if let Some(value) = nnz {
-            if value < 1 {
-                return Err("nnz must be at least 1");
-            }
-            value
-        } else {
-            if symmetric.triangular() {
-                (self.ndim + self.ndim * self.ndim) / 2
-            } else {
-                self.ndim * self.ndim
-            }
-        };
-        self.sym_ggu = symmetric;
-        self.calc_ggu = Some(Arc::new(callback));
-        Ok(self)
-    }
-
-    /// Sets a function to calculate the `Gλ = dG/dλ` vector
-    ///
-    /// Use `|ggl, λ, u, args|` or `|ggl: &mut Vector, l: f64, u: &Vector, args: &mut A|`
-    ///
-    /// # Input
-    ///
-    /// * `callback` -- the function to calculate the Gλ vector
-    pub fn set_calc_ggl(
-        &mut self,
-        callback: impl Fn(&mut Vector, f64, &Vector, &mut A) -> Result<(), StrError> + Send + Sync + 'a,
-    ) -> &mut Self {
-        self.calc_ggl = Some(Arc::new(callback));
-        self
     }
 
     /// Sets a function to create a copy of external state variables at the beginning of a step
@@ -214,7 +188,7 @@ impl<'a, A> System<'a, A> {
         self
     }
 
-    /// Returns the dimension of the ODE system
+    /// Returns the dimension of the nonlinear system
     pub fn get_ndim(&self) -> usize {
         self.ndim
     }
@@ -222,5 +196,26 @@ impl<'a, A> System<'a, A> {
     /// Returns the number of non-zero values in the Gu matrix
     pub fn get_nnz_ggu(&self) -> usize {
         self.nnz_ggu
+    }
+
+    /// Returns the symmetric type of the Gu matrix
+    pub fn get_sym_ggu(&self) -> Sym {
+        self.sym_ggu
+    }
+
+    /// Checks Gu using numerical derivative
+    pub fn check_ggu(&self, l_at: f64, u_at: &Vector, args: &mut A, tol: f64) -> Result<(), StrError> {
+        // analytical Gu
+        let mut ggu = CooMatrix::new(self.ndim, self.ndim, self.nnz_ggu, self.sym_ggu).unwrap();
+        let mut ggl = Vector::new(self.ndim);
+        (self.calc_jac)(&mut ggu, &mut ggl, l_at, &u_at, args).unwrap();
+
+        // numerical Jacobian
+        let num = num_jacobian(self.ndim, 0.0, &u_at, 1.0, args, self.calc_gg.as_ref()).unwrap();
+        let ana = ggu.as_dense();
+
+        // check
+        mat_approx_eq(&ana, &num, tol);
+        Ok(())
     }
 }

@@ -3,7 +3,7 @@ use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{Norm, Vector};
-use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, Sym};
+use russell_sparse::{CooMatrix, LinSolver, Sym};
 
 /// Implements the pseudo-arclength continuation method to solve G(u, λ) = 0
 ///
@@ -152,30 +152,6 @@ pub struct SolverArclength<'a, A> {
     /// System
     system: System<'a, A>,
 
-    /// Gλ = ∂G/∂λ vector (ndim)
-    ggl: Vector,
-
-    /// Linear solver for the augmented system
-    ls_aug: LinSolver<'a>,
-
-    /// Augmented Jacobian matrix A
-    aa: CooMatrix,
-
-    /// Left-hand side vector of the linear problem A x = b
-    x: Vector,
-
-    /// Right-hand side vector of the linear problem A x = b
-    b: Vector,
-
-    /// Use the numerical Gu matrix
-    use_num_ggu: bool,
-
-    /// Indicates that the Jacobian matrix (Gu or A) has been computed at least once in the iteration
-    ///
-    /// This check is necessary because the predictor may be so good that the iteration
-    /// stops without even computing the Jacobian matrix.
-    iter_jac_computed: bool,
-
     /// Theta variable to switch the operation mode via the normalization function
     ///
     /// ```text
@@ -186,96 +162,126 @@ pub struct SolverArclength<'a, A> {
     /// * `θ = 0.0`: targeting lambda
     theta: f64,
 
+    /// Indicates that the Jacobian matrix (Gu or A) has been computed at least once in the iteration
+    ///
+    /// This check is necessary because the predictor may be so good that the iteration
+    /// stops without even computing the Jacobian matrix.
+    iter_jac_computed: bool,
+
+    /// Holds the Gλ = ∂G/∂λ vector
+    ggl: Vector,
+
     // Previous du/ds vector for the stepsize control
     duds_prev: Vector,
 
     // Previous dλ/ds for the stepsize control
     dlds_prev: f64,
+
+    /// Linear solver
+    ls: LinSolver<'a>,
+
+    /// Auxiliary augmented vector (u, λ) or (δu, δλ)
+    ///
+    /// The left-hand side vector of the linear problem A x = b
+    x: Vector,
+
+    // bordering --------------------------------------------------------------
+    //
+    /// Holds the Gu = ∂G/∂u matrix for the bordering algorithm
+    ggu: CooMatrix,
+
+    /// Holds -δu (negative of iteration increment) for the bordering algorithm
+    mdu: Vector,
+
+    /// Auxiliary u vector for the bordering algorithm
+    u_aux: Vector,
+
+    // augmented system -------------------------------------------------------
+    //
+    /// Augmented Jacobian matrix A
+    aa: CooMatrix,
+
+    /// Right-hand side vector of the linear problem A x = b
+    b: Vector,
 }
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
     pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError> {
+        // check
         assert_eq!(config.method, Method::Arclength);
-        let genie = config.genie;
-        let use_num_ggu = config.use_numerical_jacobian || system.calc_ggu.is_none();
-        if use_num_ggu && system.update_secondary_state.is_some() {
-            return Err("The Arclength method cannot use numerical Jacobian with the secondary update function");
-        }
         if !config.bordering && system.sym_ggu != Sym::No {
-            return Err("The Arclength method requires sym_ggu = Sym::No when not using bordering, even if Gu is symmetric. This requirement is because the augmented matrix A is not symmetric in general.");
+            return Err("The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general.");
         }
+
+        // allocate new instance
+        let genie = config.genie;
         let ndim = system.ndim;
-        let nnz_aa = if config.bordering {
-            1 // this should be 0, but russell_sparse requires at least one non-zero
+        let nnz_ggu = system.nnz_ggu;
+        let sym_ggu = system.sym_ggu;
+        if config.bordering {
+            Ok(SolverArclength {
+                config,
+                system,
+                theta: 1.0,
+                iter_jac_computed: false,
+                ggl: Vector::new(ndim),
+                duds_prev: Vector::new(ndim),
+                dlds_prev: 0.0,
+                ls: LinSolver::new(genie)?,
+                x: Vector::new(ndim + 1),
+                ggu: CooMatrix::new(ndim, ndim, nnz_ggu, sym_ggu).unwrap(),
+                mdu: Vector::new(ndim),
+                u_aux: Vector::new(ndim),
+                aa: CooMatrix::new(1, 1, 1, Sym::No).unwrap(), // empty
+                b: Vector::new(0),                             // empty
+            })
         } else {
-            system.nnz_ggu + 2 * ndim + 1
-        };
-        Ok(SolverArclength {
-            config,
-            system,
-            ggl: Vector::new(ndim),
-            ls_aug: LinSolver::new(genie).unwrap(),
-            aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_aa, Sym::No).unwrap(),
-            x: Vector::new(ndim + 1),
-            b: Vector::new(ndim + 1),
-            use_num_ggu,
-            iter_jac_computed: false,
-            theta: 1.0,
-            duds_prev: Vector::new(ndim),
-            dlds_prev: 0.0,
-        })
-    }
-
-    /// Calculates the Gλ = ∂G/∂λ vector
-    fn calc_ggl(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
-        match self.system.calc_ggl.as_ref() {
-            Some(calc_ggl) => {
-                (calc_ggl)(&mut self.ggl, work.l, &work.u, args)?;
-            }
-            None => return Err("calc_ggl is required for the Arclength method"),
+            let nnz_aa = system.nnz_ggu + 2 * ndim + 1;
+            Ok(SolverArclength {
+                config,
+                system,
+                theta: 1.0,
+                iter_jac_computed: false,
+                ggl: Vector::new(ndim),
+                duds_prev: Vector::new(ndim),
+                dlds_prev: 0.0,
+                ls: LinSolver::new(genie)?,
+                x: Vector::new(ndim + 1),
+                ggu: CooMatrix::new(1, 1, 1, Sym::No).unwrap(), // empty
+                mdu: Vector::new(0),                            // empty
+                u_aux: Vector::new(0),                          // empty
+                aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_aa, Sym::No).unwrap(),
+                b: Vector::new(ndim + 1),
+            })
         }
-        Ok(())
     }
 
-    /// Calculates the Gu = ∂G/∂u matrix
-    fn calc_ggu(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
-        assert_eq!(work.with_ggu, true);
-        // assemble Gu matrix
-        let ndim = self.system.ndim;
+    /// Assembles and factorizes the Jacobian matrix (bordering algorithm)
+    ///
+    /// Calculates Gu = ∂G/∂u and Gλ = ∂G/∂λ)
+    fn assemble_and_factorize_jac(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        // check
+        assert!(self.config.bordering);
+
+        // assemble Gu and Gλ
         work.stats.sw_jacobian.reset();
-        work.ggu.reset();
-        if self.use_num_ggu {
-            // numerical
-            work.stats.num_jacobian = true;
-            work.stats.n_function += self.system.ndim;
-            numerical_jacobian(
-                &mut work.ggu,
-                ndim,
-                1.0,
-                work.l,
-                &mut work.u,
-                &mut work.u_aux1,
-                &mut work.u_aux2,
-                args,
-                self.system.calc_gg.as_ref(),
-            )?;
-        } else {
-            // analytical
-            work.stats.n_jacobian += 1;
-            (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, work.l, &work.u, args)?;
-        }
+        self.ggu.reset();
+        work.stats.n_jacobian += 1;
+        (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
         work.stats.stop_sw_jacobian();
 
         // factorize Gu matrix
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
-        work.ls.actual.factorize(&mut work.ggu, self.config.lin_sol_config)?;
+        self.ls.actual.factorize(&mut self.ggu, self.config.lin_sol_config)?;
         work.stats.stop_sw_factor();
         Ok(())
     }
 
-    /// Calculates the augmented Jacobian matrix
+    /// Assembles and factorizes the augmented Jacobian matrix A
+    ///
+    /// Calculates Gu = ∂G/∂u and Gλ = ∂G/∂λ)
     ///
     /// The augmented Jacobian matrix is:
     ///
@@ -298,38 +304,23 @@ impl<'a, A> SolverArclength<'a, A> {
     ///     │  0   1 │
     ///     └        ┘
     /// ```
-    fn calc_aa(
+    fn assemble_and_factorize_aa(
         &mut self,
         work: &mut Workspace,
         args: &mut A,
         for_initial_tangent_vector: bool,
     ) -> Result<(), StrError> {
+        // check
         assert!(!self.config.bordering);
-        // assemble Gu matrix into A
-        // IMPORTANT: note that we are passing A down to the calc_ggu callback function
+
+        // reset data
         let ndim = self.system.ndim;
         work.stats.sw_jacobian.reset();
         self.aa.reset();
-        if self.use_num_ggu {
-            // numerical
-            work.stats.num_jacobian = true;
-            work.stats.n_function += self.system.ndim;
-            numerical_jacobian(
-                &mut self.aa,
-                ndim,
-                1.0,
-                work.l,
-                &mut work.u,
-                &mut work.u_aux1,
-                &mut work.u_aux2,
-                args,
-                self.system.calc_gg.as_ref(),
-            )?;
-        } else {
-            // analytical
-            work.stats.n_jacobian += 1;
-            (self.system.calc_ggu.as_ref().unwrap())(&mut self.aa, work.l, &work.u, args)?;
-        }
+
+        // assemble Gu and Gλ. Note that we are passing A down to the function
+        work.stats.n_jacobian += 1;
+        (self.system.calc_jac)(&mut self.aa, &mut self.ggl, work.l, &work.u, args)?;
 
         // set the last row and column of A
         if for_initial_tangent_vector {
@@ -342,7 +333,6 @@ impl<'a, A> SolverArclength<'a, A> {
             self.aa.put(ndim, ndim, 1.0).unwrap();
         } else {
             // put Gλ, Nu₀ᵀ=θdu/ds|₀, and Nλ₀=(2-θ)dλ/ds|₀ into A
-            self.calc_ggl(work, args)?;
             for i in 0..ndim {
                 self.aa.put(i, ndim, self.ggl[i]).unwrap();
                 self.aa.put(ndim, i, self.theta * work.duds[i]).unwrap();
@@ -354,7 +344,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // factorize matrix A
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
-        self.ls_aug.actual.factorize(&mut self.aa, self.config.lin_sol_config)?;
+        self.ls.actual.factorize(&mut self.aa, self.config.lin_sol_config)?;
         work.stats.stop_sw_factor();
         Ok(())
     }
@@ -371,23 +361,21 @@ impl<'a, A> SolverArclength<'a, A> {
     /// Calculate: du/ds₀ = dλ/ds₀ z
     /// ```
     fn calc_initial_tangent(&mut self, work: &mut Workspace, sign0: f64, args: &mut A) -> Result<(), StrError> {
-        if work.with_ggu {
-            // use Gu directly
-
-            // calculate Gu = ∂G/∂u
-            self.calc_ggu(work, args)?;
+        if self.config.bordering {
+            // calculate Gu = ∂G/∂u and Gλ = ∂G/∂λ
+            self.assemble_and_factorize_jac(work, args)?;
 
             // solve mdu := Gu⁻¹ · Gλ = -z₀
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            work.ls.actual.solve(&mut work.mdu, &self.ggl, false)?; // mdu := -z₀
+            self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := -z₀
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
-            vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z₀
+            work.dlds = sign0 / f64::sqrt(1.0 + vec_inner(&self.mdu, &self.mdu));
+            vec_copy_scaled(&mut work.duds, -work.dlds, &self.mdu).unwrap(); // "-1" because mdu = -z₀
         } else {
-            // use the augmented matrix A instead because Gu has not been allocated
+            // using the augmented matrix A
             // ┌        ┐ ┌    ┐   ┌      ┐
             // │ Gu₀  0 │ │ z₀ │   │ -Gλ₀ │
             // │        │ │    │ = │      │
@@ -395,8 +383,8 @@ impl<'a, A> SolverArclength<'a, A> {
             // └        ┘ └    ┘   └      ┘
             //      A        x         b
 
-            // calculate the augmented matrix A := Gu = ∂G/∂u
-            self.calc_aa(work, args, true)?;
+            // calculate the augmented matrix A (and Gλ)
+            self.assemble_and_factorize_aa(work, args, true)?;
 
             // set b = (-Gλ₀, 0)
             let ndim = self.system.ndim;
@@ -408,7 +396,7 @@ impl<'a, A> SolverArclength<'a, A> {
             // solve x := A⁻¹ · b = (z₀, 0)
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
+            self.ls.actual.solve(&mut self.x, &self.b, false)?;
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
@@ -458,28 +446,22 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // solve the linear system
         if self.config.bordering {
-            // compute and factorize the Jacobian matrix
-            let recompute_ggu = work.n_iteration == 0 || !self.config.constant_tangent;
-            if recompute_ggu {
-                self.calc_ggu(work, args)?;
-                self.iter_jac_computed = true;
-            }
-
-            // calculate Gλ = ∂G/∂λ
-            self.calc_ggl(work, args)?;
+            // compute and factorize the Jacobian (calculates Gu and Gλ)
+            self.assemble_and_factorize_jac(work, args)?;
+            self.iter_jac_computed = true;
 
             // solve  δua := Gu⁻¹ · Gλ
-            let dua = &mut work.mdu;
+            let dua = &mut self.mdu;
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            work.ls.actual.solve(dua, &self.ggl, false)?;
+            self.ls.actual.solve(dua, &self.ggl, false)?;
             work.stats.stop_sw_lin_sol();
 
             // solve δub := Gu⁻¹ · G
-            let dub = &mut work.u_aux1;
+            let dub = &mut self.u_aux;
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            work.ls.actual.solve(dub, &work.gg, false)?;
+            self.ls.actual.solve(dub, &work.gg, false)?;
             work.stats.stop_sw_lin_sol();
 
             // calculate: den = Nu₀ᵀ δua - Nλ₀
@@ -499,12 +481,9 @@ impl<'a, A> SolverArclength<'a, A> {
             }
             self.x[ndim] = dl;
         } else {
-            // compute and factorize the augmented Jacobian matrix
-            let recompute_aa = work.n_iteration == 0 || !self.config.constant_tangent;
-            if recompute_aa {
-                self.calc_aa(work, args, false)?;
-                self.iter_jac_computed = true;
-            }
+            // compute and factorize A (calculates Gu and Gλ)
+            self.assemble_and_factorize_aa(work, args, false)?;
+            self.iter_jac_computed = true;
 
             // set the right-hand side vector b = (-G, -N)
             for i in 0..ndim {
@@ -515,7 +494,7 @@ impl<'a, A> SolverArclength<'a, A> {
             // solve linear system A x = b; thus x = (δu, δλ)
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
+            self.ls.actual.solve(&mut self.x, &self.b, false)?;
             work.stats.stop_sw_lin_sol();
         }
 
@@ -577,16 +556,13 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         vec_copy(&mut work.u, &u).unwrap(); // u₀ = u
         work.l = l; // λ₀ = λ
 
-        // calculate Gλ = ∂G/∂λ
-        self.calc_ggl(work, args)?;
-
-        // set the initial direction vector
+        // set the initial direction vector (calculates Gu = ∂G/∂u and Gλ = ∂G/∂λ)
         match dir {
             IniDir::Pos => self.calc_initial_tangent(work, 1.0, args)?,
             IniDir::Neg => self.calc_initial_tangent(work, -1.0, args)?,
         }
         if f64::abs(work.dlds) < CONFIG_H_MIN {
-            return Err("Initial dλ/ds₀ is too small");
+            return Err("initial dλ/ds₀ is too small");
         }
 
         // initial stepsize: Δλ₀
@@ -679,6 +655,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // iteration loop
         let mut status = Status::Success;
         work.n_iteration = 0;
+        self.iter_jac_computed = false;
         for _ in 0..self.config.n_iteration_max {
             // stats
             work.stats.n_iteration_total += 1;
@@ -733,19 +710,19 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             if !self.iter_jac_computed {
                 // This is only needed if the iteration converged without computing the Jacobian
                 // For example, when the predictor was good enough and no Jacobian was computed
-                self.calc_ggu(work, args)?;
+                self.assemble_and_factorize_jac(work, args)?;
             }
 
             // Note that Gλ was calculated at the updated state during the iteration
             // solve mdu := Gu⁻¹ · Gλ = -z
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            work.ls.actual.solve(&mut work.mdu, &self.ggl, false)?; // mdu := -z
+            self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := -z
             work.stats.stop_sw_lin_sol();
 
             // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            work.dlds = 1.0 / f64::sqrt(1.0 + vec_inner(&work.mdu, &work.mdu));
-            vec_copy_scaled(&mut work.duds, -work.dlds, &work.mdu).unwrap(); // "-1" because mdu = -z
+            work.dlds = 1.0 / f64::sqrt(1.0 + vec_inner(&self.mdu, &self.mdu));
+            vec_copy_scaled(&mut work.duds, -work.dlds, &self.mdu).unwrap(); // "-1" because mdu = -z
 
             // fix the sign of the tangent vector to keep following in the same direction
             let dot = vec_inner(&work.duds, &self.duds_prev) + work.dlds * self.dlds_prev;
@@ -760,7 +737,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             if !self.iter_jac_computed {
                 // This is only needed if the iteration converged without computing the Jacobian
                 // For example, when the predictor was good enough and no Jacobian was computed
-                self.calc_aa(work, args, false)?;
+                self.assemble_and_factorize_aa(work, args, false)?;
             }
 
             // set b = (0, 1)
@@ -770,7 +747,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
             work.stats.sw_lin_sol.reset();
             work.stats.n_lin_sol += 1;
-            self.ls_aug.actual.solve(&mut self.x, &self.b, false)?;
+            self.ls.actual.solve(&mut self.x, &self.b, false)?;
             work.stats.stop_sw_lin_sol();
 
             // calculate the norm of x
@@ -854,13 +831,12 @@ mod tests {
     #[test]
     fn new_captures_errors() {
         let mut config = Config::new();
-        config.set_method(Method::Arclength);
-        config.set_use_numerical_jacobian(true);
-        let (mut system, _, _, _) = Samples::simple_linear_problem(false, false, Sym::No);
+        config.set_method(Method::Arclength).set_bordering(false);
+        let (mut system, _, _, _) = Samples::simple_linear_problem(Sym::YesFull);
         system.set_update_secondary_state(|_, _, _, _, _, _| Ok(false));
         assert_eq!(
             SolverArclength::new(&config, system).err(),
-            Some("The Arclength method cannot use numerical Jacobian with the secondary update function")
+            Some("The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general.")
         );
     }
 }

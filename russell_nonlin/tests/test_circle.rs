@@ -231,64 +231,6 @@ fn test_circle_min_u() {
     }
 }
 
-#[test]
-fn test_circle_max_lambda_num_jac() {
-    // system
-    let (system, mut u, mut l, mut args) = Samples::circle_ul(RADIUS);
-
-    // configuration
-    let mut config = Config::new();
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_ddl_ini(0.3)
-        .set_use_numerical_jacobian(true)
-        .set_record_iterations_residuals(true)
-        .set_log_file("/tmp/russell_nonlin/test_circle_max_lambda_num_jac.txt");
-
-    // define solver
-    let mut solver = Solver::new(&config, system).unwrap();
-
-    // output
-    let out = &mut Output::new();
-    out.set_recording(true, &[0], &[0]);
-
-    // numerical continuation
-    let status = solver
-        .solve(
-            &mut args,
-            &mut u,
-            &mut l,
-            IniDir::Pos,
-            Stop::MaxLambda(RADIUS),
-            AutoStep::Yes,
-            Some(out),
-        )
-        .unwrap();
-    assert_eq!(status, Status::Success);
-
-    // check the results
-    let uu = out.get_u_values(0);
-    let ll = out.get_l_values();
-    println!("u final = {:.3e}", u[0]);
-    println!("λ final = {}, err = {:.3e}", l, f64::abs(l - RADIUS));
-    approx_eq(u[0], 0.0, 1e-5);
-    approx_eq(l, RADIUS, 1e-14);
-
-    // check stats
-    let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 2);
-    assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 2);
-
-    // plot
-    if SAVE_FIGURE {
-        let hh = out.get_h_values();
-        do_plot("test_circle_max_lambda_num_jac", uu, ll);
-        do_plot_stepsizes("test_circle_max_lambda_num_jac", hh);
-    }
-}
-
 fn do_plot(name: &str, uu: &[f64], ll: &[f64]) {
     // Draw a reference circle
     let mut circle = Canvas::new();

@@ -29,27 +29,26 @@ impl<'a> SimData<'a> {
     fn new(config: &'a Config) -> Self {
         // define nonlinear system: G(u, λ) = u - λ
         let ndim = 1;
-        let mut system = System::new(ndim, |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
-            gg[0] = u[0] - l;
-            Ok(())
-        })
-        .unwrap();
-
-        // set analytical Jacobian
         let nnz = Some(1);
         let sym = Sym::No;
-        system
-            .set_calc_ggu(
-                nnz,
-                sym,
-                |ggu: &mut CooMatrix, _l: f64, _u: &Vector, _args: &mut NoArgs| {
-                    ggu.reset();
-                    // dG/du = 1
-                    ggu.put(0, 0, 1.0).unwrap();
-                    Ok(())
-                },
-            )
-            .unwrap();
+        let system = System::new(
+            ndim,
+            nnz,
+            sym,
+            |gg: &mut Vector, l: f64, u: &Vector, _args: &mut u8| {
+                gg[0] = u[0] - l;
+                Ok(())
+            },
+            |ggu: &mut CooMatrix, ggl: &mut Vector, _l: f64, _u: &Vector, _args: &mut NoArgs| {
+                ggu.reset();
+                // dG/du = 1
+                ggu.put(0, 0, 1.0).unwrap();
+                // dG/dλ = -1
+                ggl[0] = -1.0;
+                Ok(())
+            },
+        )
+        .unwrap();
 
         // return data
         SimData {

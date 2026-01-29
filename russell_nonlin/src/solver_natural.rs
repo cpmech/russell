@@ -2,7 +2,7 @@ use super::{AutoStep, Config, IniDir, Method, Status};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{vec_copy, vec_update, Vector};
-use russell_sparse::numerical_jacobian;
+use russell_sparse::{CooMatrix, LinSolver};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
 pub struct SolverNatural<'a, A> {
@@ -15,21 +15,39 @@ pub struct SolverNatural<'a, A> {
     /// Sign of the step size to maintain the direction of the continuation
     sign0: f64,
 
+    /// Holds the Gλ = ∂G/∂λ vector (not used by this method)
+    ggl: Vector,
+
+    /// Holds the Gu = ∂G/∂u matrix for the bordering algorithm
+    ggu: CooMatrix,
+
+    /// Holds -δu (negative of iteration increment) for the bordering algorithm
+    mdu: Vector,
+
+    /// Linear solver
+    ls: LinSolver<'a>,
+
     /// Previous u variable for the curvature estimation
     u_prev: Vector,
 }
 
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
-    pub fn new(config: &'a Config, system: System<'a, A>) -> Self {
+    pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError> {
         assert_eq!(config.method, Method::Natural);
+        let genie = config.genie;
         let ndim = system.ndim;
-        SolverNatural {
+        let ggu = CooMatrix::new(ndim, ndim, system.nnz_ggu, system.sym_ggu).unwrap();
+        Ok(SolverNatural {
             config,
             system,
             sign0: 1.0,
+            ggl: Vector::new(ndim),
+            ggu,
+            mdu: Vector::new(ndim),
+            ls: LinSolver::new(genie)?,
             u_prev: Vector::new(ndim),
-        }
+        })
     }
 
     /// Performs a single iteration
@@ -48,53 +66,27 @@ impl<'a, A> SolverNatural<'a, A> {
             return Ok(Status::Success);
         }
 
-        // auxiliary flags
-        let recompute_jacobian = work.n_iteration == 0 || !self.config.constant_tangent;
-        let use_num_jacobian = self.config.use_numerical_jacobian || self.system.calc_ggu.is_none();
-
         // compute Jacobian matrix
-        if recompute_jacobian {
-            // assemble Gu matrix
-            let ndim = self.system.ndim;
-            work.stats.sw_jacobian.reset();
-            work.ggu.reset();
-            if use_num_jacobian {
-                // numerical Jacobian
-                work.stats.num_jacobian = true;
-                work.stats.n_function += self.system.ndim;
-                numerical_jacobian(
-                    &mut work.ggu,
-                    ndim,
-                    1.0,
-                    work.l,
-                    &mut work.u,
-                    &mut work.u_aux1,
-                    &mut work.u_aux2,
-                    args,
-                    self.system.calc_gg.as_ref(),
-                )?;
-            } else {
-                // analytical Jacobian
-                work.stats.n_jacobian += 1;
-                (self.system.calc_ggu.as_ref().unwrap())(&mut work.ggu, work.l, &work.u, args)?;
-            }
-            work.stats.stop_sw_jacobian();
+        work.stats.sw_jacobian.reset();
+        self.ggu.reset();
+        work.stats.n_jacobian += 1;
+        (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
+        work.stats.stop_sw_jacobian();
 
-            // factorize Gu matrix
-            work.stats.sw_factor.reset();
-            work.stats.n_factor += 1;
-            work.ls.actual.factorize(&mut work.ggu, self.config.lin_sol_config)?;
-            work.stats.stop_sw_factor();
-        }
+        // factorize Gu matrix
+        work.stats.sw_factor.reset();
+        work.stats.n_factor += 1;
+        self.ls.actual.factorize(&mut self.ggu, self.config.lin_sol_config)?;
+        work.stats.stop_sw_factor();
 
         // solve linear system
         work.stats.sw_lin_sol.reset();
         work.stats.n_lin_sol += 1;
-        work.ls.actual.solve(&mut work.mdu, &work.gg, false)?;
+        self.ls.actual.solve(&mut self.mdu, &work.gg, false)?;
         work.stats.stop_sw_lin_sol();
 
         // check convergence on δu
-        let nan_or_inf = work.err.analyze_delta(work.n_iteration, &work.mdu);
+        let nan_or_inf = work.err.analyze_delta(work.n_iteration, &self.mdu);
         if nan_or_inf {
             return Ok(Status::NanOrInfDelta);
         }
@@ -110,7 +102,7 @@ impl<'a, A> SolverNatural<'a, A> {
         }
 
         // update: u ← u - mdu = u + δu
-        vec_update(&mut work.u, -1.0, &work.mdu).unwrap();
+        vec_update(&mut work.u, -1.0, &self.mdu).unwrap();
 
         // external: update secondary variables
         if let Some(f) = self.system.update_secondary_state.as_ref() {

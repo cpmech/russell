@@ -252,38 +252,35 @@ fn new_hs_model_problem<'a>(
 ) -> Result<(System<'a, HSmodelArgs<'a>>, HSmodelArgs<'a>), StrError> {
     // Define G(u, λ)
     let ndim = 1;
-    let mut system = System::new(ndim, |gg, l, _u, args: &mut HSmodelArgs<'a>| {
-        let y = args.local_state.stress;
-        let q = y;
-        gg[0] = q - l;
-        Ok(())
-    })?;
-
-    // Function to compute Gu = ∂G/∂u
-    // ∂G/∂u = ∂q/∂u = ∂q/∂y * ∂y/∂x * ∂x/∂u
-    //       = 1 * ∂y/∂x * B
-    // where ∂y/∂x is the consistent tangent modulus given by the hardening-softening model
     let nnz = Some(1);
     let sym = Sym::No;
-    system.set_calc_ggu(nnz, sym, move |ggu, _l, _u, args: &mut HSmodelArgs<'a>| {
-        let x = args.local_state.strain;
-        let y = args.local_state.stress;
-        let dy_dx = if use_continuous_modulus {
-            args.model.continuous_modulus(x, y)
-        } else {
-            let ddx = args.ddx;
-            args.model.consistent_tangent_modulus(x, y, ddx)
-        };
-        ggu.put(0, 0, 1.0 * dy_dx * B).unwrap();
-        Ok(())
-    })?;
-
-    // Function to compute Gl = ∂G/∂λ
-    // ∂G/∂λ = -1
-    system.set_calc_ggl(|ggl, _l, _u, _args: &mut HSmodelArgs<'a>| {
-        ggl[0] = -1.0;
-        Ok(())
-    });
+    let mut system = System::new(
+        ndim,
+        nnz,
+        sym,
+        |gg, l, _u, args: &mut HSmodelArgs<'a>| {
+            let y = args.local_state.stress;
+            let q = y;
+            gg[0] = q - l;
+            Ok(())
+        },
+        // ∂G/∂u = ∂q/∂u = ∂q/∂y * ∂y/∂x * ∂x/∂u = 1 * ∂y/∂x * B
+        // where ∂y/∂x is the consistent tangent modulus given by the hardening-softening model
+        // ∂G/∂λ = -1
+        move |ggu, ggl, _l, _u, args: &mut HSmodelArgs<'a>| {
+            let x = args.local_state.strain;
+            let y = args.local_state.stress;
+            let dy_dx = if use_continuous_modulus {
+                args.model.continuous_modulus(x, y)
+            } else {
+                let ddx = args.ddx;
+                args.model.consistent_tangent_modulus(x, y, ddx)
+            };
+            ggu.put(0, 0, 1.0 * dy_dx * B).unwrap();
+            ggl[0] = -1.0;
+            Ok(())
+        },
+    )?;
 
     // Set the callback functions to manage the local state
     system

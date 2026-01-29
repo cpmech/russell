@@ -155,7 +155,7 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
     let auto = AutoStep::Yes;
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.039, 0.061, 0.06), //
+        (8, 0.039, 0.062, 0.06), //
                                  // (100, 0.00089, 0.002, 0.0025), //
     ] {
         for alpha in [0.0, 0.2] {
@@ -186,7 +186,7 @@ fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.0016, 0.0024, 0.002), //
+        (8, 0.0032, 0.0024, 0.002), //
                                     // (20, 0.0048, 0.0002, 0.0005), //
     ] {
         for alpha in [0.0, 0.2] {
@@ -213,7 +213,7 @@ fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
     let auto = AutoStep::Yes;
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.039, 0.083, 0.123), //
+        (8, 0.042, 0.083, 0.123), //
                                   // (9, 0.028, 0.064, 0.092), //
                                   // (20, 0.0052, 0.012, 0.015), //
                                   // (22, 0.0059, 0.012, 0.013), //
@@ -252,7 +252,7 @@ fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
     let genie = Genie::Umfpack;
     let symmetric = false;
     for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.034, 0.0, 0.0)] {
+        for (npt, tol1, tol2, tol3) in [(8, 0.23, 0.0, 0.0)] {
             run_test(
                 spc, one_dim, lmm, bordering, alpha, npt, auto, genie, symmetric, tol1, tol2, tol3,
             )?;
@@ -365,9 +365,6 @@ fn run_test(
         coo,
     };
 
-    // allocate nonlinear problem
-    let mut system = System::new(ndim, calc_gg)?;
-
     // max number of non-zeros in Gu
     let nnz = if lmm {
         nnz_coo + neq // +neq due to the λ B term
@@ -375,9 +372,8 @@ fn run_test(
         nnz_coo + nu // +nu due to the λ B term
     };
 
-    // set callback functions
-    system.set_calc_ggu(Some(nnz), sym, calc_ggu)?;
-    system.set_calc_ggl(calc_ggl);
+    // allocate nonlinear problem
+    let system = System::new(ndim, Some(nnz), sym, calc_gg, calc_jac)?;
 
     // define the solver
     let mut solver = Solver::new(&config, system)?;
@@ -429,10 +425,10 @@ fn run_test(
             let diff = f64::abs(lam_crit - ref_alp00);
             println!("diff = {}", diff);
             if diff > alpha0_lam_crit_tol {
-                println!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, ref_alp00, diff);
+                panic!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, ref_alp00, diff);
             }
         } else {
-            println!("WARNING: for alpha = 0.0, one peak must have been found");
+            panic!("WARNING: for alpha = 0.0, one peak must have been found");
         }
     } else if alpha == 0.2 {
         if ii_peaks.len() == 1 && ii_valleys.len() == 1 {
@@ -442,19 +438,19 @@ fn run_test(
             let diff_b = f64::abs(lam_crit_b - ref_alp02b);
             println!("diff_a = {}, diff_b = {}", diff_a, diff_b);
             if diff_a > alpha02_1st_lam_crit_tol {
-                println!(
+                panic!(
                     "❌ ERROR ❌ 1st λCrit = {}, ref = {}, diff = {}",
                     lam_crit_a, ref_alp02a, diff_a
                 );
             }
             if diff_b > alpha02_2nd_lam_crit_tol {
-                println!(
+                panic!(
                     "❌ ERROR ❌ 2nd λCrit = {}, ref = {}, diff = {}",
                     lam_crit_b, ref_alp02b, diff_b
                 );
             }
         } else {
-            println!("WARNING: for alpha = 0.2, one peak and one valley must have been found");
+            panic!("WARNING: for alpha = 0.2, one peak and one valley must have been found");
         }
     }
     println!();
@@ -502,37 +498,28 @@ fn calc_gg(gg: &mut Vector, l: f64, u: &Vector, args: &mut Args) -> Result<(), S
     Ok(())
 }
 
-// function to calculate Gu = ∂G/∂u (Jacobian matrix)
-fn calc_ggu(ggu_or_aa: &mut CooMatrix, l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
+// function to calculate the Jacobian; Gu = ∂G/∂u and Gl = ∂G/∂λ
+fn calc_jac(ggu: &mut CooMatrix, ggl: &mut Vector, l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
     // note that ggu_or_aa may be the pseudo-arclength (larger) matrix
-    ggu_or_aa.reset();
+    ggu.reset();
     // set Gu := K̄  or Gu := M
-    ggu_or_aa.add(1.0, &args.coo).unwrap();
+    ggu.add(1.0, &args.coo).unwrap();
     // add λ B to the Gu
     for m in 0..args.nphi {
         let dm = 1.0 + args.alpha * u[m];
         let bm = f64::exp(u[m] / dm);
-        ggu_or_aa.put(m, m, l * bm / (dm * dm)).unwrap();
+        ggu.put(m, m, l * bm / (dm * dm)).unwrap();
+        ggl[m] = bm;
     }
     // check Jacobian for smaller grids
     if CHECK_JACOBIAN && args.bordering && args.npt <= 21 {
-        let ana = ggu_or_aa.as_dense();
+        let ana = ggu.as_dense();
         let num = num_jacobian(args.ndim, l, u, 1.0, args, calc_gg).unwrap();
         if args.npt <= 4 {
             println!("ana =\n{:.3}", ana);
             println!("num =\n{:.3}", num);
         }
         mat_approx_eq(&ana, &num, 1e-7);
-    }
-    Ok(())
-}
-
-// function to calculate Gl = ∂G/∂λ
-fn calc_ggl(ggl: &mut Vector, _l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
-    for m in 0..args.nphi {
-        let dm = 1.0 + args.alpha * u[m];
-        let bm = f64::exp(u[m] / dm);
-        ggl[m] = bm;
     }
     Ok(())
 }

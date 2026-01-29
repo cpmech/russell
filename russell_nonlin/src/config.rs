@@ -94,12 +94,6 @@ pub struct Config {
     /// Maximum allowed number of continued divergence on ‖δu,δλ‖∞
     pub(crate) n_cont_delta_divergence_max: usize,
 
-    /// Modified Newton's method with constant tangent matrix
-    pub(crate) constant_tangent: bool,
-
-    /// Use numerical Jacobian, even if the analytical Jacobian is available
-    pub(crate) use_numerical_jacobian: bool,
-
     // pseudo-arclength -------------------------------------------------------------------
     //
     /// Use the bordering algorithm throughout the entire simulation
@@ -248,8 +242,6 @@ impl Config {
             n_iteration_max: 20,
             n_cont_residual_divergence_max: 3,
             n_cont_delta_divergence_max: 5,
-            constant_tangent: false,
-            use_numerical_jacobian: false,
             // pseudo-arclength
             bordering: true,
             debug_predictor: false,
@@ -498,26 +490,6 @@ impl Config {
     /// Default value: 5
     pub fn set_n_cont_delta_divergence_max(&mut self, value: usize) -> &mut Self {
         self.n_cont_delta_divergence_max = value;
-        self
-    }
-
-    /// Sets the constant tangent flag
-    ///
-    /// Modified Newton's method with constant tangent matrix
-    ///
-    /// Default value: false
-    pub fn set_constant_tangent(&mut self, flag: bool) -> &mut Self {
-        self.constant_tangent = flag;
-        self
-    }
-
-    /// Sets the use numerical Jacobian flag
-    ///
-    /// Use numerical Jacobian, even if the analytical Jacobian is available
-    ///
-    /// Default value: false
-    pub fn set_use_numerical_jacobian(&mut self, flag: bool) -> &mut Self {
-        self.use_numerical_jacobian = flag;
         self
     }
 

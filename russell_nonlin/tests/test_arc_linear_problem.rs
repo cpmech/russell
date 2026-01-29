@@ -23,9 +23,7 @@ fn test_arc_linear_problem_mumps() {
 fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
     // system
     let sym = genie.get_sym(symmetric);
-    let with_ggu = true; // with ∂G/∂u
-    let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, sym);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(sym);
 
     // configuration
     let mut config = Config::new();
@@ -100,9 +98,7 @@ fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
 #[test]
 fn test_arc_linear_problem_backward() {
     // system
-    let with_ggu = true; // with ∂G/∂u
-    let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(Sym::No);
 
     // initial state
     let ddl = 0.5 / SQRT_2; // Δλ
@@ -176,9 +172,7 @@ fn test_arc_linear_problem_backward() {
 #[test]
 fn test_arc_linear_problem_large_step() {
     // system
-    let with_ggu = true; // with ∂G/∂u
-    let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -231,9 +225,7 @@ fn test_arc_linear_problem_large_step() {
 #[test]
 fn test_arc_linear_problem_auto() {
     // system
-    let with_ggu = true; // with ∂G/∂u
-    let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(Sym::No);
 
     // configuration
     let mut config = Config::new();
@@ -284,9 +276,7 @@ fn test_arc_linear_problem_auto() {
 #[test]
 fn test_arc_linear_problem_auto_backward() {
     // system
-    let with_ggu = true; // with ∂G/∂u
-    let with_ggl = true; // with ∂G/∂λ
-    let (system, mut u, _, mut args) = Samples::simple_linear_problem(with_ggu, with_ggl, Sym::No);
+    let (system, mut u, _, mut args) = Samples::simple_linear_problem(Sym::No);
 
     // initial state
     u[0] = 5.0 * 0.5 / SQRT_2;

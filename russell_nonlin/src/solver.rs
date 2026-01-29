@@ -18,7 +18,7 @@ pub struct Solver<'a, A> {
     actual: Box<dyn SolverTrait<A> + 'a>,
 
     /// Holds statistics, benchmarking and "work" variables
-    work: Workspace<'a>,
+    work: Workspace,
 
     /// Function to calculate the initial Δλ
     ///
@@ -43,7 +43,7 @@ impl<'a, A> Solver<'a, A> {
         let work = Workspace::new(&config, &system);
         let actual: Box<dyn SolverTrait<A>> = match config.method {
             Method::Arclength => Box::new(SolverArclength::new(&config, system.clone())?),
-            Method::Natural => Box::new(SolverNatural::new(&config, system.clone())),
+            Method::Natural => Box::new(SolverNatural::new(&config, system.clone())?),
         };
         Ok(Solver {
             config,

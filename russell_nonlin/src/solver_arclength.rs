@@ -550,6 +550,10 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         dir: IniDir,
         args: &mut A,
     ) -> Result<(), StrError> {
+        // set flags
+        self.theta = 1.0; // normal operation
+        self.iter_jac_computed = false;
+
         // set initial values
         vec_copy(&mut work.u, &u).unwrap(); // u₀ = u
         work.l = l; // λ₀ = λ

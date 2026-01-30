@@ -107,9 +107,9 @@ fn test_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 4);
+    assert_eq!(stats.n_accepted, 5);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 4);
+    assert_eq!(stats.n_steps, 5);
 
     // plot
     if SAVE_FIGURE {
@@ -129,7 +129,7 @@ fn test_circle_max_u() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_ddl_ini(0.3)
+        .set_ddl_ini(0.2)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -185,7 +185,8 @@ fn test_circle_min_u() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_ddl_ini(0.3)
+        .set_ddl_ini(0.1)
+        .set_euler_predictor(true)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -219,8 +220,8 @@ fn test_circle_min_u() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 2);
-    assert_eq!(stats.n_rejected, 3);
+    assert_eq!(stats.n_accepted, 5);
+    assert_eq!(stats.n_rejected, 0);
     assert_eq!(stats.n_steps, 5);
 
     // plot

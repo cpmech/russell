@@ -95,10 +95,9 @@ impl<'a> Runner for Simulator<'a> {
             .unwrap();
         approx_eq(self.data.u[0], LAMBDA_FINAL, 1e-15);
         let stats = self.data.solver.get_stats();
-        let nstep = 10;
-        let niter = 10 * 2;
+        let niter = 10; // the Euler predictor makes it converge in 1 iteration per step
         assert_eq!(stats.n_function, niter);
-        assert_eq!(stats.n_jacobian, nstep);
+        assert_eq!(stats.n_jacobian, 2); // only 2 Jacobian are computed because the Euler predictor takes care of the rest
         assert_eq!(stats.n_iteration_total, niter);
     }
 }

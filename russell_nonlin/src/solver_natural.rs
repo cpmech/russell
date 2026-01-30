@@ -15,6 +15,12 @@ pub struct SolverNatural<'a, A> {
     /// Sign of the step size to maintain the direction of the continuation
     sign0: f64,
 
+    /// Indicates that the Jacobian matrix (Gu) has been computed at least once in the iteration
+    ///
+    /// This check is necessary because the predictor may be so good that the iteration
+    /// stops without even computing the Jacobian matrix (e.g., in linear problems).
+    iter_jac_computed: bool,
+
     /// Holds the Gλ = ∂G/∂λ vector (not used by this method)
     ggl: Vector,
 
@@ -42,12 +48,32 @@ impl<'a, A> SolverNatural<'a, A> {
             config,
             system,
             sign0: 1.0,
+            iter_jac_computed: false,
             ggl: Vector::new(ndim),
             ggu,
             mdu: Vector::new(ndim),
             ls: LinSolver::new(genie)?,
             u_prev: Vector::new(ndim),
         })
+    }
+
+    /// Assembles and factorizes the Jacobian matrix
+    ///
+    /// Calculates Gu = ∂G/∂u and Gλ = ∂G/∂λ)
+    fn assemble_and_factorize_jac(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        // assemble Gu and Gλ
+        work.stats.sw_jacobian.reset();
+        self.ggu.reset();
+        work.stats.n_jacobian += 1;
+        (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
+        work.stats.stop_sw_jacobian();
+
+        // factorize Gu matrix
+        work.stats.sw_factor.reset();
+        work.stats.n_factor += 1;
+        self.ls.actual.factorize(&mut self.ggu, self.config.lin_sol_config)?;
+        work.stats.stop_sw_factor();
+        Ok(())
     }
 
     /// Performs a single iteration
@@ -66,18 +92,8 @@ impl<'a, A> SolverNatural<'a, A> {
             return Ok(Status::Success);
         }
 
-        // compute Jacobian matrix
-        work.stats.sw_jacobian.reset();
-        self.ggu.reset();
-        work.stats.n_jacobian += 1;
-        (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
-        work.stats.stop_sw_jacobian();
-
-        // factorize Gu matrix
-        work.stats.sw_factor.reset();
-        work.stats.n_factor += 1;
-        self.ls.actual.factorize(&mut self.ggu, self.config.lin_sol_config)?;
-        work.stats.stop_sw_factor();
+        // assemble and factorize the Jacobian matrix
+        self.assemble_and_factorize_jac(work, args)?;
 
         // solve linear system
         work.stats.sw_lin_sol.reset();
@@ -172,6 +188,9 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         dir: IniDir,
         _args: &mut A,
     ) -> Result<(), StrError> {
+        // set flags
+        self.iter_jac_computed = false;
+
         // set the initial direction
         self.sign0 = match dir {
             IniDir::Pos => 1.0,
@@ -224,6 +243,11 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                 (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
                 vec_add(&mut work.u, 1.0, &u, -work.h, &self.ggl).unwrap(); // u₁ = u₀ + h (-Gλ₀)
             } else {
+                // need to factorize Gu first. This case arises in linear problems where the step is accepted without iterations
+                if !self.iter_jac_computed {
+                    self.assemble_and_factorize_jac(work, args)?;
+                    self.iter_jac_computed = true;
+                }
                 // using the last factorized Gu: du/dλ = -Gu⁻¹ Gλ
                 self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := Gu⁻¹ Gλ
                 vec_add(&mut work.u, 1.0, &u, -work.h, &self.mdu).unwrap(); // u₁ = u₀ + h (-Gu⁻¹ Gλ)

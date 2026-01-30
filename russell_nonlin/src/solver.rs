@@ -498,7 +498,7 @@ mod tests {
         vec_approx_eq(&u, &u_ref, 1e-15);
         let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
-        assert_eq!(stats.n_jacobian, 6);
+        assert_eq!(stats.n_jacobian, 7);
         assert_eq!(stats.n_factor, 6);
         assert_eq!(stats.n_lin_sol, 6);
         assert_eq!(stats.n_steps, 1);
@@ -528,7 +528,7 @@ mod tests {
         vec_approx_eq(&u, &u_ref, 1e-15);
         let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
-        assert_eq!(stats.n_jacobian, 6);
+        assert_eq!(stats.n_jacobian, 7);
         assert_eq!(stats.n_factor, 6);
         assert_eq!(stats.n_lin_sol, 6);
         assert_eq!(stats.n_steps, 1);

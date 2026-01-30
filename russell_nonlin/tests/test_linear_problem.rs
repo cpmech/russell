@@ -52,12 +52,12 @@ fn test_linear_constant() {
 
     // check stats
     let nstep = 10;
-    let niter = 10 * 2;
+    let niter = 10; // the Euler predictor makes it converge in 1 iteration per step
     let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, nstep);
-    assert_eq!(stats.n_factor, nstep);
-    assert_eq!(stats.n_lin_sol, nstep);
+    assert_eq!(stats.n_jacobian, 2);
+    assert_eq!(stats.n_factor, 1);
+    assert_eq!(stats.n_lin_sol, 0);
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);
@@ -65,7 +65,7 @@ fn test_linear_constant() {
     assert!(stats.nanos_step_max > 0);
     assert!(stats.nanos_jacobian_max > 0);
     assert!(stats.nanos_factor_max > 0);
-    assert!(stats.nanos_lin_sol_max > 0);
+    assert!(stats.nanos_lin_sol_max == 0);
     assert!(stats.nanos_total > 0);
 }
 
@@ -165,8 +165,8 @@ fn test_linear_constant_backward() {
     let niter = 10 * 2;
     let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, nstep);
-    assert_eq!(stats.n_factor, nstep);
+    assert_eq!(stats.n_jacobian, nstep + 2); // because no iterations happen due to linear problem and Euler predictor needs this
+    assert_eq!(stats.n_factor, nstep + 1); // same reason as above
     assert_eq!(stats.n_lin_sol, nstep);
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
@@ -217,12 +217,12 @@ fn test_linear_list() {
     array_approx_eq(out.get_u_values(0), &[0.0, 0.1, 0.3, 0.7, 1.5], 1e-15);
 
     let nstep = 4;
-    let niter = nstep * 2;
+    let niter = nstep; // the Euler predictor makes it converge in 1 iteration per step
     let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, nstep);
-    assert_eq!(stats.n_factor, nstep);
-    assert_eq!(stats.n_lin_sol, nstep);
+    assert_eq!(stats.n_jacobian, 2);
+    assert_eq!(stats.n_factor, 1);
+    assert_eq!(stats.n_lin_sol, 0);
     assert_eq!(stats.n_steps, nstep);
     assert_eq!(stats.n_accepted, nstep);
     assert_eq!(stats.n_rejected, 0);

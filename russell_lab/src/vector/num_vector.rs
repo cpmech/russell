@@ -624,6 +624,16 @@ where
         }
         NumVector { data }
     }
+
+    /// Returns the differences between consecutive elements
+    pub fn get_differences(&self) -> NumVector<T> {
+        // 1. Pre-allocate space for exactly (N - 1) elements
+        let mut differences = Vec::with_capacity(self.data.len().saturating_sub(1));
+
+        // 2. Use extend to push the iterator results into the allocated space
+        differences.extend(self.data.windows(2).map(|w| w[1] - w[0]));
+        NumVector { data: differences }
+    }
 }
 
 impl<T> fmt::Display for NumVector<T>
@@ -1242,5 +1252,33 @@ mod tests {
     fn as_array_1d_works() {
         let u = NumVector::<i32>::from(&[1, 2, 3]);
         assert_eq!(array_1d_test(&u), "123");
+    }
+
+    #[test]
+    fn get_differences_works() {
+        // f64
+        let u = NumVector::<f64>::from(&[1.0, 2.0, 4.0, 7.0]);
+        let w = u.get_differences();
+        assert_eq!(w.data, &[1.0, 2.0, 3.0]);
+
+        // f32
+        let u = NumVector::<f32>::from(&[1.0, 2.5, 4.0, 7.0]);
+        let w = u.get_differences();
+        assert_eq!(w.data, &[1.5, 1.5, 3.0]);
+
+        // i32
+        let u = NumVector::<i32>::from(&[10, 20, 25]);
+        let w = u.get_differences();
+        assert_eq!(w.data, &[10, 5]);
+
+        // single element
+        let u = NumVector::<f64>::from(&[1.0]);
+        let w = u.get_differences();
+        assert_eq!(w.data.len(), 0);
+
+        // empty
+        let u = NumVector::<f64>::new(0);
+        let w = u.get_differences();
+        assert_eq!(w.data.len(), 0);
     }
 }

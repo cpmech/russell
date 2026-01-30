@@ -634,6 +634,43 @@ where
         differences.extend(self.data.windows(2).map(|w| w[1] - w[0]));
         NumVector { data: differences }
     }
+
+    /// Returns the cumulative sum of the elements
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - Optional initial value for the cumulative sum. If `None`, the cumulative sum starts from zero.
+    pub fn get_cumulative_sum(&self, start: Option<T>) -> NumVector<T> {
+        match start {
+            Some(initial_val) => {
+                // 1. Memory Optimization: Pre-allocate (differences.len() + 1)
+                let mut cumulative_sum = Vec::with_capacity(self.data.len() + 1);
+
+                // 2. Iterator Chain
+                cumulative_sum.extend(std::iter::once(initial_val).chain(self.data.iter().scan(
+                    initial_val,
+                    |state, diff| {
+                        *state = *state + *diff;
+                        Some(*state)
+                    },
+                )));
+
+                NumVector { data: cumulative_sum }
+            }
+            None => {
+                // 1. Memory Optimization: Pre-allocate (differences.len())
+                let mut cumulative_sum = Vec::with_capacity(self.data.len());
+
+                // 2. Iterator Chain
+                cumulative_sum.extend(self.data.iter().scan(T::zero(), |state, diff| {
+                    *state = *state + *diff;
+                    Some(*state)
+                }));
+
+                NumVector { data: cumulative_sum }
+            }
+        }
+    }
 }
 
 impl<T> fmt::Display for NumVector<T>
@@ -1280,5 +1317,38 @@ mod tests {
         let u = NumVector::<f64>::new(0);
         let w = u.get_differences();
         assert_eq!(w.data.len(), 0);
+    }
+
+    #[test]
+    fn get_cumulative_sum_works() {
+        // f64
+        let u = NumVector::<f64>::from(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let w = u.get_cumulative_sum(None);
+        assert_eq!(w.data, &[1.0, 3.0, 6.0, 10.0, 15.0, 21.0]);
+
+        // f64 with start
+        let u = NumVector::<f64>::from(&[1.0, 2.0, 3.0]);
+        let w = u.get_cumulative_sum(Some(10.0));
+        assert_eq!(w.data, &[10.0, 11.0, 13.0, 16.0]);
+
+        // i32
+        let u = NumVector::<i32>::from(&[1, 2, 3]);
+        let w = u.get_cumulative_sum(None);
+        assert_eq!(w.data, &[1, 3, 6]);
+
+        // i32 with start
+        let u = NumVector::<i32>::from(&[1, 2, 3]);
+        let w = u.get_cumulative_sum(Some(10));
+        assert_eq!(w.data, &[10, 11, 13, 16]);
+
+        // empty
+        let u = NumVector::<f64>::new(0);
+        let w = u.get_cumulative_sum(None);
+        assert_eq!(w.data.len(), 0);
+
+        // empty with start
+        let u = NumVector::<f64>::new(0);
+        let w = u.get_cumulative_sum(Some(5.0));
+        assert_eq!(w.data, &[5.0]);
     }
 }

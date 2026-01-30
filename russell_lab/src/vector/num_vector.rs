@@ -626,6 +626,19 @@ where
     }
 
     /// Returns the differences between consecutive elements
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{NumVector, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let u = NumVector::<f64>::from(&[1.0, 4.0, 9.0, 16.0]);
+    ///     let w = u.get_differences();
+    ///     assert_eq!(w.as_data(), &[3.0, 5.0, 7.0]);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn get_differences(&self) -> NumVector<T> {
         // 1. Pre-allocate space for exactly (N - 1) elements
         let mut differences = Vec::with_capacity(self.data.len().saturating_sub(1));

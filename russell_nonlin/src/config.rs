@@ -94,6 +94,11 @@ pub struct Config {
     /// Maximum allowed number of continued divergence on ‖δu,δλ‖∞
     pub(crate) n_cont_delta_divergence_max: usize,
 
+    // natural parameter continuation only ------------------------------------------------
+    //
+    /// Use the Euler predictor in the Natural continuation method
+    pub(crate) euler_predictor: bool,
+
     // pseudo-arclength -------------------------------------------------------------------
     //
     /// Use the bordering algorithm throughout the entire simulation
@@ -243,6 +248,7 @@ impl Config {
             n_cont_residual_divergence_max: 3,
             n_cont_delta_divergence_max: 5,
             // pseudo-arclength
+            euler_predictor: true,
             bordering: true,
             debug_predictor: false,
             // stepsize control
@@ -490,6 +496,16 @@ impl Config {
     /// Default value: 5
     pub fn set_n_cont_delta_divergence_max(&mut self, value: usize) -> &mut Self {
         self.n_cont_delta_divergence_max = value;
+        self
+    }
+
+    // natural parameter continuation only ------------------------------------------------
+
+    /// Uses the Euler predictor in the Natural continuation method
+    ///
+    /// Default value: true
+    pub fn set_euler_predictor(&mut self, flag: bool) -> &mut Self {
+        self.euler_predictor = flag;
         self
     }
 

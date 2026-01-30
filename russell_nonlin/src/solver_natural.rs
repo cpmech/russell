@@ -1,7 +1,7 @@
 use super::{Config, IniDir, Method, Status};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::{vec_copy, vec_update, Vector};
+use russell_lab::{vec_add, vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, LinSolver};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0
@@ -204,7 +204,6 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         work.stats.record_iterations_residuals_start();
 
         // predictor: set workspace with trial values
-        vec_copy(&mut work.u, &u).unwrap(); // u_trial ← u0
         work.l = l + self.sign0 * work.h; // λ_trial ← λ0 + h
 
         // handle "targeting lambda" mode if needed
@@ -213,6 +212,25 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
                 work.h = (l1 - l) * self.sign0; // dir_mult will correct the difference
                 work.l = l + self.sign0 * work.h; // λ_trial ← λ0 + h
             }
+        }
+
+        // predictor: calculate u_trial
+        if self.config.euler_predictor {
+            // Euler predictor: u₁ = u₀ + h du/dλ
+            if work.stats.n_accepted == 0 {
+                // approximating the first derivative: du/dλ ≈ -Gλ₀
+                work.stats.n_jacobian += 1;
+                self.ggu.reset();
+                (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
+                vec_add(&mut work.u, 1.0, &u, -work.h, &self.ggl).unwrap(); // u₁ = u₀ + h (-Gλ₀)
+            } else {
+                // using the last factorized Gu: du/dλ = -Gu⁻¹ Gλ
+                self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := Gu⁻¹ Gλ
+                vec_add(&mut work.u, 1.0, &u, -work.h, &self.mdu).unwrap(); // u₁ = u₀ + h (-Gu⁻¹ Gλ)
+            }
+        } else {
+            // Simple predictor: u₁ = u₀
+            vec_copy(&mut work.u, &u).unwrap();
         }
 
         // predictor: update secondary variables (e.g., local state)

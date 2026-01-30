@@ -33,11 +33,11 @@ impl DeltaLambda {
     }
 
     /// New list-based Δλ
-    pub fn list(list: Vec<f64>) -> Self {
+    pub fn list(list: &[f64]) -> Self {
         Self {
             auto: false,
             constant: 0.0,
-            list,
+            list: list.to_vec(),
         }
     }
 

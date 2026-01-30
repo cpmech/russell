@@ -3,7 +3,7 @@ use russell_nonlin::{Config, DeltaLambda, IniDir, Output, Samples, Solver, Stop}
 use russell_sparse::Sym;
 
 #[test]
-fn test_linear_no_auto() {
+fn test_linear_constant() {
     // system
     let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(Sym::No);
 
@@ -109,7 +109,7 @@ fn test_linear_auto() {
 }
 
 #[test]
-fn test_linear_no_auto_backward() {
+fn test_linear_constant_backward() {
     // system
     let (system, mut u, _, mut args) = Samples::simple_linear_problem(Sym::No);
 
@@ -177,4 +177,54 @@ fn test_linear_no_auto_backward() {
     assert!(stats.nanos_factor_max > 0);
     assert!(stats.nanos_lin_sol_max > 0);
     assert!(stats.nanos_total > 0);
+}
+
+#[test]
+fn test_linear_list() {
+    // system
+    let (system, mut u, mut l, mut args) = Samples::simple_linear_problem(Sym::No);
+
+    // configuration
+    let mut config = Config::new();
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_record_iterations_residuals(true);
+
+    // define solver
+    let mut solver = Solver::new(&config, system).unwrap();
+
+    // output
+    let out = &mut Output::new();
+    out.set_recording(true, &[0], &[]);
+
+    // solve
+    solver
+        .solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::MaxLambda(100.0),
+            DeltaLambda::list(&[0.1, 0.2, 0.4, 0.8]),
+            Some(out),
+        )
+        .unwrap();
+
+    // check
+    array_approx_eq(out.get_h_values(), &[0.1, 0.2, 0.4, 0.8, 0.8], 1e-15);
+    array_approx_eq(out.get_l_values(), &[0.0, 0.1, 0.3, 0.7, 1.5], 1e-15);
+    array_approx_eq(out.get_u_values(0), &[0.0, 0.1, 0.3, 0.7, 1.5], 1e-15);
+
+    let nstep = 4;
+    let niter = nstep * 2;
+    let stats = solver.get_stats();
+    assert_eq!(stats.n_function, niter);
+    assert_eq!(stats.n_jacobian, nstep);
+    assert_eq!(stats.n_factor, nstep);
+    assert_eq!(stats.n_lin_sol, nstep);
+    assert_eq!(stats.n_steps, nstep);
+    assert_eq!(stats.n_accepted, nstep);
+    assert_eq!(stats.n_rejected, 0);
+    assert_eq!(stats.n_iteration_total, niter);
 }

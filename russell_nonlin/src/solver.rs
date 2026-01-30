@@ -149,7 +149,12 @@ impl<'a, A> Solver<'a, A> {
         // perform continuation
         if !ddl.auto {
             // constant or list-based stepsize
-            for i in 0..self.config.n_step_max {
+            let n_step_max = if ddl.list.len() > 0 {
+                ddl.list.len()
+            } else {
+                self.config.n_step_max
+            };
+            for i in 0..n_step_max {
                 // log
                 self.work.stats.sw_step.reset();
                 self.work.log.step(self.work.h, *l, false);

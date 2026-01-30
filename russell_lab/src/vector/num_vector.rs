@@ -653,6 +653,22 @@ where
     /// # Arguments
     ///
     /// * `start` - Optional initial value for the cumulative sum. If `None`, the cumulative sum starts from zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{NumVector, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let u = NumVector::<f64>::from(&[1.0, 4.0, 9.0]);
+    ///     let w = u.get_cumulative_sum(None);
+    ///     assert_eq!(w.as_data(), &[1.0, 5.0, 14.0]);
+    ///
+    ///     let z = u.get_cumulative_sum(Some(10.0));
+    ///     assert_eq!(z.as_data(), &[10.0, 11.0, 15.0, 24.0]);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn get_cumulative_sum(&self, start: Option<T>) -> NumVector<T> {
         match start {
             Some(initial_val) => {

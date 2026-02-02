@@ -175,6 +175,9 @@ impl<'a, A> Solver<'a, A> {
                 // update the stepsize if a list is given
                 if i + 1 < ddl.list.len() {
                     let ddl_next = ddl.list[i + 1];
+                    if ddl_next <= CONFIG_H_MIN {
+                        return Err("requirement: ddl > 1e-10");
+                    }
                     self.work.h = match self.config.method {
                         Method::Arclength => {
                             let den = f64::abs(self.work.dlds);

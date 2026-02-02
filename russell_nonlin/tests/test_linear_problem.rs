@@ -55,7 +55,7 @@ fn test_linear_constant() {
     let niter = 10; // the Euler predictor makes it converge in 1 iteration per step
     let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, 2);
+    assert_eq!(stats.n_jacobian, 1);
     assert_eq!(stats.n_factor, 1);
     assert_eq!(stats.n_lin_sol, 0);
     assert_eq!(stats.n_steps, nstep);
@@ -165,7 +165,7 @@ fn test_linear_constant_backward() {
     let niter = 10 * 2;
     let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, nstep + 2); // because no iterations happen due to linear problem and Euler predictor needs this
+    assert_eq!(stats.n_jacobian, nstep + 1); // because no iterations happen due to linear problem and Euler predictor needs this
     assert_eq!(stats.n_factor, nstep + 1); // same reason as above
     assert_eq!(stats.n_lin_sol, nstep);
     assert_eq!(stats.n_steps, nstep);
@@ -220,7 +220,7 @@ fn test_linear_list() {
     let niter = nstep; // the Euler predictor makes it converge in 1 iteration per step
     let stats = solver.get_stats();
     assert_eq!(stats.n_function, niter);
-    assert_eq!(stats.n_jacobian, 2);
+    assert_eq!(stats.n_jacobian, 1);
     assert_eq!(stats.n_factor, 1);
     assert_eq!(stats.n_lin_sol, 0);
     assert_eq!(stats.n_steps, nstep);

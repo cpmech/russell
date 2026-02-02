@@ -34,7 +34,7 @@ fn test_newton_problems_ok_1_auto() {
     let n_jac = n_iter; // because it converges on ‖δu‖∞ thus the last Jacobian is computed
     assert_eq!(stats.n_function, n_iter);
     assert_eq!(stats.n_jacobian, n_jac + 1);
-    assert_eq!(stats.n_factor, n_jac);
+    assert_eq!(stats.n_factor, n_jac + 1);
     assert_eq!(stats.n_lin_sol, n_jac);
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
@@ -167,7 +167,7 @@ fn test_newton_problems_ok_2_auto() {
     let n_jac = n_iter - 1; // because it converges on ‖G‖∞ thus the last Jacobian is NOT computed
     assert_eq!(stats.n_function, n_iter);
     assert_eq!(stats.n_jacobian, n_jac + 1);
-    assert_eq!(stats.n_factor, n_jac);
+    assert_eq!(stats.n_factor, n_jac + 1);
     assert_eq!(stats.n_lin_sol, n_jac);
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);

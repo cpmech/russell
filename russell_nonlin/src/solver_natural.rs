@@ -236,22 +236,14 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         // predictor: calculate u_trial
         if self.config.euler_predictor {
             // Euler predictor: u₁ = u₀ + h du/dλ
-            if work.stats.n_accepted == 0 {
-                // approximating the first derivative: du/dλ ≈ -Gλ₀
-                work.stats.n_jacobian += 1;
-                self.ggu.reset();
-                (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
-                vec_add(&mut work.u, 1.0, &u, -work.h, &self.ggl).unwrap(); // u₁ = u₀ + h (-Gλ₀)
-            } else {
-                // need to factorize Gu first. This case arises in linear problems where the step is accepted without iterations
-                if !self.iter_jac_computed {
-                    self.assemble_and_factorize_jac(work, args)?;
-                    self.iter_jac_computed = true;
-                }
-                // using the last factorized Gu: du/dλ = -Gu⁻¹ Gλ
-                self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := Gu⁻¹ Gλ
-                vec_add(&mut work.u, 1.0, &u, -work.h, &self.mdu).unwrap(); // u₁ = u₀ + h (-Gu⁻¹ Gλ)
+            if !self.iter_jac_computed {
+                vec_copy(&mut work.u, &u).unwrap();
+                self.assemble_and_factorize_jac(work, args)?;
+                self.iter_jac_computed = true;
             }
+            // using the last factorized Gu: du/dλ = -Gu⁻¹ Gλ
+            self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := Gu⁻¹ Gλ
+            vec_add(&mut work.u, 1.0, &u, -work.h, &self.mdu).unwrap(); // u₁ = u₀ + h (-Gu⁻¹ Gλ)
         } else {
             // Simple predictor: u₁ = u₀
             vec_copy(&mut work.u, &u).unwrap();

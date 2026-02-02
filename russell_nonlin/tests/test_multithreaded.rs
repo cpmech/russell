@@ -97,7 +97,7 @@ impl<'a> Runner for Simulator<'a> {
         let stats = self.data.solver.get_stats();
         let niter = 10; // the Euler predictor makes it converge in 1 iteration per step
         assert_eq!(stats.n_function, niter);
-        assert_eq!(stats.n_jacobian, 2); // only 2 Jacobian are computed because the Euler predictor takes care of the rest
+        assert_eq!(stats.n_jacobian, 1); // only 1 Jacobian is computed because the Euler predictor takes care of the rest
         assert_eq!(stats.n_iteration_total, niter);
     }
 }

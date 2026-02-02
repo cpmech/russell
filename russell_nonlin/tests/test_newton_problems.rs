@@ -1,5 +1,7 @@
 use russell_lab::vec_approx_eq;
 use russell_nonlin::{Config, DeltaLambda, IniDir, Samples, Solver, Status, Stop};
+use russell_sparse::Genie;
+use serial_test::serial;
 
 #[test]
 fn test_newton_problems_ok_1() {
@@ -33,7 +35,7 @@ fn test_newton_problems_ok_1() {
     let n_jac = n_iter; // because it converges on ‖δu‖∞ thus the last Jacobian is computed
     assert_eq!(stats.n_function, n_iter);
     assert_eq!(stats.n_jacobian, n_jac + 1);
-    assert_eq!(stats.n_factor, n_jac);
+    assert_eq!(stats.n_factor, n_jac + 1);
     assert_eq!(stats.n_lin_sol, n_jac);
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
@@ -166,7 +168,7 @@ fn test_newton_problems_ok_2() {
     let n_jac = n_iter - 1; // because it converges on ‖G‖∞ thus the last Jacobian is NOT computed
     assert_eq!(stats.n_function, n_iter);
     assert_eq!(stats.n_jacobian, n_jac + 1);
-    assert_eq!(stats.n_factor, n_jac);
+    assert_eq!(stats.n_factor, n_jac + 1);
     assert_eq!(stats.n_lin_sol, n_jac);
     assert_eq!(stats.n_steps, 1);
     assert_eq!(stats.n_accepted, 1);
@@ -230,6 +232,36 @@ fn test_two_eq_nr_prob_1_singular() {
         None,
     );
     assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
+}
+
+#[test]
+#[serial]
+fn test_two_eq_nr_prob_1_singular_mumps() {
+    // problem
+    let (system, mut u, _, mut args) = Samples::two_eq_nr_prob_1();
+
+    // configuration
+    let mut config = Config::new();
+    config
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_genie(Genie::Mumps);
+
+    // solver
+    let mut solver = Solver::new(&config, system).unwrap();
+
+    // solve problem
+    let mut l = 0.0;
+    let res = solver.solve(
+        &mut args,
+        &mut u,
+        &mut l,
+        IniDir::Pos,
+        Stop::Steps(1),
+        DeltaLambda::constant(1.0),
+        None,
+    );
+    assert_eq!(res.err(), Some("Error(-10): numerically singular matrix"));
 }
 
 #[test]

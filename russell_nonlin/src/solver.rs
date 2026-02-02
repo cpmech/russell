@@ -499,7 +499,7 @@ mod tests {
         let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
         assert_eq!(stats.n_jacobian, 7);
-        assert_eq!(stats.n_factor, 6);
+        assert_eq!(stats.n_factor, 7);
         assert_eq!(stats.n_lin_sol, 6);
         assert_eq!(stats.n_steps, 1);
         assert_eq!(stats.n_accepted, 1);
@@ -529,7 +529,7 @@ mod tests {
         let stats = solver.get_stats();
         assert_eq!(stats.n_function, 7);
         assert_eq!(stats.n_jacobian, 7);
-        assert_eq!(stats.n_factor, 6);
+        assert_eq!(stats.n_factor, 7);
         assert_eq!(stats.n_lin_sol, 6);
         assert_eq!(stats.n_steps, 1);
         assert_eq!(stats.n_accepted, 1);

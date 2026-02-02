@@ -223,27 +223,28 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         work.stats.record_iterations_residuals_start();
 
         // predictor: set workspace with trial values
-        work.l = l + self.sign0 * work.h; // λ_trial ← λ0 + h
+        work.l = l + self.sign0 * work.h; // λ₁ = λ₀ + Δλ
 
         // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
             if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
                 work.h = (l1 - l) * self.sign0; // dir_mult will correct the difference
-                work.l = l + self.sign0 * work.h; // λ_trial ← λ0 + h
+                work.l = l + self.sign0 * work.h; // λ₁ = λ₀ + Δλ
             }
         }
 
         // predictor: calculate u_trial
         if self.config.euler_predictor {
-            // Euler predictor: u₁ = u₀ + h du/dλ
+            // Euler predictor: u₁ = u₀ + Δλ du/dλ
             if !self.iter_jac_computed {
                 vec_copy(&mut work.u, &u).unwrap();
                 self.assemble_and_factorize_jac(work, args)?;
                 self.iter_jac_computed = true;
             }
             // using the last factorized Gu: du/dλ = -Gu⁻¹ Gλ
+            let ddl = work.l - l; // Δλ
             self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := Gu⁻¹ Gλ
-            vec_add(&mut work.u, 1.0, &u, -work.h, &self.mdu).unwrap(); // u₁ = u₀ + h (-Gu⁻¹ Gλ)
+            vec_add(&mut work.u, 1.0, &u, -ddl, &self.mdu).unwrap(); // u₁ = u₀ + Δλ (-Gu⁻¹ Gλ)
         } else {
             // Simple predictor: u₁ = u₀
             vec_copy(&mut work.u, &u).unwrap();

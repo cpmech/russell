@@ -107,9 +107,9 @@ fn test_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 5);
+    assert_eq!(stats.n_accepted, 3);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 5);
+    assert_eq!(stats.n_steps, 3);
 
     // plot
     if SAVE_FIGURE {

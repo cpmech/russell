@@ -61,13 +61,13 @@ pub enum Stop {
     /// Holds `(index, max_value)`.
     MaxCompU(usize, f64),
 
-    /// Stops when the norm of the `u[start..stop]` values reaches a maximum value.
+    /// Stops when the norm of the `u[begin..end]` values reaches a maximum value.
     ///
-    /// Holds `(max_value, norm_type, start, stop)`.
+    /// Holds `(max_value, norm_type, begin, end)`.
     ///
-    /// Note that `stop` is exclusive, i.e., the slice goes up to `stop - 1`.
+    /// Note that `end` is exclusive, i.e., the slice goes up to `end - 1`.
     ///
-    /// Requirements: `start` must be < `stop` and `stop` must be ≤ `u.dim()`.
+    /// Requirements: `begin` must be < `end` and `end` must be ≤ `u.dim()`.
     MaxNormU(f64, Norm, usize, usize),
 
     /// Stops when lambda reaches a minimum value.
@@ -100,12 +100,12 @@ impl Stop {
                     return Err("Stop enum error: MaxCompU value must be greater than the initial u value");
                 }
             }
-            Stop::MaxNormU(norm_u1, _, start, stop) => {
-                if *start >= *stop {
-                    return Err("Stop enum error: MaxNormU: start must be < stop");
+            Stop::MaxNormU(norm_u1, _, begin, end) => {
+                if *begin >= *end {
+                    return Err("Stop enum error: MaxNormU: begin must be < end");
                 }
-                if *stop > u.dim() {
-                    return Err("Stop enum error: MaxNormU: stop must be ≤ u.dim");
+                if *end > u.dim() {
+                    return Err("Stop enum error: MaxNormU: end must be ≤ u.dim");
                 }
                 if *norm_u1 <= 0.0 {
                     return Err("Stop enum error: MaxNormU value must be greater than 0.0");
@@ -163,8 +163,8 @@ impl Stop {
         match self {
             Stop::MinCompU(i, u1) => u[*i] < *u1 || f64::abs(u[*i] - *u1) < CONFIG_H_MIN,
             Stop::MaxCompU(i, u1) => u[*i] > *u1 || f64::abs(*u1 - u[*i]) < CONFIG_H_MIN,
-            Stop::MaxNormU(norm_u1, norm_type, start, stop) => {
-                let norm_u = vec_norm_chunk(&u, *norm_type, *start, *stop);
+            Stop::MaxNormU(norm_u1, norm_type, begin, end) => {
+                let norm_u = vec_norm_chunk(&u, *norm_type, *begin, *end);
                 norm_u > *norm_u1 || f64::abs(norm_u - *norm_u1) < CONFIG_H_MIN
             }
             Stop::MinLambda(l1) => l < *l1 || f64::abs(*l1 - l) < CONFIG_H_MIN,

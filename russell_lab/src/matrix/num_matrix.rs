@@ -47,18 +47,28 @@ use std::path::Path;
 /// use russell_lab::{NumMatrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     // create new matrix filled with ones
-///     let mut a = NumMatrix::<f64>::filled(2, 2, 1.0);
+///     // create new matrix filled with threes
+///     let mut a = NumMatrix::<f64>::filled(2, 2, 3.0);
 ///
-///     // change off-diagonal component
-///     a.mul(0, 1, -1.0);
+///     // check
+///     assert_eq!(
+///         format!("{}", a),
+///         "┌     ┐\n\
+///          │ 3 3 │\n\
+///          │ 3 3 │\n\
+///          └     ┘"
+///     );
+///
+///     // change some components
+///     a[(0, 1)] *= -1.0;
+///     a[(1, 0)] = -7.0;
 ///
 ///     // check
 ///     assert_eq!(
 ///         format!("{}", a),
 ///         "┌       ┐\n\
-///          │  1 -1 │\n\
-///          │  1  1 │\n\
+///          │  3 -3 │\n\
+///          │ -7  3 │\n\
 ///          └       ┘"
 ///     );
 ///     Ok(())
@@ -130,7 +140,7 @@ use std::path::Path;
 ///     let mut b = a.clone();
 ///
 ///     // change clone
-///     b.set(0, 0, 5.0);
+///     b[(0, 0)] = 5.0;
 ///
 ///     // check that clone is correct
 ///     assert_eq!(

@@ -1,5 +1,5 @@
 use crate::{AsArray2D, StrError};
-use num_traits::Num;
+use num_traits::{Num, NumCast};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -7,7 +7,7 @@ use std::ffi::OsStr;
 use std::fmt::{self, Write};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::{AddAssign, MulAssign};
+use std::ops::{AddAssign, Index, IndexMut, MulAssign};
 use std::path::Path;
 
 /// Implements a matrix with numeric components for linear algebra
@@ -155,7 +155,7 @@ use std::path::Path;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     nrow: usize, // number of rows
     ncol: usize, // number of columns
@@ -165,7 +165,7 @@ where
 
 impl<T> NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     /// Creates new (nrow x ncol) NumMatrix filled with zeros
     ///
@@ -928,7 +928,7 @@ where
 
 impl<T> fmt::Display for NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize + fmt::Display,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize + fmt::Display,
 {
     /// Generates a string representation of the NumMatrix
     ///
@@ -992,10 +992,42 @@ where
     }
 }
 
+/// Allows to access NumMatrix components using indices (tuples)
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+impl<T> Index<(usize, usize)> for NumMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    type Output = T;
+
+    #[inline(always)] // Forces the compiler to erase the function call and tuple
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        &self.data[index.0 + index.1 * self.nrow]
+    }
+}
+
+/// Allows to change NumMatrix components using indices (tuples)
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+impl<T> IndexMut<(usize, usize)> for NumMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    #[inline(always)] // Forces the compiler to erase the function call and tuple
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        &mut self.data[index.0 + index.1 * self.nrow]
+    }
+}
+
 /// Allows accessing NumMatrix as an Array2D
 impl<'a, T: 'a> AsArray2D<'a, T> for NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn size(&self) -> (usize, usize) {
@@ -1314,6 +1346,10 @@ mod tests {
         assert_eq!(a.get(0, 1), 2.0);
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
+        assert_eq!(a.get(0, 0), a[(0, 0)]);
+        assert_eq!(a.get(0, 1), a[(0, 1)]);
+        assert_eq!(a.get(1, 0), a[(1, 0)]);
+        assert_eq!(a.get(1, 1), a[(1, 1)]);
     }
 
     #[test]
@@ -1334,7 +1370,12 @@ mod tests {
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
-        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
+        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]); // col-major order
+        a[(0, 0)] = 1.0;
+        a[(0, 1)] = 2.0;
+        a[(1, 0)] = 3.0;
+        a[(1, 1)] = 4.0;
+        assert_eq!(a.data, &[1.0, 3.0, 2.0, 4.0]); // col-major order
     }
 
     #[test]

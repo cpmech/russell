@@ -780,7 +780,8 @@ where
     T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     type Output = T;
-    #[inline]
+
+    #[inline(always)] // Forces the compiler to erase the function call and tuple
     fn index(&self, index: usize) -> &Self::Output {
         &self.data[index]
     }
@@ -808,7 +809,7 @@ impl<T> IndexMut<usize> for NumVector<T>
 where
     T: MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
-    #[inline]
+    #[inline(always)] // Forces the compiler to erase the function call and tuple
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.data[index]
     }

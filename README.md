@@ -59,6 +59,7 @@
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
+- [Development](#development)
 
 
 
@@ -833,3 +834,21 @@ fn main() -> Result<(), StrError> {
 - [ ] General improvements
     - [x] Compile on macOS
     - [ ] Study the possibility to install Russell on Windows
+
+
+## Development
+
+Use `cargo-show-asm` to investigate the generated assembly code and check if the performance-critical functions are properly optimized.
+
+Install the tool with the following command:
+
+```bash
+cargo install cargo-show-asm
+```
+
+Run the following command to check the generated assembly code for the `asm01` example:
+
+```bash
+cargo asm -p russell_lab --example asm01 asm01::set_approach
+cargo asm -p russell_lab --example asm01 asm01::index_approach
+```

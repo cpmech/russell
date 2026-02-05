@@ -400,7 +400,6 @@ where
     /// ```
     #[inline]
     pub fn get(&self, i: usize) -> T {
-        assert!(i < self.data.len());
         self.data[i]
     }
 
@@ -424,7 +423,6 @@ where
     /// ```
     #[inline]
     pub fn set(&mut self, i: usize, value: T) {
-        assert!(i < self.data.len());
         self.data[i] = value;
     }
 

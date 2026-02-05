@@ -744,8 +744,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize, j: usize) -> T {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow]
     }
 
@@ -772,8 +770,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, j: usize, value: T) {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow] = value;
     }
 
@@ -804,8 +800,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn add(&mut self, i: usize, j: usize, value: T) {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow] += value;
     }
 
@@ -836,8 +830,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn mul(&mut self, i: usize, j: usize, value: T) {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow] *= value;
     }
 
@@ -863,7 +855,6 @@ where
     ///
     /// This function may panic if the row index is out-of-bounds.
     pub fn extract_row(&self, i: usize) -> Vec<T> {
-        assert!(i < self.nrow);
         let mut res = vec![T::zero(); self.ncol];
         for j in 0..self.ncol {
             res[j] = self.data[i + j * self.nrow];
@@ -893,7 +884,6 @@ where
     ///
     /// This function may panic if the column index is out-of-bounds.
     pub fn extract_column(&self, j: usize) -> Vec<T> {
-        assert!(j < self.ncol);
         let mut res = vec![T::zero(); self.nrow];
         for i in 0..self.nrow {
             res[i] = self.data[i + j * self.nrow];

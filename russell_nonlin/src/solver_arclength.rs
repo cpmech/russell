@@ -597,7 +597,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
-            if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
+            if (work.l <= l1 && is_min) || (work.l >= l1 && !is_min) {
                 self.theta = 0.0; // set θ to targeting lambda mode
                 work.h = 2.0 * (l1 - l) * work.dlds; // the sign of dlds will correct the difference
                 work.l = l + 2.0 * work.h * work.dlds; // λ₁ = λ₀ + 2 σ · dλds₀

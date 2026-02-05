@@ -227,7 +227,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
         // handle "targeting lambda" mode if needed
         if let Some((l1, is_min)) = stop.lambda() {
-            if (work.l < l1 && is_min) || (work.l > l1 && !is_min) {
+            if (work.l <= l1 && is_min) || (work.l >= l1 && !is_min) {
                 work.h = (l1 - l) * self.sign0; // dir_mult will correct the difference
                 work.l = l + self.sign0 * work.h; // λ₁ = λ₀ + Δλ
             }

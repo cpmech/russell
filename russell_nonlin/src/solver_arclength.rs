@@ -3,7 +3,7 @@ use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
 use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{Norm, Vector};
-use russell_sparse::{CooMatrix, LinSolver, Sym};
+use russell_sparse::{CooMatrix, CscMatrix, LinSolver, Sym};
 
 /// Implements the pseudo-arclength continuation method to solve G(u, λ) = 0
 ///
@@ -271,6 +271,17 @@ impl<'a, A> SolverArclength<'a, A> {
         (self.system.calc_jac)(&mut self.ggu, &mut self.ggl, work.l, &work.u, args)?;
         work.stats.stop_sw_jacobian();
 
+        // write Gu to a file
+        if let Some(nstep) = self.config.write_matrix_after_nstep_and_stop {
+            if nstep > work.stats.n_accepted {
+                let csc = CscMatrix::from_coo(&self.ggu).unwrap();
+                let key = format!("/tmp/russell_nonlin/ggu_arclength-{:03}", work.stats.n_accepted).to_string();
+                csc.write_matrix_market(&(key.clone() + ".smat"), true, 1e-14)?;
+                csc.write_matrix_market(&(key + ".mtx"), true, 1e-14)?;
+                return Err("MATRIX FILES GENERATED in /tmp/russell_nonlin/");
+            }
+        }
+
         // factorize Gu matrix
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
@@ -340,6 +351,17 @@ impl<'a, A> SolverArclength<'a, A> {
             self.aa.put(ndim, ndim, (2.0 - self.theta) * work.dlds).unwrap();
         }
         work.stats.stop_sw_jacobian();
+
+        // write A to a file
+        if let Some(nstep) = self.config.write_matrix_after_nstep_and_stop {
+            if nstep > work.stats.n_accepted {
+                let csc = CscMatrix::from_coo(&self.ggu).unwrap();
+                let key = format!("/tmp/russell_nonlin/aa_arclength-{:03}", work.stats.n_accepted).to_string();
+                csc.write_matrix_market(&(key.clone() + ".smat"), true, 1e-14)?;
+                csc.write_matrix_market(&(key + ".mtx"), true, 1e-14)?;
+                return Err("MATRIX FILES GENERATED in /tmp/russell_nonlin/");
+            }
+        }
 
         // factorize matrix A
         work.stats.sw_factor.reset();

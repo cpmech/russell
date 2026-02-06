@@ -416,8 +416,8 @@ impl Config {
     ///
     /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
     /// * Vismatrix: <https://github.com/cpmech/vismatrix>
-    pub fn set_write_matrix_after_nstep_and_stop(&mut self, value: Option<usize>) -> &mut Self {
-        self.write_matrix_after_nstep_and_stop = value;
+    pub fn set_write_matrix_after_nstep_and_stop(&mut self, value: usize) -> &mut Self {
+        self.write_matrix_after_nstep_and_stop = Some(value);
         self
     }
 

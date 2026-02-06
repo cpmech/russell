@@ -276,12 +276,16 @@ impl Config {
     }
 
     /// Sets the method
+    ///
+    /// Default value: [Method::Natural]
     pub fn set_method(&mut self, method: Method) -> &mut Self {
         self.method = method;
         self
     }
 
     /// Sets the log file path, to save the output instead of stdout
+    ///
+    /// Default value: None
     pub fn set_log_file(&mut self, full_path: &str) -> &mut Self {
         self.log_file = Some(full_path.to_string());
         self
@@ -289,9 +293,13 @@ impl Config {
 
     /// Sets the verbose flag
     ///
-    /// Default value: false
-    pub fn set_verbose(&mut self, flag: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
-        self.verbose = flag;
+    /// Default values:
+    ///
+    /// * `verbose`: false
+    /// * `show_iterations`: false
+    /// * `show_stats`: false
+    pub fn set_verbose(&mut self, verbose: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
+        self.verbose = verbose;
         self.verbose_iterations = show_iterations;
         self.verbose_stats = show_stats;
         self
@@ -396,6 +404,8 @@ impl Config {
     }
 
     /// Sets configurations for sparse linear solver
+    ///
+    /// Default value: None
     pub fn set_lin_sol_config(&mut self, config: Option<LinSolParams>) -> &mut Self {
         self.lin_sol_config = config;
         self
@@ -416,6 +426,8 @@ impl Config {
     ///
     /// * MatrixMarket: <https://math.nist.gov/MatrixMarket/formats.html>
     /// * Vismatrix: <https://github.com/cpmech/vismatrix>
+    ///
+    /// Default value: None
     pub fn set_write_matrix_after_nstep_and_stop(&mut self, value: usize) -> &mut Self {
         self.write_matrix_after_nstep_and_stop = Some(value);
         self

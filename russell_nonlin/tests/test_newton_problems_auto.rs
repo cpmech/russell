@@ -22,7 +22,7 @@ fn test_newton_problems_ok_1_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -67,7 +67,7 @@ fn test_newton_problems_fail_due_to_continued_failure_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -95,7 +95,7 @@ fn test_newton_problems_fail_oscillation_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -123,7 +123,7 @@ fn test_newton_problems_indeterminate_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -155,7 +155,7 @@ fn test_newton_problems_ok_2_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -200,7 +200,7 @@ fn test_simple_fixed_continued_divergence_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -232,7 +232,7 @@ fn test_newton_problems_stepsize_becomes_small() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();

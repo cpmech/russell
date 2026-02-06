@@ -124,7 +124,7 @@ const SAVE_FIGURE: bool = false;
 fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
     let spc = true;
     let one_dim = true;
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(1e-4);
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
@@ -163,7 +163,7 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
 fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
     let spc = false;
     let one_dim = true;
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(1e-4);
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.039, 0.062, 0.06), //
@@ -204,7 +204,7 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
 fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
     let spc = true;
     let one_dim = false;
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(1e-4);
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
@@ -243,7 +243,7 @@ fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
 fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
     let spc = false;
     let one_dim = false;
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(1e-4);
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
         (8, 0.042, 0.083, 0.123), //

@@ -1,4 +1,4 @@
-use crate::{Config, Stop, StrError, CONFIG_H_MIN};
+use crate::{Stop, StrError, CONFIG_H_MIN};
 
 /// Defines how Δλ is adjusted
 #[derive(Debug, Clone)]
@@ -6,8 +6,8 @@ pub struct DeltaLambda {
     /// Automatic Δλ
     pub(crate) auto: bool,
 
-    /// Constant Δλ
-    pub(crate) constant: f64,
+    /// Initial Δλ (or constant)
+    pub(crate) ddl_ini: f64,
 
     /// List-based Δλ
     pub(crate) list: Vec<f64>,
@@ -15,10 +15,10 @@ pub struct DeltaLambda {
 
 impl DeltaLambda {
     /// New automatic Δλ
-    pub fn auto() -> Self {
+    pub fn auto(ddl_ini: f64) -> Self {
         Self {
             auto: true,
-            constant: 0.0,
+            ddl_ini,
             list: Vec::new(),
         }
     }
@@ -27,16 +27,21 @@ impl DeltaLambda {
     pub fn constant(ddl: f64) -> Self {
         Self {
             auto: false,
-            constant: ddl,
+            ddl_ini: ddl,
             list: Vec::new(),
         }
     }
 
     /// New list-based Δλ
+    ///
+    /// # Panics
+    ///
+    /// Panics if the list is empty.
     pub fn list(list: &[f64]) -> Self {
+        assert!(list.len() > 0);
         Self {
             auto: false,
-            constant: 0.0,
+            ddl_ini: list[0],
             list: list.to_vec(),
         }
     }
@@ -47,14 +52,8 @@ impl DeltaLambda {
     }
 
     /// Calculates the initial stepsize Δλ
-    pub(crate) fn ini(&self, config: &Config, stop: &Stop, l0: f64) -> Result<f64, StrError> {
-        let mut ddl_ini = if self.auto {
-            config.ddl_ini
-        } else if self.list.len() > 0 {
-            self.list[0]
-        } else {
-            self.constant
-        };
+    pub(crate) fn ini(&self, stop: &Stop, l0: f64) -> Result<f64, StrError> {
+        let mut ddl_ini = self.ddl_ini;
         match stop {
             Stop::MinCompU(..) => (),
             Stop::MaxCompU(..) => (),

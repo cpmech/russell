@@ -76,10 +76,7 @@ fn test_linear_auto() {
 
     // configuration
     let mut config = Config::new();
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_ddl_ini(0.1);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -96,7 +93,7 @@ fn test_linear_auto() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.1),
             Some(out),
         )
         .unwrap();

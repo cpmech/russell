@@ -125,7 +125,7 @@ impl<'a, A> Solver<'a, A> {
         self.work.reset_stats_and_flags(ddl.auto);
 
         // calculate the default initial Δλ
-        let ddl_ini = ddl.ini(&self.config, &stop, *l)?;
+        let ddl_ini = ddl.ini(&stop, *l)?;
 
         // perform initialization (compute the actual initial stepsize and tangent vector)
         self.actual.initialize(&mut self.work, ddl_ini, u, *l, dir, args)?;
@@ -421,7 +421,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    DeltaLambda::auto(),
+                    DeltaLambda::auto(1e-4),
                     None
                 )
                 .err(),
@@ -436,7 +436,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(0.0),
-                    DeltaLambda::auto(),
+                    DeltaLambda::auto(1e-4),
                     None,
                 )
                 .err(),
@@ -473,7 +473,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    DeltaLambda::auto(),
+                    DeltaLambda::auto(1e-4),
                     None,
                 )
                 .unwrap(),
@@ -525,7 +525,7 @@ mod tests {
                 &mut l,
                 IniDir::Pos,
                 Stop::Steps(1),
-                DeltaLambda::auto(),
+                DeltaLambda::auto(1e-4),
                 None,
             )
             .unwrap();

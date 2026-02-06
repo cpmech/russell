@@ -17,7 +17,6 @@ fn test_arc_circle_max_lambda() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_ddl_ini(0.212)
         .set_record_iterations_residuals(true)
         .set_log_file("/tmp/russell_nonlin/test_arc_circle_max_lambda.txt");
 
@@ -36,7 +35,7 @@ fn test_arc_circle_max_lambda() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(RADIUS),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.212),
             Some(out),
         )
         .unwrap();
@@ -77,7 +76,6 @@ fn test_arc_circle_min_lambda() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_ddl_ini(0.212)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -95,7 +93,7 @@ fn test_arc_circle_min_lambda() {
             &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.212),
             Some(out),
         )
         .unwrap();
@@ -136,7 +134,6 @@ fn test_arc_circle_max_u() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_ddl_ini(0.212)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -154,7 +151,7 @@ fn test_arc_circle_max_u() {
             &mut l,
             IniDir::Neg,
             Stop::MaxCompU(0, 1.3),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.212),
             Some(out),
         )
         .unwrap();
@@ -195,7 +192,6 @@ fn test_arc_circle_min_u() {
     config
         .set_verbose(true, true, true)
         .set_hide_timings(true)
-        .set_ddl_ini(0.212)
         .set_record_iterations_residuals(true);
 
     // define solver
@@ -213,7 +209,7 @@ fn test_arc_circle_min_u() {
             &mut l,
             IniDir::Pos,
             Stop::MinCompU(0, 0.4),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.212),
             Some(out),
         )
         .unwrap();

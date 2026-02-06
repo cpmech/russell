@@ -230,10 +230,7 @@ fn test_arc_linear_problem_auto() {
     // configuration
     let mut config = Config::new();
     config.set_method(Method::Arclength);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_ddl_ini(0.07);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -250,7 +247,7 @@ fn test_arc_linear_problem_auto() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.07),
             Some(out),
         )
         .unwrap();
@@ -285,10 +282,7 @@ fn test_arc_linear_problem_auto_backward() {
     // configuration
     let mut config = Config::new();
     config.set_method(Method::Arclength);
-    config
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_ddl_ini(0.07);
+    config.set_verbose(true, true, true).set_hide_timings(true);
 
     // define solver
     let mut solver = Solver::new(&config, system).unwrap();
@@ -305,7 +299,7 @@ fn test_arc_linear_problem_auto_backward() {
             &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.07),
             Some(out),
         )
         .unwrap();

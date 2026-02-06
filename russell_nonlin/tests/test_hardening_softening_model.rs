@@ -24,7 +24,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     let initial_u = 0.0;
     let initial_l = 0.0;
     let stop = Stop::MaxCompU(0, 0.5);
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(0.1);
     let fig_width = 600.0;
 
     // Simulation
@@ -63,7 +63,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
     let initial_u = MATHEMATICA_UU[10];
     let initial_l = MATHEMATICA_LL[10];
     let stop = Stop::MaxCompU(0, 0.5);
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(0.1);
     let fig_width = 600.0;
 
     // Simulation
@@ -91,14 +91,14 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
 #[test]
 fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([("h_ini", 1e-3), ("tg_control_atol_and_rtol", 1e-1)]);
+    let settings = HashMap::from([("tg_control_atol_and_rtol", 1e-1)]);
 
     // Input data
     let use_continuous_modulus = false;
     let initial_u = MATHEMATICA_UU[10];
     let initial_l = MATHEMATICA_LL[10];
     let stop = Stop::MinCompU(0, 0.0);
-    let ddl = DeltaLambda::auto();
+    let ddl = DeltaLambda::auto(1e-3);
     let fig_width = 600.0;
 
     // Simulation
@@ -399,14 +399,12 @@ fn run_hs_model(
     let mut config = Config::new();
     config
         .set_verbose(true, true, true)
-        .set_ddl_ini(0.1)
         .set_debug_predictor(true)
         .set_record_iterations_residuals(true);
 
     // Override the default settings
     for (&key, value) in settings.iter() {
         match key {
-            "h_ini" => config.set_ddl_ini(*value),
             "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),
             "nr_control_beta" => config.set_nr_control_beta(*value),
             "tg_control_atol" => config.set_tg_control_atol(*value),

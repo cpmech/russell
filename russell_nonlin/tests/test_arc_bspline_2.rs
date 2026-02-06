@@ -38,8 +38,7 @@ fn run_test(
         .set_bordering(bordering)
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name))
         .set_record_iterations_residuals(true)
-        .set_n_cont_delta_divergence_max(1)
-        .set_ddl_ini(0.007);
+        .set_n_cont_delta_divergence_max(1);
     if let Some(tol) = atol_and_rtol {
         config.set_tg_control_atol_and_rtol(tol);
     }
@@ -59,7 +58,7 @@ fn run_test(
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            DeltaLambda::auto(),
+            DeltaLambda::auto(0.007),
             Some(out),
         )
         .unwrap();

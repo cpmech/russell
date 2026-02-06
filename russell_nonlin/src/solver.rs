@@ -341,7 +341,8 @@ impl<'a, A> Solver<'a, A> {
 
         // calculates the the relative changes on the tangent vector
         let rho = if self.config.tg_control_enabled {
-            if rerr == 0.0 {
+            assert!(rerr >= 0.0, "rerr must be non-negative");
+            if rerr < CONFIG_H_MIN {
                 self.config.tg_control_rho_for_zero_rerr
             } else if self.config.tg_control_pid_vcc {
                 const KP: f64 = 0.075;

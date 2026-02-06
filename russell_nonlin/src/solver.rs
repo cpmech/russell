@@ -2,7 +2,6 @@ use super::{Config, DeltaLambda, IniDir, Method, SolverTrait, Stop, System};
 use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
 use russell_lab::{vec_all_finite, Vector};
-use std::sync::Arc;
 
 /// Default number of steps
 pub const N_EQUAL_STEPS: usize = 10;
@@ -19,11 +18,6 @@ pub struct Solver<'a, A> {
 
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace,
-
-    /// Function to calculate the initial Δλ
-    ///
-    /// The function is `fn (args) -> ddl_ini`
-    calc_ddl_ini: Option<Arc<dyn Fn(&mut A) -> f64 + Send + Sync + 'a>>,
 
     // variables for the stepsize adaptation
     rerr_prev: f64,
@@ -50,20 +44,11 @@ impl<'a, A> Solver<'a, A> {
             ndim,
             actual,
             work,
-            calc_ddl_ini: None,
             rerr_prev: 0.0,
             rerr_anc: 0.0,
             h_prev: 0.0,
             h_anc: 0.0,
         })
-    }
-
-    /// Sets a function to calculate the initial Δλ
-    ///
-    /// The function is `fn (args) -> ddl_ini`
-    pub fn set_calc_ddl_ini(&mut self, callback: impl Fn(&mut A) -> f64 + Send + Sync + 'a) -> &mut Self {
-        self.calc_ddl_ini = Some(Arc::new(callback));
-        self
     }
 
     /// Returns some benchmarking data

@@ -324,10 +324,14 @@ impl<'a, A> Solver<'a, A> {
             1.0
         };
 
+        // set rerr to zero if it is too small so that tiny differences in
+        // the solver yield deterministic stepsize control behavior
+        assert!(rerr >= 0.0, "rerr must be non-negative");
+        let rerr = if rerr < CONFIG_H_MIN { 0.0 } else { rerr };
+
         // calculates the the relative changes on the tangent vector
         let rho = if self.config.tg_control_enabled {
-            assert!(rerr >= 0.0, "rerr must be non-negative");
-            if rerr < CONFIG_H_MIN {
+            if rerr == 0.0 {
                 self.config.tg_control_rho_for_zero_rerr
             } else if self.config.tg_control_pid_vcc {
                 const KP: f64 = 0.075;

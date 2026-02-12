@@ -266,6 +266,23 @@ impl Config {
 
     // basic options ----------------------------------------------------------------------
 
+    /// Returns the continuation type
+    ///
+    /// If arclength, indicates whether bordering or full is being used.
+    pub fn get_continuation(&self) -> String {
+        match self.method {
+            Method::Natural => "Natural".to_string(),
+            Method::Arclength => {
+                let kind = if self.bordering {
+                    "(bord)".to_string()
+                } else {
+                    "(full)".to_string()
+                };
+                "Arclength".to_string() + &kind
+            }
+        }
+    }
+
     /// Returns the method
     pub fn get_method(&self) -> Method {
         self.method

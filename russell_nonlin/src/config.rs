@@ -136,8 +136,11 @@ pub struct Config {
     ///    continuation framework, Computers & Structures, 313:107747, <https://doi.org/10.1016/j.compstruc.2025.107747>
     pub(crate) tg_control_pid_vcc: bool,
 
-    /// Rho multiplier for when the relative error is exactly zero in the tangent vector stepsize control
-    pub(crate) tg_control_rho_for_zero_rerr: f64,
+    /// "Tiny" absolute value of the relative error in the tangent vector stepsize control
+    pub(crate) tg_control_rerr_tiny: f64,
+
+    /// Rho multiplier for when the absolute value of the relative error is "tiny" in the tangent vector stepsize control
+    pub(crate) tg_control_rho_for_tiny_rerr: f64,
 
     /// Optimal number of iterations for stepsize control using Newton-Raphson statistics
     pub(crate) nr_control_n_opt: usize,
@@ -251,7 +254,8 @@ impl Config {
             nr_control_enabled: true,
             tg_control_enabled: true,
             tg_control_pid_vcc: true,
-            tg_control_rho_for_zero_rerr: 2.0,
+            tg_control_rerr_tiny: 1e-6,
+            tg_control_rho_for_tiny_rerr: 1.2,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
             tg_control_atol: 1e-2,
@@ -589,11 +593,19 @@ impl Config {
         self
     }
 
-    /// Sets the rho multiplier for when the relative error is exactly zero in the tangent vector stepsize control
+    /// Sets the "tiny" absolute value of the relative error in the tangent vector stepsize control
     ///
-    /// Default value: 2.0
-    pub fn set_tg_control_rho_for_zero_rerr(&mut self, value: f64) -> &mut Self {
-        self.tg_control_rho_for_zero_rerr = value;
+    /// Default value: 1e-6
+    pub fn set_tg_control_rerr_tiny(&mut self, value: f64) -> &mut Self {
+        self.tg_control_rerr_tiny = value;
+        self
+    }
+
+    /// Sets the rho multiplier for when the absolute value of the relative error is "tiny" in the tangent vector stepsize control
+    ///
+    /// Default value: 1.2
+    pub fn set_tg_control_rho_for_tiny_rerr(&mut self, value: f64) -> &mut Self {
+        self.tg_control_rho_for_tiny_rerr = value;
         self
     }
 

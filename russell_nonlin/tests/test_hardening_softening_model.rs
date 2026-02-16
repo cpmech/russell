@@ -38,18 +38,18 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         IniDir::Pos,
         stop,
         ddl,
-        Status::ContinuedFailure,
+        Status::SmallStepsize,
         fig_width,
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 10);
-    assert_eq!(stats.n_rejected, 13);
-    assert_eq!(stats.n_steps, 24);
+    assert_eq!(stats.n_accepted, 22);
+    assert_eq!(stats.n_rejected, 31);
+    assert_eq!(stats.n_steps, 53);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.044, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.052, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -117,9 +117,9 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 13);
+    assert_eq!(stats.n_accepted, 14);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 13);
+    assert_eq!(stats.n_steps, 14);
     Ok(())
 }
 

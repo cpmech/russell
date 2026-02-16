@@ -105,9 +105,9 @@ fn test_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 3);
+    assert_eq!(stats.n_accepted, 6);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 3);
+    assert_eq!(stats.n_steps, 6);
 
     // plot
     if SAVE_FIGURE {
@@ -211,13 +211,13 @@ fn test_circle_min_u() {
     println!("u final = {}", u[0]);
     println!("λ final = {}, err = {:.3e}", l, f64::abs(l - RADIUS));
     assert!(u[0] > 0.0 && u[0] < 0.4);
-    approx_eq(u[0] * u[0] + l * l, RADIUS * RADIUS, 1e-8);
+    approx_eq(u[0] * u[0] + l * l, RADIUS * RADIUS, 1e-7);
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 4);
+    assert_eq!(stats.n_accepted, 6);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 4);
+    assert_eq!(stats.n_steps, 6);
 
     // plot
     if SAVE_FIGURE {

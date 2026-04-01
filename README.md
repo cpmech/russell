@@ -206,6 +206,7 @@ rustup target add x86_64-pc-windows-gnu
 pacman -S mingw-w64-ucrt-x86_64-openblas
 pacman -S mingw-w64-ucrt-x86_64-suitesparse
 ```
+
 #### Set Environment Variable
 
 Set the environment variable in the MSYS2 terminal (add to \~/.bashrc to make it permanent):

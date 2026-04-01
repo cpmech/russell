@@ -13,11 +13,6 @@ WORKDIR /usr/local/src/
 # install yay
 RUN git clone https://aur.archlinux.org/yay.git
 RUN cd yay && makepkg -si --noconfirm
-RUN sudo rm -f \
-      /var/cache/pacman/pkg/* \
-      /var/lib/pacman/sync/* \
-      /README \
-      /etc/pacman.d/mirrorlist.pacnew
 
 # install libraries for russell
 RUN yay -Y --gendb --noconfirm && yay -Y --devel --save

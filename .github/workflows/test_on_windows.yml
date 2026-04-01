@@ -1,0 +1,26 @@
+name: Test on Windows
+on: [pull_request]
+jobs:
+  test_on_windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
+            
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Run tests
+        shell: msys2 {0}
+        run: |
+          RUST_BACKTRACE=1 cargo test

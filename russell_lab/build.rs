@@ -31,19 +31,19 @@ fn compile_blas() {
 fn compile_blas() {
     #[cfg(target_os = "windows")]
     {
-        let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
+        let msys2_prefix = std::env::var("MSYS2_PREFIX").expect("MSYS2_PREFIX environment variable not set");
         let include_path = format!("{}/include/openblas", msys2_prefix);
         let lib_path = format!("{}/lib", msys2_prefix);
-        
+
         cc::Build::new()
             .file("c_code/interface_blas.c")
             .include(&include_path)
             .compile("c_code_interface_blas");
-        
+
         println!("cargo:rustc-link-search=native={}", lib_path);
         println!("cargo:rustc-link-lib=dylib=openblas");
     }
-    
+
     #[cfg(not(target_os = "windows"))]
     {
         cc::Build::new()

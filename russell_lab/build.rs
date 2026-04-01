@@ -29,26 +29,44 @@ fn compile_blas() {
 // OpenBLAS
 #[cfg(not(feature = "intel_mkl"))]
 fn compile_blas() {
-    cc::Build::new()
-        .file("c_code/interface_blas.c")
-        .includes(&[
-            "/usr/include/openblas",              // Arch
-            "/opt/homebrew/opt/lapack/include",   // macOS
-            "/opt/homebrew/opt/openblas/include", // macOS
-            "/usr/local/opt/lapack/include",      // macOS
-            "/usr/local/opt/openblas/include",    // macOS
-        ])
-        .compile("c_code_interface_blas");
-    for d in &[
-        "/opt/homebrew/opt/lapack/lib",   // macOS
-        "/opt/homebrew/opt/openblas/lib", // macOS
-        "/usr/local/opt/lapack/lib",      // macOS
-        "/usr/local/opt/openblas/lib",    // macOS
-    ] {
-        println!("cargo:rustc-link-search=native={}", *d);
+    #[cfg(target_os = "windows")]
+    {
+        let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
+        let include_path = format!("{}/include/openblas", msys2_prefix);
+        let lib_path = format!("{}/lib", msys2_prefix);
+        
+        cc::Build::new()
+            .file("c_code/interface_blas.c")
+            .include(&include_path)
+            .compile("c_code_interface_blas");
+        
+        println!("cargo:rustc-link-search=native={}", lib_path);
+        println!("cargo:rustc-link-lib=dylib=openblas");
     }
-    println!("cargo:rustc-link-lib=dylib=openblas");
-    println!("cargo:rustc-link-lib=dylib=lapack");
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        cc::Build::new()
+            .file("c_code/interface_blas.c")
+            .includes(&[
+                "/usr/include/openblas",
+                "/opt/homebrew/opt/lapack/include",
+                "/opt/homebrew/opt/openblas/include",
+                "/usr/local/opt/lapack/include",
+                "/usr/local/opt/openblas/include",
+            ])
+            .compile("c_code_interface_blas");
+        for d in &[
+            "/opt/homebrew/opt/lapack/lib",
+            "/opt/homebrew/opt/openblas/lib",
+            "/usr/local/opt/lapack/lib",
+            "/usr/local/opt/openblas/lib",
+        ] {
+            println!("cargo:rustc-link-search=native={}", *d);
+        }
+        println!("cargo:rustc-link-lib=dylib=openblas");
+        println!("cargo:rustc-link-lib=dylib=lapack");
+    }
 }
 
 fn main() {

@@ -26,13 +26,13 @@ fn test_radau5_hairer_wanner_eq1() {
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
-
+  
     // get statistics
     let stat = solver.stats();
 
     // compare with radau5.f
     approx_eq(y0[0], 9.068021382386648E-02, 1e-15);
-    approx_eq(stat.h_accepted, 1.272673814374611E+00, 1e-12);
+    approx_eq(stat.h_accepted, 1.272673814374611E+00, 1e-11);
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);

@@ -1,29 +1,37 @@
 name: Test on Windows
 on: [pull_request]
+
 jobs:
   test_on_windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       
+      # 1. Setup MSYS2 with UCRT64 and required libraries
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           path-type: inherit 
           install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-pkg-config
-            
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkg-config
+            mingw-w64-ucrt-x86_64-openblas
+            mingw-w64-ucrt-x86_64-suitesparse
+
+      # 2. Setup Rust with the matching GNU target
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: stable-x86_64-pc-windows-gnu
           targets: x86_64-pc-windows-gnu
 
+      # 3. Run Tests
       - name: Run tests
         shell: msys2 {0}
         env:
           MSYS2_PREFIX: '/ucrt64'
+          RUST_BACKTRACE: 1
         run: |
-          RUST_BACKTRACE=1 cargo test
+          cargo test

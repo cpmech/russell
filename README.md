@@ -167,6 +167,67 @@ First, install [Homebrew](https://brew.sh/). Then, run:
 brew install lapack openblas suite-sparse
 ```
 
+### Windows
+
+To compile Russell on Windows, the MSYS2 environment is required along with the installation of necessary libraries.
+
+Installation steps are as follows:
+
+#### Install MSYS2
+
+Download the installer from the MSYS2 website https://www.msys2.org/
+(the 64-bit version is recommended).  
+
+Run the installer and select the default installation path (typically C:\\msys64).  
+
+#### Launch the MSYS2 Terminal
+
+After installation, launch the MSYS2 UCRT64 terminal from the Start Menu or the installation directory (recommended, as it best matches the Rust GNU toolchain).  
+
+#### Install Required Packages in MSYS2
+
+Run the following commands in the MSYS2 UCRT64 terminal:  
+
+```bash
+# Update the package database
+pacman -Syu
+
+# Install the Rust GNU toolchain (if not already installed)
+rustup target add x86_64-pc-windows-gnu
+
+# Install libraries required for compilation
+pacman -S mingw-w64-ucrt-x86_64-openblas
+pacman -S mingw-w64-ucrt-x86_64-suitesparse
+```
+#### Set Environment Variable
+
+Set the environment variable in the MSYS2 terminal (add to \~/.bashrc to make it permanent):
+
+```bash
+export MSYS2_PREFIX='/ucrt64'
+```
+
+#### Compile and Test
+In the MSYS2 UCRT64 terminal, navigate to the Russell project directory and run:
+
+```bash
+# Navigate to the project directory
+cd /c/path/to/russell
+
+# Clean previous build cache
+cargo clean
+
+# Compile and run tests
+cargo test
+```
+
+#### Notes:
+Ensure all cargo commands are executed within the MSYS2 UCRT64 terminal.
+
+Add export MSYS2\_PREFIX='/ucrt64' to \~/.bashrc to make the environment variable persistent.
+
+The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
+
 ### Optional feature "local_suitesparse"
 
 `russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) script may be used in this case:

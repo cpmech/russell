@@ -1,6 +1,6 @@
 [package]
 name = "russell_ode"
-version = "1.11.0"
+version = "1.12.0"
 edition = "2021"
 license = "MIT"
 description = "Solvers for ordinary differential equations and differential algebraic equations"
@@ -17,8 +17,8 @@ local_suitesparse = ["russell_sparse/local_suitesparse"]
 with_mumps = ["russell_sparse/with_mumps"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "1.0.0" }
-russell_sparse = { path = "../russell_sparse", version = "1.0.0" }
+russell_lab = { path = "../russell_lab", version = "1" }
+russell_sparse = { path = "../russell_sparse", version = "1" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"

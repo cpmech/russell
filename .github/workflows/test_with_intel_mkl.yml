@@ -8,6 +8,7 @@ jobs:
       - name: Compile MUMPS
         run: |
           lsb_release -d
+          rustup --version
           bash zscripts/compile-and-install-mumps.bash mkl
       - name: Compile SuiteSparse
         run: |

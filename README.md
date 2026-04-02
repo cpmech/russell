@@ -895,4 +895,5 @@ fn main() -> Result<(), StrError> {
     - [ ] Implement standard continuum mechanics tensors
 - [ ] General improvements
     - [x] Compile on macOS
-    - [ ] Study the possibility to install Russell on Windows
+    - [x] Compile on Windows
+    - [ ] Compile MUMPS on Windows

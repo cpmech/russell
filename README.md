@@ -227,7 +227,7 @@ cargo test
 **6. Notes**
 
 * Ensure that all cargo commands are executed within the MSYS2 UCRT64 terminal.
-* Add export `MSYS2\_PREFIX='/ucrt64'` to `\~/.bashrc` to make the environment variable persistent.
+* Add export `MSYS2_PREFIX='/ucrt64'` to `~/.bashrc` to make the environment variable persistent.
 * The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
 
 ### Optional feature "local_suitesparse"

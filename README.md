@@ -22,6 +22,7 @@
 [![Test on Arch Linux](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml)
 [![Test on Rocky Linux](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml)
 [![Test on macOS](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml)
+[![Test on Windows](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml)
 
 ---
 

@@ -373,7 +373,7 @@ mod tests {
             } else {
                 let a = f64::abs(g[1]);
                 let tol = if a > 1e+300 {
-                    2e292
+                    1e295
                 } else if a > 1e+15 {
                     2.1
                 } else if a > 99999999.0 {

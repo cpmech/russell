@@ -16,4 +16,5 @@ jobs:
       - name: Run tests
         run: |
           source /opt/intel/oneapi/setvars.sh
+          rustup default 1.89
           RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps,intel_mkl

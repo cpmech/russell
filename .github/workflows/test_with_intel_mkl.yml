@@ -15,4 +15,3 @@ jobs:
         run: |
           source /opt/intel/oneapi/setvars.sh
           RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps,intel_mkl
-

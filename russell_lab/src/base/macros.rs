@@ -26,7 +26,7 @@ macro_rules! cpx {
 
 #[cfg(test)]
 mod tests {
-    use crate::{cpx, Complex64};
+    use crate::Complex64;
 
     #[test]
     fn cpx_works() {

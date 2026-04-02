@@ -22,6 +22,7 @@
 [![Test on Arch Linux](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml)
 [![Test on Rocky Linux](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml)
 [![Test on macOS](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml)
+[![Test on Windows](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml)
 
 ---
 
@@ -41,6 +42,13 @@
   - [Rocky Linux](#rocky-linux)
   - [Arch Linux](#arch-linux)
   - [macOS](#macos)
+  - [Windows](#windows)
+    - [Install MSYS2](#install-msys2)
+    - [Launch the MSYS2 Terminal](#launch-the-msys2-terminal)
+    - [Install the required packages in MSYS2](#install-the-required-packages-in-msys2)
+    - [Set Environment Variable](#set-environment-variable)
+    - [Compile and Test](#compile-and-test)
+    - [Notes:](#notes)
   - [Optional feature "local\_suitesparse"](#optional-feature-local_suitesparse)
   - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
   - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
@@ -171,7 +179,7 @@ brew install lapack openblas suite-sparse
 
 To compile Russell on Windows, the MSYS2 environment is required along with the installation of necessary libraries.
 
-Installation steps are as follows:
+The installation steps are as follows:
 
 #### Install MSYS2
 
@@ -184,7 +192,7 @@ Run the installer and select the default installation path (typically C:\\msys64
 
 After installation, launch the MSYS2 UCRT64 terminal from the Start Menu or the installation directory (recommended, as it best matches the Rust GNU toolchain).  
 
-#### Install Required Packages in MSYS2
+#### Install the required packages in MSYS2
 
 Run the following commands in the MSYS2 UCRT64 terminal:  
 
@@ -199,6 +207,7 @@ rustup target add x86_64-pc-windows-gnu
 pacman -S mingw-w64-ucrt-x86_64-openblas
 pacman -S mingw-w64-ucrt-x86_64-suitesparse
 ```
+
 #### Set Environment Variable
 
 Set the environment variable in the MSYS2 terminal (add to \~/.bashrc to make it permanent):
@@ -208,6 +217,7 @@ export MSYS2_PREFIX='/ucrt64'
 ```
 
 #### Compile and Test
+
 In the MSYS2 UCRT64 terminal, navigate to the Russell project directory and run:
 
 ```bash
@@ -222,11 +232,10 @@ cargo test
 ```
 
 #### Notes:
-Ensure all cargo commands are executed within the MSYS2 UCRT64 terminal.
 
-Add export MSYS2\_PREFIX='/ucrt64' to \~/.bashrc to make the environment variable persistent.
-
-The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
+* Ensure that all cargo commands are executed within the MSYS2 UCRT64 terminal.
+* Add export `MSYS2\_PREFIX='/ucrt64'` to `\~/.bashrc` to make the environment variable persistent.
+* The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
 
 ### Optional feature "local_suitesparse"
 

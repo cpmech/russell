@@ -43,12 +43,6 @@
   - [Arch Linux](#arch-linux)
   - [macOS](#macos)
   - [Windows](#windows)
-    - [Install MSYS2](#install-msys2)
-    - [Launch the MSYS2 Terminal](#launch-the-msys2-terminal)
-    - [Install the required packages in MSYS2](#install-the-required-packages-in-msys2)
-    - [Set Environment Variable](#set-environment-variable)
-    - [Compile and Test](#compile-and-test)
-    - [Notes:](#notes)
   - [Optional feature "local\_suitesparse"](#optional-feature-local_suitesparse)
   - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
   - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
@@ -181,20 +175,19 @@ To compile Russell on Windows, the MSYS2 environment is required along with the 
 
 The installation steps are as follows:
 
-#### Install MSYS2
+**1. Install MSYS2**
 
-Download the installer from the MSYS2 website https://www.msys2.org/
-(the 64-bit version is recommended).  
+Download the installer from the MSYS2 website https://www.msys2.org/ (the 64-bit version is recommended).  
 
-Run the installer and select the default installation path (typically C:\\msys64).  
+Run the installer and select the default installation path (typically `C:\msys64`).  
 
-#### Launch the MSYS2 Terminal
+**2. Launch the MSYS2 Terminal**
 
-After installation, launch the MSYS2 UCRT64 terminal from the Start Menu or the installation directory (recommended, as it best matches the Rust GNU toolchain).  
+After the installation, launch the `MSYS2 UCRT64` terminal from the Start Menu or the installation directory (recommended, as it best matches the Rust GNU toolchain).  
 
-#### Install the required packages in MSYS2
+**3. Install the required packages in MSYS2**
 
-Run the following commands in the MSYS2 UCRT64 terminal:  
+Run the following commands in the `MSYS2 UCRT64` terminal:  
 
 ```bash
 # Update the package database
@@ -208,17 +201,17 @@ pacman -S mingw-w64-ucrt-x86_64-openblas
 pacman -S mingw-w64-ucrt-x86_64-suitesparse
 ```
 
-#### Set Environment Variable
+**4. Set Environment Variable**
 
-Set the environment variable in the MSYS2 terminal (add to \~/.bashrc to make it permanent):
+Set the environment variable in the `MSYS2 UCRT64` terminal (add to `~/.bashrc` to make it permanent):
 
 ```bash
 export MSYS2_PREFIX='/ucrt64'
 ```
 
-#### Compile and Test
+**5. Compile and Test**
 
-In the MSYS2 UCRT64 terminal, navigate to the Russell project directory and run:
+In the `MSYS2 UCRT64` terminal, navigate to the Russell project directory and run:
 
 ```bash
 # Navigate to the project directory
@@ -231,7 +224,7 @@ cargo clean
 cargo test
 ```
 
-#### Notes:
+**6. Notes**
 
 * Ensure that all cargo commands are executed within the MSYS2 UCRT64 terminal.
 * Add export `MSYS2\_PREFIX='/ucrt64'` to `\~/.bashrc` to make the environment variable persistent.

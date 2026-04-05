@@ -12,7 +12,7 @@ sudo () {
 BLAS_LIB=${1:-""}
 
 # options
-VERSION="5.7.3"
+VERSION="5.8.2"
 PREFIX="/usr/local"
 INCDIR=$PREFIX/include/mumps
 LIBDIR=$PREFIX/lib/mumps

@@ -60,7 +60,7 @@ extern "C" {
 ///     // compare with solution
 ///     let l_correct = "┌                   ┐\n\
 ///                      │  2+0i  0+0i  0+0i │\n\
-///                      │  6+0i  1+0i  0+0i │\n\
+///                      │  6+0i 1+-0i  0+0i │\n\
 ///                      │ -8+0i  5+0i  3+0i │\n\
 ///                      └                   ┘";
 ///     assert_eq!(format!("{}", l), l_correct);

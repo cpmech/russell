@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION="2023.2.0"
+VERSION="latest"
 
 # fake sudo function to be used by docker build
 sudo () {
@@ -17,12 +17,20 @@ sudo echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https:
 # install packages
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
-    intel-oneapi-compiler-fortran-$VERSION \
-    intel-oneapi-mkl-$VERSION \
-    intel-oneapi-mkl-devel-$VERSION
+    intel-oneapi-mkl \
+    intel-oneapi-mkl-devel
+
+# TODO:
+# intel-oneapi-compiler-fortran-$VERSION
 
 LIBDIR1="/opt/intel/oneapi/mkl/$VERSION/lib/intel64"
-LIBDIR2="/opt/intel/oneapi/compiler/$VERSION/linux/compiler/lib/intel64_lin"
+LIBDIR2="/opt/intel/oneapi/compiler/$VERSION/lib"
+
+# remove this strange file that comes with MKL
+WEIRD_FILE="/opt/intel/oneapi/mkl/$VERSION/lib/intel64/libmkl_sycl.so"
+if [ -f "$WEIRD_FILE" ]; then
+    sudo mv "$WEIRD_FILE" "/opt/intel/oneapi/mkl/$VERSION/lib/intel64/libmkl_sick.txt"
+fi
 
 # update ldconfig
 echo "${LIBDIR1}" | sudo tee /etc/ld.so.conf.d/intel-oneapi-mkl-and-compiler.conf >/dev/null

@@ -1,5 +1,5 @@
 #[cfg(feature = "intel_mkl")]
-const MKL_VERSION: &str = "2023.2.0";
+const MKL_VERSION: &str = "latest";
 
 // Intel MKL
 #[cfg(feature = "intel_mkl")]
@@ -14,7 +14,7 @@ fn compile_blas() {
         MKL_VERSION
     );
     println!(
-        "cargo:rustc-link-search=native=/opt/intel/oneapi/compiler/{}/linux/compiler/lib/intel64_lin",
+        "cargo:rustc-link-search=native=/opt/intel/oneapi/compiler/{}/lib",
         MKL_VERSION
     );
     println!("cargo:rustc-link-lib=mkl_intel_lp64");

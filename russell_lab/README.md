@@ -689,28 +689,39 @@ fn main() -> Result<(), StrError> {
 use russell_lab::*;
 
 fn main() -> Result<(), StrError> {
-    // set matrix
-    let sym = 0.0;
+    // set the matrix
     #[rustfmt::skip]
     let mut a = Matrix::from(&[
-        [  4.0,   sym,   sym],
-        [ 12.0,  37.0,   sym],
+        [  4.0,  12.0, -16.0],
+        [ 12.0,  37.0, -43.0],
         [-16.0, -43.0,  98.0],
     ]);
+
+    // create a copy because the factorization will overwrite the
+    // lower part of the original matrix
+    let a_original = a.clone();
 
     // perform factorization
     mat_cholesky(&mut a, false)?;
 
-    // define alias (for convenience)
-    let l = &a;
+    // the result is stored in the lower triangle of a
+    // so, let's extract it into a separate matrix
+    let (m, n) = a.dims();
+    let mut l = Matrix::new(m, n);
+    for i in 0..m {
+        for j in 0..=i {
+            l.set(i, j, a.get(i, j));
+        }
+    }
 
-    // compare with solution
-    let l_correct = "┌          ┐\n\
-                     │  2  0  0 │\n\
-                     │  6  1  0 │\n\
-                     │ -8  5  3 │\n\
-                     └          ┘";
-    assert_eq!(format!("{}", l), l_correct);
+    // compare with the solution
+    #[rustfmt::skip]
+    let l_correct = Matrix::from(&[
+        [ 2.0, 0.0, 0.0],
+        [ 6.0, 1.0, 0.0],
+        [-8.0, 5.0, 3.0],
+    ]);
+    mat_approx_eq(&l, &l_correct, 1e-15);
 
     // check:  l ⋅ lᵀ = a
     let m = a.nrow();
@@ -722,12 +733,7 @@ fn main() -> Result<(), StrError> {
             }
         }
     }
-    let l_lt_correct = "┌             ┐\n\
-                        │   4  12 -16 │\n\
-                        │  12  37 -43 │\n\
-                        │ -16 -43  98 │\n\
-                        └             ┘";
-    assert_eq!(format!("{}", l_lt), l_lt_correct);
+    mat_approx_eq(&l_lt, &a_original, 1e-15);
     Ok(())
 }
 ```

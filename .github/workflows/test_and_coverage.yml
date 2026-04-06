@@ -3,8 +3,20 @@ on: [pull_request]
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, nightly]
     steps:
       - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: llvm-tools-preview
+      - name: Information
+        run: |
+          lsb_release -d
+          rustup --version
       - name: Install Libraries
         run: |
           sudo apt-get update -y && \
@@ -15,20 +27,19 @@ jobs:
       - name: Compile MUMPS
         run: |
           bash zscripts/compile-and-install-mumps.bash
-      - name: Install Rust
-        run: |
-          rustup toolchain install nightly --component llvm-tools-preview
-          rustup default nightly
       - name: Run tests
         run: |
           RUST_BACKTRACE=1 cargo test --features with_mumps
       - name: Install cargo-llvm-cov
+        if: matrix.rust == 'nightly'
         run: |
           curl -LsSf https://github.com/taiki-e/cargo-llvm-cov/releases/latest/download/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ~/.cargo/bin
       - name: Generate code coverage
+        if: matrix.rust == 'nightly'
         run: |
           cargo llvm-cov --workspace --features with_mumps --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' --lcov --output-path lcov.info
       - name: Upload to codecov.io
+        if: matrix.rust == 'nightly'
         uses: codecov/codecov-action@v4
         with:
           token: ${{secrets.CODECOV_TOKEN}}

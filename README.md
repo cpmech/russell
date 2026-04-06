@@ -248,14 +248,22 @@ bash zscripts/compile-and-install-mumps.bash
 
 ### Optional feature "intel_mkl"
 
-To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case SuiteSparse (and MUMPS) must be locally compiled (with Intel MKL). This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts, called with the **mkl** argument. For example:
+To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case, SuiteSparse (and MUMPS) must be locally compiled with Intel MKL. This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts.
+
+The `latest` version of Intel MKL will be used by such scripts, unless the following environment variable is set:
+
+```bash
+export MKL_VERSION=<version>
+```
+
+Call the scripts with the **mkl** argument to compile and install SuiteSparse and MUMPS with Intel MKL:
 
 ```bash
 bash zscripts/compile-and-install-suitesparse.bash mkl
 bash zscripts/compile-and-install-mumps.bash mkl
 ```
 
-**Warning:** We need to further investigate why the nightly Rust version (1.83) fails to link with Intel MKL on Ubuntu 24.04.1 LTS. The stable version (1.81) works just fine.
+**Warning:** The above scripts will rename the weird `libmkl_sycl.so` file to `libmkl_sick.txt` since [it is not a real library](https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ldconfig-opt-intel-oneapi-redist-lib-libmkl-sycl-so-is-not-an/m-p/1549240#M35528).
 
 ### Number of threads
 

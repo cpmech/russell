@@ -1,6 +1,6 @@
 [package]
 name = "russell_lab"
-version = "1.10.0"
+version = "1.13.0"
 edition = "2021"
 license = "MIT"
 description = "Scientific laboratory for linear algebra and numerical mathematics"
@@ -20,7 +20,7 @@ num-traits = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 plotpy = "1.21"
 serde_json = "1.0"
 serial_test = "3.2"

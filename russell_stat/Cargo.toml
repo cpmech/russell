@@ -1,6 +1,6 @@
 [package]
 name = "russell_stat"
-version = "1.10.0"
+version = "1.13.0"
 edition = "2021"
 license = "MIT"
 description = "Statistics calculations and (engineering) probability distributions"
@@ -15,10 +15,10 @@ keywords = ["statistics", "probability", "random", "numerical"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "1.10.0" }
+russell_lab = { path = "../russell_lab", version = "1" }
 num-traits = "0.2"
-rand = "0.9"
-rand_distr = "0.5"
+rand = "0.10"
+rand_distr = "0.6"
 
 [dev-dependencies]
 plotpy = "1.21"

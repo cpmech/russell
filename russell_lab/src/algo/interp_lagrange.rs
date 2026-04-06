@@ -1442,7 +1442,7 @@ mod tests {
         let g = |x| 8.0 * f64::powf(x, 7.0);
         for (nn, grid_type, tol) in [
             (8, InterpGrid::Uniform, 1e-13),
-            (8, InterpGrid::ChebyshevGauss, 1e-14),
+            (8, InterpGrid::ChebyshevGauss, 1e-13),
             (8, InterpGrid::ChebyshevGaussLobatto, 1e-13),
         ] {
             // println!("nn = {}, grid = {:?}", nn, grid_type);

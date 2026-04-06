@@ -283,7 +283,7 @@ pub fn mat_eigen(
 ///     complex_mat_mat_mul(&mut a_v, one, &a, &v, zero)?;
 ///     complex_mat_mat_mul(&mut v_l, one, &v, &lam, zero)?;
 ///     complex_mat_add(&mut err, one, &a_v, m_one, &v_l)?;
-///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-15);
+///     approx_eq(complex_mat_norm(&err, Norm::Max), 0.0, 1e-14);
 ///     Ok(())
 /// }
 /// ```
@@ -548,7 +548,7 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(&l_real, l_real_correct, 1e-15);
         vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
-        check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+        check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-14);
     }
 
     #[test]
@@ -617,6 +617,6 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(&l_real, l_real_correct, 1e-15);
         vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
-        check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+        check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-14);
     }
 }

@@ -19,9 +19,9 @@ LIBDIR=$PREFIX/lib/suitesparse
 # install dependencies
 sudo apt-get update -y &&
 sudo apt-get install -y --no-install-recommends \
+    clang \
     cmake \
     curl \
-    g++ \
     git \
     make
 if [ "${BLAS_LIB}" = "mkl" ]; then
@@ -32,16 +32,19 @@ else
         libopenblas-dev
 fi
 
-# source Intel oneAPI vars (ifort)
+# source Intel oneAPI vars
 if [ "${BLAS_LIB}" = "mkl" ]; then
     source /opt/intel/oneapi/setvars.sh
     export | grep -i MKLROOT
 fi
 
-# set cmake options
-CMAKE_OPTIONS="-DBLA_VENDOR=OpenBLAS -DBLA_SIZEOF_INTEGER=4 -DNFORTRAN=ON"
+# set the compiler/linker
+COMP_LINK="-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
+
+# set cmake options for SuiteSparse
+CMAKE_OPTIONS="${COMP_LINK} -DBLA_VENDOR=OpenBLAS -DBLA_SIZEOF_INTEGER=4 -DSUITESPARSE_USE_FORTRAN=OFF"
 if [ "${BLAS_LIB}" = "mkl" ]; then
-    CMAKE_OPTIONS="-DBLA_VENDOR=Intel10_64lp -DBLA_SIZEOF_INTEGER=4 -DNFORTRAN=ON"
+    CMAKE_OPTIONS="${COMP_LINK} -DBLA_VENDOR=Intel10_64lp -DBLA_SIZEOF_INTEGER=4 -DSUITESPARSE_USE_FORTRAN=OFF"
 fi
 
 # download the source code
@@ -78,7 +81,7 @@ sudo cp -av include/suitesparse/*.h $INCDIR/
 
 # copy libray files
 sudo mkdir -p $LIBDIR/
-sudo cp -av lib/* /usr/local/lib/suitesparse
+sudo cp -av lib/* $LIBDIR/
 
 # update ldconfig
 echo "${LIBDIR}" | sudo tee /etc/ld.so.conf.d/suitesparse.conf >/dev/null

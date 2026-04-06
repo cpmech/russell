@@ -22,6 +22,7 @@
 [![Test on Arch Linux](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml)
 [![Test on Rocky Linux](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml)
 [![Test on macOS](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml)
+[![Test on Windows](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml)
 
 ---
 
@@ -41,6 +42,7 @@
   - [Rocky Linux](#rocky-linux)
   - [Arch Linux](#arch-linux)
   - [macOS](#macos)
+  - [Windows](#windows)
   - [Optional feature "local\_suitesparse"](#optional-feature-local_suitesparse)
   - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
   - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
@@ -168,6 +170,67 @@ First, install [Homebrew](https://brew.sh/). Then, run:
 brew install lapack openblas suite-sparse
 ```
 
+### Windows
+
+To compile Russell on Windows, the MSYS2 environment is required along with the installation of necessary libraries.
+
+The installation steps are as follows:
+
+**1. Install MSYS2**
+
+Download the installer from the MSYS2 website https://www.msys2.org/ (the 64-bit version is recommended).  
+
+Run the installer and select the default installation path (typically `C:\msys64`).  
+
+**2. Launch the MSYS2 Terminal**
+
+After the installation, launch the `MSYS2 UCRT64` terminal from the Start Menu or the installation directory (recommended, as it best matches the Rust GNU toolchain).  
+
+**3. Install the required packages in MSYS2**
+
+Run the following commands in the `MSYS2 UCRT64` terminal:  
+
+```bash
+# Update the package database
+pacman -Syu
+
+# Install the Rust GNU toolchain (if not already installed)
+rustup target add x86_64-pc-windows-gnu
+
+# Install libraries required for compilation
+pacman -S mingw-w64-ucrt-x86_64-openblas
+pacman -S mingw-w64-ucrt-x86_64-suitesparse
+```
+
+**4. Set Environment Variable**
+
+Set the environment variable in the `MSYS2 UCRT64` terminal (add to `~/.bashrc` to make it permanent):
+
+```bash
+export MSYS2_PREFIX='/ucrt64'
+```
+
+**5. Compile and Test**
+
+In the `MSYS2 UCRT64` terminal, navigate to the Russell project directory and run:
+
+```bash
+# Navigate to the project directory
+cd /c/path/to/russell
+
+# Clean previous build cache
+cargo clean
+
+# Compile and run tests
+cargo test
+```
+
+**6. Notes**
+
+* Ensure that all cargo commands are executed within the MSYS2 UCRT64 terminal.
+* Add export `MSYS2_PREFIX='/ucrt64'` to `~/.bashrc` to make the environment variable persistent.
+* The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
+
 ### Optional feature "local_suitesparse"
 
 `russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) script may be used in this case:
@@ -186,14 +249,22 @@ bash zscripts/compile-and-install-mumps.bash
 
 ### Optional feature "intel_mkl"
 
-To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case SuiteSparse (and MUMPS) must be locally compiled (with Intel MKL). This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts, called with the **mkl** argument. For example:
+To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case, SuiteSparse (and MUMPS) must be locally compiled with Intel MKL. This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts.
+
+The `latest` version of Intel MKL will be used by such scripts, unless the following environment variable is set:
+
+```bash
+export MKL_VERSION=<version>
+```
+
+Call the scripts with the **mkl** argument to compile and install SuiteSparse and MUMPS with Intel MKL:
 
 ```bash
 bash zscripts/compile-and-install-suitesparse.bash mkl
 bash zscripts/compile-and-install-mumps.bash mkl
 ```
 
-**Warning:** We need to further investigate why the nightly Rust version (1.83) fails to link with Intel MKL on Ubuntu 24.04.1 LTS. The stable version (1.81) works just fine.
+**Warning:** The above scripts will rename the weird `libmkl_sycl.so` file to `libmkl_sick.txt` since [it is not a real library](https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ldconfig-opt-intel-oneapi-redist-lib-libmkl-sycl-so-is-not-an/m-p/1549240#M35528).
 
 ### Number of threads
 
@@ -833,8 +904,8 @@ fn main() -> Result<(), StrError> {
     - [ ] Implement standard continuum mechanics tensors
 - [ ] General improvements
     - [x] Compile on macOS
-    - [ ] Study the possibility to install Russell on Windows
-
+    - [x] Compile on Windows
+    - [ ] Compile MUMPS on Windows
 
 ## Development
 

@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "1.10.0"
+version = "1.13.0"
 edition = "2021"
 license = "MIT"
 description = "Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)"
@@ -18,7 +18,7 @@ with_mumps = []
 
 [dependencies]
 num-traits = "0.2"
-russell_lab = { path = "../russell_lab", version = "1.10.0" }
+russell_lab = { path = "../russell_lab", version = "1" }
 structopt = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

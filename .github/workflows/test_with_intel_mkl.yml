@@ -3,8 +3,19 @@ on: [pull_request]
 jobs:
   test_with_intel_mkl:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, nightly]
     steps:
       - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+      - name: Information
+        run: |
+          lsb_release -d
+          rustup --version
       - name: Compile MUMPS
         run: |
           bash zscripts/compile-and-install-mumps.bash mkl
@@ -13,6 +24,4 @@ jobs:
           bash zscripts/compile-and-install-suitesparse.bash mkl
       - name: Run tests
         run: |
-          source /opt/intel/oneapi/setvars.sh
           RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps,intel_mkl
-

@@ -26,8 +26,6 @@ macro_rules! cpx {
 
 #[cfg(test)]
 mod tests {
-    use crate::cpx;
-
     #[test]
     fn cpx_works() {
         let x = cpx!(1.0, 2.0);

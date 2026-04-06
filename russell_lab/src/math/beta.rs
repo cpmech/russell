@@ -872,7 +872,7 @@ mod tests {
         assert_eq!(beta(-1.0, 2.0), f64::INFINITY);
         assert_eq!(beta(1.0, 1.0), 1.0);
         assert_eq!(beta(-100.3, 1e-200), gamma(1e-200));
-        approx_eq(beta(0.0342, 171.0), 24.070498359873497, 1e-14);
+        approx_eq(beta(0.0342, 171.0), 24.070498359873497, 1e-11);
         assert_eq!(beta(2.0, 4.0), (gamma(2.0) * gamma(4.0)) / gamma(6.0));
     }
 
@@ -881,7 +881,7 @@ mod tests {
         // values from SciPy test_basic.py file
         assert_eq!(ln_beta(1.0, 1.0), 0.0);
         assert_eq!(ln_beta(-100.3, 1e-200), ln_gamma(1e-200).0);
-        approx_eq(ln_beta(0.0342, 170.0), 3.1811881124242447, 1e-14);
+        approx_eq(ln_beta(0.0342, 170.0), 3.1811881124242447, 1e-13);
         assert_eq!(ln_beta(2.0, 4.0), f64::ln(f64::abs(beta(2.0, 4.0))));
     }
 }

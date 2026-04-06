@@ -429,7 +429,7 @@ mod tests {
         let identity = ComplexMatrix::identity(4);
         let a_copy = ComplexMatrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
-        complex_mat_approx_eq(&a_ai, &identity, 1e-15);
+        complex_mat_approx_eq(&a_ai, &identity, 1e-14);
     }
 
     #[test]

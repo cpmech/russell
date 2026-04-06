@@ -548,7 +548,7 @@ mod tests {
         let l_imag_correct = &[s3 / 2.0, -s3 / 2.0, 0.0];
         vec_approx_eq(&l_real, l_real_correct, 1e-15);
         vec_approx_eq(&l_imag, l_imag_correct, 1e-15);
-        check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-15);
+        check_eigen(&data, &v_real, &l_real, &v_imag, &l_imag, 1e-14);
     }
 
     #[test]

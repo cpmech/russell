@@ -14,9 +14,9 @@ fn compile_blas() {
         .compile("c_code_interface_blas");
     println!("cargo:rustc-link-search=native={}/lib/intel64", mkl_root);
     println!("cargo:rustc-link-search=native={}/lib", iomp_root);
-    println!("cargo:rustc-link-lib=mkl_intel_lp64");
-    println!("cargo:rustc-link-lib=mkl_intel_thread");
-    println!("cargo:rustc-link-lib=mkl_core");
+    println!("cargo:rustc-link-lib=static=mkl_intel_lp64");
+    println!("cargo:rustc-link-lib=static=mkl_intel_thread");
+    println!("cargo:rustc-link-lib=static=mkl_core");
     println!("cargo:rustc-link-lib=pthread");
     println!("cargo:rustc-link-lib=m");
     println!("cargo:rustc-link-lib=dl");

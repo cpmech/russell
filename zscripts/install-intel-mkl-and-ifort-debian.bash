@@ -15,14 +15,15 @@ wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCT
 sudo echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
 
 # install packages
+# note: we still need GCC for Intel IFX (Fortran) compiler!!!
 sudo apt-get update -y && \
 sudo apt-get install -y --no-install-recommends \
+    gcc \
+    intel-oneapi-compiler-fortran \
     intel-oneapi-mkl \
     intel-oneapi-mkl-devel
 
-# TODO:
-# intel-oneapi-compiler-fortran-$VERSION
-
+# set locations
 LIBDIR1="/opt/intel/oneapi/mkl/$VERSION/lib/intel64"
 LIBDIR2="/opt/intel/oneapi/compiler/$VERSION/lib"
 

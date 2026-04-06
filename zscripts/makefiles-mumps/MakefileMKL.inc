@@ -42,9 +42,9 @@ LIBEXT  = .a
 OUTC    = -o 
 OUTF    = -o 
 RM = /bin/rm -f
-CC = gcc
-FC = ifort
-FL = ifort
+CC = clang
+FC = ifx
+FL = ifx
 AR = ar vr 
 RANLIB = ranlib
 MKLROOT=/opt/intel/oneapi/mkl/latest/lib/intel64
@@ -60,8 +60,7 @@ LIBOTHERS = -lpthread
 CDEFS   = -DAdd_
 
 #Begin Optimized options
-# below, -diag-disable=10448 avoids Intel's warning about ifort being deprecated
-OPTF    = -O -nofor-main -fopenmp -DGEMMT_AVAILABLE  -diag-disable=10448
+OPTF    = -O -nofor-main -fopenmp -DGEMMT_AVAILABLE
 OPTL    = -O -nofor-main -fopenmp
 OPTC    = -O -fopenmp
 #End Optimized options

@@ -21,9 +21,9 @@ PDIR=`pwd`/zscripts/makefiles-mumps
 # install dependencies
 sudo apt-get update -y &&
 sudo apt-get install -y --no-install-recommends \
+    clang \
     cmake \
     curl \
-    g++ \
     libmetis-dev \
     make
 if [ "${BLAS_LIB}" = "mkl" ]; then
@@ -35,7 +35,7 @@ else
         libopenblas-dev
 fi
 
-# source Intel oneAPI vars (ifort)
+# source Intel oneAPI vars (ifx Fortran compiler)
 if [ "${BLAS_LIB}" = "mkl" ]; then
     source /opt/intel/oneapi/setvars.sh
 fi

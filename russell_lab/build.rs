@@ -4,19 +4,16 @@ const MKL_VERSION: &str = "latest";
 // Intel MKL
 #[cfg(feature = "intel_mkl")]
 fn compile_blas() {
+    let mkl_version = std::env::var("MKL_VERSION").unwrap_or_else(|_| MKL_VERSION.to_string());
+    let mkl_root = format!("/opt/intel/oneapi/mkl/{}", mkl_version);
+    let iomp_root = format!("/opt/intel/oneapi/compiler/{}", mkl_version);
     cc::Build::new()
         .file("c_code/interface_blas.c")
-        .include(format!("/opt/intel/oneapi/mkl/{}/include", MKL_VERSION))
+        .include(format!("{}/include", mkl_root))
         .define("USE_INTEL_MKL", None)
         .compile("c_code_interface_blas");
-    println!(
-        "cargo:rustc-link-search=native=/opt/intel/oneapi/mkl/{}/lib/intel64",
-        MKL_VERSION
-    );
-    println!(
-        "cargo:rustc-link-search=native=/opt/intel/oneapi/compiler/{}/lib",
-        MKL_VERSION
-    );
+    println!("cargo:rustc-link-search=native={}/lib/intel64", mkl_root);
+    println!("cargo:rustc-link-search=native={}/lib", iomp_root);
     println!("cargo:rustc-link-lib=mkl_intel_lp64");
     println!("cargo:rustc-link-lib=mkl_intel_thread");
     println!("cargo:rustc-link-lib=mkl_core");

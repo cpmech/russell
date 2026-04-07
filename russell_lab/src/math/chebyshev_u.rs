@@ -343,7 +343,25 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_deriv1_relation_with_t() {
+    fn chebyshev_u_deriv1_relation_with_un_works() {
+        // We test the relation: (1 - x²) Uₙ'(x) = (n + 1) U_{n-1}(x) - n x Uₙ(x)
+        let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
+
+        for x in points {
+            for n in 1..=6 {
+                let u_deriv = chebyshev_un_deriv1(n, x);
+                let u_n = chebyshev_un(n, x);
+                let u_n_minus_1 = chebyshev_un(n - 1, x);
+
+                let lhs = (1.0 - x * x) * u_deriv;
+                let rhs = (n as f64 + 1.0) * u_n_minus_1 - (n as f64) * x * u_n;
+                approx_eq(lhs, rhs, 1e-10);
+            }
+        }
+    }
+
+    #[test]
+    fn chebyshev_u_deriv1_relation_with_tn_deriv1_works() {
         let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
 
         for x in points {

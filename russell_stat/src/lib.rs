@@ -15,7 +15,7 @@ use rand::rngs::ThreadRng;
 
 /// Returns the thread-local random number generator, seeded by the system
 ///
-/// See more information here: [rand::thread_rng()]
+/// See more information here: [rand::rng()]
 #[inline]
 pub fn get_rng() -> ThreadRng {
     // re-exported for convenience

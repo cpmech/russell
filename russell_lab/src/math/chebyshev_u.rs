@@ -45,28 +45,27 @@ pub fn chebyshev_un(n: usize, x: f64) -> f64 {
     if x < -1.0 {
         let acosh_val = (-x).acosh();
         let sinh_val = (m * acosh_val).sinh() / acosh_val.sinh();
-
         if n % 2 == 0 {
-            return sinh_val;
+            sinh_val
         } else {
-            return -sinh_val;
+            -sinh_val
         }
     } else if x > 1.0 {
         let acosh_val = x.acosh();
-        return (m * acosh_val).sinh() / acosh_val.sinh();
+        (m * acosh_val).sinh() / acosh_val.sinh()
     } else {
         if (x - 1.0).abs() < 1e-12 {
-            return m;
+            m
         } else if (x + 1.0).abs() < 1e-12 {
             if n % 2 == 0 {
-                return m;
+                m
             } else {
-                return -m;
+                -m
             }
+        } else {
+            let acos_val = x.acos();
+            (m * acos_val).sin() / acos_val.sin()
         }
-
-        let acos_val = x.acos();
-        return (m * acos_val).sin() / acos_val.sin();
     }
 }
 /// Computes the first derivative of the second kind of Chebyshev U(n, x) function

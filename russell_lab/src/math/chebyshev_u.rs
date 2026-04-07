@@ -200,7 +200,8 @@ mod tests {
     use crate::approx_eq;
 
     #[test]
-    fn chebyshev_u_works() {
+    fn eval_works() {
+        // Tests the evaluation of U_n(x) against their exact polynomial expressions up to n=5
         let nn = 5;
         let mut xx: Vec<_> = (0..(nn + 1))
             .into_iter()
@@ -235,7 +236,8 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_special_values_works() {
+    fn special_values_works() {
+        // Tests U_n(x) at specific boundary points and zeroes (e.g., x = 1, -1 and 0)
         for n in 0..10 {
             let expected = (n + 1) as f64;
             approx_eq(chebyshev_un(n, 1.0), expected, 1e-15);
@@ -257,7 +259,8 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_recursion_works() {
+    fn recursion_works() {
+        // Tests the fundamental recurrence relation: U_{n+1}(x) = 2x U_n(x) - U_{n-1}(x)
         let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
 
         for x in points {
@@ -273,8 +276,9 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_relation_with_chebyshev_t_works() {
-        // Tₙ'(x) = n U_{n-1}(x)
+    fn relation_with_chebyshev_t_works() {
+        // Tests the analytical identity tying T_n derivative to U_{n-1}: T_n'(x) = n U_{n-1}(x)
+        // Note: Verifies within the bounds |x| != 1
         use crate::math::chebyshev_tn_deriv1;
 
         let points = [-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5];
@@ -293,7 +297,8 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_symmetry_works() {
+    fn symmetry_works() {
+        // Tests the parity (symmetry) of the Chebyshev polynomials of 2nd kind: U_n(-x) = (-1)^n U_n(x)
         let points = [0.0, 0.25, 0.5, 0.75, 1.0, 1.5];
 
         for x in points {
@@ -308,7 +313,8 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_derivatives_exact_formula() {
+    fn derivatives_exact_formula_works() {
+        // Tests the 1st and 2nd derivatives of U_n(x) against their exact algebraic formulas up to n=5
         let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
 
         for x in points {
@@ -343,8 +349,9 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_deriv1_relation_with_un_works() {
-        // We test the relation: (1 - x²) Uₙ'(x) = (n + 1) U_{n-1}(x) - n x Uₙ(x)
+    fn deriv1_relation_with_un_works() {
+        // Tests the relation between U_n derivative and lower order U polynomials: 
+        // (1 - x²) Uₙ'(x) = (n + 1) U_{n-1}(x) - n x Uₙ(x)
         let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
 
         for x in points {
@@ -361,7 +368,8 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_deriv1_relation_with_tn_deriv1_works() {
+    fn deriv1_relation_with_tn_deriv1_works() {
+        // Extended test for T_n'(x) = n U_{n-1}(x) that also verifies correctness at boundaries |x| = 1
         let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
 
         for x in points {
@@ -375,7 +383,9 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_deriv2_differential_equation() {
+    fn deriv2_differential_equation_works() {
+        // Tests the determining differential equation for U_n(x): 
+        // (1 - x²) U_n''(x) - 3x U_n'(x) + n(n + 2) U_n(x) = 0
         let points = [-2.0, -1.5, -0.9, -0.5, 0.0, 0.5, 0.9, 1.5, 2.0];
 
         for x in points {
@@ -393,7 +403,9 @@ mod tests {
     }
 
     #[test]
-    fn chebyshev_u_derivatives_boundary_works() {
+    fn derivatives_boundary_works() {
+        // Tests that 1st and 2nd derivatives evaluated at boundaries x = +/- 1 
+        // match their corresponding exact analytical limits
         approx_eq(chebyshev_un_deriv1(1, 1.0), 2.0, 1e-15);
         approx_eq(chebyshev_un_deriv1(2, 1.0), 8.0, 1e-15);
         approx_eq(chebyshev_un_deriv1(3, 1.0), 20.0, 1e-15);

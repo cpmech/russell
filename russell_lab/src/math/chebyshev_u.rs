@@ -194,10 +194,9 @@ pub fn chebyshev_un_deriv2(n: usize, x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::chebyshev_tn_deriv1;
-    use super::chebyshev_un;
-    use super::{chebyshev_un_deriv1, chebyshev_un_deriv2};
-    use crate::approx_eq;
+    use super::{chebyshev_tn, chebyshev_tn_deriv1};
+    use super::{chebyshev_un, chebyshev_un_deriv1, chebyshev_un_deriv2};
+    use crate::{approx_eq, math::PI};
 
     #[test]
     fn eval_works() {
@@ -350,7 +349,7 @@ mod tests {
 
     #[test]
     fn deriv1_relation_with_un_works() {
-        // Tests the relation between U_n derivative and lower order U polynomials: 
+        // Tests the relation between U_n derivative and lower order U polynomials:
         // (1 - x²) Uₙ'(x) = (n + 1) U_{n-1}(x) - n x Uₙ(x)
         let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
 
@@ -384,7 +383,7 @@ mod tests {
 
     #[test]
     fn deriv2_differential_equation_works() {
-        // Tests the determining differential equation for U_n(x): 
+        // Tests the determining differential equation for U_n(x):
         // (1 - x²) U_n''(x) - 3x U_n'(x) + n(n + 2) U_n(x) = 0
         let points = [-2.0, -1.5, -0.9, -0.5, 0.0, 0.5, 0.9, 1.5, 2.0];
 
@@ -404,7 +403,7 @@ mod tests {
 
     #[test]
     fn derivatives_boundary_works() {
-        // Tests that 1st and 2nd derivatives evaluated at boundaries x = +/- 1 
+        // Tests that 1st and 2nd derivatives evaluated at boundaries x = +/- 1
         // match their corresponding exact analytical limits
         approx_eq(chebyshev_un_deriv1(1, 1.0), 2.0, 1e-15);
         approx_eq(chebyshev_un_deriv1(2, 1.0), 8.0, 1e-15);
@@ -425,5 +424,52 @@ mod tests {
         approx_eq(chebyshev_un_deriv2(3, -1.0), -48.0, 1e-15);
         approx_eq(chebyshev_un_deriv2(4, -1.0), 168.0, 1e-15);
         approx_eq(chebyshev_un_deriv2(5, -1.0), -448.0, 1e-15);
+    }
+
+    #[test]
+    fn roots_works() {
+        // Tests that roots x_k = cos(k * pi / (n + 1)) correctly evaluate to U_n(x_k) = 0
+        for n in 1..=5 {
+            for k in 1..=n {
+                let x_k = ((k as f64) * PI / ((n as f64) + 1.0)).cos();
+                approx_eq(chebyshev_un(n, x_k), 0.0, 1e-13);
+            }
+        }
+    }
+
+    #[test]
+    fn relation_with_tn_values_works() {
+        // Tests the foundational relation binding U_n and T_n polynomials:
+        // T_n(x) = U_n(x) - x U_{n-1}(x)
+        let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
+
+        for x in points {
+            for n in 1..=6 {
+                let t_n = chebyshev_tn(n, x);
+                let u_n = chebyshev_un(n, x);
+                let u_n_minus_1 = chebyshev_un(n - 1, x);
+                let rhs = u_n - x * u_n_minus_1;
+                approx_eq(t_n, rhs, 1e-11);
+            }
+        }
+    }
+
+    #[test]
+    fn pell_equation_works() {
+        // Tests the polynomial Pell equation identity relating T_n and U_{n-1}:
+        // 1 - [T_n(x)]² = (1 - x²) [U_{n-1}(x)]²
+        let points = [-2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0];
+
+        for x in points {
+            for n in 1..=6 {
+                let t_n = chebyshev_tn(n, x);
+                let u_n_minus_1 = chebyshev_un(n - 1, x);
+
+                let lhs = 1.0 - t_n * t_n;
+                let rhs = (1.0 - x * x) * (u_n_minus_1 * u_n_minus_1);
+
+                approx_eq(lhs, rhs, 1e-8);
+            }
+        }
     }
 }

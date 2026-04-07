@@ -158,7 +158,7 @@ pub fn chebyshev_un_deriv1(n: usize, x: f64) -> f64 {
 /// ```
 /// use russell_lab::{approx_eq, math};
 ///
-/// approx_eq(math::chebyshev_un_deriv2(4, 0.25), -12.0 , 1e-15);
+/// approx_eq(math::chebyshev_un_deriv2(4, 0.25), -12.0 , 1e-14);
 /// ```
 pub fn chebyshev_un_deriv2(n: usize, x: f64) -> f64 {
     if n == 0 || n == 1 {

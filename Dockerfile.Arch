@@ -16,8 +16,8 @@ RUN cd yay && makepkg -si --noconfirm
 
 # install libraries for russell
 RUN yay -Y --gendb --noconfirm && yay -Y --devel --save
-RUN yay -Syu blas-openblas --noconfirm
-RUN yay -Syu suitesparse --noconfirm
+RUN yay -Sy --noconfirm --needed blas-openblas
+RUN yay -Sy --noconfirm --needed suitesparse
 
 # install rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y

@@ -114,7 +114,10 @@ mod tests {
     fn test_invalid_leading_coeff() {
         // a=0 Triggers Error
         let err = solve_cubic(0.0, 1.0, 1.0, 1.0).unwrap_err();
-        assert_eq!(err, "The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12).");
+        assert_eq!(
+            err,
+            "The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12)."
+        );
     }
 
     #[test]
@@ -167,7 +170,12 @@ mod tests {
         // Verify each root satisfies the equation
         for root in &roots {
             let value = a * root.powi(3) + b * root.powi(2) + c * root + d;
-            assert!(value.abs() < 1e-6, "Root {} does not satisfy the equation: value = {}", root, value);
+            assert!(
+                value.abs() < 1e-6,
+                "Root {} does not satisfy the equation: value = {}",
+                root,
+                value
+            );
         }
     }
 
@@ -183,7 +191,12 @@ mod tests {
         // Verify each root satisfies the equation
         for root in &roots {
             let value = a * root.powi(3) + b * root.powi(2) + c * root + d;
-            assert!(value.abs() < 1e-6, "Root {} does not satisfy the equation: value = {}", root, value);
+            assert!(
+                value.abs() < 1e-6,
+                "Root {} does not satisfy the equation: value = {}",
+                root,
+                value
+            );
         }
     }
 
@@ -209,7 +222,12 @@ mod tests {
         // Verify each root satisfies the equation
         for root in &roots {
             let value = a * root.powi(3) + b * root.powi(2) + c * root + d;
-            assert!(value.abs() < 1e-6, "Root {} does not satisfy the equation: value = {}", root, value);
+            assert!(
+                value.abs() < 1e-6,
+                "Root {} does not satisfy the equation: value = {}",
+                root,
+                value
+            );
         }
     }
 
@@ -226,7 +244,12 @@ mod tests {
         // Verify each root satisfies the equation
         for root in &roots {
             let value = a * root.powi(3) + b * root.powi(2) + c * root + d;
-            assert!(value.abs() < 1e-40, "Root {} does not satisfy the equation: value = {}", root, value);
+            assert!(
+                value.abs() < 1e-40,
+                "Root {} does not satisfy the equation: value = {}",
+                root,
+                value
+            );
         }
     }
 
@@ -234,8 +257,11 @@ mod tests {
     fn test_error_handling() {
         // Test invalid leading coefficient error
         let err = solve_cubic(0.0, 1.0, 1.0, 1.0).unwrap_err();
-        assert_eq!(err, "The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12).");
-        
+        assert_eq!(
+            err,
+            "The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12)."
+        );
+
         // Test that error messages can be formatted
         let err_msg = format!("{}", err);
         assert!(err_msg.contains("leading coefficient 'a' must be nonzero"));

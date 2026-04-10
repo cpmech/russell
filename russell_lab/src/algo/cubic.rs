@@ -266,4 +266,32 @@ mod tests {
         let err_msg = format!("{}", err);
         assert!(err_msg.contains("leading coefficient 'a' must be nonzero"));
     }
+
+    #[test]
+    fn test_x_cubed_equals_zero() {
+        // x³ = 0 → roots: 0, 0, 0
+        let roots = solve_cubic(1.0, 0.0, 0.0, 0.0).unwrap();
+        assert_eq!(roots.len(), 3);
+        assert!((roots[0] - 0.0).abs() < EPS);
+        assert!((roots[1] - 0.0).abs() < EPS);
+        assert!((roots[2] - 0.0).abs() < EPS);
+    }
+
+    #[test]
+    fn test_x_cubed_equals_d() {
+        // x³ - 8 = 0 → roots: 2
+        let roots = solve_cubic(1.0, 0.0, 0.0, -8.0).unwrap();
+        assert_eq!(roots.len(), 1);
+        assert!((roots[0] - 2.0).abs() < EPS);
+    }
+
+    #[test]
+    fn test_roots_zero_and_non_zero() {
+        // x²(x-2) = x³ - 2x² = 0 → roots: 0, 0, 2
+        let roots = solve_cubic(1.0, -2.0, 0.0, 0.0).unwrap();
+        assert_eq!(roots.len(), 3);
+        assert!((roots[0] - 0.0).abs() < EPS);
+        assert!((roots[1] - 0.0).abs() < EPS);
+        assert!((roots[2] - 2.0).abs() < EPS);
+    }
 }

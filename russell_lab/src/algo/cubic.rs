@@ -249,4 +249,20 @@ mod tests {
             assert!(value.abs() < 1e-40, "Root {} does not satisfy the equation: value = {}", root, value);
         }
     }
+
+    #[test]
+    fn test_error_handling() {
+        // Test InvalidLeadingCoeff error
+        let err = solve_cubic(0.0, 1.0, 1.0, 1.0).unwrap_err();
+        assert!(matches!(err, CubicError::InvalidLeadingCoeff(0.0)));
+        
+        // Test that error messages can be formatted
+        let err_msg = format!("{}", err);
+        assert!(err_msg.contains("leading coefficient a must not be zero"));
+        
+        // Test CalculationError error formatting (even though it's not currently used)
+        let calc_err = CubicError::CalculationError("test error");
+        let calc_err_msg = format!("{}", calc_err);
+        assert!(calc_err_msg.contains("cubic equation calculation error: test error"));
+    }
 }

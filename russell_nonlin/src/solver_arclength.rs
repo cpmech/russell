@@ -1,7 +1,7 @@
 use super::{Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::StrError;
-use russell_lab::{approx_eq, vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
+use russell_lab::{vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{Norm, Vector};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver, Sym};
 
@@ -439,6 +439,71 @@ impl<'a, A> SolverArclength<'a, A> {
         }
     }
 
+    /// Updates the tangent vector after a successful iteration set
+    fn update_tangent_vector(&mut self, work: &mut Workspace, args: &mut A) -> Result<(), StrError> {
+        // create a copy of the tangent vector at the initial point
+        vec_copy(&mut self.duds_prev, &work.duds).unwrap();
+        self.dlds_prev = work.dlds;
+
+        // update the tangent vector
+        let ndim = self.system.ndim;
+        if self.config.bordering {
+            // calculate Gu = ∂G/∂u at the updated state
+            if !self.iter_jac_computed {
+                // This is only needed if the iteration converged without computing the Jacobian
+                // For example, when the predictor was good enough and no Jacobian was computed
+                self.assemble_and_factorize_jac(work, args)?;
+            }
+
+            // Note that Gλ was calculated at the updated state during the iteration
+            // solve mdu := Gu⁻¹ · Gλ = -z
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := -z
+            work.stats.stop_sw_lin_sol();
+
+            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
+            work.dlds = 1.0 / f64::sqrt(1.0 + vec_inner(&self.mdu, &self.mdu));
+            vec_copy_scaled(&mut work.duds, -work.dlds, &self.mdu).unwrap(); // "-1" because mdu = -z
+
+            // fix the sign of the tangent vector to keep following in the same direction
+            let dot = vec_inner(&work.duds, &self.duds_prev) + work.dlds * self.dlds_prev;
+            if dot < 0.0 {
+                for i in 0..ndim {
+                    work.duds[i] = -work.duds[i];
+                }
+                work.dlds = -work.dlds;
+            }
+        } else {
+            // compute Jacobian matrix at the updated state
+            if !self.iter_jac_computed {
+                // This is only needed if the iteration converged without computing the Jacobian
+                // For example, when the predictor was good enough and no Jacobian was computed
+                self.assemble_and_factorize_aa(work, args, false)?;
+            }
+
+            // set b = (0, 1)
+            self.b.fill(0.0);
+            self.b[ndim] = 1.0;
+
+            // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
+            work.stats.sw_lin_sol.reset();
+            work.stats.n_lin_sol += 1;
+            self.ls.actual.solve(&mut self.x, &self.b, false)?;
+            work.stats.stop_sw_lin_sol();
+
+            // calculate the norm of x
+            let norm = vec_norm(&self.x, Norm::Euc);
+
+            // update the tangent vector
+            for i in 0..ndim {
+                work.duds[i] = self.x[i] / norm;
+            }
+            work.dlds = self.x[ndim] / norm;
+        }
+        Ok(())
+    }
+
     /// Performs a single iteration
     fn iterate(&mut self, work: &mut Workspace, u: &Vector, l: f64, args: &mut A) -> Result<Status, StrError> {
         // calculate G(u(s), λ(s))
@@ -717,69 +782,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     /// Returns `rerr` the relative error used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError> {
-        // create a copy of the tangent vector at the initial point
-        vec_copy(&mut self.duds_prev, &work.duds).unwrap();
-        self.dlds_prev = work.dlds;
-
         // update the tangent vector
-        let ndim = self.system.ndim;
-        if self.config.bordering {
-            // calculate Gu = ∂G/∂u at the updated state
-            if !self.iter_jac_computed {
-                // This is only needed if the iteration converged without computing the Jacobian
-                // For example, when the predictor was good enough and no Jacobian was computed
-                self.assemble_and_factorize_jac(work, args)?;
-            }
-
-            // Note that Gλ was calculated at the updated state during the iteration
-            // solve mdu := Gu⁻¹ · Gλ = -z
-            work.stats.sw_lin_sol.reset();
-            work.stats.n_lin_sol += 1;
-            self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := -z
-            work.stats.stop_sw_lin_sol();
-
-            // calculate the tangent vector: du/ds|₀ = dλ/ds z₀
-            work.dlds = 1.0 / f64::sqrt(1.0 + vec_inner(&self.mdu, &self.mdu));
-            vec_copy_scaled(&mut work.duds, -work.dlds, &self.mdu).unwrap(); // "-1" because mdu = -z
-
-            // fix the sign of the tangent vector to keep following in the same direction
-            let dot = vec_inner(&work.duds, &self.duds_prev) + work.dlds * self.dlds_prev;
-            if dot < 0.0 {
-                for i in 0..ndim {
-                    work.duds[i] = -work.duds[i];
-                }
-                work.dlds = -work.dlds;
-            }
-        } else {
-            // compute Jacobian matrix at the updated state
-            if !self.iter_jac_computed {
-                // This is only needed if the iteration converged without computing the Jacobian
-                // For example, when the predictor was good enough and no Jacobian was computed
-                self.assemble_and_factorize_aa(work, args, false)?;
-            }
-
-            // set b = (0, 1)
-            self.b.fill(0.0);
-            self.b[ndim] = 1.0;
-
-            // solve x = A⁻¹ · b ≡ (du/ds|₁, dλ/ds|₁)
-            work.stats.sw_lin_sol.reset();
-            work.stats.n_lin_sol += 1;
-            self.ls.actual.solve(&mut self.x, &self.b, false)?;
-            work.stats.stop_sw_lin_sol();
-
-            // calculate the norm of x
-            let norm = vec_norm(&self.x, Norm::Euc);
-
-            // update the tangent vector
-            for i in 0..ndim {
-                work.duds[i] = self.x[i] / norm;
-            }
-            work.dlds = self.x[ndim] / norm;
-        }
-
-        // make sure the tangent vector is normalized (TODO: remove this check)
-        approx_eq(vec_inner(&work.duds, &work.duds) + work.dlds * work.dlds, 1.0, 1e-14);
+        self.update_tangent_vector(work, args)?;
 
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁
@@ -790,6 +794,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         //
 
         // calculate the relative difference between dλ/du vectors (RMS of the error)
+        let ndim = self.system.ndim;
         let (atol, rtol) = (self.config.tg_control_atol, self.config.tg_control_rtol);
         let mut slope_prev; // previous (dλ/ds|₁) / (du/ds|₁) = dλ/du
         let mut slope; // (dλ/ds|₁) / (du/ds|₁) = dλ/du

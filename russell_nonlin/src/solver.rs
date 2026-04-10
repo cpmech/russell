@@ -327,7 +327,7 @@ impl<'a, A> Solver<'a, A> {
         // set rdiff to zero if it is too small so that tiny differences in
         // the solver yield deterministic stepsize control behavior
         assert!(rdiff >= 0.0, "rdiff must be non-negative");
-        let rdiff = if rdiff < self.config.tg_control_rerr_tiny {
+        let rdiff = if rdiff < self.config.tg_control_rdiff_zero {
             0.0
         } else {
             rdiff
@@ -336,7 +336,7 @@ impl<'a, A> Solver<'a, A> {
         // calculates the the relative changes on the tangent vector
         let rho = if self.config.tg_control_enabled {
             if rdiff == 0.0 {
-                self.config.tg_control_rho_for_tiny_rerr
+                self.config.tg_control_rho_for_tiny_rdiff
             } else if self.config.tg_control_pid_vcc {
                 const KP: f64 = 0.075;
                 const KI: f64 = 0.175;

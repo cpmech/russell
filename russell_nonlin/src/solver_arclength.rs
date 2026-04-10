@@ -214,11 +214,29 @@ impl<'a, A> SolverArclength<'a, A> {
             return Err("The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general.");
         }
 
+        // allocate variables for either the bordering algorithm or the augmented system, depending on the configuration
+        let ndim = system.ndim;
+        let (ggu, mdu, u_aux, aa, b) = if config.bordering {
+            let nnz_ggu = system.nnz_ggu;
+            let sym_ggu = system.sym_ggu;
+            let ggu = CooMatrix::new(ndim, ndim, nnz_ggu, sym_ggu).unwrap();
+            let mdu = Vector::new(ndim);
+            let u_aux = Vector::new(ndim);
+            let aa = CooMatrix::new(1, 1, 1, Sym::No).unwrap(); // empty
+            let b = Vector::new(0); // empty
+            (ggu, mdu, u_aux, aa, b)
+        } else {
+            let nnz_aa = system.nnz_ggu + 2 * ndim + 1;
+            let ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap(); // empty
+            let mdu = Vector::new(0); // empty
+            let u_aux = Vector::new(0); // empty
+            let aa = CooMatrix::new(ndim + 1, ndim + 1, nnz_aa, Sym::No).unwrap();
+            let b = Vector::new(ndim + 1);
+            (ggu, mdu, u_aux, aa, b)
+        };
+
         // allocate new instance
         let genie = config.genie;
-        let ndim = system.ndim;
-        let nnz_ggu = system.nnz_ggu;
-        let sym_ggu = system.sym_ggu;
         if config.bordering {
             Ok(SolverArclength {
                 config,
@@ -230,14 +248,13 @@ impl<'a, A> SolverArclength<'a, A> {
                 dlds_prev: 0.0,
                 ls: LinSolver::new(genie)?,
                 x: Vector::new(ndim + 1),
-                ggu: CooMatrix::new(ndim, ndim, nnz_ggu, sym_ggu).unwrap(),
-                mdu: Vector::new(ndim),
-                u_aux: Vector::new(ndim),
-                aa: CooMatrix::new(1, 1, 1, Sym::No).unwrap(), // empty
-                b: Vector::new(0),                             // empty
+                ggu,
+                mdu,
+                u_aux,
+                aa,
+                b,
             })
         } else {
-            let nnz_aa = system.nnz_ggu + 2 * ndim + 1;
             Ok(SolverArclength {
                 config,
                 system,
@@ -248,11 +265,11 @@ impl<'a, A> SolverArclength<'a, A> {
                 dlds_prev: 0.0,
                 ls: LinSolver::new(genie)?,
                 x: Vector::new(ndim + 1),
-                ggu: CooMatrix::new(1, 1, 1, Sym::No).unwrap(), // empty
-                mdu: Vector::new(0),                            // empty
-                u_aux: Vector::new(0),                          // empty
-                aa: CooMatrix::new(ndim + 1, ndim + 1, nnz_aa, Sym::No).unwrap(),
-                b: Vector::new(ndim + 1),
+                ggu,
+                mdu,
+                u_aux,
+                aa,
+                b,
             })
         }
     }
@@ -769,6 +786,11 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             work.log.did_not_converge();
         }
 
+        // update the tangent vector
+        if status.success() {
+            self.update_tangent_vector(work, args)?;
+        }
+
         // done
         Ok(status)
     }
@@ -782,9 +804,6 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///
     /// Returns `rdiff` the relative difference used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError> {
-        // update the tangent vector
-        self.update_tangent_vector(work, args)?;
-
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁
         *l = work.l; // λ := λ₁

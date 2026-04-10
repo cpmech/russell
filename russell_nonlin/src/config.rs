@@ -137,7 +137,7 @@ pub struct Config {
     pub(crate) tg_control_pid_vcc: bool,
 
     /// Smallest absolute value of the relative difference in the tangent vector stepsize control
-    pub(crate) tg_control_rdiff_zero: f64,
+    pub(crate) tg_control_rdiff_min: f64,
 
     /// Rho multiplier for when the absolute value of the relative difference is "tiny" in the tangent vector stepsize control
     pub(crate) tg_control_rho_for_tiny_rdiff: f64,
@@ -254,7 +254,7 @@ impl Config {
             nr_control_enabled: true,
             tg_control_enabled: true,
             tg_control_pid_vcc: true,
-            tg_control_rdiff_zero: 1e-6,
+            tg_control_rdiff_min: 1e-6,
             tg_control_rho_for_tiny_rdiff: 1.2,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
@@ -597,7 +597,7 @@ impl Config {
     ///
     /// Default value: 1e-6
     pub fn set_tg_control_rerr_tiny(&mut self, value: f64) -> &mut Self {
-        self.tg_control_rdiff_zero = value;
+        self.tg_control_rdiff_min = value;
         self
     }
 

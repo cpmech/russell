@@ -327,7 +327,7 @@ impl<'a, A> Solver<'a, A> {
         // set rdiff to zero if it is too small so that tiny differences in
         // the solver yield deterministic stepsize control behavior
         assert!(rdiff >= 0.0, "rdiff must be non-negative");
-        let rdiff = if rdiff < self.config.tg_control_rdiff_zero {
+        let rdiff = if rdiff < self.config.tg_control_rdiff_min {
             0.0
         } else {
             rdiff

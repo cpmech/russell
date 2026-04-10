@@ -780,7 +780,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///  * `work` -- contains the updated values (u₁, λ₁)
     ///  * `(u, l)` -- will be updated from (u₀, λ₀) to (u₁, λ₁)
     ///
-    /// Returns `rerr` the relative error used in stepsize adaptation
+    /// Returns `rdiff` the relative difference used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError> {
         // update the tangent vector
         self.update_tangent_vector(work, args)?;
@@ -816,10 +816,10 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
             den = atol + rtol * f64::abs(slope_prev);
             sum += delta * delta / (den * den);
         }
-        let rerr = f64::sqrt(sum / (ndim as f64));
+        let rdiff = f64::sqrt(sum / (ndim as f64));
 
         // done
-        Ok(rerr)
+        Ok(rdiff)
     }
 
     /// Handles the reject case by calculating a new stepsize

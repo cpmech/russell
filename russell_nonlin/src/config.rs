@@ -136,10 +136,10 @@ pub struct Config {
     ///    continuation framework, Computers & Structures, 313:107747, <https://doi.org/10.1016/j.compstruc.2025.107747>
     pub(crate) tg_control_pid_vcc: bool,
 
-    /// "Tiny" absolute value of the relative error in the tangent vector stepsize control
+    /// "Tiny" absolute value of the relative difference in the tangent vector stepsize control
     pub(crate) tg_control_rerr_tiny: f64,
 
-    /// Rho multiplier for when the absolute value of the relative error is "tiny" in the tangent vector stepsize control
+    /// Rho multiplier for when the absolute value of the relative difference is "tiny" in the tangent vector stepsize control
     pub(crate) tg_control_rho_for_tiny_rerr: f64,
 
     /// Optimal number of iterations for stepsize control using Newton-Raphson statistics
@@ -593,7 +593,7 @@ impl Config {
         self
     }
 
-    /// Sets the "tiny" absolute value of the relative error in the tangent vector stepsize control
+    /// Sets the "tiny" absolute value of the relative difference in the tangent vector stepsize control
     ///
     /// Default value: 1e-6
     pub fn set_tg_control_rerr_tiny(&mut self, value: f64) -> &mut Self {
@@ -601,7 +601,7 @@ impl Config {
         self
     }
 
-    /// Sets the rho multiplier for when the absolute value of the relative error is "tiny" in the tangent vector stepsize control
+    /// Sets the rho multiplier for when the absolute value of the relative difference is "tiny" in the tangent vector stepsize control
     ///
     /// Default value: 1.2
     pub fn set_tg_control_rho_for_tiny_rerr(&mut self, value: f64) -> &mut Self {

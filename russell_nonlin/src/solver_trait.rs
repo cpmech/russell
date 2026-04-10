@@ -23,7 +23,7 @@ pub(crate) trait SolverTrait<A>: Send {
 
     /// Handles the accept case by updating (u, l) and calculating a new stepsize
     ///
-    /// Returns `rerr` the relative error used in stepsize adaptation
+    /// Returns `rdiff` the relative difference used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError>;
 
     /// Handles the reject case by calculating a new stepsize

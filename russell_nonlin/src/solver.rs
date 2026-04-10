@@ -241,7 +241,7 @@ impl<'a, A> Solver<'a, A> {
                 } else {
                     // update u and λ
                     self.work.stats.n_accepted += 1;
-                    let rerr = self.actual.accept(&mut self.work, u, l, args)?;
+                    let rdiff = self.actual.accept(&mut self.work, u, l, args)?;
 
                     // check for anomalies
                     vec_all_finite(&u, self.config.verbose)?;
@@ -252,7 +252,7 @@ impl<'a, A> Solver<'a, A> {
                     }
 
                     // adapt stepsize
-                    let mut h_estimate = self.adapt_stepsize(rerr);
+                    let mut h_estimate = self.adapt_stepsize(rdiff);
                     if self.work.follows_failure || self.work.follows_rejection {
                         // avoid stepsize growth on failure/rejection
                         h_estimate = f64::min(h_estimate, self.work.h);
@@ -314,7 +314,7 @@ impl<'a, A> Solver<'a, A> {
     }
 
     /// Adapts the stepsize
-    fn adapt_stepsize(&mut self, rerr: f64) -> f64 {
+    fn adapt_stepsize(&mut self, rdiff: f64) -> f64 {
         // calculate the relative convergence behavior of the Newton-Raphson iterations
         let ksi = if self.config.nr_control_enabled {
             let nn = f64::max(1.0, self.work.n_iteration as f64);
@@ -324,18 +324,18 @@ impl<'a, A> Solver<'a, A> {
             1.0
         };
 
-        // set rerr to zero if it is too small so that tiny differences in
+        // set rdiff to zero if it is too small so that tiny differences in
         // the solver yield deterministic stepsize control behavior
-        assert!(rerr >= 0.0, "rerr must be non-negative");
-        let rerr = if rerr < self.config.tg_control_rerr_tiny {
+        assert!(rdiff >= 0.0, "rdiff must be non-negative");
+        let rdiff = if rdiff < self.config.tg_control_rerr_tiny {
             0.0
         } else {
-            rerr
+            rdiff
         };
 
         // calculates the the relative changes on the tangent vector
         let rho = if self.config.tg_control_enabled {
-            if rerr == 0.0 {
+            if rdiff == 0.0 {
                 self.config.tg_control_rho_for_tiny_rerr
             } else if self.config.tg_control_pid_vcc {
                 const KP: f64 = 0.075;
@@ -343,16 +343,16 @@ impl<'a, A> Solver<'a, A> {
                 const KD: f64 = 0.01;
                 let mut p = 1.0;
                 let mut d = 1.0;
-                let i = 1.0 / rerr;
+                let i = 1.0 / rdiff;
                 if self.work.stats.n_accepted > 1 {
-                    p = self.rerr_prev / rerr;
+                    p = self.rerr_prev / rdiff;
                 }
                 if self.work.stats.n_accepted > 2 && self.rerr_anc > 0.0 {
-                    d = self.rerr_prev * self.rerr_prev / (rerr * self.rerr_anc);
+                    d = self.rerr_prev * self.rerr_prev / (rdiff * self.rerr_anc);
                 }
                 f64::powf(p, KP) * f64::powf(i, KI) * f64::powf(d, KD)
             } else {
-                let mut rho = f64::powf(1.0 / rerr, self.config.tg_control_beta1);
+                let mut rho = f64::powf(1.0 / rdiff, self.config.tg_control_beta1);
                 if self.work.stats.n_accepted > 1 {
                     rho *= f64::powf(1.0 / self.rerr_prev, self.config.tg_control_beta2);
                     rho *= f64::powf(self.work.h / self.h_prev, -self.config.tg_control_alpha2);
@@ -369,7 +369,7 @@ impl<'a, A> Solver<'a, A> {
 
         // records the previous values
         self.rerr_anc = self.rerr_prev;
-        self.rerr_prev = rerr;
+        self.rerr_prev = rdiff;
         self.h_anc = self.h_prev;
         self.h_prev = self.work.h;
 

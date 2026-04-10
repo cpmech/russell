@@ -322,10 +322,10 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
 
     /// Handles the accept case by updating (u, l) and calculating a new stepsize
     ///
-    /// Returns `rerr` the relative error used in stepsize adaptation
+    /// Returns `rdiff` the relative difference used in stepsize adaptation
     fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, _args: &mut A) -> Result<f64, StrError> {
-        // calculate the relative error
-        let rerr = self.calculate_rerr(work, u);
+        // calculate the relative difference
+        let rdiff = self.calculate_rerr(work, u);
 
         // save previous u
         vec_copy(&mut self.u_prev, &u).unwrap();
@@ -335,7 +335,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         *l = work.l; // λ := λ₁
 
         // done
-        Ok(rerr)
+        Ok(rdiff)
     }
 
     /// Handles the reject case by calculating a new stepsize

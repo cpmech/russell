@@ -11,6 +11,7 @@ mod num_jacobian;
 mod quadrature;
 mod root_finder;
 mod root_finder_brent;
+mod cubic;
 mod testing;
 
 pub use bspline::*;
@@ -23,4 +24,5 @@ pub use min_solver::*;
 pub use num_jacobian::*;
 pub use quadrature::*;
 pub use root_finder::*;
+pub use cubic::*;
 pub use testing::*;

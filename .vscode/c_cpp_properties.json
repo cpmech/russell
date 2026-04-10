@@ -11,10 +11,10 @@
       "defines": [
         "USE_INTEL_MKL"
       ],
-      "compilerPath": "/usr/bin/gcc",
+      "compilerPath": "/usr/bin/clang",
       "cStandard": "c17",
       "cppStandard": "gnu++20",
-      "intelliSenseMode": "gcc-x64"
+      "intelliSenseMode": "clang-x64"
     }
   ],
   "version": 4

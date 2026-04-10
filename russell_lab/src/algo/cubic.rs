@@ -3,30 +3,10 @@
 //! Algorithm: Cardano method (trigonometric solution for irreducible case)
 //! Reference: https://en.wikipedia.org/wiki/Cubic_equation
 
+use crate::StrError;
 use std::f64::consts::PI;
 
 const EPS: f64 = 1e-12;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum CubicError {
-    InvalidLeadingCoeff(f64),
-    CalculationError(&'static str),
-}
-
-impl std::fmt::Display for CubicError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CubicError::InvalidLeadingCoeff(a) => {
-                write!(f, "cubic equation: leading coefficient a must not be zero (got a={:.e})", a)
-            }
-            CubicError::CalculationError(msg) => {
-                write!(f, "cubic equation calculation error: {}", msg)
-            }
-        }
-    }
-}
-
-impl std::error::Error for CubicError {}
 
 /// Solve cubic equation: a·x³ + b·x² + c·x + d = 0
 ///
@@ -37,7 +17,7 @@ impl std::error::Error for CubicError {}
 /// - `d`: Constant term
 ///
 /// # Outputs
-/// - `Result<Vec<f64>, CubicError>`: Sorted real roots (complex roots are omitted)
+/// - `Result<Vec<f64>, StrError>`: Sorted real roots (complex roots are omitted)
 ///
 /// # Examples
 /// ```
@@ -49,9 +29,9 @@ impl std::error::Error for CubicError {}
 /// assert!((roots[1] - 2.0).abs() < 1e-12);
 /// assert!((roots[2] - 3.0).abs() < 1e-12);
 /// ```
-pub fn solve_cubic(a: f64, b: f64, c: f64, d: f64) -> Result<Vec<f64>, CubicError> {
+pub fn solve_cubic(a: f64, b: f64, c: f64, d: f64) -> Result<Vec<f64>, StrError> {
     if a.abs() < EPS {
-        return Err(CubicError::InvalidLeadingCoeff(a));
+        return Err("The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12).");
     }
 
     let p = b / a;
@@ -134,7 +114,7 @@ mod tests {
     fn test_invalid_leading_coeff() {
         // a=0 Triggers Error
         let err = solve_cubic(0.0, 1.0, 1.0, 1.0).unwrap_err();
-        assert!(matches!(err, CubicError::InvalidLeadingCoeff(0.0)));
+        assert_eq!(err, "The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12).");
     }
 
     #[test]
@@ -252,17 +232,12 @@ mod tests {
 
     #[test]
     fn test_error_handling() {
-        // Test InvalidLeadingCoeff error
+        // Test invalid leading coefficient error
         let err = solve_cubic(0.0, 1.0, 1.0, 1.0).unwrap_err();
-        assert!(matches!(err, CubicError::InvalidLeadingCoeff(0.0)));
+        assert_eq!(err, "The absolute value of the leading coefficient 'a' must be nonzero (>= 1e-12).");
         
         // Test that error messages can be formatted
         let err_msg = format!("{}", err);
-        assert!(err_msg.contains("leading coefficient a must not be zero"));
-        
-        // Test CalculationError error formatting (even though it's not currently used)
-        let calc_err = CubicError::CalculationError("test error");
-        let calc_err_msg = format!("{}", calc_err);
-        assert!(calc_err_msg.contains("cubic equation calculation error: test error"));
+        assert!(err_msg.contains("leading coefficient 'a' must be nonzero"));
     }
 }

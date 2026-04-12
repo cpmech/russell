@@ -297,6 +297,11 @@ pub enum Status {
     /// (may try again)
     SecondaryUpdateError(StrError),
 
+    /// Failure: The stop criterion was not met
+    ///
+    /// (may try again)
+    UnmetStopCriterion,
+
     /// Failure: The stepsize became too small.
     ///
     /// (must stop)
@@ -353,6 +358,7 @@ impl Status {
             Status::ContinuedDeltaDivergence => true,
             Status::Rejection => true,
             Status::SecondaryUpdateError(_) => true,
+            Status::UnmetStopCriterion => true,
             // must stop
             Status::SmallStepsize => false,
             Status::SecondaryUpdateTerminate => false,

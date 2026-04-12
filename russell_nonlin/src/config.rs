@@ -40,6 +40,9 @@ pub struct Config {
     /// Indicates whether to record the iterations residuals or not (in statistics)
     pub(crate) record_iterations_residuals: bool,
 
+    /// Enables the precise stop using a component of the u vector (if any)
+    pub(crate) enable_precise_stop_u_comp: bool,
+
     // automatic stepsize -----------------------------------------------------------------
     //
     /// Coefficient to multiply the stepsize if the iterations are failing
@@ -228,6 +231,7 @@ impl Config {
             verbose_stats: false,
             hide_timings: false,
             record_iterations_residuals: false,
+            enable_precise_stop_u_comp: false,
             // automatic stepsize
             m_failure: 0.5,
             n_step_max: 100_000,
@@ -351,6 +355,14 @@ impl Config {
     /// Default value: false
     pub fn set_record_iterations_residuals(&mut self, flag: bool) -> &mut Self {
         self.record_iterations_residuals = flag;
+        self
+    }
+
+    /// Enables the precise stop using a component of the u vector (if any)
+    ///
+    /// Default value: false
+    pub fn set_enable_precise_stop_u_comp(&mut self, flag: bool) -> &mut Self {
+        self.enable_precise_stop_u_comp = flag;
         self
     }
 

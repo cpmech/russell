@@ -205,6 +205,17 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.n_steps += 1;
                 status = self.actual.step(&mut self.work, u, *l, stop, args)?;
 
+                // redo the step if it violates the stop u-component criterion
+                if self.config.enable_precise_stop_u_comp {
+                    if let Some((i, u1i, is_min)) = stop.u_comp() {
+                        if (is_min && self.work.u[i] < u1i - CONFIG_H_MIN)
+                            || (!is_min && self.work.u[i] > u1i + CONFIG_H_MIN)
+                        {
+                            status = Status::UnmetStopCriterion;
+                        }
+                    }
+                }
+
                 // check for failures
                 if status.failure() {
                     if status.try_again() {

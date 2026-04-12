@@ -237,41 +237,22 @@ impl<'a, A> SolverArclength<'a, A> {
 
         // allocate new instance
         let genie = config.genie;
-        if config.bordering {
-            Ok(SolverArclength {
-                config,
-                system,
-                theta: 1.0,
-                iter_jac_computed: false,
-                ggl: Vector::new(ndim),
-                duds_prev: Vector::new(ndim),
-                dlds_prev: 0.0,
-                ls: LinSolver::new(genie)?,
-                x: Vector::new(ndim + 1),
-                ggu,
-                mdu,
-                u_aux,
-                aa,
-                b,
-            })
-        } else {
-            Ok(SolverArclength {
-                config,
-                system,
-                theta: 1.0,
-                iter_jac_computed: false,
-                ggl: Vector::new(ndim),
-                duds_prev: Vector::new(ndim),
-                dlds_prev: 0.0,
-                ls: LinSolver::new(genie)?,
-                x: Vector::new(ndim + 1),
-                ggu,
-                mdu,
-                u_aux,
-                aa,
-                b,
-            })
-        }
+        Ok(SolverArclength {
+            config,
+            system,
+            theta: 1.0,
+            iter_jac_computed: false,
+            ggl: Vector::new(ndim),
+            duds_prev: Vector::new(ndim),
+            dlds_prev: 0.0,
+            ls: LinSolver::new(genie)?,
+            x: Vector::new(ndim + 1),
+            ggu,
+            mdu,
+            u_aux,
+            aa,
+            b,
+        })
     }
 
     /// Assembles and factorizes the Jacobian matrix (bordering algorithm)

@@ -6,7 +6,14 @@ use crate::StrError;
 use russell_lab::Vector;
 
 /// Defines a unified interface for linear system solvers
-pub trait LinSolTrait: Send {
+pub trait LinSolTrait: Send { 
+    /// For direct solvers: performs factorization
+    /// For iterative solvers: builds the preconditioner
+    fn setup(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+        // A wrapper function now
+        self.factorize(mat, params)
+    }
+
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
@@ -23,6 +30,7 @@ pub trait LinSolTrait: Send {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
+    #[deprecated(since = "1.16.0", note = "Please use `setup()` instead for both direct and iterative solvers")]
     fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system

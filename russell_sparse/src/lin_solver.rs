@@ -172,7 +172,7 @@ impl<'a> LinSolver<'a> {
         params: Option<LinSolParams>,
     ) -> Result<Self, StrError> {
         let mut solver = LinSolver::new(genie)?;
-        solver.actual.factorize(mat, params)?;
+        solver.actual.setup(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)

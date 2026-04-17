@@ -259,7 +259,7 @@ impl<'a, A> Radau5<'a, A> {
     fn factorize(&mut self) -> Result<(), StrError> {
         self.solver_real
             .actual
-            .factorize(&self.kk_real, self.params.newton.lin_sol_params)?;
+            .setup(&self.kk_real, self.params.newton.lin_sol_params)?;
         self.solver_comp
             .actual
             .factorize(&self.kk_comp, self.params.newton.lin_sol_params)
@@ -271,7 +271,7 @@ impl<'a, A> Radau5<'a, A> {
             let handle_real = scope.spawn(|| {
                 self.solver_real
                     .actual
-                    .factorize(&self.kk_real, self.params.newton.lin_sol_params)
+                    .setup(&self.kk_real, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let handle_comp = scope.spawn(|| {

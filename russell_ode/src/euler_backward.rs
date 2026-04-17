@@ -124,7 +124,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
                 // perform factorization
                 work.stats.sw_factor.reset();
                 work.stats.n_factor += 1;
-                self.solver.actual.factorize(kk, self.params.newton.lin_sol_params)?;
+                self.solver.actual.setup(kk, self.params.newton.lin_sol_params)?;
                 work.stats.stop_sw_factor();
             }
 

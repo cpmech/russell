@@ -131,7 +131,7 @@ fn main() -> Result<(), StrError> {
         let mut solver = LinSolver::new(genie)?;
 
         // call factorize
-        solver.actual.factorize(&coo, Some(params))?;
+        solver.actual.setup(&coo, Some(params))?;
 
         // allocate vectors
         let mut x = Vector::new(nrow);

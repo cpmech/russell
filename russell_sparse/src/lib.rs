@@ -253,6 +253,7 @@ mod stats_lin_sol;
 mod stats_lin_sol_mumps;
 mod verify_lin_sys;
 mod write_matrix_market;
+mod matrix;
 
 pub use aliases::*;
 pub use complex_lin_solver::*;
@@ -273,6 +274,7 @@ pub use solver_umfpack::*;
 pub use stats_lin_sol::*;
 pub use stats_lin_sol_mumps::*;
 pub use verify_lin_sys::*;
+pub use matrix::SparseMatrix;
 
 #[cfg(feature = "with_mumps")]
 mod complex_solver_mumps;

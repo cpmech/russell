@@ -1,4 +1,5 @@
 use russell_lab::{cpx, set_num_threads, using_intel_mkl, Complex64, ComplexVector, Stopwatch, StrError, Vector};
+use russell_sparse::SparseMatrix;
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -130,8 +131,9 @@ fn main() -> Result<(), StrError> {
         // allocate and configure the solver
         let mut solver = LinSolver::new(genie)?;
 
-        // call factorize
-        solver.actual.setup(&coo, Some(params))?;
+        // Convert CooMatrix to unified SparseMatrix and call setup
+        let sparse_mat = SparseMatrix::from(coo.clone());
+        solver.actual.setup(&sparse_mat, Some(params))?;
 
         // allocate vectors
         let mut x = Vector::new(nrow);
@@ -185,7 +187,7 @@ fn main() -> Result<(), StrError> {
         // allocate and configure the solver
         let mut solver = ComplexLinSolver::new(genie)?;
 
-        // call factorize
+        // call factorize (ComplexLinSolver not yet modified)
         solver.actual.factorize(&coo, Some(params))?;
 
         // allocate vectors

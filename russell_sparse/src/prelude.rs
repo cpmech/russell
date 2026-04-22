@@ -4,7 +4,7 @@
 //! access to commonly used functionality.
 
 pub use crate::aliases::*;
-pub use crate::iterative_CG::IterCgSolver;
+pub use crate::iterative_cg::IterCgSolver;
 pub use crate::complex_lin_solver::*;
 pub use crate::complex_solver_umfpack::ComplexSolverUMFPACK;
 pub use crate::coo_matrix::NumCooMatrix;

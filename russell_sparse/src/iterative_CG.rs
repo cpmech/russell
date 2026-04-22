@@ -360,4 +360,143 @@ mod tests {
         let correct = vec![1.0, 2.0, 2.0];
         vec_approx_eq(&x, &correct, 1e-9);
     }
+
+    #[test]
+    fn cg_solver_symmetric_full_storage() {
+        let mut coo = CooMatrix::new(3, 3, 9, Sym::No).unwrap();
+        coo.put(0, 0, 4.0).unwrap();
+        coo.put(0, 1, 1.0).unwrap();
+        coo.put(0, 2, 1.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(1, 1, 5.0).unwrap();
+        coo.put(1, 2, 2.0).unwrap();
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(2, 2, 6.0).unwrap();
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(100);
+        solver.without_precond();
+
+        let b = Vector::from(&[6.0, 12.0, 15.0]);
+        let mut x = Vector::new(3);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        assert!(solver.residual_norm() < 1e-10);
+    }
+
+    #[test]
+    fn cg_solver_single_iteration_convergence() {
+        let csr = create_test_csr();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1.0);
+        solver.set_max_iterations(100);
+        solver.without_precond();
+
+        let mut x = Vector::new(2);
+        let b = Vector::from(&[5.0, 8.0]);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        assert_eq!(solver.iterations(), 1);
+    }
+
+    #[test]
+    fn cg_solver_exact_solution_initial_guess() {
+        let csr = create_test_csr();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(100);
+        solver.without_precond();
+
+        let mut x = Vector::from(&[1.4, 2.2]);
+        let b = Vector::from(&[5.0, 8.0]);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        assert_eq!(solver.iterations(), 0);
+        assert!(solver.residual_norm() < 1e-10);
+    }
+
+    #[test]
+    fn cg_solver_solve_called_twice() {
+        let csr = create_test_csr();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(100);
+        solver.without_precond();
+
+        let b1 = Vector::from(&[5.0, 8.0]);
+        let mut x1 = Vector::new(2);
+        solver.solve(&mut x1, &b1, &csr).unwrap();
+
+        let correct1 = vec![1.4, 2.2];
+        vec_approx_eq(&x1, &correct1, 1e-9);
+
+        let b2 = Vector::from(&[2.0, 3.0]);
+        let mut x2 = Vector::new(2);
+        solver.solve(&mut x2, &b2, &csr).unwrap();
+
+        let correct2 = vec![0.6, 0.8];
+        vec_approx_eq(&x2, &correct2, 1e-9);
+    }
+
+    #[test]
+    fn cg_solver_default_values() {
+        let solver = IterCgSolver::new();
+        assert_eq!(solver.tol, 1e-6);
+        assert_eq!(solver.max_iter, 1000);
+        assert_eq!(solver.iterations(), 0);
+    }
+
+    #[test]
+    fn cg_solver_large_matrix() {
+        let n = 100;
+        let mut coo = CooMatrix::new(n, n, n * 2, Sym::YesLower).unwrap();
+        for i in 0..n {
+            coo.put(i, i, (i + 1) as f64 * 10.0).unwrap();
+            if i > 0 {
+                coo.put(i, i - 1, -1.0).unwrap();
+            }
+        }
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-6);
+        solver.set_max_iterations(2000);
+        solver.with_jacobi();
+
+        let mut b = Vector::new(n);
+        for i in 0..n {
+            b[i] = (i + 1) as f64;
+        }
+        let mut x = Vector::new(n);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        assert!(solver.iterations() < 2000);
+        assert!(solver.residual_norm() < 1e-6);
+    }
+
+    #[test]
+    fn cg_solver_with_jacobi_improves_convergence() {
+        let csr = create_test_csr();
+
+        let mut solver_no_precond = IterCgSolver::new();
+        solver_no_precond.set_tolerance(1e-10);
+        solver_no_precond.set_max_iterations(100);
+        solver_no_precond.without_precond();
+        let mut x1 = Vector::new(2);
+        solver_no_precond.solve(&mut x1, &Vector::from(&[5.0, 8.0]), &csr).unwrap();
+        let iter_no_precond = solver_no_precond.iterations();
+
+        let mut solver_jacobi = IterCgSolver::new();
+        solver_jacobi.set_tolerance(1e-10);
+        solver_jacobi.set_max_iterations(100);
+        solver_jacobi.with_jacobi();
+        let mut x2 = Vector::new(2);
+        solver_jacobi.solve(&mut x2, &Vector::from(&[5.0, 8.0]), &csr).unwrap();
+        let iter_jacobi = solver_jacobi.iterations();
+
+        assert!(iter_jacobi <= iter_no_precond);
+    }
 }

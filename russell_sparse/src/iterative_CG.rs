@@ -1,0 +1,260 @@
+use crate::CsrMatrix;
+use crate::StrError;
+use russell_lab::{vec_norm, Norm, Vector};
+
+/// Conjugate Gradient iterative solver for symmetric positive-definite matrices
+///
+/// # Algorithm
+/// The CG method finds the solution to Ax = b where A is symmetric and positive-definite.
+/// It minimizes the energy function 0.5*x^T*A*x - b^T*x.
+///
+/// # Preconditioner
+/// Currently supports Jacobi (diagonal) preconditioner or no preconditioner.
+pub struct IterCgSolver {
+    tol: f64,
+    max_iter: usize,
+    num_iter: usize,
+    final_residual: f64,
+    precond_data: Vec<f64>,
+    use_jacobi: bool,
+}
+
+impl IterCgSolver {
+    /// Creates a new CG solver
+    pub fn new() -> Self {
+        IterCgSolver {
+            tol: 1e-6,
+            max_iter: 1000,
+            num_iter: 0,
+            final_residual: 0.0,
+            precond_data: Vec::new(),
+            use_jacobi: false,
+        }
+    }
+
+    /// Enables Jacobi preconditioner (diagonal preconditioning)
+    pub fn with_jacobi(&mut self) {
+        self.use_jacobi = true;
+    }
+
+    /// Disables Jacobi preconditioner
+    pub fn without_precond(&mut self) {
+        self.use_jacobi = false;
+    }
+
+    /// Sets the convergence tolerance
+    pub fn set_tolerance(&mut self, tol: f64) {
+        self.tol = tol;
+    }
+
+    /// Sets the maximum number of iterations
+    pub fn set_max_iterations(&mut self, max_iter: usize) {
+        self.max_iter = max_iter;
+    }
+
+    /// Returns the number of iterations performed
+    pub fn iterations(&self) -> usize {
+        self.num_iter
+    }
+
+    /// Returns the final residual norm
+    pub fn residual_norm(&self) -> f64 {
+        self.final_residual
+    }
+
+    /// Builds the Jacobi preconditioner
+    fn build_jacobi_preconditioner(&mut self, csr: &CsrMatrix) {
+        let n = csr.nrow;
+        self.precond_data.resize(n, 0.0);
+        for i in 0..n {
+            let start = csr.row_pointers[i] as usize;
+            let end = csr.row_pointers[i + 1] as usize;
+            for j in start..end {
+                if csr.col_indices[j] as usize == i {
+                    self.precond_data[i] = 1.0 / csr.values[j];
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Sparse matrix-vector product: y = A * x
+    fn spmv(&self, y: &mut Vector, x: &Vector, csr: &CsrMatrix) {
+        let n = csr.nrow;
+        let mirror_required = csr.symmetric.triangular();
+        y.fill(0.0);
+        for i in 0..n {
+            let start = csr.row_pointers[i] as usize;
+            let end = csr.row_pointers[i + 1] as usize;
+            let mut sum = 0.0;
+            for j in start..end {
+                let col = csr.col_indices[j] as usize;
+                let aij = csr.values[j];
+                sum += aij * x[col];
+                if mirror_required && i != col {
+                    y[col] += aij * x[i];
+                }
+            }
+            y[i] += sum;
+        }
+    }
+
+    /// Applies the preconditioner: z = M^{-1} * r
+    fn apply_preconditioner(&self, z: &mut Vector, r: &Vector) {
+        if self.use_jacobi {
+            for i in 0..z.dim() {
+                z[i] = self.precond_data[i] * r[i];
+            }
+        } else {
+            z.clone_from(r);
+        }
+    }
+
+    /// Solves the linear system A*x = b using CG
+    ///
+    /// # Input
+    /// * `x` - Initial guess (in/out)
+    /// * `b` - Right-hand side vector
+    /// * `mat` - Coefficient matrix (CSR format, must be symmetric positive-definite)
+    pub fn solve(&mut self, x: &mut Vector, b: &Vector, mat: &CsrMatrix) -> Result<(), StrError> {
+        let n = x.dim();
+
+        // Build preconditioner
+        if self.use_jacobi {
+            self.build_jacobi_preconditioner(mat);
+        }
+
+        // Initialize working vectors
+        let mut r = Vector::new(n);
+        let mut z = Vector::new(n);
+        let mut p = Vector::new(n);
+        let mut ap = Vector::new(n);
+
+        // Initial residual: r0 = b - A*x0
+        self.spmv(&mut r, x, mat);
+        for i in 0..n {
+            r[i] = b[i] - r[i];
+        }
+
+        let mut rho_prev = 0.0;
+        self.num_iter = 0;
+
+        loop {
+            // Apply preconditioner: z = M^{-1}*r
+            self.apply_preconditioner(&mut z, &r);
+
+            // rho = r^T * z
+            let mut rho_curr = 0.0;
+            for i in 0..n {
+                rho_curr += r[i] * z[i];
+            }
+
+            // Check convergence
+            self.final_residual = vec_norm(&r, Norm::Euc);
+            if self.final_residual < self.tol {
+                return Ok(());
+            }
+
+            if self.num_iter >= self.max_iter {
+                return Err("CG solver did not converge within maximum iterations");
+            }
+
+            // Update search direction p
+            if self.num_iter == 0 {
+                p.clone_from(&z);
+            } else {
+                let beta = rho_curr / rho_prev;
+                for i in 0..n {
+                    p[i] = z[i] + beta * p[i];
+                }
+            }
+
+            // Compute A*p
+            self.spmv(&mut ap, &p, mat);
+
+            // Compute step size alpha = rho / (p^T * A*p)
+            let mut pap = 0.0;
+            for i in 0..n {
+                pap += p[i] * ap[i];
+            }
+
+            if pap.abs() < 1e-15 {
+                return Ok(());
+            }
+
+            let alpha = rho_curr / pap;
+
+            // Update solution: x = x + alpha * p
+            for i in 0..n {
+                x[i] += alpha * p[i];
+            }
+
+            // Update residual: r = r - alpha * A*p
+            for i in 0..n {
+                r[i] -= alpha * ap[i];
+            }
+
+            rho_prev = rho_curr;
+            self.num_iter += 1;
+        }
+    }
+}
+
+impl Default for IterCgSolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CooMatrix, CsrMatrix, Sym};
+    use russell_lab::{vec_approx_eq, Vector};
+
+    fn create_test_csr() -> CsrMatrix {
+        let mut coo = CooMatrix::new(2, 2, 3, Sym::YesLower).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        CsrMatrix::from_coo(&coo).unwrap()
+    }
+
+    #[test]
+    fn cg_solver_with_jacobi_works() {
+        let csr = create_test_csr();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(100);
+        solver.with_jacobi();
+
+        let mut x = Vector::new(2);
+        let b = Vector::from(&[5.0, 8.0]);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        let correct = vec![1.4, 2.2];
+        vec_approx_eq(&x, &correct, 1e-9);
+
+        assert!(solver.iterations() < 10);
+        assert!(solver.residual_norm() < 1e-10);
+    }
+
+    #[test]
+    fn cg_solver_without_precond_works() {
+        let csr = create_test_csr();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(100);
+        solver.without_precond();
+
+        let mut x = Vector::new(2);
+        let b = Vector::from(&[5.0, 8.0]);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        let correct = vec![1.4, 2.2];
+        vec_approx_eq(&x, &correct, 1e-9);
+
+        assert!(solver.iterations() < 10);
+        assert!(solver.residual_norm() < 1e-10);
+    }
+}

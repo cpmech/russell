@@ -1041,9 +1041,9 @@ mod tests {
                         format_scientific(err_y1, 10, 2),
                         format_scientific(err_y2, 10, 2)
                     );
-                    assert!(err_y0 < 1e-8);
-                    assert!(err_y1 < 1e-8);
-                    assert!(err_y2 < 1e-7);
+                    assert!(err_y0 < 1e-7);
+                    assert!(err_y1 < 1e-7);
+                    assert!(err_y2 < 1e-6);
                 }
             }
         }

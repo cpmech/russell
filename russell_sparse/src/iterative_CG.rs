@@ -257,4 +257,107 @@ mod tests {
         assert!(solver.iterations() < 10);
         assert!(solver.residual_norm() < 1e-10);
     }
+
+    #[test]
+    fn cg_solver_larger_matrix_works() {
+        let mut coo = CooMatrix::new(4, 4, 10, Sym::YesLower).unwrap();
+        coo.put(0, 0, 4.0).unwrap();
+        coo.put(1, 0, 1.0).unwrap();
+        coo.put(1, 1, 5.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(2, 2, 6.0).unwrap();
+        coo.put(3, 2, 1.0).unwrap();
+        coo.put(3, 3, 4.0).unwrap();
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(1000);
+        solver.with_jacobi();
+
+        let b = Vector::from(&[5.0, 12.0, 18.0, 10.0]);
+        let mut x = Vector::new(4);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        assert!(solver.iterations() < 50);
+        assert!(solver.residual_norm() < 1e-10);
+    }
+
+    #[test]
+    fn cg_solver_returns_iteration_count() {
+        let csr = create_test_csr();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(100);
+        solver.with_jacobi();
+
+        let mut x = Vector::new(2);
+        let b = Vector::from(&[5.0, 8.0]);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        let iters = solver.iterations();
+        assert!(iters > 0 && iters < 10);
+    }
+
+    #[test]
+    fn cg_solver_handles_max_iterations() {
+        let mut coo = CooMatrix::new(10, 10, 10, Sym::No).unwrap();
+        for i in 0..10 {
+            coo.put(i, i, (i + 1) as f64).unwrap();
+        }
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-15);
+        solver.set_max_iterations(2);
+        solver.without_precond();
+
+        let b = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]);
+        let mut x = Vector::new(10);
+        let result = solver.solve(&mut x, &b, &csr);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "CG solver did not converge within maximum iterations");
+    }
+
+    #[test]
+    fn cg_solver_identity_matrix() {
+        let mut coo = CooMatrix::new(3, 3, 3, Sym::No).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 1.0).unwrap();
+        coo.put(2, 2, 1.0).unwrap();
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(10);
+        solver.without_precond();
+
+        let b = Vector::from(&[1.0, 2.0, 3.0]);
+        let mut x = Vector::new(3);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        let correct = vec![1.0, 2.0, 3.0];
+        vec_approx_eq(&x, &correct, 1e-9);
+    }
+
+    #[test]
+    fn cg_solver_diagonal_matrix() {
+        let mut coo = CooMatrix::new(3, 3, 3, Sym::No).unwrap();
+        coo.put(0, 0, 2.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        coo.put(2, 2, 4.0).unwrap();
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-10);
+        solver.set_max_iterations(10);
+        solver.without_precond();
+
+        let b = Vector::from(&[2.0, 6.0, 8.0]);
+        let mut x = Vector::new(3);
+        solver.solve(&mut x, &b, &csr).unwrap();
+
+        let correct = vec![1.0, 2.0, 2.0];
+        vec_approx_eq(&x, &correct, 1e-9);
+    }
 }

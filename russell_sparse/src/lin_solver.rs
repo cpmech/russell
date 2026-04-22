@@ -218,9 +218,10 @@ mod tests {
     #[cfg(feature = "with_mumps")]
     fn lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
+        let sparse = SparseMatrix::from(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Mumps, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Mumps, &mut x, &sparse, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
@@ -235,51 +236,51 @@ mod tests {
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
 
-    #[cfg(test)]
-mod tests {
-    use crate::{CooMatrix, SparseMatrix, Sym};
-    use russell_lab::{Vector, vec_approx_eq};
+#[cfg(test)]
+    mod tests {
+        use crate::{CooMatrix, LinSolTrait, SparseMatrix, Sym};
+        use russell_lab::{Vector, vec_approx_eq};
 
-    fn create_test_coo() -> CooMatrix {
-        let mut coo = CooMatrix::new(2, 2, 3, Sym::YesLower).unwrap();
-        coo.put(0, 0, 2.0).unwrap();
-        coo.put(1, 0, 1.0).unwrap();
-        coo.put(1, 1, 3.0).unwrap();
-        coo
-    }
+        fn create_test_coo() -> CooMatrix {
+            let mut coo = CooMatrix::new(2, 2, 3, Sym::YesLower).unwrap();
+            coo.put(0, 0, 2.0).unwrap();
+            coo.put(1, 0, 1.0).unwrap();
+            coo.put(1, 1, 3.0).unwrap();
+            coo
+        }
 
-    #[test]
-    #[cfg(feature = "with_mumps")]
-    fn backward_compatibility_works() {
-        let coo = create_test_coo();
-        let mut umfpack = crate::SolverUMFPACK::new().unwrap();
-        
-        #[allow(deprecated)]
-        umfpack.factorize(&mut coo.clone(), None).unwrap();
-        
-        let mut x = Vector::new(2);
-        let b = Vector::from(&[5.0, 8.0]);
-        umfpack.solve(&mut x, &coo, &b, false).unwrap();
-        
-        let correct = vec![1.0, 2.0];
-        vec_approx_eq(&x, &correct, 1e-14);
-    }
+        #[test]
+        #[cfg(feature = "with_mumps")]
+        fn backward_compatibility_works() {
+            let coo = create_test_coo();
+            let mut umfpack = crate::SolverUMFPACK::new().unwrap();
+            
+            #[allow(deprecated)]
+            umfpack.factorize(&coo, None).unwrap();
+            
+            let mut x = Vector::new(2);
+            let b = Vector::from(&[5.0, 8.0]);
+            umfpack.solve(&mut x, &b, false).unwrap();
+            
+            let correct = vec![1.0, 2.0];
+            vec_approx_eq(&x, &correct, 1e-14);
+        }
 
-    #[test]
-    #[cfg(feature = "with_mumps")]
-    fn new_setup_interface_works() {
-        let coo = create_test_coo();
-        let sparse = SparseMatrix::from(coo.clone());
-        let mut umfpack = crate::SolverUMFPACK::new().unwrap();
-        
-        umfpack.setup(&sparse, None).unwrap();
-        
-        let mut x = Vector::new(2);
-        let b = Vector::from(&[5.0, 8.0]);
-        umfpack.solve(&mut x, &coo, &b, false).unwrap();
-        
-        let correct = vec![1.0, 2.0];
-        vec_approx_eq(&x, &correct, 1e-14);
+        #[test]
+        #[cfg(feature = "with_mumps")]
+        fn new_setup_interface_works() {
+            let coo = create_test_coo();
+            let sparse = SparseMatrix::from(coo);
+            let mut umfpack = crate::SolverUMFPACK::new().unwrap();
+            
+            umfpack.setup(&sparse, None).unwrap();
+            
+            let mut x = Vector::new(2);
+            let b = Vector::from(&[5.0, 8.0]);
+            umfpack.solve(&mut x, &b, false).unwrap();
+            
+            let correct = vec![1.0, 2.0];
+            vec_approx_eq(&x, &correct, 1e-14);
+        }
     }
-}
 }

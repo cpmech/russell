@@ -1017,10 +1017,7 @@ mod tests {
                 let mut y_ana = Vector::new(ndim);
                 for n in 0..4 {
                     // call step
-                    if let Err(e) = solver.step(&mut work, x, &y, h, &mut args) {
-                        println!("Step {} failed: {}", n, e);
-                        continue;
-                    }
+                    solver.step(&mut work, x, &y, h, &mut args).unwrap();
 
                     // important: update n_accepted (must precede `accept`)
                     work.stats.n_accepted += 1;
@@ -1044,9 +1041,9 @@ mod tests {
                         format_scientific(err_y1, 10, 2),
                         format_scientific(err_y2, 10, 2)
                     );
-                    assert!(err_y0 < 1e-7);
-                    assert!(err_y1 < 1e-6);
-                    assert!(err_y2 < 1e-6);
+                    assert!(err_y0 < 1e-9);
+                    assert!(err_y1 < 1e-9);
+                    assert!(err_y2 < 1e-8);
                 }
             }
         }

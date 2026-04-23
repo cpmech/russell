@@ -202,6 +202,13 @@ impl LinSolTrait for SolverMUMPS {
             if coo.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
+            self.fortran_indices_i = vec![0; coo.nnz];
+            self.fortran_indices_j = vec![0; coo.nnz];
+            for k in 0..coo.nnz {
+                self.fortran_indices_i[k] = coo.indices_i[k] + 1;
+                self.fortran_indices_j[k] = coo.indices_j[k] + 1;
+            }
+            self.initialized = false;
         } else {
             if coo.nrow != coo.ncol {
                 return Err("the COO matrix must be square");

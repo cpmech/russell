@@ -44,8 +44,8 @@ RM = rm -f
 CC = gcc
 FC = gfortran
 FL = gfortran
-AR = ar r
-RANLIB =
+AR = ar r 
+RANLIB = ar s
 LAPACK = -lopenblas
 
 INCSEQ = -I$(topdir)/libseq

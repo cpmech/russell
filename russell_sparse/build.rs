@@ -6,7 +6,7 @@ fn main() {
         let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
         let include_path = format!("{}/include/suitesparse", msys2_prefix);
         let lib_path = format!("{}/lib", msys2_prefix);
-        
+
         cc::Build::new()
             .file("c_code/interface_complex_klu.c")
             .file("c_code/interface_complex_umfpack.c")
@@ -14,7 +14,7 @@ fn main() {
             .file("c_code/interface_umfpack.c")
             .include(&include_path)
             .compile("c_code_suitesparse");
-        
+
         println!("cargo:rustc-link-search=native={}", lib_path);
         for l in &libs {
             println!("cargo:rustc-link-lib=dylib={}", *l);
@@ -65,13 +65,38 @@ fn main() {
 
     #[cfg(feature = "with_mumps")]
     {
-        cc::Build::new()
-            .file("c_code/interface_complex_mumps.c")
-            .file("c_code/interface_mumps.c")
-            .include("/usr/local/include/mumps")
-            .compile("c_code_mumps");
-        println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
-        println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
-        println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
+        #[cfg(target_os = "windows")]
+        {
+            let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
+            let mumps_include = format!("{}/include/mumps", msys2_prefix);
+            let mumps_lib = format!("{}/lib/mumps", msys2_prefix);
+
+            cc::Build::new()
+                .file("c_code/interface_complex_mumps.c")
+                .file("c_code/interface_mumps.c")
+                .include(&mumps_include)
+                .compile("c_code_mumps");
+            println!("cargo:rustc-link-search=native={}", mumps_lib);
+            println!("cargo:rustc-link-lib=static=dmumps_cpmech");
+            println!("cargo:rustc-link-lib=static=zmumps_cpmech");
+            println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
+            println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
+            println!("cargo:rustc-link-lib=static=pord_cpmech");
+            println!("cargo:rustc-link-lib=dylib=gfortran");
+            println!("cargo:rustc-link-lib=dylib=gomp");
+            println!("cargo:rustc-link-lib=static=metis");
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            cc::Build::new()
+                .file("c_code/interface_complex_mumps.c")
+                .file("c_code/interface_mumps.c")
+                .include("/usr/local/include/mumps")
+                .compile("c_code_mumps");
+            println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
+            println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
+            println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
+        }
     }
 }

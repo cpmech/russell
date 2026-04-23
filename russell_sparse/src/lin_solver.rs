@@ -238,23 +238,11 @@ mod tests {
 
 #[cfg(test)]
     mod tests {
-        use crate::{CooMatrix, LinSolTrait, SparseMatrix, Sym};
+        use crate::{CooMatrix, LinSolTrait, Samples, SparseMatrix, Sym};
         use russell_lab::{Vector, vec_approx_eq};
 
         fn create_test_coo() -> CooMatrix {
-            let mut coo = CooMatrix::new(5, 5, 12, Sym::No).unwrap();
-            coo.put(0, 0, 1.0).unwrap();
-            coo.put(0, 1, 3.0).unwrap();
-            coo.put(1, 0, 3.0).unwrap();
-            coo.put(2, 1, -1.0).unwrap();
-            coo.put(2, 2, -3.0).unwrap();
-            coo.put(3, 2, 1.0).unwrap();
-            coo.put(4, 1, 4.0).unwrap();
-            coo.put(4, 2, 2.0).unwrap();
-            coo.put(4, 4, 1.0).unwrap();
-            coo.put(2, 3, 2.0).unwrap();
-            coo.put(1, 4, 6.0).unwrap();
-            coo.put(1, 2, 4.0).unwrap();
+            let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
             coo
         }
 

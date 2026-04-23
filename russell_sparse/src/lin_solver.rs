@@ -242,11 +242,28 @@ mod tests {
         use russell_lab::{Vector, vec_approx_eq};
 
         fn create_test_coo() -> CooMatrix {
-            let mut coo = CooMatrix::new(2, 2, 3, Sym::No).unwrap();
-            coo.put(0, 0, 2.0).unwrap();
-            coo.put(0, 1, 1.0).unwrap();
-            coo.put(1, 1, 3.0).unwrap();
+            let mut coo = CooMatrix::new(5, 5, 12, Sym::No).unwrap();
+            coo.put(0, 0, 1.0).unwrap();
+            coo.put(0, 1, 3.0).unwrap();
+            coo.put(1, 0, 3.0).unwrap();
+            coo.put(2, 1, -1.0).unwrap();
+            coo.put(2, 2, -3.0).unwrap();
+            coo.put(3, 2, 1.0).unwrap();
+            coo.put(4, 1, 4.0).unwrap();
+            coo.put(4, 2, 2.0).unwrap();
+            coo.put(4, 4, 1.0).unwrap();
+            coo.put(2, 3, 2.0).unwrap();
+            coo.put(1, 4, 6.0).unwrap();
+            coo.put(1, 2, 4.0).unwrap();
             coo
+        }
+
+        fn get_rhs() -> Vector {
+            Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0])
+        }
+
+        fn get_correct() -> Vec<f64> {
+            vec![1.0, 2.0, 3.0, 4.0, 5.0]
         }
 
         #[test]
@@ -258,11 +275,11 @@ mod tests {
             #[allow(deprecated)]
             umfpack.factorize(&coo, None).unwrap();
             
-            let mut x = Vector::new(2);
-            let b = Vector::from(&[5.0, 8.0]);
+            let mut x = Vector::new(5);
+            let b = get_rhs();
             umfpack.solve(&mut x, &b, false).unwrap();
             
-            let correct = vec![1.0, 2.0];
+            let correct = get_correct();
             vec_approx_eq(&x, &correct, 1e-14);
         }
 
@@ -275,11 +292,11 @@ mod tests {
             
             umfpack.setup(&sparse, None).unwrap();
             
-            let mut x = Vector::new(2);
-            let b = Vector::from(&[5.0, 8.0]);
+            let mut x = Vector::new(5);
+            let b = get_rhs();
             umfpack.solve(&mut x, &b, false).unwrap();
             
-            let correct = vec![1.0, 2.0];
+            let correct = get_correct();
             vec_approx_eq(&x, &correct, 1e-14);
         }
     }

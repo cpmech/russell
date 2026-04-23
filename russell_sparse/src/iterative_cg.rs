@@ -499,4 +499,29 @@ mod tests {
 
         assert!(iter_jacobi <= iter_no_precond);
     }
+
+    #[test]
+    fn cg_solver_default_trait_works() {
+        let solver = IterCgSolver::default();
+        assert_eq!(solver.tol, 1e-6);
+        assert_eq!(solver.max_iter, 1000);
+    }
+
+    #[test]
+    fn cg_solver_zero_projection_early_exit() {
+        let n = 2;
+        let mut coo = CooMatrix::new(n, n, n * 2, Sym::YesLower).unwrap();
+        coo.put(0, 0, 1e-10).unwrap();
+        coo.put(1, 0, 0.0).unwrap();
+        coo.put(1, 1, 1e-10).unwrap();
+        let csr = CsrMatrix::from_coo(&coo).unwrap();
+
+        let mut solver = IterCgSolver::new();
+        solver.set_tolerance(1e-20);
+        solver.set_max_iterations(10);
+
+        let b = Vector::from(&[1.0, 1.0]);
+        let mut x = Vector::new(n);
+        let _ = solver.solve(&mut x, &b, &csr);
+    }
 }

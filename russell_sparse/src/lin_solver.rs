@@ -236,6 +236,18 @@ mod tests {
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
 
+    #[test]
+    #[cfg(feature = "with_mumps")]
+    fn lin_solver_compute_with_coo_works() {
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        #[allow(deprecated)]
+        LinSolver::compute_with_coo(Genie::Umfpack, &mut x, &coo, &rhs, None).unwrap();
+        let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        vec_approx_eq(&x, &x_correct, 1e-10);
+    }
+
 #[cfg(test)]
     mod tests {
         use crate::{CooMatrix, LinSolTrait, Samples, SparseMatrix, Sym};

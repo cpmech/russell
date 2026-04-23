@@ -242,9 +242,9 @@ mod tests {
         use russell_lab::{Vector, vec_approx_eq};
 
         fn create_test_coo() -> CooMatrix {
-            let mut coo = CooMatrix::new(2, 2, 3, Sym::YesLower).unwrap();
+            let mut coo = CooMatrix::new(2, 2, 3, Sym::No).unwrap();
             coo.put(0, 0, 2.0).unwrap();
-            coo.put(1, 0, 1.0).unwrap();
+            coo.put(0, 1, 1.0).unwrap();
             coo.put(1, 1, 3.0).unwrap();
             coo
         }

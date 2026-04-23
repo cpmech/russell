@@ -233,6 +233,7 @@ pub type StrError = &'static str;
 
 mod aliases;
 mod complex_coo_matrix;
+mod iterative_cg;
 mod complex_lin_solver;
 mod complex_solver_klu;
 mod complex_solver_umfpack;
@@ -253,8 +254,10 @@ mod stats_lin_sol;
 mod stats_lin_sol_mumps;
 mod verify_lin_sys;
 mod write_matrix_market;
+mod matrix;
 
 pub use aliases::*;
+pub use iterative_cg::*;
 pub use complex_lin_solver::*;
 pub use complex_solver_klu::*;
 pub use complex_solver_umfpack::*;
@@ -273,6 +276,7 @@ pub use solver_umfpack::*;
 pub use stats_lin_sol::*;
 pub use stats_lin_sol_mumps::*;
 pub use verify_lin_sys::*;
+pub use matrix::SparseMatrix;
 
 #[cfg(feature = "with_mumps")]
 mod complex_solver_mumps;

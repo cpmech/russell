@@ -1,12 +1,16 @@
 #[cfg(feature = "with_mumps")]
 use super::SolverMUMPS;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverKLU, SolverUMFPACK, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverKLU, SolverUMFPACK, StatsLinSol, SparseMatrix};
 use crate::StrError;
 use russell_lab::Vector;
 
 /// Defines a unified interface for linear system solvers
-pub trait LinSolTrait: Send {
+pub trait LinSolTrait: Send { 
+    /// For direct solvers: performs factorization
+    /// For iterative solvers: builds the preconditioner
+    fn setup(&mut self, mat: &SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
+
     /// Performs the factorization (and analysis/initialization if needed)
     ///
     /// # Input
@@ -23,6 +27,7 @@ pub trait LinSolTrait: Send {
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
+    #[deprecated(since = "1.16.0", note = "Please use `setup()` instead for both direct and iterative solvers")]
     fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError>;
 
     /// Computes the solution of the linear system
@@ -122,6 +127,7 @@ impl<'a> LinSolver<'a> {
     /// use russell_lab::{vec_approx_eq, Vector};
     /// use russell_sparse::prelude::*;
     /// use russell_sparse::StrError;
+    /// use russell_sparse::SparseMatrix;
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // constants
@@ -150,7 +156,7 @@ impl<'a> LinSolver<'a> {
     ///
     ///     // calculate the solution
     ///     let mut x = Vector::new(ndim);
-    ///     LinSolver::compute(Genie::Umfpack, &mut x, &mat, &rhs, None)?;
+    ///     LinSolver::compute(Genie::Umfpack, &mut x, &SparseMatrix::from(mat), &rhs, None)?;
     ///     let correct = vec![3.0, 2.0, 4.0];
     ///     vec_approx_eq(&x, &correct, 1e-14);
     ///     Ok(())
@@ -159,15 +165,29 @@ impl<'a> LinSolver<'a> {
     pub fn compute(
         genie: Genie,
         x: &mut Vector,
-        mat: &CooMatrix,
+        mat: &SparseMatrix,
         rhs: &Vector,
         params: Option<LinSolParams>,
     ) -> Result<Self, StrError> {
         let mut solver = LinSolver::new(genie)?;
-        solver.actual.factorize(mat, params)?;
+        solver.actual.setup(mat, params)?;
         let verbose = if let Some(p) = params { p.verbose } else { false };
         solver.actual.solve(x, rhs, verbose)?;
         Ok(solver)
+    }
+
+    ///
+    /// Please use the new `compute` function with `SparseMatrix` instead.
+    #[deprecated(since = "1.16.0", note = "Please use `compute` with the unified `SparseMatrix` type instead")]
+    pub fn compute_with_coo(
+        genie: Genie,
+        x: &mut Vector,
+        mat: &CooMatrix,
+        rhs: &Vector,
+        params: Option<LinSolParams>,
+    ) -> Result<Self, StrError> {
+        let sparse_mat = SparseMatrix::from(mat.clone());
+        Self::compute(genie, x, &sparse_mat, rhs, params)
     }
 }
 
@@ -178,6 +198,7 @@ mod tests {
     use super::LinSolver;
     use crate::{Genie, Samples};
     use russell_lab::{vec_approx_eq, Vector};
+    use super::SparseMatrix;
 
     #[cfg(feature = "with_mumps")]
     use serial_test::serial;
@@ -187,7 +208,7 @@ mod tests {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Klu, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Klu, &mut x, &SparseMatrix::from(coo), &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
@@ -197,9 +218,10 @@ mod tests {
     #[cfg(feature = "with_mumps")]
     fn lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
+        let sparse = SparseMatrix::from(coo);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Mumps, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Mumps, &mut x, &sparse, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }
@@ -209,8 +231,73 @@ mod tests {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Umfpack, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Umfpack, &mut x, &SparseMatrix::from(coo), &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
+    }
+
+    #[test]
+    #[cfg(feature = "with_mumps")]
+    fn lin_solver_compute_with_coo_works() {
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        #[allow(deprecated)]
+        LinSolver::compute_with_coo(Genie::Umfpack, &mut x, &coo, &rhs, None).unwrap();
+        let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        vec_approx_eq(&x, &x_correct, 1e-10);
+    }
+
+#[cfg(test)]
+    mod tests {
+        use crate::{CooMatrix, LinSolTrait, Samples, SparseMatrix, Sym};
+        use russell_lab::{Vector, vec_approx_eq};
+
+        fn create_test_coo() -> CooMatrix {
+            let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+            coo
+        }
+
+        fn get_rhs() -> Vector {
+            Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0])
+        }
+
+        fn get_correct() -> Vec<f64> {
+            vec![1.0, 2.0, 3.0, 4.0, 5.0]
+        }
+
+        #[test]
+        #[cfg(feature = "with_mumps")]
+        fn backward_compatibility_works() {
+            let coo = create_test_coo();
+            let mut umfpack = crate::SolverUMFPACK::new().unwrap();
+            
+            #[allow(deprecated)]
+            umfpack.factorize(&coo, None).unwrap();
+            
+            let mut x = Vector::new(5);
+            let b = get_rhs();
+            umfpack.solve(&mut x, &b, false).unwrap();
+            
+            let correct = get_correct();
+            vec_approx_eq(&x, &correct, 1e-14);
+        }
+
+        #[test]
+        #[cfg(feature = "with_mumps")]
+        fn new_setup_interface_works() {
+            let coo = create_test_coo();
+            let sparse = SparseMatrix::from(coo);
+            let mut umfpack = crate::SolverUMFPACK::new().unwrap();
+            
+            umfpack.setup(&sparse, None).unwrap();
+            
+            let mut x = Vector::new(5);
+            let b = get_rhs();
+            umfpack.solve(&mut x, &b, false).unwrap();
+            
+            let correct = get_correct();
+            vec_approx_eq(&x, &correct, 1e-14);
+        }
     }
 }

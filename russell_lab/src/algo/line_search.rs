@@ -423,8 +423,8 @@ mod tests {
         struct Args {}
         let args = &mut Args {};
 
-        // Function that decreases very slowly
-        let f = |x: f64, _: &mut Args| Ok(f64::exp(-x));
+        // Function that always increases - Armijo will never be satisfied
+        let f = |_: f64, _: &mut Args| Ok(f64::MAX);
 
         let x = 0.0;
         let fx = 1.0;
@@ -433,15 +433,21 @@ mod tests {
 
         let mut searcher = LineSearcher::new();
         searcher.max_iterations = 1;
-        searcher.rho = 0.9; // Slow backtracking
-        searcher.c1 = 1e-6; // Very strict
 
-        // With very strict c1, it may need multiple iterations
         let result = searcher.search(x, direction, fx, slope, args, f);
-        // This might still succeed on first try, so we check both outcomes
-        if result.is_err() {
-            assert_eq!(result.err(), Some("line search failed to converge"));
-        }
+        // With max_iterations=1, after first iteration alpha becomes 0.5
+        // Since iterations exhausted, should get "failed to converge"
+        assert_eq!(result.err(), Some("line search failed to converge"));
+    }
+
+    #[test]
+    fn line_search_default_impl() {
+        // Test that Default trait is properly implemented
+        let searcher = LineSearcher::default();
+        assert_eq!(searcher.c1, DEFAULT_C1);
+        assert_eq!(searcher.rho, DEFAULT_RHO);
+        assert_eq!(searcher.min_alpha, DEFAULT_MIN_ALPHA);
+        assert_eq!(searcher.max_iterations, DEFAULT_MAX_ITERATIONS);
     }
 
     #[test]

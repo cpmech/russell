@@ -55,6 +55,7 @@
   - [(lab) Cholesky factorization](#lab-cholesky-factorization)
   - [(lab) Solution of a (dense) linear system](#lab-solution-of-a-dense-linear-system)
   - [(lab) Reading table-formatted data files](#lab-reading-table-formatted-data-files)
+  - [(lab) Line search for optimization](#lab-line-search-for-optimization)
   - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
   - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
   - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
@@ -574,6 +575,44 @@ fn main() -> Result<(), StrError> {
 
 
 
+### (lab) Line search for optimization
+
+Line search is used in gradient-based optimization methods to find an appropriate step size.
+
+```rust
+use russell_lab::{line_search, LineSearcher, StrError};
+
+fn main() -> Result<(), StrError> {
+    // Objective function: f(x) = (1-x)⁴ + (1-x)², minimum at x = 1
+    let f = |x: f64, _: &mut ()| {
+        let d = x - 1.0;
+        Ok(d.powi(4) + d.powi(2))
+    };
+
+    let args = &mut ();
+
+    // Starting point: x = 0, f(0) = 2
+    // Gradient = -6, direction = 1 (descent direction)
+    let x = 0.0;
+    let fx = 2.0;
+    let direction = 1.0;
+    let slope = -6.0; // grad^T * direction
+
+    // Simple interface
+    let alpha = line_search(x, direction, fx, slope, args, f)?;
+    let x_new = x + alpha * direction;
+
+    // With custom parameters
+    let mut searcher = LineSearcher::new();
+    searcher.c1 = 1e-3; // Less strict Armijo condition
+    let (alpha2, n_iter) = searcher.search(x, direction, fx, slope, args, f)?;
+    println!("alpha = {:.4}, iterations = {}", alpha2, n_iter);
+    Ok(())
+}
+```
+
+
+
 ### (sparse) Solution of a sparse linear system
 
 ```rust
@@ -866,10 +905,10 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement orthogonal polynomial functions
     - [ ] Implement some numerical methods in `russell_lab`
         - [x] Implement Brent's solver
-        - [ ] Implement a solver for the cubic equation
+        - [x] Implement a solver for the cubic equation
         - [x] Implement numerical derivation
         - [x] Implement numerical Jacobian function
-        - [ ] Implement line search
+        - [x] Implement line search
         - [ ] Implement Newton's method for nonlinear systems
         - [x] Implement numerical quadrature
         - [ ] Implement multidimensional data interpolation

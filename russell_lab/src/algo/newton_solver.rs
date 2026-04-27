@@ -93,34 +93,42 @@ impl NewtonSolver {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::{NewtonSolver, Vector, StrError};
+    /// use russell_lab::{NewtonSolver, Vector, Matrix, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // Linear system: Ax = b, where A = [[2, 1], [1, 2]], b = [3, 3]
     ///     // Solution: x = [1, 1]
-    ///     let mut x = Vector::from(&[0.0, 0.0]);
+    ///     let mut x0 = Vector::from(&[0.0, 0.0]);
     ///     let args = &mut ();
     ///
     ///     // F(x) = Ax - b = 0
-    ///     let f = |x: &mut Vector, _: &mut ()| {
-    ///         x[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-    ///         x[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+    ///     let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+    ///         out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+    ///         out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
     ///         Ok(())
     ///     };
     ///
-    ///     let solver = NewtonSolver::new();
-    ///     let (result, stats) = solver.solve(&mut x, args, f, None)?;
+    ///     // Analytical Jacobian: J = A
+    ///     let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
+    ///         j.set(0, 0, 2.0); j.set(0, 1, 1.0);
+    ///         j.set(1, 0, 1.0); j.set(1, 1, 2.0);
+    ///         Ok(())
+    ///     };
     ///
-    ///     println!("Solution: {:?}", result.as_data());
+    ///     let mut solver = NewtonSolver::new();
+    ///     solver.use_line_search = false;
+    ///     let (x, stats) = solver.solve(&mut x0, args, f, jacobian)?;
+    ///
+    ///     println!("Solution: {:?}", x.as_data());
     ///     println!("{}", stats);
     ///
     ///     // Check: x ≈ [1, 1]
-    ///     assert!((result[0] - 1.0).abs() < 1e-10);
-    ///     assert!((result[1] - 1.0).abs() < 1e-10);
+    ///     assert!((x[0] - 1.0).abs() < 1e-10);
+    ///     assert!((x[1] - 1.0).abs() < 1e-10);
     ///     Ok(())
     /// }
     /// ```
-    pub fn solve<F, A, J>(
+pub fn solve<F, A, J>(
         &self,
         x0: &mut Vector,
         args: &mut A,
@@ -131,89 +139,68 @@ impl NewtonSolver {
         F: FnMut(&Vector, &mut Vector, &mut A) -> Result<(), StrError>,
         J: FnMut(&mut Matrix, &Vector, &mut A) -> Result<(), StrError>,
     {
-        // Validate parameters
         self.validate_params()?;
-
-        // Initialize stats and working variables
         let mut stats = Stats::new();
         let n = x0.dim();
-        let mut x = x0.clone(); // Current solution estimate
-        let mut residual = Vector::new(n); // F(x) residual
-        let mut jac = Matrix::new(n, n);
-        let mut rhs = Vector::new(n); // RHS for linear system (delta)
 
-        // Initial function evaluation: compute F(x) into residual
+        let mut x = x0.clone();
+        let mut residual = Vector::new(n);
+        let mut jac = Matrix::new(n, n);
+        let mut rhs = Vector::new(n);
+
         f(&x, &mut residual, args)?;
         stats.n_function += 1;
+
         let initial_norm = vec_norm(&residual, Norm::Max);
         let mut residual_norm = initial_norm;
 
-        // Main Newton iteration loop
-        for iter in 0..self.max_iterations {
+        for _ in 0..self.max_iterations {
             stats.n_iterations += 1;
 
-            // Check convergence: ||F(x)|| < tolerance
             if residual_norm < self.tolerance {
                 let _ = vec_copy(x0, &x);
                 stats.stop_sw_total();
                 return Ok((x, stats));
             }
 
-            // Check divergence (skip on first iteration)
-            if iter > 0 && residual_norm > self.divergent_tol * initial_norm {
+            if stats.n_iterations > 1 && residual_norm > self.divergent_tol * initial_norm {
                 return Err("solution diverged");
             }
 
-            // Compute Jacobian at x
+            // Compute Jacobian at x and solve for step
             jacobian(&mut jac, &x, args)?;
             stats.n_jacobian += 1;
-
-            // Solve J * delta = -F(x) for the Newton step
-            // Set rhs = -F(x)
             for i in 0..n {
                 rhs[i] = -residual[i];
             }
             solve_lin_sys(&mut rhs, &mut jac)?;
 
-            // Update x with line search
             if self.use_line_search {
-                // Simple backtracking line search
                 let mut alpha = self.initial_alpha;
                 let slope = vec_norm(&rhs, Norm::Max);
                 for _ in 0..20 {
-                    // Compute new x
                     for i in 0..n {
                         x[i] = x[i] + alpha * rhs[i];
                     }
-
-                    // Evaluate function at new x, store in residual
                     f(&x, &mut residual, args)?;
                     stats.n_function += 1;
-
-                    // Compute new residual norm
                     let new_norm = vec_norm(&residual, Norm::Max);
-
-                    // Armijo condition (simplified)
                     if new_norm <= residual_norm - 0.0001 * alpha * slope {
                         break;
                     }
                     alpha *= 0.5;
                 }
             } else {
-                // No line search: take full Newton step
                 for i in 0..n {
                     x[i] = x[i] + rhs[i];
                 }
-                // Evaluate function at new x, store in residual
-                    f(&x, &mut residual, args)?;
-                    stats.n_function += 1;
+                f(&x, &mut residual, args)?;
+                stats.n_function += 1;
             }
 
-            // Update residual norm for next iteration
             residual_norm = vec_norm(&residual, Norm::Max);
         }
 
-        // Did not converge within max_iterations
         let _ = vec_copy(x0, &x);
         stats.stop_sw_total();
         Err("Newton solver failed to converge")
@@ -264,7 +251,7 @@ mod tests {
         // A = [[2, 1], [1, 2]], b = [3, 3]
         // Solution: x = [1, 1]
         // F(x) = Ax - b, root at [1, 1]
-        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
         // Compute F(x) = Ax - b, storing result in the output vector
@@ -283,8 +270,8 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let mut x0 = Vector::from(&[0.0, 0.0]);
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
         let (x, stats) = result.unwrap();
 
@@ -299,7 +286,7 @@ mod tests {
     fn newton_rosenbrock_system() {
         // Rosenbrock function F(x,y) = [1-x, 100(y-x²)]
         // Root at (1, 1)
-        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
         // Compute F(x), storing result in the output vector
@@ -320,8 +307,8 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let mut x0 = Vector::from(&[0.0, 0.0]);
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
         let (x, _) = result.unwrap();
 
@@ -345,7 +332,7 @@ mod tests {
     #[test]
     fn newton_handles_iteration_limit() {
         // Test with max iterations limit - should hit iteration limit or converge
-        let mut x0 = Vector::from(&[1.0, 1.0]);
+        let mut _x0 = Vector::from(&[1.0, 1.0]);
         let args = &mut ();
 
         let f = |_x: &Vector, out: &mut Vector, _: &mut ()| {
@@ -363,7 +350,7 @@ mod tests {
         let mut solver = NewtonSolver::new();
         solver.max_iterations = 1;
         solver.tolerance = 1e-8; // Reasonable tolerance
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         // With max_iterations=1 and reasonable tolerance, may not converge
         match result {
             Ok(_) => {
@@ -400,7 +387,7 @@ mod tests {
 
     #[test]
     fn newton_with_line_search() {
-        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
         let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
@@ -417,7 +404,7 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = true;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
         let (x, _) = result.unwrap();
 
@@ -429,7 +416,7 @@ mod tests {
 
     #[test]
     fn newton_initial_guess_is_solution() {
-        let mut x0 = Vector::from(&[1.0, 1.0]);
+        let mut _x0 = Vector::from(&[1.0, 1.0]);
         let args = &mut ();
 
         let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
@@ -446,7 +433,7 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
         let (x, stats) = result.unwrap();
 
@@ -459,7 +446,7 @@ mod tests {
 
     #[test]
     fn newton_stats_tracking() {
-        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
         let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
@@ -476,7 +463,7 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
         let (_, stats) = result.unwrap();
 
@@ -489,7 +476,7 @@ mod tests {
 
     #[test]
     fn newton_3x3_system() {
-        let mut x0 = Vector::from(&[0.0, 0.0, 0.0]);
+        let mut _x0 = Vector::from(&[0.0, 0.0, 0.0]);
         let args = &mut ();
 
         // 3x3 linear system: A * x = b
@@ -511,7 +498,7 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
         let (x, _) = result.unwrap();
 
@@ -524,7 +511,7 @@ mod tests {
 
     #[test]
     fn newton_divergent_tol() {
-        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let mut _x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
         let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
@@ -542,7 +529,7 @@ mod tests {
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
         solver.divergent_tol = 1.0; // Very small, triggers divergence
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut _x0, args, f, jacobian);
         // May get divergence error or converge
         match result {
             Ok(_) => {}

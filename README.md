@@ -174,62 +174,8 @@ brew install lapack openblas suite-sparse
 
 To compile Russell on Windows, the MSYS2 environment is required along with the installation of necessary libraries.
 
-The installation steps are as follows:
+On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for detailed information on how to install the dependencies.
 
-**1. Install MSYS2**
-
-Download the installer from the MSYS2 website https://www.msys2.org/ (the 64-bit version is recommended).  
-
-Run the installer and select the default installation path (typically `C:\msys64`).  
-
-**2. Launch the MSYS2 Terminal**
-
-After the installation, launch the `MSYS2 UCRT64` terminal from the Start Menu or the installation directory (recommended, as it best matches the Rust GNU toolchain).  
-
-**3. Install the required packages in MSYS2**
-
-Run the following commands in the `MSYS2 UCRT64` terminal:  
-
-```bash
-# Update the package database
-pacman -Syu
-
-# Install the Rust GNU toolchain (if not already installed)
-rustup target add x86_64-pc-windows-gnu
-
-# Install libraries required for compilation
-pacman -S mingw-w64-ucrt-x86_64-openblas
-pacman -S mingw-w64-ucrt-x86_64-suitesparse
-```
-
-**4. Set Environment Variable**
-
-Set the environment variable in the `MSYS2 UCRT64` terminal (add to `~/.bashrc` to make it permanent):
-
-```bash
-export MSYS2_PREFIX='/ucrt64'
-```
-
-**5. Compile and Test**
-
-In the `MSYS2 UCRT64` terminal, navigate to the Russell project directory and run:
-
-```bash
-# Navigate to the project directory
-cd /c/path/to/russell
-
-# Clean previous build cache
-cargo clean
-
-# Compile and run tests
-cargo test
-```
-
-**6. Notes**
-
-* Ensure that all cargo commands are executed within the MSYS2 UCRT64 terminal.
-* Add export `MSYS2_PREFIX='/ucrt64'` to `~/.bashrc` to make the environment variable persistent.
-* The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
 
 ### Optional feature "local_suitesparse"
 
@@ -241,11 +187,14 @@ bash zscripts/compile-and-install-suitesparse.bash
 
 ### Optional feature "with_mumps"
 
-`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. The [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used in this case:
+`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. On Linux/macOS, the [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used:
 
 ```bash
 bash zscripts/compile-and-install-mumps.bash
 ```
+
+On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for instructions on how to compile MUMPS.
+
 
 ### Optional feature "intel_mkl"
 
@@ -905,21 +854,4 @@ fn main() -> Result<(), StrError> {
 - [ ] General improvements
     - [x] Compile on macOS
     - [x] Compile on Windows
-    - [ ] Compile MUMPS on Windows
-
-## Development
-
-Use `cargo-show-asm` to investigate the generated assembly code and check if the performance-critical functions are properly optimized.
-
-Install the tool with the following command:
-
-```bash
-cargo install cargo-show-asm
-```
-
-Run the following command to check the generated assembly code for the `asm01` example:
-
-```bash
-cargo asm -p russell_lab --example asm01 asm01::set_approach
-cargo asm -p russell_lab --example asm01 asm01::index_approach
-```
+    - [x] Compile MUMPS on Windows

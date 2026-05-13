@@ -240,10 +240,53 @@ bash zscripts/compile-and-install-suitesparse.bash
 
 ### Optional feature "with_mumps"
 
-`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. The [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used in this case:
+`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. On Linux/macOS, the [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used:
 
 ```bash
 bash zscripts/compile-and-install-mumps.bash
+```
+
+On Windows (MSYS2), MUMPS can be compiled using the following steps:
+
+*Install compilation dependencies (in MSYS2 UCRT64 terminal):*
+
+```bash
+pacman -S mingw-w64-ucrt-x86_64-gcc-fortran
+pacman -S mingw-w64-ucrt-x86_64-make
+pacman -S mingw-w64-ucrt-x86_64-cmake
+pacman -S mingw-w64-ucrt-x86_64-clang
+pacman -S mingw-w64-ucrt-x86_64-metis
+```
+
+*Download and compile MUMPS:*
+
+```bash
+cd /tmp
+curl http://deb.debian.org/debian/pool/main/m/mumps/mumps_5.8.2.orig.tar.gz -o mumps_5.8.2.orig.tar.gz
+tar xzf mumps_5.8.2.orig.tar.gz
+cd MUMPS_5.8.2
+
+# Copy the MSYS2 configuration file
+cp /c/path/to/russell/zscripts/makefiles-mumps/Makefile.inc.msys2 Makefile.inc
+
+# Compile double precision (real) version
+make d
+
+# Compile complex version
+make clean
+make z
+```
+
+*Install MUMPS libraries and headers:*
+
+```bash
+# Copy libraries to /ucrt64/lib/mumps
+mkdir -p /ucrt64/lib/mumps
+cp lib/*.a /ucrt64/lib/mumps/
+
+# Copy headers to /ucrt64/include/mumps
+mkdir -p /ucrt64/include/mumps
+cp include/*.h /ucrt64/include/mumps/
 ```
 
 ### Optional feature "intel_mkl"
@@ -904,4 +947,4 @@ fn main() -> Result<(), StrError> {
 - [ ] General improvements
     - [x] Compile on macOS
     - [x] Compile on Windows
-    - [ ] Compile MUMPS on Windows
+    - [x] Compile MUMPS on Windows

@@ -189,12 +189,6 @@ impl LineSearcher {
     }
 }
 
-impl Default for LineSearcher {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Performs line search with default parameters, returning only the step size
 ///
 /// See [`LineSearcher::search`] for details.
@@ -430,16 +424,6 @@ mod tests {
         // With max_iterations=1, after first iteration alpha becomes 0.5
         // Since iterations exhausted, should get "failed to converge"
         assert_eq!(result.err(), Some("line search failed to converge"));
-    }
-
-    #[test]
-    fn line_search_default_impl() {
-        // Test that Default trait is properly implemented
-        let searcher = LineSearcher::default();
-        assert_eq!(searcher.c1, DEFAULT_C1);
-        assert_eq!(searcher.rho, DEFAULT_RHO);
-        assert_eq!(searcher.min_alpha, DEFAULT_MIN_ALPHA);
-        assert_eq!(searcher.max_iterations, DEFAULT_MAX_ITERATIONS);
     }
 
     #[test]

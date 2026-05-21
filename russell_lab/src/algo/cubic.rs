@@ -1,7 +1,7 @@
 //! Solver for cubic equations (a·x³ + b·x² + c·x + d = 0)
 //!
 //! Algorithm: Cardano method (trigonometric solution for irreducible case)
-//! Reference: https://en.wikipedia.org/wiki/Cubic_equation
+//! Reference: <https://en.wikipedia.org/wiki/Cubic_equation>
 
 use crate::StrError;
 use std::f64::consts::PI;

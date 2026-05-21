@@ -30,7 +30,7 @@
 //!
 //! We call the actual linear system solver implementation [Genie] because they work like "magic" after being "wrapped" via a C-interface. Note that these fantastic solvers are implemented in Fortran and C. You may easily access the linear solvers directly via the following structures:
 //!
-//! * [SolverMUMPS] -- thin wrapper to the MUMPS solver
+//! * **SolverMUMPS** (optional) -- thin wrapper to the MUMPS solver
 //! * [SolverUMFPACK] -- thin wrapper to the UMFPACK solver
 //!
 //! This library also provides a unifying Trait called [LinSolTrait], which the above structures implement. In addition, the [LinSolver] structure holds a "pointer" to one of the above structures and is a more convenient way to use the linear solvers in generic codes when we need to switch from solver to solver (e.g., for benchmarking). After allocating a [LinSolver], if needed, we can access the actual implementations (interfaces/thin wrappers) via the [LinSolver::actual] data member.

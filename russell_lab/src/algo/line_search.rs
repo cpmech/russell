@@ -163,12 +163,12 @@ impl LineSearcher {
         // Initial step size
         let mut alpha = 1.0;
 
-        // Compute the target value for the Armijo condition
-        // Armijo: f(x + alpha*d) <= f(x) + c1 * alpha * slope
-        // Note: slope < 0, so this is: f_new <= fx + negative_term
-        let target = fx + self.c1 * alpha * slope;
-
         for n_iter in 0..self.max_iterations {
+            // Compute the target value for the Armijo condition
+            // Armijo: f(x + alpha*d) <= f(x) + c1 * alpha * slope
+            // Note: slope < 0, so this is: f_new <= fx + negative_term
+            let target = fx + self.c1 * alpha * slope;
+
             // Evaluate function at new position
             let x_new = x + alpha * direction;
             let f_new = f(x_new, args)?;
@@ -517,5 +517,29 @@ mod tests {
         assert!(x_new > 0.0);
         // But not too large
         assert!(x_new < 5.0);
+    }
+
+    #[test]
+    fn line_search_updates_armijo_target_with_alpha() {
+        struct Args {}
+        let args = &mut Args {};
+
+        let mut searcher = LineSearcher::new();
+        searcher.rho = 0.5;
+        searcher.min_alpha = 0.1;
+
+        let f = |x: f64, _: &mut Args| {
+            if x >= 1.0 {
+                Ok(1.1) // fail first trial (alpha = 1.0)
+            } else if x >= 0.5 {
+                Ok(0.99992) // should pass at alpha = 0.5 only with updated Armijo target
+            } else {
+                Ok(2.0) // fail any smaller alpha
+            }
+        };
+
+        let (alpha, n_iter) = searcher.search(0.0, 1.0, 1.0, -1.0, args, f).unwrap();
+        assert_eq!(alpha, 0.5);
+        assert_eq!(n_iter, 2);
     }
 }

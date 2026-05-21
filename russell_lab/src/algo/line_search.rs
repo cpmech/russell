@@ -52,27 +52,26 @@ const DEFAULT_MAX_ITERATIONS: usize = 20;
 /// # Example
 ///
 /// ```
-/// use russell_lab::{line_search, StrError};
+/// use russell_lab::{LineSearcher, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     struct Args {}
 ///     let args = &mut Args {};
 ///
-///     // Rosenbrock function: f(x) = (1-x)^2 + 100(y-x^2)^2, minimum at (1,1)
-///     // For simplicity, using 1D version: f(x) = (x-1)^4 + (x-1)^2
+///     // f(x) = (x-1)^4 + (x-1)^2, minimum at x=1
 ///     let f = |x: f64, _: &mut Args| {
 ///         let d = x - 1.0;
 ///         Ok(d.powi(4) + d.powi(2))
 ///     };
 ///
-///     // At x = 0: f(0) = 2, gradient = -6
-///     // Descent direction = 1 (move toward positive x)
+///     // At x = 0: f(0) = 2, gradient = 4*(-1)^3 + 2*(-1) = -6
 ///     let x = 0.0;
 ///     let fx = 2.0;
 ///     let direction = 1.0;
-///     let slope = -6.0; // grad^T * direction
+///     let slope = -6.0; // grad_f(0) * direction
 ///
-///     let alpha = line_search(x, direction, fx, slope, args, f)?;
+///     let searcher = LineSearcher::new();
+///     let (alpha, _) = searcher.search(x, direction, fx, slope, args, f)?;
 ///     let x_new = x + alpha * direction;
 ///
 ///     // After line search, x_new should be closer to 1
@@ -163,12 +162,11 @@ impl LineSearcher {
         // Initial step size
         let mut alpha = 1.0;
 
-        // Compute the target value for the Armijo condition
-        // Armijo: f(x + alpha*d) <= f(x) + c1 * alpha * slope
-        // Note: slope < 0, so this is: f_new <= fx + negative_term
-        let target = fx + self.c1 * alpha * slope;
-
         for n_iter in 0..self.max_iterations {
+            // Armijo condition right-hand side: f(x) + c1 * alpha * slope
+            // slope < 0, so this decreases proportionally to the current step size
+            let target = fx + self.c1 * alpha * slope;
+
             // Evaluate function at new position
             let x_new = x + alpha * direction;
             let f_new = f(x_new, args)?;
@@ -217,9 +215,9 @@ impl Default for LineSearcher {
 ///         Ok(d.powi(4) + d.powi(2))
 ///     };
 ///     let x = 0.0;
-///     let fx = 162.0;
+///     let fx = 90.0; // f(0) = (0-3)^4 + (0-3)^2 = 81 + 9 = 90
 ///     let direction = 1.0;
-///     let slope = -108.0; // gradient ≈ -4*(0-3)^3 - 2*(0-3) = 108
+///     let slope = -114.0; // grad_f(0) = 4*(0-3)^3 + 2*(0-3) = -108 - 6 = -114
 ///
 ///     let alpha = line_search(x, direction, fx, slope, args, f)?;
 ///     let x_new = x + alpha * direction;
@@ -228,19 +226,14 @@ impl Default for LineSearcher {
 ///     Ok(())
 /// }
 /// ```
-pub fn line_search<F, A>(
-    x: f64,
-    direction: f64,
-    fx: f64,
-    slope: f64,
-    args: &mut A,
-    f: F,
-) -> Result<f64, StrError>
+pub fn line_search<F, A>(x: f64, direction: f64, fx: f64, slope: f64, args: &mut A, f: F) -> Result<f64, StrError>
 where
     F: FnMut(f64, &mut A) -> Result<f64, StrError>,
 {
     let searcher = LineSearcher::new();
-    searcher.search(x, direction, fx, slope, args, f).map(|(alpha, _)| alpha)
+    searcher
+        .search(x, direction, fx, slope, args, f)
+        .map(|(alpha, _)| alpha)
 }
 
 /// Performs line search with default parameters, returning step size and iteration count
@@ -287,11 +280,9 @@ mod tests {
         let alpha = line_search(x, direction, fx, slope, args, f).unwrap();
         let x_new = x + alpha * direction;
 
-        // The algorithm should backtrack because alpha=1 gives x_new=1
-        // f(1) = (-1)^4 + (-1)^2 = 2
-        // Armijo: 2 <= 20 + 1e-4 * 1 * (-36) = 20 - 0.0036 = 19.9964
-        // 2 <= 19.9964 is satisfied, so alpha might be accepted
-        // But in practice, the algorithm should find a reasonable step
+        // At alpha=1: f(1) = (-1)^4 + (-1)^2 = 2
+        // Armijo: 2 <= 20 + 1e-4 * 1 * (-36) = 19.9964 -- satisfied, alpha=1 accepted
+        assert_eq!(alpha, 1.0);
         assert!(x_new > 0.0 && x_new < 4.0);
     }
 
@@ -306,10 +297,12 @@ mod tests {
             Ok(d.powi(4) + d.powi(2))
         };
 
+        // At x=0: f(0) = (0-3)^4 + (0-3)^2 = 81 + 9 = 90
+        // grad_f(0) = 4*(0-3)^3 + 2*(0-3) = -108 - 6 = -114
         let x = 0.0;
-        let fx = 162.0;
+        let fx = 90.0;
         let direction = 1.0;
-        let slope = -108.0;
+        let slope = -114.0;
 
         let (alpha, n_iter) = line_search_with_stats(x, direction, fx, slope, args, f).unwrap();
         assert!(n_iter >= 1);

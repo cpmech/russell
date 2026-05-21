@@ -119,6 +119,23 @@ impl LineSearcher {
         }
     }
 
+    /// Validates the parameters
+    fn validate_params(&self) -> Result<(), StrError> {
+        if self.c1 <= 0.0 || self.c1 >= 1.0 {
+            return Err("c1 must satisfy 0 < c1 < 1");
+        }
+        if self.rho <= 0.0 || self.rho >= 1.0 {
+            return Err("rho must satisfy 0 < rho < 1");
+        }
+        if self.min_alpha <= 0.0 {
+            return Err("min_alpha must be > 0");
+        }
+        if self.max_iterations == 0 {
+            return Err("max_iterations must be ≥ 1");
+        }
+        Ok(())
+    }
+
     /// Performs the line search
     ///
     /// # Input
@@ -139,6 +156,10 @@ impl LineSearcher {
     /// # Errors
     ///
     /// Returns an error if:
+    /// * `c1` is not in `(0, 1)`
+    /// * `rho` is not in `(0, 1)`
+    /// * `min_alpha` is not `> 0`
+    /// * `max_iterations` is `0`
     /// * `slope >= 0` (direction is not a descent direction)
     /// * `alpha` falls below `min_alpha`
     /// * Maximum iterations reached without satisfying Armijo condition
@@ -154,6 +175,8 @@ impl LineSearcher {
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        self.validate_params()?;
+
         // Verify that direction is a descent direction
         if slope >= 0.0 {
             return Err("direction must be a descent direction (slope < 0)");
@@ -468,6 +491,56 @@ mod tests {
         let result = line_search(x, p, fx, slope, args, f);
         // slope = 0 is not < 0, so this should fail
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn line_search_validate_params_works() {
+        struct Args {}
+        let args = &mut Args {};
+        let f = |x: f64, _: &mut Args| Ok(x);
+
+        let mut searcher = LineSearcher::new();
+
+        // invalid c1
+        searcher.c1 = 0.0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("c1 must satisfy 0 < c1 < 1")
+        );
+        searcher.c1 = 1.0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("c1 must satisfy 0 < c1 < 1")
+        );
+        searcher.c1 = DEFAULT_C1;
+
+        // invalid rho
+        searcher.rho = 0.0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("rho must satisfy 0 < rho < 1")
+        );
+        searcher.rho = 1.0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("rho must satisfy 0 < rho < 1")
+        );
+        searcher.rho = DEFAULT_RHO;
+
+        // invalid min_alpha
+        searcher.min_alpha = 0.0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("min_alpha must be > 0")
+        );
+        searcher.min_alpha = DEFAULT_MIN_ALPHA;
+
+        // invalid max_iterations
+        searcher.max_iterations = 0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("max_iterations must be ≥ 1")
+        );
     }
 
     /// Test with exponential decay - should converge quickly

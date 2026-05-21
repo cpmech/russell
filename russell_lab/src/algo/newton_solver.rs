@@ -219,12 +219,6 @@ impl NewtonSolver {
     }
 }
 
-impl Default for NewtonSolver {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -235,8 +229,8 @@ mod tests {
     // ===== Basic Structure Tests =====
 
     #[test]
-    fn newton_solver_default_works() {
-        let solver = NewtonSolver::default();
+    fn newton_solver_new_works() {
+        let solver = NewtonSolver::new();
         assert_eq!(solver.max_iterations, 50);
         assert_eq!(solver.tolerance, 1e-10);
         assert_eq!(solver.divergent_tol, 1e6);
@@ -245,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn newton_solver_new_works() {
+    fn newton_solver_fields_are_mutable() {
         let mut solver = NewtonSolver::new();
         solver.max_iterations = 100;
         solver.tolerance = 1e-12;

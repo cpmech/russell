@@ -232,7 +232,7 @@ mod tests {
     use super::NewtonSolver;
     use crate::{approx_eq, Matrix, Vector};
 
-    // ===== 1. Basic Structure Tests =====
+    // ===== Basic Structure Tests =====
 
     #[test]
     fn newton_solver_default_works() {
@@ -255,7 +255,7 @@ mod tests {
         assert!(!solver.use_line_search);
     }
 
-    // ===== 2. Simple Linear System Test =====
+    // ===== Simple Linear System Test =====
 
     #[test]
     fn newton_simple_linear_system() {
@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(stats.n_iterations, 2); // 2: first iter takes the Newton step; second iter sees convergence
     }
 
-    // ===== 3. Rosenbrock System Test =====
+    // ===== Rosenbrock System Test =====
 
     #[test]
     fn newton_rosenbrock_system() {
@@ -328,7 +328,7 @@ mod tests {
         approx_eq(x[1], 1.0, 1e-8);
     }
 
-    // ===== 4. Error Handling Tests =====
+    // ===== Error Handling Tests =====
 
     #[test]
     fn newton_validates_max_iterations() {
@@ -388,7 +388,7 @@ mod tests {
         }
     }
 
-    // ===== 5. Parameter Configuration Tests =====
+    // ===== Parameter Configuration Tests =====
 
     #[test]
     fn newton_tolerance_configuration() {
@@ -408,7 +408,7 @@ mod tests {
         assert!(!solver.use_line_search);
     }
 
-    // ===== 6. Line Search Test =====
+    // ===== Line Search Test =====
 
     #[test]
     fn newton_with_line_search() {
@@ -439,7 +439,7 @@ mod tests {
         approx_eq(x[1], 1.0, 1e-10);
     }
 
-    // ===== 7. Initial Guess is Solution =====
+    // ===== Initial Guess is Solution =====
 
     #[test]
     fn newton_initial_guess_is_solution() {
@@ -471,7 +471,7 @@ mod tests {
         assert_eq!(stats.n_iterations, 1); // Should converge immediately
     }
 
-    // ===== 8. Stats Test =====
+    // ===== Stats Test =====
 
     #[test]
     fn newton_stats_tracking() {
@@ -503,7 +503,7 @@ mod tests {
         assert!(stats.n_jacobian >= 1);
     }
 
-    // ===== 9. 3x3 System Test =====
+    // ===== 3x3 System Test =====
 
     #[test]
     fn newton_3x3_system() {
@@ -544,7 +544,7 @@ mod tests {
         approx_eq(x[2], 0.2, 1e-10);
     }
 
-    // ===== 10. Divergent Tol Test =====
+    // ===== Divergent Tol Test =====
 
     #[test]
     fn newton_divergent_tol() {
@@ -576,7 +576,7 @@ mod tests {
         }
     }
 
-    // ===== 11. Initial Alpha Test =====
+    // ===== Initial Alpha Test =====
 
     #[test]
     fn newton_initial_alpha_configuration() {
@@ -588,7 +588,8 @@ mod tests {
         assert_eq!(solver.initial_alpha, 0.5);
     }
 
-    // ===== 12. Test Numerical Jacobian =====
+    // ===== Test Numerical Jacobian =====
+
     #[test]
     fn newton_jacobian_is_called() {
         let mut x0 = Vector::from(&[0.0, 0.0]);
@@ -615,7 +616,8 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
     }
 
-    // ===== 13. Test Line Search Reduces Alpha =====
+    // ===== Test Line Search Reduces Alpha =====
+
     #[test]
     fn newton_line_search_reduces_alpha() {
         let mut x0 = Vector::from(&[100.0, 100.0]);
@@ -646,7 +648,195 @@ mod tests {
         approx_eq(x[1], 2.0, 1e-6);
     }
 
-    // ===== 14. Test Converges in One Iteration =====
+    // ===== initial_alpha validation =====
+
+    #[test]
+    fn newton_validates_initial_alpha() {
+        // Direct call to validate_params
+        let mut solver = NewtonSolver::new();
+        solver.initial_alpha = 0.0;
+        assert_eq!(solver.validate_params().err(), Some("initial_alpha must be > 0"));
+
+        // Error propagated through solve() — covers the `?` arm in solve
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+        let f = |_: &Vector, _: &mut Vector, _: &mut ()| Ok(());
+        let jacobian = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
+        let mut solver = NewtonSolver::new();
+        solver.initial_alpha = -1.0;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert_eq!(result.err(), Some("initial_alpha must be > 0"));
+    }
+
+    // ===== Genuine divergence =====
+
+    #[test]
+    fn newton_solution_diverges() {
+        // F(x) = x - 1, but Jacobian is -I (wrong sign) so Newton steps move
+        // away from the root: each step doubles the residual norm.
+        // With divergent_tol = 1.0, the check fires as soon as norm grows.
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+
+        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+            out[0] = x[0] - 1.0;
+            out[1] = x[1] - 1.0;
+            Ok(())
+        };
+
+        // Wrong Jacobian: -I instead of I → Newton steps diverge
+        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
+            j.set(0, 0, -1.0);
+            j.set(0, 1, 0.0);
+            j.set(1, 0, 0.0);
+            j.set(1, 1, -1.0);
+            Ok(())
+        };
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = false;
+        solver.divergent_tol = 1.0; // fire as soon as norm grows
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert_eq!(result.err(), Some("solution diverged"));
+    }
+
+    // ===== f returns error on initial call =====
+
+    #[test]
+    fn newton_f_returns_error_on_initial_call() {
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+
+        let f = |_: &Vector, _: &mut Vector, _: &mut ()| Err("f error");
+        let jacobian = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = false;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert_eq!(result.err(), Some("f error"));
+    }
+
+    // ===== jacobian returns error =====
+
+    #[test]
+    fn newton_jacobian_returns_error() {
+        // f succeeds with non-zero residual so the solver proceeds past
+        // the convergence check and calls jacobian
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+
+        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+            out[0] = x[0] - 1.0;
+            out[1] = x[1] - 1.0;
+            Ok(())
+        };
+
+        let jacobian = |_: &mut Matrix, _: &Vector, _: &mut ()| Err("jacobian error");
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = false;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert_eq!(result.err(), Some("jacobian error"));
+    }
+
+    // ===== singular Jacobian → solve_lin_sys error =====
+
+    #[test]
+    fn newton_singular_jacobian_returns_error() {
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+
+        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+            out[0] = x[0] - 1.0;
+            out[1] = x[1] - 1.0;
+            Ok(())
+        };
+
+        // All-zero Jacobian is singular; solve_lin_sys must return an error
+        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
+            j.set(0, 0, 0.0);
+            j.set(0, 1, 0.0);
+            j.set(1, 0, 0.0);
+            j.set(1, 1, 0.0);
+            Ok(())
+        };
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = false;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert!(result.is_err());
+    }
+
+    // ===== f returns error inside the else branch (no line search) =====
+
+    #[test]
+    fn newton_f_returns_error_in_iteration() {
+        // Initial f call succeeds; the second call (inside the else branch
+        // after the Newton step) fails.
+        let mut call_count = 0usize;
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+
+        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+            call_count += 1;
+            if call_count > 1 {
+                return Err("f error on second call");
+            }
+            out[0] = x[0] - 1.0;
+            out[1] = x[1] - 1.0;
+            Ok(())
+        };
+
+        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
+            j.set(0, 0, 1.0);
+            j.set(0, 1, 0.0);
+            j.set(1, 0, 0.0);
+            j.set(1, 1, 1.0);
+            Ok(())
+        };
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = false;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert_eq!(result.err(), Some("f error on second call"));
+    }
+
+    // ===== f returns error inside the line search loop =====
+
+    #[test]
+    fn newton_f_returns_error_in_line_search() {
+        // Initial f call succeeds; the second call (first trial inside the
+        // line search loop) fails.
+        let mut call_count = 0usize;
+        let mut x0 = Vector::from(&[0.0, 0.0]);
+        let args = &mut ();
+
+        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+            call_count += 1;
+            if call_count > 1 {
+                return Err("f error in line search");
+            }
+            out[0] = x[0] - 1.0;
+            out[1] = x[1] - 1.0;
+            Ok(())
+        };
+
+        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
+            j.set(0, 0, 1.0);
+            j.set(0, 1, 0.0);
+            j.set(1, 0, 0.0);
+            j.set(1, 1, 1.0);
+            Ok(())
+        };
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = true;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert_eq!(result.err(), Some("f error in line search"));
+    }
+
+    // ===== Test Converges in One Iteration =====
+
     #[test]
     fn newton_converges_immediately() {
         let mut x0 = Vector::from(&[0.0, 0.0]);

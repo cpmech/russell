@@ -120,6 +120,23 @@ impl LineSearcher {
         }
     }
 
+    /// Validates the parameters
+    fn validate_params(&self) -> Result<(), StrError> {
+        if self.c1 <= 0.0 || self.c1 >= 1.0 {
+            return Err("c1 must be in (0, 1)");
+        }
+        if self.rho <= 0.0 || self.rho >= 1.0 {
+            return Err("rho must be in (0, 1)");
+        }
+        if self.min_alpha <= 0.0 {
+            return Err("min_alpha must be > 0");
+        }
+        if self.max_iterations == 0 {
+            return Err("max_iterations must be > 0");
+        }
+        Ok(())
+    }
+
     /// Performs the line search
     ///
     /// # Input
@@ -155,6 +172,9 @@ impl LineSearcher {
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
+        // validate parameters
+        self.validate_params()?;
+
         // Verify that direction is a descent direction
         if slope >= 0.0 {
             return Err("direction must be a descent direction (slope < 0)");
@@ -337,6 +357,33 @@ mod tests {
 
         let result = line_search(x, direction, fx, slope, args, f);
         assert_eq!(result.err(), Some("direction must be a descent direction (slope < 0)"));
+    }
+
+    #[test]
+    fn line_search_captures_invalid_parameters() {
+        struct Args {}
+        let args = &mut Args {};
+        let f = |_: f64, _: &mut Args| Ok(0.0);
+        let (x, direction, fx, slope) = (0.0, 1.0, 1.0, -1.0);
+
+        let mut searcher = LineSearcher::new();
+        searcher.c1 = 0.0;
+        assert_eq!(searcher.search(x, direction, fx, slope, args, f).err(), Some("c1 must be in (0, 1)"));
+
+        let mut searcher = LineSearcher::new();
+        searcher.rho = 1.0;
+        assert_eq!(searcher.search(x, direction, fx, slope, args, f).err(), Some("rho must be in (0, 1)"));
+
+        let mut searcher = LineSearcher::new();
+        searcher.min_alpha = 0.0;
+        assert_eq!(searcher.search(x, direction, fx, slope, args, f).err(), Some("min_alpha must be > 0"));
+
+        let mut searcher = LineSearcher::new();
+        searcher.max_iterations = 0;
+        assert_eq!(
+            searcher.search(x, direction, fx, slope, args, f).err(),
+            Some("max_iterations must be > 0")
+        );
     }
 
     #[test]

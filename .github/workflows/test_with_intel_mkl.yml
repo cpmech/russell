@@ -1,11 +1,6 @@
 name: Test with Intel MKL
 on:
-  workflow_dispatch: # Allows manual triggering from the web browser
-    inputs:
-      pr_branch:
-        description: 'Branch name of the PR to test'
-        required: true
-        default: 'main'
+  workflow_dispatch: # Keeps the native branch-selection UI dropdown active
 
 jobs:
   test_with_intel_mkl:
@@ -15,8 +10,6 @@ jobs:
         rust: [stable, nightly]
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.pr_branch }} # Checks out the user-specified branch
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:

@@ -130,6 +130,9 @@ impl LineSearcher {
         if self.min_alpha <= 0.0 {
             return Err("min_alpha must be > 0");
         }
+        if self.min_alpha >= 1.0 {
+            return Err("min_alpha must be < 1");
+        }
         if self.max_iterations == 0 {
             return Err("max_iterations must be ≥ 1");
         }
@@ -158,7 +161,7 @@ impl LineSearcher {
     /// Returns an error if:
     /// * `c1` is not in `(0, 1)`
     /// * `rho` is not in `(0, 1)`
-    /// * `min_alpha` is not `> 0`
+    /// * `min_alpha` is not in `(0, 1)`
     /// * `max_iterations` is `0`
     /// * `slope >= 0` (direction is not a descent direction)
     /// * `alpha` falls below `min_alpha`
@@ -305,7 +308,7 @@ mod tests {
         struct Args {}
         let args = &mut Args {};
 
-        // Non-quadratic function with noticeable backtracking
+        // Non-quadratic function; alpha=1 is accepted on the first evaluation
         let f = |x: f64, _: &mut Args| {
             let d = x - 3.0;
             Ok(d.powi(4) + d.powi(2))
@@ -319,10 +322,10 @@ mod tests {
         let slope = -114.0;
 
         let (alpha, n_evals) = line_search_with_stats(x, p, fx, slope, args, f).unwrap();
-        assert!(n_evals >= 1);
+        // f(1) = (1-3)^4 + (1-3)^2 = 20 <= 90 + 1e-4 * 1 * (-114) = 89.9886 -- accepted immediately
+        assert_eq!(n_evals, 1);
 
         let x_new = x + alpha * p;
-        // x_new should be between 0 and the minimum at 3
         assert!(x_new > 0.0 && x_new < 5.0);
     }
 
@@ -452,45 +455,45 @@ mod tests {
         struct Args {
             count: usize,
         }
-        let args = &mut Args { count: 0 };
-
-        let mut f_calls = 0;
-        let f = |x: f64, a: &mut Args| {
+        fn f(x: f64, a: &mut Args) -> Result<f64, StrError> {
             a.count += 1;
-            f_calls += 1;
             let d = x - 2.0;
             Ok(d.powi(4) + d.powi(2))
-        };
+        }
 
-        let x = 0.0;
-        let fx = 20.0;
-        let p = 1.0;
-        let slope = -36.0;
+        let searcher = LineSearcher::new();
+        let args = &mut Args { count: 0 };
 
-        let (alpha, _) = line_search_with_stats(x, p, fx, slope, args, f).unwrap();
-        // Should call the function at least once
-        assert!(f_calls >= 1);
+        // First call from x=0, moving right: alpha=1 accepted on first evaluation
+        // f(1) = 2 <= 20 + 1e-4 * 1 * (-36) = 19.9964
+        let (alpha1, n_evals1) = searcher.search(0.0, 1.0, 20.0, -36.0, args, f).unwrap();
+        assert_eq!(n_evals1, 1);
+        assert_eq!(args.count, 1);
+        assert!(alpha1 > 0.0 && alpha1 <= 1.0);
 
-        let x_new = x + alpha * p;
-        assert!(x_new > 0.0 && x_new < 4.0);
+        // Second call from x=4, moving left: alpha=1 accepted on first evaluation
+        // f(3) = 2 <= 20 + 1e-4 * 1 * (-36) = 19.9964
+        let (alpha2, n_evals2) = searcher.search(4.0, -1.0, 20.0, -36.0, args, f).unwrap();
+        assert_eq!(n_evals2, 1);
+        assert_eq!(args.count, 2);
+        assert!(alpha2 > 0.0 && alpha2 <= 1.0);
     }
 
     #[test]
-    fn line_search_steep_descent() {
+    fn line_search_captures_zero_slope() {
         struct Args {}
         let args = &mut Args {};
 
-        // f(x) = x^4, gradient at x=0 is 0 (flat region)
+        // f(x) = x^4, gradient is 0 at x=0 (flat region, not a descent direction)
         let f = |x: f64, _: &mut Args| Ok(x.powi(4));
 
         let x = 0.0;
         let fx = 0.0;
         let p = 1.0;
-        let slope = 0.0; // gradient = 0
+        let slope = 0.0; // gradient = 0, not a descent direction
 
         let result = line_search(x, p, fx, slope, args, f);
-        // slope = 0 is not < 0, so this should fail
-        assert!(result.is_err());
+        assert_eq!(result.err(), Some("direction must be a descent direction (slope < 0)"));
     }
 
     #[test]
@@ -532,6 +535,11 @@ mod tests {
         assert_eq!(
             searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
             Some("min_alpha must be > 0")
+        );
+        searcher.min_alpha = 1.0;
+        assert_eq!(
+            searcher.search(0.0, 1.0, 1.0, -1.0, args, f).err(),
+            Some("min_alpha must be < 1")
         );
         searcher.min_alpha = DEFAULT_MIN_ALPHA;
 

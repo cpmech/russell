@@ -65,12 +65,12 @@ const DEFAULT_MAX_ITERATIONS: usize = 20;
 ///         Ok(d.powi(4) + d.powi(2))
 ///     };
 ///
-///     // At x = 0: f(0) = 2, gradient ≈ -4
+///     // At x = 0: f(0) = 2, gradient = -6
 ///     // Descent direction = 1 (move toward positive x)
 ///     let x = 0.0;
 ///     let fx = 2.0;
 ///     let direction = 1.0;
-///     let slope = -4.0; // grad^T * direction (approximately)
+///     let slope = -6.0; // grad^T * direction
 ///
 ///     let alpha = line_search(x, direction, fx, slope, args, f)?;
 ///     let x_new = x + alpha * direction;

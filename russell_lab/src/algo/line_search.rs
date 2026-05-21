@@ -132,9 +132,9 @@ impl LineSearcher {
     ///
     /// # Output
     ///
-    /// Returns `(alpha, n_iter)` where:
+    /// Returns `(alpha, n_evals)` where:
     /// * `alpha` -- step size satisfying the Armijo condition
-    /// * `n_iter` -- number of backtracking iterations performed
+    /// * `n_evals` -- number of function evaluations performed (always >= 1)
     ///
     /// # Errors
     ///
@@ -173,7 +173,6 @@ impl LineSearcher {
 
             // Check Armijo condition: sufficient decrease
             if f_new <= target {
-                // n_iter is 0-indexed, return 1-indexed count
                 return Ok((alpha, n_iter + 1));
             }
 
@@ -304,8 +303,8 @@ mod tests {
         let direction = 1.0;
         let slope = -114.0;
 
-        let (alpha, n_iter) = line_search_with_stats(x, direction, fx, slope, args, f).unwrap();
-        assert!(n_iter >= 1);
+        let (alpha, n_evals) = line_search_with_stats(x, direction, fx, slope, args, f).unwrap();
+        assert!(n_evals >= 1);
 
         let x_new = x + alpha * direction;
         // x_new should be between 0 and the minimum at 3

@@ -7,7 +7,7 @@
 
 use plotpy::{Curve, Legend, Plot};
 use russell_lab::math::GOLDEN_RATIO;
-use russell_lab::{StrError, Vector};
+use russell_lab::{LineSearcher, StrError, Vector};
 
 const OUT_DIR: &str = "/tmp/russell_lab/";
 
@@ -58,6 +58,26 @@ fn main() -> Result<(), StrError> {
     println!("Accepted alpha: {:.4}", accepted_alpha);
     println!("New point     : x_new={:.4}  f(x_new)={:.4}", x_new, fx_new);
     println!("Rejected steps: {}", n_rejected);
+
+    // -------------------------------------------------------------------------
+    // LineSearcher with c1=0.5 — should agree with the manual trace above
+    // -------------------------------------------------------------------------
+    struct Args {}
+    let ls_args = &mut Args {};
+    let ls_f = |x: f64, _: &mut Args| {
+        let d = x - 1.0;
+        Ok(d.powi(4) + d.powi(2))
+    };
+    let mut ls = LineSearcher::new();
+    ls.c1 = c1; // same c1=0.5 as the manual trace
+    ls.rho = rho;
+    let (alpha_ls, n_evals_ls) = ls.search(x0, p, fx0, slope, ls_args, ls_f)?;
+    let x_new_ls = x0 + alpha_ls * p;
+    let fx_new_ls = f(x_new_ls);
+
+    println!("\nLineSearcher (c1={:.1}):", ls.c1);
+    println!("  Accepted alpha: {:.4}  (in {} eval)", alpha_ls, n_evals_ls);
+    println!("  New point     : x_new={:.4}  f(x_new)={:.4}", x_new_ls, fx_new_ls);
 
     // -------------------------------------------------------------------------
     // Plot
@@ -127,19 +147,34 @@ fn main() -> Result<(), StrError> {
         .set_marker_color("C3");
     curve_rej.draw(&rej_xx, &rej_yy);
 
-    // 6. Accepted (new) point
+    // 6. Accepted (new) point — strict LineSearcher (c1=0.5)
     let mut curve_new = Curve::new();
     curve_new
         .set_label(&format!(
-            "accepted $(x_{{\\rm new}}={:.2},\\ \\alpha={:.1})$",
+            "manual: accepted ($x={:.2},\\ \\alpha={:.1}$)",
             x_new, accepted_alpha
         ))
         .set_line_style("None")
         .set_marker_style("*")
-        .set_marker_size(16.0)
-        .set_marker_color("C2")
-        .set_marker_line_color("C2");
+        .set_marker_size(12.0)
+        .set_marker_color("black")
+        .set_marker_line_color("black");
     curve_new.draw(&[x_new], &[fx_new]);
+
+    // 7. Accepted (new) point — default LineSearcher (c1=1e-4)
+    let mut curve_new_ls = Curve::new();
+    curve_new_ls
+        .set_label(&format!(
+            "LineSearcher: accepted ($x={:.2},\\ \\alpha={:.1}$)",
+            x_new_ls, alpha_ls
+        ))
+        .set_line_style("None")
+        .set_marker_style("D")
+        .set_marker_void(true)
+        .set_marker_size(10.0)
+        .set_marker_color("C4")
+        .set_marker_line_color("C4");
+    curve_new_ls.draw(&[x_new_ls], &[fx_new_ls]);
 
     let mut legend = Legend::new();
     legend.draw();
@@ -152,6 +187,7 @@ fn main() -> Result<(), StrError> {
         .add(&curve_init)
         .add(&curve_rej)
         .add(&curve_new)
+        .add(&curve_new_ls)
         .add(&legend)
         .set_yrange(-1.5, 2.5)
         .grid_and_labels("$x$", "$f(x)$")

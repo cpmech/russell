@@ -642,6 +642,45 @@ mod tests {
         approx_eq(x[1], 2.0, 1e-6);
     }
 
+    // ===== Line search alpha backtracking (line 203: alpha *= rho) =====
+
+    #[test]
+    fn newton_line_search_backtracks_alpha() {
+        // F(x) = [x[0]^3 - 1, x[1]^3 - 1], root at (1, 1).
+        // Starting far from the root forces a large Newton step whose
+        // full-step Armijo condition fails, so alpha must be reduced
+        // (alpha *= rho) at least once before the condition is satisfied.
+        // Starting at [0.5, 0.5]: the Newton step jumps to ~[1.67, 1.67]
+        // where phi_new >> phi_base, so the Armijo condition fails and
+        // alpha must be halved (alpha *= rho, line 203) before it passes.
+        let mut x0 = Vector::from(&[0.5, 0.5]);
+        let args = &mut ();
+
+        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+            out[0] = x[0] * x[0] * x[0] - 1.0;
+            out[1] = x[1] * x[1] * x[1] - 1.0;
+            Ok(())
+        };
+
+        let jacobian = |j: &mut Matrix, x: &Vector, _: &mut ()| {
+            j.set(0, 0, 3.0 * x[0] * x[0]);
+            j.set(0, 1, 0.0);
+            j.set(1, 0, 0.0);
+            j.set(1, 1, 3.0 * x[1] * x[1]);
+            Ok(())
+        };
+
+        let mut solver = NewtonSolver::new();
+        solver.use_line_search = true;
+        solver.initial_alpha = 1.0;
+        solver.max_iterations = 50;
+        let result = solver.solve(&mut x0, args, f, jacobian);
+        assert!(result.is_ok(), "Expected Ok, got {:?}", result.err());
+        let (x, _) = result.unwrap();
+        approx_eq(x[0], 1.0, 1e-8);
+        approx_eq(x[1], 1.0, 1e-8);
+    }
+
     // ===== initial_alpha validation =====
 
     #[test]

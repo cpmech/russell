@@ -364,22 +364,13 @@ mod tests {
 
         let mut solver = NewtonSolver::new();
         solver.max_iterations = 1;
-        solver.tolerance = 1e-8; // Reasonable tolerance
+        solver.tolerance = 1e-8;
         let result = solver.solve(&mut x0, args, f, jacobian);
-        // With max_iterations=1 and reasonable tolerance, may not converge
-        match result {
-            Ok(_) => {
-                // Converged - that's fine too
-            }
-            Err(e) => {
-                // Should contain expected error messages
-                assert!(
-                    e.contains("converge") || e.contains("diverged"),
-                    "Unexpected error: {}",
-                    e
-                );
-            }
-        }
+        // x0=[1,1] → Newton step → x=[0,0] (residual=0), but the convergence
+        // check runs at the top of the loop, so the updated residual is only
+        // checked in the *next* iteration, which never happens.
+        // The solver therefore exits the loop and returns the "failed to converge" error.
+        assert_eq!(result.err(), Some("Newton solver failed to converge"));
     }
 
     // ===== Parameter Configuration Tests =====

@@ -1,7 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver, SparseMatrix};
+use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
 pub(crate) struct EulerBackward<'a, A> {
@@ -124,9 +124,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
                 // perform factorization
                 work.stats.sw_factor.reset();
                 work.stats.n_factor += 1;
-                // Convert CooMatrix to unified SparseMatrix and call setup
-                let sparse_mat = SparseMatrix::from(kk.clone());
-                self.solver.actual.setup(&sparse_mat, self.params.newton.lin_sol_params)?;
+                self.solver.actual.factorize(kk, self.params.newton.lin_sol_params)?;
                 work.stats.stop_sw_factor();
             }
 

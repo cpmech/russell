@@ -1,5 +1,4 @@
 use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, Complex64, ComplexVector, Vector};
-use russell_sparse::SparseMatrix;
 use russell_sparse::prelude::*;
 use russell_sparse::Samples;
 
@@ -21,8 +20,7 @@ fn test_solver(genie: Genie) {
 
     let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
 
-    let sparse_mat = SparseMatrix::from(coo.clone());
-    match solver.actual.setup(&sparse_mat, None) {
+    match solver.actual.factorize(&coo, None) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -136,8 +134,7 @@ fn test_solver_singular(genie: Genie) {
     coo_singular.put(0, 0, 1.0).unwrap();
     coo_singular.put(1, 0, 1.0).unwrap();
 
-    let sparse_mat = SparseMatrix::from(coo_singular.clone());
-    match solver.actual.setup(&sparse_mat, None) {
+    match solver.actual.factorize(&coo_singular, None) {
         Err(e) => println!("Ok(factorize singular matrix): {}\n", e),
         _ => (),
     };

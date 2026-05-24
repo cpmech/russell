@@ -10,18 +10,8 @@ RUN chown -R user:wheel /usr/local/src/
 USER user
 WORKDIR /usr/local/src/
 
-# install yay
-RUN git clone https://aur.archlinux.org/yay.git
-RUN cd yay && makepkg -si --noconfirm
-
-# install libraries for russell
-RUN yay -Y --gendb --noconfirm && yay -Y --devel --save
-RUN yay -Sy --noconfirm --needed blas-openblas
-RUN yay -Sy --noconfirm --needed suitesparse
-
-# install rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-ENV PATH="/home/user/.cargo/bin:${PATH}"
+# install rust and dependencies
+RUN sudo pacman -S rust blas-openblas suitesparse
 
 # copy files
 COPY --chown=user:user . russell

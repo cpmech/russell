@@ -156,9 +156,7 @@ Required libraries:
 
 ```bash
 # install libraries for russell
-yay -Y --gendb --noconfirm && yay -Y --devel --save
-yay -Sy --noconfirm --needed blas-openblas
-yay -Sy --noconfirm --needed suitesparse
+pacman -Syu rust blas-openblas suitesparse
 ```
 
 ### macOS

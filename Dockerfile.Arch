@@ -1,21 +1,19 @@
 FROM archlinux:base-devel
 
-# initialize
-RUN pacman -Sy go git --noconfirm
+# Update keyring, system packages, and install dependencies as root
+RUN pacman -Sy --noconfirm archlinux-keyring && \
+    pacman -Syu --noconfirm rust blas-openblas suitesparse
 
-# set user
-RUN useradd -G wheel -m user
-RUN echo "user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-RUN chown -R user:wheel /usr/local/src/
+# Set up non-root user for testing
+RUN useradd -m user && \
+    chown -R user:user /usr/local/src/
+
 USER user
 WORKDIR /usr/local/src/
 
-# install rust and dependencies
-RUN sudo pacman -S rust blas-openblas suitesparse
-
-# copy files
+# Copy project files
 COPY --chown=user:user . russell
 WORKDIR russell
 
-# run tests
+# Run tests
 RUN cargo test

@@ -33,6 +33,8 @@ pub const TOL_RANGE: f64 = 1.0e-5;
 /// and   -1 ≤ Zⱼ ≤ 1
 /// ```
 ///
+/// and Zⱼ are the Chebyshev-Gauss-Lobatto coordinates, i.e., Zⱼ = -cos(j π / N), j = 0, ..., N.
+///
 /// # Notes
 ///
 /// 1. This structure is meant for interpolating data and finding (all) the roots of an equation.
@@ -242,6 +244,101 @@ impl InterpChebyshev {
         }
         self.ready = true;
         Ok(())
+    }
+
+    /// Sets the general (X_gen, Y_gen) data not necessarily corresponding to the Chebyshev grid points
+    ///
+    /// The X vector corresponding to the Chebyshev points will be linearly interpolated from the given (X_gen, Y_gen) data.
+    ///
+    /// After interpolation, the data (U) will be associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///      xb + xa + (xb - xa) Zⱼ
+    /// Xⱼ = ——————————————————————
+    ///                2
+    ///
+    /// Uⱼ = f(Xⱼ(Zⱼ))
+    /// ```
+    ///
+    /// where Zⱼ are the Chebyshev-Gauss-Lobatto coordinates, i.e., Zⱼ = -cos(j π / N), j = 0, ..., N.
+    pub fn set_gen_data(&mut self, xx_gen: &[f64], yy_gen: &[f64]) -> Result<(), StrError> {
+        let np = xx_gen.len();
+        if np < 1 {
+            return Err("the number of points (xx_gen.len()) must be ≥ 1");
+        }
+        if yy_gen.len() != np {
+            return Err("the number of points in xx_gen and yy_gen must be the same");
+        }
+        let nn = np - 1;
+        if nn > self.nn_max {
+            return Err("nn (=xx_gen.len()-1) must be ≤ nn_max");
+        }
+        if xx_gen[0] != self.xa {
+            return Err("the first point in xx_gen must be equal to xa");
+        }
+        if xx_gen[np - 1] != self.xb {
+            return Err("the last point in xx_gen must be equal to xb");
+        }
+        self.nn = nn;
+        if self.nn == 0 {
+            self.constant_fx = yy_gen[0];
+        } else {
+            let zz = InterpChebyshev::points(self.nn);
+            for i_cheby in 0..zz.dim() {
+                let z = zz[i_cheby];
+                let x = (self.xb + self.xa + self.dx * z) / 2.0;
+                // perform linear interpolation
+                let mut found = false;
+                for i_gen in 0..np {
+                    let x_gen = xx_gen[i_gen];
+                    if x <= x_gen {
+                        let u = if i_gen == 0 {
+                            yy_gen[0]
+                        } else {
+                            let x_prev = xx_gen[i_gen - 1];
+                            let y_prev = yy_gen[i_gen - 1];
+                            let y_gen = yy_gen[i_gen];
+                            y_prev + (y_gen - y_prev) * (x - x_prev) / (x_gen - x_prev)
+                        };
+                        self.uu_rev[self.nn - i_cheby] = u;
+                        found = true;
+                        break;
+                    }
+                }
+                assert!(found); // will always be found because the last point in xx_gen must be equal to xb
+            }
+        }
+        self.ready = true;
+        Ok(())
+    }
+
+    /// Returns the (X, Y) data vectors associated with the Chebyshev-Gauss-Lobatto points
+    ///
+    /// The data (Y=U) is associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///      xb + xa + (xb - xa) Zⱼ
+    /// Xⱼ = ——————————————————————
+    ///                2
+    ///
+    /// Yⱼ = Uⱼ = f(Xⱼ(Zⱼ))
+    /// ```
+    ///
+    /// where Zⱼ are the Chebyshev-Gauss-Lobatto coordinates, i.e., Zⱼ = -cos(j π / N), j = 0, ..., N.
+    pub fn get_xy_data(&self) -> Result<(Vector, Vector), StrError> {
+        if !self.ready {
+            return Err("the data or function must be set first");
+        }
+        let np = self.nn + 1;
+        let mut xx = Vector::new(np);
+        let mut uu = Vector::new(np);
+        let zz = InterpChebyshev::points(self.nn);
+        for i in 0..np {
+            let z = zz[i];
+            xx[i] = (self.xb + self.xa + self.dx * z) / 2.0;
+            uu[i] = self.uu_rev[self.nn - i];
+        }
+        Ok((xx, uu))
     }
 
     /// Performs adaptive interpolation for given function
@@ -523,7 +620,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu_rev: &[f64], nn: usize) {
 mod tests {
     use super::{chebyshev_coefficients, InterpChebyshev};
     use crate::math::PI;
-    use crate::{approx_eq, array_approx_eq, NoArgs, Vector};
+    use crate::{approx_eq, array_approx_eq, vec_approx_eq, NoArgs, Vector};
 
     #[allow(unused)]
     use plotpy::{Curve, Legend, Plot};
@@ -1216,6 +1313,49 @@ mod tests {
             .set_cross(0.0, 0.0, "gray", "-", 1.5)
             .grid_and_labels("x", "f(x)")
             .save("/tmp/russell_lab/test_interp_chebyshev_case_with_discontinuity_2.svg")
+            .unwrap();
+        */
+    }
+
+    #[test]
+    fn set_data_non_chebyshev_works() {
+        let np = 7;
+        let xa = 2.0;
+        let xb = 7.0;
+        let xx = Vector::linspace(xa, xb, np).unwrap();
+        let yy = xx.get_mapped(|x| f64::cos((x - xa) / (xb - xa) * PI));
+        let mut interp = InterpChebyshev::new(10, xa, xb).unwrap();
+        interp.set_gen_data(xx.as_data(), yy.as_data()).unwrap();
+
+        let (xx_cheby, yy_cheby) = interp.get_xy_data().unwrap();
+
+        let xx_corect = [2.0, 2.3349364905389036, 3.25, 4.5, 5.75, 6.665063509461096, 7.0];
+        vec_approx_eq(&xx_cheby, &xx_corect, 1e-15);
+
+        let yy_correct = [
+            1.0,
+            0.9461524227066318,
+            0.6830127018922194,
+            0.0,
+            -0.6830127018922193,
+            -0.9461524227066318,
+            -1.0,
+        ];
+        vec_approx_eq(&yy_cheby, &yy_correct, 1e-15);
+
+        /*
+        let mut curve = Curve::new();
+        let mut curve_cheby = Curve::new();
+        curve.set_marker_style(".").draw(xx.as_data(), yy.as_data());
+        curve_cheby
+            .set_line_style(":")
+            .set_marker_style("*")
+            .draw(xx_cheby.as_data(), yy_cheby.as_data());
+        let mut plot = Plot::new();
+        plot.add(&curve)
+            .add(&curve_cheby)
+            .grid_and_labels("x", "y")
+            .save("/tmp/russell_lab/test_interp_chebyshev_set_data_non_chebyshev_works.svg")
             .unwrap();
         */
     }

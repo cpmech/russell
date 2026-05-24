@@ -20,7 +20,9 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve large sparse systems using the best libraries out there, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org).
+This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org).
+
+Iterative solvers are outside the scope of `russell_sparse`. Users looking for Rust-based iterative solvers may refer to the [kryst library](https://github.com/tmathis720/kryst).
 
 This library implements three storage formats for sparse matrices:
 

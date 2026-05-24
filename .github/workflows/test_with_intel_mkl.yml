@@ -1,5 +1,7 @@
 name: Test with Intel MKL
-on: [pull_request]
+on:
+  workflow_dispatch: # Keeps the native branch-selection UI dropdown active
+
 jobs:
   test_with_intel_mkl:
     runs-on: ubuntu-latest

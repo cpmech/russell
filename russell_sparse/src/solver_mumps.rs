@@ -1,4 +1,4 @@
-use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
+use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, SparseMatrix, StatsLinSol, Sym};
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{using_intel_mkl, vec_copy, Stopwatch, Vector};
@@ -181,44 +181,51 @@ impl LinSolTrait for SolverMUMPS {
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
-    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    exactly the same among multiple calls to `setup`. The values may differ
     ///    from call to call, nonetheless.
-    /// 2. The first call to `factorize` will define the structure which must be
+    /// 2. The first call to `setup` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `MUMPS` requires [Sym::YesLower].
-    /// 5. The COO matrix must be one-based.
-    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+    fn setup(&mut self, mat: &SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+        let coo = mat.as_coo()?;
+
         // check
         if self.initialized {
-            if mat.symmetric != self.initialized_sym {
+            if coo.symmetric != self.initialized_sym {
                 return Err("subsequent factorizations must use the same matrix (symmetric differs)");
             }
-            if mat.nrow != self.initialized_ndim {
+            if coo.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
             }
-            if mat.nnz != self.initialized_nnz {
+            if coo.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
+            unsafe {
+                solver_mumps_drop(self.solver);
+            }
+            self.solver = unsafe { solver_mumps_new() };
+            self.initialized = false;
+            self.factorized = false;
         } else {
-            if mat.nrow != mat.ncol {
+            if coo.nrow != coo.ncol {
                 return Err("the COO matrix must be square");
             }
-            if mat.nnz < 1 {
+            if coo.nnz < 1 {
                 return Err("the COO matrix must have at least one non-zero value");
             }
-            if mat.symmetric == Sym::YesFull || mat.symmetric == Sym::YesUpper {
+            if coo.symmetric == Sym::YesFull || coo.symmetric == Sym::YesUpper {
                 return Err("MUMPS requires Sym::YesLower for symmetric matrices");
             }
-            self.initialized_sym = mat.symmetric;
-            self.initialized_ndim = mat.nrow;
-            self.initialized_nnz = mat.nnz;
-            self.fortran_indices_i = vec![0; mat.nnz];
-            self.fortran_indices_j = vec![0; mat.nnz];
-            for k in 0..mat.nnz {
-                self.fortran_indices_i[k] = mat.indices_i[k] + 1;
-                self.fortran_indices_j[k] = mat.indices_j[k] + 1;
+            self.initialized_sym = coo.symmetric;
+            self.initialized_ndim = coo.nrow;
+            self.initialized_nnz = coo.nnz;
+            self.fortran_indices_i = vec![0; coo.nnz];
+            self.fortran_indices_j = vec![0; coo.nnz];
+            for k in 0..coo.nnz {
+                self.fortran_indices_i[k] = coo.indices_i[k] + 1;
+                self.fortran_indices_j[k] = coo.indices_j[k] + 1;
             }
         }
 
@@ -227,11 +234,11 @@ impl LinSolTrait for SolverMUMPS {
 
         // error analysis option
         self.error_analysis_option = if par.compute_condition_numbers {
-            1 // all the statistics (very expensive) (page 40)
+            1
         } else if par.compute_error_estimates {
-            2 // main statistics are computed (page 40)
+            2
         } else {
-            0 // nothing
+            0
         };
 
         // input parameters
@@ -243,7 +250,7 @@ impl LinSolTrait for SolverMUMPS {
             if using_intel_mkl() || par.mumps_num_threads != 0 || par.mumps_override_prevent_nt_issue_with_openblas {
                 to_i32(par.mumps_num_threads)
             } else {
-                1 // avoid bug with OpenBLAS
+                1
             };
 
         // requests
@@ -251,10 +258,10 @@ impl LinSolTrait for SolverMUMPS {
         let verbose = if par.verbose { 1 } else { 0 };
 
         // matrix config
-        let general_symmetric = if mat.symmetric == Sym::YesLower { 1 } else { 0 };
+        let general_symmetric = if coo.symmetric == Sym::YesLower { 1 } else { 0 };
         let positive_definite = if par.positive_definite { 1 } else { 0 };
-        let ndim = to_i32(mat.nrow);
-        let nnz = to_i32(mat.nnz);
+        let ndim = to_i32(coo.nrow);
+        let nnz = to_i32(coo.nnz);
 
         // call initialize just once
         if !self.initialized {
@@ -274,7 +281,7 @@ impl LinSolTrait for SolverMUMPS {
                     nnz,
                     self.fortran_indices_i.as_ptr(),
                     self.fortran_indices_j.as_ptr(),
-                    mat.values.as_ptr(),
+                    coo.values.as_ptr(),
                 );
                 if status != SUCCESSFUL_EXIT {
                     return Err(handle_mumps_error_code(status));
@@ -305,6 +312,29 @@ impl LinSolTrait for SolverMUMPS {
         // done
         self.factorized = true;
         Ok(())
+    }
+
+    /// Performs the factorization (and analysis/initialization if needed)
+    ///
+    /// # Input
+    ///
+    /// * `mat` -- the coefficient matrix A (one-base **COO** only). The matrix must be square
+    ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
+    /// * `params` -- configuration parameters; None => use default
+    ///
+    /// # Notes
+    ///
+    /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
+    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    from call to call, nonetheless.
+    /// 2. The first call to `factorize` will define the structure which must be
+    ///    kept the same for the next calls.
+    /// 3. If the structure of the matrix needs to be changed, the solver must
+    ///    be "dropped" and a new solver allocated.
+    /// 4. For symmetric matrices, `MUMPS` requires [Sym::YesLower].
+    /// 5. The COO matrix must be one-based.
+    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+        self.setup(&SparseMatrix::from(mat.clone()), params)
     }
 
     /// Computes the solution of the linear system

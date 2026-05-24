@@ -3,7 +3,7 @@ use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
 use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, Complex64, ComplexVector, Vector};
 use russell_sparse::{
-    numerical_jacobian, ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver,
+    numerical_jacobian, ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver, SparseMatrix,
 };
 use std::thread;
 
@@ -257,9 +257,11 @@ impl<'a, A> Radau5<'a, A> {
 
     /// Factorizes the real and complex systems in serial
     fn factorize(&mut self) -> Result<(), StrError> {
+        // Convert CooMatrix to unified SparseMatrix and call setup
+        let sparse_mat = SparseMatrix::from(self.kk_real.clone());
         self.solver_real
             .actual
-            .factorize(&self.kk_real, self.params.newton.lin_sol_params)?;
+            .setup(&sparse_mat, self.params.newton.lin_sol_params)?;
         self.solver_comp
             .actual
             .factorize(&self.kk_comp, self.params.newton.lin_sol_params)
@@ -269,9 +271,11 @@ impl<'a, A> Radau5<'a, A> {
     fn factorize_concurrently(&mut self) -> Result<(), StrError> {
         thread::scope(|scope| {
             let handle_real = scope.spawn(|| {
+                // Convert CooMatrix to unified SparseMatrix and call setup
+                let sparse_mat = SparseMatrix::from(self.kk_real.clone());
                 self.solver_real
                     .actual
-                    .factorize(&self.kk_real, self.params.newton.lin_sol_params)
+                    .setup(&sparse_mat, self.params.newton.lin_sol_params)
                     .unwrap();
             });
             let handle_comp = scope.spawn(|| {

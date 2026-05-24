@@ -1,4 +1,4 @@
-use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
+use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym, SparseMatrix};
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{vec_copy, Stopwatch, Vector};
@@ -131,51 +131,54 @@ impl SolverKLU {
 }
 
 impl LinSolTrait for SolverKLU {
-    /// Performs the factorization (and analysis/initialization if needed)
+    /// Performs the solver setup (for KLU: factorization, analysis, and initialization if needed)
     ///
     /// # Input
     ///
-    /// * `mat` -- the coefficient matrix A. The matrix must be square (`nrow = ncol`) and,
-    ///   if symmetric, the symmetric flag must be [Sym::YesFull]
+    /// * `mat` -- the coefficient matrix A, wrapped in a unified `SparseMatrix` enum.
+    ///   **KLU requires the inner matrix to be in COO format** (use `SparseMatrix::Coo(...)`).
+    ///   The matrix must be square (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
-    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    exactly the same among multiple calls to `setup`. The values may differ
     ///    from call to call, nonetheless.
-    /// 2. The first call to `factorize` will define the structure which must be
+    /// 2. The first call to `setup` will define the structure which must be
     ///    kept the same for the next calls.
     /// 3. If the structure of the matrix needs to be changed, the solver must
     ///    be "dropped" and a new solver allocated.
     /// 4. For symmetric matrices, `KLU` requires [Sym::YesFull]
-    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+    fn setup(&mut self, mat: &SparseMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+        let coo = mat.as_coo()?;
+
         // convert from COO to CSC
         if self.initialized {
-            if mat.symmetric != self.initialized_sym {
+            if coo.symmetric != self.initialized_sym {
                 return Err("subsequent factorizations must use the same matrix (symmetric differs)");
             }
-            if mat.nrow != self.initialized_ndim {
+            if coo.nrow != self.initialized_ndim {
                 return Err("subsequent factorizations must use the same matrix (ndim differs)");
             }
-            if mat.nnz != self.initialized_nnz {
+            if coo.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
-            self.csc.as_mut().unwrap().update_from_coo(mat)?;
+            self.csc.as_mut().unwrap().update_from_coo(coo)?;
         } else {
-            if mat.nrow != mat.ncol {
+            if coo.nrow != coo.ncol {
                 return Err("the matrix must be square");
             }
-            if mat.nnz < 1 {
+            if coo.nnz < 1 {
                 return Err("the COO matrix must have at least one non-zero value");
             }
-            if mat.symmetric == Sym::YesLower || mat.symmetric == Sym::YesUpper {
+            if coo.symmetric == Sym::YesLower || coo.symmetric == Sym::YesUpper {
                 return Err("KLU requires Sym::YesFull for symmetric matrices");
             }
-            self.initialized_sym = mat.symmetric;
-            self.initialized_ndim = mat.nrow;
-            self.initialized_nnz = mat.nnz;
-            self.csc = Some(CscMatrix::from_coo(mat)?);
+            self.initialized_sym = coo.symmetric;
+            self.initialized_ndim = coo.nrow;
+            self.initialized_nnz = coo.nnz;
+            self.csc = Some(CscMatrix::from_coo(coo)?);
         }
         let csc = self.csc.as_ref().unwrap();
 
@@ -234,6 +237,28 @@ impl LinSolTrait for SolverKLU {
         // done
         self.factorized = true;
         Ok(())
+    }
+
+    /// Performs the factorization (and analysis/initialization if needed)
+    ///
+    /// # Input
+    ///
+    /// * `mat` -- the coefficient matrix A. The matrix must be square (`nrow = ncol`) and,
+    ///   if symmetric, the symmetric flag must be [Sym::YesFull]
+    /// * `params` -- configuration parameters; None => use default
+    ///
+    /// # Notes
+    ///
+    /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
+    ///    exactly the same among multiple calls to `factorize`. The values may differ
+    ///    from call to call, nonetheless.
+    /// 2. The first call to `factorize` will define the structure which must be
+    ///    kept the same for the next calls.
+    /// 3. If the structure of the matrix needs to be changed, the solver must
+    ///    be "dropped" and a new solver allocated.
+    /// 4. For symmetric matrices, `KLU` requires [Sym::YesFull]
+    fn factorize(&mut self, mat: &CooMatrix, params: Option<LinSolParams>) -> Result<(), StrError> {
+        self.setup(&SparseMatrix::from(mat.clone()), params)
     }
 
     /// Computes the solution of the linear system

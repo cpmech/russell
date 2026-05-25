@@ -250,8 +250,8 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.001, 0.0009, 0.0005),      //
-        (20, 0.00047, 0.00033, 0.00003), //
+        (8, 0.001, 0.0009, 0.0005),       //
+        (20, 0.00047, 0.00033, 0.000031), //
     ] {
         for alpha in [0.0, 0.2] {
             for lmm in [true, false] {

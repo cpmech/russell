@@ -499,6 +499,8 @@ impl<'a, A> SolverArclength<'a, A> {
             }
             work.dlds = self.x[ndim] / norm;
         }
+
+        // done
         Ok(())
     }
 
@@ -784,7 +786,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
     ///  * `(u, l)` -- will be updated from (u₀, λ₀) to (u₁, λ₁)
     ///
     /// Returns `rdiff` the relative difference used in stepsize adaptation
-    fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, args: &mut A) -> Result<f64, StrError> {
+    fn accept(&mut self, work: &mut Workspace, u: &mut Vector, l: &mut f64, _args: &mut A) -> Result<f64, StrError> {
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁
         *l = work.l; // λ := λ₁
@@ -795,28 +797,24 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
 
         // calculate the relative difference between dλ/du vectors (RMS of the error)
         let ndim = self.system.ndim;
-        let (atol, rtol) = (self.config.tg_control_atol, self.config.tg_control_rtol);
-        let mut slope_prev; // previous (dλ/ds|₁) / (du/ds|₁) = dλ/du
-        let mut slope; // (dλ/ds|₁) / (du/ds|₁) = dλ/du
-        let mut delta;
-        let mut den;
-        let mut sum = 0.0;
+        let mut max_ratio = 0.0;
         for i in 0..ndim {
-            slope_prev = if f64::abs(self.duds_prev[i]) > CONFIG_H_MIN {
-                self.dlds_prev / self.duds_prev[i]
-            } else {
-                1.0
-            };
-            slope = if f64::abs(work.duds[i]) > CONFIG_H_MIN {
-                work.dlds / work.duds[i]
-            } else {
-                1.0
-            };
-            delta = slope - slope_prev;
-            den = atol + rtol * f64::abs(slope_prev);
-            sum += delta * delta / (den * den);
+            let den = f64::abs(self.duds_prev[i]);
+            if den > CONFIG_H_MIN {
+                let ratio = f64::abs(work.duds[i] - self.duds_prev[i]) / den;
+                if ratio > max_ratio {
+                    max_ratio = ratio;
+                }
+            }
         }
-        let rdiff = f64::sqrt(sum / (ndim as f64));
+        let den = f64::abs(self.dlds_prev);
+        if den > CONFIG_H_MIN {
+            let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
+            if ratio > max_ratio {
+                max_ratio = ratio;
+            }
+        }
+        let rdiff = max_ratio / self.config.tg_control_tol;
 
         // done
         Ok(rdiff)

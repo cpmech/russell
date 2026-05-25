@@ -29,7 +29,7 @@ fn test_linear_constant() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            DeltaLambda::constant(0.1),
+            &DeltaLambda::constant(0.1),
             Some(out),
         )
         .unwrap();
@@ -93,16 +93,15 @@ fn test_linear_auto() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            DeltaLambda::auto(0.1),
+            &DeltaLambda::auto(0.1),
             Some(out),
         )
         .unwrap();
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 9);
+    assert_eq!(stats.n_accepted, 17);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 9);
 }
 
 #[test]
@@ -136,7 +135,7 @@ fn test_linear_constant_backward() {
             &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
-            DeltaLambda::constant(0.1),
+            &DeltaLambda::constant(0.1),
             Some(out),
         )
         .unwrap();
@@ -202,7 +201,7 @@ fn test_linear_list() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(100.0),
-            DeltaLambda::list(&[0.1, 0.2, 0.4, 0.8]),
+            &DeltaLambda::list(&[0.1, 0.2, 0.4, 0.8]),
             Some(out),
         )
         .unwrap();

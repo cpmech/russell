@@ -32,7 +32,7 @@ fn test_arc_one_eq_with_fold_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(5),
-            DeltaLambda::constant(ddl),
+            &DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -125,7 +125,7 @@ fn test_arc_one_eq_with_fold_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(2),
-            DeltaLambda::constant(ddl),
+            &DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();

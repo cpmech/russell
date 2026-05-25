@@ -129,7 +129,7 @@ pub struct Config {
     ///
     /// # References
     ///
-    /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in nite element
+    /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in finite element
     ///    simulation of incompressible flows and coupled reaction–convection–diffusion processes,
     ///    International Journal for Numerical Methods in Fluids, 47:201-231, <https://doi.org/10.1002/fld.805>
     /// 2. Barros GF, Cortes AMA, Coutinho ALGA (2021) Finite element solution of nonlocal Cahn–Hilliard
@@ -151,11 +151,8 @@ pub struct Config {
     /// Beta coefficient used with the NR stepsize control
     pub(crate) nr_control_beta: f64,
 
-    /// Absolute tolerance for the tangent vector stepsize control
-    pub(crate) tg_control_atol: f64,
-
-    /// Relative tolerance for the tangent vector stepsize control
-    pub(crate) tg_control_rtol: f64,
+    /// Tolerance for the tangent vector stepsize control
+    pub(crate) tg_control_tol: f64,
 
     /// First exponent for the tangent vector stepsize control
     ///
@@ -255,15 +252,14 @@ impl Config {
             bordering: true,
             debug_predictor: false,
             // stepsize control
-            nr_control_enabled: true,
+            nr_control_enabled: false,
             tg_control_enabled: true,
             tg_control_pid_vcc: true,
             tg_control_rdiff_min: 1e-6,
             tg_control_rho_for_tiny_rdiff: 1.2,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
-            tg_control_atol: 1e-2,
-            tg_control_rtol: 1e-2,
+            tg_control_tol: 0.5,
             tg_control_beta1: b1,
             tg_control_beta2: b2,
             tg_control_beta3: b3,
@@ -590,7 +586,7 @@ impl Config {
     ///
     /// # References
     ///
-    /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in nite element
+    /// 1. Valli AMP, Carey GF, Coutinho ALGA (2005) Control strategies for timestep selection in finite element
     ///    simulation of incompressible flows and coupled reaction–convection–diffusion processes,
     ///    International Journal for Numerical Methods in Fluids, 47:201-231, <https://doi.org/10.1002/fld.805>
     /// 2. Barros GF, Cortes AMA, Coutinho ALGA (2021) Finite element solution of nonlocal Cahn–Hilliard
@@ -637,28 +633,11 @@ impl Config {
         self
     }
 
-    /// Sets the absolute tolerance for the tangent vector stepsize control
+    /// Sets the tolerance for the tangent vector stepsize control
     ///
-    /// Default value: 1e-2
-    pub fn set_tg_control_atol(&mut self, value: f64) -> &mut Self {
-        self.tg_control_atol = value;
-        self
-    }
-
-    /// Sets the relative tolerance for the tangent vector stepsize control
-    ///
-    /// Default value: 1e-2
-    pub fn set_tg_control_rtol(&mut self, value: f64) -> &mut Self {
-        self.tg_control_rtol = value;
-        self
-    }
-
-    /// Sets the absolute and relative tolerance with the same value for the tangent vector stepsize control
-    ///
-    /// Default values: atol = 1e-2, rtol = 1e-2
-    pub fn set_tg_control_atol_and_rtol(&mut self, tol: f64) -> &mut Self {
-        self.tg_control_atol = tol;
-        self.tg_control_rtol = tol;
+    /// Default value: 0.1
+    pub fn set_tg_control_tol(&mut self, value: f64) -> &mut Self {
+        self.tg_control_tol = value;
         self
     }
 
@@ -811,11 +790,8 @@ impl Config {
         if self.nr_control_beta <= 0.0 {
             return Err("requirement: nr_control_beta > 0.0");
         }
-        if self.tg_control_atol < CONFIG_TOL_MIN {
-            return Err("requirement: tg_control_atol ≥ 1e-12");
-        }
-        if self.tg_control_rtol < CONFIG_TOL_MIN {
-            return Err("requirement: tg_control_rtol ≥ 1e-12");
+        if self.tg_control_tol < CONFIG_TOL_MIN {
+            return Err("requirement: tg_control_tol ≥ 1e-12");
         }
 
         Ok(())
@@ -889,12 +865,9 @@ mod tests {
         config.nr_control_beta = 0.0;
         assert_eq!(config.validate().err(), Some("requirement: nr_control_beta > 0.0"));
         config.nr_control_beta = 0.5;
-        config.tg_control_atol = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: tg_control_atol ≥ 1e-12"));
-        config.tg_control_atol = 1e-2;
-        config.tg_control_rtol = 0.0;
-        assert_eq!(config.validate().err(), Some("requirement: tg_control_rtol ≥ 1e-12"));
-        config.tg_control_rtol = 1e-2;
+        config.tg_control_tol = 0.0;
+        assert_eq!(config.validate().err(), Some("requirement: tg_control_tol ≥ 1e-12"));
+        config.tg_control_tol = 0.1;
 
         // all good
         assert_eq!(config.validate().is_err(), false);

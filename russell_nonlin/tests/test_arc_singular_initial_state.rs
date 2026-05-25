@@ -37,7 +37,7 @@ fn test_arc_singular_initial_state_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            DeltaLambda::constant(ddl),
+            &DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();
@@ -93,7 +93,7 @@ fn test_arc_singular_initial_state_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            DeltaLambda::constant(ddl),
+            &DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();

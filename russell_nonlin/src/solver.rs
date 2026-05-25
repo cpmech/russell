@@ -97,7 +97,7 @@ impl<'a, A> Solver<'a, A> {
         l: &mut f64,
         dir: IniDir,
         stop: Stop,
-        ddl: DeltaLambda,
+        ddl: &DeltaLambda,
         mut output: Option<&mut Output<'b, A>>,
     ) -> Result<Status, StrError> {
         // validate input
@@ -425,7 +425,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    DeltaLambda::auto(1e-4),
+                    &DeltaLambda::auto(1e-4),
                     None
                 )
                 .err(),
@@ -440,7 +440,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(0.0),
-                    DeltaLambda::auto(1e-4),
+                    &DeltaLambda::auto(1e-4),
                     None,
                 )
                 .err(),
@@ -454,7 +454,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    DeltaLambda::constant(f64::EPSILON), // will cause an error
+                    &DeltaLambda::constant(f64::EPSILON), // will cause an error
                     None,
                 )
                 .err(),
@@ -477,7 +477,7 @@ mod tests {
                     &mut l,
                     IniDir::Pos,
                     Stop::MaxLambda(1.0),
-                    DeltaLambda::auto(1e-4),
+                    &DeltaLambda::auto(1e-4),
                     None,
                 )
                 .unwrap(),
@@ -499,7 +499,7 @@ mod tests {
                 &mut l,
                 IniDir::Pos,
                 Stop::Steps(1),
-                DeltaLambda::constant(1.0),
+                &DeltaLambda::constant(1.0),
                 None,
             )
             .unwrap();
@@ -529,7 +529,7 @@ mod tests {
                 &mut l,
                 IniDir::Pos,
                 Stop::Steps(1),
-                DeltaLambda::auto(1e-4),
+                &DeltaLambda::auto(1e-4),
                 None,
             )
             .unwrap();

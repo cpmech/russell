@@ -34,7 +34,7 @@ fn test_circle_max_lambda() {
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(RADIUS),
-            DeltaLambda::auto(0.3),
+            &DeltaLambda::auto(0.3),
             Some(out),
         )
         .unwrap();
@@ -89,7 +89,7 @@ fn test_circle_min_lambda() {
             &mut l,
             IniDir::Neg,
             Stop::MinLambda(0.0),
-            DeltaLambda::auto(0.3),
+            &DeltaLambda::auto(0.3),
             Some(out),
         )
         .unwrap();
@@ -105,9 +105,8 @@ fn test_circle_min_lambda() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 6);
+    assert_eq!(stats.n_accepted, 8);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 6);
 
     // plot
     if SAVE_FIGURE {
@@ -144,7 +143,7 @@ fn test_circle_max_u() {
             &mut l,
             IniDir::Neg,
             Stop::MaxCompU(0, 1.3),
-            DeltaLambda::auto(0.2),
+            &DeltaLambda::auto(0.2),
             Some(out),
         )
         .unwrap();
@@ -160,9 +159,8 @@ fn test_circle_max_u() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 2);
+    assert_eq!(stats.n_accepted, 3);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 2);
 
     // plot
     if SAVE_FIGURE {
@@ -199,7 +197,7 @@ fn test_circle_min_u() {
             &mut l,
             IniDir::Pos,
             Stop::MinCompU(0, 0.4),
-            DeltaLambda::auto(0.1),
+            &DeltaLambda::auto(0.1),
             Some(out),
         )
         .unwrap();
@@ -215,9 +213,8 @@ fn test_circle_min_u() {
 
     // check stats
     let stats = solver.get_stats();
-    assert_eq!(stats.n_accepted, 6);
+    assert_eq!(stats.n_accepted, 8);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 6);
 
     // plot
     if SAVE_FIGURE {

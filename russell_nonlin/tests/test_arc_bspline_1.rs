@@ -51,7 +51,7 @@ fn run_test(name: &str, ddl: f64, bordering: bool, expected_status: Status) {
             &mut l,
             IniDir::Pos,
             Stop::Steps(nstep),
-            DeltaLambda::constant(ddl),
+            &DeltaLambda::constant(ddl),
             Some(out),
         )
         .unwrap();

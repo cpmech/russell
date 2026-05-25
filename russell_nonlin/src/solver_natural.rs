@@ -1,6 +1,6 @@
 use super::{Config, IniDir, Method, Status};
 use super::{SolverTrait, Stop, System, Workspace};
-use crate::StrError;
+use crate::{StrError, CONFIG_H_MIN};
 use russell_lab::{vec_add, vec_copy, vec_update, Vector};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver};
 
@@ -161,9 +161,9 @@ impl<'a, A> SolverNatural<'a, A> {
     /// Thus:
     ///
     /// ```text
-    ///     ‖ s₀ - s₋₁ ‖   ‖ (x₁ - x₀) - (x₀ - x₋₁) ‖   ‖ x₁ - 2x₀ + x₋₁ ‖
-    /// γ = ———————————— = —————————————————————————— = ——————————————————
-    ///        ‖ s₀ ‖             ‖ x₁ - x₀ ‖              ‖ x₁ - x₀ ‖
+    ///     ‖ s₀ - s₋₁ ‖∞   ‖ (x₁ - x₀) - (x₀ - x₋₁) ‖∞   ‖ x₁ - 2x₀ + x₋₁ ‖∞
+    /// γ = ————————————— = ——————————————————————————— = ———————————————————
+    ///        ‖ s₀ ‖∞              ‖ x₁ - x₀ ‖               ‖ x₁ - x₀ ‖∞
     /// ```
     ///
     /// Note that `(u, l)` corresponds to the initial values `x₀ = (u₀, λ₀)`
@@ -171,14 +171,18 @@ impl<'a, A> SolverNatural<'a, A> {
     fn calculate_rerr(&mut self, work: &mut Workspace, u: &Vector) -> f64 {
         if work.stats.n_accepted > 1 {
             let ndim = self.system.ndim;
-            let mut sum = 0.0;
+            let mut max_ratio = 0.0;
             for i in 0..ndim {
-                let v = work.u[i] - 2.0 * u[i] + self.u_prev[i]; // u₁ - 2u₀ + u₋₁
-                let r = work.u[i] - u[i]; // u₁ - u₀
-                let den = self.config.tg_control_atol + self.config.tg_control_rtol * f64::abs(r);
-                sum += v * v / (den * den);
+                let den = f64::abs(work.u[i] - u[i]); // u₁ - u₀
+                if den > CONFIG_H_MIN {
+                    let num = f64::abs(work.u[i] - 2.0 * u[i] + self.u_prev[i]); // u₁ - 2u₀ + u₋₁
+                    let ratio = num / den;
+                    if ratio > max_ratio {
+                        max_ratio = ratio;
+                    }
+                }
             }
-            f64::sqrt(sum / (ndim as f64))
+            max_ratio / self.config.tg_control_tol
         } else {
             0.0
         }

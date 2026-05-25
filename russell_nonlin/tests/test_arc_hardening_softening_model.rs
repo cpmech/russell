@@ -13,11 +13,7 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([
-        ("tg_control_atol_and_rtol", 1e-2),
-        ("nr_control_n_opt", 3.0),
-        ("nr_control_beta", 0.5),
-    ]);
+    let settings = HashMap::from([("nr_control_n_opt", 3.0), ("nr_control_beta", 0.5)]);
 
     // Input data
     let use_continuous_modulus = false;
@@ -43,12 +39,12 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
     println!("{}", stats);
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 37);
-    assert_eq!(stats.n_rejected, 1);
+    assert_eq!(stats.n_accepted, 20);
+    assert_eq!(stats.n_rejected, 3);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.03523, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.054, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -80,19 +76,19 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 33);
+    assert_eq!(stats.n_accepted, 19);
     assert_eq!(stats.n_rejected, 4);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.11, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
 #[test]
 fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([("tg_control_atol_and_rtol", 1e-1)]);
+    let settings = HashMap::new();
 
     // Input data
     let use_continuous_modulus = false;
@@ -117,12 +113,12 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 24);
+    assert_eq!(stats.n_accepted, 19);
     assert_eq!(stats.n_rejected, 0);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.031, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -131,7 +127,6 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     // Settings
     let settings = HashMap::from([
         ("bordering", 1.0),
-        ("tg_control_atol_and_rtol", 1e-2),
         ("nr_control_n_opt", 3.0),
         ("nr_control_beta", 0.5),
     ]);
@@ -159,12 +154,12 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 37);
-    assert_eq!(stats.n_rejected, 1);
+    assert_eq!(stats.n_accepted, 20);
+    assert_eq!(stats.n_rejected, 3);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.03523, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.054, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -455,9 +450,6 @@ fn run_hs_model(
             "n_step_max" => config.set_n_step_max(*value as usize),
             "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),
             "nr_control_beta" => config.set_nr_control_beta(*value),
-            "tg_control_atol" => config.set_tg_control_atol(*value),
-            "tg_control_rtol" => config.set_tg_control_rtol(*value),
-            "tg_control_atol_and_rtol" => config.set_tg_control_atol_and_rtol(*value),
             "tg_control_beta1" => config.set_tg_control_beta1(*value),
             "tg_control_beta2" => config.set_tg_control_beta2(*value),
             "tg_control_beta3" => config.set_tg_control_beta3(*value),
@@ -471,8 +463,6 @@ fn run_hs_model(
     if let Some(so_class) = so_class {
         config.set_tg_control_soderlind(so_class);
     }
-
-    config.set_tg_control_atol(0.04).set_tg_control_rtol(0.04);
 
     // Define the nonlinear solver
     let mut solver = Solver::new(&config, system)?;
@@ -495,7 +485,7 @@ fn run_hs_model(
     args.local_state.stress = l;
 
     // Perform the numerical continuation
-    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, ddl, Some(out))?;
+    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, &ddl, Some(out))?;
     assert_eq!(status, Status::Success);
 
     // results

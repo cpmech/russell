@@ -5,23 +5,23 @@ const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", false, None, 124, 0, Status::Success);
+    run_test("test_arc_bspline_2_default", false, None, 17, 0, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_2_custom() {
-    run_test("test_arc_bspline_2_custom", false, Some(0.05), 46, 1, Status::Success);
+    run_test("test_arc_bspline_2_custom", false, Some(0.2), 82, 0, Status::Success);
 }
 
 #[test]
 fn test_arc_bspline_2_bordering() {
-    run_test("test_arc_bspline_2_bordering", true, Some(0.05), 46, 1, Status::Success);
+    run_test("test_arc_bspline_2_bordering", true, Some(0.2), 82, 0, Status::Success);
 }
 
 fn run_test(
     name: &str,
     bordering: bool,
-    atol_and_rtol: Option<f64>,
+    tol: Option<f64>,
     expected_n_accepted: usize,
     expected_n_rejected: usize,
     expected_status: Status,
@@ -39,8 +39,8 @@ fn run_test(
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name))
         .set_record_iterations_residuals(true)
         .set_n_cont_delta_divergence_max(1);
-    if let Some(tol) = atol_and_rtol {
-        config.set_tg_control_atol_and_rtol(tol);
+    if let Some(t) = tol {
+        config.set_tg_control_tol(t);
     }
 
     // define solver
@@ -58,7 +58,7 @@ fn run_test(
             &mut l,
             IniDir::Pos,
             Stop::MaxLambda(1.0),
-            DeltaLambda::auto(0.007),
+            &DeltaLambda::auto(0.007),
             Some(out),
         )
         .unwrap();

@@ -24,7 +24,7 @@ fn test_multiple_calls_to_solve_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::constant(1.0),
+            &DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -54,7 +54,7 @@ fn test_multiple_calls_to_solve_1() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::constant(1.0),
+            &DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -100,7 +100,7 @@ fn test_multiple_calls_to_solve_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::constant(1.0),
+            &DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -130,7 +130,7 @@ fn test_multiple_calls_to_solve_2() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::constant(1.0),
+            &DeltaLambda::constant(1.0),
             None,
         )
         .unwrap();
@@ -173,7 +173,7 @@ fn test_multiple_calls_to_solve_1_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(1e-4),
+            &DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -203,7 +203,7 @@ fn test_multiple_calls_to_solve_1_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(1e-4),
+            &DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -249,7 +249,7 @@ fn test_multiple_calls_to_solve_2_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(1e-4),
+            &DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();
@@ -279,7 +279,7 @@ fn test_multiple_calls_to_solve_2_auto() {
             &mut l,
             IniDir::Pos,
             Stop::Steps(1),
-            DeltaLambda::auto(1e-4),
+            &DeltaLambda::auto(1e-4),
             None,
         )
         .unwrap();

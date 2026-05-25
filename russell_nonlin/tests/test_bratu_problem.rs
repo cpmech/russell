@@ -1,5 +1,7 @@
 use plotpy::{linspace, Curve, Plot, Text};
-use russell_lab::{find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table};
+use russell_lab::{
+    find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table, InterpChebyshev, MinSolver,
+};
 use russell_lab::{Norm, Vector};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Solver, Status, Stop, StrError, System};
 use russell_pde::{
@@ -101,447 +103,6 @@ use std::collections::HashMap;
 // 3. Shahab ML, Susanto H, Hatzikirou H (2025) A finite difference method with symmetry properties for the high-dimensional
 //    Bratu equation, Applied Mathematics and Computation, 489:129136, <https://doi.org/10.1016/j.amc.2024.129136>
 
-// 1D: Analytical u(x) profile @ λCrit (from Mathematica)
-const D1_REF_ALP00: f64 = 3.51383071912516; // λ critical for the α = 0.0 case
-const D1_REF_THETA: f64 = 4.79871456103094; // θ critical (for the analytical profile); α = 0.0 case
-const D1_REF_ALP02_A: f64 = 4.647906373918411; // 1st λ critical for α = 0.2 (from npt = 500 and tol = 1e-8); nrm=2.3548402404342146
-const D1_REF_ALP02_B: f64 = 3.509919925802271; // 2nd λ critical for α = 0.2 (from npt = 500 and tol = 1e-8); nrm=15.440772685670549
-
-// 2D:reference (λCrit, ‖ϕCrit‖∞) values from Bolstad and Keller (6 order scheme, very fine mesh)
-const D2_REF_ALP00: f64 = 6.80812442259; // α = 0: first critical point; nrm=1.3916612
-const D2_REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2.8858004
-const D2_REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
-
-// Calculates the analytical solution at λCrit
-fn d1_analytical_profile(x: f64) -> f64 {
-    -2.0 * f64::ln(f64::cosh((x - 0.5) * D1_REF_THETA / 2.0) / f64::cosh(D1_REF_THETA / 4.0))
-}
-
-const CHECK_JACOBIAN: bool = false;
-const SAVE_FIGURE: bool = false;
-
-#[test]
-fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
-    let spc = true;
-    let one_dim = true;
-    let ddl = DeltaLambda::auto(1e-4);
-    let genie = Genie::Umfpack;
-    let symmetric = false;
-    for (npt, tol1, tol2, tol3) in [
-        (8, 0.0027, 0.0014, 0.002), //
-                                    // (20, 0.0011, 0.002, 0.0021), //
-    ] {
-        for alpha in [0.0, 0.2] {
-            for lmm in [true, false] {
-                for bordering in [true, false] {
-                    println!(
-                        "{}",
-                        gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
-                    );
-                    run_test(
-                        spc,
-                        one_dim,
-                        lmm,
-                        bordering,
-                        alpha,
-                        npt,
-                        ddl.clone(),
-                        genie,
-                        symmetric,
-                        tol1,
-                        tol2,
-                        tol3,
-                    )?;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
-    let spc = false;
-    let one_dim = true;
-    let ddl = DeltaLambda::auto(1e-4);
-    let genie = Genie::Umfpack;
-    for (npt, tol1, tol2, tol3) in [
-        (8, 0.039, 0.062, 0.06), //
-                                 // (100, 0.00089, 0.002, 0.0025), //
-    ] {
-        for alpha in [0.0, 0.2] {
-            for lmm in [true, false] {
-                for bordering in [true, false] {
-                    let flags = if bordering { vec![true, false] } else { vec![false] }; // symmetric only if bordering
-                    for symmetric in flags {
-                        println!(
-                            "{}",
-                            gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
-                        );
-                        run_test(
-                            spc,
-                            one_dim,
-                            lmm,
-                            bordering,
-                            alpha,
-                            npt,
-                            ddl.clone(),
-                            genie,
-                            symmetric,
-                            tol1,
-                            tol2,
-                            tol3,
-                        )?;
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
-    let spc = true;
-    let one_dim = false;
-    let ddl = DeltaLambda::auto(1e-4);
-    let genie = Genie::Umfpack;
-    let symmetric = false;
-    for (npt, tol1, tol2, tol3) in [
-        (8, 0.0032, 0.0024, 0.002), //
-                                    // (20, 0.0048, 0.0002, 0.0005), //
-    ] {
-        for alpha in [0.0, 0.2] {
-            for lmm in [true, false] {
-                for bordering in [true, false] {
-                    println!(
-                        "{}",
-                        gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
-                    );
-                    run_test(
-                        spc,
-                        one_dim,
-                        lmm,
-                        bordering,
-                        alpha,
-                        npt,
-                        ddl.clone(),
-                        genie,
-                        symmetric,
-                        tol1,
-                        tol2,
-                        tol3,
-                    )?;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
-    let spc = false;
-    let one_dim = false;
-    let ddl = DeltaLambda::auto(1e-4);
-    let genie = Genie::Umfpack;
-    for (npt, tol1, tol2, tol3) in [
-        (8, 0.042, 0.083, 0.123), //
-                                  // (9, 0.028, 0.064, 0.092), //
-                                  // (20, 0.0052, 0.012, 0.015), //
-                                  // (22, 0.0059, 0.012, 0.013), //
-                                  // (40, 0.0027, 0.032, 0.034), //
-                                  // (41, 0.0026, 0.0052, 0.0035), //
-                                  // (100, 0.0011, 0.0023, 0.0012), //
-                                  // (101, 0.0019, 0.0024, 0.001), //
-    ] {
-        for alpha in [0.0, 0.2] {
-            for lmm in [true, false] {
-                for bordering in [true, false] {
-                    let flags = if bordering { vec![true, false] } else { vec![false] }; // symmetric only if bordering
-                    for symmetric in flags {
-                        println!(
-                            "{}",
-                            gen_file_stem(spc, one_dim, npt, alpha, lmm, bordering, true, genie, symmetric)
-                        );
-                        run_test(
-                            spc,
-                            one_dim,
-                            lmm,
-                            bordering,
-                            alpha,
-                            npt,
-                            ddl.clone(),
-                            genie,
-                            symmetric,
-                            tol1,
-                            tol2,
-                            tol3,
-                        )?;
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
-    let spc = false;
-    let one_dim = false;
-    let lmm = true;
-    let bordering = false;
-    let ddl = DeltaLambda::constant(10.0);
-    let genie = Genie::Umfpack;
-    let symmetric = false;
-    for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.23, 0.0, 0.0)] {
-            run_test(
-                spc,
-                one_dim,
-                lmm,
-                bordering,
-                alpha,
-                npt,
-                ddl.clone(),
-                genie,
-                symmetric,
-                tol1,
-                tol2,
-                tol3,
-            )?;
-        }
-    }
-    Ok(())
-}
-
-// Runs the test
-fn run_test(
-    spc: bool,
-    one_dim: bool,
-    lmm: bool,
-    bordering: bool,
-    alpha: f64,
-    npt: usize,
-    ddl: DeltaLambda,
-    genie: Genie,
-    symmetric: bool,
-    alpha0_lam_crit_tol: f64,
-    alpha02_1st_lam_crit_tol: f64,
-    alpha02_2nd_lam_crit_tol: f64,
-) -> Result<(), StrError> {
-    // stem
-    let stem = gen_file_stem(
-        spc,
-        one_dim,
-        npt,
-        alpha,
-        lmm,
-        bordering,
-        ddl.is_auto(),
-        genie,
-        symmetric,
-    );
-
-    // configuration
-    let mut config = Config::new();
-    config.set_method(Method::Arclength);
-    config
-        .set_n_cont_failure_max(8)
-        .set_tg_control_atol_and_rtol(0.04)
-        .set_record_iterations_residuals(true)
-        .set_verbose(true, true, true)
-        .set_hide_timings(true)
-        .set_debug_predictor(true)
-        .set_log_file(&format!("{}.txt", stem))
-        .set_bordering(bordering)
-        .set_genie(genie);
-
-    // decrease the tolerances to avoid issue with negative lambda (in this particular setup)
-    // note that we used a higher tolerance in this test and the default is much smaller (1e-2)
-    if !spc && !one_dim && alpha == 0.0 && npt >= 100 {
-        config.set_tg_control_atol_and_rtol(0.03);
-    }
-
-    // calculate the coefficient matrix
-    let sym = genie.get_sym(symmetric);
-    let (nu, np, coo) = if one_dim {
-        let mut ebcs = EssentialBcs1d::new();
-        let nbcs = NaturalBcs1d::new();
-        ebcs.set_homogeneous();
-        if spc {
-            let spectral = Spc1d::new(0.0, 1.0, npt, ebcs, nbcs, -1.0)?;
-            let coo = if lmm {
-                spectral.get_matrices_lmm(0.0, 0, false).0
-            } else {
-                spectral.get_matrices_sps(0.0, 0).0
-            };
-            let (nu, np) = spectral.get_dims_sps();
-            (nu, np, coo)
-        } else {
-            let grid = Grid1d::new_uniform(0.0, 1.0, npt)?;
-            let fdm = Fdm1d::new(grid, ebcs, nbcs, -1.0)?;
-            let coo = if lmm {
-                fdm.get_matrices_lmm(0.0, 0, false, sym).0
-            } else {
-                fdm.get_matrices_sps(0.0, 0, sym).0
-            };
-            let (nu, np) = fdm.get_dims_sps();
-            (nu, np, coo)
-        }
-    } else {
-        let mut ebcs = EssentialBcs2d::new();
-        let nbcs = NaturalBcs2d::new();
-        ebcs.set_homogeneous();
-        if spc {
-            let spectral = Spc2d::new(0.0, 1.0, 0.0, 1.0, npt, npt, ebcs, nbcs, -1.0, -1.0)?;
-            let coo = if lmm {
-                spectral.get_matrices_lmm(0.0, 0, false).0
-            } else {
-                spectral.get_matrices_sps(0.0, 0).0
-            };
-            let (nu, np) = spectral.get_dims_sps();
-            (nu, np, coo)
-        } else {
-            let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, npt, npt)?;
-            let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
-            let coo = if lmm {
-                fdm.get_matrices_lmm(0.0, 0, false, sym).0
-            } else {
-                fdm.get_matrices_sps(0.0, 0, sym).0
-            };
-            let (nu, np) = fdm.get_dims_sps();
-            (nu, np, coo)
-        }
-    };
-    let nnz_coo = coo.get_info().2;
-
-    // allocate arguments struct
-    let neq = nu + np;
-    let nphi = if lmm { neq } else { nu };
-    let ndim = if lmm { neq + np } else { nu };
-    let mut args = Args {
-        alpha,
-        bordering,
-        npt,
-        nphi,
-        ndim,
-        coo,
-    };
-
-    // max number of non-zeros in Gu
-    let nnz = if lmm {
-        nnz_coo + neq // +neq due to the λ B term
-    } else {
-        nnz_coo + nu // +nu due to the λ B term
-    };
-
-    // allocate nonlinear problem
-    let system = System::new(ndim, Some(nnz), sym, calc_gg, calc_jac)?;
-
-    // define the solver
-    let mut solver = Solver::new(&config, system)?;
-
-    // output
-    let output = &mut Output::new();
-    output.set_record_norm_u(true, Norm::Inf, 0, nphi);
-    if one_dim {
-        let all_indices: Vec<usize> = (0..nphi).collect();
-        output.set_recording(true, &all_indices, &[]);
-    }
-
-    // initial state (all zero)
-    let mut u = Vector::new(ndim);
-    let mut l = 0.0;
-
-    // stop criterion
-    let max_nrm_max = if alpha == 0.0 { 15.0 } else { 40.0 };
-    let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
-
-    // numerical continuation
-    let auto = ddl.is_auto();
-    let status = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, stop, ddl, Some(output))?;
-    println!("Status: {:?}", status);
-    assert_eq!(status, Status::Success);
-
-    // search for the critical point(s)
-    println!("Numerical results for α = {} and npt = {}:", alpha, npt);
-    let lam_vals = output.get_l_values();
-    let nrm_vals = output.get_norm_u_values();
-    let (mut ii_valleys, mut ii_peaks, _, _) = find_valleys_and_peaks(lam_vals);
-    ii_valleys.retain(|&i| lam_vals[i] > 0.3);
-    ii_peaks.retain(|&i| lam_vals[i] > 0.3);
-    for i in &ii_peaks {
-        println!("Peak   @ ({}, {})", lam_vals[*i], nrm_vals[*i]);
-    }
-    for i in &ii_valleys {
-        println!("Valley @ ({}, {})", lam_vals[*i], nrm_vals[*i]);
-    }
-
-    // check the results
-    let (ref_alp00, ref_alp02a, ref_alp02b) = if one_dim {
-        (D1_REF_ALP00, D1_REF_ALP02_A, D1_REF_ALP02_B)
-    } else {
-        (D2_REF_ALP00, D2_REF_ALP02_A, D2_REF_ALP02_B)
-    };
-    if alpha == 0.0 {
-        if ii_peaks.len() == 1 {
-            let lam_crit = lam_vals[ii_peaks[0]];
-            let diff = f64::abs(lam_crit - ref_alp00);
-            println!("diff = {}", diff);
-            if diff > alpha0_lam_crit_tol {
-                panic!("❌ ERROR ❌ λCrit = {}, ref = {}, diff = {}", lam_crit, ref_alp00, diff);
-            }
-        } else {
-            panic!("WARNING: for alpha = 0.0, one peak must have been found");
-        }
-    } else if alpha == 0.2 {
-        if ii_peaks.len() == 1 && ii_valleys.len() == 1 {
-            let lam_crit_a = lam_vals[ii_peaks[0]];
-            let lam_crit_b = lam_vals[ii_valleys[0]];
-            let diff_a = f64::abs(lam_crit_a - ref_alp02a);
-            let diff_b = f64::abs(lam_crit_b - ref_alp02b);
-            println!("diff_a = {}, diff_b = {}", diff_a, diff_b);
-            if diff_a > alpha02_1st_lam_crit_tol {
-                panic!(
-                    "❌ ERROR ❌ 1st λCrit = {}, ref = {}, diff = {}",
-                    lam_crit_a, ref_alp02a, diff_a
-                );
-            }
-            if diff_b > alpha02_2nd_lam_crit_tol {
-                panic!(
-                    "❌ ERROR ❌ 2nd λCrit = {}, ref = {}, diff = {}",
-                    lam_crit_b, ref_alp02b, diff_b
-                );
-            }
-        } else {
-            panic!("WARNING: for alpha = 0.2, one peak and one valley must have been found");
-        }
-    }
-    println!();
-
-    // plot the results
-    if SAVE_FIGURE {
-        do_plot(
-            spc,
-            one_dim,
-            lmm,
-            bordering,
-            alpha,
-            npt,
-            auto,
-            &stem,
-            &lam_vals,
-            &nrm_vals,
-            &ii_peaks,
-            &ii_valleys,
-            &output,
-        )?;
-    }
-    Ok(())
-}
-
 struct Args {
     alpha: f64,
     bordering: bool,
@@ -550,6 +111,8 @@ struct Args {
     ndim: usize,
     coo: CooMatrix,
 }
+
+// ----------------------------- Problem definition and derivatives ----------------------------
 
 // function to calculate G(u, λ)
 fn calc_gg(gg: &mut Vector, l: f64, u: &Vector, args: &mut Args) -> Result<(), StrError> {
@@ -590,98 +153,557 @@ fn calc_jac(ggu: &mut CooMatrix, ggl: &mut Vector, l: f64, u: &Vector, args: &mu
     Ok(())
 }
 
-fn gen_file_stem(
-    spc: bool,
-    one_dim: bool,
-    npt: usize,
-    alpha: f64,
-    lmm: bool,
-    bordering: bool,
-    auto: bool,
-    genie: Genie,
-    symmetric: bool,
-) -> String {
-    let mut key0 = format!("a{:.1}", alpha);
-    key0 = key0.replace('.', "d");
-    let key1 = if lmm { "lmm" } else { "sps" };
-    let key2 = if bordering { "brd" } else { "full" };
-    let key3 = if auto { "auto" } else { "fix" };
-    let key4 = format!("sym-{:?}", genie.get_sym(symmetric)).to_lowercase();
-    format!(
-        "/tmp/russell_nonlin/test_bratu_{}_{}_n{}_{}_{}_{}_{}_{}_{}",
-        if spc { "spc" } else { "fdm" },
-        if one_dim { "1d" } else { "2d" },
-        npt,
-        key0,
-        key1,
-        key2,
-        key3,
-        genie.to_string(),
-        key4
-    )
+// ----------------------------- Constants ----------------------------
+
+// 1D: Analytical u(x) profile @ λCrit (from Mathematica)
+const D1_REF_ALP00: f64 = 3.51383071912516; // λ critical for the α = 0.0 case
+const D1_REF_ALP02_A: f64 = 4.647906373918411; // 1st λ critical for α = 0.2 (from npt = 500 and tol = 1e-8); nrm=2.3548402404342146
+const D1_REF_ALP02_B: f64 = 3.509919925802271; // 2nd λ critical for α = 0.2 (from npt = 500 and tol = 1e-8); nrm=15.440772685670549
+
+// 2D:reference (λCrit, ‖ϕCrit‖∞) values from Bolstad and Keller (6 order scheme, very fine mesh)
+const D2_REF_ALP00: f64 = 6.80812442259; // α = 0: first critical point; nrm=1.3916612
+const D2_REF_ALP02_A: f64 = 9.13638296666; // α = 0.2: first critical point; nrm=2.8858004
+const D2_REF_ALP02_B: f64 = 7.10189894953; // α = 0.2: second critical point; nrm=18.192768
+
+const TG_CONTROL_TOL: f64 = 0.1;
+const DDL_INI: f64 = 0.5;
+
+const CHECK_JACOBIAN: bool = false;
+const SAVE_FIGURE: bool = false;
+const PLOT_STEPSIZES: bool = false;
+const PLOT_OBJECTIVE_FUNCTION: bool = false;
+
+const DELTA_INDEX: usize = 5; // delta-index to bracket critical points
+
+// ----------------------------- Test combinations ----------------------------
+
+/// Holds all test combinations
+#[derive(Debug, Clone)]
+struct Combo {
+    pub spc: bool,
+    pub one_dim: bool,
+    pub npt: usize,
+    pub alpha: f64,
+    pub lmm: bool,
+    pub bordering: bool,
+    pub genie: Genie,
+    pub symmetric: bool,
+    pub ddl: DeltaLambda,
 }
 
+impl Combo {
+    /// Generates the file stem for the given combination of parameters
+    pub fn stem(&self) -> String {
+        let mut key0 = format!("a{:.1}", self.alpha);
+        key0 = key0.replace('.', "d");
+        let key1 = if self.lmm { "lmm" } else { "sps" };
+        let key2 = if self.bordering { "brd" } else { "full" };
+        let key3 = if self.ddl.is_auto() { "auto" } else { "fix" };
+        let key4 = format!("sym-{:?}", self.genie.get_sym(self.symmetric)).to_lowercase();
+        format!(
+            "/tmp/russell_nonlin/test_bratu_{}_{}_n{}_{}_{}_{}_{}_{}_{}",
+            if self.spc { "spc" } else { "fdm" },
+            if self.one_dim { "1d" } else { "2d" },
+            self.npt,
+            key0,
+            key1,
+            key2,
+            key3,
+            self.genie.to_string(),
+            key4
+        )
+    }
+
+    /// Generates the plot title for the given combination of parameters
+    pub fn title(&self, tex: bool) -> String {
+        let mut sym = format!("{:?}", self.genie.get_sym(self.symmetric)).to_uppercase();
+        if sym == "NO" {
+            sym = "NO-SYM".to_string();
+        }
+        let alp = if tex {
+            format!("$\\alpha = {:.2}$", self.alpha)
+        } else {
+            format!("alpha = {:.2}", self.alpha)
+        };
+        format!(
+            "{} | {} | {} | N = {} | {} | {} | {} | {} | {}",
+            if self.spc { "SPC" } else { "FDM" },
+            if self.one_dim { "1D" } else { "2D" },
+            alp,
+            self.npt,
+            if self.lmm { "LMM" } else { "SPS" },
+            if self.bordering { "BRD" } else { "FULL" },
+            if self.ddl.is_auto() { "AUTO" } else { "FIX" },
+            self.genie.to_string().to_uppercase(),
+            sym
+        )
+    }
+}
+
+// ----------------------------- Test cases ----------------------------
+
+#[test]
+fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
+    let spc = true;
+    let one_dim = true;
+    let ddl = DeltaLambda::auto(DDL_INI);
+    let genie = Genie::Umfpack;
+    let symmetric = false;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.001, 0.0009, 0.0005),      //
+        (20, 0.00047, 0.00033, 0.00003), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    let combo = Combo {
+                        spc,
+                        one_dim,
+                        npt,
+                        alpha,
+                        lmm,
+                        bordering,
+                        genie,
+                        symmetric,
+                        ddl: ddl.clone(),
+                    };
+                    run_test(combo, tol1, tol2, tol3)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
+    let spc = false;
+    let one_dim = true;
+    let ddl = DeltaLambda::auto(DDL_INI);
+    let genie = Genie::Umfpack;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.0381, 0.06, 0.06), //
+        (17, 0.00789, 0.012, 0.012), //
+                                 // (100, 0.00024, 0.00029, 0.00032), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [true, false] {
+                for bordering in [true, false] {
+                    let flags = if bordering { vec![true, false] } else { vec![false] }; // symmetric only if bordering
+                    for symmetric in flags {
+                        let combo = Combo {
+                            spc,
+                            one_dim,
+                            npt,
+                            alpha,
+                            lmm,
+                            bordering,
+                            genie,
+                            symmetric,
+                            ddl: ddl.clone(),
+                        };
+                        run_test(combo, tol1, tol2, tol3)?;
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
+    let spc = true;
+    let one_dim = false;
+    let ddl = DeltaLambda::auto(DDL_INI);
+    let genie = Genie::Umfpack;
+    let symmetric = false;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.00256, 0.00029, 0.002), //
+                                      // (10, 0.00073, 0.000034, 0.000024), //
+                                      // (11, 0.00073, 0.000034, 0.000024), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [false] {
+                for bordering in [true, false] {
+                    let combo = Combo {
+                        spc,
+                        one_dim,
+                        npt,
+                        alpha,
+                        lmm,
+                        bordering,
+                        genie,
+                        symmetric,
+                        ddl: ddl.clone(),
+                    };
+                    run_test(combo, tol1, tol2, tol3)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
+    let spc = false;
+    let one_dim = false;
+    let ddl = DeltaLambda::auto(DDL_INI);
+    let genie = Genie::Umfpack;
+    for (npt, tol1, tol2, tol3) in [
+        (8, 0.034, 0.082, 0.123), //
+                                  // (9, 0.0253, 0.062, 0.092), //
+                                  // (20, 0.0043, 0.011, 0.016), //
+                                  // (22, 0.00355, 0.0089, 0.013), //
+                                  // (40, 0.0011, 0.0032, 0.0034), //
+    ] {
+        for alpha in [0.0, 0.2] {
+            for lmm in [false] {
+                for bordering in [true, false] {
+                    let flags = if bordering { vec![true, false] } else { vec![false] }; // symmetric only if bordering
+                    for symmetric in flags {
+                        let combo = Combo {
+                            spc,
+                            one_dim,
+                            npt,
+                            alpha,
+                            lmm,
+                            bordering,
+                            genie,
+                            symmetric,
+                            ddl: ddl.clone(),
+                        };
+                        run_test(combo, tol1, tol2, tol3)?;
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
+    let spc = false;
+    let one_dim = false;
+    let lmm = true;
+    let bordering = false;
+    let ddl = DeltaLambda::constant(1.0);
+    let genie = Genie::Umfpack;
+    let symmetric = false;
+    for alpha in [0.0] {
+        for (npt, tol1, tol2, tol3) in [(8, 0.23, 0.0, 0.0)] {
+            let combo = Combo {
+                spc,
+                one_dim,
+                npt,
+                alpha,
+                lmm,
+                bordering,
+                genie,
+                symmetric,
+                ddl: ddl.clone(),
+            };
+            run_test(combo, tol1, tol2, tol3)?;
+        }
+    }
+    Ok(())
+}
+
+// Runs the test
+fn run_test(
+    combo: Combo,
+    alpha0_lam_crit_tol: f64,
+    alpha02_1st_lam_crit_tol: f64,
+    alpha02_2nd_lam_crit_tol: f64,
+) -> Result<(), StrError> {
+    // Filename/path stem
+    let stem = combo.stem();
+    let caption = combo.title(false);
+    println!("{}", "=".repeat(caption.len()));
+    println!("{}", caption);
+
+    // Configuration
+    let mut config = Config::new();
+    config.set_method(Method::Arclength);
+    config
+        .set_n_cont_failure_max(8)
+        .set_tg_control_tol(TG_CONTROL_TOL)
+        .set_record_iterations_residuals(true)
+        .set_verbose(true, true, true)
+        .set_hide_timings(true)
+        .set_debug_predictor(true)
+        .set_log_file(&format!("{}.txt", stem))
+        .set_bordering(combo.bordering)
+        .set_genie(combo.genie);
+
+    // Calculate the coefficient matrix
+    let sym = combo.genie.get_sym(combo.symmetric);
+    let (nu, np, coo) = if combo.one_dim {
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+        if combo.spc {
+            let spectral = Spc1d::new(0.0, 1.0, combo.npt, ebcs, nbcs, -1.0)?;
+            let coo = if combo.lmm {
+                spectral.get_matrices_lmm(0.0, 0, false).0
+            } else {
+                spectral.get_matrices_sps(0.0, 0).0
+            };
+            let (nu, np) = spectral.get_dims_sps();
+            (nu, np, coo)
+        } else {
+            let grid = Grid1d::new_uniform(0.0, 1.0, combo.npt)?;
+            let fdm = Fdm1d::new(grid, ebcs, nbcs, -1.0)?;
+            let coo = if combo.lmm {
+                fdm.get_matrices_lmm(0.0, 0, false, sym).0
+            } else {
+                fdm.get_matrices_sps(0.0, 0, sym).0
+            };
+            let (nu, np) = fdm.get_dims_sps();
+            (nu, np, coo)
+        }
+    } else {
+        let mut ebcs = EssentialBcs2d::new();
+        let nbcs = NaturalBcs2d::new();
+        ebcs.set_homogeneous();
+        if combo.spc {
+            let spectral = Spc2d::new(0.0, 1.0, 0.0, 1.0, combo.npt, combo.npt, ebcs, nbcs, -1.0, -1.0)?;
+            let coo = if combo.lmm {
+                spectral.get_matrices_lmm(0.0, 0, false).0
+            } else {
+                spectral.get_matrices_sps(0.0, 0).0
+            };
+            let (nu, np) = spectral.get_dims_sps();
+            (nu, np, coo)
+        } else {
+            let grid = Grid2d::new_uniform(0.0, 1.0, 0.0, 1.0, combo.npt, combo.npt)?;
+            let fdm = Fdm2d::new(grid, ebcs, nbcs, -1.0, -1.0)?;
+            let coo = if combo.lmm {
+                fdm.get_matrices_lmm(0.0, 0, false, sym).0
+            } else {
+                fdm.get_matrices_sps(0.0, 0, sym).0
+            };
+            let (nu, np) = fdm.get_dims_sps();
+            (nu, np, coo)
+        }
+    };
+    let nnz_coo = coo.get_info().2;
+
+    // Allocate arguments struct
+    let neq = nu + np;
+    let nphi = if combo.lmm { neq } else { nu };
+    let ndim = if combo.lmm { neq + np } else { nu };
+    let mut args = Args {
+        alpha: combo.alpha,
+        bordering: combo.bordering,
+        npt: combo.npt,
+        nphi,
+        ndim,
+        coo,
+    };
+
+    // Max number of non-zeros in Gu
+    let nnz = if combo.lmm {
+        nnz_coo + neq // +neq due to the λ B term
+    } else {
+        nnz_coo + nu // +nu due to the λ B term
+    };
+
+    // Allocate nonlinear problem
+    let system = System::new(ndim, Some(nnz), sym, calc_gg, calc_jac)?;
+
+    // Define the solver
+    let mut solver = Solver::new(&config, system)?;
+
+    // Output
+    let output = &mut Output::new();
+    output.set_record_norm_u(true, Norm::Inf, 0, nphi);
+    if combo.one_dim {
+        let all_indices: Vec<usize> = (0..nphi).collect();
+        output.set_recording(true, &all_indices, &[]);
+    }
+
+    // Initial state (all zero)
+    let mut u = Vector::new(ndim);
+    let mut l = 0.0;
+
+    // Stop criterion
+    let max_nrm_max = if combo.alpha == 0.0 { 15.0 } else { 40.0 };
+    let stop = Stop::MaxNormU(max_nrm_max, Norm::Inf, 0, nphi);
+
+    // ----------------- numerical solution ----------------
+
+    // Perform the numerical continuation
+    let status = solver.solve(&mut args, &mut u, &mut l, IniDir::Pos, stop, &combo.ddl, Some(output))?;
+    println!("Status: {:?}", status);
+    assert_eq!(status, Status::Success);
+
+    // numerical results
+    let lam_vals = output.get_l_values();
+    let nrm_vals = output.get_norm_u_values();
+
+    // ----------------- search for critical points ----------------
+
+    let (mut ii_valleys, mut ii_peaks, _, _) = find_valleys_and_peaks(lam_vals);
+    ii_valleys.retain(|&i| lam_vals[i] > 0.3);
+    ii_peaks.retain(|&i| lam_vals[i] > 0.3);
+    for i in &ii_peaks {
+        println!("Peak: ‖u‖∞ = {}, λ = {}", nrm_vals[*i], lam_vals[*i]);
+    }
+    for i in &ii_valleys {
+        println!("Valley: ‖u‖∞ = {}, λ = {}", nrm_vals[*i], lam_vals[*i]);
+    }
+    if combo.alpha == 0.0 {
+        if ii_peaks.len() != 1 {
+            return Err("for alpha = 0.0, one peak must have been found");
+        }
+    } else if combo.alpha == 0.2 {
+        if !(ii_peaks.len() == 1 && ii_valleys.len() == 1) {
+            return Err("for alpha = 0.2, one peak and one valley must have been found");
+        }
+    } else {
+        return Err("invalid alpha value");
+    }
+
+    // ------------- polynomial fitting and optimization ----------------
+
+    // Fit a polynomial (using Chebyshev interpolation) to all the numerical (‖u‖∞, λ) results.
+    // Then, we can use the interpolant to find the critical points with higher accuracy (e.g., using Brent's method).
+    // The interpolant is λ = f(‖u‖∞)
+    let npoint = lam_vals.len();
+    let last_u_max = nrm_vals[npoint - 1];
+    let degree_max = npoint - 1;
+    let mut interp = InterpChebyshev::new(degree_max, 0.0, last_u_max).unwrap();
+    interp.set_gen_data(&nrm_vals, &lam_vals)?; // (U, L) data
+
+    // Find the critical points with higher accuracy
+    let ((nrm_crit_1, lam_crit_1), (nrm_crit_2, lam_crit_2)) = if combo.alpha == 0.0 {
+        // For α = 0.0, we have a single critical point (peak)
+        let (u_crit, l_crit) = find_critical_point(&nrm_vals, &lam_vals, ii_peaks[0], &interp, true)?;
+        println!("Critical point: ‖u‖∞ = {}, λ = {}", u_crit, l_crit);
+        ((u_crit, l_crit), (0.0, 0.0)) // dummy values for the second critical point
+    } else {
+        // For α = 0.2, we have two critical points (one peak and one valley)
+        let (u_crit1, l_crit1) = find_critical_point(&nrm_vals, &lam_vals, ii_peaks[0], &interp, true)?;
+        let (u_crit2, l_crit2) = find_critical_point(&nrm_vals, &lam_vals, ii_valleys[0], &interp, false)?;
+        println!("1st critical point: ‖u‖∞ = {}, λ = {}", u_crit1, l_crit1);
+        println!("2nd critical point: ‖u‖∞ = {}, λ = {}", u_crit2, l_crit2);
+        ((u_crit1, l_crit1), (u_crit2, l_crit2)) // dummy values for the critical points; we won't use them in the checks below
+    };
+
+    // ----------------- check the results ----------------
+
+    // reference critical points
+    let (ref_alp00, ref_alp02a, ref_alp02b) = if combo.one_dim {
+        (D1_REF_ALP00, D1_REF_ALP02_A, D1_REF_ALP02_B)
+    } else {
+        (D2_REF_ALP00, D2_REF_ALP02_A, D2_REF_ALP02_B)
+    };
+
+    // check the critical points
+    if combo.alpha == 0.0 {
+        let err_lambda = f64::abs(lam_crit_1 - ref_alp00);
+        println!("err_lambda = {}", err_lambda);
+        if err_lambda > alpha0_lam_crit_tol {
+            panic!("❌ λ* = {} ({}) err = {} ❌", lam_crit_1, ref_alp00, err_lambda);
+        }
+    } else if combo.alpha == 0.2 {
+        let err_lambda_1 = f64::abs(lam_crit_1 - ref_alp02a);
+        let err_lambda_2 = f64::abs(lam_crit_2 - ref_alp02b);
+        println!("err_lambda_1 = {}", err_lambda_1);
+        println!("err_lambda_2 = {}", err_lambda_2);
+        if err_lambda_1 > alpha02_1st_lam_crit_tol {
+            panic!("❌ 1st λ* = {} ({}) err = {} ❌", lam_crit_1, ref_alp02a, err_lambda_1);
+        }
+        if err_lambda_2 > alpha02_2nd_lam_crit_tol {
+            panic!("❌ 2nd λ* = {} ({}) err = {} ❌", lam_crit_2, ref_alp02b, err_lambda_2);
+        }
+    }
+    println!();
+
+    // -------------------- plot the results --------------------
+    if SAVE_FIGURE {
+        do_plot(
+            &combo, &lam_vals, &nrm_vals, lam_crit_1, nrm_crit_1, lam_crit_2, nrm_crit_2, &output, &interp,
+        )?;
+    }
+    Ok(())
+}
+
+/// Generates the plot
 fn do_plot<'a>(
-    spc: bool,
-    one_dim: bool,
-    lmm: bool,
-    bordering: bool,
-    alpha: f64,
-    npt: usize,
-    auto: bool,
-    stem: &str,
+    combo: &Combo,
     lam_vals: &Vec<f64>,
     nrm_vals: &Vec<f64>,
-    ii_peaks: &[usize],
-    ii_valleys: &[usize],
+    lam_crit_1: f64,
+    nrm_crit_1: f64,
+    lam_crit_2: f64,
+    nrm_crit_2: f64,
     output: &Output<'a, Args>,
+    interp: &InterpChebyshev,
 ) -> Result<(), StrError> {
     // allocate the plot
     let mut plot = Plot::new();
 
-    // set the title
-    let mut title = if spc { "SPC".to_string() } else { "FDM".to_string() };
-    title += if one_dim { " | 1D" } else { " | 2D" };
-    title += &format!(" | n = {}", npt);
-    if lmm {
-        title += " | LMM";
-    }
-    if bordering {
-        title += " | BRD";
-    }
-    title += &format!(" | $\\alpha$ = {:.2}", alpha);
+    // set the filename stem and title
+    let stem = combo.stem();
+    let title = combo.title(true);
 
     // maximum ‖ϕ‖∞ value
     let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];
 
     // reference results
-    if alpha == 0.0 {
-        let table: HashMap<String, Vec<f64>> = if one_dim {
+    if combo.alpha == 0.0 {
+        // load reference data
+        let reference_data: HashMap<String, Vec<f64>> = if combo.one_dim {
             read_table(&"data/ref-bratu-1d-shahab-2025.txt", Some(&["lambda", "u_max"]))?
         } else {
             read_table(&"data/ref-bratu-2d-shahab-2025.txt", Some(&["lambda", "u_max"]))?
         };
+
+        // draw reference curve
         let mut n_ref = 0;
-        for u_max in &table["u_max"] {
+        for u_max in &reference_data["u_max"] {
             if *u_max > max_nrm_max {
                 break;
             }
             n_ref += 1;
         }
-        if n_ref + 5 < table["u_max"].len() {
+        if n_ref + 5 < reference_data["u_max"].len() {
             n_ref += 5; // add a few more points for better visualization
         }
-        let mut curve_ref = Curve::new();
-        let x_ref = &table["lambda"].as_slice()[..n_ref];
-        let y_ref = &table["u_max"].as_slice()[..n_ref];
-        curve_ref.set_label("reference").draw(&x_ref, &y_ref);
-        plot.add(&curve_ref);
+        let xx_ref_pts = &reference_data["u_max"].as_slice()[..n_ref];
+        let yy_ref_pts = &reference_data["lambda"].as_slice()[..n_ref];
+        let mut curve_ref_pts = Curve::new();
+        curve_ref_pts
+            .set_label("reference")
+            .set_line_color("#009500")
+            .draw(&xx_ref_pts, &yy_ref_pts);
+        plot.add(&curve_ref_pts);
     }
 
-    // numerical results
-    let mut curve = Curve::new();
-    curve.set_marker_style(".").draw(lam_vals, nrm_vals);
-    plot.add(&curve);
+    // numerical results: interpolated curve
+    let mut curve_interp = Curve::new();
+    let xx_interp = Vector::linspace(0.0, max_nrm_max, 100).unwrap();
+    let yy_interp = xx_interp.get_mapped(|x| interp.eval(x).unwrap());
+    curve_interp
+        .set_label("this code")
+        .set_line_style("-")
+        .set_line_color("#ba6ed3")
+        .draw(xx_interp.as_data(), yy_interp.as_data());
+    plot.add(&curve_interp);
+
+    // numerical results: points
+    let mut curve_points = Curve::new();
+    curve_points
+        .set_line_style("None")
+        .set_marker_size(4.0)
+        .set_marker_style(".")
+        .set_line_color("#79158d")
+        .draw(nrm_vals, lam_vals);
+    plot.add(&curve_points);
 
     // annotations
     let mut annotations = Text::new();
@@ -690,30 +712,47 @@ fn do_plot<'a>(
         .set_bbox_facecolor("white")
         .set_bbox_edgecolor("None")
         .set_bbox_style("round,pad=0.3");
-    let indices = [&ii_valleys[..], &ii_peaks[..]].concat();
-    for i in &indices {
-        plot.set_horiz_line(nrm_vals[*i], "#689868ff", "-", 1.0);
+    let last = nrm_vals.len() - 1;
+
+    // First critical point
+    plot.set_horiz_line(lam_crit_1, "#4f4f4f", "--", 1.0);
+    plot.set_vert_line(nrm_crit_1, "#4f4f4f", "--", 1.0);
+    annotations
+        .set_rotation(0.0)
+        .set_align_vertical("center")
+        .set_align_horizontal("right")
+        .draw(nrm_vals[last], lam_crit_1, &format!("{:.9}", nrm_crit_1));
+    annotations
+        .set_rotation(90.0)
+        .set_align_vertical("bottom")
+        .set_align_horizontal("center")
+        .draw(nrm_crit_1, 0.0, &format!("{:.9}", lam_crit_1));
+
+    // Second critical point
+    if combo.alpha == 0.2 {
+        plot.set_horiz_line(lam_crit_2, "#4f4f4f", "--", 1.0);
+        plot.set_vert_line(nrm_crit_2, "#4f4f4f", "--", 1.0);
         annotations
             .set_rotation(0.0)
             .set_align_vertical("center")
-            .set_align_horizontal("left")
-            .draw(0.0, nrm_vals[*i], &format!("{:.9}", nrm_vals[*i]));
-        plot.set_vert_line(lam_vals[*i], "#689868ff", "-", 1.0);
+            .set_align_horizontal("right")
+            .draw(nrm_vals[last], lam_crit_2, &format!("{:.9}", nrm_crit_2));
         annotations
             .set_rotation(90.0)
-            .set_align_vertical("top")
+            .set_align_vertical("bottom")
             .set_align_horizontal("center")
-            .draw(lam_vals[*i], max_nrm_max, &format!("{:.9}", lam_vals[*i]));
+            .draw(nrm_crit_2, 0.0, &format!("{:.9}", lam_crit_2));
     }
     plot.add(&annotations);
 
-    // generate ‖ϕ‖∞ versus λ plot
-    plot.set_title(&title)
-        .set_labels("λ", "‖ϕ‖∞")
+    // Save the plot
+    plot.extra(&format!("plt.title(r'{}',fontsize=10)\n", title))
+        .legend()
+        .set_labels("‖ϕ‖∞", "λ")
         .save(&format!("{}.svg", stem))?;
 
-    // plot stepsizes
-    if auto {
+    // Plot stepsizes
+    if combo.ddl.is_auto() && PLOT_STEPSIZES {
         let stepsizes = &output.get_h_values()[1..];
         let n = stepsizes.len();
         let x = linspace(1.0, n as f64, n);
@@ -721,58 +760,59 @@ fn do_plot<'a>(
         curve.set_label("stepsize").set_line_style("-").set_marker_style(".");
         curve.draw(&x.as_slice(), &stepsizes);
         let mut plot = Plot::new();
-        plot.set_title(&title)
+        plot.extra(&format!("plt.title(r'{}',fontsize=10)\n", title))
             .set_labels("step number", "stepsize $h$")
             .add(&curve)
             .save(&format!("{}_h.svg", stem))?;
     }
 
-    // profile: draw ϕ along x @ λCrit
-    if one_dim && alpha == 0.0 && ii_peaks.len() == 1 {
-        let mut curve = Curve::new();
-        let mut curve_profile_crit_num = Curve::new();
-        let xx_ana = linspace(0.0, 1.0, 201);
-        let phi_crit_ana: Vec<_> = xx_ana.iter().map(|&x| d1_analytical_profile(x)).collect();
-        curve
-            .set_label("Mathematica")
-            .set_line_style("-")
-            .set_line_color("#1f53d6ff")
-            .draw(&xx_ana, &phi_crit_ana);
-        let mut xx_num = vec![0.0; npt];
-        let mut phi_crit_num = vec![0.0; npt];
-        let grid = if spc {
-            Grid1d::new_chebyshev_gauss_lobatto(npt)?
-        } else {
-            Grid1d::new_uniform(0.0, 1.0, npt)?
-        };
-        grid.for_each_coord(|m, z| {
-            if spc {
-                xx_num[m] = 0.5 * (z + 1.0);
-            } else {
-                xx_num[m] = z;
-            }
-            if lmm {
-                phi_crit_num[m] = output.get_u_values(m)[ii_peaks[0]];
-            } else {
-                if m > 0 && m < npt - 1 {
-                    let iu = m - 1;
-                    phi_crit_num[m] = output.get_u_values(iu)[ii_peaks[0]];
-                }
-            }
-        });
-        curve_profile_crit_num
-            .set_label("Russell")
-            .set_line_style("None")
-            .set_marker_style(".")
-            .set_marker_color("#d8211aff")
-            .set_marker_line_color("#d8211aff")
-            .draw(&xx_num, &phi_crit_num);
-        let mut plot = Plot::new();
-        plot.set_title(&title)
-            .add(&curve)
-            .add(&curve_profile_crit_num)
-            .grid_labels_legend("x", "$\\phi_{crit}(x)$")
-            .save(&format!("{}_profile.svg", stem))?;
-    }
+    // Done
     Ok(())
+}
+
+/// Finds the critical point (peak or valley) with higher accuracy using the interpolant and Brent's method.
+fn find_critical_point(
+    xx: &[f64],
+    yy: &[f64],
+    index_crit: usize,
+    interp: &InterpChebyshev,
+    maximization: bool,
+) -> Result<(f64, f64), StrError> {
+    // Check that we have enough points around the critical point
+    let npoint = xx.len();
+    if index_crit <= DELTA_INDEX || index_crit >= npoint - DELTA_INDEX {
+        println!("npoint = {}, index_crit = {}", npoint, index_crit);
+        return Err("There aren't enough points around the critical point to perform the optimization");
+    }
+
+    // Define the objective function
+    // If maximization, the objective function is a shifted/reversed version of f(x)
+    let y_crit = yy[index_crit];
+    let objective = |x: f64, _args: &mut u8| -> Result<f64, StrError> {
+        let y = interp.eval(x)?;
+        let yo = if maximization { y_crit - y } else { y };
+        Ok(yo)
+    };
+
+    // Solve the minimization problem
+    let prm = &mut 0;
+    let xa = xx[index_crit - DELTA_INDEX];
+    let xb = xx[index_crit + DELTA_INDEX];
+    let min_solver = MinSolver::new();
+    let (xo, _) = min_solver.brent(xa, xb, prm, objective)?;
+
+    // Draw the objective function
+    if PLOT_OBJECTIVE_FUNCTION {
+        let mut curve = Curve::new();
+        let xx_pts = Vector::linspace(xa, xb, 20)?;
+        let yy_pts = xx_pts.get_mapped(|u| objective(u, prm).unwrap());
+        curve.draw(xx_pts.as_data(), yy_pts.as_data());
+        let mut plot = Plot::new();
+        plot.add(&curve)
+            .grid_and_labels("x", "objective")
+            .save("/tmp/russell_nonlin/temp.svg")?;
+    }
+
+    // Done
+    Ok((xo, interp.eval(xo)?))
 }

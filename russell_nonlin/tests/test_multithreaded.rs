@@ -89,7 +89,7 @@ impl<'a> Runner for Simulator<'a> {
                 &mut self.data.l,
                 self.data.dir,
                 self.data.stop,
-                self.data.ddl.clone(),
+                &self.data.ddl,
                 None,
             )
             .unwrap();

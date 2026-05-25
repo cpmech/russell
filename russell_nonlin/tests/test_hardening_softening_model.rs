@@ -14,7 +14,7 @@ const SAVE_FIGURE: bool = false;
 fn test_hardening_softening_model_full() -> Result<(), StrError> {
     // Settings
     let settings = HashMap::from([
-        ("tg_control_atol_and_rtol", 1e-2),
+        ("tg_control_tol", 0.5),
         ("nr_control_n_opt", 3.0),
         ("nr_control_beta", 0.5),
     ]);
@@ -43,13 +43,12 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 22);
-    assert_eq!(stats.n_rejected, 31);
-    assert_eq!(stats.n_steps, 53);
+    assert_eq!(stats.n_accepted, 25);
+    assert_eq!(stats.n_rejected, 26);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.052, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.0314, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -91,7 +90,7 @@ fn test_hardening_softening_model_from_peak() -> Result<(), StrError> {
 #[test]
 fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([("tg_control_atol_and_rtol", 1e-1)]);
+    let settings = HashMap::from([("tg_control_tol", 1.0)]);
 
     // Input data
     let use_continuous_modulus = false;
@@ -117,9 +116,8 @@ fn test_hardening_softening_model_from_peak_backward() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 14);
+    assert_eq!(stats.n_accepted, 29);
     assert_eq!(stats.n_rejected, 0);
-    assert_eq!(stats.n_steps, 14);
     Ok(())
 }
 
@@ -407,9 +405,7 @@ fn run_hs_model(
         match key {
             "nr_control_n_opt" => config.set_nr_control_n_opt(*value as usize),
             "nr_control_beta" => config.set_nr_control_beta(*value),
-            "tg_control_atol" => config.set_tg_control_atol(*value),
-            "tg_control_rtol" => config.set_tg_control_rtol(*value),
-            "tg_control_atol_and_rtol" => config.set_tg_control_atol_and_rtol(*value),
+            "tg_control_tol" => config.set_tg_control_tol(*value),
             "tg_control_beta1" => config.set_tg_control_beta1(*value),
             "tg_control_beta2" => config.set_tg_control_beta2(*value),
             "tg_control_beta3" => config.set_tg_control_beta3(*value),
@@ -445,7 +441,7 @@ fn run_hs_model(
     args.local_state.stress = l;
 
     // Perform the numerical continuation
-    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, ddl, Some(out))?;
+    let status = solver.solve(&mut args, &mut u, &mut l, direction, stop, &ddl, Some(out))?;
     assert_eq!(status, expected_status);
 
     // results

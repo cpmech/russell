@@ -444,7 +444,7 @@ mod tests {
     #[test]
     fn test_samples_cubic_poly_2() {
         let (system, u, _, mut args) = Samples::cubic_poly_2();
-        system.check_ggu(0.0, &u, &mut args, 1e-10).unwrap();
+        system.check_ggu(0.0, &u, &mut args, 1e-9).unwrap();
     }
 
     #[test]

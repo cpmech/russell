@@ -1,9 +1,16 @@
 FROM archlinux:base-devel
 
+# 0 = OpenBLAS (default), 1 = Intel MKL
+ARG INTEL_MKL=0
+# 0 = no MUMPS (default), 1 = with MUMPS
+ARG WITH_MUMPS=0
+
 # Update keyring first to avoid GPG errors on a fresh Arch image,
-# then upgrade the system and install Rust and the required libraries
+# then upgrade the system and install Rust and core dependencies;
+# blas-openblas is only needed for the OpenBLAS variant
 RUN pacman -Sy --noconfirm archlinux-keyring && \
-    pacman -Syu --noconfirm rust blas-openblas suitesparse
+    pacman -Syu --noconfirm rust suitesparse && \
+    if [ "${INTEL_MKL}" != "1" ]; then pacman -S --noconfirm blas-openblas; fi
 
 # Create a non-root user for building and testing
 RUN useradd -m user
@@ -12,7 +19,26 @@ RUN useradd -m user
 # files are owned by user, so cargo can write target/ during the build
 COPY --chown=user:user . /usr/local/src/russell/
 WORKDIR /usr/local/src/russell
+
+# Install Intel oneAPI toolkit if MKL is requested;
+# must run as root because pacman needs it
+RUN if [ "${INTEL_MKL}" = "1" ]; then bash zscripts/arch-install-intel-toolkit.bash; fi
+
+# Compile and install MUMPS if requested; must run as root because pacman
+# and ldconfig need it; passes INTEL_MKL so the script selects the right backend
+RUN if [ "${WITH_MUMPS}" = "1" ]; then bash zscripts/arch-compile-mumps.bash "${INTEL_MKL}"; fi
+
 USER user
 
-# Run tests
-RUN cargo test
+# Build the --features argument from the selected options and run tests;
+# MKL requires sourcing setvars.sh in the same shell as cargo test
+RUN \
+    FEATURES="" && \
+    [ "${INTEL_MKL}" = "1" ] && FEATURES="intel_mkl" || true && \
+    [ "${WITH_MUMPS}" = "1" ] && FEATURES="${FEATURES:+${FEATURES},}with_mumps" || true && \
+    FEAT="${FEATURES:+--features $FEATURES}" && \
+    if [ "${INTEL_MKL}" = "1" ]; then \
+        bash -c "source /opt/intel/oneapi/setvars.sh && cargo test $FEAT"; \
+    else \
+        cargo test $FEAT; \
+    fi

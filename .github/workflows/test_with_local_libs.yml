@@ -1,0 +1,8 @@
+name: Test with local libs (TEMPORARY - WILL BE DELETED)
+on: [pull_request]
+jobs:
+  test_with_local_libs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Temporary workflow notice
+        run: echo "WARNING: This workflow is temporary and will be deleted."

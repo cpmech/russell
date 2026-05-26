@@ -3,22 +3,20 @@
 set -euo pipefail
 
 # the first argument is "1" to enable MKL
-# the second argument is "1" to enable MUMPS
+# the second argument is "1" to enable local sparse libs
 INTEL_MKL="${1:-0}"
 LOCAL_SPARSE="${2:-0}"
 
 # image name and Dockerfile
-NAME="cpmech/russell_arch"
-DOCKERFILE="zdocker/Dockerfile.Arch"
-if [ "${INTEL_MKL}" = "1" ] && [ "${LOCAL_SPARSE}" = "1" ]; then
-    NAME="${NAME}_mkl_mumps"
-    DOCKERFILE="zdocker/Dockerfile.Arch.Mkl.Mumps"
-elif [ "${INTEL_MKL}" = "1" ]; then
-    NAME="${NAME}_mkl"
-    DOCKERFILE="zdocker/Dockerfile.Arch.Mkl"
+if [ "${INTEL_MKL}" = "1" ]; then
+    DOCKERFILE="zdocker/Dockerfile.Arch.Mkl.Local"
+    NAME="cpmech/russell_arch_mkl_local"
 elif [ "${LOCAL_SPARSE}" = "1" ]; then
-    NAME="${NAME}_mumps"
-    DOCKERFILE="zdocker/Dockerfile.Arch.Mumps"
+    DOCKERFILE="zdocker/Dockerfile.Arch.Local"
+    NAME="cpmech/russell_arch_local"
+else
+    DOCKERFILE="zdocker/Dockerfile.Arch"
+    NAME="cpmech/russell_arch"
 fi
 
 # build Docker image

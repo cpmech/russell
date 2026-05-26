@@ -3,9 +3,11 @@ on: [pull_request]
 jobs:
   test_and_coverage:
     runs-on: ubuntu-latest
+    env:
+      RUST_BACKTRACE: 1
     strategy:
       matrix:
-        rust: [stable]
+        rust: [nightly]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
@@ -25,7 +27,7 @@ jobs:
           bash zscripts/debian-compile-suitesparse.bash
       - name: Run tests
         run: |
-          RUST_BACKTRACE=1 cargo test --features local_sparse
+          cargo test --features local_sparse
       - name: Install cargo-llvm-cov
         if: matrix.rust == 'nightly'
         run: |

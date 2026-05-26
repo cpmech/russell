@@ -9,13 +9,13 @@ jobs:
         include:
           - intel_mkl: ""
             local_sparse: ""
-            label: default
+            label: option1_default
           - intel_mkl: ""
             local_sparse: "1"
-            label: local
+            label: option2_openblas_local
           - intel_mkl: "1"
             local_sparse: "1"
-            label: mkl_local
+            label: option3_mkl_local
     name: test (${{ matrix.label }})
     steps:
       - uses: actions/checkout@v4

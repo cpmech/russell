@@ -2,22 +2,24 @@ FROM archlinux:base-devel
 
 # Update keyring first to avoid GPG errors on a fresh Arch image,
 # then upgrade the system and install Rust and core dependencies;
-# blas-openblas must be in the same transaction as suitesparse so that
-# pacman resolves suitesparse's blas dependency via blas-openblas instead
-# of first installing the default blas package (which would then conflict)
+# suitesparse is installed without blas-openblas because MKL will be used instead
 RUN pacman -Sy --noconfirm archlinux-keyring && \
-    pacman -Syu --noconfirm rust blas-openblas suitesparse
+    pacman -Syu --noconfirm rust
 
 # Create a non-root user for building and testing
 RUN useradd -m user
 
-# Give user passwordless sudo so yay/makepkg can install AUR packages
+# Give user password-less sudo so yay/makepkg can install AUR packages
 RUN echo 'user ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 # Copy project files; --chown ensures the destination directory and all
 # files are owned by user, so cargo can write target/ during the build
 COPY --chown=user:user . /usr/local/src/russell/
 WORKDIR /usr/local/src/russell
+
+# Install the Intel oneAPI toolkit (MKL + compilers);
+# must run as root because pacman needs it
+RUN bash zscripts/arch-install-intel-toolkit.bash
 
 # Install yay (AUR helper) needed for the metis package from AUR;
 # yay-bin is a pre-compiled binary so only git + base-devel are needed;
@@ -27,13 +29,16 @@ RUN pacman -S --noconfirm git && \
         cd /tmp/yay-bin && \
         makepkg -si --noconfirm"
 
-# Compile and install MUMPS with OpenBLAS backend;
+# Compile and install MUMPS with Intel MKL backend;
 # must run as root because pacman and ldconfig need it
-RUN bash zscripts/arch-compile-mumps.bash 0
+RUN bash zscripts/arch-compile-mumps.bash 1
+
+# Compile and install SuiteSparse as well (with Intel MKL)
+RUN bash zscripts/arch-compile-suitesparse.bash 1
 
 # Set the user
 USER user
 
-# Test the code
+# MKL requires sourcing setvars.sh in the same shell as cargo test
 ENV RUST_BACKTRACE=1
-RUN cargo test --features local_sparse
+RUN bash -c "source /opt/intel/oneapi/setvars.sh && cargo test --features intel_mkl,local_sparse"

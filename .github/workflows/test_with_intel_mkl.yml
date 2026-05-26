@@ -20,10 +20,10 @@ jobs:
           rustup --version
       - name: Compile MUMPS
         run: |
-          bash zscripts/compile-and-install-mumps.bash mkl
+          bash zscripts/debian-mumps.bash mkl
       - name: Compile SuiteSparse
         run: |
-          bash zscripts/compile-and-install-suitesparse.bash mkl
+          bash zscripts/debian-suitesparse.bash mkl
       - name: Run tests
         run: |
           RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps,intel_mkl

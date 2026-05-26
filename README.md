@@ -178,18 +178,18 @@ On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main
 
 ### Optional feature "local_suitesparse"
 
-`russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) script may be used in this case:
+`russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [debian-suitesparse.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-suitesparse.bash) script may be used in this case:
 
 ```bash
-bash zscripts/compile-and-install-suitesparse.bash
+bash zscripts/debian-suitesparse.bash
 ```
 
 ### Optional feature "with_mumps"
 
-`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. On Linux/macOS, the [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) script may be used:
+`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. On Linux/macOS, the [debian-mumps.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-mumps.bash) script may be used:
 
 ```bash
-bash zscripts/compile-and-install-mumps.bash
+bash zscripts/debian-mumps.bash
 ```
 
 On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for instructions on how to compile MUMPS.
@@ -197,7 +197,7 @@ On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main
 
 ### Optional feature "intel_mkl"
 
-To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case, SuiteSparse (and MUMPS) must be locally compiled with Intel MKL. This step can be easily accomplished by the [compile-and-install-suitesparse](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-suitesparse.bash) and [compile-and-install-mumps](https://github.com/cpmech/russell/blob/main/zscripts/compile-and-install-mumps.bash) scripts.
+To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case, SuiteSparse (and MUMPS) must be locally compiled with Intel MKL. This step can be easily accomplished by the [debian-suitesparse.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-suitesparse.bash) and [debian-mumps.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-mumps.bash) scripts.
 
 The `latest` version of Intel MKL will be used by such scripts, unless the following environment variable is set:
 
@@ -208,8 +208,8 @@ export MKL_VERSION=<version>
 Call the scripts with the **mkl** argument to compile and install SuiteSparse and MUMPS with Intel MKL:
 
 ```bash
-bash zscripts/compile-and-install-suitesparse.bash mkl
-bash zscripts/compile-and-install-mumps.bash mkl
+bash zscripts/debian-suitesparse.bash mkl
+bash zscripts/debian-mumps.bash mkl
 ```
 
 **Warning:** The above scripts will rename the weird `libmkl_sycl.so` file to `libmkl_sick.txt` since [it is not a real library](https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ldconfig-opt-intel-oneapi-redist-lib-libmkl-sycl-so-is-not-an/m-p/1549240#M35528).

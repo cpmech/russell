@@ -1,6 +1,8 @@
 use russell_lab::approx_eq;
 use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 use russell_sparse::Genie;
+
+#[cfg(feature = "with_mumps")]
 use serial_test::serial;
 
 #[test]

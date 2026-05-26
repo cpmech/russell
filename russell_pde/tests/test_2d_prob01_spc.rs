@@ -2,6 +2,8 @@ use plotpy::{Contour, Curve, Plot, Stream, Surface};
 use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
 use russell_sparse::Genie;
+
+#[cfg(feature = "with_mumps")]
 use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;

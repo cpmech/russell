@@ -28,7 +28,7 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
     let fig_width = 600.0;
 
     // Simulation
-    let (stats, max_err) = run_hs_model(
+    let (_stats, max_err) = run_hs_model(
         "test_hardening_softening_model_full",
         &settings,
         Some(SoderlindClass::H211PI),
@@ -42,9 +42,10 @@ fn test_hardening_softening_model_full() -> Result<(), StrError> {
         fig_width,
     )?;
 
-    // Check the solver statistics
-    assert_eq!(stats.n_accepted, 25);
-    assert_eq!(stats.n_rejected, 26);
+    // Check the solver statistics (DISABLED because this number differs on Windows and Linux,
+    // probably due how the linear solver performs near the singularity at different environments)
+    // assert_eq!(stats.n_accepted, 25);
+    // assert_eq!(stats.n_rejected, 26);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);

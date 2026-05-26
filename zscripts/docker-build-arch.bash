@@ -1,23 +1,30 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 # the first argument is "1" to enable MKL
 # the second argument is "1" to enable MUMPS
 INTEL_MKL="${1:-0}"
 WITH_MUMPS="${2:-0}"
 
-# image name
+# image name and Dockerfile
 NAME="cpmech/russell_arch"
-[ "${INTEL_MKL}" = "1" ] && NAME="${NAME}_mkl"
-[ "${WITH_MUMPS}" = "1" ] && NAME="${NAME}_mumps"
+DOCKERFILE="zdocker/Dockerfile.Arch"
+if [ "${INTEL_MKL}" = "1" ] && [ "${WITH_MUMPS}" = "1" ]; then
+    NAME="${NAME}_mkl_mumps"
+    DOCKERFILE="zdocker/Dockerfile.Arch.Mkl.Mumps"
+elif [ "${INTEL_MKL}" = "1" ]; then
+    NAME="${NAME}_mkl"
+    DOCKERFILE="zdocker/Dockerfile.Arch.Mkl"
+elif [ "${WITH_MUMPS}" = "1" ]; then
+    NAME="${NAME}_mumps"
+    DOCKERFILE="zdocker/Dockerfile.Arch.Mumps"
+fi
 
 # build Docker image
 docker build \
-    --build-arg INTEL_MKL="${INTEL_MKL}" \
-    --build-arg WITH_MUMPS="${WITH_MUMPS}" \
-    -f "zdocker/Dockerfile.Arch" \
-    -t "$NAME" \
+    -f "${DOCKERFILE}" \
+    -t "${NAME}" \
     .
 
 echo

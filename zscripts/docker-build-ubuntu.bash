@@ -3,8 +3,8 @@
 set -euo pipefail
 
 # image name
-NAME="cpmech/russell_rocky"
-DKFILE="zdocker/Dockerfile.Rocky"
+NAME="cpmech/russell_ubuntu"
+DKFILE="zdocker/Dockerfile.Ubuntu"
 
 # build Docker image
 docker build -f "$DKFILE" -t "$NAME" .

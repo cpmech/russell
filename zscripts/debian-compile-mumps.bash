@@ -33,7 +33,7 @@ if [ "${USE_INTEL_MKL}" = "1" ]; then
     set -u
     export | grep -i MKLROOT
 else
-    sudo apt-get install -y --no-install-recommends gfortran liblapacke-dev libopenblas-dev
+    sudo apt-get install -y --no-install-recommends gfortran liblapacke-dev libopenblas-dev libomp-dev
 fi
 
 # Download the source tarball from Debian (reuse it if already present)

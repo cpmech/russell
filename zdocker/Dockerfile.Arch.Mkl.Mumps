@@ -1,0 +1,31 @@
+FROM archlinux:base-devel
+
+# Update keyring first to avoid GPG errors on a fresh Arch image,
+# then upgrade the system and install Rust and the required libraries
+# (no blas-openblas — MKL provides BLAS/LAPACK)
+RUN pacman -Sy --noconfirm archlinux-keyring && \
+    pacman -Syu --noconfirm rust suitesparse
+
+# Create a non-root user for building and testing
+RUN useradd -m user
+
+# Copy project files; --chown ensures the destination directory and all
+# files are owned by user, so cargo can write target/ during the build
+COPY --chown=user:user . /usr/local/src/russell/
+WORKDIR /usr/local/src/russell
+
+# Install Intel oneAPI toolkit and register MKL with the dynamic linker;
+# must run as root (before USER user) because pacman and ldconfig need it
+RUN bash zscripts/arch-install-intel-toolkit.bash
+
+# Compile and install MUMPS with Intel MKL backend; the script sources
+# setvars.sh internally for the duration of the build, then registers
+# the MUMPS library path with ldconfig
+RUN bash zscripts/arch-compile-mumps.bash 1
+
+USER user
+
+# Source the oneAPI environment and run tests in one shell invocation:
+# environment variables set by setvars.sh (MKLROOT, CC, FC, PATH) do not
+# persist across RUN layers, so both commands must share the same shell
+RUN bash -c "source /opt/intel/oneapi/setvars.sh && cargo test --features intel_mkl,with_mumps"

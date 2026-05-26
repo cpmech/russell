@@ -3,8 +3,25 @@ on: [pull_request]
 jobs:
   test_on_arch_linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - intel_mkl: ""
+            with_mumps: ""
+            label: openblas
+          - intel_mkl: "1"
+            with_mumps: ""
+            label: mkl
+          - intel_mkl: ""
+            with_mumps: "1"
+            label: openblas_mumps
+          - intel_mkl: "1"
+            with_mumps: "1"
+            label: mkl_mumps
+    name: test (${{ matrix.label }})
     steps:
       - uses: actions/checkout@v4
-      - name: Build docker image
+      - name: Build docker image (${{ matrix.label }})
         run: |
-          bash zscripts/docker-build-image.bash arch
+          bash zscripts/docker-build-arch.bash ${{ matrix.intel_mkl }} ${{ matrix.with_mumps }}

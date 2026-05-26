@@ -33,7 +33,14 @@ if [ "${USE_INTEL_MKL}" = "1" ]; then
 else
     sudo pacman -S --noconfirm gcc-fortran openmp
 fi
-yay -S --noconfirm metis
+
+# yay must run as non-root; when this script is invoked as root (e.g. inside
+# Docker), delegate to the unprivileged 'user' account that has NOPASSWD sudo
+if [ $EUID = 0 ]; then
+    su - user -c "yay -S --noconfirm metis"
+else
+    yay -S --noconfirm metis
+fi
 
 # Download the source tarball from Debian (reuse it if already present)
 MUMPS_GZ="mumps_${VERSION}.orig.tar.gz"

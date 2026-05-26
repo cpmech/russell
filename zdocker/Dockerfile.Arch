@@ -7,10 +7,15 @@ ARG WITH_MUMPS=0
 
 # Update keyring first to avoid GPG errors on a fresh Arch image,
 # then upgrade the system and install Rust and core dependencies;
-# blas-openblas is only needed for the OpenBLAS variant
+# blas-openblas must be in the same transaction as suitesparse so that
+# pacman resolves suitesparse's blas dependency via blas-openblas instead
+# of first installing the default blas package (which would then conflict)
 RUN pacman -Sy --noconfirm archlinux-keyring && \
-    pacman -Syu --noconfirm rust suitesparse && \
-    if [ "${INTEL_MKL}" != "1" ]; then pacman -S --noconfirm blas-openblas; fi
+    if [ "${INTEL_MKL}" != "1" ]; then \
+        pacman -Syu --noconfirm rust blas-openblas suitesparse; \
+    else \
+        pacman -Syu --noconfirm rust suitesparse; \
+    fi
 
 # Create a non-root user for building and testing
 RUN useradd -m user

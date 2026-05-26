@@ -1,5 +1,6 @@
 //! This module implements algorithms built from base, math, and vector-matrix routines
 
+mod bspline;
 mod common;
 mod cubic;
 mod interp_chebyshev;
@@ -15,6 +16,7 @@ mod root_finder;
 mod root_finder_brent;
 mod testing;
 
+pub use bspline::*;
 pub use common::*;
 pub use cubic::*;
 pub use interp_chebyshev::*;

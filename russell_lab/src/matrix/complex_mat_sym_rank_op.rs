@@ -146,7 +146,7 @@ pub fn complex_mat_sym_rank_op(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_sym_rank_op;
-    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
+    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
 
     #[test]
     fn complex_mat_sym_rank_op_fail_on_wrong_dims() {

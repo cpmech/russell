@@ -2,7 +2,9 @@
 
 members = [
   "russell_lab",
+  "russell_nonlin",
   "russell_ode",
+  "russell_pde",
   "russell_sparse",
   "russell_stat",
   "russell_tensor",

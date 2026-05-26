@@ -1,7 +1,10 @@
-#![allow(unused)]
-
+#[cfg(feature = "with_mumps")]
 use russell_lab::*;
+
+#[cfg(feature = "with_mumps")]
 use russell_sparse::prelude::*;
+
+#[cfg(feature = "with_mumps")]
 use russell_sparse::StrError;
 
 #[cfg(feature = "with_mumps")]

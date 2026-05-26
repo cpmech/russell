@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn octahedral_basis_works() {
-        // the following data corresponds to sigma_m = 1 and sigma_d = 3
+        // the following data corresponds to p = 1 and q = 3
         #[rustfmt::skip]
         let principal_stresses_and_lode = [
             ( 3.0          ,  0.0          ,  0.0          ,  1.0 ),

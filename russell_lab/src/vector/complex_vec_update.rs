@@ -50,7 +50,7 @@ pub fn complex_vec_update(v: &mut ComplexVector, alpha: Complex64, u: &ComplexVe
 #[cfg(test)]
 mod tests {
     use super::complex_vec_update;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
+    use crate::{complex_vec_approx_eq, cpx, ComplexVector};
 
     #[test]
     fn complex_vec_update_fails_on_wrong_dims() {

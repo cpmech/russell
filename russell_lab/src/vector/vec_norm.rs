@@ -79,4 +79,27 @@ mod tests {
         assert_eq!(vec_norm(&diff, Norm::Inf), 2.0);
         assert_eq!(vec_norm(&diff, Norm::One), 3.1);
     }
+
+    #[test]
+    fn vec_norm_works_neg() {
+        let u = Vector::from(&[-3.0, -2.0, -1.0, -1.0, -1.0]);
+        assert_eq!(vec_norm(&u, Norm::Euc), 4.0);
+        assert_eq!(vec_norm(&u, Norm::Fro), 4.0);
+        assert_eq!(vec_norm(&u, Norm::Inf), 3.0);
+        assert_eq!(vec_norm(&u, Norm::Max), 3.0);
+        assert_eq!(vec_norm(&u, Norm::One), 8.0);
+    }
+
+    #[test]
+    fn vec_norm_works_large() {
+        let u = Vector::from(&[
+            -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0,
+            -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, 3.0, 2.0, 1.0, 1.0, 1.0,
+        ]);
+        approx_eq(vec_norm(&u, Norm::Euc), 17.1755640373177, 1e-13);
+        approx_eq(vec_norm(&u, Norm::Fro), 17.1755640373177, 1e-13);
+        assert_eq!(vec_norm(&u, Norm::Inf), 3.0);
+        assert_eq!(vec_norm(&u, Norm::Max), 3.0);
+        assert_eq!(vec_norm(&u, Norm::One), 101.0);
+    }
 }

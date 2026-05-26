@@ -1,5 +1,5 @@
 use crate::{AsArray2D, StrError};
-use num_traits::Num;
+use num_traits::{Num, NumCast};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -7,7 +7,7 @@ use std::ffi::OsStr;
 use std::fmt::{self, Write};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::ops::{AddAssign, MulAssign};
+use std::ops::{AddAssign, Index, IndexMut, MulAssign};
 use std::path::Path;
 
 /// Implements a matrix with numeric components for linear algebra
@@ -47,18 +47,28 @@ use std::path::Path;
 /// use russell_lab::{NumMatrix, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     // create new matrix filled with ones
-///     let mut a = NumMatrix::<f64>::filled(2, 2, 1.0);
+///     // create new matrix filled with threes
+///     let mut a = NumMatrix::<f64>::filled(2, 2, 3.0);
 ///
-///     // change off-diagonal component
-///     a.mul(0, 1, -1.0);
+///     // check
+///     assert_eq!(
+///         format!("{}", a),
+///         "┌     ┐\n\
+///          │ 3 3 │\n\
+///          │ 3 3 │\n\
+///          └     ┘"
+///     );
+///
+///     // change some components
+///     a[(0, 1)] *= -1.0;
+///     a[(1, 0)] = -7.0;
 ///
 ///     // check
 ///     assert_eq!(
 ///         format!("{}", a),
 ///         "┌       ┐\n\
-///          │  1 -1 │\n\
-///          │  1  1 │\n\
+///          │  3 -3 │\n\
+///          │ -7  3 │\n\
 ///          └       ┘"
 ///     );
 ///     Ok(())
@@ -130,7 +140,7 @@ use std::path::Path;
 ///     let mut b = a.clone();
 ///
 ///     // change clone
-///     b.set(0, 0, 5.0);
+///     b[(0, 0)] = 5.0;
 ///
 ///     // check that clone is correct
 ///     assert_eq!(
@@ -155,7 +165,7 @@ use std::path::Path;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     nrow: usize, // number of rows
     ncol: usize, // number of columns
@@ -165,7 +175,7 @@ where
 
 impl<T> NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     /// Creates new (nrow x ncol) NumMatrix filled with zeros
     ///
@@ -744,8 +754,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn get(&self, i: usize, j: usize) -> T {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow]
     }
 
@@ -772,8 +780,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn set(&mut self, i: usize, j: usize, value: T) {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow] = value;
     }
 
@@ -804,8 +810,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn add(&mut self, i: usize, j: usize, value: T) {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow] += value;
     }
 
@@ -836,8 +840,6 @@ where
     /// This function may panic if the indices are out-of-bounds.
     #[inline]
     pub fn mul(&mut self, i: usize, j: usize, value: T) {
-        assert!(i < self.nrow);
-        assert!(j < self.ncol);
         self.data[i + j * self.nrow] *= value;
     }
 
@@ -863,7 +865,6 @@ where
     ///
     /// This function may panic if the row index is out-of-bounds.
     pub fn extract_row(&self, i: usize) -> Vec<T> {
-        assert!(i < self.nrow);
         let mut res = vec![T::zero(); self.ncol];
         for j in 0..self.ncol {
             res[j] = self.data[i + j * self.nrow];
@@ -893,7 +894,6 @@ where
     ///
     /// This function may panic if the column index is out-of-bounds.
     pub fn extract_column(&self, j: usize) -> Vec<T> {
-        assert!(j < self.ncol);
         let mut res = vec![T::zero(); self.nrow];
         for i in 0..self.nrow {
             res[i] = self.data[i + j * self.nrow];
@@ -938,7 +938,7 @@ where
 
 impl<T> fmt::Display for NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize + fmt::Display,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize + fmt::Display,
 {
     /// Generates a string representation of the NumMatrix
     ///
@@ -1002,10 +1002,42 @@ where
     }
 }
 
+/// Allows to access NumMatrix components using indices (tuples)
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+impl<T> Index<(usize, usize)> for NumMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    type Output = T;
+
+    #[inline(always)] // Forces the compiler to erase the function call and tuple
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        &self.data[index.0 + index.1 * self.nrow]
+    }
+}
+
+/// Allows to change NumMatrix components using indices (tuples)
+///
+/// # Panics
+///
+/// The index function may panic if the index is out-of-bounds.
+impl<T> IndexMut<(usize, usize)> for NumMatrix<T>
+where
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
+{
+    #[inline(always)] // Forces the compiler to erase the function call and tuple
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        &mut self.data[index.0 + index.1 * self.nrow]
+    }
+}
+
 /// Allows accessing NumMatrix as an Array2D
 impl<'a, T: 'a> AsArray2D<'a, T> for NumMatrix<T>
 where
-    T: AddAssign + MulAssign + Num + Copy + DeserializeOwned + Serialize,
+    T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize,
 {
     #[inline]
     fn size(&self) -> (usize, usize) {
@@ -1324,6 +1356,10 @@ mod tests {
         assert_eq!(a.get(0, 1), 2.0);
         assert_eq!(a.get(1, 0), 3.0);
         assert_eq!(a.get(1, 1), 4.0);
+        assert_eq!(a.get(0, 0), a[(0, 0)]);
+        assert_eq!(a.get(0, 1), a[(0, 1)]);
+        assert_eq!(a.get(1, 0), a[(1, 0)]);
+        assert_eq!(a.get(1, 1), a[(1, 1)]);
     }
 
     #[test]
@@ -1344,7 +1380,12 @@ mod tests {
         a.set(0, 1, -2.0);
         a.set(1, 0, -3.0);
         a.set(1, 1, -4.0);
-        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]);
+        assert_eq!(a.data, &[-1.0, -3.0, -2.0, -4.0]); // col-major order
+        a[(0, 0)] = 1.0;
+        a[(0, 1)] = 2.0;
+        a[(1, 0)] = 3.0;
+        a[(1, 1)] = 4.0;
+        assert_eq!(a.data, &[1.0, 3.0, 2.0, 4.0]); // col-major order
     }
 
     #[test]

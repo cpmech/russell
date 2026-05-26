@@ -1510,7 +1510,7 @@ mod tests {
     use crate::{NumCooMatrix, NumCscMatrix, NumCsrMatrix};
     use num_traits::{Num, NumCast};
     use russell_lab::{approx_eq, mat_approx_eq, mat_inverse, Matrix};
-    use russell_lab::{complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx, Complex64, ComplexMatrix};
+    use russell_lab::{complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx, ComplexMatrix};
     use serde::de::DeserializeOwned;
     use serde::Serialize;
     use std::ops::{AddAssign, MulAssign};

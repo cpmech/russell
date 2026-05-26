@@ -9,7 +9,7 @@ fn main() -> Result<(), StrError> {
     for i in 0..nsamples {
         data[i] = dist.sample(&mut rng);
     }
-    println!("{}", statistics(&data));
+    println!("{}", Statistics::new(&data));
 
     // text-plot
     let stations = (0..20).map(|i| -5.0 + (i as f64)).collect::<Vec<f64>>();

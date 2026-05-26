@@ -213,6 +213,9 @@ where
         if values.len() < nnz as usize {
             return Err("values.len() must be ≥ nnz");
         }
+        if symmetric != Sym::No && nrow != ncol {
+            return Err("symmetric storage requires a square matrix");
+        }
         let n = to_i32(ncol);
         for i in 0..nrow {
             if row_pointers[i] < 0 {
@@ -811,9 +814,7 @@ where
 mod tests {
     use super::NumCsrMatrix;
     use crate::{CooMatrix, Samples, Sym};
-    use russell_lab::{
-        array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq, Complex64, ComplexVector, Matrix, Vector,
-    };
+    use russell_lab::{array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
 
     #[test]
     fn new_captures_errors() {
@@ -856,6 +857,10 @@ mod tests {
         assert_eq!(
             NumCsrMatrix::<f64>::new(1, 1, vec![0, 1], vec![2], vec![0.0], Sym::No).err(),
             Some("column indices must be < ncol")
+        );
+        assert_eq!(
+            NumCsrMatrix::<f32>::new(1, 2, vec![0, 1], vec![0, 2], vec![0.0, 0.0], Sym::YesFull).err(),
+            Some("symmetric storage requires a square matrix")
         );
         // ┌       ┐
         // │ 10 20 │

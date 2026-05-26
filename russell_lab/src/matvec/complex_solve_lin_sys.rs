@@ -129,7 +129,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
 #[cfg(test)]
 mod tests {
     use super::complex_solve_lin_sys;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexMatrix, ComplexVector};
+    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {

@@ -136,7 +136,7 @@ impl<'a> ComplexLinSolver<'a> {
 mod tests {
     use super::ComplexLinSolver;
     use crate::{Genie, Samples};
-    use russell_lab::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
+    use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
 
     #[cfg(feature = "with_mumps")]
     use serial_test::serial;

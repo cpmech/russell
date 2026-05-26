@@ -1,0 +1,84 @@
+use plotpy::{Contour, Plot};
+use russell_lab::approx_eq;
+use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
+
+const SAVE_FIGURE: bool = false;
+
+#[test]
+fn test_2d_prob01_fdm() -> Result<(), StrError> {
+    for nx_tol in &[
+        (9, 2.45e-3), //
+                      // (101, 1.59e-5), //
+    ] {
+        let (nx, tol) = *nx_tol;
+        // SPS
+        run_sps(true, false, nx, tol)?;
+        run_sps(false, false, nx, tol)?;
+        // LMM
+        run_sps(true, true, nx, tol)?;
+        run_sps(false, true, nx, tol)?;
+    }
+    Ok(())
+}
+
+fn run_sps(case_a: bool, lmm: bool, nx: usize, tol: f64) -> Result<(), StrError> {
+    // get the problem data
+    let (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, _) = ProblemSamples::d2_problem_01(case_a);
+
+    // allocate the grid
+    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, nx)?;
+
+    // allocate the solver
+    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
+
+    // solve the problem
+    let a = if lmm {
+        fdm.solve_lmm(0.0, &source)?
+    } else {
+        fdm.solve_sps(0.0, &source)?
+    };
+
+    // check
+    let mut err_max = 0.0;
+    fdm.for_each_coord(|m, x, y| {
+        let err = f64::abs(a[m] - analytical(x, y));
+        if err > err_max {
+            err_max = err;
+        }
+        approx_eq(a[m], analytical(x, y), tol);
+    });
+    println!("nx = {} max(err) = {:>10.5e}", nx, err_max);
+
+    // plot results
+    if SAVE_FIGURE {
+        let mut contour_num = Contour::new();
+        let mut contour_ana = Contour::new();
+        let mut xx = vec![vec![0.0; nx]; nx];
+        let mut yy = vec![vec![0.0; nx]; nx];
+        let mut zz_num = vec![vec![0.0; nx]; nx];
+        let mut zz_ana = vec![vec![0.0; nx]; nx];
+        fdm.for_each_coord(|m, x, y| {
+            let row = m / nx;
+            let col = m % nx;
+            xx[row][col] = x;
+            yy[row][col] = y;
+            zz_num[row][col] = a[m];
+            zz_ana[row][col] = analytical(x, y);
+        });
+        contour_num.set_no_lines(false).draw(&xx, &yy, &zz_num);
+        contour_ana
+            .set_colors(&["None"])
+            .set_no_colorbar(true)
+            .set_no_labels(true)
+            .set_line_color("yellow")
+            .set_line_style(":")
+            .set_line_width(2.0)
+            .draw(&xx, &yy, &zz_ana);
+        let mut plot = Plot::new();
+        plot.add(&contour_num).add(&contour_ana);
+        plot.set_equal_axes(true)
+            .set_figure_size_points(600.0, 600.0)
+            .save("/tmp/russell_pde/test_2d_prob01_fdm_sps.svg")?;
+    }
+    Ok(())
+}

@@ -1,7 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
-use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, Complex64, ComplexVector, Vector};
+use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
 use russell_sparse::{
     numerical_jacobian, ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver,
 };
@@ -210,7 +210,8 @@ impl<'a, A> Radau5<'a, A> {
                 let w1 = &mut self.dw0; // workspace
                 let w2 = &mut self.dw1; // workspace
                 vec_copy(y_mut, y).unwrap();
-                numerical_jacobian(jj, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
+                let ndim = self.system.ndim;
+                numerical_jacobian(jj, ndim, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
             } else {
                 (self.system.jacobian.as_ref().unwrap())(jj, 1.0, x, y, args)?;
             }
@@ -226,8 +227,8 @@ impl<'a, A> Radau5<'a, A> {
         kk_comp.assign_real(-1.0, 0.0, jj).unwrap(); // K_comp = -J
         match self.mass.as_ref() {
             Some(mass) => {
-                kk_real.augment(gamma, mass).unwrap(); // K_real += γ M
-                kk_comp.augment_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
+                kk_real.add(gamma, mass).unwrap(); // K_real += γ M
+                kk_comp.add_real(alpha, beta, mass).unwrap(); // K_comp += (α + βi) M
             }
             None => {
                 for m in 0..self.system.ndim {
@@ -243,12 +244,12 @@ impl<'a, A> Radau5<'a, A> {
                 let csc_jacobian = CscMatrix::from_coo(jj).unwrap();
                 let csc_kk_real = CscMatrix::from_coo(&kk_real).unwrap();
                 let csc_kk_comp = ComplexCscMatrix::from_coo(&kk_comp).unwrap();
-                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.smat", true)?;
-                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.mtx", false)?;
-                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.smat", true)?;
-                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.mtx", false)?;
-                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.smat", true)?;
-                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.mtx", false)?;
+                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.smat", true, 1e-14)?;
+                csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.mtx", false, 1e-14)?;
+                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.smat", true, 1e-14)?;
+                csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.mtx", false, 1e-14)?;
+                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.smat", true, 1e-14)?;
+                csc_kk_comp.write_matrix_market("/tmp/russell_ode/kk_comp.mtx", false, 1e-14)?;
                 return Err("MATRIX FILES GENERATED in /tmp/russell_ode/");
             }
         }

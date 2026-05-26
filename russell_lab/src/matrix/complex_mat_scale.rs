@@ -53,7 +53,7 @@ pub fn complex_mat_scale(a: &mut ComplexMatrix, alpha: Complex64) {
 #[cfg(test)]
 mod tests {
     use super::{complex_mat_scale, ComplexMatrix};
-    use crate::{complex_mat_approx_eq, cpx, Complex64};
+    use crate::{complex_mat_approx_eq, cpx};
 
     #[test]
     fn complex_mat_scale_works() {

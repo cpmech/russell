@@ -33,6 +33,8 @@ pub const TOL_RANGE: f64 = 1.0e-5;
 /// and   -1 ≤ Zⱼ ≤ 1
 /// ```
 ///
+/// and Zⱼ are the Chebyshev-Gauss-Lobatto coordinates, i.e., Zⱼ = -cos(j π / N), j = 0, ..., N.
+///
 /// # Notes
 ///
 /// 1. This structure is meant for interpolating data and finding (all) the roots of an equation.
@@ -183,6 +185,18 @@ impl InterpChebyshev {
     /// * `uu` -- U vector with dim = npoint (≥ 1); thus the polynomial degree will be
     ///   `nn = npoint - 1` and must be ≤ nn_max
     ///
+    /// **Note:** The data must correspond (be given/evaluated) at the
+    /// Chebyshev-Gauss-Lobatto points in the range [xa, xb]. The data (U)
+    /// is associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///        xb + xa + (xb - xa) z
+    /// x(z) = —————————————————————
+    ///                 2
+    /// ```
+    ///
+    /// where z are the Chebyshev-Gauss-Lobatto coordinates, i.e., zⱼ = -cos(j π / N), j = 0, ..., N.
+    ///
     /// # Examples
     ///
     /// ```
@@ -230,6 +244,102 @@ impl InterpChebyshev {
         }
         self.ready = true;
         Ok(())
+    }
+
+    /// Sets the general (X_gen, Y_gen) data not necessarily corresponding to the Chebyshev grid points
+    ///
+    /// The X vector corresponding to the Chebyshev points will be linearly interpolated from the given (X_gen, Y_gen) data.
+    ///
+    /// After interpolation, the data (U) will be associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///      xb + xa + (xb - xa) Zⱼ
+    /// Xⱼ = ——————————————————————
+    ///                2
+    ///
+    /// Uⱼ = f(Xⱼ(Zⱼ))
+    /// ```
+    ///
+    /// where Zⱼ are the Chebyshev-Gauss-Lobatto coordinates, i.e., Zⱼ = -cos(j π / N), j = 0, ..., N.
+    pub fn set_gen_data(&mut self, xx_gen: &[f64], yy_gen: &[f64]) -> Result<(), StrError> {
+        let np = xx_gen.len();
+        if np < 1 {
+            return Err("the number of points (xx_gen.len()) must be ≥ 1");
+        }
+        if yy_gen.len() != np {
+            return Err("the number of points in xx_gen and yy_gen must be the same");
+        }
+        let nn = np - 1;
+        if nn > self.nn_max {
+            return Err("nn (=xx_gen.len()-1) must be ≤ nn_max");
+        }
+        if xx_gen[0] != self.xa {
+            return Err("the first point in xx_gen must be equal to xa");
+        }
+        if xx_gen[np - 1] != self.xb {
+            return Err("the last point in xx_gen must be equal to xb");
+        }
+        self.nn = nn;
+        if self.nn == 0 {
+            self.constant_fx = yy_gen[0];
+        } else {
+            let zz = InterpChebyshev::points(self.nn);
+            for i_cheby in 0..zz.dim() {
+                let z = zz[i_cheby];
+                let x = (self.xb + self.xa + self.dx * z) / 2.0;
+                // perform linear interpolation
+                let mut found = false;
+                for i_gen in 0..np {
+                    let x_gen = xx_gen[i_gen];
+                    if x <= x_gen {
+                        let u = if i_gen == 0 {
+                            yy_gen[0]
+                        } else {
+                            let x_prev = xx_gen[i_gen - 1];
+                            let y_prev = yy_gen[i_gen - 1];
+                            let y_gen = yy_gen[i_gen];
+                            y_prev + (y_gen - y_prev) * (x - x_prev) / (x_gen - x_prev)
+                        };
+                        self.uu_rev[self.nn - i_cheby] = u;
+                        found = true;
+                        break;
+                    }
+                }
+                assert!(found); // will always be found because the last point in xx_gen must be equal to xb
+            }
+            chebyshev_coefficients(&mut self.a, &self.uu_rev, self.nn);
+        }
+        self.ready = true;
+        Ok(())
+    }
+
+    /// Returns the (X, Y) data vectors associated with the Chebyshev-Gauss-Lobatto points
+    ///
+    /// The data (Y=U) is associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///      xb + xa + (xb - xa) Zⱼ
+    /// Xⱼ = ——————————————————————
+    ///                2
+    ///
+    /// Yⱼ = Uⱼ = f(Xⱼ(Zⱼ))
+    /// ```
+    ///
+    /// where Zⱼ are the Chebyshev-Gauss-Lobatto coordinates, i.e., Zⱼ = -cos(j π / N), j = 0, ..., N.
+    pub fn get_xy_data(&self) -> Result<(Vector, Vector), StrError> {
+        if !self.ready {
+            return Err("the data or function must be set first");
+        }
+        let np = self.nn + 1;
+        let mut xx = Vector::new(np);
+        let mut uu = Vector::new(np);
+        let zz = InterpChebyshev::points(self.nn);
+        for i in 0..np {
+            let z = zz[i];
+            xx[i] = (self.xb + self.xa + self.dx * z) / 2.0;
+            uu[i] = self.uu_rev[self.nn - i];
+        }
+        Ok((xx, uu))
     }
 
     /// Performs adaptive interpolation for given function
@@ -298,7 +408,19 @@ impl InterpChebyshev {
     /// # Input
     ///
     /// * `tol` -- tolerance to truncate the Chebyshev series (e.g., 1e-8)
-    /// * `uu` -- U vector with the data values
+    /// * `uu` -- U vector with the data values.
+    ///
+    /// **Note:** The data must correspond (be given/evaluated) at the
+    /// Chebyshev-Gauss-Lobatto points in the range [xa, xb]. The data (U)
+    /// is associated with a vector of coordinates (X) such that:
+    ///
+    /// ```text
+    ///        xb + xa + (xb - xa) z
+    /// x(z) = —————————————————————
+    ///                 2
+    /// ```
+    ///
+    /// where z are the Chebyshev-Gauss-Lobatto coordinates, i.e., zⱼ = -cos(j π / N), j = 0, ..., N.
     ///
     /// # Method
     ///
@@ -499,7 +621,7 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu_rev: &[f64], nn: usize) {
 mod tests {
     use super::{chebyshev_coefficients, InterpChebyshev};
     use crate::math::PI;
-    use crate::{approx_eq, array_approx_eq, NoArgs, Vector};
+    use crate::{approx_eq, array_approx_eq, vec_approx_eq, NoArgs, Vector};
 
     #[allow(unused)]
     use plotpy::{Curve, Legend, Plot};
@@ -1194,5 +1316,135 @@ mod tests {
             .save("/tmp/russell_lab/test_interp_chebyshev_case_with_discontinuity_2.svg")
             .unwrap();
         */
+    }
+
+    #[test]
+    fn set_gen_data_works() {
+        let np = 7;
+        let xa = 2.0;
+        let xb = 7.0;
+        let xx_gen = Vector::linspace(xa, xb, np).unwrap();
+        let yy_gen = xx_gen.get_mapped(|x| f64::cos((x - xa) / (xb - xa) * PI));
+        let mut interp = InterpChebyshev::new(10, xa, xb).unwrap();
+        interp.set_gen_data(xx_gen.as_data(), yy_gen.as_data()).unwrap();
+
+        let (xx_cheby, yy_cheby) = interp.get_xy_data().unwrap();
+
+        let xx_corect = [2.0, 2.3349364905389036, 3.25, 4.5, 5.75, 6.665063509461096, 7.0];
+        vec_approx_eq(&xx_cheby, &xx_corect, 1e-15);
+
+        let yy_correct = [
+            1.0,
+            0.9461524227066318,
+            0.6830127018922194,
+            0.0,
+            -0.6830127018922193,
+            -0.9461524227066318,
+            -1.0,
+        ];
+        vec_approx_eq(&yy_cheby, &yy_correct, 1e-15);
+
+        /*
+        let mut curve = Curve::new();
+        let mut curve_cheby = Curve::new();
+        curve.set_marker_style(".").draw(xx_gen.as_data(), yy_gen.as_data());
+        curve_cheby
+            .set_line_style(":")
+            .set_marker_style("*")
+            .draw(xx_cheby.as_data(), yy_cheby.as_data());
+        let xx = Vector::linspace(xa, xb, 201).unwrap();
+        let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
+        let mut curve_int = Curve::new();
+        curve_int
+            .set_label(&format!("interpolated,N={}", interp.get_degree()))
+            .set_line_style("--");
+        curve_int.draw(xx.as_data(), yy_int.as_data());
+        let mut plot = Plot::new();
+        plot.add(&curve)
+            .add(&curve_cheby)
+            .add(&curve_int)
+            .grid_and_labels("x", "y")
+            .save("/tmp/russell_lab/test_interp_chebyshev_set_gen_data_works.svg")
+            .unwrap();
+        */
+    }
+
+    #[test]
+    fn set_gen_data_captures_errors() {
+        let (xa, xb) = (0.0, 1.0);
+        let mut interp = InterpChebyshev::new(2, xa, xb).unwrap();
+        assert_eq!(
+            interp.set_gen_data(&[], &[]).err(),
+            Some("the number of points (xx_gen.len()) must be ≥ 1")
+        );
+        assert_eq!(
+            interp.set_gen_data(&[0.0, 0.5, 1.0], &[1.0, 2.0]).err(),
+            Some("the number of points in xx_gen and yy_gen must be the same")
+        );
+        let xx = Vector::linspace(xa, xb, 7).unwrap();
+        let yy = Vector::new(7);
+        assert_eq!(
+            interp.set_gen_data(xx.as_data(), yy.as_data()).err(),
+            Some("nn (=xx_gen.len()-1) must be ≤ nn_max")
+        );
+        assert_eq!(
+            interp.set_gen_data(&[0.1, 0.5, 1.0], &[1.0, 2.0, 3.0]).err(),
+            Some("the first point in xx_gen must be equal to xa")
+        );
+        assert_eq!(
+            interp.set_gen_data(&[0.0, 0.5, 0.9], &[1.0, 2.0, 3.0]).err(),
+            Some("the last point in xx_gen must be equal to xb")
+        );
+    }
+
+    #[test]
+    fn get_xy_data_captures_errors() {
+        let (xa, xb) = (0.0, 1.0);
+        let interp = InterpChebyshev::new(2, xa, xb).unwrap();
+        assert_eq!(
+            interp.get_xy_data().err(),
+            Some("the data or function must be set first")
+        );
+    }
+
+    #[test]
+    fn set_gen_data_works_linear() {
+        // linear function: exact recovery when data endpoints match xa and xb
+        let (xa, xb) = (0.0, 4.0);
+        let xx_gen = [xa, xb];
+        let yy_gen = [1.0, 5.0]; // y = 1 + x
+        let mut interp = InterpChebyshev::new(5, xa, xb).unwrap();
+        interp.set_gen_data(&xx_gen, &yy_gen).unwrap();
+        assert_eq!(interp.get_degree(), 1);
+        // Chebyshev grid with nn=1 has points at xa and xb, so values are exact
+        let (xx_cheby, yy_cheby) = interp.get_xy_data().unwrap();
+        vec_approx_eq(&xx_cheby, &[xa, xb], 1e-15);
+        vec_approx_eq(&yy_cheby, &[1.0, 5.0], 1e-15);
+        // eval should be exact for a linear function
+        let args = &mut 0;
+        let f = |x: f64, _: &mut NoArgs| Ok(1.0 + x);
+        let err = interp.estimate_max_error(10, args, f).unwrap();
+        assert!(err < 1e-14);
+    }
+
+    #[test]
+    fn set_gen_data_works_and_evaluates() {
+        // uniform grid with cos function; bounded error from linear interpolation to Chebyshev grid
+        let (xa, xb) = (0.0, PI);
+        let np_gen = 20;
+        let xx = Vector::linspace(xa, xb, np_gen).unwrap();
+        let yy = xx.get_mapped(|x| f64::cos(x));
+        let mut interp = InterpChebyshev::new(np_gen + 5, xa, xb).unwrap();
+        interp.set_gen_data(xx.as_data(), yy.as_data()).unwrap();
+        assert_eq!(interp.get_degree(), np_gen - 1);
+        // endpoints coincide with xa and xb, so they must be exact
+        approx_eq(interp.eval(xa).unwrap(), 1.0, 1e-14);
+        approx_eq(interp.eval(xb).unwrap(), -1.0, 1e-14);
+        // max error is bounded by the linear interpolation error O(h^2)
+        let args = &mut 0;
+        let f = |x: f64, _: &mut NoArgs| Ok(f64::cos(x));
+        let err = interp.estimate_max_error(10, args, f).unwrap();
+        println!("set_gen_data cosine err = {}", err);
+        assert!(err < 0.002085);
     }
 }

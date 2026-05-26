@@ -44,7 +44,7 @@ pub fn complex_vec_scale(v: &mut ComplexVector, alpha: Complex64) {
 #[cfg(test)]
 mod tests {
     use super::complex_vec_scale;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
+    use crate::{complex_vec_approx_eq, cpx, ComplexVector};
 
     #[test]
     fn complex_vec_scale_works() {

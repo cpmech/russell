@@ -1,0 +1,1164 @@
+use crate::{EquationHandler, EssentialBcs1d, Grid1d, NaturalBcs1d, StrError};
+use russell_lab::Vector;
+use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
+
+// constants for clarity/convenience
+const CUR: usize = 0; // current node
+const LEF: usize = 1; // left node
+const RIG: usize = 2; // right node
+const INI_X: usize = 0;
+
+/// Implements the Finite Difference Method (FDM) for 1D problems
+///
+/// This solver handles elliptic partial differential equations in one dimension,
+/// specifically the Poisson and Helmholtz equations with mixed boundary conditions.
+///
+/// # Problem Formulation
+///
+/// The FDM solves the following equation:
+///
+/// ```text
+///     ∂²ϕ
+/// -kx ——— + α ϕ = source(x)
+///     ∂x²
+/// ```
+///
+/// where:
+/// * `kx` is the diffusion coefficient
+/// * `α` is the Helmholtz coefficient (α = 0 for Poisson equation)
+/// * `source(x)` is the source term
+/// * `ϕ(x)` is the unknown solution
+///
+/// # Boundary Conditions
+///
+/// The solver supports:
+/// * **Essential (Dirichlet)**: Prescribed values at boundaries
+/// * **Natural (Neumann)**: Prescribed flux at boundaries
+/// * **Periodic**: Solution wraps around domain boundaries
+///
+/// # Discretization
+///
+/// The method uses central differences on a uniform grid, resulting in a discrete system:
+///
+/// ```text
+/// K a = f
+/// ```
+///
+/// where `K` is the coefficient matrix, `a` is the solution vector, and `f` is the right-hand side.
+///
+/// ## FDM Stencil
+///
+/// The method uses the "molecule" {α, β, β} for interior nodes:
+///
+/// ```text
+/// α ϕᵢ + β ϕᵢ₋₁ + β ϕᵢ₊₁ = sᵢ
+/// ```
+///
+/// where `α = 2kx/Δx²` and `β = -kx/Δx²`.
+///
+/// # Natural boundary conditions (NBC)
+///
+/// In 1D, the flux vector reduces to `w = [wx, 0]ᵀ`, where
+///
+/// ```text
+/// wx = -kx ∂ϕ/∂x
+/// ```
+///
+/// The normal vectors at the boundaries are illustrated below:
+///
+/// ```text
+/// @ Xmin:                                     @ Xmax:
+///      ┌    ┐   ┌    ┐                             ┌    ┐   ┌    ┐
+///      │ wx │   │ -1 │    ┌──────────────┐         │ wx │   │  1 │
+/// wₙ = │    │ · │    │  ← │              │ →  wₙ = │    │ · │    │
+///      │  0 │   │  0 │    └──────────────┘         │  0 │   │  0 │
+///      └    ┘   └    ┘                             └    ┘   └    ┘
+///    = kx ∂ϕ/∂x                                  = -kx ∂ϕ/∂x
+/// ```
+///
+/// The natural boundary conditions (NBC) are set by modifying the right-hand side vector.
+///
+/// ## Left side (Xmin)
+///
+/// The FDM stencil at the left side (Xmin) is:
+///
+/// ```text
+/// α ϕ_{0} + β ϕ_{-1} + β ϕ_{1} = s_{0}
+/// ```
+///
+/// where `α = 2kx/Δx²` and `β = -kx/Δx²`.
+///
+/// The central difference formula for the gradient @ Xmin is:
+///
+/// ```text
+/// ∂ϕ │    ϕ_{1} - ϕ_{-1}
+/// —— │  ≈ —————————————— := g
+/// ∂x │0        2 Δx
+/// ```
+///
+/// Thus, `ϕ_{-1} = ϕ_{1} - 2 g Δx`.
+///
+/// By substituting `ϕ_{-1}` in the FDM stencil, we get:
+///
+/// ```text
+/// α ϕ_{0} + β (ϕ_{1} - 2 g Δx) + β ϕ_{1} = s_{0}
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} + 2 β g Δx
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} - 2 (kx/Δx²) g Δx
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} - 2 (kx g) / Δx
+/// α ϕ_{0} + 2 β ϕ_{1} = s_{0} - 2 wₙ / Δx
+///                            └───────────┘
+///                              extra term
+/// ```
+///
+/// Where `wₙ := kx g = q̄` at the left side (Xmin).
+///
+/// Let us divide the above expression by two so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ½ α ϕ_{0} + β ϕ_{1} = ½ s_{0} - wₙ / Δx
+/// ```
+///
+/// ## Right side (Xmax)
+///
+/// The FDM stencil at the right side (Xmax) is:
+///
+/// ```text
+/// α ϕ_{nx-1} + β ϕ_{nx-2} + β ϕ_{nx} = s_{nx-1}
+/// ```
+///
+/// Analogously, at the right side (Xmax) the gradient is:
+///
+/// ```text
+/// ∂ϕ │         ϕ_{nx} - ϕ_{nx-2}
+/// —— │       ≈ ————————————————— := g
+/// ∂x │{nx-1}         2 Δx
+/// ```
+///
+/// Thus, `ϕ_{nx} = ϕ_{nx-2} + 2 g Δx`.
+///
+/// By substituting `ϕ_{nx}` in the FDM stencil, we get:
+///
+/// ```text
+/// α ϕ_{nx-1} + β ϕ_{nx-2} + β (ϕ_{nx-2} + 2 g Δx) = s_{nx-1}
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 β g Δx
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 (-kx/Δx²) g Δx
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 (-kx g) / Δx
+/// α ϕ_{nx-1} + 2 β ϕ_{nx-2} = s_{nx-1} - 2 wₙ / Δx
+///                                     └───────────┘
+///                                       extra term
+/// ```
+///
+/// where `wₙ := -kx g = q̄` at the right side (Xmax).
+///
+/// Let us divide the above expression by two so that the symmetry of the coefficient matrix is preserved:
+///
+/// ```text
+/// ½ α ϕ_{nx-1} + β ϕ_{nx-2} = ½ s_{nx-1} - wₙ / Δx
+/// ```
+///
+/// # Examples
+///
+/// Solves the Poisson equation in 1D:
+///
+/// ```text
+/// -d²ϕ/dx² = 1   on  x ∈ [0, 1]
+///
+/// ϕ(0) = 0
+/// ϕ(1) = 0
+/// ```
+///
+/// The analytical solution is `ϕ(x) = (x - x²) / 2`.
+/// ```
+/// use russell_lab::approx_eq;
+/// use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, Side, StrError};
+///
+/// fn main() -> Result<(), StrError> {
+///     // grid
+///     let xmin = 0.0;
+///     let xmax = 1.0;
+///     let nx = 4;
+///     let mut grid = Grid1d::new_uniform(xmin, xmax, nx)?;
+///
+///     // Essential BCs
+///     let mut ebcs = EssentialBcs1d::new();
+///     ebcs.set(Side::Xmin, |_| 0.0);
+///     ebcs.set(Side::Xmax, |_| 0.0);
+///
+///     // Natural BCs (none)
+///     let nbcs = NaturalBcs1d::new();
+///
+///     // FDM solver
+///     let kx = 1.0;
+///     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
+///
+///     // Solve system
+///     let alpha = 0.0; // Poisson
+///     let source = |_| 1.0;
+///     let phi = fdm.solve_sps(alpha, source)?;
+///
+///     // Check
+///     fdm.for_each_coord(|m, x| {
+///         let analytical = x * (1.0 - x) / 2.0;
+///         approx_eq(phi[m], analytical, 1e-14);
+///     });
+///     Ok(())
+/// }
+/// ```
+pub struct Fdm1d<'a> {
+    /// The 1D computational grid
+    ///
+    /// Must be a uniform grid with equally-spaced points.
+    grid: Grid1d,
+
+    /// Essential (Dirichlet) boundary conditions handler
+    ///
+    /// Manages prescribed solution values at domain boundaries.
+    ebcs: EssentialBcs1d<'a>,
+
+    /// Natural (Neumann) boundary conditions handler
+    ///
+    /// Manages prescribed flux values at domain boundaries.
+    nbcs: NaturalBcs1d<'a>,
+
+    /// Equation numbering handler
+    ///
+    /// Manages the mapping between grid nodes and equation indices,
+    /// distinguishing between unknown and prescribed degrees of freedom.
+    equations: EquationHandler,
+
+    /// FDM stencil coefficients: [α, β, β]
+    ///
+    /// Corresponds to the current node, left neighbor, and right neighbor:
+    /// * `molecule[CUR]` = α = 2kx/Δx²
+    /// * `molecule[LEF]` = β = -kx/Δx²
+    /// * `molecule[RIG]` = β = -kx/Δx²
+    molecule: Vec<f64>,
+
+    /// Grid spacing (Δx)
+    ///
+    /// Distance between consecutive grid points (uniform grid).
+    dx: f64,
+
+    /// Sparse linear solver type
+    ///
+    /// Determines which solver backend to use (e.g., UMFPACK, MUMPS).
+    /// Default: `Genie::Umfpack`
+    genie: Genie,
+
+    /// Use symmetric matrix storage
+    ///
+    /// Default: `true`
+    symmetric: bool,
+}
+
+impl<'a> Fdm1d<'a> {
+    /// Creates a new FDM solver instance
+    ///
+    /// # Input
+    ///
+    /// * `grid` - The 1D computational grid (must be uniform)
+    /// * `ebcs` - Essential (Dirichlet) boundary conditions handler
+    /// * `nbcs` - Natural (Neumann) boundary conditions handler
+    /// * `kx` - Diffusion coefficient along x
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Fdm1d)` - Successfully initialized solver
+    /// * `Err` - If the grid is not uniform
+    ///
+    /// # Notes
+    ///
+    /// * The grid must have uniform spacing
+    /// * Boundary conditions are validated when solving, not during construction
+    /// * Default solver: UMFPACK with symmetric matrices
+    /// * Call [EssentialBcs1d::validate()] before solving to check boundary condition consistency
+    pub fn new(grid: Grid1d, ebcs: EssentialBcs1d<'a>, nbcs: NaturalBcs1d<'a>, kx: f64) -> Result<Self, StrError> {
+        // check grid
+        let dx = match grid.get_dx() {
+            Some(dx) => dx,
+            None => return Err("grid must have uniform spacing"),
+        };
+
+        // allocate equations handler
+        let neq = grid.nx();
+        let mut equations = EquationHandler::new(neq);
+
+        // set prescribed equations
+        equations.recompute(&ebcs.get_nodes(&grid));
+
+        // auxiliary variables
+        let dx2 = dx * dx;
+        let alpha = 2.0 * kx / dx2;
+        let beta = -kx / dx2;
+
+        // done
+        Ok(Fdm1d {
+            grid,
+            ebcs,
+            nbcs,
+            equations,
+            molecule: vec![alpha, beta, beta],
+            dx,
+            genie: Genie::Umfpack,
+            symmetric: true,
+        })
+    }
+
+    /// Configures the sparse linear solver options
+    ///
+    /// # Input
+    ///
+    /// * `genie` - Sparse solver type (e.g., `Genie::Umfpack`, `Genie::Mumps`)
+    /// * `symmetric` - Whether to exploit matrix symmetry
+    ///   * `true`: Store only lower/upper triangle (saves memory)
+    ///   * `false`: Store full matrix
+    pub fn set_solver_options(&mut self, genie: Genie, symmetric: bool) {
+        self.genie = genie;
+        self.symmetric = symmetric;
+    }
+
+    /// Solves the Poisson or Helmholtz equation using System Partitioning Strategy (SPS)
+    ///
+    /// This method partitions the system into unknown and prescribed degrees of freedom,
+    /// solving only for the unknowns while enforcing essential boundary conditions.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `a` at all grid points
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = source(x)
+    ///     ∂x²
+    /// ```
+    ///
+    /// For convection problems with far-field value ϕ∞:
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + (ϕ - ϕ∞) α = f(x)
+    ///     ∂x²
+    ///
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = f(x) + α ϕ∞
+    ///     ∂x²        └───────────┘
+    ///                  source(x)
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    pub fn solve_sps<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64) -> f64,
+    {
+        // validates the boundary conditions data
+        self.ebcs.validate(&self.nbcs)?;
+
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let sym_kk_bar = self.genie.get_sym(self.symmetric);
+        let (kk_bar, kk_check) = self.get_matrices_sps(alpha, 0, sym_kk_bar);
+        let (mut a_bar, a_check, mut f_bar) = self.get_vectors_sps(source);
+        let kk_check = kk_check.unwrap();
+
+        // update the right-hand side with the prescribed values
+        kk_check.mat_vec_mul_update(&mut f_bar, -1.0, &a_check)?; // f̄ -= Ǩ ǎ
+
+        // solve the linear system
+        let mut solver = LinSolver::new(self.genie)?;
+        solver.actual.factorize(&kk_bar, None)?;
+        solver.actual.solve(&mut a_bar, &f_bar, false)?;
+
+        // results
+        Ok(self.get_joined_vector_sps(&a_bar, &a_check))
+    }
+
+    /// Solves the Poisson or Helmholtz equation using Lagrange Multipliers Method (LMM)
+    ///
+    /// This method enforces essential boundary conditions through Lagrange multipliers,
+    /// resulting in a larger but simpler system structure.
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α)
+    ///   * Set to 0.0 for Poisson equation
+    /// * `source` - Source term function `f(x) -> value`
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vector)` - Solution vector `a` at all grid points
+    /// * `Err` - If boundary conditions are inconsistent or solver fails
+    ///
+    /// # Equation
+    ///
+    /// Solves:
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = source(x)
+    ///     ∂x²
+    /// ```
+    ///
+    /// For convection problems with far-field value ϕ∞:
+    ///
+    /// ```text
+    ///     ∂²ϕ
+    /// -kx ——— + (ϕ - ϕ∞) α = f(x)
+    ///     ∂x²
+    ///
+    ///     ∂²ϕ
+    /// -kx ——— + α ϕ = f(x) + α ϕ∞
+    ///     ∂x²        └───────────┘
+    ///                  source(x)
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// * Automatically validates boundary conditions before solving
+    /// * Returns solution at all grid points (both unknown and prescribed)
+    pub fn solve_lmm<F>(&self, alpha: f64, source: F) -> Result<Vector, StrError>
+    where
+        F: Fn(f64) -> f64,
+    {
+        // validates the boundary conditions data
+        self.ebcs.validate(&self.nbcs)?;
+
+        // assemble the coefficient matrix and the lhs and rhs vectors
+        let sym_mm = self.genie.get_sym(self.symmetric);
+        let neq = self.equations.neq();
+        let extra_nnz = neq; // diagonal entries due to ϕ β
+        let (mm, _) = self.get_matrices_lmm(alpha, extra_nnz, false, sym_mm);
+        let (mut aa, ff) = self.get_vectors_lmm(source);
+
+        // solve the linear system
+        let mut solver = LinSolver::new(self.genie)?;
+        solver.actual.factorize(&mm, None)?;
+        solver.actual.solve(&mut aa, &ff, false)?;
+
+        // results
+        let neq = self.equations.neq();
+        Ok(Vector::from(&&aa.as_data()[..neq]))
+    }
+
+    /// Returns the system dimensions for the System Partitioning Strategy (SPS)
+    ///
+    /// # Returns
+    ///
+    /// A tuple `(nu, np)` where:
+    /// * `nu` - Number of unknown degrees of freedom (to be solved for)
+    /// * `np` - Number of prescribed degrees of freedom (essential BCs)
+    ///
+    /// # Notes
+    ///
+    /// The total number of equations is `nu + np`, which equals the number of grid points.
+    pub fn get_dims_sps(&self) -> (usize, usize) {
+        let nu = self.equations.nu();
+        let np = self.equations.np();
+        (nu, np)
+    }
+
+    /// Returns the system dimensions for the Lagrange Multipliers Method (LMM)
+    ///
+    /// # Returns
+    ///
+    /// A tuple `(neq, nlag, ndim)` where:
+    /// * `neq` - Number of equations (= unknown DOFs + prescribed DOFs = grid points)
+    /// * `nlag` - Number of Lagrange multipliers (= prescribed DOFs = essential BCs)
+    /// * `ndim` - Total system dimension (= neq + nlag)
+    ///
+    /// # Notes
+    ///
+    /// The augmented system has dimension `ndim = neq + nlag`, which is larger than
+    /// the original problem size due to the Lagrange multipliers.
+    pub fn get_dims_lmm(&self) -> (usize, usize, usize) {
+        let neq = self.equations.neq();
+        let nlag = self.equations.np();
+        let ndim = neq + nlag;
+        (neq, nlag, ndim)
+    }
+
+    /// Returns a reference to the computational grid
+    ///
+    /// # Returns
+    ///
+    /// Reference to the 1D grid used by the solver.
+    pub fn get_grid(&self) -> &Grid1d {
+        &self.grid
+    }
+
+    /// Returns a reference to the equation numbering handler
+    ///
+    /// # Returns
+    ///
+    /// Reference to the [`EquationHandler`] that manages the mapping between
+    /// grid nodes and equation indices.
+    pub fn get_equations(&self) -> &EquationHandler {
+        &self.equations
+    }
+
+    /// Assembles the coefficient matrices for the System Partitioning Strategy (SPS)
+    ///
+    /// Returns `(kk_bar, kk_check)` corresponding to the partitioned system:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
+    /// │       │ │   │ = │   │
+    /// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     K       a       f
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in K̄ matrix
+    /// * `sym_kk_bar` - Symmetry type for the K̄ matrix (e.g., `Sym::YesLower`)
+    ///
+    /// # Returns
+    ///
+    /// * `kk_bar` - K̄ matrix (unknown-unknown block)
+    /// * `kk_check` - Ǩ matrix (unknown-prescribed block), or `None` if no essential BCs
+    ///
+    /// # Notes
+    ///
+    /// * The Ǩ matrix is only created when there are essential boundary conditions (np > 0)
+    pub fn get_matrices_sps(&self, alpha: f64, extra_nnz: usize, sym_kk_bar: Sym) -> (CooMatrix, Option<CooMatrix>) {
+        let nu = self.equations.nu();
+        let np = self.equations.np();
+        let band = if sym_kk_bar.triangular() { 2 } else { 3 };
+        let nnz_kk_bar = band * nu + extra_nnz;
+        let mut kk_bar = CooMatrix::new(nu, nu, nnz_kk_bar, sym_kk_bar).unwrap();
+        let mut kk_check = if np == 0 {
+            // russell_sparse requires at least a 1x1 matrix with 1 non-zero entry
+            CooMatrix::new(1, 1, 1, Sym::No).unwrap()
+        } else {
+            let nnz_kk_check = 2 * np; // 2 is the max number of neighbors (worst case)
+            CooMatrix::new(nu, np, nnz_kk_check, Sym::No).unwrap()
+        };
+        self.equations.unknown().iter().for_each(|&m| {
+            let iu = self.equations.iu(m);
+            self.loop_over_bandwidth(m, |b, n| {
+                let mut val = self.molecule[b];
+                if m == n {
+                    val += alpha; // Helmholtz term
+                }
+                if !self.ebcs.periodic_along_x && (m == 0 || m == self.grid.nx() - 1) {
+                    val /= 2.0;
+                }
+                if self.equations.is_prescribed(n) {
+                    let jp = self.equations.ip(n);
+                    kk_check.put(iu, jp, val).unwrap();
+                } else {
+                    let skip = (sym_kk_bar == Sym::YesLower && m < n) || (sym_kk_bar == Sym::YesUpper && m > n);
+                    if !skip {
+                        let ju = self.equations.iu(n);
+                        kk_bar.put(iu, ju, val).unwrap();
+                    }
+                }
+            });
+        });
+        if np == 0 {
+            (kk_bar, None)
+        } else {
+            (kk_bar, Some(kk_check))
+        }
+    }
+
+    /// Assembles the augmented matrix for the Lagrange Multipliers Method (LMM)
+    ///
+    /// Returns `(mm, cc)` corresponding to the augmented system:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
+    /// # Input
+    ///
+    /// * `alpha` - Helmholtz coefficient (α); set to 0.0 for Poisson equation
+    /// * `extra_nnz` - Additional non-zero entries to allocate in the matrix
+    /// * `get_constraints_mat` - Whether to return the constraints matrix C separately
+    /// * `sym_mm` - Symmetry type for the M matrix
+    ///
+    /// # Returns
+    ///
+    /// * `mm` - Augmented M matrix containing K, C, and Cᵀ blocks
+    /// * `cc` - Constraints matrix C, or `None` if not requested
+    ///
+    /// # Notes
+    ///
+    /// * The augmented system size is (neq + nlag) × (neq + nlag)
+    pub fn get_matrices_lmm(
+        &self,
+        alpha: f64,
+        extra_nnz: usize,
+        get_constraints_mat: bool,
+        sym_mm: Sym,
+    ) -> (CooMatrix, Option<CooMatrix>) {
+        // build the augmented matrix
+        let (neq, nlag, ndim) = self.get_dims_lmm();
+        let band = if sym_mm.triangular() { 2 } else { 3 };
+        let nnz = band * neq + 2 * nlag + extra_nnz; // 2*nlag is for C and Cᵀ
+        let mut mm = CooMatrix::new(ndim, ndim, nnz, sym_mm).unwrap();
+        for m in 0..neq {
+            self.loop_over_bandwidth(m, |b, n| {
+                if (sym_mm == Sym::YesLower && m < n) || (sym_mm == Sym::YesUpper && m > n) {
+                    return;
+                }
+                let mut val = self.molecule[b];
+                if m == n {
+                    val += alpha;
+                }
+                if !self.ebcs.periodic_along_x && (m == 0 || m == self.grid.nx() - 1) {
+                    val /= 2.0;
+                }
+                mm.put(m, n, val).unwrap();
+            });
+        }
+
+        // assemble C and Cᵀ into M
+        self.equations.prescribed().iter().for_each(|&m| {
+            let ip = self.equations.ip(m);
+            match sym_mm {
+                Sym::YesLower => {
+                    mm.put(neq + ip, m, 1.0).unwrap(); // C
+                }
+                Sym::YesUpper => {
+                    mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+                }
+                Sym::YesFull | Sym::No => {
+                    mm.put(neq + ip, m, 1.0).unwrap(); // C
+                    mm.put(m, neq + ip, 1.0).unwrap(); // Cᵀ
+                }
+            }
+        });
+
+        // build and return the C matrix, if requested and available
+        if get_constraints_mat && nlag > 0 {
+            let mut cc = CooMatrix::new(nlag, neq, nlag, Sym::No).unwrap();
+            self.equations.prescribed().iter().for_each(|&m| {
+                let ip = self.equations.ip(m);
+                cc.put(ip, m, 1.0).unwrap(); // C
+            });
+            (mm, Some(cc))
+        } else {
+            (mm, None)
+        }
+    }
+
+    /// Returns the vectors for the solution of the system of equations using the system partitioning strategy (SPS)
+    ///
+    /// Returns `(a_bar, a_check, f_bar)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
+    /// │       │ │   │ = │   │
+    /// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     K       a       f
+    /// ```
+    ///
+    /// The `source` function calculates f(x).
+    pub fn get_vectors_sps<F>(&self, source: F) -> (Vector, Vector, Vector)
+    where
+        F: Fn(f64) -> f64,
+    {
+        let nu = self.equations.nu();
+        let np = self.equations.np();
+        let a_bar = Vector::new(nu);
+        let mut a_check = Vector::new(np);
+        let mut f_bar = Vector::new(nu);
+        self.equations.unknown().iter().for_each(|&m| {
+            let iu = self.equations.iu(m);
+            let x = self.grid.coord(m);
+            let mut den = 1.0;
+            if !self.ebcs.periodic_along_x {
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x);
+                    f_bar[iu] += -wn / self.dx;
+                    den *= 2.0;
+                } else if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x);
+                    f_bar[iu] += -wn / self.dx;
+                    den *= 2.0;
+                }
+            }
+            f_bar[iu] += source(x) / den;
+        });
+        for index in 0..2 {
+            if self.ebcs.sides[index] {
+                let m = if index == 0 { 0 } else { self.grid.nx() - 1 };
+                let ip = self.equations.ip(m);
+                let x = self.grid.coord(m);
+                let val = self.ebcs.functions[index](x);
+                a_check[ip] = val;
+            }
+        }
+        (a_bar, a_check, f_bar)
+    }
+
+    /// Joins the a-bar and a-check vectors used in the system partitioning strategy (SPS)
+    ///
+    /// Returns `a` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K̄   Ǩ │ │ ̄a │   │ f̄ │
+    /// │       │ │   │ = │   │
+    /// │ Ḵ   ̰K │ │ ǎ │   │ f̌ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     K       a       f
+    /// ```
+    pub fn get_joined_vector_sps(&self, a_bar: &Vector, a_check: &Vector) -> Vector {
+        let neq = self.equations.neq();
+        let mut a = Vector::new(neq);
+        self.equations.unknown().iter().for_each(|&m| {
+            let iu = self.equations.iu(m);
+            a[m] = a_bar[iu];
+        });
+        self.equations.prescribed().iter().for_each(|&m| {
+            let ip = self.equations.ip(m);
+            a[m] = a_check[ip];
+        });
+        a
+    }
+
+    /// Returns the vectors for the solution of the system of equations using the Lagrange multipliers method (LMM)
+    ///
+    /// Returns `(aa, ff)` from:
+    ///
+    /// ```text
+    /// ┌       ┐ ┌   ┐   ┌   ┐
+    /// │ K  Cᵀ │ │ a │   │ f │
+    /// │       │ │   │ = │   │
+    /// │ C  0  │ │ ℓ │   │ ǎ │
+    /// └       ┘ └   ┘   └   ┘
+    ///     M       A       F
+    /// ```
+    ///
+    /// The `source` function calculates f(x).
+    pub fn get_vectors_lmm<F>(&self, source: F) -> (Vector, Vector)
+    where
+        F: Fn(f64) -> f64,
+    {
+        let (neq, _, ndim) = self.get_dims_lmm();
+        let aa = Vector::new(ndim);
+        let mut ff = Vector::new(ndim);
+        self.grid.for_each_coord(|m, x| {
+            let mut den = 1.0;
+            if !self.ebcs.periodic_along_x {
+                if self.grid.is_xmin(m) {
+                    let wn = self.nbcs.functions[0](x);
+                    ff[m] += -wn / self.dx;
+                    den *= 2.0;
+                } else if self.grid.is_xmax(m) {
+                    let wn = self.nbcs.functions[1](x);
+                    ff[m] += -wn / self.dx;
+                    den *= 2.0;
+                }
+            }
+            ff[m] += source(x) / den;
+        });
+        for index in 0..2 {
+            if self.ebcs.sides[index] {
+                let m = if index == 0 { 0 } else { self.grid.nx() - 1 };
+                let ip = self.equations.ip(m);
+                let x = self.grid.coord(m);
+                let val = self.ebcs.functions[index](x);
+                ff[neq + ip] = val;
+            }
+        }
+        (aa, ff)
+    }
+
+    /// Executes a loop over the molecule values at row `m` of the coefficient matrix
+    ///
+    /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
+    /// Therefore, some column indices may appear repeated.
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row of the coefficient matrix
+    /// * `callback` -- a `function(n, val_mn)` where `n` is the column index and
+    ///   `val_mn` is the molecule value at row `m` and column `n`.
+    pub fn loop_over_molecule<F>(&self, m: usize, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        self.loop_over_bandwidth(m, |b, n| {
+            callback(n, self.molecule[b]);
+        });
+    }
+
+    /// Executes a loop over the grid points
+    ///
+    /// # Input
+    ///
+    /// * `callback` -- a function of `(m, x)` where `m` is the sequential point number,
+    ///   and `x` is coordinate.
+    pub fn for_each_coord<F>(&self, mut callback: F)
+    where
+        F: FnMut(usize, f64),
+    {
+        self.grid.for_each_coord(|m, x| {
+            callback(m, x);
+        });
+    }
+
+    /// Executes a loop over the "bandwidth" of the coefficient matrix
+    ///
+    /// **Note**: The ghost boundary indices are flipped to avoid negative indices.
+    /// This also allows the setting up of flux boundary conditions. Therefore, some
+    /// column indices may appear repeated; e.g. due to the zero-flux boundaries.
+    ///
+    /// Here, the "bandwidth" means the non-zero values on a row of the coefficient matrix.
+    /// This is not the actual bandwidth because the zero elements are ignored. There are
+    /// five non-zero values in the "bandwidth" and they correspond to the "molecule" array.
+    ///
+    /// The callback function is `(b, n)` where `b` is the bandwidth index (index in the molecule array),
+    /// and `n` is the column index.
+    fn loop_over_bandwidth<F>(&self, m: usize, mut callback: F)
+    where
+        F: FnMut(usize, usize),
+    {
+        // constants for clarity/convenience
+        let fin_x = self.grid.nx() - 1;
+
+        // n indices of the non-zero values on the row m of the coefficient matrix
+        // (mirror or swap the indices of boundary nodes, as appropriate)
+        let mut nn = [0, 0, 0];
+        nn[CUR] = m;
+        if self.ebcs.periodic_along_x {
+            nn[LEF] = if m != INI_X { m - 1 } else { m + fin_x };
+            nn[RIG] = if m != fin_x { m + 1 } else { m - fin_x };
+        } else {
+            nn[LEF] = if m != INI_X { m - 1 } else { m + 1 };
+            nn[RIG] = if m != fin_x { m + 1 } else { m - 1 };
+        }
+
+        // execute callback
+        for b in 0..3 {
+            callback(b, nn[b]);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::Fdm1d;
+    use crate::{EssentialBcs1d, Grid1d, NaturalBcs1d, Side};
+    use russell_lab::Matrix;
+    use russell_sparse::Sym;
+
+    const LEF: f64 = 1.0;
+    const RIG: f64 = 2.0;
+
+    fn assert_symmetric(mat: &Matrix) {
+        let (nrow, ncol) = mat.dims();
+        assert_eq!(nrow, ncol);
+        for i in 0..nrow {
+            for j in (i + 1)..ncol {
+                assert_eq!(mat.get(i, j), mat.get(j, i));
+            }
+        }
+    }
+
+    #[test]
+    fn new_captures_errors() {
+        let grid = Grid1d::new(&[0.0, 0.1, 0.4]).unwrap();
+        let ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0);
+        assert_eq!(fdm.err(), Some("grid must have uniform spacing"));
+    }
+
+    #[test]
+    fn get_matrices_work() {
+        //  0*  1   2   3
+        // dx = 1.0
+        let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
+        let mut ebcs = EssentialBcs1d::new();
+        let mut nbcs = NaturalBcs1d::new();
+        const LEF: f64 = 1.0;
+        let lef = |_| LEF;
+        assert_eq!(lef(0.0), LEF);
+        ebcs.set(Side::Xmin, lef); //  0
+        nbcs.set(Side::Xmax, |_| 0.0);
+
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 100.0).unwrap();
+        assert_eq!(fdm.get_dims_sps(), (3, 1));
+        assert_eq!(fdm.get_dims_lmm(), (4, 1, 5));
+
+        fdm.loop_over_molecule(0, |n, val_mn| {
+            if n == 0 {
+                assert_eq!(val_mn, 200.0);
+            } else if n == 1 {
+                assert_eq!(val_mn, -100.0);
+            } else {
+                assert_eq!(val_mn, -100.0);
+            }
+        });
+
+        // The full matrix is:
+        //      0*   1    2    3
+        // ┌                     ┐
+        // │  100 -100    .    . │  0*(p0)  // divided by 2 due to EBC at Xmin
+        // │ -100  200 -100    . │  1→0
+        // │    . -100  200 -100 │  2→1
+        // │    .    . -100  100 │  3→2     // divided by 2 due to NBC at Xmax
+        // └                     ┘
+        //      0*   1    2    3
+
+        for sym_kk_bar in [Sym::No, Sym::YesLower, Sym::YesUpper, Sym::YesFull] {
+            let (kk_bar, kk_check) = fdm.get_matrices_sps(0.0, 0, sym_kk_bar);
+            let kk_check = kk_check.unwrap();
+            let kk_bar_dense = kk_bar.as_dense();
+            assert_symmetric(&kk_bar_dense);
+            assert_eq!(
+                format!("{}", kk_bar_dense),
+                "┌                ┐\n\
+                 │  200 -100    0 │\n\
+                 │ -100  200 -100 │\n\
+                 │    0 -100  100 │\n\
+                 └                ┘"
+            );
+            assert_eq!(
+                format!("{}", kk_check.as_dense()),
+                "┌      ┐\n\
+                 │ -100 │\n\
+                 │    0 │\n\
+                 │    0 │\n\
+                 └      ┘"
+            );
+        }
+
+        for sym_mm in [Sym::No, Sym::YesLower, Sym::YesUpper, Sym::YesFull] {
+            let (mm, cc) = fdm.get_matrices_lmm(0.0, 0, true, sym_mm);
+            let cc = cc.unwrap();
+            let mm_dense = mm.as_dense();
+            assert_symmetric(&mm_dense);
+            assert_eq!(
+                format!("{}", cc.as_dense()),
+                "┌         ┐\n\
+                 │ 1 0 0 0 │\n\
+                 └         ┘"
+            );
+            assert_eq!(
+                format!("{}", mm_dense),
+                "┌                          ┐\n\
+                 │  100 -100    0    0    1 │\n\
+                 │ -100  200 -100    0    0 │\n\
+                 │    0 -100  200 -100    0 │\n\
+                 │    0    0 -100  100    0 │\n\
+                 │    1    0    0    0    0 │\n\
+                 └                          ┘"
+            );
+        }
+    }
+
+    #[test]
+    fn get_matrices_homogeneous_bcs_work() {
+        //  1 |  0*  1   2   3* |  2
+        // dx = 1.0
+        let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
+        let cc = cc_mat.unwrap();
+        let ee = ee_mat.unwrap();
+
+        assert_eq!(fdm.get_dims_sps(), (2, 2));
+        assert_eq!(fdm.get_dims_lmm(), (4, 2, 6));
+
+        // The full matrix is:
+        //    0* 1  2  3*
+        // ┌              ┐
+        // │  1 -1  .  .  │  0*
+        // │ -1  2 -1  .  │  1
+        // │  . -1  2 -1  │  2
+        // │  .  . -2  2  │  3*
+        // └              ┘
+        //    0* 1  2  3*
+
+        // K =
+        //    1  2
+        // ┌       ┐
+        // │  2 -1 │  1
+        // │ -1  2 │  2
+        // └       ┘
+        //    1  2
+        assert_eq!(
+            format!("{}", kk.as_dense()),
+            "┌       ┐\n\
+             │  2 -1 │\n\
+             │ -1  2 │\n\
+             └       ┘"
+        );
+
+        // C =
+        //    0* 3*
+        // ┌        ┐
+        // │  1  .  │  1
+        // │  .  1  │  2
+        // └        ┘
+        //    0* 3*
+        assert_eq!(
+            format!("{}", cc.as_dense()),
+            "┌       ┐\n\
+             │ -1  0 │\n\
+             │  0 -1 │\n\
+             └       ┘"
+        );
+
+        // E =
+        //    0* 1  2  3*
+        // ┌             ┐
+        // │  1  .  .  . │  0*
+        // │  .  .  .  1 │  3*
+        // └             ┘
+        assert_eq!(
+            format!("{}", ee.as_dense()),
+            "┌         ┐\n\
+             │ 1 0 0 0 │\n\
+             │ 0 0 0 1 │\n\
+             └         ┘"
+        );
+
+        // A =
+        //    0* 1  2  3* 4w 5w
+        // ┌                   ┐
+        // │  1 -1  .  .  1  . │  0*
+        // │ -1  2 -1  .  .  . │  1
+        // │  . -1  2 -1  .  . │  2
+        // │  .  . -1  1  .  1 │  3*
+        // │  1  .  .  .  .  . │  3*
+        // │  .  .  .  1  .  . │  3*
+        // └                   ┘
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌                   ┐\n\
+             │  1 -1  0  0  1  0 │\n\
+             │ -1  2 -1  0  0  0 │\n\
+             │  0 -1  2 -1  0  0 │\n\
+             │  0  0 -1  1  0  1 │\n\
+             │  1  0  0  0  0  0 │\n\
+             │  0  0  0  1  0  0 │\n\
+             └                   ┘"
+        );
+    }
+
+    #[test]
+    fn get_matrices_periodic_bcs_work() {
+        //  3 | 0  1  2  3 | 0
+        // dx = 1.0
+        let grid = Grid1d::new_uniform(0.0, 3.0, 4).unwrap();
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_periodic(true);
+
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
+        let (kk, cc_mat) = fdm.get_matrices_sps(0.0, 0, Sym::No);
+        let (aa, ee_mat) = fdm.get_matrices_lmm(0.0, 0, true, Sym::No);
+        assert!(cc_mat.is_none());
+        assert!(ee_mat.is_none());
+
+        assert_eq!(fdm.get_dims_sps(), (4, 0));
+        assert_eq!(fdm.get_dims_lmm(), (4, 0, 4));
+
+        // K = A =
+        //    0  1  2  3
+        // ┌             ┐
+        // │  2 -1  . -1 │  0
+        // │ -1  2 -1  . │  1
+        // │  . -1  2 -1 │  2
+        // │ -1  . -1  2 │  3
+        // └             ┘
+        //    0  1  2  3
+
+        assert_eq!(
+            format!("{}", kk.as_dense()),
+            "┌             ┐\n\
+             │  2 -1  0 -1 │\n\
+             │ -1  2 -1  0 │\n\
+             │  0 -1  2 -1 │\n\
+             │ -1  0 -1  2 │\n\
+             └             ┘"
+        );
+        assert_eq!(
+            format!("{}", aa.as_dense()),
+            "┌             ┐\n\
+             │  2 -1  0 -1 │\n\
+             │ -1  2 -1  0 │\n\
+             │  0 -1  2 -1 │\n\
+             │ -1  0 -1  2 │\n\
+             └             ┘"
+        );
+    }
+
+    #[test]
+    fn get_vectors_works() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 5).unwrap();
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+
+        //  0*  1   2   3   4*
+        ebcs.set(Side::Xmin, |_| LEF);
+        ebcs.set(Side::Xmax, |_| RIG);
+
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
+
+        let (a_bar, a_check, f_bar) = fdm.get_vectors_sps(|_| 100.0);
+        assert_eq!(a_bar.dim(), 3); // nu
+        assert_eq!(a_check.dim(), 2); // np
+        assert_eq!(f_bar.dim(), 3); // nu
+        assert_eq!(a_bar.as_data(), &[0.0, 0.0, 0.0]);
+        assert_eq!(a_check.as_data(), &[LEF, RIG]);
+        assert_eq!(f_bar.as_data(), &[100.0, 100.0, 100.0]);
+
+        let a = fdm.get_joined_vector_sps(&a_bar, &a_check);
+        assert_eq!(a.dim(), 5); // na
+        assert_eq!(a.as_data(), &[LEF, 0.0, 0.0, 0.0, RIG]);
+
+        let (aa, ff) = fdm.get_vectors_lmm(|_| 100.0);
+        assert_eq!(aa.dim(), 5 + 2); // na + nw
+        assert_eq!(ff.dim(), 5 + 2); // na + nw
+        assert_eq!(aa.as_data(), &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(ff.as_data(), &[100.0 / 2.0, 100.0, 100.0, 100.0, 100.0 / 2.0, LEF, RIG]);
+    }
+
+    #[test]
+    fn get_grid_and_get_equations_work() {
+        let grid = Grid1d::new_uniform(0.0, 1.0, 3).unwrap();
+        let mut ebcs = EssentialBcs1d::new();
+        let nbcs = NaturalBcs1d::new();
+        ebcs.set_homogeneous();
+        let fdm = Fdm1d::new(grid, ebcs, nbcs, 1.0).unwrap();
+
+        assert_eq!(fdm.get_grid().nx(), 3);
+        assert_eq!(fdm.get_equations().neq(), 3);
+    }
+}

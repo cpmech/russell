@@ -28,7 +28,11 @@ mod distribution_lognormal;
 mod distribution_normal;
 mod distribution_uniform;
 mod histogram;
+mod inter_quartile_range;
+mod outliers;
 mod probability_distribution;
+mod quantile;
+mod quartiles;
 mod statistics;
 
 pub use distribution_frechet::*;
@@ -37,7 +41,11 @@ pub use distribution_lognormal::*;
 pub use distribution_normal::*;
 pub use distribution_uniform::*;
 pub use histogram::*;
+pub use inter_quartile_range::*;
+pub use outliers::*;
 pub use probability_distribution::*;
+pub use quantile::*;
+pub use quartiles::*;
 pub use statistics::*;
 
 // run code from README file

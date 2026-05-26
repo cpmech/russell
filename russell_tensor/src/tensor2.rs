@@ -1821,13 +1821,65 @@ impl Tensor2 {
 
     // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
 
+    /// Returns the isomorphic mean pressure invariant (distance to octahedral plane)
+    ///
+    /// ```text
+    /// σs = d = trace(σ) / √3
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, math::SQRT_3};
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_sigma_s(), 2.0 / SQRT_3, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn invariant_sigma_s(&self) -> f64 {
+        self.trace() / SQRT_3
+    }
+
+    /// Returns the isomorphic deviatoric stress invariant (radius on octahedral plane)
+    ///
+    /// ```text
+    /// σt = r = ‖s‖ = √(2 J2)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, math::SQRT_2_BY_3};
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_sigma_t(), SQRT_2_BY_3, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn invariant_sigma_t(&self) -> f64 {
+        self.deviator_norm()
+    }
+
     /// Returns the mean pressure invariant
     ///
     /// ```text
-    /// σm = ⅓ trace(σ) = d / √3
+    /// p = ⅓ trace(σ) = d / √3
     /// ```
     ///
-    /// where `d = trace(σ) √3` is the distance from the octahedral plane to the origin.
+    /// where `d = trace(σ) / √3` is the distance from the octahedral plane to the origin.
     ///
     /// # Examples
     ///
@@ -1841,11 +1893,11 @@ impl Tensor2 {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ], Mandel::Symmetric)?;
-    ///     approx_eq(a.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
+    ///     approx_eq(a.invariant_p(), 2.0 / 3.0, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn invariant_sigma_m(&self) -> f64 {
+    pub fn invariant_p(&self) -> f64 {
         self.trace() / 3.0
     }
 
@@ -1855,7 +1907,7 @@ impl Tensor2 {
     /// or equivalent stress.
     ///
     /// ```text
-    /// σd = ‖s‖ √3/√2 = r √3/√2 = √3 √J2
+    /// q = ‖s‖ √3/√2 = r √3/√2 = √3 √J2
     /// ```
     ///
     /// where `r = ‖s‖` is the radius on the octahedral plane.
@@ -1872,12 +1924,66 @@ impl Tensor2 {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ], Mandel::Symmetric)?;
-    ///     approx_eq(a.invariant_sigma_d(), 1.0, 1e-15);
+    ///     approx_eq(a.invariant_q(), 1.0, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn invariant_sigma_d(&self) -> f64 {
+    pub fn invariant_q(&self) -> f64 {
         self.deviator_norm() * SQRT_3_BY_2
+    }
+
+    /// Returns the isomorphic mean strain invariant (distance to octahedral plane)
+    ///
+    /// ```text
+    /// εs = d = trace(ε) / √3
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, math::SQRT_3};
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_eps_s(), 2.0 / SQRT_3, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn invariant_eps_s(&self) -> f64 {
+        self.trace() / SQRT_3
+    }
+
+    /// Returns the isomorphic deviatoric strain invariant (radius on octahedral plane)
+    ///
+    /// ```text
+    /// εt = r = ‖e‖
+    ///
+    /// e = deviator(ε)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, math::SQRT_2_BY_3};
+    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_matrix(&[
+    ///         [1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0],
+    ///     ], Mandel::Symmetric)?;
+    ///     approx_eq(a.invariant_eps_t(), SQRT_2_BY_3, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn invariant_eps_t(&self) -> f64 {
+        self.deviator_norm()
     }
 
     /// Returns the volumetric strain invariant
@@ -1989,8 +2095,8 @@ impl Tensor2 {
     /// # Definitions
     ///
     /// ```text
-    /// d = trace(T) / √3
-    /// r = ‖dev(T)‖
+    /// d = trace(T) / √3 = σs
+    /// r = ‖dev(T)‖ = σt
     /// l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))
     /// ```
     pub fn invariants_octahedral(&self) -> (f64, f64, Option<f64>) {
@@ -3346,17 +3452,19 @@ mod tests {
     #[test]
     fn octahedral_invariants_are_correct() {
         let c = Mandel::Symmetric;
-        let sigma_d_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
+        let q_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
         let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
-        let sigma_d_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
+        let q_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
         let eps_d_2 = 2.0 / 3.0; // sqrt((1² + 1²)/3)* sqrt(2/3)
 
         // α = 0
         let (l1, l2, l3) = (0.0, -0.5, 0.5);
         approx_eq(alpha_deg(l1, l2, l3), 0.0, 1e-15);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), 0.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
@@ -3365,110 +3473,154 @@ mod tests {
         let (l1, l2, l3) = (1.0, 0.0, 1.0);
         approx_eq(alpha_deg(l1, l2, l3), 30.0, 1e-14);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = 60
         let (l1, l2, l3) = (0.5, -0.5, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), 60.0, 1e-14);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), 0.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 90
         let (l1, l2, l3) = (1.0, 0.0, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), 90.0, 1e-15);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 1.0 / 3.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
 
         // α = 120
         let (l1, l2, l3) = (0.5, 0.0, -0.5);
         approx_eq(alpha_deg(l1, l2, l3), 120.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), 0.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 150
         let (l1, l2, l3) = (1.0, 1.0, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), 150.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = 180
         let (l1, l2, l3) = (0.0, 0.5, -0.5);
         approx_eq(alpha_deg(l1, l2, l3), 180.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), 0.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -150
         let (l1, l2, l3) = (0.0, 1.0, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), -150.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 1.0 / 3.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
 
         // α = -120
         let (l1, l2, l3) = (-0.5, 0.5, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), -120.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), 0.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -90
         let (l1, l2, l3) = (0.0, 1.0, 1.0);
         approx_eq(alpha_deg(l1, l2, l3), -90.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 2.0 / 3.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = -60
         let (l1, l2, l3) = (-0.5, 0.0, 0.5);
         approx_eq(alpha_deg(l1, l2, l3), -60.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 0.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), 0.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -30
         let (l1, l2, l3) = (0.0, 0.0, 1.0);
         approx_eq(alpha_deg(l1, l2, l3), -30.0, 1e-13);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 1.0 / 3.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), sigma_d_2, 1e-15);
+        approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
+        approx_eq(tt.invariant_q(), q_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
+        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
+        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
     }
 
@@ -3477,8 +3629,8 @@ mod tests {
         // test from https://soilmodels.com/wp-content/uploads/2020/12/stress_space-2.wgl
         let (l1, l2, l3) = (193.18, 88.3, 18.52);
         let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Mandel::Symmetric).unwrap();
-        approx_eq(tt.invariant_sigma_m(), 100.0, 1e-15);
-        approx_eq(tt.invariant_sigma_d(), 152.28, 0.0053);
+        approx_eq(tt.invariant_p(), 100.0, 1e-15);
+        approx_eq(tt.invariant_q(), 152.28, 0.0053);
         let lode = tt.invariant_lode().unwrap();
         let theta = (f64::acos(lode) / 3.0) * 180.0 / PI;
         approx_eq(30.0 - theta, 6.62, 0.0019);
@@ -3501,7 +3653,7 @@ mod tests {
 
     #[test]
     fn invariants_octahedral_works() {
-        // the following data corresponds to sigma_m = 1 and sigma_d = 3
+        // the following data corresponds to p = 1 and q = 3
         #[rustfmt::skip]
         let principal_stresses_and_lode = [
             ( 3.0          ,  0.0          ,  0.0          ,  1.0 ),
@@ -3536,8 +3688,8 @@ mod tests {
             Some("lode invariant must be in -1 ≤ lode ≤ 1")
         );
 
-        let (sigma_m, sigma_d) = (1.0, 3.0);
-        let (distance, radius) = (sigma_m * SQRT_3, sigma_d * SQRT_2_BY_3);
+        let (p, q) = (1.0, 3.0);
+        let (distance, radius) = (p * SQRT_3, q * SQRT_2_BY_3);
 
         let t1 = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
         let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 2.0, true).unwrap();
@@ -3547,6 +3699,10 @@ mod tests {
         approx_eq(t1.vec[2], 0.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
         vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
+        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
+        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
 
         let t1 = Tensor2::new_from_octahedral(distance, radius, 0.0, true).unwrap();
         let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 3.0, true).unwrap();
@@ -3556,6 +3712,10 @@ mod tests {
         approx_eq(t1.vec[2], 1.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
         vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
+        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
+        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
 
         let t1 = Tensor2::new_from_octahedral(distance, radius, -1.0, true).unwrap();
         let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 6.0, true).unwrap();
@@ -3565,6 +3725,10 @@ mod tests {
         approx_eq(t1.vec[2], 2.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
         vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
+        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
+        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
     }
 
     #[test]

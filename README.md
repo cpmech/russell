@@ -62,6 +62,7 @@
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
+- [Development](#development)
 
 
 

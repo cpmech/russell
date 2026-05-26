@@ -429,8 +429,21 @@ impl LinElasticity {
 #[cfg(test)]
 mod tests {
     use super::LinElasticity;
+    use crate::StrError;
     use crate::{t4_add, Mandel, Tensor2, Tensor4};
-    use russell_lab::{approx_eq, mat_approx_eq};
+    use russell_lab::{approx_eq, mat_approx_eq, Matrix};
+
+    // Checks the symmetry of a square matrix
+    fn check_symmetry(mat: &Matrix) -> Result<(), StrError> {
+        let (nrow, ncol) = mat.dims();
+        assert_eq!(nrow, ncol, "matrix is not square");
+        for l in 0..nrow {
+            for ll in (l + 1)..nrow {
+                assert_eq!(mat.get(l, ll), mat.get(ll, l));
+            }
+        }
+        Ok(())
+    }
 
     #[test]
     fn new_works() {
@@ -452,6 +465,7 @@ mod tests {
              │    0    0    0    0    0    0    0    0    0 │\n\
              └                                              ┘"
         );
+        check_symmetry(&out).unwrap();
 
         // plane-strain
         // from Bhatti page 519
@@ -471,6 +485,7 @@ mod tests {
              │     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0     0.0 │\n\
              └                                                                         ┘"
         );
+        check_symmetry(&out).unwrap();
     }
 
     #[test]
@@ -502,6 +517,7 @@ mod tests {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let dd = ela.get_modulus();
         assert_eq!(dd.mat.get(0, 0), 3125.0);
+        check_symmetry(&dd.as_matrix()).unwrap();
     }
 
     #[test]

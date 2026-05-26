@@ -55,7 +55,7 @@ pub fn complex_mat_copy(b: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::complex_mat_copy;
-    use crate::{complex_mat_approx_eq, cpx, Complex64, ComplexMatrix};
+    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
 
     #[test]
     fn complex_mat_copy_fails_on_wrong_dimensions() {

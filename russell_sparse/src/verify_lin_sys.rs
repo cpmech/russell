@@ -1,6 +1,6 @@
 use super::{ComplexCooMatrix, CooMatrix};
 use crate::StrError;
-use russell_lab::{complex_vec_norm, complex_vec_update, cpx, Complex64, ComplexVector};
+use russell_lab::{complex_vec_norm, complex_vec_update, cpx, ComplexVector};
 use russell_lab::{find_index_abs_max, vec_norm, vec_update, Norm, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -152,7 +152,7 @@ impl VerifyLinSys {
 mod tests {
     use super::VerifyLinSys;
     use crate::{ComplexCooMatrix, CooMatrix, Samples, Sym};
-    use russell_lab::{approx_eq, cpx, Complex64, ComplexVector, Vector};
+    use russell_lab::{approx_eq, cpx, ComplexVector, Vector};
 
     #[test]
     fn from_captures_errors() {

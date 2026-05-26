@@ -1,0 +1,29 @@
+[package]
+name = "russell_pde"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Essential tools to solve partial differential equations; not a full-fledged PDE solver"
+homepage = "https://github.com/cpmech/russell"
+repository = "https://github.com/cpmech/russell"
+documentation = "https://docs.rs/russell_pde"
+readme = "README.md"
+categories = ["mathematics", "science"]
+keywords = ["partial", "differential", "tools"]
+
+[features]
+intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
+local_suitesparse = ["russell_sparse/local_suitesparse"]
+with_mumps = ["russell_sparse/with_mumps"]
+
+[dependencies]
+russell_lab = { path = "../russell_lab", version = "1.10.0" }
+russell_sparse = { path = "../russell_sparse", version = "1.10.0" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+structopt = "0.3"
+
+[dev-dependencies]
+plotpy = "1.21"
+rayon = "1.10"
+serial_test = "3.2"

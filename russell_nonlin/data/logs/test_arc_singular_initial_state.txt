@@ -1,0 +1,90 @@
+
+running 2 tests
+test test_arc_singular_initial_state_1 ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  5.000E-01
+         ·          ·     1   4.47E-01      3.80E-03     2.68E+07   
+         ·          ·     2   3.42E-01 🔹   2.56E-02     1.81E+08 🎈
+         ·          ·     3   1.91E-01 🔹   5.47E-02     3.87E+08 🎈
+         ·          ·     4   6.15E-02 🔹   3.55E-02     2.50E+08 🔹
+         ·          ·     5   7.04E-03 🔹   5.13E-03     3.62E+07 🔹
+         ·          ·     6   9.81E-05 🔹   7.35E-05     5.19E+05 🔹
+         ·          ·     7   1.92E-08 🔹   1.44E-08     1.02E+02 🔹
+         ·          ·     8   7.22E-16 ✅   1.44E-08     1.02E+02 🔹
+ 5.000E-01  5.000E-01
+         ·          ·     1   1.48E-01      1.11E-01     6.32E+06   
+         ·          ·     2   4.96E-03 🔹   3.95E-03     2.26E+05 🔹
+         ·          ·     3   4.89E-06 🔹   3.90E-06     2.23E+02 🔹
+         ·          ·     4   4.74E-12 ✅   3.90E-06     2.23E+02 🔹
+ 8.141E-01  5.000E-01
+         ·          ·     1   4.34E-02      3.71E-02     4.04E+05   
+         ·          ·     2   3.92E-05 🔹   3.36E-05     3.66E+02 🔹
+         ·          ·     3   3.14E-11 ✅   3.36E-05     3.66E+02 🔹
+ 1.002E+00  5.000E-01
+         ·          ·     1   1.98E-02      1.83E-02     1.36E+05   
+         ·          ·     2   2.13E-06 🔹   1.96E-06     1.46E+01 🔹
+         ·          ·     3   2.44E-14 ✅   1.96E-06     1.46E+01 🔹
+ 1.141E+00  5.000E-01
+         ·          ·     1   1.15E-02      1.09E-02     6.86E+04   
+         ·          ·     2   2.78E-07 🔹   2.64E-07     1.67E+00 🔹
+         ·          ·     3   2.22E-16 ✅   2.64E-07     1.67E+00 🔹
+ 1.254E+00  5.000E-01
+────────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
+Number of function evaluations   = 21
+Number of Jacobian evaluations   = 17
+Number of factorizations         = 17
+Number of lin sys solutions      = 22
+Number of accepted steps         = 5
+Number of rejected steps         = 0
+Number of performed steps        = 5
+Number of iterations (total)     = 21
+Last accepted/suggested stepsize = 0.5
+ok
+test test_arc_singular_initial_state_2 ... ────────────────────────────────────────────────────────────────────
+         λ         Δs  iter   ‖(G,N)‖∞ ➖ ‖(δu,δλ)‖∞ Rel((δu,δλ)) ➖
+────────────────────────────────────────────────────────────────────
+ 0.000E+00  5.000E-01
+         ·          ·     1   1.57E-01      1.23E-01     3.56E+08   
+         ·          ·     2   2.67E-02 🔹   1.47E-02     4.24E+07 🔹
+         ·          ·     3   8.25E-04 🔹   4.83E-04     1.39E+06 🔹
+         ·          ·     4   7.77E-07 🔹   4.56E-07     1.31E+03 🔹
+         ·          ·     5   6.89E-13 ✅   4.56E-07     1.31E+03 🔹
+ 5.071E-01  5.000E-01
+         ·          ·     1   1.45E-01      1.07E-01     5.88E+06   
+         ·          ·     2   4.49E-03 🔹   3.53E-03     1.94E+05 🔹
+         ·          ·     3   3.82E-06 🔹   3.01E-06     1.65E+02 🔹
+         ·          ·     4   2.75E-12 ✅   3.01E-06     1.65E+02 🔹
+ 8.176E-01  5.000E-01
+         ·          ·     1   4.27E-02      3.66E-02     3.95E+05   
+         ·          ·     2   3.70E-05 🔹   3.18E-05     3.43E+02 🔹
+         ·          ·     3   2.74E-11 ✅   3.18E-05     3.43E+02 🔹
+ 1.004E+00  5.000E-01
+         ·          ·     1   1.96E-02      1.81E-02     1.34E+05   
+         ·          ·     2   2.05E-06 🔹   1.89E-06     1.40E+01 🔹
+         ·          ·     3   2.24E-14 ✅   1.89E-06     1.40E+01 🔹
+ 1.143E+00  5.000E-01
+         ·          ·     1   1.14E-02      1.08E-02     6.80E+04   
+         ·          ·     2   2.71E-07 🔹   2.57E-07     1.62E+00 🔹
+         ·          ·     3   2.22E-16 ✅   2.57E-07     1.62E+00 🔹
+ 1.256E+00  5.000E-01
+────────────────────────────────────────────────────────────────────
+
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (fixed)
+Using numerical Jacobian         = false
+Number of function evaluations   = 18
+Number of Jacobian evaluations   = 14
+Number of factorizations         = 14
+Number of lin sys solutions      = 19
+Number of accepted steps         = 5
+Number of rejected steps         = 0
+Number of performed steps        = 5
+Number of iterations (total)     = 18
+Last accepted/suggested stepsize = 0.5
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.82s
+

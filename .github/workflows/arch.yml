@@ -1,7 +1,7 @@
-name: Test on Arch Linux
+name: Arch Linux
 on: [pull_request]
 jobs:
-  test_on_arch_linux:
+  arch:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -9,13 +9,13 @@ jobs:
         include:
           - intel_mkl: ""
             local_sparse: ""
-            label: option1_default
+            label: Opt1 Default
           - intel_mkl: ""
             local_sparse: "1"
-            label: option2_openblas_local
+            label: Opt2 OpenBLAS Local
           - intel_mkl: "1"
             local_sparse: "1"
-            label: option3_mkl_local
+            label: Opt3 IntelMKL Local
     name: test (${{ matrix.label }})
     steps:
       - uses: actions/checkout@v4

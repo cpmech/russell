@@ -16,21 +16,21 @@
 
 ---
 
-[![Test & Coverage](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_and_coverage.yml)
-[![Test with local libs](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_local_libs.yml)
-[![Test with Intel MKL](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_with_intel_mkl.yml)
-[![Test on Arch Linux](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_arch_linux.yml)
-[![Test on Rocky Linux](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_rocky_linux.yml)
-[![Test on macOS](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_macos.yml)
-[![Test on Windows](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/test_on_windows.yml)
+[![Arch Linux](https://github.com/cpmech/russell/actions/workflows/arch.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/arch.yml)
+[![Ubuntu Linux](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml)
+[![Rocky Linux](https://github.com/cpmech/russell/actions/workflows/rocky.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/rocky.yml)
+[![macOS](https://github.com/cpmech/russell/actions/workflows/macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/macos.yml)
+[![Windows](https://github.com/cpmech/russell/actions/workflows/windows.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/windows.yml)
 
 ---
 
-[![documentation: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
-[![documentation: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
-[![documentation: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
-[![documentation: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
-[![documentation: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
+[![doc: lab](https://img.shields.io/badge/russell_lab-documentation-blue)](https://docs.rs/russell_lab)
+[![doc: nonlin](https://img.shields.io/badge/russell_nonlin-documentation-blue)](https://docs.rs/russell_nonlin)
+[![doc: ode](https://img.shields.io/badge/russell_ode-documentation-blue)](https://docs.rs/russell_ode)
+[![doc: pde](https://img.shields.io/badge/russell_pde-documentation-blue)](https://docs.rs/russell_pde)
+[![doc: sparse](https://img.shields.io/badge/russell_sparse-documentation-blue)](https://docs.rs/russell_sparse)
+[![doc: stat](https://img.shields.io/badge/russell_stat-documentation-blue)](https://docs.rs/russell_stat)
+[![doc: tensor](https://img.shields.io/badge/russell_tensor-documentation-blue)](https://docs.rs/russell_tensor)
 
 ---
 
@@ -894,10 +894,10 @@ fn main() -> Result<(), StrError> {
 - [ ] Improve `russell_lab`
     - [x] Implement more integration tests for linear algebra
     - [x] Implement more examples
-    - [ ] Implement more benchmarks
+    - [ ] Implement more performance benchmarks
     - [x] Wrap more BLAS/LAPACK functions
         - [x] Implement dggev, zggev, zheev, and zgeev
-    - [x] Wrap Intel MKL (option for OpenBLAS)
+    - [x] Wrap Intel MKL (alternative to OpenBLAS)
     - [x] Add more complex number functions
     - [x] Add fundamental functions to `russell_lab`
         - [x] Implement the Bessel functions
@@ -911,7 +911,7 @@ fn main() -> Result<(), StrError> {
         - [x] Implement numerical derivation
         - [x] Implement numerical Jacobian function
         - [x] Implement line search
-        - [ ] Implement Newton's method for nonlinear systems
+        - [x] Implement Newton's method for nonlinear systems
         - [x] Implement numerical quadrature
         - [ ] Implement multidimensional data interpolation
     - [ ] Add interpolation and polynomials to `russell_lab`
@@ -932,6 +932,14 @@ fn main() -> Result<(), StrError> {
     - [ ] Implement extrapolation methods
     - [ ] Implement multi-step methods
     - [ ] Implement general linear methods
+- [x] Implement `russell_pde`
+    - [x] Implement 1D and 2D spectral collocation methods
+    - [x] Implement 1D and 2D finite difference methods
+    - [ ] Study the need for improving this crate further
+- [x] Implement `russell_nonlin`
+    - [x] Implement natural continuation for nonlinear systems
+    - [x] Implement pseudo-arc-length continuation for nonlinear systems
+    - [ ] Study better methods for step size control in continuation methods
 - [ ] Improve `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
@@ -943,6 +951,8 @@ fn main() -> Result<(), StrError> {
     - [x] Implement some high-order derivatives
     - [ ] Implement standard continuum mechanics tensors
 - [ ] General improvements
+    - [x] Compile on Linux (Arch, Debian/Ubuntu, Rocky)
     - [x] Compile on macOS
     - [x] Compile on Windows
-    - [x] Compile MUMPS on Windows
+    - [x] Study the compilation of MUMPS on Windows
+    - [ ] Write scripts to compile on Windows

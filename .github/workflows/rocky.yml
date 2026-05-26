@@ -1,7 +1,7 @@
-name: Test on Rocky Linux
+name: Rocky Linux
 on: [pull_request]
 jobs:
-  test_on_rocky_linux:
+  rocky:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

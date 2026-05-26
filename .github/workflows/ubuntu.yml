@@ -1,13 +1,13 @@
-name: Test & Coverage
+name: Ubuntu Linux
 on: [pull_request]
 jobs:
-  test_and_coverage:
+  ubuntu:
     runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: 1
     strategy:
       matrix:
-        rust: [nightly]
+        rust: [stable, nightly]
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust

@@ -26,7 +26,7 @@ jobs:
               libsuitesparse-dev
       - name: Compile MUMPS
         run: |
-          bash zscripts/debian-mumps.bash
+          bash zscripts/debian-compile-mumps.bash
       - name: Run tests
         run: |
           RUST_BACKTRACE=1 cargo test --features with_mumps

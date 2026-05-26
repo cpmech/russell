@@ -13,7 +13,7 @@ sudo () {
 
 # Optional first argument: set to 1 to build against Intel MKL/oneAPI,
 # or 0 (default) to use the OpenBLAS + gfortran toolchain.
-# When using MKL, run arch-install-intel-toolkit.bash first.
+# When using MKL, run debian-install-intel-mkl.bash first.
 USE_INTEL_MKL=${1:-0}
 
 # Installation paths and source version
@@ -24,23 +24,16 @@ LIBDIR="$PREFIX/lib/mumps"
 PDIR="$(pwd)/zscripts/makefiles-mumps"
 
 # Install build tools and BLAS/LAPACK dependencies;
-sudo pacman -S --noconfirm base-devel curl
+# libmetis-dev is needed for graph-partitioning-based reordering
+sudo apt-get update -y
+sudo apt-get install -y --no-install-recommends curl libmetis-dev make
 if [ "${USE_INTEL_MKL}" = "1" ]; then
     set +u  # setvars.sh references variables before setting them; suppress -u temporarily
     source /opt/intel/oneapi/setvars.sh  # sets CC, FC, and PATH for the ifx compiler
     set -u
     export | grep -i MKLROOT
 else
-    sudo pacman -S --noconfirm gcc-fortran openmp
-fi
-
-# Metis is needed for graph-partitioning-based reordering
-# yay must run as non-root; when this script is invoked as root (e.g. inside
-# Docker), delegate to the unprivileged 'user' account that has NOPASSWD sudo
-if [ $EUID = 0 ]; then
-    su - user -c "yay -S --noconfirm metis"
-else
-    yay -S --noconfirm metis
+    sudo apt-get install -y --no-install-recommends gfortran liblapacke-dev libopenblas-dev
 fi
 
 # Download the source tarball from Debian (reuse it if already present)

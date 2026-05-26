@@ -18,10 +18,10 @@ jobs:
           rustup --version
       - name: Compile MUMPS
         run: |
-          bash zscripts/debian-mumps.bash
+          bash zscripts/debian-compile-mumps.bash
       - name: Compile SuiteSparse
         run: |
-          bash zscripts/debian-suitesparse.bash
+          bash zscripts/debian-compile-suitesparse.bash
       - name: Run tests
         run: |
           RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps

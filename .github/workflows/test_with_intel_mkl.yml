@@ -1,7 +1,6 @@
 name: Test with Intel MKL
 on:
-  workflow_dispatch: # Keeps the native branch-selection UI dropdown active
-
+  workflow_dispatch:
 jobs:
   test_with_intel_mkl:
     runs-on: ubuntu-latest
@@ -18,12 +17,15 @@ jobs:
         run: |
           lsb_release -d
           rustup --version
+      - name: Install Intel MKL
+        run: |
+          bash zscripts/debian-install-intel-toolkit.bash
       - name: Compile MUMPS
         run: |
-          bash zscripts/debian-mumps.bash mkl
+          bash zscripts/debian-compile-mumps.bash 1
       - name: Compile SuiteSparse
         run: |
-          bash zscripts/debian-suitesparse.bash mkl
+          bash zscripts/debian-compile-suitesparse.bash 1
       - name: Run tests
         run: |
           RUST_BACKTRACE=1 cargo test --features local_suitesparse,with_mumps,intel_mkl

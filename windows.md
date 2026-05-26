@@ -6,7 +6,7 @@ The installation steps are as follows:
 
 **1. Install MSYS2**
 
-Download the installer from the MSYS2 website https://www.msys2.org/ (the 64-bit version is recommended).  
+Download the installer from the [MSYS2 website](https://www.msys2.org) (the 64-bit version is recommended).  
 
 Run the installer and select the default installation path (typically `C:\msys64`).  
 
@@ -59,7 +59,7 @@ cargo test
 * Add export `MSYS2_PREFIX='/ucrt64'` to `~/.bashrc` to make the environment variable persistent.
 * The Rust toolchain in MSYS2 defaults to GNU, which best matches the MSYS2 environment.
 
-## Optional feature "with_mumps"
+## Local SuiteSparse and MUMPS Installation
 
 On Windows (MSYS2), MUMPS can be compiled using the following steps:
 
@@ -77,9 +77,9 @@ pacman -S mingw-w64-ucrt-x86_64-metis
 
 ```bash
 cd /tmp
-curl http://deb.debian.org/debian/pool/main/m/mumps/mumps_5.8.2.orig.tar.gz -o mumps_5.8.2.orig.tar.gz
-tar xzf mumps_5.8.2.orig.tar.gz
-cd MUMPS_5.8.2
+curl http://deb.debian.org/debian/pool/main/m/mumps/mumps_5.8.2.orig.tar.gz -o mumps_5.9.0.orig.tar.gz
+tar xzf mumps_5.9.0.orig.tar.gz
+cd MUMPS_5.9.0
 
 # Copy the MSYS2 configuration file
 cp /c/path/to/russell/zscripts/makefiles-mumps/Makefile.inc.msys2 Makefile.inc

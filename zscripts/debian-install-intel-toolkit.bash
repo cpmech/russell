@@ -34,6 +34,7 @@ source /opt/intel/oneapi/setvars.sh  # sets CC, FC, MKLROOT, and PATH for the if
 set -u
 
 # Remove the broken non-ELF file that ships with MKL and confuses ldconfig
+# See https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ldconfig-opt-intel-oneapi-redist-lib-libmkl-sycl-so-is-not-an/m-p/1549240#M35528
 WEIRD_FILE="$MKLROOT/lib/intel64/libmkl_sycl.so"
 if [ -f "$WEIRD_FILE" ]; then
     sudo mv "$WEIRD_FILE" "$MKLROOT/lib/intel64/libmkl_sick.txt"

@@ -1,82 +1,38 @@
 fn main() {
-    let libs = vec!["klu", "umfpack"];
-
     #[cfg(target_os = "windows")]
     {
         let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
-        let include_path = format!("{}/include/suitesparse", msys2_prefix);
-        let lib_path = format!("{}/lib", msys2_prefix);
 
-        cc::Build::new()
-            .file("c_code/interface_complex_klu.c")
-            .file("c_code/interface_complex_umfpack.c")
-            .file("c_code/interface_klu.c")
-            .file("c_code/interface_umfpack.c")
-            .include(&include_path)
-            .compile("c_code_suitesparse");
-
-        println!("cargo:rustc-link-search=native={}", lib_path);
-        for l in &libs {
-            println!("cargo:rustc-link-lib=dylib={}", *l);
-        }
-    }
-    
-    #[cfg(not(target_os = "windows"))]
-    {
-        #[cfg(not(feature = "local_suitesparse"))]
-        let lib_dirs = vec![
-            "/usr/lib/x86_64-linux-gnu",
-            "/usr/lib",
-            "/usr/lib64",
-            "/opt/homebrew/lib",
-        ];
-
-        #[cfg(not(feature = "local_suitesparse"))]
-        let inc_dirs = vec![
-            "/usr/include/suitesparse",
-        ];
-
-        #[cfg(target_os = "macos")]
-        let inc_dirs = vec![
-            "/opt/homebrew/include/suitesparse",
-            "/usr/local/include/suitesparse",
-        ];
-
-        #[cfg(feature = "local_suitesparse")]
-        let lib_dirs = vec!["/usr/local/lib/suitesparse"];
-
-        #[cfg(feature = "local_suitesparse")]
-        let inc_dirs = vec!["/usr/local/include/suitesparse"];
-
-        cc::Build::new()
-            .file("c_code/interface_complex_klu.c")
-            .file("c_code/interface_complex_umfpack.c")
-            .file("c_code/interface_klu.c")
-            .file("c_code/interface_umfpack.c")
-            .includes(&inc_dirs)
-            .compile("c_code_suitesparse");
-        for d in &lib_dirs {
-            println!("cargo:rustc-link-search=native={}", *d);
-        }
-        for l in &libs {
-            println!("cargo:rustc-link-lib=dylib={}", *l);
-        }
-    }
-
-    #[cfg(feature = "with_mumps")]
-    {
-        #[cfg(target_os = "windows")]
+        #[cfg(not(feature = "local_sparse"))]
         {
-            let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
-            let mumps_include = format!("{}/include/mumps", msys2_prefix);
-            let mumps_lib = format!("{}/lib/mumps", msys2_prefix);
-
             cc::Build::new()
+                .file("c_code/interface_complex_klu.c")
+                .file("c_code/interface_complex_umfpack.c")
+                .file("c_code/interface_klu.c")
+                .file("c_code/interface_umfpack.c")
+                .include(&format!("{}/include/suitesparse", msys2_prefix))
+                .compile("c_code");
+            println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
+            println!("cargo:rustc-link-lib=dylib=klu");
+            println!("cargo:rustc-link-lib=dylib=umfpack");
+        }
+
+        #[cfg(feature = "local_sparse")]
+        {
+            cc::Build::new()
+                .file("c_code/interface_complex_klu.c")
+                .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_complex_mumps.c")
+                .file("c_code/interface_klu.c")
+                .file("c_code/interface_umfpack.c")
                 .file("c_code/interface_mumps.c")
-                .include(&mumps_include)
-                .compile("c_code_mumps");
-            println!("cargo:rustc-link-search=native={}", mumps_lib);
+                .include(&format!("{}/include/mumps", msys2_prefix))
+                .include(&format!("{}/include/suitesparse", msys2_prefix))
+                .compile("c_code");
+            println!("cargo:rustc-link-search=native={}/lib/mumps", msys2_prefix);
+            println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
+            println!("cargo:rustc-link-lib=dylib=klu");
+            println!("cargo:rustc-link-lib=dylib=umfpack");
             println!("cargo:rustc-link-lib=static=dmumps_cpmech");
             println!("cargo:rustc-link-lib=static=zmumps_cpmech");
             println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
@@ -86,15 +42,58 @@ fn main() {
             println!("cargo:rustc-link-lib=dylib=gomp");
             println!("cargo:rustc-link-lib=static=metis");
         }
+    }
 
-        #[cfg(not(target_os = "windows"))]
+    #[cfg(not(target_os = "windows"))]
+    {
+        let inc_dirs = vec![
+            "/opt/homebrew/include/suitesparse",
+            "/usr/include/suitesparse",
+            "/usr/local/include/mumps",
+            "/usr/local/include/suitesparse",
+        ];
+
+        let lib_dirs = vec![
+            "/opt/homebrew/lib",
+            "/usr/lib/x86_64-linux-gnu",
+            "/usr/lib",
+            "/usr/lib64",
+            "/usr/local/lib/mumps",
+            "/usr/local/lib/suitesparse",
+        ];
+
+        #[cfg(not(feature = "local_sparse"))]
         {
             cc::Build::new()
+                .file("c_code/interface_complex_klu.c")
+                .file("c_code/interface_complex_umfpack.c")
+                .file("c_code/interface_klu.c")
+                .file("c_code/interface_umfpack.c")
+                .includes(&inc_dirs)
+                .compile("c_code");
+            for d in &lib_dirs {
+                println!("cargo:rustc-link-search=native={}", *d);
+            }
+            println!("cargo:rustc-link-lib=dylib=klu");
+            println!("cargo:rustc-link-lib=dylib=umfpack");
+        }
+
+        #[cfg(feature = "local_sparse")]
+        {
+            cc::Build::new()
+                .file("c_code/interface_complex_klu.c")
+                .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_complex_mumps.c")
+                .file("c_code/interface_klu.c")
+                .file("c_code/interface_umfpack.c")
                 .file("c_code/interface_mumps.c")
-                .include("/usr/local/include/mumps")
-                .compile("c_code_mumps");
-            println!("cargo:rustc-link-search=native=/usr/local/lib/mumps");
+                .includes(&inc_dirs)
+                .compile("c_code");
+            for d in &lib_dirs {
+                println!("cargo:rustc-link-search=native={}", *d);
+            }
+            println!("cargo:rustc-link-lib=dylib=klu");
+            println!("cargo:rustc-link-lib=dylib=umfpack");
             println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
             println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
         }

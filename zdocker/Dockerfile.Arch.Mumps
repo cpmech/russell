@@ -36,4 +36,4 @@ USER user
 
 # Test the code
 ENV RUST_BACKTRACE=1
-RUN cargo test --features with_mumps
+RUN cargo test --features local_sparse

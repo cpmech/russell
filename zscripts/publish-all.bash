@@ -5,13 +5,23 @@ cargo publish --features intel_mkl
 cd ..
 sleep 5
 
-cd russell_sparse
-cargo publish --features local_suitesparse,with_mumps,intel_mkl
+cd russell_nonlin
+cargo publish --features intel_mkl,with_sparse
 cd ..
 sleep 5
 
 cd russell_ode
-cargo publish --features local_suitesparse,with_mumps,intel_mkl
+cargo publish --features intel_mkl,with_sparse
+cd ..
+sleep 5
+
+cd russell_pde
+cargo publish --features intel_mkl,with_sparse
+cd ..
+sleep 5
+
+cd russell_sparse
+cargo publish --features intel_mkl,with_sparse
 cd ..
 sleep 5
 

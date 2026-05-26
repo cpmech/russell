@@ -38,4 +38,4 @@ USER user
 
 # MKL requires sourcing setvars.sh in the same shell as cargo test
 ENV RUST_BACKTRACE=1
-RUN bash -c "source /opt/intel/oneapi/setvars.sh && cargo test --features intel_mkl,with_mumps"
+RUN bash -c "source /opt/intel/oneapi/setvars.sh && cargo test --features intel_mkl,local_sparse"

@@ -2,7 +2,7 @@ use russell_lab::approx_eq;
 use russell_pde::{Fdm1d, Grid1d, ProblemSamples, StrError};
 use russell_sparse::Genie;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use serial_test::serial;
 
 #[test]
@@ -18,7 +18,7 @@ fn test_1d_prob01_fdm() -> Result<(), StrError> {
     Ok(())
 }
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 #[test]
 #[serial]
 fn test_1d_prob01_fdm_mumps() -> Result<(), StrError> {

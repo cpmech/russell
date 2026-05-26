@@ -37,15 +37,13 @@
 ## Contents <!-- omit from toc --> 
 
 - [Introduction](#introduction)
+  - [Features](#features)
 - [Installation](#installation)
+  - [Arch Linux](#arch-linux)
   - [Debian/Ubuntu Linux](#debianubuntu-linux)
   - [Rocky Linux](#rocky-linux)
-  - [Arch Linux](#arch-linux)
   - [macOS](#macos)
   - [Windows](#windows)
-  - [Optional feature "local\_suitesparse"](#optional-feature-local_suitesparse)
-  - [Optional feature "with\_mumps"](#optional-feature-with_mumps)
-  - [Optional feature "intel\_mkl"](#optional-feature-intel_mkl)
   - [Number of threads](#number-of-threads)
 - [🌟 Examples](#-examples)
   - [(lab) Numerical integration (quadrature)](#lab-numerical-integration-quadrature)
@@ -62,7 +60,6 @@
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
-- [Development](#development)
 
 
 
@@ -72,33 +69,52 @@
 
 Russell aims to deliver efficient, reliable, and easy-to-maintain code. Thus, Russell implements several unit and integration tests and requires test coverage to be over 95%. For the sake of code maintenance, Russell avoids overcomplicated Rust constructions. Nonetheless, Russell considers a good range of Rust concepts, such as generics and traits, and convenient/powerful constructs, such as enums, options, and results. Another goal of Russell is to publish examples of all computations in the documentation to assist the user/developer.
 
-Available libraries:
+Available crates:
 
 - [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Scientific laboratory with special math functions, linear algebra, interpolation, quadrature, numerical derivation, and more
+- [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) Numerical Continuation methods to solve nonlinear systems of equations
 - [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) 
+- [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver
 - [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics
 
 👆 Check the crate version and update your Cargo.toml accordingly. Examples:
 
+### Features
+
+| Crate          | `intel_mkl` | `local_sparse` |
+| -------------- | :---------: | :------------: |
+| russell_lab    |      ✓      |                |
+| russell_nonlin |      ✓      |       ✓        |
+| russell_ode    |      ✓      |       ✓        |
+| russell_pde    |      ✓      |       ✓        |
+| russell_sparse |      ✓      |       ✓        |
+| russell_stat   |      ✓      |                |
+| russell_tensor |      ✓      |                |
+
+
+
 ```toml
 [dependencies]
 russell_lab = "*"
-russell_sparse = "*"
+russell_nonlin = "*"
 russell_ode = "*"
+russell_pde = "*"
+russell_sparse = "*"
 russell_stat = "*"
 russell_tensor = "*"
 ```
 
 All crates have an option to use [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) instead of the default [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS). For instance, the `features` keyword may be configured as follows:
 
-
 ```toml
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
-russell_sparse = { version = "*", features = ["intel_mkl"] }
+russell_nonlin = { version = "*", features = ["intel_mkl"] }
 russell_ode = { version = "*", features = ["intel_mkl"] }
+russell_pde = { version = "*", features = ["intel_mkl"] }
+russell_sparse = { version = "*", features = ["intel_mkl"] }
 russell_stat = { version = "*", features = ["intel_mkl"] }
 russell_tensor = { version = "*", features = ["intel_mkl"] }
 ```
@@ -113,106 +129,94 @@ External associated and recommended crates:
 
 ## Installation
 
-Russell requires some non-Rust libraries (e.g., [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS), [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html), [MUMPS](https://mumps-solver.org), [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the max performance. These libraries can be installed as explained in each subsection next.
+Russell requires some non-Rust libraries ([OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the maximum performance. These libraries can be installed as explained in each subsection next.
 
-After installing the dependencies, you may add each crate using:
+Alternatively, [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be used instead of OpenBLAS. In this case, the **feature** named `intel_mkl` must be enabled.
+
+In addition to SuiteSparse (UMFPACK and KLU), the [MUMPS solver](https://mumps-solver.org) may be used as an optional feature. In this case, MUMPS must be locally compiled and installed and the **feature** name `local_sparse` must be enabled. When MUMPS is enabled, SuiteSparse must also be compiled locally.
+
+### Arch Linux
+
+**Option 1**: Install OpenBLAS and SuiteSparse from the package manager:
 
 ```bash
-cargo add russell_lab
-cargo add russell_sparse # etc.
+pacman -Syu rust blas-openblas suitesparse
+```
+
+**Option 2**: Compile and install SuiteSparse and MUMPS with OpenBLAS:
+
+```bash
+bash zscripts/arch-compile-mumps.bash 
+bash zscripts/arch-compile-suitesparse.bash 
+```
+
+**Option 3**: Compile and install SuiteSparse and MUMPS with Intel MKL:
+
+```bash
+bash zscripts/arch-install-intel-toolkit.bash
+bash zscripts/arch-compile-mumps.bash 1
+bash zscripts/arch-compile-suitesparse.bash 1
 ```
 
 ### Debian/Ubuntu Linux
 
-Required libraries:
+**Option 1**: Install OpenBLAS and SuiteSparse from the package manager:
 
 ```bash
-# install libraries for russell
 sudo apt-get install -y --no-install-recommends \
     liblapacke-dev \
     libopenblas-dev \
     libsuitesparse-dev
 ```
 
-### Rocky Linux
-
-Required libraries:
+**Option 2**: Compile and install SuiteSparse and MUMPS with OpenBLAS:
 
 ```bash
-# initialize
+bash zscripts/debian-compile-mumps.bash 
+bash zscripts/debian-compile-suitesparse.bash 
+```
+
+**Option 3**: Compile and install SuiteSparse and MUMPS with Intel MKL:
+
+```bash
+bash zscripts/debian-install-intel-toolkit.bash
+bash zscripts/debian-compile-mumps.bash 1
+bash zscripts/debian-compile-suitesparse.bash 1
+```
+
+### Rocky Linux
+
+**Option 1**: Install OpenBLAS and SuiteSparse from the package manager:
+
+```bash
 dnf update -y
 dnf install epel-release -y
 crb enable
-
-# install libraries for russell
 dnf install -y \
   lapack-devel \
   openblas-devel \
   suitesparse-devel
 ```
 
-### Arch Linux
-
-Required libraries:
-
-```bash
-# install libraries for russell
-pacman -Syu rust blas-openblas suitesparse
-```
+The other options have not been tested yet.
 
 ### macOS
 
-First, install [Homebrew](https://brew.sh/). Then, run:
+First, install [Homebrew](https://brew.sh/).
+
+**Option 1**: Install OpenBLAS and SuiteSparse from the package manager:
 
 ```bash
-# install libraries for russell
 brew install lapack openblas suite-sparse
 ```
 
+The other options have not been tested yet.
+
 ### Windows
 
-To compile Russell on Windows, the MSYS2 environment is required along with the installation of necessary libraries.
+The installation process on Windows requires the [MSYS2 environment](https://www.msys2.org), which provides a Unix-like terminal and package manager. After installing MSYS2, you can use the `pacman` package manager to install the necessary libraries.
 
-On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for detailed information on how to install the dependencies.
-
-
-### Optional feature "local_suitesparse"
-
-`russell_sparse` allows the use of a locally compiled SuiteSparse, installed in `/usr/local/include/suitesparse` and `/usr/local/lib/suitesparse`. This option is defined by the `local_suitesparse` feature. The [debian-compile-suitesparse.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-compile-suitesparse.bash) script may be used in this case:
-
-```bash
-bash zscripts/debian-compile-suitesparse.bash
-```
-
-### Optional feature "with_mumps"
-
-`russell_sparse` has an optional feature named `with_mumps` which enables the MUMPS solver. To use this feature, MUMPS needs to be locally compiled first. On Linux/macOS, the [debian-compile-mumps.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-compile-mumps.bash) script may be used:
-
-```bash
-bash zscripts/debian-compile-mumps.bash
-```
-
-On Windows (MSYS2), see [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for instructions on how to compile MUMPS.
-
-
-### Optional feature "intel_mkl"
-
-To enable Intel MKL (and disable OpenBLAS), the optional `intel_mkl` feature may be used. In this case, SuiteSparse (and MUMPS) must be locally compiled with Intel MKL. This step can be easily accomplished by the [debian-compile-suitesparse.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-compile-suitesparse.bash) and [debian-compile-mumps.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-compile-mumps.bash) scripts.
-
-The `latest` version of Intel MKL will be used by such scripts, unless the following environment variable is set:
-
-```bash
-export MKL_VERSION=<version>
-```
-
-Call the scripts with the **mkl** argument to compile and install SuiteSparse and MUMPS with Intel MKL:
-
-```bash
-bash zscripts/debian-compile-suitesparse.bash mkl
-bash zscripts/debian-compile-mumps.bash mkl
-```
-
-**Warning:** The above scripts will rename the weird `libmkl_sycl.so` file to `libmkl_sick.txt` since [it is not a real library](https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ldconfig-opt-intel-oneapi-redist-lib-libmkl-sycl-so-is-not-an/m-p/1549240#M35528).
+See [windows.md](https://github.com/cpmech/russell/blob/main/windows.md) for detailed instructions on how to set up the MSYS2 environment and install the required libraries on Windows.
 
 ### Number of threads
 

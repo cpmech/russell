@@ -3,7 +3,7 @@ use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc2d, SpcMap2d, StrError, TransfiniteSamples};
 use russell_sparse::Genie;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;
@@ -40,7 +40,7 @@ fn test_2d_prob01_spc_map() -> Result<(), StrError> {
     Ok(())
 }
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 #[test]
 #[serial]
 fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
@@ -56,7 +56,7 @@ fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
     Ok(())
 }
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 #[test]
 #[serial]
 fn test_2d_prob01_spc_map_mumps() -> Result<(), StrError> {

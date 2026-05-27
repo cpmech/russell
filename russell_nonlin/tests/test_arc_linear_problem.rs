@@ -3,7 +3,7 @@ use russell_lab::{approx_eq, array_approx_eq, math::SQRT_2};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};
 use russell_sparse::{Genie, Sym};
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;
@@ -14,7 +14,7 @@ fn test_arc_linear_problem() {
     run_test(Genie::Umfpack, true, true);
 }
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 #[test]
 #[serial]
 fn test_arc_linear_problem_mumps() {

@@ -1,8 +1,10 @@
-name: Test & Coverage
+name: Ubuntu Linux
 on: [pull_request]
 jobs:
-  test_and_coverage:
+  ubuntu:
     runs-on: ubuntu-latest
+    env:
+      RUST_BACKTRACE: 1
     strategy:
       matrix:
         rust: [stable, nightly]
@@ -17,19 +19,15 @@ jobs:
         run: |
           lsb_release -d
           rustup --version
-      - name: Install Libraries
-        run: |
-          sudo apt-get update -y && \
-          sudo apt-get install -y --no-install-recommends \
-              liblapacke-dev \
-              libopenblas-dev \
-              libsuitesparse-dev
       - name: Compile MUMPS
         run: |
-          bash zscripts/compile-and-install-mumps.bash
+          bash zscripts/debian-compile-mumps.bash
+      - name: Compile SuiteSparse
+        run: |
+          bash zscripts/debian-compile-suitesparse.bash
       - name: Run tests
         run: |
-          RUST_BACKTRACE=1 cargo test --features with_mumps
+          cargo test --features local_sparse
       - name: Install cargo-llvm-cov
         if: matrix.rust == 'nightly'
         run: |
@@ -37,7 +35,7 @@ jobs:
       - name: Generate code coverage
         if: matrix.rust == 'nightly'
         run: |
-          cargo llvm-cov --workspace --features with_mumps --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' --lcov --output-path lcov.info
+          cargo llvm-cov --workspace --features local_sparse --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' --lcov --output-path lcov.info
       - name: Upload to codecov.io
         if: matrix.rust == 'nightly'
         uses: codecov/codecov-action@v4

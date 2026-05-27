@@ -1,4 +1,4 @@
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use super::SolverMUMPS;
 
 use super::{CooMatrix, Genie, LinSolParams, SolverKLU, SolverUMFPACK, StatsLinSol};
@@ -73,13 +73,13 @@ impl<'a> LinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        #[cfg(feature = "with_mumps")]
+        #[cfg(feature = "local_sparse")]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
-        #[cfg(not(feature = "with_mumps"))]
+        #[cfg(not(feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
@@ -179,7 +179,7 @@ mod tests {
     use crate::{Genie, Samples};
     use russell_lab::{vec_approx_eq, Vector};
 
-    #[cfg(feature = "with_mumps")]
+    #[cfg(feature = "local_sparse")]
     use serial_test::serial;
 
     #[test]
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     #[serial]
-    #[cfg(feature = "with_mumps")]
+    #[cfg(feature = "local_sparse")]
     fn lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
         let mut x = Vector::new(5);

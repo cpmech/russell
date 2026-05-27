@@ -3,7 +3,7 @@ use russell_lab::*;
 use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use serial_test::serial;
 
 fn calc_residual(rr: &mut Vector, uu: &Vector) {
@@ -112,7 +112,7 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
 
 #[test]
 #[serial]
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 fn test_nonlinear_system_mumps() -> Result<(), StrError> {
     solve_nonlinear_system(Genie::Mumps)
 }

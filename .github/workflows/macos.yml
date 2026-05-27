@@ -1,8 +1,10 @@
-name: Test on macOS
+name: macOS
 on: [pull_request]
 jobs:
-  test_on_macos:
+  macos:
     runs-on: macos-latest
+    env:
+      RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@v4
       - name: Configure environment
@@ -14,4 +16,4 @@ jobs:
           brew install lapack openblas suite-sparse
       - name: Run tests
         run: |
-          RUST_BACKTRACE=1 cargo test
+          cargo test

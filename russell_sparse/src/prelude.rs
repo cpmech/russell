@@ -18,8 +18,8 @@ pub use crate::solver_umfpack::SolverUMFPACK;
 pub use crate::stats_lin_sol::StatsLinSol;
 pub use crate::verify_lin_sys::VerifyLinSys;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 pub use crate::complex_solver_mumps::ComplexSolverMUMPS;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 pub use crate::solver_mumps::SolverMUMPS;

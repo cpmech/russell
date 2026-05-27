@@ -1,22 +1,28 @@
 #!/bin/bash
 
-# the first argument is the distro: "arch" or "rocky"
-# the second argument is "1" to enable MUMPS
-DISTRO=${1:-""}
-WITH_MUMPS=${2:-""}
+set -euo pipefail
+
+# first argument:  distro = "" (ubuntu) | "arch" | "rocky"
+# second argument: "1" to enable Intel MKL (arch only)
+# third argument:  "1" to enable MUMPS    (arch only)
+DISTRO="${1:-}"
+INTEL_MKL="${2:-0}"
+LOCAL_SPARSE="${3:-0}"
 
 # image name
-NAME="cpmech/russell_ubuntu"
 if [ "${DISTRO}" = "arch" ]; then
     NAME="cpmech/russell_arch"
-fi
-if [ "${DISTRO}" = "rocky" ]; then
+    if [ "${INTEL_MKL}" = "1" ] && [ "${LOCAL_SPARSE}" = "1" ]; then
+        NAME="${NAME}_mkl_mumps"
+    elif [ "${INTEL_MKL}" = "1" ]; then
+        NAME="${NAME}_mkl"
+    elif [ "${LOCAL_SPARSE}" = "1" ]; then
+        NAME="${NAME}_mumps"
+    fi
+elif [ "${DISTRO}" = "rocky" ]; then
     NAME="cpmech/russell_rocky"
-fi
-if [ "${WITH_MUMPS}" = "1" ]; then
-    NAME="${NAME}_mumps"
+else
+    NAME="cpmech/russell_ubuntu"
 fi
 
-VERSION="latest"
-
-docker run --rm -it $NAME:$VERSION /bin/bash
+docker run --rm -it "${NAME}:latest" /bin/bash

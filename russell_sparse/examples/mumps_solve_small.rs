@@ -1,13 +1,13 @@
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use russell_lab::*;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use russell_sparse::prelude::*;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 use russell_sparse::StrError;
 
-#[cfg(feature = "with_mumps")]
+#[cfg(feature = "local_sparse")]
 fn main() -> Result<(), StrError> {
     // constants
     let ndim = 5; // number of rows = number of columns
@@ -94,7 +94,7 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 
-#[cfg(not(feature = "with_mumps"))]
+#[cfg(not(feature = "local_sparse"))]
 fn main() {
     println!("MUMPS is not available");
 }

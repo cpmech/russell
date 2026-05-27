@@ -30,4 +30,5 @@ COPY . /tmp/russell
 WORKDIR /tmp/russell
 
 # run tests
+ENV RUST_BACKTRACE=1
 RUN cargo test

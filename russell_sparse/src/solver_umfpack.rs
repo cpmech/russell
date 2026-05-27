@@ -338,7 +338,7 @@ impl LinSolTrait for SolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_suitesparse") {
+        stats.main.solver = if cfg!(feature = "local_sparse") {
             "UMFPACK-local".to_string()
         } else {
             "UMFPACK".to_string()

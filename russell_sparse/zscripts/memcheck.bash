@@ -1,18 +1,14 @@
 #!/bin/bash
 
-LOCAL_SUITESPARSE=${1:-""}
-WITH_MUMPS=${2:-""}
-INTEL_MKL=${3:-""}
+INTEL_MKL=${1:-""}
+LOCAL_SPARSE=${2:-""}
 
 FEATURES=""
-if [ "$LOCAL_SUITESPARSE" = "1" ]; then
-    FEATURES="${FEATURES},local_suitesparse"
-fi
-if [ "$WITH_MUMPS" = "1" ]; then
-    FEATURES="${FEATURES},with_mumps"
-fi
 if [ "$INTEL_MKL" = "1" ]; then
     FEATURES="${FEATURES},intel_mkl"
+fi
+if [ "$LOCAL_SPARSE" = "1" ]; then
+    FEATURES="${FEATURES},local_sparse"
 fi
 
 cargo build --features "$FEATURES"
@@ -27,7 +23,7 @@ $VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g umfpa
 $VALGRIND --example nonlinear_system_4eqs -- -g klu
 $VALGRIND --example nonlinear_system_4eqs -- -g umfpack
 
-if [ "$WITH_MUMPS" = "1" ]; then
+if [ "$LOCAL_SPARSE" = "1" ]; then
     $VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g mumps
     $VALGRIND --example nonlinear_system_4eqs -- -g mumps
 fi

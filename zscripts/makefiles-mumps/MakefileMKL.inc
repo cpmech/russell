@@ -42,7 +42,7 @@ LIBEXT  = .a
 OUTC    = -o 
 OUTF    = -o 
 RM = /bin/rm -f
-CC = clang
+CC = icx
 FC = ifx
 FL = ifx
 AR = ar vr 
@@ -60,9 +60,9 @@ LIBOTHERS = -lpthread
 CDEFS   = -DAdd_
 
 #Begin Optimized options
-OPTF    = -O -nofor-main -fopenmp -DGEMMT_AVAILABLE
-OPTL    = -O -nofor-main -fopenmp
-OPTC    = -O -fopenmp
+OPTF    = -O -nofor-main -qopenmp -DGEMMT_AVAILABLE
+OPTL    = -O -nofor-main -qopenmp
+OPTC    = -O -qopenmp
 #End Optimized options
 
 INCS = $(INCSEQ)

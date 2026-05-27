@@ -1,0 +1,24 @@
+name: Arch Linux
+on: [pull_request]
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - intel_mkl: ""
+            local_sparse: ""
+            label: Opt1 Default
+          - intel_mkl: ""
+            local_sparse: "1"
+            label: Opt2 OpenBLAS Local
+          - intel_mkl: "1"
+            local_sparse: "1"
+            label: Opt3 IntelMKL Local
+    name: test (${{ matrix.label }})
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build docker image (${{ matrix.label }})
+        run: |
+          bash zscripts/docker-build-arch.bash ${{ matrix.intel_mkl }} ${{ matrix.local_sparse }}

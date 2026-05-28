@@ -142,7 +142,7 @@ fn main() -> Result<(), StrError> {
     // solve from x = 0 to x = 1
     let x1 = 1.0;
     let mut args = 0;
-    solver.solve(&mut y, x, x1, None, &mut args)?;
+    solver.solve(&mut y, x, x1, None, &mut args, None)?;
     println!("y =\n{}", y);
 
     // check the results
@@ -277,7 +277,7 @@ fn main() -> Result<(), StrError> {
     // solve from x = 0 to x = 20
     let x1 = 20.0;
     let mut args = 0;
-    solver.solve(&mut y, x, x1, None, &mut args)?;
+    solver.solve(&mut y, x, x1, None, &mut args, None)?;
     println!("y =\n{}", y);
 
     // check the results

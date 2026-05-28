@@ -31,13 +31,11 @@ fn main() -> Result<(), StrError> {
 
     // output
     let h_out = 1.0;
-    solver
-        .enable_output()
-        .set_dense_h_out(h_out)?
-        .set_dense_file_writing(PATH_KEY)?;
+    let mut out = Output::new();
+    out.set_dense_h_out(h_out)?.set_dense_file_writing(PATH_KEY)?;
 
     // solve the ODE system
-    solver.solve(&mut yy0, t0, t1, None, &mut args)?;
+    solver.solve(&mut yy0, t0, t1, None, &mut args, Some(&mut out))?;
 
     // get statistics
     let stat = solver.stats();

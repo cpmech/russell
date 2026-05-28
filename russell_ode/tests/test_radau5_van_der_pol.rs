@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
 fn test_radau5_van_der_pol() {
@@ -14,15 +14,12 @@ fn test_radau5_van_der_pol() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, system).unwrap();
 
-    // enable dense output
-    solver
-        .enable_output()
-        .set_dense_h_out(0.2)
-        .unwrap()
-        .set_dense_recording(&[0, 1]);
+    // dense output
+    let mut out = Output::new();
+    out.set_dense_h_out(0.2).unwrap().set_dense_recording(&[0, 1]);
 
     // solve the ODE system
-    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args, Some(&mut out)).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -33,13 +30,13 @@ fn test_radau5_van_der_pol() {
     approx_eq(stat.h_accepted, 1.510987221365367E-01, 1e-7);
 
     // print dense output
-    let n_dense = solver.out_dense_x().len();
+    let n_dense = out.dense_x().len();
     for i in 0..n_dense {
         println!(
             "x ={:5.2}, y ={}{}",
-            solver.out_dense_x()[i],
-            format_fortran(solver.out_dense_y(0)[i]),
-            format_fortran(solver.out_dense_y(1)[i]),
+            out.dense_x()[i],
+            format_fortran(out.dense_y(0)[i]),
+            format_fortran(out.dense_y(1)[i]),
         );
     }
 

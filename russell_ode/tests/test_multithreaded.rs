@@ -47,7 +47,14 @@ impl<'a> Runner for Simulator<'a> {
     fn run_and_check(&mut self) {
         self.data
             .solver
-            .solve(&mut self.data.y, self.data.x0, self.data.x1, None, &mut self.data.a)
+            .solve(
+                &mut self.data.y,
+                self.data.x0,
+                self.data.x1,
+                None,
+                &mut self.data.a,
+                None,
+            )
             .unwrap();
         approx_eq(self.data.y[0], self.data.x1, 1e-15);
     }

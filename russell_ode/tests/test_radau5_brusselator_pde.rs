@@ -25,7 +25,7 @@ fn test_radau5_brusselator_pde() {
 
     // solve the ODE system
     let yy = &mut yy0;
-    solver.solve(yy, t0, t1, None, &mut args).unwrap();
+    solver.solve(yy, t0, t1, None, &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();

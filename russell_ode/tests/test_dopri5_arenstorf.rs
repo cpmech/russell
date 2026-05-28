@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
 fn test_dopri5_arenstorf() {
@@ -14,16 +14,13 @@ fn test_dopri5_arenstorf() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, system).unwrap();
 
-    // enable dense output with 1.0 spacing
-    solver
-        .enable_output()
-        .set_dense_h_out(1.0)
-        .unwrap()
-        .set_dense_recording(&[0, 1, 2, 3]);
+    // dense output with 1.0 spacing
+    let mut out = Output::new();
+    out.set_dense_h_out(1.0).unwrap().set_dense_recording(&[0, 1, 2, 3]);
 
     // solve the ODE system
     let y = &mut y0;
-    solver.solve(y, x0, x1, None, &mut args).unwrap();
+    solver.solve(y, x0, x1, None, &mut args, Some(&mut out)).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -36,15 +33,15 @@ fn test_dopri5_arenstorf() {
     approx_eq(stat.h_accepted, 5.258587607119909E-04, 1e-10);
 
     // print dense output
-    let n_dense = solver.out_dense_x().len();
+    let n_dense = out.dense_x().len();
     for i in 0..n_dense {
         println!(
             "x ={:6.2}, y ={}{}{}{}",
-            solver.out_dense_x()[i],
-            format_fortran(solver.out_dense_y(0)[i]),
-            format_fortran(solver.out_dense_y(1)[i]),
-            format_fortran(solver.out_dense_y(2)[i]),
-            format_fortran(solver.out_dense_y(3)[i]),
+            out.dense_x()[i],
+            format_fortran(out.dense_y(0)[i]),
+            format_fortran(out.dense_y(1)[i]),
+            format_fortran(out.dense_y(2)[i]),
+            format_fortran(out.dense_y(3)[i]),
         );
     }
 

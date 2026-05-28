@@ -69,19 +69,19 @@ pub struct Output<'a, A> {
     step_recording: bool,
 
     /// Holds the stepsize computed at accepted steps
-    pub(crate) step_h: Vec<f64>,
+    step_h: Vec<f64>,
 
     /// Holds the x values computed at accepted steps
-    pub(crate) step_x: Vec<f64>,
+    step_x: Vec<f64>,
 
     /// Holds the selected y components computed at accepted steps
-    pub(crate) step_y: HashMap<usize, Vec<f64>>,
+    step_y: HashMap<usize, Vec<f64>>,
 
     /// Holds the global error computed at accepted steps (if the YxFunction is available)
     ///
     /// The global error is the maximum absolute difference between the numerical results and
     /// the ones computed by `YxFunction` (see [russell_lab::vec_max_abs_diff])
-    pub(crate) step_global_error: Vec<f64>,
+    step_global_error: Vec<f64>,
 
     // --- dense -------------------------------------------------------------------------------------------
     /// Holds a callback function for the dense output
@@ -103,26 +103,26 @@ pub struct Output<'a, A> {
     dense_index: usize,
 
     /// Holds the x values (specified by the user)
-    pub(crate) dense_x: Vec<f64>,
+    dense_x: Vec<f64>,
 
     /// Holds the selected y components computed during the dense output
-    pub(crate) dense_y: HashMap<usize, Vec<f64>>,
+    dense_y: HashMap<usize, Vec<f64>>,
 
     // --- stiffness ---------------------------------------------------------------------------------------
     /// Records the stations where stiffness has been detected
     stiff_recording: bool,
 
     /// Holds the indices of the accepted steps where stiffness has been detected
-    pub(crate) stiff_step_index: Vec<usize>,
+    stiff_step_index: Vec<usize>,
 
     /// Holds the x stations where stiffness has been detected
-    pub(crate) stiff_x: Vec<f64>,
+    stiff_x: Vec<f64>,
 
     /// Holds the h·ρ values where stiffness has been (firstly) detected
     ///
     /// Note: ρ is the approximation of |λ|, where λ is the dominant eigenvalue of the Jacobian
     /// (see Hairer-Wanner Part II page 22)
-    pub(crate) stiff_h_times_rho: Vec<f64>,
+    stiff_h_times_rho: Vec<f64>,
 
     // --- auxiliary ---------------------------------------------------------------------------------------
     /// Holds an auxiliary y vector (e.g., to compute the analytical solution or the dense output)
@@ -180,7 +180,7 @@ impl OutCount {
 
 impl<'a, A> Output<'a, A> {
     /// Allocates a new instance
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         const EMPTY: usize = 0;
         Output {
             initialized: false,
@@ -366,6 +366,55 @@ impl<'a, A> Output<'a, A> {
     pub fn set_yx_correct(&mut self, y_fn_x: impl Fn(&mut Vector, f64, &mut A) + Send + Sync + 'a) -> &mut Self {
         self.yx_function = Some(Arc::new(y_fn_x));
         self
+    }
+
+    // --- getters -----------------------------------------------------------------------------------------
+
+    /// Returns the stepsizes recorded at accepted steps
+    pub fn step_h(&self) -> &Vec<f64> {
+        &self.step_h
+    }
+
+    /// Returns the x values recorded at accepted steps
+    pub fn step_x(&self) -> &Vec<f64> {
+        &self.step_x
+    }
+
+    /// Returns the recorded values of y component `m` at accepted steps
+    pub fn step_y(&self, m: usize) -> &Vec<f64> {
+        static EMPTY: Vec<f64> = Vec::new();
+        self.step_y.get(&m).unwrap_or(&EMPTY)
+    }
+
+    /// Returns the global error recorded at accepted steps
+    pub fn step_global_error(&self) -> &Vec<f64> {
+        &self.step_global_error
+    }
+
+    /// Returns the x stations used for dense output
+    pub fn dense_x(&self) -> &Vec<f64> {
+        &self.dense_x
+    }
+
+    /// Returns the recorded values of y component `m` from the dense output
+    pub fn dense_y(&self, m: usize) -> &Vec<f64> {
+        static EMPTY: Vec<f64> = Vec::new();
+        self.dense_y.get(&m).unwrap_or(&EMPTY)
+    }
+
+    /// Returns the indices of accepted steps where stiffness was detected
+    pub fn stiff_step_index(&self) -> &[usize] {
+        &self.stiff_step_index
+    }
+
+    /// Returns the x stations where stiffness was detected
+    pub fn stiff_x(&self) -> &[f64] {
+        &self.stiff_x
+    }
+
+    /// Returns the h·ρ values where stiffness was (firstly) detected
+    pub fn stiff_h_times_rho(&self) -> &[f64] {
+        &self.stiff_h_times_rho
     }
 
     /// Initializes the output structure with initial and final x values

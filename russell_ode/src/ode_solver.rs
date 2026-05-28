@@ -92,7 +92,7 @@ use russell_lab::{vec_all_finite, Vector};
 ///     // solve from x = 0 to x = 1
 ///     let x1 = 1.0;
 ///     let mut args = 0;
-///     solver.solve(&mut y, x, x1, None, &mut args)?;
+///     solver.solve(&mut y, x, x1, None, &mut args, None)?;
 ///
 ///     // check the results
 ///     let y_ana = Vector::from(&[f64::exp(x1) - x1 - 1.0]);
@@ -115,12 +115,6 @@ pub struct OdeSolver<'a, A> {
 
     /// Holds statistics, benchmarking and "work" variables
     work: Workspace,
-
-    /// Assists in generating the output of results (steps or dense)
-    output: Output<'a, A>,
-
-    /// Indicates whether the output is enabled or not
-    output_enabled: bool,
 }
 
 impl<'a, A> OdeSolver<'a, A> {
@@ -158,8 +152,6 @@ impl<'a, A> OdeSolver<'a, A> {
             ndim,
             actual,
             work: Workspace::new(params.method),
-            output: Output::new(),
-            output_enabled: false,
         })
     }
 
@@ -186,6 +178,7 @@ impl<'a, A> OdeSolver<'a, A> {
         x1: f64,
         h_equal: Option<f64>,
         args: &mut A,
+        mut output: Option<&mut Output<'a, A>>,
     ) -> Result<(), StrError> {
         // check data
         if y0.dim() != self.ndim {
@@ -228,13 +221,13 @@ impl<'a, A> OdeSolver<'a, A> {
         let y = y0; // will become y1 at the end
 
         // first output
-        if self.output_enabled {
-            self.output.initialize(x0, x1, self.params.stiffness.save_results)?;
-            if self.output.with_dense_output() {
+        if let Some(out) = output.as_deref_mut() {
+            out.initialize(x0, x1, self.params.stiffness.save_results)?;
+            if out.with_dense_output() {
                 self.actual.enable_dense_output()?;
             }
-            let stop = self.output.execute(&self.work, h, x, y, &self.actual, args)?;
-            if stop {
+            let stop_gracefully = out.execute(&self.work, h, x, y, &self.actual, args)?;
+            if stop_gracefully {
                 return Ok(());
             }
         }
@@ -257,9 +250,9 @@ impl<'a, A> OdeSolver<'a, A> {
                 vec_all_finite(&y, self.params.debug)?;
 
                 // output
-                if self.output_enabled {
-                    let stop = self.output.execute(&self.work, h, x, y, &self.actual, args)?;
-                    if stop {
+                if let Some(out) = output.as_deref_mut() {
+                    let stop_gracefully = out.execute(&self.work, h, x, y, &self.actual, args)?;
+                    if stop_gracefully {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
                         return Ok(());
@@ -267,8 +260,8 @@ impl<'a, A> OdeSolver<'a, A> {
                 }
                 self.work.stats.stop_sw_step();
             }
-            if self.output_enabled {
-                self.output.last(&self.work, h, x, y, args)?;
+            if let Some(out) = output.as_deref_mut() {
+                out.last(&self.work, h, x, y, args)?;
             }
             self.work.stats.stop_sw_total();
             return Ok(());
@@ -330,9 +323,9 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.work.stats.h_accepted = self.work.h_new;
 
                 // output
-                if self.output_enabled {
-                    let stop = self.output.execute(&self.work, h, x, y, &self.actual, args)?;
-                    if stop {
+                if let Some(out) = output.as_deref_mut() {
+                    let stop_gracefully = out.execute(&self.work, h, x, y, &self.actual, args)?;
+                    if stop_gracefully {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
                         return Ok(());
@@ -370,8 +363,8 @@ impl<'a, A> OdeSolver<'a, A> {
         }
 
         // last output
-        if self.output_enabled {
-            self.output.last(&self.work, h, x, y, args)?;
+        if let Some(out) = output.as_deref_mut() {
+            out.last(&self.work, h, x, y, args)?;
         }
 
         // done
@@ -393,74 +386,6 @@ impl<'a, A> OdeSolver<'a, A> {
         self.params = params;
         Ok(())
     }
-
-    /// Enables the output of results
-    ///
-    /// Returns an access to the output structure for further configuration
-    pub fn enable_output(&mut self) -> &mut Output<'a, A> {
-        self.output_enabled = true;
-        &mut self.output
-    }
-
-    /// Returns an access to the output during accepted steps: stepsizes (h)
-    pub fn out_step_h(&self) -> &Vec<f64> {
-        &self.output.step_h
-    }
-
-    /// Returns an access to the output during accepted steps: x values
-    pub fn out_step_x(&self) -> &Vec<f64> {
-        &self.output.step_x
-    }
-
-    /// Returns an access to the output during accepted steps: y values
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if `m` is out of range
-    pub fn out_step_y(&self, m: usize) -> &Vec<f64> {
-        &self.output.step_y.get(&m).unwrap()
-    }
-
-    /// Returns an access to the output during accepted steps: global error
-    pub fn out_step_global_error(&self) -> &Vec<f64> {
-        &self.output.step_global_error
-    }
-
-    /// Returns an access to the dense output: x values
-    pub fn out_dense_x(&self) -> &Vec<f64> {
-        &self.output.dense_x
-    }
-
-    /// Returns an access to the dense output: y values
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if `m` is out of range
-    pub fn out_dense_y(&self, m: usize) -> &Vec<f64> {
-        &self.output.dense_y.get(&m).unwrap()
-    }
-
-    /// Returns an access to the stiffness detection results: accepted step index
-    ///
-    /// This is the index of the accepted step for which stiffness has been detected.
-    pub fn out_stiff_step_index(&self) -> &Vec<usize> {
-        &self.output.stiff_step_index
-    }
-
-    /// Returns an access to the stiffness detection results: x values
-    pub fn out_stiff_x(&self) -> &Vec<f64> {
-        &self.output.stiff_x
-    }
-
-    /// Returns an access to the stiffness detection results: h times ρ
-    ///
-    /// `h·ρ` is the approximation of the boundary of the stability region.
-    ///
-    /// Note: `ρ` is an approximation of `|λ|`, where `λ` is the dominant eigenvalue of the Jacobian
-    /// (see Hairer-Wanner Part II page 22).
-    pub fn out_stiff_h_times_rho(&self) -> &Vec<f64> {
-        &self.output.stiff_h_times_rho
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +393,7 @@ impl<'a, A> OdeSolver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::OdeSolver;
-    use crate::{Method, Params, Samples, System};
+    use crate::{Method, Output, Params, Samples, System};
     use crate::{NoArgs, OutCount, OutData, Stats, StrError};
     use russell_lab::{approx_eq, array_approx_eq, vec_approx_eq, Vector};
     use russell_sparse::Genie;
@@ -497,17 +422,17 @@ mod tests {
         let mut solver = OdeSolver::new(params, system).unwrap();
         let mut y0 = Vector::new(ndim + 1); // wrong dim
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            solver.solve(&mut y0, 0.0, 1.0, None, &mut args, None).err(),
             Some("y0.dim() must be equal to ndim")
         );
         let mut y0 = Vector::new(ndim);
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 0.0, None, &mut args).err(),
+            solver.solve(&mut y0, 0.0, 0.0, None, &mut args, None).err(),
             Some("x1 must be greater than x0")
         );
         let h_equal = Some(f64::EPSILON); // will cause an error
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, h_equal, &mut args).err(),
+            solver.solve(&mut y0, 0.0, 1.0, h_equal, &mut args, None).err(),
             Some("h_equal must be ≥ 10.0 * f64::EPSILON")
         );
     }
@@ -520,13 +445,13 @@ mod tests {
         let params = Params::new(Method::FwEuler);
         let mut solver = OdeSolver::new(params, system.clone()).unwrap();
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 9.0, Some(1.0), &mut args).err(),
+            solver.solve(&mut y0, 0.0, 9.0, Some(1.0), &mut args, None).err(),
             Some("an element of the vector is either infinite or NaN")
         );
         let params = Params::new(Method::MdEuler);
         let mut solver = OdeSolver::new(params, system).unwrap();
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            solver.solve(&mut y0, 0.0, 1.0, None, &mut args, None).err(),
             Some("an element of the vector is either infinite or NaN")
         );
     }
@@ -538,29 +463,8 @@ mod tests {
         params.step.n_step_max = 1; // will make the solver to fail (too few steps)
         let mut solver = OdeSolver::new(params, system).unwrap();
         assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
+            solver.solve(&mut y0, 0.0, 1.0, None, &mut args, None).err(),
             Some("variable stepping did not converge")
-        );
-    }
-
-    #[test]
-    fn out_initialize_errors_are_captured() {
-        let (system, _, mut y0, mut args, _) = Samples::simple_equation_constant();
-        let params = Params::new(Method::DoPri5);
-        let mut solver = OdeSolver::new(params, system).unwrap();
-        solver
-            .enable_output()
-            .set_dense_x_out(&[0.0, 1.0])
-            .unwrap()
-            .set_dense_recording(&[0]);
-        assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
-            Some("the first interior x_out for dense output must be > x0")
-        );
-        solver.enable_output().set_dense_x_out(&[0.1, 1.0]).unwrap();
-        assert_eq!(
-            solver.solve(&mut y0, 0.0, 1.0, None, &mut args).err(),
-            Some("the last interior x_out for dense output must be < x1")
         );
     }
 
@@ -572,7 +476,7 @@ mod tests {
         let params = Params::new(Method::FwEuler);
         let mut solver = OdeSolver::new(params, system).unwrap();
         let mut y = y0.clone();
-        solver.solve(&mut y, x0, x1, None, &mut args).unwrap();
+        solver.solve(&mut y, x0, x1, None, &mut args, None).unwrap();
         vec_approx_eq(&y, &[1.0], 1e-15);
     }
 
@@ -583,7 +487,7 @@ mod tests {
         let mut params = Params::new(Method::DoPri5);
         params.step.h_ini = 20.0; // will be truncated to 1 yielding a single step
         let mut solver = OdeSolver::new(params, system).unwrap();
-        solver.solve(&mut y0, 0.0, 1.0, None, &mut args).unwrap();
+        solver.solve(&mut y0, 0.0, 1.0, None, &mut args, None).unwrap();
         assert_eq!(solver.work.stats.n_accepted, 1);
         vec_approx_eq(&y0, &[1.0], 1e-15);
     }
@@ -594,7 +498,7 @@ mod tests {
         let mut params = Params::new(Method::MdEuler);
         params.step.h_ini = 0.1;
         let mut solver = OdeSolver::new(params, system).unwrap();
-        solver.solve(&mut y0, 0.0, 0.3, None, &mut args).unwrap();
+        solver.solve(&mut y0, 0.0, 0.3, None, &mut args, None).unwrap();
         vec_approx_eq(&y0, &[0.3], 1e-15);
     }
 
@@ -628,30 +532,16 @@ mod tests {
     }
 
     #[test]
-    fn solve_with_out_dense_captures_errors() {
-        let (system, x0, mut y0, mut args, _) = Samples::simple_equation_constant();
-        let x1 = 1.0;
-        let params = Params::new(Method::FwEuler);
-        let mut solver = OdeSolver::new(params, system).unwrap();
-        solver.enable_output().set_dense_recording(&[0]);
-        assert_eq!(
-            solver.solve(&mut y0, x0, x1, None, &mut args).err(),
-            Some("dense output is not available for the FwEuler method")
-        );
-    }
-
-    #[test]
     fn solve_with_step_output_works() {
         // system and solver
         let (system, _, y0, mut args, y_fn_x) = Samples::simple_equation_constant();
         let params = Params::new(Method::DoPri5);
         let mut solver = OdeSolver::new(params, system).unwrap();
+        let mut out = Output::new();
 
         // output
         let path_key = "/tmp/russell_ode/test_solve_step_output_works";
-        solver
-            .enable_output()
-            .set_yx_correct(y_fn_x)
+        out.set_yx_correct(y_fn_x)
             .set_step_file_writing(path_key)
             .set_step_recording(&[0])
             .set_step_callback(|stats, h, x, y, _args| {
@@ -664,14 +554,16 @@ mod tests {
         // solve
         let h_equal = Some(0.2);
         let mut y = y0.clone();
-        solver.solve(&mut y, 0.0, 0.4, h_equal, &mut args).unwrap();
+        solver
+            .solve(&mut y, 0.0, 0.4, h_equal, &mut args, Some(&mut out))
+            .unwrap();
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
-        array_approx_eq(&solver.out_step_h(), &[0.2, 0.2, 0.2], 1e-15);
-        array_approx_eq(&solver.out_step_x(), &[0.0, 0.2, 0.4], 1e-15);
-        array_approx_eq(&solver.out_step_y(0), &[0.0, 0.2, 0.4], 1e-15);
-        array_approx_eq(&solver.out_step_global_error(), &[0.0, 0.0, 0.0], 1e-15);
+        array_approx_eq(&out.step_h(), &[0.2, 0.2, 0.2], 1e-15);
+        array_approx_eq(&out.step_x(), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(&out.step_y(0), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(&out.step_global_error(), &[0.0, 0.0, 0.0], 1e-15);
 
         // check count file
         let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
@@ -692,7 +584,7 @@ mod tests {
         assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again and stop earlier
-        solver.enable_output().set_step_callback(|stats, _h, _x, _y, _args| {
+        out.set_step_callback(|stats, _h, _x, _y, _args| {
             if stats.n_accepted > 0 {
                 Ok(true) // stop
             } else {
@@ -700,7 +592,7 @@ mod tests {
             }
         });
         let mut y = y0.clone();
-        solver.solve(&mut y, 0.0, 0.4, None, &mut args).unwrap();
+        solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).unwrap();
         assert!(y[0] > 0.0 && y[0] < 0.4);
     }
 
@@ -712,20 +604,19 @@ mod tests {
         let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
-        solver.enable_output().set_step_recording(&[0]);
+        let mut out = Output::new();
+        out.set_step_recording(&[0]);
 
         // solve and stop due to error on the first accepted step
-        solver
-            .enable_output()
-            .set_step_callback(|_stats, _h, _x, _y, _args| Err("stop with error (first accepted step)"));
+        out.set_step_callback(|_stats, _h, _x, _y, _args| Err("stop with error (first accepted step)"));
         let mut y = y0.clone();
         assert_eq!(
-            solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),
+            solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).err(),
             Some("stop with error (first accepted step)")
         );
 
         // solve again and stop due to error on the next steps
-        solver.enable_output().set_step_callback(|stats, _h, _x, _y, _args| {
+        out.set_step_callback(|stats, _h, _x, _y, _args| {
             if stats.n_accepted > 0 {
                 Err("stop with error (subsequent steps)")
             } else {
@@ -734,7 +625,7 @@ mod tests {
         });
         let mut y = y0.clone();
         assert_eq!(
-            solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),
+            solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).err(),
             Some("stop with error (subsequent steps)")
         );
     }
@@ -747,24 +638,23 @@ mod tests {
         let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
-        solver
-            .enable_output()
-            .set_dense_h_out(0.2)
-            .unwrap()
-            .set_dense_recording(&[0]);
+        let mut out = Output::new();
+        out.set_dense_h_out(0.2).unwrap().set_dense_recording(&[0]);
 
         // solve
         let h_equal = Some(0.201); // this will make x_out < x - h with x_out = 0.4
         let x0 = 0.0;
         let x1 = 1.0;
         let mut y = Vector::from(&[x0]);
-        solver.solve(&mut y, x0, x1, h_equal, &mut args).unwrap();
+        solver
+            .solve(&mut y, x0, x1, h_equal, &mut args, Some(&mut out))
+            .unwrap();
 
         // check
         vec_approx_eq(&y, &[x1], 1e-15);
         let correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
-        array_approx_eq(&solver.out_dense_x(), correct, 1e-15);
-        array_approx_eq(&solver.out_dense_y(0), correct, 1e-15);
+        array_approx_eq(&out.dense_x(), correct, 1e-15);
+        array_approx_eq(&out.dense_y(0), correct, 1e-15);
     }
 
     #[test]
@@ -777,9 +667,8 @@ mod tests {
         // output
         const H_OUT: f64 = 0.1;
         let path_key = "/tmp/russell_ode/test_solve_dense_output_h_out_works";
-        solver
-            .enable_output()
-            .set_yx_correct(y_fn_x)
+        let mut out = Output::new();
+        out.set_yx_correct(y_fn_x)
             .set_dense_h_out(H_OUT)
             .unwrap()
             .set_dense_file_writing(path_key)
@@ -794,12 +683,14 @@ mod tests {
         // solve
         let h_equal = Some(0.2);
         let mut y = y0.clone();
-        solver.solve(&mut y, 0.0, 0.4, h_equal, &mut args).unwrap();
+        solver
+            .solve(&mut y, 0.0, 0.4, h_equal, &mut args, Some(&mut out))
+            .unwrap();
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
-        array_approx_eq(&solver.out_dense_x(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
-        array_approx_eq(&solver.out_dense_y(0), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(&out.dense_x(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(&out.dense_y(0), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
 
         // check count file
         let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
@@ -820,16 +711,16 @@ mod tests {
         assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again but stop at the first output
-        solver.enable_output().set_dense_callback(|_stats, _h, _x, _y, _args| {
+        out.set_dense_callback(|_stats, _h, _x, _y, _args| {
             Ok(true) // stop
         });
         let mut y = y0.clone();
-        solver.solve(&mut y, 0.0, 0.4, None, &mut args).unwrap();
+        solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).unwrap();
         assert_eq!(solver.work.stats.n_accepted, 0);
         assert_eq!(y[0], 0.0);
 
         // run again and stop earlier
-        solver.enable_output().set_dense_callback(|stats, _h, _x, _y, _args| {
+        out.set_dense_callback(|stats, _h, _x, _y, _args| {
             if stats.n_accepted > 0 {
                 Ok(true) // stop
             } else {
@@ -838,25 +729,25 @@ mod tests {
         });
         // ... equal steps
         let mut y = y0.clone();
-        solver.solve(&mut y, 0.0, 0.4, Some(0.2), &mut args).unwrap();
+        solver
+            .solve(&mut y, 0.0, 0.4, Some(0.2), &mut args, Some(&mut out))
+            .unwrap();
         assert!(y[0] > 0.0 && y[0] < 0.4);
         // ... variable steps
         let mut y = y0.clone();
-        solver.solve(&mut y, 0.0, 0.4, None, &mut args).unwrap();
+        solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).unwrap();
         assert!(y[0] > 0.0 && y[0] < 0.4);
 
         // run again and stop due to error
         // ... first step
-        solver
-            .enable_output()
-            .set_dense_callback(|_stats, _h, _x, _y, _args| Err("stop with error"));
+        out.set_dense_callback(|_stats, _h, _x, _y, _args| Err("stop with error"));
         let mut y = y0.clone();
         assert_eq!(
-            solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),
+            solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).err(),
             Some("stop with error")
         );
         // ... next steps
-        solver.enable_output().set_dense_callback(|stats, _h, _x, _y, _args| {
+        out.set_dense_callback(|stats, _h, _x, _y, _args| {
             if stats.n_accepted > 0 {
                 Err("stop with error")
             } else {
@@ -865,7 +756,7 @@ mod tests {
         });
         let mut y = y0.clone();
         assert_eq!(
-            solver.solve(&mut y, 0.0, 0.4, None, &mut args).err(),
+            solver.solve(&mut y, 0.0, 0.4, None, &mut args, Some(&mut out)).err(),
             Some("stop with error")
         );
     }
@@ -882,9 +773,8 @@ mod tests {
         let selected_y = &[0];
 
         // output
-        solver
-            .enable_output()
-            .set_dense_x_out(interior_x_out)
+        let mut out = Output::new();
+        out.set_dense_x_out(interior_x_out)
             .unwrap()
             .set_dense_recording(selected_y);
 
@@ -893,13 +783,15 @@ mod tests {
         let x0 = -1.0;
         let x1 = 1.0;
         let mut y = Vector::from(&[x0]);
-        solver.solve(&mut y, x0, x1, h_equal, &mut args).unwrap();
+        solver
+            .solve(&mut y, x0, x1, h_equal, &mut args, Some(&mut out))
+            .unwrap();
 
         // check
         vec_approx_eq(&y, &[x1], 1e-15);
         let correct = &[-1.0, -0.5, 0.0, 0.5, 1.0];
-        assert_eq!(solver.out_dense_x(), correct);
-        array_approx_eq(solver.out_dense_y(0), correct, 1e-15);
+        assert_eq!(out.dense_x(), correct);
+        array_approx_eq(out.dense_y(0), correct, 1e-15);
     }
 
     #[test]
@@ -940,21 +832,22 @@ mod tests {
         let mut solver = OdeSolver::new(params, system).unwrap();
 
         // output
-        solver.enable_output().set_dense_h_out(0.1).unwrap().set_dense_callback(
-            |_stats, _h, _x, _y, args: &mut Args| {
+        let mut out = Output::new();
+        out.set_dense_h_out(0.1)
+            .unwrap()
+            .set_dense_callback(|_stats, _h, _x, _y, args: &mut Args| {
                 if args.out_count == args.out_barrier {
                     return Err("out: artificial error");
                 }
                 args.out_count += 1;
                 Ok(false) // do not stop
-            },
-        );
+            });
 
         // equal steps -----------------------------------------------------------
 
         // first error @ actual.step
         assert_eq!(
-            solver.solve(&mut y, x0, x1, Some(0.2), &mut args).err(),
+            solver.solve(&mut y, x0, x1, Some(0.2), &mut args, Some(&mut out)).err(),
             Some("f: artificial error")
         );
 
@@ -965,14 +858,14 @@ mod tests {
         // 2. in computations related to the stiffness detection
         args.f_barrier += 12; // nstage = 12 (need to skip the next call to 'step')
         assert_eq!(
-            solver.solve(&mut y, x0, x1, Some(0.2), &mut args).err(),
+            solver.solve(&mut y, x0, x1, Some(0.2), &mut args, Some(&mut out)).err(),
             Some("f: artificial error")
         );
 
         // third error @ the second output
         args.f_barrier += 2 * 12; // skip next calls to 'step'
         assert_eq!(
-            solver.solve(&mut y, x0, x1, Some(0.2), &mut args).err(),
+            solver.solve(&mut y, x0, x1, Some(0.2), &mut args, Some(&mut out)).err(),
             Some("out: artificial error")
         );
 
@@ -980,7 +873,7 @@ mod tests {
         args.f_barrier += 2 * 12; // skip next calls to 'step'
         args.out_barrier += 2; // skip first and second output
         assert_eq!(
-            solver.solve(&mut y, x0, x1, Some(0.2), &mut args).err(),
+            solver.solve(&mut y, x0, x1, Some(0.2), &mut args, Some(&mut out)).err(),
             Some("out: artificial error")
         );
 
@@ -992,7 +885,7 @@ mod tests {
         args.out_count = 0;
         args.out_barrier = 2; // first and second outputs
         assert_eq!(
-            solver.solve(&mut y, x0, x1, None, &mut args).err(),
+            solver.solve(&mut y, x0, x1, None, &mut args, Some(&mut out)).err(),
             Some("f: artificial error")
         );
 
@@ -1003,7 +896,7 @@ mod tests {
         // 2. in computations related to the stiffness detection
         args.f_barrier += 12; // nstage = 12 (need to skip the next call to 'step')
         assert_eq!(
-            solver.solve(&mut y, x0, x1, None, &mut args).err(),
+            solver.solve(&mut y, x0, x1, None, &mut args, Some(&mut out)).err(),
             Some("f: artificial error")
         );
 
@@ -1013,7 +906,7 @@ mod tests {
         args.out_count = 0;
         args.out_barrier = 2; // first and second outputs
         assert_eq!(
-            solver.solve(&mut y, x0, x1, None, &mut args).err(),
+            solver.solve(&mut y, x0, x1, None, &mut args, Some(&mut out)).err(),
             Some("out: artificial error")
         );
     }

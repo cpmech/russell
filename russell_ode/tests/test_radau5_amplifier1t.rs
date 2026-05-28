@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran, format_scientific};
-use russell_ode::{Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
 fn test_radau5_amplifier1t() {
@@ -17,15 +17,12 @@ fn test_radau5_amplifier1t() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, system).unwrap();
 
-    // enable output of accepted steps
-    solver
-        .enable_output()
-        .set_dense_h_out(0.001)
-        .unwrap()
-        .set_dense_recording(&[0, 4]);
+    // output of dense results
+    let mut out = Output::new();
+    out.set_dense_h_out(0.001).unwrap().set_dense_recording(&[0, 4]);
 
     // solve the ODE system
-    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args, Some(&mut out)).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -39,16 +36,16 @@ fn test_radau5_amplifier1t() {
     approx_eq(stat.h_accepted, 7.791381954171996E-04, 1e-6);
 
     // compare dense output with Mathematica
-    let n_dense = solver.out_dense_x().len();
+    let n_dense = out.dense_x().len();
     for i in 0..n_dense {
-        approx_eq(solver.out_dense_x()[i], X_MATH[i], 1e-15);
-        let diff0 = f64::abs(solver.out_dense_y(0)[i] - Y0_MATH[i]);
-        let diff4 = f64::abs(solver.out_dense_y(4)[i] - Y4_MATH[i]);
+        approx_eq(out.dense_x()[i], X_MATH[i], 1e-15);
+        let diff0 = f64::abs(out.dense_y(0)[i] - Y0_MATH[i]);
+        let diff4 = f64::abs(out.dense_y(4)[i] - Y4_MATH[i]);
         println!(
             "x ={:7.4}, y1and5 ={}{}, diff1and5 ={}{}",
-            solver.out_dense_x()[i],
-            format_fortran(solver.out_dense_y(0)[i]),
-            format_fortran(solver.out_dense_y(4)[i]),
+            out.dense_x()[i],
+            format_fortran(out.dense_y(0)[i]),
+            format_fortran(out.dense_y(4)[i]),
             format_scientific(diff0, 8, 1),
             format_scientific(diff4, 8, 1)
         );

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, format_fortran};
-use russell_ode::{Method, OdeSolver, Params, Samples};
+use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
 fn test_radau5_robertson() {
@@ -17,11 +17,12 @@ fn test_radau5_robertson() {
     // allocate the solver
     let mut solver = OdeSolver::new(params, system).unwrap();
 
-    // enable output of accepted steps
-    solver.enable_output().set_step_recording(&[0, 1, 2]);
+    // output of accepted steps
+    let mut out = Output::new();
+    out.set_step_recording(&[0, 1, 2]);
 
     // solve the ODE system
-    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args, Some(&mut out)).unwrap();
 
     // get statistics
     let stat = solver.stats();
@@ -33,15 +34,15 @@ fn test_radau5_robertson() {
     approx_eq(stat.h_accepted, 8.160578540333708E-01, 1e-10);
 
     // print the results at accepted steps
-    let n_step = solver.out_step_x().len();
+    let n_step = out.step_x().len();
     for i in 0..n_step {
         println!(
             "step ={:>4}, x ={:5.2}, y ={}{}{}",
             i,
-            solver.out_step_x()[i],
-            format_fortran(solver.out_step_y(0)[i]),
-            format_fortran(solver.out_step_y(1)[i]),
-            format_fortran(solver.out_step_y(2)[i]),
+            out.step_x()[i],
+            format_fortran(out.step_y(0)[i]),
+            format_fortran(out.step_y(1)[i]),
+            format_fortran(out.step_y(2)[i]),
         );
     }
 

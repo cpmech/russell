@@ -31,25 +31,29 @@ fn main() -> Result<(), StrError> {
     let mut fweuler = OdeSolver::new(Params::new(Method::FwEuler), system)?;
 
     // solve the problem with BwEuler and h = 0.5
-    bweuler.enable_output().set_step_recording(&[0]);
+    let mut out1 = Output::new();
+    out1.set_step_recording(&[0]);
     let h = 0.5;
     let mut y = y0.clone();
-    bweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
+    bweuler.solve(&mut y, x0, x1, Some(h), &mut args, Some(&mut out1))?;
 
     // solve the problem with FwEuler and h = 1.974/50.0
-    fweuler.enable_output().set_step_recording(&[0]);
+    let mut out2 = Output::new();
+    out2.set_step_recording(&[0]);
     let h = 1.974 / 50.0;
     let mut y = y0.clone();
-    fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
+    fweuler.solve(&mut y, x0, x1, Some(h), &mut args, Some(&mut out2))?;
 
     // save the results for later
-    let out2_x = fweuler.out_step_x().clone();
-    let out2_y = fweuler.out_step_y(0).clone();
+    let out2_x = out2.step_x().to_vec();
+    let out2_y = out2.step_y(0).to_vec();
 
     // solve the problem with FwEuler and h = 1.875/50.0
+    let mut out3 = Output::new();
+    out3.set_step_recording(&[0]);
     let h = 1.875 / 50.0;
     let mut y = y0.clone();
-    fweuler.solve(&mut y, x0, x1, Some(h), &mut args)?;
+    fweuler.solve(&mut y, x0, x1, Some(h), &mut args, Some(&mut out3))?;
 
     // analytical solution
     let mut y_aux = Vector::new(ndim);
@@ -66,9 +70,7 @@ fn main() -> Result<(), StrError> {
 
     // BwEuler curve
     let mut curve1 = Curve::new();
-    curve1
-        .set_label("BwEuler h = 0.5")
-        .draw(bweuler.out_step_x(), bweuler.out_step_y(0));
+    curve1.set_label("BwEuler h = 0.5").draw(out1.step_x(), out1.step_y(0));
 
     // FwEuler curves
     let mut curve2 = Curve::new();
@@ -76,7 +78,7 @@ fn main() -> Result<(), StrError> {
     curve2.set_label("FwEuler h = 1.974/50").draw(&out2_x, &out2_y);
     curve3
         .set_label("FwEuler h = 1.875/50")
-        .draw(fweuler.out_step_x(), fweuler.out_step_y(0));
+        .draw(out3.step_x(), out3.step_y(0));
 
     // save figure
     let mut plot = Plot::new();

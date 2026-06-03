@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 /// Defines the initial direction of the tangent vector for the pseudo-arclength method
 /// or the (constant) sign of Δλ for the Natural method.
 ///
-/// The initial tangent vector is `(du/ds₀, dλ/ds₀)` for the pseudo-arclength method,
+/// For the pseudo-arclength method, the initial tangent vector `(du/ds₀, dλ/ds₀)` is
+/// computed from the Jacobian at `(u₀, λ₀)`; the sign of `dλ/ds₀` is controlled by this enum.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum IniDir {
     /// Selects the positive value for dλ/ds₀ or Δλ
@@ -259,7 +260,7 @@ impl SoderlindClass {
     }
 }
 
-/// Specifies Success of Failure
+/// Specifies Success or Failure
 ///
 /// Holds the type of failure encountered during the continuation process
 #[derive(Clone, Debug, Eq, PartialEq)]

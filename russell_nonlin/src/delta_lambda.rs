@@ -1,6 +1,16 @@
 use crate::{Stop, StrError, CONFIG_H_MIN};
 
-/// Defines how Δλ is adjusted
+/// Defines how Δλ is adjusted between steps
+///
+/// Three strategies are available:
+///
+/// * [`DeltaLambda::auto`] — automatic step-size control driven by Newton-Raphson
+///   iteration statistics and/or the tangent vector angle. The solver selects and
+///   adjusts Δλ adaptively to maintain a target convergence rate.
+/// * [`DeltaLambda::constant`] — a fixed Δλ applied at every step. Useful for
+///   simple problems or when a uniform spacing along λ is required.
+/// * [`DeltaLambda::list`] — a prescribed sequence of Δλ values, one per step.
+///   Useful when specific λ-levels must be visited exactly.
 #[derive(Debug, Clone)]
 pub struct DeltaLambda {
     /// Automatic Δλ

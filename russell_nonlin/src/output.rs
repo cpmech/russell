@@ -3,7 +3,21 @@ use russell_lab::{vec_norm_chunk, Norm, Vector};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Holds the results at accepted steps
+/// Collects accepted-step results and optionally triggers a user callback
+///
+/// `Output` serves two complementary purposes:
+///
+/// 1. **Recording** — after calling [`Output::set_recording`], the values of
+///    selected `u` components, λ, the step-size `h`, and (for the pseudo-arclength
+///    method) the tangent components `du/ds` and `dλ/ds` are stored at every
+///    accepted step and can be retrieved via the `get_*` methods.
+///
+/// 2. **Callback** — after calling [`Output::set_callback`], a user-supplied
+///    function is invoked at every accepted step. The callback receives the current
+///    [`Stats`], `u`, λ, `h`, and the user's `args`. It may return `true` to
+///    request a graceful early termination.
+///
+/// Both features can be active simultaneously.
 pub struct Output<'a, A> {
     /// Enables the recording of results (u, l, s, h, duds, dlds)
     recording: bool,
@@ -38,7 +52,7 @@ pub struct Output<'a, A> {
 }
 
 impl<'a, A> Output<'a, A> {
-    /// Allocates a new instance
+    /// Allocates a new instance with recording and callback disabled
     pub fn new() -> Self {
         Output {
             recording: false,

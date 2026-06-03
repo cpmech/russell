@@ -6,11 +6,17 @@ use russell_lab::{vec_all_finite, Vector};
 /// Default number of steps
 pub const N_EQUAL_STEPS: usize = 10;
 
+/// Solver for parameterized nonlinear systems using Numerical Continuation
+///
+/// This is the main entry point of the crate. Given a [`System`] and a [`Config`],
+/// it drives either the Natural parameter continuation ([`Method::Natural`]) or the
+/// pseudo-arclength continuation ([`Method::Arclength`]) until a [`Stop`] criterion
+/// is met.
 pub struct Solver<'a, A> {
     /// Configuration options
     config: &'a Config,
 
-    /// Dimension of the ODE system
+    /// Dimension of the nonlinear system
     ndim: usize,
 
     /// Holds a pointer to the actual solver
@@ -28,6 +34,11 @@ pub struct Solver<'a, A> {
 
 impl<'a, A> Solver<'a, A> {
     /// Allocates a new instance
+    ///
+    /// # Arguments
+    ///
+    /// * `config` -- solver configuration (method, tolerances, step control, linear solver)
+    /// * `system` -- the nonlinear system definition, including `G(u, λ)` and its Jacobian
     pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
@@ -79,12 +90,11 @@ impl<'a, A> Solver<'a, A> {
     /// # Input
     ///
     /// * `args` -- extra arguments to be passed to the system functions
-    /// * `(u, l)` -- the initial state `(u₀, λ₀)` with a non-singular `Gu₀ = ∂u/∂λ|₀` (Jacobian) matrix.
-    ///    The state will be updated with the new solution (u, λ) util a stop criterion is reached.
+    /// * `(u, l)` -- the initial state `(u₀, λ₀)` with a non-singular `Gu₀ = ∂G/∂u|₀` (Jacobian) matrix.
+    ///    The state will be updated with the new solution (u, λ) until a stop criterion is reached.
     /// * `dir` -- the direction to follow on the solution branch (pseudo-arclength method).
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
     /// * `ddl` -- specifies how Δλ is adjusted
-    /// * `auto` -- defines the stepsize control method (variable stepsize control or fixed stepsize)
     /// * `output` -- output object to write results files, record the results, or execute a callback function
     ///
     /// # Returns

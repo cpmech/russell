@@ -138,6 +138,11 @@ impl<'a, A> System<'a, A> {
     }
 
     /// Returns a copy of this struct
+    ///
+    /// Note: `Clone` cannot be derived here because the closure fields are stored as
+    /// `Arc<dyn Fn(...)>`, which are not `Clone` in the trait-object sense. This manual
+    /// implementation clones the underlying `Arc` pointers (cheap reference-count bump),
+    /// so the returned copy shares the same closures as the original.
     pub fn clone(&self) -> Self {
         System {
             ndim: self.ndim,

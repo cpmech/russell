@@ -13,19 +13,22 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     - [Setting Cargo.toml](#setting-cargotoml)
     - [Optional features](#optional-features)
   - [🌟 Examples](#-examples)
-    - [Simple example](#simple-example)
+    - [Example 1: Solving 1D Poisson equation with Finite Differences](#example-1-solving-1d-poisson-equation-with-finite-differences)
+    - [Example 2: Solving 1D problems with Spectral Collocation](#example-2-solving-1d-problems-with-spectral-collocation)
+    - [Example 3: Solving 2D Poisson equation](#example-3-solving-2d-poisson-equation)
+    - [Example 4: Using Lagrange multipliers method](#example-4-using-lagrange-multipliers-method)
 
 
 
 ## Introduction
 
-🚧🚧🚧 WORK IN PROGRESS 🚧🚧🚧
-
 This library implements essential tools to solve partial differential equations (PDEs). It does not implement full-fledge PDE solvers for general problems and, hence, this library is quite limited.
 
-A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlinear` because they employ PDE problems as testing platforms.
+A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlinear` because they employ PDE problems as **testing** platforms.
 
-Currently, simple 1D and 2D finite differences operators are implemented.
+Currently, simple finite differences operators are implemented, in addition to spectral collocation methods in 1D and 2D. The library also implements the transfinite mapping method to generate meshes on non-rectangular domains.
+
+The linear systems are solved using the System Partitioning Strategy (SPS) or the Lagrange Multipliers Method (LMM).
 
 ### Documentation
 

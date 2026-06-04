@@ -173,7 +173,7 @@ where
     ///     ];
     ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, Sym::No)?;
     ///
-    ///     // covert to dense
+    ///     // convert to dense
     ///     let a = csr.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
@@ -591,7 +591,7 @@ where
     ///     ];
     ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, Sym::No)?;
     ///
-    ///     // covert to dense
+    ///     // convert to dense
     ///     let a = csr.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\
@@ -654,7 +654,7 @@ where
     ///     ];
     ///     let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, Sym::No)?;
     ///
-    ///     // covert to dense
+    ///     // convert to dense
     ///     let a = csr.as_dense();
     ///     let correct = "┌                ┐\n\
     ///                    │  2  3  0  0  0 │\n\

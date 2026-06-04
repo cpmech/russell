@@ -23,7 +23,7 @@ fn main() -> Result<(), StrError> {
     coo.put(1, 4, 6.0)?;
     coo.put(4, 4, 1.0)?;
 
-    // covert to dense
+    // convert to dense
     let a = coo.as_dense();
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\
@@ -37,7 +37,7 @@ fn main() -> Result<(), StrError> {
     // reset
     coo.reset();
 
-    // covert to dense
+    // convert to dense
     let a = coo.as_dense();
     let correct = "┌           ┐\n\
                    │ 0 0 0 0 0 │\n\
@@ -63,7 +63,7 @@ fn main() -> Result<(), StrError> {
     coo.put(1, 4, 12.0)?;
     coo.put(4, 4, 2.0)?;
 
-    // covert to dense
+    // convert to dense
     let a = coo.as_dense();
     let correct = "┌                ┐\n\
                    │  4  6  0  0  0 │\n\

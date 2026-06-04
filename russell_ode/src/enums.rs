@@ -4,10 +4,12 @@ pub struct Information {
     /// Is the order of y1 (corresponding to B); i.e., the "p" constant
     pub order: usize,
 
-    /// Is he order of error estimator (embedded only); i.e., the "q" constant
+    /// Is the order of error estimator (embedded only); i.e., the "q" constant
     ///
     /// For DoPri5(4): q = 4 = min(order(y1), order(y1bar))
-    pub order_of_estimator: usize, // 0 means no error estimator available
+    ///
+    /// A value of `0` means no error estimator is available.
+    pub order_of_estimator: usize,
 
     /// Indicates implicit method instead of explicit
     pub implicit: bool,
@@ -93,7 +95,7 @@ pub enum Method {
     /// Merson method (explicit, order 4("5"), embedded)
     ///
     /// "5" means that the order 5 is for linear equations with constant coefficients;
-    /// otherwise the method is of order3.
+    /// otherwise the method is of order 3.
     ///
     /// Reference: page 167 of Hairer, Nørsett, and Wanner (2008)
     Merson4,

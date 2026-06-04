@@ -127,7 +127,10 @@ pub struct ParamsStiffness {
     /// Number of steps to ratify the stiffness, i.e., to make sure that stiffness is repeatedly been detected
     pub ratified_after_nstep: usize,
 
-    /// Number of steps to ignore already detected stiffness stations
+    /// Number of consecutive non-stiffness-detection steps required to reset the stiffness counter
+    ///
+    /// Once this many steps pass without a stiffness signal, the detection counter resets and
+    /// the solver watches for stiffness again from scratch.
     pub ignored_after_nstep: usize,
 
     /// Number of initial accepted steps to skip before enabling the stiffness detection
@@ -200,6 +203,20 @@ pub struct ParamsERK {
 }
 
 /// Holds all parameters for the ODE Solver
+///
+/// # Examples
+///
+/// ```
+/// use russell_ode::prelude::*;
+///
+/// let mut params = Params::new(Method::DoPri5);
+///
+/// // optionally override tolerances
+/// params.set_tolerances(1e-6, 1e-6, None).unwrap();
+///
+/// // optionally adjust step-control limits
+/// params.step.n_step_max = 5000;
+/// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Params {
     /// ODE solver method
@@ -421,6 +438,17 @@ impl Params {
     }
 
     /// Sets the tolerances
+    ///
+    /// # Input
+    ///
+    /// * `absolute` -- absolute tolerance; must be > 10 · f64::EPSILON
+    /// * `relative` -- relative tolerance; must be > 10 · f64::EPSILON
+    /// * `newton` -- optional tolerance for Newton's iterations;
+    ///   if `None`, a value is computed automatically from `relative`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `absolute` or `relative` ≤ 10 · f64::EPSILON
     pub fn set_tolerances(&mut self, absolute: f64, relative: f64, newton: Option<f64>) -> Result<(), StrError> {
         let radau5 = self.method == Method::Radau5;
         let (abs, rel, newt) = calc_tolerances(radau5, absolute, relative)?;

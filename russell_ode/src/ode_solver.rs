@@ -171,6 +171,9 @@ impl<'a, A> OdeSolver<'a, A> {
     ///   if possible, variable step sizes are automatically calculated. If automatic
     ///   stepping is not possible (e.g., the RK method is not embedded),
     ///   a constant (and equal) stepsize will be calculated for [N_EQUAL_STEPS] steps.
+    /// * `args` -- extra arguments forwarded to the ODE system function `f(x, y, args)` and Jacobian
+    /// * `output` -- optional [Output] to record results at accepted steps or via dense output;
+    ///   pass `None` to skip output collection
     pub fn solve(
         &mut self,
         y0: &mut Vector,

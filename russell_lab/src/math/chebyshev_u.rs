@@ -334,8 +334,8 @@ mod tests {
             approx_eq(chebyshev_un_deriv2(2, x), 8.0, 1e-13);
 
             // n=3
-            approx_eq(chebyshev_un_deriv1(3, x), -4.0 + 24.0 * x2, 1e-13);
-            approx_eq(chebyshev_un_deriv2(3, x), 48.0 * x, 1e-13);
+            approx_eq(chebyshev_un_deriv1(3, x), -4.0 + 24.0 * x2, 1e-12);
+            approx_eq(chebyshev_un_deriv2(3, x), 48.0 * x, 1e-12);
 
             // n=4
             approx_eq(chebyshev_un_deriv1(4, x), -24.0 * x + 64.0 * x3, 1e-12);

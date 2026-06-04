@@ -12,7 +12,7 @@ use crate::Mandel; // for documentation
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
     assert_eq!(b.mandel, a.mandel);
     assert_eq!(c.mandel, a.mandel);
@@ -53,7 +53,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -149,7 +149,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4, beta: f64) {
     assert_eq!(cc.mandel, dd.mandel);
     assert_eq!(ee.mandel, dd.mandel);

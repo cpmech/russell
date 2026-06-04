@@ -33,7 +33,7 @@ use crate::Mandel; // for documentation
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -110,7 +110,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -192,7 +192,7 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -273,7 +273,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -350,7 +350,7 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -432,7 +432,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
     assert_eq!(a.mandel, dd.mandel);
     assert_eq!(b.mandel, dd.mandel);
@@ -484,7 +484,7 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, beta: f64, a: &Tensor2, b: &Tensor2) {
     assert_eq!(a.mandel, dd.mandel);
     assert_eq!(b.mandel, dd.mandel);

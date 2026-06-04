@@ -11,7 +11,7 @@ use russell_lab::{StrError, Vector};
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) {
     assert_eq!(b.mandel, a.mandel);
     assert_eq!(c.mandel, a.mandel);
@@ -113,7 +113,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// # Panics
 ///
 /// 1. A panic will occur if `c` is not [Mandel::General]
-/// 2. A panic will occur the `a` and `b` have different [Mandel]
+/// 2. A panic will occur if the `a` and `b` have different [Mandel]
 ///
 /// # Examples
 ///

@@ -37,17 +37,27 @@ use crate::StrError;
 //
 // quadrature-fortran includes code from SLATEC, a public domain library.
 
-/// Unknown definition
-const KMX: usize = 5000; // !! ??
+/// Maximum number of Gauss-point evaluations before clamping the subdivision depth to [KML]
+///
+/// When the internal counter `k` exceeds `KMX` the maximum subdivision level is reduced to
+/// `KML` as a safety measure to avoid unbounded recursion.
+const KMX: usize = 5000;
 
-/// Unknown definition
-const KML: usize = 6; // !! ??
+/// Fallback maximum subdivision depth, used once the evaluation count has exceeded [KMX]
+const KML: usize = 6;
 
-/// Unknown definition
-const MAGIC: f64 = 0.30102000_f64; // !! ??
+/// Truncated approximation of log₁₀(2) ≈ 0.30103
+///
+/// Used in `n_ib = D1MACH5 * k / MAGIC` together with [D1MACH5] (the accurate value of
+/// log₁₀(2)) and `k = f64::MANTISSA_DIGITS = 53`. Because the two constants nearly cancel,
+/// `n_ib ≈ 53`, giving the number of significant binary digits in an `f64` mantissa.
+const MAGIC: f64 = 0.30102000_f64;
 
-/// Size of the workspace arrays
-const N_WORK: usize = 60; // !! size of the work arrays. ?? Why 60 ??
+/// Maximum subdivision depth (size of the workspace arrays)
+///
+/// At depth 60 the sub-interval width is `(b − a) / 2⁶⁰ ≈ 8.7 × 10⁻¹⁹`, which is well
+/// below machine epsilon for any practical integration range, making 60 a safe upper bound.
+const N_WORK: usize = 60;
 
 /// log10(2)
 const D1MACH5: f64 = 0.30102999566398119521373889472449; // !! machine constant

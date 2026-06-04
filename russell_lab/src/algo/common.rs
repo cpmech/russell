@@ -13,7 +13,7 @@ pub struct Stats {
     /// Number of calls to f(x) (function evaluations)
     pub n_function: usize,
 
-    /// Number of calls to the dy/dx function
+    /// Number of Jacobian matrix evaluations
     pub n_jacobian: usize,
 
     /// Number of iterations

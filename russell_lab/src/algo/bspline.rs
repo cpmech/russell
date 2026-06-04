@@ -29,6 +29,51 @@ use crate::{AsArray2D, StrError, Vector};
 /// # Reference
 ///
 /// 1. Piegl, L., & Tiller, W. (1997). The NURBS book (2nd ed.). Springer.
+///
+/// # Examples
+///
+/// The workflow is: **construct** the B-spline (degree + knot vector) → **set control points**
+/// → **evaluate** curve points via `calc_point`.
+///
+/// ```
+/// use russell_lab::{approx_eq, Bspline, StrError, Vector};
+///
+/// fn main() -> Result<(), StrError> {
+///     // Degree-2 clamped quadratic B-spline
+///     // Clamped means the first and last p+1 knot values are repeated, so the
+///     // curve passes through the first and last control points.
+///     //
+///     // Knot vector: {0, 0, 0, 0.5, 1, 1, 1}  →  m+1 = 7 knots, p = 2
+///     // Number of basis functions: n+1 = m - p = 4
+///     let uu = &[0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0];
+///     let mut spl = Bspline::new(2, uu)?;
+///
+///     // Four 2-D control points
+///     let control_pts = &[
+///         [0.0, 0.0], // P₀ — curve starts here (clamped)
+///         [1.0, 2.0], // P₁
+///         [2.0, 2.0], // P₂
+///         [3.0, 0.0], // P₃ — curve ends here (clamped)
+///     ];
+///     spl.set_control_points(control_pts)?;
+///
+///     // Evaluate the curve at the endpoints and the mid-knot
+///     let mut cc = Vector::new(2);
+///
+///     spl.calc_point(&mut cc, 0.0, false)?; // u = 0  →  P₀
+///     approx_eq(cc[0], 0.0, 1e-15);
+///     approx_eq(cc[1], 0.0, 1e-15);
+///
+///     spl.calc_point(&mut cc, 0.5, false)?; // u = 0.5  →  0.5*P₁ + 0.5*P₂
+///     approx_eq(cc[0], 1.5, 1e-15);
+///     approx_eq(cc[1], 2.0, 1e-15);
+///
+///     spl.calc_point(&mut cc, 1.0, false)?; // u = 1  →  P₃
+///     approx_eq(cc[0], 3.0, 1e-15);
+///     approx_eq(cc[1], 0.0, 1e-15);
+///     Ok(())
+/// }
+/// ```
 pub struct Bspline {
     /// Degree p
     p: usize,

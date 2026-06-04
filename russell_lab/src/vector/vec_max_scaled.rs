@@ -11,6 +11,18 @@ use super::Vector;
 /// # Panics
 ///
 /// This function will panic of v.dim() != v0.dim()
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::*;
+///
+/// let v  = Vector::from(&[-9.0, 0.0, 2.0]);
+/// let v0 = Vector::from(&[-2.0, -1.0, -1.0]);
+/// // Scaled values: 9/(1+2)=3, 0/(1+1)=0, 2/(1+1)=1  →  max = 3
+/// let res = vec_max_scaled(&v, &v0, 1.0);
+/// assert_eq!(res, 3.0);
+/// ```
 pub fn vec_max_scaled(v: &Vector, v0: &Vector, one: f64) -> f64 {
     let m = v.dim();
     assert!(v0.dim() == m);

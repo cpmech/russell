@@ -49,6 +49,56 @@
 //! where `ℓ` is the vector of Lagrange multipliers, `C` is the constraints matrix, and `ǎ` is the vector of
 //! prescribed values at EBC nodes. The constraints matrix `C` has a row for each EBC (prescribed) node and a column
 //! for every node. Each row in `C` has a single `1` at the column corresponding to the EBC node, and `0`s elsewhere.
+//!
+//! # Examples
+//!
+//! Solve the Poisson equation in 1D with homogeneous Dirichlet boundary conditions:
+//!
+//! ```text
+//! -d²ϕ/dx² = 1   on  x ∈ [0, 1]
+//!
+//! ϕ(0) = 0
+//! ϕ(1) = 0
+//! ```
+//!
+//! The analytical solution is `ϕ(x) = (x - x²) / 2`.
+//!
+//! ```
+//! use russell_lab::approx_eq;
+//! use russell_pde::{EssentialBcs1d, Fdm1d, Grid1d, NaturalBcs1d, Side, StrError};
+//!
+//! fn main() -> Result<(), StrError> {
+//!     // grid
+//!     let xmin = 0.0;
+//!     let xmax = 1.0;
+//!     let nx = 4;
+//!     let mut grid = Grid1d::new_uniform(xmin, xmax, nx)?;
+//!
+//!     // Essential BCs
+//!     let mut ebcs = EssentialBcs1d::new();
+//!     ebcs.set(Side::Xmin, |_| 0.0);
+//!     ebcs.set(Side::Xmax, |_| 0.0);
+//!
+//!     // Natural BCs (none)
+//!     let nbcs = NaturalBcs1d::new();
+//!
+//!     // FDM solver
+//!     let kx = 1.0;
+//!     let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
+//!
+//!     // Solve system
+//!     let alpha = 0.0; // Poisson
+//!     let source = |_| 1.0;
+//!     let phi = fdm.solve_sps(alpha, source)?;
+//!
+//!     // Check
+//!     fdm.for_each_coord(|m, x| {
+//!         let analytical = x * (1.0 - x) / 2.0;
+//!         approx_eq(phi[m], analytical, 1e-14);
+//!     });
+//!     Ok(())
+//! }
+//! ```
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;

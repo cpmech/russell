@@ -15,6 +15,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     - [Optional features](#optional-features)
   - [🌟 Examples](#-examples)
     - [Simple example](#simple-example)
+    - [Tracing a B-spline curve](#tracing-a-b-spline-curve)
 
 
 
@@ -122,3 +123,29 @@ assert_eq!(out.get_l_values().len(), 11); // initial point + 10 steps
 assert!((u[0] - 1.0).abs() < 1e-14);
 assert!((l - 1.0).abs() < 1e-14);
 ```
+
+### Tracing a B-spline curve
+
+This example traces a B-spline curve defined by `G(u, λ) = 0` using the Pseudo-arclength continuation method. The solution points are plotted together with the B-spline curve.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples/arclength_bspline.rs)
+
+The output looks like this:
+
+```text
+Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0 (auto)
+Using numerical Jacobian         = false
+Number of function evaluations   = 223
+Number of Jacobian evaluations   = 176
+Number of factorizations         = 176
+Number of lin sys solutions      = 258
+Number of accepted steps         = 82
+Number of rejected steps         = 0
+Number of performed steps        = 82
+Number of iterations (total)     = 223
+Last accepted/suggested stepsize = 0.0017592577896469867
+```
+
+And the plot looks like this:
+
+![B-spline curve](data/figures/doc_arclength_bspline.svg)

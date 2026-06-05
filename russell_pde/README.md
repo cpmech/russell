@@ -15,9 +15,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [🌟 Examples](#-examples)
     - [Example 1: Solving 1D Poisson equation with Finite Differences](#example-1-solving-1d-poisson-equation-with-finite-differences)
     - [Example 2: Solving 1D problems with Spectral Collocation](#example-2-solving-1d-problems-with-spectral-collocation)
-    - [Example 3: Solving 2D Poisson equation](#example-3-solving-2d-poisson-equation)
-    - [Example 4: Using Lagrange multipliers method](#example-4-using-lagrange-multipliers-method)
-    - [Example 5: Spectral collocation in 2D with transfinite mapping](#example-5-spectral-collocation-in-2d-with-transfinite-mapping)
+    - [Example 3: Spectral collocation in 2D with transfinite mapping](#example-3-spectral-collocation-in-2d-with-transfinite-mapping)
 
 
 
@@ -121,34 +119,46 @@ fn main() -> Result<(), StrError> {
     // Verify against analytical solution
     let analytical = |x: f64| (x - x.powi(3)) / 6.0;
     fdm.for_each_coord(|m, x| {
-        approx_eq(solution[m], analytical(x), 1e-3);
-        println!("x = {:.3}, ϕ = {:.6}", x, solution[m]);
+        let error = f64::abs(solution[m] - analytical(x));
+        approx_eq(solution[m], analytical(x), 1e-15);
+        println!("x = {:.3}, ϕ = {:.6}, error = {:.e}", x, solution[m], error);
     });
 
     Ok(())
 }
 ```
 
-Output:
+The output looks like this:
 
 ```text
-x = 0.000, ϕ = 0.000000
-x = 0.111, ϕ = 0.018290
-x = 0.222, ϕ = 0.035208
-x = 0.333, ϕ = 0.049383
-x = 0.444, ϕ = 0.059442
-x = 0.556, ϕ = 0.064015
-x = 0.667, ϕ = 0.061728
-x = 0.778, ϕ = 0.051212
-x = 0.889, ϕ = 0.031093
-x = 1.000, ϕ = 0.000000
+x = 0.000, ϕ = 0.000000, error = 0e0
+x = 0.111, ϕ = 0.018290, error = 0e0
+x = 0.222, ϕ = 0.035208, error = 0e0
+x = 0.333, ϕ = 0.049383, error = 6.938893903907228e-18
+x = 0.444, ϕ = 0.059442, error = 6.938893903907228e-18
+x = 0.556, ϕ = 0.064015, error = 0e0
+x = 0.667, ϕ = 0.061728, error = 0e0
+x = 0.778, ϕ = 0.051212, error = 2.7755575615628914e-17
+x = 0.889, ϕ = 0.031093, error = 3.469446951953614e-18
+x = 1.000, ϕ = 0.000000, error = 0e0
 ```
 
 ### Example 2: Solving 1D problems with Spectral Collocation
 
-For higher accuracy, use the Spectral Collocation method instead:
+This example solves the Poisson equation in 1D using Spectral Collocation:
+
+```text
+  ∂²ϕ
+- ——— = x    on [0, 1]
+  ∂x²
+
+With boundary conditions: ϕ(0) = 0, ϕ(1) = 0
+```
+
+The analytical solution is: `ϕ(x) = (x - x³) / 6`
 
 ```rust
+use russell_lab::approx_eq;
 use russell_pde::{Spc1d, EssentialBcs1d, NaturalBcs1d, StrError};
 
 fn main() -> Result<(), StrError> {
@@ -168,10 +178,14 @@ fn main() -> Result<(), StrError> {
     let source = |x: f64| x;
     let solution = spc.solve_sps(0.0, source)?;
 
-    // Calculate flow vectors (derivative information)
-    let _flow = spc.calculate_flow_vectors(&solution)?;
+    // Verify against analytical solution
+    let analytical = |x: f64| (x - x.powi(3)) / 6.0;
+    spc.for_each_coord(|m, x| {
+        let error = f64::abs(solution[m] - analytical(x));
+        approx_eq(solution[m], analytical(x), 1e-15);
+        println!("x = {:.3}, ϕ = {:.6}, error = {:.e}", x, solution[m], error);
+    });
 
-    println!("Solution computed with spectral accuracy!");
     Ok(())
 }
 ```
@@ -179,91 +193,17 @@ fn main() -> Result<(), StrError> {
 Output:
 
 ```text
-Solution computed with spectral accuracy!
+x = 0.000, ϕ = 0.000000, error = 0e0
+x = 0.050, ϕ = 0.008232, error = 0e0
+x = 0.188, ϕ = 0.030264, error = 1.0408340855860843e-17
+x = 0.389, ϕ = 0.054999, error = 4.163336342344337e-17
+x = 0.611, ϕ = 0.063812, error = 4.163336342344337e-17
+x = 0.812, ϕ = 0.046144, error = 3.469446951953614e-17
+x = 0.950, ϕ = 0.015300, error = 2.949029909160572e-17
+x = 1.000, ϕ = 0.000000, error = 0e0
 ```
 
-### Example 3: Solving 2D Poisson equation
-
-Solve the 2D Poisson equation on a rectangular domain:
-
-```text
-  ∂²ϕ    ∂²ϕ
-- ——— -  ——— = f(x,y)    on [0,1] × [0,1]
-  ∂x²    ∂y²
-```
-
-```rust
-use russell_pde::{Fdm2d, Grid2d, EssentialBcs2d, NaturalBcs2d, Side, StrError};
-use russell_lab::math::PI;
-
-fn main() -> Result<(), StrError> {
-    // Define 2D domain
-    let (xmin, xmax) = (0.0, 1.0);
-    let (ymin, ymax) = (0.0, 1.0);
-    let (kx, ky) = (1.0, 1.0);
-
-    // Set boundary conditions
-    let mut ebcs = EssentialBcs2d::new();
-    ebcs.set(Side::Xmin, |_, _| 0.0);
-    ebcs.set(Side::Xmax, |_, _| 0.0);
-    ebcs.set(Side::Ymin, |x, _| (PI * x).sin());
-    ebcs.set(Side::Ymax, |_, _| 0.0);
-
-    let nbcs = NaturalBcs2d::new();
-
-    // Create uniform grid
-    let (nx, ny) = (20, 20);
-    let grid = Grid2d::new_uniform(xmin, xmax, ymin, ymax, nx, ny)?;
-
-    // Create solver and solve
-    let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
-    let source = |_x: f64, _y: f64| 0.0;
-    let _solution = fdm.solve_sps(0.0, &source)?;
-
-    println!("2D solution computed on {}×{} grid", nx, ny);
-    Ok(())
-}
-```
-
-Output:
-
-```text
-2D solution computed on 20×20 grid
-```
-
-### Example 4: Using Lagrange multipliers method
-
-Both SPS (System Partitioning Strategy) and LMM (Lagrange Multipliers Method) are available:
-
-```rust
-use russell_pde::{Fdm1d, Grid1d, EssentialBcs1d, NaturalBcs1d, StrError};
-
-fn main() -> Result<(), StrError> {
-    let (xmin, xmax) = (0.0, 1.0);
-    let kx = 1.0;
-    let mut ebcs = EssentialBcs1d::new();
-    ebcs.set_homogeneous();
-    let nbcs = NaturalBcs1d::new();
-
-    let grid = Grid1d::new_uniform(xmin, xmax, 10)?;
-    let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
-
-    let source = |x: f64| x;
-
-    // Method 1: System Partitioning Strategy (default)
-    let _solution_sps = fdm.solve_sps(0.0, source)?;
-
-    // Method 2: Lagrange Multipliers Method
-    let _solution_lmm = fdm.solve_lmm(0.0, source)?;
-
-    // Both methods produce the same solution
-    Ok(())
-}
-```
-
-See the [examples directory](https://github.com/cpmech/russell/tree/main/russell_pde/examples) for more advanced usage including mapped domains and transfinite interpolation.
-
-### Example 5: Spectral collocation in 2D with transfinite mapping
+### Example 3: Spectral collocation in 2D with transfinite mapping
 
 Example: Solving a 2D Poisson equation on a rotated square domain
 

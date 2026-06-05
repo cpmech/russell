@@ -39,6 +39,8 @@
 - [Introduction](#introduction)
   - [Features](#features)
   - [External associated and recommended crates](#external-associated-and-recommended-crates)
+  - [Crates overview](#crates-overview)
+  - [Code style](#code-style)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
     - [Option 1: (default) OpenBLAS and SuiteSparse from the package manager](#option-1-default-openblas-and-suitesparse-from-the-package-manager)
@@ -121,6 +123,45 @@ The following crates are not part of `russell` but are associated with it and re
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
+
+### Crates overview
+
+| Crate            | Version | Purpose                                                                                                      | Key dependencies                                |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| `russell_lab`    | 1.15.0  | Foundation: matrices/vectors (col-major), BLAS/LAPACK, interpolation, quadrature, root-finding, special math | `num-complex`, `serde`                          |
+| `russell_sparse` | 1.15.0  | Sparse linear solvers (UMFPACK, KLU, MUMPS) + COO/CSC/CSR formats                                            | `russell_lab`                                   |
+| `russell_stat`   | 1.15.0  | Probability distributions + statistics (Frechet, Gumbel, Normal, etc.)                                       | `russell_lab`, `rand`                           |
+| `russell_tensor` | 1.15.0  | Continuum mechanics tensors (Mandel basis)                                                                   | `russell_lab`, `serde`                          |
+| `russell_pde`    | 0.1.0   | PDE tools: spectral collocation + finite differences (1D/2D)                                                 | `russell_lab`, `russell_sparse`                 |
+| `russell_ode`    | 1.15.0  | ODE/DAE solvers (DoPri5/8, Radau5, Euler)                                                                    | `russell_lab`, `russell_sparse`, `russell_pde`  |
+| `russell_nonlin` | 0.1.0   | Numerical continuation (natural + pseudo-arclength)                                                          | `russell_lab`, `russell_sparse`, `russell_stat` |
+
+Internal dependency graph (all crates depend on `russell_lab`):
+
+```
+russell_lab  <-- fundamental
+  ^
+  |
+  +--- russell_sparse
+  +--- russell_stat
+  +--- russell_tensor
+  +--- russell_pde ----+
+  +--- russell_ode ----+--- russell_sparse
+  +--- russell_nonlin -+--- russell_sparse, russell_stat
+```
+
+### Code style
+
+(AI generated using [DeepSeek](https://www.deepseek.com))
+
+- **Error handling:** `pub type StrError = &'static str;` — simple static string slice used consistently across all crates. No `thiserror` or `anyhow`.
+- **Synchronous:** No async runtime; the project is fully synchronous.
+- **Testing:** Over 1,000 unit tests per crate. Tests are inline in `#[cfg(test)] mod tests { ... }` blocks at the bottom of source files, plus integration tests in `tests/`. Numeric assertion helpers (`approx_eq`, `vec_approx_eq`, `mat_approx_eq`) validate floating-point results with tolerance. `serial_test` is used for tests that require MUMPS (not thread-safe). Doctests run README code examples via `#[cfg(doctest)]`. Coverage target >95% (enforced by CI).
+- **Modules:** Flat per-feature module structure under `src/`. Everything re-exported from `lib.rs` via `pub use foo::*`. `prelude` modules in select crates for ergonomic imports.
+- **Derives:** `Clone`, `Copy`, `Debug` on small types; `Serialize`/`Deserialize` on data types. Manual `Display` implementations for formatted output.
+- **Naming:** `snake_case` functions with domain prefixes (`vec_*`, `mat_*`, `complex_*`); `PascalCase` structs/enums; type aliases for common generics (`Vector = NumVector<f64>`, `Matrix = NumMatrix<f64>`).
+- **Logging:** Custom `Logger` struct (no `log`/`tracing` crate). Writes to stdout or file.
+- **Build:** `build.rs` with `cc` for C FFI. Feature flags: `intel_mkl` (use Intel MKL instead of OpenBLAS), `local_sparse` (compile SuiteSparse and MUMPS locally).
 
 
 

@@ -69,6 +69,8 @@
 //! ```
 
 /// Defines the error output as a static string
+///
+/// Used throughout the crate as the error type in `Result<T, StrError>`.
 pub type StrError = &'static str;
 
 mod config;

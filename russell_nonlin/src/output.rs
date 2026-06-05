@@ -89,6 +89,12 @@ impl<'a, A> Output<'a, A> {
     /// Enables the recording of results (u, l, h, duds, dlds)
     ///
     /// Also specifies which components of the u and du/ds vectors are to be recorded
+    ///
+    /// # Arguments
+    ///
+    /// * `recording` -- enables (`true`) or disables (`false`) the recording
+    /// * `u_components` -- indices of the `u` vector components to record
+    /// * `duds_components` -- indices of the `du/ds` vector components to record
     pub fn set_recording(&mut self, recording: bool, u_components: &[usize], duds_components: &[usize]) -> &mut Self {
         self.recording = recording;
         for m in u_components {
@@ -120,11 +126,23 @@ impl<'a, A> Output<'a, A> {
     // getters ----------------------------------------------------------------------------------------------------------
 
     /// Returns the Euclidean norm of u computed at accepted steps
+    ///
+    /// # Panics
+    ///
+    /// Panics if recording is not enabled via [`Output::set_recording`].
     pub fn get_norm_u_values(&self) -> &Vec<f64> {
         &self.norm_u
     }
 
     /// Returns the selected u components computed at accepted steps
+    ///
+    /// # Arguments
+    ///
+    /// * `m` -- the component index that was registered via [`Output::set_recording`]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the requested index `m` was not registered via [`Output::set_recording`].
     pub fn get_u_values(&self, m: usize) -> &Vec<f64> {
         self.u.get(&m).unwrap()
     }
@@ -140,6 +158,14 @@ impl<'a, A> Output<'a, A> {
     }
 
     /// Returns the selected du/ds components computed at accepted steps
+    ///
+    /// # Arguments
+    ///
+    /// * `m` -- the component index that was registered via [`Output::set_recording`]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the requested index `m` was not registered via [`Output::set_recording`].
     pub fn get_duds_values(&self, m: usize) -> &Vec<f64> {
         self.duds.get(&m).unwrap()
     }

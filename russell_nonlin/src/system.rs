@@ -99,6 +99,11 @@ impl<'a, A> System<'a, A> {
     /// * `calc_gg` -- the callback function to calculate G (in `gg`)
     /// * `calc_jac` -- the callback function to calculate Gu (in `ggu`) and Gλ (in `ggl`). There is no need
     ///   to call `ggu.reset()` inside this function, as it is done already before the call.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(System)` if the parameters are valid
+    /// * `Err(StrError)` if `ndim < 1` or `nnz_ggu < 1` (when specified)
     pub fn new(
         ndim: usize,
         nnz_ggu: Option<usize>,

@@ -25,6 +25,13 @@ pub struct DeltaLambda {
 
 impl DeltaLambda {
     /// New automatic Δλ
+    ///
+    /// The solver will adapt the stepsize automatically using convergence
+    /// statistics and tangent vector angle information.
+    ///
+    /// # Arguments
+    ///
+    /// * `ddl_ini` -- the initial Δλ value; the solver adjusts from here
     pub fn auto(ddl_ini: f64) -> Self {
         Self {
             auto: true,
@@ -34,6 +41,12 @@ impl DeltaLambda {
     }
 
     /// New constant Δλ
+    ///
+    /// A fixed Δλ is applied at every step.
+    ///
+    /// # Arguments
+    ///
+    /// * `ddl` -- the fixed Δλ value to use at every step
     pub fn constant(ddl: f64) -> Self {
         Self {
             auto: false,
@@ -57,6 +70,9 @@ impl DeltaLambda {
     }
 
     /// Returns true if automatic Δλ
+    ///
+    /// Automatic mode means the solver adapts the stepsize based on
+    /// convergence behavior rather than using a fixed or list-based Δλ.
     pub fn is_auto(&self) -> bool {
         self.auto
     }

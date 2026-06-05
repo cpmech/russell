@@ -288,6 +288,9 @@ impl Config {
     }
 
     /// Returns the method
+    ///
+    /// Returns the continuation method configured for the solver:
+    /// [`Method::Natural`] or [`Method::Arclength`].
     pub fn get_method(&self) -> Method {
         self.method
     }
@@ -556,7 +559,7 @@ impl Config {
     ///
     /// Enables or disables the Newton-Raphson stepsize control
     ///
-    /// Default value: true
+    /// Default value: false
     pub fn set_nr_control_enabled(&mut self, flag: bool) -> &mut Self {
         self.nr_control_enabled = flag;
         self
@@ -635,7 +638,7 @@ impl Config {
 
     /// Sets the tolerance for the tangent vector stepsize control
     ///
-    /// Default value: 0.1
+    /// Default value: 0.5
     pub fn set_tg_control_tol(&mut self, value: f64) -> &mut Self {
         self.tg_control_tol = value;
         self

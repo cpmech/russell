@@ -246,6 +246,11 @@ impl SoderlindClass {
     /// Reference:
     /// * Soderlind (2003) Digital filters in adaptive time-stepping,
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    ///
+    /// # Returns
+    ///
+    /// Returns `(beta1, beta2, beta3, alpha2, alpha3)` — the PID controller
+    /// parameters for stepsize adaptation.
     pub fn params(&self) -> (f64, f64, f64, f64, f64) {
         match self {
             SoderlindClass::Ho211 => (1.0 / 2.0, 1.0 / 2.0, 0.0, 1.0 / 2.0, 0.0),
@@ -338,7 +343,7 @@ pub enum Status {
 }
 
 impl Status {
-    /// Indicates success
+    /// Indicates success (no failure has occurred)
     pub fn success(&self) -> bool {
         *self == Status::Success
     }

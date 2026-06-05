@@ -79,7 +79,7 @@ Note that the [main README file](https://github.com/cpmech/russell) presents the
 This section illustrates how to use `russell_nonlin`. See also:
 
 * [More examples on the documentation](https://docs.rs/russell_nonlin/)
-* [Examples directory](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples)
+* [Integration tests directory](https://github.com/cpmech/russell/tree/main/russell_nonlin/tests)
 
 
 

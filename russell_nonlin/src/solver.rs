@@ -39,6 +39,11 @@ impl<'a, A> Solver<'a, A> {
     ///
     /// * `config` -- solver configuration (method, tolerances, step control, linear solver)
     /// * `system` -- the nonlinear system definition, including `G(u, λ)` and its Jacobian
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Solver)` if the configuration is valid and all internal structures are allocated
+    /// * `Err(StrError)` if the configuration is invalid (e.g., tolerances out of range)
     pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError>
     where
         A: 'a,
@@ -324,12 +329,23 @@ impl<'a, A> Solver<'a, A> {
         Ok(status)
     }
 
-    /// Logs the header
+    /// Logs the header (method name and column headers)
+    ///
+    /// Writes the solver method name and column headers to the configured
+    /// log output (stdout or a log file). Only has an effect if
+    /// `Config.verbose_header_footer` is enabled.
     pub fn log_header(&mut self) {
         self.work.log.header();
     }
 
-    /// Logs the footer
+    /// Logs the footer with statistics and final status
+    ///
+    /// Writes a summary of the solver statistics and the final status
+    /// to the configured log output (stdout or a log file).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the logger's `footer` method returns an error.
     pub fn log_footer(&mut self) {
         self.work.log.footer(&self.work.stats, &Status::Success).unwrap();
     }

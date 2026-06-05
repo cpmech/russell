@@ -275,6 +275,12 @@ impl Stats {
     }
 
     /// Returns a pretty formatted string with the stats
+    ///
+    /// The returned string includes the continuation method, numerical Jacobian flag,
+    /// counts of function/Jacobian evaluations, factorizations, linear solves, accepted
+    /// and rejected steps, total iterations, and the last accepted stepsize. If iteration
+    /// residuals are recorded, it also includes convergence rate statistics and a histogram
+    /// of iteration counts.
     pub fn summary(&self) -> String {
         // Length of the histogram bars
         const BAR_LEN: usize = 53;

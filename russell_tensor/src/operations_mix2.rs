@@ -30,7 +30,7 @@ use crate::{Mandel, SQRT_2};
 /// # Panics
 ///
 /// 1. A panic will occur if `dd` is not [Mandel::General]
-/// 2. A panic will occur the `a` and `b` have different [Mandel]
+/// 2. A panic will occur if `a` and `b` have different [Mandel]
 #[rustfmt::skip]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.mandel, Mandel::General);
@@ -341,7 +341,7 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// # Panics
 ///
 /// 1. A panic will occur if `dd` is not [Mandel::General]
-/// 2. A panic will occur the `a` and `b` have different [Mandel]
+/// 2. A panic will occur if the `a` and `b` have different [Mandel]
 #[rustfmt::skip]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.mandel, Mandel::General);

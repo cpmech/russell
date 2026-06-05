@@ -39,6 +39,8 @@
 - [Introduction](#introduction)
   - [Features](#features)
   - [External associated and recommended crates](#external-associated-and-recommended-crates)
+  - [Crates overview](#crates-overview)
+  - [Code style](#code-style)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
     - [Option 1: (default) OpenBLAS and SuiteSparse from the package manager](#option-1-default-openblas-and-suitesparse-from-the-package-manager)
@@ -63,9 +65,11 @@
   - [(lab) Solution of a (dense) linear system](#lab-solution-of-a-dense-linear-system)
   - [(lab) Reading table-formatted data files](#lab-reading-table-formatted-data-files)
   - [(lab) Line search for optimization](#lab-line-search-for-optimization)
+  - [(nonlin) Numerical continuation of a B-spline curve](#nonlin-numerical-continuation-of-a-b-spline-curve)
   - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
   - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
   - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
+  - [(pde) Spectral collocation in 2D with transfinite mapping](#pde-spectral-collocation-in-2d-with-transfinite-mapping)
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
@@ -121,6 +125,45 @@ The following crates are not part of `russell` but are associated with it and re
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
+
+### Crates overview
+
+| Crate            | Purpose                                                                                                      | Key dependencies                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| `russell_lab`    | Foundation: matrices/vectors (col-major), BLAS/LAPACK, interpolation, quadrature, root-finding, special math | `num-complex`, `serde`                          |
+| `russell_sparse` | Sparse linear solvers (UMFPACK, KLU, MUMPS) + COO/CSC/CSR formats                                            | `russell_lab`                                   |
+| `russell_stat`   | Probability distributions + statistics (Frechet, Gumbel, Normal, etc.)                                       | `russell_lab`, `rand`                           |
+| `russell_tensor` | Continuum mechanics tensors (Mandel basis)                                                                   | `russell_lab`, `serde`                          |
+| `russell_pde`    | PDE tools: spectral collocation + finite differences (1D/2D)                                                 | `russell_lab`, `russell_sparse`                 |
+| `russell_ode`    | ODE/DAE solvers (DoPri5/8, Radau5, Euler)                                                                    | `russell_lab`, `russell_sparse`, `russell_pde`  |
+| `russell_nonlin` | Numerical continuation (natural + pseudo-arclength)                                                          | `russell_lab`, `russell_sparse`, `russell_stat` |
+
+Internal dependency graph (all crates depend on `russell_lab`):
+
+```
+russell_lab  <-- fundamental
+  ^
+  |
+  +--- russell_sparse
+  +--- russell_stat
+  +--- russell_tensor
+  +--- russell_pde ----+
+  +--- russell_ode ----+--- russell_sparse
+  +--- russell_nonlin -+--- russell_sparse, russell_stat
+```
+
+### Code style
+
+(This subsection was generated using [DeepSeek](https://www.deepseek.com))
+
+- **Error handling:** `pub type StrError = &'static str;` — simple static string slice used consistently across all crates. No `thiserror` or `anyhow`.
+- **Synchronous:** No async runtime; the project is fully synchronous.
+- **Testing:** Over 1,000 unit tests per crate. Tests are inline in `#[cfg(test)] mod tests { ... }` blocks at the bottom of source files, plus integration tests in `tests/`. Numeric assertion helpers (`approx_eq`, `vec_approx_eq`, `mat_approx_eq`) validate floating-point results with tolerance. `serial_test` is used for tests that require MUMPS (not thread-safe). Doc-tests run README code examples via `#[cfg(doctest)]`. Coverage target >95% (enforced by CI).
+- **Modules:** Flat per-feature module structure under `src/`. Everything re-exported from `lib.rs` via `pub use foo::*`. `prelude` modules in select crates for ergonomic imports.
+- **Derives:** `Clone`, `Copy`, `Debug` on small types; `Serialize`/`Deserialize` on data types. Manual `Display` implementations for formatted output.
+- **Naming:** `snake_case` functions with domain prefixes (`vec_*`, `mat_*`, `complex_*`); `PascalCase` structs/enums; type aliases for common generics (`Vector = NumVector<f64>`, `Matrix = NumMatrix<f64>`).
+- **Logging:** Custom `Logger` struct (no `log`/`tracing` crate). Writes to stdout or file.
+- **Build:** `build.rs` with `cc` for C FFI. Feature flags: `intel_mkl` (use Intel MKL instead of OpenBLAS), `local_sparse` (compile SuiteSparse and MUMPS locally).
 
 
 
@@ -615,6 +658,26 @@ fn main() -> Result<(), StrError> {
 
 
 
+### (nonlin) Numerical continuation of a B-spline curve
+
+This example traces a B-spline curve defined by `G(u, λ) = 0` using the Pseudo-arclength continuation method.
+
+The nonlinear problem is defined as follows:
+
+```text
+G(u, λ) = u - C(λ)
+```
+
+where C(λ) is a point on a 2D B-spline curve parametrized by λ ∈ `[0,1]`.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples/arclength_bspline.rs)
+
+The plot looks like this:
+
+![B-spline curve](russell_nonlin/data/figures/doc_arclength_bspline.svg)
+
+
+
 ### (sparse) Solution of a sparse linear system
 
 ```rust
@@ -759,6 +822,32 @@ The figure below shows the `russell` (black dashed lines) and Mathematica (red s
 
 
 
+### (pde) Spectral collocation in 2D with transfinite mapping
+
+Example: Solving a 2D Poisson equation on a rotated square domain
+
+This example employs spectral collocation with transfinite mapping to solve the Poisson equation:
+
+```text
+  -k · ∇²u = f    on a unit square rotated by angle α
+  u = g           on the boundary (Dirichlet conditions)
+```
+
+The analytical solution used for verification is:
+```text
+  u(x,y) = sin(π·x·cos(α) + π·y·sin(α)) · exp(π·y·cos(α) - π·x·sin(α))
+```
+
+The domain is mapped from the reference square (r,s) ∈ [-1,1]×[-1,1] to the physical rotated square via transfinite interpolation.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_pde/examples/doc_example_spc_map.rs)
+
+The plot looks like this:
+
+![Solution](russell_pde/data/figures/doc_example_spc_map.svg)
+
+
+
 ### (stat) Generate the Frechet distribution
 
 Code:
@@ -889,6 +978,7 @@ fn main() -> Result<(), StrError> {
 
 
 
+
 ## Roadmap
 
 - [ ] Improve `russell_lab`
@@ -923,7 +1013,7 @@ fn main() -> Result<(), StrError> {
 - [x] Improve `russell_sparse`
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
     - [x] Implement the Compressed Sparse Column format (CSC)
-    - [x] Implement the Compressed Sparse Row format (CSC)
+    - [x] Implement the Compressed Sparse Row format (CSR)
     - [x] Improve the C-interface to UMFPACK and MUMPS
     - [x] Write the conversion from COO to CSC in Rust
 - [x] Improve `russell_ode`

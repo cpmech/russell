@@ -17,7 +17,7 @@ fn main() -> Result<(), StrError> {
     ];
     let coo = CooMatrix::from(nrow, ncol, row_indices, col_indices, values, Sym::No)?;
 
-    // covert to dense
+    // convert to dense
     let a = coo.as_dense();
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\

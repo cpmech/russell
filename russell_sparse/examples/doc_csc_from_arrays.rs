@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
     ];
     let csc = CscMatrix::new(nrow, ncol, col_pointers, row_indices, values, Sym::No)?;
 
-    // covert to dense
+    // convert to dense
     let a = csc.as_dense();
     let correct = "┌                ┐\n\
                    │  2  3  0  0  0 │\n\

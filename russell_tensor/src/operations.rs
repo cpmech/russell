@@ -98,7 +98,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// # Panics
 ///
 /// 1. A panic will occur if `c` is not [Mandel::General]
-/// 2. A panic will occur the `a` and `b` have different [Mandel]
+/// 2. A panic will occur if `a` and `b` have different [Mandel]
 ///
 /// # Examples
 ///
@@ -437,7 +437,7 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -514,7 +514,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -593,7 +593,7 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 /// # Panics
 ///
 /// 1. A panic will occur if `dd` is not [Mandel::General]
-/// 2. A panic will occur the `a` and `b` have different [Mandel]
+/// 2. A panic will occur if the `a` and `b` have different [Mandel]
 #[rustfmt::skip]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.mandel, Mandel::General);
@@ -904,7 +904,7 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// # Panics
 ///
 /// 1. A panic will occur if `dd` is not [Mandel::General]
-/// 2. A panic will occur the `a` and `b` have different [Mandel]
+/// 2. A panic will occur if the `a` and `b` have different [Mandel]
 #[rustfmt::skip]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.mandel, Mandel::General);
@@ -1548,7 +1548,7 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -1629,7 +1629,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -1706,7 +1706,7 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -1786,7 +1786,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 ///
 /// # Examples
 ///
@@ -1882,7 +1882,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4, beta: f64) {
     assert_eq!(cc.mandel, dd.mandel);
     assert_eq!(ee.mandel, dd.mandel);
@@ -1925,7 +1925,7 @@ pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
     assert_eq!(a.mandel, dd.mandel);
     assert_eq!(b.mandel, dd.mandel);
@@ -1976,7 +1976,7 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 ///
 /// # Panics
 ///
-/// A panic will occur the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Mandel]
 pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2, dd: &Tensor4) {
     assert_eq!(a.mandel, dd.mandel);
     assert_eq!(b.mandel, dd.mandel);

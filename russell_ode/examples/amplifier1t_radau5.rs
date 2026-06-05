@@ -23,17 +23,15 @@ fn main() -> Result<(), StrError> {
     let params = Params::new(Method::Radau5);
     let mut solver = OdeSolver::new(params, system)?;
 
-    // enable dense output
+    // dense output
     let h_out = 0.0001;
     let selected_y_components = &[0, 4];
-    solver
-        .enable_output()
-        .set_dense_h_out(h_out)?
-        .set_dense_recording(selected_y_components);
+    let mut out = Output::new();
+    out.set_dense_h_out(h_out)?.set_dense_recording(selected_y_components);
 
     // solve the problem
     let x1 = 0.2;
-    solver.solve(&mut y0, x0, x1, None, &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, &mut args, Some(&mut out))?;
 
     // print the results and stats
     let y_ref = &[
@@ -76,9 +74,9 @@ fn main() -> Result<(), StrError> {
         .set_marker_style("+")
         .set_line_style("None");
 
-    curve1.draw(solver.out_dense_x(), solver.out_dense_y(0));
+    curve1.draw(out.dense_x(), out.dense_y(0));
     curve2.draw(&math.x, &math.y0);
-    curve3.draw(solver.out_dense_x(), solver.out_dense_y(4));
+    curve3.draw(out.dense_x(), out.dense_y(4));
     curve4.draw(&math.x, &math.y4);
 
     // save figure

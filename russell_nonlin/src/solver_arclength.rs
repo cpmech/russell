@@ -207,6 +207,23 @@ pub struct SolverArclength<'a, A> {
 
 impl<'a, A> SolverArclength<'a, A> {
     /// Allocates a new instance
+    ///
+    /// Initializes the pseudo-arclength continuation solver. This method
+    /// allocates internal workspace including the Jacobian matrix (or the
+    /// augmented matrix when not using bordering), the linear solver,
+    /// and auxiliary vectors.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` -- solver configuration; must have `config.method == Method::Arclength`
+    /// * `system` -- the nonlinear system definition; requires `Sym::No` when
+    ///   `config.bordering` is false (the augmented matrix is non-symmetric)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(SolverArclength)` if allocation succeeds
+    /// * `Err(StrError)` if `sym_ggu != Sym::No` and bordering is disabled, or
+    ///   if the linear solver fails to initialize
     pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError> {
         // check
         assert_eq!(config.method, Method::Arclength);
@@ -820,7 +837,10 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         Ok(rdiff)
     }
 
-    /// Handles the reject case by calculating a new stepsize
+    /// Handles the reject case by restoring the state and computing a new stepsize
+    ///
+    /// Restores the previous u vector, external state variables (if using automatic
+    /// stepsize control), and clears the debug predictor values.
     fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
         if work.auto {

@@ -17,7 +17,7 @@ fn test_dopri5_arenstorf_debug() {
 
     // solve the ODE system
     let y = &mut y0;
-    solver.solve(y, x0, x1, None, &mut args).unwrap();
+    solver.solve(y, x0, x1, None, &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();

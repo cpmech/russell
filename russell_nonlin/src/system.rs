@@ -99,6 +99,11 @@ impl<'a, A> System<'a, A> {
     /// * `calc_gg` -- the callback function to calculate G (in `gg`)
     /// * `calc_jac` -- the callback function to calculate Gu (in `ggu`) and Gλ (in `ggl`). There is no need
     ///   to call `ggu.reset()` inside this function, as it is done already before the call.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(System)` if the parameters are valid
+    /// * `Err(StrError)` if `ndim < 1` or `nnz_ggu < 1` (when specified)
     pub fn new(
         ndim: usize,
         nnz_ggu: Option<usize>,
@@ -138,6 +143,11 @@ impl<'a, A> System<'a, A> {
     }
 
     /// Returns a copy of this struct
+    ///
+    /// Note: `Clone` cannot be derived here because the closure fields are stored as
+    /// `Arc<dyn Fn(...)>`, which are not `Clone` in the trait-object sense. This manual
+    /// implementation clones the underlying `Arc` pointers (cheap reference-count bump),
+    /// so the returned copy shares the same closures as the original.
     pub fn clone(&self) -> Self {
         System {
             ndim: self.ndim,

@@ -6,6 +6,8 @@
 //!
 //! This library assists in developing statistical computations and simulations aiming at engineering applications, such as reliability analyses. This library provides a light interface to [rand_distr](https://crates.io/crates/rand_distr) and implements extra functionality.
 //!
+//! It also provides tools for descriptive statistics, including quantiles, inter-quartile range (IQR), and outlier detection, as well as a text-based histogram generator.
+//!
 //! Some essential distributions considered in this library are those classified as [Extreme Value Distribution](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
 
 /// Defines the error output as a static string

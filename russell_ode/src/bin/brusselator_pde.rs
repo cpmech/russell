@@ -102,7 +102,7 @@ fn main() -> Result<(), StrError> {
     let ndim = system.get_ndim();
     let jac_nnz = system.get_jac_nnz();
     let mut solver = OdeSolver::new(params, system)?;
-    solver.solve(&mut yy0, t0, t1, None, &mut args)?;
+    solver.solve(&mut yy0, t0, t1, None, &mut args, None)?;
 
     // print stat
     let stat = solver.stats();

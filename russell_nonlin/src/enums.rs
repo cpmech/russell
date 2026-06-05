@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 /// Defines the initial direction of the tangent vector for the pseudo-arclength method
 /// or the (constant) sign of Δλ for the Natural method.
 ///
-/// The initial tangent vector is `(du/ds₀, dλ/ds₀)` for the pseudo-arclength method,
+/// For the pseudo-arclength method, the initial tangent vector `(du/ds₀, dλ/ds₀)` is
+/// computed from the Jacobian at `(u₀, λ₀)`; the sign of `dλ/ds₀` is controlled by this enum.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum IniDir {
     /// Selects the positive value for dλ/ds₀ or Δλ
@@ -245,6 +246,11 @@ impl SoderlindClass {
     /// Reference:
     /// * Soderlind (2003) Digital filters in adaptive time-stepping,
     ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
+    ///
+    /// # Returns
+    ///
+    /// Returns `(beta1, beta2, beta3, alpha2, alpha3)` — the PID controller
+    /// parameters for stepsize adaptation.
     pub fn params(&self) -> (f64, f64, f64, f64, f64) {
         match self {
             SoderlindClass::Ho211 => (1.0 / 2.0, 1.0 / 2.0, 0.0, 1.0 / 2.0, 0.0),
@@ -259,7 +265,7 @@ impl SoderlindClass {
     }
 }
 
-/// Specifies Success of Failure
+/// Specifies Success or Failure
 ///
 /// Holds the type of failure encountered during the continuation process
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -337,7 +343,7 @@ pub enum Status {
 }
 
 impl Status {
-    /// Indicates success
+    /// Indicates success (no failure has occurred)
     pub fn success(&self) -> bool {
         *self == Status::Success
     }

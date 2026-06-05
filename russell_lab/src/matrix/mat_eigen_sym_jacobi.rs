@@ -58,7 +58,6 @@ const N_MAX_ITERATIONS: usize = 20;
 ///     let mut a = Matrix::from(&data);
 ///
 ///     // perform the eigen-decomposition
-///     let upper = false;
 ///     let mut l = Vector::new(3);
 ///     let mut v = Matrix::new(3, 3);
 ///     mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;

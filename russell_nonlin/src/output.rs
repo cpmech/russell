@@ -3,7 +3,21 @@ use russell_lab::{vec_norm_chunk, Norm, Vector};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Holds the results at accepted steps
+/// Collects accepted-step results and optionally triggers a user callback
+///
+/// `Output` serves two complementary purposes:
+///
+/// 1. **Recording** — after calling [`Output::set_recording`], the values of
+///    selected `u` components, λ, the step-size `h`, and (for the pseudo-arclength
+///    method) the tangent components `du/ds` and `dλ/ds` are stored at every
+///    accepted step and can be retrieved via the `get_*` methods.
+///
+/// 2. **Callback** — after calling [`Output::set_callback`], a user-supplied
+///    function is invoked at every accepted step. The callback receives the current
+///    [`Stats`], `u`, λ, `h`, and the user's `args`. It may return `true` to
+///    request a graceful early termination.
+///
+/// Both features can be active simultaneously.
 pub struct Output<'a, A> {
     /// Enables the recording of results (u, l, s, h, duds, dlds)
     recording: bool,
@@ -38,7 +52,7 @@ pub struct Output<'a, A> {
 }
 
 impl<'a, A> Output<'a, A> {
-    /// Allocates a new instance
+    /// Allocates a new instance with recording and callback disabled
     pub fn new() -> Self {
         Output {
             recording: false,
@@ -75,6 +89,12 @@ impl<'a, A> Output<'a, A> {
     /// Enables the recording of results (u, l, h, duds, dlds)
     ///
     /// Also specifies which components of the u and du/ds vectors are to be recorded
+    ///
+    /// # Arguments
+    ///
+    /// * `recording` -- enables (`true`) or disables (`false`) the recording
+    /// * `u_components` -- indices of the `u` vector components to record
+    /// * `duds_components` -- indices of the `du/ds` vector components to record
     pub fn set_recording(&mut self, recording: bool, u_components: &[usize], duds_components: &[usize]) -> &mut Self {
         self.recording = recording;
         for m in u_components {
@@ -106,11 +126,23 @@ impl<'a, A> Output<'a, A> {
     // getters ----------------------------------------------------------------------------------------------------------
 
     /// Returns the Euclidean norm of u computed at accepted steps
+    ///
+    /// # Panics
+    ///
+    /// Panics if recording is not enabled via [`Output::set_recording`].
     pub fn get_norm_u_values(&self) -> &Vec<f64> {
         &self.norm_u
     }
 
     /// Returns the selected u components computed at accepted steps
+    ///
+    /// # Arguments
+    ///
+    /// * `m` -- the component index that was registered via [`Output::set_recording`]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the requested index `m` was not registered via [`Output::set_recording`].
     pub fn get_u_values(&self, m: usize) -> &Vec<f64> {
         self.u.get(&m).unwrap()
     }
@@ -126,6 +158,14 @@ impl<'a, A> Output<'a, A> {
     }
 
     /// Returns the selected du/ds components computed at accepted steps
+    ///
+    /// # Arguments
+    ///
+    /// * `m` -- the component index that was registered via [`Output::set_recording`]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the requested index `m` was not registered via [`Output::set_recording`].
     pub fn get_duds_values(&self, m: usize) -> &Vec<f64> {
         self.duds.get(&m).unwrap()
     }

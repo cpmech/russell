@@ -25,17 +25,15 @@ fn main() -> Result<(), StrError> {
     // allocate the solver
     let mut solver = OdeSolver::new(params, system)?;
 
-    // enable dense output
+    // dense output
     let h_out = 0.01;
     let selected_y_components = &[0, 1];
-    solver
-        .enable_output()
-        .set_dense_h_out(h_out)?
-        .set_dense_recording(selected_y_components);
+    let mut out = Output::new();
+    out.set_dense_h_out(h_out)?.set_dense_recording(selected_y_components);
 
     // solve the problem
     let y = &mut y0;
-    solver.solve(y, x0, x1, None, &mut args)?;
+    solver.solve(y, x0, x1, None, &mut args, Some(&mut out))?;
 
     // print the results and stats
     println!("y_russell     = {:?}", y.as_data());
@@ -50,7 +48,7 @@ fn main() -> Result<(), StrError> {
     let mut curve2 = Curve::new();
     curve1.set_label("russell");
     curve2.set_label("mathematica");
-    curve1.draw(solver.out_dense_y(0), solver.out_dense_y(1));
+    curve1.draw(out.dense_y(0), out.dense_y(1));
     curve2.set_marker_style(".").set_line_style("None");
     curve2.draw(&math.y0, &math.y1);
 

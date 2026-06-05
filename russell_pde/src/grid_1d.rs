@@ -334,8 +334,8 @@ impl Grid1d {
     /// # Returns
     ///
     /// A tuple `(nodes_xmin, nodes_xmax)` where:
-    /// * `nodes_xmin` - Slice of node indices on the xmin (left) boundary: [0]
-    /// * `nodes_xmax` - Slice of node indices on the xmax (right) boundary: [nx-1]
+    /// * `nodes_xmin` - Slice of node indices on the xmin (left) boundary: 0
+    /// * `nodes_xmax` - Slice of node indices on the xmax (right) boundary: nx-1
     ///
     /// In 1D, each slice contains exactly one node index.
     pub fn get_boundary_nodes(&self) -> (&[usize], &[usize]) {

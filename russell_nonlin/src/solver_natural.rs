@@ -39,6 +39,20 @@ pub struct SolverNatural<'a, A> {
 
 impl<'a, A> SolverNatural<'a, A> {
     /// Allocates a new instance
+    ///
+    /// Initializes the natural parameter continuation solver. This method
+    /// allocates internal workspace including the Jacobian matrix, linear
+    /// solver, and auxiliary vectors.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` -- solver configuration; must have `config.method == Method::Natural`
+    /// * `system` -- the nonlinear system definition
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(SolverNatural)` if allocation succeeds
+    /// * `Err(StrError)` if the linear solver fails to initialize
     pub fn new(config: &'a Config, system: System<'a, A>) -> Result<Self, StrError> {
         assert_eq!(config.method, Method::Natural);
         let genie = config.genie;
@@ -342,7 +356,10 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         Ok(rdiff)
     }
 
-    /// Handles the reject case by calculating a new stepsize
+    /// Handles the reject case by restoring the state and computing a new stepsize
+    ///
+    /// Restores external state variables if using automatic stepsize control and
+    /// clears the debug predictor values.
     fn reject(&mut self, work: &mut Workspace, args: &mut A) {
         // external: restore external state variables
         if work.auto {

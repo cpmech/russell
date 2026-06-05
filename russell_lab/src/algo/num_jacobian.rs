@@ -3,9 +3,8 @@ use crate::{deriv1_central5, Matrix, Vector};
 
 /// Computes the Jacobian matrix of a vector function using 5-point finite differences
 ///
-/// Use the function as `|f, x, y, args| Ok(())`
-///
-/// Or `|f: &mut Vector, x: f64, y: &Vector, args: &mut A| Ok(())`
+/// The callback function has the signature `|f: &mut Vector, x: f64, y: &Vector, args: &mut A|`
+/// and must fill the output vector `f` in place, returning `Ok(())` or an error.
 ///
 /// Given the vector function:
 ///

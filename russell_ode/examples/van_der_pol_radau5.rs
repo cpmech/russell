@@ -31,10 +31,11 @@ fn main() -> Result<(), StrError> {
 
     // enable step output
     let selected_y_components = &[0, 1];
-    solver.enable_output().set_step_recording(selected_y_components);
+    let mut out = Output::new();
+    out.set_step_recording(selected_y_components);
 
     // solve the problem
-    solver.solve(&mut y0, x0, x1, None, &mut args)?;
+    solver.solve(&mut y0, x0, x1, None, &mut args, Some(&mut out))?;
     println!("y =\n{}", y0);
 
     // print stats
@@ -47,12 +48,12 @@ fn main() -> Result<(), StrError> {
         .set_marker_color("red")
         .set_marker_line_color("red")
         .set_marker_style(".")
-        .draw(solver.out_step_x(), solver.out_step_y(0));
+        .draw(out.step_x(), out.step_y(0));
     curve2
         .set_marker_color("green")
         .set_marker_line_color("green")
         .set_marker_style(".")
-        .draw(solver.out_step_x(), solver.out_step_h());
+        .draw(out.step_x(), out.step_h());
 
     // save figure
     let mut plot = Plot::new();

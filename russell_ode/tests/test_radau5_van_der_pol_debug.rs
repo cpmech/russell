@@ -16,7 +16,7 @@ fn test_radau5_van_der_pol_debug() {
     let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
-    solver.solve(&mut y0, x0, x1, None, &mut args).unwrap();
+    solver.solve(&mut y0, x0, x1, None, &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();

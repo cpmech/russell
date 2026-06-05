@@ -13,6 +13,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
 - [🌟 Examples](#-examples)
+  - [Descriptive Statistics](#descriptive-statistics)
   - [Frechet distribution](#frechet-distribution)
   - [Gumbel distribution](#gumbel-distribution)
   - [Normal distribution](#normal-distribution)
@@ -24,6 +25,8 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Introduction
 
 This library assists in developing statistical computations and simulations aiming at engineering applications, such as reliability analyses. This library provides a light interface to [rand_distr](https://crates.io/crates/rand_distr) and implements extra functionality.
+
+It also provides tools for descriptive statistics, including quantiles, inter-quartile range (IQR), and outlier detection, as well as a text-based histogram generator.
 
 Some essential distributions considered in this library are those classified as [Extreme Value Distribution](https://en.wikipedia.org/wiki/Generalized_extreme_value_distribution).
 
@@ -75,6 +78,45 @@ This section illustrates how to use `russell_stat`. See also:
 
 * [More examples on the documentation](https://docs.rs/russell_stat/)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
+
+### Descriptive Statistics
+
+```rust
+use russell_stat::*;
+
+fn main() -> Result<(), StrError> {
+    let mut data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 100.0];
+
+    // basic statistics
+    let stat = Statistics::new(&data);
+    println!("stat.min = {}", stat.min);
+    println!("stat.max = {}", stat.max);
+
+    // quartiles
+    let (q1, q2, q3) = quartiles(&mut data);
+    println!("q1 = {}, median = {}, q3 = {}", q1, q2, q3);
+
+    // inter-quartile range
+    let iqr = inter_quartile_range(&mut data);
+    println!("IQR = {}", iqr);
+
+    // outliers
+    let out = outliers(&data);
+    println!("outliers = {:?}", out);
+
+    Ok(())
+}
+```
+
+Sample output:
+
+```text
+stat.min = 1
+stat.max = 100
+q1 = 3.25, median = 5.5, q3 = 7.75
+IQR = 4.5
+outliers = [(9, 100.0)]
+```
 
 ### Frechet distribution
 

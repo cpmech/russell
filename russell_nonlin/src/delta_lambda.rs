@@ -1,6 +1,16 @@
 use crate::{Stop, StrError, CONFIG_H_MIN};
 
-/// Defines how Δλ is adjusted
+/// Defines how Δλ is adjusted between steps
+///
+/// Three strategies are available:
+///
+/// * [`DeltaLambda::auto`] — automatic step-size control driven by Newton-Raphson
+///   iteration statistics and/or the tangent vector angle. The solver selects and
+///   adjusts Δλ adaptively to maintain a target convergence rate.
+/// * [`DeltaLambda::constant`] — a fixed Δλ applied at every step. Useful for
+///   simple problems or when a uniform spacing along λ is required.
+/// * [`DeltaLambda::list`] — a prescribed sequence of Δλ values, one per step.
+///   Useful when specific λ-levels must be visited exactly.
 #[derive(Debug, Clone)]
 pub struct DeltaLambda {
     /// Automatic Δλ
@@ -15,6 +25,13 @@ pub struct DeltaLambda {
 
 impl DeltaLambda {
     /// New automatic Δλ
+    ///
+    /// The solver will adapt the stepsize automatically using convergence
+    /// statistics and tangent vector angle information.
+    ///
+    /// # Arguments
+    ///
+    /// * `ddl_ini` -- the initial Δλ value; the solver adjusts from here
     pub fn auto(ddl_ini: f64) -> Self {
         Self {
             auto: true,
@@ -24,6 +41,12 @@ impl DeltaLambda {
     }
 
     /// New constant Δλ
+    ///
+    /// A fixed Δλ is applied at every step.
+    ///
+    /// # Arguments
+    ///
+    /// * `ddl` -- the fixed Δλ value to use at every step
     pub fn constant(ddl: f64) -> Self {
         Self {
             auto: false,
@@ -47,6 +70,9 @@ impl DeltaLambda {
     }
 
     /// Returns true if automatic Δλ
+    ///
+    /// Automatic mode means the solver adapts the stepsize based on
+    /// convergence behavior rather than using a fixed or list-based Δλ.
     pub fn is_auto(&self) -> bool {
         self.auto
     }

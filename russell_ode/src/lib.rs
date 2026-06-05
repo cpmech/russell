@@ -28,7 +28,7 @@
 //!
 //! A set of default (~optimal) parameters are allocated by [Params::new()]. If needed, the user may *tweak* the parameters by accessing each parameter subgroup:
 //!
-//! * [ParamsNewton] parameters for Newton's iterations' for the methods that use iterations such asBwEuler and Radau5
+//! * [ParamsNewton] parameters for Newton's iterations for the methods that use iterations such as BwEuler and Radau5
 //! * [ParamsStep] parameters for the variable-step control
 //! * [ParamsStiffness] parameters to control and enable the stiffness detection (DoPri5 and DoPri8 only)
 //! * [ParamsBwEuler] parameters for the BwEuler solver
@@ -181,7 +181,7 @@
 //!     // solve from x = 0 to x = 2
 //!     let x1 = 2.0;
 //!     let mut args = 0;
-//!     solver.solve(&mut y, x, x1, None, &mut args)?;
+//!     solver.solve(&mut y, x, x1, None, &mut args, None)?;
 //!     println!("y =\n{}", y);
 //!     Ok(())
 //! }

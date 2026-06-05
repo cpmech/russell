@@ -1,4 +1,29 @@
 /// Asserts that two numbers are NaN at the same time or equal to each other (including ±Inf)
+///
+/// Two values are considered "alike" when:
+///
+/// * Both are `NaN`, **or**
+/// * They are numerically equal **and** share the same sign (so `0.0` and `-0.0` are **not** alike).
+///
+/// # Panics
+///
+/// Panics with `"values are not alike"` when the two values are not alike, for example:
+///
+/// * One is `NaN` and the other is not.
+/// * The magnitudes differ (e.g., `1.0` vs `2.0`).
+/// * The values are `0.0` and `-0.0` (same magnitude, different signs).
+/// * One is `+Inf` and the other is `-Inf`.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::assert_alike;
+///
+/// assert_alike(f64::NAN, f64::NAN);            // both NaN — OK
+/// assert_alike(f64::INFINITY, f64::INFINITY);  // both +Inf — OK
+/// assert_alike(f64::NEG_INFINITY, f64::NEG_INFINITY); // both -Inf — OK
+/// assert_alike(1.0, 1.0);                      // equal finite values — OK
+/// ```
 pub fn assert_alike(a: f64, b: f64) {
     let alike = if f64::is_nan(a) && f64::is_nan(b) {
         true

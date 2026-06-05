@@ -26,7 +26,7 @@ fn main() {
 
     // solve the ODE system
     let mut yy = yy0.clone();
-    solver.solve(&mut yy, t0, t1, None, &mut args).unwrap();
+    solver.solve(&mut yy, t0, t1, None, &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();

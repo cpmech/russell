@@ -80,7 +80,7 @@ impl NewtonSolver {
 
     /// Solves a nonlinear system using Newton's method
     ///
-    /// # Arguments
+    /// # Input
     ///
     /// * `x0` -- Initial guess (updated in place to the last iterate on return)
     /// * `args` -- Extra arguments for the callback functions
@@ -95,39 +95,51 @@ impl NewtonSolver {
     ///
     /// # Examples
     ///
+    /// The classic two-equation nonlinear system (intersection of a circle and a line):
+    ///
+    /// ```text
+    /// F₀(x) = x₀² + x₁² - 4 = 0   (circle of radius 2)
+    /// F₁(x) = x₀  - x₁      = 0   (line x₀ = x₁)
+    ///
+    /// Jacobian:
+    ///     J = [ 2x₀   2x₁ ]
+    ///         [  1    -1  ]
+    ///
+    /// Solutions: x₀ = x₁ = √2 and x₀ = x₁ = -√2
+    /// Solution for the initial guess (1, 0.5) is x₀ = x₁ = √2
     /// ```
-    /// use russell_lab::{NewtonSolver, Vector, Matrix, StrError};
+    ///
+    /// ```
+    /// use russell_lab::{approx_eq, NewtonSolver, Vector, Matrix, StrError};
+    /// use russell_lab::math::SQRT_2;
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     // Linear system: Ax = b, where A = [[2, 1], [1, 2]], b = [3, 3]
-    ///     // Solution: x = [1, 1]
-    ///     let mut x0 = Vector::from(&[0.0, 0.0]);
-    ///     let args = &mut ();
+    ///     let mut x0 = Vector::from(&[1.0, 0.5]); // initial guess
+    ///     let args = &mut 0;
     ///
-    ///     // F(x) = Ax - b = 0
-    ///     let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-    ///         out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-    ///         out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+    ///     // F(x): circle x₀² + x₁² = 4  and  line x₀ = x₁
+    ///     let f = |x: &Vector, out: &mut Vector, _: &mut i32| {
+    ///         out[0] = x[0] * x[0] + x[1] * x[1] - 4.0;
+    ///         out[1] = x[0] - x[1];
     ///         Ok(())
     ///     };
     ///
-    ///     // Analytical Jacobian: J = A
-    ///     let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-    ///         j.set(0, 0, 2.0); j.set(0, 1, 1.0);
-    ///         j.set(1, 0, 1.0); j.set(1, 1, 2.0);
+    ///     // Analytical Jacobian
+    ///     let jacobian = |j: &mut Matrix, x: &Vector, _: &mut i32| {
+    ///         j.set(0, 0, 2.0 * x[0]);
+    ///         j.set(0, 1, 2.0 * x[1]);
+    ///         j.set(1, 0,  1.0);
+    ///         j.set(1, 1, -1.0);
     ///         Ok(())
     ///     };
     ///
-    ///     let mut solver = NewtonSolver::new();
-    ///     solver.use_line_search = false;
+    ///     let solver = NewtonSolver::new();
     ///     let (x, stats) = solver.solve(&mut x0, args, f, jacobian)?;
-    ///
-    ///     println!("Solution: {:?}", x.as_data());
+    ///     println!("solution = {:?}", x.as_data());
     ///     println!("{}", stats);
     ///
-    ///     // Check: x ≈ [1, 1]
-    ///     assert!((x[0] - 1.0).abs() < 1e-10);
-    ///     assert!((x[1] - 1.0).abs() < 1e-10);
+    ///     approx_eq(x[0], SQRT_2, 1e-10);
+    ///     approx_eq(x[1], SQRT_2, 1e-10);
     ///     Ok(())
     /// }
     /// ```

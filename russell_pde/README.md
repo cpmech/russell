@@ -110,7 +110,7 @@ fn main() -> Result<(), StrError> {
     let grid = Grid1d::new_uniform(xmin, xmax, nx)?;
 
     // Create the solver
-    let mut fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
+    let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     // Define the source term f(x) = x
     let source = |x: f64| x;
@@ -127,6 +127,21 @@ fn main() -> Result<(), StrError> {
 
     Ok(())
 }
+```
+
+Output:
+
+```text
+x = 0.000, ϕ = 0.000000
+x = 0.111, ϕ = 0.018290
+x = 0.222, ϕ = 0.035208
+x = 0.333, ϕ = 0.049383
+x = 0.444, ϕ = 0.059442
+x = 0.556, ϕ = 0.064015
+x = 0.667, ϕ = 0.061728
+x = 0.778, ϕ = 0.051212
+x = 0.889, ϕ = 0.031093
+x = 1.000, ϕ = 0.000000
 ```
 
 ### Example 2: Solving 1D problems with Spectral Collocation
@@ -147,18 +162,24 @@ fn main() -> Result<(), StrError> {
 
     // Create spectral collocation solver with N=8 polynomial degree
     let nx = 8;
-    let mut spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx)?;
+    let spc = Spc1d::new(xmin, xmax, nx, ebcs, nbcs, kx)?;
 
     // Solve the problem
     let source = |x: f64| x;
     let solution = spc.solve_sps(0.0, source)?;
 
     // Calculate flow vectors (derivative information)
-    let flow = spc.calculate_flow_vectors(&solution)?;
+    let _flow = spc.calculate_flow_vectors(&solution)?;
 
     println!("Solution computed with spectral accuracy!");
     Ok(())
 }
+```
+
+Output:
+
+```text
+Solution computed with spectral accuracy!
 ```
 
 ### Example 3: Solving 2D Poisson equation
@@ -197,11 +218,17 @@ fn main() -> Result<(), StrError> {
     // Create solver and solve
     let fdm = Fdm2d::new(grid, ebcs, nbcs, kx, ky)?;
     let source = |_x: f64, _y: f64| 0.0;
-    let solution = fdm.solve_sps(0.0, &source)?;
+    let _solution = fdm.solve_sps(0.0, &source)?;
 
     println!("2D solution computed on {}×{} grid", nx, ny);
     Ok(())
 }
+```
+
+Output:
+
+```text
+2D solution computed on 20×20 grid
 ```
 
 ### Example 4: Using Lagrange multipliers method
@@ -219,15 +246,15 @@ fn main() -> Result<(), StrError> {
     let nbcs = NaturalBcs1d::new();
 
     let grid = Grid1d::new_uniform(xmin, xmax, 10)?;
-    let mut fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
+    let fdm = Fdm1d::new(grid, ebcs, nbcs, kx)?;
 
     let source = |x: f64| x;
 
     // Method 1: System Partitioning Strategy (default)
-    let solution_sps = fdm.solve_sps(0.0, source)?;
+    let _solution_sps = fdm.solve_sps(0.0, source)?;
 
     // Method 2: Lagrange Multipliers Method
-    let solution_lmm = fdm.solve_lmm(0.0, source)?;
+    let _solution_lmm = fdm.solve_lmm(0.0, source)?;
 
     // Both methods produce the same solution
     Ok(())
@@ -265,4 +292,4 @@ N = 20 max(err) = 3.90799e-14
 
 And the plot looks like this:
 
-![Solution](data/figures/doc_arclength_bspline.svg)
+![Solution](data/figures/doc_example_spc_map.svg)

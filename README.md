@@ -65,9 +65,11 @@
   - [(lab) Solution of a (dense) linear system](#lab-solution-of-a-dense-linear-system)
   - [(lab) Reading table-formatted data files](#lab-reading-table-formatted-data-files)
   - [(lab) Line search for optimization](#lab-line-search-for-optimization)
+  - [(nonlin) Numerical continuation of a B-spline curve](#nonlin-numerical-continuation-of-a-b-spline-curve)
   - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
   - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
   - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
+  - [(pde) Spectral collocation in 2D with transfinite mapping](#pde-spectral-collocation-in-2d-with-transfinite-mapping)
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
@@ -656,6 +658,26 @@ fn main() -> Result<(), StrError> {
 
 
 
+### (nonlin) Numerical continuation of a B-spline curve
+
+This example traces a B-spline curve defined by `G(u, λ) = 0` using the Pseudo-arclength continuation method.
+
+The nonlinear problem is defined as follows:
+
+```text
+G(u, λ) = u - C(λ)
+```
+
+where C(λ) is a point on a 2D B-spline curve parametrized by λ ∈ `[0,1]`.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples/arclength_bspline.rs)
+
+The plot looks like this:
+
+![B-spline curve](russell_nonlin/data/figures/doc_arclength_bspline.svg)
+
+
+
 ### (sparse) Solution of a sparse linear system
 
 ```rust
@@ -800,6 +822,32 @@ The figure below shows the `russell` (black dashed lines) and Mathematica (red s
 
 
 
+### (pde) Spectral collocation in 2D with transfinite mapping
+
+Example: Solving a 2D Poisson equation on a rotated square domain
+
+This example employs spectral collocation with transfinite mapping to solve the Poisson equation:
+
+```text
+  -k · ∇²u = f    on a unit square rotated by angle α
+  u = g           on the boundary (Dirichlet conditions)
+```
+
+The analytical solution used for verification is:
+```text
+  u(x,y) = sin(π·x·cos(α) + π·y·sin(α)) · exp(π·y·cos(α) - π·x·sin(α))
+```
+
+The domain is mapped from the reference square (r,s) ∈ [-1,1]×[-1,1] to the physical rotated square via transfinite interpolation.
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_pde/examples/doc_example_spc_map.rs)
+
+The plot looks like this:
+
+![Solution](russell_pde/data/figures/doc_example_spc_map.svg)
+
+
+
 ### (stat) Generate the Frechet distribution
 
 Code:
@@ -927,6 +975,7 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
+
 
 
 

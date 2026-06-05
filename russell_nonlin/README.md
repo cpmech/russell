@@ -128,6 +128,14 @@ assert!((l - 1.0).abs() < 1e-14);
 
 This example traces a B-spline curve defined by `G(u, λ) = 0` using the Pseudo-arclength continuation method. The solution points are plotted together with the B-spline curve.
 
+The nonlinear problem is defined as follows:
+
+```text
+G(u, λ) = u - C(λ)
+```
+
+where C(λ) is a point on a 2D B-spline curve parametrized by λ ∈ `[0,1]`.
+
 [See the code](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples/arclength_bspline.rs)
 
 The output looks like this:

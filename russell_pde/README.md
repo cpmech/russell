@@ -17,6 +17,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     - [Example 2: Solving 1D problems with Spectral Collocation](#example-2-solving-1d-problems-with-spectral-collocation)
     - [Example 3: Solving 2D Poisson equation](#example-3-solving-2d-poisson-equation)
     - [Example 4: Using Lagrange multipliers method](#example-4-using-lagrange-multipliers-method)
+    - [Example 5: Spectral collocation in 2D with transfinite mapping](#example-5-spectral-collocation-in-2d-with-transfinite-mapping)
 
 
 
@@ -234,3 +235,34 @@ fn main() -> Result<(), StrError> {
 ```
 
 See the [examples directory](https://github.com/cpmech/russell/tree/main/russell_pde/examples) for more advanced usage including mapped domains and transfinite interpolation.
+
+### Example 5: Spectral collocation in 2D with transfinite mapping
+
+Example: Solving a 2D Poisson equation on a rotated square domain
+
+This example demonstrates the use of `SpcMap2d` (spectral collocation with transfinite mapping) to solve the Poisson equation:
+
+```text
+  -k · ∇²u = f    on a unit square rotated by angle α
+  u = g           on the boundary (Dirichlet conditions)
+```
+
+The analytical solution used for verification is:
+```text
+  u(x,y) = sin(π·x·cos(α) + π·y·sin(α)) · exp(π·y·cos(α) - π·x·sin(α))
+```
+
+The domain is mapped from the reference square (r,s) ∈ [-1,1]×[-1,1] to the physical rotated square via transfinite interpolation.
+
+
+[See the code](https://github.com/cpmech/russell/tree/main/russell_pde/examples/doc_example_spc_map.rs)
+
+The output looks like this:
+
+```text
+N = 20 max(err) = 3.90799e-14
+```
+
+And the plot looks like this:
+
+![Solution](data/figures/doc_arclength_bspline.svg)

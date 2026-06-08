@@ -1,4 +1,4 @@
-name: Arch Linux
+name: Arch
 on: [pull_request]
 jobs:
   arch:

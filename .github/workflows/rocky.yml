@@ -1,4 +1,4 @@
-name: Rocky Linux
+name: Rocky
 on: [pull_request]
 jobs:
   rocky:

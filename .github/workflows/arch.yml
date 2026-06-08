@@ -1,7 +1,7 @@
 name: Arch
 on: [pull_request]
 jobs:
-  arch:
+  test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -1,7 +1,7 @@
 name: macOS
 on: [pull_request]
 jobs:
-  macos:
+  test:
     runs-on: macos-latest
     env:
       RUST_BACKTRACE: 1

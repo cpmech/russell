@@ -16,9 +16,9 @@
 
 ---
 
-[![Arch Linux](https://github.com/cpmech/russell/actions/workflows/arch.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/arch.yml)
-[![Ubuntu Linux](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml)
-[![Rocky Linux](https://github.com/cpmech/russell/actions/workflows/rocky.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/rocky.yml)
+[![Arch](https://github.com/cpmech/russell/actions/workflows/arch.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/arch.yml)
+[![Ubuntu](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/ubuntu.yml)
+[![Rocky](https://github.com/cpmech/russell/actions/workflows/rocky.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/rocky.yml)
 [![macOS](https://github.com/cpmech/russell/actions/workflows/macos.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/macos.yml)
 [![Windows](https://github.com/cpmech/russell/actions/workflows/windows.yml/badge.svg)](https://github.com/cpmech/russell/actions/workflows/windows.yml)
 

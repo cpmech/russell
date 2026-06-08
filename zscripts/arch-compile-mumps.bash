@@ -34,13 +34,19 @@ else
     sudo pacman -S --noconfirm gcc-fortran openmp
 fi
 
-# Metis is needed for graph-partitioning-based reordering
-# yay must run as non-root; when this script is invoked as root (e.g. inside
-# Docker), delegate to the unprivileged 'user' account that has NOPASSWD sudo
-if [ $EUID = 0 ]; then
-    su - user -c "yay -S --noconfirm metis"
+# Metis is needed for graph-partitioning-based reordering;
+# skip if already installed (e.g. via Chaotic-AUR in Docker)
+if pacman -Q metis &>/dev/null; then
+    echo "... metis (package) already installed"
 else
-    yay -S --noconfirm metis
+    # yay must run as non-root; when this script is invoked as root (e.g.
+    # outside Docker), delegate to the unprivileged 'user' account that has
+    # NOPASSWD sudo
+    if [ $EUID = 0 ]; then
+        su - user -c "yay -S --noconfirm metis"
+    else
+        yay -S --noconfirm metis
+    fi
 fi
 
 # Download the source tarball from Debian (reuse it if already present)

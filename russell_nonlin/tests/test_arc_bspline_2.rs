@@ -1,27 +1,65 @@
 use plotpy::{linspace, Curve, Plot};
-use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};
+use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, RdiffType, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = false;
 
 #[test]
 fn test_arc_bspline_2_default() {
-    run_test("test_arc_bspline_2_default", false, None, 31, 3, Status::Success);
+    run_test(
+        "test_arc_bspline_2_default",
+        false,
+        None,
+        RdiffType::Ave,
+        31,
+        3,
+        Status::Success,
+    );
 }
 
 #[test]
 fn test_arc_bspline_2_custom() {
-    run_test("test_arc_bspline_2_custom", false, Some(0.2), 34, 0, Status::Success);
+    run_test(
+        "test_arc_bspline_2_custom",
+        false,
+        Some(0.2),
+        RdiffType::Ave,
+        34,
+        0,
+        Status::Success,
+    );
 }
 
 #[test]
 fn test_arc_bspline_2_bordering() {
-    run_test("test_arc_bspline_2_bordering", true, Some(0.2), 34, 0, Status::Success);
+    run_test(
+        "test_arc_bspline_2_bordering",
+        true,
+        Some(0.2),
+        RdiffType::Ave,
+        34,
+        0,
+        Status::Success,
+    );
+}
+
+#[test]
+fn test_arc_bspline_2_rdiff_type_max() {
+    run_test(
+        "test_arc_bspline_2_rdiff_type_max",
+        false,
+        None,
+        RdiffType::Max,
+        17,
+        0,
+        Status::Success,
+    );
 }
 
 fn run_test(
     name: &str,
     bordering: bool,
     tol: Option<f64>,
+    rdiff_type: RdiffType,
     expected_n_accepted: usize,
     expected_n_rejected: usize,
     expected_status: Status,
@@ -38,7 +76,8 @@ fn run_test(
         .set_bordering(bordering)
         .set_log_file(&format!("/tmp/russell_nonlin/{}.txt", name))
         .set_record_iterations_residuals(true)
-        .set_n_cont_delta_divergence_max(1);
+        .set_n_cont_delta_divergence_max(1)
+        .set_tg_control_rdiff_type(rdiff_type);
     if let Some(t) = tol {
         config.set_tg_control_tol(t);
     }

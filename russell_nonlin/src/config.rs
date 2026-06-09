@@ -1,4 +1,4 @@
-use super::{Method, SoderlindClass};
+use super::{Method, RdiffType, SoderlindClass};
 use crate::StrError;
 use russell_sparse::{Genie, LinSolParams};
 
@@ -151,6 +151,9 @@ pub struct Config {
     /// Beta coefficient used with the NR stepsize control
     pub(crate) nr_control_beta: f64,
 
+    /// Method for the tangent vector stepsize control
+    pub(crate) tg_control_rdiff_type: RdiffType,
+
     /// Tolerance for the tangent vector stepsize control
     pub(crate) tg_control_tol: f64,
 
@@ -259,6 +262,7 @@ impl Config {
             tg_control_rho_for_tiny_rdiff: 1.2,
             nr_control_n_opt: 3,
             nr_control_beta: 0.5,
+            tg_control_rdiff_type: RdiffType::Ave,
             tg_control_tol: 0.5,
             tg_control_beta1: b1,
             tg_control_beta2: b2,
@@ -633,6 +637,14 @@ impl Config {
     /// Default value: 0.5
     pub fn set_nr_control_beta(&mut self, value: f64) -> &mut Self {
         self.nr_control_beta = value;
+        self
+    }
+
+    /// Sets the method for the tangent vector stepsize control
+    ///
+    /// Default value: [RdiffType::Ave]
+    pub fn set_tg_control_rdiff_type(&mut self, value: RdiffType) -> &mut Self {
+        self.tg_control_rdiff_type = value;
         self
     }
 

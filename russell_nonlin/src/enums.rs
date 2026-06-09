@@ -3,6 +3,40 @@ use crate::StrError;
 use russell_lab::{vec_norm_chunk, Norm, Vector};
 use serde::{Deserialize, Serialize};
 
+/// Defines the type of the relative difference used in the stepsize control using the tangent vector
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RdiffType {
+    /// Average relative difference
+    ///
+    /// ```text
+    /// dx/ds = {du/ds..., dλ/ds}
+    ///
+    ///        | (dx/ds₁)[i] - (dx/ds₀)[i] |
+    /// p[i] = —————————————————————————————
+    ///              | (dx/ds₀)[i] |
+    ///
+    /// q = finite(p)
+    ///
+    /// rdiff = average(q)
+    /// ```
+    Ave,
+
+    /// Maximum relative difference
+    ///
+    /// ```text
+    /// dx/ds = {du/ds..., dλ/ds}
+    ///
+    ///        | (dx/ds₁)[i] - (dx/ds₀)[i] |
+    /// p[i] = —————————————————————————————
+    ///              | (dx/ds₀)[i] |
+    ///
+    /// q = finite(p)
+    ///
+    /// rdiff = maximum(q)
+    /// ```
+    Max,
+}
+
 /// Defines the initial direction of the tangent vector for the pseudo-arclength method
 /// or the (constant) sign of Δλ for the Natural method.
 ///

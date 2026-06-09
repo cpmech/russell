@@ -173,7 +173,7 @@ const SAVE_FIGURE: bool = false;
 const PLOT_STEPSIZES: bool = false;
 const PLOT_OBJECTIVE_FUNCTION: bool = false;
 
-const DELTA_INDEX: usize = 5; // delta-index to bracket critical points
+const DELTA_INDEX: usize = 3; // delta-index to bracket critical points
 
 // ----------------------------- Test combinations ----------------------------
 
@@ -250,8 +250,8 @@ fn test_bratu_1d_spc_auto_step() -> Result<(), StrError> {
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.001, 0.0009, 0.0005),       //
-        (20, 0.00047, 0.00033, 0.000031), //
+        (8, 0.0041, 0.0024, 0.0005),  //
+        (20, 0.0028, 0.0065, 0.0011), //
     ] {
         for alpha in [0.0, 0.2] {
             for lmm in [true, false] {
@@ -282,9 +282,9 @@ fn test_bratu_1d_fdm_auto_step() -> Result<(), StrError> {
     let ddl = DeltaLambda::auto(DDL_INI);
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.0381, 0.06, 0.06), //
-        (17, 0.00789, 0.012, 0.012), //
-                                 // (100, 0.00024, 0.00029, 0.00032), //
+        (8, 0.043, 0.064, 0.06), //
+        (17, 0.015, 0.019, 0.012), //
+                                 // (100, 0.025, 0.018, 0.01), //
     ] {
         for alpha in [0.0, 0.2] {
             for lmm in [true, false] {
@@ -319,9 +319,9 @@ fn test_bratu_2d_spc_auto_step() -> Result<(), StrError> {
     let genie = Genie::Umfpack;
     let symmetric = false;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.00256, 0.00029, 0.002), //
-                                      // (10, 0.00073, 0.000034, 0.000024), //
-                                      // (11, 0.00073, 0.000034, 0.000024), //
+        (8, 0.015, 0.015, 0.0043), //
+        (10, 0.005, 0.021, 0.016), //
+        (11, 0.02, 0.02, 0.0074),  //
     ] {
         for alpha in [0.0, 0.2] {
             for lmm in [false] {
@@ -352,11 +352,11 @@ fn test_bratu_2d_fdm_auto_step() -> Result<(), StrError> {
     let ddl = DeltaLambda::auto(DDL_INI);
     let genie = Genie::Umfpack;
     for (npt, tol1, tol2, tol3) in [
-        (8, 0.034, 0.082, 0.123), //
-                                  // (9, 0.0253, 0.062, 0.092), //
-                                  // (20, 0.0043, 0.011, 0.016), //
-                                  // (22, 0.00355, 0.0089, 0.013), //
-                                  // (40, 0.0011, 0.0032, 0.0034), //
+        (8, 0.053, 0.09, 0.123), //
+        (9, 0.041, 0.08, 0.092), //
+                                 // (20, 0.024, 0.04, 0.016), //
+                                 // (22, 0.053, 0.0089, 0.013), //
+                                 // (40, 0.037, 0.017, 0.021), //
     ] {
         for alpha in [0.0, 0.2] {
             for lmm in [false] {

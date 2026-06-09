@@ -39,12 +39,12 @@ fn test_arc_hardening_softening_model_full() -> Result<(), StrError> {
     println!("{}", stats);
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 20);
-    assert_eq!(stats.n_rejected, 3);
+    assert_eq!(stats.n_accepted, 23);
+    assert_eq!(stats.n_rejected, 4);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.054, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.063, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -76,12 +76,12 @@ fn test_arc_hardening_softening_model_from_peak() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 19);
+    assert_eq!(stats.n_accepted, 14);
     assert_eq!(stats.n_rejected, 4);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.11, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.14, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -113,12 +113,12 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 19);
+    assert_eq!(stats.n_accepted, 17);
     assert_eq!(stats.n_rejected, 0);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.041, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.048, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 
@@ -154,12 +154,12 @@ fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     )?;
 
     // Check the solver statistics
-    assert_eq!(stats.n_accepted, 20);
-    assert_eq!(stats.n_rejected, 3);
+    assert_eq!(stats.n_accepted, 23);
+    assert_eq!(stats.n_rejected, 4);
 
     // Check the maximum error on lambda
     println!("\nMaximum error on lambda = {}\n", max_err);
-    assert!(max_err < 0.054, "max_err = {} is greater than the tolerance", max_err);
+    assert!(max_err < 0.063, "max_err = {} is greater than the tolerance", max_err);
     Ok(())
 }
 

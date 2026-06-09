@@ -1,6 +1,6 @@
 use super::{Config, IniDir, Method, Status, CONFIG_H_MIN};
 use super::{SolverTrait, Stop, System, Workspace};
-use crate::StrError;
+use crate::{RdiffType, StrError};
 use russell_lab::{vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{Norm, Vector};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver, Sym};
@@ -812,30 +812,61 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // stepsize control --- calculate the relative change in the tangent vector
         //
 
-        // find the maximum ‖ du/ds - (du/ds)_prev ‖ / ‖ (du/ds)_prev ‖
         let ndim = self.system.ndim;
-        let mut max_ratio = 0.0;
-        for i in 0..ndim {
-            let den = f64::abs(self.duds_prev[i]);
+        let tol = self.config.tg_control_tol;
+
+        // dx/ds = {du/ds..., dλ/ds}
+        //
+        //        | (dx/ds₁)[i] - (dx/ds₀)[i] |
+        // p[i] = —————————————————————————————
+        //              | (dx/ds₀)[i] |
+        //
+        // q = finite(p)
+
+        let rdiff = if self.config.tg_control_rdiff_type == RdiffType::Ave {
+            // rdiff = average(q)
+            let mut sum = 0.0;
+            let mut count = 0;
+            for i in 0..ndim {
+                let den = f64::abs(self.duds_prev[i]);
+                if den > CONFIG_H_MIN {
+                    let ratio = f64::abs(work.duds[i] - self.duds_prev[i]) / den;
+                    sum += ratio / tol;
+                    count += 1;
+                }
+            }
+            let den = f64::abs(self.dlds_prev);
             if den > CONFIG_H_MIN {
-                let ratio = f64::abs(work.duds[i] - self.duds_prev[i]) / den;
+                let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
+                sum += ratio / tol;
+                count += 1;
+            }
+            if count > 0 {
+                sum / count as f64
+            } else {
+                0.0
+            }
+        } else {
+            // rdiff = maximum(q)
+            let mut max_ratio = 0.0;
+            for i in 0..ndim {
+                let den = f64::abs(self.duds_prev[i]);
+                if den > CONFIG_H_MIN {
+                    let ratio = f64::abs(work.duds[i] - self.duds_prev[i]) / den;
+                    if ratio > max_ratio {
+                        max_ratio = ratio;
+                    }
+                }
+            }
+            let den = f64::abs(self.dlds_prev);
+            if den > CONFIG_H_MIN {
+                let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
                 if ratio > max_ratio {
                     max_ratio = ratio;
                 }
             }
-        }
-
-        // find the maximum ‖ dλ/ds - (dλ/ds)_prev ‖ / ‖ (dλ/ds)_prev ‖ and compare with the previous maximum
-        let den = f64::abs(self.dlds_prev);
-        if den > CONFIG_H_MIN {
-            let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
-            if ratio > max_ratio {
-                max_ratio = ratio;
-            }
-        }
-
-        // the relative difference is the maximum of the ratios between the tangent components
-        let rdiff = max_ratio / self.config.tg_control_tol;
+            max_ratio / tol
+        };
 
         // done
         Ok(rdiff)

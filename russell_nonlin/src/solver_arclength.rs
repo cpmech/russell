@@ -812,7 +812,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // stepsize control --- calculate the relative change in the tangent vector
         //
 
-        // calculate the relative difference between dλ/du vectors (RMS of the error)
+        // find the maximum ‖ du/ds - (du/ds)_prev ‖ / ‖ (du/ds)_prev ‖
         let ndim = self.system.ndim;
         let mut max_ratio = 0.0;
         for i in 0..ndim {
@@ -824,6 +824,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 }
             }
         }
+
+        // find the maximum ‖ dλ/ds - (dλ/ds)_prev ‖ / ‖ (dλ/ds)_prev ‖ and compare with the previous maximum
         let den = f64::abs(self.dlds_prev);
         if den > CONFIG_H_MIN {
             let ratio = f64::abs(work.dlds - self.dlds_prev) / den;
@@ -831,6 +833,8 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 max_ratio = ratio;
             }
         }
+
+        // the relative difference is the maximum of the ratios between the tangent components
         let rdiff = max_ratio / self.config.tg_control_tol;
 
         // done

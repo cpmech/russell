@@ -215,6 +215,8 @@ pub fn legendre_gauss_weights(nn: usize) -> Vector {
 /// Returns n+1 points including the endpoints -1 and 1.
 /// The interior n-1 points are roots of P'_{n}(x).
 ///
+/// Note: Early return for nn == 0 with X = {0.0} (the midpoint, consistent with what legendre_gauss_points(0) returns).
+///
 /// # Examples
 ///
 /// ```
@@ -228,6 +230,9 @@ pub fn legendre_gauss_weights(nn: usize) -> Vector {
 /// ```
 pub fn legendre_lobatto_points(nn: usize) -> Vector {
     let mut xx = Vector::new(nn + 1);
+    if nn == 0 {
+        return xx; // single-point Lobatto is degenerate; return midpoint
+    }
     xx[0] = -1.0;
     xx[nn] = 1.0;
     if nn < 3 {

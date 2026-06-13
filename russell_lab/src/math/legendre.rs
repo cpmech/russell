@@ -373,17 +373,9 @@ mod tests {
             // P_3 = (-3x + 5x³)/2
             approx_eq(legendre_pn(3, x), (-3.0 * x + 5.0 * x3) / 2.0, 1e-14);
             // P_4 = (3 - 30x² + 35x⁴)/8
-            approx_eq(
-                legendre_pn(4, x),
-                (3.0 - 30.0 * x2 + 35.0 * x4) / 8.0,
-                1e-14,
-            );
+            approx_eq(legendre_pn(4, x), (3.0 - 30.0 * x2 + 35.0 * x4) / 8.0, 1e-14);
             // P_5 = (15x - 70x³ + 63x⁵)/8
-            approx_eq(
-                legendre_pn(5, x),
-                (15.0 * x - 70.0 * x3 + 63.0 * x5) / 8.0,
-                1e-13,
-            );
+            approx_eq(legendre_pn(5, x), (15.0 * x - 70.0 * x3 + 63.0 * x5) / 8.0, 1e-13);
         }
     }
 
@@ -489,18 +481,10 @@ mod tests {
             // P'_3 = (-3 + 15x²)/2
             approx_eq(legendre_pn_deriv1(3, x), (-3.0 + 15.0 * x2) / 2.0, 1e-13);
             // P'_4 = (-60x + 140x³)/8
-            approx_eq(
-                legendre_pn_deriv1(4, x),
-                (-60.0 * x + 140.0 * x3) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv1(4, x), (-60.0 * x + 140.0 * x3) / 8.0, 1e-12);
             // P'_5 = (15 - 210x² + 315x⁴)/8
             let x4 = x3 * x;
-            approx_eq(
-                legendre_pn_deriv1(5, x),
-                (15.0 - 210.0 * x2 + 315.0 * x4) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv1(5, x), (15.0 - 210.0 * x2 + 315.0 * x4) / 8.0, 1e-12);
         }
     }
 
@@ -594,17 +578,9 @@ mod tests {
             // P''_3 = 15x
             approx_eq(legendre_pn_deriv2(3, x), 15.0 * x, 1e-13);
             // P''_4 = (-60 + 420x²)/8
-            approx_eq(
-                legendre_pn_deriv2(4, x),
-                (-60.0 + 420.0 * x2) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv2(4, x), (-60.0 + 420.0 * x2) / 8.0, 1e-12);
             // P''_5 = (-420x + 1260x³)/8
-            approx_eq(
-                legendre_pn_deriv2(5, x),
-                (-420.0 * x + 1260.0 * x3) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv2(5, x), (-420.0 * x + 1260.0 * x3) / 8.0, 1e-12);
         }
     }
 
@@ -703,7 +679,7 @@ mod tests {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
                 let pn = legendre_pn(n + 1, xx[k]);
-                assert!(pn.abs() < 1e-12, "P_{}({}) = {} not zero", n+1, xx[k], pn);
+                assert!(pn.abs() < 1e-12, "P_{}({}) = {} not zero", n + 1, xx[k], pn);
             }
         }
     }
@@ -723,7 +699,15 @@ mod tests {
         for n in 1..=15 {
             let xx = legendre_gauss_points(n);
             for k in 1..=n {
-                assert!(xx[k] >= xx[k - 1], "Points not sorted for n={}: x[{}]={} < x[{}]={}", n, k, xx[k], k-1, xx[k-1]);
+                assert!(
+                    xx[k] >= xx[k - 1],
+                    "Points not sorted for n={}: x[{}]={} < x[{}]={}",
+                    n,
+                    k,
+                    xx[k],
+                    k - 1,
+                    xx[k - 1]
+                );
             }
         }
     }
@@ -750,7 +734,13 @@ mod tests {
         for n in 1..=15 {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
-                assert!(xx[k] > -1.0 && xx[k] < 1.0, "Point x[{}]={} out of (-1,1) for n={}", k, xx[k], n);
+                assert!(
+                    xx[k] > -1.0 && xx[k] < 1.0,
+                    "Point x[{}]={} out of (-1,1) for n={}",
+                    k,
+                    xx[k],
+                    n
+                );
             }
         }
     }
@@ -892,11 +882,7 @@ mod tests {
             let xx = legendre_lobatto_points(n);
             for k in 1..n {
                 let dp = legendre_pn_deriv1(n, xx[k]);
-                assert!(
-                    dp.abs() < 1e-10,
-                    "P'_{}({}) = {} not zero for n={}",
-                    n, xx[k], dp, n
-                );
+                assert!(dp.abs() < 1e-10, "P'_{}({}) = {} not zero for n={}", n, xx[k], dp, n);
             }
         }
     }
@@ -1085,7 +1071,7 @@ mod tests {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
                 let pn = legendre_pn(n + 1, xx[k]);
-                assert!(pn.abs() < 1e-10, "P_{}({}) = {} not zero", n+1, xx[k], pn);
+                assert!(pn.abs() < 1e-10, "P_{}({}) = {} not zero", n + 1, xx[k], pn);
             }
         }
     }

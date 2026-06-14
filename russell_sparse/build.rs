@@ -97,5 +97,21 @@ fn main() {
             println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
             println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
         }
+
+        #[cfg(feature = "cudss")]
+        {
+            // nvcc needs a compatible host C++ compiler; GCC 16 headers are too new
+            std::env::set_var("CXX", "g++-15");
+            cc::Build::new()
+                .cuda(true)
+                .cudart("static") // or "shared"
+                .flag("-arch=sm_89")
+                .file("c_code/interface_cudss.cu")
+                .compile("interface_cudss");
+
+            // Link CUDA runtime libraries
+            println!("cargo:rustc-link-search=native=/opt/cuda/lib64");
+            println!("cargo:rustc-link-lib=cudart");
+        }
     }
 }

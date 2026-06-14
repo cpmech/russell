@@ -12,6 +12,7 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "sparse", "solver"]
 
 [features]
+cudss = []
 intel_mkl = ["russell_lab/intel_mkl"]
 local_sparse = []
 

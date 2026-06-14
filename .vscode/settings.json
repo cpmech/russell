@@ -38,7 +38,11 @@
     "Coutinho",
     "cpmech",
     "cpts",
+    "CUDA",
+    "cudart",
+    "cudss",
     "curv",
+    "DCMAKE",
     "DDNN",
     "Demmel",
     "derivs",
@@ -193,6 +197,7 @@
     "nsum",
     "numpy",
     "NURBS",
+    "nvcc",
     "odyad",
     "Oleg",
     "Olver",
@@ -307,6 +312,7 @@
     "Γᵏᵢⱼ"
   ],
   "rust-analyzer.cargo.features": [
+    "cudss",
     "local_sparse"
   ]
 }

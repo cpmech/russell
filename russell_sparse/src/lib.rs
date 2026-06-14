@@ -274,6 +274,16 @@ pub use stats_lin_sol::*;
 pub use stats_lin_sol_mumps::*;
 pub use verify_lin_sys::*;
 
+// ----- cudss
+
+#[cfg(feature = "cudss")]
+mod solver_cudss;
+
+#[cfg(feature = "cudss")]
+pub use solver_cudss::*;
+
+// ----- MUMPS
+
 #[cfg(feature = "local_sparse")]
 mod complex_solver_mumps;
 
@@ -285,6 +295,8 @@ pub use complex_solver_mumps::*;
 
 #[cfg(feature = "local_sparse")]
 pub use solver_mumps::*;
+
+// ------ README file
 
 // run code from README file
 #[doc = include_str!("../README.md")]

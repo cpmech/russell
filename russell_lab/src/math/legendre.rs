@@ -13,14 +13,14 @@ use crate::Vector;
 ///
 /// See also: <https://en.wikipedia.org/wiki/Legendre_polynomials>
 ///
-/// | n | Pₙ(x)                       | dPₙ/dx(x)             | d²Pₙ/dx²(x)        |
-/// |:-:|:----------------------------|:----------------------|:--------------------|
-/// | 0 | 1                           | 0                     | 0                   |
-/// | 1 | x                           | 1                     | 0                   |
-/// | 2 | (-1 + 3x²)/2               | 3x                    | 3                   |
-/// | 3 | (-3x + 5x³)/2              | (-3 + 15x²)/2        | 15x                 |
-/// | 4 | (3 - 30x² + 35x⁴)/8       | (-60x + 140x³)/8     | (-60 + 420x²)/8    |
-/// | 5 | (15x - 70x³ + 63x⁵)/8     | (15 - 210x² + 315x⁴)/8 | (-420x + 1260x³)/8 |
+/// | n | Pₙ(x)                       | dPₙ/dx(x)              | d²Pₙ/dx²(x)         |
+/// |:-:|:----------------------------|:-----------------------|:--------------------|
+/// | 0 | 1                           | 0                      | 0                   |
+/// | 1 | x                           | 1                      | 0                   |
+/// | 2 | (-1 + 3x²)/2                | 3x                     | 3                   |
+/// | 3 | (-3x + 5x³)/2               | (-3 + 15x²)/2          | 15x                 |
+/// | 4 | (3 - 30x² + 35x⁴)/8         | (-60x + 140x³)/8       | (-60 + 420x²)/8     |
+/// | 5 | (15x - 70x³ + 63x⁵)/8       | (15 - 210x² + 315x⁴)/8 | (-420x + 1260x³)/8  |
 ///
 /// # Examples
 ///
@@ -55,7 +55,7 @@ pub fn legendre_pn(n: usize, x: f64) -> f64 {
 ///   dx
 /// ```
 ///
-/// For |x| < 1:
+/// For x ≠ ±1:
 /// ```text
 /// P'_n(x) = n / (x² - 1) * (x P_n(x) - P_{n-1}(x))
 /// ```
@@ -107,6 +107,12 @@ pub fn legendre_pn_deriv1(n: usize, x: f64) -> f64 {
 /// => P''_n = (2x P'_n - n(n+1)P_n) / (1-x²)
 /// ```
 ///
+/// Boundary values:
+/// ```text
+/// P''_n(1)  =  (n-1)n(n+1)(n+2)/8
+/// P''_n(-1) = (-1)^n (n-1)n(n+1)(n+2)/8
+/// ```
+///
 /// See: <https://mathworld.wolfram.com/LegendrePolynomial.html>
 ///
 /// # Examples
@@ -134,10 +140,11 @@ pub fn legendre_pn_deriv2(n: usize, x: f64) -> f64 {
     (2.0 * x * dpn - nn1 * pn) / (1.0 - x * x)
 }
 
-/// Computes Gauss-Legendre quadrature points (roots of Pn)
+/// Computes Gauss-Legendre quadrature points (roots of P_{nn+1})
 ///
-/// The points are the roots of Pₙ(x), found via Newton-Raphson iteration.
-/// The points are returned in ascending order from -1 to 1.
+/// Returns nn+1 points in ascending order (from -1 to 1).
+/// The points are the roots of P_{nn+1}(x), found via Newton-Raphson iteration
+/// with Chebyshev initial guesses.
 ///
 /// # Examples
 ///
@@ -184,8 +191,10 @@ pub fn legendre_gauss_points(nn: usize) -> Vector {
 
 /// Computes Gauss-Legendre quadrature weights
 ///
+/// Uses the points from [`legendre_gauss_points`].
+///
 /// ```text
-/// w_k = 2 / ((1 - x_k²) [P'_n(x_k)]²)
+/// w_k = 2 / ((1 - x_k²) [P'_{nn+1}(x_k)]²)
 /// ```
 ///
 /// # Examples
@@ -212,8 +221,10 @@ pub fn legendre_gauss_weights(nn: usize) -> Vector {
 
 /// Computes Gauss-Lobatto-Legendre quadrature points
 ///
-/// Returns n+1 points including the endpoints -1 and 1.
-/// The interior n-1 points are roots of P'_{n}(x).
+/// Returns nn+1 points including the endpoints -1 and 1.
+/// The interior nn-1 points are roots of P'_{nn}(x).
+///
+/// For nn = 0, returns {0.0} (the midpoint, matching [`legendre_gauss_points`]).
 ///
 /// # Examples
 ///
@@ -228,6 +239,9 @@ pub fn legendre_gauss_weights(nn: usize) -> Vector {
 /// ```
 pub fn legendre_lobatto_points(nn: usize) -> Vector {
     let mut xx = Vector::new(nn + 1);
+    if nn == 0 {
+        return xx; // single-point Lobatto is degenerate; return midpoint
+    }
     xx[0] = -1.0;
     xx[nn] = 1.0;
     if nn < 3 {
@@ -261,14 +275,17 @@ pub fn legendre_lobatto_points(nn: usize) -> Vector {
 
 /// Computes Gauss-Lobatto-Legendre quadrature weights
 ///
-/// For interior points:
-/// ```text
-/// w_k = 2 / (n(n-1) [P_{n-1}(x_k)]²)
-/// ```
+/// Uses the points from [`legendre_lobatto_points`].
+/// Let `N = nn + 1` be the number of points.
 ///
 /// For endpoints:
 /// ```text
-/// w_0 = w_n = 2 / (n(n-1))
+/// w_0 = w_{nn} = 2 / (N(N-1))
+/// ```
+///
+/// For interior points (k = 1, …, nn-1):
+/// ```text
+/// w_k = 2 / (N(N-1) [P_{nn}(x_k)]²)
 /// ```
 ///
 /// # Examples
@@ -373,17 +390,9 @@ mod tests {
             // P_3 = (-3x + 5x³)/2
             approx_eq(legendre_pn(3, x), (-3.0 * x + 5.0 * x3) / 2.0, 1e-14);
             // P_4 = (3 - 30x² + 35x⁴)/8
-            approx_eq(
-                legendre_pn(4, x),
-                (3.0 - 30.0 * x2 + 35.0 * x4) / 8.0,
-                1e-14,
-            );
+            approx_eq(legendre_pn(4, x), (3.0 - 30.0 * x2 + 35.0 * x4) / 8.0, 1e-14);
             // P_5 = (15x - 70x³ + 63x⁵)/8
-            approx_eq(
-                legendre_pn(5, x),
-                (15.0 * x - 70.0 * x3 + 63.0 * x5) / 8.0,
-                1e-13,
-            );
+            approx_eq(legendre_pn(5, x), (15.0 * x - 70.0 * x3 + 63.0 * x5) / 8.0, 1e-13);
         }
     }
 
@@ -489,18 +498,10 @@ mod tests {
             // P'_3 = (-3 + 15x²)/2
             approx_eq(legendre_pn_deriv1(3, x), (-3.0 + 15.0 * x2) / 2.0, 1e-13);
             // P'_4 = (-60x + 140x³)/8
-            approx_eq(
-                legendre_pn_deriv1(4, x),
-                (-60.0 * x + 140.0 * x3) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv1(4, x), (-60.0 * x + 140.0 * x3) / 8.0, 1e-12);
             // P'_5 = (15 - 210x² + 315x⁴)/8
             let x4 = x3 * x;
-            approx_eq(
-                legendre_pn_deriv1(5, x),
-                (15.0 - 210.0 * x2 + 315.0 * x4) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv1(5, x), (15.0 - 210.0 * x2 + 315.0 * x4) / 8.0, 1e-12);
         }
     }
 
@@ -594,17 +595,9 @@ mod tests {
             // P''_3 = 15x
             approx_eq(legendre_pn_deriv2(3, x), 15.0 * x, 1e-13);
             // P''_4 = (-60 + 420x²)/8
-            approx_eq(
-                legendre_pn_deriv2(4, x),
-                (-60.0 + 420.0 * x2) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv2(4, x), (-60.0 + 420.0 * x2) / 8.0, 1e-12);
             // P''_5 = (-420x + 1260x³)/8
-            approx_eq(
-                legendre_pn_deriv2(5, x),
-                (-420.0 * x + 1260.0 * x3) / 8.0,
-                1e-12,
-            );
+            approx_eq(legendre_pn_deriv2(5, x), (-420.0 * x + 1260.0 * x3) / 8.0, 1e-12);
         }
     }
 
@@ -703,7 +696,7 @@ mod tests {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
                 let pn = legendre_pn(n + 1, xx[k]);
-                assert!(pn.abs() < 1e-12, "P_{}({}) = {} not zero", n+1, xx[k], pn);
+                assert!(pn.abs() < 1e-12, "P_{}({}) = {} not zero", n + 1, xx[k], pn);
             }
         }
     }
@@ -723,7 +716,15 @@ mod tests {
         for n in 1..=15 {
             let xx = legendre_gauss_points(n);
             for k in 1..=n {
-                assert!(xx[k] >= xx[k - 1], "Points not sorted for n={}: x[{}]={} < x[{}]={}", n, k, xx[k], k-1, xx[k-1]);
+                assert!(
+                    xx[k] >= xx[k - 1],
+                    "Points not sorted for n={}: x[{}]={} < x[{}]={}",
+                    n,
+                    k,
+                    xx[k],
+                    k - 1,
+                    xx[k - 1]
+                );
             }
         }
     }
@@ -750,7 +751,13 @@ mod tests {
         for n in 1..=15 {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
-                assert!(xx[k] > -1.0 && xx[k] < 1.0, "Point x[{}]={} out of (-1,1) for n={}", k, xx[k], n);
+                assert!(
+                    xx[k] > -1.0 && xx[k] < 1.0,
+                    "Point x[{}]={} out of (-1,1) for n={}",
+                    k,
+                    xx[k],
+                    n
+                );
             }
         }
     }
@@ -892,11 +899,7 @@ mod tests {
             let xx = legendre_lobatto_points(n);
             for k in 1..n {
                 let dp = legendre_pn_deriv1(n, xx[k]);
-                assert!(
-                    dp.abs() < 1e-10,
-                    "P'_{}({}) = {} not zero for n={}",
-                    n, xx[k], dp, n
-                );
+                assert!(dp.abs() < 1e-10, "P'_{}({}) = {} not zero for n={}", n, xx[k], dp, n);
             }
         }
     }
@@ -1085,7 +1088,7 @@ mod tests {
             let xx = legendre_gauss_points(n);
             for k in 0..=n {
                 let pn = legendre_pn(n + 1, xx[k]);
-                assert!(pn.abs() < 1e-10, "P_{}({}) = {} not zero", n+1, xx[k], pn);
+                assert!(pn.abs() < 1e-10, "P_{}({}) = {} not zero", n + 1, xx[k], pn);
             }
         }
     }

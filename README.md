@@ -1009,6 +1009,7 @@ fn main() -> Result<(), StrError> {
         - [x] Implement Chebyshev interpolation
         - [x] Implement Orthogonal polynomials
         - [x] Implement Lagrange interpolation
+        - [x] Implement Legendre polynomials
         - [ ] Implement Fourier interpolation
 - [x] Improve `russell_sparse`
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)

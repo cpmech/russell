@@ -994,7 +994,7 @@ fn main() -> Result<(), StrError> {
         - [x] Implement the modified Bessel functions
         - [x] Implement the elliptical integral functions
         - [x] Implement Beta, Gamma and Erf functions (and associated)
-        - [ ] Implement orthogonal polynomial functions
+        - [x] Implement orthogonal polynomial functions
     - [ ] Implement some numerical methods in `russell_lab`
         - [x] Implement Brent's solver
         - [x] Implement a solver for the cubic equation
@@ -1007,7 +1007,7 @@ fn main() -> Result<(), StrError> {
     - [ ] Add interpolation and polynomials to `russell_lab`
         - [x] Implement Chebyshev polynomials
         - [x] Implement Chebyshev interpolation
-        - [ ] Implement Orthogonal polynomials
+        - [x] Implement Orthogonal polynomials
         - [x] Implement Lagrange interpolation
         - [ ] Implement Fourier interpolation
 - [x] Improve `russell_sparse`
@@ -1025,11 +1025,10 @@ fn main() -> Result<(), StrError> {
 - [x] Implement `russell_pde`
     - [x] Implement 1D and 2D spectral collocation methods
     - [x] Implement 1D and 2D finite difference methods
-    - [ ] Study the need for improving this crate further
 - [x] Implement `russell_nonlin`
     - [x] Implement natural continuation for nonlinear systems
     - [x] Implement pseudo-arc-length continuation for nonlinear systems
-    - [ ] Study better methods for step size control in continuation methods
+    - [x] Study better methods for step size control in continuation methods
 - [ ] Improve `russell_stat`
     - [x] Add probability distribution functions
     - [x] Implement drawing of ASCII histograms
@@ -1045,4 +1044,4 @@ fn main() -> Result<(), StrError> {
     - [x] Compile on macOS
     - [x] Compile on Windows
     - [x] Study the compilation of MUMPS on Windows
-    - [ ] Write scripts to compile on Windows
+    - [x] Write scripts to compile on Windows

@@ -55,7 +55,7 @@ pub fn legendre_pn(n: usize, x: f64) -> f64 {
 ///   dx
 /// ```
 ///
-/// For |x| < 1:
+/// For x ≠ ±1:
 /// ```text
 /// P'_n(x) = n / (x² - 1) * (x P_n(x) - P_{n-1}(x))
 /// ```
@@ -107,6 +107,12 @@ pub fn legendre_pn_deriv1(n: usize, x: f64) -> f64 {
 /// => P''_n = (2x P'_n - n(n+1)P_n) / (1-x²)
 /// ```
 ///
+/// Boundary values:
+/// ```text
+/// P''_n(1)  =  (n-1)n(n+1)(n+2)/8
+/// P''_n(-1) = (-1)^n (n-1)n(n+1)(n+2)/8
+/// ```
+///
 /// See: <https://mathworld.wolfram.com/LegendrePolynomial.html>
 ///
 /// # Examples
@@ -134,10 +140,11 @@ pub fn legendre_pn_deriv2(n: usize, x: f64) -> f64 {
     (2.0 * x * dpn - nn1 * pn) / (1.0 - x * x)
 }
 
-/// Computes Gauss-Legendre quadrature points (roots of Pn)
+/// Computes Gauss-Legendre quadrature points (roots of P_{nn+1})
 ///
-/// The points are the roots of Pₙ(x), found via Newton-Raphson iteration.
-/// The points are returned in ascending order from -1 to 1.
+/// Returns nn+1 points in ascending order (from -1 to 1).
+/// The points are the roots of P_{nn+1}(x), found via Newton-Raphson iteration
+/// with Chebyshev initial guesses.
 ///
 /// # Examples
 ///
@@ -184,8 +191,10 @@ pub fn legendre_gauss_points(nn: usize) -> Vector {
 
 /// Computes Gauss-Legendre quadrature weights
 ///
+/// Uses the points from [`legendre_gauss_points`].
+///
 /// ```text
-/// w_k = 2 / ((1 - x_k²) [P'_n(x_k)]²)
+/// w_k = 2 / ((1 - x_k²) [P'_{nn+1}(x_k)]²)
 /// ```
 ///
 /// # Examples
@@ -212,10 +221,10 @@ pub fn legendre_gauss_weights(nn: usize) -> Vector {
 
 /// Computes Gauss-Lobatto-Legendre quadrature points
 ///
-/// Returns n+1 points including the endpoints -1 and 1.
-/// The interior n-1 points are roots of P'_{n}(x).
+/// Returns nn+1 points including the endpoints -1 and 1.
+/// The interior nn-1 points are roots of P'_{nn}(x).
 ///
-/// Note: Early return for nn == 0 with X = {0.0} (the midpoint, consistent with what legendre_gauss_points(0) returns).
+/// For nn = 0, returns {0.0} (the midpoint, matching [`legendre_gauss_points`]).
 ///
 /// # Examples
 ///
@@ -266,14 +275,17 @@ pub fn legendre_lobatto_points(nn: usize) -> Vector {
 
 /// Computes Gauss-Lobatto-Legendre quadrature weights
 ///
-/// For interior points:
-/// ```text
-/// w_k = 2 / (n(n-1) [P_{n-1}(x_k)]²)
-/// ```
+/// Uses the points from [`legendre_lobatto_points`].
+/// Let `N = nn + 1` be the number of points.
 ///
 /// For endpoints:
 /// ```text
-/// w_0 = w_n = 2 / (n(n-1))
+/// w_0 = w_{nn} = 2 / (N(N-1))
+/// ```
+///
+/// For interior points (k = 1, …, nn-1):
+/// ```text
+/// w_k = 2 / (N(N-1) [P_{nn}(x_k)]²)
 /// ```
 ///
 /// # Examples

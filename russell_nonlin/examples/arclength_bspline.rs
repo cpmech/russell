@@ -24,7 +24,7 @@ fn main() {
     // 2. Configure the continuation solver
     // -----------------------------------------------------------------------
     //
-    // The tangent-generalized (tg) control tolerance drives the adaptive step-size
+    // The tangent (tg) control tolerance drives the adaptive step-size
     // mechanism — a small value (here 0.2) instructs the solver to request more
     // steps in highly-curved regions, which is needed when the solution branch
     // has sharp turns or snap-back behavior.

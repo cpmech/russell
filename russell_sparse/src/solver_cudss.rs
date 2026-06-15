@@ -44,15 +44,7 @@ extern "C" {
         col_indices: *const i32,
         values: *const f64,
     ) -> i32;
-    fn solver_cudss_solve(
-        solver: *mut InterfaceCUDSS,
-        x: *mut f64,
-        rhs: *const f64,
-        row_pointers: *const i32,
-        col_indices: *const i32,
-        values: *const f64,
-        verbose: CcBool,
-    ) -> i32;
+    fn solver_cudss_solve(solver: *mut InterfaceCUDSS, x: *mut f64, rhs: *const f64, verbose: CcBool) -> i32;
 }
 
 /// Wraps the cuDSS solver for sparse linear systems
@@ -254,9 +246,6 @@ impl LinSolTrait for SolverCUDSS {
             return Err("the function factorize must be called before solve");
         }
 
-        // access CSR matrix
-        let csr = self.csr.as_ref().unwrap();
-
         // check vectors
         if x.dim() != self.initialized_ndim {
             return Err("the dimension of the vector of unknown values x is incorrect");
@@ -269,15 +258,7 @@ impl LinSolTrait for SolverCUDSS {
         let verb = if verbose { 1 } else { 0 };
         self.stopwatch.reset();
         unsafe {
-            let status = solver_cudss_solve(
-                self.solver,
-                x.as_mut_data().as_mut_ptr(),
-                rhs.as_data().as_ptr(),
-                csr.row_pointers.as_ptr(),
-                csr.col_indices.as_ptr(),
-                csr.values.as_ptr(),
-                verb,
-            );
+            let status = solver_cudss_solve(self.solver, x.as_mut_data().as_mut_ptr(), rhs.as_data().as_ptr(), verb);
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_cudss_error_code(status));
             }
@@ -380,5 +361,42 @@ mod tests {
             solver.factorize(&coo, None).err(),
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work() {
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // allocate a new solver
+        let mut solver = SolverCUDSS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+
+        // set params
+        let mut params = LinSolParams::new();
+
+        // factorize works
+        solver.factorize(&coo, Some(params)).unwrap();
+        assert!(solver.factorized);
+
+        // solve works
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-12);
+
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        // TODO: check
+
+        // calling solve again works
+        // let mut x_again = Vector::new(5);
+        // solver.solve(&mut x_again, &rhs, false).unwrap();
+        // vec_approx_eq(&x_again, x_correct, 1e-14);
     }
 }

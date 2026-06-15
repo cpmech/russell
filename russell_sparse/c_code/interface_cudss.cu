@@ -28,14 +28,32 @@ struct InterfaceCUDSS {
     /// @brief cuDSS data object
     cudssData_t data;
 
-    /// @brief Solution vector
-    cudssMatrix_t x;
+    /// @brief cuDSS coefficient matrix (A)
+    cudssMatrix_t aa_mat;
 
-    /// @brief Right-hand side vector
-    cudssMatrix_t b;
+    /// @brief cuDSS right-hand side vector (b)
+    cudssMatrix_t b_vec;
 
-    /// @brief Matrix object (we use repeated characters instead of capital letters here; e.g. we use 'bb' for 'B')
-    cudssMatrix_t aa;
+    /// @brief cuDSS solution vector (x)
+    cudssMatrix_t x_vec;
+
+    /// @brief GPU (device) row pointers
+    int *gpu_row_pointers;
+
+    /// @brief GPU (device) col indices
+    int *gpu_col_indices;
+
+    /// @brief GPU (device) values
+    double *gpu_values;
+
+    /// @brief GPU (device) right-hand side
+    double *gpu_b;
+
+    /// @brief GPU (device) solution vector
+    double *gpu_x;
+
+    /// @brief System dimension
+    int ndim;
 };
 
 /// @brief Allocates a new cuDSS interface
@@ -82,17 +100,6 @@ extern "C" struct InterfaceCUDSS *solver_cudss_new() {
         return NULL;
     }
 
-    /* Create pivot strategy */
-    cudssPivotType_t pivot = CUDSS_PIVOT_AUTO;
-    status = cudssConfigSet(config, CUDSS_CONFIG_PIVOT_TYPE, &pivot, sizeof(pivot));
-    if (status != CUDSS_STATUS_SUCCESS) {
-        cudssDataDestroy(handle, data);
-        cudssConfigDestroy(config);
-        cudssDestroy(handle);
-        cudaStreamDestroy(stream);
-        return NULL;
-    }
-
     /* Allocate the solver object */
     struct InterfaceCUDSS *solver = (struct InterfaceCUDSS *)malloc(sizeof(struct InterfaceCUDSS));
     if (solver == NULL) {
@@ -104,10 +111,21 @@ extern "C" struct InterfaceCUDSS *solver_cudss_new() {
     }
 
     /* Set just allocated members in the solver object */
+    solver->initialization_completed = C_FALSE;
+    solver->factorization_completed = C_FALSE;
     solver->stream = stream;
     solver->handle = handle;
     solver->config = config;
     solver->data = data;
+    solver->aa_mat = NULL;
+    solver->b_vec = NULL;
+    solver->x_vec = NULL;
+    solver->gpu_row_pointers = NULL;
+    solver->gpu_col_indices = NULL;
+    solver->gpu_values = NULL;
+    solver->gpu_b = NULL;
+    solver->gpu_x = NULL;
+    solver->ndim = 0;
 
     /* Success: return the pointer to the solver object */
     return solver;
@@ -132,6 +150,32 @@ extern "C" void solver_cudss_drop(struct InterfaceCUDSS *solver) {
         cudaStreamDestroy(solver->stream);
     }
 
+    if (solver->aa_mat != NULL) {
+        cudssMatrixDestroy(solver->aa_mat);
+    }
+    if (solver->b_vec != NULL) {
+        cudssMatrixDestroy(solver->b_vec);
+    }
+    if (solver->x_vec != NULL) {
+        cudssMatrixDestroy(solver->x_vec);
+    }
+
+    if (solver->gpu_row_pointers != NULL) {
+        cudaFree(solver->gpu_row_pointers);
+    }
+    if (solver->gpu_col_indices != NULL) {
+        cudaFree(solver->gpu_col_indices);
+    }
+    if (solver->gpu_values != NULL) {
+        cudaFree(solver->gpu_values);
+    }
+    if (solver->gpu_b != NULL) {
+        cudaFree(solver->gpu_b);
+    }
+    if (solver->gpu_x != NULL) {
+        cudaFree(solver->gpu_x);
+    }
+
     free(solver);
 }
 
@@ -148,8 +192,113 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
         return ERROR_NULL_POINTER;
     }
 
-    /* TODO: implement this later */
+    /* Save the system dimension for later (solve function) */
+    solver->ndim = ndim;
 
+    /* Number of non-zeros */
+    int32_t nnz = row_pointers[ndim];
+
+    /* Allocate device memory for row pointers */
+    cudaError_t cuda_error = cudaMalloc(&solver->gpu_row_pointers, (ndim + 1) * sizeof(int));
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MALLOC;
+    }
+
+    /* Allocate device memory for col indices */
+    cuda_error = cudaMalloc(&solver->gpu_col_indices, nnz * sizeof(int));
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MALLOC;
+    }
+
+    /* Allocate device memory for values */
+    cuda_error = cudaMalloc(&solver->gpu_values, nnz * sizeof(double));
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MALLOC;
+    }
+
+    /* Allocate device memory for b */
+    cuda_error = cudaMalloc(&solver->gpu_b, ndim * sizeof(double));
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MALLOC;
+    }
+
+    /* Allocate device memory for x */
+    cuda_error = cudaMalloc(&solver->gpu_x, ndim * sizeof(double));
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MALLOC;
+    }
+
+    /* Copy host memory to device for row_pointers */
+    cuda_error = cudaMemcpy(solver->gpu_row_pointers, row_pointers, (ndim + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Copy host memory to device for col_indices */
+    cuda_error = cudaMemcpy(solver->gpu_col_indices, col_indices, nnz * sizeof(int), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Copy host memory to device for values */
+    cuda_error = cudaMemcpy(solver->gpu_values, values, nnz * sizeof(double), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Create object for the right-hand side b (as dense matrix) */
+    cudssStatus_t status = cudssMatrixCreateDn(&solver->b_vec, ndim, 1, ndim, solver->gpu_b, CUDSS_R_64F, CUDSS_LAYOUT_COL_MAJOR);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_MATRIX_CREATE_DN;
+    }
+
+    /* Create object for the solution x (as dense matrix) */
+    cudssMatrix_t x;
+    status = cudssMatrixCreateDn(&solver->x_vec, ndim, 1, ndim, solver->gpu_x, CUDSS_R_64F, CUDSS_LAYOUT_COL_MAJOR);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_MATRIX_CREATE_DN;
+    }
+
+    /* Set the pivot strategy */
+    cudssPivotType_t pivot = CUDSS_PIVOT_AUTO;
+    status = cudssConfigSet(solver->config, CUDSS_CONFIG_PIVOT_TYPE, &pivot, sizeof(pivot));
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_SET_PIVOT;
+    }
+
+    /* Create a matrix object for the sparse input matrix */
+    cudssMatrixType_t mtype = CUDSS_MTYPE_GENERAL;  /* default to general matrix (possibly unsymmetric) */
+    cudssMatrixViewType_t mview = CUDSS_MVIEW_FULL; /* default to full view (not just one triangle) */
+    if (general_symmetric) {
+        mtype = CUDSS_MTYPE_SYMMETRIC;
+        mview = CUDSS_MVIEW_LOWER;
+    }
+    if (positive_definite) {
+        mtype = CUDSS_MTYPE_SPD;
+        mview = CUDSS_MVIEW_LOWER;
+    }
+    status = cudssMatrixCreateCsr(&solver->aa_mat, ndim, ndim, nnz, solver->gpu_row_pointers, NULL,
+                                  solver->gpu_col_indices, solver->gpu_values, CUDSS_R_32I,
+                                  CUDSS_R_32I, CUDSS_R_64F, mtype, mview,
+                                  CUDSS_BASE_ZERO);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_MATRIX_CREATE_CSR;
+    }
+
+    /* Symbolic factorization */
+    /* TODO: See if the b vector needs to be initialized for this step */
+    status = cudssExecute(solver->handle, CUDSS_PHASE_ANALYSIS, solver->config, solver->data, solver->aa_mat, solver->x_vec, solver->b_vec);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_SYM_FACTORIZATION;
+    }
+
+    /* Synchronize */
+    cuda_error = cudaStreamSynchronize(solver->stream);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_SYNCHRONIZE;
+    }
+
+    /* Done */
     solver->initialization_completed = C_TRUE;
     return SUCCESSFUL_EXIT;
 }
@@ -168,8 +317,20 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
         return ERROR_NEED_INITIALIZATION;
     }
 
-    /* TODO: implement this later */
+    /* Numeric factorization */
+    cudssStatus_t status = cudssExecute(solver->handle, CUDSS_PHASE_FACTORIZATION, solver->config,
+                                        solver->data, solver->aa_mat, solver->x_vec, solver->b_vec);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_NUM_FACTORIZATION;
+    }
 
+    /* Synchronize */
+    cudaError_t cuda_error = cudaStreamSynchronize(solver->stream);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_SYNCHRONIZE;
+    }
+
+    /* Done */
     solver->factorization_completed = C_TRUE;
     return SUCCESSFUL_EXIT;
 }
@@ -178,9 +339,6 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
 extern "C" int32_t solver_cudss_solve(struct InterfaceCUDSS *solver,
                                       double *x,
                                       const double *rhs,
-                                      const int32_t *row_pointers,
-                                      const int32_t *col_indices,
-                                      const double *values,
                                       C_BOOL verbose) {
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
@@ -190,7 +348,32 @@ extern "C" int32_t solver_cudss_solve(struct InterfaceCUDSS *solver,
         return ERROR_NEED_FACTORIZATION;
     }
 
-    /* TODO: implement this later */
+    /* Set the right-hand side vector */
+    int ndim = solver->ndim;
+    cudaError_t cuda_error = cudaMemcpy(solver->gpu_b, rhs, ndim * sizeof(double), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
 
+    /* Call solve */
+    cudssStatus_t status = cudssExecute(solver->handle, CUDSS_PHASE_SOLVE, solver->config, solver->data, solver->aa_mat, solver->x_vec, solver->b_vec);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_SOLVE;
+    }
+
+    /* Synchronize */
+    cuda_error = cudaStreamSynchronize(solver->stream);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_SYNCHRONIZE;
+    }
+
+    /* Copy solution to output vector */
+    cuda_error = cudaMemcpy(x, solver->gpu_x, ndim * sizeof(double),
+                            cudaMemcpyDeviceToHost);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Done */
     return SUCCESSFUL_EXIT;
 }

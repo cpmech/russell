@@ -1,3 +1,6 @@
+#[cfg(feature = "cudss")]
+use crate::SolverCUDSS;
+
 #[cfg(feature = "local_sparse")]
 use super::SolverMUMPS;
 
@@ -73,14 +76,30 @@ impl<'a> LinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        #[cfg(feature = "local_sparse")]
+        #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => Box::new(SolverCUDSS::new()?),
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
-        #[cfg(not(feature = "local_sparse"))]
+        #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => return Err("cuDSS solver is not available"),
+            Genie::Klu => Box::new(SolverKLU::new()?),
+            Genie::Mumps => Box::new(SolverMUMPS::new()?),
+            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
+        };
+        #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
+        let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => Box::new(SolverCUDSS::new()?),
+            Genie::Klu => Box::new(SolverKLU::new()?),
+            Genie::Mumps => return Err("MUMPS solver is not available"),
+            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
+        };
+        #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
+        let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => return Err("cuDSS solver is not available"),
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),

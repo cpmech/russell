@@ -75,12 +75,14 @@ impl<'a> ComplexLinSolver<'a> {
     pub fn new(genie: Genie) -> Result<Self, StrError> {
         #[cfg(feature = "local_sparse")]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Cudss => return Err("cuDSS solver is not available"),
             Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
         #[cfg(not(feature = "local_sparse"))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Cudss => return Err("cuDSS solver is not available"),
             Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),

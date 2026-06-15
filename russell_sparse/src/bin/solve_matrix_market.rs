@@ -79,6 +79,7 @@ fn main() -> Result<(), StrError> {
 
     // select the symmetric handling option
     let handling = match genie {
+        Genie::Cudss => MMsym::LeaveAsLower,
         Genie::Klu => MMsym::MakeItFull,
         Genie::Mumps => MMsym::LeaveAsLower,
         Genie::Umfpack => MMsym::MakeItFull,
@@ -151,6 +152,7 @@ fn main() -> Result<(), StrError> {
         // check (debug)
         if stats.matrix.name == "bfwb62" {
             let tolerance = match genie {
+                Genie::Cudss => 1e-10,
                 Genie::Klu => 1e-10,
                 Genie::Mumps => 1e-10,
                 Genie::Umfpack => 1e-10,

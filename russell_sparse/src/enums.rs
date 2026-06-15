@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 /// Specifies the underlying library that does all the magic
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
+    /// Selects cuDSS (NVIDIA CUDA Direct Sparse Solver)
+    ///
+    /// Reference: <https://developer.nvidia.com/cudss>
+    Cudss,
+
     /// Selects KLU (LU factorization)
     ///
     /// "Clark Kent" LU factorization algorithm (what SuperLU was before it became Super)
@@ -137,6 +142,7 @@ impl Genie {
     /// Returns the Genie by name (default is umfpack)
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
+            "cudss" => Genie::Cudss,
             "klu" => Genie::Klu,
             "mumps" => Genie::Mumps,
             "umfpack" => Genie::Umfpack,
@@ -147,6 +153,7 @@ impl Genie {
     /// Returns the string representation
     pub fn to_string(&self) -> String {
         match self {
+            Genie::Cudss => "cudss".to_string(),
             Genie::Klu => "klu".to_string(),
             Genie::Mumps => "mumps".to_string(),
             Genie::Umfpack => "umfpack".to_string(),
@@ -157,6 +164,7 @@ impl Genie {
     pub fn get_sym(&self, symmetric: bool) -> Sym {
         if symmetric {
             match self {
+                Genie::Cudss => Sym::YesLower,
                 Genie::Klu => Sym::YesFull,
                 Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
@@ -331,12 +339,25 @@ mod tests {
 
     #[test]
     fn genie_functions_work() {
+        assert_eq!(Genie::from("cudss"), Genie::Cudss);
         assert_eq!(Genie::from("mumps"), Genie::Mumps);
         assert_eq!(Genie::from("umfpack"), Genie::Umfpack);
         assert_eq!(Genie::from("blah-blah-blah"), Genie::Umfpack);
 
+        assert_eq!(Genie::from("cuDSS"), Genie::Cudss);
+        assert_eq!(Genie::from("KLU"), Genie::Klu);
         assert_eq!(Genie::from("Mumps"), Genie::Mumps);
         assert_eq!(Genie::from("Umfpack"), Genie::Umfpack);
+
+        let genie = Genie::Cudss;
+        assert_eq!(genie.to_string(), "cudss");
+        assert_eq!(genie.get_sym(false), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesLower);
+
+        let genie = Genie::Klu;
+        assert_eq!(genie.to_string(), "klu");
+        assert_eq!(genie.get_sym(false), Sym::No);
+        assert_eq!(genie.get_sym(true), Sym::YesFull);
 
         let genie = Genie::Mumps;
         assert_eq!(genie.to_string(), "mumps");

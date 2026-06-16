@@ -179,6 +179,40 @@ extern "C" void solver_cudss_drop(struct InterfaceCUDSS *solver) {
     free(solver);
 }
 
+/// @brief Copies the coefficient matrix (A) to the device (GPU)
+int32_t copy_aa_to_device(struct InterfaceCUDSS *solver,
+                          const int32_t *row_pointers,
+                          const int32_t *col_indices,
+                          const double *values) {
+
+    /* system dimension*/
+    int ndim = solver->ndim;
+
+    /* Number of non-zeros */
+    int32_t nnz = row_pointers[ndim];
+
+    /* Copy host memory to device for row_pointers */
+    cudaError_t cuda_error = cudaMemcpy(solver->gpu_row_pointers, row_pointers, (ndim + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Copy host memory to device for col_indices */
+    cuda_error = cudaMemcpy(solver->gpu_col_indices, col_indices, nnz * sizeof(int), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Copy host memory to device for values */
+    cuda_error = cudaMemcpy(solver->gpu_values, values, nnz * sizeof(double), cudaMemcpyHostToDevice);
+    if (cuda_error != cudaSuccess) {
+        return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Done */
+    return SUCCESSFUL_EXIT;
+}
+
 /// @brief Performs the symbolic factorization
 extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
                                            C_BOOL verbose,
@@ -188,6 +222,7 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
                                            const int32_t *row_pointers,
                                            const int32_t *col_indices,
                                            const double *values) {
+    /* Check */
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
     }
@@ -228,22 +263,9 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
         return ERROR_CUDA_MALLOC;
     }
 
-    /* Copy host memory to device for row_pointers */
-    cuda_error = cudaMemcpy(solver->gpu_row_pointers, row_pointers, (ndim + 1) * sizeof(int), cudaMemcpyHostToDevice);
-    if (cuda_error != cudaSuccess) {
-        return ERROR_CUDA_MEMCPY;
-    }
-
-    /* Copy host memory to device for col_indices */
-    cuda_error = cudaMemcpy(solver->gpu_col_indices, col_indices, nnz * sizeof(int), cudaMemcpyHostToDevice);
-    if (cuda_error != cudaSuccess) {
-        return ERROR_CUDA_MEMCPY;
-    }
-
-    /* Copy host memory to device for values */
-    cuda_error = cudaMemcpy(solver->gpu_values, values, nnz * sizeof(double), cudaMemcpyHostToDevice);
-    if (cuda_error != cudaSuccess) {
-        return ERROR_CUDA_MEMCPY;
+    /* Show message */
+    if (verbose == C_TRUE) {
+        printf("solver_cudss_initialize: Memory allocated\n");
     }
 
     /* Create object for the right-hand side b (as dense matrix) */
@@ -253,7 +275,6 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
     }
 
     /* Create object for the solution x (as dense matrix) */
-    cudssMatrix_t x;
     status = cudssMatrixCreateDn(&solver->x_vec, ndim, 1, ndim, solver->gpu_x, CUDSS_R_64F, CUDSS_LAYOUT_COL_MAJOR);
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_MATRIX_CREATE_DN;
@@ -285,9 +306,20 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
         return ERROR_CUDSS_MATRIX_CREATE_CSR;
     }
 
+    /* Copy the coefficient matrix (A) to the device (GPU) */
+    int32_t res = copy_aa_to_device(solver, row_pointers, col_indices, values);
+    if (res != SUCCESSFUL_EXIT) {
+        return res;
+    }
+
+    /* Show message */
+    if (verbose == C_TRUE) {
+        printf("solver_cudss_initialize: Coefficient matrix allocated and initialized\n");
+    }
+
     /* Symbolic factorization */
     /* TODO: See if the b vector needs to be initialized for this step */
-    status = cudssExecute(solver->handle, CUDSS_PHASE_ANALYSIS, solver->config, solver->data, solver->aa_mat, solver->x_vec, solver->b_vec);
+    status = cudssExecute(solver->handle, CUDSS_PHASE_ANALYSIS, solver->config, solver->data, solver->aa_mat, NULL, NULL);
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_SYM_FACTORIZATION;
     }
@@ -296,6 +328,11 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
     cuda_error = cudaStreamSynchronize(solver->stream);
     if (cuda_error != cudaSuccess) {
         return ERROR_CUDA_SYNCHRONIZE;
+    }
+
+    /* Show message */
+    if (verbose == C_TRUE) {
+        printf("solver_cudss_initialize: Symbolic factorization completed\n");
     }
 
     /* Done */
@@ -309,17 +346,24 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
                                           const int32_t *row_pointers,
                                           const int32_t *col_indices,
                                           const double *values) {
+
+    /* Check */
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
     }
-
     if (solver->initialization_completed == C_FALSE) {
         return ERROR_NEED_INITIALIZATION;
     }
 
+    /* Copy the coefficient matrix (A) to the device (GPU) */
+    int32_t res = copy_aa_to_device(solver, row_pointers, col_indices, values);
+    if (res != SUCCESSFUL_EXIT) {
+        return res;
+    }
+
     /* Numeric factorization */
     cudssStatus_t status = cudssExecute(solver->handle, CUDSS_PHASE_FACTORIZATION, solver->config,
-                                        solver->data, solver->aa_mat, solver->x_vec, solver->b_vec);
+                                        solver->data, solver->aa_mat, NULL, NULL); /* solver->x_vec, solver->b_vec); */
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_NUM_FACTORIZATION;
     }
@@ -328,6 +372,11 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
     cudaError_t cuda_error = cudaStreamSynchronize(solver->stream);
     if (cuda_error != cudaSuccess) {
         return ERROR_CUDA_SYNCHRONIZE;
+    }
+
+    /* Show message */
+    if (verbose == C_TRUE) {
+        printf("solver_cudss_factorize: Numeric factorization completed\n");
     }
 
     /* Done */
@@ -340,10 +389,10 @@ extern "C" int32_t solver_cudss_solve(struct InterfaceCUDSS *solver,
                                       double *x,
                                       const double *rhs,
                                       C_BOOL verbose) {
+    /* Check */
     if (solver == NULL) {
         return ERROR_NULL_POINTER;
     }
-
     if (solver->factorization_completed == C_FALSE) {
         return ERROR_NEED_FACTORIZATION;
     }
@@ -372,6 +421,11 @@ extern "C" int32_t solver_cudss_solve(struct InterfaceCUDSS *solver,
                             cudaMemcpyDeviceToHost);
     if (cuda_error != cudaSuccess) {
         return ERROR_CUDA_MEMCPY;
+    }
+
+    /* Show message */
+    if (verbose == C_TRUE) {
+        printf("solver_cudss_solve: Solution completed\n");
     }
 
     /* Done */

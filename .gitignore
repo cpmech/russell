@@ -1,4 +1,5 @@
 rust_modules
+cudss-examples/
 /target
 Cargo.lock
 cobertura.html

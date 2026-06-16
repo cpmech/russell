@@ -170,6 +170,12 @@ impl LinSolTrait for SolverUMFPACK {
     ///   if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -191,6 +197,9 @@ impl LinSolTrait for SolverUMFPACK {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
             self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
@@ -554,9 +563,7 @@ mod tests {
         approx_eq(det, 114.0, 1e-13);
 
         // calling factorize again works
-        solver.factorize(&coo, Some(params)).unwrap();
-        let det = solver.determinant_coefficient * f64::powf(10.0, solver.determinant_exponent);
-        approx_eq(det, 114.0, 1e-13);
+        solver.factorize(&coo, None).unwrap();
     }
 
     #[test]

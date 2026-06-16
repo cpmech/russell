@@ -173,31 +173,76 @@ pub enum Ordering {
 /// Scaling option
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Scaling {
-    /// Automatic scaling method selection
+    /// Automatic scaling method selection (default)
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ✅ available
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ✅ available (defaults to sum-of-row scaling)
     Auto,
 
-    /// Column scaling (MUMPS-only, otherwise Auto)
+    /// Column scaling
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Column,
 
-    /// Diagonal scaling (MUMPS-only, otherwise Auto)
+    /// Diagonal scaling
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Diagonal,
 
-    /// Use the max absolute value in the row (UMFPACK-only, otherwise Auto)
+    /// Divide each row by the max absolute value in the row
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ✅ available
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ✅ available
     Max,
 
     /// No scaling applied or computed
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ✅ available
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ✅ available
     No,
 
-    /// Row and column scaling based on infinite row/column norms (MUMPS-only, otherwise Auto)
+    /// Row and column scaling based on infinite row/column norms
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowCol,
 
-    /// Simultaneous row and column iterative scaling (MUMPS-only, otherwise Auto)
+    /// Simultaneous row and column iterative scaling
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColIter,
 
-    /// Similar to RcIterative but more rigorous and expensive to compute (MUMPS-only, otherwise Auto)
+    /// Similar to RowColIter but more rigorous and expensive to compute
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColRig,
 
-    /// Use the sum of the absolute value in the row (UMFPACK-only, otherwise Auto)
+    /// Divide each row by the sum of the absolute values in the row
+    ///
+    /// * cuDSS: ❌ no scaling parameter available
+    /// * KLU: ✅ available
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ✅ available (also the default)
     Sum,
 }
 

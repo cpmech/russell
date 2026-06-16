@@ -439,17 +439,18 @@ pub(crate) const MUMPS_SCALING_ROW_COL_RIG: i32 = 8; // RowColRig (page 33)
 
 pub(crate) fn mumps_ordering(ordering: Ordering) -> i32 {
     match ordering {
-        Ordering::Amd => MUMPS_ORDERING_AMD,       // Amd (page 35)
-        Ordering::Amf => MUMPS_ORDERING_AMF,       // Amf (page 35)
-        Ordering::Auto => MUMPS_ORDERING_AUTO,     // Auto (page 36)
-        Ordering::Best => MUMPS_ORDERING_AUTO,     // Best => Auto (page 36)
-        Ordering::Cholmod => MUMPS_ORDERING_AUTO,  // Cholmod => Auto (page 36)
-        Ordering::Colamd => MUMPS_ORDERING_AUTO,   // Colamd => Auto (page 36)
-        Ordering::Metis => MUMPS_ORDERING_METIS,   // Metis (page 35)
-        Ordering::No => MUMPS_ORDERING_AUTO,       // No => Auto (page 36)
-        Ordering::Pord => MUMPS_ORDERING_PORD,     // Pord (page 35)
-        Ordering::Qamd => MUMPS_ORDERING_QAMD,     // Qamd (page 35)
-        Ordering::Scotch => MUMPS_ORDERING_SCOTCH, // Scotch (page 35)
+        Ordering::Amd => MUMPS_ORDERING_AMD,        // Amd (page 35)
+        Ordering::Amf => MUMPS_ORDERING_AMF,        // Amf (page 35)
+        Ordering::Auto => MUMPS_ORDERING_AUTO,      // Auto (page 36)
+        Ordering::Best => MUMPS_ORDERING_AUTO,      // Best => Auto (page 36)
+        Ordering::BtfColamd => MUMPS_ORDERING_AUTO, // Auto (page 36)
+        Ordering::Cholmod => MUMPS_ORDERING_AUTO,   // Cholmod => Auto (page 36)
+        Ordering::Colamd => MUMPS_ORDERING_AUTO,    // Colamd => Auto (page 36)
+        Ordering::Metis => MUMPS_ORDERING_METIS,    // Metis (page 35)
+        Ordering::No => MUMPS_ORDERING_AUTO,        // No => Auto (page 36)
+        Ordering::Pord => MUMPS_ORDERING_PORD,      // Pord (page 35)
+        Ordering::Qamd => MUMPS_ORDERING_QAMD,      // Qamd (page 35)
+        Ordering::Scotch => MUMPS_ORDERING_SCOTCH,  // Scotch (page 35)
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, StatsLinSol, Sym};
+use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Ordering, StatsLinSol, Sym};
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{Stopwatch, Vector};
@@ -27,6 +27,7 @@ extern "C" {
     fn solver_cudss_drop(solver: *mut InterfaceCUDSS);
     fn solver_cudss_initialize(
         solver: *mut InterfaceCUDSS,
+        ordering: i32,
         verbose: CcBool,
         general_symmetric: CcBool,
         positive_definite: CcBool,
@@ -140,6 +141,9 @@ impl LinSolTrait for SolverCUDSS {
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
             }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
+            }
             self.csr.as_mut().unwrap().update_from_coo(mat)?;
         } else {
             if mat.nrow != mat.ncol {
@@ -161,6 +165,9 @@ impl LinSolTrait for SolverCUDSS {
         // parameters
         let par = if let Some(p) = params { p } else { LinSolParams::new() };
 
+        // input parameters
+        let ordering = cudss_ordering(par.ordering);
+
         // requests
         let verbose = if par.verbose { 1 } else { 0 };
 
@@ -175,6 +182,7 @@ impl LinSolTrait for SolverCUDSS {
             unsafe {
                 let status = solver_cudss_initialize(
                     self.solver,
+                    ordering,
                     verbose,
                     general_symmetric,
                     positive_definite,
@@ -279,10 +287,47 @@ impl LinSolTrait for SolverCUDSS {
     }
 }
 
+// The ordering algorithms are described in:
+// <https://docs.nvidia.com/cuda/cudss/types.html#cudssreorderingalg-t>
+//
+// IMPORTANT: these constants must match the values in <cudss_data_types.h>.
+// These values are passed directly to the C layer which casts them to
+// cudssReorderingAlg_t. If the cuDSS enum values change upstream, update
+// these constants accordingly.
+
+const CUDSS_REORDERING_ALG_DEFAULT: i32 = 0; // The default algorithm for reordering (equivalent to CUDSS_REORDERING_ALG_NESTED_DISSECTION).
+const CUDSS_REORDERING_ALG_BTF_COLAMD: i32 = 1; // Block triangular form (BTF) combined with COLAMD. Supports global pivoting.
+const CUDSS_REORDERING_ALG_COLAMD: i32 = 2; // COLAMD with trivial block structure. Supports global pivoting.
+const CUDSS_REORDERING_ALG_AMD: i32 = 3; // Approximate minimum degree (AMD) reordering.
+const CUDSS_REORDERING_ALG_NESTED_DISSECTION: i32 = 4; // Nested dissection algorithm based on METIS.
+const CUDSS_REORDERING_ALG_NONE: i32 = 5; // Uses natural (identity) order for the internal ordering when no user permutation is supplied.
+
+/// Converts the Rust enum to an appropriate constant representing the ordering algorithm
+fn cudss_ordering(ordering: Ordering) -> i32 {
+    match ordering {
+        Ordering::Amd => CUDSS_REORDERING_ALG_AMD,
+        Ordering::Amf => CUDSS_REORDERING_ALG_DEFAULT,
+        Ordering::Auto => CUDSS_REORDERING_ALG_DEFAULT,
+        Ordering::Best => CUDSS_REORDERING_ALG_DEFAULT,
+        Ordering::BtfColamd => CUDSS_REORDERING_ALG_BTF_COLAMD,
+        Ordering::Cholmod => CUDSS_REORDERING_ALG_DEFAULT,
+        Ordering::Colamd => CUDSS_REORDERING_ALG_COLAMD,
+        Ordering::Metis => CUDSS_REORDERING_ALG_NESTED_DISSECTION,
+        Ordering::No => CUDSS_REORDERING_ALG_NONE,
+        Ordering::Pord => CUDSS_REORDERING_ALG_DEFAULT,
+        Ordering::Qamd => CUDSS_REORDERING_ALG_DEFAULT,
+        Ordering::Scotch => CUDSS_REORDERING_ALG_DEFAULT,
+    }
+}
+
+// Important: Make sure that the error constants match
+// the corresponding constants in c_code/constants.h
+
 const ERROR_CUDA_MALLOC: i32 = 100;
 const ERROR_CUDA_MEMCPY: i32 = 200;
 const ERROR_CUDA_SYNCHRONIZE: i32 = 300;
-const ERROR_CUDSS_SET_PIVOT: i32 = 400;
+const ERROR_CUDSS_CONFIG_SET: i32 = 400;
+const ERROR_CUDSS_CONFIG_GET: i32 = 450;
 const ERROR_CUDSS_MATRIX_CREATE_DN: i32 = 500;
 const ERROR_CUDSS_MATRIX_SET_VALUES: i32 = 550;
 const ERROR_CUDSS_MATRIX_CREATE_CSR: i32 = 600;
@@ -291,12 +336,13 @@ const ERROR_CUDSS_NUM_FACTORIZATION: i32 = 800;
 const ERROR_CUDSS_SOLVE: i32 = 900;
 
 /// Handles error code
-pub(crate) fn handle_cudss_error_code(err: i32) -> StrError {
+fn handle_cudss_error_code(err: i32) -> StrError {
     match err {
         ERROR_CUDA_MALLOC => "cudaMalloc failed in the C code (cuDSS)",
         ERROR_CUDA_MEMCPY => "cudaMemcpy failed in the C code (cuDSS)",
         ERROR_CUDA_SYNCHRONIZE => "cudaStreamSynchronize failed in the C code (cuDSS)",
-        ERROR_CUDSS_SET_PIVOT => "cudssConfigSet(CUDSS_CONFIG_PIVOT_TYPE) failed in the C code (cuDSS)",
+        ERROR_CUDSS_CONFIG_SET => "cudssConfigSet failed in the C code (cuDSS)",
+        ERROR_CUDSS_CONFIG_GET => "cudssConfigGet failed in the C code (cuDSS)",
         ERROR_CUDSS_MATRIX_CREATE_DN => "cudssMatrixCreateDn failed in the C code (cuDSS)",
         ERROR_CUDSS_MATRIX_SET_VALUES => "cudssMatrixSetValues failed in the C code (cuDSS)",
         ERROR_CUDSS_MATRIX_CREATE_CSR => "cudssMatrixCreateCsr failed in the C code (cuDSS)",
@@ -313,7 +359,7 @@ pub(crate) fn handle_cudss_error_code(err: i32) -> StrError {
 mod tests {
     use super::*;
     use crate::{CooMatrix, Samples};
-    use russell_lab::vec_approx_eq;
+    use russell_lab::{approx_eq, vec_approx_eq};
     use serial_test::serial;
 
     // IMPORTANT:
@@ -372,7 +418,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn factorize_and_solve_work() {
+    fn factorize_and_solve_work_unsymmetric_default() {
         // allocate x and rhs
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
@@ -386,7 +432,7 @@ mod tests {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
 
         // set params
-        let params = LinSolParams::new();
+        let mut params = LinSolParams::new();
 
         // factorize works
         solver.factorize(&coo, Some(params)).unwrap();
@@ -397,17 +443,68 @@ mod tests {
         // NOTE: cuDSS loses precision on matrices with zero diagonal entries (rows 1 and 3 here
         //       have a zero on the diagonal). The error at x[3] is ~1.2e-3, so we use 2e-3
         //       tolerance instead of 1e-12. This is a known cuDSS numerical limitation.
-        vec_approx_eq(&x, x_correct, 2e-3);
+        approx_eq(x[0], x_correct[0], 1e-12);
+        approx_eq(x[1], x_correct[1], 1e-12);
+        approx_eq(x[2], x_correct[2], 1e-12);
+        approx_eq(x[3], 4.001243780749064, 1e-15); // << issue: it should be 4.0
+        approx_eq(x[4], x_correct[4], 1e-12);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        // TODO: check
+        assert!(stats.time_nanoseconds.initialize > 0);
+        assert!(stats.time_nanoseconds.factorize > 0);
+        assert!(stats.time_nanoseconds.solve > 0);
 
-        // calling solve again works
-        // let mut x_again = Vector::new(5);
-        // solver.solve(&mut x_again, &rhs, false).unwrap();
-        // vec_approx_eq(&x_again, x_correct, 1e-14);
+        // calling solve again
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false).unwrap();
+        approx_eq(x_again[0], x_correct[0], 1e-12);
+        approx_eq(x_again[1], x_correct[1], 1e-12);
+        approx_eq(x_again[2], x_correct[2], 1e-12);
+        approx_eq(x[3], 4.001243780749064, 1e-15); // << issue: it should be 4.0
+        approx_eq(x_again[4], x_correct[4], 1e-12);
+
+        // calling factorize/solve again with COLAMD
+        // NOTE: we cannot change the ordering method after the symbolic factorization
+        params.ordering = Ordering::Colamd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work_unsymmetric_colamd() {
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // allocate a new solver
+        let mut solver = SolverCUDSS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+
+        // set params
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Colamd;
+
+        // factorize works
+        solver.factorize(&coo, Some(params)).unwrap();
+        assert!(solver.factorized);
+
+        // solve works
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-12);
+
+        // calling solve again
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false).unwrap();
+        vec_approx_eq(&x_again, x_correct, 1e-12);
     }
 
     #[test]

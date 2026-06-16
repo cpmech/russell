@@ -342,6 +342,7 @@ pub(crate) fn klu_ordering(ordering: Ordering) -> i32 {
         Ordering::Amf => KLU_ORDERING_AUTO,
         Ordering::Auto => KLU_ORDERING_AUTO,
         Ordering::Best => KLU_ORDERING_AUTO,
+        Ordering::BtfColamd => KLU_ORDERING_AUTO,
         Ordering::Cholmod => KLU_ORDERING_AUTO,
         Ordering::Colamd => KLU_ORDERING_COLAMD,
         Ordering::Metis => KLU_ORDERING_AUTO,

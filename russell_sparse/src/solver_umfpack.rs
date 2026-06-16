@@ -412,6 +412,7 @@ pub(crate) fn umfpack_ordering(ordering: Ordering) -> i32 {
         Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
         Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
         Ordering::Best => UMFPACK_ORDERING_BEST,
+        Ordering::BtfColamd => UMFPACK_DEFAULT_ORDERING,
         Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
         Ordering::Colamd => UMFPACK_ORDERING_CHOLMOD,
         Ordering::Metis => UMFPACK_ORDERING_METIS,

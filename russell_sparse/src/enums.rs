@@ -74,36 +74,99 @@ pub enum MMsym {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
+    ///
+    /// * cuDSS: ✅ available. Approximate minimum degree (AMD) reordering.
+    /// * KLU: ✅ available
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ✅ available
     Amd,
 
-    /// Ordering using the approximate minimum fill-in (MUMPS-only, otherwise Auto)
+    /// Ordering using the approximate minimum fill-in
+    ///
+    /// * cuDSS: ❌ unavailable; defaults to automatic
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Amf,
 
-    /// Automatic ordering method selection
+    /// Automatic ordering method selection (default)
+    ///
+    /// * cuDSS: ✅ available. The default algorithm for reordering (equivalent to CUDSS_REORDERING_ALG_NESTED_DISSECTION).
+    /// * KLU: ✅ available
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ✅ available
     Auto,
 
-    /// Try three methods and take the best (UMFPACK-only, otherwise Auto)
+    /// Try three methods and take the best
+    ///
+    /// * cuDSS: ❌ unavailable; defaults to automatic
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ✅ available
     Best,
 
-    /// Use Amd for symmetric, Colamd for unsymmetric, or Metis (UMFPACK-only, otherwise Auto)
+    /// Block triangular form (BTF) combined with COLAMD. Supports global pivoting
+    ///
+    /// * cuDSS: ✅ available. Block triangular form (BTF) combined with COLAMD. Supports global pivoting
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
+    BtfColamd,
+
+    /// Use Amd for symmetric, Colamd for unsymmetric, or Metis
+    ///
+    /// * cuDSS: ❌ unavailable; defaults to automatic
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ✅ available
     Cholmod,
 
-    /// Use the column approximate minimum degree ordering algorithm (KLU-only, otherwise Auto)
+    /// Use the column approximate minimum degree ordering algorithm
+    ///
+    /// * cuDSS: ✅ available. COLAMD with trivial block structure. Supports global pivoting.
+    /// * KLU: ✅ available
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Colamd,
 
     /// Ordering by Karpis & Kumar from the University of Minnesota
+    ///
+    /// * cuDSS: ✅ available. Nested dissection algorithm based on METIS
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ✅ available
     Metis,
 
-    /// The matrix is factorized as-is (UMFPACK-only, otherwise Auto)
+    /// The matrix is factorized as-is
+    ///
+    /// * cuDSS: ✅ available. Uses natural (identity) order for the internal ordering when no user permutation is supplied.
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ❌ unavailable; defaults to automatic
+    /// * UMFPACK: ✅ available
     No,
 
-    /// Ordering by Schulze from the University of Paderborn (MUMPS-only, otherwise Auto)
+    /// Ordering by Schulze from the University of Paderborn
+    ///
+    /// * cuDSS: ❌ unavailable; defaults to automatic
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Pord,
 
-    /// Ordering using the automatic quasi-dense row detection (MUMPS-only, otherwise Auto)
+    /// Ordering using the automatic quasi-dense row detection
+    ///
+    /// * cuDSS: ❌ unavailable; defaults to automatic
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Qamd,
 
-    /// Ordering using the Scotch package (MUMPS-only, otherwise Auto)
+    /// Ordering using the Scotch package
+    ///
+    /// * cuDSS: ❌ unavailable; defaults to automatic
+    /// * KLU: ❌ unavailable; defaults to automatic
+    /// * MUMPS: ✅ available
+    /// * UMFPACK: ❌ unavailable; defaults to automatic
     Scotch,
 }
 

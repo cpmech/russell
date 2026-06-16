@@ -347,7 +347,7 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
     /* Notify cuDSS that the matrix values have been updated */
     cudssStatus_t status = cudssMatrixSetValues(solver->aa_mat, solver->gpu_values);
     if (status != CUDSS_STATUS_SUCCESS) {
-        return ERROR_CUDSS_NUM_FACTORIZATION;
+        return ERROR_CUDSS_MATRIX_SET_VALUES;
     }
 
     /* Numeric factorization */

@@ -1,6 +1,4 @@
-#![allow(unused)]
-
-use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
+use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, StatsLinSol, Sym};
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{Stopwatch, Vector};
@@ -281,9 +279,30 @@ impl LinSolTrait for SolverCUDSS {
     }
 }
 
+const ERROR_CUDA_MALLOC: i32 = 100;
+const ERROR_CUDA_MEMCPY: i32 = 200;
+const ERROR_CUDA_SYNCHRONIZE: i32 = 300;
+const ERROR_CUDSS_SET_PIVOT: i32 = 400;
+const ERROR_CUDSS_MATRIX_CREATE_DN: i32 = 500;
+const ERROR_CUDSS_MATRIX_SET_VALUES: i32 = 550;
+const ERROR_CUDSS_MATRIX_CREATE_CSR: i32 = 600;
+const ERROR_CUDSS_SYM_FACTORIZATION: i32 = 700;
+const ERROR_CUDSS_NUM_FACTORIZATION: i32 = 800;
+const ERROR_CUDSS_SOLVE: i32 = 900;
+
 /// Handles error code
 pub(crate) fn handle_cudss_error_code(err: i32) -> StrError {
     match err {
+        ERROR_CUDA_MALLOC => "cudaMalloc failed in the C code (cuDSS)",
+        ERROR_CUDA_MEMCPY => "cudaMemcpy failed in the C code (cuDSS)",
+        ERROR_CUDA_SYNCHRONIZE => "cudaStreamSynchronize failed in the C code (cuDSS)",
+        ERROR_CUDSS_SET_PIVOT => "cudssConfigSet(CUDSS_CONFIG_PIVOT_TYPE) failed in the C code (cuDSS)",
+        ERROR_CUDSS_MATRIX_CREATE_DN => "cudssMatrixCreateDn failed in the C code (cuDSS)",
+        ERROR_CUDSS_MATRIX_SET_VALUES => "cudssMatrixSetValues failed in the C code (cuDSS)",
+        ERROR_CUDSS_MATRIX_CREATE_CSR => "cudssMatrixCreateCsr failed in the C code (cuDSS)",
+        ERROR_CUDSS_SYM_FACTORIZATION => "cuDSS symbolic factorization (CUDSS_PHASE_ANALYSIS) failed",
+        ERROR_CUDSS_NUM_FACTORIZATION => "cuDSS numeric factorization (CUDSS_PHASE_FACTORIZATION) failed",
+        ERROR_CUDSS_SOLVE => "cuDSS solve (CUDSS_PHASE_SOLVE) failed",
         _ => "Error: unknown error returned by c-code (cuDSS)",
     }
 }
@@ -294,7 +313,7 @@ pub(crate) fn handle_cudss_error_code(err: i32) -> StrError {
 mod tests {
     use super::*;
     use crate::{CooMatrix, Samples};
-    use russell_lab::{approx_eq, vec_approx_eq};
+    use russell_lab::vec_approx_eq;
     use serial_test::serial;
 
     // IMPORTANT:
@@ -367,7 +386,7 @@ mod tests {
         let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
 
         // set params
-        let mut params = LinSolParams::new();
+        let params = LinSolParams::new();
 
         // factorize works
         solver.factorize(&coo, Some(params)).unwrap();

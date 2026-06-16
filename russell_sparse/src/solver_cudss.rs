@@ -428,4 +428,74 @@ mod tests {
         // solver.solve(&mut x_again, &rhs, false).unwrap();
         // vec_approx_eq(&x_again, x_correct, 1e-14);
     }
+
+    #[test]
+    #[serial]
+    fn cudss_simple_spd() {
+        // Corresponds to c_code/cudss-examples/cudss_simple.cpp
+        //
+        // Symmetric positive-definite matrix (lower triangle):
+        //   [4, 0, 1, 0, 0]
+        //   [0, 3, 2, 0, 0]
+        //   [1, 2, 5, 0, 1]
+        //   [0, 0, 0, 1, 0]
+        //   [0, 0, 1, 0, 2]
+        let mut coo = CooMatrix::new(5, 5, 8, Sym::YesLower).unwrap();
+        coo.put(0, 0, 4.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        coo.put(3, 3, 1.0).unwrap();
+        coo.put(4, 2, 1.0).unwrap();
+        coo.put(4, 4, 2.0).unwrap();
+
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[7.0, 12.0, 25.0, 4.0, 13.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        let mut params = LinSolParams::new();
+        params.positive_definite = true;
+
+        let mut solver = SolverCUDSS::new().unwrap();
+        solver.factorize(&coo, Some(params)).unwrap();
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-10);
+    }
+
+    #[test]
+    #[serial]
+    fn cudss_unsymmetric() {
+        // Corresponds to c_code/cudss-examples/cudss_unsymmetric.cpp
+        //
+        // General (unsymmetric) matrix:
+        //   [5, 1, 0, 0, 3]
+        //   [2, 6, 0, 4, 0]
+        //   [0, 0, 7, 2, 0]
+        //   [0, 1, 3, 8, 0]
+        //   [4, 0, 0, 0, 9]
+        let mut coo = CooMatrix::new(5, 5, 13, Sym::No).unwrap();
+        coo.put(0, 0, 5.0).unwrap();
+        coo.put(0, 1, 1.0).unwrap();
+        coo.put(0, 4, 3.0).unwrap();
+        coo.put(1, 0, 2.0).unwrap();
+        coo.put(1, 1, 6.0).unwrap();
+        coo.put(1, 3, 4.0).unwrap();
+        coo.put(2, 2, 7.0).unwrap();
+        coo.put(2, 3, 2.0).unwrap();
+        coo.put(3, 1, 1.0).unwrap();
+        coo.put(3, 2, 3.0).unwrap();
+        coo.put(3, 3, 8.0).unwrap();
+        coo.put(4, 0, 4.0).unwrap();
+        coo.put(4, 4, 9.0).unwrap();
+
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[22.0, 30.0, 29.0, 43.0, 49.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        let mut solver = SolverCUDSS::new().unwrap();
+        solver.factorize(&coo, None).unwrap();
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-10);
+    }
 }

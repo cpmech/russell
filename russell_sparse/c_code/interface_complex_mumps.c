@@ -7,10 +7,10 @@
 
 #include "constants.h"
 
-#define ICNTL(i) icntl[(i)-1]   // macro to make indices match documentation
-#define RINFOG(i) rinfog[(i)-1] // macro to make indices match documentation
-#define INFOG(i) infog[(i)-1]   // macro to make indices match documentation
-#define INFO(i) info[(i)-1]     // macro to make indices match documentation
+#define ICNTL(i) icntl[(i) - 1]   // macro to make indices match documentation
+#define RINFOG(i) rinfog[(i) - 1] // macro to make indices match documentation
+#define INFOG(i) infog[(i) - 1]   // macro to make indices match documentation
+#define INFO(i) info[(i) - 1]     // macro to make indices match documentation
 
 /// @brief Holds the data for MUMPS
 struct InterfaceComplexMUMPS {
@@ -44,18 +44,13 @@ static inline void set_mumps_verbose(ZMUMPS_STRUC_C *data, int32_t verbose) {
 
 /// @brief Allocates a new MUMPS interface
 struct InterfaceComplexMUMPS *complex_solver_mumps_new() {
-    struct InterfaceComplexMUMPS *solver = (struct InterfaceComplexMUMPS *)malloc(sizeof(struct InterfaceComplexMUMPS));
+    struct InterfaceComplexMUMPS *solver = (struct InterfaceComplexMUMPS *)calloc(1, sizeof(struct InterfaceComplexMUMPS));
 
     if (solver == NULL) {
         return NULL;
     }
 
-    solver->data.irn = NULL;
-    solver->data.jcn = NULL;
-    solver->data.a = NULL;
-    solver->done_job_init = C_FALSE;
-    solver->initialization_completed = C_FALSE;
-    solver->factorization_completed = C_FALSE;
+    /* Note that the solver data members have already been zero-initialized by calloc */
 
     return solver;
 }

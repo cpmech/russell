@@ -25,16 +25,13 @@ struct InterfaceKLU {
 
 /// @brief Allocates a new KLU interface
 struct InterfaceKLU *solver_klu_new() {
-    struct InterfaceKLU *solver = (struct InterfaceKLU *)malloc(sizeof(struct InterfaceKLU));
+    struct InterfaceKLU *solver = (struct InterfaceKLU *)calloc(1, sizeof(struct InterfaceKLU));
 
     if (solver == NULL) {
         return NULL;
     }
 
-    solver->symbolic = NULL;
-    solver->numeric = NULL;
-    solver->initialization_completed = C_FALSE;
-    solver->factorization_completed = C_FALSE;
+    /* Note that the solver data members have already been zero-initialized by calloc */
 
     return solver;
 }

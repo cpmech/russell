@@ -7,10 +7,10 @@
 
 #include "constants.h"
 
-#define ICNTL(i) icntl[(i)-1]   // macro to make indices match documentation
-#define RINFOG(i) rinfog[(i)-1] // macro to make indices match documentation
-#define INFOG(i) infog[(i)-1]   // macro to make indices match documentation
-#define INFO(i) info[(i)-1]     // macro to make indices match documentation
+#define ICNTL(i) icntl[(i) - 1]   // macro to make indices match documentation
+#define RINFOG(i) rinfog[(i) - 1] // macro to make indices match documentation
+#define INFOG(i) infog[(i) - 1]   // macro to make indices match documentation
+#define INFO(i) info[(i) - 1]     // macro to make indices match documentation
 
 /// @brief Holds the data for MUMPS
 struct InterfaceMUMPS {
@@ -49,6 +49,8 @@ struct InterfaceMUMPS *solver_mumps_new() {
     if (solver == NULL) {
         return NULL;
     }
+
+    /* Note that the solver data members have already been zero-initialized by calloc */
 
     return solver;
 }

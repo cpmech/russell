@@ -1,0 +1,28 @@
+# Valgrind suppressions for MUMPS library (precompiled, not our code)
+#
+# Usage: valgrind --suppressions=zscripts/valgrind-mumps.supp ...
+
+# MUMPS: uninitialized atomic compare-exchange in dmumps_simscaleabsuns_ (OpenMP parallel scaling)
+{
+   mumps_atomic_simscale
+   Memcheck:Cond
+   fun:compare_exchange_strong
+   ...
+   fun:dmumps_simscaleabsuns_
+}
+{
+   mumps_atomic_simscale_2
+   Memcheck:Cond
+   fun:compare_exchange_strong
+   ...
+   fun:dmumps_simscaleabsuns_*
+}
+# MUMPS: uninitialized value in OpenMP fork during dmumps_simscaleabsuns_
+{
+   mumps_omp_fork
+   Memcheck:Cond
+   fun:__kmp_fork_call
+   fun:*kmpc_fork_call
+   ...
+   fun:dmumps_simscaleabsuns_
+}

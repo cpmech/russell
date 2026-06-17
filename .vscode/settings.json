@@ -26,6 +26,7 @@
     "bspline",
     "bweuler",
     "Cahn",
+    "calloc",
     "Cephes",
     "Cheby",
     "chebyshev",

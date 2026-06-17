@@ -104,7 +104,7 @@ extern "C" struct InterfaceCUDSS *solver_cudss_new() {
     }
 
     /* Allocate the solver object */
-    struct InterfaceCUDSS *solver = (struct InterfaceCUDSS *)malloc(sizeof(struct InterfaceCUDSS));
+    struct InterfaceCUDSS *solver = (struct InterfaceCUDSS *)calloc(1, sizeof(struct InterfaceCUDSS));
     if (solver == NULL) {
         cudssDataDestroy(handle, data);
         cudssConfigDestroy(config);
@@ -113,23 +113,11 @@ extern "C" struct InterfaceCUDSS *solver_cudss_new() {
         return NULL;
     }
 
-    /* Set just allocated members in the solver object */
-    solver->initialization_completed = C_FALSE;
-    solver->factorization_completed = C_FALSE;
+    /* Set the non-zero members (all other members are zero-initialized by calloc) */
     solver->stream = stream;
     solver->handle = handle;
     solver->config = config;
     solver->data = data;
-    solver->aa_mat = NULL;
-    solver->b_vec = NULL;
-    solver->x_vec = NULL;
-    solver->gpu_row_pointers = NULL;
-    solver->gpu_col_indices = NULL;
-    solver->gpu_values = NULL;
-    solver->gpu_b = NULL;
-    solver->gpu_x = NULL;
-    solver->ndim = 0;
-    solver->nnz = 0;
 
     /* Success: return the pointer to the solver object */
     return solver;

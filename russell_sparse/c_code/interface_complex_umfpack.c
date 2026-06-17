@@ -37,18 +37,14 @@ static inline void set_complex_umfpack_verbose(struct InterfaceComplexUMFPACK *s
 
 /// @brief Allocates a new UMFPACK interface
 struct InterfaceComplexUMFPACK *complex_solver_umfpack_new() {
-    struct InterfaceComplexUMFPACK *solver = (struct InterfaceComplexUMFPACK *)malloc(sizeof(struct InterfaceComplexUMFPACK));
+    struct InterfaceComplexUMFPACK *solver = (struct InterfaceComplexUMFPACK *)calloc(1, sizeof(struct InterfaceComplexUMFPACK));
 
     if (solver == NULL) {
         return NULL;
     }
 
+    /* Initialize the control array; all other members are zero-initialized by calloc */
     umfpack_zi_defaults(solver->control);
-
-    solver->symbolic = NULL;
-    solver->numeric = NULL;
-    solver->initialization_completed = C_FALSE;
-    solver->factorization_completed = C_FALSE;
 
     return solver;
 }

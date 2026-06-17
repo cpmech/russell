@@ -21,7 +21,12 @@ fn test_solver(genie: Genie) {
 
     let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
 
-    match solver.actual.factorize(&coo, None) {
+    let mut params = LinSolParams::new();
+    if genie == Genie::Cudss {
+        params.matching = Matching::Auto;
+    }
+
+    match solver.actual.factorize(&coo, Some(params)) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -146,6 +151,7 @@ fn test_solver_singular(genie: Genie) {
 
 fn main() {
     // real
+    test_solver(Genie::Cudss);
     test_solver(Genie::Klu);
     test_solver(Genie::Mumps);
     test_solver(Genie::Umfpack);

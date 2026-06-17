@@ -186,6 +186,7 @@ extern "C" void solver_cudss_drop(struct InterfaceCUDSS *solver) {
 /// @brief Performs the symbolic factorization
 extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
                                            int32_t ordering,
+                                           int32_t matching,
                                            C_BOOL verbose,
                                            C_BOOL general_symmetric,
                                            C_BOOL positive_definite,
@@ -280,6 +281,13 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
     /* Set the ordering algorithm */
     cudssReorderingAlg_t reorder_alg = (cudssReorderingAlg_t)ordering;
     status = cudssConfigSet(solver->config, CUDSS_CONFIG_REORDERING_ALG, &reorder_alg, sizeof(cudssReorderingAlg_t));
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_CONFIG_SET;
+    }
+
+    /* Set the matching algorithm */
+    cudssMatchingAlg_t matching_alg = (cudssMatchingAlg_t)matching;
+    status = cudssConfigSet(solver->config, CUDSS_CONFIG_MATCHING_ALG, &matching_alg, sizeof(cudssMatchingAlg_t));
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_CONFIG_SET;
     }

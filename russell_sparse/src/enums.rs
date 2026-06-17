@@ -27,6 +27,9 @@ pub enum Genie {
 }
 
 /// Indicates whether the matrix is symmetric or not (includes the storage type)
+///
+/// **Note:** For unsymmetric matrices, when using the [Genie::Cudss], it is recommended to
+/// select [Matching::Auto] when the matrix contains some zero entries on its diagonal.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Sym {
     /// Not symmetric or unknown
@@ -70,7 +73,7 @@ pub enum MMsym {
     MakeItFull,
 }
 
-/// Ordering option
+/// Specifies the ordering option
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Ordering {
     /// Ordering using the approximate minimum degree
@@ -170,7 +173,7 @@ pub enum Ordering {
     Scotch,
 }
 
-/// Scaling option
+/// Specifies the scaling option
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Scaling {
     /// Automatic scaling method selection (default)
@@ -244,6 +247,60 @@ pub enum Scaling {
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available (also the default)
     Sum,
+}
+
+/// Specifies the matching algorithm (cuDSS only)
+///
+/// **Important:** Note that the default is [Matching::None].
+///
+/// **Note:** It is recommended to select [Matching::Auto] when dealing with
+/// unsymmetric matrices containing some zero entries on their diagonal.
+///
+/// See: <https://docs.nvidia.com/cuda/cudss/types.html#cudssmatchingalg-t>
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum Matching {
+    /// No matching algorithm (default)
+    ///
+    /// CUDSS_MATCHING_ALG_NONE
+    None,
+
+    /// Automatic selection
+    ///
+    /// Same as CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT (the most robust option).
+    /// Matching with scaling; requires matrix values during analysis.
+    ///
+    /// CUDSS_MATCHING_ALG_AUTO
+    Auto,
+
+    /// Column permutation to maximize the number of diagonal entries (values arbitrary).
+    /// MC64 JOB=1. Does not use matrix values; not recommended unless justified.
+    ///
+    /// CUDSS_MATCHING_ALG_MAX_DIAG_COUNT
+    MaxDiagCount,
+
+    /// Column permutation to maximize the smallest value on the diagonal. MC64 JOB=2.
+    ///
+    /// CUDSS_MATCHING_ALG_MAX_MIN_DIAG
+    MaxMinDiag,
+
+    /// Alternate algorithm to maximize the smallest value on the diagonal. MC64 JOB=3.
+    /// May differ in performance from CUDSS_MATCHING_ALG_MAX_MIN_DIAG.
+    ///
+    /// CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT
+    MaxMinDiagAlt,
+
+    /// Column permutation to maximize the sum of diagonal entries. MC64 JOB=4.
+    ///
+    /// CUDSS_MATCHING_ALG_MAX_DIAG_SUM
+    MaxDiagSum,
+
+    /// Column permutation to maximize the product of diagonal entries;
+    /// also computes row/column scaling so that nonzero diagonal entries are 1 in
+    /// absolute value and off-diagonal entries are ≤ 1. MC64 JOB=5. Most impactful for accuracy;
+    /// requires matrix values during analysis.
+    ///
+    /// CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT
+    MaxDiagProduct,
 }
 
 impl Genie {
@@ -332,6 +389,22 @@ impl Scaling {
     }
 }
 
+impl Matching {
+    /// Returns the Matching by name (default is Auto)
+    pub fn from(matching: &str) -> Self {
+        match matching.to_lowercase().as_str() {
+            "none" => Matching::None,
+            "auto" => Matching::Auto,
+            "maxdiagcount" => Matching::MaxDiagCount,
+            "maxmindiag" => Matching::MaxMinDiag,
+            "maxmindiagalt" => Matching::MaxMinDiagAlt,
+            "maxdiagsum" => Matching::MaxDiagSum,
+            "maxdiagproduct" => Matching::MaxDiagProduct,
+            _ => Matching::Auto,
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -389,6 +462,16 @@ mod tests {
         let json = serde_json::to_string(&scaling).unwrap();
         let from_json: Scaling = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json, scaling);
+
+        let matching = Matching::MaxDiagProduct;
+        let copy = matching;
+        let clone = matching.clone();
+        assert_eq!(format!("{:?}", matching), "MaxDiagProduct");
+        assert_eq!(format!("{:?}", copy), "MaxDiagProduct");
+        assert_eq!(format!("{:?}", clone), "MaxDiagProduct");
+        let json = serde_json::to_string(&matching).unwrap();
+        let from_json: Matching = serde_json::from_str(&json).unwrap();
+        assert_eq!(from_json, matching);
     }
 
     #[test]
@@ -443,6 +526,27 @@ mod tests {
         assert_eq!(Scaling::from("rowcolrig"), Scaling::RowColRig);
         assert_eq!(Scaling::from("sum"), Scaling::Sum);
         assert_eq!(Scaling::from("unknown"), Scaling::Auto);
+    }
+
+    #[test]
+    fn matching_functions_work() {
+        assert_eq!(Matching::from("None"), Matching::None);
+        assert_eq!(Matching::from("Auto"), Matching::Auto);
+        assert_eq!(Matching::from("MaxDiagCount"), Matching::MaxDiagCount);
+        assert_eq!(Matching::from("MaxMinDiag"), Matching::MaxMinDiag);
+        assert_eq!(Matching::from("MaxMinDiagAlt"), Matching::MaxMinDiagAlt);
+        assert_eq!(Matching::from("MaxDiagSum"), Matching::MaxDiagSum);
+        assert_eq!(Matching::from("MaxDiagProduct"), Matching::MaxDiagProduct);
+
+        assert_eq!(Matching::from("none"), Matching::None);
+        assert_eq!(Matching::from("auto"), Matching::Auto);
+        assert_eq!(Matching::from("maxdiagcount"), Matching::MaxDiagCount);
+        assert_eq!(Matching::from("maxmindiag"), Matching::MaxMinDiag);
+        assert_eq!(Matching::from("maxmindiagalt"), Matching::MaxMinDiagAlt);
+        assert_eq!(Matching::from("maxdiagsum"), Matching::MaxDiagSum);
+        assert_eq!(Matching::from("maxdiagproduct"), Matching::MaxDiagProduct);
+
+        assert_eq!(Matching::from("unknown"), Matching::Auto);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use super::{Ordering, Scaling};
+use super::{Matching, Ordering, Scaling};
 
 /// Defines the configuration parameters for the linear system solver
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -8,6 +8,9 @@ pub struct LinSolParams {
 
     /// Defines the scaling strategy
     pub scaling: Scaling,
+
+    /// Defines the matching algorithm (cuDSS only)
+    pub matching: Matching,
 
     /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
     pub positive_definite: bool,
@@ -58,6 +61,7 @@ impl LinSolParams {
         LinSolParams {
             ordering: Ordering::Auto,
             scaling: Scaling::Auto,
+            matching: Matching::None,
             positive_definite: false,
             compute_determinant: false,
             compute_error_estimates: false,

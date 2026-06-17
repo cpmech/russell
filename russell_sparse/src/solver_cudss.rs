@@ -1,4 +1,4 @@
-use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Ordering, StatsLinSol, Sym};
+use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Matching, Ordering, StatsLinSol, Sym};
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{Stopwatch, Vector};
@@ -28,6 +28,7 @@ extern "C" {
     fn solver_cudss_initialize(
         solver: *mut InterfaceCUDSS,
         ordering: i32,
+        matching: i32,
         verbose: CcBool,
         general_symmetric: CcBool,
         positive_definite: CcBool,
@@ -173,6 +174,7 @@ impl LinSolTrait for SolverCUDSS {
 
         // input parameters
         let ordering = cudss_ordering(par.ordering);
+        let matching = cudss_matching(par.matching);
 
         // requests
         let verbose = if par.verbose { 1 } else { 0 };
@@ -189,6 +191,7 @@ impl LinSolTrait for SolverCUDSS {
                 let status = solver_cudss_initialize(
                     self.solver,
                     ordering,
+                    matching,
                     verbose,
                     general_symmetric,
                     positive_definite,
@@ -323,6 +326,35 @@ fn cudss_ordering(ordering: Ordering) -> i32 {
         Ordering::Pord => CUDSS_REORDERING_ALG_DEFAULT,
         Ordering::Qamd => CUDSS_REORDERING_ALG_DEFAULT,
         Ordering::Scotch => CUDSS_REORDERING_ALG_DEFAULT,
+    }
+}
+
+// The matching algorithms are described in:
+// <https://docs.nvidia.com/cuda/cudss/types.html#cudssmatchingalg-t>
+//
+// IMPORTANT: these constants must match the values in <cudss_data_types.h>.
+// These values are passed directly to the C layer which casts them to
+// cudssMatchingAlg_t. If the cuDSS enum values change upstream, update
+// these constants accordingly.
+
+const CUDSS_MATCHING_ALG_NONE: i32 = 0;
+const CUDSS_MATCHING_ALG_MAX_DIAG_COUNT: i32 = 1;
+const CUDSS_MATCHING_ALG_MAX_MIN_DIAG: i32 = 2;
+const CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT: i32 = 3;
+const CUDSS_MATCHING_ALG_MAX_DIAG_SUM: i32 = 4;
+const CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT: i32 = 5;
+const CUDSS_MATCHING_ALG_AUTO: i32 = 6;
+
+/// Converts the Rust enum to an appropriate constant representing the matching algorithm
+fn cudss_matching(matching: Matching) -> i32 {
+    match matching {
+        Matching::None => CUDSS_MATCHING_ALG_NONE,
+        Matching::Auto => CUDSS_MATCHING_ALG_AUTO,
+        Matching::MaxDiagCount => CUDSS_MATCHING_ALG_MAX_DIAG_COUNT,
+        Matching::MaxMinDiag => CUDSS_MATCHING_ALG_MAX_MIN_DIAG,
+        Matching::MaxMinDiagAlt => CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT,
+        Matching::MaxDiagSum => CUDSS_MATCHING_ALG_MAX_DIAG_SUM,
+        Matching::MaxDiagProduct => CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT,
     }
 }
 
@@ -498,6 +530,39 @@ mod tests {
         // set params
         let mut params = LinSolParams::new();
         params.ordering = Ordering::Colamd;
+
+        // factorize works
+        solver.factorize(&coo, Some(params)).unwrap();
+        assert!(solver.factorized);
+
+        // solve works
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-12);
+
+        // calling solve again
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false).unwrap();
+        vec_approx_eq(&x_again, x_correct, 1e-12);
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work_unsymmetric_with_matching() {
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // allocate a new solver
+        let mut solver = SolverCUDSS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+
+        // set params
+        let mut params = LinSolParams::new();
+        params.matching = Matching::Auto;
 
         // factorize works
         solver.factorize(&coo, Some(params)).unwrap();

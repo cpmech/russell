@@ -759,4 +759,109 @@ mod tests {
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(&x, x_correct, 1e-10);
     }
+
+    #[test]
+    fn solve_handles_errors() {
+        let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
+        coo.put(0, 0, 123.0).unwrap();
+        coo.put(1, 1, 456.0).unwrap();
+        let mut solver = SolverCUDSS::new().unwrap();
+        assert!(!solver.factorized);
+        let mut x = Vector::new(2);
+        let rhs = Vector::new(2);
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the function factorize must be called before solve")
+        );
+        let mut x = Vector::new(1);
+        solver.factorize(&coo, None).unwrap();
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the dimension of the vector of unknown values x is incorrect")
+        );
+        let mut x = Vector::new(2);
+        let rhs = Vector::new(1);
+        assert_eq!(
+            solver.solve(&mut x, &rhs, false),
+            Err("the dimension of the right-hand side vector is incorrect")
+        );
+    }
+
+    #[test]
+    fn cudss_ordering_and_matching_and_pivoting_work() {
+        // ordering
+        assert_eq!(cudss_ordering(Ordering::Amd), CUDSS_REORDERING_ALG_AMD);
+        assert_eq!(cudss_ordering(Ordering::Amf), CUDSS_REORDERING_ALG_DEFAULT);
+        assert_eq!(cudss_ordering(Ordering::Auto), CUDSS_REORDERING_ALG_DEFAULT);
+        assert_eq!(cudss_ordering(Ordering::Best), CUDSS_REORDERING_ALG_DEFAULT);
+        assert_eq!(cudss_ordering(Ordering::BtfColamd), CUDSS_REORDERING_ALG_BTF_COLAMD);
+        assert_eq!(cudss_ordering(Ordering::Cholmod), CUDSS_REORDERING_ALG_DEFAULT);
+        assert_eq!(cudss_ordering(Ordering::Colamd), CUDSS_REORDERING_ALG_COLAMD);
+        assert_eq!(cudss_ordering(Ordering::Metis), CUDSS_REORDERING_ALG_NESTED_DISSECTION);
+        assert_eq!(cudss_ordering(Ordering::No), CUDSS_REORDERING_ALG_NONE);
+        assert_eq!(cudss_ordering(Ordering::Pord), CUDSS_REORDERING_ALG_DEFAULT);
+        assert_eq!(cudss_ordering(Ordering::Qamd), CUDSS_REORDERING_ALG_DEFAULT);
+        assert_eq!(cudss_ordering(Ordering::Scotch), CUDSS_REORDERING_ALG_DEFAULT);
+
+        // matching
+        assert_eq!(cudss_matching(Matching::None), CUDSS_MATCHING_ALG_NONE);
+        assert_eq!(cudss_matching(Matching::Auto), CUDSS_MATCHING_ALG_AUTO);
+        assert_eq!(cudss_matching(Matching::MaxDiagCount), CUDSS_MATCHING_ALG_MAX_DIAG_COUNT);
+        assert_eq!(cudss_matching(Matching::MaxMinDiag), CUDSS_MATCHING_ALG_MAX_MIN_DIAG);
+        assert_eq!(cudss_matching(Matching::MaxMinDiagAlt), CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT);
+        assert_eq!(cudss_matching(Matching::MaxDiagSum), CUDSS_MATCHING_ALG_MAX_DIAG_SUM);
+        assert_eq!(cudss_matching(Matching::MaxDiagProduct), CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT);
+
+        // pivoting
+        assert_eq!(cudss_pivoting(Pivoting::Auto), CUDSS_PIVOT_AUTO);
+        assert_eq!(cudss_pivoting(Pivoting::None), CUDSS_PIVOT_NONE);
+        assert_eq!(cudss_pivoting(Pivoting::GlobalCol), CUDSS_PIVOT_GLOBAL_COL);
+        assert_eq!(cudss_pivoting(Pivoting::GlobalRow), CUDSS_PIVOT_GLOBAL_ROW);
+        assert_eq!(cudss_pivoting(Pivoting::Diagonal), CUDSS_PIVOT_DIAGONAL);
+        assert_eq!(cudss_pivoting(Pivoting::LocalBlock), CUDSS_PIVOT_LOCAL_BLOCK);
+    }
+
+    #[test]
+    fn handle_cudss_error_code_works() {
+        let default = "Error: unknown error returned by c-code (cuDSS)";
+        assert_eq!(handle_cudss_error_code(ERROR_CUDA_MALLOC), "cudaMalloc failed in the C code (cuDSS)");
+        assert_eq!(handle_cudss_error_code(ERROR_CUDA_MEMCPY), "cudaMemcpy failed in the C code (cuDSS)");
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDA_SYNCHRONIZE),
+            "cudaStreamSynchronize failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_CONFIG_SET),
+            "cudssConfigSet failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_CONFIG_GET),
+            "cudssConfigGet failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_MATRIX_CREATE_DN),
+            "cudssMatrixCreateDn failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_MATRIX_SET_VALUES),
+            "cudssMatrixSetValues failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_MATRIX_CREATE_CSR),
+            "cudssMatrixCreateCsr failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_SYM_FACTORIZATION),
+            "cuDSS symbolic factorization (CUDSS_PHASE_ANALYSIS) failed"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_NUM_FACTORIZATION),
+            "cuDSS numeric factorization (CUDSS_PHASE_FACTORIZATION) failed"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_SOLVE),
+            "cuDSS solve (CUDSS_PHASE_SOLVE) failed"
+        );
+        assert_eq!(handle_cudss_error_code(-123), default);
+    }
 }

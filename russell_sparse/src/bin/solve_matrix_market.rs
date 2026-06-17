@@ -1,4 +1,5 @@
-use russell_lab::{cpx, set_num_threads, using_intel_mkl, ComplexVector, Stopwatch, StrError, Vector};
+use russell_lab::{ComplexVector, Stopwatch, StrError, Vector, cpx, set_num_threads, using_intel_mkl};
+use russell_sparse::is_memory_error;
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
@@ -137,7 +138,16 @@ fn main() -> Result<(), StrError> {
         }
 
         // call factorize
-        solver.actual.factorize(&coo, Some(params))?;
+        if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+            if is_memory_error(e) {
+                stats.main.out_of_memory = true;
+                if !opt.hide_json {
+                    println!("{}", stats.get_json());
+                }
+                return Ok(());
+            }
+            return Err(e);
+        }
 
         // allocate vectors
         let mut x = Vector::new(nrow);
@@ -193,7 +203,16 @@ fn main() -> Result<(), StrError> {
         let mut solver = ComplexLinSolver::new(genie)?;
 
         // call factorize
-        solver.actual.factorize(&coo, Some(params))?;
+        if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+            if is_memory_error(e) {
+                stats.main.out_of_memory = true;
+                if !opt.hide_json {
+                    println!("{}", stats.get_json());
+                }
+                return Ok(());
+            }
+            return Err(e);
+        }
 
         // allocate vectors
         let mut x = ComplexVector::new(nrow);

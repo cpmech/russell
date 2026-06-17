@@ -14,6 +14,7 @@ pub struct StatsLinSolMain {
     pub blas_lib: String,
     pub solver: String,
     pub local_sparse: bool,
+    pub out_of_memory: bool,
 }
 
 /// Holds information about the sparse matrix
@@ -108,6 +109,7 @@ impl StatsLinSol {
                 },
                 solver: unknown.clone(),
                 local_sparse: if cfg!(feature = "local_sparse") { true } else { false },
+                out_of_memory: false,
             },
             matrix: StatsLinSolMatrix {
                 name: unknown.clone(),
@@ -235,6 +237,17 @@ impl StatsLinSol {
         self.time_human.total_ifs = format_nanoseconds(self.time_nanoseconds.total_ifs);
         self.time_human.verify = format_nanoseconds(self.time_nanoseconds.verify);
     }
+}
+
+/// Returns true if the error message indicates an out-of-memory condition
+///
+/// Covers all solvers: UMFPACK, MUMPS, KLU, and cuDSS.
+pub fn is_memory_error(e: &str) -> bool {
+    e.contains("MALLOC")
+        || e.contains("Not enough memory")
+        || e.contains("ALLOC_FAILED")
+        || e.contains("cudaMalloc")
+        || e.contains("memory is too small")
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

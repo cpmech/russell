@@ -1,7 +1,7 @@
 use super::{mat_copy, Matrix};
 use crate::{to_i32, StrError};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     /// <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
     fn c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);

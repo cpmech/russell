@@ -1,7 +1,7 @@
 use super::ComplexMatrix;
 use crate::{to_i32, Complex64};
 
-extern "C" {
+unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>
     fn cblas_zscal(n: i32, alpha: *const Complex64, x: *mut Complex64, incx: i32);

@@ -111,7 +111,9 @@ fn main() {
         // cudss && local_sparse
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         {
-            std::env::set_var("CXX", "g++-15");
+            unsafe {
+                std::env::set_var("CXX", "g++-15");
+            }
             cc::Build::new()
                 .cuda(true)
                 .cudart("static")
@@ -162,7 +164,9 @@ fn main() {
         // cudss && not(local_sparse)
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         {
-            std::env::set_var("CXX", "g++-15");
+            unsafe {
+                std::env::set_var("CXX", "g++-15");
+            }
             cc::Build::new()
                 .cuda(true)
                 .cudart("static")

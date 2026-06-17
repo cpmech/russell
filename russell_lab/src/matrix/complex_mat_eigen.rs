@@ -1,7 +1,7 @@
 use super::ComplexMatrix;
 use crate::{cpx, to_i32, CcBool, Complex64, ComplexVector, StrError, C_FALSE, C_TRUE};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
     // <https://www.netlib.org/lapack/explore-html/dd/dba/zgeev_8f.html>
     fn c_zgeev(

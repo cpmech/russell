@@ -24,7 +24,7 @@ unsafe impl Send for InterfaceComplexKLU {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for ComplexSolverKLU {}
 
-extern "C" {
+unsafe extern "C" {
     fn complex_solver_klu_new() -> *mut InterfaceComplexKLU;
     fn complex_solver_klu_drop(solver: *mut InterfaceComplexKLU);
     fn complex_solver_klu_initialize(

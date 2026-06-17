@@ -1,7 +1,7 @@
 use super::{complex_mat_copy, ComplexMatrix};
 use crate::{cpx, to_i32, Complex64, StrError};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     // <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
     fn c_zgetrf(m: *const i32, n: *const i32, a: *mut Complex64, lda: *const i32, ipiv: *mut i32, info: *mut i32);

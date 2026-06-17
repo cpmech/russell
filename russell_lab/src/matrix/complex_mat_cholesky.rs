@@ -1,7 +1,7 @@
 use super::ComplexMatrix;
 use crate::{to_i32, CcBool, Complex64, StrError, C_FALSE, C_TRUE};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
     // <https://www.netlib.org/lapack/explore-html/d1/db9/zpotrf_8f.html>
     fn c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);

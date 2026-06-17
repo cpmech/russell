@@ -1,7 +1,7 @@
 use super::Matrix;
 use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS};
 
-extern "C" {
+unsafe extern "C" {
     // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
     fn cblas_dgemm(

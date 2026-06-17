@@ -2,7 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{to_i32, StrError, CBLAS_COL_MAJOR};
 
-extern "C" {
+unsafe extern "C" {
     // Performs the rank 1 operation (tensor product)
     // <https://www.netlib.org/lapack/explore-html/dc/da8/dger_8f.html>
     fn cblas_dger(

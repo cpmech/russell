@@ -1,7 +1,7 @@
 use super::ComplexVector;
 use crate::{to_i32, Complex64, StrError};
 
-extern "C" {
+unsafe extern "C" {
     // Computes constant times a vector plus a vector
     // <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>
     fn cblas_zaxpy(n: i32, alpha: *const Complex64, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);

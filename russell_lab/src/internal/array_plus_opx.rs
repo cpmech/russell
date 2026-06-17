@@ -2,7 +2,7 @@ use super::{to_i32, MAX_DIM_FOR_NATIVE_BLAS};
 use crate::Complex64;
 use crate::StrError;
 
-extern "C" {
+unsafe extern "C" {
     // real ------------------------------------------------------------------------------------------------------
 
     // Computes constant times a vector plus a vector.

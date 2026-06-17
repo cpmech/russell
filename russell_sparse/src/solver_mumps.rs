@@ -22,7 +22,7 @@ unsafe impl Send for InterfaceMUMPS {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for SolverMUMPS {}
 
-extern "C" {
+unsafe extern "C" {
     fn solver_mumps_new() -> *mut InterfaceMUMPS;
     fn solver_mumps_drop(solver: *mut InterfaceMUMPS);
     fn solver_mumps_initialize(

@@ -1,7 +1,7 @@
 use super::Vector;
 use crate::{to_i32, Norm};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
     // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
     fn cblas_dasum(n: i32, x: *const f64, incx: i32) -> f64;

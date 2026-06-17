@@ -28,7 +28,7 @@ unsafe impl Send for InterfaceComplexUMFPACK {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for ComplexSolverUMFPACK {}
 
-extern "C" {
+unsafe extern "C" {
     fn complex_solver_umfpack_new() -> *mut InterfaceComplexUMFPACK;
     fn complex_solver_umfpack_drop(solver: *mut InterfaceComplexUMFPACK);
     fn complex_solver_umfpack_initialize(

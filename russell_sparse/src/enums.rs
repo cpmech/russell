@@ -405,6 +405,16 @@ impl Sym {
             _ => false,
         }
     }
+
+    /// Returns true if symmetric
+    pub fn yes(&self) -> bool {
+        *self != Sym::No
+    }
+
+    /// Returns true if not symmetric
+    pub fn no(&self) -> bool {
+        *self == Sym::No
+    }
 }
 
 impl Ordering {
@@ -674,6 +684,16 @@ mod tests {
 
     #[test]
     fn sym_functions_work() {
+        assert_eq!(Sym::No.no(), true);
+        assert_eq!(Sym::YesFull.no(), false);
+        assert_eq!(Sym::YesLower.no(), false);
+        assert_eq!(Sym::YesUpper.no(), false);
+
+        assert_eq!(Sym::No.yes(), false);
+        assert_eq!(Sym::YesFull.yes(), true);
+        assert_eq!(Sym::YesLower.yes(), true);
+        assert_eq!(Sym::YesUpper.yes(), true);
+
         assert_eq!(Sym::No.triangular(), false);
         assert_eq!(Sym::YesFull.triangular(), false);
         assert_eq!(Sym::YesLower.triangular(), true);

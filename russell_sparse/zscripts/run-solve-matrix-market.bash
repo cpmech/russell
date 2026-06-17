@@ -1,21 +1,9 @@
 #!/bin/bash
 
-INTEL_MKL=${1:-""}
-LOCAL_SPARSE=${2:-""}
+GENIE=${1:-"umfpack"}
 
-FEATURES=""
-if [ "$INTEL_MKL" = "1" ]; then
-    FEATURES="${FEATURES},intel_mkl"
-fi
-if [ "$LOCAL_SPARSE" = "1" ]; then
-    FEATURES="${FEATURES},local_sparse"
-fi
+FEATURES="intel_mkl,local_sparse,cudss"
 
 cargo run --release --features "$FEATURES" --bin solve_matrix_market -- \
-    data/matrix_market/bfwb62.mtx
-
-if [ "$LOCAL_SPARSE" = "1" ]; then
-    cargo run --release --features "$FEATURES" --bin solve_matrix_market -- \
     data/matrix_market/bfwb62.mtx \
-    --genie mumps
-fi
+    --genie $GENIE

@@ -131,6 +131,11 @@ fn main() -> Result<(), StrError> {
         // allocate and configure the solver
         let mut solver = LinSolver::new(genie)?;
 
+        // use a matching algorithm if Cudss and not symmetric
+        if genie == Genie::Cudss && sym.no() {
+            params.matching = Matching::Auto;
+        }
+
         // call factorize
         solver.actual.factorize(&coo, Some(params))?;
 

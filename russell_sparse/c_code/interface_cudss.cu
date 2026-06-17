@@ -187,6 +187,7 @@ extern "C" void solver_cudss_drop(struct InterfaceCUDSS *solver) {
 extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
                                            int32_t ordering,
                                            int32_t matching,
+                                           int32_t pivoting,
                                            C_BOOL verbose,
                                            C_BOOL general_symmetric,
                                            C_BOOL positive_definite,
@@ -271,8 +272,8 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
         return ERROR_CUDSS_MATRIX_CREATE_DN;
     }
 
-    /* Set the pivot strategy */
-    cudssPivotType_t pivot = CUDSS_PIVOT_AUTO;
+    /* Set the pivot type */
+    cudssPivotType_t pivot = (cudssPivotType_t)pivoting;
     status = cudssConfigSet(solver->config, CUDSS_CONFIG_PIVOT_TYPE, &pivot, sizeof(cudssPivotType_t));
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_CONFIG_SET;

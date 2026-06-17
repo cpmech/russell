@@ -303,6 +303,62 @@ pub enum Matching {
     MaxDiagProduct,
 }
 
+/// Specifies the pivoting strategy (cuDSS only)
+///
+/// See: <https://docs.nvidia.com/cuda/cudss/types.html#cudsspivottype-t>
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum Pivoting {
+    /// Automatic pivoting strategy (default)
+    ///
+    /// Automatically selects the appropriate pivot type based on the reordering algorithm and matrix type:
+    /// 1. For [Ordering::Auto] and [Ordering::Amd]:
+    ///     * Symmetric/Hermitian indefinite matrices: Uses [Pivoting::Diagonal]
+    ///     * General matrices: Uses [Pivoting::LocalBlock]
+    /// 2. For [Ordering::BtfColamd] and [Ordering::Colamd]: Uses [Pivoting::GlobalCol]
+    ///
+    /// CUDSS_PIVOT_AUTO
+    Auto,
+
+    /// No pivoting
+    ///
+    /// Used with [Ordering::Auto] and [Ordering::Amd] (MetisND and AMD).
+    ///
+    /// CUDSS_PIVOT_NONE
+    None,
+
+    /// Global column pivoting
+    ///
+    /// Used with [Ordering::BtfColamd] and [Ordering::Colamd].
+    ///
+    /// CUDSS_PIVOT_GLOBAL_COL
+    GlobalCol,
+
+    /// Global row pivoting
+    ///
+    /// Used with [Ordering::BtfColamd] and [Ordering::Colamd].
+    ///
+    /// CUDSS_PIVOT_GLOBAL_ROW
+    GlobalRow,
+
+    /// Diagonal pivoting
+    ///
+    /// Used with [Ordering::Auto] and [Ordering::Amd] (MetisND and AMD).
+    ///
+    /// For symmetric/Hermitian indefinite matrices, searches for pivot elements only within the diagonal of the supernode.
+    ///
+    /// CUDSS_PIVOT_DIAGONAL
+    Diagonal,
+
+    /// Complete block pivoting
+    ///
+    /// Use with [Ordering::Auto] and [Ordering::Amd].
+    ///
+    /// For general matrices, searches for pivot elements within the entire diagonal block of the supernode.
+    ///
+    /// CUDSS_PIVOT_LOCAL_BLOCK
+    LocalBlock,
+}
+
 impl Genie {
     /// Returns the Genie by name (default is umfpack)
     pub fn from(genie: &str) -> Self {
@@ -401,6 +457,21 @@ impl Matching {
             "maxdiagsum" => Matching::MaxDiagSum,
             "maxdiagproduct" => Matching::MaxDiagProduct,
             _ => Matching::Auto,
+        }
+    }
+}
+
+impl Pivoting {
+    /// Returns the Pivoting by name (default is Auto)
+    pub fn from(pivoting: &str) -> Self {
+        match pivoting.to_lowercase().as_str() {
+            "auto" => Pivoting::Auto,
+            "none" => Pivoting::None,
+            "globalcol" => Pivoting::GlobalCol,
+            "globalrow" => Pivoting::GlobalRow,
+            "diagonal" => Pivoting::Diagonal,
+            "localblock" => Pivoting::LocalBlock,
+            _ => Pivoting::Auto,
         }
     }
 }
@@ -547,6 +618,25 @@ mod tests {
         assert_eq!(Matching::from("maxdiagproduct"), Matching::MaxDiagProduct);
 
         assert_eq!(Matching::from("unknown"), Matching::Auto);
+    }
+
+    #[test]
+    fn pivoting_functions_work() {
+        assert_eq!(Pivoting::from("Auto"), Pivoting::Auto);
+        assert_eq!(Pivoting::from("None"), Pivoting::None);
+        assert_eq!(Pivoting::from("GlobalCol"), Pivoting::GlobalCol);
+        assert_eq!(Pivoting::from("GlobalRow"), Pivoting::GlobalRow);
+        assert_eq!(Pivoting::from("Diagonal"), Pivoting::Diagonal);
+        assert_eq!(Pivoting::from("LocalBlock"), Pivoting::LocalBlock);
+
+        assert_eq!(Pivoting::from("auto"), Pivoting::Auto);
+        assert_eq!(Pivoting::from("none"), Pivoting::None);
+        assert_eq!(Pivoting::from("globalcol"), Pivoting::GlobalCol);
+        assert_eq!(Pivoting::from("globalrow"), Pivoting::GlobalRow);
+        assert_eq!(Pivoting::from("diagonal"), Pivoting::Diagonal);
+        assert_eq!(Pivoting::from("localblock"), Pivoting::LocalBlock);
+
+        assert_eq!(Pivoting::from("unknown"), Pivoting::Auto);
     }
 
     #[test]

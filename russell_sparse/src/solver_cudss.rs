@@ -1,4 +1,4 @@
-use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Matching, Ordering, StatsLinSol, Sym};
+use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Matching, Ordering, Pivoting, StatsLinSol, Sym};
 use crate::constants::*;
 use crate::StrError;
 use russell_lab::{Stopwatch, Vector};
@@ -29,6 +29,7 @@ extern "C" {
         solver: *mut InterfaceCUDSS,
         ordering: i32,
         matching: i32,
+        pivoting: i32,
         verbose: CcBool,
         general_symmetric: CcBool,
         positive_definite: CcBool,
@@ -175,6 +176,7 @@ impl LinSolTrait for SolverCUDSS {
         // input parameters
         let ordering = cudss_ordering(par.ordering);
         let matching = cudss_matching(par.matching);
+        let pivoting = cudss_pivoting(par.pivoting);
 
         // requests
         let verbose = if par.verbose { 1 } else { 0 };
@@ -192,6 +194,7 @@ impl LinSolTrait for SolverCUDSS {
                     self.solver,
                     ordering,
                     matching,
+                    pivoting,
                     verbose,
                     general_symmetric,
                     positive_definite,
@@ -355,6 +358,33 @@ fn cudss_matching(matching: Matching) -> i32 {
         Matching::MaxMinDiagAlt => CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT,
         Matching::MaxDiagSum => CUDSS_MATCHING_ALG_MAX_DIAG_SUM,
         Matching::MaxDiagProduct => CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT,
+    }
+}
+
+// The pivot types are described in:
+// <https://docs.nvidia.com/cuda/cudss/types.html#cudsspivottype-t>
+//
+// IMPORTANT: these constants must match the values in <cudss_data_types.h>.
+// These values are passed directly to the C layer which casts them to
+// cudssPivotType_t. If the cuDSS enum values change upstream, update
+// these constants accordingly.
+
+const CUDSS_PIVOT_AUTO: i32 = 0;
+const CUDSS_PIVOT_NONE: i32 = 1;
+const CUDSS_PIVOT_GLOBAL_COL: i32 = 2;
+const CUDSS_PIVOT_GLOBAL_ROW: i32 = 3;
+const CUDSS_PIVOT_DIAGONAL: i32 = 4;
+const CUDSS_PIVOT_LOCAL_BLOCK: i32 = 5;
+
+/// Converts the Rust enum to an appropriate constant representing the pivot type
+fn cudss_pivoting(pivoting: Pivoting) -> i32 {
+    match pivoting {
+        Pivoting::Auto => CUDSS_PIVOT_AUTO,
+        Pivoting::None => CUDSS_PIVOT_NONE,
+        Pivoting::GlobalCol => CUDSS_PIVOT_GLOBAL_COL,
+        Pivoting::GlobalRow => CUDSS_PIVOT_GLOBAL_ROW,
+        Pivoting::Diagonal => CUDSS_PIVOT_DIAGONAL,
+        Pivoting::LocalBlock => CUDSS_PIVOT_LOCAL_BLOCK,
     }
 }
 

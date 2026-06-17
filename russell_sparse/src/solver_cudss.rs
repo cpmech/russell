@@ -46,6 +46,16 @@ extern "C" {
 
 /// Wraps the cuDSS solver for sparse linear systems
 ///
+/// # Memory leak reports with Valgrind
+///
+/// Running `valgrind` (or `cargo valgrind`) will report memory leaks originating
+/// from NVIDIA's CUDA and cuDSS libraries (`cuInit`, `cuDevicePrimaryCtxRetain`,
+/// `cuLaunchKernel`, `cuLibraryLoadData`, `cudaStreamCreate`). Empirically, these
+/// are allocations made by CUDA during device/library initialization that persist
+/// for the lifetime of the process and are not freed until exit. No leaks originate
+/// from our code (`interface_cudss.cu`); all allocations are properly freed in
+/// `solver_cudss_drop`.
+///
 /// # Singularity detection
 ///
 /// cuDSS returns both **host-side** and **device-side** errors:

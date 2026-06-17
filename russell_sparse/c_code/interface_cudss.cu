@@ -188,6 +188,8 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
                                            int32_t ordering,
                                            int32_t matching,
                                            int32_t pivoting,
+                                           double pivot_epsilon,
+                                           int32_t refinement_nstep,
                                            C_BOOL verbose,
                                            C_BOOL general_symmetric,
                                            C_BOOL positive_definite,
@@ -291,6 +293,22 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
     status = cudssConfigSet(solver->config, CUDSS_CONFIG_MATCHING_ALG, &matching_alg, sizeof(cudssMatchingAlg_t));
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_CONFIG_SET;
+    }
+
+    /* Set the pivot epsilon */
+    if (pivot_epsilon > 0.0) {
+        status = cudssConfigSet(solver->config, CUDSS_CONFIG_PIVOT_EPSILON, &pivot_epsilon, sizeof(double));
+        if (status != CUDSS_STATUS_SUCCESS) {
+            return ERROR_CUDSS_CONFIG_SET;
+        }
+    }
+
+    /* Set iterative refinement number of steps */
+    if (refinement_nstep > 0) {
+        status = cudssConfigSet(solver->config, CUDSS_CONFIG_IR_N_STEPS, &refinement_nstep, sizeof(int32_t));
+        if (status != CUDSS_STATUS_SUCCESS) {
+            return ERROR_CUDSS_CONFIG_SET;
+        }
     }
 
     /* Create a matrix object for the sparse input matrix */

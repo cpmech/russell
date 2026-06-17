@@ -30,6 +30,8 @@ extern "C" {
         ordering: i32,
         matching: i32,
         pivoting: i32,
+        pivot_epsilon: f64,
+        refinement_nstep: i32,
         verbose: CcBool,
         general_symmetric: CcBool,
         positive_definite: CcBool,
@@ -178,6 +180,16 @@ impl LinSolTrait for SolverCUDSS {
         let matching = cudss_matching(par.matching);
         let pivoting = cudss_pivoting(par.pivoting);
 
+        // pivoting parameters
+        let pivot_epsilon = match par.pivot_epsilon {
+            Some(val) => val,
+            None => -1.0, // tell cuDSS to use the default
+        };
+        let refinement_nstep = match par.refinement_nstep {
+            Some(val) => val,
+            None => -1, // tell cuDSS to use the default
+        };
+
         // requests
         let verbose = if par.verbose { 1 } else { 0 };
 
@@ -195,6 +207,8 @@ impl LinSolTrait for SolverCUDSS {
                     ordering,
                     matching,
                     pivoting,
+                    pivot_epsilon,
+                    refinement_nstep,
                     verbose,
                     general_symmetric,
                     positive_definite,

@@ -761,6 +761,29 @@ mod tests {
     }
 
     #[test]
+    fn solve_works_symmetric() {
+        let mut solver = SolverCUDSS::new().unwrap();
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, true);
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+        let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
+        solver.factorize(&coo, None).unwrap();
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-10);
+
+        // calling solve again works
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false).unwrap();
+        vec_approx_eq(&x_again, x_correct, 1e-10);
+
+        // update stats
+        let mut stats = StatsLinSol::new();
+        solver.update_stats(&mut stats);
+        assert_eq!(stats.output.effective_ordering, "Unknown");
+        assert_eq!(stats.output.effective_scaling, "Unknown");
+    }
+
+    #[test]
     fn solve_handles_errors() {
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
         coo.put(0, 0, 123.0).unwrap();
@@ -806,11 +829,20 @@ mod tests {
         // matching
         assert_eq!(cudss_matching(Matching::None), CUDSS_MATCHING_ALG_NONE);
         assert_eq!(cudss_matching(Matching::Auto), CUDSS_MATCHING_ALG_AUTO);
-        assert_eq!(cudss_matching(Matching::MaxDiagCount), CUDSS_MATCHING_ALG_MAX_DIAG_COUNT);
+        assert_eq!(
+            cudss_matching(Matching::MaxDiagCount),
+            CUDSS_MATCHING_ALG_MAX_DIAG_COUNT
+        );
         assert_eq!(cudss_matching(Matching::MaxMinDiag), CUDSS_MATCHING_ALG_MAX_MIN_DIAG);
-        assert_eq!(cudss_matching(Matching::MaxMinDiagAlt), CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT);
+        assert_eq!(
+            cudss_matching(Matching::MaxMinDiagAlt),
+            CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT
+        );
         assert_eq!(cudss_matching(Matching::MaxDiagSum), CUDSS_MATCHING_ALG_MAX_DIAG_SUM);
-        assert_eq!(cudss_matching(Matching::MaxDiagProduct), CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT);
+        assert_eq!(
+            cudss_matching(Matching::MaxDiagProduct),
+            CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT
+        );
 
         // pivoting
         assert_eq!(cudss_pivoting(Pivoting::Auto), CUDSS_PIVOT_AUTO);
@@ -824,8 +856,14 @@ mod tests {
     #[test]
     fn handle_cudss_error_code_works() {
         let default = "Error: unknown error returned by c-code (cuDSS)";
-        assert_eq!(handle_cudss_error_code(ERROR_CUDA_MALLOC), "cudaMalloc failed in the C code (cuDSS)");
-        assert_eq!(handle_cudss_error_code(ERROR_CUDA_MEMCPY), "cudaMemcpy failed in the C code (cuDSS)");
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDA_MALLOC),
+            "cudaMalloc failed in the C code (cuDSS)"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDA_MEMCPY),
+            "cudaMemcpy failed in the C code (cuDSS)"
+        );
         assert_eq!(
             handle_cudss_error_code(ERROR_CUDA_SYNCHRONIZE),
             "cudaStreamSynchronize failed in the C code (cuDSS)"

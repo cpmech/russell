@@ -443,12 +443,18 @@ const ERROR_CUDSS_CONFIG_GET: i32 = 450;
 const ERROR_CUDSS_MATRIX_CREATE_DN: i32 = 500;
 const ERROR_CUDSS_MATRIX_SET_VALUES: i32 = 550;
 const ERROR_CUDSS_MATRIX_CREATE_CSR: i32 = 600;
-const ERROR_CUDSS_SYM_FACTORIZATION: i32 = 700;
-const ERROR_CUDSS_NUM_FACTORIZATION: i32 = 800;
-const ERROR_CUDSS_SOLVE: i32 = 900;
+// const ERROR_CUDSS_SYM_FACTORIZATION: i32 = 700;
+// const ERROR_CUDSS_NUM_FACTORIZATION: i32 = 800;
+// const ERROR_CUDSS_SOLVE: i32 = 900;
 const ERROR_CUDSS_DEVICE: i32 = 1000;
 
 /// Handles error code
+///
+/// Positive errors are our own (defined in `c_code/constants.h`).
+/// CudssStatus errors use an offset encoding to indicate the phase:
+/// * 700-707: symbolic factorization (700 + cudssStatus_t)
+/// * 800-807: numeric factorization (800 + cudssStatus_t)
+/// * 900-907: solve              (900 + cudssStatus_t)
 fn handle_cudss_error_code(err: i32) -> StrError {
     match err {
         ERROR_CUDA_MALLOC => "cudaMalloc failed in the C code (cuDSS)",
@@ -459,10 +465,31 @@ fn handle_cudss_error_code(err: i32) -> StrError {
         ERROR_CUDSS_MATRIX_CREATE_DN => "cudssMatrixCreateDn failed in the C code (cuDSS)",
         ERROR_CUDSS_MATRIX_SET_VALUES => "cudssMatrixSetValues failed in the C code (cuDSS)",
         ERROR_CUDSS_MATRIX_CREATE_CSR => "cudssMatrixCreateCsr failed in the C code (cuDSS)",
-        ERROR_CUDSS_SYM_FACTORIZATION => "cuDSS symbolic factorization (CUDSS_PHASE_ANALYSIS) failed",
-        ERROR_CUDSS_NUM_FACTORIZATION => "cuDSS numeric factorization (CUDSS_PHASE_FACTORIZATION) failed",
-        ERROR_CUDSS_SOLVE => "cuDSS solve (CUDSS_PHASE_SOLVE) failed",
         ERROR_CUDSS_DEVICE => "cuDSS device-side error (check CUDSS_DATA_INFO for details)",
+        // cuDSS symbolic factorization status codes
+        701 => "cuDSS symbolic factorization failed: CUDSS_STATUS_NOT_INITIALIZED",
+        702 => "cuDSS symbolic factorization failed: CUDSS_STATUS_ALLOC_FAILED",
+        703 => "cuDSS symbolic factorization failed: CUDSS_STATUS_INVALID_VALUE",
+        704 => "cuDSS symbolic factorization failed: CUDSS_STATUS_NOT_SUPPORTED",
+        705 => "cuDSS symbolic factorization failed: CUDSS_STATUS_EXECUTION_FAILED",
+        706 => "cuDSS symbolic factorization failed: CUDSS_STATUS_INTERNAL_ERROR",
+        707 => "cuDSS symbolic factorization failed: CUDSS_STATUS_IR_FAILED",
+        // cuDSS numeric factorization status codes
+        801 => "cuDSS numeric factorization failed: CUDSS_STATUS_NOT_INITIALIZED",
+        802 => "cuDSS numeric factorization failed: CUDSS_STATUS_ALLOC_FAILED",
+        803 => "cuDSS numeric factorization failed: CUDSS_STATUS_INVALID_VALUE",
+        804 => "cuDSS numeric factorization failed: CUDSS_STATUS_NOT_SUPPORTED",
+        805 => "cuDSS numeric factorization failed: CUDSS_STATUS_EXECUTION_FAILED",
+        806 => "cuDSS numeric factorization failed: CUDSS_STATUS_INTERNAL_ERROR",
+        807 => "cuDSS numeric factorization failed: CUDSS_STATUS_IR_FAILED",
+        // cuDSS solve status codes
+        901 => "cuDSS solve failed: CUDSS_STATUS_NOT_INITIALIZED",
+        902 => "cuDSS solve failed: CUDSS_STATUS_ALLOC_FAILED",
+        903 => "cuDSS solve failed: CUDSS_STATUS_INVALID_VALUE",
+        904 => "cuDSS solve failed: CUDSS_STATUS_NOT_SUPPORTED",
+        905 => "cuDSS solve failed: CUDSS_STATUS_EXECUTION_FAILED",
+        906 => "cuDSS solve failed: CUDSS_STATUS_INTERNAL_ERROR",
+        907 => "cuDSS solve failed: CUDSS_STATUS_IR_FAILED",
         _ => "Error: unknown error returned by c-code (cuDSS)",
     }
 }
@@ -936,21 +963,36 @@ mod tests {
             "cudssMatrixCreateCsr failed in the C code (cuDSS)"
         );
         assert_eq!(
-            handle_cudss_error_code(ERROR_CUDSS_SYM_FACTORIZATION),
-            "cuDSS symbolic factorization (CUDSS_PHASE_ANALYSIS) failed"
-        );
-        assert_eq!(
-            handle_cudss_error_code(ERROR_CUDSS_NUM_FACTORIZATION),
-            "cuDSS numeric factorization (CUDSS_PHASE_FACTORIZATION) failed"
-        );
-        assert_eq!(
-            handle_cudss_error_code(ERROR_CUDSS_SOLVE),
-            "cuDSS solve (CUDSS_PHASE_SOLVE) failed"
-        );
-        assert_eq!(
             handle_cudss_error_code(ERROR_CUDSS_DEVICE),
             "cuDSS device-side error (check CUDSS_DATA_INFO for details)"
         );
-        assert_eq!(handle_cudss_error_code(-123), default);
+        // cuDSS symbolic factorization status codes
+        assert_eq!(
+            handle_cudss_error_code(701),
+            "cuDSS symbolic factorization failed: CUDSS_STATUS_NOT_INITIALIZED"
+        );
+        assert_eq!(
+            handle_cudss_error_code(707),
+            "cuDSS symbolic factorization failed: CUDSS_STATUS_IR_FAILED"
+        );
+        // cuDSS numeric factorization status codes
+        assert_eq!(
+            handle_cudss_error_code(802),
+            "cuDSS numeric factorization failed: CUDSS_STATUS_ALLOC_FAILED"
+        );
+        assert_eq!(
+            handle_cudss_error_code(805),
+            "cuDSS numeric factorization failed: CUDSS_STATUS_EXECUTION_FAILED"
+        );
+        // cuDSS solve status codes
+        assert_eq!(
+            handle_cudss_error_code(903),
+            "cuDSS solve failed: CUDSS_STATUS_INVALID_VALUE"
+        );
+        assert_eq!(
+            handle_cudss_error_code(907),
+            "cuDSS solve failed: CUDSS_STATUS_IR_FAILED"
+        );
+        assert_eq!(handle_cudss_error_code(123), default);
     }
 }

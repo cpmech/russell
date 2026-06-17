@@ -326,7 +326,7 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
     /* Symbolic factorization */
     status = cudssExecute(solver->handle, CUDSS_PHASE_ANALYSIS, solver->config, solver->data, solver->aa_mat, NULL, NULL);
     if (status != CUDSS_STATUS_SUCCESS) {
-        return ERROR_CUDSS_SYM_FACTORIZATION;
+        return ERROR_CUDSS_SYM_FACTORIZATION + (int)status;
     }
 
     /* Synchronize */
@@ -377,7 +377,7 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
     status = cudssExecute(solver->handle, CUDSS_PHASE_FACTORIZATION, solver->config,
                           solver->data, solver->aa_mat, NULL, NULL);
     if (status != CUDSS_STATUS_SUCCESS) {
-        return ERROR_CUDSS_NUM_FACTORIZATION;
+        return ERROR_CUDSS_NUM_FACTORIZATION + (int)status;
     }
 
     /* Synchronize */
@@ -442,7 +442,7 @@ extern "C" int32_t solver_cudss_solve(struct InterfaceCUDSS *solver,
     /* Call solve */
     cudssStatus_t status = cudssExecute(solver->handle, CUDSS_PHASE_SOLVE, solver->config, solver->data, solver->aa_mat, solver->x_vec, solver->b_vec);
     if (status != CUDSS_STATUS_SUCCESS) {
-        return ERROR_CUDSS_SOLVE;
+        return ERROR_CUDSS_SOLVE + (int)status;
     }
 
     /* Synchronize */

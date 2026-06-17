@@ -13,6 +13,7 @@ pub struct StatsLinSolMain {
     pub platform: String,
     pub blas_lib: String,
     pub solver: String,
+    pub local_sparse: bool,
 }
 
 /// Holds information about the sparse matrix
@@ -106,6 +107,7 @@ impl StatsLinSol {
                     "OpenBLAS".to_string()
                 },
                 solver: unknown.clone(),
+                local_sparse: if cfg!(feature = "local_sparse") { true } else { false },
             },
             matrix: StatsLinSolMatrix {
                 name: unknown.clone(),

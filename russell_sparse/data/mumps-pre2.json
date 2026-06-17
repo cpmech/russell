@@ -2,7 +2,8 @@
   "main": {
     "platform": "Russell",
     "blas_lib": "Intel MKL",
-    "solver": "MUMPS-local"
+    "solver": "MUMPS",
+    "local_sparse": true
   },
   "matrix": {
     "name": "pre2",

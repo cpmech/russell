@@ -1,6 +1,6 @@
 use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
+use crate::constants::*;
 use russell_lab::{Stopwatch, Vector};
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK
@@ -347,11 +347,7 @@ impl LinSolTrait for SolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_sparse") {
-            "UMFPACK-local".to_string()
-        } else {
-            "UMFPACK".to_string()
-        };
+        stats.main.solver = "UMFPACK".to_string();
         stats.determinant.mantissa_real = self.determinant_coefficient;
         stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 10.0;

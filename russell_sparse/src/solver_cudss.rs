@@ -624,6 +624,40 @@ mod tests {
 
     #[test]
     #[serial]
+    fn factorize_and_solve_work_unsymmetric_pivot_params() {
+        // allocate x and rhs
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        // allocate a new solver
+        let mut solver = SolverCUDSS::new().unwrap();
+        assert!(!solver.factorized);
+
+        // sample matrix
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+
+        // set params
+        let mut params = LinSolParams::new();
+        params.pivot_epsilon = Some(1e-12);
+        params.refinement_nstep = Some(1);
+
+        // factorize works
+        solver.factorize(&coo, Some(params)).unwrap();
+        assert!(solver.factorized);
+
+        // solve works
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-12);
+
+        // calling solve again
+        let mut x_again = Vector::new(5);
+        solver.solve(&mut x_again, &rhs, false).unwrap();
+        vec_approx_eq(&x_again, x_correct, 1e-12);
+    }
+
+    #[test]
+    #[serial]
     fn factorize_and_solve_work_sym_psd() {
         // allocate x and rhs
         let mut x = Vector::new(5);

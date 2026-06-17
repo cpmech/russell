@@ -442,13 +442,16 @@ mod tests {
     use super::*;
     use crate::{CooMatrix, Samples};
     use russell_lab::{approx_eq, vec_approx_eq};
-    use serial_test::serial;
 
-    // IMPORTANT:
-    // We better not use the GPU concurrently; thus let's use serial_test::serial
+    /*
+    We're not using "serial" here because:
+    - Each SolverCUDSS gets its own CUDA stream and cuDSS handle
+    - cuDSS isolates device memory per cudssData_t/cudssHandle_t
+    - Test matrices are tiny (5×5) — no memory pressure
+    - Other CUDA libraries (cuBLAS, cuSOLVER) handle concurrency fine
+    */
 
     #[test]
-    #[serial]
     fn factorize_handles_errors() {
         // allocate a new solver
         let mut solver = SolverCUDSS::new().unwrap();
@@ -499,7 +502,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn factorize_and_solve_work_unsymmetric_default() {
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -557,7 +559,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn factorize_and_solve_work_unsymmetric_colamd() {
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -590,7 +591,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn factorize_and_solve_work_unsymmetric_with_matching() {
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -623,7 +623,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn factorize_and_solve_work_unsymmetric_pivot_params() {
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -657,7 +656,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn factorize_and_solve_work_sym_psd() {
         // allocate x and rhs
         let mut x = Vector::new(5);
@@ -695,7 +693,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn cudss_simple_spd() {
         // Corresponds to c_code/cudss-examples/cudss_simple.cpp
         //
@@ -729,7 +726,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn cudss_unsymmetric() {
         // Corresponds to c_code/cudss-examples/cudss_unsymmetric.cpp
         //

@@ -44,18 +44,11 @@ static inline void set_mumps_verbose(DMUMPS_STRUC_C *data, int32_t verbose) {
 
 /// @brief Allocates a new MUMPS interface
 struct InterfaceMUMPS *solver_mumps_new() {
-    struct InterfaceMUMPS *solver = (struct InterfaceMUMPS *)malloc(sizeof(struct InterfaceMUMPS));
+    struct InterfaceMUMPS *solver = (struct InterfaceMUMPS *)calloc(1, sizeof(struct InterfaceMUMPS));
 
     if (solver == NULL) {
         return NULL;
     }
-
-    solver->data.irn = NULL;
-    solver->data.jcn = NULL;
-    solver->data.a = NULL;
-    solver->done_job_init = C_FALSE;
-    solver->initialization_completed = C_FALSE;
-    solver->factorization_completed = C_FALSE;
 
     return solver;
 }

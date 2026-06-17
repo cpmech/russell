@@ -62,6 +62,11 @@ extern "C" {
 /// Wraps the MUMPS solver for (very large) sparse linear systems
 ///
 /// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
+///
+/// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
+/// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
+/// parallel region. These are bugs in the precompiled MUMPS library itself (likely uninitialized atomic
+/// variables in the scaling routine), not in our wrapper.
 pub struct SolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceMUMPS,

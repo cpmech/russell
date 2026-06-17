@@ -398,6 +398,29 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
         return ERROR_CUDA_SYNCHRONIZE;
     }
 
+    /* Check for device-side errors */
+    int device_info = 0;
+    size_t size_written = 0;
+    status = cudssDataGet(solver->handle, solver->data, CUDSS_DATA_INFO, &device_info, sizeof(device_info), &size_written);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_CONFIG_GET;
+    }
+    if (device_info != 0) {
+        return ERROR_CUDSS_DEVICE;
+    }
+
+    /* Print number of pivots (indicates (near) singularity) */
+    if (verbose == C_TRUE) {
+        int npivots = 0;
+        status = cudssDataGet(solver->handle, solver->data, CUDSS_DATA_NPIVOTS, &npivots, sizeof(npivots), &size_written);
+        if (status != CUDSS_STATUS_SUCCESS) {
+            return ERROR_CUDSS_CONFIG_GET;
+        }
+        if (npivots > 0) {
+            printf("solver_cudss_factorize: WARNING: %d pivot(s) perturbed (matrix may be (nearly) singular)\n", npivots);
+        }
+    }
+
     /* Show message */
     if (verbose == C_TRUE) {
         printf("solver_cudss_factorize: Numeric factorization completed\n");
@@ -438,6 +461,17 @@ extern "C" int32_t solver_cudss_solve(struct InterfaceCUDSS *solver,
     cuda_error = cudaStreamSynchronize(solver->stream);
     if (cuda_error != cudaSuccess) {
         return ERROR_CUDA_SYNCHRONIZE;
+    }
+
+    /* Check for device-side errors */
+    int device_info = 0;
+    size_t size_written = 0;
+    status = cudssDataGet(solver->handle, solver->data, CUDSS_DATA_INFO, &device_info, sizeof(device_info), &size_written);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_CONFIG_GET;
+    }
+    if (device_info != 0) {
+        return ERROR_CUDSS_DEVICE;
     }
 
     /* Copy solution to output vector */

@@ -45,6 +45,26 @@ extern "C" {
 }
 
 /// Wraps the cuDSS solver for sparse linear systems
+///
+/// # Singularity detection
+///
+/// cuDSS returns both **host-side** and **device-side** errors:
+///
+/// * **Host-side errors** are returned by `cudssExecute()` via `cudssStatus_t`
+///   and are checked directly. If non-zero, the corresponding error code is returned.
+///
+/// * **Device-side errors** (e.g., non-positive minor in an SPD matrix) are only
+///   available asynchronously via `cudssDataGet(handle, data, CUDSS_DATA_INFO, ...)`
+///   after synchronizing the CUDA stream. These are checked after each phase.
+///
+/// **Important:** cuDSS does **not** report structural or numerical singularity as
+/// an error. Instead, it replaces small diagonal entries (pivots smaller than
+/// `pivot_epsilon`) with an appropriately signed epsilon value and continues the
+/// factorization. The factorization therefore "succeeds" on singular matrices by
+/// perturbing them slightly. To detect that pivoting occurred, query
+/// `CUDSS_DATA_NPIVOTS` after factorization.
+///
+/// See: <https://docs.nvidia.com/cuda/cudss/types.html#cudssdataparam-t>
 pub struct SolverCUDSS {
     /// Holds a pointer to the C interface to cuDSS
     solver: *mut InterfaceCUDSS,
@@ -416,6 +436,7 @@ const ERROR_CUDSS_MATRIX_CREATE_CSR: i32 = 600;
 const ERROR_CUDSS_SYM_FACTORIZATION: i32 = 700;
 const ERROR_CUDSS_NUM_FACTORIZATION: i32 = 800;
 const ERROR_CUDSS_SOLVE: i32 = 900;
+const ERROR_CUDSS_DEVICE: i32 = 1000;
 
 /// Handles error code
 fn handle_cudss_error_code(err: i32) -> StrError {
@@ -431,6 +452,7 @@ fn handle_cudss_error_code(err: i32) -> StrError {
         ERROR_CUDSS_SYM_FACTORIZATION => "cuDSS symbolic factorization (CUDSS_PHASE_ANALYSIS) failed",
         ERROR_CUDSS_NUM_FACTORIZATION => "cuDSS numeric factorization (CUDSS_PHASE_FACTORIZATION) failed",
         ERROR_CUDSS_SOLVE => "cuDSS solve (CUDSS_PHASE_SOLVE) failed",
+        ERROR_CUDSS_DEVICE => "cuDSS device-side error (check CUDSS_DATA_INFO for details)",
         _ => "Error: unknown error returned by c-code (cuDSS)",
     }
 }
@@ -500,6 +522,21 @@ mod tests {
             Some("subsequent factorizations must use the same matrix (nnz differs)")
         );
     }
+
+    /*
+    // We cannot detect singular matrix with cuDSS
+    #[test]
+    fn factorize_fails_on_singular_matrix() {
+        let mut solver = SolverCUDSS::new().unwrap();
+        let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 0.0).unwrap();
+        let mut params = LinSolParams::new();
+        params.verbose = true;
+        solver.factorize(&coo, Some(params)).unwrap();
+        // assert_eq!(solver.factorize(&coo, None), Err("Error(1): Matrix is singular"));
+    }
+    */
 
     #[test]
     fn factorize_and_solve_work_unsymmetric_default() {
@@ -899,6 +936,10 @@ mod tests {
         assert_eq!(
             handle_cudss_error_code(ERROR_CUDSS_SOLVE),
             "cuDSS solve (CUDSS_PHASE_SOLVE) failed"
+        );
+        assert_eq!(
+            handle_cudss_error_code(ERROR_CUDSS_DEVICE),
+            "cuDSS device-side error (check CUDSS_DATA_INFO for details)"
         );
         assert_eq!(handle_cudss_error_code(-123), default);
     }

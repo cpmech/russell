@@ -30,6 +30,7 @@
 #define ERROR_CUDSS_SYM_FACTORIZATION 700
 #define ERROR_CUDSS_NUM_FACTORIZATION 800
 #define ERROR_CUDSS_SOLVE 900
+#define ERROR_CUDSS_DEVICE 1000
 
 // UMFPACK -------------------------------------------------------------------------------------------
 

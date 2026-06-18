@@ -362,13 +362,13 @@ pub(crate) fn klu_ordering(ordering: Ordering) -> i32 {
 pub(crate) fn klu_scaling(scaling: Scaling) -> i32 {
     match scaling {
         Scaling::Auto => KLU_SCALE_AUTO,
-        Scaling::Column => KLU_ORDERING_AUTO,
-        Scaling::Diagonal => KLU_ORDERING_AUTO,
+        Scaling::Column => KLU_SCALE_AUTO,
+        Scaling::Diagonal => KLU_SCALE_AUTO,
         Scaling::Max => KLU_SCALE_MAX,
         Scaling::No => KLU_SCALE_NONE,
-        Scaling::RowCol => KLU_ORDERING_AUTO,
-        Scaling::RowColIter => KLU_ORDERING_AUTO,
-        Scaling::RowColRig => KLU_ORDERING_AUTO,
+        Scaling::RowCol => KLU_SCALE_AUTO,
+        Scaling::RowColIter => KLU_SCALE_AUTO,
+        Scaling::RowColRig => KLU_SCALE_AUTO,
         Scaling::Sum => KLU_SCALE_SUM,
     }
 }

@@ -252,6 +252,10 @@ impl StatsLinSol {
         assert_eq!(self.time_nanoseconds.solve_array.len(), nrun);
         if nrun > 0 {
             self.time_nanoseconds.total_ifs_array = vec![0; nrun];
+            self.time_human.initialize_array = vec![String::new(); nrun];
+            self.time_human.factorize_array = vec![String::new(); nrun];
+            self.time_human.solve_array = vec![String::new(); nrun];
+            self.time_human.total_ifs_array = vec![String::new(); nrun];
             let mut ave_init = 0.0;
             let mut ave_fact = 0.0;
             let mut ave_solve = 0.0;
@@ -266,6 +270,10 @@ impl StatsLinSol {
                 ave_solve += t_solve as f64;
                 ave_total += t_total as f64;
                 self.time_nanoseconds.total_ifs_array[i] = t_total;
+                self.time_human.initialize_array[i] = format_nanoseconds(t_init);
+                self.time_human.factorize_array[i] = format_nanoseconds(t_fact);
+                self.time_human.solve_array[i] = format_nanoseconds(t_solve);
+                self.time_human.total_ifs_array[i] = format_nanoseconds(t_total);
             }
             let den = nrun as f64;
             ave_init /= den;
@@ -372,6 +380,11 @@ mod tests {
         assert_eq!(stats.time_human.solve, "8s");
         assert_eq!(stats.time_human.total_ifs, "15s");
         assert_eq!(stats.time_human.verify, "4s");
+
+        assert_eq!(stats.time_human.initialize_array, &["1s", "2s", "6s"]);
+        assert_eq!(stats.time_human.factorize_array, &["2s", "3s", "7s"]);
+        assert_eq!(stats.time_human.solve_array, &["3s", "7s", "14s"]);
+        assert_eq!(stats.time_human.total_ifs_array, &["6s", "12s", "27s"]);
     }
 
     #[test]
@@ -398,5 +411,55 @@ mod tests {
         assert_eq!(res.time_human.solve, "8s");
         assert_eq!(res.time_human.total_ifs, "15s");
         assert_eq!(res.time_human.verify, "4s");
+
+        assert_eq!(res.time_human.initialize_array, &["1s", "2s", "6s"]);
+        assert_eq!(res.time_human.factorize_array, &["2s", "3s", "7s"]);
+        assert_eq!(res.time_human.solve_array, &["3s", "7s", "14s"]);
+        assert_eq!(res.time_human.total_ifs_array, &["6s", "12s", "27s"]);
+    }
+
+    #[test]
+    fn derive_with_no_runs_works() {
+        let mut stats = StatsLinSol::new();
+        let json = stats.get_json();
+        assert!(json.len() > 0);
+
+        assert_eq!(stats.time_nanoseconds.initialize, 0);
+        assert_eq!(stats.time_nanoseconds.factorize, 0);
+        assert_eq!(stats.time_nanoseconds.solve, 0);
+        assert_eq!(stats.time_nanoseconds.total_ifs, 0);
+        assert!(stats.time_nanoseconds.total_ifs_array.is_empty());
+
+        assert_eq!(stats.time_human.read_matrix, "0ns");
+        assert_eq!(stats.time_human.initialize, "0ns");
+        assert_eq!(stats.time_human.factorize, "0ns");
+        assert_eq!(stats.time_human.solve, "0ns");
+        assert_eq!(stats.time_human.total_ifs, "0ns");
+        assert_eq!(stats.time_human.verify, "0ns");
+
+        assert!(stats.time_human.initialize_array.is_empty());
+        assert!(stats.time_human.factorize_array.is_empty());
+        assert!(stats.time_human.solve_array.is_empty());
+        assert!(stats.time_human.total_ifs_array.is_empty());
+    }
+
+    #[test]
+    fn is_memory_error_works() {
+        use super::is_memory_error;
+
+        assert!(is_memory_error("MALLOC failed"));
+        assert!(is_memory_error("Not enough memory on device"));
+        assert!(is_memory_error("ALLOC_FAILED in some routine"));
+        assert!(is_memory_error("cudaMalloc returned error"));
+        assert!(is_memory_error("memory is too small for operation"));
+
+        assert!(!is_memory_error(""));
+        assert!(!is_memory_error("some other error"));
+    }
+
+    #[test]
+    fn read_json_errors() {
+        assert!(StatsLinSol::read_json("/tmp/nonexistent_file_xyz_stats.json").is_err());
+        assert!(StatsLinSol::read_json("/tmp").is_err());
     }
 }

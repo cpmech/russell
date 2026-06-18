@@ -1,7 +1,7 @@
 use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
-use russell_lab::{vec_copy, Stopwatch, Vector};
+use crate::constants::*;
+use russell_lab::{Stopwatch, Vector, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceKLU
 ///
@@ -310,9 +310,9 @@ impl LinSolTrait for SolverKLU {
             KLU_SCALE_MAX => "Max".to_string(),
             _ => "Unknown".to_string(),
         };
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -528,13 +528,13 @@ mod tests {
         vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
-        let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "KLU");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Max");
     }

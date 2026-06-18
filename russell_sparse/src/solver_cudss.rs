@@ -1,6 +1,6 @@
 use super::{CooMatrix, CsrMatrix, LinSolParams, LinSolTrait, Matching, Ordering, Pivoting, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
+use crate::constants::*;
 use russell_lab::{Stopwatch, Vector};
 
 /// Opaque struct holding a C-pointer to InterfaceCUDSS
@@ -322,9 +322,9 @@ impl LinSolTrait for SolverCUDSS {
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
         stats.main.solver = "cuDSS".to_string();
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -610,9 +610,10 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
-        assert!(stats.time_nanoseconds.initialize > 0);
-        assert!(stats.time_nanoseconds.factorize > 0);
-        assert!(stats.time_nanoseconds.solve > 0);
+        assert_eq!(stats.main.solver, "cuDSS");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
 
         // calling solve again
         let mut x_again = Vector::new(5);
@@ -846,9 +847,8 @@ mod tests {
         vec_approx_eq(&x, x_correct, 1e-10);
 
         // calling solve again works
-        let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(&x_again, x_correct, 1e-10);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-10);
 
         // update stats
         let mut stats = StatsLinSol::new();

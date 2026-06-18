@@ -1,7 +1,7 @@
 use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
-use russell_lab::{using_intel_mkl, vec_copy, Stopwatch, Vector};
+use crate::constants::*;
+use russell_lab::{Stopwatch, Vector, using_intel_mkl, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
 ///
@@ -414,9 +414,9 @@ impl LinSolTrait for SolverMUMPS {
         stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -714,23 +714,33 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "MUMPS");
         assert_eq!(stats.output.effective_ordering, "Pord");
         assert_eq!(stats.output.effective_scaling, "No");
 
         // calling solve again works
-        let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-14);
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work_spd() {
+        // set params
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Auto;
+        params.scaling = Scaling::Auto;
 
         // solve with positive-definite matrix works
         let (coo_pd_lower, _, _, _) = Samples::mkl_positive_definite_5x5_lower();
-        params.ordering = Ordering::Auto;
-        params.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();
+
         assert!(!solver.factorized);
         solver.factorize(&coo_pd_lower, Some(params)).unwrap();
+
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+
         solver.solve(&mut x, &rhs, false).unwrap();
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, x_correct, 1e-10);

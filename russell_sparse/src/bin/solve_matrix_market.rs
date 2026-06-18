@@ -64,6 +64,15 @@ struct Options {
     /// Hide JSON output (useful to pipe MUMPS/UMFPACK logs to files)
     #[structopt(long)]
     hide_json: bool,
+
+    /// Number of runs
+    ///
+    /// If more than one run:
+    /// * The total time (initialize + factorize + solve) field will hold the average value
+    /// * The total time array will hold each individually result
+    /// * The error fields will hold the maximum error among runs
+    #[structopt(short = "r", long, default_value = "1")]
+    nrun: u32,
 }
 
 fn main() -> Result<(), StrError> {
@@ -129,54 +138,64 @@ fn main() -> Result<(), StrError> {
         stats.matrix.complex = false;
         stats.matrix.symmetric = format!("{:?}", sym);
 
-        // allocate and configure the solver
-        let mut solver = LinSolver::new(genie)?;
-
-        // use a matching algorithm if Cudss and not symmetric
-        if genie == Genie::Cudss && sym.no() {
-            params.matching = Matching::Auto;
-        }
-
-        // call factorize
-        if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
-            if is_memory_error(e) {
-                stats.main.out_of_memory = true;
-                if !opt.hide_json {
-                    println!("{}", stats.get_json());
-                }
-                return Ok(());
-            }
-            return Err(e);
-        }
-
         // allocate vectors
         let mut x = Vector::new(nrow);
         let rhs = Vector::filled(nrow, 1.0);
 
-        // solve linear system
-        solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+        // run a number of times
+        for i_run in 0..opt.nrun {
+            // allocate and configure the solver
+            let mut solver = LinSolver::new(genie)?;
 
-        // verify the solution
-        sw.reset();
-        stats.verify = VerifyLinSys::from(&coo, &x, &rhs)?;
-        stats.time_nanoseconds.verify = sw.stop();
+            // use a matching algorithm if Cudss and not symmetric
+            if genie == Genie::Cudss && sym.no() {
+                params.matching = Matching::Auto;
+            }
 
-        // update stats
-        solver.actual.update_stats(&mut stats);
+            // call factorize
+            if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+                if is_memory_error(e) {
+                    stats.main.out_of_memory = true;
+                    if !opt.hide_json {
+                        println!("{}", stats.get_json());
+                    }
+                    return Ok(());
+                }
+                return Err(e);
+            }
 
-        // check (debug)
-        if stats.matrix.name == "bfwb62" {
-            let tolerance = match genie {
-                Genie::Cudss => 1e-10,
-                Genie::Klu => 1e-10,
-                Genie::Mumps => 1e-10,
-                Genie::Umfpack => 1e-10,
-            };
-            let correct_x = get_bfwb62_correct_x();
-            for i in 0..nrow {
-                let diff = f64::abs(x.get(i) - correct_x.get(i));
-                if diff > tolerance {
-                    println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
+            // solve linear system
+            solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+
+            // update stats
+            solver.actual.update_stats(&mut stats);
+
+            // verify the solution
+            sw.reset();
+            let verify = VerifyLinSys::from(&coo, &x, &rhs)?;
+            stats.time_nanoseconds.verify = sw.stop();
+
+            // store largest errors
+            if i_run == 0 {
+                stats.verify = verify;
+            } else {
+                stats.verify = stats.verify.max_relative_error(&verify);
+            }
+
+            // check (debug)
+            if stats.matrix.name == "bfwb62" {
+                let tolerance = match genie {
+                    Genie::Cudss => 1e-10,
+                    Genie::Klu => 1e-10,
+                    Genie::Mumps => 1e-10,
+                    Genie::Umfpack => 1e-10,
+                };
+                let correct_x = get_bfwb62_correct_x();
+                for i in 0..nrow {
+                    let diff = f64::abs(x.get(i) - correct_x.get(i));
+                    if diff > tolerance {
+                        println!("BFWB62 FAILED WITH NUMERICAL ERROR = {:.2e} @ {} COMPONENT", diff, i);
+                    }
                 }
             }
         }
@@ -199,35 +218,45 @@ fn main() -> Result<(), StrError> {
         stats.matrix.complex = true;
         stats.matrix.symmetric = format!("{:?}", sym);
 
-        // allocate and configure the solver
-        let mut solver = ComplexLinSolver::new(genie)?;
-
-        // call factorize
-        if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
-            if is_memory_error(e) {
-                stats.main.out_of_memory = true;
-                if !opt.hide_json {
-                    println!("{}", stats.get_json());
-                }
-                return Ok(());
-            }
-            return Err(e);
-        }
-
         // allocate vectors
         let mut x = ComplexVector::new(nrow);
         let rhs = ComplexVector::filled(nrow, cpx!(1.0, 1.0));
 
-        // solve linear system
-        solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+        // run a number of times
+        for i_run in 0..opt.nrun {
+            // allocate and configure the solver
+            let mut solver = ComplexLinSolver::new(genie)?;
 
-        // verify the solution
-        sw.reset();
-        stats.verify = VerifyLinSys::from_complex(&coo, &x, &rhs)?;
-        stats.time_nanoseconds.verify = sw.stop();
+            // call factorize
+            if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+                if is_memory_error(e) {
+                    stats.main.out_of_memory = true;
+                    if !opt.hide_json {
+                        println!("{}", stats.get_json());
+                    }
+                    return Ok(());
+                }
+                return Err(e);
+            }
 
-        // update stats
-        solver.actual.update_stats(&mut stats);
+            // solve linear system
+            solver.actual.solve(&mut x, &rhs, opt.verbose)?;
+
+            // update stats
+            solver.actual.update_stats(&mut stats);
+
+            // verify the solution
+            sw.reset();
+            let verify = VerifyLinSys::from_complex(&coo, &x, &rhs)?;
+            stats.time_nanoseconds.verify = sw.stop();
+
+            // store largest errors
+            if i_run == 0 {
+                stats.verify = verify;
+            } else {
+                stats.verify = stats.verify.max_relative_error(&verify);
+            }
+        }
     }
 
     // print stats

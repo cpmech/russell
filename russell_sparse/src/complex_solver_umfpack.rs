@@ -1,12 +1,12 @@
-use super::{handle_umfpack_error_code, umfpack_ordering, umfpack_scaling};
 use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{
     UMFPACK_ORDERING_AMD, UMFPACK_ORDERING_BEST, UMFPACK_ORDERING_CHOLMOD, UMFPACK_ORDERING_METIS,
     UMFPACK_ORDERING_NONE, UMFPACK_SCALE_MAX, UMFPACK_SCALE_NONE, UMFPACK_SCALE_SUM, UMFPACK_STRATEGY_AUTO,
     UMFPACK_STRATEGY_SYMMETRIC, UMFPACK_STRATEGY_UNSYMMETRIC,
 };
-use crate::constants::*;
+use super::{handle_umfpack_error_code, umfpack_ordering, umfpack_scaling};
 use crate::StrError;
+use crate::constants::*;
 use russell_lab::{Complex64, ComplexVector, Stopwatch};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexUMFPACK
@@ -378,9 +378,9 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
             UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
             _ => "Unknown".to_string(),
         };
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -539,13 +539,13 @@ mod tests {
         complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
-        let mut x_again = ComplexVector::new(3);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "UMFPACK");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Sum");
     }

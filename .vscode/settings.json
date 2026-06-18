@@ -225,6 +225,7 @@
     "nrhs",
     "nroot",
     "nrow",
+    "nrun",
     "nsamples",
     "nstage",
     "nstep",

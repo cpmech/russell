@@ -1,7 +1,7 @@
 use super::{ComplexCooMatrix, CooMatrix};
 use crate::StrError;
-use russell_lab::{complex_vec_norm, complex_vec_update, cpx, ComplexVector};
-use russell_lab::{find_index_abs_max, vec_norm, vec_update, Norm, Vector};
+use russell_lab::{ComplexVector, complex_vec_norm, complex_vec_update, cpx};
+use russell_lab::{Norm, Vector, find_index_abs_max, vec_norm, vec_update};
 use serde::{Deserialize, Serialize};
 
 /// Verifies the linear system a ⋅ x = rhs
@@ -144,6 +144,15 @@ impl VerifyLinSys {
             relative_error,
         })
     }
+
+    /// Returns a new structure with the maximum relative error among this and other error
+    pub fn max_relative_error(&self, other: &VerifyLinSys) -> VerifyLinSys {
+        if other.relative_error > self.relative_error {
+            other.clone()
+        } else {
+            self.clone()
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +161,7 @@ impl VerifyLinSys {
 mod tests {
     use super::VerifyLinSys;
     use crate::{ComplexCooMatrix, CooMatrix, Samples, Sym};
-    use russell_lab::{approx_eq, cpx, ComplexVector, Vector};
+    use russell_lab::{ComplexVector, Vector, approx_eq, cpx};
 
     #[test]
     fn from_captures_errors() {

@@ -1,13 +1,13 @@
-use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
 use super::{ComplexCooMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{
     MUMPS_ORDERING_AMD, MUMPS_ORDERING_AMF, MUMPS_ORDERING_AUTO, MUMPS_ORDERING_METIS, MUMPS_ORDERING_PORD,
     MUMPS_ORDERING_QAMD, MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL,
     MUMPS_SCALING_NO, MUMPS_SCALING_ROW_COL, MUMPS_SCALING_ROW_COL_ITER, MUMPS_SCALING_ROW_COL_RIG,
 };
-use crate::constants::*;
+use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
 use crate::StrError;
-use russell_lab::{complex_vec_copy, using_intel_mkl, Complex64, ComplexVector, Stopwatch};
+use crate::constants::*;
+use russell_lab::{Complex64, ComplexVector, Stopwatch, complex_vec_copy, using_intel_mkl};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexMUMPS
 ///
@@ -414,9 +414,9 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
         stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -584,13 +584,13 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "MUMPS");
         assert_eq!(stats.output.effective_ordering, "Pord");
         assert_eq!(stats.output.effective_scaling, "No");
 
         // calling solve again works
-        let mut x_again = ComplexVector::new(3);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // solve with positive-definite matrix works
         params.positive_definite = true;

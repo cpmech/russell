@@ -347,6 +347,7 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
 
 /// @brief Performs the numeric factorization
 extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
+                                          int32_t *effective_matching,
                                           C_BOOL verbose,
                                           const double *values) {
 
@@ -408,6 +409,14 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
             printf("solver_cudss_factorize: WARNING: %d pivot(s) perturbed (matrix may be (nearly) singular)\n", npivots);
         }
     }
+
+    /* Retrieve the effective (used) matching algorithm */
+    cudssMatchingAlg_t used_matching_alg = (cudssMatchingAlg_t)-1;
+    status = cudssConfigGet(solver->config, CUDSS_CONFIG_MATCHING_ALG, &used_matching_alg, sizeof(cudssMatchingAlg_t), &size_written);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_CONFIG_GET;
+    }
+    *effective_matching = used_matching_alg;
 
     /* Show message */
     if (verbose == C_TRUE) {

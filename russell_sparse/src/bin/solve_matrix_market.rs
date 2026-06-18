@@ -25,6 +25,14 @@ struct Options {
     #[structopt(short = "s", long, default_value = "Auto")]
     scaling: String,
 
+    /// Matching algorithm to solve symmetric matrices with cuDSS
+    #[structopt(long, default_value = "None")]
+    matching_sym: String,
+
+    /// Matching algorithm to solve general (possibly unsymmetric) matrices with cuDSS
+    #[structopt(long, default_value = "Auto")]
+    matching_gen: String,
+
     /// Number of threads for MUMPS
     #[structopt(short = "m", long, default_value = "0")]
     mumps_nt: u32,
@@ -114,6 +122,7 @@ fn main() -> Result<(), StrError> {
     let mut stats = StatsLinSol::new();
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
+    stats.requests.matching = format!("{:?}", params.matching);
     stats.requests.mumps_num_threads = params.mumps_num_threads;
 
     // read the matrix
@@ -138,6 +147,15 @@ fn main() -> Result<(), StrError> {
         stats.matrix.complex = false;
         stats.matrix.symmetric = format!("{:?}", sym);
 
+        // set cuDSS matching algorithm
+        if genie == Genie::Cudss {
+            if sym.no() {
+                params.matching = Matching::from(&opt.matching_gen);
+            } else {
+                params.matching = Matching::from(&opt.matching_sym);
+            }
+        }
+
         // allocate vectors
         let mut x = Vector::new(nrow);
         let rhs = Vector::filled(nrow, 1.0);
@@ -146,11 +164,6 @@ fn main() -> Result<(), StrError> {
         for i_run in 0..opt.nrun {
             // allocate and configure the solver
             let mut solver = LinSolver::new(genie)?;
-
-            // use a matching algorithm if Cudss and not symmetric
-            if genie == Genie::Cudss && sym.no() {
-                params.matching = Matching::Auto;
-            }
 
             // call factorize
             if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
@@ -217,6 +230,15 @@ fn main() -> Result<(), StrError> {
         stats.matrix.nnz = nnz;
         stats.matrix.complex = true;
         stats.matrix.symmetric = format!("{:?}", sym);
+
+        // set cuDSS matching algorithm
+        if genie == Genie::Cudss {
+            if sym.no() {
+                params.matching = Matching::from(&opt.matching_gen);
+            } else {
+                params.matching = Matching::from(&opt.matching_sym);
+            }
+        }
 
         // allocate vectors
         let mut x = ComplexVector::new(nrow);

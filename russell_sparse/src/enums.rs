@@ -456,7 +456,7 @@ impl Scaling {
 }
 
 impl Matching {
-    /// Returns the Matching by name (default is Auto)
+    /// Returns the Matching by name (default is None)
     pub fn from(matching: &str) -> Self {
         match matching.to_lowercase().as_str() {
             "none" => Matching::None,
@@ -466,7 +466,7 @@ impl Matching {
             "maxmindiagalt" => Matching::MaxMinDiagAlt,
             "maxdiagsum" => Matching::MaxDiagSum,
             "maxdiagproduct" => Matching::MaxDiagProduct,
-            _ => Matching::Auto,
+            _ => Matching::None, // <<< this is the default
         }
     }
 }
@@ -627,7 +627,7 @@ mod tests {
         assert_eq!(Matching::from("maxdiagsum"), Matching::MaxDiagSum);
         assert_eq!(Matching::from("maxdiagproduct"), Matching::MaxDiagProduct);
 
-        assert_eq!(Matching::from("unknown"), Matching::Auto);
+        assert_eq!(Matching::from("unknown"), Matching::None);
     }
 
     #[test]

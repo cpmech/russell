@@ -40,7 +40,12 @@ unsafe extern "C" {
         col_indices: *const i32,
         values: *const f64,
     ) -> i32;
-    fn solver_cudss_factorize(solver: *mut InterfaceCUDSS, verbose: CcBool, values: *const f64) -> i32;
+    fn solver_cudss_factorize(
+        solver: *mut InterfaceCUDSS,
+        effective_matching: *mut i32,
+        verbose: CcBool,
+        values: *const f64,
+    ) -> i32;
     fn solver_cudss_solve(solver: *mut InterfaceCUDSS, x: *mut f64, rhs: *const f64, verbose: CcBool) -> i32;
 }
 
@@ -97,6 +102,9 @@ pub struct SolverCUDSS {
     /// Holds the number of non-zeros saved in initialize
     initialized_nnz: usize,
 
+    /// Holds the used matching algorithm (after factorize)
+    effective_matching: i32,
+
     /// Stopwatch to measure computation times
     stopwatch: Stopwatch,
 
@@ -135,6 +143,7 @@ impl SolverCUDSS {
                 initialized_sym: Sym::No,
                 initialized_ndim: 0,
                 initialized_nnz: 0,
+                effective_matching: 0,
                 stopwatch: Stopwatch::new(),
                 time_initialize_ns: 0,
                 time_factorize_ns: 0,
@@ -258,7 +267,8 @@ impl LinSolTrait for SolverCUDSS {
         // call factorize
         self.stopwatch.reset();
         unsafe {
-            let status = solver_cudss_factorize(self.solver, verbose, csr.values.as_ptr());
+            let status =
+                solver_cudss_factorize(self.solver, &mut self.effective_matching, verbose, csr.values.as_ptr());
             if status != SUCCESSFUL_EXIT {
                 return Err(handle_cudss_error_code(status));
             }
@@ -325,6 +335,18 @@ impl LinSolTrait for SolverCUDSS {
         stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
         stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
         stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
+
+        // set effective matching algorithm
+        stats.output.effective_matching = match self.effective_matching {
+            CUDSS_MATCHING_ALG_NONE => "None".to_string(),
+            CUDSS_MATCHING_ALG_AUTO => "Auto".to_string(),
+            CUDSS_MATCHING_ALG_MAX_DIAG_COUNT => "MaxDiagCount".to_string(),
+            CUDSS_MATCHING_ALG_MAX_MIN_DIAG => "MaxMinDiag".to_string(),
+            CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT => "MaxMinDiagAlt".to_string(),
+            CUDSS_MATCHING_ALG_MAX_DIAG_SUM => "MaxDiagSum".to_string(),
+            CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT => "MaxDiagProduct".to_string(),
+            _ => "Unknown".to_string(),
+        };
     }
 
     /// Returns the nanoseconds spent on initialize

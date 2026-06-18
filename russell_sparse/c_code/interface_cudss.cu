@@ -348,6 +348,7 @@ extern "C" int32_t solver_cudss_initialize(struct InterfaceCUDSS *solver,
 /// @brief Performs the numeric factorization
 extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
                                           int32_t *effective_matching,
+                                          int32_t *effective_pivoting,
                                           C_BOOL verbose,
                                           const double *values) {
 
@@ -417,6 +418,14 @@ extern "C" int32_t solver_cudss_factorize(struct InterfaceCUDSS *solver,
         return ERROR_CUDSS_CONFIG_GET;
     }
     *effective_matching = used_matching_alg;
+
+    /* Retrieve the effective (used) pivoting strategy */
+    cudssPivotType_t used_pivot = (cudssPivotType_t)-1;
+    status = cudssConfigGet(solver->config, CUDSS_CONFIG_PIVOT_TYPE, &used_pivot, sizeof(cudssPivotType_t), &size_written);
+    if (status != CUDSS_STATUS_SUCCESS) {
+        return ERROR_CUDSS_CONFIG_GET;
+    }
+    *effective_pivoting = used_pivot;
 
     /* Show message */
     if (verbose == C_TRUE) {

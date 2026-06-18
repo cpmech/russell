@@ -34,6 +34,7 @@ pub struct StatsLinSolRequests {
     pub ordering: String,
     pub scaling: String,
     pub matching: String,
+    pub pivoting: String,
     pub mumps_num_threads: usize,
 }
 
@@ -43,6 +44,7 @@ pub struct StatsLinSolOutput {
     pub effective_ordering: String,
     pub effective_scaling: String,
     pub effective_matching: String,
+    pub effective_pivoting: String,
     pub effective_mumps_num_threads: usize,
     pub openmp_num_threads: usize,
     pub umfpack_strategy: String,
@@ -133,12 +135,14 @@ impl StatsLinSol {
                 ordering: unknown.clone(),
                 scaling: unknown.clone(),
                 matching: unknown.clone(),
+                pivoting: unknown.clone(),
                 mumps_num_threads: 0,
             },
             output: StatsLinSolOutput {
                 effective_ordering: unknown.clone(),
                 effective_scaling: unknown.clone(),
                 effective_matching: unknown.clone(),
+                effective_pivoting: unknown.clone(),
                 effective_mumps_num_threads: 0,
                 openmp_num_threads: 0,
                 umfpack_strategy: unknown.clone(),

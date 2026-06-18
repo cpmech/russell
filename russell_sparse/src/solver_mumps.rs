@@ -728,6 +728,22 @@ mod tests {
 
     #[test]
     #[serial]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = SolverMUMPS::new().unwrap();
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Pord;
+        params.scaling = Scaling::RowCol;
+        solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Amd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+    }
+
+    #[test]
+    #[serial]
     fn factorize_and_solve_work_spd() {
         // set params
         let mut params = LinSolParams::new();

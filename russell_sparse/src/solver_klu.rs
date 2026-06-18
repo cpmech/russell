@@ -476,6 +476,21 @@ mod tests {
     }
 
     #[test]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = SolverKLU::new().unwrap();
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
+        solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Colamd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+    }
+
+    #[test]
     fn factorize_fails_on_singular_matrix() {
         let mut solver = SolverKLU::new().unwrap();
         let mut coo = CooMatrix::new(2, 2, 2, Sym::No).unwrap();

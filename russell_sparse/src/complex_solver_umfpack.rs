@@ -183,6 +183,12 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
     ///   if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -204,6 +210,9 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
             self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
@@ -484,11 +493,23 @@ mod tests {
         let det = m * f64::powf(10.0, solver.determinant_exponent);
         complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
 
-        // calling factorize again works
+        // calling factorize again works (no determinant check since compute_determinant is false)
+        solver.factorize(&coo, None).unwrap();
+    }
+
+    #[test]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
         solver.factorize(&coo, Some(params)).unwrap();
-        let m = cpx!(solver.determinant_coefficient_real, solver.determinant_coefficient_imag);
-        let det = m * f64::powf(10.0, solver.determinant_exponent);
-        complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
+        params.ordering = Ordering::Metis;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 
     #[test]

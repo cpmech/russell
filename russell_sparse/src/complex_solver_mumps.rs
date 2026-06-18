@@ -69,6 +69,11 @@ unsafe extern "C" {
 /// Wraps the MUMPS solver for (very large) sparse linear systems
 ///
 /// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
+///
+/// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
+/// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
+/// parallel region. These are bugs in the precompiled MUMPS library itself (likely uninitialized atomic
+/// variables in the scaling routine), not in our wrapper.
 pub struct ComplexSolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceComplexMUMPS,
@@ -191,6 +196,12 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
     ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -213,6 +224,9 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
         } else {
             if mat.nrow != mat.ncol {
@@ -625,5 +639,21 @@ mod tests {
             cpx!(123.0 / 2.0, 0.0),
         ];
         complex_vec_approx_eq(&x, x_correct, 1e-10);
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = ComplexSolverMUMPS::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Pord;
+        params.scaling = Scaling::RowCol;
+        solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Amd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 }

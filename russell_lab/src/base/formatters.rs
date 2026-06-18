@@ -1,5 +1,5 @@
-use num_traits::cast::ToPrimitive;
 use num_traits::Num;
+use num_traits::cast::ToPrimitive;
 use std::fmt::{self, Write};
 
 const NS_PER_NANOSECOND: u128 = 1;
@@ -25,9 +25,21 @@ fn format_nanoseconds_in_seconds_with_digits(buf: &mut String, value: u128, digi
     if value < NS_PER_MICROSECOND {
         write!(buf, "{}ns", value).unwrap();
     } else if value < NS_PER_MILLISECOND {
-        write!(buf, "{:.digits$}µs", (value as f64) / (NS_PER_MICROSECOND as f64), digits = digits).unwrap();
+        write!(
+            buf,
+            "{:.digits$}µs",
+            (value as f64) / (NS_PER_MICROSECOND as f64),
+            digits = digits
+        )
+        .unwrap();
     } else {
-        write!(buf, "{:.digits$}ms", (value as f64) / (NS_PER_MILLISECOND as f64), digits = digits).unwrap();
+        write!(
+            buf,
+            "{:.digits$}ms",
+            (value as f64) / (NS_PER_MILLISECOND as f64),
+            digits = digits
+        )
+        .unwrap();
     }
 }
 
@@ -92,7 +104,7 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
 /// use russell_lab::format_nanoseconds_with_digits;
 ///
 /// let res = format_nanoseconds_with_digits(22_592_307_123, 2);
-/// assert_eq!(res, "22.59ms");
+/// assert_eq!(res, "22.59s");
 /// ```
 pub fn format_nanoseconds_with_digits(nanoseconds: u128, digits: usize) -> String {
     if nanoseconds == 0 {
@@ -218,7 +230,9 @@ pub fn write_formatted_number<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{format_fortran, format_nanoseconds, format_nanoseconds_with_digits, format_scientific, write_formatted_number};
+    use super::{
+        format_fortran, format_nanoseconds, format_nanoseconds_with_digits, format_scientific, write_formatted_number,
+    };
 
     #[test]
     fn format_nanoseconds_works() {

@@ -587,6 +587,9 @@ mod tests {
         assert_eq!(stats.main.solver, "MUMPS");
         assert_eq!(stats.output.effective_ordering, "Pord");
         assert_eq!(stats.output.effective_scaling, "No");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
 
         // calling solve again works
         solver.solve(&mut x, &rhs, false).unwrap();

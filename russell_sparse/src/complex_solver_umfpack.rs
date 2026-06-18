@@ -548,5 +548,8 @@ mod tests {
         assert_eq!(stats.main.solver, "UMFPACK");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Sum");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
     }
 }

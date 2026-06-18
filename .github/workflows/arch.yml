@@ -9,16 +9,23 @@ jobs:
         include:
           - intel_mkl: ""
             local_sparse: ""
+            cudss: ""
             label: Opt1 Default
           - intel_mkl: ""
             local_sparse: "1"
+            cudss: ""
             label: Opt2 OpenBLAS Local
           - intel_mkl: "1"
             local_sparse: "1"
+            cudss: ""
             label: Opt3 IntelMKL Local
+          - intel_mkl: ""
+            local_sparse: ""
+            cudss: "1"
+            label: Opt4 cuDSS
     name: test (${{ matrix.label }})
     steps:
       - uses: actions/checkout@v4
       - name: Build docker image (${{ matrix.label }})
         run: |
-          bash zscripts/docker-build-arch.bash ${{ matrix.intel_mkl }} ${{ matrix.local_sparse }}
+          bash zscripts/docker-build-arch.bash ${{ matrix.intel_mkl }} ${{ matrix.local_sparse }} ${{ matrix.cudss }}

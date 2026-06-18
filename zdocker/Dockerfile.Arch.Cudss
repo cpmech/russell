@@ -1,0 +1,34 @@
+FROM archlinux:base-devel
+
+# Update keyring first to avoid GPG errors on a fresh Arch image,
+# then upgrade the system and install Rust, CUDA toolkit, and SuiteSparse
+# (KLU/UMFPACK are needed when the 'cudss' C code is compiled)
+RUN pacman -Sy --noconfirm archlinux-keyring && \
+    pacman -Syu --noconfirm rust cuda suitesparse
+
+# Create a non-root user for building and testing
+RUN useradd -m user
+
+# Give user password-less sudo so scripts can use sudo
+RUN echo 'user ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+# Copy project files; --chown ensures the destination directory and all
+# files are owned by user, so cargo can write target/ during the build
+COPY --chown=user:user . /usr/local/src/russell/
+WORKDIR /usr/local/src/russell
+
+# Download and install cuDSS (pre-built binary distribution from NVIDIA);
+# see nvidia-cudss.md for version details
+RUN bash zscripts/linux-compile-cudss.bash
+
+# Set environment variables required by build.rs to find CUDA and cuDSS
+ENV CTK_DIR=/opt/cuda
+ENV CUDSS_DIR=/opt/libcudss
+ENV LD_LIBRARY_PATH=${CUDSS_DIR}/lib:${CTK_DIR}/lib64:${LD_LIBRARY_PATH}
+
+# Set the user
+USER user
+
+# Build the code (no test -- CI has no GPU, so GPU-dependent tests would fail)
+ENV RUST_BACKTRACE=1
+RUN cargo build --features cudss

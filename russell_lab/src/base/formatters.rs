@@ -20,6 +20,17 @@ fn format_nanoseconds_in_seconds(buf: &mut String, value: u128) {
     }
 }
 
+/// Formats the nanoseconds in 1 second with a given number of decimal digits
+fn format_nanoseconds_in_seconds_with_digits(buf: &mut String, value: u128, digits: usize) {
+    if value < NS_PER_MICROSECOND {
+        write!(buf, "{}ns", value).unwrap();
+    } else if value < NS_PER_MILLISECOND {
+        write!(buf, "{:.digits$}µs", (value as f64) / (NS_PER_MICROSECOND as f64), digits = digits).unwrap();
+    } else {
+        write!(buf, "{:.digits$}ms", (value as f64) / (NS_PER_MILLISECOND as f64), digits = digits).unwrap();
+    }
+}
+
 /// Returns a pretty string representing the value in nanoseconds
 ///
 /// # Panics
@@ -62,6 +73,55 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
             } else {
                 let seconds = (value as f64) / (NS_PER_SECOND as f64);
                 write!(&mut buf, "{}s", &seconds).unwrap();
+            }
+        }
+    }
+
+    buf
+}
+
+/// Returns a pretty string representing the value in nanoseconds with a specified number of decimal digits
+///
+/// # Panics
+///
+/// This function may panic if the write! macro fails (rarely)
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::format_nanoseconds_with_digits;
+///
+/// let res = format_nanoseconds_with_digits(22_592_307_123, 2);
+/// assert_eq!(res, "22.59ms");
+/// ```
+pub fn format_nanoseconds_with_digits(nanoseconds: u128, digits: usize) -> String {
+    if nanoseconds == 0 {
+        return "0ns".to_string();
+    }
+
+    let mut value = nanoseconds;
+    let mut buf = String::new();
+    if value < NS_PER_SECOND {
+        // nanoseconds is smaller than a second => use small units such as 2.5ms
+        format_nanoseconds_in_seconds_with_digits(&mut buf, value, digits);
+    } else {
+        // nanoseconds is greater than a second => use large units such as 3m2.5s
+        if value >= NS_PER_HOUR {
+            let hours = value / NS_PER_HOUR;
+            value -= hours * NS_PER_HOUR;
+            write!(&mut buf, "{}h", hours).unwrap();
+        }
+        if value >= NS_PER_MINUTE {
+            let minutes = value / NS_PER_MINUTE;
+            value -= minutes * NS_PER_MINUTE;
+            write!(&mut buf, "{}m", minutes).unwrap();
+        }
+        if value > 0 {
+            if value < NS_PER_SECOND {
+                format_nanoseconds_in_seconds_with_digits(&mut buf, value, digits);
+            } else {
+                let seconds = (value as f64) / (NS_PER_SECOND as f64);
+                write!(&mut buf, "{:.digits$}s", &seconds, digits = digits).unwrap();
             }
         }
     }
@@ -158,7 +218,7 @@ pub fn write_formatted_number<T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{format_fortran, format_nanoseconds, format_scientific, write_formatted_number};
+    use super::{format_fortran, format_nanoseconds, format_nanoseconds_with_digits, format_scientific, write_formatted_number};
 
     #[test]
     fn format_nanoseconds_works() {
@@ -257,6 +317,39 @@ mod tests {
         // 3,601,100,000,001 (3.6e12 + 1.1s) = 1h1.1s
         res = format_nanoseconds(3_601_100_000_000);
         assert_eq!(res, "1h1.1s");
+    }
+
+    #[test]
+    fn format_nanoseconds_with_digits_works() {
+        let mut res = format_nanoseconds_with_digits(0, 2);
+        assert_eq!(res, "0ns");
+
+        res = format_nanoseconds_with_digits(250, 2);
+        assert_eq!(res, "250ns");
+
+        res = format_nanoseconds_with_digits(2_500, 2);
+        assert_eq!(res, "2.50µs");
+
+        res = format_nanoseconds_with_digits(2_500_000, 2);
+        assert_eq!(res, "2.50ms");
+
+        res = format_nanoseconds_with_digits(2_500_000_000, 2);
+        assert_eq!(res, "2.50s");
+
+        res = format_nanoseconds_with_digits(22_592_307_123, 2);
+        assert_eq!(res, "22.59s");
+
+        res = format_nanoseconds_with_digits(22_592_307, 4);
+        assert_eq!(res, "22.5923ms");
+
+        res = format_nanoseconds_with_digits(3_723_000_000_000, 2);
+        assert_eq!(res, "1h2m3.00s");
+
+        res = format_nanoseconds_with_digits(3_601_100_000_000, 1);
+        assert_eq!(res, "1h1.1s");
+
+        res = format_nanoseconds_with_digits(3_600_000_100_001, 3);
+        assert_eq!(res, "1h100.001µs");
     }
 
     #[test]

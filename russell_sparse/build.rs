@@ -111,7 +111,7 @@ fn main() {
         // cudss && local_sparse
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         {
-            let arch = std::env::var("CUDSS_CUDA_ARCH").unwrap_or_else(|_| "sm_89".to_string());
+            let arch = detect_cuda_arch();
             let cxx = get_cxx();
             unsafe {
                 std::env::set_var("CXX", &cxx);
@@ -167,7 +167,7 @@ fn main() {
         // cudss && not(local_sparse)
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         {
-            let arch = std::env::var("CUDSS_CUDA_ARCH").unwrap_or_else(|_| "sm_89".to_string());
+            let arch = detect_cuda_arch();
             let cxx = get_cxx();
             unsafe {
                 std::env::set_var("CXX", &cxx);
@@ -226,4 +226,32 @@ fn get_cxx() -> String {
         }
     }
     cxx
+}
+
+/// Returns the CUDA compute architecture string (e.g., "sm_89").
+///
+/// Resolution order:
+/// 1. `CUDSS_CUDA_ARCH` environment variable (e.g., "sm_90")
+/// 2. Auto-detected from `nvidia-smi` (maps "9.0" → "sm_90")
+/// 3. Defaults to "sm_89" (Ada Lovelace / RTX 40-series)
+fn detect_cuda_arch() -> String {
+    if let Ok(arch) = std::env::var("CUDSS_CUDA_ARCH") {
+        if !arch.is_empty() {
+            return arch;
+        }
+    }
+    if let Ok(output) = std::process::Command::new("nvidia-smi")
+        .args(["--query-gpu=compute_cap", "--format=csv,noheader"])
+        .output()
+    {
+        if output.status.success() {
+            let cap = String::from_utf8_lossy(&output.stdout);
+            let cap = cap.trim();
+            if !cap.is_empty() {
+                let sm = cap.replace('.', "");
+                return format!("sm_{}", sm);
+            }
+        }
+    }
+    "sm_89".to_string()
 }

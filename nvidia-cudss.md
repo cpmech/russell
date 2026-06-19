@@ -54,21 +54,17 @@ The build script (`build.rs`) supports the following environment variables:
 | Variable          | Default  | Description                                                                                                                                                              |
 | ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `CXX`             | `g++-15` | CUDA host compiler (GCC). Panics if the version detected is > 15, because CUDA's `nvcc` is incompatible with GCC ≥ 16.                                                   |
-| `CUDSS_CUDA_ARCH` | `sm_89`  | CUDA compute architecture passed to `nvcc -arch`. Use `sm_90` for Hopper (H100), `sm_80` for Ampere (A100), `sm_86` for Ampere (RTX 30-series), `sm_75` for Turing, etc. |
+| `CUDSS_CUDA_ARCH` | auto-detected | CUDA compute architecture passed to `nvcc -arch`. If not set, `build.rs` queries `nvidia-smi` to auto-detect the installed GPU (maps e.g. "8.9" → "sm_89"). Falls back to `sm_89` if detection fails. Set explicitly for cross-compilation: `sm_90` for H100, `sm_80` for A100, `sm_86` for RTX 30-series, etc. |
 
-Example — building for a different GPU architecture:
+Example — auto-detection or explicit override:
 
 ```bash
+# Auto-detect (uses nvidia-smi, falls back to sm_89)
+cargo build --features cudss
+
+# Force a specific architecture
 CUDSS_CUDA_ARCH=sm_90 cargo build --features cudss
 ```
-
-You may use the following command to discover the architecture of your GPU:
-
-```bash
-nvidia-smi --query-gpu=name,compute_cap
-```
-
-A number such as "8.9" becomes `sm_89`.
 
 ## Test the code
 

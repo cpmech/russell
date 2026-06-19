@@ -1883,6 +1883,26 @@ mod tests {
 
         // ----------------------------------------------------------------------------
 
+        #[rustfmt::skip]
+        let correct = &[
+            [cpx!( 2.0,0.0), cpx!( 3.0,0.0), cpx!( 0.0,0.0), cpx!( 0.0,0.0), cpx!( 0.0,0.0)],
+            [cpx!( 3.0,0.0), cpx!( 0.0,0.0), cpx!( 4.0,0.0), cpx!( 0.0,0.0), cpx!( 6.0,0.0)],
+            [cpx!( 0.0,0.0), cpx!(-1.0,0.0), cpx!(-3.0,0.0), cpx!( 2.0,0.0), cpx!( 0.0,0.0)],
+            [cpx!( 0.0,0.0), cpx!( 0.0,0.0), cpx!( 1.0,0.0), cpx!( 0.0,0.0), cpx!( 0.0,0.0)],
+            [cpx!( 0.0,0.0), cpx!( 4.0,0.0), cpx!( 2.0,0.0), cpx!( 0.0,0.0), cpx!( 1.0,0.0)],
+        ];
+        let a = ComplexMatrix::from(correct);
+        let mut ai = ComplexMatrix::new(5, 5);
+        let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::umfpack_complex_unsymmetric_5x5();
+        complex_approx_eq(det, correct_det, 1e-13);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
+
+        // ----------------------------------------------------------------------------
+
         let correct = &[
             [1.0, -1.0, 0.0, -3.0, 0.0],
             [-2.0, 5.0, 0.0, 0.0, 0.0],
@@ -1956,6 +1976,26 @@ mod tests {
             mat_approx_eq(&csr.as_dense(), correct, 1e-15);
             check(&coo, &csc, &csr);
         }
+
+        // ----------------------------------------------------------------------------
+
+        #[rustfmt::skip]
+        let correct = &[
+            [cpx!(9.0,0.0), cpx!(1.5,0.0), cpx!(6.0,0.0), cpx!(0.75,0.0), cpx!(3.0,0.0)],
+            [cpx!(1.5,0.0), cpx!(0.5,0.0), cpx!(0.0,0.0), cpx!( 0.0,0.0), cpx!(0.0,0.0)],
+            [cpx!(6.0,0.0), cpx!(0.0,0.0), cpx!(12.0,0.0), cpx!( 0.0,0.0), cpx!(0.0,0.0)],
+            [cpx!(0.75,0.0), cpx!(0.0,0.0), cpx!( 0.0,0.0), cpx!(0.625,0.0), cpx!(0.0,0.0)],
+            [cpx!(3.0,0.0), cpx!(0.0,0.0), cpx!( 0.0,0.0), cpx!( 0.0,0.0), cpx!(16.0,0.0)],
+        ];
+        let a = ComplexMatrix::from(correct);
+        let mut ai = ComplexMatrix::new(5, 5);
+        let correct_det = complex_mat_inverse(&mut ai, &a).unwrap();
+        let (coo, csc, csr, det) = Samples::mkl_complex_positive_definite_5x5_lower();
+        complex_approx_eq(det, correct_det, 1e-13);
+        complex_mat_approx_eq(&coo.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csc.as_dense(), correct, 1e-15);
+        complex_mat_approx_eq(&csr.as_dense(), correct, 1e-15);
+        check(&coo, &csc, &csr);
 
         // ----------------------------------------------------------------------------
 

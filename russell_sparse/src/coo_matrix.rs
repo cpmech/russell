@@ -1,6 +1,6 @@
 use super::Sym;
-use crate::to_i32;
 use crate::StrError;
+use crate::to_i32;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
 use serde::de::DeserializeOwned;
@@ -864,9 +864,11 @@ where
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate the coefficient matrix
-    ///     //  0.2   0.2   .
-    ///     //  0.5 -0.25   .
-    ///     //    .     .  0.25
+    ///     // ┌                   ┐
+    ///     // │   0.2   0.2     0 │
+    ///     // │   0.5 -0.25     0 │
+    ///     // │     0     0  0.25 │
+    ///     // └                   ┘
     ///     let ndim = 3;
     ///     let nnz = 5;
     ///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
@@ -933,7 +935,7 @@ where
 mod tests {
     use super::NumCooMatrix;
     use crate::{Samples, Sym};
-    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, NumMatrix, NumVector};
+    use russell_lab::{ComplexVector, NumMatrix, NumVector, complex_vec_approx_eq, cpx, vec_approx_eq};
 
     #[test]
     fn new_captures_errors() {

@@ -525,11 +525,13 @@ impl Samples {
     /// Example from the [UMFPACK documentation](https://github.com/DrTimothyAldenDavis/SuiteSparse/blob/dev/UMFPACK/Doc/UMFPACK_QuickStart.pdf)
     ///
     /// ```text
-    ///  2  3  .  .  .
-    ///  3  .  4  .  6
-    ///  . -1 -3  2  .
-    ///  .  .  1  .  .
-    ///  .  4  2  .  1
+    /// ┌                ┐
+    /// │  2  3  0  0  0 │
+    /// │  3  0  4  0  6 │
+    /// │  0 -1 -3  2  0 │
+    /// │  0  0  1  0  0 │
+    /// │  0  4  2  0  1 │
+    /// └                ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -608,11 +610,13 @@ impl Samples {
     /// **Note:** This is the version using "complex" structures/data, but there are no imaginary values.
     ///
     /// ```text
-    ///  2  3  .  .  .
-    ///  3  .  4  .  6
-    ///  . -1 -3  2  .
-    ///  .  .  1  .  .
-    ///  .  4  2  .  1
+    /// ┌                ┐
+    /// │  2  3  0  0  0 │
+    /// │  3  0  4  0  6 │
+    /// │  0 -1 -3  2  0 │
+    /// │  0  0  1  0  0 │
+    /// │  0  4  2  0  1 │
+    /// └                ┘
     /// ```
     ///
     /// With the right-hand side vector:

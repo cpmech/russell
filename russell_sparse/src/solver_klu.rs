@@ -69,9 +69,11 @@ unsafe extern "C" {
 ///     let mut klu = SolverKLU::new()?;
 ///
 ///     // allocate the coefficient matrix
-///     //  0.2   0.2   .
-///     //  0.5 -0.25   .
-///     //    .     .  0.25
+///     // ┌                   ┐
+///     // │   0.2   0.2     0 │
+///     // │   0.5 -0.25     0 │
+///     // │     0     0  0.25 │
+///     // └                   ┘
 ///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
 ///     coo.put(0, 0, 0.2)?;
 ///     coo.put(0, 1, 0.2)?;

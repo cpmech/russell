@@ -9,11 +9,13 @@ fn main() -> Result<(), StrError> {
     let mut umfpack = ComplexSolverUMFPACK::new()?;
 
     // allocate the coefficient matrix
-    //  2+0.5i   3+1i      .        .       .
-    //  3+1i       .     4+1i       .     6+1i
-    //     .   -1+0.5i  -3+1i   2+0.5i      .
-    //     .       .    1+0.5i     .        .
-    //     .    4+0.5i  2+0.5i     .    1+0.5i
+    // ┌                                              ┐
+    // │  2+0.5i   3+1i       0         0         0   │
+    // │  3+1i       0      4+1i        0       6+1i  │
+    // │     0    -1+0.5i  -3+1i     2+0.5i      0    │
+    // │     0       0      1+0.5i      0         0   │
+    // │     0     4+0.5i   2+0.5i      0      1+0.5i │
+    // └                                              ┘
     let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
     coo.put(0, 0, cpx!(1.0, 0.25))?; // << (0, 0, a00/2) duplicate
     coo.put(0, 0, cpx!(1.0, 0.25))?; // << (0, 0, a00/2) duplicate

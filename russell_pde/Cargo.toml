@@ -14,6 +14,7 @@ keywords = ["partial", "differential", "tools"]
 [features]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
 local_sparse = ["russell_sparse/local_sparse"]
+cudss = ["russell_sparse/cudss"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "2" }

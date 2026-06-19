@@ -18,6 +18,7 @@ intel_mkl = [
   "ctm_demo/intel_mkl",
 ]
 local_sparse = ["russell_sparse/local_sparse", "ctm_demo/local_suitesparse"]
+cudss = ["russell_sparse/cudss"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "2" }

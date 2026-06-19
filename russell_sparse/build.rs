@@ -111,13 +111,15 @@ fn main() {
         // cudss && local_sparse
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         {
+            let arch = std::env::var("CUDSS_CUDA_ARCH").unwrap_or_else(|_| "sm_89".to_string());
+            let cxx = get_cxx();
             unsafe {
-                std::env::set_var("CXX", "g++-15");
+                std::env::set_var("CXX", &cxx);
             }
             cc::Build::new()
                 .cuda(true)
                 .cudart("static")
-                .flag("-arch=sm_89")
+                .flag(&format!("-arch={}", arch))
                 .file("c_code/interface_complex_cudss.cu")
                 .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
@@ -165,13 +167,15 @@ fn main() {
         // cudss && not(local_sparse)
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         {
+            let arch = std::env::var("CUDSS_CUDA_ARCH").unwrap_or_else(|_| "sm_89".to_string());
+            let cxx = get_cxx();
             unsafe {
-                std::env::set_var("CXX", "g++-15");
+                std::env::set_var("CXX", &cxx);
             }
             cc::Build::new()
                 .cuda(true)
                 .cudart("static")
-                .flag("-arch=sm_89")
+                .flag(&format!("-arch={}", arch))
                 .file("c_code/interface_complex_cudss.cu")
                 .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
@@ -208,4 +212,18 @@ fn main() {
             println!("cargo:rustc-link-lib=dylib=umfpack");
         }
     }
+}
+
+/// Returns the CXX compiler, reading from env var or defaulting to g++-15.
+/// Panics if a GCC version > 15 is detected (CUDA requires GCC <= 15).
+fn get_cxx() -> String {
+    let cxx = std::env::var("CXX").unwrap_or_else(|_| "g++-15".to_string());
+    if let Some(ver_str) = cxx.rsplit('-').next() {
+        if let Ok(ver) = ver_str.parse::<u32>() {
+            if ver > 15 {
+                panic!("CUDA requires GCC <= 15, but CXX is set to '{}'", cxx);
+            }
+        }
+    }
+    cxx
 }

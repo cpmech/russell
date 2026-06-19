@@ -46,6 +46,29 @@ export CTK_DIR=/opt/cuda
 export CUDSS_DIR=/opt/libcudss
 export LD_LIBRARY_PATH=${CUDSS_DIR}/lib:${CTK_DIR}/lib64:${LD_LIBRARY_PATH}
 ```
+    
+## Build-time environment variables
+
+The build script (`build.rs`) supports the following environment variables:
+
+| Variable          | Default  | Description                                                                                                                                                              |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CXX`             | `g++-15` | CUDA host compiler (GCC). Panics if the version detected is > 15, because CUDA's `nvcc` is incompatible with GCC ≥ 16.                                                   |
+| `CUDSS_CUDA_ARCH` | `sm_89`  | CUDA compute architecture passed to `nvcc -arch`. Use `sm_90` for Hopper (H100), `sm_80` for Ampere (A100), `sm_86` for Ampere (RTX 30-series), `sm_75` for Turing, etc. |
+
+Example — building for a different GPU architecture:
+
+```bash
+CUDSS_CUDA_ARCH=sm_90 cargo build --features cudss
+```
+
+You may use the following command to discover the architecture of your GPU:
+
+```bash
+nvidia-smi --query-gpu=name,compute_cap
+```
+
+A number such as "8.9" becomes `sm_89`.
 
 ## Test the code
 

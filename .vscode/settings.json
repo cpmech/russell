@@ -279,6 +279,7 @@
     "rowcol",
     "rowcoliter",
     "rowcolrig",
+    "rsplit",
     "rtol",
     "Runge",
     "rustup",

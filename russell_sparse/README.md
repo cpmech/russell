@@ -7,12 +7,14 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Contents <!-- omit from toc --> 
 
 - [Introduction](#introduction)
+  - [Complex Numbers Support](#complex-numbers-support)
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
 - [🌟 Examples](#-examples)
   - [Solve a tiny sparse linear system using UMFPACK](#solve-a-tiny-sparse-linear-system-using-umfpack)
+  - [Solve a complex sparse linear system using UMFPACK](#solve-a-complex-sparse-linear-system-using-umfpack)
 - [Tools](#tools)
 - [MUMPS + OpenBLAS issue](#mumps--openblas-issue)
   - [References](#references)
@@ -27,6 +29,7 @@ This library implements tools for handling sparse matrices and functions to solv
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 
 ### Complex Numbers Support
+
 This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.
 
 

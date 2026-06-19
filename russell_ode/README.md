@@ -34,6 +34,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     - [Poisson equation 1](#poisson-equation-1)
     - [Poisson equation 2](#poisson-equation-2)
     - [Poisson equation 3](#poisson-equation-3)
+- [For developers](#for-developers)
 
 
 
@@ -1107,3 +1108,9 @@ See the code [test_pde_poisson_3.rs](https://github.com/cpmech/russell/tree/main
 The results are illustrated below:
 
 ![Poisson equation 3](data/figures/test_pde_poisson_3.svg)
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`
+* The `zscripts` directory contains scripts for comparing test results, memory checking, and running examples

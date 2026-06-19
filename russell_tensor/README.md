@@ -13,6 +13,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Optional features](#optional-features)
 - [🌟 Examples](#-examples)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
+- [For developers](#for-developers)
 
 
 

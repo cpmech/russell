@@ -7,14 +7,15 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Contents <!-- omit from toc --> 
 
 - [Introduction](#introduction)
-    - [Documentation](#documentation)
-    - [References](#references)
-  - [Installation](#installation)
-    - [Setting Cargo.toml](#setting-cargotoml)
-    - [Optional features](#optional-features)
-  - [🌟 Examples](#-examples)
-    - [Simple example](#simple-example)
-    - [Tracing a B-spline curve](#tracing-a-b-spline-curve)
+  - [Documentation](#documentation)
+  - [References](#references)
+- [Installation](#installation)
+  - [Setting Cargo.toml](#setting-cargotoml)
+  - [Optional features](#optional-features)
+- [🌟 Examples](#-examples)
+  - [Simple example](#simple-example)
+  - [Tracing a B-spline curve](#tracing-a-b-spline-curve)
+- [For developers](#for-developers)
 
 
 

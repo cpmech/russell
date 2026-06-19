@@ -19,6 +19,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Normal distribution](#normal-distribution)
   - [Lognormal distribution](#lognormal-distribution)
   - [Uniform distribution](#uniform-distribution)
+- [For developers](#for-developers)
 
 
 

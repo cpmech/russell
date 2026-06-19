@@ -1,4 +1,3 @@
-// kernel.cu
 #include <cuda_runtime.h>
 #include <math.h>
 #include <stdio.h>

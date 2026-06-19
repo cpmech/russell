@@ -64,6 +64,42 @@ pub trait LinSolTrait: Send {
 }
 
 /// Unifies the access to linear system solvers
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 5;
+///
+///     let mut solver = LinSolver::new(Genie::Umfpack)?;
+///
+///     // allocate the coefficient matrix
+///     //  0.2   0.2   .
+///     //  0.5 -0.25   .
+///     //    .     .  0.25
+///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, 0.2)?;
+///     coo.put(0, 1, 0.2)?;
+///     coo.put(1, 0, 0.5)?;
+///     coo.put(1, 1, -0.25)?;
+///     coo.put(2, 2, 0.25)?;
+///
+///     solver.actual.factorize(&coo, None)?;
+///
+///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+///     let mut x = Vector::new(ndim);
+///     solver.actual.solve(&mut x, &rhs, false)?;
+///
+///     let correct = vec![3.0, 2.0, 4.0];
+///     vec_approx_eq(&x, &correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct LinSolver<'a> {
     /// Holds the actual implementation
     pub actual: Box<dyn Send + LinSolTrait + 'a>,

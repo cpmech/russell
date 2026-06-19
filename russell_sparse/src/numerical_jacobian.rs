@@ -94,6 +94,11 @@ use russell_lab::Vector;
 ///
 ///     let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, y: &Vector, _args: &mut Args| {
 ///         jj.reset();
+///         //             ┌                   ┐
+///         //             │   2   3·y₂  3·y₁  │
+///         // J = alpha · │   0    -3     0   │
+///         //             │   0     0    2·y₂ │
+///         //             └                   ┘
 ///         jj.put(0, 0, alpha * (2.0)).unwrap();
 ///         jj.put(0, 1, alpha * (3.0 * y[2])).unwrap();
 ///         jj.put(0, 2, alpha * (3.0 * y[1])).unwrap();
@@ -189,7 +194,7 @@ where
 mod tests {
     use super::numerical_jacobian;
     use crate::{CooMatrix, Sym};
-    use russell_lab::{mat_approx_eq, Vector};
+    use russell_lab::{Vector, mat_approx_eq};
 
     #[test]
     fn numerical_jacobian_captures_errors() {
@@ -213,12 +218,16 @@ mod tests {
         let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::YesLower).unwrap();
         assert_eq!(
             numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
-            Some("the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2")
+            Some(
+                "the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2"
+            )
         );
         let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::YesUpper).unwrap();
         assert_eq!(
             numerical_jacobian(&mut jj, 2, 2.0, 1.0, &mut y, &mut w1, &mut w2, &mut args, function).err(),
-            Some("the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2")
+            Some(
+                "the max number of non-zero values in the numerical (triangular) Jacobian matrix must be at least (ndim + ndim²) / 2"
+            )
         );
         let nnz_wrong = 3; // nnz_correct = 4 = ndim * ndim
         let mut jj = CooMatrix::new(2, 2, nnz_wrong, Sym::No).unwrap();

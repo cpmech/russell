@@ -146,6 +146,12 @@ impl<'a> ComplexLinSolver<'a> {
     ///     let ndim = 3;
     ///     let nnz = 7;
     ///
+    ///     // allocate the coefficient matrix
+    ///     //   ┌                      ┐
+    ///     //   │  2+1i  -1-1i     0   │
+    ///     //   │ -1-1i   2+2i  -1+1i  │
+    ///     //   │   0    -1+1i   2-1i  │
+    ///     //   └                      ┘
     ///     let mut mat = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
     ///     mat.put(0, 0, cpx!(2.0, 1.0))?;
     ///     mat.put(0, 1, cpx!(-1.0, -1.0))?;

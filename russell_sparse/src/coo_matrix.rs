@@ -863,11 +863,23 @@ where
     /// use russell_sparse::StrError;
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let coo = CooMatrix::new(1, 2, 3, Sym::No)?;
+    ///     // allocate the coefficient matrix
+    ///     //  0.2   0.2   .
+    ///     //  0.5 -0.25   .
+    ///     //    .     .  0.25
+    ///     let ndim = 3;
+    ///     let nnz = 5;
+    ///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+    ///     coo.put(0, 0, 0.2)?;
+    ///     coo.put(0, 1, 0.2)?;
+    ///     coo.put(1, 0, 0.5)?;
+    ///     coo.put(1, 1, -0.25)?;
+    ///     coo.put(2, 2, 0.25)?;
+    ///
     ///     let (nrow, ncol, nnz, sym) = coo.get_info();
-    ///     assert_eq!(nrow, 1);
-    ///     assert_eq!(ncol, 2);
-    ///     assert_eq!(nnz, 0);
+    ///     assert_eq!(nrow, 3);
+    ///     assert_eq!(ncol, 3);
+    ///     assert_eq!(nnz, 5);
     ///     assert_eq!(sym, Sym::No);
     ///     Ok(())
     /// }

@@ -69,6 +69,42 @@ unsafe extern "C" {
 /// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
 ///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 5;
+///
+///     let mut umfpack = SolverUMFPACK::new()?;
+///
+///     // allocate the coefficient matrix
+///     //  0.2   0.2   .
+///     //  0.5 -0.25   .
+///     //    .     .  0.25
+///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, 0.2)?;
+///     coo.put(0, 1, 0.2)?;
+///     coo.put(1, 0, 0.5)?;
+///     coo.put(1, 1, -0.25)?;
+///     coo.put(2, 2, 0.25)?;
+///
+///     umfpack.factorize(&coo, None)?;
+///
+///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+///     let mut x = Vector::new(ndim);
+///     umfpack.solve(&mut x, &rhs, false)?;
+///
+///     let correct = vec![3.0, 2.0, 4.0];
+///     vec_approx_eq(&x, &correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceUMFPACK,

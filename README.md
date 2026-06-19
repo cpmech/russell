@@ -166,7 +166,7 @@ It is important to highlight that, when MUMPS is enabled, SuiteSparse must also 
 
 Note that, while it is possible to use Intel MKL with `russell_lab` and OpenBLAS with `russell_sparse`, this is not advantageous since Intel MKL is slightly more performant than OpenBLAS [(see this article)](https://onlinelibrary.wiley.com/doi/full/10.1002/nme.7545). Thus, if you have already installed Intel MKL, it is easy to compile SuiteSparse and MUMPS (Option 3 below). Thus, we do not consider a fourth option with MKL for `russell_lab` and OpenBLAS for `russell_sparse`.
 
-The direct sparse solver based on NVIDIA's CUDA platform for GPUs is also available in `russell_sparse`. The solver, named [cuDSS](https://developer.nvidia.com/cudss), can be installed as explained in [nvidia-cudss.md](https://github.com/cpmech/russell/blob/main/nvidia-cudss.md) or by running the commands in [linux-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/linux-compile-cudss.md) or [windows-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/windows-compile-cudss.md).
+The direct sparse solver based on NVIDIA's CUDA platform for GPUs is also available in `russell_sparse`. The solver, named [cuDSS](https://developer.nvidia.com/cudss), can be installed as explained in [nvidia-cudss.md](https://github.com/cpmech/russell/blob/main/nvidia-cudss.md) or by running the commands in [linux-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/linux-compile-cudss.bash) or [UNTESTED-windows-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/UNTESTED-windows-compile-cudss.bash).
 
 ### Arch Linux
 

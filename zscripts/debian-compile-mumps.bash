@@ -13,7 +13,7 @@ sudo () {
 
 # Optional first argument: set to 1 to build against Intel MKL/oneAPI,
 # or 0 (default) to use the OpenBLAS + gfortran toolchain.
-# When using MKL, run debian-install-intel-mkl.bash first.
+# When using MKL, run debian-install-intel-toolkit.bash first.
 USE_INTEL_MKL=${1:-0}
 
 # Installation paths and source version

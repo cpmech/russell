@@ -821,7 +821,7 @@ cargo install cargo-criterion
 Run the benchmarks with:
 
 ```bash
-bash ./zscripts/benchmark.bash
+bash ./zscripts/bench.bash
 ```
 
 ### Chebyshev polynomial evaluation

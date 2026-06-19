@@ -4,7 +4,7 @@ FROM archlinux:base-devel
 # then upgrade the system and install Rust, CUDA toolkit, and SuiteSparse
 # (KLU/UMFPACK are needed when the 'cudss' C code is compiled)
 RUN pacman -Sy --noconfirm archlinux-keyring && \
-    pacman -Syu --noconfirm rust cuda suitesparse
+    pacman -Syu --noconfirm rust blas-openblas cuda suitesparse
 
 # Create a non-root user for building and testing
 RUN useradd -m user
@@ -21,7 +21,8 @@ WORKDIR /usr/local/src/russell
 # see nvidia-cudss.md for version details
 RUN bash zscripts/linux-compile-cudss.bash
 
-# Set environment variables required by build.rs to find CUDA and cuDSS
+# Set environment variables for the CUDA/cuDSS runtime linker;
+# build.rs uses hardcoded paths (/opt/cuda, /opt/libcudss) for compilation
 ENV CTK_DIR=/opt/cuda
 ENV CUDSS_DIR=/opt/libcudss
 ENV LD_LIBRARY_PATH=${CUDSS_DIR}/lib:${CTK_DIR}/lib64:${LD_LIBRARY_PATH}

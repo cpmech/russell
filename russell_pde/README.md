@@ -73,6 +73,7 @@ The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `cudss`: Enable the NVIDIA cuDSS GPU solver
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

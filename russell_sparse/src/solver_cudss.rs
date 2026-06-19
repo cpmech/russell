@@ -32,6 +32,7 @@ unsafe extern "C" {
         pivoting: i32,
         pivot_epsilon: f64,
         refinement_nstep: i32,
+        hybrid_memory: i32,
         verbose: CcBool,
         general_symmetric: CcBool,
         positive_definite: CcBool,
@@ -234,6 +235,9 @@ impl LinSolTrait for SolverCUDSS {
             None => -1, // tell cuDSS to use the default
         };
 
+        // hybrid memory flag
+        let hybrid_memory = if par.hybrid_memory { 1 } else { 0 };
+
         // requests
         let verbose = if par.verbose { 1 } else { 0 };
 
@@ -253,6 +257,7 @@ impl LinSolTrait for SolverCUDSS {
                     pivoting,
                     pivot_epsilon,
                     refinement_nstep,
+                    hybrid_memory,
                     verbose,
                     general_symmetric,
                     positive_definite,
@@ -874,6 +879,39 @@ mod tests {
 
         let mut solver = SolverCUDSS::new().unwrap();
         solver.factorize(&coo, None).unwrap();
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-10);
+    }
+
+    #[test]
+    fn hybrid_memory_works() {
+        // Symmetric positive-definite matrix (lower triangle):
+        //   [4, 0, 1, 0, 0]
+        //   [0, 3, 2, 0, 0]
+        //   [1, 2, 5, 0, 1]
+        //   [0, 0, 0, 1, 0]
+        //   [0, 0, 1, 0, 2]
+        let mut coo = CooMatrix::new(5, 5, 8, Sym::YesLower).unwrap();
+        coo.put(0, 0, 4.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        coo.put(2, 0, 1.0).unwrap();
+        coo.put(2, 1, 2.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        coo.put(3, 3, 1.0).unwrap();
+        coo.put(4, 2, 1.0).unwrap();
+        coo.put(4, 4, 2.0).unwrap();
+
+        let mut x = Vector::new(5);
+        let rhs = Vector::from(&[7.0, 12.0, 25.0, 4.0, 13.0]);
+        let x_correct = &[1.0, 2.0, 3.0, 4.0, 5.0];
+
+        let mut params = LinSolParams::new();
+        params.positive_definite = true;
+        params.hybrid_memory = true;
+        params.verbose = true;
+
+        let mut solver = SolverCUDSS::new().unwrap();
+        solver.factorize(&coo, Some(params)).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(&x, x_correct, 1e-10);
     }

@@ -178,6 +178,7 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
                                                    int32_t pivoting,
                                                    double pivot_epsilon,
                                                    int32_t refinement_nstep,
+                                                   int32_t hybrid_memory,
                                                    C_BOOL verbose,
                                                    C_BOOL general_symmetric,
                                                    C_BOOL positive_definite,
@@ -299,7 +300,7 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
         }
     }
 
-    /* Create a matrix object for the sparse input matrix */
+    /* Symbolic factorization */
     cudssMatrixType_t mtype = CUDSS_MTYPE_GENERAL;  /* default to general matrix (possibly unsymmetric) */
     cudssMatrixViewType_t mview = CUDSS_MVIEW_FULL; /* default to full view (not just one triangle) */
     if (general_symmetric) {
@@ -321,6 +322,19 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
     /* Show message */
     if (verbose == C_TRUE) {
         printf("complex_solver_cudss_initialize: Coefficient matrix allocated and initialized\n");
+    }
+
+    /* Enable hybrid mode where factors are stored in host memory
+       Note: It must be set before the first call to ANALYSIS step.*/
+    if (hybrid_memory == C_TRUE) {
+        int hybrid_mode = 1;
+        status = cudssConfigSet(solver->config, CUDSS_CONFIG_HYBRID_MEMORY_MODE, &hybrid_mode, sizeof(int));
+        if (status != CUDSS_STATUS_SUCCESS) {
+            return ERROR_CUDSS_CONFIG_SET;
+        }
+        if (verbose == C_TRUE) {
+            printf("solver_cudss_initialize: Hybrid memory mode enabled\n");
+        }
     }
 
     /* Symbolic factorization */

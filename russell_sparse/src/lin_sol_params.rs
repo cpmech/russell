@@ -33,6 +33,9 @@ pub struct LinSolParams {
     /// See: <https://docs.nvidia.com/cuda/cudss/types.html#c.cudssConfigParam_t.CUDSS_CONFIG_IR_N_STEPS>
     pub refinement_nstep: Option<i32>,
 
+    /// Hybrid memory usage of cuDSS
+    pub hybrid_memory: bool,
+
     /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
     pub positive_definite: bool,
 
@@ -86,6 +89,7 @@ impl LinSolParams {
             pivoting: Pivoting::Auto,
             pivot_epsilon: None,
             refinement_nstep: None,
+            hybrid_memory: false,
             positive_definite: false,
             compute_determinant: false,
             compute_error_estimates: false,

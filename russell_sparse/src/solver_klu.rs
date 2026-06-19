@@ -555,6 +555,9 @@ mod tests {
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 
     #[test]
@@ -581,11 +584,15 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "KLU");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
         assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
         assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 
     #[test]

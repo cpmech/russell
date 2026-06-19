@@ -112,7 +112,7 @@ fn main() {
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         {
             let arch = detect_cuda_arch();
-            let cxx = get_cxx();
+            let cxx = detect_cxx();
             unsafe {
                 std::env::set_var("CXX", &cxx);
             }
@@ -168,7 +168,7 @@ fn main() {
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         {
             let arch = detect_cuda_arch();
-            let cxx = get_cxx();
+            let cxx = detect_cxx();
             unsafe {
                 std::env::set_var("CXX", &cxx);
             }
@@ -214,18 +214,36 @@ fn main() {
     }
 }
 
-/// Returns the CXX compiler, reading from env var or defaulting to g++-15.
-/// Panics if a GCC version > 15 is detected (CUDA requires GCC <= 15).
-fn get_cxx() -> String {
-    let cxx = std::env::var("CXX").unwrap_or_else(|_| "g++-15".to_string());
-    if let Some(ver_str) = cxx.rsplit('-').next() {
-        if let Ok(ver) = ver_str.parse::<u32>() {
-            if ver > 15 {
-                panic!("CUDA requires GCC <= 15, but CXX is set to '{}'", cxx);
-            }
+/// Returns the CXX compiler to use for cuDSS compilation.
+///
+/// Resolution order:
+/// 1. If `GCC_VERSION` env var is set, use `g++-{version}`
+/// 2. Auto-detect via `gcc -dumpversion`
+/// 3. If the detected version > 15, fall back to `g++-15`
+/// 4. Otherwise (version ≤ 15), use the system `g++`
+fn detect_cxx() -> String {
+    let version: u32 = if let Ok(ver_str) = std::env::var("GCC_VERSION") {
+        ver_str.parse().unwrap_or(0)
+    } else {
+        let output = std::process::Command::new("gcc")
+            .arg("-dumpversion")
+            .output()
+            .ok()
+            .and_then(|o| if o.status.success() { Some(o) } else { None });
+        if let Some(output) = output {
+            let ver_str = String::from_utf8_lossy(&output.stdout);
+            let ver_str = ver_str.trim();
+            // gcc -dumpversion may return "14.2.1" — take the major version
+            ver_str.split('.').next().unwrap_or("0").parse().unwrap_or(0)
+        } else {
+            0
         }
+    };
+    if version == 0 || version <= 15 {
+        "g++".to_string()
+    } else {
+        "g++-15".to_string()
     }
-    cxx
 }
 
 /// Returns the CUDA compute architecture string (e.g., "sm_89").

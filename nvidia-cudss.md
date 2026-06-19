@@ -51,10 +51,10 @@ export LD_LIBRARY_PATH=${CUDSS_DIR}/lib:${CTK_DIR}/lib64:${LD_LIBRARY_PATH}
 
 The build script (`build.rs`) supports the following environment variables:
 
-| Variable          | Default  | Description                                                                                                                                                              |
-| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `CXX`             | `g++-15` | CUDA host compiler (GCC). Panics if the version detected is > 15, because CUDA's `nvcc` is incompatible with GCC ≥ 16.                                                   |
-| `CUDSS_CUDA_ARCH` | auto-detected | CUDA compute architecture passed to `nvcc -arch`. If not set, `build.rs` queries `nvidia-smi` to auto-detect the installed GPU (maps e.g. "8.9" → "sm_89"). Falls back to `sm_89` if detection fails. Set explicitly for cross-compilation: `sm_90` for H100, `sm_80` for A100, `sm_86` for RTX 30-series, etc. |
+| Variable          | Default       | Description                                                                                                                                                                                                                                                                                                                     |
+| ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GCC_VERSION`     | auto-detected | Override the GCC version used as CUDA host compiler. `build.rs` auto-detects the installed GCC version via `gcc -dumpversion`. If it's ≤ 15, the system `g++` is used. If it's > 15, `g++-15` is used instead (since `nvcc` is incompatible with GCC ≥ 16). Set explicitly, e.g. `GCC_VERSION=14`, to force a specific version. |
+| `CUDSS_CUDA_ARCH` | auto-detected | CUDA compute architecture passed to `nvcc -arch`. If not set, `build.rs` queries `nvidia-smi` to auto-detect the installed GPU (maps e.g. "8.9" → "sm_89"). Falls back to `sm_89` if detection fails. Set explicitly for cross-compilation: `sm_90` for H100, `sm_80` for A100, `sm_86` for RTX 30-series, etc.                 |
 
 Example — auto-detection or explicit override:
 

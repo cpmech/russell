@@ -89,6 +89,7 @@
     "dsyrk",
     "dtolnay",
     "dtype",
+    "dumpversion",
     "dxdy",
     "dydx",
     "dznrm2",

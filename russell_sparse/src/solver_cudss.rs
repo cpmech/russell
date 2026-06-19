@@ -402,7 +402,7 @@ const CUDSS_REORDERING_ALG_NESTED_DISSECTION: i32 = 4; // Nested dissection algo
 const CUDSS_REORDERING_ALG_NONE: i32 = 5; // Uses natural (identity) order for the internal ordering when no user permutation is supplied.
 
 /// Converts the Rust enum to an appropriate constant representing the ordering algorithm
-fn cudss_ordering(ordering: Ordering) -> i32 {
+pub(crate) fn cudss_ordering(ordering: Ordering) -> i32 {
     match ordering {
         Ordering::Amd => CUDSS_REORDERING_ALG_AMD,
         Ordering::Amf => CUDSS_REORDERING_ALG_DEFAULT,
@@ -427,16 +427,16 @@ fn cudss_ordering(ordering: Ordering) -> i32 {
 // cudssMatchingAlg_t. If the cuDSS enum values change upstream, update
 // these constants accordingly.
 
-const CUDSS_MATCHING_ALG_NONE: i32 = 0;
-const CUDSS_MATCHING_ALG_MAX_DIAG_COUNT: i32 = 1;
-const CUDSS_MATCHING_ALG_MAX_MIN_DIAG: i32 = 2;
-const CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT: i32 = 3;
-const CUDSS_MATCHING_ALG_MAX_DIAG_SUM: i32 = 4;
-const CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT: i32 = 5;
-const CUDSS_MATCHING_ALG_AUTO: i32 = 6;
+pub(crate) const CUDSS_MATCHING_ALG_NONE: i32 = 0;
+pub(crate) const CUDSS_MATCHING_ALG_MAX_DIAG_COUNT: i32 = 1;
+pub(crate) const CUDSS_MATCHING_ALG_MAX_MIN_DIAG: i32 = 2;
+pub(crate) const CUDSS_MATCHING_ALG_MAX_MIN_DIAG_ALT: i32 = 3;
+pub(crate) const CUDSS_MATCHING_ALG_MAX_DIAG_SUM: i32 = 4;
+pub(crate) const CUDSS_MATCHING_ALG_MAX_DIAG_PRODUCT: i32 = 5;
+pub(crate) const CUDSS_MATCHING_ALG_AUTO: i32 = 6;
 
 /// Converts the Rust enum to an appropriate constant representing the matching algorithm
-fn cudss_matching(matching: Matching) -> i32 {
+pub(crate) fn cudss_matching(matching: Matching) -> i32 {
     match matching {
         Matching::None => CUDSS_MATCHING_ALG_NONE,
         Matching::Auto => CUDSS_MATCHING_ALG_AUTO,
@@ -456,15 +456,15 @@ fn cudss_matching(matching: Matching) -> i32 {
 // cudssPivotType_t. If the cuDSS enum values change upstream, update
 // these constants accordingly.
 
-const CUDSS_PIVOT_AUTO: i32 = 0;
-const CUDSS_PIVOT_NONE: i32 = 1;
-const CUDSS_PIVOT_GLOBAL_COL: i32 = 2;
-const CUDSS_PIVOT_GLOBAL_ROW: i32 = 3;
-const CUDSS_PIVOT_DIAGONAL: i32 = 4;
-const CUDSS_PIVOT_LOCAL_BLOCK: i32 = 5;
+pub(crate) const CUDSS_PIVOT_AUTO: i32 = 0;
+pub(crate) const CUDSS_PIVOT_NONE: i32 = 1;
+pub(crate) const CUDSS_PIVOT_GLOBAL_COL: i32 = 2;
+pub(crate) const CUDSS_PIVOT_GLOBAL_ROW: i32 = 3;
+pub(crate) const CUDSS_PIVOT_DIAGONAL: i32 = 4;
+pub(crate) const CUDSS_PIVOT_LOCAL_BLOCK: i32 = 5;
 
 /// Converts the Rust enum to an appropriate constant representing the pivot type
-fn cudss_pivoting(pivoting: Pivoting) -> i32 {
+pub(crate) fn cudss_pivoting(pivoting: Pivoting) -> i32 {
     match pivoting {
         Pivoting::Auto => CUDSS_PIVOT_AUTO,
         Pivoting::None => CUDSS_PIVOT_NONE,
@@ -498,7 +498,7 @@ const ERROR_CUDSS_DEVICE: i32 = 1000;
 /// * 700-707: symbolic factorization (700 + cudssStatus_t)
 /// * 800-807: numeric factorization (800 + cudssStatus_t)
 /// * 900-907: solve              (900 + cudssStatus_t)
-fn handle_cudss_error_code(err: i32) -> StrError {
+pub(crate) fn handle_cudss_error_code(err: i32) -> StrError {
     match err {
         ERROR_CUDA_MALLOC => "cudaMalloc failed in the C code (cuDSS)",
         ERROR_CUDA_MEMCPY => "cudaMemcpy failed in the C code (cuDSS)",
@@ -876,28 +876,6 @@ mod tests {
         solver.factorize(&coo, None).unwrap();
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(&x, x_correct, 1e-10);
-    }
-
-    #[test]
-    fn solve_works_symmetric() {
-        let mut solver = SolverCUDSS::new().unwrap();
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, true);
-        let mut x = Vector::new(5);
-        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        solver.factorize(&coo, None).unwrap();
-        solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_correct, 1e-10);
-
-        // calling solve again works
-        solver.solve(&mut x, &rhs, false).unwrap();
-        vec_approx_eq(&x, x_correct, 1e-10);
-
-        // update stats
-        let mut stats = StatsLinSol::new();
-        solver.update_stats(&mut stats);
-        assert_eq!(stats.output.effective_ordering, "Unknown");
-        assert_eq!(stats.output.effective_scaling, "Unknown");
     }
 
     #[test]

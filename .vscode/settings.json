@@ -135,6 +135,7 @@
     "INFOG",
     "Interp",
     "interpolant",
+    "inttypes",
     "iomp",
     "ipiv",
     "irhs",

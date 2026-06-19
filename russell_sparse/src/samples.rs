@@ -1,6 +1,6 @@
 use crate::{ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix};
 use crate::{CooMatrix, CscMatrix, CsrMatrix, Sym};
-use russell_lab::{cpx, Complex64};
+use russell_lab::{Complex64, cpx};
 
 const PLACEHOLDER: f64 = f64::MAX;
 
@@ -520,6 +520,8 @@ impl Samples {
 
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
     ///
+    /// Returns `(coo, csc, csr, det)`.
+    ///
     /// Example from the [UMFPACK documentation](https://github.com/DrTimothyAldenDavis/SuiteSparse/blob/dev/UMFPACK/Doc/UMFPACK_QuickStart.pdf)
     ///
     /// ```text
@@ -595,6 +597,91 @@ impl Samples {
         let row_pointers = vec![0, 2, 5, 8, 9, 12];
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, 114.0)
+    }
+
+    /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
+    ///
+    /// Returns `(coo, csc, csr, det)`.
+    ///
+    /// Example from the [UMFPACK documentation](https://github.com/DrTimothyAldenDavis/SuiteSparse/blob/dev/UMFPACK/Doc/UMFPACK_QuickStart.pdf)
+    ///
+    /// **Note:** This is the version using "complex" structures/data, but there are no imaginary values.
+    ///
+    /// ```text
+    ///  2  3  .  .  .
+    ///  3  .  4  .  6
+    ///  . -1 -3  2  .
+    ///  .  .  1  .  .
+    ///  .  4  2  .  1
+    /// ```
+    ///
+    /// With the right-hand side vector:
+    ///
+    /// ```text
+    /// let rhs = ComplexVector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
+    /// ```
+    ///
+    /// The solution of `A · x = rhs` is:
+    ///
+    /// ```text
+    /// let x_correct = &[cpx!(1.0,0.0), cpx!(2.0,0.0), cpx!(3.0,0.0), cpx!(4.0,0.0), cpx!(5.0,0.0)];
+    /// ```
+    pub fn umfpack_complex_unsymmetric_5x5() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
+        let sym = Sym::No;
+        let nrow = 5;
+        let ncol = 5;
+        let max_nnz = 13;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, max_nnz, sym).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap(); // << (0, 0, a00/2) duplicate
+        coo.put(2, 1, cpx!(-1.0, 0.0)).unwrap();
+        coo.put(1, 0, cpx!(3.0, 0.0)).unwrap();
+        coo.put(4, 1, cpx!(4.0, 0.0)).unwrap();
+        coo.put(4, 4, cpx!(1.0, 0.0)).unwrap();
+        coo.put(0, 1, cpx!(3.0, 0.0)).unwrap();
+        coo.put(3, 2, cpx!(1.0, 0.0)).unwrap();
+        coo.put(2, 2, cpx!(-3.0, 0.0)).unwrap();
+        coo.put(0, 0, cpx!(1.0, 0.0)).unwrap(); // << (0, 0, a00/2) duplicate
+        coo.put(4, 2, cpx!(2.0, 0.0)).unwrap();
+        coo.put(2, 3, cpx!(2.0, 0.0)).unwrap();
+        coo.put(1, 4, cpx!(6.0, 0.0)).unwrap();
+        coo.put(1, 2, cpx!(4.0, 0.0)).unwrap();
+        // CSC matrix
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(2.0,0.0), cpx!(3.0,0.0),                                // j=0, p=( 0),1
+            cpx!(3.0,0.0), cpx!(-1.0,0.0), cpx!(4.0,0.0),                // j=1, p=( 2),3,4
+            cpx!(4.0,0.0), cpx!(-3.0,0.0), cpx!(1.0,0.0), cpx!(2.0,0.0), // j=2, p=( 5),6,7,8
+            cpx!(2.0,0.0),                                               // j=3, p=( 9)
+            cpx!(6.0,0.0), cpx!(1.0,0.0),                                // j=4, p=(10),11
+        ]; //      p=(12)
+        let row_indices = vec![
+            0, 1, //
+            0, 2, 4, //
+            1, 2, 3, 4, //
+            2, //
+            1, 4, //
+        ];
+        let col_pointers = vec![0, 2, 5, 9, 10, 12];
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(2.0,0.0), cpx!(3.0,0.0),                  // i=0, p=(0),1
+            cpx!(3.0,0.0), cpx!(4.0,0.0), cpx!(6.0,0.0),   // i=1, p=(2),3,4
+            cpx!(-1.0,0.0), cpx!(-3.0,0.0), cpx!(2.0,0.0), // i=2, p=(5),6,7
+            cpx!(1.0,0.0),                                 // i=3, p=(8)
+            cpx!(4.0,0.0), cpx!(2.0,0.0), cpx!(1.0,0.0),   // i=4, p=(9),10,11
+        ]; //      p=(12)
+        let col_indices = vec![
+            0, 1, //
+            0, 2, 4, //
+            1, 2, 3, //
+            2, //
+            1, 2, 4, //
+        ];
+        let row_pointers = vec![0, 2, 5, 8, 9, 12];
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(114.0, 0.0))
     }
 
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
@@ -774,6 +861,8 @@ impl Samples {
 
     /// Returns the matrix and its determinant
     ///
+    /// Returns `(coo, csc, csr, det)`.
+    ///
     /// Example from Intel MKL documentation
     ///
     /// ```text
@@ -844,6 +933,87 @@ impl Samples {
         let row_pointers = vec![0, 1, 3, 5, 7, 9];
         let csr = CsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
         (coo, csc, csr, 9.0 / 4.0)
+    }
+
+    /// Returns the matrix and its determinant (complex version)
+    ///
+    /// Returns `(coo, csc, csr, det)`.
+    ///
+    /// **Note:** This is the version using "complex" structures/data, but there are no imaginary values.
+    ///
+    /// Example from Intel MKL documentation
+    ///
+    /// ```text
+    ///     9   1.5     6  0.75     3
+    ///   1.5   0.5     .     .     .
+    ///     6     .    12     .     .
+    ///  0.75     .     . 0.625     .
+    ///     3     .     .     .    16
+    /// ```
+    ///
+    /// With the right-hand side vector:
+    ///
+    /// ```text
+    /// let rhs = ComplexVector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+    /// ```
+    ///
+    /// The solution of `A · x = rhs` is:
+    ///
+    /// ```text
+    /// x_correct = ComplexVector::from(&[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0]);
+    /// ```
+    pub fn mkl_complex_positive_definite_5x5_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64)
+    {
+        let sym = Sym::YesLower;
+        let nrow = 5;
+        let ncol = 5;
+        let mut coo = ComplexCooMatrix::new(nrow, ncol, 9, sym).unwrap();
+        coo.put(0, 0, cpx!(9.0, 0.0)).unwrap();
+        coo.put(1, 1, cpx!(0.5, 0.0)).unwrap();
+        coo.put(2, 2, cpx!(12.0, 0.0)).unwrap();
+        coo.put(3, 3, cpx!(0.625, 0.0)).unwrap();
+        coo.put(4, 4, cpx!(16.0, 0.0)).unwrap();
+        coo.put(1, 0, cpx!(1.5, 0.0)).unwrap();
+        coo.put(2, 0, cpx!(6.0, 0.0)).unwrap();
+        coo.put(3, 0, cpx!(0.75, 0.0)).unwrap();
+        coo.put(4, 0, cpx!(3.0, 0.0)).unwrap();
+        // CSC matrix
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(9.0, 0.0), cpx!(1.5, 0.0), cpx!(6.0, 0.0), cpx!(0.75, 0.0), cpx!(3.0, 0.0), // j=0 p=(0),1,2,3,4
+            cpx!(0.5, 0.0),                                                                  // j=1 p=(5)
+            cpx!(12.0, 0.0),                                                                 // j=2 p=(6)
+            cpx!(0.625, 0.0),                                                                // j=3 p=(7)
+            cpx!(16.0, 0.0),                                                                 // j=4 p=(8)
+        ]; //                                                                                       p=(9)
+        let row_indices = vec![
+            0, 1, 2, 3, 4, //
+            1, //
+            2, //
+            3, //
+            4, //
+        ];
+        let col_pointers = vec![0, 5, 6, 7, 8, 9];
+        let csc = ComplexCscMatrix::new(nrow, ncol, col_pointers, row_indices, values, sym).unwrap();
+        // CSR matrix
+        #[rustfmt::skip]
+        let values = vec![
+            cpx!(9.0, 0.0),                    // i=0 p=(0)
+            cpx!(1.5, 0.0), cpx!(0.5, 0.0),    // i=1 p=(1),2
+            cpx!(6.0, 0.0), cpx!(12.0, 0.0),   // i=2 p=(3),4
+            cpx!(0.75, 0.0), cpx!(0.625, 0.0), // i=3 p=(5),6
+            cpx!(3.0, 0.0), cpx!(16.0, 0.0),   // i=4 p=(7),8
+        ]; //                                         p=(9)
+        let col_indices = vec![
+            0, //
+            0, 1, //
+            0, 2, //
+            0, 3, //
+            0, 4, //
+        ];
+        let row_pointers = vec![0, 1, 3, 5, 7, 9];
+        let csr = ComplexCsrMatrix::new(nrow, ncol, row_pointers, col_indices, values, sym).unwrap();
+        (coo, csc, csr, cpx!(9.0 / 4.0, 0.0))
     }
 
     /// Returns the matrix and its determinant
@@ -1509,10 +1679,10 @@ mod tests {
     use super::Samples;
     use crate::{NumCooMatrix, NumCscMatrix, NumCsrMatrix};
     use num_traits::{Num, NumCast};
-    use russell_lab::{approx_eq, mat_approx_eq, mat_inverse, Matrix};
-    use russell_lab::{complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx, ComplexMatrix};
-    use serde::de::DeserializeOwned;
+    use russell_lab::{ComplexMatrix, complex_approx_eq, complex_mat_approx_eq, complex_mat_inverse, cpx};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_inverse};
     use serde::Serialize;
+    use serde::de::DeserializeOwned;
     use std::ops::{AddAssign, MulAssign};
 
     /// Checks the samples

@@ -234,7 +234,6 @@ pub type StrError = &'static str;
 mod aliases;
 mod complex_coo_matrix;
 mod complex_lin_solver;
-mod complex_solver_cudss;
 mod complex_solver_klu;
 mod complex_solver_umfpack;
 mod constants;
@@ -257,7 +256,6 @@ mod write_matrix_market;
 
 pub use aliases::*;
 pub use complex_lin_solver::*;
-pub use complex_solver_cudss::*;
 pub use complex_solver_klu::*;
 pub use complex_solver_umfpack::*;
 use constants::*;
@@ -279,7 +277,13 @@ pub use verify_lin_sys::*;
 // ----- cudss
 
 #[cfg(feature = "cudss")]
+mod complex_solver_cudss;
+
+#[cfg(feature = "cudss")]
 mod solver_cudss;
+
+#[cfg(feature = "cudss")]
+pub use complex_solver_cudss::*;
 
 #[cfg(feature = "cudss")]
 pub use solver_cudss::*;

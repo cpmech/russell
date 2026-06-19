@@ -1,3 +1,6 @@
+#[cfg(feature = "cudss")]
+use super::ComplexSolverCUDSS;
+
 #[cfg(feature = "local_sparse")]
 use super::ComplexSolverMUMPS;
 
@@ -73,14 +76,28 @@ impl<'a> ComplexLinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        #[cfg(feature = "local_sparse")]
+        #[cfg(all(feature = "cudss", feature = "local_sparse"))]
+        let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Cudss => Box::new(ComplexSolverCUDSS::new()?),
+            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
+            Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
+            Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
+        };
+        #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Cudss => return Err("cuDSS solver is not available"),
             Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
-        #[cfg(not(feature = "local_sparse"))]
+        #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
+        let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
+            Genie::Cudss => Box::new(ComplexSolverCUDSS::new()?),
+            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
+            Genie::Mumps => return Err("MUMPS solver is not available"),
+            Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
+        };
+        #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Cudss => return Err("cuDSS solver is not available"),
             Genie::Klu => Box::new(ComplexSolverKLU::new()?),
@@ -138,7 +155,7 @@ impl<'a> ComplexLinSolver<'a> {
 mod tests {
     use super::ComplexLinSolver;
     use crate::{Genie, Samples};
-    use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+    use russell_lab::{ComplexVector, complex_vec_approx_eq, cpx};
 
     #[cfg(feature = "local_sparse")]
     use serial_test::serial;

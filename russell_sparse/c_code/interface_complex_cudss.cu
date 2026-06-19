@@ -172,6 +172,22 @@ extern "C" void complex_solver_cudss_drop(struct InterfaceComplexCUDSS *solver) 
 }
 
 /// @brief Performs the symbolic factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param ordering Is the ordering strategy
+/// @param matching Is the matching strategy
+/// @param pivoting Is the pivoting strategy
+/// @param pivot_epsilon Is the pivot epsilon
+/// @param refinement_nstep Is the number of iterative refinement steps
+/// @param hybrid_memory Indicates whether to use hybrid memory mode
+/// @param verbose Shows messages
+/// @param general_symmetric Indicates a general symmetric matrix
+/// @param positive_definite Indicates a positive-definite symmetric matrix
+/// @param ndim Is the number of rows and columns
+/// @param row_pointers Are the CSR matrix row pointers
+/// @param col_indices Are the CSR matrix col indices
+/// @param values Are the CSR matrix values
+/// @return A success or error code
 extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS *solver,
                                                    int32_t ordering,
                                                    int32_t matching,
@@ -365,6 +381,13 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
 }
 
 /// @brief Performs the numeric factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param effective_matching Returns the effective matching used
+/// @param effective_pivoting Returns the effective pivoting used
+/// @param verbose Shows messages
+/// @param values Are the CSR matrix values
+/// @return A success or error code
 extern "C" int32_t complex_solver_cudss_factorize(struct InterfaceComplexCUDSS *solver,
                                                   int32_t *effective_matching,
                                                   int32_t *effective_pivoting,
@@ -457,6 +480,12 @@ extern "C" int32_t complex_solver_cudss_factorize(struct InterfaceComplexCUDSS *
 }
 
 /// @brief Computes the solution of the linear system
+///
+/// @param solver Is a pointer to the solver interface
+/// @param x Is the solution vector
+/// @param rhs Is the right-hand side vector
+/// @param verbose Shows messages
+/// @return A success or error code
 extern "C" int32_t complex_solver_cudss_solve(struct InterfaceComplexCUDSS *solver,
                                               cuDoubleComplex *x,
                                               const cuDoubleComplex *rhs,

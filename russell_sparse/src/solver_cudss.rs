@@ -53,6 +53,13 @@ unsafe extern "C" {
 
 /// Wraps the cuDSS solver for sparse linear systems
 ///
+/// cuDSS is a GPU-accelerated direct solver for sparse linear systems using CUDA.
+/// It is recommended for performance when a compatible NVIDIA GPU is available.
+///
+/// **Reference:** <https://developer.nvidia.com/cudss>
+///
+/// **Warning:** This solver may "run out of memory" for very large matrices.
+///
 /// # Memory leak reports with Valgrind
 ///
 /// Running `valgrind` (or `cargo valgrind`) will report memory leaks originating

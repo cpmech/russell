@@ -55,6 +55,14 @@ void complex_solver_klu_drop(struct InterfaceComplexKLU *solver) {
 }
 
 /// @brief Performs the symbolic factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param ordering Is the ordering strategy
+/// @param scaling Is the scaling strategy
+/// @param ndim Is the number of rows and columns
+/// @param col_pointers Are the CSC matrix column pointers
+/// @param row_indices Are the CSC matrix row indices
+/// @return A success or error code
 int32_t complex_solver_klu_initialize(struct InterfaceComplexKLU *solver,
                                       int32_t ordering,
                                       int32_t scaling,
@@ -94,6 +102,16 @@ int32_t complex_solver_klu_initialize(struct InterfaceComplexKLU *solver,
 }
 
 /// @brief Performs the numeric factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param effective_ordering Returns the effective ordering used
+/// @param effective_scaling Returns the effective scaling used
+/// @param cond_estimate Returns the reciprocal condition number estimate
+/// @param compute_cond Requests the computation of the condition number
+/// @param col_pointers Are the CSC matrix column pointers
+/// @param row_indices Are the CSC matrix row indices
+/// @param values Are the CSC matrix values
+/// @return A success or error code
 int32_t complex_solver_klu_factorize(struct InterfaceComplexKLU *solver,
                                      int32_t *effective_ordering,
                                      int32_t *effective_scaling,
@@ -149,6 +167,11 @@ int32_t complex_solver_klu_factorize(struct InterfaceComplexKLU *solver,
 }
 
 /// @brief Computes the solution of the linear system
+///
+/// @param solver Is a pointer to the solver interface
+/// @param ndim Is the number of rows and columns
+/// @param in_rhs_out_x Is the right-hand side on the input and the solution on the output
+/// @return A success or error code
 int32_t complex_solver_klu_solve(struct InterfaceComplexKLU *solver,
                                  int32_t ndim,
                                  COMPLEX64 *in_rhs_out_x) {

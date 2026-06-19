@@ -59,7 +59,13 @@ unsafe extern "C" {
     ) -> i32;
 }
 
-/// Wraps the MUMPS solver for (very large) sparse linear systems
+/// Wraps the MUMPS solver for (large) sparse linear systems
+///
+/// MUMPS is a direct solver for **general** sparse linear systems, designed for distributed memory
+/// computers (using MPI) and shared memory computers (using OpenMP). It is recommended for
+/// very large systems.
+///
+/// **Reference:** <https://mumps-solver.org>
 ///
 /// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
 ///

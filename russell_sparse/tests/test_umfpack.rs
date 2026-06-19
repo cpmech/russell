@@ -3,7 +3,7 @@ use russell_sparse::prelude::*;
 use russell_sparse::StrError;
 
 #[test]
-fn test_complex_umfpack() -> Result<(), StrError> {
+fn test_umfpack() -> Result<(), StrError> {
     let n = 10;
     let d = (n as f64) / 10.0;
     let mut coo = CooMatrix::new(n, n, n, Sym::No)?;
@@ -13,7 +13,7 @@ fn test_complex_umfpack() -> Result<(), StrError> {
         // put diagonal entries
         let akk = 10.0 + (k as f64) * d;
         coo.put(k, k, akk)?;
-        // let the exact solution be k + 0.5i
+        // let the exact solution be k
         x_correct[k] = k as f64;
         // generate RHS to match solution
         rhs[k] = akk * x_correct[k];

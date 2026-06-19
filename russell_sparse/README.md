@@ -1,4 +1,4 @@
-# Russell Sparse - Solvers for large sparse linear systems (wraps MUMPS and UMFPACK) <!-- omit from toc --> 
+# Russell Sparse - Solvers for large sparse linear systems (wraps cuDSS, KLU, MUMPS, and UMFPACK) <!-- omit from toc --> 
 
 [![documentation](https://docs.rs/russell_sparse/badge.svg)](https://docs.rs/russell_sparse/)
 
@@ -20,7 +20,15 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers, such as [UMFPACK (recommended)](https://github.com/DrTimothyAldenDavis/SuiteSparse) and [MUMPS (for very large systems)](https://mumps-solver.org).
+This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers:
+* [cuDSS](https://developer.nvidia.com/cudss) - GPU-accelerated direct solver
+* [KLU](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Optimized for highly sparse matrices (e.g., circuit simulation)
+* [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
+* [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
+
+### Complex Numbers Support
+This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.
+
 
 Iterative solvers are outside the scope of `russell_sparse`. Users looking for Rust-based iterative solvers may refer to the [kryst library](https://github.com/tmathis720/kryst).
 
@@ -65,6 +73,7 @@ russell_sparse = "*"
 
 The following (Rust) features are available:
 
+* `cudss`: Enable the NVIDIA cuDSS GPU solver (requires CUDA and cuDSS)
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
 
@@ -124,6 +133,45 @@ fn main() -> Result<(), StrError> {
     umfpack.solve(&mut x, &b, false)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(&x, &correct, 1e-14);
+    Ok(())
+}
+```
+
+### Solve a complex sparse linear system using UMFPACK
+
+```rust
+use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+use russell_sparse::prelude::*;
+use russell_sparse::StrError;
+
+fn main() -> Result<(), StrError> {
+    let ndim = 3;
+    let nnz = 3;
+
+    // allocate solver
+    let mut umfpack = ComplexSolverUMFPACK::new()?;
+
+    // allocate the coefficient matrix
+    let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+    coo.put(0, 0, cpx!(1.0, 0.1))?;
+    coo.put(1, 1, cpx!(2.0, 0.2))?;
+    coo.put(2, 2, cpx!(3.0, 0.3))?;
+
+    // call factorize
+    umfpack.factorize(&coo, None)?;
+
+    // right-hand side vector
+    let b = ComplexVector::from(&[cpx!(1.0, 1.0), cpx!(2.0, 2.0), cpx!(3.0, 3.0)]);
+
+    // calculate the solution
+    let mut x = ComplexVector::new(ndim);
+    umfpack.solve(&mut x, &b, false)?;
+    
+    // check the result
+    let correct = &[cpx!(1.089108910891089, 0.891089108910891),
+                    cpx!(1.089108910891089, 0.891089108910891),
+                    cpx!(1.089108910891089, 0.891089108910891)];
+    complex_vec_approx_eq(&x, correct, 1e-14);
     Ok(())
 }
 ```

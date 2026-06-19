@@ -63,6 +63,11 @@ unsafe extern "C" {
 
 /// Wraps the UMFPACK solver for sparse linear systems
 ///
+/// UMFPACK is a direct solver for **general** (unsymmetric or symmetric) sparse linear systems.
+/// It is recommended for most sequential applications.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
 pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK

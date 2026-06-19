@@ -48,7 +48,12 @@ unsafe extern "C" {
     fn complex_solver_klu_solve(solver: *mut InterfaceComplexKLU, ndim: i32, in_rhs_out_x: *mut Complex64) -> i32;
 }
 
-/// Wraps the KLU solver for sparse linear systems
+/// Wraps the KLU solver for complex sparse linear systems
+///
+/// KLU is a direct solver specifically designed for **highly sparse** matrices,
+/// such as those arising in circuit simulation.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
 ///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
 pub struct ComplexSolverKLU {

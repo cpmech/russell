@@ -76,6 +76,22 @@ void complex_solver_mumps_drop(struct InterfaceComplexMUMPS *solver) {
 }
 
 /// @brief Perform analysis just once (considering that the matrix structure remains constant)
+///
+/// @param solver Is a pointer to the solver interface
+/// @param ordering Is the ordering strategy
+/// @param scaling Is the scaling strategy
+/// @param pct_inc_workspace Is the allowed percentage increase of the workspace
+/// @param max_work_memory Is the allowed maximum memory
+/// @param openmp_num_threads Is the number of OpenMP threads
+/// @param verbose Shows messages or not
+/// @param general_symmetric Indicates a general symmetric matrix
+/// @param positive_definite Indicates a positive-definite symmetric matrix
+/// @param ndim Is the number of rows and columns
+/// @param nnz Is the number of non-zeros
+/// @param indices_i Are the Coo matrix row indices
+/// @param indices_j Are the Coo matrix column indices
+/// @param values_aij Are the Coo matrix values
+/// @return A success or error code
 int32_t complex_solver_mumps_initialize(struct InterfaceComplexMUMPS *solver,
                                         int32_t ordering,
                                         int32_t scaling,
@@ -157,6 +173,16 @@ int32_t complex_solver_mumps_initialize(struct InterfaceComplexMUMPS *solver,
 }
 
 /// @brief Performs the factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param effective_ordering Returns the effective ordering used
+/// @param effective_scaling Returns the effective scaling used
+/// @param determinant_coefficient_real Returns the real part of the determinant coefficient
+/// @param determinant_coefficient_imag Returns the imaginary part of the determinant coefficient
+/// @param determinant_exponent Returns the determinant exponent
+/// @param compute_determinant Requests the computation of the determinant
+/// @param verbose Shows messages
+/// @return A success or error code
 int32_t complex_solver_mumps_factorize(struct InterfaceComplexMUMPS *solver,
                                        int32_t *effective_ordering,
                                        int32_t *effective_scaling,
@@ -211,8 +237,13 @@ int32_t complex_solver_mumps_factorize(struct InterfaceComplexMUMPS *solver,
 }
 
 /// @brief Computes the solution of the linear system
+///
+/// @param solver Is a pointer to the solver interface
+/// @param rhs Is the right-hand side on the input and the solution on the output
 /// @param error_analysis_array_len_8 array of size 8 to hold the results from the error analysis
 /// @param error_analysis_option ICNTL(11): 0 (nothing), 1 (all; slow), 2 (just errors)
+/// @param verbose Shows messages
+/// @return A success or error code
 int32_t complex_solver_mumps_solve(struct InterfaceComplexMUMPS *solver,
                                    ZMUMPS_COMPLEX *rhs,
                                    double *error_analysis_array_len_8,

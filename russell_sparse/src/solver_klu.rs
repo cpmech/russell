@@ -48,6 +48,11 @@ unsafe extern "C" {
 
 /// Wraps the KLU solver for sparse linear systems
 ///
+/// KLU is a direct solver specifically designed for **highly sparse** matrices,
+/// such as those arising in circuit simulation.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
 pub struct SolverKLU {
     /// Holds a pointer to the C interface to KLU

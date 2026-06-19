@@ -76,6 +76,47 @@ unsafe extern "C" {
 /// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
 ///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 7;
+///
+///     let mut umfpack = ComplexSolverUMFPACK::new()?;
+///
+///     // allocate the coefficient matrix
+///     //   ┌                      ┐
+///     //   │  2+1i  -1-1i     0   │
+///     //   │ -1-1i   2+2i  -1+1i  │
+///     //   │   0    -1+1i   2-1i  │
+///     //   └                      ┘
+///     let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, cpx!(2.0, 1.0))?;
+///     coo.put(0, 1, cpx!(-1.0, -1.0))?;
+///     coo.put(1, 0, cpx!(-1.0, -1.0))?;
+///     coo.put(1, 1, cpx!(2.0, 2.0))?;
+///     coo.put(1, 2, cpx!(-1.0, 1.0))?;
+///     coo.put(2, 1, cpx!(-1.0, 1.0))?;
+///     coo.put(2, 2, cpx!(2.0, -1.0))?;
+///
+///     umfpack.factorize(&coo, None)?;
+///
+///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+///
+///     let mut x = ComplexVector::new(ndim);
+///     umfpack.solve(&mut x, &rhs, false)?;
+///
+///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+///     complex_vec_approx_eq(&x, correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct ComplexSolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceComplexUMFPACK,

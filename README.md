@@ -87,7 +87,7 @@ This project is split into the following crates:
 - [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) Numerical Continuation methods to solve nonlinear systems of equations (natural continuation + pseudo-arclength).
 - [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) (DoPri5/8, Radau5, Euler).
 - [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver (spectral collocation + finite differences; 1D/2D)
-- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, KLU, MUMPS, and UMFPACK) + COO/CSC/CSR formats.
+- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, KLU, MUMPS, and UMFPACK) + COO/CSC/CSR formats + complex numbers support.
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions (Frechet, Gumbel, Normal).
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics (Mandel basis) 
 
@@ -735,6 +735,54 @@ fn main() -> Result<(), StrError> {
 
 
 
+### (sparse) Solution of a complex sparse linear system
+
+```rust
+use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+use russell_sparse::prelude::*;
+use russell_sparse::StrError;
+
+fn main() -> Result<(), StrError> {
+    let ndim = 3;
+    let nnz = 7;
+
+    // allocate solver
+    let mut umfpack = ComplexSolverUMFPACK::new()?;
+
+    // allocate the coefficient matrix
+    //   ┌                      ┐
+    //   │  2+1i  -1-1i     0   │
+    //   │ -1-1i   2+2i  -1+1i  │
+    //   │   0    -1+1i   2-1i  │
+    //   └                      ┘
+    let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+    coo.put(0, 0, cpx!(2.0, 1.0))?;
+    coo.put(0, 1, cpx!(-1.0, -1.0))?;
+    coo.put(1, 0, cpx!(-1.0, -1.0))?;
+    coo.put(1, 1, cpx!(2.0, 2.0))?;
+    coo.put(1, 2, cpx!(-1.0, 1.0))?;
+    coo.put(2, 1, cpx!(-1.0, 1.0))?;
+    coo.put(2, 2, cpx!(2.0, -1.0))?;
+
+    // call factorize
+    umfpack.factorize(&coo, None)?;
+
+    // right-hand side vector
+    let b = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+
+    // calculate the solution
+    let mut x = ComplexVector::new(ndim);
+    umfpack.solve(&mut x, &b, false)?;
+
+    // check the result
+    let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+    complex_vec_approx_eq(&x, correct, 1e-14);
+    Ok(())
+}
+```
+
+
+
 ### (ode) Solution of the Brusselator ODE
 
 The system is:
@@ -1001,7 +1049,9 @@ fn main() -> Result<(), StrError> {
         - [x] Implement Legendre polynomials
         - [ ] Implement Fourier interpolation
 - [x] Improve `russell_sparse`
+    - [x] Wrap the cuDSS solver (NVIDIA GPUs)
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
+    - [x] Implement support for complex numbers
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSR)
     - [x] Improve the C-interface to UMFPACK and MUMPS

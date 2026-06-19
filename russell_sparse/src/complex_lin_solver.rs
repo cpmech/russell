@@ -134,6 +134,37 @@ impl<'a> ComplexLinSolver<'a> {
     /// 4. This function calls the actual implementation (genie) via the functions `factorize`, and `solve`.
     /// 5. This function is best for a **single-use**, whereas the actual
     ///    solver should be considered for a recurrent use (e.g., inside a loop).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let ndim = 3;
+    ///     let nnz = 7;
+    ///
+    ///     let mut mat = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+    ///     mat.put(0, 0, cpx!(2.0, 1.0))?;
+    ///     mat.put(0, 1, cpx!(-1.0, -1.0))?;
+    ///     mat.put(1, 0, cpx!(-1.0, -1.0))?;
+    ///     mat.put(1, 1, cpx!(2.0, 2.0))?;
+    ///     mat.put(1, 2, cpx!(-1.0, 1.0))?;
+    ///     mat.put(2, 1, cpx!(-1.0, 1.0))?;
+    ///     mat.put(2, 2, cpx!(2.0, -1.0))?;
+    ///
+    ///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+    ///
+    ///     let mut x = ComplexVector::new(ndim);
+    ///     ComplexLinSolver::compute(Genie::Umfpack, &mut x, &mat, &rhs, None)?;
+    ///
+    ///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+    ///     complex_vec_approx_eq(&x, correct, 1e-14);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn compute(
         genie: Genie,
         x: &mut ComplexVector,

@@ -201,30 +201,35 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
     /* Allocate device memory for row pointers */
     cudaError_t cuda_error = cudaMalloc(&solver->gpu_row_pointers, (ndim + 1) * sizeof(int));
     if (cuda_error != cudaSuccess) {
+        solver->gpu_row_pointers = NULL;
         return ERROR_CUDA_MALLOC;
     }
 
     /* Allocate device memory for col indices */
     cuda_error = cudaMalloc(&solver->gpu_col_indices, nnz * sizeof(int));
     if (cuda_error != cudaSuccess) {
+        solver->gpu_col_indices = NULL;
         return ERROR_CUDA_MALLOC;
     }
 
     /* Allocate device memory for values */
     cuda_error = cudaMalloc(&solver->gpu_values, nnz * sizeof(cuDoubleComplex));
     if (cuda_error != cudaSuccess) {
+        solver->gpu_values = NULL;
         return ERROR_CUDA_MALLOC;
     }
 
     /* Allocate device memory for b */
     cuda_error = cudaMalloc(&solver->gpu_b, ndim * sizeof(cuDoubleComplex));
     if (cuda_error != cudaSuccess) {
+        solver->gpu_b = NULL;
         return ERROR_CUDA_MALLOC;
     }
 
     /* Allocate device memory for x */
     cuda_error = cudaMalloc(&solver->gpu_x, ndim * sizeof(cuDoubleComplex));
     if (cuda_error != cudaSuccess) {
+        solver->gpu_x = NULL;
         return ERROR_CUDA_MALLOC;
     }
 

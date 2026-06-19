@@ -803,16 +803,6 @@ mod tests {
         // solve works
         solver.solve(&mut x, &rhs, false).unwrap();
         vec_approx_eq(&x, x_correct, 1e-10);
-
-        // update stats
-        let mut stats = StatsLinSol::new();
-        solver.update_stats(&mut stats);
-        // TODO: check
-
-        // calling solve again works
-        // let mut x_again = Vector::new(5);
-        // solver.solve(&mut x_again, &rhs, false).unwrap();
-        // vec_approx_eq(&x_again, x_correct, 1e-14);
     }
 
     #[test]

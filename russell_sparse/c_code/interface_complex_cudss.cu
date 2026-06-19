@@ -333,7 +333,7 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
             return ERROR_CUDSS_CONFIG_SET;
         }
         if (verbose == C_TRUE) {
-            printf("solver_cudss_initialize: Hybrid memory mode enabled\n");
+            printf("complex_solver_cudss_initialize: Hybrid memory mode enabled\n");
         }
     }
 

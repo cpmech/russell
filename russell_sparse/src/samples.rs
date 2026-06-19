@@ -65,9 +65,11 @@ impl Samples {
     /// Returns a (3 x 3) positive definite matrix (lower representation)
     ///
     /// ```text
-    ///  2  -1              2     sym
-    /// -1   2  -1    =>   -1   2
-    ///     -1   2             -1   2
+    /// ┌          ┐       ┌         ┐
+    /// │  2 -1  0 │       │  2      │ sym
+    /// │ -1  2 -1 │  =>   │ -1  2   │
+    /// │  0 -1  2 │       │  0 -1 2 │
+    /// └          ┘       └         ┘
     /// ```
     pub fn positive_definite_3x3_lower() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
@@ -111,9 +113,11 @@ impl Samples {
     /// Returns a (3 x 3) positive definite matrix (upper representation)
     ///
     /// ```text
-    ///  2  -1              2  -1
-    /// -1   2  -1    =>        2  -1
-    ///     -1   2          sym     2
+    /// ┌          ┐       ┌         ┐
+    /// │  2 -1  0 │       │  2 -1   │
+    /// │ -1  2 -1 │  =>   │    2 -1 │
+    /// │  0 -1  2 │       │      2  │
+    /// └          ┘       └         ┘ sym
     /// ```
     pub fn positive_definite_3x3_upper() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
@@ -157,9 +161,11 @@ impl Samples {
     /// Returns a (3 x 3) positive definite matrix (full representation)
     ///
     /// ```text
-    ///  2  -1    
-    /// -1   2  -1
-    ///     -1   2
+    /// ┌          ┐
+    /// │  2 -1  0 │
+    /// │ -1  2 -1 │
+    /// │  0 -1  2 │
+    /// └          ┘
     /// ```
     pub fn positive_definite_3x3_full() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (3, 3, 8);
@@ -205,9 +211,11 @@ impl Samples {
     /// Returns a complex symmetric (3 x 3) matrix (lower storage)
     ///
     /// ```text
-    ///  2+1i  -1-1i                  2+1i          sym
-    /// -1-1i   2+2i  -1+1i     =>   -1-1i   2+2i       
-    ///        -1+1i   2-1i                 -1+1i   2-1i
+    /// ┌                       ┐       ┌                      ┐
+    /// │  2+1i  -1-1i     0+0i │       │  2+1i                │  sym
+    /// │ -1-1i   2+2i  -1+1i   │  =>   │ -1-1i   2+2i         │
+    /// │  0+0i  -1+1i   2-1i   │       │  0+0i  -1+1i   2-1i  │
+    /// └                       ┘       └                      ┘
     /// ```
     pub fn complex_symmetric_3x3_lower() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
@@ -253,9 +261,11 @@ impl Samples {
     /// Returns a complex symmetric (3 x 3) matrix (upper storage)
     ///
     /// ```text
-    ///  2+1i  -1-1i                  2+1i  -1-1i
-    /// -1-1i   2+2i  -1+1i     =>           2+2i  -1+1i
-    ///        -1+1i   2-1i           sym           2-1i
+    /// ┌                       ┐       ┌                     ┐
+    /// │  2+1i  -1-1i     0+0i │       │  2+1i  -1-1i   0+0i │
+    /// │ -1-1i   2+2i  -1+1i   │  =>   │         2+2i  -1+1i │  sym
+    /// │  0+0i  -1+1i   2-1i   │       │                2-1i │
+    /// └                       ┘       └                     ┘
     /// ```
     pub fn complex_symmetric_3x3_upper() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 6);
@@ -301,9 +311,11 @@ impl Samples {
     /// Returns a complex symmetric (3 x 3) matrix (full storage)
     ///
     /// ```text
-    ///  2+1i  -1-1i      
-    /// -1-1i   2+2i  -1+1i
-    ///        -1+1i   2-1i
+    /// ┌                       ┐
+    /// │  2+1i  -1-1i     0+0i │
+    /// │ -1-1i   2+2i  -1+1i   │
+    /// │  0+0i  -1+1i   2-1i   │
+    /// └                       ┘
     /// ```
     pub fn complex_symmetric_3x3_full() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, Complex64) {
         let (nrow, ncol, nnz) = (3, 3, 8);
@@ -351,11 +363,13 @@ impl Samples {
     /// Returns a lower symmetric 5 x 5 matrix
     ///
     /// ```text
-    /// 2  1  1  3  2        2
-    /// 1  2  2  1  1        1  2     sym
-    /// 1  2  9  1  5   =>   1  2  9
-    /// 3  1  1  7  1        3  1  1  7
-    /// 2  1  5  1  8        2  1  5  1  8
+    /// ┌               ┐       ┌                ┐
+    /// │ 2  1  1  3  2 │       │ 2              │
+    /// │ 1  2  2  1  1 │       │ 1  2           │  sym
+    /// │ 1  2  9  1  5 │  =>   │ 1  2  9        │
+    /// │ 3  1  1  7  1 │       │ 3  1  1  7     │
+    /// │ 2  1  5  1  8 │       │ 2  1  5  1  8  │
+    /// └               ┘       └                ┘
     /// ```
     pub fn lower_symmetric_5x5() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let (nrow, ncol, nnz) = (5, 5, 18);
@@ -419,9 +433,11 @@ impl Samples {
     /// Returns the COO, CSC, and CSR versions of the matrix and its determinant
     ///
     /// ```text
-    ///  1  .  2
-    ///  .  0  3
-    ///  4  5  6
+    /// ┌          ┐
+    /// │  1  0  2 │
+    /// │  0  0  3 │
+    /// │  4  5  6 │
+    /// └          ┘
     /// ```
     ///
     /// ```text
@@ -693,11 +709,13 @@ impl Samples {
     /// Triplet with shuffled entries (however, CSC and CSR have sorted entries).
     ///
     /// ```text
-    ///  1  -1   .  -3   .
-    /// -2   5   .   .   .
-    ///  .   .   4   6   4
-    /// -4   .   2   7   .
-    ///  .   8   .   .  -5
+    /// ┌                    ┐
+    /// │  1  -1   0  -3   0 │
+    /// │ -2   5   0   0   0 │
+    /// │  0   0   4   6   4 │
+    /// │ -4   0   2   7   0 │
+    /// │  0   8   0   0  -5 │
+    /// └                    ┘
     /// ```
     ///
     /// Reference:
@@ -762,11 +780,13 @@ impl Samples {
     /// Triplet with shuffled entries (however, CSC and CSR have sorted entries).
     ///
     /// ```text
-    /// 1  2  .  .  .
-    /// 3  4  .  .  .
-    /// .  .  5  6  .
-    /// .  .  7  8  .
-    /// .  .  .  .  9
+    /// ┌               ┐
+    /// │ 1  2  0  0  0 │
+    /// │ 3  4  0  0  0 │
+    /// │ 0  0  5  6  0 │
+    /// │ 0  0  7  8  0 │
+    /// │ 0  0  0  0  9 │
+    /// └               ┘
     /// ```
     pub fn block_unsymmetric_5x5(
         shuffle_coo_entries: bool,
@@ -870,11 +890,13 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    ///     9   1.5     6  0.75     3
-    ///   1.5   0.5     .     .     .
-    ///     6     .    12     .     .
-    ///  0.75     .     . 0.625     .
-    ///     3     .     .     .    16
+    /// ┌                           ┐
+    /// │    9   1.5     6  0.75  3 │
+    /// │  1.5   0.5     0     0  0 │
+    /// │    6     0    12     0  0 │
+    /// │ 0.75     0     0 0.625  0 │
+    /// │    3     0     0     0 16 │
+    /// └                           ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -948,11 +970,13 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    ///     9   1.5     6  0.75     3
-    ///   1.5   0.5     .     .     .
-    ///     6     .    12     .     .
-    ///  0.75     .     . 0.625     .
-    ///     3     .     .     .    16
+    /// ┌                           ┐
+    /// │    9   1.5     6  0.75  3 │
+    /// │  1.5   0.5     0     0  0 │
+    /// │    6     0    12     0  0 │
+    /// │ 0.75     0     0 0.625  0 │
+    /// │    3     0     0     0 16 │
+    /// └                           ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -1025,11 +1049,13 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    ///     9   1.5     6  0.75     3
-    ///   1.5   0.5     .     .     .
-    ///     6     .    12     .     .
-    ///  0.75     .     . 0.625     .
-    ///     3     .     .     .    16
+    /// ┌                           ┐
+    /// │    9   1.5     6  0.75  3 │
+    /// │  1.5   0.5     0     0  0 │
+    /// │    6     0    12     0  0 │
+    /// │ 0.75     0     0 0.625  0 │
+    /// │    3     0     0     0 16 │
+    /// └                           ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -1099,11 +1125,13 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    ///     9   1.5     6  0.75     3
-    ///   1.5   0.5     .     .     .
-    ///     6     .    12     .     .
-    ///  0.75     .     . 0.625     .
-    ///     3     .     .     .    16
+    /// ┌                           ┐
+    /// │    9   1.5     6  0.75  3 │
+    /// │  1.5   0.5     0     0  0 │
+    /// │    6     0    12     0  0 │
+    /// │ 0.75     0     0 0.625  0 │
+    /// │    3     0     0     0 16 │
+    /// └                           ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -1221,11 +1249,13 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    ///     9   1.5     6  0.75     3
-    ///   1.5   0.5     .     .     .
-    ///     6     .    12     .     .
-    ///  0.75     .     . 0.625     .
-    ///     3     .     .     .    16
+    /// ┌                           ┐
+    /// │    9   1.5     6  0.75  3 │
+    /// │  1.5   0.5     0     0  0 │
+    /// │    6     0    12     0  0 │
+    /// │ 0.75     0     0 0.625  0 │
+    /// │    3     0     0     0 16 │
+    /// └                           ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -1342,11 +1372,13 @@ impl Samples {
     /// Example from Intel MKL documentation
     ///
     /// ```text
-    ///     9   1.5     6  0.75     3
-    ///   1.5   0.5     .     .     .
-    ///     6     .    12     .     .
-    ///  0.75     .     . 0.625     .
-    ///     3     .     .     .    16
+    /// ┌                           ┐
+    /// │    9   1.5     6  0.75  3 │
+    /// │  1.5   0.5     0     0  0 │
+    /// │    6     0    12     0  0 │
+    /// │ 0.75     0     0 0.625  0 │
+    /// │    3     0     0     0 16 │
+    /// └                           ┘
     /// ```
     ///
     /// With the right-hand side vector:
@@ -1571,9 +1603,11 @@ impl Samples {
     /// Note: the last return value is not the determinant, but a PLACEHOLDER
     ///
     /// ```text
-    ///   5  -2  .  1
-    ///  10  -4  .  2
-    ///  15  -6  .  3
+    /// ┌                ┐
+    /// │   5  -2   0  1 │
+    /// │  10  -4   0  2 │
+    /// │  15  -6   0  3 │
+    /// └                ┘
     /// ```
     pub fn rectangular_3x4() -> (CooMatrix, CscMatrix, CsrMatrix, f64) {
         let sym = Sym::No;
@@ -1625,10 +1659,12 @@ impl Samples {
     /// Note: the last return value is not the determinant, but a PLACEHOLDER
     ///
     /// ```text
-    /// 4+4i    .     2+2i
-    ///  .      1     3+3i
-    ///  .     5+5i   1+1i
-    ///  1      .      .  
+    /// ┌                   ┐
+    /// │ 4+4i   0+0i  2+2i │
+    /// │ 0+0i   1+0i  3+3i │
+    /// │ 0+0i   5+5i  1+1i │
+    /// │ 1+0i   0+0i  0+0i │
+    /// └                   ┘
     /// ```
     pub fn complex_rectangular_4x3() -> (ComplexCooMatrix, ComplexCscMatrix, ComplexCsrMatrix, f64) {
         let sym = Sym::No;

@@ -1,4 +1,4 @@
-use super::{to_i32, NumCooMatrix, NumCscMatrix, Sym};
+use super::{NumCooMatrix, NumCscMatrix, Sym, to_i32};
 use crate::StrError;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
@@ -13,11 +13,13 @@ use std::ops::{AddAssign, MulAssign};
 /// The sparse matrix is (dots indicate zero values);
 ///
 /// ```text
-///  1  -1   .  -3   .
-/// -2   5   .   .   .
-///  .   .   4   6   4
-/// -4   .   2   7   .
-///  .   8   .   .  -5
+/// ┌                    ┐
+/// │  1  -1   0  -3   0 │
+/// │ -2   5   0   0   0 │
+/// │  0   0   4   6   4 │
+/// │ -4   0   2   7   0 │
+/// │  0   8   0   0  -5 │
+/// └                    ┘
 /// ```
 ///
 /// The values in compressed row order are (note the row indices `i` and pointers `p`):
@@ -145,11 +147,13 @@ where
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix and store as CSR matrix
-    ///     //  2  3  .  .  .
-    ///     //  3  .  4  .  6
-    ///     //  . -1 -3  2  .
-    ///     //  .  .  1  .  .
-    ///     //  .  4  2  .  1
+    ///     // ┌                ┐
+    ///     // │  2  3  0  0  0 │
+    ///     // │  3  0  4  0  6 │
+    ///     // │  0 -1 -3  2  0 │
+    ///     // │  0  0  1  0  0 │
+    ///     // │  0  4  2  0  1 │
+    ///     // └                ┘
     ///     let nrow = 5;
     ///     let ncol = 5;
     ///     let row_pointers = vec![0, 2, 5, 8, 9, 12];
@@ -268,11 +272,13 @@ where
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix and store as COO matrix
-    ///     //  2  3  .  .  .
-    ///     //  3  .  4  .  6
-    ///     //  . -1 -3  2  .
-    ///     //  .  .  1  .  .
-    ///     //  .  4  2  .  1
+    ///     // ┌                ┐
+    ///     // │  2  3  0  0  0 │
+    ///     // │  3  0  4  0  6 │
+    ///     // │  0 -1 -3  2  0 │
+    ///     // │  0  0  1  0  0 │
+    ///     // │  0  4  2  0  1 │
+    ///     // └                ┘
     ///     let (nrow, ncol, nnz) = (5, 5, 13);
     ///     let mut coo = CooMatrix::new(nrow, ncol, nnz, Sym::No)?;
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
@@ -814,7 +820,7 @@ where
 mod tests {
     use super::NumCsrMatrix;
     use crate::{CooMatrix, Samples, Sym};
-    use russell_lab::{array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Matrix, Vector};
+    use russell_lab::{ComplexVector, Matrix, Vector, array_approx_eq, complex_vec_approx_eq, cpx, vec_approx_eq};
 
     #[test]
     fn new_captures_errors() {

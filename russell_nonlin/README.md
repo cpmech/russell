@@ -1,4 +1,4 @@
-# Russell Nonlin - Numerical Continuation methods to solve nonlinear systems of equations
+# Russell Nonlin - Numerical Continuation methods to solve nonlinear systems of equations <!-- omit from toc -->
 
 [![documentation](https://docs.rs/russell_nonlin/badge.svg)](https://docs.rs/russell_nonlin/)
 
@@ -6,8 +6,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Contents <!-- omit from toc --> 
 
-- [Russell Nonlin - Numerical Continuation methods to solve nonlinear systems of equations](#russell-nonlin---numerical-continuation-methods-to-solve-nonlinear-systems-of-equations)
-  - [Introduction](#introduction)
+- [Introduction](#introduction)
     - [Documentation](#documentation)
     - [References](#references)
   - [Installation](#installation)
@@ -158,3 +157,8 @@ Last accepted/suggested stepsize = 0.0017592577896469867
 And the plot looks like this:
 
 ![B-spline curve](data/figures/doc_arclength_bspline.svg)
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`

@@ -18,7 +18,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements structures and functions for tensor analysis and calculus. The library focuses on applications in engineering and [Continuum Mechanics](Continuum Mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
+This library implements structures and functions for tensor analysis and calculus. The library focuses on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
 
 This library implements derivatives for scalar functions with respect to tensors, tensor functions with respect to tensors, and others. A convenient basis representation known as Mandel basis (similar to Voigt notation) is considered by this library internally. The user may also use the Mandel basis to perform simpler matrix-vector operations directly.
 
@@ -130,3 +130,8 @@ fn main() -> Result<(), StrError> {
     Ok(())
 }
 ```
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`

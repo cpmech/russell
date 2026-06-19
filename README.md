@@ -66,6 +66,7 @@
   - [(lab) Line search for optimization](#lab-line-search-for-optimization)
   - [(nonlin) Numerical continuation of a B-spline curve](#nonlin-numerical-continuation-of-a-b-spline-curve)
   - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
+  - [(sparse) Solution of a complex sparse linear system](#sparse-solution-of-a-complex-sparse-linear-system)
   - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
   - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
   - [(pde) Spectral collocation in 2D with transfinite mapping](#pde-spectral-collocation-in-2d-with-transfinite-mapping)
@@ -323,8 +324,10 @@ export OPENBLAS_NUM_THREADS=1
 See also:
 
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
-* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+* [russell_nonlin/examples](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples)
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
+* [russell_pde/examples](https://github.com/cpmech/russell/tree/main/russell_pde/examples)
+* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
 * [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 * [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
@@ -587,7 +590,32 @@ The code below illustrates how to do it.
 Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
 
 ```rust
-use russell_lab::{read_data, StrError};
+use russell_lab::{StrError, read_table};
+use std::collections::HashMap;
+use std::env;
+use std::path::PathBuf;
+
+fn main() -> Result<(), StrError> {
+    // get the asset's full path
+    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let full_path = root.join("data/tables/clay-data.txt");
+
+    // read the file
+    let labels = &["sr", "ea", "er"];
+    let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+
+    // check the columns
+    assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+    assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
+    Ok(())
+}
+```
+
+Alternatively, we can use the simpler `read_data` function:
+
+```rust
+use russell_lab::{StrError, read_data};
 use std::env;
 use std::path::PathBuf;
 

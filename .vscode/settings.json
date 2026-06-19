@@ -366,8 +366,5 @@
     "zticks",
     "Γᵏᵢⱼ"
   ],
-  "rust-analyzer.cargo.features": [
-    "cudss",
-    "local_sparse"
-  ]
+  "rust-analyzer.cargo.features": "all"
 }

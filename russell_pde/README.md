@@ -1,4 +1,4 @@
-# Russell PDE - Essential tools to solve partial differential equations; not a full-fledged PDE solver
+# Russell PDE - Essential tools to solve partial differential equations; not a full-fledged PDE solver <!-- omit from toc -->
 
 [![documentation](https://docs.rs/russell_pde/badge.svg)](https://docs.rs/russell_pde/)
 
@@ -6,8 +6,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Contents <!-- omit from toc --> 
 
-- [Russell PDE - Essential tools to solve partial differential equations; not a full-fledged PDE solver](#russell-pde---essential-tools-to-solve-partial-differential-equations-not-a-full-fledged-pde-solver)
-  - [Introduction](#introduction)
+- [Introduction](#introduction)
     - [Documentation](#documentation)
   - [Installation](#installation)
     - [Setting Cargo.toml](#setting-cargotoml)
@@ -37,7 +36,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This library implements essential tools to solve partial differential equations (PDEs). It does not implement full-fledge PDE solvers for general problems and, hence, this library is quite limited.
 
-A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlinear` because they employ PDE problems as **testing** platforms.
+A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlin` because they employ PDE problems as **testing** platforms.
 
 Currently, simple finite differences operators are implemented, in addition to spectral collocation methods in 1D and 2D. The library also implements the transfinite mapping method to generate meshes on non-rectangular domains.
 
@@ -358,3 +357,8 @@ Program 13: homogeneous Dirichlet; Program 33: Neumann left + Dirichlet right. P
 Covariant and contravariant basis vectors on a curved quadrilateral domain. [test code](https://github.com/cpmech/russell/tree/main/russell_pde/tests/test_metrics2d.rs)
 
 ![Metrics](data/figures/test_metrics_2d.svg)
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`

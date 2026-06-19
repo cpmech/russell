@@ -898,7 +898,7 @@ mod tests {
         let mut params = LinSolParams::new();
         params.positive_definite = true;
         params.hybrid_memory = true;
-        params.verbose = true;
+        params.verbose = false;
 
         let mut solver = SolverCUDSS::new().unwrap();
         solver.factorize(&coo, Some(params)).unwrap();

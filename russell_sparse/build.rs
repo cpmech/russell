@@ -221,6 +221,7 @@ fn main() {
 /// 2. Auto-detect via `gcc -dumpversion`
 /// 3. If the detected version > 15, fall back to `g++-15`
 /// 4. Otherwise (version ≤ 15), use the system `g++`
+#[cfg(feature = "cudss")]
 fn detect_cxx() -> String {
     let version: u32 = if let Ok(ver_str) = std::env::var("GCC_VERSION") {
         ver_str.parse().unwrap_or(0)
@@ -252,6 +253,7 @@ fn detect_cxx() -> String {
 /// 1. `CUDSS_CUDA_ARCH` environment variable (e.g., "sm_90")
 /// 2. Auto-detected from `nvidia-smi` (maps "9.0" → "sm_90")
 /// 3. Defaults to "sm_89" (Ada Lovelace / RTX 40-series)
+#[cfg(feature = "cudss")]
 fn detect_cuda_arch() -> String {
     if let Ok(arch) = std::env::var("CUDSS_CUDA_ARCH") {
         if !arch.is_empty() {

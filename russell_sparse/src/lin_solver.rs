@@ -1,3 +1,6 @@
+#[cfg(feature = "cudss")]
+use crate::SolverCUDSS;
+
 #[cfg(feature = "local_sparse")]
 use super::SolverMUMPS;
 
@@ -61,6 +64,44 @@ pub trait LinSolTrait: Send {
 }
 
 /// Unifies the access to linear system solvers
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 5;
+///
+///     let mut solver = LinSolver::new(Genie::Umfpack)?;
+///
+///     // allocate the coefficient matrix
+///     // ┌                   ┐
+///     // │   0.2   0.2     0 │
+///     // │   0.5 -0.25     0 │
+///     // │     0     0  0.25 │
+///     // └                   ┘
+///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, 0.2)?;
+///     coo.put(0, 1, 0.2)?;
+///     coo.put(1, 0, 0.5)?;
+///     coo.put(1, 1, -0.25)?;
+///     coo.put(2, 2, 0.25)?;
+///
+///     solver.actual.factorize(&coo, None)?;
+///
+///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+///     let mut x = Vector::new(ndim);
+///     solver.actual.solve(&mut x, &rhs, false)?;
+///
+///     let correct = vec![3.0, 2.0, 4.0];
+///     vec_approx_eq(&x, &correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct LinSolver<'a> {
     /// Holds the actual implementation
     pub actual: Box<dyn Send + LinSolTrait + 'a>,
@@ -73,14 +114,30 @@ impl<'a> LinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        #[cfg(feature = "local_sparse")]
+        #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => Box::new(SolverCUDSS::new()?),
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
-        #[cfg(not(feature = "local_sparse"))]
+        #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => return Err("cuDSS solver is not available"),
+            Genie::Klu => Box::new(SolverKLU::new()?),
+            Genie::Mumps => Box::new(SolverMUMPS::new()?),
+            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
+        };
+        #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
+        let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => Box::new(SolverCUDSS::new()?),
+            Genie::Klu => Box::new(SolverKLU::new()?),
+            Genie::Mumps => return Err("MUMPS solver is not available"),
+            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
+        };
+        #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
+        let actual: Box<dyn Send + LinSolTrait> = match genie {
+            Genie::Cudss => return Err("cuDSS solver is not available"),
             Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
@@ -177,7 +234,7 @@ impl<'a> LinSolver<'a> {
 mod tests {
     use super::LinSolver;
     use crate::{Genie, Samples};
-    use russell_lab::{vec_approx_eq, Vector};
+    use russell_lab::{Vector, vec_approx_eq};
 
     #[cfg(feature = "local_sparse")]
     use serial_test::serial;

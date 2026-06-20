@@ -1,7 +1,7 @@
 use super::Matrix;
 use crate::{to_i32, CcBool, StrError, Vector, C_FALSE};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
     // <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
     fn c_dgeev(

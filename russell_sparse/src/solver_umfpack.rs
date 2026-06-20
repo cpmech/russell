@@ -1,6 +1,6 @@
 use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
+use crate::constants::*;
 use russell_lab::{Stopwatch, Vector};
 
 /// Opaque struct holding a C-pointer to InterfaceUMFPACK
@@ -22,7 +22,7 @@ unsafe impl Send for InterfaceUMFPACK {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for SolverUMFPACK {}
 
-extern "C" {
+unsafe extern "C" {
     fn solver_umfpack_new() -> *mut InterfaceUMFPACK;
     fn solver_umfpack_drop(solver: *mut InterfaceUMFPACK);
     fn solver_umfpack_initialize(
@@ -63,7 +63,50 @@ extern "C" {
 
 /// Wraps the UMFPACK solver for sparse linear systems
 ///
+/// UMFPACK is a direct solver for **general** (unsymmetric or symmetric) sparse linear systems.
+/// It is recommended for most sequential applications.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 5;
+///
+///     let mut umfpack = SolverUMFPACK::new()?;
+///
+///     // allocate the coefficient matrix
+///     // ┌                   ┐
+///     // │   0.2   0.2     0 │
+///     // │   0.5 -0.25     0 │
+///     // │     0     0  0.25 │
+///     // └                   ┘
+///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, 0.2)?;
+///     coo.put(0, 1, 0.2)?;
+///     coo.put(1, 0, 0.5)?;
+///     coo.put(1, 1, -0.25)?;
+///     coo.put(2, 2, 0.25)?;
+///
+///     umfpack.factorize(&coo, None)?;
+///
+///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+///     let mut x = Vector::new(ndim);
+///     umfpack.solve(&mut x, &rhs, false)?;
+///
+///     let correct = vec![3.0, 2.0, 4.0];
+///     vec_approx_eq(&x, &correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct SolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceUMFPACK,
@@ -170,6 +213,12 @@ impl LinSolTrait for SolverUMFPACK {
     ///   if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -191,6 +240,9 @@ impl LinSolTrait for SolverUMFPACK {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
             self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
@@ -338,11 +390,7 @@ impl LinSolTrait for SolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_sparse") {
-            "UMFPACK-local".to_string()
-        } else {
-            "UMFPACK".to_string()
-        };
+        stats.main.solver = "UMFPACK".to_string();
         stats.determinant.mantissa_real = self.determinant_coefficient;
         stats.determinant.mantissa_imag = 0.0;
         stats.determinant.base = 10.0;
@@ -368,9 +416,9 @@ impl LinSolTrait for SolverUMFPACK {
             UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
             _ => "Unknown".to_string(),
         };
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -412,6 +460,7 @@ pub(crate) fn umfpack_ordering(ordering: Ordering) -> i32 {
         Ordering::Amf => UMFPACK_DEFAULT_ORDERING,
         Ordering::Auto => UMFPACK_DEFAULT_ORDERING,
         Ordering::Best => UMFPACK_ORDERING_BEST,
+        Ordering::BtfColamd => UMFPACK_DEFAULT_ORDERING,
         Ordering::Cholmod => UMFPACK_ORDERING_CHOLMOD,
         Ordering::Colamd => UMFPACK_ORDERING_CHOLMOD,
         Ordering::Metis => UMFPACK_ORDERING_METIS,
@@ -553,9 +602,22 @@ mod tests {
         approx_eq(det, 114.0, 1e-13);
 
         // calling factorize again works
+        solver.factorize(&coo, None).unwrap();
+    }
+
+    #[test]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = SolverUMFPACK::new().unwrap();
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
         solver.factorize(&coo, Some(params)).unwrap();
-        let det = solver.determinant_coefficient * f64::powf(10.0, solver.determinant_exponent);
-        approx_eq(det, 114.0, 1e-13);
+        params.ordering = Ordering::Metis;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 
     #[test]
@@ -606,15 +668,21 @@ mod tests {
         vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
-        let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Sum");
+        assert_eq!(stats.main.solver, "UMFPACK");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 
     #[test]
@@ -636,8 +704,15 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "UMFPACK");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Sum");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 
     #[test]

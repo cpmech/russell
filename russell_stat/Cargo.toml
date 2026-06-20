@@ -1,7 +1,7 @@
 [package]
 name = "russell_stat"
 version = "2.3.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Statistics calculations and (engineering) probability distributions"
 homepage = "https://github.com/cpmech/russell"

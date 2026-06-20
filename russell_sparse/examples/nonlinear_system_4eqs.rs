@@ -1,6 +1,6 @@
-use russell_lab::{vec_norm, vec_update, Norm, Vector};
-use russell_sparse::prelude::*;
+use russell_lab::{Norm, Vector, vec_norm, vec_update};
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
 /// Command line options
@@ -96,6 +96,13 @@ fn calc_residual(rr: &mut Vector, uu: &Vector) {
 fn calc_jacobian(jj: &mut CooMatrix, uu: &Vector) -> Result<(), StrError> {
     let (d1, d2, d3, d4) = (uu[0], uu[1], uu[2], uu[3]);
 
+    // Jacobian matrix J (4x4, 16 nnz)
+    // ┌                    ┐
+    // │ J₀₀  J₀₁    0  J₀₃ │
+    // │ J₁₀  J₁₁  J₁₂  J₁₃ │
+    // │   0  J₂₁  J₂₂  J₂₃ │
+    // │ J₃₀  J₃₁  J₃₂  J₃₃ │
+    // └                    ┘
     jj.reset();
 
     jj.put(0, 0, 2.0 + 4.0 * d1 * d1 * d1 + 3.0 * d2 * d2)?;

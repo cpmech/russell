@@ -1,7 +1,7 @@
 [package]
 name = "russell_ode"
 version = "2.3.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Solvers for ordinary differential equations and differential algebraic equations"
 homepage = "https://github.com/cpmech/russell"
@@ -14,6 +14,7 @@ keywords = ["differential", "numerical", "solver"]
 [features]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
 local_sparse = ["russell_sparse/local_sparse"]
+cudss = ["russell_sparse/cudss"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "2" }

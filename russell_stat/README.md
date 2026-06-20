@@ -19,6 +19,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Normal distribution](#normal-distribution)
   - [Lognormal distribution](#lognormal-distribution)
   - [Uniform distribution](#uniform-distribution)
+- [For developers](#for-developers)
 
 
 
@@ -402,3 +403,8 @@ std_dev = 5.761189943810604
 [  9.00, 10.00) | 453 🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪
           sum = 10000
 ```
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`

@@ -1,0 +1,66 @@
+{
+  "main": {
+    "platform": "Russell",
+    "blas_lib": "Intel MKL",
+    "solver": "MUMPS"
+  },
+  "matrix": {
+    "name": "pres-cylin-3d-tet10-fine",
+    "nrow": 1711464,
+    "ncol": 1711464,
+    "nnz": 67636826,
+    "complex": false,
+    "symmetric": "YesLower"
+  },
+  "requests": {
+    "ordering": "Auto",
+    "scaling": "Auto",
+    "mumps_num_threads": 0
+  },
+  "output": {
+    "effective_ordering": "Metis",
+    "effective_scaling": "RowColIter",
+    "effective_mumps_num_threads": 0,
+    "openmp_num_threads": 24,
+    "umfpack_strategy": "Unknown",
+    "umfpack_rcond_estimate": 0.0
+  },
+  "determinant": {
+    "mantissa_real": 0.0,
+    "mantissa_imag": 0.0,
+    "base": 2.0,
+    "exponent": 0.0
+  },
+  "verify": {
+    "max_abs_a": 799.7102118719846,
+    "max_abs_ax": 1.0000000003602674,
+    "max_abs_diff": 3.781284174664279e-10,
+    "relative_error": 4.722412826263318e-13
+  },
+  "time_human": {
+    "read_matrix": "6.402780133s",
+    "initialize": "10.613609918s",
+    "factorize": "1m21.610625309s",
+    "solve": "24.590513419s",
+    "total_ifs": "1m56.814748646s",
+    "verify": "2.572886647s"
+  },
+  "time_nanoseconds": {
+    "read_matrix": 6402780133,
+    "initialize": 10613609918,
+    "factorize": 81610625309,
+    "solve": 24590513419,
+    "total_ifs": 116814748646,
+    "verify": 2572886647
+  },
+  "mumps_stats": {
+    "inf_norm_a": 0.0,
+    "inf_norm_x": 0.0,
+    "scaled_residual": 0.0,
+    "backward_error_omega1": 0.0,
+    "backward_error_omega2": 0.0,
+    "normalized_delta_x": 0.0,
+    "condition_number1": 0.0,
+    "condition_number2": 0.0
+  }
+}

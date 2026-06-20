@@ -2,7 +2,7 @@ use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
 use crate::{to_i32, Complex64, StrError};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
     fn c_zgesv(

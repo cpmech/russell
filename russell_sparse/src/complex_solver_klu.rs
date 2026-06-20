@@ -1,9 +1,9 @@
-use super::{handle_klu_error_code, klu_ordering, klu_scaling};
 use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{KLU_ORDERING_AMD, KLU_ORDERING_COLAMD, KLU_SCALE_MAX, KLU_SCALE_NONE, KLU_SCALE_SUM};
-use crate::constants::*;
+use super::{handle_klu_error_code, klu_ordering, klu_scaling};
 use crate::StrError;
-use russell_lab::{complex_vec_copy, Complex64, ComplexVector, Stopwatch};
+use crate::constants::*;
+use russell_lab::{Complex64, ComplexVector, Stopwatch, complex_vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexKLU
 ///
@@ -24,7 +24,7 @@ unsafe impl Send for InterfaceComplexKLU {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for ComplexSolverKLU {}
 
-extern "C" {
+unsafe extern "C" {
     fn complex_solver_klu_new() -> *mut InterfaceComplexKLU;
     fn complex_solver_klu_drop(solver: *mut InterfaceComplexKLU);
     fn complex_solver_klu_initialize(
@@ -48,9 +48,55 @@ extern "C" {
     fn complex_solver_klu_solve(solver: *mut InterfaceComplexKLU, ndim: i32, in_rhs_out_x: *mut Complex64) -> i32;
 }
 
-/// Wraps the KLU solver for sparse linear systems
+/// Wraps the KLU solver for complex sparse linear systems
+///
+/// KLU is a direct solver specifically designed for **highly sparse** matrices,
+/// such as those arising in circuit simulation.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
 ///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 7;
+///
+///     let mut klu = ComplexSolverKLU::new()?;
+///
+///     // allocate the coefficient matrix
+///     //   ┌                      ┐
+///     //   │  2+1i  -1-1i     0   │
+///     //   │ -1-1i   2+2i  -1+1i  │
+///     //   │   0    -1+1i   2-1i  │
+///     //   └                      ┘
+///     let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, cpx!(2.0, 1.0))?;
+///     coo.put(0, 1, cpx!(-1.0, -1.0))?;
+///     coo.put(1, 0, cpx!(-1.0, -1.0))?;
+///     coo.put(1, 1, cpx!(2.0, 2.0))?;
+///     coo.put(1, 2, cpx!(-1.0, 1.0))?;
+///     coo.put(2, 1, cpx!(-1.0, 1.0))?;
+///     coo.put(2, 2, cpx!(2.0, -1.0))?;
+///
+///     klu.factorize(&coo, None)?;
+///
+///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+///
+///     let mut x = ComplexVector::new(ndim);
+///     klu.solve(&mut x, &rhs, false)?;
+///
+///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+///     complex_vec_approx_eq(&x, correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct ComplexSolverKLU {
     /// Holds a pointer to the C interface to KLU
     solver: *mut InterfaceComplexKLU,
@@ -142,6 +188,12 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
     ///   the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -163,6 +215,9 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
             self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
@@ -291,11 +346,7 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_sparse") {
-            "KLU-local".to_string()
-        } else {
-            "KLU".to_string()
-        };
+        stats.main.solver = "KLU".to_string();
         stats.output.umfpack_rcond_estimate = self.cond_estimate;
         stats.output.effective_ordering = match self.effective_ordering {
             KLU_ORDERING_AMD => "Amd".to_string(),
@@ -308,9 +359,9 @@ impl ComplexLinSolTrait for ComplexSolverKLU {
             KLU_SCALE_MAX => "Max".to_string(),
             _ => "Unknown".to_string(),
         };
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -409,7 +460,22 @@ mod tests {
         assert_eq!(solver.effective_scaling, KLU_SCALE_SUM);
 
         // calling factorize again works
+        solver.factorize(&coo, None).unwrap();
+    }
+
+    #[test]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = ComplexSolverKLU::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
         solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Colamd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 
     #[test]
@@ -465,14 +531,20 @@ mod tests {
         complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
-        let mut x_again = ComplexVector::new(3);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "KLU");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Max");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 }

@@ -1,13 +1,13 @@
-use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
 use super::{ComplexCooMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{
     MUMPS_ORDERING_AMD, MUMPS_ORDERING_AMF, MUMPS_ORDERING_AUTO, MUMPS_ORDERING_METIS, MUMPS_ORDERING_PORD,
     MUMPS_ORDERING_QAMD, MUMPS_ORDERING_SCOTCH, MUMPS_SCALING_AUTO, MUMPS_SCALING_COLUMN, MUMPS_SCALING_DIAGONAL,
     MUMPS_SCALING_NO, MUMPS_SCALING_ROW_COL, MUMPS_SCALING_ROW_COL_ITER, MUMPS_SCALING_ROW_COL_RIG,
 };
-use crate::constants::*;
+use super::{handle_mumps_error_code, mumps_ordering, mumps_scaling};
 use crate::StrError;
-use russell_lab::{complex_vec_copy, using_intel_mkl, Complex64, ComplexVector, Stopwatch};
+use crate::constants::*;
+use russell_lab::{Complex64, ComplexVector, Stopwatch, complex_vec_copy, using_intel_mkl};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexMUMPS
 ///
@@ -28,7 +28,7 @@ unsafe impl Send for InterfaceComplexMUMPS {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for ComplexSolverMUMPS {}
 
-extern "C" {
+unsafe extern "C" {
     fn complex_solver_mumps_new() -> *mut InterfaceComplexMUMPS;
     fn complex_solver_mumps_drop(solver: *mut InterfaceComplexMUMPS);
     fn complex_solver_mumps_initialize(
@@ -66,9 +66,20 @@ extern "C" {
     ) -> i32;
 }
 
-/// Wraps the MUMPS solver for (very large) sparse linear systems
+/// Wraps the MUMPS solver for (large) complex sparse linear systems
+///
+/// MUMPS is a direct solver for **general** sparse linear systems, designed for distributed memory
+/// computers (using MPI) and shared memory computers (using OpenMP). It is recommended for
+/// very large systems.
+///
+/// **Reference:** <https://mumps-solver.org>
 ///
 /// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
+///
+/// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
+/// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
+/// parallel region. These are bugs in the precompiled MUMPS library itself (likely uninitialized atomic
+/// variables in the scaling routine), not in our wrapper.
 pub struct ComplexSolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceComplexMUMPS,
@@ -191,6 +202,12 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
     ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -213,6 +230,9 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
         } else {
             if mat.nrow != mat.ncol {
@@ -414,9 +434,9 @@ impl ComplexLinSolTrait for ComplexSolverMUMPS {
         stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -584,13 +604,19 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "MUMPS");
         assert_eq!(stats.output.effective_ordering, "Pord");
         assert_eq!(stats.output.effective_scaling, "No");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
 
         // calling solve again works
-        let mut x_again = ComplexVector::new(3);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // solve with positive-definite matrix works
         params.positive_definite = true;
@@ -622,5 +648,21 @@ mod tests {
             cpx!(123.0 / 2.0, 0.0),
         ];
         complex_vec_approx_eq(&x, x_correct, 1e-10);
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = ComplexSolverMUMPS::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Pord;
+        params.scaling = Scaling::RowCol;
+        solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Amd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 }

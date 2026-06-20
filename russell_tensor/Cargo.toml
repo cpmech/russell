@@ -1,7 +1,7 @@
 [package]
 name = "russell_tensor"
 version = "2.3.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Tensor analysis, calculus, and functions for continuum mechanics"
 homepage = "https://github.com/cpmech/russell"

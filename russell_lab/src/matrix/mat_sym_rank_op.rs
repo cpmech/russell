@@ -1,7 +1,7 @@
 use super::Matrix;
 use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER};
 
-extern "C" {
+unsafe extern "C" {
     // Performs one of the symmetric rank k operations
     // <https://www.netlib.org/lapack/explore-html/dc/d05/dsyrk_8f.html>
     fn cblas_dsyrk(

@@ -2,7 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{to_i32, StrError, SVD_CODE_A};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
     fn c_dgesvd(

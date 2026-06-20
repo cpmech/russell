@@ -672,9 +672,9 @@ impl Bspline {
 #[cfg(test)]
 mod tests {
     use super::Bspline;
+    use crate::{AsArray2D, Matrix, Vector, deriv2_forward8};
     use crate::{approx_eq, deriv1_central5, mat_approx_eq, vec_approx_eq};
-    use crate::{deriv2_forward8, AsArray2D, Matrix, Vector};
-    use plotpy::{linspace, Canvas, Curve, Plot, Text};
+    use plotpy::{Canvas, Curve, Plot, Text, linspace};
 
     const SAVE_FIGURE: bool = false;
 
@@ -1061,7 +1061,8 @@ mod tests {
         // check error catching
         assert_eq!(b.calc_basis(-1.0).err(), Some("u is out of range"));
 
-        // plot basis functions
+        // plot basis functions (enable this to generate figure)
+        /*
         if SAVE_FIGURE {
             let mut curve_num = Curve::new();
             let x = linspace(0.0, 5.0, 201);
@@ -1096,6 +1097,7 @@ mod tests {
                 .save("/tmp/russell_lab/test_bspline_calc_basis_and_get_basis.svg")
                 .unwrap();
         }
+        */
     }
 
     #[test]
@@ -1468,8 +1470,8 @@ mod tests {
         assert_eq!(b.cc_ders[1][1] / b.cc_ders[1][0], 1.0);
 
         // drawing
+        let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
         if SAVE_FIGURE {
-            let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
             plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg1.svg")
                 .unwrap();
         }

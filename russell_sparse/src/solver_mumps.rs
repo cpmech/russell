@@ -1,7 +1,7 @@
 use super::{CooMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
-use russell_lab::{using_intel_mkl, vec_copy, Stopwatch, Vector};
+use crate::constants::*;
+use russell_lab::{Stopwatch, Vector, using_intel_mkl, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceMUMPS
 ///
@@ -22,7 +22,7 @@ unsafe impl Send for InterfaceMUMPS {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for SolverMUMPS {}
 
-extern "C" {
+unsafe extern "C" {
     fn solver_mumps_new() -> *mut InterfaceMUMPS;
     fn solver_mumps_drop(solver: *mut InterfaceMUMPS);
     fn solver_mumps_initialize(
@@ -59,9 +59,20 @@ extern "C" {
     ) -> i32;
 }
 
-/// Wraps the MUMPS solver for (very large) sparse linear systems
+/// Wraps the MUMPS solver for (large) sparse linear systems
+///
+/// MUMPS is a direct solver for **general** sparse linear systems, designed for distributed memory
+/// computers (using MPI) and shared memory computers (using OpenMP). It is recommended for
+/// very large systems.
+///
+/// **Reference:** <https://mumps-solver.org>
 ///
 /// **Warning:** This solver is **not** thread-safe, thus use only use in single-thread applications.
+///
+/// **Note:** We use `calloc` in `interface_mumps.c` which correctly zero-initializes our struct but
+/// Valgrind yields some warnings persist — they come from deep inside MUMPS's functions in an OpenMP
+/// parallel region. These are bugs in the precompiled MUMPS library itself (likely uninitialized atomic
+/// variables in the scaling routine), not in our wrapper.
 pub struct SolverMUMPS {
     /// Holds a pointer to the C interface to MUMPS
     solver: *mut InterfaceMUMPS,
@@ -178,6 +189,12 @@ impl LinSolTrait for SolverMUMPS {
     ///   (`nrow = ncol`) and, if symmetric, the symmetric flag must be [Sym::YesLower]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -200,6 +217,9 @@ impl LinSolTrait for SolverMUMPS {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
         } else {
             if mat.nrow != mat.ncol {
@@ -400,9 +420,9 @@ impl LinSolTrait for SolverMUMPS {
         stats.mumps_stats.normalized_delta_x = self.error_analysis_array_len_8[5];
         stats.mumps_stats.condition_number1 = self.error_analysis_array_len_8[6];
         stats.mumps_stats.condition_number2 = self.error_analysis_array_len_8[7];
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -439,17 +459,18 @@ pub(crate) const MUMPS_SCALING_ROW_COL_RIG: i32 = 8; // RowColRig (page 33)
 
 pub(crate) fn mumps_ordering(ordering: Ordering) -> i32 {
     match ordering {
-        Ordering::Amd => MUMPS_ORDERING_AMD,       // Amd (page 35)
-        Ordering::Amf => MUMPS_ORDERING_AMF,       // Amf (page 35)
-        Ordering::Auto => MUMPS_ORDERING_AUTO,     // Auto (page 36)
-        Ordering::Best => MUMPS_ORDERING_AUTO,     // Best => Auto (page 36)
-        Ordering::Cholmod => MUMPS_ORDERING_AUTO,  // Cholmod => Auto (page 36)
-        Ordering::Colamd => MUMPS_ORDERING_AUTO,   // Colamd => Auto (page 36)
-        Ordering::Metis => MUMPS_ORDERING_METIS,   // Metis (page 35)
-        Ordering::No => MUMPS_ORDERING_AUTO,       // No => Auto (page 36)
-        Ordering::Pord => MUMPS_ORDERING_PORD,     // Pord (page 35)
-        Ordering::Qamd => MUMPS_ORDERING_QAMD,     // Qamd (page 35)
-        Ordering::Scotch => MUMPS_ORDERING_SCOTCH, // Scotch (page 35)
+        Ordering::Amd => MUMPS_ORDERING_AMD,        // Amd (page 35)
+        Ordering::Amf => MUMPS_ORDERING_AMF,        // Amf (page 35)
+        Ordering::Auto => MUMPS_ORDERING_AUTO,      // Auto (page 36)
+        Ordering::Best => MUMPS_ORDERING_AUTO,      // Best => Auto (page 36)
+        Ordering::BtfColamd => MUMPS_ORDERING_AUTO, // Auto (page 36)
+        Ordering::Cholmod => MUMPS_ORDERING_AUTO,   // Cholmod => Auto (page 36)
+        Ordering::Colamd => MUMPS_ORDERING_AUTO,    // Colamd => Auto (page 36)
+        Ordering::Metis => MUMPS_ORDERING_METIS,    // Metis (page 35)
+        Ordering::No => MUMPS_ORDERING_AUTO,        // No => Auto (page 36)
+        Ordering::Pord => MUMPS_ORDERING_PORD,      // Pord (page 35)
+        Ordering::Qamd => MUMPS_ORDERING_QAMD,      // Qamd (page 35)
+        Ordering::Scotch => MUMPS_ORDERING_SCOTCH,  // Scotch (page 35)
     }
 }
 
@@ -699,23 +720,55 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "MUMPS");
         assert_eq!(stats.output.effective_ordering, "Pord");
         assert_eq!(stats.output.effective_scaling, "No");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
 
         // calling solve again works
-        let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-14);
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = SolverMUMPS::new().unwrap();
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Pord;
+        params.scaling = Scaling::RowCol;
+        solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Amd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn factorize_and_solve_work_spd() {
+        // set params
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Auto;
+        params.scaling = Scaling::Auto;
 
         // solve with positive-definite matrix works
         let (coo_pd_lower, _, _, _) = Samples::mkl_positive_definite_5x5_lower();
-        params.ordering = Ordering::Auto;
-        params.scaling = Scaling::Auto;
         let mut solver = SolverMUMPS::new().unwrap();
+
         assert!(!solver.factorized);
         solver.factorize(&coo_pd_lower, Some(params)).unwrap();
+
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
+
         solver.solve(&mut x, &rhs, false).unwrap();
         let x_correct = &[-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, x_correct, 1e-10);

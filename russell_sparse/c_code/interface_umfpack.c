@@ -37,18 +37,14 @@ static inline void set_umfpack_verbose(struct InterfaceUMFPACK *solver, int32_t 
 
 /// @brief Allocates a new UMFPACK interface
 struct InterfaceUMFPACK *solver_umfpack_new() {
-    struct InterfaceUMFPACK *solver = (struct InterfaceUMFPACK *)malloc(sizeof(struct InterfaceUMFPACK));
+    struct InterfaceUMFPACK *solver = (struct InterfaceUMFPACK *)calloc(1, sizeof(struct InterfaceUMFPACK));
 
     if (solver == NULL) {
         return NULL;
     }
 
+    /* Initialize the control array; all other members are zero-initialized by calloc */
     umfpack_di_defaults(solver->control);
-
-    solver->symbolic = NULL;
-    solver->numeric = NULL;
-    solver->initialization_completed = C_FALSE;
-    solver->factorization_completed = C_FALSE;
 
     return solver;
 }
@@ -72,6 +68,17 @@ void solver_umfpack_drop(struct InterfaceUMFPACK *solver) {
 }
 
 /// @brief Performs the symbolic factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param ordering Is the ordering strategy
+/// @param scaling Is the scaling strategy
+/// @param verbose Shows messages
+/// @param enforce_unsymmetric_strategy Enforces the unsymmetric strategy
+/// @param ndim Is the number of rows and columns
+/// @param col_pointers Are the CSC matrix column pointers
+/// @param row_indices Are the CSC matrix row indices
+/// @param values Are the CSC matrix values
+/// @return A success or error code
 int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
                                   int32_t ordering,
                                   int32_t scaling,
@@ -117,6 +124,20 @@ int32_t solver_umfpack_initialize(struct InterfaceUMFPACK *solver,
 }
 
 /// @brief Performs the numeric factorization
+///
+/// @param solver Is a pointer to the solver interface
+/// @param effective_strategy Returns the effective strategy used
+/// @param effective_ordering Returns the effective ordering used
+/// @param effective_scaling Returns the effective scaling used
+/// @param rcond_estimate Returns the reciprocal condition number estimate
+/// @param determinant_coefficient Returns the determinant coefficient
+/// @param determinant_exponent Returns the determinant exponent
+/// @param compute_determinant Requests the computation of the determinant
+/// @param verbose Shows messages
+/// @param col_pointers Are the CSC matrix column pointers
+/// @param row_indices Are the CSC matrix row indices
+/// @param values Are the CSC matrix values
+/// @return A success or error code
 int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
                                  int32_t *effective_strategy,
                                  int32_t *effective_ordering,
@@ -179,6 +200,15 @@ int32_t solver_umfpack_factorize(struct InterfaceUMFPACK *solver,
 }
 
 /// @brief Computes the solution of the linear system
+///
+/// @param solver Is a pointer to the solver interface
+/// @param x Is the solution vector
+/// @param rhs Is the right-hand side vector
+/// @param col_pointers Are the CSC matrix column pointers
+/// @param row_indices Are the CSC matrix row indices
+/// @param values Are the CSC matrix values
+/// @param verbose Shows messages
+/// @return A success or error code
 int32_t solver_umfpack_solve(struct InterfaceUMFPACK *solver,
                              double *x,
                              const double *rhs,

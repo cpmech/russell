@@ -6,7 +6,9 @@
         "${default}",
         "/usr/include",
         "/usr/local/include/mumps",
-        "/usr/local/include/suitesparse"
+        "/usr/local/include/suitesparse",
+        "/opt/cuda/include",
+        "/opt/libcudss/include"
       ],
       "defines": [
         "USE_INTEL_MKL"

@@ -29,11 +29,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
     - [DoPri5](#dopri5)
     - [Radau5](#radau5)
   - [One-transistor amplifier](#one-transistor-amplifier)
-  - [PDE: discrete Laplacian operator in 2D](#pde-discrete-laplacian-operator-in-2d)
-    - [Laplace equation](#laplace-equation)
-    - [Poisson equation 1](#poisson-equation-1)
-    - [Poisson equation 2](#poisson-equation-2)
-    - [Poisson equation 3](#poisson-equation-3)
+- [For developers](#for-developers)
 
 
 
@@ -91,6 +87,7 @@ The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `cudss`: Enable the NVIDIA cuDSS GPU solver
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -989,120 +986,9 @@ The results are plotted below:
 
 
 
-### PDE: discrete Laplacian operator in 2D
 
-For convenience (e.g., in benchmarks), `russell_ode` implements a discrete Laplacian operator (2D) based on the Finite Differences Method.
+## For developers
 
-This operator can be used to solve simple partial differential equation (PDE) problems.
-
-#### Laplace equation
-
-Approximate (with the Finite Differences Method, FDM) the solution of
-
-```text
-∂²ϕ     ∂²ϕ
-———  +  ——— = 0
-∂x²     ∂y²
-```
-
-on a (1.0 × 1.0) rectangle with the following essential (Dirichlet) boundary conditions:
-
-```text
-left:    ϕ(0.0, y) = 50.0
-right:   ϕ(1.0, y) =  0.0
-bottom:  ϕ(x, 0.0) =  0.0
-top:     ϕ(x, 1.0) = 50.0
-```
-
-See the code [pde_laplace_equation.rs](https://github.com/cpmech/russell/tree/main/russell_ode/examples/pde_laplace_equation.rs)
-
-The results are illustrated below:
-
-![Laplace equation](data/figures/pde_laplace_equation.svg)
-
-#### Poisson equation 1
-
-Approximate (with the Finite Differences Method, FDM) the solution of
-
-```text
-∂²ϕ   ∂²ϕ
-——— + ——— = 2 x (y - 1) (y - 2 x + x y + 2) exp(x - y)
-∂x²   ∂y²
-```
-
-on a (1.0 × 1.0) square with the homogeneous boundary conditions.
-
-The analytical solution is:
-
-```text
-ϕ(x, y) = x y (x - 1) (y - 1) exp(x - y)
-```
-
-See the code [test_pde_poisson_1.rs](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_pde_poisson_1.rs)
-
-The results are illustrated below:
-
-![Poisson equation 1](data/figures/test_pde_poisson_1.svg)
-
-#### Poisson equation 2
-
-Approximate (with the Finite Differences Method, FDM) the solution of
-
-```text
-∂²ϕ   ∂²ϕ
-——— + ——— = - π² y sin(π x)
-∂x²   ∂y²
-```
-
-on a (1.0 × 1.0) square with the following essential boundary conditions:
-
-```text
-left:    ϕ(0.0, y) = 0.0
-right:   ϕ(1.0, y) = 0.0
-bottom:  ϕ(x, 0.0) = 0.0
-top:     ϕ(x, 1.0) = sin(π x)
-```
-
-The analytical solution is:
-
-```text
-ϕ(x, y) = y sin(π x)
-```
-
-Reference: Olver PJ (2020) - page 210 - Introduction to Partial Differential Equations, Springer
-
-See the code [test_pde_poisson_2.rs](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_pde_poisson_2.rs)
-
-The results are illustrated below:
-
-![Poisson equation 2](data/figures/test_pde_poisson_2.svg)
-
-#### Poisson equation 3
-
-Approximate (with the Finite Differences Method, FDM) the solution of
-
-```text
-∂²ϕ     ∂²ϕ
-———  +  ——— =  source(x, y)
-∂x²     ∂y²
-```
-
-on a (1.0 × 1.0) square with homogeneous essential boundary conditions
-
-The source term is given by (for a manufactured solution):
-
-```text
-source(x, y) = 14y³ - (16 - 12x) y² - (-42x² + 54x - 2) y + 4x³ - 16x² + 12x
-```
-
-The analytical solution is:
-
-```text
-ϕ(x, y) = x (1 - x) y (1 - y) (1 + 2x + 7y)
-```
-
-See the code [test_pde_poisson_3.rs](https://github.com/cpmech/russell/tree/main/russell_ode/tests/test_pde_poisson_3.rs)
-
-The results are illustrated below:
-
-![Poisson equation 3](data/figures/test_pde_poisson_3.svg)
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`
+* The `zscripts` directory contains scripts for comparing test results, memory checking, and running examples

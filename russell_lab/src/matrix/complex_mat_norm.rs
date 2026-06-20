@@ -1,7 +1,7 @@
 use super::ComplexMatrix;
 use crate::{to_i32, Complex64, Norm};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the matrix norm
     // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
     fn c_zlange(

@@ -1,13 +1,40 @@
-use super::{Ordering, Scaling};
+use super::{Matching, Ordering, Pivoting, Scaling};
 
 /// Defines the configuration parameters for the linear system solver
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct LinSolParams {
     /// Defines the symmetric permutation (ordering)
     pub ordering: Ordering,
 
     /// Defines the scaling strategy
     pub scaling: Scaling,
+
+    /// Defines the matching algorithm (cuDSS only)
+    pub matching: Matching,
+
+    /// Defines the pivoting strategy (cuDSS only)
+    pub pivoting: Pivoting,
+
+    /// Pivoting epsilon (cuDSS only)
+    ///
+    /// This is the absolute value to test and replace small diagonal elements encountered during numerical factorization.
+    ///
+    /// `None` will let cuDSS select the default value. Currently, the default value for double precision is `1e-13`.
+    ///
+    /// See: <https://docs.nvidia.com/cuda/cudss/types.html#c.cudssConfigParam_t.CUDSS_CONFIG_PIVOT_EPSILON>
+    pub pivot_epsilon: Option<f64>,
+
+    /// Sets the number of iterative refinement steps (cuDSS only)
+    ///
+    /// When > 0, the solver performs iterative refinement with the specified number of steps. Set to 0 to disable.
+    ///
+    /// `None` will let cuDSS select the default value. Currently, the default value is `0` (disabled).
+    ///
+    /// See: <https://docs.nvidia.com/cuda/cudss/types.html#c.cudssConfigParam_t.CUDSS_CONFIG_IR_N_STEPS>
+    pub refinement_nstep: Option<i32>,
+
+    /// Hybrid memory usage of cuDSS
+    pub hybrid_memory: bool,
 
     /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
     pub positive_definite: bool,
@@ -58,6 +85,11 @@ impl LinSolParams {
         LinSolParams {
             ordering: Ordering::Auto,
             scaling: Scaling::Auto,
+            matching: Matching::None,
+            pivoting: Pivoting::Auto,
+            pivot_epsilon: None,
+            refinement_nstep: None,
+            hybrid_memory: false,
             positive_definite: false,
             compute_determinant: false,
             compute_error_estimates: false,
@@ -84,9 +116,8 @@ mod tests {
         let params = LinSolParams::new();
         let copy = params;
         let clone = params.clone();
-        assert!(format!("{:?}", params).len() > 0);
-        assert_eq!(copy, params);
-        assert_eq!(clone, params);
+        assert!(format!("{:?}", params) == format!("{:?}", copy));
+        assert!(format!("{:?}", params) == format!("{:?}", clone));
     }
 
     #[test]

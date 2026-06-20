@@ -1,4 +1,4 @@
-# Russell Nonlin - Numerical Continuation methods to solve nonlinear systems of equations
+# Russell Nonlin - Numerical Continuation methods to solve nonlinear systems of equations <!-- omit from toc -->
 
 [![documentation](https://docs.rs/russell_nonlin/badge.svg)](https://docs.rs/russell_nonlin/)
 
@@ -6,16 +6,16 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Contents <!-- omit from toc --> 
 
-- [Russell Nonlin - Numerical Continuation methods to solve nonlinear systems of equations](#russell-nonlin---numerical-continuation-methods-to-solve-nonlinear-systems-of-equations)
-  - [Introduction](#introduction)
-    - [Documentation](#documentation)
-    - [References](#references)
-  - [Installation](#installation)
-    - [Setting Cargo.toml](#setting-cargotoml)
-    - [Optional features](#optional-features)
-  - [🌟 Examples](#-examples)
-    - [Simple example](#simple-example)
-    - [Tracing a B-spline curve](#tracing-a-b-spline-curve)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+  - [References](#references)
+- [Installation](#installation)
+  - [Setting Cargo.toml](#setting-cargotoml)
+  - [Optional features](#optional-features)
+- [🌟 Examples](#-examples)
+  - [Simple example](#simple-example)
+  - [Tracing a B-spline curve](#tracing-a-b-spline-curve)
+- [For developers](#for-developers)
 
 
 
@@ -69,6 +69,7 @@ The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `cudss`: Enable the NVIDIA cuDSS GPU solver
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -157,3 +158,8 @@ Last accepted/suggested stepsize = 0.0017592577896469867
 And the plot looks like this:
 
 ![B-spline curve](data/figures/doc_arclength_bspline.svg)
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`

@@ -38,7 +38,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Benchmarks](#benchmarks)
   - [Chebyshev polynomial evaluation](#chebyshev-polynomial-evaluation)
   - [Jacobi Rotation versus LAPACK DSYEV](#jacobi-rotation-versus-lapack-dsyev)
-- [Notes for developers](#notes-for-developers)
+- [For developers](#for-developers)
 
 
 
@@ -152,7 +152,7 @@ BLAS num threads = 2
 Second, run the code with the `intel_mkl` feature:
 
 ```bash
-cargo run --example base_auxiliary_blas --features intel_mk
+cargo run --example base_auxiliary_blas --features intel_mkl
 ```
 
 Then, the output looks like this:
@@ -283,7 +283,7 @@ fn main() -> Result<(), StrError> {
     let j1 = xx.get_mapped(|x| bessel_j1(x));
     let j2 = xx.get_mapped(|x| bessel_jn(2, x));
     // plot
-    if false { // <<< remove this condition
+    if false { // switch to true to generate the SVG figure
     let mut curve_j0 = Curve::new();
     let mut curve_j1 = Curve::new();
     let mut curve_j2 = Curve::new();
@@ -821,7 +821,7 @@ cargo install cargo-criterion
 Run the benchmarks with:
 
 ```bash
-bash ./zscripts/benchmark.bash
+bash ./zscripts/bench.bash
 ```
 
 ### Chebyshev polynomial evaluation
@@ -843,7 +843,7 @@ Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versu
 
 
 
-## Notes for developers
+## For developers
 
 * The `c_code` directory contains a thin wrapper to the BLAS libraries (OpenBLAS or Intel MKL)
 * The `c_code` directory also contains a wrapper to the C math functions

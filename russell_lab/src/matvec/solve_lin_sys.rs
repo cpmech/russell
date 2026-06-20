@@ -2,7 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{to_i32, StrError};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
     fn c_dgesv(

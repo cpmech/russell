@@ -22,6 +22,34 @@ impl ComplexCooMatrix {
     /// ```
     ///
     /// **Warning:** make sure to allocate `max_nnz ≥ nnz(other)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::cpx;
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut b = CooMatrix::new(2, 2, 3, Sym::No)?;
+    ///     b.put(0, 0, 2.0)?;
+    ///     b.put(0, 1, 4.0)?;
+    ///     b.put(1, 1, 6.0)?;
+    ///
+    ///     let mut a = ComplexCooMatrix::new(2, 2, 3, Sym::No)?;
+    ///     a.assign_real(1.0, 2.0, &b)?;
+    ///
+    ///     // a now equals (1+2i) * b
+    ///     assert_eq!(
+    ///         format!("{}", a.as_dense()),
+    ///         "┌             ┐\n\
+    ///          │  2+4i  4+8i │\n\
+    ///          │  0+0i 6+12i │\n\
+    ///          └             ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn assign_real(&mut self, alpha: f64, beta: f64, other: &CooMatrix) -> Result<(), StrError> {
         if other.nrow != self.nrow {
             return Err("matrices must have the same nrow");
@@ -73,6 +101,35 @@ impl ComplexCooMatrix {
     /// # Note
     ///
     /// * make sure to allocate `max_nnz ≥ nnz(this) + nnz(other)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::cpx;
+    /// use russell_sparse::prelude::*;
+    /// use russell_sparse::StrError;
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut a = ComplexCooMatrix::new(2, 2, 3, Sym::No)?;
+    ///     a.put(0, 0, cpx!(10.0, 20.0))?;
+    ///     a.put(1, 1, cpx!(30.0, 40.0))?;
+    ///
+    ///     let mut b = CooMatrix::new(2, 2, 1, Sym::No)?;
+    ///     b.put(0, 0, 1.0)?;
+    ///
+    ///     a.add_real(2.0, 3.0, &b)?;
+    ///
+    ///     // (10+20i) + (2+3i)*(1) = 12+23i
+    ///     assert_eq!(
+    ///         format!("{}", a.as_dense()),
+    ///         "┌               ┐\n\
+    ///          │ 12+23i   0+0i │\n\
+    ///          │   0+0i 30+40i │\n\
+    ///          └               ┘"
+    ///     );
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn add_real(&mut self, alpha: f64, beta: f64, other: &CooMatrix) -> Result<(), StrError> {
         if other.nrow > self.nrow {
             return Err("other.nrow must be ≤ this.nrow");

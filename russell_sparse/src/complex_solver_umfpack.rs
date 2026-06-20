@@ -1,12 +1,12 @@
-use super::{handle_umfpack_error_code, umfpack_ordering, umfpack_scaling};
 use super::{ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolTrait, LinSolParams, StatsLinSol, Sym};
 use super::{
     UMFPACK_ORDERING_AMD, UMFPACK_ORDERING_BEST, UMFPACK_ORDERING_CHOLMOD, UMFPACK_ORDERING_METIS,
     UMFPACK_ORDERING_NONE, UMFPACK_SCALE_MAX, UMFPACK_SCALE_NONE, UMFPACK_SCALE_SUM, UMFPACK_STRATEGY_AUTO,
     UMFPACK_STRATEGY_SYMMETRIC, UMFPACK_STRATEGY_UNSYMMETRIC,
 };
-use crate::constants::*;
+use super::{handle_umfpack_error_code, umfpack_ordering, umfpack_scaling};
 use crate::StrError;
+use crate::constants::*;
 use russell_lab::{Complex64, ComplexVector, Stopwatch};
 
 /// Opaque struct holding a C-pointer to InterfaceComplexUMFPACK
@@ -28,7 +28,7 @@ unsafe impl Send for InterfaceComplexUMFPACK {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for ComplexSolverUMFPACK {}
 
-extern "C" {
+unsafe extern "C" {
     fn complex_solver_umfpack_new() -> *mut InterfaceComplexUMFPACK;
     fn complex_solver_umfpack_drop(solver: *mut InterfaceComplexUMFPACK);
     fn complex_solver_umfpack_initialize(
@@ -68,9 +68,55 @@ extern "C" {
     ) -> i32;
 }
 
-/// Wraps the UMFPACK solver for sparse linear systems
+/// Wraps the UMFPACK solver for complex sparse linear systems
+///
+/// UMFPACK is a direct solver for **general** (unsymmetric or symmetric) sparse linear systems.
+/// It is recommended for most sequential applications.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
 ///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 7;
+///
+///     let mut umfpack = ComplexSolverUMFPACK::new()?;
+///
+///     // allocate the coefficient matrix
+///     //   ┌                      ┐
+///     //   │  2+1i  -1-1i     0   │
+///     //   │ -1-1i   2+2i  -1+1i  │
+///     //   │   0    -1+1i   2-1i  │
+///     //   └                      ┘
+///     let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, cpx!(2.0, 1.0))?;
+///     coo.put(0, 1, cpx!(-1.0, -1.0))?;
+///     coo.put(1, 0, cpx!(-1.0, -1.0))?;
+///     coo.put(1, 1, cpx!(2.0, 2.0))?;
+///     coo.put(1, 2, cpx!(-1.0, 1.0))?;
+///     coo.put(2, 1, cpx!(-1.0, 1.0))?;
+///     coo.put(2, 2, cpx!(2.0, -1.0))?;
+///
+///     umfpack.factorize(&coo, None)?;
+///
+///     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+///
+///     let mut x = ComplexVector::new(ndim);
+///     umfpack.solve(&mut x, &rhs, false)?;
+///
+///     let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+///     complex_vec_approx_eq(&x, correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct ComplexSolverUMFPACK {
     /// Holds a pointer to the C interface to UMFPACK
     solver: *mut InterfaceComplexUMFPACK,
@@ -183,6 +229,12 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
     ///   if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -204,6 +256,9 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
             self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
@@ -352,11 +407,7 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_sparse") {
-            "UMFPACK-local".to_string()
-        } else {
-            "UMFPACK".to_string()
-        };
+        stats.main.solver = "UMFPACK".to_string();
         stats.determinant.mantissa_real = self.determinant_coefficient_real;
         stats.determinant.mantissa_imag = self.determinant_coefficient_imag;
         stats.determinant.base = 10.0;
@@ -382,9 +433,9 @@ impl ComplexLinSolTrait for ComplexSolverUMFPACK {
             UMFPACK_STRATEGY_SYMMETRIC => "Symmetric".to_string(),
             _ => "Unknown".to_string(),
         };
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -488,11 +539,23 @@ mod tests {
         let det = m * f64::powf(10.0, solver.determinant_exponent);
         complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
 
-        // calling factorize again works
+        // calling factorize again works (no determinant check since compute_determinant is false)
+        solver.factorize(&coo, None).unwrap();
+    }
+
+    #[test]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = ComplexSolverUMFPACK::new().unwrap();
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
         solver.factorize(&coo, Some(params)).unwrap();
-        let m = cpx!(solver.determinant_coefficient_real, solver.determinant_coefficient_imag);
-        let det = m * f64::powf(10.0, solver.determinant_exponent);
-        complex_approx_eq(det, cpx!(6.0, 10.0), 1e-14);
+        params.ordering = Ordering::Metis;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 
     #[test]
@@ -543,14 +606,20 @@ mod tests {
         complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
-        let mut x_again = ComplexVector::new(3);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        complex_vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "UMFPACK");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Sum");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 }

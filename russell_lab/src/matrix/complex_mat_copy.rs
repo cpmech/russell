@@ -1,7 +1,7 @@
 use super::ComplexMatrix;
 use crate::{to_i32, Complex64, StrError};
 
-extern "C" {
+unsafe extern "C" {
     // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
     fn cblas_zcopy(n: i32, x: *const Complex64, incx: i32, y: *mut Complex64, incy: i32);

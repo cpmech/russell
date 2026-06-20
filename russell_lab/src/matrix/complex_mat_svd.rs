@@ -2,7 +2,7 @@ use crate::matrix::ComplexMatrix;
 use crate::vector::Vector;
 use crate::{cpx, to_i32, Complex64, StrError, SVD_CODE_A};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d6/d42/zgesvd_8f.html>
     fn c_zgesvd(

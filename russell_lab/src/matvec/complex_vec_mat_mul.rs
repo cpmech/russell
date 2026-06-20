@@ -2,7 +2,7 @@ use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
 use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_TRANS};
 
-extern "C" {
+unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
     // <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
     fn cblas_zgemv(

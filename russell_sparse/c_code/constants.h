@@ -17,6 +17,24 @@
 
 #define COMPLEX64 double
 
+// cuDSS ---------------------------------------------------------------------------------------------
+
+#define ERROR_CUDA_MALLOC 100
+#define ERROR_CUDA_MEMCPY 200
+#define ERROR_CUDA_SYNCHRONIZE 300
+#define ERROR_CUDSS_CONFIG_SET 400
+#define ERROR_CUDSS_CONFIG_GET 450
+#define ERROR_CUDSS_MATRIX_CREATE_DN 500
+#define ERROR_CUDSS_MATRIX_SET_VALUES 550
+#define ERROR_CUDSS_MATRIX_CREATE_CSR 600
+#define ERROR_CUDSS_SYM_FACTORIZATION 700
+#define ERROR_CUDSS_NUM_FACTORIZATION 800
+#define ERROR_CUDSS_SOLVE 900
+#define ERROR_CUDSS_SYM_FACTORIZATION 700
+#define ERROR_CUDSS_NUM_FACTORIZATION 800
+#define ERROR_CUDSS_SOLVE 900
+#define ERROR_CUDSS_DEVICE 1000
+
 // UMFPACK -------------------------------------------------------------------------------------------
 
 #define UMFPACK_PRINT_LEVEL_SILENT 0.0  // page 116

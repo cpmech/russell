@@ -1,4 +1,4 @@
-# Russell PDE - Essential tools to solve partial differential equations; not a full-fledged PDE solver
+# Russell PDE - Essential tools to solve partial differential equations; not a full-fledged PDE solver <!-- omit from toc -->
 
 [![documentation](https://docs.rs/russell_pde/badge.svg)](https://docs.rs/russell_pde/)
 
@@ -6,30 +6,30 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Contents <!-- omit from toc --> 
 
-- [Russell PDE - Essential tools to solve partial differential equations; not a full-fledged PDE solver](#russell-pde---essential-tools-to-solve-partial-differential-equations-not-a-full-fledged-pde-solver)
-  - [Introduction](#introduction)
-    - [Documentation](#documentation)
-  - [Installation](#installation)
-    - [Setting Cargo.toml](#setting-cargotoml)
-    - [Optional features](#optional-features)
-  - [🌟 Examples](#-examples)
-    - [Example 1: Solving 1D Poisson equation with Finite Differences](#example-1-solving-1d-poisson-equation-with-finite-differences)
-    - [Example 2: Solving 1D problems with Spectral Collocation](#example-2-solving-1d-problems-with-spectral-collocation)
-    - [Example 3: Spectral collocation in 2D with transfinite mapping](#example-3-spectral-collocation-in-2d-with-transfinite-mapping)
-  - [Test Problems](#test-problems)
-    - [Problem 01 — 2D Poisson with mixed BCs](#problem-01--2d-poisson-with-mixed-bcs)
-    - [Problem 02 — 2D Poisson `ϕ = y·sin(πx)`](#problem-02--2d-poisson-ϕ--ysinπx)
-    - [Problem 03 — 2D Helmholtz/Poisson with mixed BCs](#problem-03--2d-helmholtzpoisson-with-mixed-bcs)
-    - [Problem 04 — 2D Poisson on `[-1,1]²` (benchmark)](#problem-04--2d-poisson-on--11-benchmark)
-    - [Problem 05 — 2D Poisson polynomial](#problem-05--2d-poisson-polynomial)
-    - [Problem 06 — 2D Poisson `ϕ = tanh(1−x+y)`](#problem-06--2d-poisson-ϕ--tanh1xy)
-    - [Problem 08 — 2D Poisson on curvilinear domains](#problem-08--2d-poisson-on-curvilinear-domains)
-    - [Problem 09 — 2D Laplace (potential flow)](#problem-09--2d-laplace-potential-flow)
-    - [1D Problem 02 — Helmholtz heat conduction-convection](#1d-problem-02--helmholtz-heat-conduction-convection)
-    - [1D Problem 03 — Helmholtz with flux BC](#1d-problem-03--helmholtz-with-flux-bc)
-    - [1D Problem 04 — Trefethen programs 13 and 33](#1d-problem-04--trefethen-programs-13-and-33)
-    - [1D Problem 05 — Pozrikidis Helmholtz](#1d-problem-05--pozrikidis-helmholtz)
-    - [Metrics — Curvilinear coordinates](#metrics--curvilinear-coordinates)
+- [Introduction](#introduction)
+  - [Documentation](#documentation)
+- [Installation](#installation)
+  - [Setting Cargo.toml](#setting-cargotoml)
+  - [Optional features](#optional-features)
+- [🌟 Examples](#-examples)
+  - [Example 1: Solving 1D Poisson equation with Finite Differences](#example-1-solving-1d-poisson-equation-with-finite-differences)
+  - [Example 2: Solving 1D problems with Spectral Collocation](#example-2-solving-1d-problems-with-spectral-collocation)
+  - [Example 3: Spectral collocation in 2D with transfinite mapping](#example-3-spectral-collocation-in-2d-with-transfinite-mapping)
+- [Test Problems](#test-problems)
+  - [Problem 01 — 2D Poisson with mixed BCs](#problem-01--2d-poisson-with-mixed-bcs)
+  - [Problem 02 — 2D Poisson `ϕ = y·sin(πx)`](#problem-02--2d-poisson-ϕ--ysinπx)
+  - [Problem 03 — 2D Helmholtz/Poisson with mixed BCs](#problem-03--2d-helmholtzpoisson-with-mixed-bcs)
+  - [Problem 04 — 2D Poisson on `[-1,1]²` (benchmark)](#problem-04--2d-poisson-on--11-benchmark)
+  - [Problem 05 — 2D Poisson polynomial](#problem-05--2d-poisson-polynomial)
+  - [Problem 06 — 2D Poisson `ϕ = tanh(1−x+y)`](#problem-06--2d-poisson-ϕ--tanh1xy)
+  - [Problem 08 — 2D Poisson on curvilinear domains](#problem-08--2d-poisson-on-curvilinear-domains)
+  - [Problem 09 — 2D Laplace (potential flow)](#problem-09--2d-laplace-potential-flow)
+  - [1D Problem 02 — Helmholtz heat conduction-convection](#1d-problem-02--helmholtz-heat-conduction-convection)
+  - [1D Problem 03 — Helmholtz with flux BC](#1d-problem-03--helmholtz-with-flux-bc)
+  - [1D Problem 04 — Trefethen programs 13 and 33](#1d-problem-04--trefethen-programs-13-and-33)
+  - [1D Problem 05 — Pozrikidis Helmholtz](#1d-problem-05--pozrikidis-helmholtz)
+  - [Metrics — Curvilinear coordinates](#metrics--curvilinear-coordinates)
+- [For developers](#for-developers)
 
 
 
@@ -37,7 +37,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This library implements essential tools to solve partial differential equations (PDEs). It does not implement full-fledge PDE solvers for general problems and, hence, this library is quite limited.
 
-A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlinear` because they employ PDE problems as **testing** platforms.
+A goal is to provide tools to test other crates such as `russell_ode` and `russell_nonlin` because they employ PDE problems as **testing** platforms.
 
 Currently, simple finite differences operators are implemented, in addition to spectral collocation methods in 1D and 2D. The library also implements the transfinite mapping method to generate meshes on non-rectangular domains.
 
@@ -73,6 +73,7 @@ The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `cudss`: Enable the NVIDIA cuDSS GPU solver
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -357,3 +358,8 @@ Program 13: homogeneous Dirichlet; Program 33: Neumann left + Dirichlet right. P
 Covariant and contravariant basis vectors on a curved quadrilateral domain. [test code](https://github.com/cpmech/russell/tree/main/russell_pde/tests/test_metrics2d.rs)
 
 ![Metrics](data/figures/test_metrics_2d.svg)
+
+## For developers
+
+* This crate is pure Rust with no C dependencies
+* Run the examples with `cargo run --example <name>`

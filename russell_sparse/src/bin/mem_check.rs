@@ -5,6 +5,7 @@ use russell_sparse::Samples;
 fn test_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
+        Genie::Cudss => println!("Testing cuDSS solver\n"),
         Genie::Klu => println!("Testing KLU solver\n"),
         Genie::Mumps => println!("Testing MUMPS solver\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver\n"),
@@ -20,7 +21,12 @@ fn test_solver(genie: Genie) {
 
     let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
 
-    match solver.actual.factorize(&coo, None) {
+    let mut params = LinSolParams::new();
+    if genie == Genie::Cudss {
+        params.matching = Matching::Auto;
+    }
+
+    match solver.actual.factorize(&coo, Some(params)) {
         Err(e) => {
             println!("FAIL(factorize): {}", e);
             return;
@@ -55,6 +61,7 @@ fn test_solver(genie: Genie) {
 fn test_complex_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
+        Genie::Cudss => println!("Testing Complex cuDSS solver\n"),
         Genie::Klu => println!("Testing Complex KLU solver\n"),
         Genie::Mumps => println!("Testing Complex MUMPS solver\n"),
         Genie::Umfpack => println!("Testing Complex UMFPACK solver\n"),
@@ -69,6 +76,7 @@ fn test_complex_solver(genie: Genie) {
     };
 
     let coo = match genie {
+        Genie::Cudss => Samples::complex_symmetric_3x3_full().0,
         Genie::Klu => Samples::complex_symmetric_3x3_full().0,
         Genie::Mumps => Samples::complex_symmetric_3x3_lower().0,
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
@@ -109,6 +117,7 @@ fn test_complex_solver(genie: Genie) {
 fn test_solver_singular(genie: Genie) {
     println!("----------------------------------------------------------------------\n");
     match genie {
+        Genie::Cudss => println!("Testing cuDSS solver (singular matrix)\n"),
         Genie::Klu => println!("Testing KLU solver (singular matrix)\n"),
         Genie::Mumps => println!("Testing MUMPS solver (singular matrix)\n"),
         Genie::Umfpack => println!("Testing UMFPACK solver (singular matrix)\n"),
@@ -142,6 +151,7 @@ fn test_solver_singular(genie: Genie) {
 
 fn main() {
     // real
+    test_solver(Genie::Cudss);
     test_solver(Genie::Klu);
     test_solver(Genie::Mumps);
     test_solver(Genie::Umfpack);

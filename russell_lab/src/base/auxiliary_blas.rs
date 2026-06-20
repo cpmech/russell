@@ -1,6 +1,6 @@
 use crate::internal::{to_i32, CcBool, C_TRUE};
 
-extern "C" {
+unsafe extern "C" {
     fn c_using_intel_mkl() -> CcBool;
     fn c_set_num_threads(n: i32);
     fn c_get_num_threads() -> i32;

@@ -1,7 +1,7 @@
 use super::ComplexMatrix;
 use crate::{cpx, to_i32, CcBool, Complex64, StrError, Vector, C_FALSE, C_TRUE};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for HE matrices
     // <https://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html>
     fn c_zheev(

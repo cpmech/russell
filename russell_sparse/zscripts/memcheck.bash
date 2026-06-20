@@ -1,29 +1,24 @@
 #!/bin/bash
 
-INTEL_MKL=${1:-""}
-LOCAL_SPARSE=${2:-""}
+# Needs:
+# cargo install cargo-valgrind
 
-FEATURES=""
-if [ "$INTEL_MKL" = "1" ]; then
-    FEATURES="${FEATURES},intel_mkl"
-fi
-if [ "$LOCAL_SPARSE" = "1" ]; then
-    FEATURES="${FEATURES},local_sparse"
-fi
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SUPPRESSIONS="$PROJECT_DIR/zscripts/valgrind-mumps.supp"
 
-cargo build --features "$FEATURES"
+FEATURES="intel_mkl,local_sparse,cudss"
+BINARY="$HOME/rust_modules/debug/mem_check"
 
-VALGRIND="cargo valgrind run --features ${FEATURES}"
+cd "$PROJECT_DIR"
 
-$VALGRIND --bin mem_check
+# Build
+echo "=== Building with features: $FEATURES ==="
+cargo build --features "$FEATURES" --bin mem_check
 
-$VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g klu
-$VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g umfpack
-
-$VALGRIND --example nonlinear_system_4eqs -- -g klu
-$VALGRIND --example nonlinear_system_4eqs -- -g umfpack
-
-if [ "$LOCAL_SPARSE" = "1" ]; then
-    $VALGRIND --bin solve_matrix_market -- data/matrix_market/bfwb62.mtx -d -g mumps
-    $VALGRIND --example nonlinear_system_4eqs -- -g mumps
-fi
+# Run valgrind with MUMPS suppressions
+echo ""
+echo "=== Running valgrind ==="
+valgrind \
+    --leak-check=full \
+    --suppressions="$SUPPRESSIONS" \
+    "$BINARY"

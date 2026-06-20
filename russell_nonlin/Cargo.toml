@@ -1,7 +1,7 @@
 [package]
 name = "russell_nonlin"
 version = "2.3.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Numerical continuation methods to solve nonlinear systems of equations"
 homepage = "https://github.com/cpmech/russell"
@@ -18,6 +18,7 @@ intel_mkl = [
   "ctm_demo/intel_mkl",
 ]
 local_sparse = ["russell_sparse/local_sparse", "ctm_demo/local_suitesparse"]
+cudss = ["russell_sparse/cudss"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "2" }

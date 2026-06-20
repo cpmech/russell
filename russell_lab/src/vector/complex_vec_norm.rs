@@ -1,7 +1,7 @@
 use super::ComplexVector;
 use crate::{to_i32, Complex64, Norm};
 
-extern "C" {
+unsafe extern "C" {
     // Computes the Euclidean norm
     // <https://www.netlib.org/lapack/explore-html/d1/d5a/dznrm2_8f90.html>
     fn cblas_dznrm2(n: i32, x: *const Complex64, incx: i32) -> f64;

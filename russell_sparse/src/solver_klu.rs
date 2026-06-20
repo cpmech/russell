@@ -1,7 +1,7 @@
 use super::{CooMatrix, CscMatrix, LinSolParams, LinSolTrait, Ordering, Scaling, StatsLinSol, Sym};
-use crate::constants::*;
 use crate::StrError;
-use russell_lab::{vec_copy, Stopwatch, Vector};
+use crate::constants::*;
+use russell_lab::{Stopwatch, Vector, vec_copy};
 
 /// Opaque struct holding a C-pointer to InterfaceKLU
 ///
@@ -22,7 +22,7 @@ unsafe impl Send for InterfaceKLU {}
 /// <https://stackoverflow.com/questions/50258359/can-a-struct-containing-a-raw-pointer-implement-send-and-be-ffi-safe>
 unsafe impl Send for SolverKLU {}
 
-extern "C" {
+unsafe extern "C" {
     fn solver_klu_new() -> *mut InterfaceKLU;
     fn solver_klu_drop(solver: *mut InterfaceKLU);
     fn solver_klu_initialize(
@@ -48,7 +48,50 @@ extern "C" {
 
 /// Wraps the KLU solver for sparse linear systems
 ///
+/// KLU is a direct solver specifically designed for **highly sparse** matrices,
+/// such as those arising in circuit simulation.
+///
+/// **Reference:** <https://github.com/DrTimothyAldenDavis/SuiteSparse>
+///
 /// **Warning:** This solver may "run out of memory" for very large matrices.
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::{vec_approx_eq, Vector};
+/// use russell_sparse::prelude::*;
+/// use russell_sparse::StrError;
+///
+/// fn main() -> Result<(), StrError> {
+///     let ndim = 3;
+///     let nnz = 5;
+///
+///     let mut klu = SolverKLU::new()?;
+///
+///     // allocate the coefficient matrix
+///     // ┌                   ┐
+///     // │   0.2   0.2     0 │
+///     // │   0.5 -0.25     0 │
+///     // │     0     0  0.25 │
+///     // └                   ┘
+///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+///     coo.put(0, 0, 0.2)?;
+///     coo.put(0, 1, 0.2)?;
+///     coo.put(1, 0, 0.5)?;
+///     coo.put(1, 1, -0.25)?;
+///     coo.put(2, 2, 0.25)?;
+///
+///     klu.factorize(&coo, None)?;
+///
+///     let rhs = Vector::from(&[1.0, 1.0, 1.0]);
+///     let mut x = Vector::new(ndim);
+///     klu.solve(&mut x, &rhs, false)?;
+///
+///     let correct = vec![3.0, 2.0, 4.0];
+///     vec_approx_eq(&x, &correct, 1e-14);
+///     Ok(())
+/// }
+/// ```
 pub struct SolverKLU {
     /// Holds a pointer to the C interface to KLU
     solver: *mut InterfaceKLU,
@@ -139,6 +182,12 @@ impl LinSolTrait for SolverKLU {
     ///   if symmetric, the symmetric flag must be [Sym::YesFull]
     /// * `params` -- configuration parameters; None => use default
     ///
+    /// **Important:** `params` must be set to `None` when calling `factorize` again;
+    /// e.g., when the values of the coefficient matrix change but the structure remains the same.
+    /// This limitation is required because the first factorization performs both the *symbolic* and
+    /// *numeric* factorizations, whereas the subsequent factorizations are only *numeric*. Thus,
+    /// options such as *ordering* and *scaling* have no further impact after the symbolic factorization.
+    ///
     /// # Notes
     ///
     /// 1. The structure of the matrix (nrow, ncol, nnz, sym) must be
@@ -160,6 +209,9 @@ impl LinSolTrait for SolverKLU {
             }
             if mat.nnz != self.initialized_nnz {
                 return Err("subsequent factorizations must use the same matrix (nnz differs)");
+            }
+            if params.is_some() {
+                return Err("subsequent factorizations must not change LinSolParams");
             }
             self.csc.as_mut().unwrap().update_from_coo(mat)?;
         } else {
@@ -288,11 +340,7 @@ impl LinSolTrait for SolverKLU {
 
     /// Updates the stats structure (should be called after solve)
     fn update_stats(&self, stats: &mut StatsLinSol) {
-        stats.main.solver = if cfg!(feature = "local_sparse") {
-            "KLU-local".to_string()
-        } else {
-            "KLU".to_string()
-        };
+        stats.main.solver = "KLU".to_string();
         stats.output.umfpack_rcond_estimate = self.cond_estimate;
         stats.output.effective_ordering = match self.effective_ordering {
             KLU_ORDERING_AMD => "Amd".to_string(),
@@ -305,9 +353,9 @@ impl LinSolTrait for SolverKLU {
             KLU_SCALE_MAX => "Max".to_string(),
             _ => "Unknown".to_string(),
         };
-        stats.time_nanoseconds.initialize = self.time_initialize_ns;
-        stats.time_nanoseconds.factorize = self.time_factorize_ns;
-        stats.time_nanoseconds.solve = self.time_solve_ns;
+        stats.time_nanoseconds.initialize_array.push(self.time_initialize_ns);
+        stats.time_nanoseconds.factorize_array.push(self.time_factorize_ns);
+        stats.time_nanoseconds.solve_array.push(self.time_solve_ns);
     }
 
     /// Returns the nanoseconds spent on initialize
@@ -342,6 +390,7 @@ pub(crate) fn klu_ordering(ordering: Ordering) -> i32 {
         Ordering::Amf => KLU_ORDERING_AUTO,
         Ordering::Auto => KLU_ORDERING_AUTO,
         Ordering::Best => KLU_ORDERING_AUTO,
+        Ordering::BtfColamd => KLU_ORDERING_AUTO,
         Ordering::Cholmod => KLU_ORDERING_AUTO,
         Ordering::Colamd => KLU_ORDERING_COLAMD,
         Ordering::Metis => KLU_ORDERING_AUTO,
@@ -356,13 +405,13 @@ pub(crate) fn klu_ordering(ordering: Ordering) -> i32 {
 pub(crate) fn klu_scaling(scaling: Scaling) -> i32 {
     match scaling {
         Scaling::Auto => KLU_SCALE_AUTO,
-        Scaling::Column => KLU_ORDERING_AUTO,
-        Scaling::Diagonal => KLU_ORDERING_AUTO,
+        Scaling::Column => KLU_SCALE_AUTO,
+        Scaling::Diagonal => KLU_SCALE_AUTO,
         Scaling::Max => KLU_SCALE_MAX,
         Scaling::No => KLU_SCALE_NONE,
-        Scaling::RowCol => KLU_ORDERING_AUTO,
-        Scaling::RowColIter => KLU_ORDERING_AUTO,
-        Scaling::RowColRig => KLU_ORDERING_AUTO,
+        Scaling::RowCol => KLU_SCALE_AUTO,
+        Scaling::RowColIter => KLU_SCALE_AUTO,
+        Scaling::RowColRig => KLU_SCALE_AUTO,
         Scaling::Sum => KLU_SCALE_SUM,
     }
 }
@@ -466,7 +515,22 @@ mod tests {
         assert_eq!(solver.effective_scaling, KLU_SCALE_SUM);
 
         // calling factorize again works
+        solver.factorize(&coo, None).unwrap();
+    }
+
+    #[test]
+    fn factorize_fails_when_params_changed_on_second_call() {
+        let mut solver = SolverKLU::new().unwrap();
+        let (coo, _, _, _) = Samples::umfpack_unsymmetric_5x5();
+        let mut params = LinSolParams::new();
+        params.ordering = Ordering::Amd;
+        params.scaling = Scaling::Sum;
         solver.factorize(&coo, Some(params)).unwrap();
+        params.ordering = Ordering::Colamd;
+        assert_eq!(
+            solver.factorize(&coo, Some(params)),
+            Err("subsequent factorizations must not change LinSolParams")
+        );
     }
 
     #[test]
@@ -522,15 +586,21 @@ mod tests {
         vec_approx_eq(&x, x_correct, 1e-14);
 
         // calling solve again works
-        let mut x_again = Vector::new(5);
-        solver.solve(&mut x_again, &rhs, false).unwrap();
-        vec_approx_eq(&x_again, x_correct, 1e-14);
+        solver.solve(&mut x, &rhs, false).unwrap();
+        vec_approx_eq(&x, x_correct, 1e-14);
 
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "KLU");
         assert_eq!(stats.output.effective_ordering, "Amd");
         assert_eq!(stats.output.effective_scaling, "Max");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 
     #[test]
@@ -557,8 +627,15 @@ mod tests {
         // update stats
         let mut stats = StatsLinSol::new();
         solver.update_stats(&mut stats);
+        assert_eq!(stats.main.solver, "KLU");
         assert_eq!(stats.output.effective_ordering, "Colamd");
         assert_eq!(stats.output.effective_scaling, "No");
+        assert_eq!(stats.time_nanoseconds.initialize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.factorize_array.len(), 1);
+        assert_eq!(stats.time_nanoseconds.solve_array.len(), 1);
+        assert!(solver.get_ns_init() > 0);
+        assert!(solver.get_ns_fact() > 0);
+        assert!(solver.get_ns_solve() > 0);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use super::Sym;
-use crate::to_i32;
 use crate::StrError;
+use crate::to_i32;
 use num_traits::{Num, NumCast};
 use russell_lab::{NumMatrix, NumVector};
 use serde::de::DeserializeOwned;
@@ -95,11 +95,13 @@ where
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate the coefficient matrix
-    ///     //  2  3  .  .  .
-    ///     //  3  .  4  .  6
-    ///     //  . -1 -3  2  .
-    ///     //  .  .  1  .  .
-    ///     //  .  4  2  .  1
+    ///     // ┌                ┐
+    ///     // │  2  3  0  0  0 │
+    ///     // │  3  0  4  0  6 │
+    ///     // │  0 -1 -3  2  0 │
+    ///     // │  0  0  1  0  0 │
+    ///     // │  0  4  2  0  1 │
+    ///     // └                ┘
     ///     let mut coo = CooMatrix::new(5, 5, 13, Sym::No)?;
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
     ///     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate
@@ -212,11 +214,13 @@ where
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // allocate a square matrix and store as CSC matrix
-    ///     //  2  3  .  .  .
-    ///     //  3  .  4  .  6
-    ///     //  . -1 -3  2  .
-    ///     //  .  .  1  .  .
-    ///     //  .  4  2  .  1
+    ///     // ┌                ┐
+    ///     // │  2  3  0  0  0 │
+    ///     // │  3  0  4  0  6 │
+    ///     // │  0 -1 -3  2  0 │
+    ///     // │  0  0  1  0  0 │
+    ///     // │  0  4  2  0  1 │
+    ///     // └                ┘
     ///     let nrow = 5;
     ///     let ncol = 5;
     ///     let row_indices = vec![0, /*dup*/ 0, 1, 0, 2, 4, 1, 2, 3, 4, 2, 1, 4];
@@ -863,11 +867,25 @@ where
     /// use russell_sparse::StrError;
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let coo = CooMatrix::new(1, 2, 3, Sym::No)?;
+    ///     // allocate the coefficient matrix
+    ///     // ┌                   ┐
+    ///     // │   0.2   0.2     0 │
+    ///     // │   0.5 -0.25     0 │
+    ///     // │     0     0  0.25 │
+    ///     // └                   ┘
+    ///     let ndim = 3;
+    ///     let nnz = 5;
+    ///     let mut coo = CooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+    ///     coo.put(0, 0, 0.2)?;
+    ///     coo.put(0, 1, 0.2)?;
+    ///     coo.put(1, 0, 0.5)?;
+    ///     coo.put(1, 1, -0.25)?;
+    ///     coo.put(2, 2, 0.25)?;
+    ///
     ///     let (nrow, ncol, nnz, sym) = coo.get_info();
-    ///     assert_eq!(nrow, 1);
-    ///     assert_eq!(ncol, 2);
-    ///     assert_eq!(nnz, 0);
+    ///     assert_eq!(nrow, 3);
+    ///     assert_eq!(ncol, 3);
+    ///     assert_eq!(nnz, 5);
     ///     assert_eq!(sym, Sym::No);
     ///     Ok(())
     /// }
@@ -921,7 +939,7 @@ where
 mod tests {
     use super::NumCooMatrix;
     use crate::{Samples, Sym};
-    use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, NumMatrix, NumVector};
+    use russell_lab::{ComplexVector, NumMatrix, NumVector, complex_vec_approx_eq, cpx, vec_approx_eq};
 
     #[test]
     fn new_captures_errors() {

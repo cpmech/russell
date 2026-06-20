@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# see: https://sparse.tamu.edu/
+
 set -e
 
 cd ~/Downloads
@@ -32,3 +34,8 @@ get_matrix() {
 # get_matrix Lee fem_filter # complex
 # get_matrix Chevron Chevron1
 # get_matrix Bai qc324 # complex symmetric
+
+# get_matrix Freescale Freescale1
+# get_matrix Freescale memchip
+# get_matrix GHS_indef darcy003
+# get_matrix GHS_indef boyd2

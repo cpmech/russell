@@ -1,13 +1,15 @@
-use russell_sparse::prelude::*;
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // allocate a square matrix and store as COO matrix
-    //  2  3  .  .  .
-    //  3  .  4  .  6
-    //  . -1 -3  2  .
-    //  .  .  1  .  .
-    //  .  4  2  .  1
+    // ┌                ┐
+    // │  2  3  0  0  0 │
+    // │  3  0  4  0  6 │
+    // │  0 -1 -3  2  0 │
+    // │  0  0  1  0  0 │
+    // │  0  4  2  0  1 │
+    // └                ┘
     let (nrow, ncol, nnz) = (5, 5, 13);
     let mut coo = CooMatrix::new(nrow, ncol, nnz, Sym::No)?;
     coo.put(0, 0, 1.0)?; // << (0, 0, a00/2) duplicate

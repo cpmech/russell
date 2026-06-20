@@ -37,9 +37,8 @@
 ## Contents <!-- omit from toc --> 
 
 - [Introduction](#introduction)
-  - [Features](#features)
   - [External associated and recommended crates](#external-associated-and-recommended-crates)
-  - [Crates overview](#crates-overview)
+  - [Features](#features)
   - [Code style](#code-style)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
@@ -67,6 +66,7 @@
   - [(lab) Line search for optimization](#lab-line-search-for-optimization)
   - [(nonlin) Numerical continuation of a B-spline curve](#nonlin-numerical-continuation-of-a-b-spline-curve)
   - [(sparse) Solution of a sparse linear system](#sparse-solution-of-a-sparse-linear-system)
+  - [(sparse) Solution of a complex sparse linear system](#sparse-solution-of-a-complex-sparse-linear-system)
   - [(ode) Solution of the Brusselator ODE](#ode-solution-of-the-brusselator-ode)
   - [(ode) Solution of the Brusselator PDE](#ode-solution-of-the-brusselator-pde)
   - [(pde) Spectral collocation in 2D with transfinite mapping](#pde-spectral-collocation-in-2d-with-transfinite-mapping)
@@ -84,29 +84,53 @@ This project aims to deliver efficient, reliable, and easy-to-maintain code. To 
 
 This project is split into the following crates:
 
-- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Scientific laboratory with special math functions, linear algebra, interpolation, quadrature, numerical derivation, and more
-- [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) Numerical Continuation methods to solve nonlinear systems of equations
-- [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) 
-- [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver
-- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps MUMPS and UMFPACK)
-- [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions
-- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics
+- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Scientific laboratory with special math functions, linear algebra, interpolation, quadrature, root-finding, numerical derivation, and more (e.g., matrices/vectors (col-major), BLAS/LAPACK).
+- [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) Numerical Continuation methods to solve nonlinear systems of equations (natural continuation + pseudo-arclength).
+- [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) (DoPri5/8, Radau5, Euler).
+- [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver (spectral collocation + finite differences; 1D/2D)
+- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, KLU, MUMPS, and UMFPACK) + COO/CSC/CSR formats + complex numbers support.
+- [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions (Frechet, Gumbel, Normal).
+- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics (Mandel basis) 
+
+Below is a summary of internal dependencies:
+
+| Crate            | Key dependencies                                |
+| ---------------- | ----------------------------------------------- |
+| `russell_lab`    | `num-complex`, `serde`                          |
+| `russell_sparse` | `russell_lab`                                   |
+| `russell_stat`   | `russell_lab`, `rand`                           |
+| `russell_tensor` | `russell_lab`, `serde`                          |
+| `russell_pde`    | `russell_lab`, `russell_sparse`                 |
+| `russell_ode`    | `russell_lab`, `russell_sparse`, `russell_pde`  |
+| `russell_nonlin` | `russell_lab`, `russell_sparse`, `russell_stat` |
+
+### External associated and recommended crates
+
+The following crates are not part of `russell` but are associated with it and recommended:
+
+- [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
+- [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
+- [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
 
 ### Features
 
 This project employs [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) (or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html)) for linear algebra computations and [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. See the [Installation](#installation) section for instructions on how to install these libraries on different platforms.
 
-To use Intel MKL, the `intel_mkl` feature must be selected. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected. The table below summarizes the features of each crate:
+To use Intel MKL, the `intel_mkl` feature must be selected. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
 
-| Crate            | feature: `intel_mkl` | feature: `local_sparse` |
-| ---------------- | :------------------: | :---------------------: |
-| `russell_lab`    |          ✓           |                         |
-| `russell_nonlin` |          ✓           |            ✓            |
-| `russell_ode`    |          ✓           |            ✓            |
-| `russell_pde`    |          ✓           |            ✓            |
-| `russell_sparse` |          ✓           |            ✓            |
-| `russell_stat`   |          ✓           |                         |
-| `russell_tensor` |          ✓           |                         |
+Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag.
+
+The table below summarizes the features of each crate:
+
+|                  | `intel_mkl` | `local_sparse` | `cudss` |
+| ---------------- | :---------: | :------------: | :-----: |
+| `russell_lab`    |      ✓      |                |         |
+| `russell_nonlin` |      ✓      |       ✓        |    ✓    |
+| `russell_ode`    |      ✓      |       ✓        |    ✓    |
+| `russell_pde`    |      ✓      |       ✓        |    ✓    |
+| `russell_sparse` |      ✓      |       ✓        |    ✓    |
+| `russell_stat`   |      ✓      |                |         |
+| `russell_tensor` |      ✓      |                |         |
 
 Below is an example of how to enable the `intel_mkl` and `local_sparse` features with the `russell_sparse` crate in the `Cargo.toml` file:
 
@@ -117,40 +141,6 @@ russell_sparse = { version = "*", features = ["intel_mkl", "local_sparse"] }
 ```
 
 Replace "*" with the desired version. Note that `russell_sparse` (and all other crates in this project) require `russell_lab` as a dependency.
-
-### External associated and recommended crates
-
-The following crates are not part of `russell` but are associated with it and recommended:
-
-- [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
-- [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
-- [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
-
-### Crates overview
-
-| Crate            | Purpose                                                                                                      | Key dependencies                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
-| `russell_lab`    | Foundation: matrices/vectors (col-major), BLAS/LAPACK, interpolation, quadrature, root-finding, special math | `num-complex`, `serde`                          |
-| `russell_sparse` | Sparse linear solvers (UMFPACK, KLU, MUMPS) + COO/CSC/CSR formats                                            | `russell_lab`                                   |
-| `russell_stat`   | Probability distributions + statistics (Frechet, Gumbel, Normal, etc.)                                       | `russell_lab`, `rand`                           |
-| `russell_tensor` | Continuum mechanics tensors (Mandel basis)                                                                   | `russell_lab`, `serde`                          |
-| `russell_pde`    | PDE tools: spectral collocation + finite differences (1D/2D)                                                 | `russell_lab`, `russell_sparse`                 |
-| `russell_ode`    | ODE/DAE solvers (DoPri5/8, Radau5, Euler)                                                                    | `russell_lab`, `russell_sparse`, `russell_pde`  |
-| `russell_nonlin` | Numerical continuation (natural + pseudo-arclength)                                                          | `russell_lab`, `russell_sparse`, `russell_stat` |
-
-Internal dependency graph (all crates depend on `russell_lab`):
-
-```
-russell_lab  <-- fundamental
-  ^
-  |
-  +--- russell_sparse
-  +--- russell_stat
-  +--- russell_tensor
-  +--- russell_pde ----+
-  +--- russell_ode ----+--- russell_sparse
-  +--- russell_nonlin -+--- russell_sparse, russell_stat
-```
 
 ### Code style
 
@@ -177,7 +167,7 @@ It is important to highlight that, when MUMPS is enabled, SuiteSparse must also 
 
 Note that, while it is possible to use Intel MKL with `russell_lab` and OpenBLAS with `russell_sparse`, this is not advantageous since Intel MKL is slightly more performant than OpenBLAS [(see this article)](https://onlinelibrary.wiley.com/doi/full/10.1002/nme.7545). Thus, if you have already installed Intel MKL, it is easy to compile SuiteSparse and MUMPS (Option 3 below). Thus, we do not consider a fourth option with MKL for `russell_lab` and OpenBLAS for `russell_sparse`.
 
-
+The direct sparse solver based on NVIDIA's CUDA platform for GPUs is also available in `russell_sparse`. The solver, named [cuDSS](https://developer.nvidia.com/cudss), can be installed as explained in [nvidia-cudss.md](https://github.com/cpmech/russell/blob/main/nvidia-cudss.md) or by running the commands in [linux-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/linux-compile-cudss.bash) or [UNTESTED-windows-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/UNTESTED-windows-compile-cudss.bash).
 
 ### Arch Linux
 
@@ -334,8 +324,10 @@ export OPENBLAS_NUM_THREADS=1
 See also:
 
 * [russell_lab/examples](https://github.com/cpmech/russell/tree/main/russell_lab/examples)
-* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
+* [russell_nonlin/examples](https://github.com/cpmech/russell/tree/main/russell_nonlin/examples)
 * [russell_ode/examples](https://github.com/cpmech/russell/tree/main/russell_ode/examples)
+* [russell_pde/examples](https://github.com/cpmech/russell/tree/main/russell_pde/examples)
+* [russell_sparse/examples](https://github.com/cpmech/russell/tree/main/russell_sparse/examples)
 * [russell_stat/examples](https://github.com/cpmech/russell/tree/main/russell_stat/examples)
 * [russell_tensor/examples](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
@@ -598,7 +590,32 @@ The code below illustrates how to do it.
 Each column (`sr`, `ea`, `er`) is accessible via the `get` method of the [HashMap].
 
 ```rust
-use russell_lab::{read_data, StrError};
+use russell_lab::{StrError, read_table};
+use std::collections::HashMap;
+use std::env;
+use std::path::PathBuf;
+
+fn main() -> Result<(), StrError> {
+    // get the asset's full path
+    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let full_path = root.join("data/tables/clay-data.txt");
+
+    // read the file
+    let labels = &["sr", "ea", "er"];
+    let table: HashMap<String, Vec<f64>> = read_table(&full_path, Some(labels))?;
+
+    // check the columns
+    assert_eq!(table.get("sr").unwrap(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+    assert_eq!(table.get("ea").unwrap(), &[-6.0, 7.0, 8.0, 9.0, 10.0]);
+    assert_eq!(table.get("er").unwrap(), &[0.1, 0.2, 0.2, 0.4, 0.5]);
+    Ok(())
+}
+```
+
+Alternatively, we can use the simpler `read_data` function:
+
+```rust
+use russell_lab::{StrError, read_data};
 use std::env;
 use std::path::PathBuf;
 
@@ -740,6 +757,54 @@ fn main() -> Result<(), StrError> {
     let (mx, ex) = (stats.determinant.mantissa_real, stats.determinant.exponent);
     println!("det(a) = {:?}", mx * f64::powf(10.0, ex));
     println!("rcond  = {:?}", stats.output.umfpack_rcond_estimate);
+    Ok(())
+}
+```
+
+
+
+### (sparse) Solution of a complex sparse linear system
+
+```rust
+use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
+use russell_sparse::prelude::*;
+use russell_sparse::StrError;
+
+fn main() -> Result<(), StrError> {
+    let ndim = 3;
+    let nnz = 7;
+
+    // allocate solver
+    let mut umfpack = ComplexSolverUMFPACK::new()?;
+
+    // allocate the coefficient matrix
+    //   ┌                      ┐
+    //   │  2+1i  -1-1i     0   │
+    //   │ -1-1i   2+2i  -1+1i  │
+    //   │   0    -1+1i   2-1i  │
+    //   └                      ┘
+    let mut coo = ComplexCooMatrix::new(ndim, ndim, nnz, Sym::No)?;
+    coo.put(0, 0, cpx!(2.0, 1.0))?;
+    coo.put(0, 1, cpx!(-1.0, -1.0))?;
+    coo.put(1, 0, cpx!(-1.0, -1.0))?;
+    coo.put(1, 1, cpx!(2.0, 2.0))?;
+    coo.put(1, 2, cpx!(-1.0, 1.0))?;
+    coo.put(2, 1, cpx!(-1.0, 1.0))?;
+    coo.put(2, 2, cpx!(2.0, -1.0))?;
+
+    // call factorize
+    umfpack.factorize(&coo, None)?;
+
+    // right-hand side vector
+    let b = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
+
+    // calculate the solution
+    let mut x = ComplexVector::new(ndim);
+    umfpack.solve(&mut x, &b, false)?;
+
+    // check the result
+    let correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
+    complex_vec_approx_eq(&x, correct, 1e-14);
     Ok(())
 }
 ```
@@ -1012,7 +1077,9 @@ fn main() -> Result<(), StrError> {
         - [x] Implement Legendre polynomials
         - [ ] Implement Fourier interpolation
 - [x] Improve `russell_sparse`
+    - [x] Wrap the cuDSS solver (NVIDIA GPUs)
     - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
+    - [x] Implement support for complex numbers
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSR)
     - [x] Improve the C-interface to UMFPACK and MUMPS

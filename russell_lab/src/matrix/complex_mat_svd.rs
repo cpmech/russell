@@ -1,6 +1,6 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::Vector;
-use crate::{cpx, to_i32, Complex64, StrError, SVD_CODE_A};
+use crate::{Complex64, SVD_CODE_A, StrError, cpx, to_i32};
 
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
@@ -140,7 +140,10 @@ pub fn complex_mat_svd(
         println!("LAPACK ERROR (zgesvd): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (zgesvd): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (zgesvd): {} is the number of super-diagonals of an intermediate bi-diagonal form B which did not converge to zero",info);
+        println!(
+            "LAPACK ERROR (zgesvd): {} is the number of super-diagonals of an intermediate bi-diagonal form B which did not converge to zero",
+            info
+        );
         return Err("LAPACK ERROR (zgesvd): Algorithm did not converge");
     }
     Ok(())
@@ -151,7 +154,7 @@ pub fn complex_mat_svd(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_svd;
-    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq, ComplexMatrix, Vector};
+    use crate::{ComplexMatrix, Vector, complex_mat_approx_eq, cpx, vec_approx_eq};
 
     #[test]
     fn complex_mat_svd_fails_on_wrong_dims() {

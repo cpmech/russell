@@ -81,7 +81,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_approx_eq, Matrix};
+    use super::{Matrix, mat_approx_eq};
 
     #[test]
     #[should_panic(expected = "mat_approx_eq found NaN")]

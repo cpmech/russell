@@ -1,7 +1,7 @@
 use super::{Config, IniDir, Method, Status};
 use super::{SolverTrait, Stop, System, Workspace};
-use crate::{StrError, CONFIG_H_MIN};
-use russell_lab::{vec_add, vec_copy, vec_update, Vector};
+use crate::{CONFIG_H_MIN, StrError};
+use russell_lab::{Vector, vec_add, vec_copy, vec_update};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver};
 
 /// Implements the natural parameter continuation method to solve G(u, λ) = 0

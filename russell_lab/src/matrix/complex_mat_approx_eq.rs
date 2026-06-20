@@ -114,8 +114,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_approx_eq, ComplexMatrix};
-    use crate::{cpx, Complex64};
+    use super::{ComplexMatrix, complex_mat_approx_eq};
+    use crate::{Complex64, cpx};
 
     #[test]
     #[should_panic(expected = "complex_mat_approx_eq found NaN (real)")]

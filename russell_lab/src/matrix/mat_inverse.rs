@@ -1,5 +1,5 @@
-use super::{mat_copy, Matrix};
-use crate::{to_i32, StrError};
+use super::{Matrix, mat_copy};
+use crate::{StrError, to_i32};
 
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
@@ -256,7 +256,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_inverse, Matrix, ZERO_DETERMINANT};
+    use super::{Matrix, ZERO_DETERMINANT, mat_inverse};
     use crate::{approx_eq, mat_approx_eq};
 
     /// Computes a⋅ai that should equal I for a square matrix

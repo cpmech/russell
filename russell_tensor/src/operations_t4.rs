@@ -162,7 +162,7 @@ pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor
 mod tests {
     use super::*;
     use crate::{Mandel, SamplesTensor4};
-    use russell_lab::{mat_approx_eq, Matrix};
+    use russell_lab::{Matrix, mat_approx_eq};
 
     #[test]
     #[should_panic]

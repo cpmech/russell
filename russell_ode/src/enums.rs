@@ -212,7 +212,10 @@ mod tests {
         };
         let copy = info;
         let clone = info.clone();
-        assert_eq!(format!("{:?}", info), "Information { order: 2, order_of_estimator: 1, implicit: false, embedded: true, multiple_stages: true, first_step_same_as_last: false }");
+        assert_eq!(
+            format!("{:?}", info),
+            "Information { order: 2, order_of_estimator: 1, implicit: false, embedded: true, multiple_stages: true, first_step_same_as_last: false }"
+        );
         assert_eq!(copy.order, 2);
         assert_eq!(copy.order_of_estimator, 1);
         assert_eq!(copy.implicit, false);

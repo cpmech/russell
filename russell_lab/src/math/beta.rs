@@ -281,11 +281,7 @@ pub fn ln_beta(a: f64, b: f64) -> f64 {
     }
 
     // results
-    if ans < 0.0 {
-        f64::ln(-ans)
-    } else {
-        f64::ln(ans)
-    }
+    if ans < 0.0 { f64::ln(-ans) } else { f64::ln(ans) }
 }
 
 /// Handles the special case with a negative integer argument
@@ -327,8 +323,8 @@ fn ln_beta_asymptotic(a: f64, b: f64) -> (f64, i32) {
 
 #[cfg(test)]
 mod tests {
-    use super::{beta, ln_beta, ASYMPTOTIC_FACTOR};
-    use crate::math::{gamma, ln_gamma, PI};
+    use super::{ASYMPTOTIC_FACTOR, beta, ln_beta};
+    use crate::math::{PI, gamma, ln_gamma};
     use crate::{approx_eq, cpx};
 
     #[test]

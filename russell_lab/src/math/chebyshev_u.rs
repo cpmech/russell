@@ -45,11 +45,7 @@ pub fn chebyshev_un(n: usize, x: f64) -> f64 {
     if x < -1.0 {
         let acosh_val = (-x).acosh();
         let sinh_val = (m * acosh_val).sinh() / acosh_val.sinh();
-        if n % 2 == 0 {
-            sinh_val
-        } else {
-            -sinh_val
-        }
+        if n % 2 == 0 { sinh_val } else { -sinh_val }
     } else if x > 1.0 {
         let acosh_val = x.acosh();
         (m * acosh_val).sinh() / acosh_val.sinh()
@@ -57,11 +53,7 @@ pub fn chebyshev_un(n: usize, x: f64) -> f64 {
         if (x - 1.0).abs() < 1e-12 {
             m
         } else if (x + 1.0).abs() < 1e-12 {
-            if n % 2 == 0 {
-                m
-            } else {
-                -m
-            }
+            if n % 2 == 0 { m } else { -m }
         } else {
             let acos_val = x.acos();
             (m * acos_val).sin() / acos_val.sin()

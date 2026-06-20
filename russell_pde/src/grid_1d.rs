@@ -1,7 +1,7 @@
 use crate::Side;
 use crate::StrError;
-use russell_lab::math::chebyshev_lobatto_points;
 use russell_lab::Vector;
+use russell_lab::math::chebyshev_lobatto_points;
 
 /// Defines a one-dimensional grid with node coordinates
 ///

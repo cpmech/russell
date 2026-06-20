@@ -1,4 +1,4 @@
-use crate::{format_nanoseconds, Stopwatch};
+use crate::{Stopwatch, format_nanoseconds};
 use std::fmt::{self, Write};
 
 /// Constant to indicate an uninitialized value

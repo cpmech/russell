@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, CcBool, StrError, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, StrError, to_i32};
 
 unsafe extern "C" {
     // Computes the Cholesky factorization of a real symmetric positive definite matrix
@@ -117,7 +117,7 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_cholesky, Matrix};
+    use super::{Matrix, mat_cholesky};
     use crate::{mat_approx_eq, math};
 
     fn calc_l_times_lt(l_and_a: &Matrix) -> Matrix {

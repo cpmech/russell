@@ -1,4 +1,4 @@
-use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
+use russell_tensor::{Mandel, SQRT_2, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
     // general

@@ -147,7 +147,7 @@ pub(crate) fn dgeev_data_lr(
 #[cfg(test)]
 mod tests {
     use super::{dgeev_data, dgeev_data_lr};
-    use crate::{array_approx_eq, Matrix};
+    use crate::{Matrix, array_approx_eq};
 
     #[test]
     fn dgeev_data_fails_on_wrong_dims() {

@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
@@ -329,7 +329,7 @@ mod tests {
     use super::{mat_gen_eigen, mat_gen_eigen_lr};
     use crate::matrix::mat_approx_eq;
     use crate::matrix::testing::check_gen_eigen;
-    use crate::{vec_approx_eq, Matrix, Vector};
+    use crate::{Matrix, Vector, vec_approx_eq};
 
     #[test]
     fn mat_gen_eigen_captures_errors() {

@@ -1,6 +1,6 @@
 use russell_lab::*;
-use russell_sparse::prelude::*;
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 
 #[test]
 fn test_umfpack() -> Result<(), StrError> {

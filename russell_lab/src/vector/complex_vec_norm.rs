@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{to_i32, Complex64, Norm};
+use crate::{Complex64, Norm, to_i32};
 
 unsafe extern "C" {
     // Computes the Euclidean norm
@@ -73,7 +73,7 @@ pub fn complex_vec_norm(v: &ComplexVector, kind: Norm) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::complex_vec_norm;
-    use crate::{approx_eq, cpx, ComplexVector, Norm};
+    use crate::{ComplexVector, Norm, approx_eq, cpx};
 
     #[test]
     fn complex_vec_norm_works() {

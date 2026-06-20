@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, CcBool, StrError, Vector, C_FALSE};
+use crate::{C_FALSE, CcBool, StrError, Vector, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
@@ -125,8 +125,13 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
         println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (dgeev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged", info-1);
-        return Err("LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+        println!(
+            "LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged",
+            info - 1
+        );
+        return Err(
+            "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
+        );
     }
     Ok(())
 }
@@ -136,7 +141,7 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
 #[cfg(test)]
 mod tests {
     use super::mat_eigenvalues;
-    use crate::{vec_approx_eq, Matrix, Vector};
+    use crate::{Matrix, Vector, vec_approx_eq};
 
     #[test]
     fn mat_eigenvalues_fails_on_non_square() {

@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{array_plus_opx, StrError};
+use crate::{StrError, array_plus_opx};
 
 /// Performs the addition of two matrices
 ///
@@ -43,7 +43,7 @@ pub fn mat_add(c: &mut Matrix, alpha: f64, a: &Matrix, beta: f64, b: &Matrix) ->
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_add, Matrix};
+    use super::{Matrix, mat_add};
     use crate::mat_approx_eq;
 
     #[test]

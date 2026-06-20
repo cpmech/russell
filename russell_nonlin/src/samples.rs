@@ -431,9 +431,9 @@ impl Samples {
 #[cfg(test)]
 mod tests {
     use super::Samples;
+    use russell_lab::Vector;
     use russell_lab::approx_eq;
     use russell_lab::math::SQRT_2;
-    use russell_lab::Vector;
 
     #[test]
     fn test_samples_cubic_poly_1() {

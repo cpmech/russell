@@ -15,7 +15,7 @@
 //! 2. Dennis JE, Schnabel RB (1996) Numerical Methods for Unconstrained Optimization
 
 use crate::StrError;
-use crate::{solve_lin_sys, vec_copy, vec_inner, vec_norm, Matrix, Norm, Stats, Vector};
+use crate::{Matrix, Norm, Stats, Vector, solve_lin_sys, vec_copy, vec_inner, vec_norm};
 
 /// Implements Newton's method for solving nonlinear systems
 #[derive(Clone, Copy, Debug)]
@@ -236,7 +236,7 @@ impl NewtonSolver {
 #[cfg(test)]
 mod tests {
     use super::NewtonSolver;
-    use crate::{approx_eq, Matrix, Vector};
+    use crate::{Matrix, Vector, approx_eq};
 
     // ===== Basic Structure Tests =====
 

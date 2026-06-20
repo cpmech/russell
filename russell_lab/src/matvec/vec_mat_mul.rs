@@ -1,6 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_TRANS};
+use crate::{CBLAS_COL_MAJOR, CBLAS_TRANS, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
@@ -107,7 +107,7 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_mat_mul, Matrix, Vector};
+    use super::{Matrix, Vector, vec_mat_mul};
     use crate::vec_approx_eq;
 
     #[test]

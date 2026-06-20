@@ -1,5 +1,5 @@
-use crate::math::{chebyshev_lobatto_points, chebyshev_tn, PI};
 use crate::StrError;
+use crate::math::{PI, chebyshev_lobatto_points, chebyshev_tn};
 use crate::{NoArgs, Vector};
 
 /// Defines the tolerance to make sure that the range [xa, xb] is not zero
@@ -619,9 +619,9 @@ fn chebyshev_coefficients(work_a: &mut [f64], work_uu_rev: &[f64], nn: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::{chebyshev_coefficients, InterpChebyshev};
+    use super::{InterpChebyshev, chebyshev_coefficients};
     use crate::math::PI;
-    use crate::{approx_eq, array_approx_eq, vec_approx_eq, NoArgs, Vector};
+    use crate::{NoArgs, Vector, approx_eq, array_approx_eq, vec_approx_eq};
 
     #[allow(unused)]
     use plotpy::{Curve, Legend, Plot};
@@ -1212,11 +1212,7 @@ mod tests {
     #[test]
     fn case_with_discontinuity_1() {
         let f = |x: f64, _: &mut NoArgs| {
-            if x < 0.0 {
-                Ok(-x)
-            } else {
-                Ok(x)
-            }
+            if x < 0.0 { Ok(-x) } else { Ok(x) }
         };
         let (xa, xb) = (-1.0, 1.0);
         let nn_max = 200;

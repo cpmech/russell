@@ -107,11 +107,7 @@ pub fn sign(x: f64) -> f64 {
 /// ```
 #[inline]
 pub fn ramp(x: f64) -> f64 {
-    if x < 0.0 {
-        0.0
-    } else {
-        x
-    }
+    if x < 0.0 { 0.0 } else { x }
 }
 
 /// Evaluates the Heaviside step function (derivative of ramp(x))

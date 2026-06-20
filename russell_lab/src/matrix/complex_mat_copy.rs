@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, Complex64, StrError};
+use crate::{Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Copies a vector into another
@@ -55,7 +55,7 @@ pub fn complex_mat_copy(b: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::complex_mat_copy;
-    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
+    use crate::{ComplexMatrix, complex_mat_approx_eq, cpx};
 
     #[test]
     fn complex_mat_copy_fails_on_wrong_dimensions() {

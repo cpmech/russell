@@ -1,9 +1,9 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
 use russell_lab::math::SQRT_6;
-use russell_lab::{complex_vec_zip, cpx, format_fortran, vec_copy, ComplexVector, Vector};
+use russell_lab::{ComplexVector, Vector, complex_vec_zip, cpx, format_fortran, vec_copy};
 use russell_sparse::{
-    numerical_jacobian, ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver,
+    ComplexCooMatrix, ComplexCscMatrix, ComplexLinSolver, CooMatrix, CscMatrix, Genie, LinSolver, numerical_jacobian,
 };
 use std::thread;
 
@@ -730,7 +730,7 @@ const TI: [[f64; 3]; 3] = [
 mod tests {
     use super::Radau5;
     use crate::{Method, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{format_fortran, format_scientific, Vector};
+    use russell_lab::{Vector, format_fortran, format_scientific};
     use russell_sparse::{Genie, Sym};
 
     #[cfg(feature = "local_sparse")]

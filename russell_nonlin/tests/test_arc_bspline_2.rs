@@ -1,4 +1,4 @@
-use plotpy::{linspace, Curve, Plot};
+use plotpy::{Curve, Plot, linspace};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, RdiffType, Samples, Solver, Status, Stop};
 
 const SAVE_FIGURE: bool = false;

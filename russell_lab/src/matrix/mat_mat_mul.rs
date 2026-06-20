@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
@@ -100,8 +100,8 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_mat_mul, Matrix};
-    use crate::{mat_approx_eq, mat_norm, Norm};
+    use super::{Matrix, mat_mat_mul};
+    use crate::{Norm, mat_approx_eq, mat_norm};
 
     fn naive_mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix) {
         let (m, n) = c.dims();

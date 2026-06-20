@@ -68,7 +68,7 @@ pub fn vec_inner(u: &Vector, v: &Vector) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_inner, Vector};
+    use super::{Vector, vec_inner};
 
     #[test]
     fn vec_inner_works_0x1() {

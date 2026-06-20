@@ -1,8 +1,8 @@
-use super::{Config, IniDir, Method, Status, CONFIG_H_MIN};
+use super::{CONFIG_H_MIN, Config, IniDir, Method, Status};
 use super::{SolverTrait, Stop, System, Workspace};
 use crate::{RdiffType, StrError};
-use russell_lab::{vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_lab::{Norm, Vector};
+use russell_lab::{vec_add, vec_copy, vec_copy_scaled, vec_inner, vec_norm};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver, Sym};
 
 /// Implements the pseudo-arclength continuation method to solve G(u, λ) = 0
@@ -228,7 +228,9 @@ impl<'a, A> SolverArclength<'a, A> {
         // check
         assert_eq!(config.method, Method::Arclength);
         if !config.bordering && system.sym_ggu != Sym::No {
-            return Err("The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general.");
+            return Err(
+                "The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general.",
+            );
         }
 
         // allocate variables for either the bordering algorithm or the augmented system, depending on the configuration
@@ -841,11 +843,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 sum += ratio / tol;
                 count += 1;
             }
-            if count > 0 {
-                sum / count as f64
-            } else {
-                0.0
-            }
+            if count > 0 { sum / count as f64 } else { 0.0 }
         } else {
             // rdiff = maximum(q)
             let mut max_ratio = 0.0;
@@ -912,7 +910,9 @@ mod tests {
         system.set_update_secondary_state(|_, _, _, _, _, _| Ok(false));
         assert_eq!(
             SolverArclength::new(&config, system).err(),
-            Some("The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general.")
+            Some(
+                "The Arclength method requires `sym_ggu = Sym::No` when not using bordering (even if Gu is symmetric) because the augmented matrix A is not symmetric in general."
+            )
         );
     }
 }

@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{deriv1_central5, Matrix, Vector};
+use crate::{Matrix, Vector, deriv1_central5};
 
 /// Computes the Jacobian matrix of a vector function using 5-point finite differences
 ///
@@ -121,7 +121,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::num_jacobian;
-    use crate::{mat_approx_eq, Matrix, Vector};
+    use crate::{Matrix, Vector, mat_approx_eq};
 
     #[test]
     fn num_jacobian_works() {

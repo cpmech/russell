@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{array_plus_opx, StrError};
+use crate::{StrError, array_plus_opx};
 
 /// Performs the addition of two vectors
 ///
@@ -35,8 +35,8 @@ pub fn vec_add(w: &mut Vector, alpha: f64, u: &Vector, beta: f64, v: &Vector) ->
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_add, Vector};
-    use crate::{vec_approx_eq, MAX_DIM_FOR_NATIVE_BLAS};
+    use super::{Vector, vec_add};
+    use crate::{MAX_DIM_FOR_NATIVE_BLAS, vec_approx_eq};
 
     #[test]
     fn vec_add_fail_on_wrong_dims() {

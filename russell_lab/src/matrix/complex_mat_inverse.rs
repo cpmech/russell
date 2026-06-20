@@ -1,5 +1,5 @@
-use super::{complex_mat_copy, ComplexMatrix};
-use crate::{cpx, to_i32, Complex64, StrError};
+use super::{ComplexMatrix, complex_mat_copy};
+use crate::{Complex64, StrError, cpx, to_i32};
 
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
@@ -212,7 +212,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_inverse, ComplexMatrix, ZERO_DETERMINANT_NORM};
+    use super::{ComplexMatrix, ZERO_DETERMINANT_NORM, complex_mat_inverse};
     use crate::{complex_approx_eq, complex_mat_approx_eq, cpx};
 
     /// Computes a⋅ai that should equal I for a square matrix

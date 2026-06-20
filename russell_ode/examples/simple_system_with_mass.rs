@@ -1,4 +1,4 @@
-use russell_lab::{vec_approx_eq, StrError, Vector};
+use russell_lab::{StrError, Vector, vec_approx_eq};
 use russell_ode::prelude::*;
 use russell_sparse::{CooMatrix, Sym};
 

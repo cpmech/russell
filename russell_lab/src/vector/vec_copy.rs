@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{to_i32, StrError};
+use crate::{StrError, to_i32};
 
 unsafe extern "C" {
     // Copies a vector into another
@@ -49,7 +49,7 @@ pub fn vec_copy(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_copy, Vector};
+    use super::{Vector, vec_copy};
     use crate::vec_approx_eq;
 
     #[test]

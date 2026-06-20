@@ -1,8 +1,8 @@
 #![cfg(feature = "local_sparse")]
 
 use russell_lab::*;
-use russell_sparse::prelude::*;
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 use serial_test::serial;
 
 #[test]

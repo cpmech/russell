@@ -52,9 +52,7 @@ fn main() -> Result<(), StrError> {
     let mut curve2 = Curve::new();
     let mut curve3 = Curve::new();
     let mut curve4 = Curve::new();
-    curve1
-        .set_line_color("black")
-        .draw(out.dense_x(), out.dense_y(0));
+    curve1.set_line_color("black").draw(out.dense_x(), out.dense_y(0));
     curve2
         .set_marker_style(".")
         .set_marker_color("cyan")

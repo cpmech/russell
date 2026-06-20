@@ -1,6 +1,6 @@
-use russell_lab::{vec_approx_eq, Vector};
-use russell_sparse::prelude::*;
+use russell_lab::{Vector, vec_approx_eq};
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // constants
@@ -38,8 +38,8 @@ fn main() -> Result<(), StrError> {
     klu.solve(&mut x, &b, false)?;
     let correct = vec![3.0, 2.0, 4.0];
     vec_approx_eq(&x, &correct, 1e-14);
-    
+
     println!("KLU solved the tiny system successfully!");
-    
+
     Ok(())
 }

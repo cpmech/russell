@@ -1,6 +1,6 @@
 use crate::util::delta;
 use crate::{EquationHandler, EssentialBcs2d, Grid2d, Metrics, NaturalBcs2d, Side, StrError, Transfinite2d};
-use russell_lab::{vec_copy_scaled, vec_inner, vec_norm, InterpLagrange, Norm, Vector};
+use russell_lab::{InterpLagrange, Norm, Vector, vec_copy_scaled, vec_inner, vec_norm};
 use russell_sparse::{CooMatrix, Genie, LinSolver, Sym};
 
 /// Implements the Spectral Collocation Method (SPC) for 2D problems with curvilinear coordinates
@@ -1025,7 +1025,7 @@ impl<'a> SpcMap2d<'a> {
 mod tests {
     use super::SpcMap2d;
     use crate::{EssentialBcs2d, NaturalBcs2d, Side, TransfiniteSamples};
-    use russell_lab::{mat_approx_eq, Vector};
+    use russell_lab::{Vector, mat_approx_eq};
     use russell_sparse::Sym;
 
     #[test]

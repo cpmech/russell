@@ -1,4 +1,4 @@
-use plotpy::{linspace, Canvas, Curve, Plot, RayEndpoint};
+use plotpy::{Canvas, Curve, Plot, RayEndpoint, linspace};
 use russell_lab::math::{NAPIER, SQRT_2};
 use russell_lab::{approx_eq, array_approx_eq};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Status, Stop};

@@ -48,7 +48,7 @@ pub fn mat_scale(a: &mut Matrix, alpha: f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_scale, Matrix};
+    use super::{Matrix, mat_scale};
     use crate::mat_approx_eq;
 
     #[test]

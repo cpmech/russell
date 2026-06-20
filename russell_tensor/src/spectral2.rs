@@ -1,6 +1,6 @@
-use super::{vec_dyad_vec, Mandel, Tensor2, SQRT_2, SQRT_3, SQRT_6};
+use super::{Mandel, SQRT_2, SQRT_3, SQRT_6, Tensor2, vec_dyad_vec};
 use crate::StrError;
-use russell_lab::{mat_eigen_sym_jacobi, Matrix, Vector};
+use russell_lab::{Matrix, Vector, mat_eigen_sym_jacobi};
 
 /// Holds the spectral representation of a symmetric second-order tensor
 pub struct Spectral2 {
@@ -113,8 +113,8 @@ impl Spectral2 {
 #[cfg(test)]
 mod tests {
     use super::Spectral2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, Tensor2, SQRT_3, SQRT_3_BY_2};
-    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Matrix, Vector};
+    use crate::{Mandel, SQRT_3, SQRT_3_BY_2, SampleTensor2, SamplesTensor2, Tensor2};
+    use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, vec_approx_eq};
 
     #[test]
     fn decompose_captures_errors() {

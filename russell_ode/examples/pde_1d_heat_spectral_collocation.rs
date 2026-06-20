@@ -1,7 +1,7 @@
 use plotpy::{Curve, Plot, SuperTitleParams};
 use russell_lab::algo::{InterpGrid, InterpLagrange, InterpParams};
 use russell_lab::math::{GOLDEN_RATIO, PI};
-use russell_lab::{mat_vec_mul, StrError, Vector};
+use russell_lab::{StrError, Vector, mat_vec_mul};
 use russell_ode::{Method, NoArgs, OdeSolver, Params, System};
 
 const PATH_KEY: &str = "/tmp/russell_ode/pde_1d_heat_spectral_collocation";

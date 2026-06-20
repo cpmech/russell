@@ -65,7 +65,7 @@ pub fn mat_to_static_array(name: &str, a: &Matrix) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_to_static_array, Matrix};
+    use super::{Matrix, mat_to_static_array};
     use crate::mat_approx_eq;
 
     #[test]

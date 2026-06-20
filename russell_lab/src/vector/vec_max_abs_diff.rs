@@ -47,7 +47,7 @@ pub fn vec_max_abs_diff(u: &Vector, v: &Vector) -> Result<(usize, f64), StrError
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_max_abs_diff, Vector};
+    use super::{Vector, vec_max_abs_diff};
 
     #[test]
     fn vec_max_abs_diff_fail_on_wrong_dims() {

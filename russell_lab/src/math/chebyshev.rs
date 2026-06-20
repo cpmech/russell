@@ -337,7 +337,7 @@ mod tests {
     use super::{chebyshev_gauss_points, chebyshev_lobatto_points};
     use super::{chebyshev_tn, chebyshev_tn_deriv1, chebyshev_tn_deriv2};
     use crate::math::{SQRT_2, SQRT_3};
-    use crate::{approx_eq, vec_approx_eq, Vector};
+    use crate::{Vector, approx_eq, vec_approx_eq};
 
     /// Checks the symmetry of segments in a set of points
     fn check_segment_symmetry(xx: &Vector) {

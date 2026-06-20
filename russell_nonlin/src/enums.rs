@@ -1,6 +1,6 @@
 use super::CONFIG_H_MIN;
 use crate::StrError;
-use russell_lab::{vec_norm_chunk, Norm, Vector};
+use russell_lab::{Norm, Vector, vec_norm_chunk};
 use serde::{Deserialize, Serialize};
 
 /// Defines the type of the relative difference used in the stepsize control using the tangent vector

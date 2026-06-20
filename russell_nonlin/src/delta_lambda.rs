@@ -1,4 +1,4 @@
-use crate::{Stop, StrError, CONFIG_H_MIN};
+use crate::{CONFIG_H_MIN, Stop, StrError};
 
 /// Defines how Δλ is adjusted between steps
 ///

@@ -1,4 +1,4 @@
-use russell_lab::{approx_eq, format_fortran, Vector};
+use russell_lab::{Vector, approx_eq, format_fortran};
 use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]

@@ -791,7 +791,7 @@ impl Transfinite3d {
 mod tests {
     use super::Transfinite3d;
     use crate::TransfiniteSamples;
-    use russell_lab::{vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq, Vector};
+    use russell_lab::{Vector, vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq};
 
     fn check_derivs(map: &mut Transfinite3d, tol_d1: f64, tol_d2: f64) {
         let mut x_ana = Vector::new(3);

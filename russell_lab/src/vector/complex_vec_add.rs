@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{array_plus_opx_complex, Complex64, StrError};
+use crate::{Complex64, StrError, array_plus_opx_complex};
 
 /// Performs the addition of two vectors
 ///
@@ -44,7 +44,7 @@ pub fn complex_vec_add(
 #[cfg(test)]
 mod tests {
     use super::complex_vec_add;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexVector, MAX_DIM_FOR_NATIVE_BLAS};
+    use crate::{Complex64, ComplexVector, MAX_DIM_FOR_NATIVE_BLAS, complex_vec_approx_eq, cpx};
 
     #[test]
     fn complex_vec_add_fail_on_wrong_dims() {

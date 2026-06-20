@@ -1,5 +1,5 @@
-use plotpy::{linspace, Canvas, Plot, PolyCode, Text};
-use russell_lab::{approx_eq, vec_approx_eq, vec_inner, Matrix, Vector};
+use plotpy::{Canvas, Plot, PolyCode, Text, linspace};
+use russell_lab::{Matrix, Vector, approx_eq, vec_approx_eq, vec_inner};
 use russell_pde::{FnVec1Param1, Metrics, StrError, Transfinite2d};
 
 const SAVE_FIGURE: bool = false;

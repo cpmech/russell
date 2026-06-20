@@ -2,8 +2,8 @@ use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main};
-use russell_lab::{mat_eigen_sym, mat_eigen_sym_jacobi, vec_add};
 use russell_lab::{Matrix, Vector};
+use russell_lab::{mat_eigen_sym, mat_eigen_sym_jacobi, vec_add};
 
 fn bench_vec_add(c: &mut Criterion) {
     // let sizes = &[1, 4, 16, 32, 64, 128];

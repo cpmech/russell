@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{array_plus_op, StrError};
+use crate::{StrError, array_plus_op};
 
 /// Performs the addition of two vectors (without coefficients)
 ///
@@ -35,7 +35,7 @@ pub fn vec_plus(w: &mut Vector, u: &Vector, v: &Vector) -> Result<(), StrError> 
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_plus, Vector};
+    use super::{Vector, vec_plus};
     use crate::vec_approx_eq;
 
     #[test]

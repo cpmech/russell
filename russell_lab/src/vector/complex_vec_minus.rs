@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{array_minus_op_complex, StrError};
+use crate::{StrError, array_minus_op_complex};
 
 /// Performs the addition of two vectors (without coefficients)
 ///
@@ -36,7 +36,7 @@ pub fn complex_vec_minus(w: &mut ComplexVector, u: &ComplexVector, v: &ComplexVe
 #[cfg(test)]
 mod tests {
     use super::complex_vec_minus;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexVector};
+    use crate::{Complex64, ComplexVector, complex_vec_approx_eq, cpx};
 
     #[test]
     fn complex_vec_minus_fail_on_wrong_dims() {

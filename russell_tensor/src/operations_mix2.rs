@@ -958,8 +958,8 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Mandel, MN_TO_IJKL};
-    use russell_lab::{mat_approx_eq, Matrix};
+    use crate::{MN_TO_IJKL, Mandel};
+    use russell_lab::{Matrix, mat_approx_eq};
 
     #[test]
     #[should_panic]

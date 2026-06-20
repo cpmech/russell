@@ -231,7 +231,7 @@ pub fn argsort3_f64(z: &[f64], y: &[f64], x: &[f64]) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{argsort2_f64, argsort3_f64, argsort_f64, sort2, sort3, sort4};
+    use super::{argsort_f64, argsort2_f64, argsort3_f64, sort2, sort3, sort4};
 
     #[test]
     fn sort2_works() {

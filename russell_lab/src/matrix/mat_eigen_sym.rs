@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a symmetric matrix
@@ -113,7 +113,10 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
         println!("LAPACK ERROR (dsyev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (dsyev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (dsyev): {} off-diagonal elements of an intermediate tri-diagonal form did not converge to zero", info - 1);
+        println!(
+            "LAPACK ERROR (dsyev): {} off-diagonal elements of an intermediate tri-diagonal form did not converge to zero",
+            info - 1
+        );
         return Err("LAPACK ERROR (dsyev): The algorithm failed to converge");
     }
     Ok(())
@@ -123,10 +126,10 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_eigen_sym, Matrix};
+    use super::{Matrix, mat_eigen_sym};
     use crate::math::SQRT_2;
     use crate::matrix::testing::check_eigen_sym;
-    use crate::{mat_approx_eq, vec_approx_eq, AsArray2D, Vector};
+    use crate::{AsArray2D, Vector, mat_approx_eq, vec_approx_eq};
 
     fn calc_eigen_lower<'a, T>(data: &'a T) -> (Vector, Matrix)
     where

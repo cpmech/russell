@@ -1,4 +1,4 @@
-use crate::{t4_ddot_t2, Mandel, StrError, Tensor2, Tensor4};
+use crate::{Mandel, StrError, Tensor2, Tensor4, t4_ddot_t2};
 use russell_lab::mat_inverse;
 
 /// Implements the linear elasticity equations for small-strain problems
@@ -430,8 +430,8 @@ impl LinElasticity {
 mod tests {
     use super::LinElasticity;
     use crate::StrError;
-    use crate::{t4_add, Mandel, Tensor2, Tensor4};
-    use russell_lab::{approx_eq, mat_approx_eq, Matrix};
+    use crate::{Mandel, Tensor2, Tensor4, t4_add};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     // Checks the symmetry of a square matrix
     fn check_symmetry(mat: &Matrix) -> Result<(), StrError> {

@@ -138,8 +138,8 @@ impl ProbabilityDistribution for DistributionUniform {
 #[cfg(test)]
 mod tests {
     use crate::{DistributionUniform, ProbabilityDistribution};
-    use rand::prelude::StdRng;
     use rand::SeedableRng;
+    use rand::prelude::StdRng;
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript uniform.R):

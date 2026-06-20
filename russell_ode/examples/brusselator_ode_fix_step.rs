@@ -1,5 +1,5 @@
 use plotpy::{Curve, Plot, SlopeIcon};
-use russell_lab::{format_scientific, vec_max_abs_diff, StrError};
+use russell_lab::{StrError, format_scientific, vec_max_abs_diff};
 use russell_ode::prelude::*;
 
 // This example solves the brusselator equation

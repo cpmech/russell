@@ -1,4 +1,4 @@
-use russell_lab::math::{elliptic_e, elliptic_f, elliptic_pi, PI};
+use russell_lab::math::{PI, elliptic_e, elliptic_f, elliptic_pi};
 use russell_lab::{approx_eq, read_table};
 use std::collections::HashMap;
 

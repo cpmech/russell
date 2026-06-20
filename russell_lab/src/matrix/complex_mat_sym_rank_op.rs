@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER};
+use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs one of the symmetric rank k operations
@@ -146,7 +146,7 @@ pub fn complex_mat_sym_rank_op(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_sym_rank_op;
-    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
+    use crate::{ComplexMatrix, complex_mat_approx_eq, cpx};
 
     #[test]
     fn complex_mat_sym_rank_op_fail_on_wrong_dims() {

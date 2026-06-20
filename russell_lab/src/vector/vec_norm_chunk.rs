@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{to_i32, Norm};
+use crate::{Norm, to_i32};
 
 unsafe extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
@@ -66,8 +66,8 @@ pub fn vec_norm_chunk(v: &Vector, kind: Norm, start: usize, stop: usize) -> f64 
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_norm_chunk, Vector};
-    use crate::{approx_eq, math::SQRT_6, Norm};
+    use super::{Vector, vec_norm_chunk};
+    use crate::{Norm, approx_eq, math::SQRT_6};
 
     #[test]
     fn vec_norm_chunk_works_full() {

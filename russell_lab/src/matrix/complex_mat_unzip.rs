@@ -53,7 +53,7 @@ pub fn complex_mat_unzip(real: &mut Matrix, imag: &mut Matrix, a: &ComplexMatrix
 #[cfg(test)]
 mod tests {
     use super::complex_mat_unzip;
-    use crate::{cpx, mat_approx_eq, ComplexMatrix, Matrix};
+    use crate::{ComplexMatrix, Matrix, cpx, mat_approx_eq};
 
     #[test]
     fn complex_mat_unzip_handles_errors() {

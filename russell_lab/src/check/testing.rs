@@ -1,5 +1,5 @@
-use crate::math::PI;
 use crate::StrError;
+use crate::math::PI;
 
 /// Indicates that no arguments are needed
 pub(super) type NoArgs = u8;

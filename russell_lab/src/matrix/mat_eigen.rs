@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{dgeev_data, dgeev_data_lr, to_i32, CcBool, StrError, Vector, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, dgeev_data, dgeev_data_lr, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
@@ -171,8 +171,13 @@ pub fn mat_eigen(
         println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (dgeev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged", info-1);
-        return Err("LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+        println!(
+            "LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged",
+            info - 1
+        );
+        return Err(
+            "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
+        );
     }
     dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag.as_data(), &v)
 }
@@ -346,8 +351,13 @@ pub fn mat_eigen_lr(
         println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (dgeev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged", info-1);
-        return Err("LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+        println!(
+            "LAPACK ERROR (dgeev): The QR algorithm failed. Elements {}+1:N of l_real and l_imag contain eigenvalues which have converged",
+            info - 1
+        );
+        return Err(
+            "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
+        );
     }
     dgeev_data_lr(
         u_real.as_mut_data(),
@@ -368,7 +378,7 @@ mod tests {
     use super::{mat_eigen, mat_eigen_lr};
     use crate::mat_approx_eq;
     use crate::matrix::testing::{check_eigen, check_eigen_sym};
-    use crate::{vec_approx_eq, Matrix, Vector};
+    use crate::{Matrix, Vector, vec_approx_eq};
 
     #[test]
     fn mat_eigen_fails_on_non_square() {

@@ -1,6 +1,6 @@
 use crate::{NoArgs, System};
-use russell_lab::math::PI;
 use russell_lab::Vector;
+use russell_lab::math::PI;
 use russell_pde::{EssentialBcs2d, Fdm2d, Grid2d, NaturalBcs2d, Side};
 use russell_sparse::{CooMatrix, Genie, Sym};
 
@@ -1277,7 +1277,7 @@ impl Samples {
 mod tests {
     use super::Samples;
     use russell_lab::algo::num_jacobian;
-    use russell_lab::{mat_approx_eq, vec_approx_eq, Vector};
+    use russell_lab::{Vector, mat_approx_eq, vec_approx_eq};
     use russell_sparse::{CooMatrix, Genie, Sym};
 
     #[test]

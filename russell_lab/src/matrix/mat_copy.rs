@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, StrError};
+use crate::{StrError, to_i32};
 
 unsafe extern "C" {
     // Copies a vector into another
@@ -54,7 +54,7 @@ pub fn mat_copy(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_copy, Matrix};
+    use super::{Matrix, mat_copy};
     use crate::mat_approx_eq;
 
     #[test]

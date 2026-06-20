@@ -1,4 +1,4 @@
-use super::{bessel_j0, bessel_j1, bessel_y0, bessel_y1, SQRT_PI};
+use super::{SQRT_PI, bessel_j0, bessel_j1, bessel_y0, bessel_y1};
 
 // This implementation is based on j1.go file from Go (1.22.1),
 // which, in turn, is based on the FreeBSD code as explained below.
@@ -360,7 +360,7 @@ pub fn bessel_yn(n: i32, x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_jn, bessel_yn, TWO_302};
+    use super::{TWO_302, bessel_jn, bessel_yn};
     use crate::{approx_eq, assert_alike};
 
     #[test]

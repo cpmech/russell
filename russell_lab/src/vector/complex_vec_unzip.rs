@@ -48,7 +48,7 @@ pub fn complex_vec_unzip(real: &mut Vector, imag: &mut Vector, v: &ComplexVector
 #[cfg(test)]
 mod tests {
     use super::complex_vec_unzip;
-    use crate::{cpx, vec_approx_eq, ComplexVector, Vector};
+    use crate::{ComplexVector, Vector, cpx, vec_approx_eq};
 
     #[test]
     fn complex_vec_unzip_handles_errors() {

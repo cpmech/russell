@@ -1,4 +1,4 @@
-use plotpy::{linspace, Curve, Plot};
+use plotpy::{Curve, Plot, linspace};
 use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc1d, StrError};
 

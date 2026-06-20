@@ -1,5 +1,5 @@
 use crate::StrError;
-use num_traits::{cast, Num, NumCast};
+use num_traits::{Num, NumCast, cast};
 use std::ops::{AddAssign, Mul};
 
 /// Calculates the parameters of a linear model using least squares fitting

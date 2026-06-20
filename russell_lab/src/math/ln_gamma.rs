@@ -1,4 +1,4 @@
-use super::{modulo, PI};
+use super::{PI, modulo};
 
 // This implementation is based on gamma.go file from Go (1.22.1),
 // which, in turn, is based on the code described below.
@@ -402,7 +402,7 @@ fn sin_pi_times_neg_x_given_abs_x(abs_x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ln_gamma, sin_pi_times_neg_x_given_abs_x, TINY, TWO_52, TWO_53, TWO_58, Y_MIN};
+    use super::{TINY, TWO_52, TWO_53, TWO_58, Y_MIN, ln_gamma, sin_pi_times_neg_x_given_abs_x};
     use crate::math::{ONE_BY_3, PI};
     use crate::{approx_eq, assert_alike};
 

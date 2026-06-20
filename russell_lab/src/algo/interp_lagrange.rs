@@ -1,5 +1,5 @@
-use crate::math::{chebyshev_gauss_points, chebyshev_lobatto_points, neg_one_pow_n};
 use crate::StrError;
+use crate::math::{chebyshev_gauss_points, chebyshev_lobatto_points, neg_one_pow_n};
 use crate::{Matrix, Vector};
 
 /// Tiny number to consider x an Xⱼ identical
@@ -1092,11 +1092,11 @@ mod tests {
     use super::{InterpGrid, InterpLagrange, InterpParams};
     use crate::algo::NoArgs;
     use crate::math::SQRT_3;
+    use crate::{Vector, mat_vec_mul};
     use crate::{
         approx_eq, deriv1_approx_eq, deriv1_approx_eq_bw, deriv1_approx_eq_fw, deriv2_approx_eq, deriv2_approx_eq_bw,
         deriv2_approx_eq_fw,
     };
-    use crate::{mat_vec_mul, Vector};
     // use plotpy::{Curve, Plot};
 
     #[test]

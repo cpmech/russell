@@ -1,4 +1,4 @@
-use crate::internal::{to_i32, CcBool, C_TRUE};
+use crate::internal::{C_TRUE, CcBool, to_i32};
 
 unsafe extern "C" {
     fn c_using_intel_mkl() -> CcBool;

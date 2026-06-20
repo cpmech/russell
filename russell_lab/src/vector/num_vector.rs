@@ -1,5 +1,5 @@
 use crate::{AsArray1D, StrError};
-use num_traits::{cast, Num, NumCast};
+use num_traits::{Num, NumCast, cast};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -910,7 +910,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::NumVector;
-    use crate::{vec_approx_eq, AsArray1D};
+    use crate::{AsArray1D, vec_approx_eq};
     use std::fmt::Write;
 
     fn pow2(x: f64) -> f64 {

@@ -1,6 +1,6 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
-use russell_lab::{vec_add, vec_copy, Vector};
+use russell_lab::{Vector, vec_add, vec_copy};
 
 /// Implements the forward Euler method (explicit, order 1, conditionally stable)
 ///
@@ -75,7 +75,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerForward<'a, A> {
 mod tests {
     use super::EulerForward;
     use crate::{Method, NoArgs, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{array_approx_eq, Vector};
+    use russell_lab::{Vector, array_approx_eq};
 
     #[test]
     fn euler_forward_works() {

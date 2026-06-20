@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{cpx, to_i32, CcBool, Complex64, ComplexVector, StrError, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, Complex64, ComplexVector, StrError, cpx, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
@@ -133,8 +133,13 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
         println!("LAPACK ERROR (zgeev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (zgeev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (zgeev): The QR algorithm failed. Elements {}+1:N of l contain eigenvalues which have converged", info-1);
-        return Err("LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+        println!(
+            "LAPACK ERROR (zgeev): The QR algorithm failed. Elements {}+1:N of l contain eigenvalues which have converged",
+            info - 1
+        );
+        return Err(
+            "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
+        );
     }
     Ok(())
 }
@@ -271,8 +276,13 @@ pub fn complex_mat_eigen_lr(
         println!("LAPACK ERROR (zgeev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (zgeev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (zgeev): The QR algorithm failed. Elements {}+1:N of l contain eigenvalues which have converged", info-1);
-        return Err("LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed");
+        println!(
+            "LAPACK ERROR (zgeev): The QR algorithm failed. Elements {}+1:N of l contain eigenvalues which have converged",
+            info - 1
+        );
+        return Err(
+            "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed",
+        );
     }
     Ok(())
 }
@@ -283,7 +293,7 @@ pub fn complex_mat_eigen_lr(
 mod tests {
     use super::{complex_mat_eigen, complex_mat_eigen_lr};
     use crate::matrix::testing::complex_check_eigen;
-    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
+    use crate::{ComplexMatrix, ComplexVector, complex_vec_approx_eq, cpx};
 
     #[test]
     fn complex_mat_eigen_fails_on_non_square() {

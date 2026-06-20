@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{array_minus_op, StrError};
+use crate::{StrError, array_minus_op};
 
 /// Performs the subtraction of two matrices
 ///
@@ -43,7 +43,7 @@ pub fn mat_minus(c: &mut Matrix, a: &Matrix, b: &Matrix) -> Result<(), StrError>
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_minus, Matrix};
+    use super::{Matrix, mat_minus};
     use crate::mat_approx_eq;
 
     #[test]

@@ -463,7 +463,7 @@ fn qzero(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_j0, bessel_y0, pzero, qzero, TWO_129};
+    use super::{TWO_129, bessel_j0, bessel_y0, pzero, qzero};
     use crate::{approx_eq, assert_alike};
 
     #[test]

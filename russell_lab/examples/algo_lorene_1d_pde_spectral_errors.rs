@@ -1,7 +1,7 @@
 use plotpy::{Curve, Plot};
 use russell_lab::algo::{InterpGrid, InterpLagrange, InterpParams};
 use russell_lab::math::NAPIER;
-use russell_lab::{solve_lin_sys, Matrix, NoArgs, StrError, Vector};
+use russell_lab::{Matrix, NoArgs, StrError, Vector, solve_lin_sys};
 
 const PATH_KEY: &str = "/tmp/russell_lab/pde_1d_lorene_spectral_errors";
 

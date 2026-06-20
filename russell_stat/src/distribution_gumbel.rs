@@ -158,7 +158,7 @@ impl ProbabilityDistribution for DistributionGumbel {
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_rng, DistributionGumbel, ProbabilityDistribution};
+    use crate::{DistributionGumbel, ProbabilityDistribution, get_rng};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript gumbel.R):

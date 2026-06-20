@@ -269,7 +269,7 @@ impl SamplesTensor2 {
 #[cfg(test)]
 mod tests {
     use super::{SampleTensor2, SamplesTensor2};
-    use russell_lab::{mat_approx_eq, Matrix};
+    use russell_lab::{Matrix, mat_approx_eq};
 
     fn check_spectral(sample: &SampleTensor2, tolerance: f64) {
         let l = sample.eigenvalues.unwrap();

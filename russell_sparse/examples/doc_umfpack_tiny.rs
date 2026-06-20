@@ -1,6 +1,6 @@
-use russell_lab::{vec_approx_eq, Vector};
-use russell_sparse::prelude::*;
+use russell_lab::{Vector, vec_approx_eq};
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 
 fn main() -> Result<(), StrError> {
     // constants

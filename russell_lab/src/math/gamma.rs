@@ -1,4 +1,4 @@
-use super::{float_is_neg_integer, EULER, PI};
+use super::{EULER, PI, float_is_neg_integer};
 
 // This implementation is based on gamma.go file from Go (1.22.1),
 // which, in turn, is based on the code described below.

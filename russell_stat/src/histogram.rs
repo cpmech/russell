@@ -1,6 +1,6 @@
 use crate::StrError;
-use num_traits::cast::ToPrimitive;
 use num_traits::Num;
+use num_traits::cast::ToPrimitive;
 use russell_lab::write_formatted_number;
 use std::cmp;
 use std::fmt::{self, Write};

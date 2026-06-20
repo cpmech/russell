@@ -1,4 +1,4 @@
-use crate::{deriv1_forward7, StrError};
+use crate::{StrError, deriv1_forward7};
 
 /// Panics if the first derivative is not approximately equal to a numerical derivative (forward differences)
 ///

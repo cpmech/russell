@@ -1,5 +1,5 @@
 use super::{Config, Status};
-use russell_lab::{vec_norm, Norm, Vector};
+use russell_lab::{Norm, Vector, vec_norm};
 
 /// Calculates the iteration error
 pub(crate) struct IterationError {

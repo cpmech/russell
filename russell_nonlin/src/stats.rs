@@ -1,5 +1,5 @@
 use super::{Config, Method};
-use russell_lab::{format_nanoseconds, Stopwatch};
+use russell_lab::{Stopwatch, format_nanoseconds};
 use russell_stat::{Histogram, Statistics};
 use std::fmt::{self, Write};
 

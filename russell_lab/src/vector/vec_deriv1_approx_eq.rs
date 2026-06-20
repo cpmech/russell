@@ -1,6 +1,6 @@
 use super::Vector;
-use crate::deriv1_approx_eq;
 use crate::StrError;
+use crate::deriv1_approx_eq;
 
 /// Panics if the first derivative is not approximately equal to a numerical derivative (central differences)
 ///

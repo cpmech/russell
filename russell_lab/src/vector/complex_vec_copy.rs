@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{to_i32, Complex64, StrError};
+use crate::{Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Copies a vector into another
@@ -49,7 +49,7 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_vec_copy, ComplexVector};
+    use super::{ComplexVector, complex_vec_copy};
     use crate::{complex_vec_approx_eq, cpx};
 
     #[test]

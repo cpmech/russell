@@ -1,7 +1,7 @@
 use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, LogNormal};
-use russell_lab::math::{erf, SQRT_2, SQRT_PI};
+use russell_lab::math::{SQRT_2, SQRT_PI, erf};
 
 const LOGNORMAL_MIN_X: f64 = 1e-15;
 
@@ -166,7 +166,7 @@ impl ProbabilityDistribution for DistributionLognormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_rng, DistributionLognormal, ProbabilityDistribution};
+    use crate::{DistributionLognormal, ProbabilityDistribution, get_rng};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript lognormal.R):

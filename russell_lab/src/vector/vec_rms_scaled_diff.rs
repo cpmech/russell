@@ -52,7 +52,7 @@ pub fn vec_rms_scaled_diff(u: &Vector, v: &Vector, abs_tol: f64, rel_tol: f64) -
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_rms_scaled_diff, Vector};
+    use super::{Vector, vec_rms_scaled_diff};
     use crate::approx_eq;
 
     #[test]

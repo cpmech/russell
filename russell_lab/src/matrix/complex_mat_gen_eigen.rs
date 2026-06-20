@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{cpx, to_i32, CcBool, Complex64, ComplexVector, StrError, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, Complex64, ComplexVector, StrError, cpx, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
@@ -318,7 +318,7 @@ pub fn complex_mat_gen_eigen_lr(
 mod tests {
     use super::{complex_mat_gen_eigen, complex_mat_gen_eigen_lr};
     use crate::matrix::testing::complex_check_gen_eigen;
-    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
+    use crate::{ComplexMatrix, ComplexVector, complex_vec_approx_eq, cpx};
 
     #[test]
     fn complex_mat_gen_eigen_captures_errors() {

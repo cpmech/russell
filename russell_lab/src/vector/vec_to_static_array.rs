@@ -48,7 +48,7 @@ pub fn vec_to_static_array(name: &str, v: &Vector) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_to_static_array, Vector};
+    use super::{Vector, vec_to_static_array};
     use crate::vec_approx_eq;
 
     #[test]

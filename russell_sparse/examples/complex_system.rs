@@ -1,6 +1,6 @@
-use russell_lab::{complex_vec_approx_eq, cpx, ComplexVector};
-use russell_sparse::prelude::*;
+use russell_lab::{ComplexVector, complex_vec_approx_eq, cpx};
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 
 fn solve(genie: Genie) -> Result<(), StrError> {
     // Given the matrix of complex numbers:

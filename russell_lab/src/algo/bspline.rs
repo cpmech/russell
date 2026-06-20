@@ -1061,7 +1061,8 @@ mod tests {
         // check error catching
         assert_eq!(b.calc_basis(-1.0).err(), Some("u is out of range"));
 
-        // plot basis functions
+        // plot basis functions (enable this to generate figure)
+        /*
         if SAVE_FIGURE {
             let mut curve_num = Curve::new();
             let x = linspace(0.0, 5.0, 201);
@@ -1096,6 +1097,7 @@ mod tests {
                 .save("/tmp/russell_lab/test_bspline_calc_basis_and_get_basis.svg")
                 .unwrap();
         }
+        */
     }
 
     #[test]
@@ -1284,8 +1286,8 @@ mod tests {
         }
 
         // drawing
-        let plot = draw_curve(&mut b, pp, None, 1.0);
         if SAVE_FIGURE {
+            let plot = draw_curve(&mut b, pp, None, 1.0);
             plot.save("/tmp/russell_lab/test_bspline_set_control_points_and_calc_point_1.svg")
                 .unwrap();
         }
@@ -1468,8 +1470,8 @@ mod tests {
         assert_eq!(b.cc_ders[1][1] / b.cc_ders[1][0], 1.0);
 
         // drawing
+        let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
         if SAVE_FIGURE {
-            let plot = draw_curve(&mut b, pp, Some(&[0.0, 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 1.0]), 1.0);
             plot.save("/tmp/russell_lab/test_bspline_curve_derivs_alg1.svg")
                 .unwrap();
         }

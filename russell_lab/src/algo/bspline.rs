@@ -672,9 +672,9 @@ impl Bspline {
 #[cfg(test)]
 mod tests {
     use super::Bspline;
+    use crate::{AsArray2D, Matrix, Vector, deriv2_forward8};
     use crate::{approx_eq, deriv1_central5, mat_approx_eq, vec_approx_eq};
-    use crate::{deriv2_forward8, AsArray2D, Matrix, Vector};
-    use plotpy::{linspace, Canvas, Curve, Plot, Text};
+    use plotpy::{Canvas, Curve, Plot, Text, linspace};
 
     const SAVE_FIGURE: bool = false;
 
@@ -1284,8 +1284,8 @@ mod tests {
         }
 
         // drawing
+        let plot = draw_curve(&mut b, pp, None, 1.0);
         if SAVE_FIGURE {
-            let plot = draw_curve(&mut b, pp, None, 1.0);
             plot.save("/tmp/russell_lab/test_bspline_set_control_points_and_calc_point_1.svg")
                 .unwrap();
         }

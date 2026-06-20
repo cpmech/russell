@@ -1,6 +1,6 @@
-use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd};
 use crate::{Mandel, Tensor2, Tensor4};
 use crate::{ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
+use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd};
 use russell_lab::{mat_add, mat_mat_mul, mat_update};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
@@ -517,9 +517,9 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
     use crate::{deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
-    use crate::{SamplesTensor2, StrError, MN_TO_IJKL, SQRT_2};
-    use russell_lab::{approx_eq, deriv1_central5, mat_approx_eq, Matrix};
+    use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
     // Holds arguments for numerical differentiation corresponding to ∂aiᵢⱼ/∂aₖₗ
     struct ArgsNumDerivInverse {

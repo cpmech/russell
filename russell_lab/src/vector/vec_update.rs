@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{to_i32, StrError};
+use crate::{StrError, to_i32};
 
 unsafe extern "C" {
     // Computes constant times a vector plus a vector.
@@ -49,7 +49,7 @@ pub fn vec_update(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_update, Vector};
+    use super::{Vector, vec_update};
     use crate::vec_approx_eq;
 
     #[test]

@@ -1,5 +1,5 @@
 use crate::StrError;
-use russell_lab::{mat_inverse, vec_inner, Matrix, Vector};
+use russell_lab::{Matrix, Vector, mat_inverse, vec_inner};
 
 /// Calculates and stores the metrics coefficients for a given mapping between reference and physical coordinates
 ///
@@ -345,7 +345,7 @@ mod tests {
     use super::Metrics;
     use crate::TransfiniteSamples;
     use russell_lab::math::PI;
-    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq, Vector};
+    use russell_lab::{Vector, approx_eq, mat_approx_eq, vec_approx_eq};
 
     #[test]
     fn calculate_works_2d_1() {

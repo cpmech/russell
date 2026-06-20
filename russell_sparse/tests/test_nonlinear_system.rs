@@ -1,7 +1,7 @@
 use russell_lab::algo::num_jacobian;
 use russell_lab::*;
-use russell_sparse::prelude::*;
 use russell_sparse::StrError;
+use russell_sparse::prelude::*;
 
 #[cfg(feature = "local_sparse")]
 use serial_test::serial;

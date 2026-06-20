@@ -17,9 +17,7 @@
 /// ```
 #[macro_export]
 macro_rules! cpx {
-    ($real:expr, $imag:expr) => {{
-        $crate::Complex64::new($real, $imag)
-    }};
+    ($real:expr, $imag:expr) => {{ $crate::Complex64::new($real, $imag) }};
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

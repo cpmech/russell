@@ -55,7 +55,7 @@ pub fn mat_to_numpy(name: &str, a: &Matrix) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_to_numpy, Matrix};
+    use super::{Matrix, mat_to_numpy};
 
     #[test]
     fn mat_to_numpy_works() {

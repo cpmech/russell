@@ -1,4 +1,4 @@
-use super::{vec_minus, vec_norm, Vector};
+use super::{Vector, vec_minus, vec_norm};
 use crate::Norm;
 
 /// Returns the norm of the difference between two vectors
@@ -41,8 +41,8 @@ pub fn vec_norm_diff(u: &Vector, v: &Vector, kind: Norm) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_norm_diff, Vector};
-    use crate::{approx_eq, Norm};
+    use super::{Vector, vec_norm_diff};
+    use crate::{Norm, approx_eq};
 
     #[test]
     fn vec_norm_diff_works() {

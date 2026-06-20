@@ -40,7 +40,7 @@ pub fn vec_max_scaled(v: &Vector, v0: &Vector, one: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_max_scaled, Vector};
+    use super::{Vector, vec_max_scaled};
 
     #[test]
     fn vec_max_scaled_works() {

@@ -1,6 +1,6 @@
 use crate::{OdeSolverTrait, Workspace};
 use crate::{Stats, StrError};
-use russell_lab::{vec_max_abs_diff, Vector};
+use russell_lab::{Vector, vec_max_abs_diff};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};

@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER};
+use crate::{CBLAS_COL_MAJOR, CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs one of the hermitian rank k operations
@@ -143,7 +143,7 @@ pub fn complex_mat_herm_rank_op(
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_herm_rank_op, ComplexMatrix};
+    use super::{ComplexMatrix, complex_mat_herm_rank_op};
     use crate::matrix::testing::check_hermitian_uplo;
     use crate::{complex_mat_approx_eq, cpx};
 

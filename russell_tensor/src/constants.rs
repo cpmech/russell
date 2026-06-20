@@ -582,7 +582,7 @@ pub const IJKL_TO_MN_SYM: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
 #[cfg(test)]
 mod tests {
     use super::{
-        IJKL_TO_MN, IJKL_TO_MN_SYM, IJ_TO_M, IJ_TO_M_SYM, MN_TO_IJKL, M_TO_IJ, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3,
+        IJ_TO_M, IJ_TO_M_SYM, IJKL_TO_MN, IJKL_TO_MN_SYM, M_TO_IJ, MN_TO_IJKL, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3,
         SQRT_3_BY_2, SQRT_6, TWO_BY_3,
     };
 

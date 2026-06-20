@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, CcBool, Complex64, StrError, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
@@ -120,7 +120,7 @@ mod tests {
     use super::complex_mat_cholesky;
     use crate::math::SQRT_2;
     use crate::matrix::testing::check_hermitian_uplo;
-    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
+    use crate::{ComplexMatrix, complex_mat_approx_eq, cpx};
 
     fn calc_l_times_lt(l_and_a: &ComplexMatrix) -> ComplexMatrix {
         let m = l_and_a.nrow();

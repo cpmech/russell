@@ -1,6 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR};
+use crate::{CBLAS_COL_MAJOR, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs the rank 1 operation (tensor product)
@@ -83,7 +83,7 @@ pub fn vec_outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_outer, Matrix, Vector};
+    use super::{Matrix, Vector, vec_outer};
     use crate::mat_approx_eq;
 
     #[test]

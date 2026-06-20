@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{mat_eigenvalues, InterpChebyshev, TOL_RANGE};
+use crate::{InterpChebyshev, TOL_RANGE, mat_eigenvalues};
 use crate::{Matrix, Vector};
 
 /// Implements root finding algorithms
@@ -285,8 +285,8 @@ impl RootFinder {
 #[cfg(test)]
 mod tests {
     use super::RootFinder;
-    use crate::algo::NoArgs;
     use crate::InterpChebyshev;
+    use crate::algo::NoArgs;
     use crate::{approx_eq, array_approx_eq, get_test_functions};
 
     #[allow(unused)]

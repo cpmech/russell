@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{cpx, to_i32, CcBool, Complex64, StrError, Vector, C_FALSE, C_TRUE};
+use crate::{C_FALSE, C_TRUE, CcBool, Complex64, StrError, Vector, cpx, to_i32};
 
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for HE matrices
@@ -138,7 +138,10 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
         println!("LAPACK ERROR (zheev): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (zheev): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (zheev): {} off-diagonal elements of an intermediate tridiagonal form did not converge to zero.",info-1);
+        println!(
+            "LAPACK ERROR (zheev): {} off-diagonal elements of an intermediate tridiagonal form did not converge to zero.",
+            info - 1
+        );
         return Err("LAPACK ERROR (zheev): The algorithm failed to converge");
     }
     Ok(())
@@ -151,8 +154,8 @@ mod tests {
     use super::complex_mat_eigen_herm;
     use crate::math::SQRT_2;
     use crate::matrix::testing::complex_check_eigen;
-    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq};
     use crate::{AsArray2D, Complex64, ComplexMatrix, ComplexVector, Vector};
+    use crate::{complex_mat_approx_eq, cpx, vec_approx_eq};
 
     fn calc_eigen_lower<'a, T>(data: &'a T) -> (Vector, ComplexMatrix)
     where

@@ -1,4 +1,4 @@
-use super::{to_i32, MAX_DIM_FOR_NATIVE_BLAS};
+use super::{MAX_DIM_FOR_NATIVE_BLAS, to_i32};
 use crate::Complex64;
 use crate::StrError;
 

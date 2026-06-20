@@ -1,6 +1,6 @@
-use super::{mat_svd, Matrix};
+use super::{Matrix, mat_svd};
 use crate::vector::Vector;
-use crate::{find_index_abs_max, StrError};
+use crate::{StrError, find_index_abs_max};
 
 // constants
 const SINGLE_VALUE_RCOND: f64 = 1e-15;
@@ -125,7 +125,7 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &mut Matrix) -> Result<(), StrErro
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_pseudo_inverse, Matrix};
+    use super::{Matrix, mat_pseudo_inverse};
     use crate::{mat_approx_eq, mat_inverse, mat_mat_mul};
 
     /// Computes a⋅ai that should equal I for a square matrix

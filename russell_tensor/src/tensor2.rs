@@ -2,7 +2,7 @@ use crate::{AsMatrix3x3, Mandel, StrError};
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
-use russell_lab::{sort3, Matrix, Vector};
+use russell_lab::{Matrix, Vector, sort3};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -492,11 +492,7 @@ impl Tensor2 {
             }
             6 => {
                 let m = IJ_TO_M_SYM[i][j];
-                if i == j {
-                    self.vec[m]
-                } else {
-                    self.vec[m] / SQRT_2
-                }
+                if i == j { self.vec[m] } else { self.vec[m] / SQRT_2 }
             }
             _ => {
                 let m = IJ_TO_M[i][j];
@@ -2112,8 +2108,8 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{Mandel, SampleTensor2, SamplesTensor2, IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
-    use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq, Matrix, Vector};
+    use crate::{IDENTITY2, Mandel, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2};
+    use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq};
 
     #[test]
     fn new_and_getters_work() {
@@ -2896,8 +2892,8 @@ mod tests {
         let mut a = Tensor2::new(Mandel::Symmetric);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
-            [1.0, 3.0, 1.0], 
-            [3.0, 2.0, 2.0], 
+            [1.0, 3.0, 1.0],
+            [3.0, 2.0, 2.0],
             [1.0, 2.0, 3.0],
         ],
         Mandel::Symmetric).unwrap();
@@ -2922,8 +2918,8 @@ mod tests {
         let mut a = Tensor2::new(Mandel::Symmetric2D);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
-            [1.0, 3.0, 0.0], 
-            [3.0, 2.0, 0.0], 
+            [1.0, 3.0, 0.0],
+            [3.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ],
         Mandel::Symmetric2D).unwrap();

@@ -1,5 +1,5 @@
 use super::{Stats, StrError, Workspace};
-use russell_lab::{vec_norm_chunk, Norm, Vector};
+use russell_lab::{Norm, Vector, vec_norm_chunk};
 use std::collections::HashMap;
 use std::sync::Arc;
 

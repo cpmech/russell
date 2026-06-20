@@ -1,7 +1,7 @@
-use crate::constants::*;
 use crate::StrError;
-use crate::{detect_stiffness, ErkDenseOut, Information, Method, OdeSolverTrait, Params, System, Workspace};
-use russell_lab::{format_fortran, vec_copy, vec_update, Matrix, Vector};
+use crate::constants::*;
+use crate::{ErkDenseOut, Information, Method, OdeSolverTrait, Params, System, Workspace, detect_stiffness};
+use russell_lab::{Matrix, Vector, format_fortran, vec_copy, vec_update};
 
 /// Implements several explicit Runge-Kutta methods
 ///
@@ -368,7 +368,7 @@ impl<'a, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, A> {
 mod tests {
     use super::ExplicitRungeKutta;
     use crate::{ErkDenseOut, Method, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{approx_eq, array_approx_eq, Vector};
+    use russell_lab::{Vector, approx_eq, array_approx_eq};
 
     #[test]
     fn constants_are_consistent() {

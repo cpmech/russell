@@ -1,4 +1,4 @@
-use russell_lab::{approx_eq, StrError};
+use russell_lab::{StrError, approx_eq};
 use russell_ode::prelude::*;
 
 fn main() -> Result<(), StrError> {

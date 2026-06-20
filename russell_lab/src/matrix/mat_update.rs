@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, StrError};
+use crate::{StrError, to_i32};
 
 unsafe extern "C" {
     // Computes constant times a vector plus a vector.
@@ -54,7 +54,7 @@ pub fn mat_update(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_update, Matrix};
+    use super::{Matrix, mat_update};
     use crate::mat_approx_eq;
 
     #[test]

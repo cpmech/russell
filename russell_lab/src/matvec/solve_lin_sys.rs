@@ -1,6 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{to_i32, StrError};
+use crate::{StrError, to_i32};
 
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
@@ -112,8 +112,8 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{solve_lin_sys, Matrix, Vector};
-    use crate::{mat_vec_mul, vec_add, vec_approx_eq, vec_norm, Norm};
+    use super::{Matrix, Vector, solve_lin_sys};
+    use crate::{Norm, mat_vec_mul, vec_add, vec_approx_eq, vec_norm};
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {

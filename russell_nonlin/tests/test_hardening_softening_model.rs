@@ -1,6 +1,6 @@
 use ctm_demo::{Model, ModelType};
-use plotpy::{linspace, Curve, Plot};
-use russell_lab::{approx_eq, InterpChebyshev, Vector};
+use plotpy::{Curve, Plot, linspace};
+use russell_lab::{InterpChebyshev, Vector, approx_eq};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Output, SoderlindClass, Solver};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;

@@ -1,6 +1,6 @@
-use russell_lab::{complex_vec_approx_eq, cpx, vec_approx_eq, ComplexVector, Vector};
-use russell_sparse::prelude::*;
+use russell_lab::{ComplexVector, Vector, complex_vec_approx_eq, cpx, vec_approx_eq};
 use russell_sparse::Samples;
+use russell_sparse::prelude::*;
 
 fn test_solver(genie: Genie) {
     println!("----------------------------------------------------------------------\n");

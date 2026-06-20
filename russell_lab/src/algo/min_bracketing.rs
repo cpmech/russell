@@ -176,9 +176,9 @@ pub(super) fn swap(a: &mut f64, b: &mut f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{swap, Bracket, MinBracketing};
-    use crate::algo::testing::get_test_functions;
+    use super::{Bracket, MinBracketing, swap};
     use crate::algo::NoArgs;
+    use crate::algo::testing::get_test_functions;
     use crate::approx_eq;
 
     #[test]
@@ -256,11 +256,7 @@ mod tests {
             let x_guess = if i == 4 {
                 0.15
             } else {
-                if i % 2 == 0 {
-                    -0.1
-                } else {
-                    0.1
-                }
+                if i % 2 == 0 { -0.1 } else { 0.1 }
             };
             let (bracket, stats) = solver.basic(x_guess, args, test.f).unwrap();
             println!("\n{}", bracket);

@@ -1,6 +1,6 @@
 use super::Stats;
-use crate::math::{LN2, SQRT_2};
 use crate::StrError;
+use crate::math::{LN2, SQRT_2};
 
 // The quadrature function below is based on the Fortran function named
 // dgauss_generic by Jacob Williams (the function is, in turn, based on SLATEC)
@@ -468,9 +468,9 @@ const G14_W: [f64; 7] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{gauss, Quadrature};
-    use crate::algo::testing::get_test_functions;
+    use super::{Quadrature, gauss};
     use crate::algo::NoArgs;
+    use crate::algo::testing::get_test_functions;
     use crate::approx_eq;
     use crate::base::format_fortran;
     use crate::math::{PI, SQRT_2};

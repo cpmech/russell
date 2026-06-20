@@ -1,4 +1,4 @@
-use russell_lab::{format_scientific, get_num_threads, set_num_threads, StrError};
+use russell_lab::{StrError, format_scientific, get_num_threads, set_num_threads};
 use russell_ode::prelude::*;
 use russell_sparse::{Genie, LinSolParams, Ordering, Scaling};
 use structopt::StructOpt;

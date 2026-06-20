@@ -82,11 +82,7 @@ impl Mandel {
 
     /// Returns whether the Mandel vector or matrix corresponds a symmetric tensor or not
     pub fn symmetric(&self) -> bool {
-        if *self == Mandel::General {
-            false
-        } else {
-            true
-        }
+        if *self == Mandel::General { false } else { true }
     }
 }
 

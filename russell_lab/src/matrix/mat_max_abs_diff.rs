@@ -57,7 +57,7 @@ pub fn mat_max_abs_diff(a: &Matrix, b: &Matrix) -> Result<(usize, usize, f64), S
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_max_abs_diff, Matrix};
+    use super::{Matrix, mat_max_abs_diff};
 
     #[test]
     fn mat_max_abs_diff_fail_on_wrong_dims() {

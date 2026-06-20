@@ -1,6 +1,6 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
@@ -108,7 +108,7 @@ pub fn complex_mat_vec_mul(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_vec_mul;
-    use crate::{complex_vec_approx_eq, cpx, Complex64, ComplexMatrix, ComplexVector};
+    use crate::{Complex64, ComplexMatrix, ComplexVector, complex_vec_approx_eq, cpx};
 
     #[test]
     fn complex_mat_vec_mul_fails_on_wrong_dims() {

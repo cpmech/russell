@@ -301,7 +301,7 @@ impl ComplexCscMatrix {
 mod tests {
     use super::*;
     use crate::Samples;
-    use russell_lab::{mat_approx_eq, Matrix};
+    use russell_lab::{Matrix, mat_approx_eq};
 
     #[test]
     fn csc_write_matrix_market_works() {

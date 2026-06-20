@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, Complex64, Norm};
+use crate::{Complex64, Norm, to_i32};
 
 unsafe extern "C" {
     // Computes the matrix norm
@@ -64,8 +64,8 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_norm, ComplexMatrix};
-    use crate::{approx_eq, cpx, ComplexFloat, Norm};
+    use super::{ComplexMatrix, complex_mat_norm};
+    use crate::{ComplexFloat, Norm, approx_eq, cpx};
 
     #[test]
     fn complex_mat_norm_works() {

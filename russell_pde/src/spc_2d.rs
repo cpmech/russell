@@ -940,7 +940,7 @@ impl<'a> Spc2d<'a> {
 mod tests {
     use super::Spc2d;
     use crate::{EssentialBcs2d, NaturalBcs2d, Side};
-    use russell_lab::{mat_approx_eq, Vector};
+    use russell_lab::{Vector, mat_approx_eq};
     use russell_sparse::Sym;
 
     #[test]

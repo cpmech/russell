@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{to_i32, Complex64};
+use crate::{Complex64, to_i32};
 
 unsafe extern "C" {
     // Scales a vector by a constant
@@ -44,7 +44,7 @@ pub fn complex_vec_scale(v: &mut ComplexVector, alpha: Complex64) {
 #[cfg(test)]
 mod tests {
     use super::complex_vec_scale;
-    use crate::{complex_vec_approx_eq, cpx, ComplexVector};
+    use crate::{ComplexVector, complex_vec_approx_eq, cpx};
 
     #[test]
     fn complex_vec_scale_works() {

@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
-use crate::{AsMatrix9x9, Mandel, StrError, ONE_BY_3, TWO_BY_3};
-use russell_lab::{mat_update, Matrix};
+use crate::{AsMatrix9x9, Mandel, ONE_BY_3, StrError, TWO_BY_3};
+use russell_lab::{Matrix, mat_update};
 use serde::{Deserialize, Serialize};
 
 /// Implements a fourth order-tensor, minor-symmetric or not
@@ -1324,10 +1324,10 @@ impl Tensor4 {
 
 #[cfg(test)]
 mod tests {
-    use super::{Tensor4, MN_TO_IJKL};
-    use crate::{Mandel, SamplesTensor4};
+    use super::{MN_TO_IJKL, Tensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
-    use russell_lab::{approx_eq, mat_approx_eq, Matrix};
+    use crate::{Mandel, SamplesTensor4};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
     fn new_and_getters_work() {

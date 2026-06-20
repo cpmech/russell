@@ -508,8 +508,8 @@ pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, be
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Mandel, SamplesTensor4, MN_TO_IJKL};
-    use russell_lab::{approx_eq, mat_approx_eq, Matrix};
+    use crate::{MN_TO_IJKL, Mandel, SamplesTensor4};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
     #[should_panic]

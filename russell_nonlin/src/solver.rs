@@ -1,7 +1,7 @@
+use super::{CONFIG_H_MIN, Output, SolverArclength, SolverNatural, Stats, Status, Workspace};
 use super::{Config, DeltaLambda, IniDir, Method, SolverTrait, Stop, System};
-use super::{Output, SolverArclength, SolverNatural, Stats, Status, Workspace, CONFIG_H_MIN};
 use crate::StrError;
-use russell_lab::{vec_all_finite, Vector};
+use russell_lab::{Vector, vec_all_finite};
 
 /// Default number of steps
 pub const N_EQUAL_STEPS: usize = 10;
@@ -422,7 +422,7 @@ impl<'a, A> Solver<'a, A> {
 mod tests {
     use super::Solver;
     use crate::{Config, DeltaLambda, IniDir, Samples, Status, Stop};
-    use russell_lab::{vec_approx_eq, Vector};
+    use russell_lab::{Vector, vec_approx_eq};
 
     #[test]
     fn new_captures_errors() {

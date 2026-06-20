@@ -1,7 +1,7 @@
 use super::FnVec1Param1;
 use crate::StrError;
-use russell_lab::math::chebyshev_lobatto_points;
 use russell_lab::Vector;
+use russell_lab::math::chebyshev_lobatto_points;
 
 /// Implements the transfinite mapping
 ///
@@ -326,9 +326,9 @@ impl Transfinite2d {
 mod tests {
     use super::Transfinite2d;
     use crate::TransfiniteSamples;
-    use plotpy::{linspace, Canvas, Plot, PolyCode};
+    use plotpy::{Canvas, Plot, PolyCode, linspace};
     use russell_lab::math::SQRT_2;
-    use russell_lab::{vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq, Vector};
+    use russell_lab::{Vector, vec_approx_eq, vec_deriv1_approx_eq, vec_deriv2_approx_eq};
 
     const SAVE_FIGURE: bool = false;
 

@@ -1,6 +1,6 @@
 use super::{Bracket, NoArgs};
-use crate::math::{LN2, NAPIER, PI};
 use crate::StrError;
+use crate::math::{LN2, NAPIER, PI};
 
 /// Holds an f(x) function that is useful for testing
 pub struct TestFunction {

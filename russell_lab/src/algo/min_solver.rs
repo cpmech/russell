@@ -1,6 +1,6 @@
 use super::Stats;
-use crate::math::SQRT_EPSILON;
 use crate::StrError;
+use crate::math::SQRT_EPSILON;
 
 /// Golden section ratio: (3 - sqrt(5)) / 2
 const GSR: f64 = 0.38196601125010515179541316563436188227969082019424;
@@ -265,8 +265,8 @@ impl MinSolver {
 #[cfg(test)]
 mod tests {
     use super::MinSolver;
-    use crate::algo::testing::get_test_functions;
     use crate::algo::NoArgs;
+    use crate::algo::testing::get_test_functions;
     use crate::approx_eq;
 
     #[test]

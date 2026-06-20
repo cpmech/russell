@@ -1,5 +1,5 @@
 use crate::StrError;
-use russell_lab::{algo::num_jacobian, mat_approx_eq, Vector};
+use russell_lab::{Vector, algo::num_jacobian, mat_approx_eq};
 use russell_sparse::{CooMatrix, Sym};
 use std::sync::Arc;
 

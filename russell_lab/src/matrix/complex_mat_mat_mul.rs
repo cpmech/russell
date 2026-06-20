@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, Complex64, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
@@ -114,7 +114,7 @@ pub fn complex_mat_mat_mul(
 #[cfg(test)]
 mod tests {
     use super::complex_mat_mat_mul;
-    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
+    use crate::{ComplexMatrix, complex_mat_approx_eq, cpx};
 
     #[test]
     fn mat_mat_mul_fails_on_wrong_dims() {

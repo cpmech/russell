@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, Norm};
+use crate::{Norm, to_i32};
 
 unsafe extern "C" {
     // Computes the matrix norm
@@ -56,8 +56,8 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_norm, Matrix};
-    use crate::{approx_eq, Norm};
+    use super::{Matrix, mat_norm};
+    use crate::{Norm, approx_eq};
 
     #[test]
     fn mat_norm_works() {

@@ -1,6 +1,6 @@
 use crate::StrError;
-use crate::{Method, System};
 use crate::{DORMAND_PRINCE_5_D, DORMAND_PRINCE_8_AD, DORMAND_PRINCE_8_CD, DORMAND_PRINCE_8_D};
+use crate::{Method, System};
 use russell_lab::Vector;
 
 /// Handles the dense output of explicit Runge-Kutta methods
@@ -306,11 +306,7 @@ mod tests {
         }
         let mut system = System::new(1, |_f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
             args.count += 1;
-            if args.count == args.fail {
-                Err("STOP")
-            } else {
-                Ok(())
-            }
+            if args.count == args.fail { Err("STOP") } else { Ok(()) }
         });
         let mut out = ErkDenseOut::new(Method::DoPri8, system.ndim).unwrap();
         let mut args = Args { count: 0, fail: 1 };

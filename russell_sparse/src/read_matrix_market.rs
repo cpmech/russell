@@ -368,7 +368,9 @@ where
     // symmetric type
     let sym = if data.symmetric {
         if data.m != data.n {
-            return Err("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices");
+            return Err(
+                "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices",
+            );
         }
         match symmetric_handling {
             MMsym::LeaveAsLower => Sym::YesLower,
@@ -466,9 +468,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{read_matrix_market, MatrixMarketData};
+    use super::{MatrixMarketData, read_matrix_market};
     use crate::{MMsym, Sym};
-    use russell_lab::{cpx, Matrix};
+    use russell_lab::{Matrix, cpx};
 
     #[test]
     fn parse_header_captures_errors() {
@@ -628,11 +630,15 @@ mod tests {
         );
         assert_eq!(
             read_matrix_market("./data/matrix_market/bad_symmetric_rectangular.mtx", h).err(),
-            Some("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices")
+            Some(
+                "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices"
+            )
         );
         assert_eq!(
             read_matrix_market("./data/matrix_market/bad_symmetric_rectangular_complex.mtx", h).err(),
-            Some("MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices")
+            Some(
+                "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices"
+            )
         );
     }
 
@@ -696,7 +702,9 @@ mod tests {
         assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]);
         assert_eq!(
             coo.values,
-            &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
+            &[
+                2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0
+            ],
         );
     }
 
@@ -737,7 +745,9 @@ mod tests {
         assert_eq!(coo.indices_j, &[0, 1, 2, 3, 4, 1, 2, 3, 4, 2, 3, 4, 3, 4, 4]);
         assert_eq!(
             coo.values,
-            &[2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0],
+            &[
+                2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0
+            ],
         );
     }
 

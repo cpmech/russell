@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{to_i32, Complex64, StrError};
+use crate::{Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Computes constant times a vector plus a vector
@@ -55,7 +55,7 @@ pub fn complex_mat_update(b: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMa
 #[cfg(test)]
 mod tests {
     use super::complex_mat_update;
-    use crate::{complex_mat_approx_eq, cpx, ComplexMatrix};
+    use crate::{ComplexMatrix, complex_mat_approx_eq, cpx};
 
     #[test]
     fn complex_mat_update_fail_on_wrong_dims() {

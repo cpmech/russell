@@ -42,7 +42,7 @@ pub fn vec_scale(v: &mut Vector, alpha: f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_scale, Vector};
+    use super::{Vector, vec_scale};
     use crate::vec_approx_eq;
 
     #[test]

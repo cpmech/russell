@@ -1,4 +1,4 @@
-use plotpy::{linspace, Canvas, Curve, Plot};
+use plotpy::{Canvas, Curve, Plot, linspace};
 use russell_lab::{approx_eq, math::SQRT_2};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Output, Samples, Solver, Status, Stop};
 

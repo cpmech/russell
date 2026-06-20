@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS};
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
@@ -100,7 +100,7 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_t_mat_mul, Matrix};
+    use super::{Matrix, mat_t_mat_mul};
     use crate::mat_approx_eq;
 
     #[test]

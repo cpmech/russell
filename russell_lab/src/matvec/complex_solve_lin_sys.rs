@@ -1,6 +1,6 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-use crate::{to_i32, Complex64, StrError};
+use crate::{Complex64, StrError, to_i32};
 
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
@@ -129,7 +129,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
 #[cfg(test)]
 mod tests {
     use super::complex_solve_lin_sys;
-    use crate::{complex_vec_approx_eq, cpx, ComplexMatrix, ComplexVector};
+    use crate::{ComplexMatrix, ComplexVector, complex_vec_approx_eq, cpx};
 
     #[test]
     fn solve_lin_sys_fails_on_non_square() {

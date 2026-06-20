@@ -1,4 +1,4 @@
-use crate::{Tensor2, ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3};
+use crate::{ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3, Tensor2};
 
 #[allow(unused)]
 use crate::Mandel; // for documentation
@@ -306,7 +306,7 @@ pub fn deriv1_invariant_lode(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2)
 mod tests {
     use super::*;
     use crate::{SampleTensor2, SamplesTensor2, StrError};
-    use russell_lab::{deriv1_central5, mat_approx_eq, Matrix};
+    use russell_lab::{Matrix, deriv1_central5, mat_approx_eq};
 
     // Defines f(σ)
     #[derive(Clone, Copy)]

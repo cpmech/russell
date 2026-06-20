@@ -1,6 +1,6 @@
 use ctm_demo::{Model, ModelType};
-use plotpy::{linspace, Curve, Plot};
-use russell_lab::{approx_eq, InterpChebyshev, Vector};
+use plotpy::{Curve, Plot, linspace};
+use russell_lab::{InterpChebyshev, Vector, approx_eq};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, SoderlindClass, Solver};
 use russell_nonlin::{Stats, Status, Stop, StrError, System};
 use russell_ode::Method as OdeMethod;
@@ -125,11 +125,7 @@ fn test_arc_hardening_softening_model_from_peak_backward() -> Result<(), StrErro
 #[test]
 fn test_arc_hardening_softening_model_bordering() -> Result<(), StrError> {
     // Settings
-    let settings = HashMap::from([
-        ("bordering", 1.0),
-        ("nr_control_n_opt", 3.0),
-        ("nr_control_beta", 0.5),
-    ]);
+    let settings = HashMap::from([("bordering", 1.0), ("nr_control_n_opt", 3.0), ("nr_control_beta", 0.5)]);
 
     // Input data
     let use_continuous_modulus = false;
@@ -345,7 +341,7 @@ const MATHEMATICA_LL: [f64;51] = [
 /// Defines the Mathematica reference values (u) (Chebyshev-Gauss-Lobatto spaced)
 #[rustfmt::skip]
 const _MATHEMATICA_UU_CHEBY: [f64; 51] = [
-    0., 0.00049331789293211, 0.00197132467138053, 0.00442818731782782, 0.00785420971784223, 0.0122358709262116, 0.0175558785279371, 0.0237932368834951, 0.0309233299890341, 0.0389180186244962, 0.0477457514062631, 0.0573716893060527, 0.0677578431446471, 
+     0., 0.00049331789293211, 0.00197132467138053, 0.00442818731782782, 0.00785420971784223, 0.0122358709262116, 0.0175558785279371, 0.0237932368834951, 0.0309233299890341, 0.0389180186244962, 0.0477457514062631, 0.0573716893060527, 0.0677578431446471,
     0.0788632235178278, 0.0906440025628276, 0.103053686926882, 0.116043301255251, 0.129561581474571, 0.143555177108732, 0.157968861828831, 0.172745751406263, 0.187827528208786, 0.203154671353569, 0.218666691608924, 0.234302370117672, 0.25, 0.265697629882328,
     0.281333308391076, 0.296845328646431, 0.312172471791214, 0.327254248593737, 0.34203113817117, 0.356444822891268, 0.370438418525429, 0.383956698744749, 0.396946313073118, 0.409355997437173, 0.421136776482172, 0.432242156855353, 0.442628310693947, 
     0.452254248593737, 0.461081981375504, 0.469076670010966, 0.476206763116505, 0.482444121472063, 0.487764129073788, 0.492145790282158, 0.495571812682172, 0.49802867532862, 0.499506682107068, 0.5,

@@ -160,7 +160,7 @@ impl ProbabilityDistribution for DistributionFrechet {
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_rng, DistributionFrechet, ProbabilityDistribution};
+    use crate::{DistributionFrechet, ProbabilityDistribution, get_rng};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript frechet.R):

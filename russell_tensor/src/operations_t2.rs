@@ -1,7 +1,7 @@
 use super::Tensor2;
 use crate::{Mandel, SQRT_2};
-use russell_lab::{vec_add, vec_inner};
 use russell_lab::{StrError, Vector};
+use russell_lab::{vec_add, vec_inner};
 
 /// Adds two second-order tensors
 ///

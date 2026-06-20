@@ -1,4 +1,4 @@
-use crate::{deriv2_central9, StrError};
+use crate::{StrError, deriv2_central9};
 
 /// Panics if the second derivative is not approximately equal to a numerical derivative (central differences)
 ///

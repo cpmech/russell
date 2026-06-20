@@ -1,4 +1,4 @@
-use russell_lab::{approx_eq, format_fortran, Vector};
+use russell_lab::{Vector, approx_eq, format_fortran};
 use russell_ode::{Method, OdeSolver, Output, Params, Samples};
 
 #[test]
@@ -23,7 +23,7 @@ fn test_radau5_hairer_wanner_eq1() {
 
     // solve the ODE system
     solver.solve(&mut y0, x0, x1, None, &mut args, Some(&mut out)).unwrap();
-  
+
     // get statistics
     let stat = solver.stats();
 
@@ -39,11 +39,7 @@ fn test_radau5_hairer_wanner_eq1() {
     // print dense output
     let n_dense = out.dense_x().len();
     for i in 0..n_dense {
-        println!(
-            "x ={:5.2}, y ={}",
-            out.dense_x()[i],
-            format_fortran(out.dense_y(0)[i])
-        );
+        println!("x ={:5.2}, y ={}", out.dense_x()[i], format_fortran(out.dense_y(0)[i]));
     }
 
     // print and check statistics

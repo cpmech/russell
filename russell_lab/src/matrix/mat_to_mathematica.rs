@@ -55,7 +55,7 @@ pub fn mat_to_mathematica(name: &str, a: &Matrix) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_to_mathematica, Matrix};
+    use super::{Matrix, mat_to_mathematica};
 
     #[test]
     fn mat_to_mathematica_works() {

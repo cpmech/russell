@@ -29,7 +29,7 @@ pub fn vec_max_scaled_diff(u: &Vector, v: &Vector, s: &Vector) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_max_scaled_diff, Vector};
+    use super::{Vector, vec_max_scaled_diff};
 
     #[test]
     fn vec_max_scaled_diff_works() {

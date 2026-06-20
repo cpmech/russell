@@ -1,6 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{to_i32, StrError, SVD_CODE_A};
+use crate::{SVD_CODE_A, StrError, to_i32};
 
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
@@ -210,7 +210,10 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
         println!("LAPACK ERROR (dgesvd): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (dgesvd): An argument had an illegal value");
     } else if info > 0 {
-        println!("LAPACK ERROR (dgesvd): {} is the number of super-diagonals of an intermediate bi-diagonal form B which did not converge to zero",info);
+        println!(
+            "LAPACK ERROR (dgesvd): {} is the number of super-diagonals of an intermediate bi-diagonal form B which did not converge to zero",
+            info
+        );
         return Err("LAPACK ERROR (dgesvd): Algorithm did not converge");
     }
     Ok(())
@@ -220,7 +223,7 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_svd, Matrix, Vector};
+    use super::{Matrix, Vector, mat_svd};
     use crate::{mat_approx_eq, vec_approx_eq};
 
     #[test]

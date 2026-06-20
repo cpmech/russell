@@ -1,6 +1,6 @@
-use plotpy::{linspace, Curve, Plot, Text};
+use plotpy::{Curve, Plot, Text, linspace};
 use russell_lab::{
-    find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table, InterpChebyshev, MinSolver,
+    InterpChebyshev, MinSolver, find_index_abs_max, find_valleys_and_peaks, mat_approx_eq, num_jacobian, read_table,
 };
 use russell_lab::{Norm, Vector};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Solver, Status, Stop, StrError, System};

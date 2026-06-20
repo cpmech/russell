@@ -793,8 +793,8 @@ impl TransfiniteSamples {
 mod tests {
     use super::TransfiniteSamples;
     use crate::{Transfinite2d, Transfinite3d};
-    use plotpy::{linspace, Canvas, Plot, PolyCode};
-    use russell_lab::{vec_approx_eq, Vector};
+    use plotpy::{Canvas, Plot, PolyCode, linspace};
+    use russell_lab::{Vector, vec_approx_eq};
 
     const SAVE_FIGURE: bool = false;
 

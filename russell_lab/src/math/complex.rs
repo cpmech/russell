@@ -121,8 +121,8 @@ pub fn x_times_i_pow_n(x: f64, n: i32) -> Complex64 {
 #[cfg(test)]
 mod tests {
     use super::{i_pow_n, x_times_i_pow_n};
-    use crate::math::PI;
     use crate::Complex64;
+    use crate::math::PI;
 
     #[test]
     fn i_pow_n_works() {

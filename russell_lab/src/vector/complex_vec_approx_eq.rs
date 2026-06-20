@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{complex_array_approx_eq, AsArray1D, Complex64};
+use crate::{AsArray1D, Complex64, complex_array_approx_eq};
 
 /// Panics if two complex vectors are not approximately equal to each other
 ///

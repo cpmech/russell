@@ -1,5 +1,5 @@
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
-use russell_lab::{approx_eq, Vector};
+use russell_lab::{Vector, approx_eq};
 use russell_ode::{Method, NoArgs, OdeSolver, Params, System};
 
 struct SimData<'a> {

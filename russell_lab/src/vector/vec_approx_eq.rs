@@ -1,5 +1,5 @@
 use super::Vector;
-use crate::{array_approx_eq, AsArray1D};
+use crate::{AsArray1D, array_approx_eq};
 
 /// Panics if two vectors are not approximately equal to each other
 ///

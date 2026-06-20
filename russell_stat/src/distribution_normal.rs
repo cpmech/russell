@@ -1,7 +1,7 @@
 use crate::{ProbabilityDistribution, StrError};
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
-use russell_lab::math::{erf, SQRT_2, SQRT_PI};
+use russell_lab::math::{SQRT_2, SQRT_PI, erf};
 
 /// Implements the Normal distribution
 ///
@@ -129,7 +129,7 @@ impl ProbabilityDistribution for DistributionNormal {
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_rng, DistributionNormal, ProbabilityDistribution};
+    use crate::{DistributionNormal, ProbabilityDistribution, get_rng};
     use russell_lab::approx_eq;
 
     // Data from the following R-code (run with Rscript normal.R):

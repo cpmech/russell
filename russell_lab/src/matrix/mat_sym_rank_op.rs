@@ -1,5 +1,5 @@
 use super::Matrix;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER};
+use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs one of the symmetric rank k operations
@@ -141,7 +141,7 @@ pub fn mat_sym_rank_op(
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_sym_rank_op, Matrix};
+    use super::{Matrix, mat_sym_rank_op};
     use crate::mat_approx_eq;
 
     #[test]

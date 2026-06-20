@@ -466,7 +466,7 @@ fn qone(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{bessel_j1, bessel_y1, pone, qone, TWO_129, TWO_M54};
+    use super::{TWO_129, TWO_M54, bessel_j1, bessel_y1, pone, qone};
     use crate::{approx_eq, assert_alike};
 
     #[test]

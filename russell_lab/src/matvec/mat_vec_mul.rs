@@ -1,6 +1,6 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{to_i32, StrError, CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, StrError, to_i32};
 
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
@@ -101,8 +101,8 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_vec_mul, Matrix, Vector};
-    use crate::{vec_approx_eq, vec_norm, Norm};
+    use super::{Matrix, Vector, mat_vec_mul};
+    use crate::{Norm, vec_approx_eq, vec_norm};
 
     #[test]
     fn mat_vec_mul_fails_on_wrong_dims() {

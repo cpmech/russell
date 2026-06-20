@@ -16,9 +16,9 @@
 //! The domain is mapped from the reference square (r,s) ∈ [-1,1]×[-1,1] to
 //! the physical rotated square via transfinite interpolation.
 
-use plotpy::{linspace, Canvas, Contour, Plot, PolyCode};
+use plotpy::{Canvas, Contour, Plot, PolyCode, linspace};
 use russell_lab::math::PI;
-use russell_lab::{approx_eq, Vector};
+use russell_lab::{Vector, approx_eq};
 use russell_pde::{EssentialBcs2d, NaturalBcs2d, Side, SpcMap2d, StrError, Transfinite2d, TransfiniteSamples};
 
 fn main() -> Result<(), StrError> {

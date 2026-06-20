@@ -1,7 +1,7 @@
 use crate::StrError;
 use crate::{OdeSolverTrait, Params, System, Workspace};
-use russell_lab::{vec_copy, vec_rms_scaled, vec_update, Vector};
-use russell_sparse::{numerical_jacobian, CooMatrix, LinSolver};
+use russell_lab::{Vector, vec_copy, vec_rms_scaled, vec_update};
+use russell_sparse::{CooMatrix, LinSolver, numerical_jacobian};
 
 /// Implements the backward Euler (implicit) solver (implicit, order 1, unconditionally stable)
 pub(crate) struct EulerBackward<'a, A> {
@@ -178,7 +178,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerBackward<'a, A> {
 mod tests {
     use super::EulerBackward;
     use crate::{Method, OdeSolverTrait, Params, Samples, System, Workspace};
-    use russell_lab::{array_approx_eq, Vector};
+    use russell_lab::{Vector, array_approx_eq};
     use russell_sparse::Sym;
 
     // Mathematica code:

@@ -2,7 +2,7 @@ use crate::constants::N_EQUAL_STEPS;
 use crate::{EulerBackward, EulerForward, ExplicitRungeKutta, Radau5};
 use crate::{Method, OdeSolverTrait, Params, Stats, System, Workspace};
 use crate::{Output, StrError};
-use russell_lab::{vec_all_finite, Vector};
+use russell_lab::{Vector, vec_all_finite};
 
 /// Implements a numerical solver for systems of ODEs
 ///
@@ -398,7 +398,7 @@ mod tests {
     use super::OdeSolver;
     use crate::{Method, Output, Params, Samples, System};
     use crate::{NoArgs, OutCount, OutData, Stats, StrError};
-    use russell_lab::{approx_eq, array_approx_eq, vec_approx_eq, Vector};
+    use russell_lab::{Vector, approx_eq, array_approx_eq, vec_approx_eq};
     use russell_sparse::Genie;
 
     #[test]

@@ -1,5 +1,5 @@
 use crate::Method;
-use russell_lab::{format_nanoseconds, Stopwatch};
+use russell_lab::{Stopwatch, format_nanoseconds};
 use std::fmt::{self, Write};
 
 /// Holds statistics and benchmarking data

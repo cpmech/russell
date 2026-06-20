@@ -64,7 +64,7 @@ pub fn vec_copy_scaled(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), Str
 
 #[cfg(test)]
 mod tests {
-    use super::{vec_copy_scaled, Vector};
+    use super::{Vector, vec_copy_scaled};
     use crate::vec_approx_eq;
 
     #[test]

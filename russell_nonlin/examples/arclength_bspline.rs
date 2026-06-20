@@ -1,4 +1,4 @@
-use plotpy::{linspace, Curve, Plot};
+use plotpy::{Curve, Plot, linspace};
 use russell_nonlin::{Config, DeltaLambda, IniDir, Method, Output, Samples, Solver, Stop};
 
 /// Example: Arc-length continuation on a B-spline curve

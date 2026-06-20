@@ -1,4 +1,4 @@
-use russell_lab::math::{elliptic_e, PI};
+use russell_lab::math::{PI, elliptic_e};
 use russell_lab::*;
 
 fn main() -> Result<(), StrError> {

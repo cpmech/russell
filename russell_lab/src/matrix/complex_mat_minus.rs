@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{array_minus_op_complex, StrError};
+use crate::{StrError, array_minus_op_complex};
 
 /// Performs the subtraction of two matrices
 ///
@@ -43,8 +43,8 @@ pub fn complex_mat_minus(c: &mut ComplexMatrix, a: &ComplexMatrix, b: &ComplexMa
 
 #[cfg(test)]
 mod tests {
-    use super::{complex_mat_minus, ComplexMatrix};
-    use crate::{complex_mat_approx_eq, cpx, Complex64};
+    use super::{ComplexMatrix, complex_mat_minus};
+    use crate::{Complex64, complex_mat_approx_eq, cpx};
 
     #[test]
     fn complex_mat_minus_fails_on_wrong_dims() {

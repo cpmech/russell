@@ -1,5 +1,5 @@
-use russell_ode::prelude::*;
 use russell_ode::StrError;
+use russell_ode::prelude::*;
 use serde::Serialize;
 use std::fs::{self, File};
 use std::path::Path;

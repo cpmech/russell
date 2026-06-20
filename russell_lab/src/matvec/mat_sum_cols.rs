@@ -1,6 +1,6 @@
+use crate::StrError;
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
 
 /// Sums the columns of a matrix
 ///
@@ -66,7 +66,7 @@ pub fn mat_sum_cols(v: &mut Vector, a: &Matrix) -> Result<(), StrError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_sum_cols, Matrix, Vector};
+    use super::{Matrix, Vector, mat_sum_cols};
     use crate::vec_approx_eq;
 
     #[test]

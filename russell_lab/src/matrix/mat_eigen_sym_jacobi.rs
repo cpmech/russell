@@ -202,10 +202,10 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
 #[cfg(test)]
 mod tests {
-    use super::{mat_eigen_sym_jacobi, Matrix};
+    use super::{Matrix, mat_eigen_sym_jacobi};
     use crate::math::SQRT_2;
     use crate::matrix::testing::check_eigen_sym;
-    use crate::{mat_approx_eq, vec_approx_eq, AsArray2D, Vector};
+    use crate::{AsArray2D, Vector, mat_approx_eq, vec_approx_eq};
 
     fn calc_eigen<'a, T>(data: &'a T) -> (usize, Vector, Matrix)
     where

@@ -1,4 +1,4 @@
-use russell_lab::{approx_eq, Vector};
+use russell_lab::{Vector, approx_eq};
 use russell_ode::{Method, OdeSolver, Params, Samples};
 
 #[test]

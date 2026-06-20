@@ -633,11 +633,10 @@ impl ProblemSamples {
         Box<dyn Fn(f64, f64) -> (f64, f64)>,
     ) {
         // check input
-        assert!(bc_combo == "NNDD"
-            || bc_combo == "NDND"
-            || bc_combo == "DNND"
-            || bc_combo == "DDNN"
-            || bc_combo == "DDDD", "Invalid boundary condition combination keyword. Allowed keywords are: 'NNDD', 'NDND', 'DNND', 'DDNN', 'DDDD'");
+        assert!(
+            bc_combo == "NNDD" || bc_combo == "NDND" || bc_combo == "DNND" || bc_combo == "DDNN" || bc_combo == "DDDD",
+            "Invalid boundary condition combination keyword. Allowed keywords are: 'NNDD', 'NDND', 'DNND', 'DDNN', 'DDDD'"
+        );
         let key_right = bc_combo.chars().nth(0).unwrap();
         let key_top = bc_combo.chars().nth(1).unwrap();
         let key_left = bc_combo.chars().nth(2).unwrap();

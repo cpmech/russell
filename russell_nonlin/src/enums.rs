@@ -42,7 +42,7 @@ pub enum RdiffType {
 ///
 /// For the pseudo-arclength method, the initial tangent vector `(du/ds₀, dλ/ds₀)` is
 /// computed from the Jacobian at `(u₀, λ₀)`; the sign of `dλ/ds₀` is controlled by this enum.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum IniDir {
     /// Selects the positive value for dλ/ds₀ or Δλ
     ///
@@ -84,7 +84,7 @@ pub enum IniDir {
 }
 
 /// Specifies the stopping criterion for the continuation process.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Stop {
     /// Stops when a component of the `u` vector reaches a minimum value.
     ///
@@ -242,7 +242,7 @@ impl Method {
 /// Reference:
 /// * Soderlind (2003) Digital filters in adaptive time-stepping,
 ///   ACM Transactions on Mathematical Software, 29(1), 1-26.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SoderlindClass {
     /// Smooth to medium problem type
     Ho211,
@@ -431,7 +431,7 @@ impl Status {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use russell_lab::Vector;
+    use russell_lab::{Norm, Vector};
 
     #[test]
     fn test_stop_validate_works() {
@@ -460,6 +460,22 @@ mod tests {
 
         // MaxCompU - value not greater than initial
         let stop = Stop::MaxCompU(2, 2.0);
+        assert!(stop.validate(&u, l).is_err());
+
+        // MaxNormU - valid case
+        let stop = Stop::MaxNormU(4.0, Norm::Euc, 0, 3);
+        assert!(stop.validate(&u, l).is_ok());
+
+        // MaxNormU - begin >= end
+        let stop = Stop::MaxNormU(4.0, Norm::Euc, 2, 2);
+        assert!(stop.validate(&u, l).is_err());
+
+        // MaxNormU - end > u.dim()
+        let stop = Stop::MaxNormU(4.0, Norm::Euc, 0, 4);
+        assert!(stop.validate(&u, l).is_err());
+
+        // MaxNormU - value <= 0.0
+        let stop = Stop::MaxNormU(0.0, Norm::Euc, 0, 3);
         assert!(stop.validate(&u, l).is_err());
 
         // MinLambda - valid case
@@ -497,6 +513,10 @@ mod tests {
         let stop = Stop::MaxCompU(0, 1.0);
         assert_eq!(stop.lambda(), None);
 
+        // MaxNormU - returns None
+        let stop = Stop::MaxNormU(4.0, Norm::Euc, 0, 3);
+        assert_eq!(stop.lambda(), None);
+
         // MinLambda - returns Some with is_min=true
         let stop = Stop::MinLambda(2.5);
         assert_eq!(stop.lambda(), Some((2.5, true)));
@@ -508,6 +528,33 @@ mod tests {
         // Steps - returns None
         let stop = Stop::Steps(5);
         assert_eq!(stop.lambda(), None);
+    }
+
+    #[test]
+    fn test_stop_u_comp_works() {
+        // MinCompU - returns Some with is_min=true
+        let stop = Stop::MinCompU(2, 1.5);
+        assert_eq!(stop.u_comp(), Some((2, 1.5, true)));
+
+        // MaxCompU - returns Some with is_min=false
+        let stop = Stop::MaxCompU(3, 10.0);
+        assert_eq!(stop.u_comp(), Some((3, 10.0, false)));
+
+        // MaxNormU - returns None
+        let stop = Stop::MaxNormU(4.0, Norm::Euc, 0, 3);
+        assert_eq!(stop.u_comp(), None);
+
+        // MinLambda - returns None
+        let stop = Stop::MinLambda(2.0);
+        assert_eq!(stop.u_comp(), None);
+
+        // MaxLambda - returns None
+        let stop = Stop::MaxLambda(5.0);
+        assert_eq!(stop.u_comp(), None);
+
+        // Steps - returns None
+        let stop = Stop::Steps(10);
+        assert_eq!(stop.u_comp(), None);
     }
 
     #[test]
@@ -529,6 +576,14 @@ mod tests {
 
         // MaxCompU - criterion not met
         let stop = Stop::MaxCompU(1, 4.0);
+        assert!(!stop.now(0, &u, l));
+
+        // MaxNormU - criterion met (norm > max)
+        let stop = Stop::MaxNormU(2.0, Norm::Euc, 0, 2);
+        assert!(stop.now(0, &u, l));
+
+        // MaxNormU - criterion not met (norm < max)
+        let stop = Stop::MaxNormU(5.0, Norm::Euc, 0, 2);
         assert!(!stop.now(0, &u, l));
 
         // MinLambda - criterion met
@@ -554,5 +609,185 @@ mod tests {
         // Steps - criterion not met
         let stop = Stop::Steps(5);
         assert!(!stop.now(3, &u, l)); // step 3, so step+1 = 4
+    }
+
+    #[test]
+    fn test_status_methods_work() {
+        // success
+        assert!(Status::Success.success());
+        assert!(!Status::SmallStepsize.success());
+        assert!(!Status::LargeDelta.success());
+
+        // failure
+        assert!(!Status::Success.failure());
+        assert!(Status::SmallStepsize.failure());
+        assert!(Status::LargeDelta.failure());
+        assert!(Status::SecondaryUpdateError("error").failure());
+    }
+
+    #[test]
+    fn test_status_try_again_works() {
+        // may try again
+        assert!(Status::BorderingSmallDenominator.try_again());
+        assert!(Status::LargeDelta.try_again());
+        assert!(Status::ReachedMaxIterations.try_again());
+        assert!(Status::ContinuedResidualDivergence.try_again());
+        assert!(Status::ContinuedDeltaDivergence.try_again());
+        assert!(Status::Rejection.try_again());
+        assert!(Status::SecondaryUpdateError("error").try_again());
+        assert!(Status::UnmetStopCriterion.try_again());
+
+        // must stop
+        assert!(!Status::SmallStepsize.try_again());
+        assert!(!Status::SecondaryUpdateTerminate.try_again());
+        assert!(!Status::ContinuedFailure.try_again());
+        assert!(!Status::ContinuedRejection.try_again());
+        assert!(!Status::NanOrInfResidual.try_again());
+        assert!(!Status::NanOrInfDelta.try_again());
+
+        // irrelevant (Success)
+        assert!(!Status::Success.try_again());
+    }
+
+    #[test]
+    fn test_status_from_sup_works() {
+        // Ok(false) -> Success
+        assert_eq!(Status::from_sup(Ok(false)), Status::Success);
+
+        // Ok(true) -> SecondaryUpdateTerminate
+        assert_eq!(Status::from_sup(Ok(true)), Status::SecondaryUpdateTerminate);
+
+        // Err -> SecondaryUpdateError
+        assert_eq!(
+            Status::from_sup(Err("some error")),
+            Status::SecondaryUpdateError("some error")
+        );
+    }
+
+    #[test]
+    fn test_method_name_and_description_work() {
+        assert_eq!(Method::Natural.name(), "Natural");
+        assert_eq!(Method::Arclength.name(), "Arclength");
+
+        assert_eq!(
+            Method::Natural.description(),
+            "Natural parameter continuation; solves G(u, λ) = 0"
+        );
+        assert_eq!(
+            Method::Arclength.description(),
+            "Pseudo-arclength continuation; solves G(u(s), λ(s)) = 0"
+        );
+    }
+
+    #[test]
+    fn test_soderlind_class_params_work() {
+        // Ho211
+        let (b1, b2, b3, a2, a3) = SoderlindClass::Ho211.params();
+        assert_eq!(b1, 0.5);
+        assert_eq!(b2, 0.5);
+        assert_eq!(b3, 0.0);
+        assert_eq!(a2, 0.5);
+        assert_eq!(a3, 0.0);
+
+        // H211b
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H211b(2.0).params();
+        assert_eq!(b1, 0.5);
+        assert_eq!(b2, 0.5);
+        assert_eq!(b3, 0.0);
+        assert_eq!(a2, 0.5);
+        assert_eq!(a3, 0.0);
+
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H211b(4.0).params();
+        assert_eq!(b1, 0.25);
+        assert_eq!(b2, 0.25);
+        assert_eq!(b3, 0.0);
+        assert_eq!(a2, 0.25);
+        assert_eq!(a3, 0.0);
+
+        // H211PI
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H211PI.params();
+        assert_eq!(b1, 1.0 / 6.0);
+        assert_eq!(b2, 1.0 / 6.0);
+        assert_eq!(b3, 0.0);
+        assert_eq!(a2, 0.0);
+        assert_eq!(a3, 0.0);
+
+        // Ho312
+        let (b1, b2, b3, a2, a3) = SoderlindClass::Ho312.params();
+        assert_eq!(b1, 0.25);
+        assert_eq!(b2, 0.5);
+        assert_eq!(b3, 0.25);
+        assert_eq!(a2, 0.75);
+        assert_eq!(a3, 0.25);
+
+        // H312b
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H312b(2.0).params();
+        assert_eq!(b1, 0.5);
+        assert_eq!(b2, 1.0);
+        assert_eq!(b3, 0.5);
+        assert_eq!(a2, 1.5);
+        assert_eq!(a3, 0.5);
+
+        // H312PID
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H312PID.params();
+        assert_eq!(b1, 1.0 / 18.0);
+        assert_eq!(b2, 1.0 / 9.0);
+        assert_eq!(b3, 1.0 / 18.0);
+        assert_eq!(a2, 0.0);
+        assert_eq!(a3, 0.0);
+
+        // Ho321
+        let (b1, b2, b3, a2, a3) = SoderlindClass::Ho321.params();
+        assert_eq!(b1, 1.25);
+        assert_eq!(b2, 0.5);
+        assert_eq!(b3, -0.75);
+        assert_eq!(a2, -0.25);
+        assert_eq!(a3, -0.75);
+
+        // H321
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H321.params();
+        assert_eq!(b1, 1.0 / 3.0);
+        assert_eq!(b2, 1.0 / 18.0);
+        assert_eq!(b3, -5.0 / 18.0);
+        assert_eq!(a2, -5.0 / 6.0);
+        assert_eq!(a3, -1.0 / 6.0);
+    }
+
+    #[test]
+    fn test_rdiff_type_derives_work() {
+        let a = RdiffType::Ave;
+        let b = RdiffType::Max;
+
+        // Clone
+        let c = a;
+        assert_eq!(c, RdiffType::Ave);
+
+        // Debug
+        assert_eq!(format!("{:?}", b), "Max");
+
+        // Copy
+        let d = a;
+        assert_eq!(a, d);
+    }
+
+    #[test]
+    fn test_ini_dir_derives_work() {
+        let a = IniDir::Pos;
+        let b = IniDir::Neg;
+
+        // Eq / PartialEq
+        assert_eq!(a, IniDir::Pos);
+        assert_ne!(a, b);
+
+        // Clone
+        let c = a;
+        assert_eq!(c, IniDir::Pos);
+
+        // Debug
+        assert_eq!(format!("{:?}", b), "Neg");
+
+        // Copy
+        let d = a;
+        assert_eq!(a, d);
     }
 }

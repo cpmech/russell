@@ -1394,6 +1394,9 @@ mod tests {
 
         // automatic stepsize
 
+        config.m_failure = 0.0005;
+        assert_eq!(config.validate().err(), Some("requirement: m_failure ≥ 0.001"));
+        config.m_failure = 0.5;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;

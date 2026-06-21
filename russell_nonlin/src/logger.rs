@@ -493,4 +493,57 @@ Total time                       = 0ns
         let dashes = "─".repeat(68);
         assert!(contents.contains(&dashes));
     }
+
+    #[test]
+    fn header_stdout_disabled_is_noop() {
+        // verbose=false, no log file => enabled=false => no-op
+        let config = Config::new();
+        let mut logger = Logger::new(&config);
+        logger.header();
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_without_legend_natural() {
+        let mut config = Config::new();
+        config.set_verbose_only(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_without_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_verbose_only(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_with_legend_natural() {
+        let mut config = Config::new();
+        config.set_verbose_only(true);
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_with_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_verbose_only(true);
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
 }

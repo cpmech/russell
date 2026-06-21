@@ -403,4 +403,106 @@ Total time                       = 0ns
 "#;
         assert_eq!(&contents, &expected[1..]);
     }
+
+    #[test]
+    fn header_disabled_is_noop() {
+        let config = Config::new();
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // buffer should be empty since enabled=false
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_without_legend_natural() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should NOT contain legend
+        assert!(!contents.contains("Legend"));
+        assert!(!contents.contains("Converged"));
+        // should contain Natural column headers
+        assert!(contents.contains("‖G‖∞"));
+        assert!(contents.contains("‖δu‖∞"));
+        assert!(contents.contains("Rel(δu)"));
+        // should NOT contain Arclength column headers
+        assert!(!contents.contains("‖(G,N)‖∞"));
+        assert!(!contents.contains("‖(δu,δλ)‖∞"));
+        assert!(!contents.contains("Rel((δu,δλ))"));
+    }
+
+    #[test]
+    fn header_without_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should NOT contain legend
+        assert!(!contents.contains("Legend"));
+        // should contain Arclength column headers
+        assert!(contents.contains("‖(G,N)‖∞"));
+        assert!(contents.contains("‖(δu,δλ)‖∞"));
+        assert!(contents.contains("Rel((δu,δλ))"));
+        // should NOT contain Natural column headers
+        assert!(!contents.contains("‖G‖∞"));
+        assert!(!contents.contains("‖δu‖∞  "));
+    }
+
+    #[test]
+    fn header_with_legend_natural() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should contain legend text
+        assert!(contents.contains("Legend:"));
+        assert!(contents.contains("✅  Converged"));
+        assert!(contents.contains("🎈  Diverging"));
+        assert!(contents.contains("🔹  Not converged"));
+        // should contain Natural column headers
+        assert!(contents.contains("‖G‖∞"));
+        assert!(contents.contains("‖δu‖∞"));
+        assert!(contents.contains("Rel(δu)"));
+    }
+
+    #[test]
+    fn header_with_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should contain legend text
+        assert!(contents.contains("Legend:"));
+        assert!(contents.contains("✅  Converged"));
+        // should contain Arclength column headers
+        assert!(contents.contains("‖(G,N)‖∞"));
+        assert!(contents.contains("‖(δu,δλ)‖∞"));
+        assert!(contents.contains("Rel((δu,δλ))"));
+    }
+
+    #[test]
+    fn header_enabled_via_verbose() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should contain column headers
+        assert!(contents.contains("λ"));
+        assert!(contents.contains("Δλ"));
+        // should NOT contain legend (with_legend is false)
+        assert!(!contents.contains("Legend"));
+        // should have horizontal line (68 dashes)
+        let dashes = "─".repeat(68);
+        assert!(contents.contains(&dashes));
+    }
 }

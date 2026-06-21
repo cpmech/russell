@@ -23,6 +23,47 @@ pub type NoArgs = u8;
 /// ggu := Gu = dG/du
 /// ggl := Gλ = dG/dλ
 /// ```
+///
+/// # Examples
+///
+/// One equation with a fold point (from Bank & Mittelmann, 1990):
+///
+/// ```
+/// use russell_lab::Vector;
+/// use russell_sparse::Sym;
+/// use russell_nonlin::System;
+///
+/// // residual:  G(u, λ) = u - λ·exp(u)
+/// // jacobians: dG/du = 1 - λ·exp(u),  dG/dλ = -exp(u)
+/// let system = System::new(
+///     1,                  // ndim: one equation
+///     Some(1),            // nnz_ggu: one entry in the Jacobian
+///     Sym::No,            // sym_ggu: irrelevant here
+///     // calc_gg: residual function
+///     |gg, l, u, _args| {
+///         gg[0] = u[0] - l * f64::exp(u[0]);
+///         Ok(())
+///     },
+///     // calc_jac: Jacobian function
+///     |ggu, ggl, l, u, _args| {
+///         ggu.put(0, 0, 1.0 - l * f64::exp(u[0])).unwrap();
+///         ggl[0] = -f64::exp(u[0]);
+///         Ok(())
+///     },
+/// )
+/// .unwrap();
+///
+/// // verify the Jacobian at the initial state using numerical differentiation
+/// let u = Vector::from(&[0.0]);
+/// let l = 0.0;
+/// system.check_ggu(l, &u, &mut 0u8, 1e-15).unwrap();
+/// ```
+///
+/// # References
+///
+/// 1. Bank RE and Mittelmann HD (1990) Stepsize selection in continuation procedures and
+///    damped Newton's method. In Continuation Techniques and Bifurcation Problems,
+///    Ed. by Mittelmann HD and Roose D (1990), Springer.
 pub struct System<'a, A> {
     /// Dimension of `u` and `G`
     pub(crate) ndim: usize,
@@ -227,5 +268,123 @@ impl<'a, A> System<'a, A> {
         // check
         mat_approx_eq(&ana, &num, tol);
         Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::System;
+    use russell_lab::Vector;
+    use russell_sparse::{CooMatrix, Sym};
+
+    fn dummy_calc_gg(_gg: &mut Vector, _l: f64, _u: &Vector, _args: &mut u8) -> Result<(), &'static str> {
+        Ok(())
+    }
+
+    fn dummy_calc_jac(
+        _ggu: &mut CooMatrix,
+        _ggl: &mut Vector,
+        _l: f64,
+        _u: &Vector,
+        _args: &mut u8,
+    ) -> Result<(), &'static str> {
+        Ok(())
+    }
+
+    #[test]
+    fn new_works() {
+        let system = System::new(3, Some(9), Sym::No, dummy_calc_gg, dummy_calc_jac).unwrap();
+        assert_eq!(system.get_ndim(), 3);
+        assert_eq!(system.get_nnz_ggu(), 9);
+        assert_eq!(system.get_sym_ggu(), Sym::No);
+
+        // exercise the closures for coverage
+        let mut gg = Vector::new(1);
+        let u = Vector::new(1);
+        let mut ggu = CooMatrix::new(1, 1, 1, Sym::No).unwrap();
+        let mut ggl = Vector::new(1);
+        (system.calc_gg)(&mut gg, 0.0, &u, &mut 0u8).unwrap();
+        (system.calc_jac)(&mut ggu, &mut ggl, 0.0, &u, &mut 0u8).unwrap();
+    }
+
+    #[test]
+    fn new_captures_ndim_zero() {
+        assert_eq!(
+            System::new(0, Some(1), Sym::No, dummy_calc_gg, dummy_calc_jac).err(),
+            Some("ndim must be at least 1")
+        );
+    }
+
+    #[test]
+    fn new_captures_nnz_ggu_zero() {
+        assert_eq!(
+            System::new(3, Some(0), Sym::No, dummy_calc_gg, dummy_calc_jac).err(),
+            Some("nnz_ggu must be at least 1")
+        );
+    }
+
+    #[test]
+    fn new_with_nnz_none_triangular() {
+        // Sym::YesLower is triangular → nnz = (ndim + ndim²) / 2 = (3 + 9) / 2 = 6
+        let system = System::new(3, None, Sym::YesLower, dummy_calc_gg, dummy_calc_jac).unwrap();
+        assert_eq!(system.get_nnz_ggu(), 6);
+    }
+
+    #[test]
+    fn new_with_nnz_none_non_triangular() {
+        // Sym::No is not triangular → nnz = ndim² = 9
+        let system = System::new(3, None, Sym::No, dummy_calc_gg, dummy_calc_jac).unwrap();
+        assert_eq!(system.get_nnz_ggu(), 9);
+    }
+
+    #[test]
+    fn getters_work() {
+        let system = System::new(5, Some(7), Sym::YesUpper, dummy_calc_gg, dummy_calc_jac).unwrap();
+        assert_eq!(system.get_ndim(), 5);
+        assert_eq!(system.get_nnz_ggu(), 7);
+        assert_eq!(system.get_sym_ggu(), Sym::YesUpper);
+    }
+
+    #[test]
+    fn clone_works() {
+        let system = System::new(3, Some(9), Sym::No, dummy_calc_gg, dummy_calc_jac).unwrap();
+        let cloned = system.clone();
+        assert_eq!(cloned.get_ndim(), 3);
+        assert_eq!(cloned.get_nnz_ggu(), 9);
+        assert_eq!(cloned.get_sym_ggu(), Sym::No);
+    }
+
+    #[test]
+    fn secondary_state_setters_work() {
+        let mut system = System::new(3, Some(9), Sym::No, dummy_calc_gg, dummy_calc_jac).unwrap();
+
+        system.set_backup_secondary_state(|_args: &mut u8| {});
+        assert!(system.backup_secondary_state.is_some());
+
+        system.set_restore_secondary_state(|_args: &mut u8| {});
+        assert!(system.restore_secondary_state.is_some());
+
+        system.set_prepare_to_iterate(|_args: &mut u8| {});
+        assert!(system.prepare_to_iterate.is_some());
+
+        system.set_update_secondary_state(
+            |_do_backup: bool,
+             _u0: &Vector,
+             _u1: &Vector,
+             _l0: f64,
+             _l1: f64,
+             _args: &mut u8|
+             -> Result<bool, &'static str> { Ok(false) },
+        );
+        assert!(system.update_secondary_state.is_some());
+
+        // exercise the closures for coverage
+        (system.backup_secondary_state.as_ref().unwrap())(&mut 0u8);
+        (system.restore_secondary_state.as_ref().unwrap())(&mut 0u8);
+        (system.prepare_to_iterate.as_ref().unwrap())(&mut 0u8);
+        let u = Vector::new(3);
+        let _ = (system.update_secondary_state.as_ref().unwrap())(false, &u, &u, 0.0, 0.0, &mut 0u8);
     }
 }

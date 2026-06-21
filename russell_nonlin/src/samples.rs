@@ -8,14 +8,17 @@ pub struct Samples {}
 
 /// Holds extra arguments for the B-spline problem
 pub struct SampleBsplineArgs {
+    /// B-spline interpolation object
     pub bspline: Bspline,
+
+    /// Coordinates of the interpolation points
     pub coords: Vector,
 }
 
 impl Samples {
     /// Simple linear problem: G(u, λ) = u - λ
     ///
-    /// Returns `(system, u, args)`
+    /// Returns `(system, u, l, args)`
     ///
     /// ```text
     /// G(u, λ) = u - λ
@@ -53,7 +56,7 @@ impl Samples {
 
     /// Cubic polynomial (causing problems to Newton's method)
     ///
-    /// Returns `(system, u_ok, u_oscillation, u_indeterminate, u_ref, args)`
+    /// Returns `(system, u_ok, u_oscillation, u_indeterminate, u_reference, args)`
     ///
     /// ```text
     /// f = x³ - 2 x - 2
@@ -94,7 +97,7 @@ impl Samples {
 
     /// Cubic polynomial (causing divergence problems to Newton's method)
     ///
-    /// Returns `(system, u, u_reference,  args)`
+    /// Returns `(system, u, u_reference, args)`
     ///
     /// ```text
     /// f = (x - 1)³ + 0.512
@@ -132,6 +135,13 @@ impl Samples {
     }
 
     /// Simple two-equation system with reference solution
+    ///
+    /// ```text
+    /// G₀(u) = u₀³ + u₁ - 1 = 0
+    /// G₁(u) = -u₀ + u₁³ + 1 = 0
+    /// ```
+    ///
+    /// Reference solution: u = (1, 0)
     ///
     /// Returns `(system, u, u_reference, args)`
     pub fn two_eq_ref<'a>() -> (System<'a, NoArgs>, Vector, Vector, NoArgs) {

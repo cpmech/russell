@@ -18,7 +18,7 @@ pub(crate) trait SolverTrait<A>: Send {
         args: &mut A,
     ) -> Result<(), StrError>;
 
-    /// Calculates u, λ and s such that G(u(s), λ(s)) = 0
+    /// Performs one continuation step to advance the solution (u, λ)
     fn step(&mut self, work: &mut Workspace, u: &Vector, l: f64, stop: Stop, args: &mut A) -> Result<Status, StrError>;
 
     /// Handles the accept case by updating (u, l) and calculating a new stepsize

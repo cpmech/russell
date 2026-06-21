@@ -1,6 +1,6 @@
 //! Russell - Rust Scientific Library
 //!
-//! `russell_pde`: Solvers for ordinary differential equations and differential algebraic equations
+//! `russell_pde`: Solvers for partial differential equations using elliptic operators
 //!
 //! **Important:** This crate depends on external libraries (non-Rust). Thus, please check the [Installation Instructions on the GitHub Repository](https://github.com/cpmech/russell).
 //!

@@ -20,7 +20,7 @@ pub struct Stats {
     /// Indicates automatic stepsize adjustment
     auto: bool,
 
-    /// Indicates the use of numerical Jacobian
+    /// Indicates the use of numerical Jacobian (set externally by the user)
     pub num_jacobian: bool,
 
     /// Holds the iterations residuals for the current step, temporarily

@@ -307,6 +307,11 @@ impl Config {
         self
     }
 
+    /// Returns the log file path
+    pub fn get_log_file(&self) -> Option<&str> {
+        self.log_file.as_deref()
+    }
+
     /// Sets the log file path, to save the output instead of stdout
     ///
     /// Default value: None
@@ -315,37 +320,91 @@ impl Config {
         self
     }
 
+    /// Returns the verbose flag
+    pub fn get_verbose(&self) -> bool {
+        self.verbose
+    }
+
     /// Sets the verbose flag
+    ///
+    /// Default value: false
+    pub fn set_verbose_only(&mut self, flag: bool) -> &mut Self {
+        self.verbose = flag;
+        self
+    }
+
+    /// Returns the verbose_iterations flag
+    pub fn get_verbose_iterations(&self) -> bool {
+        self.verbose_iterations
+    }
+
+    /// Sets the verbose_iterations flag
+    ///
+    /// Default value: false
+    pub fn set_verbose_iterations(&mut self, flag: bool) -> &mut Self {
+        self.verbose_iterations = flag;
+        self
+    }
+
+    /// Returns the verbose_stats flag
+    pub fn get_verbose_stats(&self) -> bool {
+        self.verbose_stats
+    }
+
+    /// Sets the verbose_stats flag
+    ///
+    /// Default value: false
+    pub fn set_verbose_stats(&mut self, flag: bool) -> &mut Self {
+        self.verbose_stats = flag;
+        self
+    }
+
+    /// Sets verbose, verbose_iterations, and verbose_stats flags at once
     ///
     /// Default values:
     ///
     /// * `verbose`: false
-    /// * `show_iterations`: false
-    /// * `show_stats`: false
-    pub fn set_verbose(&mut self, verbose: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
+    /// * `verbose_iterations`: false
+    /// * `verbose_stats`: false
+    pub fn set_verbose(&mut self, verbose: bool, verbose_iterations: bool, verbose_stats: bool) -> &mut Self {
         self.verbose = verbose;
-        self.verbose_iterations = show_iterations;
-        self.verbose_stats = show_stats;
+        self.verbose_iterations = verbose_iterations;
+        self.verbose_stats = verbose_stats;
         self
     }
 
-    /// Shows the legend
+    /// Returns the verbose_legend flag
+    pub fn get_verbose_legend(&self) -> bool {
+        self.verbose_legend
+    }
+
+    /// Sets the verbose_legend flag
     ///
     /// Default value: false
-    pub fn set_show_legend(&mut self, flag: bool) -> &mut Self {
+    pub fn set_verbose_legend(&mut self, flag: bool) -> &mut Self {
         self.verbose_legend = flag;
         self
     }
 
-    /// Shows the header and footer
+    /// Returns the verbose_header_footer flag
+    pub fn get_verbose_header_footer(&self) -> bool {
+        self.verbose_header_footer
+    }
+
+    /// Sets the verbose_header_footer flag
     ///
     /// Default value: true
-    pub fn set_show_header_footer(&mut self, flag: bool) -> &mut Self {
+    pub fn set_verbose_header_footer(&mut self, flag: bool) -> &mut Self {
         self.verbose_header_footer = flag;
         self
     }
 
-    /// Hides timings when displaying statistics
+    /// Returns the hide_timings flag
+    pub fn get_hide_timings(&self) -> bool {
+        self.hide_timings
+    }
+
+    /// Sets the hide_timings flag
     ///
     /// Default value: false
     pub fn set_hide_timings(&mut self, flag: bool) -> &mut Self {
@@ -353,7 +412,12 @@ impl Config {
         self
     }
 
-    /// Indicates whether to record the iterations residuals or not (in statistics)
+    /// Returns the record_iterations_residuals flag
+    pub fn get_record_iterations_residuals(&self) -> bool {
+        self.record_iterations_residuals
+    }
+
+    /// Sets the record_iterations_residuals flag
     ///
     /// Default value: false
     pub fn set_record_iterations_residuals(&mut self, flag: bool) -> &mut Self {
@@ -361,7 +425,12 @@ impl Config {
         self
     }
 
-    /// Enables the precise stop using a component of the u vector (if any)
+    /// Returns the enable_precise_stop_u_comp flag
+    pub fn get_enable_precise_stop_u_comp(&self) -> bool {
+        self.enable_precise_stop_u_comp
+    }
+
+    /// Sets the enable_precise_stop_u_comp flag
     ///
     /// Default value: false
     pub fn set_enable_precise_stop_u_comp(&mut self, flag: bool) -> &mut Self {
@@ -370,6 +439,11 @@ impl Config {
     }
 
     // automatic stepsize -----------------------------------------------------------------
+
+    /// Returns the coefficient to multiply the stepsize if the iterations are failing
+    pub fn get_m_failure(&self) -> f64 {
+        self.m_failure
+    }
 
     /// Sets the coefficient to multiply the stepsize if the iterations are failing
     ///
@@ -383,16 +457,26 @@ impl Config {
         self
     }
 
+    /// Returns the max number of steps
+    pub fn get_n_step_max(&self) -> usize {
+        self.n_step_max
+    }
+
     /// Sets the max number of steps
     ///
     /// ```text
     /// n_step_max ≥ 1
     /// ```
     ///
-    /// Default value: 100000
+    /// Default value: 100_000
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
         self
+    }
+
+    /// Returns the maximum allowed number of continued iteration failures
+    pub fn get_n_cont_failure_max(&self) -> usize {
+        self.n_cont_failure_max
     }
 
     /// Sets the maximum allowed number of continued iteration failures
@@ -401,6 +485,11 @@ impl Config {
     pub fn set_n_cont_failure_max(&mut self, value: usize) -> &mut Self {
         self.n_cont_failure_max = value;
         self
+    }
+
+    /// Returns the maximum allowed number of continued rejections
+    pub fn get_n_cont_rejection_max(&self) -> usize {
+        self.n_cont_rejection_max
     }
 
     /// Sets the maximum allowed number of continued rejections (due to large curvatures, etc.)
@@ -413,6 +502,11 @@ impl Config {
 
     // linear solver ----------------------------------------------------------------------
 
+    /// Returns the linear solver kind
+    pub fn get_genie(&self) -> Genie {
+        self.genie
+    }
+
     /// Sets the linear solver kind
     ///
     /// Default value: Genie::Umfpack
@@ -421,12 +515,22 @@ impl Config {
         self
     }
 
+    /// Returns configurations for sparse linear solver
+    pub fn get_lin_sol_config(&self) -> &Option<LinSolParams> {
+        &self.lin_sol_config
+    }
+
     /// Sets configurations for sparse linear solver
     ///
     /// Default value: None
     pub fn set_lin_sol_config(&mut self, config: Option<LinSolParams>) -> &mut Self {
         self.lin_sol_config = config;
         self
+    }
+
+    /// Returns the option to write matrix after n step and stop
+    pub fn get_write_matrix_after_nstep_and_stop(&self) -> &Option<usize> {
+        &self.write_matrix_after_nstep_and_stop
     }
 
     /// Sets the option to write matrix after n step and stop
@@ -453,6 +557,11 @@ impl Config {
 
     // iterations -------------------------------------------------------------------------
 
+    /// Returns the absolute tolerance on ‖G,N‖∞
+    pub fn get_tol_abs_residual(&self) -> f64 {
+        self.tol_abs_residual
+    }
+
     /// Sets the absolute tolerance on ‖G,N‖∞
     ///
     /// ```text
@@ -462,8 +571,46 @@ impl Config {
     /// See [CONFIG_TOL_MIN]
     ///
     /// Default value: 1e-10
-    pub fn set_tol_residual(&mut self, tol_abs: f64) -> &mut Self {
+    pub fn set_tol_abs_residual(&mut self, tol_abs: f64) -> &mut Self {
         self.tol_abs_residual = tol_abs;
+        self
+    }
+
+    /// Returns the absolute tolerance on rms = Rel((δu,δλ))
+    pub fn get_tol_abs_delta(&self) -> f64 {
+        self.tol_abs_delta
+    }
+
+    /// Sets the absolute tolerance on rms = Rel((δu,δλ))
+    ///
+    /// ```text
+    /// value ≥ CONFIG_TOL_MIN
+    /// ```
+    ///
+    /// See [CONFIG_TOL_MIN]
+    ///
+    /// Default value: 1e-10
+    pub fn set_tol_abs_delta(&mut self, tol_abs: f64) -> &mut Self {
+        self.tol_abs_delta = tol_abs;
+        self
+    }
+
+    /// Returns the relative tolerance on rms = Rel((δu,δλ))
+    pub fn get_tol_rel_delta(&self) -> f64 {
+        self.tol_rel_delta
+    }
+
+    /// Sets the relative tolerance on rms = Rel((δu,δλ))
+    ///
+    /// ```text
+    /// value ≥ CONFIG_TOL_MIN
+    /// ```
+    ///
+    /// See [CONFIG_TOL_MIN]
+    ///
+    /// Default value: 1e-7
+    pub fn set_tol_rel_delta(&mut self, tol_rel: f64) -> &mut Self {
+        self.tol_rel_delta = tol_rel;
         self
     }
 
@@ -485,6 +632,11 @@ impl Config {
         self
     }
 
+    /// Returns the allowed ‖δu,δλ‖∞ max
+    pub fn get_delta_max_allowed(&self) -> f64 {
+        self.delta_max_allowed
+    }
+
     /// Sets the allowed ‖δu,δλ‖∞ max
     ///
     /// Default value: 1e8
@@ -493,12 +645,22 @@ impl Config {
         self
     }
 
+    /// Returns the disable_rel_delta_analysis flag
+    pub fn get_disable_rel_delta_analysis(&self) -> bool {
+        self.disable_rel_delta_analysis
+    }
+
     /// Disables the relative delta analysis
     ///
     /// Default value: false
     pub fn set_disable_rel_delta_analysis(&mut self, flag: bool) -> &mut Self {
         self.disable_rel_delta_analysis = flag;
         self
+    }
+
+    /// Returns the allowed number of iterations
+    pub fn get_n_iteration_max(&self) -> usize {
+        self.n_iteration_max
     }
 
     /// Sets the allowed number of iterations
@@ -513,12 +675,22 @@ impl Config {
         self
     }
 
+    /// Returns the maximum allowed number of continued divergence on ‖G,N‖∞
+    pub fn get_n_cont_residual_divergence_max(&self) -> usize {
+        self.n_cont_residual_divergence_max
+    }
+
     /// Sets the maximum allowed number of continued divergence on ‖G,N‖∞
     ///
     /// Default value: 3
     pub fn set_n_cont_residual_divergence_max(&mut self, value: usize) -> &mut Self {
         self.n_cont_residual_divergence_max = value;
         self
+    }
+
+    /// Returns the maximum allowed number of continued divergence on ‖δu,δλ‖∞
+    pub fn get_n_cont_delta_divergence_max(&self) -> usize {
+        self.n_cont_delta_divergence_max
     }
 
     /// Sets the maximum allowed number of continued divergence on ‖δu,δλ‖∞
@@ -531,6 +703,11 @@ impl Config {
 
     // natural parameter continuation only ------------------------------------------------
 
+    /// Returns the euler_predictor flag
+    pub fn get_euler_predictor(&self) -> bool {
+        self.euler_predictor
+    }
+
     /// Uses the Euler predictor in the Natural continuation method
     ///
     /// Default value: true
@@ -540,6 +717,11 @@ impl Config {
     }
 
     // pseudo-arclength -------------------------------------------------------------------
+
+    /// Returns the bordering flag
+    pub fn get_bordering(&self) -> bool {
+        self.bordering
+    }
 
     /// Sets the bordering flag
     ///
@@ -551,12 +733,22 @@ impl Config {
         self
     }
 
+    /// Returns the debug_predictor flag
+    pub fn get_debug_predictor(&self) -> bool {
+        self.debug_predictor
+    }
+
     /// Records the predictor values for debugging
     ///
     /// Default value: false
     pub fn set_debug_predictor(&mut self, flag: bool) -> &mut Self {
         self.debug_predictor = flag;
         self
+    }
+
+    /// Returns the Newton-Raphson stepsize control flag
+    pub fn get_nr_control_enabled(&self) -> bool {
+        self.nr_control_enabled
     }
 
     /// Sets the Newton-Raphson stepsize control flag
@@ -569,6 +761,11 @@ impl Config {
         self
     }
 
+    /// Returns the tangent vector stepsize control flag
+    pub fn get_tg_control_enabled(&self) -> bool {
+        self.tg_control_enabled
+    }
+
     /// Sets the tangent vector stepsize control flag
     ///
     /// Enables or disables the tangent vector stepsize control
@@ -577,6 +774,11 @@ impl Config {
     pub fn set_tg_control_enabled(&mut self, flag: bool) -> &mut Self {
         self.tg_control_enabled = flag;
         self
+    }
+
+    /// Returns the PID VCC flag for tangent vector stepsize control
+    pub fn get_tg_control_pid_vcc(&self) -> bool {
+        self.tg_control_pid_vcc
     }
 
     /// Sets the use of the PID coefficients from Valli-Carey-Coutinho (VCC) for the tangent vector stepsize control
@@ -608,20 +810,35 @@ impl Config {
         self
     }
 
+    /// Returns the "tiny" absolute value of the relative difference in the tangent vector stepsize control
+    pub fn get_tg_control_rdiff_min(&self) -> f64 {
+        self.tg_control_rdiff_min
+    }
+
     /// Sets the "tiny" absolute value of the relative difference in the tangent vector stepsize control
     ///
     /// Default value: 1e-6
-    pub fn set_tg_control_rerr_tiny(&mut self, value: f64) -> &mut Self {
+    pub fn set_tg_control_rdiff_min(&mut self, value: f64) -> &mut Self {
         self.tg_control_rdiff_min = value;
         self
+    }
+
+    /// Returns the rho multiplier for when the absolute value of the relative difference is "tiny" in the tangent vector stepsize control
+    pub fn get_tg_control_rho_for_tiny_rdiff(&self) -> f64 {
+        self.tg_control_rho_for_tiny_rdiff
     }
 
     /// Sets the rho multiplier for when the absolute value of the relative difference is "tiny" in the tangent vector stepsize control
     ///
     /// Default value: 1.2
-    pub fn set_tg_control_rho_for_tiny_rerr(&mut self, value: f64) -> &mut Self {
+    pub fn set_tg_control_rho_for_tiny_rdiff(&mut self, value: f64) -> &mut Self {
         self.tg_control_rho_for_tiny_rdiff = value;
         self
+    }
+
+    /// Returns the optimal number of iterations for stepsize control using Newton-Raphson statistics
+    pub fn get_nr_control_n_opt(&self) -> usize {
+        self.nr_control_n_opt
     }
 
     /// Sets the optimal number of iterations for stepsize control using Newton-Raphson statistics
@@ -632,12 +849,22 @@ impl Config {
         self
     }
 
+    /// Returns the beta coefficient used with the NR stepsize control
+    pub fn get_nr_control_beta(&self) -> f64 {
+        self.nr_control_beta
+    }
+
     /// Sets the beta coefficient used with the NR stepsize control
     ///
     /// Default value: 0.5
     pub fn set_nr_control_beta(&mut self, value: f64) -> &mut Self {
         self.nr_control_beta = value;
         self
+    }
+
+    /// Returns the method for the tangent vector stepsize control
+    pub fn get_tg_control_rdiff_type(&self) -> RdiffType {
+        self.tg_control_rdiff_type
     }
 
     /// Sets the method for the tangent vector stepsize control
@@ -648,12 +875,22 @@ impl Config {
         self
     }
 
+    /// Returns the tolerance for the tangent vector stepsize control
+    pub fn get_tg_control_tol(&self) -> f64 {
+        self.tg_control_tol
+    }
+
     /// Sets the tolerance for the tangent vector stepsize control
     ///
     /// Default value: 0.5
     pub fn set_tg_control_tol(&mut self, value: f64) -> &mut Self {
         self.tg_control_tol = value;
         self
+    }
+
+    /// Returns the first exponent for the tangent vector stepsize control
+    pub fn get_tg_control_beta1(&self) -> f64 {
+        self.tg_control_beta1
     }
 
     /// Sets the first exponent for the tangent vector stepsize control
@@ -673,6 +910,11 @@ impl Config {
         self
     }
 
+    /// Returns the second exponent for the tangent vector stepsize control
+    pub fn get_tg_control_beta2(&self) -> f64 {
+        self.tg_control_beta2
+    }
+
     /// Sets the second exponent for the tangent vector stepsize control
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
@@ -688,6 +930,11 @@ impl Config {
     pub fn set_tg_control_beta2(&mut self, value: f64) -> &mut Self {
         self.tg_control_beta2 = value;
         self
+    }
+
+    /// Returns the third exponent for the tangent vector stepsize control
+    pub fn get_tg_control_beta3(&self) -> f64 {
+        self.tg_control_beta3
     }
 
     /// Sets the third exponent for the tangent vector stepsize control
@@ -707,6 +954,11 @@ impl Config {
         self
     }
 
+    /// Returns the fourth exponent for the tangent vector stepsize control
+    pub fn get_tg_control_alpha2(&self) -> f64 {
+        self.tg_control_alpha2
+    }
+
     /// Sets the fourth exponent for the tangent vector stepsize control
     ///
     /// See Equation (18) on page 7 of Soderlind (2003)
@@ -722,6 +974,11 @@ impl Config {
     pub fn set_tg_control_alpha2(&mut self, value: f64) -> &mut Self {
         self.tg_control_alpha2 = value;
         self
+    }
+
+    /// Returns the fifth exponent for the tangent vector stepsize control
+    pub fn get_tg_control_alpha3(&self) -> f64 {
+        self.tg_control_alpha3
     }
 
     /// Sets the fifth exponent for the tangent vector stepsize control
@@ -818,7 +1075,8 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::Config;
-    use crate::Method;
+    use crate::{Method, RdiffType, SoderlindClass};
+    use russell_sparse::{Genie, LinSolParams};
 
     #[test]
     fn derive_methods_work() {
@@ -829,12 +1087,316 @@ mod tests {
     }
 
     #[test]
+    fn config_defaults_are_correct() {
+        let (b1, b2, b3, a2, a3) = SoderlindClass::H211PI.params();
+        let config = Config::new();
+
+        // basic options
+        assert_eq!(config.get_method(), Method::Natural);
+        assert_eq!(config.get_log_file(), None);
+        assert_eq!(config.get_verbose(), false);
+        assert_eq!(config.get_verbose_iterations(), false);
+        assert_eq!(config.get_verbose_legend(), false);
+        assert_eq!(config.get_verbose_header_footer(), true);
+        assert_eq!(config.get_verbose_stats(), false);
+        assert_eq!(config.get_hide_timings(), false);
+        assert_eq!(config.get_record_iterations_residuals(), false);
+        assert_eq!(config.get_enable_precise_stop_u_comp(), false);
+
+        // automatic stepsize
+        assert_eq!(config.get_m_failure(), 0.5);
+        assert_eq!(config.get_n_step_max(), 100_000);
+        assert_eq!(config.get_n_cont_failure_max(), 5);
+        assert_eq!(config.get_n_cont_rejection_max(), 5);
+
+        // linear solver
+        assert_eq!(config.get_genie(), Genie::Umfpack);
+        assert_eq!(config.get_lin_sol_config().is_none(), true);
+        assert_eq!(config.get_write_matrix_after_nstep_and_stop().is_none(), true);
+
+        // iterations
+        assert_eq!(config.get_tol_abs_residual(), 1e-10);
+        assert_eq!(config.get_tol_abs_delta(), 1e-10);
+        assert_eq!(config.get_tol_rel_delta(), 1e-7);
+        assert_eq!(config.get_delta_max_allowed(), 1e8);
+        assert_eq!(config.get_disable_rel_delta_analysis(), false);
+        assert_eq!(config.get_n_iteration_max(), 20);
+        assert_eq!(config.get_n_cont_residual_divergence_max(), 3);
+        assert_eq!(config.get_n_cont_delta_divergence_max(), 5);
+
+        // natural continuation
+        assert_eq!(config.get_euler_predictor(), true);
+
+        // pseudo-arclength
+        assert_eq!(config.get_bordering(), true);
+        assert_eq!(config.get_debug_predictor(), false);
+
+        // stepsize control
+        assert_eq!(config.get_nr_control_enabled(), false);
+        assert_eq!(config.get_tg_control_enabled(), true);
+        assert_eq!(config.get_tg_control_pid_vcc(), true);
+        assert_eq!(config.get_tg_control_rdiff_min(), 1e-6);
+        assert_eq!(config.get_tg_control_rho_for_tiny_rdiff(), 1.2);
+        assert_eq!(config.get_nr_control_n_opt(), 3);
+        assert_eq!(config.get_nr_control_beta(), 0.5);
+        assert_eq!(config.get_tg_control_rdiff_type(), RdiffType::Ave);
+        assert_eq!(config.get_tg_control_tol(), 0.5);
+        assert_eq!(config.get_tg_control_beta1(), b1);
+        assert_eq!(config.get_tg_control_beta2(), b2);
+        assert_eq!(config.get_tg_control_beta3(), b3);
+        assert_eq!(config.get_tg_control_alpha2(), a2);
+        assert_eq!(config.get_tg_control_alpha3(), a3);
+    }
+
+    #[test]
+    fn config_getters_and_setters_work() {
+        let mut config = Config::new();
+
+        // basic options
+        config.set_method(Method::Arclength);
+        assert_eq!(config.get_method(), Method::Arclength);
+
+        config.set_log_file("/tmp/test.log");
+        assert_eq!(config.get_log_file(), Some("/tmp/test.log"));
+
+        config.set_verbose_only(false);
+        assert_eq!(config.get_verbose(), false);
+        config.set_verbose_only(true);
+        assert_eq!(config.get_verbose(), true);
+
+        config.set_verbose_iterations(true);
+        assert_eq!(config.get_verbose_iterations(), true);
+        config.set_verbose_iterations(false);
+        assert_eq!(config.get_verbose_iterations(), false);
+
+        config.set_verbose_legend(true);
+        assert_eq!(config.get_verbose_legend(), true);
+        config.set_verbose_legend(false);
+        assert_eq!(config.get_verbose_legend(), false);
+
+        config.set_verbose_header_footer(false);
+        assert_eq!(config.get_verbose_header_footer(), false);
+        config.set_verbose_header_footer(true);
+        assert_eq!(config.get_verbose_header_footer(), true);
+
+        config.set_verbose_stats(true);
+        assert_eq!(config.get_verbose_stats(), true);
+        config.set_verbose_stats(false);
+        assert_eq!(config.get_verbose_stats(), false);
+
+        config.set_hide_timings(true);
+        assert_eq!(config.get_hide_timings(), true);
+        config.set_hide_timings(false);
+        assert_eq!(config.get_hide_timings(), false);
+
+        config.set_record_iterations_residuals(true);
+        assert_eq!(config.get_record_iterations_residuals(), true);
+        config.set_record_iterations_residuals(false);
+        assert_eq!(config.get_record_iterations_residuals(), false);
+
+        config.set_enable_precise_stop_u_comp(true);
+        assert_eq!(config.get_enable_precise_stop_u_comp(), true);
+        config.set_enable_precise_stop_u_comp(false);
+        assert_eq!(config.get_enable_precise_stop_u_comp(), false);
+
+        // automatic stepsize
+        config.set_m_failure(0.25);
+        assert_eq!(config.get_m_failure(), 0.25);
+
+        config.set_n_step_max(500);
+        assert_eq!(config.get_n_step_max(), 500);
+
+        config.set_n_cont_failure_max(10);
+        assert_eq!(config.get_n_cont_failure_max(), 10);
+
+        config.set_n_cont_rejection_max(10);
+        assert_eq!(config.get_n_cont_rejection_max(), 10);
+
+        // linear solver
+        config.set_genie(Genie::Mumps);
+        assert_eq!(config.get_genie(), Genie::Mumps);
+
+        let params = LinSolParams::new();
+        config.set_lin_sol_config(Some(params));
+        assert!(config.get_lin_sol_config().is_some());
+        config.set_lin_sol_config(None);
+        assert!(config.get_lin_sol_config().is_none());
+
+        config.set_write_matrix_after_nstep_and_stop(42);
+        assert_eq!(config.get_write_matrix_after_nstep_and_stop(), &Some(42));
+
+        // iterations
+        config.set_tol_abs_residual(1e-8);
+        assert_eq!(config.get_tol_abs_residual(), 1e-8);
+
+        config.set_tol_abs_delta(1e-8);
+        assert_eq!(config.get_tol_abs_delta(), 1e-8);
+
+        config.set_tol_rel_delta(1e-5);
+        assert_eq!(config.get_tol_rel_delta(), 1e-5);
+
+        config.set_delta_max_allowed(1e6);
+        assert_eq!(config.get_delta_max_allowed(), 1e6);
+
+        config.set_disable_rel_delta_analysis(true);
+        assert_eq!(config.get_disable_rel_delta_analysis(), true);
+        config.set_disable_rel_delta_analysis(false);
+        assert_eq!(config.get_disable_rel_delta_analysis(), false);
+
+        config.set_n_iteration_max(50);
+        assert_eq!(config.get_n_iteration_max(), 50);
+
+        config.set_n_cont_residual_divergence_max(5);
+        assert_eq!(config.get_n_cont_residual_divergence_max(), 5);
+
+        config.set_n_cont_delta_divergence_max(10);
+        assert_eq!(config.get_n_cont_delta_divergence_max(), 10);
+
+        // natural continuation
+        config.set_euler_predictor(false);
+        assert_eq!(config.get_euler_predictor(), false);
+        config.set_euler_predictor(true);
+        assert_eq!(config.get_euler_predictor(), true);
+
+        // pseudo-arclength
+        config.set_bordering(false);
+        assert_eq!(config.get_bordering(), false);
+        config.set_bordering(true);
+        assert_eq!(config.get_bordering(), true);
+
+        config.set_debug_predictor(true);
+        assert_eq!(config.get_debug_predictor(), true);
+        config.set_debug_predictor(false);
+        assert_eq!(config.get_debug_predictor(), false);
+
+        // stepsize control
+        config.set_nr_control_enabled(true);
+        assert_eq!(config.get_nr_control_enabled(), true);
+        config.set_nr_control_enabled(false);
+        assert_eq!(config.get_nr_control_enabled(), false);
+
+        config.set_tg_control_enabled(false);
+        assert_eq!(config.get_tg_control_enabled(), false);
+        config.set_tg_control_enabled(true);
+        assert_eq!(config.get_tg_control_enabled(), true);
+
+        config.set_tg_control_pid_vcc(false);
+        assert_eq!(config.get_tg_control_pid_vcc(), false);
+        config.set_tg_control_pid_vcc(true);
+        assert_eq!(config.get_tg_control_pid_vcc(), true);
+
+        config.set_tg_control_rdiff_min(1e-4);
+        assert_eq!(config.get_tg_control_rdiff_min(), 1e-4);
+
+        config.set_tg_control_rho_for_tiny_rdiff(1.5);
+        assert_eq!(config.get_tg_control_rho_for_tiny_rdiff(), 1.5);
+
+        config.set_nr_control_n_opt(10);
+        assert_eq!(config.get_nr_control_n_opt(), 10);
+
+        config.set_nr_control_beta(0.75);
+        assert_eq!(config.get_nr_control_beta(), 0.75);
+
+        config.set_tg_control_rdiff_type(RdiffType::Max);
+        assert_eq!(config.get_tg_control_rdiff_type(), RdiffType::Max);
+
+        config.set_tg_control_tol(0.25);
+        assert_eq!(config.get_tg_control_tol(), 0.25);
+
+        config.set_tg_control_beta1(0.1);
+        assert_eq!(config.get_tg_control_beta1(), 0.1);
+
+        config.set_tg_control_beta2(0.2);
+        assert_eq!(config.get_tg_control_beta2(), 0.2);
+
+        config.set_tg_control_beta3(0.3);
+        assert_eq!(config.get_tg_control_beta3(), 0.3);
+
+        config.set_tg_control_alpha2(0.4);
+        assert_eq!(config.get_tg_control_alpha2(), 0.4);
+
+        config.set_tg_control_alpha3(0.5);
+        assert_eq!(config.get_tg_control_alpha3(), 0.5);
+    }
+
+    #[test]
+    fn compound_setters_work() {
+        let mut config = Config::new();
+
+        // set_verbose sets all three verbose fields
+        config.set_verbose(true, true, true);
+        assert_eq!(config.get_verbose(), true);
+        assert_eq!(config.get_verbose_iterations(), true);
+        assert_eq!(config.get_verbose_stats(), true);
+
+        config.set_verbose(false, false, false);
+        assert_eq!(config.get_verbose(), false);
+        assert_eq!(config.get_verbose_iterations(), false);
+        assert_eq!(config.get_verbose_stats(), false);
+
+        // set_tol_delta sets both delta tolerance fields
+        config.set_tol_delta(1e-8, 1e-6);
+        assert_eq!(config.get_tol_abs_delta(), 1e-8);
+        assert_eq!(config.get_tol_rel_delta(), 1e-6);
+    }
+
+    #[test]
+    fn setter_builder_pattern_works() {
+        let mut config = Config::new();
+        config
+            .set_method(Method::Arclength)
+            .set_m_failure(0.25)
+            .set_n_step_max(2000)
+            .set_tol_abs_residual(1e-11)
+            .set_tg_control_beta1(0.5)
+            .set_tg_control_tol(0.3);
+
+        assert_eq!(config.get_method(), Method::Arclength);
+        assert_eq!(config.get_m_failure(), 0.25);
+        assert_eq!(config.get_n_step_max(), 2000);
+        assert_eq!(config.get_tol_abs_residual(), 1e-11);
+        assert_eq!(config.get_tg_control_beta1(), 0.5);
+        assert_eq!(config.get_tg_control_tol(), 0.3);
+    }
+
+    #[test]
+    fn set_tg_control_soderlind_works() {
+        let mut config = Config::new();
+
+        config.set_tg_control_soderlind(SoderlindClass::Ho312);
+        let (b1, b2, b3, a2, a3) = SoderlindClass::Ho312.params();
+        assert_eq!(config.get_tg_control_beta1(), b1);
+        assert_eq!(config.get_tg_control_beta2(), b2);
+        assert_eq!(config.get_tg_control_beta3(), b3);
+        assert_eq!(config.get_tg_control_alpha2(), a2);
+        assert_eq!(config.get_tg_control_alpha3(), a3);
+    }
+
+    #[test]
+    fn get_continuation_works() {
+        let mut config = Config::new();
+
+        config.set_method(Method::Natural);
+        assert_eq!(config.get_continuation(), "Natural");
+
+        config.set_method(Method::Arclength);
+        config.set_bordering(true);
+        assert_eq!(config.get_continuation(), "Arclength(bord)");
+
+        config.set_bordering(false);
+        assert_eq!(config.get_continuation(), "Arclength(full)");
+    }
+
+    #[test]
     fn config_validate_works() {
         let mut config = Config::new();
         config.set_method(Method::Arclength);
 
         // automatic stepsize
 
+        config.m_failure = 0.0005;
+        assert_eq!(config.validate().err(), Some("requirement: m_failure ≥ 0.001"));
+        config.m_failure = 0.5;
         config.n_step_max = 0;
         assert_eq!(config.validate().err(), Some("requirement: n_step_max ≥ 1"));
         config.n_step_max = 10;

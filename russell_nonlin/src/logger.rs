@@ -49,7 +49,7 @@ impl Logger {
         }
     }
 
-    /// Prints the header before time stepping and convergence statistics
+    /// Prints the header before time stepping (column headers and optional legend)
     pub fn header(&mut self) {
         if !self.enabled {
             return;
@@ -93,11 +93,10 @@ impl Logger {
             return;
         }
 
+        let str_l = format_scientific(l, 10, 3);
         let output = if last {
-            let str_l = format_scientific(l, 10, 3);
-            format!("{}", str_l)
+            str_l
         } else {
-            let str_l = format_scientific(l, 10, 3);
             let str_h = format_scientific(h, 10, 3);
             format!("{} {}", str_l, str_h)
         };
@@ -170,16 +169,16 @@ impl Logger {
         }
     }
 
-    /// Prints statistics and eventual errors
+    /// Prints statistics and failure information, and writes the log file if configured
     pub fn footer(&mut self, stats: &Stats, status: &Status) -> Result<(), StrError> {
         if !self.enabled {
             return Ok(());
         }
 
-        let footer_line = format!("{}\n", "─".repeat(NCHAR));
+        let footer_line = "─".repeat(NCHAR);
         let mut output = String::new();
 
-        writeln!(&mut output, "{}", footer_line.trim_end()).unwrap();
+        writeln!(&mut output, "{}", footer_line).unwrap();
         if self.with_statistics {
             writeln!(&mut output, "\n{}", stats).unwrap();
         }
@@ -209,18 +208,6 @@ impl Logger {
         }
 
         Ok(())
-    }
-
-    /// Logs extra text (for debugging purposes)
-    pub(crate) fn _extra(&mut self, text: &str) {
-        if !self.enabled {
-            return;
-        }
-        if self.full_path.is_none() {
-            println!("{}", text);
-        } else {
-            writeln!(&mut self.buffer, "{}", text).unwrap();
-        }
     }
 
     /// Returns the icon
@@ -402,5 +389,189 @@ Total time                       = 0ns
 
 "#;
         assert_eq!(&contents, &expected[1..]);
+    }
+
+    #[test]
+    fn header_disabled_is_noop() {
+        let config = Config::new();
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // buffer should be empty since enabled=false
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_without_legend_natural() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should NOT contain legend
+        assert!(!contents.contains("Legend"));
+        assert!(!contents.contains("Converged"));
+        // should contain Natural column headers
+        assert!(contents.contains("‖G‖∞"));
+        assert!(contents.contains("‖δu‖∞"));
+        assert!(contents.contains("Rel(δu)"));
+        // should NOT contain Arclength column headers
+        assert!(!contents.contains("‖(G,N)‖∞"));
+        assert!(!contents.contains("‖(δu,δλ)‖∞"));
+        assert!(!contents.contains("Rel((δu,δλ))"));
+    }
+
+    #[test]
+    fn header_without_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should NOT contain legend
+        assert!(!contents.contains("Legend"));
+        // should contain Arclength column headers
+        assert!(contents.contains("‖(G,N)‖∞"));
+        assert!(contents.contains("‖(δu,δλ)‖∞"));
+        assert!(contents.contains("Rel((δu,δλ))"));
+        // should NOT contain Natural column headers
+        assert!(!contents.contains("‖G‖∞"));
+        assert!(!contents.contains("‖δu‖∞  "));
+    }
+
+    #[test]
+    fn header_with_legend_natural() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should contain legend text
+        assert!(contents.contains("Legend:"));
+        assert!(contents.contains("✅  Converged"));
+        assert!(contents.contains("🎈  Diverging"));
+        assert!(contents.contains("🔹  Not converged"));
+        // should contain Natural column headers
+        assert!(contents.contains("‖G‖∞"));
+        assert!(contents.contains("‖δu‖∞"));
+        assert!(contents.contains("Rel(δu)"));
+    }
+
+    #[test]
+    fn header_with_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should contain legend text
+        assert!(contents.contains("Legend:"));
+        assert!(contents.contains("✅  Converged"));
+        // should contain Arclength column headers
+        assert!(contents.contains("‖(G,N)‖∞"));
+        assert!(contents.contains("‖(δu,δλ)‖∞"));
+        assert!(contents.contains("Rel((δu,δλ))"));
+    }
+
+    #[test]
+    fn header_enabled_via_verbose() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/header_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.header();
+        let contents = &logger.buffer;
+        // should contain column headers
+        assert!(contents.contains("λ"));
+        assert!(contents.contains("Δλ"));
+        // should NOT contain legend (with_legend is false)
+        assert!(!contents.contains("Legend"));
+        // should have horizontal line (68 dashes)
+        let dashes = "─".repeat(68);
+        assert!(contents.contains(&dashes));
+    }
+
+    #[test]
+    fn header_stdout_disabled_is_noop() {
+        // verbose=false, no log file => enabled=false => no-op
+        let config = Config::new();
+        let mut logger = Logger::new(&config);
+        logger.header();
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_without_legend_natural() {
+        let mut config = Config::new();
+        config.set_verbose_only(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_without_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_verbose_only(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_with_legend_natural() {
+        let mut config = Config::new();
+        config.set_verbose_only(true);
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn header_stdout_with_legend_arclength() {
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_verbose_only(true);
+        config.set_verbose_legend(true);
+        let mut logger = Logger::new(&config);
+        logger.header();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn did_not_converge_disabled_is_noop() {
+        let config = Config::new();
+        let mut logger = Logger::new(&config);
+        logger.did_not_converge();
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn did_not_converge_to_buffer() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/dnc_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.did_not_converge();
+        let contents = &logger.buffer;
+        let expected = format!("{:^68}", "(rejected: did not converge)");
+        assert!(contents.contains(&expected));
+    }
+
+    #[test]
+    fn did_not_converge_to_stdout() {
+        let mut config = Config::new();
+        config.set_verbose_only(true);
+        let mut logger = Logger::new(&config);
+        logger.did_not_converge();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
     }
 }

@@ -1,7 +1,7 @@
 use super::{Config, IterationError, Logger, Method, Stats, System};
 use russell_lab::Vector;
 
-/// Holds workspace data shared among the ODE solver and actual implementations
+/// Holds workspace data shared among the nonlinear solver and its method-specific implementations
 pub(crate) struct Workspace {
     // control variables and structures ------------------------------------------
     //

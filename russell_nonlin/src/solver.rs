@@ -3,7 +3,7 @@ use super::{Config, DeltaLambda, IniDir, Method, SolverTrait, Stop, System};
 use crate::StrError;
 use russell_lab::{Vector, vec_all_finite};
 
-/// Default number of steps
+/// Default number of equal steps for generating evenly spaced solution points
 pub const N_EQUAL_STEPS: usize = 10;
 
 /// Solver for parameterized nonlinear systems using Numerical Continuation
@@ -421,7 +421,7 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{Config, DeltaLambda, IniDir, Samples, Status, Stop};
+    use crate::{Config, DeltaLambda, IniDir, Method, Samples, Status, Stop};
     use russell_lab::{Vector, vec_approx_eq};
 
     #[test]
@@ -569,5 +569,118 @@ mod tests {
         assert_eq!(stats.n_accepted, 1);
         assert_eq!(stats.n_rejected, 0);
         assert_eq!(stats.n_iteration_total, 7);
+    }
+
+    #[test]
+    fn debug_predictor_values_disabled_returns_empty() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let mut config = Config::new();
+        config.set_debug_predictor(false);
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(3),
+                &DeltaLambda::auto(1e-4),
+                None,
+            )
+            .unwrap();
+        let (l_pred, u0_pred, u1_pred) = solver.get_debug_predictor_values();
+        assert!(l_pred.is_empty());
+        assert!(u0_pred.is_empty());
+        assert!(u1_pred.is_empty());
+    }
+
+    #[test]
+    fn debug_predictor_values_enabled_populates_data() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let mut config = Config::new();
+        config.set_debug_predictor(true);
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(5),
+                &DeltaLambda::auto(1e-4),
+                None,
+            )
+            .unwrap();
+        let (l_pred, u0_pred, u1_pred) = solver.get_debug_predictor_values();
+        // With 5 steps and debug enabled, we should have at least 5 predictor entries
+        assert!(l_pred.len() >= 5);
+        assert!(u0_pred.len() >= 5);
+        assert!(u1_pred.len() >= 5);
+        // All values should be finite
+        for &v in &l_pred {
+            assert!(v.is_finite());
+        }
+        for &v in &u0_pred {
+            assert!(v.is_finite());
+        }
+        for &v in &u1_pred {
+            assert!(v.is_finite());
+        }
+    }
+
+    #[test]
+    fn log_header_and_footer_disabled_do_not_panic() {
+        let (system, _, _, _) = Samples::two_eq_ref();
+        let mut config = Config::new();
+        config.set_verbose_header_footer(false);
+        let mut solver = Solver::new(&config, system).unwrap();
+        solver.log_header();
+        solver.log_footer();
+    }
+
+    #[test]
+    fn log_header_and_footer_to_file_work() {
+        let (system, _, _, _) = Samples::two_eq_ref();
+        let full_path = "/tmp/russell_nonlin/test_log_header_footer.txt";
+        let _ = std::fs::remove_file(full_path);
+
+        let mut config = Config::new();
+        config.set_log_file(full_path);
+        config.set_verbose_header_footer(true);
+        config.set_verbose_stats(true);
+
+        let mut solver = Solver::new(&config, system).unwrap();
+        solver.log_header();
+        solver.log_footer();
+
+        let contents = std::fs::read_to_string(full_path).unwrap();
+        assert!(contents.contains("λ"));
+        assert!(contents.contains("Δλ"));
+        assert!(contents.contains("‖G‖∞"));
+        assert!(contents.contains("Natural parameter continuation"));
+        assert!(contents.contains("Number of function evaluations"));
+    }
+
+    #[test]
+    fn log_header_and_footer_arclength_to_file_work() {
+        let (system, _, _, _) = Samples::two_eq_ref();
+        let full_path = "/tmp/russell_nonlin/test_log_header_footer_arc.txt";
+        let _ = std::fs::remove_file(full_path);
+
+        let mut config = Config::new();
+        config.set_method(Method::Arclength);
+        config.set_log_file(full_path);
+        config.set_verbose_header_footer(true);
+        config.set_verbose_stats(true);
+
+        let mut solver = Solver::new(&config, system).unwrap();
+        solver.log_header();
+        solver.log_footer();
+
+        let contents = std::fs::read_to_string(full_path).unwrap();
+        assert!(contents.contains("‖(G,N)‖∞"));
+        assert!(contents.contains("Pseudo-arclength continuation"));
     }
 }

@@ -1,10 +1,14 @@
 use super::{StatsLinSolMUMPS, VerifyLinSys};
-use crate::StrError;
-use russell_lab::{format_nanoseconds, get_num_threads, using_intel_mkl};
+use crate::{NumCooMatrix, StrError};
+use num_traits::{Num, NumCast};
+use russell_lab::{Complex64, format_nanoseconds, get_num_threads, using_intel_mkl};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::any::TypeId;
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::BufReader;
+use std::ops::{AddAssign, MulAssign};
 use std::path::Path;
 
 /// Holds the main information such as platform
@@ -24,6 +28,7 @@ pub struct StatsLinSolMatrix {
     pub nrow: usize,
     pub ncol: usize,
     pub nnz: usize,
+    pub nnz_actual: usize, // corresponds to Pattern Entries reported by [SuiteSparse Matrix Collection](https://sparse.tamu.edu)
     pub complex: bool,
     pub symmetric: String,
 }
@@ -128,6 +133,7 @@ impl StatsLinSol {
                 nrow: 0,
                 ncol: 0,
                 nnz: 0,
+                nnz_actual: 0,
                 complex: false,
                 symmetric: unknown.clone(),
             },
@@ -206,6 +212,20 @@ impl StatsLinSol {
             },
             None => "Unknown".to_string(),
         };
+    }
+
+    /// Sets the matrix info from a reference to a COO matrix
+    pub fn set_matrix_info_from_coo<T>(&mut self, coo: &NumCooMatrix<T>)
+    where
+        T: AddAssign + MulAssign + Num + NumCast + Copy + DeserializeOwned + Serialize + 'static,
+    {
+        let (nrow, ncol, nnz, sym) = coo.get_info();
+        self.matrix.nrow = nrow;
+        self.matrix.ncol = ncol;
+        self.matrix.nnz = nnz;
+        self.matrix.nnz_actual = coo.get_actual_nnz();
+        self.matrix.complex = TypeId::of::<T>() == TypeId::of::<Complex64>();
+        self.matrix.symmetric = format!("{:?}", sym);
     }
 
     /// Gets a JSON representation of the stats structure
@@ -320,6 +340,7 @@ pub fn is_memory_error(e: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::StatsLinSol;
+    use crate::{MMsym, read_matrix_market};
 
     #[test]
     fn derive_works() {
@@ -351,6 +372,23 @@ mod tests {
 
         stats.set_matrix_name_from_path("🐶🐶🐶.stats");
         assert_eq!(stats.matrix.name, "🐶🐶🐶");
+    }
+
+    #[test]
+    fn set_matrix_info_from_coo_works() {
+        let (_, coo) = read_matrix_market(
+            "./data/matrix_market/ok_complex_symmetric_small.mtx",
+            MMsym::LeaveAsLower,
+        )
+        .unwrap();
+        let mut stats = StatsLinSol::new();
+        stats.set_matrix_info_from_coo(coo.as_ref().unwrap());
+        assert_eq!(stats.matrix.nrow, 5);
+        assert_eq!(stats.matrix.ncol, 5);
+        assert_eq!(stats.matrix.nnz, 7);
+        assert_eq!(stats.matrix.nnz_actual, 11);
+        assert_eq!(stats.matrix.complex, true);
+        assert_eq!(stats.matrix.symmetric, "YesLower");
     }
 
     const ONE_SEC: u128 = 1000000000;

@@ -139,13 +139,9 @@ fn main() -> Result<(), StrError> {
         }
 
         // save information about the matrix
-        let (nrow, ncol, nnz, sym) = coo.get_info();
+        let (nrow, _, _, sym) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
-        stats.matrix.nrow = nrow;
-        stats.matrix.ncol = ncol;
-        stats.matrix.nnz = nnz;
-        stats.matrix.complex = false;
-        stats.matrix.symmetric = format!("{:?}", sym);
+        stats.set_matrix_info_from_coo(&coo);
 
         // set cuDSS matching algorithm
         if genie == Genie::Cudss {
@@ -223,13 +219,9 @@ fn main() -> Result<(), StrError> {
         }
 
         // save information about the matrix
-        let (nrow, ncol, nnz, sym) = coo.get_info();
+        let (nrow, _, _, sym) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
-        stats.matrix.nrow = nrow;
-        stats.matrix.ncol = ncol;
-        stats.matrix.nnz = nnz;
-        stats.matrix.complex = true;
-        stats.matrix.symmetric = format!("{:?}", sym);
+        stats.set_matrix_info_from_coo(&coo);
 
         // set cuDSS matching algorithm
         if genie == Genie::Cudss {

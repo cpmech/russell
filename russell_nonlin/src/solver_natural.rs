@@ -4,7 +4,14 @@ use crate::{CONFIG_H_MIN, StrError};
 use russell_lab::{Vector, vec_add, vec_copy, vec_update};
 use russell_sparse::{CooMatrix, CscMatrix, LinSolver};
 
-/// Implements the natural parameter continuation method to solve G(u, λ) = 0
+/// Implements the natural parameter continuation method
+///
+/// Solves `G(u, λ) = 0` by treating λ as a fixed parameter and using Newton-Raphson
+/// to converge on u at each step. After convergence, λ is advanced by Δλ and the
+/// process repeats until a stop criterion is met.
+///
+/// This is the simplest continuation method and works well for problems without
+/// turning points (folds). For problems with folds, use [`SolverArclength`] instead.
 pub struct SolverNatural<'a, A> {
     /// Configuration options
     config: &'a Config,

@@ -4,7 +4,7 @@ use crate::{CONFIG_H_MIN, Stop, StrError};
 ///
 /// Three strategies are available:
 ///
-/// * [`DeltaLambda::auto`] — automatic step-size control driven by Newton-Raphson
+/// * [`DeltaLambda::auto`] — automatic stepsize control driven by Newton-Raphson
 ///   iteration statistics and/or the tangent vector angle. The solver selects and
 ///   adjusts Δλ adaptively to maintain a target convergence rate.
 /// * [`DeltaLambda::constant`] — a fixed Δλ applied at every step. Useful for

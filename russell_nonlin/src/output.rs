@@ -75,7 +75,7 @@ impl<'a, A> Output<'a, A> {
     ///
     /// The function may return `true` to stop the computations
     ///
-    /// # Input
+    /// # Arguments
     ///
     /// * `callback` -- function to be executed on an accepted step
     pub fn set_callback(
@@ -106,7 +106,9 @@ impl<'a, A> Output<'a, A> {
         self
     }
 
-    /// Enables the recording of the norm of u
+    /// Enables/disables recording and configures the norm-of-u tracking
+    ///
+    /// Sets the recording flag and configures which norm to compute from a slice of u.
     ///
     /// Uses the following slice of u to compute the norm:
     ///
@@ -117,6 +119,13 @@ impl<'a, A> Output<'a, A> {
     /// Note that `stop` is exclusive, i.e., the slice goes up to `stop - 1`.
     ///
     /// Requirements: `start` must be < `stop` and `stop` must be ≤ `u.dim()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `recording` -- enables (`true`) or disables (`false`) all result recording
+    /// * `norm_type` -- the norm type to use (e.g. [`Norm::Euc`])
+    /// * `start` -- start index of the slice (inclusive)
+    /// * `stop` -- stop index of the slice (exclusive)
     pub fn set_record_norm_u(&mut self, recording: bool, norm_type: Norm, start: usize, stop: usize) -> &mut Self {
         self.recording = recording;
         self.record_norm_u = Some((norm_type, start, stop));
@@ -129,7 +138,8 @@ impl<'a, A> Output<'a, A> {
     ///
     /// # Panics
     ///
-    /// Panics if recording is not enabled via [`Output::set_recording`].
+    /// Panics if recording is not enabled via [`Output::set_recording`]
+    /// and norm recording is not configured via [`Output::set_record_norm_u`].
     pub fn get_norm_u_values(&self) -> &Vec<f64> {
         &self.norm_u
     }

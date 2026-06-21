@@ -3,7 +3,7 @@ use super::{Config, DeltaLambda, IniDir, Method, SolverTrait, Stop, System};
 use crate::StrError;
 use russell_lab::{Vector, vec_all_finite};
 
-/// Default number of steps
+/// Default number of equal steps for generating evenly spaced solution points
 pub const N_EQUAL_STEPS: usize = 10;
 
 /// Solver for parameterized nonlinear systems using Numerical Continuation

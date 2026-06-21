@@ -378,7 +378,7 @@ impl Config {
         self.verbose_legend
     }
 
-    /// Shows the legend
+    /// Sets the verbose_legend flag
     ///
     /// Default value: false
     pub fn set_verbose_legend(&mut self, flag: bool) -> &mut Self {
@@ -391,7 +391,7 @@ impl Config {
         self.verbose_header_footer
     }
 
-    /// Shows the header and footer
+    /// Sets the verbose_header_footer flag
     ///
     /// Default value: true
     pub fn set_verbose_header_footer(&mut self, flag: bool) -> &mut Self {
@@ -404,7 +404,7 @@ impl Config {
         self.hide_timings
     }
 
-    /// Hides timings when displaying statistics
+    /// Sets the hide_timings flag
     ///
     /// Default value: false
     pub fn set_hide_timings(&mut self, flag: bool) -> &mut Self {
@@ -417,7 +417,7 @@ impl Config {
         self.record_iterations_residuals
     }
 
-    /// Indicates whether to record the iterations residuals or not (in statistics)
+    /// Sets the record_iterations_residuals flag
     ///
     /// Default value: false
     pub fn set_record_iterations_residuals(&mut self, flag: bool) -> &mut Self {
@@ -430,7 +430,7 @@ impl Config {
         self.enable_precise_stop_u_comp
     }
 
-    /// Enables the precise stop using a component of the u vector (if any)
+    /// Sets the enable_precise_stop_u_comp flag
     ///
     /// Default value: false
     pub fn set_enable_precise_stop_u_comp(&mut self, flag: bool) -> &mut Self {

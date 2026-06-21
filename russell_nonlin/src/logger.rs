@@ -49,7 +49,7 @@ impl Logger {
         }
     }
 
-    /// Prints the header before time stepping and convergence statistics
+    /// Prints the header before time stepping (column headers and optional legend)
     pub fn header(&mut self) {
         if !self.enabled {
             return;
@@ -170,7 +170,7 @@ impl Logger {
         }
     }
 
-    /// Prints statistics and eventual errors
+    /// Prints statistics and failure information, and writes the log file if configured
     pub fn footer(&mut self, stats: &Stats, status: &Status) -> Result<(), StrError> {
         if !self.enabled {
             return Ok(());

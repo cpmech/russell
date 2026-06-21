@@ -546,4 +546,33 @@ Total time                       = 0ns
         // output went to stdout, buffer stays empty
         assert!(logger.buffer.is_empty());
     }
+
+    #[test]
+    fn did_not_converge_disabled_is_noop() {
+        let config = Config::new();
+        let mut logger = Logger::new(&config);
+        logger.did_not_converge();
+        assert!(logger.buffer.is_empty());
+    }
+
+    #[test]
+    fn did_not_converge_to_buffer() {
+        let mut config = Config::new();
+        config.set_log_file("/tmp/russell_nonlin/dnc_test.txt");
+        let mut logger = Logger::new(&config);
+        logger.did_not_converge();
+        let contents = &logger.buffer;
+        let expected = format!("{:^68}", "(rejected: did not converge)");
+        assert!(contents.contains(&expected));
+    }
+
+    #[test]
+    fn did_not_converge_to_stdout() {
+        let mut config = Config::new();
+        config.set_verbose_only(true);
+        let mut logger = Logger::new(&config);
+        logger.did_not_converge();
+        // output went to stdout, buffer stays empty
+        assert!(logger.buffer.is_empty());
+    }
 }

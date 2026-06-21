@@ -570,4 +570,63 @@ mod tests {
         assert_eq!(stats.n_rejected, 0);
         assert_eq!(stats.n_iteration_total, 7);
     }
+
+    #[test]
+    fn debug_predictor_values_disabled_returns_empty() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let mut config = Config::new();
+        config.set_debug_predictor(false);
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(3),
+                &DeltaLambda::auto(1e-4),
+                None,
+            )
+            .unwrap();
+        let (l_pred, u0_pred, u1_pred) = solver.get_debug_predictor_values();
+        assert!(l_pred.is_empty());
+        assert!(u0_pred.is_empty());
+        assert!(u1_pred.is_empty());
+    }
+
+    #[test]
+    fn debug_predictor_values_enabled_populates_data() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let mut config = Config::new();
+        config.set_debug_predictor(true);
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(5),
+                &DeltaLambda::auto(1e-4),
+                None,
+            )
+            .unwrap();
+        let (l_pred, u0_pred, u1_pred) = solver.get_debug_predictor_values();
+        // With 5 steps and debug enabled, we should have at least 5 predictor entries
+        assert!(l_pred.len() >= 5);
+        assert!(u0_pred.len() >= 5);
+        assert!(u1_pred.len() >= 5);
+        // All values should be finite
+        for &v in &l_pred {
+            assert!(v.is_finite());
+        }
+        for &v in &u0_pred {
+            assert!(v.is_finite());
+        }
+        for &v in &u1_pred {
+            assert!(v.is_finite());
+        }
+    }
 }

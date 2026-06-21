@@ -856,6 +856,36 @@ where
         Ok(())
     }
 
+    /// Returns the recorded number of non-zero (nnz) values
+    pub fn get_nnz(&self) -> usize {
+        self.nnz
+    }
+
+    /// Returns the actual number of non-zero (nnz) values
+    ///
+    /// 1. If the matrix storage is triangular, this function performs a loop over all entries to compute
+    ///    the total number of non-zero values. Otherwise, it simply returns the recorded `nnz`.
+    /// 2. If the values correspond to a triangular storage, the non-diagonal entries are mirrored for computation.
+    /// 3. If the values originated from reading a [SuiteSparse Matrix Collection](https://sparse.tamu.edu),
+    ///    then the estimate corresponds to **Pattern Entries** reported by the Collection;
+    ///    it includes actual non-zero and numerically zero values stored in the matrix file
+    pub fn get_actual_nnz(&self) -> usize {
+        if self.symmetric.triangular() {
+            let mut actual_nnz = 0;
+            for p in 0..self.nnz {
+                let i = self.indices_i[p] as usize;
+                let j = self.indices_j[p] as usize;
+                actual_nnz += 1;
+                if i != j {
+                    actual_nnz += 1;
+                }
+            }
+            actual_nnz
+        } else {
+            self.nnz
+        }
+    }
+
     /// Returns information about the dimensions and symmetric type
     ///
     /// Returns `(nrow, ncol, nnz, sym)`
@@ -1075,6 +1105,98 @@ mod tests {
         assert_eq!(coo.nnz, 4);
         coo.reset();
         assert_eq!(coo.nnz, 0);
+    }
+
+    #[test]
+    fn get_nnz_works() {
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 6, Sym::No).unwrap();
+        assert_eq!(coo.get_nnz(), 0);
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
+        assert_eq!(coo.get_nnz(), 3);
+        coo.reset();
+        assert_eq!(coo.get_nnz(), 0);
+
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 6, Sym::YesLower).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 0, 2.0).unwrap();
+        assert_eq!(coo.get_nnz(), 2);
+
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 6, Sym::YesUpper).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        assert_eq!(coo.get_nnz(), 2);
+
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 6, Sym::YesFull).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
+        assert_eq!(coo.get_nnz(), 3);
+    }
+
+    #[test]
+    fn get_actual_nnz_works() {
+        // non-symmetric: actual == nnz
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 5, Sym::No).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(1, 0, 3.0).unwrap();
+        coo.put(1, 1, 4.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        assert_eq!(coo.get_nnz(), 5);
+        assert_eq!(coo.get_actual_nnz(), 5);
+
+        // symmetric full (non-triangular): actual == nnz
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 5, Sym::YesFull).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(1, 0, 2.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        coo.put(2, 2, 4.0).unwrap();
+        assert_eq!(coo.get_nnz(), 5);
+        assert_eq!(coo.get_actual_nnz(), 5);
+
+        // symmetric lower triangular: off-diagonals counted twice
+        // entries: (0,0)=1, (1,0)=2, (1,1)=3, (2,0)=4, (2,2)=5
+        // nnz=5, actual: 1(diag) + 2*1(off) + 1(diag) + 2*1(off) + 1(diag) = 7
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 5, Sym::YesLower).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 0, 2.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        coo.put(2, 0, 4.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        assert_eq!(coo.get_nnz(), 5);
+        assert_eq!(coo.get_actual_nnz(), 7);
+
+        // symmetric upper triangular: off-diagonals counted twice
+        // entries: (0,0)=1, (0,1)=2, (1,1)=3, (0,2)=4, (2,2)=5
+        // nnz=5, actual: 1(diag) + 2*1(off) + 1(diag) + 2*1(off) + 1(diag) = 7
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 5, Sym::YesUpper).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(0, 1, 2.0).unwrap();
+        coo.put(1, 1, 3.0).unwrap();
+        coo.put(0, 2, 4.0).unwrap();
+        coo.put(2, 2, 5.0).unwrap();
+        assert_eq!(coo.get_nnz(), 5);
+        assert_eq!(coo.get_actual_nnz(), 7);
+
+        // all diagonal entries: actual == nnz even for triangular
+        let mut coo = NumCooMatrix::<f64>::new(3, 3, 3, Sym::YesLower).unwrap();
+        coo.put(0, 0, 1.0).unwrap();
+        coo.put(1, 1, 2.0).unwrap();
+        coo.put(2, 2, 3.0).unwrap();
+        assert_eq!(coo.get_nnz(), 3);
+        assert_eq!(coo.get_actual_nnz(), 3);
+
+        // empty matrix
+        let coo = NumCooMatrix::<f64>::new(3, 3, 5, Sym::No).unwrap();
+        assert_eq!(coo.get_nnz(), 0);
+        assert_eq!(coo.get_actual_nnz(), 0);
+
+        let coo = NumCooMatrix::<f64>::new(3, 3, 5, Sym::YesLower).unwrap();
+        assert_eq!(coo.get_nnz(), 0);
+        assert_eq!(coo.get_actual_nnz(), 0);
     }
 
     #[test]

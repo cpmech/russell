@@ -26,21 +26,25 @@ pub type NoArgs = u8;
 ///
 /// # Examples
 ///
+/// One equation with a fold point (from Bank & Mittelmann, 1990):
+///
 /// ```
 /// use russell_lab::Vector;
 /// use russell_sparse::Sym;
 /// use russell_nonlin::System;
 ///
-/// // one equation with a fold point: G(u, λ) = u - λ·exp(u)
-/// // Gu = 1 - λ·exp(u), Gλ = -exp(u)
+/// // residual:  G(u, λ) = u - λ·exp(u)
+/// // jacobians: dG/du = 1 - λ·exp(u),  dG/dλ = -exp(u)
 /// let system = System::new(
-///     1,
-///     Some(1),
-///     Sym::No,
+///     1,                  // ndim: one equation
+///     Some(1),            // nnz_ggu: one entry in the Jacobian
+///     Sym::No,            // sym_ggu: irrelevant here
+///     // calc_gg: residual function
 ///     |gg, l, u, _args| {
 ///         gg[0] = u[0] - l * f64::exp(u[0]);
 ///         Ok(())
 ///     },
+///     // calc_jac: Jacobian function
 ///     |ggu, ggl, l, u, _args| {
 ///         ggu.put(0, 0, 1.0 - l * f64::exp(u[0])).unwrap();
 ///         ggl[0] = -f64::exp(u[0]);
@@ -49,10 +53,17 @@ pub type NoArgs = u8;
 /// )
 /// .unwrap();
 ///
+/// // verify the Jacobian at the initial state using numerical differentiation
 /// let u = Vector::from(&[0.0]);
 /// let l = 0.0;
 /// system.check_ggu(l, &u, &mut 0u8, 1e-15).unwrap();
 /// ```
+///
+/// # References
+///
+/// 1. Bank RE and Mittelmann HD (1990) Stepsize selection in continuation procedures and
+///    damped Newton's method. In Continuation Techniques and Bifurcation Problems,
+///    Ed. by Mittelmann HD and Roose D (1990), Springer.
 pub struct System<'a, A> {
     /// Dimension of `u` and `G`
     pub(crate) ndim: usize,

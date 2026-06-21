@@ -359,21 +359,21 @@ impl Config {
         self
     }
 
-    /// Sets the verbose flag
+    /// Sets verbose, verbose_iterations, and verbose_stats flags at once
     ///
     /// Default values:
     ///
     /// * `verbose`: false
-    /// * `show_iterations`: false
-    /// * `show_stats`: false
-    pub fn set_verbose(&mut self, verbose: bool, show_iterations: bool, show_stats: bool) -> &mut Self {
+    /// * `verbose_iterations`: false
+    /// * `verbose_stats`: false
+    pub fn set_verbose(&mut self, verbose: bool, verbose_iterations: bool, verbose_stats: bool) -> &mut Self {
         self.verbose = verbose;
-        self.verbose_iterations = show_iterations;
-        self.verbose_stats = show_stats;
+        self.verbose_iterations = verbose_iterations;
+        self.verbose_stats = verbose_stats;
         self
     }
 
-    /// Returns the show_legend flag
+    /// Returns the verbose_legend flag
     pub fn get_verbose_legend(&self) -> bool {
         self.verbose_legend
     }
@@ -386,7 +386,7 @@ impl Config {
         self
     }
 
-    /// Returns the show_header_footer flag
+    /// Returns the verbose_header_footer flag
     pub fn get_verbose_header_footer(&self) -> bool {
         self.verbose_header_footer
     }
@@ -468,7 +468,7 @@ impl Config {
     /// n_step_max ≥ 1
     /// ```
     ///
-    /// Default value: 100000
+    /// Default value: 100_000
     pub fn set_n_step_max(&mut self, value: usize) -> &mut Self {
         self.n_step_max = value;
         self

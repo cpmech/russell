@@ -23,6 +23,36 @@ pub type NoArgs = u8;
 /// ggu := Gu = dG/du
 /// ggl := Gλ = dG/dλ
 /// ```
+///
+/// # Examples
+///
+/// ```
+/// use russell_lab::Vector;
+/// use russell_sparse::Sym;
+/// use russell_nonlin::System;
+///
+/// // one equation with a fold point: G(u, λ) = u - λ·exp(u)
+/// // Gu = 1 - λ·exp(u), Gλ = -exp(u)
+/// let system = System::new(
+///     1,
+///     Some(1),
+///     Sym::No,
+///     |gg, l, u, _args| {
+///         gg[0] = u[0] - l * f64::exp(u[0]);
+///         Ok(())
+///     },
+///     |ggu, ggl, l, u, _args| {
+///         ggu.put(0, 0, 1.0 - l * f64::exp(u[0])).unwrap();
+///         ggl[0] = -f64::exp(u[0]);
+///         Ok(())
+///     },
+/// )
+/// .unwrap();
+///
+/// let u = Vector::from(&[0.0]);
+/// let l = 0.0;
+/// system.check_ggu(l, &u, &mut 0u8, 1e-15).unwrap();
+/// ```
 pub struct System<'a, A> {
     /// Dimension of `u` and `G`
     pub(crate) ndim: usize,

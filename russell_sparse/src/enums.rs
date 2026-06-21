@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Specifies the underlying library that does all the magic
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub enum Genie {
     /// Selects cuDSS (NVIDIA CUDA Direct Sparse Solver)
     ///
@@ -491,6 +491,7 @@ impl Pivoting {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn derive_methods_work() {
@@ -503,6 +504,7 @@ mod tests {
         let json = serde_json::to_string(&genie).unwrap();
         let from_json: Genie = serde_json::from_str(&json).unwrap();
         assert_eq!(from_json, genie);
+        let _ = HashMap::from([(genie, 1u8)]);
 
         let symmetric = Sym::YesLower;
         let copy = symmetric;

@@ -93,11 +93,10 @@ impl Logger {
             return;
         }
 
+        let str_l = format_scientific(l, 10, 3);
         let output = if last {
-            let str_l = format_scientific(l, 10, 3);
-            format!("{}", str_l)
+            str_l
         } else {
-            let str_l = format_scientific(l, 10, 3);
             let str_h = format_scientific(h, 10, 3);
             format!("{} {}", str_l, str_h)
         };
@@ -176,10 +175,10 @@ impl Logger {
             return Ok(());
         }
 
-        let footer_line = format!("{}\n", "─".repeat(NCHAR));
+        let footer_line = "─".repeat(NCHAR);
         let mut output = String::new();
 
-        writeln!(&mut output, "{}", footer_line.trim_end()).unwrap();
+        writeln!(&mut output, "{}", footer_line).unwrap();
         if self.with_statistics {
             writeln!(&mut output, "\n{}", stats).unwrap();
         }

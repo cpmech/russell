@@ -4,12 +4,58 @@ use std::process::Command;
 pub fn get_system_info_linux() -> String {
     let mut info = String::new();
 
-    // Kernel and hostname
-    if let Ok(output) = Command::new("uname").arg("-r").output() {
-        if let Ok(s) = String::from_utf8(output.stdout) {
-            info.push_str(&format!("Kernel: {}", s.trim()));
+    // OS info
+    let mut os_lines: Vec<String> = Vec::new();
+    if let Ok(s) = std::fs::read_to_string("/etc/os-release") {
+        for line in s.lines() {
+            let line = line.trim();
+            if line.starts_with("NAME") || line.starts_with("VERSION_ID") {
+                os_lines.push(line.to_string());
+            }
         }
     }
+    if let Ok(output) = Command::new("uname").arg("-r").output() {
+        if let Ok(s) = String::from_utf8(output.stdout) {
+            os_lines.push(format!("KERNEL={}", s.trim()));
+        }
+    }
+    if !os_lines.is_empty() {
+        info.push_str(&format!("--- OS ---\n{}", os_lines.join("\n")));
+    }
+
+    // GPU info
+    let mut gpu_info = String::new();
+    if let Ok(output) = Command::new("nvidia-smi")
+        .args(["--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"])
+        .output()
+    {
+        if let Ok(s) = String::from_utf8(output.stdout) {
+            let s = s.trim();
+            if !s.is_empty() {
+                for (i, line) in s.lines().enumerate() {
+                    gpu_info.push_str(&format!("GPU[{}]: {}\n", i, line.trim()));
+                }
+            }
+        }
+    }
+    if gpu_info.is_empty() {
+        if let Ok(output) = Command::new("sh")
+            .arg("-c")
+            .arg("lspci 2>/dev/null | grep -iE 'vga|3d|display' | head -4")
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(output.stdout) {
+                let s = s.trim();
+                if !s.is_empty() {
+                    gpu_info = s.to_string();
+                }
+            }
+        }
+    }
+    if !gpu_info.is_empty() {
+        info.push_str(&format!("\n\n--- GPU ---\n{}", gpu_info.trim_end()));
+    }
+
     // CPU info
     if let Ok(s) = Command::new("sh")
         .arg("-c")
@@ -54,53 +100,6 @@ pub fn get_system_info_linux() -> String {
         }
         if !mem_lines.is_empty() {
             info.push_str(&format!("\n\n--- Memory ---\n{}", mem_lines.join("\n")));
-        }
-    }
-
-    // GPU info
-    let mut gpu_info = String::new();
-    if let Ok(output) = Command::new("nvidia-smi")
-        .args(["--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"])
-        .output()
-    {
-        if let Ok(s) = String::from_utf8(output.stdout) {
-            let s = s.trim();
-            if !s.is_empty() {
-                for (i, line) in s.lines().enumerate() {
-                    gpu_info.push_str(&format!("GPU[{}]: {}\n", i, line.trim()));
-                }
-            }
-        }
-    }
-    if gpu_info.is_empty() {
-        if let Ok(output) = Command::new("sh")
-            .arg("-c")
-            .arg("lspci 2>/dev/null | grep -iE 'vga|3d|display' | head -4")
-            .output()
-        {
-            if let Ok(s) = String::from_utf8(output.stdout) {
-                let s = s.trim();
-                if !s.is_empty() {
-                    gpu_info = s.to_string();
-                }
-            }
-        }
-    }
-    if !gpu_info.is_empty() {
-        info.push_str(&format!("\n\n--- GPU ---\n{}", gpu_info.trim_end()));
-    }
-
-    // OS release
-    if let Ok(s) = std::fs::read_to_string("/etc/os-release") {
-        let mut os_lines: Vec<&str> = Vec::new();
-        for line in s.lines() {
-            let line = line.trim();
-            if line.starts_with("PRETTY_NAME") || line.starts_with("NAME") || line.starts_with("VERSION_ID") {
-                os_lines.push(line);
-            }
-        }
-        if !os_lines.is_empty() {
-            info.push_str(&format!("\n\n--- OS ---\n{}", os_lines.join("\n")));
         }
     }
 
@@ -175,10 +174,12 @@ mod tests {
     fn get_system_info_linux_contains_expected_sections() {
         let info = get_system_info_linux();
         println!("{}", info);
-        assert!(info.contains("Kernel:"), "Should contain kernel version");
+        assert!(info.contains("--- OS ---"), "Should contain OS section");
+        assert!(info.contains("NAME="), "Should contain NAME");
+        assert!(info.contains("KERNEL="), "Should contain KERNEL");
+        assert!(info.contains("--- GPU ---"), "Should contain GPU section");
         assert!(info.contains("--- CPU ---"), "Should contain CPU section");
         assert!(info.contains("--- Memory ---"), "Should contain Memory section");
-        assert!(info.contains("--- OS ---"), "Should contain OS section");
     }
 
     #[test]
@@ -189,9 +190,9 @@ mod tests {
     }
 
     #[test]
-    fn get_system_info_linux_os_contains_pretty_name() {
+    fn get_system_info_linux_os_contains_name() {
         let info = get_system_info_linux();
-        assert!(info.contains("PRETTY_NAME"), "Should contain OS pretty name");
+        assert!(info.contains("NAME"), "Should contain OS name");
     }
 
     #[test]

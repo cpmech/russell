@@ -118,7 +118,7 @@ This project employs [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) (or [In
 
 To use Intel MKL, the `intel_mkl` feature must be selected. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
 
-Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag.
+Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag. Note that cuDSS is in **Preview Mode** 🚧.
 
 The table below summarizes the features of each crate:
 

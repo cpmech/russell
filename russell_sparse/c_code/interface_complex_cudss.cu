@@ -179,7 +179,7 @@ extern "C" void complex_solver_cudss_drop(struct InterfaceComplexCUDSS *solver) 
 /// @param pivoting Is the pivoting strategy
 /// @param pivot_epsilon Is the pivot epsilon
 /// @param refinement_nstep Is the number of iterative refinement steps
-/// @param hybrid_memory Indicates whether to use hybrid memory mode
+/// @param hybrid_memory_factor Factor (0.01 to 0.99) specifying fraction of device memory for hybrid mode
 /// @param verbose Shows messages
 /// @param general_symmetric Indicates a general symmetric matrix
 /// @param positive_definite Indicates a positive-definite symmetric matrix
@@ -194,7 +194,7 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
                                                    int32_t pivoting,
                                                    double pivot_epsilon,
                                                    int32_t refinement_nstep,
-                                                   int32_t hybrid_memory,
+                                                   double hybrid_memory_factor,
                                                    C_BOOL verbose,
                                                    C_BOOL general_symmetric,
                                                    C_BOOL positive_definite,
@@ -347,7 +347,7 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
 
     /* Enable hybrid mode where factors are stored in host memory
        Note: It must be set before the first call to ANALYSIS step.*/
-    if (hybrid_memory == C_TRUE) {
+    if (hybrid_memory_factor > 0.0) {
         int hybrid_mode = 1;
         status = cudssConfigSet(solver->config, CUDSS_CONFIG_HYBRID_MEMORY_MODE, &hybrid_mode, sizeof(int));
         if (status != CUDSS_STATUS_SUCCESS) {
@@ -362,6 +362,22 @@ extern "C" int32_t complex_solver_cudss_initialize(struct InterfaceComplexCUDSS 
     status = cudssExecute(solver->handle, CUDSS_PHASE_ANALYSIS, solver->config, solver->data, solver->aa_mat, NULL, NULL);
     if (status != CUDSS_STATUS_SUCCESS) {
         return ERROR_CUDSS_SYM_FACTORIZATION + (int)status;
+    }
+
+    /* Specify how much device memory is available for cuDSS */
+    if (hybrid_memory_factor > 0.0) {
+        size_t free_mem, total_mem;
+        cudaMemGetInfo(&free_mem, &total_mem);
+        int64_t hybrid_device_memory_limit = (int64_t)(total_mem * hybrid_memory_factor);
+        cudssConfigSet(solver->config, CUDSS_CONFIG_HYBRID_DEVICE_MEMORY_LIMIT,
+                       &hybrid_device_memory_limit, sizeof(hybrid_device_memory_limit));
+        if (verbose == C_TRUE) {
+            printf("cuDSS: set upper device memory limit to %ld bytes (%.1f GiB, %.2f x %zu total)\n",
+                   hybrid_device_memory_limit,
+                   hybrid_device_memory_limit / (1024.0 * 1024.0 * 1024.0),
+                   hybrid_memory_factor,
+                   total_mem);
+        }
     }
 
     /* Synchronize */
@@ -408,6 +424,9 @@ extern "C" int32_t complex_solver_cudss_factorize(struct InterfaceComplexCUDSS *
     /* Copy the updated coefficient matrix values to the device (GPU) */
     cudaError_t cuda_error = cudaMemcpy(solver->gpu_values, values, nnz * sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
     if (cuda_error != cudaSuccess) {
+        if (verbose == C_TRUE) {
+            printf("complex_solver_cudss_factorize: cannot copy values to gpu_values\n");
+        }
         return ERROR_CUDA_MEMCPY;
     }
 
@@ -421,6 +440,9 @@ extern "C" int32_t complex_solver_cudss_factorize(struct InterfaceComplexCUDSS *
     status = cudssExecute(solver->handle, CUDSS_PHASE_FACTORIZATION, solver->config,
                           solver->data, solver->aa_mat, NULL, NULL);
     if (status != CUDSS_STATUS_SUCCESS) {
+        if (verbose == C_TRUE) {
+            printf("complex_solver_cudss_factorize: numeric factorization failed with status = %d\n", status);
+        }
         return ERROR_CUDSS_NUM_FACTORIZATION + (int)status;
     }
 

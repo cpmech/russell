@@ -11,7 +11,7 @@ use russell_sparse::{CooMatrix, CscMatrix, LinSolver};
 /// process repeats until a stop criterion is met.
 ///
 /// This is the simplest continuation method and works well for problems without
-/// turning points (folds). For problems with folds, use [`SolverArclength`] instead.
+/// turning points (folds). For problems with folds, use `SolverArclength` instead.
 pub struct SolverNatural<'a, A> {
     /// Configuration options
     config: &'a Config,

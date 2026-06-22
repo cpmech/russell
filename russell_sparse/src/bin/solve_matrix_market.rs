@@ -37,9 +37,9 @@ struct Options {
     #[structopt(short = "p", long)]
     positive_definite: bool,
 
-    /// Hybrid memory usage of cuDSS
+    /// Hybrid memory usage factor for cuDSS (0.01 to 0.99 fraction of total device memory)
     #[structopt(short = "h", long)]
-    hybrid_memory: bool,
+    hybrid_memory_factor: Option<f64>,
 
     /// Number of threads for MUMPS
     #[structopt(short = "m", long, default_value = "0")]
@@ -116,7 +116,6 @@ fn main() -> Result<(), StrError> {
     params.ordering = Ordering::from(&opt.ordering);
     params.scaling = Scaling::from(&opt.scaling);
     params.positive_definite = opt.positive_definite;
-    params.hybrid_memory = opt.hybrid_memory;
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
@@ -128,13 +127,22 @@ fn main() -> Result<(), StrError> {
         println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
     }
 
+    // checks and sets the hybrid memory factor (enables hybrid memory mode)
+    if let Some(v) = opt.hybrid_memory_factor {
+        if v < 0.01 || v > 0.99 {
+            return Err("hybrid memory factor must be in [0.01, 0.99]".into());
+        }
+    }
+    params.hybrid_memory_factor = opt.hybrid_memory_factor;
+
     // allocate stats structure
     let mut stats = StatsLinSol::new();
     stats.main.solver = genie.to_string();
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
-    stats.requests.matching = format!("{:?}", params.matching);
     stats.requests.mumps_num_threads = params.mumps_num_threads;
+    stats.requests.positive_definite = params.positive_definite;
+    stats.requests.hybrid_memory_factor = params.hybrid_memory_factor;
 
     // read the matrix
     let mut sw = Stopwatch::new();
@@ -162,6 +170,7 @@ fn main() -> Result<(), StrError> {
                 params.matching = Matching::from(&opt.matching_sym);
             }
         }
+        stats.requests.matching = format!("{:?}", params.matching);
 
         // allocate vectors
         let mut x = Vector::new(nrow);
@@ -242,6 +251,7 @@ fn main() -> Result<(), StrError> {
                 params.matching = Matching::from(&opt.matching_sym);
             }
         }
+        stats.requests.matching = format!("{:?}", params.matching);
 
         // allocate vectors
         let mut x = ComplexVector::new(nrow);

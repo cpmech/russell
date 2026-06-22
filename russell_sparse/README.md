@@ -23,7 +23,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Introduction
 
 This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers:
-* [cuDSS](https://developer.nvidia.com/cudss) - GPU-accelerated direct solver
+* [cuDSS](https://developer.nvidia.com/cudss) - GPU-accelerated direct solver. Note that cuDSS is in **Preview Mode** 🚧.
 * [KLU](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Optimized for highly sparse matrices (e.g., circuit simulation)
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use

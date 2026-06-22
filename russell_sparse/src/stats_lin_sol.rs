@@ -41,6 +41,8 @@ pub struct StatsLinSolRequests {
     pub matching: String,
     pub pivoting: String,
     pub mumps_num_threads: usize,
+    pub positive_definite: bool,
+    pub hybrid_memory_factor: Option<f64>,
 }
 
 /// Holds some output parameters
@@ -143,6 +145,8 @@ impl StatsLinSol {
                 matching: unknown.clone(),
                 pivoting: unknown.clone(),
                 mumps_num_threads: 0,
+                positive_definite: false,
+                hybrid_memory_factor: None,
             },
             output: StatsLinSolOutput {
                 effective_ordering: unknown.clone(),

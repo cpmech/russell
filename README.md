@@ -111,6 +111,7 @@ The following crates are not part of `russell` but are associated with it and re
 - [plotpy](https://github.com/cpmech/plotpy) Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
 - [tritet](https://github.com/cpmech/tritet) Triangle and tetrahedron mesh generators (with Triangle and Tetgen)
 - [gemlab](https://github.com/cpmech/gemlab) Geometry, meshes, and numerical integration for finite element analyses
+- [benchmark-russell](https://github.com/cpmech/benchmark-russell) Performance benchmarks for this project
 
 ### Features
 

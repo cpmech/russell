@@ -28,6 +28,9 @@ This library implements tools for handling sparse matrices and functions to solv
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 
+Some performance benchmarks are available here:
+- [benchmark-russell](https://github.com/cpmech/benchmark-russell) Performance benchmarks for the `Russell` project
+
 ### Complex Numbers Support
 
 This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.

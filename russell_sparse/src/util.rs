@@ -13,6 +13,7 @@ use std::process::Command;
 /// - **Memory** — total, free, available, and swap from `/proc/meminfo`
 ///
 /// Each section is omitted if the underlying tool or procfs file is absent.
+#[cfg(target_os = "linux")]
 pub fn get_system_info_linux() -> String {
     let mut info = String::new();
 
@@ -119,11 +120,13 @@ pub fn get_system_info_linux() -> String {
 }
 
 /// Returns `"NOT AVAILABLE"` — not yet implemented for this platform
+#[cfg(target_os = "windows")]
 pub fn get_system_info_windows() -> String {
     "NOT AVAILABLE".to_string()
 }
 
 /// Returns `"NOT AVAILABLE"` — not yet implemented for this platform
+#[cfg(target_os = "macos")]
 pub fn get_system_info_macos() -> String {
     "NOT AVAILABLE".to_string()
 }
@@ -178,22 +181,26 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(target_os = "windows")]
     fn get_system_info_windows_returns_not_available() {
         assert_eq!(get_system_info_windows(), "NOT AVAILABLE");
     }
 
     #[test]
+    #[cfg(target_os = "macos")]
     fn get_system_info_macos_returns_not_available() {
         assert_eq!(get_system_info_macos(), "NOT AVAILABLE");
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn get_system_info_linux_is_non_empty() {
         let info = get_system_info_linux();
         assert!(!info.is_empty(), "Linux system info should not be empty");
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn get_system_info_linux_contains_expected_sections() {
         let info = get_system_info_linux();
         println!("{}", info);
@@ -206,6 +213,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn get_system_info_linux_memory_contains_keys() {
         let info = get_system_info_linux();
         assert!(info.contains("MemTotal:"), "Should report total memory");
@@ -213,6 +221,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn get_system_info_linux_os_contains_name() {
         let info = get_system_info_linux();
         assert!(info.contains("NAME"), "Should contain OS name");

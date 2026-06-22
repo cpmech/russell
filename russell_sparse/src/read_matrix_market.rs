@@ -657,6 +657,8 @@ mod tests {
             coo.values,
             &[2.0, 3.0, 3.0, -1.0, 4.0, 4.0, -3.0, 1.0, 2.0, 2.0, 6.0, 1.0]
         );
+        assert_eq!(coo.get_nnz(), 12);
+        assert_eq!(coo.get_actual_nnz(), 12);
     }
 
     #[test]
@@ -687,6 +689,8 @@ mod tests {
                 cpx!(1.0, -2.0)
             ]
         );
+        assert_eq!(coo.get_nnz(), 12);
+        assert_eq!(coo.get_actual_nnz(), 12);
     }
 
     #[test]
@@ -706,6 +710,8 @@ mod tests {
                 2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0
             ],
         );
+        assert_eq!(coo.get_nnz(), 15);
+        assert_eq!(coo.get_actual_nnz(), 25);
     }
 
     #[test]
@@ -731,6 +737,8 @@ mod tests {
                 cpx!(1.0, 7.0),
             ]
         );
+        assert_eq!(coo.get_nnz(), 7);
+        assert_eq!(coo.get_actual_nnz(), 11);
     }
 
     #[test]
@@ -749,6 +757,8 @@ mod tests {
                 2.0, 2.0, 9.0, 7.0, 8.0, 1.0, 1.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 5.0, 1.0
             ],
         );
+        assert_eq!(coo.get_nnz(), 15);
+        assert_eq!(coo.get_actual_nnz(), 25);
     }
 
     #[test]
@@ -774,6 +784,8 @@ mod tests {
                 cpx!(1.0, 7.0),
             ]
         );
+        assert_eq!(coo.get_nnz(), 7);
+        assert_eq!(coo.get_actual_nnz(), 11);
     }
 
     #[test]
@@ -800,6 +812,8 @@ mod tests {
                        │  0  6  0  0  1 │\n\
                        └                ┘";
         assert_eq!(format!("{}", a), correct);
+        assert_eq!(coo.get_nnz(), 11);
+        assert_eq!(coo.get_actual_nnz(), 11);
     }
 
     #[test]
@@ -832,5 +846,7 @@ mod tests {
                 cpx!(0.0, 0.0),
             ]
         );
+        assert_eq!(coo.get_nnz(), 11);
+        assert_eq!(coo.get_actual_nnz(), 11);
     }
 }

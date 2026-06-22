@@ -18,7 +18,10 @@ get_matrix() {
   rm $NAME.tar.gz
 }
 
+# get_matrix Grund b1_ss # Chemical Process Simulation Problem
 # get_matrix Bai bfwb62
+# get_matrix Bai bfwa398
+# get_matrix Bai dwg961a
 # get_matrix GHS_psdef inline_1
 # get_matrix CEMW tmt_unsym
 # get_matrix ATandT pre2

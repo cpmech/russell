@@ -33,6 +33,14 @@ struct Options {
     #[structopt(long, default_value = "Auto")]
     matching_gen: String,
 
+    /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
+    #[structopt(short = "p", long)]
+    positive_definite: bool,
+
+    /// Hybrid memory usage of cuDSS
+    #[structopt(short = "h", long)]
+    hybrid_memory: bool,
+
     /// Number of threads for MUMPS
     #[structopt(short = "m", long, default_value = "0")]
     mumps_nt: u32,
@@ -107,6 +115,8 @@ fn main() -> Result<(), StrError> {
     let mut params = LinSolParams::new();
     params.ordering = Ordering::from(&opt.ordering);
     params.scaling = Scaling::from(&opt.scaling);
+    params.positive_definite = opt.positive_definite;
+    params.hybrid_memory = opt.hybrid_memory;
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
@@ -120,6 +130,7 @@ fn main() -> Result<(), StrError> {
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();
+    stats.main.solver = genie.to_string();
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
     stats.requests.matching = format!("{:?}", params.matching);
@@ -139,13 +150,9 @@ fn main() -> Result<(), StrError> {
         }
 
         // save information about the matrix
-        let (nrow, ncol, nnz, sym) = coo.get_info();
+        let (nrow, _, _, sym) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
-        stats.matrix.nrow = nrow;
-        stats.matrix.ncol = ncol;
-        stats.matrix.nnz = nnz;
-        stats.matrix.complex = false;
-        stats.matrix.symmetric = format!("{:?}", sym);
+        stats.set_matrix_info_from_coo(&coo);
 
         // set cuDSS matching algorithm
         if genie == Genie::Cudss {
@@ -223,13 +230,9 @@ fn main() -> Result<(), StrError> {
         }
 
         // save information about the matrix
-        let (nrow, ncol, nnz, sym) = coo.get_info();
+        let (nrow, _, _, sym) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
-        stats.matrix.nrow = nrow;
-        stats.matrix.ncol = ncol;
-        stats.matrix.nnz = nnz;
-        stats.matrix.complex = true;
-        stats.matrix.symmetric = format!("{:?}", sym);
+        stats.set_matrix_info_from_coo(&coo);
 
         // set cuDSS matching algorithm
         if genie == Genie::Cudss {

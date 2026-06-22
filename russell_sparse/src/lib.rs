@@ -387,6 +387,8 @@ pub use solver_umfpack::*;
 pub use stats_lin_sol::*;
 pub use stats_lin_sol_mumps::*;
 pub use verify_lin_sys::*;
+mod util;
+pub use util::*;
 
 // ----- cudss
 

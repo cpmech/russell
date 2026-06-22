@@ -32,7 +32,7 @@ unsafe extern "C" {
         pivoting: i32,
         pivot_epsilon: f64,
         refinement_nstep: i32,
-        hybrid_memory: i32,
+        hybrid_memory_factor: f64,
         verbose: CcBool,
         general_symmetric: CcBool,
         positive_definite: CcBool,
@@ -242,8 +242,16 @@ impl LinSolTrait for SolverCUDSS {
             None => -1, // tell cuDSS to use the default
         };
 
-        // hybrid memory flag
-        let hybrid_memory = if par.hybrid_memory { 1 } else { 0 };
+        // hybrid memory factor
+        let hybrid_memory_factor = match par.hybrid_memory_factor {
+            Some(v) => {
+                if v < 0.01 || v > 0.99 {
+                    return Err("the hybrid memory factor must be in [0.01, 0.99]");
+                }
+                v
+            }
+            None => -1.0,
+        };
 
         // requests
         let verbose = if par.verbose { 1 } else { 0 };
@@ -264,7 +272,7 @@ impl LinSolTrait for SolverCUDSS {
                     pivoting,
                     pivot_epsilon,
                     refinement_nstep,
-                    hybrid_memory,
+                    hybrid_memory_factor,
                     verbose,
                     general_symmetric,
                     positive_definite,
@@ -907,7 +915,7 @@ mod tests {
 
         let mut params = LinSolParams::new();
         params.positive_definite = true;
-        params.hybrid_memory = true;
+        params.hybrid_memory_factor = Some(0.5);
         params.verbose = false;
 
         let mut solver = SolverCUDSS::new().unwrap();

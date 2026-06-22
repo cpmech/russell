@@ -33,8 +33,10 @@ pub struct LinSolParams {
     /// See: <https://docs.nvidia.com/cuda/cudss/types.html#c.cudssConfigParam_t.CUDSS_CONFIG_IR_N_STEPS>
     pub refinement_nstep: Option<i32>,
 
-    /// Hybrid memory usage of cuDSS
-    pub hybrid_memory: bool,
+    /// Enables the hybrid memory mode for cuDSS (holds a factor from 0.01 to 0.99)
+    ///
+    /// `None` means that the hybrid mode is not enabled.
+    pub hybrid_memory_factor: Option<f64>,
 
     /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
     pub positive_definite: bool,
@@ -89,7 +91,7 @@ impl LinSolParams {
             pivoting: Pivoting::Auto,
             pivot_epsilon: None,
             refinement_nstep: None,
-            hybrid_memory: false,
+            hybrid_memory_factor: None,
             positive_definite: false,
             compute_determinant: false,
             compute_error_estimates: false,

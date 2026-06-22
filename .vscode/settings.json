@@ -47,6 +47,7 @@
     "cudart",
     "cudss",
     "curv",
+    "cylin",
     "dasum",
     "daxpy",
     "DCMAKE",

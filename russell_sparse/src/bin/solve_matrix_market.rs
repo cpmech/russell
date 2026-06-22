@@ -37,9 +37,9 @@ struct Options {
     #[structopt(short = "p", long)]
     positive_definite: bool,
 
-    /// Hybrid memory usage of cuDSS
+    /// Hybrid memory usage factor for cuDSS (0.01 to 0.99 fraction of total device memory)
     #[structopt(short = "h", long)]
-    hybrid_memory: bool,
+    hybrid_memory_factor: Option<f64>,
 
     /// Number of threads for MUMPS
     #[structopt(short = "m", long, default_value = "0")]
@@ -116,7 +116,6 @@ fn main() -> Result<(), StrError> {
     params.ordering = Ordering::from(&opt.ordering);
     params.scaling = Scaling::from(&opt.scaling);
     params.positive_definite = opt.positive_definite;
-    params.hybrid_memory = opt.hybrid_memory;
     params.compute_determinant = opt.determinant;
     params.mumps_num_threads = opt.mumps_nt as usize;
     params.umfpack_enforce_unsymmetric_strategy = opt.enforce_unsymmetric_strategy;
@@ -127,6 +126,14 @@ fn main() -> Result<(), StrError> {
     if !using_intel_mkl() && opt.override_prevent_issue {
         println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
     }
+
+    // checks and sets the hybrid memory factor (enables hybrid memory mode)
+    if let Some(v) = opt.hybrid_memory_factor {
+        if v < 0.01 || v > 0.99 {
+            return Err("hybrid memory factor must be in [0.01, 0.99]".into());
+        }
+    }
+    params.hybrid_memory_factor = opt.hybrid_memory_factor;
 
     // allocate stats structure
     let mut stats = StatsLinSol::new();

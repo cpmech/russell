@@ -10,12 +10,6 @@ pub fn get_system_info_linux() -> String {
             info.push_str(&format!("Kernel: {}", s.trim()));
         }
     }
-    if let Ok(output) = Command::new("hostname").output() {
-        if let Ok(s) = String::from_utf8(output.stdout) {
-            info.push_str(&format!("\nHostname: {}", s.trim()));
-        }
-    }
-
     // CPU info
     if let Ok(s) = Command::new("sh")
         .arg("-c")
@@ -182,7 +176,6 @@ mod tests {
         let info = get_system_info_linux();
         println!("{}", info);
         assert!(info.contains("Kernel:"), "Should contain kernel version");
-        assert!(info.contains("Hostname:"), "Should contain hostname");
         assert!(info.contains("--- CPU ---"), "Should contain CPU section");
         assert!(info.contains("--- Memory ---"), "Should contain Memory section");
         assert!(info.contains("--- OS ---"), "Should contain OS section");

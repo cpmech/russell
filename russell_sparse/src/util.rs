@@ -1,6 +1,18 @@
 use std::process::Command;
 
-/// Returns the system, including CPU and GPU information, on Linux platforms
+/// Gathers hardware and software information from the current Linux system.
+///
+/// Collects the following sections, each prefixed with a `--- NAME ---` header:
+///
+/// - **OS** — Linux distribution name/version from `/etc/os-release` and kernel
+///   release via `uname -r`
+/// - **GPU** — NVIDIA GPU details from `nvidia-smi` (name, driver, memory),
+///   falling back to `lspci` for non-NVIDIA or when `nvidia-smi` is unavailable
+/// - **CPU** — CPU model, architecture, cores/threads, and cache sizes via
+///   `lscpu`, with a fallback to `/proc/cpuinfo`
+/// - **Memory** — total, free, available, and swap from `/proc/meminfo`
+///
+/// Each section is omitted if the underlying tool or procfs file is absent.
 pub fn get_system_info_linux() -> String {
     let mut info = String::new();
 
@@ -106,10 +118,12 @@ pub fn get_system_info_linux() -> String {
     info
 }
 
+/// Returns `"NOT AVAILABLE"` — not yet implemented for this platform
 pub fn get_system_info_windows() -> String {
     "NOT AVAILABLE".to_string()
 }
 
+/// Returns `"NOT AVAILABLE"` — not yet implemented for this platform
 pub fn get_system_info_macos() -> String {
     "NOT AVAILABLE".to_string()
 }
@@ -120,7 +134,16 @@ const CUDA_SCRIPT_VERSION: &str = "13";
 const MUMPS_SCRIPT_VERSION: &str = "5.9.0";
 const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 
-/// Returns versions of the external sparse solver libraries used by this crate
+/// Returns version information for the external sparse solver libraries.
+///
+/// Reports the version of each backend library that the project's installation
+/// scripts download and compile:
+///
+/// - **cuDSS** — version downloaded by `zscripts/linux-compile-cudss.bash`;
+///   annotated `[not compiled in]` when the `cudss` feature is disabled
+/// - **MUMPS** — version downloaded by `zscripts/*-compile-mumps.bash`;
+///   annotated `[not compiled in]` when the `local_sparse` feature is disabled
+/// - **SuiteSparse** — cloned from head of the upstream GitHub repository
 pub fn get_library_versions() -> String {
     let mut info = String::new();
 

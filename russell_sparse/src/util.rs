@@ -121,6 +121,42 @@ pub fn get_system_info_macos() -> String {
     "NOT AVAILABLE".to_string()
 }
 
+// Versions of external sparse solver libraries installed via the project's bash scripts
+const CUDSS_SCRIPT_VERSION: &str = "0.8.0.10";
+const CUDA_SCRIPT_VERSION: &str = "13";
+const MUMPS_SCRIPT_VERSION: &str = "5.9.0";
+const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
+
+/// Returns versions of the external sparse solver libraries used by this crate
+pub fn get_library_versions() -> String {
+    let mut info = String::new();
+
+    // cuDSS
+    if cfg!(feature = "cudss") {
+        info.push_str(&format!(
+            "cuDSS: {} (CUDA {})\n",
+            CUDSS_SCRIPT_VERSION, CUDA_SCRIPT_VERSION
+        ));
+    } else {
+        info.push_str(&format!(
+            "cuDSS: {} (CUDA {}) [not compiled in]\n",
+            CUDSS_SCRIPT_VERSION, CUDA_SCRIPT_VERSION
+        ));
+    }
+
+    // MUMPS
+    if cfg!(feature = "local_sparse") {
+        info.push_str(&format!("MUMPS: {}\n", MUMPS_SCRIPT_VERSION));
+    } else {
+        info.push_str(&format!("MUMPS: {} [not compiled in]\n", MUMPS_SCRIPT_VERSION));
+    }
+
+    // SuiteSparse (always compiled in, either from system or from script)
+    info.push_str(&format!("SuiteSparse: {}", SUITESPARSE_VERSION));
+
+    info
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,5 +199,28 @@ mod tests {
     fn get_system_info_linux_os_contains_pretty_name() {
         let info = get_system_info_linux();
         assert!(info.contains("PRETTY_NAME"), "Should contain OS pretty name");
+    }
+
+    #[test]
+    fn get_library_versions_is_non_empty() {
+        let info = get_library_versions();
+        assert!(!info.is_empty());
+    }
+
+    #[test]
+    fn get_library_versions_contains_all_libraries() {
+        let info = get_library_versions();
+        assert!(info.contains("cuDSS:"), "Should contain cuDSS version");
+        assert!(info.contains("MUMPS:"), "Should contain MUMPS version");
+        assert!(info.contains("SuiteSparse:"), "Should contain SuiteSparse version");
+    }
+
+    #[test]
+    fn get_library_versions_contains_expected_version_numbers() {
+        let info = get_library_versions();
+        println!("{}", info);
+        assert!(info.contains(CUDSS_SCRIPT_VERSION), "Should contain cuDSS version");
+        assert!(info.contains(MUMPS_SCRIPT_VERSION), "Should contain MUMPS version");
+        assert!(info.contains(SUITESPARSE_VERSION), "Should contain SuiteSparse version");
     }
 }

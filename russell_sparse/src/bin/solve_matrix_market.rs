@@ -140,8 +140,9 @@ fn main() -> Result<(), StrError> {
     stats.main.solver = genie.to_string();
     stats.requests.ordering = format!("{:?}", params.ordering);
     stats.requests.scaling = format!("{:?}", params.scaling);
-    stats.requests.matching = format!("{:?}", params.matching);
     stats.requests.mumps_num_threads = params.mumps_num_threads;
+    stats.requests.positive_definite = params.positive_definite;
+    stats.requests.hybrid_memory_factor = params.hybrid_memory_factor;
 
     // read the matrix
     let mut sw = Stopwatch::new();
@@ -169,6 +170,7 @@ fn main() -> Result<(), StrError> {
                 params.matching = Matching::from(&opt.matching_sym);
             }
         }
+        stats.requests.matching = format!("{:?}", params.matching);
 
         // allocate vectors
         let mut x = Vector::new(nrow);
@@ -249,6 +251,7 @@ fn main() -> Result<(), StrError> {
                 params.matching = Matching::from(&opt.matching_sym);
             }
         }
+        stats.requests.matching = format!("{:?}", params.matching);
 
         // allocate vectors
         let mut x = ComplexVector::new(nrow);

@@ -3,6 +3,9 @@ use russell_sparse::is_memory_error;
 use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
+// You may run this binary using cargo as follows:
+// cargo run --release --all-features --bin solve_matrix_market -- -g cudss ~/Downloads/matrix-market/dwg961a.mtx
+
 /// Command line options
 #[derive(StructOpt, Debug)]
 #[structopt(

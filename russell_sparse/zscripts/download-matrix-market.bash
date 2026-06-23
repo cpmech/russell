@@ -18,6 +18,7 @@ get_matrix() {
   rm $NAME.tar.gz
 }
 
+# Real
 # get_matrix Grund b1_ss # Chemical Process Simulation Problem
 # get_matrix Bai bfwb62
 # get_matrix Bai bfwa398
@@ -37,8 +38,20 @@ get_matrix() {
 # get_matrix Lee fem_filter # complex
 # get_matrix Chevron Chevron1
 # get_matrix Bai qc324 # complex symmetric
-
 # get_matrix Freescale Freescale1
 # get_matrix Freescale memchip
 # get_matrix GHS_indef darcy003
 # get_matrix GHS_indef boyd2
+
+# Complex
+# get_matrix Bai dwg961a # Dispersive waveguide structures
+# get_matrix Bai mhd1280b # Alfven spectra in magnetohydrodynamic
+# get_matrix Cote mplate # Vibroacoustic problem (plate-air-poroelastic-air-plate system)
+# get_matrix Lee fem_filter # FEM bandpass microwave filter, 500MHz
+# get_matrix Chevron Chevron3 # Temporal freq domain seismic modeling
+# get_matrix Chevron Chevron4 # Temporal freq domain seismic modeling
+# get_matrix Kim kim2 # 2D 676-by-676 complex mesh
+# get_matrix FreeFieldTechnologies mono_500Hz # 3D vibro-acoustic problem, aircraft engine nacelle
+# get_matrix Lee fem_hifreq_circuit # FEM, Maxwell's eqns for hi-freq. circuit
+# get_matrix Sinclair 3Dspectralwave # 3D spectral-element elastic wave modelling in freq domain
+# get_matrix Dziekonski dielFilterV3clx # High-order vector finite element method in EM

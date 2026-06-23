@@ -84,7 +84,17 @@ impl MatrixMarketData {
             Some(v) => match v {
                 "general" => self.symmetric = false,
                 "symmetric" => self.symmetric = true,
-                _ => return Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
+                "Hermitian" => {
+                    if !self.complex {
+                        return Err("\"Hermitian\" keyword can only be used with the \"complex\" type");
+                    }
+                    self.symmetric = false;
+                }
+                _ => {
+                    return Err(
+                        "after %%MatrixMarket, the fourth option must be \"general\", \"symmetric\", or \"Hermitian\"",
+                    );
+                }
             },
             None => return Err("cannot find the fourth option in the header line"),
         }
@@ -518,7 +528,12 @@ mod tests {
         );
         assert_eq!(
             data.parse_header("  %%MatrixMarket matrix coordinate real wrong"),
-            Err("after %%MatrixMarket, the fourth option must be either \"general\" or \"symmetric\""),
+            Err("after %%MatrixMarket, the fourth option must be \"general\", \"symmetric\", or \"Hermitian\""),
+        );
+
+        assert_eq!(
+            data.parse_header("  %%MatrixMarket matrix coordinate real Hermitian"),
+            Err("\"Hermitian\" keyword can only be used with the \"complex\" type"),
         );
     }
 
@@ -639,6 +654,10 @@ mod tests {
             Some(
                 "MatrixMarket data is invalid: the number of rows must equal the number of columns for symmetric matrices"
             )
+        );
+        assert_eq!(
+            read_matrix_market("./data/matrix_market/bad_not_complex_hermitian.mtx", h).err(),
+            Some("\"Hermitian\" keyword can only be used with the \"complex\" type")
         );
     }
 
@@ -848,5 +867,23 @@ mod tests {
         );
         assert_eq!(coo.get_nnz(), 11);
         assert_eq!(coo.get_actual_nnz(), 11);
+    }
+
+    #[test]
+    fn read_matrix_market_complex_hermitian_works() {
+        let h = MMsym::MakeItFull;
+        let filepath = "./data/matrix_market/ok_complex_hermitian.mtx".to_string();
+        let (coo_real, coo_cpx) = read_matrix_market(&filepath, h).unwrap();
+        assert!(coo_real.is_none());
+        let coo = coo_cpx.unwrap();
+        assert_eq!(coo.symmetric, Sym::No);
+        let dense = coo.as_dense();
+        assert_eq!(
+            format!("{}", dense),
+            "┌           ┐\n\
+             │ 4+0i 1+2i │\n\
+             │ 1-2i 5+0i │\n\
+             └           ┘"
+        );
     }
 }

@@ -111,6 +111,12 @@ fn solve_nonlinear_system(genie: Genie) -> Result<(), StrError> {
 }
 
 #[test]
+#[cfg(feature = "cudss")]
+fn test_nonlinear_system_cudss() -> Result<(), StrError> {
+    solve_nonlinear_system(Genie::Cudss)
+}
+
+#[test]
 #[serial]
 #[cfg(feature = "local_sparse")]
 fn test_nonlinear_system_mumps() -> Result<(), StrError> {

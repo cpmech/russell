@@ -7,10 +7,8 @@ fn main() {
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         {
             cc::Build::new()
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .file("c_code/interface_mumps.c")
                 .include(&format!("{}/include/mumps", msys2_prefix))
@@ -18,7 +16,6 @@ fn main() {
                 .compile("c_code");
             println!("cargo:rustc-link-search=native={}/lib/mumps", msys2_prefix);
             println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
             println!("cargo:rustc-link-lib=static=dmumps_cpmech");
             println!("cargo:rustc-link-lib=static=zmumps_cpmech");
@@ -34,10 +31,8 @@ fn main() {
         #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         {
             cc::Build::new()
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .file("c_code/interface_mumps.c")
                 .include(&format!("{}/include/mumps", msys2_prefix))
@@ -45,7 +40,6 @@ fn main() {
                 .compile("c_code");
             println!("cargo:rustc-link-search=native={}/lib/mumps", msys2_prefix);
             println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
             println!("cargo:rustc-link-lib=static=dmumps_cpmech");
             println!("cargo:rustc-link-lib=static=zmumps_cpmech");
@@ -61,14 +55,11 @@ fn main() {
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         {
             cc::Build::new()
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .include(&format!("{}/include/suitesparse", msys2_prefix))
                 .compile("c_code");
             println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
         }
 
@@ -76,14 +67,11 @@ fn main() {
         #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
         {
             cc::Build::new()
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .include(&format!("{}/include/suitesparse", msys2_prefix))
                 .compile("c_code");
             println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
         }
     }
@@ -121,11 +109,9 @@ fn main() {
                 .cudart("static")
                 .flag(&format!("-arch={}", arch))
                 .file("c_code/interface_complex_cudss.cu")
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_complex_mumps.c")
                 .file("c_code/interface_cudss.cu")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .file("c_code/interface_mumps.c")
                 .includes(&inc_dirs)
@@ -137,7 +123,6 @@ fn main() {
             println!("cargo:rustc-link-search=native=/opt/libcudss/lib");
             println!("cargo:rustc-link-lib=cudart");
             println!("cargo:rustc-link-lib=cudss");
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
             println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
             println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
@@ -147,10 +132,8 @@ fn main() {
         #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         {
             cc::Build::new()
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .file("c_code/interface_mumps.c")
                 .includes(&inc_dirs)
@@ -158,7 +141,6 @@ fn main() {
             for d in &lib_dirs {
                 println!("cargo:rustc-link-search=native={}", *d);
             }
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
             println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
             println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
@@ -177,10 +159,8 @@ fn main() {
                 .cudart("static")
                 .flag(&format!("-arch={}", arch))
                 .file("c_code/interface_complex_cudss.cu")
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
                 .file("c_code/interface_cudss.cu")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .includes(&inc_dirs)
                 .compile("c_code");
@@ -191,7 +171,6 @@ fn main() {
             println!("cargo:rustc-link-search=native=/opt/libcudss/lib");
             println!("cargo:rustc-link-lib=cudart");
             println!("cargo:rustc-link-lib=cudss");
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
         }
 
@@ -199,16 +178,13 @@ fn main() {
         #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
         {
             cc::Build::new()
-                .file("c_code/interface_complex_klu.c")
                 .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_klu.c")
                 .file("c_code/interface_umfpack.c")
                 .includes(&inc_dirs)
                 .compile("c_code");
             for d in &lib_dirs {
                 println!("cargo:rustc-link-search=native={}", *d);
             }
-            println!("cargo:rustc-link-lib=dylib=klu");
             println!("cargo:rustc-link-lib=dylib=umfpack");
         }
     }

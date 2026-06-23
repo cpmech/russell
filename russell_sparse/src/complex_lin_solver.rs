@@ -4,7 +4,7 @@ use super::ComplexSolverCUDSS;
 #[cfg(feature = "local_sparse")]
 use super::ComplexSolverMUMPS;
 
-use super::{ComplexCooMatrix, ComplexSolverKLU, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
+use super::{ComplexCooMatrix, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
 use crate::StrError;
 use russell_lab::ComplexVector;
 
@@ -79,28 +79,24 @@ impl<'a> ComplexLinSolver<'a> {
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Cudss => Box::new(ComplexSolverCUDSS::new()?),
-            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
         #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Cudss => return Err("cuDSS solver is not available"),
-            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Cudss => Box::new(ComplexSolverCUDSS::new()?),
-            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
         #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
             Genie::Cudss => return Err("cuDSS solver is not available"),
-            Genie::Klu => Box::new(ComplexSolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
@@ -198,13 +194,14 @@ mod tests {
     use serial_test::serial;
 
     #[test]
-    fn complex_lin_solver_compute_works_klu() {
-        let (coo, _, _, _) = Samples::complex_symmetric_3x3_full();
+    #[cfg(feature = "cudss")]
+    fn complex_lin_solver_compute_works_cudss() {
+        let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         let mut x = ComplexVector::new(3);
         let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
-        ComplexLinSolver::compute(Genie::Klu, &mut x, &coo, &rhs, None).unwrap();
+        ComplexLinSolver::compute(Genie::Cudss, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = &[cpx!(1.0, 1.0), cpx!(2.0, -2.0), cpx!(3.0, 3.0)];
-        complex_vec_approx_eq(&x, x_correct, 1e-15);
+        complex_vec_approx_eq(&x, x_correct, 1e-14);
     }
 
     #[test]

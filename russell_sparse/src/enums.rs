@@ -8,13 +8,6 @@ pub enum Genie {
     /// Reference: <https://developer.nvidia.com/cudss>
     Cudss,
 
-    /// Selects KLU (LU factorization)
-    ///
-    /// "Clark Kent" LU factorization algorithm (what SuperLU was before it became Super)
-    ///
-    /// Reference: <https://github.com/DrTimothyAldenDavis/SuiteSparse>
-    Klu,
-
     /// Selects MUMPS (multi-frontal massively parallel sparse direct) solver
     ///
     /// Reference: <https://mumps-solver.org/index.php>
@@ -79,7 +72,6 @@ pub enum Ordering {
     /// Ordering using the approximate minimum degree
     ///
     /// * cuDSS: ✅ available. Approximate minimum degree (AMD) reordering.
-    /// * KLU: ✅ available
     /// * MUMPS: ✅ available
     /// * UMFPACK: ✅ available
     Amd,
@@ -87,7 +79,6 @@ pub enum Ordering {
     /// Ordering using the approximate minimum fill-in
     ///
     /// * cuDSS: ❌ unavailable; defaults to automatic
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Amf,
@@ -95,7 +86,6 @@ pub enum Ordering {
     /// Automatic ordering method selection (default)
     ///
     /// * cuDSS: ✅ available. The default algorithm for reordering (equivalent to CUDSS_REORDERING_ALG_NESTED_DISSECTION).
-    /// * KLU: ✅ available
     /// * MUMPS: ✅ available
     /// * UMFPACK: ✅ available
     Auto,
@@ -103,7 +93,6 @@ pub enum Ordering {
     /// Try three methods and take the best
     ///
     /// * cuDSS: ❌ unavailable; defaults to automatic
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Best,
@@ -111,7 +100,6 @@ pub enum Ordering {
     /// Block triangular form (BTF) combined with COLAMD. Supports global pivoting
     ///
     /// * cuDSS: ✅ available. Block triangular form (BTF) combined with COLAMD. Supports global pivoting
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     BtfColamd,
@@ -119,7 +107,6 @@ pub enum Ordering {
     /// Use Amd for symmetric, Colamd for unsymmetric, or Metis
     ///
     /// * cuDSS: ❌ unavailable; defaults to automatic
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Cholmod,
@@ -127,7 +114,6 @@ pub enum Ordering {
     /// Use the column approximate minimum degree ordering algorithm
     ///
     /// * cuDSS: ✅ available. COLAMD with trivial block structure. Supports global pivoting.
-    /// * KLU: ✅ available
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Colamd,
@@ -135,7 +121,6 @@ pub enum Ordering {
     /// Ordering by Karpis & Kumar from the University of Minnesota
     ///
     /// * cuDSS: ✅ available. Nested dissection algorithm based on METIS
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ✅ available
     Metis,
@@ -143,7 +128,6 @@ pub enum Ordering {
     /// The matrix is factorized as-is
     ///
     /// * cuDSS: ✅ available. Uses natural (identity) order for the internal ordering when no user permutation is supplied.
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     No,
@@ -151,7 +135,6 @@ pub enum Ordering {
     /// Ordering by Schulze from the University of Paderborn
     ///
     /// * cuDSS: ❌ unavailable; defaults to automatic
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Pord,
@@ -159,7 +142,6 @@ pub enum Ordering {
     /// Ordering using the automatic quasi-dense row detection
     ///
     /// * cuDSS: ❌ unavailable; defaults to automatic
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Qamd,
@@ -167,7 +149,6 @@ pub enum Ordering {
     /// Ordering using the Scotch package
     ///
     /// * cuDSS: ❌ unavailable; defaults to automatic
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Scotch,
@@ -179,7 +160,6 @@ pub enum Scaling {
     /// Automatic scaling method selection (default)
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ✅ available
     /// * MUMPS: ✅ available
     /// * UMFPACK: ✅ available (defaults to sum-of-row scaling)
     Auto,
@@ -187,7 +167,6 @@ pub enum Scaling {
     /// Column scaling
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Column,
@@ -195,7 +174,6 @@ pub enum Scaling {
     /// Diagonal scaling
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     Diagonal,
@@ -203,7 +181,6 @@ pub enum Scaling {
     /// Divide each row by the max absolute value in the row
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ✅ available
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available
     Max,
@@ -211,7 +188,6 @@ pub enum Scaling {
     /// No scaling applied or computed
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ✅ available
     /// * MUMPS: ✅ available
     /// * UMFPACK: ✅ available
     No,
@@ -219,7 +195,6 @@ pub enum Scaling {
     /// Row and column scaling based on infinite row/column norms
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowCol,
@@ -227,7 +202,6 @@ pub enum Scaling {
     /// Simultaneous row and column iterative scaling
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColIter,
@@ -235,7 +209,6 @@ pub enum Scaling {
     /// Similar to RowColIter but more rigorous and expensive to compute
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ❌ unavailable; defaults to automatic
     /// * MUMPS: ✅ available
     /// * UMFPACK: ❌ unavailable; defaults to automatic
     RowColRig,
@@ -243,7 +216,6 @@ pub enum Scaling {
     /// Divide each row by the sum of the absolute values in the row
     ///
     /// * cuDSS: ❌ no scaling parameter available
-    /// * KLU: ✅ available
     /// * MUMPS: ❌ unavailable; defaults to automatic
     /// * UMFPACK: ✅ available (also the default)
     Sum,
@@ -364,7 +336,6 @@ impl Genie {
     pub fn from(genie: &str) -> Self {
         match genie.to_lowercase().as_str() {
             "cudss" => Genie::Cudss,
-            "klu" => Genie::Klu,
             "mumps" => Genie::Mumps,
             "umfpack" => Genie::Umfpack,
             _ => Genie::Umfpack,
@@ -375,7 +346,6 @@ impl Genie {
     pub fn to_string(&self) -> String {
         match self {
             Genie::Cudss => "cudss".to_string(),
-            Genie::Klu => "klu".to_string(),
             Genie::Mumps => "mumps".to_string(),
             Genie::Umfpack => "umfpack".to_string(),
         }
@@ -386,7 +356,6 @@ impl Genie {
         if symmetric {
             match self {
                 Genie::Cudss => Sym::YesLower,
-                Genie::Klu => Sym::YesFull,
                 Genie::Mumps => Sym::YesLower,
                 Genie::Umfpack => Sym::YesFull,
             }
@@ -659,7 +628,6 @@ mod tests {
         assert_eq!(Genie::from("blah-blah-blah"), Genie::Umfpack);
 
         assert_eq!(Genie::from("cuDSS"), Genie::Cudss);
-        assert_eq!(Genie::from("KLU"), Genie::Klu);
         assert_eq!(Genie::from("Mumps"), Genie::Mumps);
         assert_eq!(Genie::from("Umfpack"), Genie::Umfpack);
 
@@ -667,11 +635,6 @@ mod tests {
         assert_eq!(genie.to_string(), "cudss");
         assert_eq!(genie.get_sym(false), Sym::No);
         assert_eq!(genie.get_sym(true), Sym::YesLower);
-
-        let genie = Genie::Klu;
-        assert_eq!(genie.to_string(), "klu");
-        assert_eq!(genie.get_sym(false), Sym::No);
-        assert_eq!(genie.get_sym(true), Sym::YesFull);
 
         let genie = Genie::Mumps;
         assert_eq!(genie.to_string(), "mumps");

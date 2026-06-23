@@ -88,7 +88,7 @@ This project is split into the following crates:
 - [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) Numerical Continuation methods to solve nonlinear systems of equations (natural continuation + pseudo-arclength).
 - [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) (DoPri5/8, Radau5, Euler).
 - [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver (spectral collocation + finite differences; 1D/2D)
-- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, KLU, MUMPS, and UMFPACK) + COO/CSC/CSR formats + complex numbers support.
+- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, MUMPS, and UMFPACK) + COO/CSC/CSR formats + complex numbers support.
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions (Frechet, Gumbel, Normal).
 - [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics (Mandel basis) 
 
@@ -162,7 +162,7 @@ Replace "*" with the desired version. Note that `russell_sparse` (and all other 
 
 Russell requires some non-Rust libraries ([OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the maximum performance. These libraries can be installed as explained in each subsection next. Alternatively, [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be used instead of OpenBLAS. In this case, the **feature** named `intel_mkl` must be enabled.
 
-In addition to SuiteSparse (UMFPACK and KLU), the [MUMPS solver](https://mumps-solver.org) may be used as an optional feature. In this case, MUMPS must be locally compiled and installed and the **feature** named `local_sparse` must be enabled. Note that we could possibly use MUMPS from the package manager of your Linux distribution, however, MUMPS is typically only available as an *extra* package and often outdated. Moreover, the distributions do not always provide the *sequential* version (without OpenMPI) of MUMPS which is leaner than the parallel version (not used in this project). Thus, we recommend compiling MUMPS locally. 
+In addition to SuiteSparse (UMFPACK), the [MUMPS solver](https://mumps-solver.org) may be used as an optional feature. In this case, MUMPS must be locally compiled and installed and the **feature** named `local_sparse` must be enabled. Note that we could possibly use MUMPS from the package manager of your Linux distribution, however, MUMPS is typically only available as an *extra* package and often outdated. Moreover, the distributions do not always provide the *sequential* version (without OpenMPI) of MUMPS which is leaner than the parallel version (not used in this project). Thus, we recommend compiling MUMPS locally. 
 
 It is important to highlight that, when MUMPS is enabled, SuiteSparse must also be compiled locally. This requirement is mostly for convenience and does not cause many problems since the build tools will be required for MUMPS anyway. Furthermore, there is an advantage of having consistency since the linear algebra library (OpenBLAS or Intel MKL) will be the same for both MUMPS and SuiteSparse. 
 
@@ -1079,7 +1079,6 @@ fn main() -> Result<(), StrError> {
         - [ ] Implement Fourier interpolation
 - [x] Improve `russell_sparse`
     - [x] Wrap the cuDSS solver (NVIDIA GPUs)
-    - [x] Wrap the KLU solver (in addition to MUMPS and UMFPACK)
     - [x] Implement support for complex numbers
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSR)

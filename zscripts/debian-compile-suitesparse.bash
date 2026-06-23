@@ -70,14 +70,12 @@ action CCOLAMD
 action COLAMD
 action CHOLMOD
 action UMFPACK
-action BTF
-action KLU
 
 # copy include files
 sudo mkdir -p $INCDIR/
 sudo cp -av include/suitesparse/*.h $INCDIR/
 
-# copy libray files
+# copy library files
 sudo mkdir -p $LIBDIR/
 sudo cp -av lib/* $LIBDIR/
 

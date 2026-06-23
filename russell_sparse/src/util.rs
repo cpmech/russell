@@ -75,10 +75,21 @@ pub fn get_system_info_linux() -> String {
         .arg("lscpu 2>/dev/null | grep -E 'Model name|Architecture|Socket|Core|Thread|CPU\\(s\\)|MHz|BogoMIPS|L1|L2|L3' | head -20")
         .output()
     {
-        if let Ok(s) = String::from_utf8(s.stdout) {
+            if let Ok(s) = String::from_utf8(s.stdout) {
             let s = s.trim();
             if !s.is_empty() {
-                info.push_str(&format!("\n\n--- CPU ---\n{}", s));
+                let pairs: Vec<(&str, &str)> = s
+                    .lines()
+                    .filter_map(|line| line.split_once(':').map(|(k, v)| (k.trim(), v.trim())))
+                    .collect();
+                let max_key_len = pairs.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
+                let cleaned: Vec<String> = pairs
+                    .iter()
+                    .map(|(k, v)| {
+                        format!("{}{}: {}", k, " ".repeat(max_key_len - k.len()), v)
+                    })
+                    .collect();
+                info.push_str(&format!("\n\n--- CPU ---\n{}", cleaned.join("\n")));
             }
         }
     }

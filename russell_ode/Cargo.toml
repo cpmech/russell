@@ -1,6 +1,6 @@
 [package]
 name = "russell_ode"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2024"
 license = "MIT"
 description = "Solvers for ordinary differential equations and differential algebraic equations"

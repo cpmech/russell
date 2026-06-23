@@ -42,6 +42,9 @@ else
     CMAKE_OPTIONS="${COMP_LINK} -DBLA_VENDOR=OpenBLAS -DBLA_SIZEOF_INTEGER=4 -DSUITESPARSE_USE_FORTRAN=OFF"
 fi
 
+# disable use of CUDA
+CMAKE_OPTIONS="${CMAKE_OPTIONS} -DSUITESPARSE_USE_CUDA=OFF"
+
 # download the source code
 cd /tmp
 if ! [ -d "SuiteSparse" ]; then

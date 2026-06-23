@@ -1,4 +1,4 @@
-# Russell Sparse - Solvers for large sparse linear systems (wraps cuDSS, KLU, MUMPS, and UMFPACK) <!-- omit from toc --> 
+# Russell Sparse - Sparse matrix calculations and solvers for linear systems <!-- omit from toc --> 
 
 [![documentation](https://docs.rs/russell_sparse/badge.svg)](https://docs.rs/russell_sparse/)
 
@@ -24,7 +24,6 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers:
 * [cuDSS](https://developer.nvidia.com/cudss) - GPU-accelerated direct solver. Note that cuDSS is in **Preview Mode** 🚧.
-* [KLU](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Optimized for highly sparse matrices (e.g., circuit simulation)
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 

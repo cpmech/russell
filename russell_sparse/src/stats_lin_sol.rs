@@ -330,7 +330,7 @@ impl StatsLinSol {
 
 /// Returns true if the error message indicates an out-of-memory condition
 ///
-/// Covers all solvers: UMFPACK, MUMPS, KLU, and cuDSS.
+/// Covers all solvers: UMFPACK, MUMPS, and cuDSS.
 pub fn is_memory_error(e: &str) -> bool {
     e.contains("MALLOC")
         || e.contains("Not enough memory")

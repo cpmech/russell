@@ -4,7 +4,7 @@ use crate::SolverCUDSS;
 #[cfg(feature = "local_sparse")]
 use super::SolverMUMPS;
 
-use super::{CooMatrix, Genie, LinSolParams, SolverKLU, SolverUMFPACK, StatsLinSol};
+use super::{CooMatrix, Genie, LinSolParams, SolverUMFPACK, StatsLinSol};
 use crate::StrError;
 use russell_lab::Vector;
 
@@ -117,28 +117,24 @@ impl<'a> LinSolver<'a> {
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Cudss => Box::new(SolverCUDSS::new()?),
-            Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
         #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Cudss => return Err("cuDSS solver is not available"),
-            Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
         #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Cudss => Box::new(SolverCUDSS::new()?),
-            Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
         #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
         let actual: Box<dyn Send + LinSolTrait> = match genie {
             Genie::Cudss => return Err("cuDSS solver is not available"),
-            Genie::Klu => Box::new(SolverKLU::new()?),
             Genie::Mumps => return Err("MUMPS solver is not available"),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
@@ -240,11 +236,13 @@ mod tests {
     use serial_test::serial;
 
     #[test]
-    fn lin_solver_compute_works_klu() {
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_full();
+    #[serial]
+    #[cfg(feature = "cudss")]
+    fn lin_solver_compute_works_cudss() {
+        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
         let mut x = Vector::new(5);
         let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Klu, &mut x, &coo, &rhs, None).unwrap();
+        LinSolver::compute(Genie::Cudss, &mut x, &coo, &rhs, None).unwrap();
         let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
         vec_approx_eq(&x, &x_correct, 1e-10);
     }

@@ -1,6 +1,6 @@
 [package]
 name = "russell_lab"
-version = "2.5.0"
+version = "2.6.0"
 edition = "2024"
 license = "MIT"
 description = "Scientific laboratory for linear algebra and numerical mathematics"

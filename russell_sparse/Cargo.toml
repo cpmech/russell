@@ -1,6 +1,6 @@
 [package]
 name = "russell_sparse"
-version = "2.5.0"
+version = "2.6.0"
 edition = "2024"
 license = "MIT"
 description = "Sparse matrix calculations and solvers for linear systems"

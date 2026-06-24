@@ -83,6 +83,7 @@ fn main() {
             "/usr/include/suitesparse",
             "/usr/local/include/mumps",
             "/usr/local/include/suitesparse",
+            "/usr/local/cuda/include",
             "/opt/cuda/include",
             "/opt/libcudss/include",
         ];
@@ -94,6 +95,9 @@ fn main() {
             "/usr/lib64",
             "/usr/local/lib/mumps",
             "/usr/local/lib/suitesparse",
+            "/usr/local/cuda/lib64",
+            "/opt/cuda/lib64",
+            "/opt/libcudss/lib",
         ];
 
         // cudss && local_sparse
@@ -119,8 +123,6 @@ fn main() {
             for d in &lib_dirs {
                 println!("cargo:rustc-link-search=native={}", *d);
             }
-            println!("cargo:rustc-link-search=native=/opt/cuda/lib64");
-            println!("cargo:rustc-link-search=native=/opt/libcudss/lib");
             println!("cargo:rustc-link-lib=cudart");
             println!("cargo:rustc-link-lib=cudss");
             println!("cargo:rustc-link-lib=dylib=umfpack");
@@ -167,8 +169,6 @@ fn main() {
             for d in &lib_dirs {
                 println!("cargo:rustc-link-search=native={}", *d);
             }
-            println!("cargo:rustc-link-search=native=/opt/cuda/lib64");
-            println!("cargo:rustc-link-search=native=/opt/libcudss/lib");
             println!("cargo:rustc-link-lib=cudart");
             println!("cargo:rustc-link-lib=cudss");
             println!("cargo:rustc-link-lib=dylib=umfpack");

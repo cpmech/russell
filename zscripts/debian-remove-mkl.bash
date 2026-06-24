@@ -11,5 +11,5 @@ sudo apt-get remove \
 # update ldconfig
 if [ -f "/etc/ld.so.conf.d/intel-oneapi-mkl-and-compiler.conf" ]; then
     sudo rm /etc/ld.so.conf.d/intel-oneapi-mkl-and-compiler.conf
-    sudo ldconfig
+    sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)
 fi

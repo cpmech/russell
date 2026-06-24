@@ -39,7 +39,6 @@
 - [Introduction](#introduction)
   - [External associated and recommended crates](#external-associated-and-recommended-crates)
   - [Features](#features)
-  - [Code style](#code-style)
 - [Installation](#installation)
   - [Arch Linux](#arch-linux)
     - [Option 1: (default) OpenBLAS and SuiteSparse from the package manager](#option-1-default-openblas-and-suitesparse-from-the-package-manager)
@@ -73,6 +72,7 @@
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
+- [Code style](#code-style)
 
 
 
@@ -142,19 +142,6 @@ russell_sparse = { version = "*", features = ["intel_mkl", "local_sparse"] }
 ```
 
 Replace "*" with the desired version. Note that `russell_sparse` (and all other crates in this project) require `russell_lab` as a dependency.
-
-### Code style
-
-(This subsection was generated using [DeepSeek](https://www.deepseek.com))
-
-- **Error handling:** `pub type StrError = &'static str;` — simple static string slice used consistently across all crates. No `thiserror` or `anyhow`.
-- **Synchronous:** No async runtime; the project is fully synchronous.
-- **Testing:** Over 1,000 unit tests per crate. Tests are inline in `#[cfg(test)] mod tests { ... }` blocks at the bottom of source files, plus integration tests in `tests/`. Numeric assertion helpers (`approx_eq`, `vec_approx_eq`, `mat_approx_eq`) validate floating-point results with tolerance. `serial_test` is used for tests that require MUMPS (not thread-safe). Doc-tests run README code examples via `#[cfg(doctest)]`. Coverage target >95% (enforced by CI).
-- **Modules:** Flat per-feature module structure under `src/`. Everything re-exported from `lib.rs` via `pub use foo::*`. `prelude` modules in select crates for ergonomic imports.
-- **Derives:** `Clone`, `Copy`, `Debug` on small types; `Serialize`/`Deserialize` on data types. Manual `Display` implementations for formatted output.
-- **Naming:** `snake_case` functions with domain prefixes (`vec_*`, `mat_*`, `complex_*`); `PascalCase` structs/enums; type aliases for common generics (`Vector = NumVector<f64>`, `Matrix = NumMatrix<f64>`).
-- **Logging:** Custom `Logger` struct (no `log`/`tracing` crate). Writes to stdout or file.
-- **Build:** `build.rs` with `cc` for C FFI. Feature flags: `intel_mkl` (use Intel MKL instead of OpenBLAS), `local_sparse` (compile SuiteSparse and MUMPS locally).
 
 
 
@@ -1113,3 +1100,17 @@ fn main() -> Result<(), StrError> {
     - [x] Compile on Windows
     - [x] Study the compilation of MUMPS on Windows
     - [x] Write scripts to compile on Windows
+
+
+## Code style
+
+(This subsection was generated using [DeepSeek](https://www.deepseek.com))
+
+- **Error handling:** `pub type StrError = &'static str;` — simple static string slice used consistently across all crates. No `thiserror` or `anyhow`.
+- **Synchronous:** No async runtime; the project is fully synchronous.
+- **Testing:** Over 1,000 unit tests per crate. Tests are inline in `#[cfg(test)] mod tests { ... }` blocks at the bottom of source files, plus integration tests in `tests/`. Numeric assertion helpers (`approx_eq`, `vec_approx_eq`, `mat_approx_eq`) validate floating-point results with tolerance. `serial_test` is used for tests that require MUMPS (not thread-safe). Doc-tests run README code examples via `#[cfg(doctest)]`. Coverage target >95% (enforced by CI).
+- **Modules:** Flat per-feature module structure under `src/`. Everything re-exported from `lib.rs` via `pub use foo::*`. `prelude` modules in select crates for ergonomic imports.
+- **Derives:** `Clone`, `Copy`, `Debug` on small types; `Serialize`/`Deserialize` on data types. Manual `Display` implementations for formatted output.
+- **Naming:** `snake_case` functions with domain prefixes (`vec_*`, `mat_*`, `complex_*`); `PascalCase` structs/enums; type aliases for common generics (`Vector = NumVector<f64>`, `Matrix = NumMatrix<f64>`).
+- **Logging:** Custom `Logger` struct (no `log`/`tracing` crate). Writes to stdout or file.
+- **Build:** `build.rs` with `cc` for C FFI. Feature flags: `intel_mkl` (use Intel MKL instead of OpenBLAS), `local_sparse` (compile SuiteSparse and MUMPS locally).

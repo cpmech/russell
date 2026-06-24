@@ -31,7 +31,7 @@ This library implements derivatives for scalar functions with respect to tensors
 
 ## Installation
 
-This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+This crate depends on `russell_lab`, which requires non-Rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
 
 
 

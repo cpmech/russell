@@ -34,7 +34,6 @@ Some performance benchmarks are available here:
 
 This crate fully supports both real (`f64`) and complex (`Complex64`) numbers. You can use the complex variants of the data structures and solvers, such as `ComplexCooMatrix` and `ComplexSolverUMFPACK`, seamlessly.
 
-
 Iterative solvers are outside the scope of `russell_sparse`. Users looking for Rust-based iterative solvers may refer to the [kryst library](https://github.com/tmathis720/kryst).
 
 This library implements three storage formats for sparse matrices:
@@ -78,9 +77,9 @@ russell_sparse = "*"
 
 The following (Rust) features are available:
 
-* `cudss`: Enable the NVIDIA cuDSS GPU solver (requires CUDA and cuDSS)
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `cudss`: Enable the NVIDIA cuDSS GPU solver (requires CUDA and cuDSS)
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -322,9 +321,8 @@ OMP_NUM_THREADS=20 ~/rust_modules/release/solve_matrix_market -g mumps ~/Downloa
 
 Also, to reproduce the issue, we need:
 
-* Git hash = e020d9c8486502bd898d93a1998a0cf23c4d5057
 * Remove Debian OpenBLAS, MUMPS, and etc.
-* Install the compiled MUMPS solver with `02-ubuntu-openblas-compile.bash`
+* Install the compiled MUMPS solver with `zscripts/debian-compile-mumps.bash` and `zscripts/debian-compile-suitesparse.bash`
 
 ### References
 

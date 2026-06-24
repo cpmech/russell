@@ -44,7 +44,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements specialized mathematical functions (e.g., Bessel, Erf, Gamma) and functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD). This library also implements a set of helpful function for comparing floating-point numbers, measuring computer time, reading table-formatted data, and more.
+This library implements specialized mathematical functions (e.g., Bessel, Erf, Gamma) and functions to perform linear algebra computations (e.g., Matrix, Vector, Matrix-Vector, Eigen-decomposition, SVD). This library also implements a set of helpful functions for comparing floating-point numbers, measuring computer time, reading table-formatted data, and more.
 
 The code shall be implemented in *native Rust* code as much as possible. However, light interfaces ("wrappers") are implemented for some of the best tools available in numerical mathematics, including [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [Intel MKL](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/2023-2/overview.html).
 
@@ -80,6 +80,9 @@ There are many functions for linear algebra, such as (for Real and Complex types
 A few other third-party crates related to numerical mathematics and associated disciplines are listed below:
 
 * [lambert_w](https://github.com/JSorngard/lambert_w) — Computes the [Lambert W function](https://mathworld.wolfram.com/LambertW-Function.html)
+* [plotpy](https://github.com/cpmech/plotpy) — Plotting tools using Python3/Matplotlib as an engine (for quality graphics)
+* [vismatrix](https://github.com/cpmech/vismatrix) — Visualize the pattern of non-zero values of a matrix
+* [benchmark-russell](https://github.com/cpmech/benchmark-russell) — Performance benchmarks for this project
 
 
 

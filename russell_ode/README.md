@@ -66,7 +66,7 @@ The ODE/DAE system can be easily defined using the System data structure; [see t
 
 ## Installation
 
-This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+This crate depends on `russell_lab` and `russell_sparse`, which require non-Rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
 
 
 

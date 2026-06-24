@@ -48,7 +48,7 @@ The figure below shows an application in structural safety (see Reference #1) us
 
 ## Installation
 
-This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+This crate depends on `russell_lab`, which requires non-Rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
 
 
 
@@ -347,7 +347,7 @@ std_dev = 0.2610005570820734
         sum = 9997
 ```
 
-### Uniform distribution 
+### Uniform distribution
 
 ```rust
 use russell_stat::*;

@@ -8,6 +8,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 - [Introduction](#introduction)
   - [Documentation](#documentation)
+  - [References](#references)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
@@ -47,12 +48,17 @@ The linear systems are solved using the System Partitioning Strategy (SPS) or th
 
 * [![documentation](https://docs.rs/russell_pde/badge.svg)](https://docs.rs/russell_pde/) — [russell_pde documentation](https://docs.rs/russell_pde/)
 
+### References
+
+1. Kopriva DA (2009) [Implementing Spectral Methods for Partial Differential Equations: Algorithms for Scientists and Engineers](https://link.springer.com/book/10.1007/978-90-481-2261-5), Springer, 394p
+2. Trefethen LN (2000) [Spectral Methods in MATLAB](https://epubs.siam.org/doi/book/10.1137/1.9780898719598), SIAM, 165p
+3. Pozrikidis C (2014) [Introduction to Finite and Spectral Element Methods Using MATLAB](https://www.routledge.com/9780367378974), 2nd ed, Chapman and Hall/CRC, 806p
 
 
 
 ## Installation
 
-This crate depends on some non-rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
+This crate depends on `russell_lab` and `russell_sparse`, which require non-Rust high-performance libraries. [See the main README file for the steps to install these dependencies.](https://github.com/cpmech/russell)
 
 
 

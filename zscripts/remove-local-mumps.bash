@@ -13,9 +13,7 @@ then
     echo "sudo rm -f /etc/ld.so.conf.d/mumps.conf"
     sudo rm -f /etc/ld.so.conf.d/mumps.conf
 
-    echo "sudo ldconfig"
-    sudo ldconfig
-
+    sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)
     echo "DONE"
 else
     echo "..cancelled.."

@@ -18,14 +18,26 @@ CUDSS_TAR="libcudss-linux-x86_64-${CUDSS_VERSION}_cuda${CUDA_VERSION}-archive.ta
 CUDSS_URL="https://developer.download.nvidia.com/compute/cudss/redist/libcudss/linux-x86_64/${CUDSS_TAR}"
 INSTALL_DIR="/opt/libcudss"
 
-# Install CUDA toolkit (nvcc and runtime)
-sudo pacman -S --noconfirm cuda
+# Install prerequisites for Ubuntu 24.04
+echo "... installing system pre-requisites"
+sudo apt-get update
+sudo apt-get install -y wget curl build-essential xz-utils
+
+# Set up official NVIDIA Ubuntu 24.04 Repository and install CUDA Toolkit
+echo "... setting up official NVIDIA repository and installing CUDA"
+cd /tmp
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-ubuntu2404.pin
+sudo mv cuda-ubuntu2404.pin /etc/apt/preferences.d/cuda-repository-pin-600
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt-get update
+sudo apt-get -y install cuda-toolkit
 
 # Download the cuDSS redistributable tarball (reuse it if already present)
-cd /tmp
 if [ -f "$CUDSS_TAR" ]; then
     echo "... using existing $CUDSS_TAR file"
 else
+    echo "... downloading cuDSS"
     curl -fL "$CUDSS_URL" -o "$CUDSS_TAR"
 fi
 
@@ -45,9 +57,9 @@ sudo mv "$EXTRACTED_DIR" "$INSTALL_DIR"
 
 # Register the library path with the dynamic linker
 echo "${INSTALL_DIR}/lib" | sudo tee /etc/ld.so.conf.d/libcudss.conf >/dev/null
-sudo ldconfig
+sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)
 
-# Print environment variable instructions
+# Print environment variable instructions (Updated paths for Ubuntu)
 echo ""
 echo "======================================================================="
 echo " cuDSS ${CUDSS_VERSION} installed to ${INSTALL_DIR}"
@@ -55,9 +67,9 @@ echo "======================================================================="
 echo ""
 echo "Add the following to your shell profile (~/.bashrc or equivalent):"
 echo ""
-echo "  export PATH=/opt/cuda/bin:\$PATH"
-echo "  export CTK_DIR=/opt/cuda"
+echo "  export PATH=/usr/local/cuda/bin:\$PATH"
+echo "  export CTK_DIR=/usr/local/cuda"
 echo "  export CUDSS_DIR=${INSTALL_DIR}"
-echo "  export LD_LIBRARY_PATH=\${CUDSS_DIR}/lib:\${CTK_DIR}/lib64:\${LD_LIBRARY_PATH}"
+echo "  export LD_LIBRARY_PATH=\${CUDSS_DIR}/lib:\${CTK_DIR}/lib64:\${LD_LIBRARY_PATH:-}"
 echo ""
 echo "======================================================================="

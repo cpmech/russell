@@ -23,6 +23,7 @@ echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt
 sudo apt-get update -y
 sudo apt-get install -y --no-install-recommends \
     gcc \
+    intel-oneapi-compiler-dpcpp-cpp \
     intel-oneapi-compiler-fortran \
     intel-oneapi-mkl \
     intel-oneapi-mkl-devel
@@ -33,14 +34,7 @@ set +u
 source /opt/intel/oneapi/setvars.sh  # sets CC, FC, MKLROOT, and PATH for the ifx compiler
 set -u
 
-# Remove the broken non-ELF file that ships with MKL and confuses ldconfig
-# See https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/ldconfig-opt-intel-oneapi-redist-lib-libmkl-sycl-so-is-not-an/m-p/1549240#M35528
-WEIRD_FILE="$MKLROOT/lib/intel64/libmkl_sycl.so"
-if [ -f "$WEIRD_FILE" ]; then
-    sudo mv "$WEIRD_FILE" "$MKLROOT/lib/intel64/libmkl_sick.txt"
-fi
-
 # Register the MKL and compiler library paths with the dynamic linker
 echo "$MKLROOT/lib/intel64" | sudo tee /etc/ld.so.conf.d/intel-mkl.conf >/dev/null
 echo "$CMPLR_ROOT/lib" | sudo tee -a /etc/ld.so.conf.d/intel-compiler.conf >/dev/null
-sudo ldconfig
+sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)

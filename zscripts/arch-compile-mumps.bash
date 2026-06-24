@@ -99,4 +99,4 @@ sudo cp -av include/*.h "$INCDIR/"
 
 # Register the new library path with the dynamic linker
 echo "$LIBDIR" | sudo tee /etc/ld.so.conf.d/mumps.conf >/dev/null
-sudo ldconfig
+sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)

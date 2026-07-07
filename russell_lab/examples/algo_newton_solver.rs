@@ -48,13 +48,14 @@ fn solve_linear_system() -> Result<(), StrError> {
     let args = &mut ();
 
     let mut solver = NewtonSolver::new(2)?;
+    solver.set_enable_stats(true);
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
     println!("Linear system: Ax = b");
     println!("A = [[2, 1], [1, 2]], b = [3, 3]");
     println!("Expected solution: x = [1, 1]");
     println!("Computed solution: x = [{:.8}, {:.8}]", x[0], x[1]);
-    println!("Iterations: {}", solver.stats.n_iterations);
+    println!("Iterations: {}", solver.get_stats()?.n_iterations);
 
     Ok(())
 }
@@ -81,14 +82,14 @@ fn solve_with_line_search() -> Result<(), StrError> {
     let args = &mut ();
 
     let mut solver = NewtonSolver::new(2)?;
-    solver.set_use_line_search(true);
+    solver.set_enable_stats(true).set_use_line_search(true);
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
     println!("Linear system: Ax = b");
     println!("A = [[2, 1], [1, 2]], b = [3, 3]");
     println!("Expected solution: x = [1, 1]");
     println!("Computed solution (with line search): x = [{:.8}, {:.8}]", x[0], x[1]);
-    println!("Iterations: {}", solver.stats.n_iterations);
+    println!("Iterations: {}", solver.get_stats()?.n_iterations);
 
     Ok(())
 }
@@ -116,13 +117,13 @@ fn solve_rosenbrock() -> Result<(), StrError> {
     let args = &mut ();
 
     let mut solver = NewtonSolver::new(2)?;
-    solver.set_use_line_search(false);
+    solver.set_enable_stats(true).set_use_line_search(false);
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
     println!("Rosenbrock function: F(x,y) = [1-x, 100(y-x²)]");
     println!("Expected solution: (x, y) = (1, 1)");
     println!("Computed solution: ({:.8}, {:.8})", x[0], x[1]);
-    println!("Iterations: {}", solver.stats.n_iterations);
+    println!("Iterations: {}", solver.get_stats()?.n_iterations);
 
     Ok(())
 }

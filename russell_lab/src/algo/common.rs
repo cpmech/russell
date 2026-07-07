@@ -72,6 +72,16 @@ impl Stats {
         }
     }
 
+    /// Resets the statistics to their initial state
+    pub fn reset(&mut self) {
+        self.n_function = 0;
+        self.n_jacobian = 0;
+        self.n_iterations = 0;
+        self.error_estimate = UNINITIALIZED;
+        self.nanos_total = 0;
+        self.sw_total.reset();
+    }
+
     /// Stops the stopwatch and updates total nanoseconds
     pub(crate) fn stop_sw_total(&mut self) {
         self.nanos_total = self.sw_total.stop();
@@ -146,6 +156,20 @@ mod tests {
              Error estimate                   = unavailable\n\
              Total computation time           = 0ns"
         );
+    }
+
+    #[test]
+    fn stats_reset_works() {
+        let mut stats = Stats::new();
+        stats.n_function = 5;
+        stats.n_jacobian = 3;
+        stats.n_iterations = 2;
+        stats.nanos_total = 1000;
+        stats.reset();
+        assert_eq!(stats.n_function, 0);
+        assert_eq!(stats.n_jacobian, 0);
+        assert_eq!(stats.n_iterations, 0);
+        assert_eq!(stats.nanos_total, 0);
     }
 
     #[test]

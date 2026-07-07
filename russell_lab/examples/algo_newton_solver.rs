@@ -47,7 +47,7 @@ fn solve_linear_system() -> Result<(), StrError> {
     let mut x = Vector::from(&[0.0, 0.0]);
     let args = &mut ();
 
-    let mut solver = NewtonSolver::new(2);
+    let mut solver = NewtonSolver::new(2)?;
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
     println!("Linear system: Ax = b");
@@ -80,7 +80,7 @@ fn solve_with_line_search() -> Result<(), StrError> {
     let mut x = Vector::from(&[0.0, 0.0]);
     let args = &mut ();
 
-    let mut solver = NewtonSolver::new(2);
+    let mut solver = NewtonSolver::new(2)?;
     solver.use_line_search = true;
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -115,7 +115,7 @@ fn solve_rosenbrock() -> Result<(), StrError> {
     let mut x = Vector::from(&[0.0, 0.0]);
     let args = &mut ();
 
-    let mut solver = NewtonSolver::new(2);
+    let mut solver = NewtonSolver::new(2)?;
     solver.use_line_search = false;
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 

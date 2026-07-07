@@ -66,8 +66,11 @@ pub struct NewtonSolver {
 
 impl NewtonSolver {
     /// Allocates a new instance with default parameters
-    pub fn new(ndim: usize) -> Self {
-        NewtonSolver {
+    pub fn new(ndim: usize) -> Result<Self, StrError> {
+        if ndim == 0 {
+            return Err("ndim must be > 0");
+        }
+        Ok(NewtonSolver {
             ndim,
             r: Vector::new(ndim),
             jj: Matrix::new(ndim, ndim),
@@ -78,7 +81,7 @@ impl NewtonSolver {
             use_line_search: false,
             initial_alpha: 1.0,
             stats: Stats::new(),
-        }
+        })
     }
 
     /// Validates the solver parameters
@@ -160,7 +163,7 @@ impl NewtonSolver {
     ///     let args = &mut 0;
     ///
     ///     // Create the solver and solve the problem
-    ///     let mut solver = NewtonSolver::new(2);
+    ///     let mut solver = NewtonSolver::new(2)?;
     ///     solver.solve(&mut x, args, calc_f, calc_jj)?;
     ///     println!("x = {:?}", x.as_data());
     ///
@@ -186,6 +189,9 @@ impl NewtonSolver {
         if x.dim() != self.ndim {
             return Err("dimension of x does not match solver dimension");
         }
+
+        // Reset statistics for this solve operation
+        self.stats.reset();
 
         // Calculate the first residual vector r = f(x)
         calc_f(&mut self.r, &x, args)?;
@@ -273,7 +279,7 @@ mod tests {
 
     #[test]
     fn newton_solver_new_works() {
-        let solver = NewtonSolver::new(2);
+        let solver = NewtonSolver::new(2).unwrap();
         assert_eq!(solver.max_iterations, 20);
         assert_eq!(solver.tolerance, 1e-10);
         assert_eq!(solver.divergent_tol, 1e6);
@@ -283,7 +289,7 @@ mod tests {
 
     #[test]
     fn newton_solver_fields_are_mutable() {
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.max_iterations = 100;
         solver.tolerance = 1e-12;
         solver.use_line_search = true;
@@ -318,7 +324,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         let mut x = Vector::from(&[0.0, 0.0]);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
@@ -353,7 +359,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         let mut x = Vector::from(&[0.0, 0.0]);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
@@ -367,18 +373,18 @@ mod tests {
 
     #[test]
     fn newton_validates_max_iterations() {
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.max_iterations = 0;
         assert_eq!(solver.validate_params().err(), Some("max_iterations must be >= 1"));
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.tolerance = 0.0;
         assert_eq!(
             solver.validate_params().err(),
             Some("tolerance must be >= 10 * f64::EPSILON")
         );
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.divergent_tol = 0.5;
         assert_eq!(solver.validate_params().err(), Some("divergent_tol must be >= 1.0"));
     }
@@ -403,7 +409,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.max_iterations = 1;
         solver.tolerance = 1e-8;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
@@ -418,17 +424,17 @@ mod tests {
 
     #[test]
     fn newton_tolerance_configuration() {
-        let solver = NewtonSolver::new(2);
+        let solver = NewtonSolver::new(2).unwrap();
         assert_eq!(solver.tolerance, 1e-10);
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.tolerance = 1e-6;
         assert_eq!(solver.tolerance, 1e-6);
     }
 
     #[test]
     fn newton_line_search_configuration() {
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         assert!(!solver.use_line_search);
         solver.use_line_search = true;
         assert!(solver.use_line_search);
@@ -455,7 +461,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = true;
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -488,7 +494,7 @@ mod tests {
         // call calc_jj just so the coverage tool sees it, even though the solver should never call it since the initial guess is already a solution
         let _ = calc_jj(&mut Matrix::new(2, 2), &x, args);
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -519,7 +525,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -559,7 +565,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(3);
+        let mut solver = NewtonSolver::new(3).unwrap();
         solver.use_line_search = false;
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -594,7 +600,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         solver.divergent_tol = 1.0;
         solver.max_iterations = 3;
@@ -606,10 +612,10 @@ mod tests {
 
     #[test]
     fn newton_initial_alpha_configuration() {
-        let solver = NewtonSolver::new(2);
+        let solver = NewtonSolver::new(2).unwrap();
         assert_eq!(solver.initial_alpha, 1.0);
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.initial_alpha = 0.5;
         assert_eq!(solver.initial_alpha, 0.5);
     }
@@ -635,7 +641,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         solver.max_iterations = 2;
         solver.solve(&mut x, args, calc_f, calc_jj)?;
@@ -663,7 +669,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = true;
         solver.initial_alpha = 1.0;
         solver.max_iterations = 20;
@@ -701,7 +707,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = true;
         solver.initial_alpha = 1.0;
         solver.max_iterations = 50;
@@ -716,7 +722,7 @@ mod tests {
     #[test]
     fn newton_validates_initial_alpha() {
         // Direct call to validate_params
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.initial_alpha = 0.0;
         assert_eq!(solver.validate_params().err(), Some("initial_alpha must be > 0"));
 
@@ -733,7 +739,7 @@ mod tests {
         // call calc_jj just so the coverage tool sees it, even though the solver should never call it since the initial_alpha validation should fail before any iterations
         let _ = calc_jj(&mut Matrix::new(2, 2), &x, args);
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.initial_alpha = -1.0;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("initial_alpha must be > 0"));
@@ -764,7 +770,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         solver.divergent_tol = 1.0; // fire as soon as norm grows
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
@@ -784,7 +790,7 @@ mod tests {
         // call calc_jj just so the coverage tool sees it, even though the solver should never call it since the initial calc_f call should fail before any iterations
         let _ = calc_jj(&mut Matrix::new(2, 2), &x, args);
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error"));
@@ -807,7 +813,7 @@ mod tests {
 
         let calc_jj = |_: &mut Matrix, _: &Vector, _: &mut ()| Err("jacobian error");
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("jacobian error"));
@@ -835,7 +841,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert!(result.is_err());
@@ -869,7 +875,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error on second call"));
@@ -903,7 +909,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = true;
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error in line search"));
@@ -930,7 +936,7 @@ mod tests {
             Ok(())
         };
 
-        let mut solver = NewtonSolver::new(2);
+        let mut solver = NewtonSolver::new(2).unwrap();
         solver.use_line_search = false;
         solver.tolerance = 1e-1;
         solver.solve(&mut x, args, calc_f, calc_jj)?;

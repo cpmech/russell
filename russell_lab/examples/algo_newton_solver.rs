@@ -81,7 +81,7 @@ fn solve_with_line_search() -> Result<(), StrError> {
     let args = &mut ();
 
     let mut solver = NewtonSolver::new(2)?;
-    solver.use_line_search = true;
+    solver.set_use_line_search(true);
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
     println!("Linear system: Ax = b");
@@ -116,7 +116,7 @@ fn solve_rosenbrock() -> Result<(), StrError> {
     let args = &mut ();
 
     let mut solver = NewtonSolver::new(2)?;
-    solver.use_line_search = false;
+    solver.set_use_line_search(false);
     solver.solve(&mut x, args, calc_f, calc_jj)?;
 
     println!("Rosenbrock function: F(x,y) = [1-x, 100(y-x²)]");

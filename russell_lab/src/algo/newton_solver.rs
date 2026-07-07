@@ -35,12 +35,12 @@ pub struct NewtonSolver {
     /// Maximum number of iterations
     ///
     /// Default = 20
-    pub max_iterations: usize,
+    max_iterations: usize,
 
     /// Tolerance for convergence based on residual norm
     ///
     /// Default = 1e-10
-    pub tolerance: f64,
+    tolerance: f64,
 
     /// Tolerance for divergence detection
     ///
@@ -48,17 +48,17 @@ pub struct NewtonSolver {
     /// the solver will return an error.
     ///
     /// Default = 1e6
-    pub divergent_tol: f64,
+    divergent_tol: f64,
 
     /// Whether to use line search
     ///
     /// Default = false
-    pub use_line_search: bool,
+    use_line_search: bool,
 
     /// Initial step size for line search
     ///
     /// Default = 1.0
-    pub initial_alpha: f64,
+    initial_alpha: f64,
 
     /// Holds the statistics of the last solve operation
     pub stats: Stats,
@@ -99,6 +99,46 @@ impl NewtonSolver {
             return Err("initial_alpha must be > 0");
         }
         Ok(())
+    }
+
+    /// Sets the maximum number of iterations
+    ///
+    /// Default value: 20
+    pub fn set_max_iterations(&mut self, value: usize) -> &mut Self {
+        self.max_iterations = value;
+        self
+    }
+
+    /// Sets the tolerance for convergence
+    ///
+    /// Default value: 1e-10
+    pub fn set_tolerance(&mut self, value: f64) -> &mut Self {
+        self.tolerance = value;
+        self
+    }
+
+    /// Sets the tolerance for divergence detection
+    ///
+    /// Default value: 1e6
+    pub fn set_divergent_tol(&mut self, value: f64) -> &mut Self {
+        self.divergent_tol = value;
+        self
+    }
+
+    /// Sets whether to use line search
+    ///
+    /// Default value: false
+    pub fn set_use_line_search(&mut self, value: bool) -> &mut Self {
+        self.use_line_search = value;
+        self
+    }
+
+    /// Sets the initial step size for line search
+    ///
+    /// Default value: 1.0
+    pub fn set_initial_alpha(&mut self, value: f64) -> &mut Self {
+        self.initial_alpha = value;
+        self
     }
 
     /// Solves a nonlinear system using Newton's method
@@ -290,9 +330,10 @@ mod tests {
     #[test]
     fn newton_solver_fields_are_mutable() {
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.max_iterations = 100;
-        solver.tolerance = 1e-12;
-        solver.use_line_search = true;
+        solver
+            .set_max_iterations(100)
+            .set_tolerance(1e-12)
+            .set_use_line_search(true);
         assert_eq!(solver.max_iterations, 100);
         assert_eq!(solver.tolerance, 1e-12);
         assert!(solver.use_line_search);
@@ -325,7 +366,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         let mut x = Vector::from(&[0.0, 0.0]);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -360,7 +401,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         let mut x = Vector::from(&[0.0, 0.0]);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
@@ -374,18 +415,18 @@ mod tests {
     #[test]
     fn newton_validates_max_iterations() {
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.max_iterations = 0;
+        solver.set_max_iterations(0);
         assert_eq!(solver.validate_params().err(), Some("max_iterations must be >= 1"));
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.tolerance = 0.0;
+        solver.set_tolerance(0.0);
         assert_eq!(
             solver.validate_params().err(),
             Some("tolerance must be >= 10 * f64::EPSILON")
         );
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.divergent_tol = 0.5;
+        solver.set_divergent_tol(0.5);
         assert_eq!(solver.validate_params().err(), Some("divergent_tol must be >= 1.0"));
     }
 
@@ -410,8 +451,8 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.max_iterations = 1;
-        solver.tolerance = 1e-8;
+        solver.set_max_iterations(1);
+        solver.set_tolerance(1e-8);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         // x0=[1,1] → Newton step → x=[0,0] (residual=0), but the convergence
         // check runs at the top of the loop, so the updated residual is only
@@ -428,7 +469,7 @@ mod tests {
         assert_eq!(solver.tolerance, 1e-10);
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.tolerance = 1e-6;
+        solver.set_tolerance(1e-6);
         assert_eq!(solver.tolerance, 1e-6);
     }
 
@@ -436,7 +477,7 @@ mod tests {
     fn newton_line_search_configuration() {
         let mut solver = NewtonSolver::new(2).unwrap();
         assert!(!solver.use_line_search);
-        solver.use_line_search = true;
+        solver.set_use_line_search(true);
         assert!(solver.use_line_search);
     }
 
@@ -462,7 +503,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = true;
+        solver.set_use_line_search(true);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
         approx_eq(x[0], 1.0, 1e-10);
@@ -495,7 +536,7 @@ mod tests {
         let _ = calc_jj(&mut Matrix::new(2, 2), &x, args);
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
         approx_eq(x[0], 1.0, 1e-10);
@@ -526,7 +567,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
         assert!(solver.stats.n_iterations >= 1);
@@ -566,7 +607,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(3).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
         approx_eq(x[0], 0.2, 1e-10);
@@ -601,9 +642,9 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
-        solver.divergent_tol = 1.0;
-        solver.max_iterations = 3;
+        solver.set_use_line_search(false);
+        solver.set_divergent_tol(1.0);
+        solver.set_max_iterations(3);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("solution diverged"));
     }
@@ -616,7 +657,7 @@ mod tests {
         assert_eq!(solver.initial_alpha, 1.0);
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.initial_alpha = 0.5;
+        solver.set_initial_alpha(0.5);
         assert_eq!(solver.initial_alpha, 0.5);
     }
 
@@ -642,8 +683,8 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
-        solver.max_iterations = 2;
+        solver.set_use_line_search(false);
+        solver.set_max_iterations(2);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
         Ok(())
     }
@@ -670,9 +711,9 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = true;
-        solver.initial_alpha = 1.0;
-        solver.max_iterations = 20;
+        solver.set_use_line_search(true);
+        solver.set_initial_alpha(1.0);
+        solver.set_max_iterations(20);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
         approx_eq(x[0], 2.0, 1e-6);
         approx_eq(x[1], 2.0, 1e-6);
@@ -708,9 +749,9 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = true;
-        solver.initial_alpha = 1.0;
-        solver.max_iterations = 50;
+        solver.set_use_line_search(true);
+        solver.set_initial_alpha(1.0);
+        solver.set_max_iterations(50);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
         approx_eq(x[0], 1.0, 1e-8);
         approx_eq(x[1], 1.0, 1e-8);
@@ -723,7 +764,7 @@ mod tests {
     fn newton_validates_initial_alpha() {
         // Direct call to validate_params
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.initial_alpha = 0.0;
+        solver.set_initial_alpha(0.0);
         assert_eq!(solver.validate_params().err(), Some("initial_alpha must be > 0"));
 
         // Error propagated through solve() — covers the `?` arm in solve
@@ -740,7 +781,7 @@ mod tests {
         let _ = calc_jj(&mut Matrix::new(2, 2), &x, args);
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.initial_alpha = -1.0;
+        solver.set_initial_alpha(-1.0);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("initial_alpha must be > 0"));
     }
@@ -771,8 +812,8 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
-        solver.divergent_tol = 1.0; // fire as soon as norm grows
+        solver.set_use_line_search(false);
+        solver.set_divergent_tol(1.0); // fire as soon as norm grows
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("solution diverged"));
     }
@@ -791,7 +832,7 @@ mod tests {
         let _ = calc_jj(&mut Matrix::new(2, 2), &x, args);
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error"));
     }
@@ -814,7 +855,7 @@ mod tests {
         let calc_jj = |_: &mut Matrix, _: &Vector, _: &mut ()| Err("jacobian error");
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("jacobian error"));
     }
@@ -842,7 +883,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert!(result.is_err());
     }
@@ -876,7 +917,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
+        solver.set_use_line_search(false);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error on second call"));
     }
@@ -910,7 +951,7 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = true;
+        solver.set_use_line_search(true);
         let result = solver.solve(&mut x, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error in line search"));
     }
@@ -937,8 +978,8 @@ mod tests {
         };
 
         let mut solver = NewtonSolver::new(2).unwrap();
-        solver.use_line_search = false;
-        solver.tolerance = 1e-1;
+        solver.set_use_line_search(false);
+        solver.set_tolerance(1e-1);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
         Ok(())
     }

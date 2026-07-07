@@ -34,22 +34,22 @@ fn solve_linear_system() -> Result<(), StrError> {
     let mut x0 = Vector::from(&[0.0, 0.0]);
     let args = &mut ();
 
-    let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-        out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-        out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+    let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+        r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+        r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
         Ok(())
     };
 
-    let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-        j.set(0, 0, 2.0);
-        j.set(0, 1, 1.0);
-        j.set(1, 0, 1.0);
-        j.set(1, 1, 2.0);
+    let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+        jj.set(0, 0, 2.0);
+        jj.set(0, 1, 1.0);
+        jj.set(1, 0, 1.0);
+        jj.set(1, 1, 2.0);
         Ok(())
     };
 
     let solver = NewtonSolver::new();
-    let (x, stats) = solver.solve(&mut x0, args, f, jacobian)?;
+    let (x, stats) = solver.solve(&mut x0, args, calc_f, calc_jj)?;
 
     println!("Linear system: Ax = b");
     println!("A = [[2, 1], [1, 2]], b = [3, 3]");
@@ -66,23 +66,23 @@ fn solve_rosenbrock() -> Result<(), StrError> {
     let mut x0 = Vector::from(&[0.0, 0.0]);
     let args = &mut ();
 
-    let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-        out[0] = 1.0 - x[0];
-        out[1] = 100.0 * (x[1] - x[0] * x[0]);
+    let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+        r[0] = 1.0 - x[0];
+        r[1] = 100.0 * (x[1] - x[0] * x[0]);
         Ok(())
     };
 
-    let jacobian = |j: &mut Matrix, x: &Vector, _: &mut ()| {
-        j.set(0, 0, -1.0);
-        j.set(0, 1, 0.0);
-        j.set(1, 0, -200.0 * x[0]);
-        j.set(1, 1, 100.0);
+    let calc_jj = |jj: &mut Matrix, x: &Vector, _: &mut ()| {
+        jj.set(0, 0, -1.0);
+        jj.set(0, 1, 0.0);
+        jj.set(1, 0, -200.0 * x[0]);
+        jj.set(1, 1, 100.0);
         Ok(())
     };
 
     let mut solver = NewtonSolver::new();
     solver.use_line_search = true;
-    let (x, stats) = solver.solve(&mut x0, args, f, jacobian)?;
+    let (x, stats) = solver.solve(&mut x0, args, calc_f, calc_jj)?;
 
     println!("Rosenbrock function: F(x,y) = [1-x, 100(y-x²)]");
     println!("Expected solution: (x, y) = (1, 1)");
@@ -97,23 +97,23 @@ fn solve_without_line_search() -> Result<(), StrError> {
     let mut x0 = Vector::from(&[0.0, 0.0]);
     let args = &mut ();
 
-    let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-        out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-        out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+    let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+        r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+        r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
         Ok(())
     };
 
-    let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-        j.set(0, 0, 2.0);
-        j.set(0, 1, 1.0);
-        j.set(1, 0, 1.0);
-        j.set(1, 1, 2.0);
+    let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+        jj.set(0, 0, 2.0);
+        jj.set(0, 1, 1.0);
+        jj.set(1, 0, 1.0);
+        jj.set(1, 1, 2.0);
         Ok(())
     };
 
     let mut solver = NewtonSolver::new();
     solver.use_line_search = false;
-    let (x, stats) = solver.solve(&mut x0, args, f, jacobian)?;
+    let (x, stats) = solver.solve(&mut x0, args, calc_f, calc_jj)?;
 
     println!("Linear system without line search");
     println!("Computed solution: x = [{:.8}, {:.8}]", x[0], x[1]);

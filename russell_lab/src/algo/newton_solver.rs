@@ -80,12 +80,22 @@ impl NewtonSolver {
 
     /// Solves a nonlinear system using Newton's method
     ///
+    /// Solves:
+    ///
+    /// ```text
+    /// r := f(x) = 0
+    ///
+    /// with
+    ///
+    /// J := df/dx
+    /// ```
+    ///
     /// # Input
     ///
     /// * `x0` -- Initial guess (updated in place to the last iterate on return)
     /// * `args` -- Extra arguments for the callback functions
-    /// * `f` -- The function F(x) that fills the residual vector
-    /// * `jacobian` -- Analytical Jacobian function: fills J(x)
+    /// * `calc_f` -- Function to calculate the residual vector (r = f(x))
+    /// * `calc_jj` -- Function to calculate the Jacobian matrix (J)
     ///
     /// # Output
     ///
@@ -98,8 +108,8 @@ impl NewtonSolver {
     /// The classic two-equation nonlinear system (intersection of a circle and a line):
     ///
     /// ```text
-    /// F₀(x) = x₀² + x₁² - 4 = 0   (circle of radius 2)
-    /// F₁(x) = x₀  - x₁      = 0   (line x₀ = x₁)
+    /// r₀(x) = x₀² + x₁² - 4 = 0   (circle of radius 2)
+    /// r₁(x) = x₀  - x₁      = 0   (line x₀ = x₁)
     ///
     /// Jacobian:
     ///     J = [ 2x₀   2x₁ ]
@@ -117,24 +127,24 @@ impl NewtonSolver {
     ///     let mut x0 = Vector::from(&[1.0, 0.5]); // initial guess
     ///     let args = &mut 0;
     ///
-    ///     // F(x): circle x₀² + x₁² = 4  and  line x₀ = x₁
-    ///     let f = |x: &Vector, out: &mut Vector, _: &mut i32| {
-    ///         out[0] = x[0] * x[0] + x[1] * x[1] - 4.0;
-    ///         out[1] = x[0] - x[1];
+    ///     // f(x): circle x₀² + x₁² = 4  and  line x₀ = x₁
+    ///     let calc_f = |r: &mut Vector, x: &Vector , _: &mut i32| {
+    ///         r[0] = x[0] * x[0] + x[1] * x[1] - 4.0;
+    ///         r[1] = x[0] - x[1];
     ///         Ok(())
     ///     };
     ///
     ///     // Analytical Jacobian
-    ///     let jacobian = |j: &mut Matrix, x: &Vector, _: &mut i32| {
-    ///         j.set(0, 0, 2.0 * x[0]);
-    ///         j.set(0, 1, 2.0 * x[1]);
-    ///         j.set(1, 0,  1.0);
-    ///         j.set(1, 1, -1.0);
+    ///     let calc_jj = |jj: &mut Matrix, x: &Vector, _: &mut i32| {
+    ///         jj.set(0, 0, 2.0 * x[0]);
+    ///         jj.set(0, 1, 2.0 * x[1]);
+    ///         jj.set(1, 0,  1.0);
+    ///         jj.set(1, 1, -1.0);
     ///         Ok(())
     ///     };
     ///
     ///     let solver = NewtonSolver::new();
-    ///     let (x, stats) = solver.solve(&mut x0, args, f, jacobian)?;
+    ///     let (x, stats) = solver.solve(&mut x0, args, calc_f, calc_jj)?;
     ///     println!("solution = {:?}", x.as_data());
     ///     println!("{}", stats);
     ///
@@ -147,11 +157,11 @@ impl NewtonSolver {
         &self,
         x0: &mut Vector,
         args: &mut A,
-        mut f: F,
-        mut jacobian: J,
+        mut calc_f: F,
+        mut calc_jj: J,
     ) -> Result<(Vector, Stats), StrError>
     where
-        F: FnMut(&Vector, &mut Vector, &mut A) -> Result<(), StrError>,
+        F: FnMut(&mut Vector, &Vector, &mut A) -> Result<(), StrError>,
         J: FnMut(&mut Matrix, &Vector, &mut A) -> Result<(), StrError>,
     {
         self.validate_params()?;
@@ -159,14 +169,14 @@ impl NewtonSolver {
         let n = x0.dim();
 
         let mut x = x0.clone();
-        let mut residual = Vector::new(n);
-        let mut jac = Matrix::new(n, n);
+        let mut r = Vector::new(n);
+        let mut jj = Matrix::new(n, n);
         let mut p = Vector::new(n); // Newton step
 
-        f(&x, &mut residual, args)?;
+        calc_f(&mut r, &x, args)?;
         stats.n_function += 1;
 
-        let initial_norm = vec_norm(&residual, Norm::Max);
+        let initial_norm = vec_norm(&r, Norm::Max);
         let mut residual_norm = initial_norm;
 
         for _ in 0..self.max_iterations {
@@ -185,17 +195,17 @@ impl NewtonSolver {
             }
 
             // Compute Jacobian at x and solve J*p = -F(x) for Newton step p
-            jacobian(&mut jac, &x, args)?;
+            calc_jj(&mut jj, &x, args)?;
             stats.n_jacobian += 1;
             for i in 0..n {
-                p[i] = -residual[i];
+                p[i] = -r[i];
             }
-            solve_lin_sys(&mut p, &mut jac)?;
+            solve_lin_sys(&mut p, &mut jj)?;
 
             if self.use_line_search {
                 // Merit function: phi(x) = 0.5 * ||F(x)||^2 (Euclidean)
                 // Directional derivative: phi'(0) = F(x)^T * J(x) * p = F(x)^T * (-F(x)) = -||F(x)||^2
-                let phi_base = 0.5 * vec_inner(&residual, &residual);
+                let phi_base = 0.5 * vec_inner(&r, &r);
                 let slope = -2.0 * phi_base; // = -||F||^2, always <= 0
                 let c1 = 1e-4_f64;
                 let rho = 0.5_f64;
@@ -205,9 +215,9 @@ impl NewtonSolver {
                     for i in 0..n {
                         x[i] = x_base[i] + alpha * p[i];
                     }
-                    f(&x, &mut residual, args)?;
+                    calc_f(&mut r, &x, args)?;
                     stats.n_function += 1;
-                    let phi_new = 0.5 * vec_inner(&residual, &residual);
+                    let phi_new = 0.5 * vec_inner(&r, &r);
                     // Armijo condition: phi(alpha) <= phi(0) + c1 * alpha * phi'(0)
                     if phi_new <= phi_base + c1 * alpha * slope {
                         break;
@@ -218,11 +228,11 @@ impl NewtonSolver {
                 for i in 0..n {
                     x[i] += p[i];
                 }
-                f(&x, &mut residual, args)?;
+                calc_f(&mut r, &x, args)?;
                 stats.n_function += 1;
             }
 
-            residual_norm = vec_norm(&residual, Norm::Max);
+            residual_norm = vec_norm(&r, Norm::Max);
         }
 
         let _ = vec_copy(x0, &x);
@@ -272,25 +282,25 @@ mod tests {
         let args = &mut ();
 
         // Compute F(x) = Ax - b, storing result in the output vector
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-            out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+            r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
             Ok(())
         };
 
         // Analytical Jacobian: J = A
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 2.0);
-            j.set(0, 1, 1.0);
-            j.set(1, 0, 1.0);
-            j.set(1, 1, 2.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 2.0);
+            jj.set(0, 1, 1.0);
+            jj.set(1, 0, 1.0);
+            jj.set(1, 1, 2.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
         let mut x0 = Vector::from(&[0.0, 0.0]);
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, stats) = result.unwrap();
 
@@ -308,25 +318,25 @@ mod tests {
         let args = &mut ();
 
         // Compute F(x), storing result in the output vector
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 1.0 - x[0];
-            out[1] = 100.0 * (x[1] - x[0] * x[0]);
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 1.0 - x[0];
+            r[1] = 100.0 * (x[1] - x[0] * x[0]);
             Ok(())
         };
 
         // Analytical Jacobian: J = [[-1, 0], [-200*x0, 100]]
-        let jacobian = |j: &mut Matrix, x: &Vector, _: &mut ()| {
-            j.set(0, 0, -1.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, -200.0 * x[0]);
-            j.set(1, 1, 100.0);
+        let calc_jj = |jj: &mut Matrix, x: &Vector, _: &mut ()| {
+            jj.set(0, 0, -1.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, -200.0 * x[0]);
+            jj.set(1, 1, 100.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
         let mut x0 = Vector::from(&[0.0, 0.0]);
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, _) = result.unwrap();
 
@@ -360,24 +370,24 @@ mod tests {
         let mut x0 = Vector::from(&[1.0, 1.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0]; // F1 = x
-            out[1] = x[1]; // F2 = y
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0]; // F1 = x
+            r[1] = x[1]; // F2 = y
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 1.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 1.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 1.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 1.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.max_iterations = 1;
         solver.tolerance = 1e-8;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         // x0=[1,1] → Newton step → x=[0,0] (residual=0), but the convergence
         // check runs at the top of the loop, so the updated residual is only
         // checked in the *next* iteration, which never happens.
@@ -412,23 +422,23 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-            out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+            r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 2.0);
-            j.set(0, 1, 1.0);
-            j.set(1, 0, 1.0);
-            j.set(1, 1, 2.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 2.0);
+            jj.set(0, 1, 1.0);
+            jj.set(1, 0, 1.0);
+            jj.set(1, 1, 2.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = true;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, _) = result.unwrap();
 
@@ -443,26 +453,26 @@ mod tests {
         let mut x0 = Vector::from(&[1.0, 1.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-            out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+            r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 2.0);
-            j.set(0, 1, 1.0);
-            j.set(1, 0, 1.0);
-            j.set(1, 1, 2.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 2.0);
+            jj.set(0, 1, 1.0);
+            jj.set(1, 0, 1.0);
+            jj.set(1, 1, 2.0);
             Ok(())
         };
 
-        // call the Jacobian function just so the coverage tool sees it, even though the solver should never call it since the initial guess is already a solution
-        let _ = jacobian(&mut Matrix::new(2, 2), &x0, args);
+        // call calc_jj just so the coverage tool sees it, even though the solver should never call it since the initial guess is already a solution
+        let _ = calc_jj(&mut Matrix::new(2, 2), &x0, args);
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, stats) = result.unwrap();
 
@@ -478,23 +488,23 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-            out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+            r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 2.0);
-            j.set(0, 1, 1.0);
-            j.set(1, 0, 1.0);
-            j.set(1, 1, 2.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 2.0);
+            jj.set(0, 1, 1.0);
+            jj.set(1, 0, 1.0);
+            jj.set(1, 1, 2.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (_, stats) = result.unwrap();
 
@@ -513,29 +523,29 @@ mod tests {
         // 3x3 linear system: A * x = b
         // A = [[3,1,1],[1,3,1],[1,1,3]], b = [1,1,1]
         // Solution: x = [0.2, 0.2, 0.2]
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 3.0 * x[0] + x[1] + x[2] - 1.0;
-            out[1] = x[0] + 3.0 * x[1] + x[2] - 1.0;
-            out[2] = x[0] + x[1] + 3.0 * x[2] - 1.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 3.0 * x[0] + x[1] + x[2] - 1.0;
+            r[1] = x[0] + 3.0 * x[1] + x[2] - 1.0;
+            r[2] = x[0] + x[1] + 3.0 * x[2] - 1.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 3.0);
-            j.set(0, 1, 1.0);
-            j.set(0, 2, 1.0);
-            j.set(1, 0, 1.0);
-            j.set(1, 1, 3.0);
-            j.set(1, 2, 1.0);
-            j.set(2, 0, 1.0);
-            j.set(2, 1, 1.0);
-            j.set(2, 2, 3.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 3.0);
+            jj.set(0, 1, 1.0);
+            jj.set(0, 2, 1.0);
+            jj.set(1, 0, 1.0);
+            jj.set(1, 1, 3.0);
+            jj.set(1, 2, 1.0);
+            jj.set(2, 0, 1.0);
+            jj.set(2, 1, 1.0);
+            jj.set(2, 2, 3.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, _) = result.unwrap();
 
@@ -554,18 +564,18 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-            out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+            r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
             Ok(())
         };
 
         // Wrong sign on Jacobian → Newton steps diverge
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, -2.0);
-            j.set(0, 1, -1.0);
-            j.set(1, 0, -1.0);
-            j.set(1, 1, -2.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, -2.0);
+            jj.set(0, 1, -1.0);
+            jj.set(1, 0, -1.0);
+            jj.set(1, 1, -2.0);
             Ok(())
         };
 
@@ -573,7 +583,7 @@ mod tests {
         solver.use_line_search = false;
         solver.divergent_tol = 1.0;
         solver.max_iterations = 3;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("solution diverged"));
     }
 
@@ -596,24 +606,24 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
-            out[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = 2.0 * x[0] + 1.0 * x[1] - 3.0;
+            r[1] = 1.0 * x[0] + 2.0 * x[1] - 3.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 2.0);
-            j.set(0, 1, 1.0);
-            j.set(1, 0, 1.0);
-            j.set(1, 1, 2.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 2.0);
+            jj.set(0, 1, 1.0);
+            jj.set(1, 0, 1.0);
+            jj.set(1, 1, 2.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
         solver.max_iterations = 2;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
     }
 
@@ -624,17 +634,17 @@ mod tests {
         let mut x0 = Vector::from(&[100.0, 100.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0] * x[0] - 4.0;
-            out[1] = x[1] * x[1] - 4.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0] * x[0] - 4.0;
+            r[1] = x[1] * x[1] - 4.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, x: &Vector, _: &mut ()| {
-            j.set(0, 0, 2.0 * x[0]);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 2.0 * x[1]);
+        let calc_jj = |jj: &mut Matrix, x: &Vector, _: &mut ()| {
+            jj.set(0, 0, 2.0 * x[0]);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 2.0 * x[1]);
             Ok(())
         };
 
@@ -642,7 +652,7 @@ mod tests {
         solver.use_line_search = true;
         solver.initial_alpha = 1.0;
         solver.max_iterations = 20;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, _) = result.unwrap();
         approx_eq(x[0], 2.0, 1e-6);
@@ -663,17 +673,17 @@ mod tests {
         let mut x0 = Vector::from(&[0.5, 0.5]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0] * x[0] * x[0] - 1.0;
-            out[1] = x[1] * x[1] * x[1] - 1.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0] * x[0] * x[0] - 1.0;
+            r[1] = x[1] * x[1] * x[1] - 1.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, x: &Vector, _: &mut ()| {
-            j.set(0, 0, 3.0 * x[0] * x[0]);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 3.0 * x[1] * x[1]);
+        let calc_jj = |jj: &mut Matrix, x: &Vector, _: &mut ()| {
+            jj.set(0, 0, 3.0 * x[0] * x[0]);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 3.0 * x[1] * x[1]);
             Ok(())
         };
 
@@ -681,7 +691,7 @@ mod tests {
         solver.use_line_search = true;
         solver.initial_alpha = 1.0;
         solver.max_iterations = 50;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
         let (x, _) = result.unwrap();
         approx_eq(x[0], 1.0, 1e-8);
@@ -700,19 +710,19 @@ mod tests {
         // Error propagated through solve() — covers the `?` arm in solve
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
-        let f = |_: &Vector, _: &mut Vector, _: &mut ()| Ok(());
+        let calc_f = |_: &mut Vector, _: &Vector, _: &mut ()| Ok(());
 
-        // call f just so the coverage tool sees it, even though the solver should never call it since the initial_alpha validation should fail before any iterations
-        let _ = f(&x0, &mut Vector::new(2), args);
+        // call calc_f just so the coverage tool sees it, even though the solver should never call it since the initial_alpha validation should fail before any iterations
+        let _ = calc_f(&mut Vector::new(2), &x0, args);
 
-        let jacobian = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
+        let calc_jj = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
 
-        // call jacobian just so the coverage tool sees it, even though the solver should never call it since the initial_alpha validation should fail before any iterations
-        let _ = jacobian(&mut Matrix::new(2, 2), &x0, args);
+        // call calc_jj just so the coverage tool sees it, even though the solver should never call it since the initial_alpha validation should fail before any iterations
+        let _ = calc_jj(&mut Matrix::new(2, 2), &x0, args);
 
         let mut solver = NewtonSolver::new();
         solver.initial_alpha = -1.0;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("initial_alpha must be > 0"));
     }
 
@@ -726,67 +736,67 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0] - 1.0;
-            out[1] = x[1] - 1.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0] - 1.0;
+            r[1] = x[1] - 1.0;
             Ok(())
         };
 
         // Wrong Jacobian: -I instead of I → Newton steps diverge
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, -1.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, -1.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, -1.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, -1.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
         solver.divergent_tol = 1.0; // fire as soon as norm grows
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("solution diverged"));
     }
 
-    // ===== f returns error on initial call =====
+    // ===== calc_f returns error on initial call =====
 
     #[test]
     fn newton_f_returns_error_on_initial_call() {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |_: &Vector, _: &mut Vector, _: &mut ()| Err("f error");
-        let jacobian = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
+        let calc_f = |_: &mut Vector, _: &Vector, _: &mut ()| Err("f error");
+        let calc_jj = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
 
-        // call jacobian just so the coverage tool sees it, even though the solver should never call it since the initial f call should fail before any iterations
-        let _ = jacobian(&mut Matrix::new(2, 2), &x0, args);
+        // call calc_jj just so the coverage tool sees it, even though the solver should never call it since the initial calc_f call should fail before any iterations
+        let _ = calc_jj(&mut Matrix::new(2, 2), &x0, args);
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error"));
     }
 
-    // ===== jacobian returns error =====
+    // ===== calc_jj returns error =====
 
     #[test]
     fn newton_jacobian_returns_error() {
-        // f succeeds with non-zero residual so the solver proceeds past
-        // the convergence check and calls jacobian
+        // calc_f succeeds with non-zero residual so the solver proceeds past
+        // the convergence check and calls calc_jj
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0] - 1.0;
-            out[1] = x[1] - 1.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0] - 1.0;
+            r[1] = x[1] - 1.0;
             Ok(())
         };
 
-        let jacobian = |_: &mut Matrix, _: &Vector, _: &mut ()| Err("jacobian error");
+        let calc_jj = |_: &mut Matrix, _: &Vector, _: &mut ()| Err("jacobian error");
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("jacobian error"));
     }
 
@@ -797,92 +807,92 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0] - 1.0;
-            out[1] = x[1] - 1.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0] - 1.0;
+            r[1] = x[1] - 1.0;
             Ok(())
         };
 
         // All-zero Jacobian is singular; solve_lin_sys must return an error
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 0.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 0.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 0.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 0.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_err());
     }
 
-    // ===== f returns error inside the else branch (no line search) =====
+    // ===== calc_f returns error inside the else branch (no line search) =====
 
     #[test]
     fn newton_f_returns_error_in_iteration() {
-        // Initial f call succeeds; the second call (inside the else branch
+        // Initial calc_f call succeeds; the second call (inside the else branch
         // after the Newton step) fails.
         let mut call_count = 0usize;
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
             call_count += 1;
             if call_count > 1 {
                 return Err("f error on second call");
             }
-            out[0] = x[0] - 1.0;
-            out[1] = x[1] - 1.0;
+            r[0] = x[0] - 1.0;
+            r[1] = x[1] - 1.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 1.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 1.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 1.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 1.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error on second call"));
     }
 
-    // ===== f returns error inside the line search loop =====
+    // ===== calc_f returns error inside the line search loop =====
 
     #[test]
     fn newton_f_returns_error_in_line_search() {
-        // Initial f call succeeds; the second call (first trial inside the
+        // Initial calc_f call succeeds; the second call (first trial inside the
         // line search loop) fails.
         let mut call_count = 0usize;
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
             call_count += 1;
             if call_count > 1 {
                 return Err("f error in line search");
             }
-            out[0] = x[0] - 1.0;
-            out[1] = x[1] - 1.0;
+            r[0] = x[0] - 1.0;
+            r[1] = x[1] - 1.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 1.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 1.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 1.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 1.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = true;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert_eq!(result.err(), Some("f error in line search"));
     }
 
@@ -893,24 +903,24 @@ mod tests {
         let mut x0 = Vector::from(&[0.0, 0.0]);
         let args = &mut ();
 
-        let f = |x: &Vector, out: &mut Vector, _: &mut ()| {
-            out[0] = x[0] - 1.0;
-            out[1] = x[1] - 1.0;
+        let calc_f = |r: &mut Vector, x: &Vector, _: &mut ()| {
+            r[0] = x[0] - 1.0;
+            r[1] = x[1] - 1.0;
             Ok(())
         };
 
-        let jacobian = |j: &mut Matrix, _: &Vector, _: &mut ()| {
-            j.set(0, 0, 1.0);
-            j.set(0, 1, 0.0);
-            j.set(1, 0, 0.0);
-            j.set(1, 1, 1.0);
+        let calc_jj = |jj: &mut Matrix, _: &Vector, _: &mut ()| {
+            jj.set(0, 0, 1.0);
+            jj.set(0, 1, 0.0);
+            jj.set(1, 0, 0.0);
+            jj.set(1, 1, 1.0);
             Ok(())
         };
 
         let mut solver = NewtonSolver::new();
         solver.use_line_search = false;
         solver.tolerance = 1e-1;
-        let result = solver.solve(&mut x0, args, f, jacobian);
+        let result = solver.solve(&mut x0, args, calc_f, calc_jj);
         assert!(result.is_ok());
     }
 }

@@ -176,11 +176,13 @@ impl fmt::Display for Stats {
 
 #[cfg(test)]
 mod tests {
-    use super::Stats;
+    use super::{Stats, UNINITIALIZED};
 
     #[test]
     fn stats_summary_and_display_work() {
         let mut stats = Stats::new();
+        assert_eq!(stats.summary(), "");
+        assert_eq!(format!("{}", stats), "Statistics tracking is disabled");
         stats.enable(true);
         assert_eq!(
             format!("{}", stats),
@@ -204,5 +206,7 @@ mod tests {
         assert_eq!(stats.get_n_function(), 0);
         assert_eq!(stats.get_n_jacobian(), 0);
         assert_eq!(stats.get_n_iterations(), 0);
+        assert_eq!(stats.get_error_estimate(), UNINITIALIZED);
+        assert_eq!(stats.get_elapsed_time(), "0ns");
     }
 }

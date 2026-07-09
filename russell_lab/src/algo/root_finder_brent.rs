@@ -1,4 +1,4 @@
-use super::{RootFinder, Stats};
+use super::RootFinder;
 use crate::StrError;
 
 impl RootFinder {

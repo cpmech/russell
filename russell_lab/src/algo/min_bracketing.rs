@@ -85,10 +85,9 @@ impl MinBracketing {
     ///
     /// # Output
     ///
-    /// Returns `(bracket, stats)` where:
+    /// Returns `bracket` where:
     ///
     /// * `bracket` -- holds the results
-    /// * `stats` -- holds statistics about the computations
     ///
     /// # Reference
     ///
@@ -109,9 +108,9 @@ impl MinBracketing {
     ///     // bracketing
     ///     let mut bracketing = MinBracketing::new();
     ///     bracketing.set_enable_stats(true);
-    ///     let (bracket, stats) = bracketing.basic(-3.0, args, f)?;
+    ///     let bracket = bracketing.basic(-3.0, args, f)?;
     ///     println!("\n(a, b) = ({}, {})", bracket.a, bracket.b);
-    ///     println!("\n{}", stats);
+    ///     println!("\n{}", bracketing.get_stats().unwrap());
     ///     Ok(())
     /// }
     /// ```
@@ -127,7 +126,7 @@ impl MinBracketing {
     /// Error estimate                   = unavailable
     /// Total computation time           = 7.293µs
     /// ```
-    pub fn basic<F, A>(&mut self, x_guess: f64, args: &mut A, mut f: F) -> Result<(Bracket, Stats), StrError>
+    pub fn basic<F, A>(&mut self, x_guess: f64, args: &mut A, mut f: F) -> Result<Bracket, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -181,7 +180,7 @@ impl MinBracketing {
             swap(&mut fa, &mut fb);
         }
         self.stats.stop_sw_total();
-        Ok((Bracket { a, b, fa, fb, xo, fxo }, self.stats))
+        Ok(Bracket { a, b, fa, fb, xo, fxo })
     }
 }
 
@@ -268,6 +267,7 @@ mod tests {
     fn basic_works_1() {
         let args = &mut 0;
         let mut solver = MinBracketing::new();
+        solver.set_enable_stats(true);
         for (i, test) in get_test_functions().iter().enumerate() {
             if test.min1.is_none() {
                 continue;
@@ -279,9 +279,9 @@ mod tests {
             } else {
                 if i % 2 == 0 { -0.1 } else { 0.1 }
             };
-            let (bracket, stats) = solver.basic(x_guess, args, test.f).unwrap();
+            let bracket = solver.basic(x_guess, args, test.f).unwrap();
             println!("\n{}", bracket);
-            println!("\n{}", stats);
+            println!("\n{}", solver.get_stats().unwrap());
             check_consistency(&bracket);
             approx_eq((test.f)(bracket.a, args).unwrap(), bracket.fa, 1e-15);
             approx_eq((test.f)(bracket.b, args).unwrap(), bracket.fb, 1e-15);

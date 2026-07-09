@@ -177,10 +177,9 @@ impl Quadrature {
     ///
     /// # Output
     ///
-    /// Returns `(ii, stats)` where:
+    /// Returns `ii` where:
     ///
-    /// * `ans` -- the result `I` of the integration: `I = ∫_a^b f(x) dx`
-    /// * `stats` -- some statistics about the computations, including the estimated error
+    /// * `ii` -- the result `I` of the integration: `I = ∫_a^b f(x) dx`
     ///
     /// # Examples
     ///
@@ -193,14 +192,13 @@ impl Quadrature {
     ///     let mut quad = Quadrature::new();
     ///     let args = &mut 0;
     ///     let (a, b) = (-1.0, 1.0);
-    ///     let (area, stats) = quad.integrate(a, b, args, |x, _| Ok(f64::sqrt(1.0 - x * x)))?;
+    ///     let area = quad.integrate(a, b, args, |x, _| Ok(f64::sqrt(1.0 - x * x)))?;
     ///     println!("\narea = {}", area);
-    ///     println!("\n{}", stats);
     ///     approx_eq(area, PI / 2.0, 1e-13);
     ///     Ok(())
     /// }
     /// ```
-    pub fn integrate<F, A>(&mut self, a: f64, b: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
+    pub fn integrate<F, A>(&mut self, a: f64, b: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -240,7 +238,7 @@ impl Quadrature {
                     // Important: the following (removed) branching is not possible:
                     //
                     // if c <= 0.0 {
-                    //     return Ok((ans, self.stats));
+                    //     return Ok(ans);
                     // }
                     //
                     // because c is never negative and a/b cannot be 1.0 (yielding c == 0.0)
@@ -360,7 +358,7 @@ impl Quadrature {
         if (mxl != 0) && (f64::abs(err) > M_ERR * tol * area) {
             Err("quadrature.integrate cannot achieve the desired tolerance")
         } else {
-            Ok((ans, self.stats))
+            Ok(ans)
         }
     }
 }
@@ -604,17 +602,17 @@ mod tests {
         for (n_gauss, n_f_eval) in [(6, 42), (8, 24), (10, 30), (12, 36), (14, 42)] {
             quad.n_gauss = n_gauss;
 
-            let (ii, stats) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+            let ii = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
 
             println!("\n=================================================");
             println!("\nn_gauss = {}", n_gauss);
             println!("\nI = {}", ii);
-            println!("\n{}", stats);
+            println!("\n{}", quad.get_stats().unwrap());
 
             approx_eq(ii, ii_ana, 1e-15);
-            assert_eq!(stats.get_n_function(), n_f_eval);
+            assert_eq!(quad.get_stats().unwrap().get_n_function(), n_f_eval);
             if n_gauss > 6 {
-                assert_eq!(stats.get_n_iterations(), 1);
+                assert_eq!(quad.get_stats().unwrap().get_n_iterations(), 1);
             }
         }
     }
@@ -638,17 +636,17 @@ mod tests {
         for (n_gauss, n_f_eval) in [(6, 3066), (8, 2040), (10, 1270), (12, 1476), (14, 882)] {
             quad.n_gauss = n_gauss;
 
-            let (ii, stats) = quad
+            let ii = quad
                 .integrate(a, b, args, |x, _| Ok(amp * f64::sin(freq * x + phase)))
                 .unwrap();
 
             println!("\n=================================================");
             println!("\nn_gauss = {}", n_gauss);
             println!("\nI = {}", ii);
-            println!("\n{}", stats);
+            println!("\n{}", quad.get_stats().unwrap());
 
             approx_eq(ii, ii_ana, 1e-15);
-            assert_eq!(stats.get_n_function(), n_f_eval);
+            assert_eq!(quad.get_stats().unwrap().get_n_function(), n_f_eval);
         }
     }
 
@@ -666,29 +664,30 @@ mod tests {
         for (n_gauss, n_f_eval) in [(6, 1674), (8, 2040), (10, 2550), (12, 3060), (14, 3570)] {
             quad.n_gauss = n_gauss;
 
-            let (ii, stats) = quad
+            let ii = quad
                 .integrate(-PI, PI, args, |x, _| Ok(f64::ln(2.0 * f64::cos(x / 2.0))))
                 .unwrap();
 
             println!("I = {}", format_fortran(ii));
-            println!("\n{}", stats);
+            println!("\n{}", quad.get_stats().unwrap());
 
             approx_eq(ii, ii_ana, 1e-10);
-            assert_eq!(stats.get_n_function(), n_f_eval);
+            assert_eq!(quad.get_stats().unwrap().get_n_function(), n_f_eval);
         }
     }
 
     #[test]
     fn integrate_works_4() {
         let mut quad = Quadrature::new();
+        quad.set_enable_stats(true);
         let args = &mut 0;
         for test in &get_test_functions() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
             if let Some(data) = test.integral {
-                let (ii, stats) = quad.integrate(data.0, data.1, args, test.f).unwrap();
+                let ii = quad.integrate(data.0, data.1, args, test.f).unwrap();
                 println!("\nI = {}", ii);
-                println!("\n{}", stats);
+                println!("\n{}", quad.get_stats().unwrap());
                 approx_eq(ii, data.2, test.tol_integral);
             }
         }
@@ -700,8 +699,8 @@ mod tests {
         // check that ∫_a^b f(x) dx = - ∫_b^a f(x) dx
         let mut quad = Quadrature::new();
         let args = &mut 0;
-        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
-        let (mii, _) = quad.integrate(PI, 0.0, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let ii = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let mii = quad.integrate(PI, 0.0, args, |x, _| Ok(f64::sin(x))).unwrap();
         assert_eq!(ii, -mii);
     }
 
@@ -712,11 +711,11 @@ mod tests {
         let args = &mut 0;
 
         // first
-        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let ii = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
         approx_eq(ii, 2.0, 1e-15);
 
         // second
-        let (ii, _) = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
+        let ii = quad.integrate(0.0, PI, args, |x, _| Ok(f64::sin(x))).unwrap();
         approx_eq(ii, 2.0, 1e-15);
     }
 
@@ -724,6 +723,7 @@ mod tests {
     fn integrate_edge_cases_work() {
         let f = |x, _: &mut NoArgs| Ok(x);
         let mut quad = Quadrature::new();
+        quad.set_enable_stats(true);
         let args = &mut 0;
 
         //
@@ -731,9 +731,9 @@ mod tests {
         //
         let b = 1.0;
         let a = 0.9 * b;
-        let (ii, stats) = quad.integrate(a, b, args, f).unwrap();
+        let ii = quad.integrate(a, b, args, f).unwrap();
         println!("\nI = {}", ii);
-        println!("\n{}", stats);
+        println!("\n{}", quad.get_stats().unwrap());
         approx_eq(ii, 0.095, 1e-15);
 
         //

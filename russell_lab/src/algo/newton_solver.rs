@@ -169,12 +169,16 @@ impl NewtonSolver {
     /// J := df/dx
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
     /// * `x` -- Initial guess on the input and the solution vector on the output
     /// * `args` -- Extra arguments for the callback functions
     /// * `calc_f` -- Function to calculate the residual vector (r = f(x))
     /// * `calc_jj` -- Function to calculate the Jacobian matrix (J)
+    ///
+    /// # Output
+    ///
+    /// * Returns `Ok(())` on successful convergence; the solution is stored in `x`
     ///
     /// # Examples
     ///

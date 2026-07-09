@@ -216,6 +216,18 @@ impl RootFinder {
 
     /// Refines the roots using Newton's method
     ///
+    /// # Input
+    ///
+    /// * `roots` -- On input, the initial root approximations. On output, the refined roots.
+    /// * `xa` -- the lower bound of the interval
+    /// * `xb` -- the upper bound of the interval
+    /// * `args` -- extra arguments for the callback function
+    /// * `f` -- callback function implementing `f(x)` as `f(x, args)`
+    ///
+    /// # Output
+    ///
+    /// * Refines the root estimates in place. Returns `Ok(())` on success.
+    ///
     /// # Examples
     ///
     /// ```

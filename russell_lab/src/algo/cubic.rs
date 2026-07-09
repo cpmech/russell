@@ -10,13 +10,13 @@ const EPS: f64 = 1e-12;
 
 /// Solve cubic equation: a·x³ + b·x² + c·x + d = 0
 ///
-/// # Inputs
+/// # Input
 /// - `a`: Coefficient of x³ (must not be zero)
 /// - `b`: Coefficient of x²
 /// - `c`: Coefficient of x
 /// - `d`: Constant term
 ///
-/// # Outputs
+/// # Output
 /// - `Result<Vec<f64>, StrError>`: Sorted real roots (complex roots are omitted)
 ///
 /// # Examples

@@ -60,11 +60,6 @@ pub struct NewtonSolver {
     /// Default = 1.0
     initial_alpha: f64,
 
-    /// Enables statistics tracking for the last solve operation
-    ///
-    /// Default = false
-    enable_stats: bool,
-
     /// Holds the statistics of the last solve operation
     stats: Stats,
 }
@@ -85,7 +80,6 @@ impl NewtonSolver {
             divergent_tol: 1e6,
             use_line_search: false,
             initial_alpha: 1.0,
-            enable_stats: false,
             stats: Stats::new(),
         })
     }
@@ -151,13 +145,13 @@ impl NewtonSolver {
     ///
     /// Default value: false
     pub fn set_enable_stats(&mut self, value: bool) -> &mut Self {
-        self.enable_stats = value;
+        self.stats.enable(value);
         self
     }
 
     /// Returns the statistics of the last solve operation
     pub fn get_stats(&self) -> Result<&Stats, StrError> {
-        if !self.enable_stats {
+        if !self.stats.is_enabled() {
             return Err("statistics tracking is disabled; enable it with set_enable_stats(true)");
         }
         Ok(&self.stats)
@@ -253,15 +247,11 @@ impl NewtonSolver {
         }
 
         // Reset statistics for this solve operation
-        if self.enable_stats {
-            self.stats.reset();
-        }
+        self.stats.reset();
 
         // Calculate the first residual vector r = f(x)
         calc_f(&mut self.r, &x, args)?;
-        if self.enable_stats {
-            self.stats.n_function += 1;
-        }
+        self.stats.inc_n_function(1);
 
         // Calculate the first residual norm
         let initial_norm = vec_norm(&self.r, Norm::Max);
@@ -269,31 +259,23 @@ impl NewtonSolver {
 
         // Main Newton iteration loop
         for it in 0..self.max_iterations {
-            if self.enable_stats {
-                self.stats.n_iterations += 1;
-            }
+            self.stats.inc_n_iterations(1);
 
             // Check convergence
             if residual_norm < self.tolerance {
-                if self.enable_stats {
-                    self.stats.stop_sw_total();
-                }
+                self.stats.stop_sw_total();
                 return Ok(());
             }
 
             // Check divergence
             if it > 0 && residual_norm > self.divergent_tol * initial_norm {
-                if self.enable_stats {
-                    self.stats.stop_sw_total();
-                }
+                self.stats.stop_sw_total();
                 return Err("solution diverged");
             }
 
             // Compute Jacobian at x and solve J*p = -r(x) for p
             calc_jj(&mut self.jj, &x, args)?;
-            if self.enable_stats {
-                self.stats.n_jacobian += 1;
-            }
+            self.stats.inc_n_jacobian(1);
             for i in 0..self.ndim {
                 self.p[i] = -self.r[i];
             }
@@ -315,9 +297,7 @@ impl NewtonSolver {
                         x[i] = x_base[i] + alpha * self.p[i];
                     }
                     calc_f(&mut self.r, &x, args)?;
-                    if self.enable_stats {
-                        self.stats.n_function += 1;
-                    }
+                    self.stats.inc_n_function(1);
                     let phi_new = 0.5 * vec_inner(&self.r, &self.r);
                     // Armijo condition: phi(alpha) <= phi(0) + c1 * alpha * phi'(0)
                     if phi_new <= phi_base + c1 * alpha * slope {
@@ -331,9 +311,7 @@ impl NewtonSolver {
                     x[i] += self.p[i];
                 }
                 calc_f(&mut self.r, &x, args)?;
-                if self.enable_stats {
-                    self.stats.n_function += 1;
-                }
+                self.stats.inc_n_function(1);
             }
 
             // Update residual norm
@@ -341,9 +319,7 @@ impl NewtonSolver {
         }
 
         // If we reach here, the solver did not converge within the maximum number of iterations
-        if self.enable_stats {
-            self.stats.stop_sw_total();
-        }
+        self.stats.stop_sw_total();
         Err("Newton solver failed to converge")
     }
 }
@@ -412,7 +388,7 @@ mod tests {
 
         approx_eq(x[0], 1.0, 1e-10);
         approx_eq(x[1], 1.0, 1e-10);
-        assert_eq!(solver.get_stats()?.n_iterations, 2); // 2: first iter takes the Newton step; second iter sees convergence
+        assert_eq!(solver.get_stats()?.get_n_iterations(), 2); // 2: first iter takes the Newton step; second iter sees convergence
         Ok(())
     }
 
@@ -581,7 +557,7 @@ mod tests {
 
         approx_eq(x[0], 1.0, 1e-10);
         approx_eq(x[1], 1.0, 1e-10);
-        assert_eq!(solver.get_stats()?.n_iterations, 1); // Should converge immediately
+        assert_eq!(solver.get_stats()?.get_n_iterations(), 1); // Should converge immediately
         Ok(())
     }
 
@@ -610,9 +586,9 @@ mod tests {
         solver.set_use_line_search(false).set_enable_stats(true);
         solver.solve(&mut x, args, calc_f, calc_jj)?;
 
-        assert!(solver.get_stats()?.n_iterations >= 1);
-        assert!(solver.get_stats()?.n_function >= 1);
-        assert!(solver.get_stats()?.n_jacobian >= 1);
+        assert!(solver.get_stats()?.get_n_iterations() >= 1);
+        assert!(solver.get_stats()?.get_n_function() >= 1);
+        assert!(solver.get_stats()?.get_n_jacobian() >= 1);
         Ok(())
     }
 

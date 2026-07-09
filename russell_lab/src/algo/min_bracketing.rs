@@ -22,6 +22,9 @@ pub struct MinBracketing {
     ///
     /// e.g., 2.0
     pub expansion_factor: f64,
+
+    /// Holds the statistics of the last solve operation
+    stats: Stats,
 }
 
 impl MinBracketing {
@@ -31,6 +34,7 @@ impl MinBracketing {
             n_iteration_max: 100,
             initial_step: 1e-2,
             expansion_factor: 2.0,
+            stats: Stats::new(),
         }
     }
 
@@ -40,6 +44,22 @@ impl MinBracketing {
             return Err("n_iteration_max must be ≥ 2");
         }
         Ok(())
+    }
+
+    /// Sets whether to enable statistics tracking
+    ///
+    /// Default value: false
+    pub fn set_enable_stats(&mut self, value: bool) -> &mut Self {
+        self.stats.enable(value);
+        self
+    }
+
+    /// Returns the statistics of the last solve operation
+    pub fn get_stats(&self) -> Result<&Stats, StrError> {
+        if !self.stats.is_enabled() {
+            return Err("statistics tracking is disabled; enable it with set_enable_stats(true)");
+        }
+        Ok(&self.stats)
     }
 
     /// Employs a basic algorithm to try to bracket the minimum of f(x)
@@ -87,7 +107,8 @@ impl MinBracketing {
     ///     let args = &mut 0;
     ///
     ///     // bracketing
-    ///     let bracketing = MinBracketing::new();
+    ///     let mut bracketing = MinBracketing::new();
+    ///     bracketing.set_enable_stats(true);
     ///     let (bracket, stats) = bracketing.basic(-3.0, args, f)?;
     ///     println!("\n(a, b) = ({}, {})", bracket.a, bracket.b);
     ///     println!("\n{}", stats);
@@ -106,21 +127,21 @@ impl MinBracketing {
     /// Error estimate                   = unavailable
     /// Total computation time           = 7.293µs
     /// ```
-    pub fn basic<F, A>(&self, x_guess: f64, args: &mut A, mut f: F) -> Result<(Bracket, Stats), StrError>
+    pub fn basic<F, A>(&mut self, x_guess: f64, args: &mut A, mut f: F) -> Result<(Bracket, Stats), StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
         // validate parameters
         self.validate_params()?;
 
-        // allocate stats struct
-        let mut stats = Stats::new();
+        // reset stats for this operation
+        self.stats.reset();
 
         // initialization
         let mut step = self.initial_step;
         let (mut a, mut xo) = (x_guess, x_guess + step);
         let (mut fa, mut fxo) = (f(a, args)?, f(xo, args)?);
-        stats.n_function += 2;
+        self.stats.inc_n_function(2);
 
         // swap values (make sure to go "downhill")
         if fxo > fa {
@@ -134,8 +155,8 @@ impl MinBracketing {
         let mut b = UNINITIALIZED;
         let mut fb = UNINITIALIZED;
         for _ in 0..self.n_iteration_max {
-            stats.n_iterations += 1;
-            stats.n_function += 1;
+            self.stats.inc_n_iterations(1);
+            self.stats.inc_n_function(1);
             b = xo + step;
             fb = f(b, args)?;
             if fb > fxo {
@@ -159,8 +180,8 @@ impl MinBracketing {
             swap(&mut a, &mut b);
             swap(&mut fa, &mut fb);
         }
-        stats.stop_sw_total();
-        Ok((Bracket { a, b, fa, fb, xo, fxo }, stats))
+        self.stats.stop_sw_total();
+        Ok((Bracket { a, b, fa, fb, xo, fxo }, self.stats))
     }
 }
 
@@ -223,7 +244,7 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
-        let solver = MinBracketing::new();
+        let mut solver = MinBracketing::new();
         // first function call
         assert_eq!(solver.basic(0.0, args, f).err(), Some("stop"));
         // second function call
@@ -246,7 +267,7 @@ mod tests {
     #[test]
     fn basic_works_1() {
         let args = &mut 0;
-        let solver = MinBracketing::new();
+        let mut solver = MinBracketing::new();
         for (i, test) in get_test_functions().iter().enumerate() {
             if test.min1.is_none() {
                 continue;

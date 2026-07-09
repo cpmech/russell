@@ -6,13 +6,15 @@ fn main() -> Result<(), StrError> {
     let args = &mut 0;
 
     // bracketing
-    let bracketing = MinBracketing::new();
+    let mut bracketing = MinBracketing::new();
+    bracketing.set_enable_stats(true);
     let (bracket, stats) = bracketing.basic(-3.0, args, f)?;
     println!("\n(a, b) = ({}, {})", bracket.a, bracket.b);
     println!("\n{}", stats);
 
     // minimize
-    let solver = MinSolver::new();
+    let mut solver = MinSolver::new();
+    solver.set_enable_stats(true);
     let (xo, stats) = solver.brent(bracket.a, bracket.b, args, f)?;
     println!("\noptimal = {}", xo);
     println!("\n{}", stats);

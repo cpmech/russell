@@ -101,6 +101,9 @@ pub struct Quadrature {
 
     /// Workspace variable with len() = N_WORK + 1 so we can use Fortran's one-based indexing
     lr: Vec<i32>,
+
+    /// Holds the statistics of the last solve operation
+    stats: Stats,
 }
 
 impl Quadrature {
@@ -115,11 +118,12 @@ impl Quadrature {
             vl: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
             gr: vec![0.0; N_WORK + 1], // +1 so we can use Fortran's one-based indexing
             lr: vec![0; N_WORK + 1],   // +1 so we can use Fortran's one-based indexing
+            stats: Stats::new(),
         }
     }
 
     /// Validates the parameters
-    pub fn validate(&self) -> Result<(), StrError> {
+    fn validate(&self) -> Result<(), StrError> {
         if self.n_iteration_max < 2 {
             return Err("n_iteration_max must be ≥ 2");
         }
@@ -134,6 +138,22 @@ impl Quadrature {
             return Err("n_gauss must be 6, 8, 10, 12, or 14");
         }
         Ok(())
+    }
+
+    /// Sets whether to enable statistics tracking
+    ///
+    /// Default value: false
+    pub fn set_enable_stats(&mut self, value: bool) -> &mut Self {
+        self.stats.enable(value);
+        self
+    }
+
+    /// Returns the statistics of the last solve operation
+    pub fn get_stats(&self) -> Result<&Stats, StrError> {
+        if !self.stats.is_enabled() {
+            return Err("statistics tracking is disabled; enable it with set_enable_stats(true)");
+        }
+        Ok(&self.stats)
     }
 
     /// Integrates a function f(x) using numerical quadrature
@@ -192,8 +212,8 @@ impl Quadrature {
         // validate the parameters
         self.validate()?;
 
-        // allocate stats struct
-        let mut stats = Stats::new();
+        // reset stats for this operation
+        self.stats.reset();
 
         // clear the workspace
         self.aa.fill(0.0);
@@ -220,7 +240,7 @@ impl Quadrature {
                     // Important: the following (removed) branching is not possible:
                     //
                     // if c <= 0.0 {
-                    //     return Ok((ans, stats));
+                    //     return Ok((ans, self.stats));
                     // }
                     //
                     // because c is never negative and a/b cannot be 1.0 (yielding c == 0.0)
@@ -252,7 +272,7 @@ impl Quadrature {
             args,
             &mut f,
         )?;
-        stats.n_function += self.n_gauss;
+        self.stats.inc_n_function(self.n_gauss);
 
         let mut k = 8;
         let mut area = f64::abs(est);
@@ -262,13 +282,13 @@ impl Quadrature {
         // compute refined estimates, estimate the error, etc.
         let mut converged = false;
         for _ in 0..self.n_iteration_max {
-            stats.n_iterations += 1;
+            self.stats.inc_n_iterations(1);
 
             let gl = gauss(self.n_gauss, self.aa[l] + self.hh[l], self.hh[l], args, &mut f)?;
-            stats.n_function += self.n_gauss;
+            self.stats.inc_n_function(self.n_gauss);
 
             self.gr[l] = gauss(self.n_gauss, self.aa[l] + 3.0 * self.hh[l], self.hh[l], args, &mut f)?;
-            stats.n_function += self.n_gauss;
+            self.stats.inc_n_function(self.n_gauss);
 
             k += 16;
             area += f64::abs(gl) + f64::abs(self.gr[l]) - f64::abs(est);
@@ -335,12 +355,12 @@ impl Quadrature {
         }
 
         // done
-        stats.error_estimate = err;
-        stats.stop_sw_total();
+        self.stats.set_error_estimate(err);
+        self.stats.stop_sw_total();
         if (mxl != 0) && (f64::abs(err) > M_ERR * tol * area) {
             Err("quadrature.integrate cannot achieve the desired tolerance")
         } else {
-            Ok((ans, stats))
+            Ok((ans, self.stats))
         }
     }
 }
@@ -577,6 +597,7 @@ mod tests {
         let ii_ana = 2.0;
 
         let mut quad = Quadrature::new();
+        quad.set_enable_stats(true);
         quad.tolerance = 100_000.0 * f64::EPSILON;
         let args = &mut 0;
 
@@ -591,9 +612,9 @@ mod tests {
             println!("\n{}", stats);
 
             approx_eq(ii, ii_ana, 1e-15);
-            assert_eq!(stats.n_function, n_f_eval);
+            assert_eq!(stats.get_n_function(), n_f_eval);
             if n_gauss > 6 {
-                assert_eq!(stats.n_iterations, 1);
+                assert_eq!(stats.get_n_iterations(), 1);
             }
         }
     }
@@ -610,6 +631,7 @@ mod tests {
         let ii_ana = (amp * (f64::cos(a * freq + phase) - f64::cos(b * freq + phase))) / freq;
 
         let mut quad = Quadrature::new();
+        quad.set_enable_stats(true);
         quad.tolerance = 100_000.0 * f64::EPSILON;
         let args = &mut 0;
 
@@ -626,7 +648,7 @@ mod tests {
             println!("\n{}", stats);
 
             approx_eq(ii, ii_ana, 1e-15);
-            assert_eq!(stats.n_function, n_f_eval);
+            assert_eq!(stats.get_n_function(), n_f_eval);
         }
     }
 
@@ -637,6 +659,7 @@ mod tests {
         let ii_ana = 0.0;
 
         let mut quad = Quadrature::new();
+        quad.set_enable_stats(true);
         quad.tolerance = 100_000.0 * f64::EPSILON;
         let args = &mut 0;
 
@@ -651,7 +674,7 @@ mod tests {
             println!("\n{}", stats);
 
             approx_eq(ii, ii_ana, 1e-10);
-            assert_eq!(stats.n_function, n_f_eval);
+            assert_eq!(stats.get_n_function(), n_f_eval);
         }
     }
 

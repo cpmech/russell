@@ -55,7 +55,7 @@ fn solve_linear_system() -> Result<(), StrError> {
     println!("A = [[2, 1], [1, 2]], b = [3, 3]");
     println!("Expected solution: x = [1, 1]");
     println!("Computed solution: x = [{:.8}, {:.8}]", x[0], x[1]);
-    println!("Iterations: {}", solver.get_stats()?.n_iterations);
+    println!("Iterations: {}", solver.get_stats()?.get_n_iterations());
 
     Ok(())
 }
@@ -89,7 +89,7 @@ fn solve_with_line_search() -> Result<(), StrError> {
     println!("A = [[2, 1], [1, 2]], b = [3, 3]");
     println!("Expected solution: x = [1, 1]");
     println!("Computed solution (with line search): x = [{:.8}, {:.8}]", x[0], x[1]);
-    println!("Iterations: {}", solver.get_stats()?.n_iterations);
+    println!("Iterations: {}", solver.get_stats()?.get_n_iterations());
 
     Ok(())
 }
@@ -123,7 +123,7 @@ fn solve_rosenbrock() -> Result<(), StrError> {
     println!("Rosenbrock function: F(x,y) = [1-x, 100(y-x²)]");
     println!("Expected solution: (x, y) = (1, 1)");
     println!("Computed solution: ({:.8}, {:.8})", x[0], x[1]);
-    println!("Iterations: {}", solver.get_stats()?.n_iterations);
+    println!("Iterations: {}", solver.get_stats()?.get_n_iterations());
 
     Ok(())
 }

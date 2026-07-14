@@ -1003,4 +1003,33 @@ mod tests {
         solver.solve(&mut x, args, calc_f, calc_jj)?;
         Ok(())
     }
+
+    // ===== Early exit error message tests =====
+
+    #[test]
+    fn newton_new_fails_for_zero_dimension() {
+        let result = NewtonSolver::new(0);
+        assert_eq!(result.err(), Some("ndim must be > 0"));
+    }
+
+    #[test]
+    fn newton_get_stats_fails_when_disabled() {
+        let solver = NewtonSolver::new(2).unwrap();
+        let result = solver.get_stats();
+        assert_eq!(
+            result.err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
+    }
+
+    #[test]
+    fn newton_solve_fails_for_dimension_mismatch() {
+        let mut x = Vector::from(&[0.0]); // 1D, but solver needs 2D
+        let args = &mut ();
+        let calc_f = |_: &mut Vector, _: &Vector, _: &mut ()| Ok(());
+        let calc_jj = |_: &mut Matrix, _: &Vector, _: &mut ()| Ok(());
+        let mut solver = NewtonSolver::new(2).unwrap();
+        let result = solver.solve(&mut x, args, calc_f, calc_jj);
+        assert_eq!(result.err(), Some("dimension of x does not match solver dimension"));
+    }
 }

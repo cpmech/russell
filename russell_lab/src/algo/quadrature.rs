@@ -720,6 +720,15 @@ mod tests {
     }
 
     #[test]
+    fn get_stats_fails_when_disabled() {
+        let quad = Quadrature::new();
+        assert_eq!(
+            quad.get_stats().err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
+    }
+
+    #[test]
     fn integrate_edge_cases_work() {
         let f = |x, _: &mut NoArgs| Ok(x);
         let mut quad = Quadrature::new();

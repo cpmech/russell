@@ -291,6 +291,15 @@ mod tests {
     }
 
     #[test]
+    fn get_stats_fails_when_disabled() {
+        let solver = MinBracketing::new();
+        assert_eq!(
+            solver.get_stats().err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
+    }
+
+    #[test]
     fn basic_fails_on_non_converged() {
         let f = |x, _: &mut NoArgs| Ok(f64::powi(x - 1.0, 2) + 5.0 * f64::sin(x));
         let args = &mut 0;

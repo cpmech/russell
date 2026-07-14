@@ -411,6 +411,15 @@ mod tests {
     }
 
     #[test]
+    fn get_stats_fails_when_disabled() {
+        let solver = MinSolver::new();
+        assert_eq!(
+            solver.get_stats().err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
+    }
+
+    #[test]
     fn brent_fails_on_non_converged() {
         let f = |x, _: &mut NoArgs| Ok(x * x - 1.0);
         let args = &mut 0;

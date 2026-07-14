@@ -693,6 +693,15 @@ mod tests {
     }
 
     #[test]
+    fn get_stats_fails_when_disabled() {
+        let solver = RootFinder::new();
+        assert_eq!(
+            solver.get_stats().err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
+    }
+
+    #[test]
     fn linear_function_works() {
         // data
         let (xa, xb) = (0.0, 1.0);

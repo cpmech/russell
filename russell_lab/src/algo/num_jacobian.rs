@@ -33,6 +33,10 @@ use crate::{Matrix, Vector, deriv1_central5};
 /// * `alpha` -- a scaling parameter to scale all elements of the Jacobian matrix
 /// * `args` -- the additional arguments to be passed to the function
 ///
+/// # Output
+///
+/// Returns a matrix of dimension `ndim × ndim` with the (scaled) Jacobian.
+///
 /// # Panics
 ///
 /// A panic will occur if `function` returns an error.

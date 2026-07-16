@@ -103,6 +103,16 @@ Below is a summary of internal dependencies:
 | `russell_ode`    | `russell_lab`, `russell_sparse`, `russell_pde`  |
 | `russell_nonlin` | `russell_lab`, `russell_sparse`, `russell_stat` |
 
+```text
+russell_lab
+  ├── russell_stat
+  ├── russell_tensor
+  ├── russell_sparse
+  │     ├── russell_pde
+  │     │     └── russell_ode
+  │     └── russell_nonlin
+```
+
 ### External associated and recommended crates
 
 The following crates are not part of `russell` but are associated with it and recommended:

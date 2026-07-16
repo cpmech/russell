@@ -6,16 +6,18 @@ fn main() -> Result<(), StrError> {
     let args = &mut 0;
 
     // bracketing
-    let bracketing = MinBracketing::new();
-    let (bracket, stats) = bracketing.basic(-3.0, args, f)?;
+    let mut bracketing = MinBracketing::new();
+    bracketing.set_enable_stats(true);
+    let bracket = bracketing.basic(-3.0, args, f)?;
     println!("\n(a, b) = ({}, {})", bracket.a, bracket.b);
-    println!("\n{}", stats);
+    println!("\n{}", bracketing.get_stats().unwrap());
 
     // minimize
-    let solver = MinSolver::new();
-    let (xo, stats) = solver.brent(bracket.a, bracket.b, args, f)?;
+    let mut solver = MinSolver::new();
+    solver.set_enable_stats(true);
+    let xo = solver.brent(bracket.a, bracket.b, args, f)?;
     println!("\noptimal = {}", xo);
-    println!("\n{}", stats);
+    println!("\n{}", bracketing.get_stats().unwrap());
     approx_eq(xo, -0.7790149303951403, 1e-8);
     Ok(())
 }

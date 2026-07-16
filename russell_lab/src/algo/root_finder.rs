@@ -1,3 +1,4 @@
+use super::Stats;
 use crate::StrError;
 use crate::{InterpChebyshev, TOL_RANGE, mat_eigenvalues};
 use crate::{Matrix, Vector};
@@ -55,6 +56,9 @@ pub struct RootFinder {
 
     /// Stepsize for central differences
     h_cen: f64,
+
+    /// Holds the statistics of the last solve operation
+    pub(crate) stats: Stats,
 }
 
 impl RootFinder {
@@ -71,7 +75,24 @@ impl RootFinder {
             brent_tolerance: 1e-13,
             h_osd: f64::powf(f64::EPSILON, 1.0 / 2.0),
             h_cen: f64::powf(f64::EPSILON, 1.0 / 3.0),
+            stats: Stats::new(),
         }
+    }
+
+    /// Sets whether to enable statistics tracking
+    ///
+    /// Default value: false
+    pub fn set_enable_stats(&mut self, value: bool) -> &mut Self {
+        self.stats.enable(value);
+        self
+    }
+
+    /// Returns the statistics of the last solve operation
+    pub fn get_stats(&self) -> Result<&Stats, StrError> {
+        if !self.stats.is_enabled() {
+            return Err("statistics tracking is disabled; enable it with set_enable_stats(true)");
+        }
+        Ok(&self.stats)
     }
 
     /// Find all roots in the interval using Chebyshev interpolation
@@ -194,6 +215,18 @@ impl RootFinder {
     }
 
     /// Refines the roots using Newton's method
+    ///
+    /// # Input
+    ///
+    /// * `roots` -- On input, the initial root approximations. On output, the refined roots.
+    /// * `xa` -- the lower bound of the interval
+    /// * `xb` -- the upper bound of the interval
+    /// * `args` -- extra arguments for the callback function
+    /// * `f` -- callback function implementing `f(x)` as `f(x, args)`
+    ///
+    /// # Output
+    ///
+    /// * Refines the root estimates in place. Returns `Ok(())` on success.
     ///
     /// # Examples
     ///
@@ -657,6 +690,15 @@ mod tests {
         let roots = &solver.chebyshev(&interp).unwrap();
         let nroot = roots.len();
         assert_eq!(nroot, 0)
+    }
+
+    #[test]
+    fn get_stats_fails_when_disabled() {
+        let solver = RootFinder::new();
+        assert_eq!(
+            solver.get_stats().err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
     }
 
     #[test]

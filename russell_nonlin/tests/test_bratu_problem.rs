@@ -798,8 +798,8 @@ fn find_critical_point(
     let prm = &mut 0;
     let xa = xx[index_crit - DELTA_INDEX];
     let xb = xx[index_crit + DELTA_INDEX];
-    let min_solver = MinSolver::new();
-    let (xo, _) = min_solver.brent(xa, xb, prm, objective)?;
+    let mut min_solver = MinSolver::new();
+    let xo = min_solver.brent(xa, xb, prm, objective)?;
 
     // Draw the objective function
     if PLOT_OBJECTIVE_FUNCTION {

@@ -144,7 +144,7 @@ pub struct Bspline {
 impl Bspline {
     /// Allocates a new instance
     ///
-    /// # Arguments
+    /// # Input
     ///
     /// * `p` - Degree of the B-spline; it must be ≥ 1
     /// * `uu` - Knot vector U; it must have at least 2 * (p + 1) elements
@@ -298,13 +298,17 @@ impl Bspline {
         self.recursive_nn(u, i, self.p)
     }
 
-    /// Calculates and returns the x-y-z coordinates of a point on the B-spline
+    /// Calculates and writes the x-y-z coordinates of a point on the B-spline
     ///
-    /// # Arguments
+    /// # Input
     ///
     /// * `cc` - `C` vector to store the coordinates (must have the same dimension as the control points)
     /// * `u` - Parameter value
     /// * `recursive` - use recursive algorithm (not efficient) instead of Piegl & Tiller algorithm
+    ///
+    /// # Output
+    ///
+    /// * Writes the coordinates into `cc` and returns `Ok(())` on success
     ///
     /// # Panics
     ///
@@ -365,7 +369,7 @@ impl Bspline {
     ///              du
     /// ```
     ///
-    /// # Arguments
+    /// # Input
     ///
     /// * `u` - Parameter value
     /// * `upto` - Order of the derivative (0 ≤ k ≤ p)
@@ -387,7 +391,7 @@ impl Bspline {
     ///
     /// Note: this function must be called after [Bspline::calc_curve_derivs()]
     ///
-    /// # Arguments
+    /// # Input
     ///
     /// * `cck` - `dC⁽ᵏ⁾/du` vector with the derivatives (must have the same dimension as the control points)
     pub fn get_curve_deriv(&mut self, cck: &mut Vector, k: usize) {

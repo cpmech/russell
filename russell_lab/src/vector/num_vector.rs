@@ -1327,9 +1327,9 @@ mod tests {
         assert_eq!(w.data, &[1.0, 2.0, 3.0]);
 
         // f32
-        let u = NumVector::<f32>::from(&[1.0, 2.5, 4.0, 7.0]);
+        let u = NumVector::<f32>::from(&[1.0_f32, 2.5_f32, 4.0_f32, 7.0_f32]);
         let w = u.get_differences();
-        assert_eq!(w.data, &[1.5, 1.5, 3.0]);
+        assert_eq!(w.data, &[1.5_f32, 1.5_f32, 3.0_f32]);
 
         // i32
         let u = NumVector::<i32>::from(&[10, 20, 25]);

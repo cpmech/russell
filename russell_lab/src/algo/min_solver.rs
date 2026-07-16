@@ -19,6 +19,9 @@ pub struct MinSolver {
     ///
     /// e.g., 1e-10
     pub tolerance: f64,
+
+    /// Holds the statistics of the last solve operation
+    stats: Stats,
 }
 
 impl MinSolver {
@@ -27,6 +30,7 @@ impl MinSolver {
         MinSolver {
             n_iteration_max: 100,
             tolerance: 1e-10,
+            stats: Stats::new(),
         }
     }
 
@@ -41,6 +45,22 @@ impl MinSolver {
         Ok(())
     }
 
+    /// Sets whether to enable statistics tracking
+    ///
+    /// Default value: false
+    pub fn set_enable_stats(&mut self, value: bool) -> &mut Self {
+        self.stats.enable(value);
+        self
+    }
+
+    /// Returns the statistics of the last solve operation
+    pub fn get_stats(&self) -> Result<&Stats, StrError> {
+        if !self.stats.is_enabled() {
+            return Err("statistics tracking is disabled; enable it with set_enable_stats(true)");
+        }
+        Ok(&self.stats)
+    }
+
     /// Employs Brent's method to find the minimum of f(x)
     ///
     /// See: <https://mathworld.wolfram.com/BrentsMethod.html>
@@ -51,7 +71,6 @@ impl MinSolver {
     ///
     /// * `xa` -- first coordinate of the "bracket" containing the local minimum
     /// * `xb` -- second coordinate of the "bracket" containing the local minimum
-    /// * `params` -- optional control parameters
     /// * `args` -- extra arguments for the callback function
     /// * `f` -- is the callback function implementing `f(x)` as `f(x, args)`; it returns `f @ x` or it may return an error.
     ///
@@ -59,10 +78,9 @@ impl MinSolver {
     ///
     /// # Output
     ///
-    /// Returns `(xo, stats)` where:
+    /// Returns `xo` where:
     ///
     /// * `xo` -- is the coordinate of the minimum
-    /// * `stats` -- some statistics regarding the computations
     ///
     /// # Examples
     ///
@@ -73,11 +91,12 @@ impl MinSolver {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let args = &mut 0;
-    ///     let solver = MinSolver::new();
+    ///     let mut solver = MinSolver::new();
+    ///     solver.set_enable_stats(true);
     ///     let (xa, xb) = (-4.0, 4.0);
-    ///     let (xo, stats) = solver.brent(xa, xb, args, |x, _| Ok(4.0 + f64::powi(1.0 - x, 2)))?;
+    ///     let xo = solver.brent(xa, xb, args, |x, _| Ok(4.0 + f64::powi(1.0 - x, 2)))?;
     ///     println!("\noptimal = {:?}", xo);
-    ///     println!("\n{}", stats);
+    ///     println!("\n{}", solver.get_stats().unwrap());
     ///     approx_eq(xo, 1.0, 1e-7);
     ///     Ok(())
     /// }
@@ -96,15 +115,16 @@ impl MinSolver {
     ///     let args = &mut 0;
     ///
     ///     // minimize
-    ///     let solver = MinSolver::new();
-    ///     let (xo, stats) = solver.brent(-2.0, 2.0, args, f)?;
+    ///     let mut solver = MinSolver::new();
+    ///     solver.set_enable_stats(true);
+    ///     let xo = solver.brent(-2.0, 2.0, args, f)?;
     ///     println!("\noptimal = {}", xo);
-    ///     println!("\n{}", stats);
+    ///     println!("\n{}", solver.get_stats().unwrap());
     ///     approx_eq(xo, -0.7790149303951403, 1e-8);
     ///     Ok(())
     /// }
     /// ```
-    pub fn brent<F, A>(&self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<(f64, Stats), StrError>
+    pub fn brent<F, A>(&mut self, xa: f64, xb: f64, args: &mut A, mut f: F) -> Result<f64, StrError>
     where
         F: FnMut(f64, &mut A) -> Result<f64, StrError>,
     {
@@ -148,14 +168,14 @@ impl MinSolver {
         // validate the parameters
         self.validate_params()?;
 
-        // allocate stats struct
-        let mut stats = Stats::new();
+        // reset stats for this operation
+        self.stats.reset();
 
         // initialization
         let (mut a, mut b) = if xa < xb { (xa, xb) } else { (xb, xa) };
         let mut v = a + GSR * (b - a);
         let mut fv = f(v, args)?;
-        stats.n_function += 1;
+        self.stats.inc_n_function(1);
 
         // auxiliary
         let mut x = v;
@@ -166,7 +186,7 @@ impl MinSolver {
         // solve
         let mut converged = false;
         for _ in 0..self.n_iteration_max {
-            stats.n_iterations += 1;
+            self.stats.inc_n_iterations(1);
 
             // auxiliary variables
             let del = b - a;
@@ -214,7 +234,7 @@ impl MinSolver {
             // next approximation
             let t = x + step_new;
             let ft = f(t, args)?;
-            stats.n_function += 1;
+            self.stats.inc_n_function(1);
 
             // t is a better approximation
             if ft <= fx {
@@ -255,8 +275,8 @@ impl MinSolver {
         }
 
         // done
-        stats.stop_sw_total();
-        Ok((x, stats))
+        self.stats.stop_sw_total();
+        Ok(x)
     }
 }
 
@@ -315,7 +335,7 @@ mod tests {
             res
         };
         let args = &mut Args { count: 0, target: 0 };
-        let solver = MinSolver::new();
+        let mut solver = MinSolver::new();
         // first function call
         assert_eq!(solver.brent(-0.5, 2.0, args, f).err(), Some("stop"));
         // second function call
@@ -349,7 +369,8 @@ mod tests {
         //     nfev: 41
         // ```
         let args = &mut 0;
-        let solver = MinSolver::new();
+        let mut solver = MinSolver::new();
+        solver.set_enable_stats(true);
         for (i, test) in get_test_functions().iter().enumerate() {
             println!("\n===================================================================");
             println!("\n{}", test.name);
@@ -359,9 +380,9 @@ mod tests {
                 } else {
                     (bracket.b, bracket.a)
                 };
-                let (xo, stats) = solver.brent(a, b, args, test.f).unwrap();
+                let xo = solver.brent(a, b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
-                println!("\n{}", stats);
+                println!("\n{}", solver.get_stats().unwrap());
                 approx_eq(xo, bracket.xo, test.tol_min);
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
@@ -371,22 +392,31 @@ mod tests {
                 } else {
                     (bracket.b, bracket.a)
                 };
-                let (xo, stats) = solver.brent(a, b, args, test.f).unwrap();
+                let xo = solver.brent(a, b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
-                println!("\n{}", stats);
+                println!("\n{}", solver.get_stats().unwrap());
                 approx_eq(xo, bracket.xo, test.tol_min);
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
             if let Some(bracket) = test.min3 {
                 let (a, b) = (bracket.a, bracket.b);
-                let (xo, stats) = solver.brent(a, b, args, test.f).unwrap();
+                let xo = solver.brent(a, b, args, test.f).unwrap();
                 println!("\nxo = {:?}", xo);
-                println!("\n{}", stats);
+                println!("\n{}", solver.get_stats().unwrap());
                 approx_eq(xo, bracket.xo, test.tol_min);
                 approx_eq((test.f)(xo, args).unwrap(), bracket.fxo, 1e-15);
             }
         }
         println!("\n===================================================================\n");
+    }
+
+    #[test]
+    fn get_stats_fails_when_disabled() {
+        let solver = MinSolver::new();
+        assert_eq!(
+            solver.get_stats().err(),
+            Some("statistics tracking is disabled; enable it with set_enable_stats(true)")
+        );
     }
 
     #[test]

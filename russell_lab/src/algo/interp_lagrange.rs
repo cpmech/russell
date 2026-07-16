@@ -1048,7 +1048,7 @@ impl InterpLagrange {
         self.nn
     }
 
-    /// Returns the polynomial degree N
+    /// Returns the grid type
     pub fn get_grid_type(&self) -> InterpGrid {
         self.params.grid_type
     }

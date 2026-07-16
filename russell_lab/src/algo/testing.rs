@@ -31,10 +31,10 @@ pub struct TestFunction {
     /// Holds a bracketed local minimum
     pub min1: Option<Bracket>,
 
-    // Holds another bracketed local minimum
+    /// Holds another bracketed local minimum
     pub min2: Option<Bracket>,
 
-    // Holds another bracketed local minimum
+    /// Holds another bracketed local minimum
     pub min3: Option<Bracket>,
 
     /// Holds a bracketed root

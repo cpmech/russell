@@ -1,6 +1,6 @@
 [package]
 name = "russell_tensor"
-version = "2.7.0"
+version = "2.8.0"
 edition = "2024"
 license = "MIT"
 description = "Tensor analysis, calculus, and functions for continuum mechanics"

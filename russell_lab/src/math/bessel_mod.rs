@@ -37,6 +37,12 @@ pub fn bessel_i0(x: f64) -> f64 {
     return f64::exp(ax) * poly(&I0PP, 4, z) / (poly(&I0QQ, 5, z) * f64::sqrt(ax));
 }
 
+/// Evaluates I0(x) with exp(x) factored out for x ≥ 15
+fn bessel_i0_scaled(x: f64) -> f64 {
+    let z = 1.0 - 15.0 / x;
+    poly(&I0PP, 4, z) / (poly(&I0QQ, 5, z) * f64::sqrt(x))
+}
+
 /// Evaluates the modified Bessel function I1(x) for any real x
 ///
 /// See: <https://mathworld.wolfram.com/ModifiedBesselFunctionoftheFirstKind.html>
@@ -139,7 +145,14 @@ pub fn bessel_in(n: usize, x: f64) -> f64 {
         }
         j -= 1;
     }
-    ans *= bessel_i0(x) / bi; // normalize using I0
+    let i0 = bessel_i0(x);
+    if f64::is_finite(i0) || f64::abs(x) > X_ALL_OVERFLOW {
+        ans *= i0 / bi; // normalize using I0
+    } else {
+        // Avoid constructing exp(|x|), which overflows before In(x) necessarily does
+        let exp_half = f64::exp(f64::abs(x) / 2.0);
+        ans = ((ans / bi) * exp_half) * (bessel_i0_scaled(f64::abs(x)) * exp_half);
+    }
     if x < 0.0 && (n & 1) != 0 {
         // negative and odd
         return -ans;
@@ -559,6 +572,30 @@ mod tests {
             // println!("n = {}, x = {:?}", n, x);
             approx_eq(bessel_in(n, x) / scale, reference, tol);
         }
+    }
+
+    #[test]
+    fn bessel_in_remains_finite_after_i0_overflows() {
+        // mpmath: mp.mp.dps = 50; mp.besseli(n, x), scaled by the power of ten in the third column
+        #[rustfmt::skip]
+        let mpmath = [
+            (712,  715.0, 1e164, 5.0480288213121952),
+            (700,  720.0, 1e172, 1.9259188809960415),
+            (500,  750.0, 1e253, 6.9614856893713585),
+            (750,  800.0, 1e201, 7.2842378644775958),
+            (900, 1000.0, 1e266, 1.4526705030015654),
+        ];
+        for (n, x, scale, reference) in mpmath {
+            approx_eq(bessel_in(n, x) / scale, reference, 1e-13);
+            approx_eq(bessel_in(n, -x) / scale, reference, 1e-13);
+        }
+
+        assert!(bessel_in(2, 710.0).is_finite());
+        let odd = bessel_in(711, 715.0);
+        assert!(odd.is_finite());
+        assert_eq!(bessel_in(711, -715.0), -odd);
+        assert_eq!(bessel_in(100, 800.0), f64::INFINITY);
+        assert_eq!(bessel_in(1200, 1300.0), f64::INFINITY);
     }
 
     #[test]

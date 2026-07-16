@@ -78,6 +78,9 @@ pub fn bessel_i1(x: f64) -> f64 {
 // controls the accuracy in bessel_in
 const ACC: f64 = 200.0;
 
+// |x| above which In(x) overflows f64 for every n ≤ |x|
+const X_ALL_OVERFLOW: f64 = 1400.0;
+
 // half DBL_MAX_EXP
 const HALF_MAX_EXP: i32 = f64::MAX_EXP / 2;
 
@@ -114,7 +117,10 @@ pub fn bessel_in(n: usize, x: f64) -> f64 {
     let tox = 2.0 / f64::abs(x);
     let mut bip = 0.0;
     let mut bi = 1.0;
-    let mut j = 2 * (n + (f64::sqrt(ACC * (n as f64)) as usize));
+    // Miller's downward recurrence must start above max(n, |x|), otherwise it has
+    // not converged to In by the time it reaches order n (accuracy degrades with x)
+    let m = n.max(f64::min(f64::abs(x), X_ALL_OVERFLOW) as usize);
+    let mut j = 2 * (m + (f64::sqrt(ACC * (m as f64)) as usize));
     let mut ans: f64 = 0.0;
     while j > 0 {
         // downward recurrence
@@ -501,7 +507,7 @@ mod tests {
             (2,  1.0, 1e-16, 0.13574766976703828118285256999499092294987106811278),
             (2,  2.0, 1e-15, 0.68894844769873820405495001581186710533136294328992),
             (2, -5.0, 1e-14, 17.505614966624236014887011895180415898253112084901),
-            (3, -4.0, 1e-50, -3.3372757784203443678565186677519188526713389054441),
+            (3, -4.0, 1e-15, -3.3372757784203443678565186677519188526713389054441),
             (3,  1.0, 1e-17, 0.022168424924331902476285747629899615529415349169979),
             (3,  2.0, 1e-16, 0.21273995923985265527235439337593203729175227291569),
             (3, -5.0, 1e-50, -10.331150169151138387233440935615675741962384700378),
@@ -517,6 +523,41 @@ mod tests {
         for (n, x, tol, reference) in mathematica {
             // println!("n = {}, x = {:?}", n, x);
             approx_eq(bessel_in(n, x), reference, tol);
+        }
+    }
+
+    #[test]
+    fn bessel_in_with_large_x_works() {
+        // mpmath: mp.mp.dps = 50; mp.besseli(n, x), scaled by the power of ten in the third column
+        // before scaling the recurrence start index with |x|, the error at these points reached 2.6e-2 (n = 3, x = 700)
+        #[rustfmt::skip]
+        let mpmath = [
+            (2,    50.0, 1e20,  1e-14, 2.81643064024519405478),
+            (2,   100.0, 1e42,  1e-14, 1.05238431932431057390),
+            (2,   200.0, 1e85,  1e-14, 2.01934135791640399251),
+            (2,   300.0, 1e128, 1e-14, 4.44605815870147242201),
+            (2,  -300.0, 1e128, 1e-14, 4.44605815870147242201),
+            (2,   500.0, 1e215, 1e-14, 2.49480026292137369657),
+            (2,   700.0, 1e302, 1e-14, 1.52522620369977687721),
+            (3,   200.0, 1e85,  1e-14, 1.99419472217373462358),
+            (3,   500.0, 1e215, 1e-14, 2.48234501007272900612),
+            (3,  -500.0, 1e215, 1e-14, -2.48234501007272900612),
+            (3,   700.0, 1e302, 1e-14, 1.51978481192704482028),
+            (4,   300.0, 1e128, 1e-14, 4.35787614650972039304),
+            (4,   700.0, 1e302, 1e-14, 1.51219947674040220732),
+            (5,   100.0, 1e41,  1e-14, 9.47009387303558124618),
+            (5,   500.0, 1e215, 1e-14, 2.44290481610792099094),
+            (5,   700.0, 1e302, 1e-14, 1.50250253219286879505),
+            (5,  -700.0, 1e302, 1e-14, -1.50250253219286879505),
+            (10,  300.0, 1e128, 1e-14, 3.78772592586686867664),
+            (10,  700.0, 1e302, 1e-14, 1.42407639992908212288),
+            (100,  90.0, 1e15,  1e-13, 2.33411933125872852109),
+            (100, 120.0, 1e33,  1e-14, 2.52641327611942263157),
+            (300, 350.0, 1e97,  1e-14, 1.89620370751083282052),
+        ];
+        for (n, x, scale, tol, reference) in mpmath {
+            // println!("n = {}, x = {:?}", n, x);
+            approx_eq(bessel_in(n, x) / scale, reference, tol);
         }
     }
 
@@ -538,6 +579,13 @@ mod tests {
             1.250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e-307,
             1e-322,
         );
+
+        //
+        // |x| > X_ALL_OVERFLOW (In(x) overflows f64 for every n ≤ |x|)
+        //
+        assert_eq!(bessel_in(2, 1500.0), f64::INFINITY);
+        assert_eq!(bessel_in(3, -1500.0), f64::NEG_INFINITY);
+        assert_eq!(bessel_in(2, 1e300), f64::INFINITY);
     }
 
     #[test]

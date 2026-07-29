@@ -32,15 +32,21 @@ pub fn bessel_i0(x: f64) -> f64 {
         let y = x * x;
         return poly(&I0P, 13, y) / poly(&I0Q, 4, 225.0 - y);
     }
-    // rational approximation with exp(x)/sqrt(x) factored out.
-    let z = 1.0 - 15.0 / ax;
-    return f64::exp(ax) * poly(&I0PP, 4, z) / (poly(&I0QQ, 5, z) * f64::sqrt(ax));
+    // split exp(x) so the finite result does not overflow the intermediate (cf. bessel_in)
+    let e = f64::exp(ax / 2.0);
+    (e * bessel_i0_scaled(ax)) * e
 }
 
 /// Evaluates I0(x) with exp(x) factored out for x ≥ 15
 fn bessel_i0_scaled(x: f64) -> f64 {
     let z = 1.0 - 15.0 / x;
     poly(&I0PP, 4, z) / (poly(&I0QQ, 5, z) * f64::sqrt(x))
+}
+
+/// Evaluates I1(x) with exp(x) factored out for x ≥ 15
+fn bessel_i1_scaled(x: f64) -> f64 {
+    let z = 1.0 - 15.0 / x;
+    poly(&I1PP, 4, z) / (poly(&I1QQ, 5, z) * f64::sqrt(x))
 }
 
 /// Evaluates the modified Bessel function I1(x) for any real x
@@ -75,9 +81,9 @@ pub fn bessel_i1(x: f64) -> f64 {
         let y = x * x;
         return x * poly(&I1P, 13, y) / poly(&I1Q, 4, 225.0 - y);
     }
-    // rational approximation with exp(x)/sqrt(x) factored out
-    let z = 1.0 - 15.0 / ax;
-    let ans = f64::exp(ax) * poly(&I1PP, 4, z) / (poly(&I1QQ, 5, z) * f64::sqrt(ax));
+    // split exp(x) so the finite result does not overflow the intermediate (cf. bessel_in)
+    let e = f64::exp(ax / 2.0);
+    let ans = (e * bessel_i1_scaled(ax)) * e;
     if x > 0.0 { ans } else { -ans }
 }
 
@@ -596,6 +602,43 @@ mod tests {
         assert_eq!(bessel_in(711, -715.0), -odd);
         assert_eq!(bessel_in(100, 800.0), f64::INFINITY);
         assert_eq!(bessel_in(1200, 1300.0), f64::INFINITY);
+    }
+
+    #[test]
+    fn bessel_i0_i1_remain_finite_below_overflow() {
+        // exp(x) overflows for x > 709.78, but I0(x)/I1(x) stay < DBL_MAX until x ~ 713.99.
+        // mpmath: mp.mp.dps = 45; mp.besseli(n, x); values agree at dps 40 and 45.
+        #[rustfmt::skip]
+        let mpmath = [
+            (0, 710.0, 1e306, 3.3453345586196559683),
+            (1, 710.0, 1e306, 3.3429778585097628695),
+            (0, 712.0, 1e307, 2.4684110577627524298),
+            (1, 712.0, 1e307, 2.4666770135246151862),
+            (0, 713.0, 1e307, 6.7051282636709966729),
+            (1, 713.0, 1e307, 6.7004245591864025018),
+            (0, 713.9, 1e308, 1.6481551866951378088),
+            (1, 713.9, 1e308, 1.6470004499232343763),
+        ];
+        for (n, x, scale, reference) in mpmath {
+            let direct = if n == 0 { bessel_i0(x) } else { bessel_i1(x) };
+            approx_eq(direct / scale, reference, 1e-13);
+            // In(0/1, x) must agree with the public i0/i1
+            approx_eq(bessel_in(n, x) / scale, reference, 1e-13);
+            // I0 is even, I1 is odd
+            let neg = if n == 0 { bessel_i0(-x) } else { bessel_i1(-x) };
+            let expected_neg = if n == 0 { reference } else { -reference };
+            approx_eq(neg / scale, expected_neg, 1e-13);
+        }
+
+        // self-consistency: In(0/1, x) is defined as i0/i1, so they must match exactly
+        assert_eq!(bessel_in(0, 713.0), bessel_i0(713.0));
+        assert_eq!(bessel_in(1, 713.0), bessel_i1(713.0));
+
+        // boundary preserved: true I0/I1 exceed DBL_MAX at x >= 714, must still overflow
+        assert!(bessel_i0(714.0).is_infinite());
+        assert!(bessel_i1(714.0).is_infinite());
+        assert!(bessel_i0(-714.0).is_infinite());
+        assert!(bessel_i1(-714.0).is_infinite());
     }
 
     #[test]

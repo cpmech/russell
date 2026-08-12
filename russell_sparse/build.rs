@@ -78,7 +78,15 @@ fn main() {
 
     #[cfg(not(target_os = "windows"))]
     {
-        let inc_dirs = vec![
+        // Fallback search directories, used only when pkg-config cannot locate
+        // the required libraries (e.g., locally compiled SuiteSparse/MUMPS via
+        // zscripts/*-compile-*.bash, Homebrew, or the proprietary cuDSS
+        // distribution — none of which ship .pc files). Non-existing
+        // directories are filtered out so that they never end up as bogus
+        // `-I`/`-L` flags on the compiler/linker command line; besides being
+        // noisy, stale entries like `/usr/lib` can shadow the libraries that
+        // an active Nix devShell injects via NIX_CFLAGS_COMPILE/NIX_LDFLAGS.
+        let inc_dirs = existing_dirs(&[
             "/opt/homebrew/include/suitesparse",
             "/usr/include/suitesparse",
             "/usr/local/include/mumps",
@@ -86,9 +94,9 @@ fn main() {
             "/usr/local/cuda/include",
             "/opt/cuda/include",
             "/opt/libcudss/include",
-        ];
+        ]);
 
-        let lib_dirs = vec![
+        let lib_dirs = existing_dirs(&[
             "/opt/homebrew/lib",
             "/usr/lib/x86_64-linux-gnu",
             "/usr/lib",
@@ -98,7 +106,7 @@ fn main() {
             "/usr/local/cuda/lib64",
             "/opt/cuda/lib64",
             "/opt/libcudss/lib",
-        ];
+        ]);
 
         // cudss && local_sparse
         #[cfg(all(feature = "cudss", feature = "local_sparse"))]
@@ -175,19 +183,89 @@ fn main() {
         }
 
         // not(cudss) && not(local_sparse)
+        //
+        // This is "Option 1" in README.md: UMFPACK (and its SuiteSparse
+        // dependencies) coming from the package manager. Query pkg-config
+        // first, since that is the mechanism package managers (apt, pacman,
+        // dnf, Nix, ...) use to advertise correct include/lib paths; only
+        // fall back to the hardcoded search paths above when pkg-config is
+        // unavailable or does not know about UMFPACK (e.g., nixpkgs'
+        // `suitesparse` package currently ships no .pc files at all).
         #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
         {
-            cc::Build::new()
+            let umfpack = probe_umfpack();
+
+            let mut build = cc::Build::new();
+            build
                 .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_umfpack.c")
-                .includes(&inc_dirs)
-                .compile("c_code");
-            for d in &lib_dirs {
-                println!("cargo:rustc-link-search=native={}", *d);
+                .file("c_code/interface_umfpack.c");
+
+            match &umfpack {
+                Some(lib) => {
+                    for inc in &lib.include_paths {
+                        build.include(inc);
+                    }
+                }
+                None => {
+                    build.includes(&inc_dirs);
+                }
             }
-            println!("cargo:rustc-link-lib=dylib=umfpack");
+            build.compile("c_code");
+
+            match umfpack {
+                Some(lib) => {
+                    // pkg-config already emitted the correct
+                    // cargo:rustc-link-search/cargo:rustc-link-lib directives
+                    // (see pkg_config::Config::probe).
+                    let _ = lib;
+                }
+                None => {
+                    for d in &lib_dirs {
+                        println!("cargo:rustc-link-search=native={}", *d);
+                    }
+                    println!("cargo:rustc-link-lib=dylib=umfpack");
+                }
+            }
         }
     }
+}
+
+/// Returns the list of directories (from `dirs`) that actually exist on disk.
+///
+/// This is used to build the fallback include/lib search paths without
+/// polluting the compiler/linker command line with directories that don't
+/// exist, which could otherwise mask errors or interact poorly with
+/// environment-injected flags (e.g., Nix's NIX_CFLAGS_COMPILE/NIX_LDFLAGS).
+#[cfg(not(target_os = "windows"))]
+fn existing_dirs(dirs: &[&str]) -> Vec<String> {
+    dirs.iter()
+        .filter(|d| std::path::Path::new(d).is_dir())
+        .map(|d| d.to_string())
+        .collect()
+}
+
+/// Probes `pkg-config` for the UMFPACK library (and transitively AMD, CHOLMOD,
+/// SuiteSparse_config, etc., via `Requires.private`).
+///
+/// SuiteSparse's pkg-config files are inconsistently cased across
+/// distributions/build systems (Debian, Arch, and a plain `make install` of
+/// upstream SuiteSparse all use `UMFPACK.pc`, while some vendored setups use
+/// lowercase `umfpack.pc`), so both spellings are tried. Returns `None` if
+/// pkg-config itself is missing or if it cannot find UMFPACK under either
+/// name (e.g., nixpkgs' `suitesparse` package ships no .pc files).
+#[cfg(all(not(target_os = "windows"), not(feature = "cudss"), not(feature = "local_sparse")))]
+fn probe_umfpack() -> Option<pkg_config::Library> {
+    for name in ["UMFPACK", "umfpack"] {
+        match pkg_config::Config::new().probe(name) {
+            Ok(lib) => return Some(lib),
+            // The library just isn't known under this name; try the other spelling.
+            Err(pkg_config::Error::ProbeFailure { .. }) | Err(pkg_config::Error::Failure { .. }) => continue,
+            // pkg-config itself is missing, or cross-compiling without a sysroot:
+            // retrying with a different library name would not help.
+            Err(_) => break,
+        }
+    }
+    None
 }
 
 /// Returns the CXX compiler to use for cuDSS compilation.

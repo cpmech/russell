@@ -32,6 +32,7 @@ use crate::{M_TO_IJ, Rep, SQRT_2};
 /// 1. A panic will occur if `dd` is not [Rep::General]
 /// 2. A panic will occur if `a` and `b` have different [Rep]
 #[rustfmt::skip]
+#[inline]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep, Rep::General);
     assert_eq!(bb.rep, aa.rep);
@@ -343,6 +344,7 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// 1. A panic will occur if `dd` is not [Rep::General]
 /// 2. A panic will occur if the `a` and `b` have different [Rep]
 #[rustfmt::skip]
+#[inline]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep, Rep::General);
     assert_eq!(bb.rep, aa.rep);
@@ -653,6 +655,7 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// 
 /// A panic will occur if `dd` is not [Rep::Symmetric]
 #[rustfmt::skip]
+#[inline]
 pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep, Rep::Symmetric);
     let dim = aa.vec.dim();
@@ -832,6 +835,7 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 /// 1. A panic will occur if `dd` is not [Rep::Symmetric]
 /// 2. A panic will occur `aa` and `bb` have different [Rep]
 #[rustfmt::skip]
+#[inline]
 pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep, Rep::Symmetric);
     assert_eq!(bb.rep, aa.rep);

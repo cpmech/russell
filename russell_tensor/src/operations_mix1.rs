@@ -73,6 +73,7 @@ use crate::Rep; // for documentation
 ///     Ok(())
 /// }
 /// ```
+#[inline]
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
@@ -154,6 +155,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 ///     Ok(())
 /// }
 /// ```
+#[inline]
 pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);

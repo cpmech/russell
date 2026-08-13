@@ -62,6 +62,7 @@ pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
 /// 2. A panic will occur if the tensors have different [Rep].
+#[inline]
 pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) {
     assert!(sigma.rep.symmetric());
     assert_eq!(d1.rep, sigma.rep);
@@ -93,6 +94,7 @@ pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) {
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
 /// 2. A panic will occur if the tensors have different [Rep].
+#[inline]
 pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) {
     assert!(sigma.rep.symmetric());
     assert_eq!(d1.rep, sigma.rep);

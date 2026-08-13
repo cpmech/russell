@@ -194,6 +194,7 @@ pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tens
 ///
 /// 1. A panic will occur if `d2` is not [Rep::Symmetric]
 /// 2. A panic will occur if `sigma` is not symmetric
+#[inline]
 pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) {
     assert_eq!(d2.rep, Rep::Symmetric);
     assert!(sigma.rep.symmetric());
@@ -267,6 +268,7 @@ impl AuxDeriv2InvariantJ3 {
 ///
 /// 1. A panic will occur if `d2` is not [Rep::Symmetric]
 /// 2. A panic will occur if `sigma` is not symmetric
+#[inline]
 pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, sigma: &Tensor2) {
     assert_eq!(d2.rep, Rep::Symmetric);
     assert!(sigma.rep.symmetric());
@@ -480,6 +482,7 @@ impl AuxDeriv2InvariantLode {
 ///
 /// 1. A panic will occur if `d2` is not [Rep::Symmetric]
 /// 2. A panic will occur if `sigma` is not symmetric
+#[inline]
 pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode, sigma: &Tensor2) -> Option<f64> {
     assert_eq!(d2.rep, Rep::Symmetric);
     assert!(sigma.rep.symmetric());

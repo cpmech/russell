@@ -138,7 +138,7 @@ pub enum Rep {
 }
 
 impl Rep {
-    /// Returns a new Rep enum given the vector size (4, 6, 9)
+    /// Returns a new representation given the vector size (4, 6, 9)
     pub fn new(vector_dim: usize) -> Self {
         match vector_dim {
             4 => Rep::Symmetric2D,

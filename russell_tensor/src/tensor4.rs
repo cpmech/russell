@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///
-/// First, the following mapping to the Rep space is considered:
+/// First, the following mapping to the Kelvin space is considered:
 ///
 /// ```text
 /// i=j & k=l:  Mijkl := Dijkl

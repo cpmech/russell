@@ -89,7 +89,7 @@ This project is split into the following crates:
 - [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver (spectral collocation + finite differences; 1D/2D)
 - [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, MUMPS, and UMFPACK) + COO/CSC/CSR formats + complex numbers support.
 - [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions (Frechet, Gumbel, Normal).
-- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics (Mandel basis) 
+- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics
 
 Below is a summary of internal dependencies:
 
@@ -982,7 +982,7 @@ fn main() -> Result<(), StrError> {
             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
             [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
         ],
-        Mandel::General,
+        Rep::General,
     )?;
     assert_eq!(
         format!("{:.1}", a.vec),
@@ -1006,7 +1006,7 @@ fn main() -> Result<(), StrError> {
             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
         ],
-        Mandel::Symmetric,
+        Rep::Symmetric,
     )?;
     assert_eq!(
         format!("{:.1}", b.vec),
@@ -1023,7 +1023,7 @@ fn main() -> Result<(), StrError> {
     // symmetric-2D
     let c = Tensor2::from_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
-        Mandel::Symmetric2D,
+        Rep::Symmetric2D,
     )?;
     assert_eq!(
         format!("{:.1}", c.vec),

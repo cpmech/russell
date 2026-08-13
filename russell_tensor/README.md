@@ -21,7 +21,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 This library implements structures and functions for tensor analysis and calculus. The library focuses on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
 
-This library implements derivatives for scalar functions with respect to tensors, tensor functions with respect to tensors, and others. A convenient basis representation known as Mandel basis (similar to Voigt notation) is considered by this library internally. The user may also use the Mandel basis to perform simpler matrix-vector operations directly.
+This library implements derivatives for scalar functions with respect to tensors, tensor functions with respect to tensors, and others. A convenient basis representation known as Kelvin notation (similar to Voigt notation) is considered by this library internally. The user may also use the Kelvin vectors/matrices to perform simpler matrix-vector operations directly.
 
 ### Documentation
 
@@ -66,7 +66,7 @@ This section illustrates how to use `russell_tensor`. See also:
 ### Allocating Second Order Tensors
 
 ```rust
-use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
+use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
 
 fn main() -> Result<(), StrError> {
     // general
@@ -76,7 +76,7 @@ fn main() -> Result<(), StrError> {
             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
             [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
         ],
-        Mandel::General,
+        Rep::General,
     )?;
     assert_eq!(
         format!("{:.1}", a.vector()),
@@ -100,7 +100,7 @@ fn main() -> Result<(), StrError> {
             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
         ],
-        Mandel::Symmetric,
+        Rep::Symmetric,
     )?;
     assert_eq!(
         format!("{:.1}", b.vector()),
@@ -117,7 +117,7 @@ fn main() -> Result<(), StrError> {
     // symmetric-2D
     let c = Tensor2::from_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
-        Mandel::Symmetric2D,
+        Rep::Symmetric2D,
     )?;
     assert_eq!(
         format!("{:.1}", c.vector()),

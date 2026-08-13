@@ -9,7 +9,7 @@ repository = "https://github.com/cpmech/russell"
 documentation = "https://docs.rs/russell_tensor"
 readme = "README.md"
 categories = ["mathematics", "science"]
-keywords = ["tensor", "Voigt", "Mandel", "continuum", "mechanics"]
+keywords = ["tensor", "continuum", "mechanics"]
 
 [features]
 intel_mkl = ["russell_lab/intel_mkl"]

@@ -2,7 +2,7 @@ use super::Tensor4;
 use russell_lab::{mat_add, mat_mat_mul};
 
 #[allow(unused)]
-use crate::Mandel; // for documentation
+use crate::Rep; // for documentation
 
 /// Adds two fourth-order tensors
 ///
@@ -12,10 +12,10 @@ use crate::Mandel; // for documentation
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Rep]
 pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
-    assert_eq!(b.mandel, a.mandel);
-    assert_eq!(c.mandel, a.mandel);
+    assert_eq!(b.rep, a.rep);
+    assert_eq!(c.rep, a.rep);
     mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat).unwrap();
 }
 
@@ -34,7 +34,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///           s t
 /// ```
 ///
-/// Or, in Mandel basis:
+/// Or, in Kelvin basis:
 ///
 /// ```text
 /// Eₘₙ = α Σ Cₘₐ  Dₐₙ
@@ -43,23 +43,23 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///
 /// # Output
 ///
-/// * `ee` -- the resulting fourth-order tensor; with the same [Mandel] as `cc` and `dd`
+/// * `ee` -- the resulting fourth-order tensor; with the same [Rep] as `cc` and `dd`
 ///
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Mandel] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Mandel] as `a` and `b`
+/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
+/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Rep]
 ///
 /// # Examples
 ///
 /// ```
 /// use russell_lab::approx_eq;
-/// use russell_tensor::{Mandel, t4_ddot_t4, StrError, Tensor4};
+/// use russell_tensor::{Rep, t4_ddot_t4, StrError, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let cc = Tensor4::from_matrix(
@@ -74,7 +74,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
 ///             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
 ///         ],
-///         Mandel::General,
+///         Rep::General,
 ///     )?;
 ///
 ///     let dd = Tensor4::from_matrix(
@@ -89,10 +89,10 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
 ///             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
 ///         ],
-///         Mandel::General,
+///         Rep::General,
 ///     )?;
 ///
-///     let mut ee = Tensor4::new(Mandel::General);
+///     let mut ee = Tensor4::new(Rep::General);
 ///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
 ///
 ///     let out = ee.as_matrix();
@@ -109,8 +109,8 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// }
 /// ```
 pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
-    assert_eq!(cc.mandel, dd.mandel);
-    assert_eq!(ee.mandel, dd.mandel);
+    assert_eq!(cc.rep, dd.rep);
+    assert_eq!(ee.rep, dd.rep);
     mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0).unwrap();
 }
 
@@ -129,7 +129,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///            s t
 /// ```
 ///
-/// Or, in Mandel basis:
+/// Or, in Kelvin basis:
 ///
 /// ```text
 /// Eₘₙ = α (Σ Cₘₐ  Dₐₙ) + β Eₘₙ
@@ -138,21 +138,21 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///
 /// # Output
 ///
-/// * `ee` -- the resulting fourth-order tensor; with the same [Mandel] as `cc` and `dd`
+/// * `ee` -- the resulting fourth-order tensor; with the same [Rep] as `cc` and `dd`
 ///
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Mandel] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Mandel] as `a` and `b`
+/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
+/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
 /// * `beta` -- the other scalar multiplier
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Rep]
 pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4, beta: f64) {
-    assert_eq!(cc.mandel, dd.mandel);
-    assert_eq!(ee.mandel, dd.mandel);
+    assert_eq!(cc.rep, dd.rep);
+    assert_eq!(ee.rep, dd.rep);
     mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta).unwrap();
 }
 
@@ -161,32 +161,32 @@ pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Mandel, SamplesTensor4};
+    use crate::{Rep, SamplesTensor4};
     use russell_lab::{Matrix, mat_approx_eq};
 
     #[test]
     #[should_panic]
-    fn t4_add_panics_on_different_mandel1() {
-        let a = Tensor4::new(Mandel::Symmetric2D);
-        let b = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `a`
-        let mut c = Tensor4::new(Mandel::Symmetric2D);
+    fn t4_add_panics_on_different_rep1() {
+        let a = Tensor4::new(Rep::Symmetric2D);
+        let b = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `a`
+        let mut c = Tensor4::new(Rep::Symmetric2D);
         t4_add(&mut c, 2.0, &a, 3.0, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t4_add_panics_on_different_mandel2() {
-        let a = Tensor4::new(Mandel::Symmetric2D);
-        let b = Tensor4::new(Mandel::Symmetric2D);
-        let mut c = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `a`
+    fn t4_add_panics_on_different_rep2() {
+        let a = Tensor4::new(Rep::Symmetric2D);
+        let b = Tensor4::new(Rep::Symmetric2D);
+        let mut c = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `a`
         t4_add(&mut c, 2.0, &a, 3.0, &b);
     }
 
     #[test]
     fn t4_add_works() {
-        let mut a = Tensor4::new(Mandel::Symmetric2D);
-        let mut b = Tensor4::new(Mandel::Symmetric2D);
-        let mut c = Tensor4::new(Mandel::Symmetric2D);
+        let mut a = Tensor4::new(Rep::Symmetric2D);
+        let mut b = Tensor4::new(Rep::Symmetric2D);
+        let mut c = Tensor4::new(Rep::Symmetric2D);
         a.sym_set(0, 0, 0, 0, 1.0);
         b.sym_set(0, 0, 0, 0, 1.0);
         t4_add(&mut c, 2.0, &a, 3.0, &b);
@@ -207,26 +207,26 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn t4_ddot_t4_panics_on_different_mandel1() {
-        let cc = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `dd`
-        let dd = Tensor4::new(Mandel::Symmetric2D);
-        let mut ee = Tensor4::new(Mandel::Symmetric2D);
+    fn t4_ddot_t4_panics_on_different_rep1() {
+        let cc = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
+        let dd = Tensor4::new(Rep::Symmetric2D);
+        let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
     }
 
     #[test]
     #[should_panic]
-    fn t4_ddot_t4_panics_on_different_mandel2() {
-        let cc = Tensor4::new(Mandel::Symmetric2D);
-        let dd = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `dd`
-        let mut ee = Tensor4::new(Mandel::Symmetric2D);
+    fn t4_ddot_t4_panics_on_different_rep2() {
+        let cc = Tensor4::new(Rep::Symmetric2D);
+        let dd = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
+        let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
     }
 
     #[test]
     fn t4_ddot_t4_works() {
-        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
-        let mut ee = Tensor4::new(Mandel::Symmetric2D);
+        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 2.0, &cc, &cc);
         let out = ee.as_matrix();
         assert_eq!(
@@ -247,30 +247,30 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn t4_ddot_t4_update_panics_on_different_mandel1() {
-        let cc = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `dd`
-        let dd = Tensor4::new(Mandel::Symmetric2D);
-        let mut ee = Tensor4::new(Mandel::Symmetric2D);
+    fn t4_ddot_t4_update_panics_on_different_rep1() {
+        let cc = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
+        let dd = Tensor4::new(Rep::Symmetric2D);
+        let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
     }
 
     #[test]
     #[should_panic]
-    fn t4_ddot_t4_update_panics_on_different_mandel2() {
-        let cc = Tensor4::new(Mandel::Symmetric2D);
-        let dd = Tensor4::new(Mandel::Symmetric); // wrong; it must be the same as `dd`
-        let mut ee = Tensor4::new(Mandel::Symmetric2D);
+    fn t4_ddot_t4_update_panics_on_different_rep2() {
+        let cc = Tensor4::new(Rep::Symmetric2D);
+        let dd = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
+        let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
     }
 
     #[test]
     fn t4_ddot_t4_update_works() {
-        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Mandel::Symmetric2D).unwrap();
+        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         let mut mat = Matrix::new(9, 9);
         mat.set(0, 0, 0.1);
         mat.set(1, 1, 0.1);
         mat.set(2, 2, 0.1);
-        let mut ee = Tensor4::from_matrix(&mat, Mandel::Symmetric2D).unwrap();
+        let mut ee = Tensor4::from_matrix(&mat, Rep::Symmetric2D).unwrap();
         t4_ddot_t4_update(&mut ee, 2.0, &cc, &cc, 2.0);
         let out = ee.as_matrix();
         assert_eq!(

@@ -1,11 +1,11 @@
-use super::{Mandel, SQRT_2, SQRT_3, SQRT_6, Tensor2, vec_dyad_vec};
+use super::{Rep, SQRT_2, SQRT_3, SQRT_6, Tensor2, vec_dyad_vec};
 use crate::StrError;
 use russell_lab::{Matrix, Vector, mat_eigen_sym_jacobi};
 
 /// Holds the spectral representation of a symmetric second-order tensor
 pub struct Spectral2 {
-    /// The mandel representation
-    mandel: Mandel,
+    /// The representation
+    rep: Rep,
 
     /// Holds the eigenvalues; dim = 3
     pub lambda: Vector,
@@ -19,15 +19,11 @@ impl Spectral2 {
     ///
     /// **Note:** Must call [Spectral2::compose] to calculate `lambda` and `projectors`.
     pub fn new(two_dim: bool) -> Self {
-        let mandel = if two_dim {
-            Mandel::Symmetric2D
-        } else {
-            Mandel::Symmetric
-        };
+        let rep = if two_dim { Rep::Symmetric2D } else { Rep::Symmetric };
         Spectral2 {
-            mandel,
+            rep,
             lambda: Vector::new(3),
-            projectors: vec![Tensor2::new(mandel), Tensor2::new(mandel), Tensor2::new(mandel)],
+            projectors: vec![Tensor2::new(rep), Tensor2::new(rep), Tensor2::new(rep)],
         }
     }
 
@@ -37,8 +33,8 @@ impl Spectral2 {
     ///
     /// The results are available in [Spectral2::lambda] and [Spectral2::projectors].
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
-        if tt.mandel != self.mandel {
-            return Err("the mandel representation is incompatible");
+        if tt.rep != self.rep {
+            return Err("the representation is incompatible");
         }
         let dim = tt.vec.dim();
         if dim == 4 {
@@ -81,8 +77,8 @@ impl Spectral2 {
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
     pub fn compose(&self, composed: &mut Tensor2, lambda: &Vector) -> Result<(), StrError> {
-        if composed.mandel != self.mandel {
-            return Err("the mandel representation is incompatible");
+        if composed.rep != self.rep {
+            return Err("the representation is incompatible");
         }
         if lambda.dim() != 3 {
             return Err("lambda.dim must be equal to 3");
@@ -113,28 +109,25 @@ impl Spectral2 {
 #[cfg(test)]
 mod tests {
     use super::Spectral2;
-    use crate::{Mandel, SQRT_3, SQRT_3_BY_2, SampleTensor2, SamplesTensor2, Tensor2};
+    use crate::{Rep, SQRT_3, SQRT_3_BY_2, SampleTensor2, SamplesTensor2, Tensor2};
     use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, vec_approx_eq};
 
     #[test]
     fn decompose_captures_errors() {
         let mut spec = Spectral2::new(false);
-        let tt = Tensor2::new(Mandel::General);
-        assert_eq!(
-            spec.decompose(&tt).err(),
-            Some("the mandel representation is incompatible")
-        );
+        let tt = Tensor2::new(Rep::General);
+        assert_eq!(spec.decompose(&tt).err(), Some("the representation is incompatible"));
     }
 
     #[test]
     fn compose_capture_errors() {
         let spec = Spectral2::new(false);
-        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
         assert_eq!(
             spec.compose(&mut tt, &spec.lambda).err(),
-            Some("the mandel representation is incompatible")
+            Some("the representation is incompatible")
         );
-        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let mut tt = Tensor2::new(Rep::Symmetric);
         let lambda = Vector::new(1);
         assert_eq!(
             spec.compose(&mut tt, &lambda).err(),
@@ -147,8 +140,8 @@ mod tests {
         let correct_projectors = sample.eigenprojectors.unwrap();
 
         // perform spectral decomposition of symmetric matrix
-        let mandel = spec.projectors[0].mandel;
-        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
+        let rep = spec.projectors[0].rep;
+        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
         spec.decompose(&tt).unwrap();
 
         // print results
@@ -173,7 +166,7 @@ mod tests {
         mat_approx_eq(&correct2, &pp2, tol_proj);
 
         // compose
-        let mut tt_new = Tensor2::new(mandel);
+        let mut tt_new = Tensor2::new(rep);
         spec.compose(&mut tt_new, &spec.lambda).unwrap();
         let a_new = tt_new.as_matrix();
         let a = Matrix::from(&sample.matrix);

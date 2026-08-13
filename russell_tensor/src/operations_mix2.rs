@@ -1,5 +1,5 @@
 use super::{Tensor2, Tensor4};
-use crate::{Mandel, SQRT_2};
+use crate::{Rep, SQRT_2};
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
@@ -20,21 +20,21 @@ use crate::{Mandel, SQRT_2};
 ///
 /// # Output
 ///
-/// * `dd` -- the tensor `D`; it must be [Mandel::General]
+/// * `dd` -- the tensor `D`; it must be [Rep::General]
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Mandel] as `b`
-/// * `b` -- second tensor; with the same [Mandel] as `a`
+/// * `a` -- first tensor; with the same [Rep] as `b`
+/// * `b` -- second tensor; with the same [Rep] as `a`
 ///
 /// # Panics
 ///
-/// 1. A panic will occur if `dd` is not [Mandel::General]
-/// 2. A panic will occur if `a` and `b` have different [Mandel]
+/// 1. A panic will occur if `dd` is not [Rep::General]
+/// 2. A panic will occur if `a` and `b` have different [Rep]
 #[rustfmt::skip]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.mandel, Mandel::General);
-    assert_eq!(bb.mandel, aa.mandel);
+    assert_eq!(dd.rep, Rep::General);
+    assert_eq!(bb.rep, aa.rep);
     let dim = aa.vec.dim();
     let a = &aa.vec;
     let b = &bb.vec;
@@ -331,21 +331,21 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `dd` -- the tensor `D`; it must be [Mandel::General]
+/// * `dd` -- the tensor `D`; it must be [Rep::General]
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Mandel] as `b`
-/// * `b` -- second tensor; with the same [Mandel] as `a`
+/// * `a` -- first tensor; with the same [Rep] as `b`
+/// * `b` -- second tensor; with the same [Rep] as `a`
 ///
 /// # Panics
 ///
-/// 1. A panic will occur if `dd` is not [Mandel::General]
-/// 2. A panic will occur if the `a` and `b` have different [Mandel]
+/// 1. A panic will occur if `dd` is not [Rep::General]
+/// 2. A panic will occur if the `a` and `b` have different [Rep]
 #[rustfmt::skip]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.mandel, Mandel::General);
-    assert_eq!(bb.mandel, aa.mandel);
+    assert_eq!(dd.rep, Rep::General);
+    assert_eq!(bb.rep, aa.rep);
     let dim = aa.vec.dim();
     let a = &aa.vec;
     let b = &bb.vec;
@@ -643,7 +643,7 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `dd` -- The resulting tensor (minor-symmetric); it must be [Mandel::Symmetric]
+/// * `dd` -- The resulting tensor (minor-symmetric); it must be [Rep::Symmetric]
 ///
 /// # Input
 ///
@@ -651,10 +651,10 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// 
 /// # Panics
 /// 
-/// A panic will occur if `dd` is not [Mandel::Symmetric]
+/// A panic will occur if `dd` is not [Rep::Symmetric]
 #[rustfmt::skip]
 pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
-    assert_eq!(dd.mandel, Mandel::Symmetric);
+    assert_eq!(dd.rep, Rep::Symmetric);
     let dim = aa.vec.dim();
     let a = &aa.vec;
     if dim == 4 {
@@ -806,21 +806,21 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `dd` -- The resulting tensor (minor-symmetric); it must be [Mandel::Symmetric]
+/// * `dd` -- The resulting tensor (minor-symmetric); it must be [Rep::Symmetric]
 ///
 /// # Input
 ///
-/// * `aa` -- Second-order tensor, symmetric or not; with the same [Mandel] as `bb`
-/// * `bb` -- Second-order tensor, symmetric or not; with the same [Mandel] as `aa`
+/// * `aa` -- Second-order tensor, symmetric or not; with the same [Rep] as `bb`
+/// * `bb` -- Second-order tensor, symmetric or not; with the same [Rep] as `aa`
 /// 
 /// # Panics
 /// 
-/// 1. A panic will occur if `dd` is not [Mandel::Symmetric]
-/// 2. A panic will occur `aa` and `bb` have different [Mandel]
+/// 1. A panic will occur if `dd` is not [Rep::Symmetric]
+/// 2. A panic will occur `aa` and `bb` have different [Rep]
 #[rustfmt::skip]
 pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.mandel, Mandel::Symmetric);
-    assert_eq!(bb.mandel, aa.mandel);
+    assert_eq!(dd.rep, Rep::Symmetric);
+    assert_eq!(bb.rep, aa.rep);
     let dim = aa.vec.dim();
     let a = &aa.vec;
     let b = &bb.vec;
@@ -958,24 +958,24 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MN_TO_IJKL, Mandel};
+    use crate::{MN_TO_IJKL, Rep};
     use russell_lab::{Matrix, mat_approx_eq};
 
     #[test]
     #[should_panic]
     fn t2_odyad_t2_panics_on_non_general() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric2D);
-        let mut dd = Tensor4::new(Mandel::Symmetric2D); // wrong; it must be General
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric2D);
+        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be General
         t2_odyad_t2(&mut dd, 1.0, &a, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t2_odyad_t2_panics_on_different_mandel() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
-        let mut dd = Tensor4::new(Mandel::General);
+    fn t2_odyad_t2_panics_on_different_rep() {
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
+        let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 1.0, &a, &b);
     }
 
@@ -1001,14 +1001,14 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Mandel::General).unwrap();
-        let mut dd = Tensor4::new(Mandel::General);
+        ], Rep::General).unwrap();
+        let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1031,14 +1031,14 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Mandel::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Mandel::General);
+        ], Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1061,14 +1061,14 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Mandel::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Mandel::General);
+        ], Rep::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         // println!("{:.1}", mat);
@@ -1090,18 +1090,18 @@ mod tests {
     #[test]
     #[should_panic]
     fn t2_udyad_t2_panics_on_non_general() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric2D);
-        let mut dd = Tensor4::new(Mandel::Symmetric2D); // wrong; it must be General
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric2D);
+        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be General
         t2_udyad_t2(&mut dd, 1.0, &a, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t2_udyad_t2_panics_on_different_mandel() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
-        let mut dd = Tensor4::new(Mandel::General);
+    fn t2_udyad_t2_panics_on_different_rep() {
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
+        let mut dd = Tensor4::new(Rep::General);
         t2_udyad_t2(&mut dd, 1.0, &a, &b);
     }
 
@@ -1127,14 +1127,14 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Mandel::General).unwrap();
-        let mut dd = Tensor4::new(Mandel::General);
+        ], Rep::General).unwrap();
+        let mut dd = Tensor4::new(Rep::General);
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1157,14 +1157,14 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Mandel::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Mandel::General);
+        ], Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::General);
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1187,16 +1187,16 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Mandel::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Mandel::General);
+        ], Rep::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Rep::General);
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
-        let mandel_mat = Matrix::from(&[
+        let kelvin_mat = Matrix::from(&[
             [6.0, 32.0, 0.0, 16.0 * SQRT_2, 0.0, 0.0, 8.0 * SQRT_2, 0.0, 0.0],
             [32.0, 8.0, 0.0, 16.0 * SQRT_2, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -1207,7 +1207,7 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, -4.0, -8.0, 0.0, -8.0, -16.0],
             [0.0, 0.0, 0.0, 0.0, -8.0, -8.0, 0.0, -16.0, -10.0],
         ]);
-        mat_approx_eq(&dd.mat, &mandel_mat, 1e-14);
+        mat_approx_eq(&dd.mat, &kelvin_mat, 1e-14);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
             [6.0, 32.0, 0.0, 24.0, 0.0, 0.0, 8.0, 0.0, 0.0],
@@ -1227,8 +1227,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn t2_ssd_panics_on_non_sym() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let mut dd = Tensor4::new(Mandel::Symmetric2D); // wrong; it must be Symmetric
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
         t2_ssd(&mut dd, 1.0, &a);
     }
 
@@ -1253,8 +1253,8 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+        ], Rep::General).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_ssd(&mut dd, 2.0, &a);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1277,8 +1277,8 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Mandel::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+        ], Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_ssd(&mut dd, 2.0, &a);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1301,8 +1301,8 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+        ], Rep::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_ssd(&mut dd, 2.0, &a);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1323,18 +1323,18 @@ mod tests {
     #[test]
     #[should_panic]
     fn t2_qsd_t2_panics_on_non_sym() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric2D);
-        let mut dd = Tensor4::new(Mandel::Symmetric2D); // wrong; it must be Symmetric
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric2D);
+        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
         t2_qsd_t2(&mut dd, 1.0, &a, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t2_qsd_t2_panics_on_different_mandel() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+    fn t2_qsd_t2_panics_on_different_rep() {
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 1.0, &a, &b);
     }
 
@@ -1368,14 +1368,14 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Mandel::General).unwrap();
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+        ], Rep::General).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1398,14 +1398,14 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Mandel::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+        ], Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[
@@ -1428,14 +1428,14 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Mandel::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Mandel::Symmetric);
+        ], Rep::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_matrix();
         let correct = Matrix::from(&[

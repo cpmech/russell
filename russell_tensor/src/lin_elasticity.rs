@@ -1,4 +1,4 @@
-use crate::{Mandel, StrError, Tensor2, Tensor4, t4_ddot_t2};
+use crate::{Rep, StrError, Tensor2, Tensor4, t4_ddot_t2};
 use russell_lab::mat_inverse;
 
 /// Implements the linear elasticity equations for small-strain problems
@@ -93,24 +93,24 @@ impl LinElasticity {
     /// );
     /// ```
     pub fn new(young: f64, poisson: f64, two_dim: bool, plane_stress: bool) -> Self {
-        let mandel = if two_dim || plane_stress {
-            Mandel::Symmetric2D
+        let rep = if two_dim || plane_stress {
+            Rep::Symmetric2D
         } else {
-            Mandel::Symmetric
+            Rep::Symmetric
         };
         let mut res = LinElasticity {
             young,
             poisson,
             plane_stress,
-            dd: Tensor4::new(mandel),
+            dd: Tensor4::new(rep),
         };
         res.calc_rigidity();
         res
     }
 
-    /// Returns the Mandel representation
-    pub fn mandel(&self) -> Mandel {
-        self.dd.mandel
+    /// Returns the representation
+    pub fn rep(&self) -> Rep {
+        self.dd.rep
     }
 
     /// Sets the Young's modulus and Poisson's coefficient
@@ -210,20 +210,20 @@ impl LinElasticity {
     ///
     /// # Output
     ///
-    /// * `stress` -- the stress tensor σ; with the same [Mandel] as `strain`
+    /// * `stress` -- the stress tensor σ; with the same [Rep] as `strain`
     ///
     /// # Input
     ///
-    /// * `strain` -- the strain tensor ε; with the same [Mandel] as `stress`
+    /// * `strain` -- the strain tensor ε; with the same [Rep] as `stress`
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensors have different [Mandel]
+    /// A panic will occur if the tensors have different [Rep]
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, LinElasticity, StrError, Tensor2};
+    /// use russell_tensor::{Rep, LinElasticity, StrError, Tensor2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // define the strain matrix => will cause sum of rows of D
@@ -257,8 +257,8 @@ impl LinElasticity {
     ///          │    0    0    0    0    0  360    0    0  360 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     let strain = Tensor2::from_matrix(strain_matrix_3d, Mandel::Symmetric)?;
-    ///     let mut stress = Tensor2::new(Mandel::Symmetric);
+    ///     let strain = Tensor2::from_matrix(strain_matrix_3d, Rep::Symmetric)?;
+    ///     let mut stress = Tensor2::new(Rep::Symmetric);
     ///     ela.calc_stress(&mut stress, &strain);
     ///     let out = stress.as_matrix();
     ///     assert_eq!(
@@ -290,8 +290,8 @@ impl LinElasticity {
     ///          │    0    0    0    0    0    0    0    0    0 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     let strain = Tensor2::from_matrix(strain_matrix_2d, Mandel::Symmetric2D)?;
-    ///     let mut stress = Tensor2::new(Mandel::Symmetric2D);
+    ///     let strain = Tensor2::from_matrix(strain_matrix_2d, Rep::Symmetric2D)?;
+    ///     let mut stress = Tensor2::new(Rep::Symmetric2D);
     ///     ela.calc_stress(&mut stress, &strain);
     ///     let out = stress.as_matrix();
     ///     assert_eq!(
@@ -322,7 +322,7 @@ impl LinElasticity {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, LinElasticity, StrError, Tensor2};
+    /// use russell_tensor::{Rep, LinElasticity, StrError, Tensor2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let young = 2500.0;
@@ -333,7 +333,7 @@ impl LinElasticity {
     ///             [sig_xx,     0.0, 0.0],
     ///             [   0.0,  sig_yy, 0.0],
     ///             [   0.0,     0.0, 0.0],
-    ///         ], Mandel::Symmetric2D,
+    ///         ], Rep::Symmetric2D,
     ///     )?;
     ///     let eps_zz = ela.out_of_plane_strain(&stress)?;
     ///     let eps_zz_correct = -(poisson / young) * (sig_xx + sig_yy);
@@ -363,7 +363,7 @@ impl LinElasticity {
     ///
     /// # Panics
     ///
-    /// A panic will occur if `cc` has a different [Mandel] than `dd`.
+    /// A panic will occur if `cc` has a different [Rep] than `dd`.
     ///
     /// # Examples
     ///
@@ -374,14 +374,14 @@ impl LinElasticity {
     /// fn main() -> Result<(), StrError> {
     ///     // calculate C
     ///     let ela = LinElasticity::new(900.0, 0.25, false, false);
-    ///     let mut cc = Tensor4::new(ela.mandel());
+    ///     let mut cc = Tensor4::new(ela.rep());
     ///     ela.calc_compliance(&mut cc).unwrap();
     ///
     ///     // check
     ///     let (kk, gg) = ela.get_bulk_shear();
     ///     let psd = Tensor4::constant_pp_symdev(true);
     ///     let piso = Tensor4::constant_pp_iso(true);
-    ///     let mut correct = Tensor4::new(Mandel::Symmetric);
+    ///     let mut correct = Tensor4::new(Rep::Symmetric);
     ///     t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
     ///     mat_approx_eq(cc.matrix(), correct.matrix(), 1e-15);
     ///     Ok(())
@@ -403,7 +403,7 @@ impl LinElasticity {
             self.dd.mat.set(0, 1, c * self.poisson);
             self.dd.mat.set(1, 0, c * self.poisson);
             self.dd.mat.set(1, 1, c);
-            self.dd.mat.set(3, 3, c * (1.0 - self.poisson)); // Mandel: multiply by 2, so 1/2 disappears
+            self.dd.mat.set(3, 3, c * (1.0 - self.poisson)); // Rep: multiply by 2, so 1/2 disappears
         } else {
             let c = self.young / ((1.0 + self.poisson) * (1.0 - 2.0 * self.poisson));
             self.dd.mat.set(0, 0, c * (1.0 - self.poisson));
@@ -415,7 +415,7 @@ impl LinElasticity {
             self.dd.mat.set(2, 0, c * self.poisson);
             self.dd.mat.set(2, 1, c * self.poisson);
             self.dd.mat.set(2, 2, c * (1.0 - self.poisson));
-            self.dd.mat.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Mandel: multiply by 2, so 1/2 disappears
+            self.dd.mat.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Rep: multiply by 2, so 1/2 disappears
         }
         if self.dd.mat.dims().0 > 4 {
             self.dd.mat.set(4, 4, self.dd.mat.get(3, 3));
@@ -430,7 +430,7 @@ impl LinElasticity {
 mod tests {
     use super::LinElasticity;
     use crate::StrError;
-    use crate::{Mandel, Tensor2, Tensor4, t4_add};
+    use crate::{Rep, Tensor2, Tensor4, t4_add};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     // Checks the symmetry of a square matrix
@@ -532,9 +532,9 @@ mod tests {
                 [ 0.066791, 0.0164861,       0.0],
                 [      0.0,       0.0, 0.0050847],
             ],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         ).unwrap();
-        let mut stress = Tensor2::new(Mandel::Symmetric2D);
+        let mut stress = Tensor2::new(Rep::Symmetric2D);
         ela.calc_stress(&mut stress, &strain);
         let out = stress.as_matrix();
         assert_eq!(
@@ -556,9 +556,9 @@ mod tests {
                 [ -2.675290e-4,    3.6836e-6, 0.0],
                 [          0.0,          0.0, 0.0],
             ],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         ).unwrap();
-        let mut stress = Tensor2::new(Mandel::Symmetric2D);
+        let mut stress = Tensor2::new(Rep::Symmetric2D);
         ela.calc_stress(&mut stress, &strain);
         let out = stress.as_matrix();
         assert_eq!(
@@ -594,8 +594,8 @@ mod tests {
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0]],
-        Mandel::Symmetric).unwrap();
-        let mut stress = Tensor2::new(Mandel::Symmetric);
+        Rep::Symmetric).unwrap();
+        let mut stress = Tensor2::new(Rep::Symmetric);
         ela.calc_stress(&mut stress, &strain);
         let out = stress.as_matrix();
         assert_eq!(
@@ -618,7 +618,7 @@ mod tests {
                 [  0.0, 100.0, 0.0],
                 [  0.0,   0.0, 0.0],
             ],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         ).unwrap();
         let res = ela.out_of_plane_strain(&stress);
         assert_eq!(res.err(), Some("out-of-plane strain works with plane-stress only"));
@@ -634,7 +634,7 @@ mod tests {
                 [ 166.977,  28.544, 0.0],
                 [   0.0,     0.0,   0.0],
             ],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         ).unwrap();
         let eps_zz = ela.out_of_plane_strain(&stress).unwrap();
         approx_eq(eps_zz, 0.0050847, 1e-4);
@@ -643,7 +643,7 @@ mod tests {
     #[test]
     fn calc_compliance_modulus_handles_errors() {
         let ela = LinElasticity::new(900.0, 0.25, false, true); // plane-stress
-        let mut cc = Tensor4::new(ela.mandel());
+        let mut cc = Tensor4::new(ela.rep());
         assert_eq!(
             ela.calc_compliance(&mut cc).err(),
             Some("The compliance modulus is not available for plane-stress")
@@ -659,14 +659,14 @@ mod tests {
     fn compliance_modulus_works() {
         // calculate C
         let mut ela = LinElasticity::new(900.0, 0.25, false, false);
-        let mut cc = Tensor4::new(ela.mandel());
+        let mut cc = Tensor4::new(ela.rep());
         ela.calc_compliance(&mut cc).unwrap();
 
         // check
         let (kk, gg) = ela.get_bulk_shear();
         let psd = Tensor4::constant_pp_symdev(true);
         let piso = Tensor4::constant_pp_iso(true);
-        let mut correct = Tensor4::new(Mandel::Symmetric);
+        let mut correct = Tensor4::new(Rep::Symmetric);
         t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
         mat_approx_eq(&cc.mat, &correct.mat, 1e-15);
 

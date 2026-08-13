@@ -59,6 +59,9 @@ pub struct Tensor2 {
 
     /// Holds the Rep (representation) enum
     pub(crate) rep: Rep,
+
+    /// BENCHMARKING. TODO: REMOVE THIS
+    pub use_loops: bool,
 }
 
 impl Tensor2 {
@@ -88,6 +91,7 @@ impl Tensor2 {
         Tensor2 {
             vec: Vector::new(rep.dim()),
             rep,
+            use_loops: false,
         }
     }
 

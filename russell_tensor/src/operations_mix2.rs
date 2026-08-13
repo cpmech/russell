@@ -657,6 +657,10 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep, Rep::Symmetric);
     let dim = aa.vec.dim();
     let a = &aa.vec;
+    if dd.use_loops{
+        panic!("TODO");
+        return;
+    }
     if dim == 4 {
         dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
         dd.mat.set(0,1, s*(a[3]*a[3]));
@@ -824,6 +828,10 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     let dim = aa.vec.dim();
     let a = &aa.vec;
     let b = &bb.vec;
+    if dd.use_loops{
+        panic!("TODO");
+        return;
+    }
     if dim == 4 {
         dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
         dd.mat.set(0,1, s*(2.0*a[3]*b[3]));

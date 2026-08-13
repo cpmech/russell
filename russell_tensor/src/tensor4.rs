@@ -109,6 +109,9 @@ pub struct Tensor4 {
 
     /// Holds the Rep (representation) enum
     pub(crate) rep: Rep,
+
+    /// BENCHMARKING. TODO: REMOVE THIS
+    pub use_loops: bool,
 }
 
 impl Tensor4 {
@@ -139,6 +142,7 @@ impl Tensor4 {
         Tensor4 {
             mat: Matrix::new(dim, dim),
             rep,
+            use_loops: false,
         }
     }
 
@@ -318,7 +322,11 @@ impl Tensor4 {
                 }
             }
         }
-        Ok(Tensor4 { mat, rep })
+        Ok(Tensor4 {
+            mat,
+            rep,
+            use_loops: false,
+        })
     }
 
     /// Creates a new Tensor4 constructed from a 9x9 matrix with standard components
@@ -462,7 +470,11 @@ impl Tensor4 {
                 }
             }
         }
-        Ok(Tensor4 { mat, rep })
+        Ok(Tensor4 {
+            mat,
+            rep,
+            use_loops: false,
+        })
     }
 
     /// Returns the (i,j,k,l) component (standard; not Rep)
@@ -962,6 +974,7 @@ impl Tensor4 {
             //                       1    2    3    4    5    6    7    8    9
             mat: Matrix::diagonal(&[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
             rep: Rep::General,
+            use_loops: false,
         }
     }
 
@@ -994,6 +1007,7 @@ impl Tensor4 {
         let mut tt = Tensor4 {
             mat: Matrix::new(9, 9),
             rep: Rep::General,
+            use_loops: false,
         };
         tt.mat.set(0, 0, 1.0);
         tt.mat.set(1, 1, 1.0);
@@ -1040,6 +1054,7 @@ impl Tensor4 {
         let mut jj = Tensor4 {
             mat: Matrix::new(n, n),
             rep,
+            use_loops: false,
         };
         jj.mat.set(0, 0, 1.0);
         jj.mat.set(0, 1, 1.0);
@@ -1086,6 +1101,7 @@ impl Tensor4 {
         let mut pp_iso = Tensor4 {
             mat: Matrix::new(n, n),
             rep,
+            use_loops: false,
         };
         pp_iso.mat.set(0, 0, ONE_BY_3);
         pp_iso.mat.set(0, 1, ONE_BY_3);
@@ -1133,6 +1149,7 @@ impl Tensor4 {
         let mut pp_sym = Tensor4 {
             mat: Matrix::new(n, n),
             rep,
+            use_loops: false,
         };
         pp_sym.mat.set(0, 0, 1.0);
         pp_sym.mat.set(1, 1, 1.0);
@@ -1172,6 +1189,7 @@ impl Tensor4 {
         let mut pp_skew = Tensor4 {
             mat: Matrix::new(9, 9),
             rep: Rep::General,
+            use_loops: false,
         };
         pp_skew.mat.set(6, 6, 1.0);
         pp_skew.mat.set(7, 7, 1.0);
@@ -1207,6 +1225,7 @@ impl Tensor4 {
         let mut pp_dev = Tensor4 {
             mat: Matrix::new(9, 9),
             rep: Rep::General,
+            use_loops: false,
         };
         pp_dev.mat.set(0, 0, TWO_BY_3);
         pp_dev.mat.set(0, 1, -ONE_BY_3);
@@ -1260,6 +1279,7 @@ impl Tensor4 {
         let mut pp_symdev = Tensor4 {
             mat: Matrix::new(n, n),
             rep,
+            use_loops: false,
         };
         pp_symdev.mat.set(0, 0, TWO_BY_3);
         pp_symdev.mat.set(0, 1, -ONE_BY_3);

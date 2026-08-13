@@ -7,11 +7,14 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Contents <!-- omit from toc --> 
 
 - [Introduction](#introduction)
+  - [Capabilities](#capabilities)
+  - [Kelvin notation](#kelvin-notation)
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
   - [Optional features](#optional-features)
 - [🌟 Examples](#-examples)
+  - [Computing the Invariants](#computing-the-invariants)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 - [For developers](#for-developers)
 
@@ -19,9 +22,29 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements structures and functions for tensor analysis and calculus. The library focuses on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
+This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
 
-This library implements derivatives for scalar functions with respect to tensors, tensor functions with respect to tensors, and others. A convenient basis representation known as Mandel basis (similar to Voigt notation) is considered by this library internally. The user may also use the Mandel basis to perform simpler matrix-vector operations directly.
+### Capabilities
+
+* `Tensor2` — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
+* `Tensor4` — fourth-order tensors (minor-symmetric or not)
+* Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products
+* Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
+* `Spectral2` — the spectral (eigen) representation of symmetric second-order tensors
+* `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
+* Constants — identity, transposition, and projector tensors
+
+### Kelvin notation
+
+Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
+
+In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector) and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+
+The `Rep` enum specifies the available representations:
+
+* `Rep::General` — 9×1 / 9×9 (all components)
+* `Rep::Symmetric` — 6×1 / 6×6 (symmetric tensors in 3D)
+* `Rep::Symmetric2D` — 4×1 / 4×4 (symmetric tensors in 2D)
 
 ### Documentation
 
@@ -63,10 +86,38 @@ This section illustrates how to use `russell_tensor`. See also:
 * [More examples on the documentation](https://docs.rs/russell_tensor/)
 * [Examples directory](https://github.com/cpmech/russell/tree/main/russell_tensor/examples)
 
+### Computing the Invariants
+
+```rust
+use russell_tensor::{Rep, StrError, Tensor2};
+
+fn main() -> Result<(), StrError> {
+    // allocate a symmetric second-order tensor
+    let sigma = Tensor2::from_matrix(
+        &[
+            [1.0, 2.0, 3.0],
+            [2.0, 2.0, 4.0],
+            [3.0, 4.0, 3.0],
+        ],
+        Rep::Symmetric,
+    )?;
+
+    // compute the principal invariants
+    let ii1 = sigma.invariant_ii1();
+    let ii2 = sigma.invariant_ii2();
+    let ii3 = sigma.invariant_ii3();
+
+    println!("I1 = {:.6}", ii1);
+    println!("I2 = {:.6}", ii2);
+    println!("I3 = {:.6}", ii3);
+    Ok(())
+}
+```
+
 ### Allocating Second Order Tensors
 
 ```rust
-use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
+use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
 
 fn main() -> Result<(), StrError> {
     // general
@@ -76,7 +127,7 @@ fn main() -> Result<(), StrError> {
             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
             [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
         ],
-        Mandel::General,
+        Rep::General,
     )?;
     assert_eq!(
         format!("{:.1}", a.vector()),
@@ -100,7 +151,7 @@ fn main() -> Result<(), StrError> {
             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
         ],
-        Mandel::Symmetric,
+        Rep::Symmetric,
     )?;
     assert_eq!(
         format!("{:.1}", b.vector()),
@@ -117,7 +168,7 @@ fn main() -> Result<(), StrError> {
     // symmetric-2D
     let c = Tensor2::from_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
-        Mandel::Symmetric2D,
+        Rep::Symmetric2D,
     )?;
     assert_eq!(
         format!("{:.1}", c.vector()),

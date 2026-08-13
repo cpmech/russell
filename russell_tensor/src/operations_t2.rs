@@ -1,5 +1,5 @@
 use super::Tensor2;
-use crate::{Mandel, SQRT_2};
+use crate::{Rep, SQRT_2};
 use russell_lab::{StrError, Vector};
 use russell_lab::{vec_add, vec_inner};
 
@@ -11,10 +11,10 @@ use russell_lab::{vec_add, vec_inner};
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel]
+/// A panic will occur if the tensors have different [Rep]
 pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) {
-    assert_eq!(b.mandel, a.mandel);
-    assert_eq!(c.mandel, a.mandel);
+    assert_eq!(b.rep, a.rep);
+    assert_eq!(c.rep, a.rep);
     vec_add(&mut c.vec, alpha, &a.vec, beta, &b.vec).unwrap();
 }
 
@@ -33,7 +33,7 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 ///     i j
 /// ```
 ///
-/// Or, in Mandel basis:
+/// Or, in Kelvin basis:
 ///
 /// ```text
 /// s = Σ aₘ bₘ
@@ -42,8 +42,8 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Mandel] as `b`
-/// * `b` -- second tensor; with the same [Mandel] as `a`
+/// * `a` -- first tensor; with the same [Rep] as `b`
+/// * `b` -- second tensor; with the same [Rep] as `a`
 ///
 /// # Output
 ///
@@ -51,26 +51,26 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 ///
 /// # Panics
 ///
-/// A panic will occur `a` and `b` have different [Mandel]
+/// A panic will occur `a` and `b` have different [Rep]
 ///
 /// # Examples
 ///
 /// ```
 /// use russell_lab::approx_eq;
-/// use russell_tensor::{t2_ddot_t2, Mandel, Tensor2, StrError};
+/// use russell_tensor::{t2_ddot_t2, Rep, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Tensor2::from_matrix(&[
 ///         [1.0,  1.0, 0.0],
 ///         [1.0, -1.0, 0.0],
 ///         [0.0,  0.0, 1.0],
-///     ], Mandel::Symmetric2D)?;
+///     ], Rep::Symmetric2D)?;
 ///
 ///     let b = Tensor2::from_matrix(&[
 ///         [1.0,  2.0, 0.0],
 ///         [3.0, -1.0, 5.0],
 ///         [0.0,  4.0, 1.0],
-///     ], Mandel::General)?;
+///     ], Rep::General)?;
 ///
 ///     let res = t2_ddot_t2(&a.as_general(), &b);
 ///
@@ -79,7 +79,7 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 /// }
 /// ```
 pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
-    assert_eq!(a.mandel, b.mandel);
+    assert_eq!(a.rep, b.rep);
     vec_inner(&a.vec, &b.vec)
 }
 
@@ -103,37 +103,37 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// 
 /// # Output
 /// 
-/// * `c` -- the resulting tensor; it must be [Mandel::General]
+/// * `c` -- the resulting tensor; it must be [Rep::General]
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Mandel] as `b`
-/// * `b` -- second tensor; with the same [Mandel] as `a`
+/// * `a` -- first tensor; with the same [Rep] as `b`
+/// * `b` -- second tensor; with the same [Rep] as `a`
 ///
 /// # Panics
 ///
-/// 1. A panic will occur if `c` is not [Mandel::General]
-/// 2. A panic will occur if the `a` and `b` have different [Mandel]
+/// 1. A panic will occur if `c` is not [Rep::General]
+/// 2. A panic will occur if the `a` and `b` have different [Rep]
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_tensor::{t2_dot_t2, Mandel, Tensor2, StrError};
+/// use russell_tensor::{t2_dot_t2, Rep, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Tensor2::from_matrix(&[
 ///         [1.0,  1.0, 0.0],
 ///         [1.0, -1.0, 0.0],
 ///         [0.0,  0.0, 1.0],
-///     ], Mandel::General)?;
+///     ], Rep::General)?;
 ///
 ///     let b = Tensor2::from_matrix(&[
 ///         [1.0,  2.0, 0.0],
 ///         [3.0, -1.0, 5.0],
 ///         [0.0,  4.0, 1.0],
-///     ], Mandel::General)?;
+///     ], Rep::General)?;
 ///
-///     let mut c = Tensor2::new(Mandel::General);
+///     let mut c = Tensor2::new(Rep::General);
 ///     t2_dot_t2(&mut c, &a, &b);
 ///     assert_eq!(
 ///         format!("{:.1}", c.as_matrix()),
@@ -148,8 +148,8 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 /// ```
 #[rustfmt::skip]
 pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(c.mandel, Mandel::General);
-    assert_eq!(b.mandel, a.mandel);
+    assert_eq!(c.rep, Rep::General);
+    assert_eq!(b.rep, a.rep);
     let dim = a.vec.dim();
     let a = &a.vec;
     let b = &b.vec;
@@ -222,14 +222,14 @@ pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
 ///
 /// ```
 /// use russell_lab::Vector;
-/// use russell_tensor::{t2_dot_vec, Mandel, Tensor2, StrError};
+/// use russell_tensor::{t2_dot_vec, Rep, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Tensor2::from_matrix(&[
 ///         [1.0,  1.0, 0.0],
 ///         [1.0, -1.0, 0.0],
 ///         [0.0,  0.0, 1.0],
-///     ], Mandel::Symmetric2D)?;
+///     ], Rep::Symmetric2D)?;
 ///
 ///     let u = Vector::from(&[1.0, 2.0]);
 ///     let mut v = Vector::new(2);
@@ -294,7 +294,7 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
 ///
 /// ```
 /// use russell_lab::Vector;
-/// use russell_tensor::{vec_dot_t2, Mandel, Tensor2, StrError};
+/// use russell_tensor::{vec_dot_t2, Rep, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[1.0, 2.0]);
@@ -302,7 +302,7 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
 ///         [1.0,  1.0, 0.0],
 ///         [1.0, -1.0, 0.0],
 ///         [0.0,  0.0, 1.0],
-///     ], Mandel::Symmetric2D)?;
+///     ], Rep::Symmetric2D)?;
 ///
 ///     let mut v = Vector::new(2);
 ///     vec_dot_t2(&mut v, 2.0, &u, &a);
@@ -369,13 +369,13 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
 ///
 /// ```
 /// use russell_lab::Vector;
-/// use russell_tensor::{vec_dyad_vec, Mandel, Tensor2, StrError};
+/// use russell_tensor::{vec_dyad_vec, Rep, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let u = Vector::from(&[1.0, 1.0, 1.0]);
 ///     let v = Vector::from(&[2.0, 2.0, 2.0]);
 ///
-///     let mut tt = Tensor2::new(Mandel::Symmetric);
+///     let mut tt = Tensor2::new(Rep::Symmetric);
 ///     vec_dyad_vec(&mut tt, 1.0, &u, &v)?;
 ///
 ///     assert_eq!(
@@ -428,24 +428,24 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Mandel;
+    use crate::Rep;
     use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
 
     #[test]
     #[should_panic]
-    fn t2_add_panics_on_different_mandel1() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
-        let mut c = Tensor2::new(Mandel::Symmetric2D);
+    fn t2_add_panics_on_different_rep1() {
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
+        let mut c = Tensor2::new(Rep::Symmetric2D);
         t2_add(&mut c, 2.0, &a, 3.0, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t2_add_panics_on_different_mandel2() {
-        let a = Tensor2::new(Mandel::Symmetric2D);
-        let b = Tensor2::new(Mandel::Symmetric2D);
-        let mut c = Tensor2::new(Mandel::Symmetric); // wrong; it must be the same as `a`
+    fn t2_add_panics_on_different_rep2() {
+        let a = Tensor2::new(Rep::Symmetric2D);
+        let b = Tensor2::new(Rep::Symmetric2D);
+        let mut c = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
         t2_add(&mut c, 2.0, &a, 3.0, &b);
     }
 
@@ -456,14 +456,14 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 0.0],
             [5.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Mandel::Symmetric2D).unwrap();
-        let mut c = Tensor2::new(Mandel::Symmetric2D);
+        ], Rep::Symmetric2D).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric2D);
         t2_add(&mut c, 2.0, &a, 3.0, &b);
         #[rustfmt::skip]
         let correct = &[
@@ -476,9 +476,9 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn t2_ddot_t2_panics_on_different_mandel() {
-        let a = Tensor2::new(Mandel::Symmetric);
-        let b = Tensor2::new(Mandel::General);
+    fn t2_ddot_t2_panics_on_different_rep() {
+        let a = Tensor2::new(Rep::Symmetric);
+        let b = Tensor2::new(Rep::General);
         t2_ddot_t2(&a, &b);
     }
 
@@ -490,13 +490,13 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         let s = t2_ddot_t2(&a, &b);
         assert_eq!(s, 165.0);
 
@@ -506,13 +506,13 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         let s = t2_ddot_t2(&a, &b);
         approx_eq(s, 162.0, 1e-13);
 
@@ -522,13 +522,13 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 0.0],
             [5.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         let s = t2_ddot_t2(&a, &b);
         approx_eq(s, 50.0, 1e-13);
     }
@@ -536,18 +536,18 @@ mod tests {
     #[test]
     #[should_panic]
     fn t2_dot_t2_panics_on_non_general() {
-        let a = Tensor2::new(Mandel::Symmetric);
-        let b = Tensor2::new(Mandel::Symmetric);
-        let mut c = Tensor2::new(Mandel::Symmetric); // wrong; it must be General
+        let a = Tensor2::new(Rep::Symmetric);
+        let b = Tensor2::new(Rep::Symmetric);
+        let mut c = Tensor2::new(Rep::Symmetric); // wrong; it must be General
         t2_dot_t2(&mut c, &a, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t2_dot_t2_panics_on_different_mandel() {
-        let a = Tensor2::new(Mandel::Symmetric);
-        let b = Tensor2::new(Mandel::General); // wrong; it must be the same as `a`
-        let mut c = Tensor2::new(Mandel::General);
+    fn t2_dot_t2_panics_on_different_rep() {
+        let a = Tensor2::new(Rep::Symmetric);
+        let b = Tensor2::new(Rep::General); // wrong; it must be the same as `a`
+        let mut c = Tensor2::new(Rep::General);
         t2_dot_t2(&mut c, &a, &b);
     }
 
@@ -559,21 +559,21 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Mandel::General).unwrap();
-        let mut c = Tensor2::new(Mandel::General);
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::General);
         t2_dot_t2(&mut c, &a, &b);
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
             [ 30.0,  24.0, 18.0],
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         vec_approx_eq(&c.vec, &correct.vec, 1e-13);
 
         // sym-3D . sym-3D
@@ -582,21 +582,21 @@ mod tests {
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Mandel::Symmetric).unwrap();
-        let mut c = Tensor2::new(Mandel::General);
+        ], Rep::Symmetric).unwrap();
+        let mut c = Tensor2::new(Rep::General);
         t2_dot_t2(&mut c, &a, &b);
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
             [59.0, 37.0, 28.0],
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         vec_approx_eq(&c.vec, &correct.vec, 1e-13);
 
         // sym-2D . sym-2D
@@ -605,21 +605,21 @@ mod tests {
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [3.0, 5.0, 0.0],
             [5.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Mandel::Symmetric2D).unwrap();
-        let mut c = Tensor2::new(Mandel::General);
+        ], Rep::Symmetric2D).unwrap();
+        let mut c = Tensor2::new(Rep::General);
         t2_dot_t2(&mut c, &a, &b);
         #[rustfmt::skip]
         let correct = Tensor2::from_matrix(&[
             [23.0, 13.0, 0.0],
             [22.0, 24.0, 0.0],
             [ 0.0,  0.0, 3.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         vec_approx_eq(&c.vec, &correct.vec, 1e-13);
     }
 
@@ -627,7 +627,7 @@ mod tests {
     #[should_panic]
     fn t2_dot_vec_panics_on_non_2d_vector_v() {
         let mut v = Vector::new(3); // wrong; it must be 2
-        let a = Tensor2::new(Mandel::Symmetric2D);
+        let a = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::new(2);
         t2_dot_vec(&mut v, 1.0, &a, &u);
     }
@@ -636,7 +636,7 @@ mod tests {
     #[should_panic]
     fn t2_dot_vec_panics_on_non_2d_vector_u() {
         let mut v = Vector::new(2);
-        let a = Tensor2::new(Mandel::Symmetric2D);
+        let a = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::new(3); // wrong; it must be 2
         t2_dot_vec(&mut v, 1.0, &a, &u);
     }
@@ -645,7 +645,7 @@ mod tests {
     #[should_panic]
     fn t2_dot_vec_panics_on_non_3d_vector_v() {
         let mut v = Vector::new(2); // wrong; it must be 3
-        let a = Tensor2::new(Mandel::General);
+        let a = Tensor2::new(Rep::General);
         let u = Vector::new(3);
         t2_dot_vec(&mut v, 1.0, &a, &u);
     }
@@ -654,7 +654,7 @@ mod tests {
     #[should_panic]
     fn t2_dot_vec_panics_on_non_3d_vector_u() {
         let mut v = Vector::new(3);
-        let a = Tensor2::new(Mandel::General);
+        let a = Tensor2::new(Rep::General);
         let u = Vector::new(2); // wrong; it must be 3
         t2_dot_vec(&mut v, 1.0, &a, &u);
     }
@@ -667,7 +667,7 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let mut v = Vector::new(3);
         t2_dot_vec(&mut v, 2.0, &a, &u);
@@ -679,7 +679,7 @@ mod tests {
             [1.0, 2.0, 3.0],
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let mut v = Vector::new(3);
         t2_dot_vec(&mut v, 2.0, &a, &u);
@@ -691,7 +691,7 @@ mod tests {
             [1.0, 2.0, 0.0],
             [2.0, 5.0, 0.0],
             [0.0, 0.0, 9.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         let u = Vector::from(&[-2.0, -3.0]);
         let mut v = Vector::new(2);
         t2_dot_vec(&mut v, 2.0, &a, &u);
@@ -702,7 +702,7 @@ mod tests {
     #[should_panic]
     fn vec_dot_t2_panics_on_non_2d_vector_v() {
         let mut v = Vector::new(3); // wrong; it must be 2
-        let a = Tensor2::new(Mandel::Symmetric2D);
+        let a = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::new(2);
         vec_dot_t2(&mut v, 1.0, &u, &a);
     }
@@ -711,7 +711,7 @@ mod tests {
     #[should_panic]
     fn vec_dot_t2_panics_on_non_2d_vector_u() {
         let mut v = Vector::new(2);
-        let a = Tensor2::new(Mandel::Symmetric2D);
+        let a = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::new(3); // wrong; it must be 2
         vec_dot_t2(&mut v, 1.0, &u, &a);
     }
@@ -720,7 +720,7 @@ mod tests {
     #[should_panic]
     fn vec_dot_t2_panics_on_non_3d_vector_v() {
         let mut v = Vector::new(2); // wrong; it must be 3
-        let a = Tensor2::new(Mandel::General);
+        let a = Tensor2::new(Rep::General);
         let u = Vector::new(3);
         vec_dot_t2(&mut v, 1.0, &u, &a);
     }
@@ -729,7 +729,7 @@ mod tests {
     #[should_panic]
     fn vec_dot_t2_panics_on_non_3d_vector_u() {
         let mut v = Vector::new(3);
-        let a = Tensor2::new(Mandel::General);
+        let a = Tensor2::new(Rep::General);
         let u = Vector::new(2); // wrong; it must be 3
         vec_dot_t2(&mut v, 1.0, &u, &a);
     }
@@ -743,7 +743,7 @@ mod tests {
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Mandel::General).unwrap();
+        ], Rep::General).unwrap();
         let mut v = Vector::new(3);
         vec_dot_t2(&mut v, 2.0, &u, &a);
         vec_approx_eq(&v, &[-84.0, -102.0, -120.0], 1e-13);
@@ -755,7 +755,7 @@ mod tests {
             [1.0, 2.0, 3.0],
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
-        ], Mandel::Symmetric).unwrap();
+        ], Rep::Symmetric).unwrap();
         let mut v = Vector::new(3);
         vec_dot_t2(&mut v, 2.0, &u, &a);
         vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
@@ -767,7 +767,7 @@ mod tests {
             [1.0, 2.0, 0.0],
             [2.0, 5.0, 0.0],
             [0.0, 0.0, 9.0],
-        ], Mandel::Symmetric2D).unwrap();
+        ], Rep::Symmetric2D).unwrap();
         let mut v = Vector::new(2);
         vec_dot_t2(&mut v, 2.0, &u, &a);
         vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
@@ -776,7 +776,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn vec_dyad_vec_panics_on_non_2d_vector_u() {
-        let mut a = Tensor2::new(Mandel::Symmetric2D);
+        let mut a = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::new(3); // wrong; it must be 2
         let v = Vector::new(2);
         let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
@@ -785,7 +785,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn vec_dyad_vec_panics_on_non_2d_vector_v() {
-        let mut a = Tensor2::new(Mandel::Symmetric2D);
+        let mut a = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::new(2);
         let v = Vector::new(3); // wrong; it must be 2
         let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
@@ -794,7 +794,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn vec_dyad_vec_panics_on_non_3d_vector_u() {
-        let mut a = Tensor2::new(Mandel::General);
+        let mut a = Tensor2::new(Rep::General);
         let u = Vector::new(2); // wrong; it must be 3
         let v = Vector::new(3);
         let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
@@ -803,7 +803,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn vec_dyad_vec_panics_on_non_3d_vector_v() {
-        let mut a = Tensor2::new(Mandel::General);
+        let mut a = Tensor2::new(Rep::General);
         let u = Vector::new(3);
         let v = Vector::new(2); // wrong; it must be 3
         let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn vec_dyad_vec_captures_errors() {
         // symmetric 2D
-        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
         let u = Vector::from(&[-2.0, -3.0]);
         let v = Vector::from(&[4.0, 3.0]);
         assert_eq!(
@@ -822,7 +822,7 @@ mod tests {
         // symmetric 3D
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let v = Vector::from(&[4.0, 3.0, 2.0]);
-        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let mut tt = Tensor2::new(Rep::Symmetric);
         assert_eq!(
             vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
@@ -834,7 +834,7 @@ mod tests {
         // general
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let v = Vector::from(&[4.0, 3.0, 2.0]);
-        let mut tt = Tensor2::new(Mandel::General);
+        let mut tt = Tensor2::new(Rep::General);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[
             -16.0,
@@ -852,7 +852,7 @@ mod tests {
         // symmetric 3D
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
         let v = Vector::from(&[2.0, 3.0, 4.0]);
-        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let mut tt = Tensor2::new(Rep::Symmetric);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
         vec_approx_eq(&tt.vec, correct, 1e-14);
@@ -860,7 +860,7 @@ mod tests {
         // symmetric 2D
         let u = Vector::from(&[-2.0, -3.0]);
         let v = Vector::from(&[2.0, 3.0]);
-        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
         vec_approx_eq(&tt.vec, correct, 1e-14);

@@ -1,4 +1,4 @@
-use crate::{AsMatrix3x3, Mandel, StrError};
+use crate::{AsMatrix3x3, Rep, StrError};
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
 ///
-/// Internally, the components are converted to the Mandel basis as follows.
+/// Internally, the components are converted to the Kelvin basis as follows.
 ///
 /// **General:**
 ///
@@ -50,15 +50,18 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor2 {
-    /// Holds the components in Mandel basis as a vector.
+    /// Holds the components in Kelvin basis as a vector.
     ///
     /// * General: `vec.dim = 9`
     /// * Symmetric in 3D: `vec.dim = 6`
     /// * Symmetric in 2D: `vec.dim = 4`
     pub(crate) vec: Vector,
 
-    /// Holds the Mandel enum
-    pub(crate) mandel: Mandel,
+    /// Holds the Rep (representation) enum
+    pub(crate) rep: Rep,
+
+    /// BENCHMARKING. TODO: REMOVE THIS
+    pub use_loops: bool,
 }
 
 impl Tensor2 {
@@ -66,37 +69,38 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `mandel` -- the [Mandel] representation
+    /// * `rep` -- the [Rep] representation
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, StrError, Tensor2};
+    /// use russell_tensor::{Rep, StrError, Tensor2};
     ///
     /// fn main() {
-    ///     let a = Tensor2::new(Mandel::General);
+    ///     let a = Tensor2::new(Rep::General);
     ///     assert_eq!(a.vector().as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
     ///
-    ///     let b = Tensor2::new(Mandel::Symmetric);
+    ///     let b = Tensor2::new(Rep::Symmetric);
     ///     assert_eq!(b.vector().as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
     ///
-    ///     let c = Tensor2::new(Mandel::Symmetric2D);
+    ///     let c = Tensor2::new(Rep::Symmetric2D);
     ///     assert_eq!(c.vector().as_data(), &[0.0,0.0,0.0,  0.0]);
     /// }
     /// ```
-    pub fn new(mandel: Mandel) -> Self {
+    pub fn new(rep: Rep) -> Self {
         Tensor2 {
-            vec: Vector::new(mandel.dim()),
-            mandel,
+            vec: Vector::new(rep.dim()),
+            rep,
+            use_loops: false,
         }
     }
 
     /// Allocates a symmetric Tensor2
     pub fn new_sym(two_dim: bool) -> Self {
         if two_dim {
-            Tensor2::new(Mandel::Symmetric2D)
+            Tensor2::new(Rep::Symmetric2D)
         } else {
-            Tensor2::new(Mandel::Symmetric)
+            Tensor2::new(Rep::Symmetric)
         }
     }
 
@@ -105,9 +109,9 @@ impl Tensor2 {
     /// **Note:** `space_ndim` must be 2 or 3 (only 2 is checked, otherwise 3 is assumed)
     pub fn new_sym_ndim(space_ndim: usize) -> Self {
         if space_ndim == 2 {
-            Tensor2::new(Mandel::Symmetric2D)
+            Tensor2::new(Rep::Symmetric2D)
         } else {
-            Tensor2::new(Mandel::Symmetric)
+            Tensor2::new(Rep::Symmetric)
         }
     }
 
@@ -195,22 +199,22 @@ impl Tensor2 {
         Ok(tt)
     }
 
-    /// Returns the Mandel representation associated with this Tensor2
-    pub fn mandel(&self) -> Mandel {
-        self.mandel
+    /// Returns the representation associated with this Tensor2
+    pub fn rep(&self) -> Rep {
+        self.rep
     }
 
-    /// Returns the Mandel vector dimension (4, 6, or 9)
+    /// Returns the Kelvin vector dimension (4, 6, or 9)
     pub fn dim(&self) -> usize {
         self.vec.dim()
     }
 
-    /// Returns an access to the underlying Mandel vector
+    /// Returns an access to the underlying Kelvin vector
     pub fn vector(&self) -> &Vector {
         &self.vec
     }
 
-    /// Returns a mutable access to the underlying Mandel vector
+    /// Returns a mutable access to the underlying Kelvin vector
     pub fn vector_mut(&mut self) -> &mut Vector {
         &mut self.vec
     }
@@ -219,7 +223,7 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Mandel) Tij components given  with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard (not Rep) Tij components given  with respect to an orthonormal Cartesian basis
     ///
     /// # Notes
     ///
@@ -231,11 +235,11 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
+    /// use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // general
-    ///     let mut a = Tensor2::new(Mandel::General);
+    ///     let mut a = Tensor2::new(Rep::General);
     ///     a.set_matrix(&[
     ///         [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
     ///         [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
@@ -257,7 +261,7 @@ impl Tensor2 {
     ///     );
     ///
     ///     // symmetric-3D
-    ///     let mut b = Tensor2::new(Mandel::Symmetric);
+    ///     let mut b = Tensor2::new(Rep::Symmetric);
     ///     b.set_matrix(&[
     ///             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
     ///             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
@@ -276,7 +280,7 @@ impl Tensor2 {
     ///     );
     ///
     ///     // symmetric-2D
-    ///     let mut c = Tensor2::new(Mandel::Symmetric2D);
+    ///     let mut c = Tensor2::new(Rep::Symmetric2D);
     ///     c.set_matrix(&[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
     ///             [4.0/SQRT_2,        2.0, 0.0],
@@ -325,8 +329,8 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Mandel) Tij components with respect to an orthonormal Cartesian basis
-    /// * `mandel` -- the [Mandel] representation
+    /// * `tt` -- the standard (not Rep) Tij components with respect to an orthonormal Cartesian basis
+    /// * `rep` -- the [Rep] representation
     ///
     /// # Notes
     ///
@@ -341,7 +345,7 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, StrError, Tensor2, SQRT_2};
+    /// use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // general
@@ -351,7 +355,7 @@ impl Tensor2 {
     ///             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
     ///             [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
     ///         ],
-    ///         Mandel::General,
+    ///         Rep::General,
     ///     )?;
     ///     assert_eq!(
     ///         format!("{:.1}", a.vector()),
@@ -375,7 +379,7 @@ impl Tensor2 {
     ///             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
     ///             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
     ///         ],
-    ///         Mandel::Symmetric,
+    ///         Rep::Symmetric,
     ///     )?;
     ///     assert_eq!(
     ///         format!("{:.1}", b.vector()),
@@ -396,7 +400,7 @@ impl Tensor2 {
     ///             [4.0/SQRT_2,        2.0, 0.0],
     ///             [       0.0,        0.0, 3.0],
     ///         ],
-    ///         Mandel::Symmetric2D,
+    ///         Rep::Symmetric2D,
     ///     )?;
     ///     assert_eq!(
     ///         format!("{:.1}", c.vector()),
@@ -410,8 +414,8 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(tt: &dyn AsMatrix3x3, mandel: Mandel) -> Result<Self, StrError> {
-        let mut res = Tensor2::new(mandel);
+    pub fn from_matrix(tt: &dyn AsMatrix3x3, rep: Rep) -> Result<Self, StrError> {
+        let mut res = Tensor2::new(rep);
         res.set_matrix(tt)?;
         Ok(res)
     }
@@ -421,9 +425,9 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2};
+    /// use russell_tensor::{Rep, Tensor2};
     ///
-    /// let ii = Tensor2::identity(Mandel::General);
+    /// let ii = Tensor2::identity(Rep::General);
     ///
     /// assert_eq!(
     ///     format!("{}", ii.vector()),
@@ -440,8 +444,8 @@ impl Tensor2 {
     ///      └   ┘"
     /// );
     /// ```
-    pub fn identity(mandel: Mandel) -> Self {
-        let mut res = Tensor2::new(mandel);
+    pub fn identity(rep: Rep) -> Self {
+        let mut res = Tensor2::new(rep);
         res.vec[0] = 1.0;
         res.vec[1] = 1.0;
         res.vec[2] = 1.0;
@@ -450,7 +454,7 @@ impl Tensor2 {
 
     /// Returns the standard (i,j) component
     ///
-    /// **Note:** Returns the standard component; not Mandel.
+    /// **Note:** Returns the standard component; not Rep.
     ///
     /// # Input
     ///
@@ -465,14 +469,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0,  2.0, 0.0],
     ///         [3.0, -1.0, 5.0],
     ///         [0.0,  4.0, 1.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
     ///     approx_eq(a.get(1,2), 5.0, 1e-15);
     ///     Ok(())
@@ -511,19 +515,19 @@ impl Tensor2 {
 
     /// Returns a 3x3 matrix with the standard components
     ///
-    /// **Note:** The matrix will have the standard components (not Mandel) and 3x3 dimension.
+    /// **Note:** The matrix will have the standard components (not Rep) and 3x3 dimension.
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0,  1.0, 0.0],
     ///         [1.0, -1.0, 0.0],
     ///         [0.0,  0.0, 1.0],
-    ///     ], Mandel::Symmetric2D)?;
+    ///     ], Rep::Symmetric2D)?;
     ///     assert_eq!(
     ///         format!("{:.1}", a.as_matrix()),
     ///         "┌                ┐\n\
@@ -555,14 +559,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::Matrix;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0,  1.0, 0.0],
     ///         [1.0, -1.0, 0.0],
     ///         [0.0,  0.0, 1.0],
-    ///     ], Mandel::Symmetric2D)?;
+    ///     ], Rep::Symmetric2D)?;
     ///     let mut mat = Matrix::new(3, 3);
     ///     a.to_matrix(&mut mat);
     ///     assert_eq!(
@@ -600,24 +604,24 @@ impl Tensor2 {
     ///
     /// # Notes
     ///
-    /// 1. The matrix will have the standard components (not Mandel) and 2x2 dimension
+    /// 1. The matrix will have the standard components (not Rep) and 2x2 dimension
     /// 2. This function returns the third diagonal component T22 and the 2x2 matrix
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensor is not [Mandel::Symmetric2D]
+    /// A panic will occur if the tensor is not [Rep::Symmetric2D]
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let tt = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 0.0],
     ///         [2.0, 3.0, 0.0],
     ///         [0.0, 0.0, 4.0],
-    ///     ], Mandel::Symmetric2D)?;
+    ///     ], Rep::Symmetric2D)?;
     ///     let (t22, res) = tt.as_matrix_2d();
     ///     assert_eq!(t22, 4.0);
     ///     assert_eq!(
@@ -631,7 +635,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn as_matrix_2d(&self) -> (f64, Matrix) {
-        assert_eq!(self.mandel, Mandel::Symmetric2D);
+        assert_eq!(self.rep, Rep::Symmetric2D);
         let mut tt = Matrix::new(2, 2);
         tt.set(0, 0, self.get(0, 0));
         tt.set(0, 1, self.get(0, 1));
@@ -640,23 +644,23 @@ impl Tensor2 {
         (self.get(2, 2), tt)
     }
 
-    /// Returns a general Tensor2 regardless of Mandel type
+    /// Returns a general Tensor2 regardless of Rep type
     ///
     /// # Output
     ///
-    /// Returns a [Mandel::General] tensor.
+    /// Returns a [Rep::General] tensor.
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
+    /// use russell_tensor::{Rep, Tensor2, StrError, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let tt = Tensor2::from_matrix(&[
     ///         [1.0,        2.0/SQRT_2, 0.0],
     ///         [2.0/SQRT_2, 3.0,        0.0],
     ///         [0.0,        0.0,        4.0],
-    ///     ], Mandel::Symmetric2D)?;
+    ///     ], Rep::Symmetric2D)?;
     ///     assert_eq!(
     ///         format!("{:.2}", tt.vector()),
     ///         "┌      ┐\n\
@@ -686,7 +690,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn as_general(&self) -> Tensor2 {
-        let mut res = Tensor2::new(Mandel::General);
+        let mut res = Tensor2::new(Rep::General);
         res.vec[0] = self.vec[0];
         res.vec[1] = self.vec[1];
         res.vec[2] = self.vec[2];
@@ -708,23 +712,23 @@ impl Tensor2 {
     ///
     /// # Output
     ///
-    /// Returns a [Mandel::Symmetric] tensor if this tensor is [Mandel::Symmetric2D].
+    /// Returns a [Rep::Symmetric] tensor if this tensor is [Rep::Symmetric2D].
     ///
     /// # Panics
     ///
-    /// A panic will occur if this tensor is not [Mandel::Symmetric2D].
+    /// A panic will occur if this tensor is not [Rep::Symmetric2D].
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
+    /// use russell_tensor::{Rep, Tensor2, StrError, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let tt = Tensor2::from_matrix(&[
     ///         [1.0,        2.0/SQRT_2, 0.0],
     ///         [2.0/SQRT_2, 3.0,        0.0],
     ///         [0.0,        0.0,        4.0],
-    ///     ], Mandel::Symmetric2D)?;
+    ///     ], Rep::Symmetric2D)?;
     ///     assert_eq!(
     ///         format!("{:.2}", tt.vector()),
     ///         "┌      ┐\n\
@@ -751,8 +755,8 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym2d_as_symmetric(&self) -> Tensor2 {
-        assert_eq!(self.mandel, Mandel::Symmetric2D);
-        let mut res = Tensor2::new(Mandel::Symmetric);
+        assert_eq!(self.rep, Rep::Symmetric2D);
+        let mut res = Tensor2::new(Rep::Symmetric);
         res.vec[0] = self.vec[0];
         res.vec[1] = self.vec[1];
         res.vec[2] = self.vec[2];
@@ -779,16 +783,16 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// 1. A panic will occur if the tensor is [Mandel::General]
+    /// 1. A panic will occur if the tensor is [Rep::General]
     /// 2. A panic will occur if the indices are out of range
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() {
-    ///     let mut a = Tensor2::new(Mandel::Symmetric2D);
+    ///     let mut a = Tensor2::new(Rep::Symmetric2D);
     ///     a.sym_set(0, 0, 1.0);
     ///     a.sym_set(1, 1, 2.0);
     ///     a.sym_set(2, 2, 3.0);
@@ -802,7 +806,7 @@ impl Tensor2 {
     ///          └             ┘"
     ///     );
     ///
-    ///     let mut b = Tensor2::new(Mandel::Symmetric);
+    ///     let mut b = Tensor2::new(Rep::Symmetric);
     ///     b.sym_set(0, 0, 1.0);
     ///     b.sym_set(1, 1, 2.0);
     ///     b.sym_set(2, 2, 3.0);
@@ -820,7 +824,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
-        assert!(self.mandel != Mandel::General);
+        assert!(self.rep != Rep::General);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
             self.vec[m] = value;
@@ -844,20 +848,20 @@ impl Tensor2 {
     /// # Panics
     ///
     /// 1. A panic will occur if the indices are out of range
-    /// 2. A panic will occur if the tensor is [Mandel::General]
+    /// 2. A panic will occur if the tensor is [Rep::General]
     /// 3. A panic will occur if `i > j` (lower-diagonal)
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [2.0, 5.0, 6.0],
     ///         [3.0, 6.0, 9.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///
     ///     a.sym_add(0, 1, 2.0, 10.0);
     ///
@@ -873,7 +877,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn sym_add(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
-        assert!(self.mandel != Mandel::General);
+        assert!(self.rep != Rep::General);
         assert!(i <= j);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
@@ -883,7 +887,7 @@ impl Tensor2 {
         }
     }
 
-    /// Sets this tensor equal to another tensor (given as a Mandel vector)
+    /// Sets this tensor equal to another tensor (given as a Kelvin vector)
     ///
     /// ```text
     /// self := α other
@@ -897,15 +901,15 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::Vector;
-    /// use russell_tensor::{Mandel, Tensor2, StrError, SQRT_2};
+    /// use russell_tensor::{Rep, Tensor2, StrError, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
-    ///     let v_mandel = &Vector::from(&[
+    ///     ], Rep::General)?;
+    ///     let v_kelvin = &Vector::from(&[
     ///         1.0,
     ///         5.0,
     ///         9.0,
@@ -917,7 +921,7 @@ impl Tensor2 {
     ///         -4.0 / SQRT_2,
     ///     ]);
     ///
-    ///     a.set_mandel_vector(2.0, v_mandel.as_data());
+    ///     a.set_kelvin_vector(2.0, v_kelvin.as_data());
     ///
     ///     assert_eq!(
     ///         format!("{:.1}", a.as_matrix()),
@@ -930,8 +934,8 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_mandel_vector(&mut self, alpha: f64, other: &[f64]) {
-        assert_eq!(self.mandel.dim(), other.len());
+    pub fn set_kelvin_vector(&mut self, alpha: f64, other: &[f64]) {
+        assert_eq!(self.rep.dim(), other.len());
         let dim = self.vec.dim();
         self.vec[0] = alpha * other[0];
         self.vec[1] = alpha * other[1];
@@ -956,24 +960,24 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensors have different [Mandel].
+    /// A panic will occur if the tensors have different [Rep].
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///     let b = Tensor2::from_matrix(&[
     ///         [10.0, 20.0, 30.0],
     ///         [40.0, 50.0, 60.0],
     ///         [70.0, 80.0, 90.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
     ///     a.set_tensor(2.0, &b);
     ///
@@ -989,7 +993,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn set_tensor(&mut self, alpha: f64, other: &Tensor2) {
-        assert_eq!(self.mandel, other.mandel);
+        assert_eq!(self.rep, other.rep);
         let dim = self.vec.dim();
         self.vec[0] = alpha * other.vec[0];
         self.vec[1] = alpha * other.vec[1];
@@ -1014,24 +1018,24 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensors have different [Mandel].
+    /// A panic will occur if the tensors have different [Rep].
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let mut a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///     let b = Tensor2::from_matrix(&[
     ///         [10.0, 20.0, 30.0],
     ///         [40.0, 50.0, 60.0],
     ///         [70.0, 80.0, 90.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
     ///     a.update(2.0, &b);
     ///
@@ -1047,7 +1051,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn update(&mut self, alpha: f64, other: &Tensor2) {
-        assert_eq!(self.mandel, other.mandel);
+        assert_eq!(self.rep, other.rep);
         let dim = self.vec.dim();
         self.vec[0] += alpha * other.vec[0];
         self.vec[1] += alpha * other.vec[1];
@@ -1070,14 +1074,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
     ///     approx_eq(a.determinant(), 0.0, 1e-13);
     ///     Ok(())
@@ -1116,39 +1120,39 @@ impl Tensor2 {
     ///
     /// ## Output
     ///
-    /// * `at` -- a Tensor2 to hold the transpose tensor; with the same [Mandel] as this tensor
+    /// * `at` -- a Tensor2 to hold the transpose tensor; with the same [Rep] as this tensor
     ///
     /// # Panics
     ///
-    /// A panic will occur if `at` has a different [Mandel].
+    /// A panic will occur if `at` has a different [Rep].
     ///
     /// # Examples
     ///
     /// ```
     /// use russell_lab::vec_approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.1, 1.2, 1.3],
     ///         [2.1, 2.2, 2.3],
     ///         [3.1, 3.2, 3.3],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
-    ///     let mut at = Tensor2::new(Mandel::General);
+    ///     let mut at = Tensor2::new(Rep::General);
     ///     a.transpose(&mut at);
     ///
     ///     let at_correct = Tensor2::from_matrix(&[
     ///         [1.1, 2.1, 3.1],
     ///         [1.2, 2.2, 3.2],
     ///         [1.3, 2.3, 3.3],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///     vec_approx_eq(at.vector(), at_correct.vector(), 1e-15);
     ///     Ok(())
     /// }
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
-        assert_eq!(at.mandel, self.mandel);
+        assert_eq!(at.rep, self.rep);
         let dim = self.vec.dim();
         at.vec[0] = self.vec[0];
         at.vec[1] = self.vec[1];
@@ -1175,7 +1179,7 @@ impl Tensor2 {
     ///
     /// ## Output
     ///
-    /// * `ai` -- a Tensor2 to hold the inverse tensor; with the same [Mandel] as this tensor
+    /// * `ai` -- a Tensor2 to hold the inverse tensor; with the same [Rep] as this tensor
     /// * `tolerance` -- a tolerance for the determinant such that the inverse is computed only if |det| > tolerance
     ///
     /// ## Output
@@ -1185,22 +1189,22 @@ impl Tensor2 {
     ///
     /// # Panics
     ///
-    /// A panic will occur if `ai` has a different [Mandel].
+    /// A panic will occur if `ai` has a different [Rep].
     ///
     /// # Examples
     ///
     /// ```
     /// use russell_lab::{approx_eq, mat_approx_eq, mat_mat_mul, Matrix};
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [6.0,  1.0,  2.0],
     ///         [3.0, 12.0,  4.0],
     ///         [5.0,  6.0, 15.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
-    ///     let mut ai = Tensor2::new(Mandel::General);
+    ///     let mut ai = Tensor2::new(Rep::General);
     ///
     ///     if let Some(det) = a.inverse(&mut ai, 1e-10) {
     ///         assert_eq!(det, 827.0);
@@ -1219,7 +1223,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn inverse(&self, ai: &mut Tensor2, tolerance: f64) -> Option<f64> {
-        assert_eq!(ai.mandel, self.mandel);
+        assert_eq!(ai.rep, self.rep);
         let dim = self.vec.dim();
         let a = &self.vec;
         match dim {
@@ -1282,40 +1286,40 @@ impl Tensor2 {
     ///
     /// ## Output
     ///
-    /// * `a2` -- a Tensor2 to hold the squared tensor; with the same [Mandel] as this tensor
+    /// * `a2` -- a Tensor2 to hold the squared tensor; with the same [Rep] as this tensor
     ///
     /// # Panics
     ///
-    /// A panic will occur if `a2` has a different [Mandel].
+    /// A panic will occur if `a2` has a different [Rep].
     ///
     /// # Examples
     ///
     /// ```
     /// use russell_lab::vec_approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [10.0, 20.0, 10.0],
     ///         [ 4.0,  5.0,  6.0],
     ///         [ 2.0,  3.0,  5.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
-    ///     let mut a2 = Tensor2::new(Mandel::General);
+    ///     let mut a2 = Tensor2::new(Rep::General);
     ///     a.squared(&mut a2);
     ///
     ///     let a2_correct = Tensor2::from_matrix(&[
     ///         [200.0, 330.0, 270.0],
     ///         [ 72.0, 123.0, 100.0],
     ///         [ 42.0,  70.0,  63.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///     vec_approx_eq(a2.vector(), a2_correct.vector(), 1e-13);
     ///
     ///     Ok(())
     /// }
     /// ```
     pub fn squared(&self, a2: &mut Tensor2) {
-        assert_eq!(a2.mandel, self.mandel);
+        assert_eq!(a2.rep, self.rep);
         let dim = self.vec.dim();
         let a = &self.vec;
         match dim {
@@ -1390,14 +1394,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
     ///     approx_eq(a.trace(), 15.0, 1e-15);
     ///     Ok(())
@@ -1417,14 +1421,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
     ///     approx_eq(a.norm(), f64::sqrt(285.0), 1e-13);
     ///     Ok(())
@@ -1453,26 +1457,26 @@ impl Tensor2 {
     ///
     /// ## Output
     ///
-    /// * `dev` -- a Tensor2 to hold the deviator tensor; with the same [Mandel] as this tensor
+    /// * `dev` -- a Tensor2 to hold the deviator tensor; with the same [Rep] as this tensor
     ///
     /// # Panics
     ///
-    /// A panic will occur if `dev` has a different [Mandel].
+    /// A panic will occur if `dev` has a different [Rep].
     ///
     /// # Examples
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
-    ///     let mut dev = Tensor2::new(Mandel::General);
+    ///     let mut dev = Tensor2::new(Rep::General);
     ///     a.deviator(&mut dev);
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
@@ -1488,7 +1492,7 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) {
-        assert_eq!(dev.mandel, self.mandel);
+        assert_eq!(dev.rep, self.rep);
         let dim = self.vec.dim();
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
         dev.vec[0] = self.vec[0] - m;
@@ -1536,16 +1540,16 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [6.0,  1.0,  2.0],
     ///         [3.0, 12.0,  4.0],
     ///         [5.0,  6.0, 15.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
-    ///     let mut dev = Tensor2::new(Mandel::General);
+    ///     let mut dev = Tensor2::new(Rep::General);
     ///     a.deviator(&mut dev);
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
@@ -1589,16 +1593,16 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [6.0,  1.0,  2.0],
     ///         [3.0, 12.0,  4.0],
     ///         [5.0,  6.0, 15.0],
-    ///     ], Mandel::General)?;
+    ///     ], Rep::General)?;
     ///
-    ///     let mut dev = Tensor2::new(Mandel::General);
+    ///     let mut dev = Tensor2::new(Rep::General);
     ///     a.deviator(&mut dev);
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
@@ -1651,14 +1655,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
     ///         [20.0, -10.0,  10.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(sig.invariant_ii1(), 40.0, 1e-15);
     ///     Ok(())
     /// }
@@ -1677,14 +1681,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
     ///         [20.0, -10.0,  10.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(sig.invariant_ii2(), -2100.0, 1e-12);
     ///     Ok(())
     /// }
@@ -1712,14 +1716,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
     ///         [20.0, -10.0,  10.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(sig.invariant_ii3(), -28000.0, 1e-15);
     ///     Ok(())
     /// }
@@ -1754,14 +1758,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [ 2.0, -3.0, 4.0],
     ///         [-3.0, -5.0, 1.0],
     ///         [ 4.0,  1.0, 6.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(sig.invariant_jj2(), 57.0, 1e-14);
     ///     Ok(())
     /// }
@@ -1799,14 +1803,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let sig = Tensor2::from_matrix(&[
     ///         [ 2.0, -3.0, 4.0],
     ///         [-3.0, -5.0, 1.0],
     ///         [ 4.0,  1.0, 6.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(sig.invariant_jj3(), -4.0, 1e-13);
     ///     Ok(())
     /// }
@@ -1827,14 +1831,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::{approx_eq, math::SQRT_3};
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_sigma_s(), 2.0 / SQRT_3, 1e-15);
     ///     Ok(())
     /// }
@@ -1853,14 +1857,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::{approx_eq, math::SQRT_2_BY_3};
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_sigma_t(), SQRT_2_BY_3, 1e-15);
     ///     Ok(())
     /// }
@@ -1881,14 +1885,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_p(), 2.0 / 3.0, 1e-15);
     ///     Ok(())
     /// }
@@ -1912,14 +1916,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_q(), 1.0, 1e-15);
     ///     Ok(())
     /// }
@@ -1938,14 +1942,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::{approx_eq, math::SQRT_3};
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_eps_s(), 2.0 / SQRT_3, 1e-15);
     ///     Ok(())
     /// }
@@ -1966,14 +1970,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::{approx_eq, math::SQRT_2_BY_3};
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_eps_t(), SQRT_2_BY_3, 1e-15);
     ///     Ok(())
     /// }
@@ -1992,14 +1996,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_eps_v(), 2.0, 1e-15);
     ///     Ok(())
     /// }
@@ -2018,14 +2022,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     approx_eq(a.invariant_eps_d(), 2.0 / 3.0, 1e-15);
     ///     Ok(())
     /// }
@@ -2050,14 +2054,14 @@ impl Tensor2 {
     ///
     /// ```
     /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Mandel, Tensor2, StrError};
+    /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let a = Tensor2::from_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
-    ///     ], Mandel::Symmetric)?;
+    ///     ], Rep::Symmetric)?;
     ///     if let Some(l) = a.invariant_lode() {
     ///         approx_eq(l, -1.0, 1e-15);
     ///     }
@@ -2108,50 +2112,50 @@ impl Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{IDENTITY2, Mandel, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2};
+    use crate::{IDENTITY2, Rep, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2};
     use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq};
 
     #[test]
     fn new_and_getters_work() {
         // general
-        let mut tt = Tensor2::new(Mandel::General);
+        let mut tt = Tensor2::new(Rep::General);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.mandel(), Mandel::General);
+        assert_eq!(tt.rep(), Rep::General);
         assert_eq!(tt.dim(), 9);
         assert_eq!(tt.vector().as_data(), correct);
         tt.vector_mut()[0] = 1.0;
 
         // symmetric 3D
-        let tt = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::new(Rep::Symmetric);
         let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.rep(), Rep::Symmetric);
         assert_eq!(tt.dim(), 6);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym(false);
-        assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.rep(), Rep::Symmetric);
         assert_eq!(tt.dim(), 6);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym_ndim(3);
-        assert_eq!(tt.mandel(), Mandel::Symmetric);
+        assert_eq!(tt.rep(), Rep::Symmetric);
         assert_eq!(tt.dim(), 6);
         assert_eq!(tt.vector().as_data(), correct);
 
         // symmetric 2D
-        let tt = Tensor2::new(Mandel::Symmetric2D);
+        let tt = Tensor2::new(Rep::Symmetric2D);
         let correct = &[0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.rep(), Rep::Symmetric2D);
         assert_eq!(tt.dim(), 4);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym(true);
-        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.rep(), Rep::Symmetric2D);
         assert_eq!(tt.dim(), 4);
         assert_eq!(tt.vector().as_data(), correct);
 
         let tt = Tensor2::new_sym_ndim(2);
-        assert_eq!(tt.mandel(), Mandel::Symmetric2D);
+        assert_eq!(tt.rep(), Rep::Symmetric2D);
         assert_eq!(tt.dim(), 4);
         assert_eq!(tt.vector().as_data(), correct);
     }
@@ -2178,7 +2182,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0+eps, 3.0],
         ];
-        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let mut tt = Tensor2::new(Rep::Symmetric);
         assert_eq!(
             tt.set_matrix(comps_std_10).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
@@ -2206,7 +2210,7 @@ mod tests {
             [4.0, 2.0,     0.0+eps],
             [0.0, 0.0+eps, 3.0],
         ];
-        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
         assert_eq!(
             tt.set_matrix(comps_std_12).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
@@ -2220,7 +2224,7 @@ mod tests {
     #[test]
     fn set_matrix_works() {
         // general
-        let mut tt = Tensor2::new(Mandel::General);
+        let mut tt = Tensor2::new(Rep::General);
         const NOISE: f64 = 1234.568;
         tt.vec.fill(NOISE);
         tt.set_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
@@ -2239,7 +2243,7 @@ mod tests {
         vec_approx_eq(&tt.vec, correct, 1e-15);
 
         // general (using nested Vec)
-        let mut tt = Tensor2::new(Mandel::General);
+        let mut tt = Tensor2::new(Rep::General);
         tt.vec.fill(NOISE);
         tt.set_matrix(&vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0], vec![7.0, 8.0, 9.0]])
             .unwrap();
@@ -2257,7 +2261,7 @@ mod tests {
         vec_approx_eq(&tt.vec, correct, 1e-15);
 
         // symmetric 3D
-        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let mut tt = Tensor2::new(Rep::Symmetric);
         tt.vec.fill(NOISE);
         tt.set_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
             .unwrap();
@@ -2265,7 +2269,7 @@ mod tests {
         vec_approx_eq(&tt.vec, correct, 1e-14);
 
         // symmetric 2D
-        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
         tt.vec.fill(NOISE);
         tt.set_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
             .unwrap();
@@ -2296,15 +2300,15 @@ mod tests {
             [6.0, 5.0+eps, 3.0],
         ];
         assert_eq!(
-            Tensor2::from_matrix(comps_std_10, Mandel::Symmetric).err(),
+            Tensor2::from_matrix(comps_std_10, Rep::Symmetric).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
-            Tensor2::from_matrix(comps_std_20, Mandel::Symmetric).err(),
+            Tensor2::from_matrix(comps_std_20, Rep::Symmetric).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
-            Tensor2::from_matrix(comps_std_21, Mandel::Symmetric).err(),
+            Tensor2::from_matrix(comps_std_21, Rep::Symmetric).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
@@ -2323,11 +2327,11 @@ mod tests {
             [0.0, 0.0+eps, 3.0],
         ];
         assert_eq!(
-            Tensor2::from_matrix(comps_std_12, Mandel::Symmetric2D).err(),
+            Tensor2::from_matrix(comps_std_12, Rep::Symmetric2D).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
         );
         assert_eq!(
-            Tensor2::from_matrix(comps_std_02, Mandel::Symmetric2D).err(),
+            Tensor2::from_matrix(comps_std_02, Rep::Symmetric2D).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
         );
     }
@@ -2341,7 +2345,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         let correct = &[
             1.0,
             5.0,
@@ -2362,7 +2366,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
         vec_approx_eq(&tt.vec, correct, 1e-14);
 
@@ -2373,7 +2377,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
         vec_approx_eq(&tt.vec, correct, 1e-14);
     }
@@ -2381,15 +2385,15 @@ mod tests {
     #[test]
     fn identity_works() {
         // general
-        let ii = Tensor2::identity(Mandel::General);
+        let ii = Tensor2::identity(Rep::General);
         assert_eq!(ii.vec.as_data(), &IDENTITY2);
 
         // symmetric
-        let ii = Tensor2::identity(Mandel::Symmetric);
+        let ii = Tensor2::identity(Rep::Symmetric);
         assert_eq!(ii.vec.as_data(), &IDENTITY2[0..6]);
 
         // symmetric 2d
-        let ii = Tensor2::identity(Mandel::Symmetric2D);
+        let ii = Tensor2::identity(Rep::Symmetric2D);
         assert_eq!(ii.vec.as_data(), &IDENTITY2[0..4]);
     }
 
@@ -2402,7 +2406,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         tt.get(3, 3);
     }
 
@@ -2415,7 +2419,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
@@ -2429,7 +2433,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
@@ -2443,7 +2447,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
@@ -2460,7 +2464,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         let mut mat = Matrix::new(2, 2);
         tt.to_matrix(&mut mat);
     }
@@ -2474,7 +2478,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         let res = tt.as_matrix();
         for i in 0..3 {
             for j in 0..3 {
@@ -2489,7 +2493,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         let res = tt.as_matrix();
         for i in 0..3 {
             for j in 0..3 {
@@ -2504,7 +2508,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let res = tt.as_matrix();
         for i in 0..3 {
             for j in 0..3 {
@@ -2522,7 +2526,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         tt.as_matrix_2d();
     }
 
@@ -2534,7 +2538,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let (t22, res) = tt.as_matrix_2d();
         assert_eq!(t22, 3.0);
         assert_eq!(
@@ -2551,7 +2555,7 @@ mod tests {
             [2.0, 3.0, 0.0],
             [0.0, 0.0, 4.0],
         ];
-        let tt = Tensor2::from_matrix(data, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(data, Rep::Symmetric2D).unwrap();
         let (t22, a) = tt.as_matrix_2d();
         assert_eq!(t22, 4.0);
         assert_eq!(
@@ -2567,7 +2571,7 @@ mod tests {
     fn as_general_works() {
         let tt = Tensor2::from_matrix(
             &[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         )
         .unwrap();
         let tt_gen = tt.as_general();
@@ -2602,7 +2606,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         let res = tt.as_general();
         assert_eq!(res.vec.dim(), 9);
         for i in 0..3 {
@@ -2618,7 +2622,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         let res = tt.as_general();
         assert_eq!(res.vec.dim(), 9);
         for i in 0..3 {
@@ -2634,7 +2638,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let res = tt.as_general();
         assert_eq!(res.vec.dim(), 9);
         for i in 0..3 {
@@ -2647,7 +2651,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn sym2d_as_symmetric_panics_on_non_sym2d() {
-        let tt = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::new(Rep::Symmetric);
         tt.sym2d_as_symmetric();
     }
 
@@ -2655,7 +2659,7 @@ mod tests {
     fn sym2d_as_symmetric_works() {
         let tt = Tensor2::from_matrix(
             &[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         )
         .unwrap();
         let tt_sym = tt.sym2d_as_symmetric();
@@ -2682,22 +2686,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "self.mandel != Mandel::General")]
+    #[should_panic(expected = "self.rep != Rep::General")]
     fn sym_set_panics_on_non_sym() {
-        let mut a = Tensor2::new(Mandel::General);
+        let mut a = Tensor2::new(Rep::General);
         a.sym_set(3, 3, 3.0);
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
     fn sym_set_panics_on_incorrect_indices() {
-        let mut a = Tensor2::new(Mandel::Symmetric);
+        let mut a = Tensor2::new(Rep::Symmetric);
         a.sym_set(3, 3, 3.0);
     }
 
     #[test]
     fn sym_set_works() {
-        let mut a = Tensor2::new(Mandel::Symmetric);
+        let mut a = Tensor2::new(Rep::Symmetric);
         a.sym_set(0, 0, 1.0);
         a.sym_set(1, 1, 2.0);
         a.sym_set(2, 2, 3.0);
@@ -2723,29 +2727,29 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let mut a = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let mut a = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         a.clear();
         assert_eq!(a.vec.as_data(), &[0.0, 0.0, 0.0, 0.0]);
     }
 
     #[test]
-    #[should_panic(expected = "self.mandel != Mandel::General")]
+    #[should_panic(expected = "self.rep != Rep::General")]
     fn sym_add_panics_on_non_sym() {
-        let mut a = Tensor2::new(Mandel::General);
+        let mut a = Tensor2::new(Rep::General);
         a.sym_add(0, 0, 1.0, 1.0);
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
     fn sym_add_panics_on_incorrect_indices() {
-        let mut a = Tensor2::new(Mandel::Symmetric);
+        let mut a = Tensor2::new(Rep::Symmetric);
         a.sym_add(3, 3, 5.0, 6.0);
     }
 
     #[test]
     #[should_panic(expected = "i <= j")]
     fn sym_add_panics_on_lower_diagonal() {
-        let mut a = Tensor2::new(Mandel::Symmetric2D);
+        let mut a = Tensor2::new(Rep::Symmetric2D);
         a.sym_add(1, 0, 5.0, 6.0);
     }
 
@@ -2758,7 +2762,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let mut a = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let mut a = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         a.sym_add(0, 0, 10.0, 10.0);
         a.sym_add(1, 1, 10.0, 10.0);
         a.sym_add(2, 2, 10.0, 10.0);
@@ -2780,7 +2784,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let mut a = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let mut a = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         a.sym_add(0, 0, 10.0, 10.0);
         a.sym_add(1, 1, 10.0, 10.0);
         a.sym_add(2, 2, 10.0, 10.0);
@@ -2800,19 +2804,19 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn set_mandel_vector_panics_panics_on_incorrect_input() {
-        let mut a = Tensor2::new(Mandel::Symmetric2D);
+    fn set_kelvin_vector_panics_panics_on_incorrect_input() {
+        let mut a = Tensor2::new(Rep::Symmetric2D);
         let b = Vector::new(1);
-        a.set_mandel_vector(2.0, b.as_data());
+        a.set_kelvin_vector(2.0, b.as_data());
     }
 
     #[test]
-    fn set_mandel_vector_works() {
+    fn set_kelvin_vector_works() {
         // general
-        let mut tt = Tensor2::new(Mandel::General);
+        let mut tt = Tensor2::new(Rep::General);
         const NOISE: f64 = 1234.568;
         tt.vec.fill(NOISE);
-        tt.set_mandel_vector(
+        tt.set_kelvin_vector(
             2.0,
             &[
                 1.0,
@@ -2830,16 +2834,16 @@ mod tests {
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
 
         // symmetric 3D
-        let mut tt = Tensor2::new(Mandel::Symmetric);
+        let mut tt = Tensor2::new(Rep::Symmetric);
         tt.vec.fill(NOISE);
-        tt.set_mandel_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
+        tt.set_kelvin_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
 
         // symmetric 2D
-        let mut tt = Tensor2::new(Mandel::Symmetric2D);
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
         tt.vec.fill(NOISE);
-        tt.set_mandel_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
+        tt.set_kelvin_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 0.0], [8.0, 4.0, 0.0], [0.0, 0.0, 6.0]];
         mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
     }
@@ -2847,33 +2851,33 @@ mod tests {
     #[test]
     #[should_panic]
     fn set_tensor_panics_panics_on_incorrect_input() {
-        let mut a = Tensor2::new(Mandel::General);
-        let b = Tensor2::new(Mandel::Symmetric);
+        let mut a = Tensor2::new(Rep::General);
+        let b = Tensor2::new(Rep::Symmetric);
         a.set_tensor(2.0, &b);
     }
 
     #[test]
     #[should_panic]
     fn update_panics_on_incorrect_input() {
-        let mut a = Tensor2::new(Mandel::General);
-        let b = Tensor2::new(Mandel::Symmetric);
+        let mut a = Tensor2::new(Rep::General);
+        let b = Tensor2::new(Rep::Symmetric);
         a.update(1.0, &b);
     }
 
     #[test]
     fn set_tensor_and_update_work() {
         // general
-        let mut a = Tensor2::new(Mandel::General);
+        let mut a = Tensor2::new(Rep::General);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [1.0, 3.0, 1.0],
             [2.0, 2.0, 2.0],
             [3.0, 1.0, 3.0],
         ],
-        Mandel::General).unwrap();
+        Rep::General).unwrap();
         let c = Tensor2::from_matrix(
             &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
-            Mandel::General,
+            Rep::General,
         )
         .unwrap();
         a.set_tensor(2.0, &b);
@@ -2889,17 +2893,17 @@ mod tests {
         );
 
         // symmetric 3D
-        let mut a = Tensor2::new(Mandel::Symmetric);
+        let mut a = Tensor2::new(Rep::Symmetric);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [1.0, 3.0, 1.0],
             [3.0, 2.0, 2.0],
             [1.0, 2.0, 3.0],
         ],
-        Mandel::Symmetric).unwrap();
+        Rep::Symmetric).unwrap();
         let c = Tensor2::from_matrix(
             &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
-            Mandel::Symmetric,
+            Rep::Symmetric,
         )
         .unwrap();
         a.set_tensor(2.0, &b);
@@ -2915,17 +2919,17 @@ mod tests {
         );
 
         // symmetric 2D
-        let mut a = Tensor2::new(Mandel::Symmetric2D);
+        let mut a = Tensor2::new(Rep::Symmetric2D);
         #[rustfmt::skip]
         let b = Tensor2::from_matrix(&[
             [1.0, 3.0, 0.0],
             [3.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ],
-        Mandel::Symmetric2D).unwrap();
+        Rep::Symmetric2D).unwrap();
         let c = Tensor2::from_matrix(
             &[[100.0, 100.0, 0.0], [100.0, 100.0, 0.0], [0.0, 0.0, 100.0]],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         )
         .unwrap();
         a.set_tensor(2.0, &b);
@@ -2949,7 +2953,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         // clone
         let mut cloned = tt.clone();
         cloned.vec[0] = -1.0;
@@ -2986,7 +2990,7 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let tt = Tensor2::new(Mandel::General);
+        let tt = Tensor2::new(Rep::General);
         assert!(format!("{:?}", tt).len() > 0);
     }
 
@@ -2999,7 +3003,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.determinant(), 0.0, 1e-13);
 
         // symmetric 3D
@@ -3009,7 +3013,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         approx_eq(tt.determinant(), 101.0, 1e-13);
 
         // symmetric 3D (another test)
@@ -3019,7 +3023,7 @@ mod tests {
             [-3.0, -6.0, 1.0],
             [ 4.0,  1.0, 5.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         approx_eq(tt.determinant(), -4.0, 1e-13);
 
         // symmetric 2D
@@ -3029,15 +3033,15 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         approx_eq(tt.determinant(), -42.0, 1e-13);
     }
 
     #[test]
     #[should_panic]
     fn transpose_panics_on_incorrect_input() {
-        let tt = Tensor2::new(Mandel::General);
-        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::new(Rep::General);
+        let mut tt2 = Tensor2::new(Rep::Symmetric);
         tt.transpose(&mut tt2);
     }
 
@@ -3055,22 +3059,22 @@ mod tests {
     fn transpose_works() {
         // general
         let s = &SamplesTensor2::TENSOR_T;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        let mut tt2 = Tensor2::new(Mandel::General);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let mut tt2 = Tensor2::new(Rep::General);
         tt.transpose(&mut tt2);
         check_transpose(&tt, &tt2);
 
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
-        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let mut tt2 = Tensor2::new(Rep::Symmetric);
         tt.transpose(&mut tt2);
         check_transpose(&tt, &tt2);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
-        let mut tt2 = Tensor2::new(Mandel::Symmetric2D);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let mut tt2 = Tensor2::new(Rep::Symmetric2D);
         tt.transpose(&mut tt2);
         check_transpose(&tt, &tt2);
     }
@@ -3078,8 +3082,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn inverse_panics_on_incorrect_input() {
-        let tt = Tensor2::new(Mandel::General);
-        let mut tti = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::new(Rep::General);
+        let mut tti = Tensor2::new(Rep::Symmetric);
         tt.inverse(&mut tti, 0.0);
     }
 
@@ -3108,45 +3112,45 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
-        let mut tti = Tensor2::new(Mandel::General);
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let mut tti = Tensor2::new(Rep::General);
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
         // general with non-zero determinant
         let s = &SamplesTensor2::TENSOR_T;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        let mut tti = Tensor2::new(Mandel::General);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let mut tti = Tensor2::new(Rep::General);
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
         assert_eq!(det, s.determinant);
         check_inverse(&tt, &tti, 1e-15);
 
         // symmetric 3D with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
-        let mut tti = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let mut tti = Tensor2::new(Rep::Symmetric);
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
-        let mut tti = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let mut tti = Tensor2::new(Rep::Symmetric);
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
         approx_eq(det, s.determinant, 1e-14);
         check_inverse(&tt, &tti, 1e-13);
 
         // symmetric 2D with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
-        let mut tti = Tensor2::new(Mandel::Symmetric2D);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let mut tti = Tensor2::new(Rep::Symmetric2D);
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
-        let mut tti = Tensor2::new(Mandel::Symmetric2D);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let mut tti = Tensor2::new(Rep::Symmetric2D);
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
         assert_eq!(det, s.determinant);
         check_inverse(&tt, &tti, 1e-15);
@@ -3155,8 +3159,8 @@ mod tests {
     #[test]
     #[should_panic]
     fn squared_panics_on_incorrect_input() {
-        let tt = Tensor2::new(Mandel::General);
-        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::new(Rep::General);
+        let mut tt2 = Tensor2::new(Rep::Symmetric);
         tt.squared(&mut tt2);
     }
 
@@ -3172,22 +3176,22 @@ mod tests {
     fn squared_works() {
         // general
         let s = &SamplesTensor2::TENSOR_T;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::General).unwrap();
-        let mut tt2 = Tensor2::new(Mandel::General);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let mut tt2 = Tensor2::new(Rep::General);
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-13);
 
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric).unwrap();
-        let mut tt2 = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let mut tt2 = Tensor2::new(Rep::Symmetric);
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-14);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;
-        let tt = Tensor2::from_matrix(&s.matrix, Mandel::Symmetric2D).unwrap();
-        let mut tt2 = Tensor2::new(Mandel::Symmetric2D);
+        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let mut tt2 = Tensor2::new(Rep::Symmetric2D);
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-15);
     }
@@ -3200,7 +3204,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.trace(), 15.0, 1e-15);
     }
 
@@ -3213,7 +3217,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.norm(), f64::sqrt(285.0), 1e-15);
 
         // symmetric 3D
@@ -3223,7 +3227,7 @@ mod tests {
             [-3.0, -5.0, 1.0],
             [ 4.0,  1.0, 6.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
         approx_eq(tt.norm(), f64::sqrt(117.0), 1e-15);
 
         // symmetric 2D
@@ -3233,15 +3237,15 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
         approx_eq(tt.norm(), f64::sqrt(46.0), 1e-15);
     }
 
     #[test]
     #[should_panic]
     fn deviator_panics_on_incorrect_input() {
-        let tt = Tensor2::new(Mandel::General);
-        let mut dev = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::new(Rep::General);
+        let mut dev = Tensor2::new(Rep::Symmetric);
         tt.deviator(&mut dev);
     }
 
@@ -3254,8 +3258,8 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::General).unwrap();
-        let mut dev = Tensor2::new(Mandel::General);
+        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let mut dev = Tensor2::new(Rep::General);
         tt.deviator(&mut dev);
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
@@ -3276,8 +3280,8 @@ mod tests {
             [-3.0, -5.0, 1.0],
             [ 4.0,  1.0, 6.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric).unwrap();
-        let mut dev = Tensor2::new(Mandel::Symmetric);
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let mut dev = Tensor2::new(Rep::Symmetric);
         tt.deviator(&mut dev);
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
@@ -3298,8 +3302,8 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Mandel::Symmetric2D).unwrap();
-        let mut dev = Tensor2::new(Mandel::Symmetric2D);
+        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let mut dev = Tensor2::new(Rep::Symmetric2D);
         tt.deviator(&mut dev);
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
@@ -3316,14 +3320,14 @@ mod tests {
 
     fn check_sample(
         sample: &SampleTensor2,
-        mandel: Mandel,
+        rep: Rep,
         tol_norm: f64,
         tol_trace: f64,
         tol_det: f64,
         tol_dev_norm: f64,
         tol_dev_det: f64,
     ) {
-        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
+        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
         // println!("{}", sample.desc);
         // println!("    err(norm) = {:?}", tt.norm() - sample.norm);
         // println!("    err(trace) = {:?}", tt.trace() - sample.trace);
@@ -3347,35 +3351,35 @@ mod tests {
     #[rustfmt::skip]
     fn properties_are_correct() {
         //                                                       norm   trace  det dev_norm dev_det
-        check_sample(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
-        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
-        check_sample(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
-        check_sample(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_O, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_I, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_X, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_Y, Rep::General, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_Z, Rep::General, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_U, Rep::General, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_S, Rep::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_R, Rep::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_T, Rep::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15);
         //                                                         norm   trace  det dev_norm dev_det
-        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
-        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
-        check_sample(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
-        check_sample(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_O, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_I, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_X, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_Y, Rep::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_Z, Rep::Symmetric, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
+        check_sample(&SamplesTensor2::TENSOR_U, Rep::Symmetric, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_S, Rep::Symmetric, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
         //                                                           norm   trace  det dev_norm dev_det
-        check_sample(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
-        check_sample(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_sample(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
+        check_sample(&SamplesTensor2::TENSOR_O, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_I, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_X, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample(&SamplesTensor2::TENSOR_Y, Rep::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample(&SamplesTensor2::TENSOR_Z, Rep::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
     }
 
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
-    fn check_iis(sample: &SampleTensor2, mandel: Mandel, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
-        let tt = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
+    fn check_iis(sample: &SampleTensor2, rep: Rep, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
+        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
         let jj2 = -sample.deviator_second_invariant;
         let jj3 = sample.deviator_determinant;
         // println!("{}", sample.desc);
@@ -3387,7 +3391,7 @@ mod tests {
         // println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
         // println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
         // println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
-        // if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
+        // if rep == Rep::Symmetric || rep == Rep::Symmetric2D {
         //     let norm_s = tt.deviator_norm();
         //     println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
         // }
@@ -3396,7 +3400,7 @@ mod tests {
         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
         approx_eq(tt.invariant_jj2(), jj2, tol_c);
         approx_eq(tt.invariant_jj3(), jj3, tol_c);
-        if mandel == Mandel::Symmetric || mandel == Mandel::Symmetric2D {
+        if rep == Rep::Symmetric || rep == Rep::Symmetric2D {
             let norm_s = tt.deviator_norm();
             approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
         }
@@ -3405,29 +3409,29 @@ mod tests {
     #[test]
     #[rustfmt::skip]
     fn principal_invariants_are_correct() {
-        check_iis(&SamplesTensor2::TENSOR_O, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_I, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_X, Mandel::General, 1e-15, 1e-15, 1e-13, 1e-13);
-        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::General, 1e-15, 1e-14, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_U, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13);
-        check_iis(&SamplesTensor2::TENSOR_S, Mandel::General, 1e-15, 1e-14, 1e-13, 1e-13);
-        check_iis(&SamplesTensor2::TENSOR_R, Mandel::General, 1e-15, 1e-13, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_T, Mandel::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_O, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_I, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_X, Rep::General, 1e-15, 1e-15, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_Y, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Z, Rep::General, 1e-15, 1e-14, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_U, Rep::General, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_S, Rep::General, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_R, Rep::General, 1e-15, 1e-13, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_T, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
 
-        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric, 1e-15, 1e-15, 1e-13, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric, 1e-15, 1e-14, 1e-14, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_U, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-13);
-        check_iis(&SamplesTensor2::TENSOR_S, Mandel::Symmetric, 1e-15, 1e-14, 1e-13, 1e-14);
+        check_iis(&SamplesTensor2::TENSOR_O, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_I, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_X, Rep::Symmetric, 1e-15, 1e-15, 1e-13, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Y, Rep::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Z, Rep::Symmetric, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_U, Rep::Symmetric, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis(&SamplesTensor2::TENSOR_S, Rep::Symmetric, 1e-15, 1e-14, 1e-13, 1e-14);
 
-        check_iis(&SamplesTensor2::TENSOR_O, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_I, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_X, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_Y, Mandel::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
-        check_iis(&SamplesTensor2::TENSOR_Z, Mandel::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_O, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_I, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_X, Rep::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Y, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis(&SamplesTensor2::TENSOR_Z, Rep::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15);
     }
 
     /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
@@ -3447,7 +3451,7 @@ mod tests {
 
     #[test]
     fn octahedral_invariants_are_correct() {
-        let c = Mandel::Symmetric;
+        let c = Rep::Symmetric;
         let q_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
         let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
         let q_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
@@ -3624,7 +3628,7 @@ mod tests {
     fn octahedral_invariants_are_correct_simple() {
         // test from https://soilmodels.com/wp-content/uploads/2020/12/stress_space-2.wgl
         let (l1, l2, l3) = (193.18, 88.3, 18.52);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Mandel::Symmetric).unwrap();
+        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Rep::Symmetric).unwrap();
         approx_eq(tt.invariant_p(), 100.0, 1e-15);
         approx_eq(tt.invariant_q(), 152.28, 0.0053);
         let lode = tt.invariant_lode().unwrap();
@@ -3634,7 +3638,7 @@ mod tests {
 
     #[test]
     fn lode_invariant_handles_special_cases() {
-        let c = Mandel::Symmetric;
+        let c = Rep::Symmetric;
 
         // norm(deviator) = 0  with l = 0
         let (l1, l2, l3) = (2.0, 2.0, 2.0);
@@ -3849,7 +3853,7 @@ mod tests {
                 [-459.8093541033259, -531567.8289754189, 0.0],
                 [0.0, 0.0, -531737.0724207585],
             ],
-            Mandel::Symmetric2D,
+            Rep::Symmetric2D,
         )
         .unwrap();
         let mut ss = Tensor2::new_sym(true);

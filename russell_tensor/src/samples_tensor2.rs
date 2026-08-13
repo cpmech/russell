@@ -5,7 +5,7 @@ pub struct SampleTensor2 {
     /// Sets the description
     pub desc: &'static str,
 
-    /// Defines the matrix representation (standard components, not Mandel)
+    /// Holds the matrix components with respect to the standard basis
     pub matrix: [[f64; 3]; 3],
 
     /// Defines the matrix representation of the deviator tensor

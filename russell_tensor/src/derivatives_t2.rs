@@ -1,7 +1,7 @@
 use crate::{ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3, Tensor2};
 
 #[allow(unused)]
-use crate::Mandel; // for documentation
+use crate::Rep; // for documentation
 
 /// Calculates the first derivative of the norm w.r.t. the defining Tensor2
 ///
@@ -15,17 +15,17 @@ use crate::Mandel; // for documentation
 ///
 /// If `‖σ‖ > 0`, returns `‖σ‖`; otherwise, returns `None`.
 ///
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel].
+/// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert_eq!(d1.mandel, sigma.mandel);
+    assert_eq!(d1.rep, sigma.rep);
     let dim = d1.vec.dim();
     let n = sigma.norm();
     if n > 0.0 {
@@ -52,19 +52,20 @@ pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
 ///
 /// # Output
 ///
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the [Mandel::Symmetric] or [Mandel::Symmetric2D] tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the [Rep::Symmetric] or [Rep::Symmetric2D] tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
-/// 2. A panic will occur if the tensors have different [Mandel].
+/// 2. A panic will occur if the tensors have different [Rep].
+#[inline]
 pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) {
-    assert!(sigma.mandel.symmetric());
-    assert_eq!(d1.mandel, sigma.mandel);
+    assert!(sigma.rep.symmetric());
+    assert_eq!(d1.rep, sigma.rep);
     sigma.deviator(d1);
 }
 
@@ -82,21 +83,22 @@ pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
-/// * `s` -- the resulting deviator tensor; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
+/// * `s` -- the resulting deviator tensor; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the [Mandel::Symmetric] or [Mandel::Symmetric2D] tensor; with the same [Mandel] as `d1` and `s`
+/// * `sigma` -- the [Rep::Symmetric] or [Rep::Symmetric2D] tensor; with the same [Rep] as `d1` and `s`
 ///
 /// # Panics
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
-/// 2. A panic will occur if the tensors have different [Mandel].
+/// 2. A panic will occur if the tensors have different [Rep].
+#[inline]
 pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) {
-    assert!(sigma.mandel.symmetric());
-    assert_eq!(d1.mandel, sigma.mandel);
-    assert_eq!(s.mandel, sigma.mandel);
+    assert!(sigma.rep.symmetric());
+    assert_eq!(d1.rep, sigma.rep);
+    assert_eq!(s.rep, sigma.rep);
     let jj2 = sigma.invariant_jj2();
     sigma.deviator(s);
     s.squared(d1);
@@ -115,17 +117,17 @@ pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) 
 ///
 /// # Output
 ///
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel].
+/// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_sigma_s(d1: &mut Tensor2, sigma: &Tensor2) {
-    assert_eq!(d1.mandel, sigma.mandel);
+    assert_eq!(d1.rep, sigma.rep);
     let dim = d1.vec.dim();
     d1.vec[0] = 1.0 / SQRT_3;
     d1.vec[1] = 1.0 / SQRT_3;
@@ -150,19 +152,19 @@ pub fn deriv1_invariant_sigma_s(d1: &mut Tensor2, sigma: &Tensor2) {
 /// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns `None`.
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the [Mandel::Symmetric] or [Mandel::Symmetric2D] tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the [Rep::Symmetric] or [Rep::Symmetric2D] tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
-/// 2. A panic will occur if the tensors have different [Mandel].
+/// 2. A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_sigma_t(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert!(sigma.mandel.symmetric());
-    assert_eq!(d1.mandel, sigma.mandel);
+    assert!(sigma.rep.symmetric());
+    assert_eq!(d1.rep, sigma.rep);
     let dim = sigma.vec.dim();
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -186,17 +188,17 @@ pub fn deriv1_invariant_sigma_t(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64
 ///
 /// # Output
 ///
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
-/// A panic will occur if the tensors have different [Mandel].
+/// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
-    assert_eq!(d1.mandel, sigma.mandel);
+    assert_eq!(d1.rep, sigma.rep);
     let dim = d1.vec.dim();
     d1.vec[0] = ONE_BY_3;
     d1.vec[1] = ONE_BY_3;
@@ -221,19 +223,19 @@ pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
 /// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns `None`.
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the [Mandel::Symmetric] or [Mandel::Symmetric2D] tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the [Rep::Symmetric] or [Rep::Symmetric2D] tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
-/// 2. A panic will occur if the tensors have different [Mandel].
+/// 2. A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_q(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert!(sigma.mandel.symmetric());
-    assert_eq!(d1.mandel, sigma.mandel);
+    assert!(sigma.rep.symmetric());
+    assert_eq!(d1.rep, sigma.rep);
     let dim = sigma.vec.dim();
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -270,21 +272,21 @@ pub fn deriv1_invariant_q(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
 /// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns `None`.
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Mandel] as `sigma`
-/// * `s` -- the resulting deviator tensor; with the same [Mandel] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
+/// * `s` -- the resulting deviator tensor; with the same [Rep] as `sigma`
 ///
 /// # Input
 ///
-/// * `sigma` -- the [Mandel::Symmetric] or [Mandel::Symmetric2D] tensor; with the same [Mandel] as `d1`
+/// * `sigma` -- the [Rep::Symmetric] or [Rep::Symmetric2D] tensor; with the same [Rep] as `d1`
 ///
 /// # Panics
 ///
 /// 1. A panic will occur if `sigma` is not symmetric.
-/// 2. A panic will occur if the tensors have different [Mandel].
+/// 2. A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_lode(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert!(sigma.mandel.symmetric());
-    assert_eq!(d1.mandel, sigma.mandel);
-    assert_eq!(s.mandel, sigma.mandel);
+    assert!(sigma.rep.symmetric());
+    assert_eq!(d1.rep, sigma.rep);
+    assert_eq!(s.rep, sigma.rep);
     let dim = sigma.vec.dim();
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -335,7 +337,7 @@ mod tests {
             }
             F::J2 => deriv1_invariant_jj2(d1, sigma),
             F::J3 => {
-                let mut s = Tensor2::new(sigma.mandel);
+                let mut s = Tensor2::new(sigma.rep);
                 deriv1_invariant_jj3(d1, &mut s, sigma);
             }
             F::SigmaS => deriv1_invariant_sigma_s(d1, sigma),
@@ -347,7 +349,7 @@ mod tests {
                 deriv1_invariant_q(d1, sigma).unwrap();
             }
             F::Lode => {
-                let mut s = Tensor2::new(sigma.mandel);
+                let mut s = Tensor2::new(sigma.rep);
                 deriv1_invariant_lode(d1, &mut s, sigma).unwrap();
             }
         };
@@ -362,8 +364,8 @@ mod tests {
         j: usize,          // index j of ∂f/∂σᵢⱼ
     }
 
-    // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ (Mandel components)
-    struct ArgsNumDerivMandel {
+    // Holds arguments for numerical differentiation of a scalar f(σ) w.r.t. σₘ (matrix representation)
+    struct ArgsNumDerivM {
         fn_name: F,     // name of f(σ)
         sigma: Tensor2, // @ σ, with varying m-components
         m: usize,       // index m of ∂f/∂σₘ
@@ -389,7 +391,7 @@ mod tests {
     }
 
     // computes f(σ) for varying components x = σₘ
-    fn f_sigma_mandel(x: f64, args: &mut ArgsNumDerivMandel) -> Result<f64, StrError> {
+    fn f_sigma_mat(x: f64, args: &mut ArgsNumDerivM) -> Result<f64, StrError> {
         let original = args.sigma.vec[args.m];
         args.sigma.vec[args.m] = x;
         let res = match args.fn_name {
@@ -429,8 +431,8 @@ mod tests {
     }
 
     // computes ∂f/∂σₘ and returns as a 3x3 matrix of (standard) components
-    fn numerical_deriv_mandel(sigma: &Tensor2, fn_name: F) -> Matrix {
-        let mut args = ArgsNumDerivMandel {
+    fn numerical_deriv_mat(sigma: &Tensor2, fn_name: F) -> Matrix {
+        let mut args = ArgsNumDerivM {
             fn_name,
             sigma: sigma.clone(),
             m: 0,
@@ -439,108 +441,108 @@ mod tests {
         for m in 0..sigma.vec.dim() {
             args.m = m;
             let x = args.sigma.vec[m];
-            let res = deriv1_central5(x, &mut args, f_sigma_mandel).unwrap();
+            let res = deriv1_central5(x, &mut args, f_sigma_mat).unwrap();
             num_deriv.vec[m] = res;
         }
         num_deriv.as_matrix()
     }
 
     // checks ∂f/∂σᵢⱼ
-    fn check_deriv(fn_name: F, mandel: Mandel, sample: &SampleTensor2, tol: f64, _verbose: bool) {
-        let sigma = Tensor2::from_matrix(&sample.matrix, mandel).unwrap();
-        let mut d1 = Tensor2::new(mandel);
+    fn check_deriv(fn_name: F, rep: Rep, sample: &SampleTensor2, tol: f64, _verbose: bool) {
+        let sigma = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let mut d1 = Tensor2::new(rep);
         analytical_deriv(fn_name, &mut d1, &sigma);
         let ana = d1.as_matrix();
         let num = numerical_deriv(&sigma, fn_name);
-        let num_mandel = numerical_deriv_mandel(&sigma, fn_name);
+        let num_mat = numerical_deriv_mat(&sigma, fn_name);
         /*
         if verbose {
             println!("analytical derivative:\n{}", ana);
             println!("numerical derivative:\n{}", num);
-            println!("numerical derivative (Mandel):\n{}", num_mandel);
+            println!("numerical derivative (Rep):\n{}", num_mat);
         }
         */
         mat_approx_eq(&ana, &num, tol);
-        mat_approx_eq(&ana, &num_mandel, tol);
+        mat_approx_eq(&ana, &num_mat, tol);
     }
 
     #[test]
     fn deriv_norm_works() {
         let v = false;
-        check_deriv(F::Norm, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-10, v);
-        check_deriv(F::Norm, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::Norm, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv(F::Norm, Rep::General, &SamplesTensor2::TENSOR_T, 1e-10, v);
+        check_deriv(F::Norm, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::Norm, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
     }
 
     #[test]
     fn deriv_invariant_jj2_works() {
         let v = false;
-        check_deriv(F::J2, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::J2, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
-        check_deriv(F::J2, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, v);
-        check_deriv(F::J2, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-12, v);
+        check_deriv(F::J2, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::J2, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv(F::J2, Rep::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, v);
+        check_deriv(F::J2, Rep::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-12, v);
     }
 
     #[test]
     fn deriv_invariant_jj3_works() {
         let v = false;
-        check_deriv(F::J3, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-9, v);
-        check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
-        check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, v);
-        check_deriv(F::J3, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-15, v);
+        check_deriv(F::J3, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-9, v);
+        check_deriv(F::J3, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv(F::J3, Rep::Symmetric2D, &SamplesTensor2::TENSOR_O, 1e-15, v);
+        check_deriv(F::J3, Rep::Symmetric2D, &SamplesTensor2::TENSOR_I, 1e-15, v);
     }
 
     #[test]
     fn deriv_sigma_s_works() {
         let v = false;
-        check_deriv(F::SigmaS, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-11, v);
-        check_deriv(F::SigmaS, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
-        check_deriv(F::SigmaS, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv(F::SigmaS, Rep::General, &SamplesTensor2::TENSOR_T, 1e-11, v);
+        check_deriv(F::SigmaS, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
+        check_deriv(F::SigmaS, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
     }
 
     #[test]
     fn deriv_sigma_t_works() {
         let v = false;
-        check_deriv(F::SigmaT, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
-        check_deriv(F::SigmaT, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::SigmaT, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
-        check_deriv(F::SigmaT, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
-        check_deriv(F::SigmaT, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv(F::SigmaT, Rep::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv(F::SigmaT, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::SigmaT, Rep::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
+        check_deriv(F::SigmaT, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv(F::SigmaT, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
     #[test]
     fn deriv_p_works() {
         let v = false;
-        check_deriv(F::P, Mandel::General, &SamplesTensor2::TENSOR_T, 1e-12, v);
-        check_deriv(F::P, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
-        check_deriv(F::P, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, v);
+        check_deriv(F::P, Rep::General, &SamplesTensor2::TENSOR_T, 1e-12, v);
+        check_deriv(F::P, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-11, v);
+        check_deriv(F::P, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-12, v);
     }
 
     #[test]
     fn deriv_q_works() {
         let v = false;
-        check_deriv(F::Q, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
-        check_deriv(F::Q, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::Q, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
-        check_deriv(F::Q, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
-        check_deriv(F::Q, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv(F::Q, Rep::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv(F::Q, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::Q, Rep::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-11, v);
+        check_deriv(F::Q, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv(F::Q, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
     #[test]
     fn deriv_invariant_lode_works() {
         let v = false;
-        check_deriv(F::Lode, Mandel::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
-        check_deriv(F::Lode, Mandel::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-10, v);
-        check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
-        check_deriv(F::Lode, Mandel::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv(F::Lode, Rep::Symmetric, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv(F::Lode, Rep::Symmetric, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv(F::Lode, Rep::Symmetric2D, &SamplesTensor2::TENSOR_X, 1e-10, v);
+        check_deriv(F::Lode, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv(F::Lode, Rep::Symmetric2D, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
     #[test]
     fn check_for_none() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Mandel::Symmetric).unwrap();
-        let mut d1 = Tensor2::new(Mandel::Symmetric);
-        let mut s = Tensor2::new(Mandel::Symmetric);
+        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
+        let mut d1 = Tensor2::new(Rep::Symmetric);
+        let mut s = Tensor2::new(Rep::Symmetric);
         assert_eq!(deriv1_norm(&mut d1, &sigma), None);
         assert_eq!(deriv1_invariant_q(&mut d1, &sigma), None);
         assert_eq!(deriv1_invariant_lode(&mut d1, &mut s, &sigma), None);
@@ -550,103 +552,103 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn deriv1_norm_panics_on_different_mandel() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_norm_panics_on_different_mat() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_norm(&mut d1_gen, &sigma_sym);
     }
 
     #[test]
-    #[should_panic(expected = "sigma.mandel.symmetric()")]
+    #[should_panic(expected = "sigma.rep.symmetric()")]
     fn deriv1_invariant_jj2_panics_on_on_sym() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let sigma_gen = Tensor2::new(Mandel::General);
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let sigma_gen = Tensor2::new(Rep::General);
         deriv1_invariant_jj2(&mut d1_gen, &sigma_gen);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_jj2_panics_on_different_mandel() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_jj2_panics_on_different_mat() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_jj2(&mut d1_gen, &sigma_sym);
     }
 
     #[test]
-    #[should_panic(expected = "sigma.mandel.symmetric()")]
+    #[should_panic(expected = "sigma.rep.symmetric()")]
     fn deriv1_invariant_jj3_panics_on_non_sym() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let mut s_gen = Tensor2::new(Mandel::General);
-        let sigma_gen = Tensor2::new(Mandel::General);
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let mut s_gen = Tensor2::new(Rep::General);
+        let sigma_gen = Tensor2::new(Rep::General);
         deriv1_invariant_jj3(&mut d1_gen, &mut s_gen, &sigma_gen);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_jj3_panics_on_different_mandel1() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let mut s_gen = Tensor2::new(Mandel::General);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_jj3_panics_on_different_mat() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let mut s_gen = Tensor2::new(Rep::General);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_jj3(&mut d1_gen, &mut s_gen, &sigma_sym);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_jj3_panics_on_different_mandel2() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let mut s_sym = Tensor2::new(Mandel::Symmetric);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_jj3_panics_on_different_mat2() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let mut s_sym = Tensor2::new(Rep::Symmetric);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_jj3(&mut d1_gen, &mut s_sym, &sigma_sym);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_sigma_m_panics_on_different_mandel() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_sigma_m_panics_on_different_mat() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_p(&mut d1_gen, &sigma_sym);
     }
 
     #[test]
-    #[should_panic(expected = "sigma.mandel.symmetric()")]
+    #[should_panic(expected = "sigma.rep.symmetric()")]
     fn deriv1_invariant_q_panics_on_non_sym() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let sigma_gen = Tensor2::new(Mandel::General);
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let sigma_gen = Tensor2::new(Rep::General);
         deriv1_invariant_q(&mut d1_gen, &sigma_gen);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_q_panics_on_different_mandel() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_q_panics_on_different_mat() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_q(&mut d1_gen, &sigma_sym);
     }
 
     #[test]
-    #[should_panic(expected = "sigma.mandel.symmetric()")]
+    #[should_panic(expected = "sigma.rep.symmetric()")]
     fn deriv1_invariant_lode_panics_on_non_sym() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let mut s_gen = Tensor2::new(Mandel::General);
-        let sigma_gen = Tensor2::new(Mandel::General);
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let mut s_gen = Tensor2::new(Rep::General);
+        let sigma_gen = Tensor2::new(Rep::General);
         deriv1_invariant_lode(&mut d1_gen, &mut s_gen, &sigma_gen);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_lode_panics_on_different_mandel1() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let mut s_gen = Tensor2::new(Mandel::General);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_lode_panics_on_different_red1() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let mut s_gen = Tensor2::new(Rep::General);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_lode(&mut d1_gen, &mut s_gen, &sigma_sym);
     }
 
     #[test]
     #[should_panic]
-    fn deriv1_invariant_lode_panics_on_different_mandel2() {
-        let mut d1_gen = Tensor2::new(Mandel::General);
-        let mut s_sym = Tensor2::new(Mandel::Symmetric);
-        let sigma_sym = Tensor2::new(Mandel::Symmetric);
+    fn deriv1_invariant_lode_panics_on_different_red2() {
+        let mut d1_gen = Tensor2::new(Rep::General);
+        let mut s_sym = Tensor2::new(Rep::Symmetric);
+        let sigma_sym = Tensor2::new(Rep::Symmetric);
         deriv1_invariant_lode(&mut d1_gen, &mut s_sym, &sigma_sym);
     }
 }

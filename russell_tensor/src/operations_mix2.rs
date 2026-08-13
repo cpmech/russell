@@ -1,5 +1,5 @@
 use super::{Tensor2, Tensor4};
-use crate::{Rep, SQRT_2};
+use crate::{M_TO_IJ, Rep, SQRT_2};
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
@@ -658,7 +658,17 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     let dim = aa.vec.dim();
     let a = &aa.vec;
     if dd.use_loops{
-        panic!("TODO");
+        dd.mat.fill(0.0);
+        for m in 0..6 {
+            let (i, j) = M_TO_IJ[m];
+            let fm = if i == j { 1.0 } else { SQRT_2 };
+            for n in 0..6 {
+                let (k, l) = M_TO_IJ[n];
+                let fn_ = if k == l { 1.0 } else { SQRT_2 };
+                let dijkl = aa.get(i, k) * aa.get(j, l) + aa.get(i, l) * aa.get(j, k);
+                dd.mat.set(m, n, s * fm * fn_ * dijkl);
+            }
+        }
         return;
     }
     if dim == 4 {
@@ -829,7 +839,18 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     let a = &aa.vec;
     let b = &bb.vec;
     if dd.use_loops{
-        panic!("TODO");
+        dd.mat.fill(0.0);
+        for m in 0..6 {
+            let (i, j) = M_TO_IJ[m];
+            let fm = if i == j { 1.0 } else { SQRT_2 };
+            for n in 0..6 {
+                let (k, l) = M_TO_IJ[n];
+                let fn_ = if k == l { 1.0 } else { SQRT_2 };
+                let dijkl = aa.get(i, k) * bb.get(j, l) + aa.get(i, l) * bb.get(j, k)
+                    + bb.get(i, k) * aa.get(j, l) + bb.get(i, l) * aa.get(j, k);
+                dd.mat.set(m, n, s * fm * fn_ * dijkl);
+            }
+        }
         return;
     }
     if dim == 4 {
@@ -1459,5 +1480,101 @@ mod tests {
         ]);
         mat_approx_eq(&mat, &correct, 1e-13);
         check_qsd(2.0, &a, &b, &dd, 1e-14);
+    }
+
+    #[test]
+    fn t2_ssd_use_loops_works() {
+        // general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Rep::General).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.use_loops = true;
+        t2_ssd(&mut dd, 2.0, &a);
+        check_ssd(2.0, &a, &dd, 1e-12);
+
+        // symmetric
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ], Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.use_loops = true;
+        t2_ssd(&mut dd, 2.0, &a);
+        check_ssd(2.0, &a, &dd, 1e-12);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Rep::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.use_loops = true;
+        t2_ssd(&mut dd, 2.0, &a);
+        check_ssd(2.0, &a, &dd, 1e-12);
+    }
+
+    #[test]
+    fn t2_qsd_t2_use_loops_works() {
+        // general
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [9.0, 8.0, 7.0],
+            [6.0, 5.0, 4.0],
+            [3.0, 2.0, 1.0],
+        ], Rep::General).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.use_loops = true;
+        t2_qsd_t2(&mut dd, 2.0, &a, &b);
+        check_qsd(2.0, &a, &b, &dd, 1e-12);
+
+        // symmetric
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ], Rep::Symmetric).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [3.0, 5.0, 6.0],
+            [5.0, 2.0, 4.0],
+            [6.0, 4.0, 1.0],
+        ], Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.use_loops = true;
+        t2_qsd_t2(&mut dd, 2.0, &a, &b);
+        check_qsd(2.0, &a, &b, &dd, 1e-12);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let a = Tensor2::from_matrix(&[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ], Rep::Symmetric2D).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_matrix(&[
+            [3.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ], Rep::Symmetric2D).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.use_loops = true;
+        t2_qsd_t2(&mut dd, 2.0, &a, &b);
+        check_qsd(2.0, &a, &b, &dd, 1e-12);
     }
 }

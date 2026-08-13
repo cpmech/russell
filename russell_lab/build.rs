@@ -108,11 +108,19 @@ struct BlasLapack {
 #[cfg(all(not(target_os = "windows"), not(feature = "intel_mkl")))]
 fn probe_blas_lapack() -> Option<BlasLapack> {
     // Only emit the cargo directives once we know the answer is usable.
-    let probe = |name: &str| pkg_config::Config::new().cargo_metadata(false).probe(name).ok();
+    let probe = |name: &str| {
+        pkg_config::Config::new()
+            .cargo_metadata(false)
+            .probe(name)
+            .ok()
+    };
 
     let candidates: Vec<Vec<pkg_config::Library>> = vec![
         probe("openblas").into_iter().collect(),
-        probe("cblas").into_iter().chain(probe("lapack")).collect::<Vec<_>>(),
+        probe("cblas")
+            .into_iter()
+            .chain(probe("lapack"))
+            .collect::<Vec<_>>(),
     ];
 
     for libraries in candidates {

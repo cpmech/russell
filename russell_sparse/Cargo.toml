@@ -28,3 +28,4 @@ serial_test = "3.5"
 
 [build-dependencies]
 cc = "1.2"
+pkg-config = "0.3"

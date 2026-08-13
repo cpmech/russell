@@ -77,6 +77,15 @@ int32_t c_using_intel_mkl() {
 #endif
 }
 
+#ifndef USE_INTEL_MKL
+// A vendor-neutral `cblas.h` does not declare these OpenBLAS threading calls,
+// even though the symbols are there whenever `libblas` is OpenBLAS underneath
+// (as with Nix's blas/lapack). Declaring them here is harmless when `cblas.h`
+// already does, as the signatures match.
+extern void openblas_set_num_threads(int num_threads);
+extern int openblas_get_num_threads(void);
+#endif
+
 void c_set_num_threads(int32_t n) {
 #ifdef USE_INTEL_MKL
     MKL_Set_Num_Threads(n);

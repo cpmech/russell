@@ -41,275 +41,275 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     let b = &bb.vec;
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
-        dd.mat.set(0,0, s*a[0]*b[0]);
-        dd.mat.set(0,1, s*(a[3]*b[3])/2.0);
-        dd.mat.set(0,2, 0.0);
-        dd.mat.set(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(0,4, 0.0);
-        dd.mat.set(0,5, 0.0);
-        dd.mat.set(0,6, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
-        dd.mat.set(0,7, 0.0);
-        dd.mat.set(0,8, 0.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*a[0]*b[0]); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,6, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,8, 0.0); }
 
-        dd.mat.set(1,0, s*(a[3]*b[3])/2.0);
-        dd.mat.set(1,1, s*a[1]*b[1]);
-        dd.mat.set(1,2, 0.0);
-        dd.mat.set(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(1,4, 0.0);
-        dd.mat.set(1,5, 0.0);
-        dd.mat.set(1,6, s*(a[3]*b[1] - a[1]*b[3])/2.0);
-        dd.mat.set(1,7, 0.0);
-        dd.mat.set(1,8, 0.0);
+        unsafe { dd.mat.set_unchecked(1,0, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,1, s*a[1]*b[1]); }
+        unsafe { dd.mat.set_unchecked(1,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,6, s*(a[3]*b[1] - a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,8, 0.0); }
 
-        dd.mat.set(2,0, 0.0);
-        dd.mat.set(2,1, 0.0);
-        dd.mat.set(2,2, s*a[2]*b[2]);
-        dd.mat.set(2,3, 0.0);
-        dd.mat.set(2,4, 0.0);
-        dd.mat.set(2,5, 0.0);
-        dd.mat.set(2,6, 0.0);
-        dd.mat.set(2,7, 0.0);
-        dd.mat.set(2,8, 0.0);
+        unsafe { dd.mat.set_unchecked(2,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*a[2]*b[2]); }
+        unsafe { dd.mat.set_unchecked(2,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,8, 0.0); }
 
-        dd.mat.set(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(3,2, 0.0);
-        dd.mat.set(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0);
-        dd.mat.set(3,4, 0.0);
-        dd.mat.set(3,5, 0.0);
-        dd.mat.set(3,6, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
-        dd.mat.set(3,7, 0.0);
-        dd.mat.set(3,8, 0.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,6, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,8, 0.0); }
 
-        dd.mat.set(4,0, 0.0);
-        dd.mat.set(4,1, 0.0);
-        dd.mat.set(4,2, 0.0);
-        dd.mat.set(4,3, 0.0);
-        dd.mat.set(4,4, s*(a[2]*b[1] + a[1]*b[2])/2.0);
-        dd.mat.set(4,5, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
-        dd.mat.set(4,6, 0.0);
-        dd.mat.set(4,7, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
-        dd.mat.set(4,8, s*(a[3]*b[2] - a[2]*b[3])/tsq2);
+        unsafe { dd.mat.set_unchecked(4,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(a[2]*b[1] + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(a[3]*b[2] + a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(4,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,7, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,8, s*(a[3]*b[2] - a[2]*b[3])/tsq2); }
 
-        dd.mat.set(5,0, 0.0);
-        dd.mat.set(5,1, 0.0);
-        dd.mat.set(5,2, 0.0);
-        dd.mat.set(5,3, 0.0);
-        dd.mat.set(5,4, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
-        dd.mat.set(5,5, s*(a[2]*b[0] + a[0]*b[2])/2.0);
-        dd.mat.set(5,6, 0.0);
-        dd.mat.set(5,7, s*(a[3]*b[2] - a[2]*b[3])/tsq2);
-        dd.mat.set(5,8, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
+        unsafe { dd.mat.set_unchecked(5,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(a[3]*b[2] + a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(a[2]*b[0] + a[0]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,7, s*(a[3]*b[2] - a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,8, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0); }
 
-        dd.mat.set(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
-        dd.mat.set(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0);
-        dd.mat.set(6,2, 0.0);
-        dd.mat.set(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
-        dd.mat.set(6,4, 0.0);
-        dd.mat.set(6,5, 0.0);
-        dd.mat.set(6,6, s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3])/2.0);
-        dd.mat.set(6,7, 0.0);
-        dd.mat.set(6,8, 0.0);
+        unsafe { dd.mat.set_unchecked(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,6, s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,8, 0.0); }
 
-        dd.mat.set(7,0, 0.0);
-        dd.mat.set(7,1, 0.0);
-        dd.mat.set(7,2, 0.0);
-        dd.mat.set(7,3, 0.0);
-        dd.mat.set(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
-        dd.mat.set(7,5, s*(a[3]*b[2] - a[2]*b[3])/tsq2);
-        dd.mat.set(7,6, 0.0);
-        dd.mat.set(7,7, s*(a[2]*b[1] + a[1]*b[2])/2.0);
-        dd.mat.set(7,8, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
+        unsafe { dd.mat.set_unchecked(7,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,5, s*(a[3]*b[2] - a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(7,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,7, s*(a[2]*b[1] + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,8, s*(a[3]*b[2] + a[2]*b[3])/tsq2); }
 
-        dd.mat.set(8,0, 0.0);
-        dd.mat.set(8,1, 0.0);
-        dd.mat.set(8,2, 0.0);
-        dd.mat.set(8,3, 0.0);
-        dd.mat.set(8,4, s*(a[3]*b[2] - a[2]*b[3])/tsq2);
-        dd.mat.set(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
-        dd.mat.set(8,6, 0.0);
-        dd.mat.set(8,7, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
-        dd.mat.set(8,8, s*(a[2]*b[0] + a[0]*b[2])/2.0);
+        unsafe { dd.mat.set_unchecked(8,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,4, s*(a[3]*b[2] - a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,7, s*(a[3]*b[2] + a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,8, s*(a[2]*b[0] + a[0]*b[2])/2.0); }
     } else if dim == 6 {
-        dd.mat.set(0,0, s*a[0]*b[0]);
-        dd.mat.set(0,1, s*(a[3]*b[3])/2.0);
-        dd.mat.set(0,2, s*(a[5]*b[5])/2.0);
-        dd.mat.set(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(0,4, s*(a[5]*b[3] + a[3]*b[5])/tsq2);
-        dd.mat.set(0,5, s*(a[5]*b[0] + a[0]*b[5])/2.0);
-        dd.mat.set(0,6, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
-        dd.mat.set(0,7, s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2);
-        dd.mat.set(0,8, s*(-(a[5]*b[0]) + a[0]*b[5])/2.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*a[0]*b[0]); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,2, s*(a[5]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,4, s*(a[5]*b[3] + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(a[5]*b[0] + a[0]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,6, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,7, s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,8, s*(-(a[5]*b[0]) + a[0]*b[5])/2.0); }
                         
-        dd.mat.set(1,0, s*(a[3]*b[3])/2.0);
-        dd.mat.set(1,1, s*a[1]*b[1]);
-        dd.mat.set(1,2, s*(a[4]*b[4])/2.0);
-        dd.mat.set(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(1,4, s*(a[4]*b[1] + a[1]*b[4])/2.0);
-        dd.mat.set(1,5, s*(a[4]*b[3] + a[3]*b[4])/tsq2);
-        dd.mat.set(1,6, s*(a[3]*b[1] - a[1]*b[3])/2.0);
-        dd.mat.set(1,7, s*(-(a[4]*b[1]) + a[1]*b[4])/2.0);
-        dd.mat.set(1,8, s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2);
+        unsafe { dd.mat.set_unchecked(1,0, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,1, s*a[1]*b[1]); }
+        unsafe { dd.mat.set_unchecked(1,2, s*(a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(a[4]*b[1] + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,5, s*(a[4]*b[3] + a[3]*b[4])/tsq2); }
+        unsafe { dd.mat.set_unchecked(1,6, s*(a[3]*b[1] - a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,7, s*(-(a[4]*b[1]) + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,8, s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2); }
                         
-        dd.mat.set(2,0, s*(a[5]*b[5])/2.0);
-        dd.mat.set(2,1, s*(a[4]*b[4])/2.0);
-        dd.mat.set(2,2, s*a[2]*b[2]);
-        dd.mat.set(2,3, s*(a[5]*b[4] + a[4]*b[5])/tsq2);
-        dd.mat.set(2,4, s*(a[4]*b[2] + a[2]*b[4])/2.0);
-        dd.mat.set(2,5, s*(a[5]*b[2] + a[2]*b[5])/2.0);
-        dd.mat.set(2,6, s*(a[5]*b[4] - a[4]*b[5])/tsq2);
-        dd.mat.set(2,7, s*(a[4]*b[2] - a[2]*b[4])/2.0);
-        dd.mat.set(2,8, s*(a[5]*b[2] - a[2]*b[5])/2.0);
+        unsafe { dd.mat.set_unchecked(2,0, s*(a[5]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,1, s*(a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*a[2]*b[2]); }
+        unsafe { dd.mat.set_unchecked(2,3, s*(a[5]*b[4] + a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(a[4]*b[2] + a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(a[5]*b[2] + a[2]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,6, s*(a[5]*b[4] - a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,7, s*(a[4]*b[2] - a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,8, s*(a[5]*b[2] - a[2]*b[5])/2.0); }
                         
-        dd.mat.set(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(3,2, s*(a[5]*b[4] + a[4]*b[5])/tsq2);
-        dd.mat.set(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0);
-        dd.mat.set(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(3,6, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
-        dd.mat.set(3,7, s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(3,8, s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,2, s*(a[5]*b[4] + a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(3,6, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,7, s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(3,8, s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
                         
-        dd.mat.set(4,0, s*(a[5]*b[3] + a[3]*b[5])/tsq2);
-        dd.mat.set(4,1, s*(a[4]*b[1] + a[1]*b[4])/2.0);
-        dd.mat.set(4,2, s*(a[4]*b[2] + a[2]*b[4])/2.0);
-        dd.mat.set(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])/2.0);
-        dd.mat.set(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(4,6, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(4,7, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
-        dd.mat.set(4,8, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(4,0, s*(a[5]*b[3] + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(a[4]*b[1] + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(a[4]*b[2] + a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(4,6, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(4,7, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,8, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0); }
                         
-        dd.mat.set(5,0, s*(a[5]*b[0] + a[0]*b[5])/2.0);
-        dd.mat.set(5,1, s*(a[4]*b[3] + a[3]*b[4])/tsq2);
-        dd.mat.set(5,2, s*(a[5]*b[2] + a[2]*b[5])/2.0);
-        dd.mat.set(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])/2.0);
-        dd.mat.set(5,6, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
-        dd.mat.set(5,7, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(5,8, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
+        unsafe { dd.mat.set_unchecked(5,0, s*(a[5]*b[0] + a[0]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,1, s*(a[4]*b[3] + a[3]*b[4])/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(a[5]*b[2] + a[2]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,6, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,7, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,8, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0); }
                         
-        dd.mat.set(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
-        dd.mat.set(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0);
-        dd.mat.set(6,2, s*(a[5]*b[4] - a[4]*b[5])/tsq2);
-        dd.mat.set(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
-        dd.mat.set(6,4, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(6,5, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
-        dd.mat.set(6,6, s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3])/2.0);
-        dd.mat.set(6,7, s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(6,8, s*(SQRT_2*a[4]*b[0] - a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,2, s*(a[5]*b[4] - a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,4, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(6,5, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(6,6, s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,7, s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(6,8, s*(SQRT_2*a[4]*b[0] - a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0); }
                         
-        dd.mat.set(7,0, s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2);
-        dd.mat.set(7,1, s*(-(a[4]*b[1]) + a[1]*b[4])/2.0);
-        dd.mat.set(7,2, s*(a[4]*b[2] - a[2]*b[4])/2.0);
-        dd.mat.set(7,3, s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
-        dd.mat.set(7,5, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(7,6, s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(7,7, s*(a[2]*b[1] + a[1]*b[2] - a[4]*b[4])/2.0);
-        dd.mat.set(7,8, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(7,0, s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(7,1, s*(-(a[4]*b[1]) + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,2, s*(a[4]*b[2] - a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,3, s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,5, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(7,6, s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(7,7, s*(a[2]*b[1] + a[1]*b[2] - a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,8, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0); }
                         
-        dd.mat.set(8,0, s*(-(a[5]*b[0]) + a[0]*b[5])/2.0);
-        dd.mat.set(8,1, s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2);
-        dd.mat.set(8,2, s*(a[5]*b[2] - a[2]*b[5])/2.0);
-        dd.mat.set(8,3, s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(8,4, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0);
-        dd.mat.set(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
-        dd.mat.set(8,6, s*(SQRT_2*a[4]*b[0] - a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
-        dd.mat.set(8,7, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
-        dd.mat.set(8,8, s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0);
+        unsafe { dd.mat.set_unchecked(8,0, s*(-(a[5]*b[0]) + a[0]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,1, s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,2, s*(a[5]*b[2] - a[2]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,3, s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,4, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,6, s*(SQRT_2*a[4]*b[0] - a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,7, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,8, s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0); }
     } else {
-        dd.mat.set(0,0, s*a[0]*b[0]);
-        dd.mat.set(0,1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
-        dd.mat.set(0,2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
-        dd.mat.set(0,3, s*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
-        dd.mat.set(0,4, s*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(0,5, s*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
-        dd.mat.set(0,6, s*(-(a[3]*b[0]) - a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
-        dd.mat.set(0,7, s*(-((a[5] + a[8])*(b[3] + b[6])) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(0,8, s*(-(a[5]*b[0]) - a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*a[0]*b[0]); }
+        unsafe { dd.mat.set_unchecked(0,1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,4, s*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,6, s*(-(a[3]*b[0]) - a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,7, s*(-((a[5] + a[8])*(b[3] + b[6])) + (a[3] + a[6])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,8, s*(-(a[5]*b[0]) - a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0); }
 
-        dd.mat.set(1,0, s*((a[3] - a[6])*(b[3] - b[6]))/2.0);
-        dd.mat.set(1,1, s*a[1]*b[1]);
-        dd.mat.set(1,2, s*((a[4] + a[7])*(b[4] + b[7]))/2.0);
-        dd.mat.set(1,3, s*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0);
-        dd.mat.set(1,4, s*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
-        dd.mat.set(1,5, s*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
-        dd.mat.set(1,6, s*(a[3]*b[1] - a[6]*b[1] + a[1]*(-b[3] + b[6]))/2.0);
-        dd.mat.set(1,7, s*(-(a[4]*b[1]) - a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
-        dd.mat.set(1,8, s*(-((a[4] + a[7])*(b[3] - b[6])) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
+        unsafe { dd.mat.set_unchecked(1,0, s*((a[3] - a[6])*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,1, s*a[1]*b[1]); }
+        unsafe { dd.mat.set_unchecked(1,2, s*((a[4] + a[7])*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,5, s*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(1,6, s*(a[3]*b[1] - a[6]*b[1] + a[1]*(-b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,7, s*(-(a[4]*b[1]) - a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,8, s*(-((a[4] + a[7])*(b[3] - b[6])) + (a[3] - a[6])*(b[4] + b[7]))/tsq2); }
 
-        dd.mat.set(2,0, s*((a[5] - a[8])*(b[5] - b[8]))/2.0);
-        dd.mat.set(2,1, s*((a[4] - a[7])*(b[4] - b[7]))/2.0);
-        dd.mat.set(2,2, s*a[2]*b[2]);
-        dd.mat.set(2,3, s*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(2,4, s*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0);
-        dd.mat.set(2,5, s*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0);
-        dd.mat.set(2,6, s*((a[5] - a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(2,7, s*(a[4]*b[2] - a[7]*b[2] + a[2]*(-b[4] + b[7]))/2.0);
-        dd.mat.set(2,8, s*(a[5]*b[2] - a[8]*b[2] + a[2]*(-b[5] + b[8]))/2.0);
+        unsafe { dd.mat.set_unchecked(2,0, s*((a[5] - a[8])*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,1, s*((a[4] - a[7])*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*a[2]*b[2]); }
+        unsafe { dd.mat.set_unchecked(2,3, s*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,6, s*((a[5] - a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,7, s*(a[4]*b[2] - a[7]*b[2] + a[2]*(-b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,8, s*(a[5]*b[2] - a[8]*b[2] + a[2]*(-b[5] + b[8]))/2.0); }
 
-        dd.mat.set(3,0, s*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
-        dd.mat.set(3,1, s*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))/2.0);
-        dd.mat.set(3,2, s*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0);
-        dd.mat.set(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
-        dd.mat.set(3,6, s*(-(a[1]*b[0]) + a[0]*b[1] - a[6]*b[3] + a[3]*b[6])/2.0);
-        dd.mat.set(3,7, s*(-(SQRT_2*(a[5] + a[8])*b[1]) - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(3,8, s*(-(SQRT_2*(a[4] + a[7])*b[0]) - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(3,2, s*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(3,6, s*(-(a[1]*b[0]) + a[0]*b[1] - a[6]*b[3] + a[3]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,7, s*(-(SQRT_2*(a[5] + a[8])*b[1]) - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(3,8, s*(-(SQRT_2*(a[4] + a[7])*b[0]) - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0); }
 
-        dd.mat.set(4,0, s*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(4,1, s*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
-        dd.mat.set(4,2, s*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))/2.0);
-        dd.mat.set(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0);
-        dd.mat.set(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
-        dd.mat.set(4,6, s*(SQRT_2*(a[5] - a[8])*b[1] - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(4,7, s*(-(a[2]*b[1]) + a[1]*b[2] - a[7]*b[4] + a[4]*b[7])/2.0);
-        dd.mat.set(4,8, s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(4,0, s*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(4,6, s*(SQRT_2*(a[5] - a[8])*b[1] - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(4,7, s*(-(a[2]*b[1]) + a[1]*b[2] - a[7]*b[4] + a[4]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,8, s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0); }
 
-        dd.mat.set(5,0, s*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
-        dd.mat.set(5,1, s*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
-        dd.mat.set(5,2, s*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))/2.0);
-        dd.mat.set(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0);
-        dd.mat.set(5,6, s*(-(SQRT_2*(a[4] - a[7])*b[0]) + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(5,7, s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(5,8, s*(-(a[2]*b[0]) + a[0]*b[2] - a[8]*b[5] + a[5]*b[8])/2.0);
+        unsafe { dd.mat.set_unchecked(5,0, s*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(5,1, s*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,6, s*(-(SQRT_2*(a[4] - a[7])*b[0]) + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,7, s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,8, s*(-(a[2]*b[0]) + a[0]*b[2] - a[8]*b[5] + a[5]*b[8])/2.0); }
 
-        dd.mat.set(6,0, s*(-(a[3]*b[0]) + a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
-        dd.mat.set(6,1, s*(a[3]*b[1] + a[6]*b[1] - a[1]*(b[3] + b[6]))/2.0);
-        dd.mat.set(6,2, s*((a[5] + a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(6,3, s*(-(a[1]*b[0]) + a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0);
-        dd.mat.set(6,4, s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(6,5, s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
-        dd.mat.set(6,6, s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3] + a[6]*b[6])/2.0);
-        dd.mat.set(6,7, s*(-(SQRT_2*(a[5] + a[8])*b[1]) + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(6,8, s*(SQRT_2*(a[4] + a[7])*b[0] - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(6,0, s*(-(a[3]*b[0]) + a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(6,1, s*(a[3]*b[1] + a[6]*b[1] - a[1]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(6,2, s*((a[5] + a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(6,3, s*(-(a[1]*b[0]) + a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,4, s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(6,5, s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(6,6, s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3] + a[6]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,7, s*(-(SQRT_2*(a[5] + a[8])*b[1]) + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(6,8, s*(SQRT_2*(a[4] + a[7])*b[0] - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0); }
 
-        dd.mat.set(7,0, s*(-((a[5] - a[8])*(b[3] - b[6])) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(7,1, s*(-(a[4]*b[1]) + a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
-        dd.mat.set(7,2, s*(a[4]*b[2] + a[7]*b[2] - a[2]*(b[4] + b[7]))/2.0);
-        dd.mat.set(7,3, s*(-(SQRT_2*(a[5] - a[8])*b[1]) - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(7,4, s*(-(a[2]*b[1]) + a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0);
-        dd.mat.set(7,5, s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
-        dd.mat.set(7,6, s*(-(SQRT_2*(a[5] - a[8])*b[1]) + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(7,7, s*(a[2]*b[1] + a[1]*b[2] - a[4]*b[4] + a[7]*b[7])/2.0);
-        dd.mat.set(7,8, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(7,0, s*(-((a[5] - a[8])*(b[3] - b[6])) + (a[3] - a[6])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(7,1, s*(-(a[4]*b[1]) + a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(7,2, s*(a[4]*b[2] + a[7]*b[2] - a[2]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(7,3, s*(-(SQRT_2*(a[5] - a[8])*b[1]) - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(7,4, s*(-(a[2]*b[1]) + a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,5, s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(7,6, s*(-(SQRT_2*(a[5] - a[8])*b[1]) + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(7,7, s*(a[2]*b[1] + a[1]*b[2] - a[4]*b[4] + a[7]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,8, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0); }
 
-        dd.mat.set(8,0, s*(-(a[5]*b[0]) + a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
-        dd.mat.set(8,1, s*(-((a[4] - a[7])*(b[3] + b[6])) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
-        dd.mat.set(8,2, s*(a[5]*b[2] + a[8]*b[2] - a[2]*(b[5] + b[8]))/2.0);
-        dd.mat.set(8,3, s*(-(SQRT_2*(a[4] - a[7])*b[0]) - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(8,4, s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(8,5, s*(-(a[2]*b[0]) + a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0);
-        dd.mat.set(8,6, s*(SQRT_2*(a[4] - a[7])*b[0] - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(8,7, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(8,8, s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5] + a[8]*b[8])/2.0);
+        unsafe { dd.mat.set_unchecked(8,0, s*(-(a[5]*b[0]) + a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(8,1, s*(-((a[4] - a[7])*(b[3] + b[6])) + (a[3] + a[6])*(b[4] - b[7]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,2, s*(a[5]*b[2] + a[8]*b[2] - a[2]*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(8,3, s*(-(SQRT_2*(a[4] - a[7])*b[0]) - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,4, s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,5, s*(-(a[2]*b[0]) + a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,6, s*(SQRT_2*(a[4] - a[7])*b[0] - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,7, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,8, s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5] + a[8]*b[8])/2.0); }
     }
 }
 
@@ -353,275 +353,275 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     let b = &bb.vec;
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
-        dd.mat.set(0,0, s*a[0]*b[0]);
-        dd.mat.set(0,1, s*(a[3]*b[3])/2.0);
-        dd.mat.set(0,2, 0.0);
-        dd.mat.set(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(0,4, 0.0);
-        dd.mat.set(0,5, 0.0);
-        dd.mat.set(0,6, s*(a[3]*b[0] - a[0]*b[3])/2.0);
-        dd.mat.set(0,7, 0.0);
-        dd.mat.set(0,8, 0.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*a[0]*b[0]); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,6, s*(a[3]*b[0] - a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,8, 0.0); }
                         
-        dd.mat.set(1,0, s*(a[3]*b[3])/2.0);
-        dd.mat.set(1,1, s*a[1]*b[1]);
-        dd.mat.set(1,2, 0.0);
-        dd.mat.set(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(1,4, 0.0);
-        dd.mat.set(1,5, 0.0);
-        dd.mat.set(1,6, s*(-(a[3]*b[1]) + a[1]*b[3])/2.0);
-        dd.mat.set(1,7, 0.0);
-        dd.mat.set(1,8, 0.0);
+        unsafe { dd.mat.set_unchecked(1,0, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,1, s*a[1]*b[1]); }
+        unsafe { dd.mat.set_unchecked(1,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,6, s*(-(a[3]*b[1]) + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,8, 0.0); }
                         
-        dd.mat.set(2,0, 0.0);
-        dd.mat.set(2,1, 0.0);
-        dd.mat.set(2,2, s*a[2]*b[2]);
-        dd.mat.set(2,3, 0.0);
-        dd.mat.set(2,4, 0.0);
-        dd.mat.set(2,5, 0.0);
-        dd.mat.set(2,6, 0.0);
-        dd.mat.set(2,7, 0.0);
-        dd.mat.set(2,8, 0.0);
+        unsafe { dd.mat.set_unchecked(2,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*a[2]*b[2]); }
+        unsafe { dd.mat.set_unchecked(2,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,8, 0.0); }
                         
-        dd.mat.set(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(3,2, 0.0);
-        dd.mat.set(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0);
-        dd.mat.set(3,4, 0.0);
-        dd.mat.set(3,5, 0.0);
-        dd.mat.set(3,6, s*(a[1]*b[0] - a[0]*b[1])/2.0);
-        dd.mat.set(3,7, 0.0);
-        dd.mat.set(3,8, 0.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,6, s*(a[1]*b[0] - a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,8, 0.0); }
                         
-        dd.mat.set(4,0, 0.0);
-        dd.mat.set(4,1, 0.0);
-        dd.mat.set(4,2, 0.0);
-        dd.mat.set(4,3, 0.0);
-        dd.mat.set(4,4, s*(a[2]*b[1] + a[1]*b[2])/2.0);
-        dd.mat.set(4,5, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
-        dd.mat.set(4,6, 0.0);
-        dd.mat.set(4,7, s*(a[2]*b[1] - a[1]*b[2])/2.0);
-        dd.mat.set(4,8, s*(-(a[3]*b[2]) + a[2]*b[3])/tsq2);
+        unsafe { dd.mat.set_unchecked(4,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(a[2]*b[1] + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(a[3]*b[2] + a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(4,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,7, s*(a[2]*b[1] - a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,8, s*(-(a[3]*b[2]) + a[2]*b[3])/tsq2); }
                         
-        dd.mat.set(5,0, 0.0);
-        dd.mat.set(5,1, 0.0);
-        dd.mat.set(5,2, 0.0);
-        dd.mat.set(5,3, 0.0);
-        dd.mat.set(5,4, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
-        dd.mat.set(5,5, s*(a[2]*b[0] + a[0]*b[2])/2.0);
-        dd.mat.set(5,6, 0.0);
-        dd.mat.set(5,7, s*(-(a[3]*b[2]) + a[2]*b[3])/tsq2);
-        dd.mat.set(5,8, s*(a[2]*b[0] - a[0]*b[2])/2.0);
+        unsafe { dd.mat.set_unchecked(5,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(a[3]*b[2] + a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(a[2]*b[0] + a[0]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,7, s*(-(a[3]*b[2]) + a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,8, s*(a[2]*b[0] - a[0]*b[2])/2.0); }
                         
-        dd.mat.set(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
-        dd.mat.set(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0);
-        dd.mat.set(6,2, 0.0);
-        dd.mat.set(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
-        dd.mat.set(6,4, 0.0);
-        dd.mat.set(6,5, 0.0);
-        dd.mat.set(6,6, s*(-(a[1]*b[0]) - a[0]*b[1] + a[3]*b[3])/2.0);
-        dd.mat.set(6,7, 0.0);
-        dd.mat.set(6,8, 0.0);
+        unsafe { dd.mat.set_unchecked(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,5, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,6, s*(-(a[1]*b[0]) - a[0]*b[1] + a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,7, 0.0); }
+        unsafe { dd.mat.set_unchecked(6,8, 0.0); }
                         
-        dd.mat.set(7,0, 0.0);
-        dd.mat.set(7,1, 0.0);
-        dd.mat.set(7,2, 0.0);
-        dd.mat.set(7,3, 0.0);
-        dd.mat.set(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
-        dd.mat.set(7,5, s*(a[3]*b[2] - a[2]*b[3])/tsq2);
-        dd.mat.set(7,6, 0.0);
-        dd.mat.set(7,7, s*(-(a[2]*b[1]) - a[1]*b[2])/2.0);
-        dd.mat.set(7,8, s*(-(a[3]*b[2] + a[2]*b[3])/tsq2));
+        unsafe { dd.mat.set_unchecked(7,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,5, s*(a[3]*b[2] - a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(7,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(7,7, s*(-(a[2]*b[1]) - a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,8, s*(-(a[3]*b[2] + a[2]*b[3])/tsq2)); }
                         
-        dd.mat.set(8,0, 0.0);
-        dd.mat.set(8,1, 0.0);
-        dd.mat.set(8,2, 0.0);
-        dd.mat.set(8,3, 0.0);
-        dd.mat.set(8,4, s*(a[3]*b[2] - a[2]*b[3])/tsq2);
-        dd.mat.set(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
-        dd.mat.set(8,6, 0.0);
-        dd.mat.set(8,7, s*(-(a[3]*b[2] + a[2]*b[3])/tsq2));
-        dd.mat.set(8,8, s*(-(a[2]*b[0]) - a[0]*b[2])/2.0);
+        unsafe { dd.mat.set_unchecked(8,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,4, s*(a[3]*b[2] - a[2]*b[3])/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,6, 0.0); }
+        unsafe { dd.mat.set_unchecked(8,7, s*(-(a[3]*b[2] + a[2]*b[3])/tsq2)); }
+        unsafe { dd.mat.set_unchecked(8,8, s*(-(a[2]*b[0]) - a[0]*b[2])/2.0); }
     } else if dim == 6 {
-        dd.mat.set(0,0, s*a[0]*b[0]);
-        dd.mat.set(0,1, s*(a[3]*b[3])/2.0);
-        dd.mat.set(0,2, s*(a[5]*b[5])/2.0);
-        dd.mat.set(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(0,4, s*(a[5]*b[3] + a[3]*b[5])/tsq2);
-        dd.mat.set(0,5, s*(a[5]*b[0] + a[0]*b[5])/2.0);
-        dd.mat.set(0,6, s*(a[3]*b[0] - a[0]*b[3])/2.0);
-        dd.mat.set(0,7, s*(a[5]*b[3] - a[3]*b[5])/tsq2);
-        dd.mat.set(0,8, s*(a[5]*b[0] - a[0]*b[5])/2.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*a[0]*b[0]); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,2, s*(a[5]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,4, s*(a[5]*b[3] + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(a[5]*b[0] + a[0]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,6, s*(a[3]*b[0] - a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(0,7, s*(a[5]*b[3] - a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,8, s*(a[5]*b[0] - a[0]*b[5])/2.0); }
                         
-        dd.mat.set(1,0, s*(a[3]*b[3])/2.0);
-        dd.mat.set(1,1, s*a[1]*b[1]);
-        dd.mat.set(1,2, s*(a[4]*b[4])/2.0);
-        dd.mat.set(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(1,4, s*(a[4]*b[1] + a[1]*b[4])/2.0);
-        dd.mat.set(1,5, s*(a[4]*b[3] + a[3]*b[4])/tsq2);
-        dd.mat.set(1,6, s*(-(a[3]*b[1]) + a[1]*b[3])/2.0);
-        dd.mat.set(1,7, s*(a[4]*b[1] - a[1]*b[4])/2.0);
-        dd.mat.set(1,8, s*(a[4]*b[3] - a[3]*b[4])/tsq2);
+        unsafe { dd.mat.set_unchecked(1,0, s*(a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,1, s*a[1]*b[1]); }
+        unsafe { dd.mat.set_unchecked(1,2, s*(a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(a[4]*b[1] + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,5, s*(a[4]*b[3] + a[3]*b[4])/tsq2); }
+        unsafe { dd.mat.set_unchecked(1,6, s*(-(a[3]*b[1]) + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,7, s*(a[4]*b[1] - a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(1,8, s*(a[4]*b[3] - a[3]*b[4])/tsq2); }
                         
-        dd.mat.set(2,0, s*(a[5]*b[5])/2.0);
-        dd.mat.set(2,1, s*(a[4]*b[4])/2.0);
-        dd.mat.set(2,2, s*a[2]*b[2]);
-        dd.mat.set(2,3, s*(a[ 5]*b[4] + a[4]*b[5])/tsq2);
-        dd.mat.set(2,4, s*(a[4]*b[2] + a[2]*b[4])/2.0);
-        dd.mat.set(2,5, s*(a[5]*b[2] + a[2]*b[5])/2.0);
-        dd.mat.set(2,6, s*(-(a[5]*b[4]) + a[4]*b[5])/tsq2);
-        dd.mat.set(2,7, s*(-(a[4]*b[2]) + a[2]*b[4])/2.0);
-        dd.mat.set(2,8, s*(-(a[5]*b[2]) + a[2]*b[5])/2.0);
+        unsafe { dd.mat.set_unchecked(2,0, s*(a[5]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,1, s*(a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*a[2]*b[2]); }
+        unsafe { dd.mat.set_unchecked(2,3, s*(a[ 5]*b[4] + a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(a[4]*b[2] + a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(a[5]*b[2] + a[2]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,6, s*(-(a[5]*b[4]) + a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,7, s*(-(a[4]*b[2]) + a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(2,8, s*(-(a[5]*b[2]) + a[2]*b[5])/2.0); }
                         
-        dd.mat.set(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0);
-        dd.mat.set(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0);
-        dd.mat.set(3,2, s*(a[5]*b[4] + a[4]*b[5])/tsq2);
-        dd.mat.set(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0);
-        dd.mat.set(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(3,6, s*(a[1]*b[0] - a[0]*b[1])/2.0);
-        dd.mat.set(3,7, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] - a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(3,8, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] - SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(a[3]*b[0] + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(a[3]*b[1] + a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,2, s*(a[5]*b[4] + a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(3,6, s*(a[1]*b[0] - a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,7, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] - a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(3,8, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] - SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0); }
                         
-        dd.mat.set(4,0, s*(a[5]*b[3] + a[3]*b[5])/tsq2);
-        dd.mat.set(4,1, s*(a[4]*b[1] + a[1]*b[4])/2.0);
-        dd.mat.set(4,2, s*(a[4]*b[2] + a[2]*b[4])/2.0);
-        dd.mat.set(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])/2.0);
-        dd.mat.set(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(4,6, s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] - a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(4,7, s*(a[2]*b[1] - a[1]*b[2])/2.0);
-        dd.mat.set(4,8, s*(-(SQRT_2*a[3]*b[2]) + SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(4,0, s*(a[5]*b[3] + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(a[4]*b[1] + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(a[4]*b[2] + a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(4,6, s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] - a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(4,7, s*(a[2]*b[1] - a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,8, s*(-(SQRT_2*a[3]*b[2]) + SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0); }
                         
-        dd.mat.set(5,0, s*(a[5]*b[0] + a[0]*b[5])/2.0);
-        dd.mat.set(5,1, s*(a[4]*b[3] + a[3]*b[4])/tsq2);
-        dd.mat.set(5,2, s*(a[5]*b[2] + a[2]*b[5])/2.0);
-        dd.mat.set(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])/2.0);
-        dd.mat.set(5,6, s*(SQRT_2*a[4]*b[0] - a[5]*b[3] - SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(5,7, s*(-(SQRT_2*a[3]*b[2]) + SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0);
-        dd.mat.set(5,8, s*(a[2]*b[0] - a[0]*b[2])/2.0);
+        unsafe { dd.mat.set_unchecked(5,0, s*(a[5]*b[0] + a[0]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,1, s*(a[4]*b[3] + a[3]*b[4])/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(a[5]*b[2] + a[2]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,6, s*(SQRT_2*a[4]*b[0] - a[5]*b[3] - SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,7, s*(-(SQRT_2*a[3]*b[2]) + SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(5,8, s*(a[2]*b[0] - a[0]*b[2])/2.0); }
                         
-        dd.mat.set(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
-        dd.mat.set(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0);
-        dd.mat.set(6,2, s*(a[5]*b[4] - a[4]*b[5])/tsq2);
-        dd.mat.set(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
-        dd.mat.set(6,4, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(6,5, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
-        dd.mat.set(6,6, s*(-(a[1]*b[0]) - a[0]*b[1] + a[3]*b[3])/2.0);
-        dd.mat.set(6,7, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] - a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(6,8, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] - SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(6,0, s*(-(a[3]*b[0]) + a[0]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,1, s*(a[3]*b[1] - a[1]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,2, s*(a[5]*b[4] - a[4]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(6,3, s*(-(a[1]*b[0]) + a[0]*b[1])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,4, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(6,5, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(6,6, s*(-(a[1]*b[0]) - a[0]*b[1] + a[3]*b[3])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,7, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] - a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(6,8, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] - SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
                         
-        dd.mat.set(7,0, s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2);
-        dd.mat.set(7,1, s*(-(a[4]*b[1]) + a[1]*b[4])/2.0);
-        dd.mat.set(7,2, s*(a[4]*b[2] - a[2]*b[4])/2.0);
-        dd.mat.set(7,3, s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
-        dd.mat.set(7,5, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(7,6, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] - a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
-        dd.mat.set(7,7, s*(-(a[2]*b[1]) - a[1]*b[2] + a[4]*b[4])/2.0);
-        dd.mat.set(7,8, s*(-(SQRT_2*a[3]*b[2]) - SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
+        unsafe { dd.mat.set_unchecked(7,0, s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2); }
+        unsafe { dd.mat.set_unchecked(7,1, s*(-(a[4]*b[1]) + a[1]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,2, s*(a[4]*b[2] - a[2]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,3, s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(7,4, s*(-(a[2]*b[1]) + a[1]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,5, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(7,6, s*(SQRT_2*a[5]*b[1] - a[4]*b[3] - a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(7,7, s*(-(a[2]*b[1]) - a[1]*b[2] + a[4]*b[4])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,8, s*(-(SQRT_2*a[3]*b[2]) - SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0); }
                         
-        dd.mat.set(8,0, s*(-(a[5]*b[0]) + a[0]*b[5])/2.0);
-        dd.mat.set(8,1, s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2);
-        dd.mat.set(8,2, s*(a[5]*b[2] - a[2]*b[5])/2.0);
-        dd.mat.set(8,3, s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(8,4, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0);
-        dd.mat.set(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
-        dd.mat.set(8,6, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] - SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
-        dd.mat.set(8,7, s*(-(SQRT_2*a[3]*b[2]) - SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
-        dd.mat.set(8,8, s*(-(a[2]*b[0]) - a[0]*b[2] + a[5]*b[5])/2.0);
+        unsafe { dd.mat.set_unchecked(8,0, s*(-(a[5]*b[0]) + a[0]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,1, s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,2, s*(a[5]*b[2] - a[2]*b[5])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,3, s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,4, s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,5, s*(-(a[2]*b[0]) + a[0]*b[2])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,6, s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] - SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,7, s*(-(SQRT_2*a[3]*b[2]) - SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0); }
+        unsafe { dd.mat.set_unchecked(8,8, s*(-(a[2]*b[0]) - a[0]*b[2] + a[5]*b[5])/2.0); }
     } else {
-        dd.mat.set(0,0, s*a[0]*b[0]);
-        dd.mat.set(0,1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
-        dd.mat.set(0,2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
-        dd.mat.set(0,3, s*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
-        dd.mat.set(0,4, s*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(0,5, s*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
-        dd.mat.set(0,6, s*(a[3]*b[0] + a[6]*b[0] - a[0]*(b[3] + b[6]))/2.0);
-        dd.mat.set(0,7, s*((a[5] + a[8])*(b[3] + b[6]) - (a[3] + a[6])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(0,8, s*(a[5]*b[0] + a[8]*b[0] - a[0]*(b[5] + b[8]))/2.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*a[0]*b[0]); }
+        unsafe { dd.mat.set_unchecked(0,1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,4, s*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,6, s*(a[3]*b[0] + a[6]*b[0] - a[0]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(0,7, s*((a[5] + a[8])*(b[3] + b[6]) - (a[3] + a[6])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(0,8, s*(a[5]*b[0] + a[8]*b[0] - a[0]*(b[5] + b[8]))/2.0); }
 
-        dd.mat.set(1,0, s*((a[3] - a[6])*(b[3] - b[6]))/2.0);
-        dd.mat.set(1,1, s*a[1]*b[1]);
-        dd.mat.set(1,2, s*((a[4] + a[7])*(b[4] + b[7]))/2.0);
-        dd.mat.set(1,3, s*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0);
-        dd.mat.set(1,4, s*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
-        dd.mat.set(1,5, s*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
-        dd.mat.set(1,6, s*(-(a[3]*b[1]) + a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0);
-        dd.mat.set(1,7, s*(a[4]*b[1] + a[7]*b[1] - a[1]*(b[4] + b[7]))/2.0);
-        dd.mat.set(1,8, s*((a[4] + a[7])*(b[3] - b[6]) - (a[3] - a[6])*(b[4] + b[7]))/tsq2);
+        unsafe { dd.mat.set_unchecked(1,0, s*((a[3] - a[6])*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,1, s*a[1]*b[1]); }
+        unsafe { dd.mat.set_unchecked(1,2, s*((a[4] + a[7])*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,5, s*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(1,6, s*(-(a[3]*b[1]) + a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,7, s*(a[4]*b[1] + a[7]*b[1] - a[1]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(1,8, s*((a[4] + a[7])*(b[3] - b[6]) - (a[3] - a[6])*(b[4] + b[7]))/tsq2); }
 
-        dd.mat.set(2,0, s*((a[5] - a[8])*(b[5] - b[8]))/2.0);
-        dd.mat.set(2,1, s*((a[4] - a[7])*(b[4] - b[7]))/2.0);
-        dd.mat.set(2,2, s*a[2]*b[2]);
-        dd.mat.set(2,3, s*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(2,4, s*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0);
-        dd.mat.set(2,5, s*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0);
-        dd.mat.set(2,6, s*(-((a[5] - a[8])*(b[4] - b[7])) + (a[4] - a[7])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(2,7, s*(-(a[4]*b[2]) + a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0);
-        dd.mat.set(2,8, s*(-(a[5]*b[2]) + a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0);
+        unsafe { dd.mat.set_unchecked(2,0, s*((a[5] - a[8])*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,1, s*((a[4] - a[7])*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*a[2]*b[2]); }
+        unsafe { dd.mat.set_unchecked(2,3, s*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,6, s*(-((a[5] - a[8])*(b[4] - b[7])) + (a[4] - a[7])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(2,7, s*(-(a[4]*b[2]) + a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(2,8, s*(-(a[5]*b[2]) + a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0); }
 
-        dd.mat.set(3,0, s*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
-        dd.mat.set(3,1, s*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))/2.0);
-        dd.mat.set(3,2, s*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0);
-        dd.mat.set(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
-        dd.mat.set(3,6, s*(a[1]*b[0] - a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0);
-        dd.mat.set(3,7, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) - (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(3,8, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) - SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(3,2, s*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(3,6, s*(a[1]*b[0] - a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(3,7, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) - (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(3,8, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) - SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0); }
 
-        dd.mat.set(4,0, s*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(4,1, s*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
-        dd.mat.set(4,2, s*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))/2.0);
-        dd.mat.set(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0);
-        dd.mat.set(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
-        dd.mat.set(4,6, s*(-(SQRT_2*(a[5] - a[8])*b[1]) + (a[4] - a[7])*(b[3] - b[6]) - (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(4,7, s*(a[2]*b[1] - a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0);
-        dd.mat.set(4,8, s*(-(SQRT_2*(a[3] - a[6])*b[2]) + SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(4,0, s*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(4,6, s*(-(SQRT_2*(a[5] - a[8])*b[1]) + (a[4] - a[7])*(b[3] - b[6]) - (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(4,7, s*(a[2]*b[1] - a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(4,8, s*(-(SQRT_2*(a[3] - a[6])*b[2]) + SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0); }
 
-        dd.mat.set(5,0, s*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
-        dd.mat.set(5,1, s*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
-        dd.mat.set(5,2, s*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))/2.0);
-        dd.mat.set(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0);
-        dd.mat.set(5,6, s*(SQRT_2*(a[4] - a[7])*b[0] - (a[5] - a[8])*(b[3] + b[6]) - SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(5,7, s*(-(SQRT_2*(a[3] + a[6])*b[2]) + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(5,8, s*(a[2]*b[0] - a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0);
+        unsafe { dd.mat.set_unchecked(5,0, s*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(5,1, s*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0); }
+        unsafe { dd.mat.set_unchecked(5,6, s*(SQRT_2*(a[4] - a[7])*b[0] - (a[5] - a[8])*(b[3] + b[6]) - SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,7, s*(-(SQRT_2*(a[3] + a[6])*b[2]) + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(5,8, s*(a[2]*b[0] - a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0); }
 
-        dd.mat.set(6,0, s*(-(a[3]*b[0]) + a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
-        dd.mat.set(6,1, s*(a[3]*b[1] + a[6]*b[1] - a[1]*(b[3] + b[6]))/2.0);
-        dd.mat.set(6,2, s*((a[5] + a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] + b[8]))/tsq2);
-        dd.mat.set(6,3, s*(-(a[1]*b[0]) + a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0);
-        dd.mat.set(6,4, s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(6,5, s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
-        dd.mat.set(6,6, s*(-(a[1]*b[0]) - a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0);
-        dd.mat.set(6,7, s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) - (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
-        dd.mat.set(6,8, s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) - SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(6,0, s*(-(a[3]*b[0]) + a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(6,1, s*(a[3]*b[1] + a[6]*b[1] - a[1]*(b[3] + b[6]))/2.0); }
+        unsafe { dd.mat.set_unchecked(6,2, s*((a[5] + a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] + b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(6,3, s*(-(a[1]*b[0]) + a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,4, s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(6,5, s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(6,6, s*(-(a[1]*b[0]) - a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0); }
+        unsafe { dd.mat.set_unchecked(6,7, s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) - (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(6,8, s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) - SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0); }
 
-        dd.mat.set(7,0, s*(-((a[5] - a[8])*(b[3] - b[6])) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
-        dd.mat.set(7,1, s*(-(a[4]*b[1]) + a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
-        dd.mat.set(7,2, s*(a[4]*b[2] + a[7]*b[2] - a[2]*(b[4] + b[7]))/2.0);
-        dd.mat.set(7,3, s*(-(SQRT_2*(a[5] - a[8])*b[1]) - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(7,4, s*(-(a[2]*b[1]) + a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0);
-        dd.mat.set(7,5, s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
-        dd.mat.set(7,6, s*(SQRT_2*(a[5] - a[8])*b[1] - (a[4] - a[7])*(b[3] - b[6]) - (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
-        dd.mat.set(7,7, s*(-(a[2]*b[1]) - a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0);
-        dd.mat.set(7,8, s*(-(SQRT_2*(a[3] - a[6])*b[2]) - SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
+        unsafe { dd.mat.set_unchecked(7,0, s*(-((a[5] - a[8])*(b[3] - b[6])) + (a[3] - a[6])*(b[5] - b[8]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(7,1, s*(-(a[4]*b[1]) + a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(7,2, s*(a[4]*b[2] + a[7]*b[2] - a[2]*(b[4] + b[7]))/2.0); }
+        unsafe { dd.mat.set_unchecked(7,3, s*(-(SQRT_2*(a[5] - a[8])*b[1]) - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(7,4, s*(-(a[2]*b[1]) + a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,5, s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(7,6, s*(SQRT_2*(a[5] - a[8])*b[1] - (a[4] - a[7])*(b[3] - b[6]) - (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(7,7, s*(-(a[2]*b[1]) - a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0); }
+        unsafe { dd.mat.set_unchecked(7,8, s*(-(SQRT_2*(a[3] - a[6])*b[2]) - SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0); }
 
-        dd.mat.set(8,0, s*(-(a[5]*b[0]) + a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
-        dd.mat.set(8,1, s*(-((a[4] - a[7])*(b[3] + b[6])) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
-        dd.mat.set(8,2, s*(a[5]*b[2] + a[8]*b[2] - a[2]*(b[5] + b[8]))/2.0);
-        dd.mat.set(8,3, s*(-(SQRT_2*(a[4] - a[7])*b[0]) - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(8,4, s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(8,5, s*(-(a[2]*b[0]) + a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0);
-        dd.mat.set(8,6, s*(-(SQRT_2*(a[4] - a[7])*b[0]) + (a[5] - a[8])*(b[3] + b[6]) - SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
-        dd.mat.set(8,7, s*(-(SQRT_2*(a[3] + a[6])*b[2]) - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
-        dd.mat.set(8,8, s*(-(a[2]*b[0]) - a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0);
+        unsafe { dd.mat.set_unchecked(8,0, s*(-(a[5]*b[0]) + a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(8,1, s*(-((a[4] - a[7])*(b[3] + b[6])) + (a[3] + a[6])*(b[4] - b[7]))/tsq2); }
+        unsafe { dd.mat.set_unchecked(8,2, s*(a[5]*b[2] + a[8]*b[2] - a[2]*(b[5] + b[8]))/2.0); }
+        unsafe { dd.mat.set_unchecked(8,3, s*(-(SQRT_2*(a[4] - a[7])*b[0]) - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,4, s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,5, s*(-(a[2]*b[0]) + a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0); }
+        unsafe { dd.mat.set_unchecked(8,6, s*(-(SQRT_2*(a[4] - a[7])*b[0]) + (a[5] - a[8])*(b[3] + b[6]) - SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,7, s*(-(SQRT_2*(a[3] + a[6])*b[2]) - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0); }
+        unsafe { dd.mat.set_unchecked(8,8, s*(-(a[2]*b[0]) - a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0); }
     }
 }
 
@@ -675,131 +675,131 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
         return;
     }
     if dim == 4 {
-        dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
-        dd.mat.set(0,1, s*(a[3]*a[3]));
-        dd.mat.set(0,2, 0.0);
-        dd.mat.set(0,3, s*(2.0*a[0]*a[3]));
-        dd.mat.set(0,4, 0.0);
-        dd.mat.set(0,5, 0.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*(2.0*a[0]*a[0])); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(a[3]*a[3])); }
+        unsafe { dd.mat.set_unchecked(0,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(2.0*a[0]*a[3])); }
+        unsafe { dd.mat.set_unchecked(0,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,5, 0.0); }
 
-        dd.mat.set(1,0, s*(a[3]*a[3]));
-        dd.mat.set(1,1, s*(2.0*a[1]*a[1]));
-        dd.mat.set(1,2, 0.0);
-        dd.mat.set(1,3, s*(2.0*a[1]*a[3]));
-        dd.mat.set(1,4, 0.0);
-        dd.mat.set(1,5, 0.0);
+        unsafe { dd.mat.set_unchecked(1,0, s*(a[3]*a[3])); }
+        unsafe { dd.mat.set_unchecked(1,1, s*(2.0*a[1]*a[1])); }
+        unsafe { dd.mat.set_unchecked(1,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(2.0*a[1]*a[3])); }
+        unsafe { dd.mat.set_unchecked(1,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,5, 0.0); }
 
-        dd.mat.set(2,0, 0.0);
-        dd.mat.set(2,1, 0.0);
-        dd.mat.set(2,2, s*(2.0*a[2]*a[2]));
-        dd.mat.set(2,3, 0.0);
-        dd.mat.set(2,4, 0.0);
-        dd.mat.set(2,5, 0.0);
+        unsafe { dd.mat.set_unchecked(2,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*(2.0*a[2]*a[2])); }
+        unsafe { dd.mat.set_unchecked(2,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,5, 0.0); }
 
-        dd.mat.set(3,0, s*(2.0*a[0]*a[3]));
-        dd.mat.set(3,1, s*(2.0*a[1]*a[3]));
-        dd.mat.set(3,2, 0.0);
-        dd.mat.set(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
-        dd.mat.set(3,4, 0.0);
-        dd.mat.set(3,5, 0.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(2.0*a[0]*a[3])); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(2.0*a[1]*a[3])); }
+        unsafe { dd.mat.set_unchecked(3,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3])); }
+        unsafe { dd.mat.set_unchecked(3,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,5, 0.0); }
 
-        dd.mat.set(4,0, 0.0);
-        dd.mat.set(4,1, 0.0);
-        dd.mat.set(4,2, 0.0);
-        dd.mat.set(4,3, 0.0);
-        dd.mat.set(4,4, s*(2.0*a[1]*a[2]));
-        dd.mat.set(4,5, s*(SQRT_2*a[2]*a[3]));
+        unsafe { dd.mat.set_unchecked(4,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(2.0*a[1]*a[2])); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*a[2]*a[3])); }
 
-        dd.mat.set(5,0, 0.0);
-        dd.mat.set(5,1, 0.0);
-        dd.mat.set(5,2, 0.0);
-        dd.mat.set(5,3, 0.0);
-        dd.mat.set(5,4, s*(SQRT_2*a[2]*a[3]));
-        dd.mat.set(5,5, s*(2.0*a[0]*a[2]));
+        unsafe { dd.mat.set_unchecked(5,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*a[2]*a[3])); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(2.0*a[0]*a[2])); }
     } else if dim == 6 {
-        dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
-        dd.mat.set(0,1, s*(a[3]*a[3]));
-        dd.mat.set(0,2, s*(a[5]*a[5]));
-        dd.mat.set(0,3, s*(2.0*a[0]*a[3]));
-        dd.mat.set(0,4, s*(SQRT_2*a[3]*a[5]));
-        dd.mat.set(0,5, s*(2.0*a[ 0]*a[5]));
+        unsafe { dd.mat.set_unchecked(0,0, s*(2.0*a[0]*a[0])); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(a[3]*a[3])); }
+        unsafe { dd.mat.set_unchecked(0,2, s*(a[5]*a[5])); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(2.0*a[0]*a[3])); }
+        unsafe { dd.mat.set_unchecked(0,4, s*(SQRT_2*a[3]*a[5])); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(2.0*a[ 0]*a[5])); }
 
-        dd.mat.set(1,0, s*(a[3]*a[3]));
-        dd.mat.set(1,1, s*(2.0*a[1]*a[1]));
-        dd.mat.set(1,2, s*(a[4]*a[4]));
-        dd.mat.set(1,3, s*(2.0*a[1]*a[3]));
-        dd.mat.set(1,4, s*(2.0*a[1]*a[4]));
-        dd.mat.set(1,5, s*(SQRT_2*a[3]*a[4]));
+        unsafe { dd.mat.set_unchecked(1,0, s*(a[3]*a[3])); }
+        unsafe { dd.mat.set_unchecked(1,1, s*(2.0*a[1]*a[1])); }
+        unsafe { dd.mat.set_unchecked(1,2, s*(a[4]*a[4])); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(2.0*a[1]*a[3])); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(2.0*a[1]*a[4])); }
+        unsafe { dd.mat.set_unchecked(1,5, s*(SQRT_2*a[3]*a[4])); }
 
-        dd.mat.set(2,0, s*(a[5]*a[5]));
-        dd.mat.set(2,1, s*(a[4]*a[4]));
-        dd.mat.set(2,2, s*(2.0*a[2]*a[2]));
-        dd.mat.set(2,3, s*(SQRT_2*a[4]*a[ 5]));
-        dd.mat.set(2,4, s*(2.0*a[2]*a[4]));
-        dd.mat.set(2,5, s*(2.0*a[2]*a[5]));
+        unsafe { dd.mat.set_unchecked(2,0, s*(a[5]*a[5])); }
+        unsafe { dd.mat.set_unchecked(2,1, s*(a[4]*a[4])); }
+        unsafe { dd.mat.set_unchecked(2,2, s*(2.0*a[2]*a[2])); }
+        unsafe { dd.mat.set_unchecked(2,3, s*(SQRT_2*a[4]*a[ 5])); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(2.0*a[2]*a[4])); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(2.0*a[2]*a[5])); }
 
-        dd.mat.set(3,0, s*(2.0*a[0]*a[3]));
-        dd.mat.set(3,1, s*(2.0*a[1]*a[3]));
-        dd.mat.set(3,2, s*(SQRT_2*a[4]* a[5]));
-        dd.mat.set(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
-        dd.mat.set(3,4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
-        dd.mat.set(3,5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5]));
+        unsafe { dd.mat.set_unchecked(3,0, s*(2.0*a[0]*a[3])); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(2.0*a[1]*a[3])); }
+        unsafe { dd.mat.set_unchecked(3,2, s*(SQRT_2*a[4]* a[5])); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3])); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5])); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5])); }
 
-        dd.mat.set(4,0, s*(SQRT_2*a[3]*a[5]));
-        dd.mat.set(4,1, s*(2.0*a[1]*a[4]));
-        dd.mat.set(4,2, s*(2.0*a[2]*a[4]));
-        dd.mat.set(4,3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
-        dd.mat.set(4,4, s*(2.0*a[1]*a[2] + a[4]*a[4]));
-        dd.mat.set(4,5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
+        unsafe { dd.mat.set_unchecked(4,0, s*(SQRT_2*a[3]*a[5])); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(2.0*a[1]*a[4])); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(2.0*a[2]*a[4])); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5])); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(2.0*a[1]*a[2] + a[4]*a[4])); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5])); }
 
-        dd.mat.set(5,0, s*(2.0*a[0]*a[5]));
-        dd.mat.set(5,1, s*(SQRT_2*a[3]*a[4]));
-        dd.mat.set(5,2, s*(2.0*a[2]*a[5]));
-        dd.mat.set(5,3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5]));
-        dd.mat.set(5,4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
-        dd.mat.set(5,5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
+        unsafe { dd.mat.set_unchecked(5,0, s*(2.0*a[0]*a[5])); }
+        unsafe { dd.mat.set_unchecked(5,1, s*(SQRT_2*a[3]*a[4])); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(2.0*a[2]*a[5])); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5])); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5])); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(2.0*a[0]*a[2] + a[5]*a[5])); }
     } else {
-        dd.mat.set(0,0, s*(2.0*a[0]*a[0]));
-        dd.mat.set(0,1, s*((a[3] + a[6])*(a[3] + a[6])));
-        dd.mat.set(0,2, s*((a[5] + a[8])*(a[5] + a[8])));
-        dd.mat.set(0,3, s*(2.0*a[0]*(a[3] + a[6])));
-        dd.mat.set(0,4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8])));
-        dd.mat.set(0,5, s*(2.0*a[0]*(a[5] + a[8])));
+        unsafe { dd.mat.set_unchecked(0,0, s*(2.0*a[0]*a[0])); }
+        unsafe { dd.mat.set_unchecked(0,1, s*((a[3] + a[6])*(a[3] + a[6]))); }
+        unsafe { dd.mat.set_unchecked(0,2, s*((a[5] + a[8])*(a[5] + a[8]))); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(2.0*a[0]*(a[3] + a[6]))); }
+        unsafe { dd.mat.set_unchecked(0,4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8]))); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(2.0*a[0]*(a[5] + a[8]))); }
 
-        dd.mat.set(1,0, s*((a[3] - a[6])*(a[3] - a[6])));
-        dd.mat.set(1,1, s*(2.0*a[1]*a[1]));
-        dd.mat.set(1,2, s*((a[4] + a[7])*(a[4] + a[7])));
-        dd.mat.set(1,3, s*(2.0*a[1]*(a[3] - a[6])));
-        dd.mat.set(1,4, s*(2.0*a[1]*(a[4] + a[7])));
-        dd.mat.set(1,5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7])));
+        unsafe { dd.mat.set_unchecked(1,0, s*((a[3] - a[6])*(a[3] - a[6]))); }
+        unsafe { dd.mat.set_unchecked(1,1, s*(2.0*a[1]*a[1])); }
+        unsafe { dd.mat.set_unchecked(1,2, s*((a[4] + a[7])*(a[4] + a[7]))); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(2.0*a[1]*(a[3] - a[6]))); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(2.0*a[1]*(a[4] + a[7]))); }
+        unsafe { dd.mat.set_unchecked(1,5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7]))); }
 
-        dd.mat.set(2,0, s*((a[5] - a[8])*(a[5] - a[8])));
-        dd.mat.set(2,1, s*((a[4] - a[7])*(a[4] - a[7])));
-        dd.mat.set(2,2, s*(2.0*a[2]*a[2]));
-        dd.mat.set(2,3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8])));
-        dd.mat.set(2,4, s*(2.0*a[2]*(a[4] - a[7])));
-        dd.mat.set(2,5, s*(2.0*a[2]*(a[5] - a[8])));
+        unsafe { dd.mat.set_unchecked(2,0, s*((a[5] - a[8])*(a[5] - a[8]))); }
+        unsafe { dd.mat.set_unchecked(2,1, s*((a[4] - a[7])*(a[4] - a[7]))); }
+        unsafe { dd.mat.set_unchecked(2,2, s*(2.0*a[2]*a[2])); }
+        unsafe { dd.mat.set_unchecked(2,3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8]))); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(2.0*a[2]*(a[4] - a[7]))); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(2.0*a[2]*(a[5] - a[8]))); }
 
-        dd.mat.set(3,0, s*(2.0*a[0]*(a[3] - a[6])));
-        dd.mat.set(3,1, s*(2.0*a[1]*(a[3] + a[6])));
-        dd.mat.set(3,2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8])));
-        dd.mat.set(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6]));
-        dd.mat.set(3,4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8])));
-        dd.mat.set(3,5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8])));
+        unsafe { dd.mat.set_unchecked(3,0, s*(2.0*a[0]*(a[3] - a[6]))); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(2.0*a[1]*(a[3] + a[6]))); }
+        unsafe { dd.mat.set_unchecked(3,2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8]))); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6])); }
+        unsafe { dd.mat.set_unchecked(3,4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8]))); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8]))); }
 
-        dd.mat.set(4,0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8])));
-        dd.mat.set(4,1, s*(2.0*a[1]*(a[4] - a[7])));
-        dd.mat.set(4,2, s*(2.0*a[2]*(a[4] + a[7])));
-        dd.mat.set(4,3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8])));
-        dd.mat.set(4,4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7]));
-        dd.mat.set(4,5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8])));
+        unsafe { dd.mat.set_unchecked(4,0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8]))); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(2.0*a[1]*(a[4] - a[7]))); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(2.0*a[2]*(a[4] + a[7]))); }
+        unsafe { dd.mat.set_unchecked(4,3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8]))); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7])); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8]))); }
 
-        dd.mat.set(5,0, s*(2.0*a[0]*(a[5] - a[8])));
-        dd.mat.set(5,1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7])));
-        dd.mat.set(5,2, s*(2.0*a[2]*(a[5] + a[8])));
-        dd.mat.set(5,3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8])));
-        dd.mat.set(5,4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8])));
-        dd.mat.set(5,5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8]));
+        unsafe { dd.mat.set_unchecked(5,0, s*(2.0*a[0]*(a[5] - a[8]))); }
+        unsafe { dd.mat.set_unchecked(5,1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7]))); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(2.0*a[2]*(a[5] + a[8]))); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8]))); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8]))); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8])); }
     }
 }
 
@@ -858,131 +858,131 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
         return;
     }
     if dim == 4 {
-        dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
-        dd.mat.set(0,1, s*(2.0*a[3]*b[3]));
-        dd.mat.set(0,2, 0.0);
-        dd.mat.set(0,3, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
-        dd.mat.set(0,4, 0.0);
-        dd.mat.set(0,5, 0.0);
+        unsafe { dd.mat.set_unchecked(0,0, s*(4.0*a[0]*b[0])); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(2.0*a[3]*b[3])); }
+        unsafe { dd.mat.set_unchecked(0,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(2.0*(a[3]*b[0] + a[0]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(0,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(0,5, 0.0); }
 
-        dd.mat.set(1,0, s*(2.0*a[3]*b[3]));
-        dd.mat.set(1,1, s*(4.0*a[1]*b[1]));
-        dd.mat.set(1,2, 0.0);
-        dd.mat.set(1,3, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
-        dd.mat.set(1,4, 0.0);
-        dd.mat.set(1,5, 0.0);
+        unsafe { dd.mat.set_unchecked(1,0, s*(2.0*a[3]*b[3])); }
+        unsafe { dd.mat.set_unchecked(1,1, s*(4.0*a[1]*b[1])); }
+        unsafe { dd.mat.set_unchecked(1,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(2.0*(a[3]*b[1] + a[1]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(1,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(1,5, 0.0); }
 
-        dd.mat.set(2,0, 0.0);
-        dd.mat.set(2,1, 0.0);
-        dd.mat.set(2,2, s*(4.0*a[2]*b[2]));
-        dd.mat.set(2,3, 0.0);
-        dd.mat.set(2,4, 0.0);
-        dd.mat.set(2,5, 0.0);
+        unsafe { dd.mat.set_unchecked(2,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,2, s*(4.0*a[2]*b[2])); }
+        unsafe { dd.mat.set_unchecked(2,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(2,5, 0.0); }
 
-        dd.mat.set(3,0, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
-        dd.mat.set(3,1, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
-        dd.mat.set(3,2, 0.0);
-        dd.mat.set(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])));
-        dd.mat.set(3,4, 0.0);
-        dd.mat.set(3,5, 0.0);
+        unsafe { dd.mat.set_unchecked(3,0, s*(2.0*(a[3]*b[0] + a[0]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(2.0*(a[3]*b[1] + a[1]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(3,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(3,4, 0.0); }
+        unsafe { dd.mat.set_unchecked(3,5, 0.0); }
 
-        dd.mat.set(4,0, 0.0);
-        dd.mat.set(4,1, 0.0);
-        dd.mat.set(4,2, 0.0);
-        dd.mat.set(4,3, 0.0);
-        dd.mat.set(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2])));
-        dd.mat.set(4,5, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3])));
+        unsafe { dd.mat.set_unchecked(4,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2]))); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3]))); }
 
-        dd.mat.set(5,0, 0.0);
-        dd.mat.set(5,1, 0.0);
-        dd.mat.set(5,2, 0.0);
-        dd.mat.set(5,3, 0.0);
-        dd.mat.set(5,4, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3])));
-        dd.mat.set(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2])));
+        unsafe { dd.mat.set_unchecked(5,0, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,1, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,2, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,3, 0.0); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2]))); }
     } else if dim == 6 {
-        dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
-        dd.mat.set(0,1, s*(2.0*a[3]*b[3]));
-        dd.mat.set(0,2, s*(2.0*a[5]*b[5]));
-        dd.mat.set(0,3, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
-        dd.mat.set(0,4, s*(SQRT_2*(a[5]*b[3] + a[3]*b[5])));
-        dd.mat.set(0,5, s*(2.0*(a[5]*b[0] + a[0]*b[5])));
+        unsafe { dd.mat.set_unchecked(0,0, s*(4.0*a[0]*b[0])); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(2.0*a[3]*b[3])); }
+        unsafe { dd.mat.set_unchecked(0,2, s*(2.0*a[5]*b[5])); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(2.0*(a[3]*b[0] + a[0]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(0,4, s*(SQRT_2*(a[5]*b[3] + a[3]*b[5]))); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(2.0*(a[5]*b[0] + a[0]*b[5]))); }
 
-        dd.mat.set(1,0, s*(2.0*a[3]*b[3]));
-        dd.mat.set(1,1, s*(4.0*a[1]*b[1]));
-        dd.mat.set(1,2, s*(2.0*a[4]*b[4]));
-        dd.mat.set(1,3, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
-        dd.mat.set(1,4, s*(2.0*(a[4]*b[1] + a[1]*b[4])));
-        dd.mat.set(1,5, s*(SQRT_2*(a[4]*b[3] + a[3]*b[4])));
+        unsafe { dd.mat.set_unchecked(1,0, s*(2.0*a[3]*b[3])); }
+        unsafe { dd.mat.set_unchecked(1,1, s*(4.0*a[1]*b[1])); }
+        unsafe { dd.mat.set_unchecked(1,2, s*(2.0*a[4]*b[4])); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(2.0*(a[3]*b[1] + a[1]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(2.0*(a[4]*b[1] + a[1]*b[4]))); }
+        unsafe { dd.mat.set_unchecked(1,5, s*(SQRT_2*(a[4]*b[3] + a[3]*b[4]))); }
 
-        dd.mat.set(2,0, s*(2.0*a[5]*b[5]));
-        dd.mat.set(2,1, s*(2.0*a[4]*b[4]));
-        dd.mat.set(2,2, s*(4.0*a[2]*b[2]));
-        dd.mat.set(2,3, s*(SQRT_2*(a[5]*b[4] + a[4]*b[5])));
-        dd.mat.set(2,4, s*(2.0*(a[4]*b[2] + a[2]*b[4])));
-        dd.mat.set(2,5, s*(2.0*(a[5]*b[2] + a[2]*b[5])));
+        unsafe { dd.mat.set_unchecked(2,0, s*(2.0*a[5]*b[5])); }
+        unsafe { dd.mat.set_unchecked(2,1, s*(2.0*a[4]*b[4])); }
+        unsafe { dd.mat.set_unchecked(2,2, s*(4.0*a[2]*b[2])); }
+        unsafe { dd.mat.set_unchecked(2,3, s*(SQRT_2*(a[5]*b[4] + a[4]*b[5]))); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(2.0*(a[4]*b[2] + a[2]*b[4]))); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(2.0*(a[5]*b[2] + a[2]*b[5]))); }
 
-        dd.mat.set(3,0, s*(2.0*(a[3]*b[0] + a[0]*b[3])));
-        dd.mat.set(3,1, s*(2.0*(a[3]*b[1] + a[1]*b[3])));
-        dd.mat.set(3,2, s*(SQRT_2*(a[5]*b[4] + a[4]*b[5])));
-        dd.mat.set(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])));
-        dd.mat.set(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5]));
-        dd.mat.set(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5]));
+        unsafe { dd.mat.set_unchecked(3,0, s*(2.0*(a[3]*b[0] + a[0]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(2.0*(a[3]*b[1] + a[1]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(3,2, s*(SQRT_2*(a[5]*b[4] + a[4]*b[5]))); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3]))); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])); }
 
-        dd.mat.set(4,0, s*(SQRT_2*(a[5]*b[3] + a[3]*b[5])));
-        dd.mat.set(4,1, s*(2.0*(a[4]*b[1] + a[1]*b[4])));
-        dd.mat.set(4,2, s*(2.0*(a[4]*b[2] + a[2]*b[4])));
-        dd.mat.set(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5]));
-        dd.mat.set(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])));
-        dd.mat.set(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5]));
+        unsafe { dd.mat.set_unchecked(4,0, s*(SQRT_2*(a[5]*b[3] + a[3]*b[5]))); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(2.0*(a[4]*b[1] + a[1]*b[4]))); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(2.0*(a[4]*b[2] + a[2]*b[4]))); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4]))); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])); }
 
-        dd.mat.set(5,0, s*(2.0*(a[5]*b[0] + a[0]*b[5])));
-        dd.mat.set(5,1, s*(SQRT_2*(a[4]*b[3] + a[3]*b[4])));
-        dd.mat.set(5,2, s*(2.0*(a[5]*b[2] + a[2]*b[5])));
-        dd.mat.set(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5]));
-        dd.mat.set(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5]));
-        dd.mat.set(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])));
+        unsafe { dd.mat.set_unchecked(5,0, s*(2.0*(a[5]*b[0] + a[0]*b[5]))); }
+        unsafe { dd.mat.set_unchecked(5,1, s*(SQRT_2*(a[4]*b[3] + a[3]*b[4]))); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(2.0*(a[5]*b[2] + a[2]*b[5]))); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5]))); }
     } else {
-        dd.mat.set(0,0, s*(4.0*a[0]*b[0]));
-        dd.mat.set(0,1, s*(2.0*(a[3] + a[6])*(b[3] + b[6])));
-        dd.mat.set(0,2, s*(2.0*(a[5] + a[8])*(b[5] + b[8])));
-        dd.mat.set(0,3, s*(2.0*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))));
-        dd.mat.set(0,4, s*(SQRT_2*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))));
-        dd.mat.set(0,5, s*(2.0*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))));
+        unsafe { dd.mat.set_unchecked(0,0, s*(4.0*a[0]*b[0])); }
+        unsafe { dd.mat.set_unchecked(0,1, s*(2.0*(a[3] + a[6])*(b[3] + b[6]))); }
+        unsafe { dd.mat.set_unchecked(0,2, s*(2.0*(a[5] + a[8])*(b[5] + b[8]))); }
+        unsafe { dd.mat.set_unchecked(0,3, s*(2.0*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6])))); }
+        unsafe { dd.mat.set_unchecked(0,4, s*(SQRT_2*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8])))); }
+        unsafe { dd.mat.set_unchecked(0,5, s*(2.0*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8])))); }
 
-        dd.mat.set(1,0, s*(2.0*(a[3] - a[6])*(b[3] - b[6])));
-        dd.mat.set(1,1, s*(4.0*a[1]*b[1]));
-        dd.mat.set(1,2, s*(2.0*(a[4] + a[7])*(b[4] + b[7])));
-        dd.mat.set(1,3, s*(2.0*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))));
-        dd.mat.set(1,4, s*(2.0*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))));
-        dd.mat.set(1,5, s*(SQRT_2*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))));
+        unsafe { dd.mat.set_unchecked(1,0, s*(2.0*(a[3] - a[6])*(b[3] - b[6]))); }
+        unsafe { dd.mat.set_unchecked(1,1, s*(4.0*a[1]*b[1])); }
+        unsafe { dd.mat.set_unchecked(1,2, s*(2.0*(a[4] + a[7])*(b[4] + b[7]))); }
+        unsafe { dd.mat.set_unchecked(1,3, s*(2.0*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6])))); }
+        unsafe { dd.mat.set_unchecked(1,4, s*(2.0*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7])))); }
+        unsafe { dd.mat.set_unchecked(1,5, s*(SQRT_2*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7])))); }
 
-        dd.mat.set(2,0, s*(2.0*(a[5] - a[8])*(b[5] - b[8])));
-        dd.mat.set(2,1, s*(2.0*(a[4] - a[7])*(b[4] - b[7])));
-        dd.mat.set(2,2, s*(4.0*a[2]*b[2]));
-        dd.mat.set(2,3, s*(SQRT_2*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))));
-        dd.mat.set(2,4, s*(2.0*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))));
-        dd.mat.set(2,5, s*(2.0*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))));
+        unsafe { dd.mat.set_unchecked(2,0, s*(2.0*(a[5] - a[8])*(b[5] - b[8]))); }
+        unsafe { dd.mat.set_unchecked(2,1, s*(2.0*(a[4] - a[7])*(b[4] - b[7]))); }
+        unsafe { dd.mat.set_unchecked(2,2, s*(4.0*a[2]*b[2])); }
+        unsafe { dd.mat.set_unchecked(2,3, s*(SQRT_2*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8])))); }
+        unsafe { dd.mat.set_unchecked(2,4, s*(2.0*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7])))); }
+        unsafe { dd.mat.set_unchecked(2,5, s*(2.0*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8])))); }
 
-        dd.mat.set(3,0, s*(2.0*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))));
-        dd.mat.set(3,1, s*(2.0*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))));
-        dd.mat.set(3,2, s*(SQRT_2*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))));
-        dd.mat.set(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])));
-        dd.mat.set(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8])));
-        dd.mat.set(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8])));
+        unsafe { dd.mat.set_unchecked(3,0, s*(2.0*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6])))); }
+        unsafe { dd.mat.set_unchecked(3,1, s*(2.0*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6])))); }
+        unsafe { dd.mat.set_unchecked(3,2, s*(SQRT_2*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8])))); }
+        unsafe { dd.mat.set_unchecked(3,3, s*(2.0*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6]))); }
+        unsafe { dd.mat.set_unchecked(3,4, s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))); }
+        unsafe { dd.mat.set_unchecked(3,5, s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))); }
 
-        dd.mat.set(4,0, s*(SQRT_2*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))));
-        dd.mat.set(4,1, s*(2.0*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))));
-        dd.mat.set(4,2, s*(2.0*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))));
-        dd.mat.set(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8])));
-        dd.mat.set(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])));
-        dd.mat.set(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8])));
+        unsafe { dd.mat.set_unchecked(4,0, s*(SQRT_2*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8])))); }
+        unsafe { dd.mat.set_unchecked(4,1, s*(2.0*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7])))); }
+        unsafe { dd.mat.set_unchecked(4,2, s*(2.0*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7])))); }
+        unsafe { dd.mat.set_unchecked(4,3, s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))); }
+        unsafe { dd.mat.set_unchecked(4,4, s*(2.0*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7]))); }
+        unsafe { dd.mat.set_unchecked(4,5, s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))); }
 
-        dd.mat.set(5,0, s*(2.0*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))));
-        dd.mat.set(5,1, s*(SQRT_2*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))));
-        dd.mat.set(5,2, s*(2.0*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))));
-        dd.mat.set(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8])));
-        dd.mat.set(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8])));
-        dd.mat.set(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])));
+        unsafe { dd.mat.set_unchecked(5,0, s*(2.0*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8])))); }
+        unsafe { dd.mat.set_unchecked(5,1, s*(SQRT_2*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7])))); }
+        unsafe { dd.mat.set_unchecked(5,2, s*(2.0*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8])))); }
+        unsafe { dd.mat.set_unchecked(5,3, s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))); }
+        unsafe { dd.mat.set_unchecked(5,4, s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))); }
+        unsafe { dd.mat.set_unchecked(5,5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8]))); }
     }
 }
 

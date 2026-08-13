@@ -199,18 +199,18 @@ pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) {
     assert_eq!(d2.rep, Rep::Symmetric);
     assert!(sigma.rep.symmetric());
     d2.mat.fill(0.0);
-    d2.mat.set(0, 0, TWO_BY_3);
-    d2.mat.set(0, 1, -ONE_BY_3);
-    d2.mat.set(0, 2, -ONE_BY_3);
-    d2.mat.set(1, 0, -ONE_BY_3);
-    d2.mat.set(1, 1, TWO_BY_3);
-    d2.mat.set(1, 2, -ONE_BY_3);
-    d2.mat.set(2, 0, -ONE_BY_3);
-    d2.mat.set(2, 1, -ONE_BY_3);
-    d2.mat.set(2, 2, TWO_BY_3);
-    d2.mat.set(3, 3, 1.0);
-    d2.mat.set(4, 4, 1.0);
-    d2.mat.set(5, 5, 1.0);
+    unsafe { d2.mat.set_unchecked(0,0,TWO_BY_3); }
+    unsafe { d2.mat.set_unchecked(0,1,-ONE_BY_3); }
+    unsafe { d2.mat.set_unchecked(0,2,-ONE_BY_3); }
+    unsafe { d2.mat.set_unchecked(1,0,-ONE_BY_3); }
+    unsafe { d2.mat.set_unchecked(1,1,TWO_BY_3); }
+    unsafe { d2.mat.set_unchecked(1,2,-ONE_BY_3); }
+    unsafe { d2.mat.set_unchecked(2,0,-ONE_BY_3); }
+    unsafe { d2.mat.set_unchecked(2,1,-ONE_BY_3); }
+    unsafe { d2.mat.set_unchecked(2,2,TWO_BY_3); }
+    unsafe { d2.mat.set_unchecked(3,3,1.0); }
+    unsafe { d2.mat.set_unchecked(4,4,1.0); }
+    unsafe { d2.mat.set_unchecked(5,5,1.0); }
 }
 
 /// Holds auxiliary data to compute the second derivative of the J3 invariant

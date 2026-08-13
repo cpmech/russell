@@ -72,6 +72,9 @@
   - [(stat) Generate the Frechet distribution](#stat-generate-the-frechet-distribution)
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
+- [For developers](#for-developers)
+  - [russell\_lab — BLAS/LAPACK](#russell_lab--blaslapack)
+  - [russell\_sparse — sparse solvers](#russell_sparse--sparse-solvers)
 
 
 
@@ -1109,3 +1112,32 @@ fn main() -> Result<(), StrError> {
     - [x] Compile on Windows
     - [x] Study the compilation of MUMPS on Windows
     - [x] Write scripts to compile on Windows
+
+
+
+## For developers
+
+This section summarizes the `build.rs` files, which compile and link the non-Rust C (and CUDA) dependencies at build time.
+
+### russell_lab — BLAS/LAPACK
+
+`russell_lab/build.rs` compiles a single C shim (`c_code/interface_blas.c`) that wraps BLAS/LAPACK, selecting one of two paths via feature flags:
+
+- `intel_mkl` — builds against Intel oneAPI MKL: resolves `MKL_VERSION` (env var, default `latest`), adds `/opt/intel/oneapi/mkl/{version}` to the include path, defines `USE_INTEL_MKL`, and links `mkl_intel_lp64`, `mkl_intel_thread`, `mkl_core`, `pthread`, `m`, `dl`, `iomp5`.
+- OpenBLAS (default) — split by OS:
+  - Windows: locates headers/libraries via the `MSYS2_PREFIX` environment variable.
+  - Other OS: probes `pkg-config` (`probe_blas_lapack`), trying `openblas` first and then the `cblas` + `lapack` pair (Nix). Before trusting a probe, it verifies the headers (`cblas.h`, `lapack.h`) actually exist — this avoids the RHEL/Rocky case where `lapack.pc` exists but ships no `lapack.h`. It falls back to hardcoded Homebrew/system paths (filtered via `existing_dirs` to drop non-existent directories) and links the `openblas` and `lapack` shared libraries.
+
+Build-dependencies: `cc`, `pkg-config`.
+
+### russell_sparse — sparse solvers
+
+`russell_sparse/build.rs` compiles the C (and CUDA) shims for the sparse solvers. The build is additive: UMFPACK is always compiled and linked, MUMPS when `local_sparse` is enabled, and cuDSS when `cudss` is enabled:
+
+- Windows: uses `MSYS2_PREFIX`; the `cudss` feature has no effect here (cuDSS is only built on non-Windows platforms). When `local_sparse` is enabled, the static MUMPS libraries are linked (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`).
+- Other OS:
+  - Computes fallback include/library directories with `existing_dirs` (drops nonexistent paths to avoid shadowing, e.g., a Nix devShell).
+  - The `cudss` paths use `detect_cuda_arch` (env `CUDSS_CUDA_ARCH` → `nvidia-smi` → default `sm_89`) and `detect_cxx` (env `GCC_VERSION` → `gcc -dumpversion` → `g++`, or `g++-15` when gcc > 15), compiling the `.cu` files with `cc::Build::cuda(true)` and linking `cudart` and `cudss`.
+  - The default path (no `cudss`, no `local_sparse`) probes `pkg-config` for UMFPACK (trying both `UMFPACK` and `umfpack` spellings) before falling back.
+
+Build-dependencies: `cc`, `pkg-config`.

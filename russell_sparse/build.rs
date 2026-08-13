@@ -1,281 +1,47 @@
-fn main() {
-    #[cfg(target_os = "windows")]
-    {
-        let msys2_prefix = std::env::var("MSYS2_PREFIX").unwrap();
+//! This build script compiles the C (and CUDA) interfaces to the sparse
+//! solvers and emits the corresponding link directives.
+//!
+//! The interface files are small C/CUDA shims that wrap the external solver
+//! libraries (UMFPACK, MUMPS, and NVIDIA cuDSS) so that `russell_sparse` can
+//! call them through `extern "C"`.
+//!
+//! Two features control what is compiled and linked:
+//!
+//! * `local_sparse` -- enable MUMPS (in addition to UMFPACK). MUMPS must be
+//!   compiled and installed locally; its libraries are assumed to be reachable
+//!   through the fallback directories below.
+//! * `cudss` -- enable the NVIDIA cuDSS solver. This compiles the `.cu` files
+//!   with nvcc and links against `cudart` and `cudss`. cuDSS is only built on
+//!   non-Windows platforms (see [`compile_unix`]).
+//!
+//! UMFPACK is always compiled and linked, regardless of the features.
 
-        // cudss && local_sparse
-        #[cfg(all(feature = "cudss", feature = "local_sparse"))]
-        {
-            cc::Build::new()
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_umfpack.c")
-                .file("c_code/interface_mumps.c")
-                .include(&format!("{}/include/mumps", msys2_prefix))
-                .include(&format!("{}/include/suitesparse", msys2_prefix))
-                .compile("c_code");
-            println!("cargo:rustc-link-search=native={}/lib/mumps", msys2_prefix);
-            println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-            println!("cargo:rustc-link-lib=static=dmumps_cpmech");
-            println!("cargo:rustc-link-lib=static=zmumps_cpmech");
-            println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
-            println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
-            println!("cargo:rustc-link-lib=static=pord_cpmech");
-            println!("cargo:rustc-link-lib=dylib=gfortran");
-            println!("cargo:rustc-link-lib=dylib=gomp");
-            println!("cargo:rustc-link-lib=static=metis");
-        }
+// ----------------------------------------------------------------------------
+// Feature-independent helpers
+// ----------------------------------------------------------------------------
 
-        // not(cudss) && local_sparse
-        #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
-        {
-            cc::Build::new()
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_umfpack.c")
-                .file("c_code/interface_mumps.c")
-                .include(&format!("{}/include/mumps", msys2_prefix))
-                .include(&format!("{}/include/suitesparse", msys2_prefix))
-                .compile("c_code");
-            println!("cargo:rustc-link-search=native={}/lib/mumps", msys2_prefix);
-            println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-            println!("cargo:rustc-link-lib=static=dmumps_cpmech");
-            println!("cargo:rustc-link-lib=static=zmumps_cpmech");
-            println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
-            println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
-            println!("cargo:rustc-link-lib=static=pord_cpmech");
-            println!("cargo:rustc-link-lib=dylib=gfortran");
-            println!("cargo:rustc-link-lib=dylib=gomp");
-            println!("cargo:rustc-link-lib=static=metis");
-        }
-
-        // cudss && not(local_sparse)
-        #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
-        {
-            cc::Build::new()
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_umfpack.c")
-                .include(&format!("{}/include/suitesparse", msys2_prefix))
-                .compile("c_code");
-            println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-        }
-
-        // not(cudss) && not(local_sparse)
-        #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
-        {
-            cc::Build::new()
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_umfpack.c")
-                .include(&format!("{}/include/suitesparse", msys2_prefix))
-                .compile("c_code");
-            println!("cargo:rustc-link-search=native={}/lib", msys2_prefix);
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-        }
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        // Used only when `pkg-config` comes up empty: locally compiled
-        // SuiteSparse/MUMPS, Homebrew and cuDSS ship no `.pc` files.
-        // Directories that do not exist are dropped — apart from being noise,
-        // entries like `/usr/lib` can shadow what a Nix devShell provides.
-        let inc_dirs = existing_dirs(&[
-            "/opt/homebrew/include/suitesparse",
-            "/usr/include/suitesparse",
-            "/usr/local/include/mumps",
-            "/usr/local/include/suitesparse",
-            "/usr/local/cuda/include",
-            "/opt/cuda/include",
-            "/opt/libcudss/include",
-        ]);
-
-        let lib_dirs = existing_dirs(&[
-            "/opt/homebrew/lib",
-            "/usr/lib/x86_64-linux-gnu",
-            "/usr/lib",
-            "/usr/lib64",
-            "/usr/local/lib/mumps",
-            "/usr/local/lib/suitesparse",
-            "/usr/local/cuda/lib64",
-            "/opt/cuda/lib64",
-            "/opt/libcudss/lib",
-        ]);
-
-        // cudss && local_sparse
-        #[cfg(all(feature = "cudss", feature = "local_sparse"))]
-        {
-            let arch = detect_cuda_arch();
-            let cxx = detect_cxx();
-            unsafe {
-                std::env::set_var("CXX", &cxx);
-            }
-            cc::Build::new()
-                .cuda(true)
-                .cudart("static")
-                .flag(&format!("-arch={}", arch))
-                .file("c_code/interface_complex_cudss.cu")
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_cudss.cu")
-                .file("c_code/interface_umfpack.c")
-                .file("c_code/interface_mumps.c")
-                .includes(&inc_dirs)
-                .compile("c_code");
-            for d in &lib_dirs {
-                println!("cargo:rustc-link-search=native={}", *d);
-            }
-            println!("cargo:rustc-link-lib=cudart");
-            println!("cargo:rustc-link-lib=cudss");
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-            println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
-            println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
-        }
-
-        // not(cudss) && local_sparse
-        #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
-        {
-            cc::Build::new()
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_complex_mumps.c")
-                .file("c_code/interface_umfpack.c")
-                .file("c_code/interface_mumps.c")
-                .includes(&inc_dirs)
-                .compile("c_code");
-            for d in &lib_dirs {
-                println!("cargo:rustc-link-search=native={}", *d);
-            }
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-            println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
-            println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
-        }
-
-        // cudss && not(local_sparse)
-        #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
-        {
-            let arch = detect_cuda_arch();
-            let cxx = detect_cxx();
-            unsafe {
-                std::env::set_var("CXX", &cxx);
-            }
-            cc::Build::new()
-                .cuda(true)
-                .cudart("static")
-                .flag(&format!("-arch={}", arch))
-                .file("c_code/interface_complex_cudss.cu")
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_cudss.cu")
-                .file("c_code/interface_umfpack.c")
-                .includes(&inc_dirs)
-                .compile("c_code");
-            for d in &lib_dirs {
-                println!("cargo:rustc-link-search=native={}", *d);
-            }
-            println!("cargo:rustc-link-lib=cudart");
-            println!("cargo:rustc-link-lib=cudss");
-            println!("cargo:rustc-link-lib=dylib=umfpack");
-        }
-
-        // not(cudss) && not(local_sparse)
-        //
-        // "Option 1" from README.md: UMFPACK straight from the package
-        // manager. Ask pkg-config first, as that is how package managers
-        // publish their include/lib paths, and fall back to the paths above
-        // when it knows nothing about UMFPACK — nixpkgs' suitesparse, for
-        // one, ships no .pc files.
-        #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
-        {
-            let umfpack = probe_umfpack();
-
-            let mut build = cc::Build::new();
-            build
-                .file("c_code/interface_complex_umfpack.c")
-                .file("c_code/interface_umfpack.c");
-
-            match &umfpack {
-                Some(lib) => {
-                    for inc in &lib.include_paths {
-                        build.include(inc);
-                    }
-                }
-                None => {
-                    build.includes(&inc_dirs);
-                }
-            }
-            build.compile("c_code");
-
-            match umfpack {
-                Some(lib) => {
-                    // probe() has already emitted the link directives.
-                    let _ = lib;
-                }
-                None => {
-                    for d in &lib_dirs {
-                        println!("cargo:rustc-link-search=native={}", *d);
-                    }
-                    println!("cargo:rustc-link-lib=dylib=umfpack");
-                }
-            }
-        }
-    }
-}
-
-/// Keeps only the directories that exist, so the fallback does not litter the
-/// command line with `-I`/`-L` entries pointing nowhere.
-#[cfg(not(target_os = "windows"))]
-fn existing_dirs(dirs: &[&str]) -> Vec<String> {
-    dirs.iter()
-        .filter(|d| std::path::Path::new(d).is_dir())
-        .map(|d| d.to_string())
-        .collect()
-}
-
-/// Asks `pkg-config` for UMFPACK, which pulls in AMD, CHOLMOD and friends via
-/// `Requires.private`.
-///
-/// Both spellings are tried because SuiteSparse is inconsistent about it:
-/// Debian, Arch and upstream's own `make install` write `UMFPACK.pc`, while
-/// some setups use lowercase. `None` means pkg-config is missing or does not
-/// know UMFPACK under either name.
-#[cfg(all(not(target_os = "windows"), not(feature = "cudss"), not(feature = "local_sparse")))]
-fn probe_umfpack() -> Option<pkg_config::Library> {
-    for name in ["UMFPACK", "umfpack"] {
-        match pkg_config::Config::new().probe(name) {
-            Ok(lib) => return Some(lib),
-            // The library just isn't known under this name; try the other spelling.
-            Err(pkg_config::Error::ProbeFailure { .. }) | Err(pkg_config::Error::Failure { .. }) => continue,
-            // pkg-config itself is missing, or cross-compiling without a sysroot:
-            // retrying with a different library name would not help.
-            Err(_) => break,
-        }
-    }
-    None
-}
-
-/// Returns the CXX compiler to use for cuDSS compilation.
+/// Returns the C++ compiler to use when compiling CUDA sources.
 ///
 /// Resolution order:
-/// 1. If `GCC_VERSION` env var is set, use `g++-{version}`
-/// 2. Auto-detect via `gcc -dumpversion`
-/// 3. If the detected version > 15, fall back to `g++-15`
-/// 4. Otherwise (version ≤ 15), use the system `g++`
+/// 1. `GCC_VERSION` environment variable (e.g., "15")
+/// 2. The major version reported by `gcc -dumpversion`
+/// 3. `g++` (if the detected version is ≤ 15) or `g++-15` (if it is > 15)
+///
+/// The `g++-15` fallback works around nvcc not supporting the newest GCC.
 #[cfg(feature = "cudss")]
 fn detect_cxx() -> String {
-    let version: u32 = if let Ok(ver_str) = std::env::var("GCC_VERSION") {
-        ver_str.parse().unwrap_or(0)
+    let version: u32 = if let Ok(v) = std::env::var("GCC_VERSION") {
+        v.parse().unwrap_or(0)
     } else {
         let output = std::process::Command::new("gcc")
             .arg("-dumpversion")
             .output()
             .ok()
-            .and_then(|o| if o.status.success() { Some(o) } else { None });
+            .filter(|o| o.status.success());
         if let Some(output) = output {
-            let ver_str = String::from_utf8_lossy(&output.stdout);
-            let ver_str = ver_str.trim();
-            // gcc -dumpversion may return "14.2.1" — take the major version
-            ver_str.split('.').next().unwrap_or("0").parse().unwrap_or(0)
+            let ver = String::from_utf8_lossy(&output.stdout);
+            // "gcc -dumpversion" may report "14.2.1"; keep only the major version.
+            ver.trim().split('.').next().unwrap_or("0").parse().unwrap_or(0)
         } else {
             0
         }
@@ -291,8 +57,8 @@ fn detect_cxx() -> String {
 ///
 /// Resolution order:
 /// 1. `CUDSS_CUDA_ARCH` environment variable (e.g., "sm_90")
-/// 2. Auto-detected from `nvidia-smi` (maps "9.0" → "sm_90")
-/// 3. Defaults to "sm_89" (Ada Lovelace / RTX 40-series)
+/// 2. The compute capability reported by `nvidia-smi` ("9.0" → "sm_90")
+/// 3. "sm_89" (Ada Lovelace / RTX 40-series)
 #[cfg(feature = "cudss")]
 fn detect_cuda_arch() -> String {
     if let Ok(arch) = std::env::var("CUDSS_CUDA_ARCH") {
@@ -308,10 +74,223 @@ fn detect_cuda_arch() -> String {
             let cap = String::from_utf8_lossy(&output.stdout);
             let cap = cap.trim();
             if !cap.is_empty() {
-                let sm = cap.replace('.', "");
-                return format!("sm_{}", sm);
+                return format!("sm_{}", cap.replace('.', ""));
             }
         }
     }
     "sm_89".to_string()
+}
+
+/// Asks `pkg-config` for UMFPACK, which pulls in AMD, CHOLMOD and friends via
+/// `Requires.private`.
+///
+/// Both spellings are tried because SuiteSparse is inconsistent about it:
+/// Debian, Arch and upstream's own `make install` write `UMFPACK.pc`, while
+/// some setups use lowercase. Returns `None` if pkg-config is missing or does
+/// not know UMFPACK under either name.
+#[cfg(all(not(target_os = "windows"), not(feature = "cudss"), not(feature = "local_sparse")))]
+fn probe_umfpack() -> Option<pkg_config::Library> {
+    for name in ["UMFPACK", "umfpack"] {
+        match pkg_config::Config::new().probe(name) {
+            Ok(lib) => return Some(lib),
+            // The library isn't known under this name; try the other spelling.
+            Err(pkg_config::Error::ProbeFailure { .. }) | Err(pkg_config::Error::Failure { .. }) => continue,
+            // pkg-config is missing, or cross-compiling without a sysroot:
+            // retrying with a different name would not help.
+            Err(_) => break,
+        }
+    }
+    None
+}
+
+/// Keeps only the directories that actually exist.
+///
+/// Apart from reducing command-line noise, this avoids entries such as
+/// `/usr/lib` shadowing what a Nix devShell provides.
+#[cfg(not(target_os = "windows"))]
+fn existing_dirs(dirs: &[&str]) -> Vec<String> {
+    dirs.iter()
+        .filter(|d| std::path::Path::new(d).is_dir())
+        .map(|d| d.to_string())
+        .collect()
+}
+
+// ----------------------------------------------------------------------------
+// Windows (MSYS2)
+// ----------------------------------------------------------------------------
+
+/// Compiles the sparse interfaces on Windows (MSYS2).
+///
+/// The `MSYS2_PREFIX` environment variable must point at the MSYS2 root.
+///
+/// **Note:** the `cudss` feature has no effect on Windows -- cuDSS is only
+/// built on non-Windows platforms.
+#[cfg(target_os = "windows")]
+fn compile_windows() {
+    let prefix = std::env::var("MSYS2_PREFIX").expect("MSYS2_PREFIX environment variable not set");
+
+    let mut build = cc::Build::new();
+
+    // --- source files -----------------------------------------------------
+    // UMFPACK is always compiled; MUMPS only with `local_sparse`.
+    build.file("c_code/interface_complex_umfpack.c");
+    build.file("c_code/interface_umfpack.c");
+    #[cfg(feature = "local_sparse")]
+    {
+        build.file("c_code/interface_complex_mumps.c");
+        build.file("c_code/interface_mumps.c");
+    }
+
+    // --- include directories ---------------------------------------------
+    build.include(format!("{}/include/suitesparse", prefix));
+    #[cfg(feature = "local_sparse")]
+    {
+        build.include(format!("{}/include/mumps", prefix));
+    }
+
+    // --- compile ----------------------------------------------------------
+    build.compile("c_code");
+
+    // --- link -------------------------------------------------------------
+    println!("cargo:rustc-link-search=native={}/lib", prefix);
+    println!("cargo:rustc-link-lib=dylib=umfpack");
+    #[cfg(feature = "local_sparse")]
+    {
+        println!("cargo:rustc-link-search=native={}/lib/mumps", prefix);
+        // MUMPS (compiled locally with the `_cpmech` suffix) and its dependencies.
+        println!("cargo:rustc-link-lib=static=dmumps_cpmech");
+        println!("cargo:rustc-link-lib=static=zmumps_cpmech");
+        println!("cargo:rustc-link-lib=static=mumps_common_cpmech");
+        println!("cargo:rustc-link-lib=static=mpiseq_cpmech");
+        println!("cargo:rustc-link-lib=static=pord_cpmech");
+        println!("cargo:rustc-link-lib=dylib=gfortran");
+        println!("cargo:rustc-link-lib=dylib=gomp");
+        println!("cargo:rustc-link-lib=static=metis");
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Unix (Linux/macOS)
+// ----------------------------------------------------------------------------
+
+/// Fallback include directories, used when pkg-config knows nothing about the
+/// libraries (locally compiled SuiteSparse/MUMPS, Homebrew, and cuDSS all ship
+/// no `.pc` files). Nonexistent directories are dropped by [`existing_dirs`].
+#[cfg(not(target_os = "windows"))]
+const INCLUDE_DIRS: &[&str] = &[
+    "/opt/homebrew/include/suitesparse",
+    "/usr/include/suitesparse",
+    "/usr/local/include/mumps",
+    "/usr/local/include/suitesparse",
+    "/usr/local/cuda/include",
+    "/opt/cuda/include",
+    "/opt/libcudss/include",
+];
+
+/// Fallback library directories (see [`INCLUDE_DIRS`]).
+#[cfg(not(target_os = "windows"))]
+const LIB_DIRS: &[&str] = &[
+    "/opt/homebrew/lib",
+    "/usr/lib/x86_64-linux-gnu",
+    "/usr/lib",
+    "/usr/lib64",
+    "/usr/local/lib/mumps",
+    "/usr/local/lib/suitesparse",
+    "/usr/local/cuda/lib64",
+    "/opt/cuda/lib64",
+    "/opt/libcudss/lib",
+];
+
+/// Compiles the sparse interfaces on non-Windows platforms.
+#[cfg(not(target_os = "windows"))]
+fn compile_unix() {
+    let inc_dirs = existing_dirs(INCLUDE_DIRS);
+    let lib_dirs = existing_dirs(LIB_DIRS);
+
+    // In the default setup ("Option 1" in README.md: UMFPACK from the package
+    // manager), pkg-config is authoritative. With `local_sparse` or `cudss`,
+    // the libraries are compiled/installed outside pkg-config's view, so the
+    // fallback directories are always used.
+    #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
+    let umfpack = probe_umfpack();
+    #[cfg(any(feature = "cudss", feature = "local_sparse"))]
+    let umfpack: Option<pkg_config::Library> = None;
+
+    let mut build = cc::Build::new();
+
+    // --- source files -----------------------------------------------------
+    // UMFPACK: always compiled.
+    build.file("c_code/interface_complex_umfpack.c");
+    build.file("c_code/interface_umfpack.c");
+    // MUMPS: only with `local_sparse`.
+    #[cfg(feature = "local_sparse")]
+    {
+        build.file("c_code/interface_complex_mumps.c");
+        build.file("c_code/interface_mumps.c");
+    }
+    // cuDSS: only with `cudss` (requires nvcc and a compatible C++ compiler).
+    #[cfg(feature = "cudss")]
+    {
+        let arch = detect_cuda_arch();
+        let cxx = detect_cxx();
+        // The cc crate drives nvcc, which needs a host C++ compiler it supports.
+        unsafe {
+            std::env::set_var("CXX", &cxx);
+        }
+        build
+            .cuda(true)
+            .cudart("static")
+            .flag(&format!("-arch={}", arch))
+            .file("c_code/interface_complex_cudss.cu")
+            .file("c_code/interface_cudss.cu");
+    }
+
+    // --- include directories ---------------------------------------------
+    match &umfpack {
+        Some(lib) => {
+            for inc in &lib.include_paths {
+                build.include(inc);
+            }
+        }
+        None => {
+            build.includes(&inc_dirs);
+        }
+    }
+
+    // --- compile ----------------------------------------------------------
+    build.compile("c_code");
+
+    // --- link -------------------------------------------------------------
+    // When pkg-config found UMFPACK it already emitted the link directives;
+    // otherwise (fallback, or with `local_sparse`/`cudss`) emit them manually.
+    if umfpack.is_none() {
+        for d in &lib_dirs {
+            println!("cargo:rustc-link-search=native={}", d);
+        }
+        println!("cargo:rustc-link-lib=dylib=umfpack");
+    }
+    // MUMPS.
+    #[cfg(feature = "local_sparse")]
+    {
+        println!("cargo:rustc-link-lib=dylib=dmumps_cpmech");
+        println!("cargo:rustc-link-lib=dylib=zmumps_cpmech");
+    }
+    // cuDSS.
+    #[cfg(feature = "cudss")]
+    {
+        println!("cargo:rustc-link-lib=cudart");
+        println!("cargo:rustc-link-lib=cudss");
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Entry point
+// ----------------------------------------------------------------------------
+
+fn main() {
+    #[cfg(target_os = "windows")]
+    compile_windows();
+
+    #[cfg(not(target_os = "windows"))]
+    compile_unix();
 }

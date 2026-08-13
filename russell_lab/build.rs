@@ -1,19 +1,36 @@
+//! This build script compiles and links `c_code/interface_blas.c`, the C shim
+//! that exposes BLAS/LAPACK to `russell_lab`.
+//!
+//! Two backends are supported, selected at compile time via the `intel_mkl`
+//! feature:
+//!
+//! * `intel_mkl` -- link against Intel oneAPI MKL (statically).
+//! * OpenBLAS (default) -- resolved via pkg-config when possible, with a
+//!   fallback to hardcoded paths (mainly for Homebrew, where the `.pc` files
+//!   are keg-only).
+
+/// Default MKL version used when the `MKL_VERSION` environment variable is unset.
 #[cfg(feature = "intel_mkl")]
 const MKL_VERSION: &str = "latest";
 
-// Intel MKL
+/// Compiles and links against Intel oneAPI MKL.
 #[cfg(feature = "intel_mkl")]
 fn compile_blas() {
-    let mkl_version = std::env::var("MKL_VERSION").unwrap_or_else(|_| MKL_VERSION.to_string());
-    let mkl_root = format!("/opt/intel/oneapi/mkl/{}", mkl_version);
-    let iomp_root = format!("/opt/intel/oneapi/compiler/{}", mkl_version);
+    // Allow overriding the MKL/compiler version via the environment (e.g., "2024.2.0").
+    let version = std::env::var("MKL_VERSION").unwrap_or_else(|_| MKL_VERSION.to_string());
+    let mkl_root = format!("/opt/intel/oneapi/mkl/{}", version);
+    let compiler_root = format!("/opt/intel/oneapi/compiler/{}", version);
+
     cc::Build::new()
         .file("c_code/interface_blas.c")
         .include(format!("{}/include", mkl_root))
         .define("USE_INTEL_MKL", None)
         .compile("c_code_interface_blas");
+
+    // MKL's own library dir, the compiler's library dir (for the OpenMP runtime
+    // `libiomp5`), and a few system libraries.
     println!("cargo:rustc-link-search=native={}/lib/intel64", mkl_root);
-    println!("cargo:rustc-link-search=native={}/lib", iomp_root);
+    println!("cargo:rustc-link-search=native={}/lib", compiler_root);
     println!("cargo:rustc-link-lib=static=mkl_intel_lp64");
     println!("cargo:rustc-link-lib=static=mkl_intel_thread");
     println!("cargo:rustc-link-lib=static=mkl_core");
@@ -23,21 +40,18 @@ fn compile_blas() {
     println!("cargo:rustc-link-lib=iomp5");
 }
 
-// OpenBLAS
+/// Compiles and links against OpenBLAS (and LAPACK).
 #[cfg(not(feature = "intel_mkl"))]
 fn compile_blas() {
     #[cfg(target_os = "windows")]
     {
-        let msys2_prefix = std::env::var("MSYS2_PREFIX").expect("MSYS2_PREFIX environment variable not set");
-        let include_path = format!("{}/include/openblas", msys2_prefix);
-        let lib_path = format!("{}/lib", msys2_prefix);
-
+        // On Windows (MSYS2), everything lives under `MSYS2_PREFIX`.
+        let prefix = std::env::var("MSYS2_PREFIX").expect("MSYS2_PREFIX environment variable not set");
         cc::Build::new()
             .file("c_code/interface_blas.c")
-            .include(&include_path)
+            .include(format!("{}/include/openblas", prefix))
             .compile("c_code_interface_blas");
-
-        println!("cargo:rustc-link-search=native={}", lib_path);
+        println!("cargo:rustc-link-search=native={}/lib", prefix);
         println!("cargo:rustc-link-lib=dylib=openblas");
     }
 
@@ -47,6 +61,7 @@ fn compile_blas() {
         build.file("c_code/interface_blas.c");
 
         match probe_blas_lapack() {
+            // pkg-config knows the answer: use its include/link information.
             Some(found) => {
                 for inc in &found.include_paths {
                     build.include(inc);
@@ -59,31 +74,44 @@ fn compile_blas() {
                     println!("cargo:rustc-link-lib=dylib={}", lib);
                 }
             }
+            // Fallback for setups pkg-config knows nothing about (mainly
+            // Homebrew, where openblas/lapack are keg-only and their `.pc`
+            // files are off the default PKG_CONFIG_PATH).
             None => {
-                // For setups pkg-config knows nothing about, mainly Homebrew:
-                // openblas and lapack are keg-only there, so their .pc files
-                // are off the default `PKG_CONFIG_PATH`.
-                build.includes(&[
+                let inc_dirs = existing_dirs(&[
                     "/usr/include/openblas",
                     "/opt/homebrew/opt/lapack/include",
                     "/opt/homebrew/opt/openblas/include",
                     "/usr/local/opt/lapack/include",
                     "/usr/local/opt/openblas/include",
                 ]);
-                build.compile("c_code_interface_blas");
-                for d in &[
+                let lib_dirs = existing_dirs(&[
                     "/opt/homebrew/opt/lapack/lib",
                     "/opt/homebrew/opt/openblas/lib",
                     "/usr/local/opt/lapack/lib",
                     "/usr/local/opt/openblas/lib",
-                ] {
-                    println!("cargo:rustc-link-search=native={}", *d);
+                ]);
+                build.includes(&inc_dirs);
+                build.compile("c_code_interface_blas");
+                for d in &lib_dirs {
+                    println!("cargo:rustc-link-search=native={}", d);
                 }
                 println!("cargo:rustc-link-lib=dylib=openblas");
                 println!("cargo:rustc-link-lib=dylib=lapack");
             }
         }
     }
+}
+
+/// Keeps only the directories that actually exist, so the fallback does not
+/// emit `-I`/`-L` flags pointing at non-existent directories (e.g., on a Mac
+/// where Homebrew lives under `/opt/homebrew` rather than `/usr/local`).
+#[cfg(all(not(target_os = "windows"), not(feature = "intel_mkl")))]
+fn existing_dirs(dirs: &[&str]) -> Vec<String> {
+    dirs.iter()
+        .filter(|d| std::path::Path::new(d).is_dir())
+        .map(|d| d.to_string())
+        .collect()
 }
 
 /// The include/link information needed to build and link `interface_blas.c`.

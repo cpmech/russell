@@ -3,7 +3,7 @@
 //
 //   1. mat_inverse            -- LAPACK dgetrf/dgetri (analytic formulas for n <= 3)
 //   2. small_mat_inv          -- Gauss-Jordan with partial (row) pivoting (pure Rust)
-//   3. num_recipes_gaussj_inv -- Gauss-Jordan with full pivoting (Numerical Recipes, compiled C)
+//   3. num_recipes_gaussj_inv -- Gauss-Jordan with full pivoting (Numerical Recipes, pure Rust)
 //
 // All three invert the same diagonally dominant matrix (diag = n + 1, off-diagonal = 1),
 // which is guaranteed to be non-singular. A macro generates one benchmark per N for the

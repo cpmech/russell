@@ -36,3 +36,7 @@ harness = false
 [[bench]]
 name = "small_mat_inv_benchmark"
 harness = false
+
+[[bench]]
+name = "small_ops_benchmark"
+harness = false

@@ -185,16 +185,6 @@ fn headers_available(include_paths: &[std::path::PathBuf]) -> bool {
     })
 }
 
-/// Compiles and links `c_code/num_recipes_gaussj.c`, a small pure-C utility
-/// (Gauss-Jordan elimination with full pivoting from Numerical Recipes) that is
-/// independent of the BLAS/LAPACK backend.
-fn compile_num_recipes_gaussj() {
-    cc::Build::new()
-        .file("c_code/num_recipes_gaussj.c")
-        .compile("c_code_num_recipes_gaussj");
-}
-
 fn main() {
     compile_blas();
-    compile_num_recipes_gaussj();
 }

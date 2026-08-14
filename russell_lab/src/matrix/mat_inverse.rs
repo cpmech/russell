@@ -32,6 +32,8 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///
 /// And: <https://www.netlib.org/lapack/explore-html/df/da4/dgetri_8f.html>
 ///
+/// See also: [`crate::small_mat_inv`] (the stack-allocated counterpart).
+///
 /// # Output
 ///
 /// * `ai` -- (m,m) inverse matrix

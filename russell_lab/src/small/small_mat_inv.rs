@@ -1,4 +1,6 @@
+use super::SmallMatrix;
 use crate::StrError;
+use num_traits::{Float, cast};
 
 /// Zero-determinant tolerance used to detect a singular matrix
 const ZERO_DETERMINANT: f64 = 1e-15;
@@ -20,9 +22,15 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// * `n` -- the dimension of the (active) square matrix to invert; must satisfy
 ///   `n ≤ N`.
 ///
+/// See also: [`crate::mat_inverse`] (the heap-allocated counterpart).
+///
+/// # Panics
+///
+/// A panic will occur if `n > N`.
+///
 /// # Errors
 ///
-/// Returns an error if `n > N` or if the matrix is singular.
+/// Returns an error if the matrix is singular.
 ///
 /// # Examples
 ///
@@ -30,7 +38,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// use russell_lab::{small_mat_inv, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let a = [
+///     let a: [[f64; 3]; 3] = [
 ///         [1.0, 2.0, 3.0],
 ///         [0.0, 4.0, 5.0],
 ///         [1.0, 0.0, 6.0],
@@ -51,26 +59,34 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///     Ok(())
 /// }
 /// ```
-pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], n: usize) -> Result<(), StrError> {
+pub fn small_mat_inv<T, const N: usize>(
+    ai: &mut SmallMatrix<T, N>,
+    a: &SmallMatrix<T, N>,
+    n: usize,
+) -> Result<(), StrError>
+where
+    T: Float,
+{
     // Check dimension
-    if n > N {
-        return Err("n must be <= N");
-    }
+    assert!(n <= N, "n must be <= N");
+
+    // convert the zero-determinant tolerance to the working type
+    let zero_determinant: T = cast(ZERO_DETERMINANT).unwrap();
 
     // Analytical solution for a 1×1 matrix
     if n == 1 {
         let det = a[0][0];
-        if det.abs() <= ZERO_DETERMINANT {
+        if det.abs() <= zero_determinant {
             return Err("matrix is singular");
         }
-        ai[0][0] = 1.0 / det;
+        ai[0][0] = T::one() / det;
         return Ok(());
     }
 
     // Analytical solution for a 2×2 matrix
     if n == 2 {
         let det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
-        if det.abs() <= ZERO_DETERMINANT {
+        if det.abs() <= zero_determinant {
             return Err("matrix is singular");
         }
         ai[0][0] = a[1][1] / det;
@@ -84,7 +100,7 @@ pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], 
     if n == 3 {
         let det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
             + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
-        if det.abs() <= ZERO_DETERMINANT {
+        if det.abs() <= zero_determinant {
             return Err("matrix is singular");
         }
         ai[0][0] = (a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det;
@@ -106,9 +122,9 @@ pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], 
     let mut a_work = *a;
     for i in 0..n {
         for j in 0..n {
-            ai[i][j] = 0.0;
+            ai[i][j] = T::zero();
         }
-        ai[i][i] = 1.0;
+        ai[i][i] = T::one();
     }
 
     for k in 0..n {
@@ -124,7 +140,7 @@ pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], 
         }
 
         // Check for singularity
-        if max_value <= ZERO_DETERMINANT {
+        if max_value <= zero_determinant {
             return Err("matrix is singular");
         }
 
@@ -141,16 +157,16 @@ pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], 
         let row_a = &mut a_work[k];
         let row_ai = &mut ai[k];
         for j in 0..n {
-            row_a[j] /= pivot;
-            row_ai[j] /= pivot;
+            row_a[j] = row_a[j] / pivot;
+            row_ai[j] = row_ai[j] / pivot;
         }
-        row_a[k] = 1.0;
+        row_a[k] = T::one();
 
         // Eliminate the pivot column from all other rows (in both sides)
         for i in 0..n {
             if i != k {
                 let factor = a_work[i][k];
-                if factor != 0.0 {
+                if factor != T::zero() {
                     // Extracting slice references allows LLVM to eliminate bounds checks
                     // and safely apply target SIMD instructions (AVX2/AVX-512)
                     let (target_a, source_a) = if i < k {
@@ -170,10 +186,10 @@ pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], 
                     };
 
                     for j in 0..n {
-                        target_a[j] -= factor * source_a[j];
-                        target_ai[j] -= factor * source_ai[j];
+                        target_a[j] = target_a[j] - factor * source_a[j];
+                        target_ai[j] = target_ai[j] - factor * source_ai[j];
                     }
-                    target_a[k] = 0.0;
+                    target_a[k] = T::zero();
                 }
             }
         }
@@ -372,10 +388,11 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "n must be <= N")]
     fn inverse_n_greater_than_nn_fails() {
         let a = [[1.0, 2.0], [3.0, 4.0]];
         let mut ai = [[0.0; 2]; 2];
-        assert_eq!(small_mat_inv(&mut ai, &a, 3).err(), Some("n must be <= N"));
+        let _ = small_mat_inv(&mut ai, &a, 3);
     }
 
     #[test]
@@ -402,7 +419,7 @@ mod tests {
     #[test]
     fn inverse_sub_block_gauss_jordan_works() {
         // invert only the top-left 4x4 block of a 5x5 matrix
-        let mut a = [[0.0; 5]; 5];
+        let mut a: [[f64; 5]; 5] = [[0.0; 5]; 5];
         #[rustfmt::skip]
         let data44 = [
             [ 3.0,  0.0,  2.0, -1.0],
@@ -415,7 +432,7 @@ mod tests {
                 a[i][j] = data44[i][j];
             }
         }
-        let mut ai = [[0.0; 5]; 5];
+        let mut ai: [[f64; 5]; 5] = [[0.0; 5]; 5];
         small_mat_inv(&mut ai, &a, 4).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
@@ -427,6 +444,24 @@ mod tests {
         for i in 0..4 {
             for j in 0..4 {
                 assert!((ai[i][j] - ai_correct[i][j]).abs() < 1e-15);
+            }
+        }
+    }
+
+    #[test]
+    fn inverse_works_with_f32() {
+        let a: [[f32; 3]; 3] = [[1.0, 2.0, 3.0], [0.0, 4.0, 5.0], [1.0, 0.0, 6.0]];
+        let mut ai: [[f32; 3]; 3] = [[0.0; 3]; 3];
+        small_mat_inv(&mut ai, &a, 3).unwrap();
+        // check that a * ai == identity
+        for i in 0..3 {
+            for j in 0..3 {
+                let mut sum = 0.0f32;
+                for k in 0..3 {
+                    sum += a[i][k] * ai[k][j];
+                }
+                let correct = if i == j { 1.0 } else { 0.0 };
+                assert!((sum - correct).abs() < 1e-6, "a*ai[{i}][{j}] = {sum}");
             }
         }
     }

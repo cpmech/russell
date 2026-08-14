@@ -7,6 +7,8 @@ use crate::{StrError, array_plus_opx};
 /// c := α⋅a + β⋅b
 /// ```
 ///
+/// See also: [`crate::small_mat_add`] (the stack-allocated counterpart).
+///
 /// # Examples
 ///
 /// ```

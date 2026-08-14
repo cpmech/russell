@@ -15,6 +15,8 @@ unsafe extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
 ///
+/// See also: [`crate::small_mat_update`] (the stack-allocated counterpart).
+///
 /// # Examples
 ///
 /// ```

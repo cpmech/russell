@@ -5,7 +5,7 @@ use num_traits::{Float, cast};
 /// Zero-determinant tolerance used to detect a singular matrix
 const ZERO_DETERMINANT: f64 = 1e-15;
 
-/// Computes the inverse of a small square matrix using Gauss-Jordan elimination
+/// Computes the inverse of a small square matrix and returns its determinant
 ///
 /// ```text
 /// ai := a⁻¹
@@ -14,15 +14,19 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// The analytical solutions are used for n ≤ 3, and Gauss-Jordan elimination
 /// with partial (row) pivoting is used for n ≥ 4.
 ///
-/// # Input
+/// See also: [`crate::mat_inverse`] (the heap-allocated counterpart).
+///
+/// # Output
 ///
 /// * `ai` -- the (N,N) matrix that will hold the inverse; only the top-left
 ///   (n,n) block is overwritten.
+/// * Returns the matrix determinant.
+///
+/// # Input
+///
 /// * `a` -- the (N,N) square matrix, symmetric or not.
 /// * `n` -- the dimension of the (active) square matrix to invert; must satisfy
 ///   `n ≤ N`.
-///
-/// See also: [`crate::mat_inverse`] (the heap-allocated counterpart).
 ///
 /// # Panics
 ///
@@ -44,7 +48,8 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///         [1.0, 0.0, 6.0],
 ///     ];
 ///     let mut ai = [[0.0; 3]; 3];
-///     small_mat_inv(&mut ai, &a, 3)?;
+///     let det = small_mat_inv(&mut ai, &a, 3)?;
+///     assert_eq!(det, 22.0);
 ///     // check that a * ai == identity
 ///     for i in 0..3 {
 ///         for j in 0..3 {
@@ -63,7 +68,7 @@ pub fn small_mat_inv<T, const N: usize>(
     ai: &mut SmallMatrix<T, N>,
     a: &SmallMatrix<T, N>,
     n: usize,
-) -> Result<(), StrError>
+) -> Result<T, StrError>
 where
     T: Float,
 {
@@ -80,7 +85,7 @@ where
             return Err("matrix is singular");
         }
         ai[0][0] = T::one() / det;
-        return Ok(());
+        return Ok(det);
     }
 
     // Analytical solution for a 2×2 matrix
@@ -93,7 +98,7 @@ where
         ai[0][1] = -a[0][1] / det;
         ai[1][0] = -a[1][0] / det;
         ai[1][1] = a[0][0] / det;
-        return Ok(());
+        return Ok(det);
     }
 
     // Analytical solution for a 3×3 matrix
@@ -112,8 +117,11 @@ where
         ai[2][0] = (a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det;
         ai[2][1] = (a[0][1] * a[2][0] - a[0][0] * a[2][1]) / det;
         ai[2][2] = (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det;
-        return Ok(());
+        return Ok(det);
     }
+
+    // Track the running determinant product
+    let mut det_accumulator = T::one();
 
     // Gauss-Jordan elimination with partial (row) pivoting (n ≥ 4)
     //
@@ -148,10 +156,12 @@ where
         if max_index != k {
             a_work.swap(k, max_index);
             ai.swap(k, max_index);
+            det_accumulator = -det_accumulator; // Rule 1: A row swap flips the sign of the determinant
         }
 
         // Normalize the pivot row (in both sides), forcing the exact diagonal
         let pivot = a_work[k][k];
+        det_accumulator = det_accumulator * pivot; // Rule 2: Factoring out the pivot scales the determinant
 
         // Hint to the compiler that loops match n for SIMD auto-vectorization
         let row_a = &mut a_work[k];
@@ -189,13 +199,13 @@ where
                         target_a[j] = target_a[j] - factor * source_a[j];
                         target_ai[j] = target_ai[j] - factor * source_ai[j];
                     }
-                    target_a[k] = T::zero();
+                    target_a[k] = T::zero(); // Rule 3: Row additions do not alter the determinant
                 }
             }
         }
     }
 
-    Ok(())
+    Ok(det_accumulator)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,6 +213,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::small_mat_inv;
+    use crate::approx_eq;
 
     /// Checks that the two (N,N) matrices are approximately equal
     fn check_matrix<const N: usize>(a: &[[f64; N]; N], b: &[[f64; N]; N], tol: f64) {
@@ -236,7 +247,8 @@ mod tests {
     fn inverse_1x1_works() {
         let a = [[2.0]];
         let mut ai = [[0.0; 1]; 1];
-        small_mat_inv(&mut ai, &a, 1).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 1).unwrap();
+        assert_eq!(det, 2.0);
         assert_eq!(ai, [[0.5]]);
         check_inverse(&a, &ai, 1e-15);
     }
@@ -257,7 +269,8 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 2]; 2];
-        small_mat_inv(&mut ai, &a, 2).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 2).unwrap();
+        assert_eq!(det, -4.0);
         #[rustfmt::skip]
         let ai_correct = [
             [-0.5, 0.5],
@@ -288,7 +301,8 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 3]; 3];
-        small_mat_inv(&mut ai, &a, 3).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 3).unwrap();
+        assert_eq!(det, 22.0);
         #[rustfmt::skip]
         let ai_correct = [
             [12.0/11.0, -6.0/11.0, -1.0/11.0],
@@ -322,7 +336,8 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 4]; 4];
-        small_mat_inv(&mut ai, &a, 4).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 4).unwrap();
+        approx_eq(det, 20.0, 1e-14);
         #[rustfmt::skip]
         let ai_correct = [
             [ 0.6,  0.0, -0.2,  0.0],
@@ -346,7 +361,8 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 5]; 5];
-        small_mat_inv(&mut ai, &a, 5).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 5).unwrap();
+        approx_eq(det, -167402.0, 1e-8);
         #[rustfmt::skip]
         let ai_correct = [
             [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
@@ -373,7 +389,8 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 6]; 6];
-        small_mat_inv(&mut ai, &a, 6).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 6).unwrap();
+        approx_eq(det, 7.778940633136385e-19, 1e-15);
         #[rustfmt::skip]
         let ai_correct = &[
             [ 6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
@@ -406,7 +423,8 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 3]; 3];
-        small_mat_inv(&mut ai, &a, 2).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 2).unwrap();
+        assert_eq!(det, -4.0);
         #[rustfmt::skip]
         let ai_correct = [
             [-0.5, 0.5, 0.0],
@@ -433,7 +451,8 @@ mod tests {
             }
         }
         let mut ai: [[f64; 5]; 5] = [[0.0; 5]; 5];
-        small_mat_inv(&mut ai, &a, 4).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 4).unwrap();
+        approx_eq(det, 20.0, 1e-14);
         #[rustfmt::skip]
         let ai_correct = [
             [ 0.6,  0.0, -0.2,  0.0],
@@ -452,7 +471,8 @@ mod tests {
     fn inverse_works_with_f32() {
         let a: [[f32; 3]; 3] = [[1.0, 2.0, 3.0], [0.0, 4.0, 5.0], [1.0, 0.0, 6.0]];
         let mut ai: [[f32; 3]; 3] = [[0.0; 3]; 3];
-        small_mat_inv(&mut ai, &a, 3).unwrap();
+        let det = small_mat_inv(&mut ai, &a, 3).unwrap();
+        approx_eq(det, 22.0, 1e-5);
         // check that a * ai == identity
         for i in 0..3 {
             for j in 0..3 {

@@ -372,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn inverse_n_greater_than_N_fails() {
+    fn inverse_n_greater_than_nn_fails() {
         let a = [[1.0, 2.0], [3.0, 4.0]];
         let mut ai = [[0.0; 2]; 2];
         assert_eq!(small_mat_inv(&mut ai, &a, 3).err(), Some("n must be <= N"));
@@ -381,6 +381,7 @@ mod tests {
     #[test]
     fn inverse_sub_block_2x2_works() {
         // invert only the top-left 2x2 block of a 3x3 matrix
+        #[rustfmt::skip]
         let data = [
             [1.0, 2.0, 9.0],
             [3.0, 2.0, 9.0],
@@ -389,6 +390,7 @@ mod tests {
         let a = data;
         let mut ai = [[0.0; 3]; 3];
         small_mat_inv(&mut ai, &a, 2).unwrap();
+        #[rustfmt::skip]
         let ai_correct = [
             [-0.5, 0.5, 0.0],
             [0.75, -0.25, 0.0],

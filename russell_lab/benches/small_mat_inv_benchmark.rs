@@ -1,16 +1,16 @@
 // Benchmarks for small-matrix inversion, comparing three approaches for
 // (n×n) matrices with n = 3..9:
 //
-//   1. mat_inverse             -- LAPACK dgetrf/dgetri (analytic formulas for n <= 3)
-//   2. small_mat_inv (partial) -- Gauss-Jordan with partial (row) pivoting (pure Rust)
-//   3. small_mat_inv (full)    -- Gauss-Jordan with full pivoting (Numerical Recipes, compiled C)
+//   1. mat_inverse            -- LAPACK dgetrf/dgetri (analytic formulas for n <= 3)
+//   2. small_mat_inv          -- Gauss-Jordan with partial (row) pivoting (pure Rust)
+//   3. num_recipes_gaussj_inv -- Gauss-Jordan with full pivoting (Numerical Recipes, compiled C)
 //
 // All three invert the same diagonally dominant matrix (diag = n + 1, off-diagonal = 1),
-// which is guaranteed to be non-singular. A `bench_small!` macro generates one benchmark
-// per N for the const-generic `small_mat_inv`, while `mat_inverse` uses a runtime loop over n.
+// which is guaranteed to be non-singular. A macro generates one benchmark per N for the
+// const-generic functions, while `mat_inverse` uses a runtime loop over n.
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use russell_lab::{Matrix, mat_inverse, small_mat_inv};
+use russell_lab::{Matrix, mat_inverse, num_recipes_gaussj_inv, small_mat_inv};
 
 /// Returns the (i,j) element of a well-conditioned, diagonally dominant (n×n) matrix
 fn element(i: usize, j: usize, n: usize) -> f64 {
@@ -38,7 +38,7 @@ fn bench_mat_inverse(c: &mut Criterion) {
 
 /// Generates one benchmark per N for the const-generic `small_mat_inv`
 macro_rules! bench_small {
-    ($group:expr, $full_pivot:expr, $($n:literal),+) => {
+    ($group:expr, $($n:literal),+) => {
         $(
             {
                 const N: usize = $n;
@@ -48,34 +48,62 @@ macro_rules! bench_small {
                         a[i][j] = element(i, j, N);
                     }
                 }
+                // Prevent the compiler from const-folding the (deterministic) input
+                let a = std::hint::black_box(a);
                 $group.throughput(Throughput::Elements((N * N) as u64));
                 $group.bench_with_input(BenchmarkId::from_parameter(N), &N, |b, _| {
                     let mut ai = [[0.0; N]; N];
-                    b.iter(|| small_mat_inv(&mut ai, &a, $full_pivot).unwrap());
+                    b.iter(|| {
+                        small_mat_inv(&mut ai, &a, N).unwrap();
+                        // Prevent dead-store elimination of the output
+                        std::hint::black_box(ai);
+                    });
                 });
             }
         )+
     };
 }
 
-/// Benchmarks `small_mat_inv` with partial pivoting for (n×n) matrices with n = 3..9
-fn bench_small_mat_inv_partial(c: &mut Criterion) {
-    let mut group = c.benchmark_group("small_mat_inv_partial");
-    bench_small!(group, false, 3, 4, 5, 6, 7, 8, 9);
+/// Generates one benchmark per N for the const-generic `num_recipes_gaussj_inv`
+macro_rules! bench_num_recipes {
+    ($group:expr, $($n:literal),+) => {
+        $(
+            {
+                const N: usize = $n;
+                let mut a = [[0.0; N]; N];
+                for i in 0..N {
+                    for j in 0..N {
+                        a[i][j] = element(i, j, N);
+                    }
+                }
+                // Prevent the compiler from const-folding the (deterministic) input
+                let a = std::hint::black_box(a);
+                $group.throughput(Throughput::Elements((N * N) as u64));
+                $group.bench_with_input(BenchmarkId::from_parameter(N), &N, |b, _| {
+                    b.iter(|| {
+                        let mut aa = a;
+                        num_recipes_gaussj_inv(&mut aa).unwrap();
+                        std::hint::black_box(aa);
+                    });
+                });
+            }
+        )+
+    };
+}
+
+/// Benchmarks `small_mat_inv` (partial pivoting) for (n×n) matrices with n = 3..9
+fn bench_small_mat_inv(c: &mut Criterion) {
+    let mut group = c.benchmark_group("small_mat_inv");
+    bench_small!(group, 3, 4, 5, 6, 7, 8, 9);
     group.finish();
 }
 
-/// Benchmarks `small_mat_inv` with full pivoting for (n×n) matrices with n = 3..9
-fn bench_small_mat_inv_full(c: &mut Criterion) {
-    let mut group = c.benchmark_group("small_mat_inv_full");
-    bench_small!(group, true, 3, 4, 5, 6, 7, 8, 9);
+/// Benchmarks `num_recipes_gaussj_inv` (full pivoting) for (n×n) matrices with n = 3..9
+fn bench_num_recipes_gaussj_inv(c: &mut Criterion) {
+    let mut group = c.benchmark_group("num_recipes_gaussj_inv");
+    bench_num_recipes!(group, 3, 4, 5, 6, 7, 8, 9);
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_mat_inverse,
-    bench_small_mat_inv_partial,
-    bench_small_mat_inv_full
-);
+criterion_group!(benches, bench_mat_inverse, bench_small_mat_inv, bench_num_recipes_gaussj_inv);
 criterion_main!(benches);

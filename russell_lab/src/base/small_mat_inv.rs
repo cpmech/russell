@@ -1,4 +1,4 @@
-use crate::{StrError, num_recipes_gaussj_inv};
+use crate::StrError;
 
 /// Zero-determinant tolerance used to detect a singular matrix
 const ZERO_DETERMINANT: f64 = 1e-15;
@@ -9,24 +9,20 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 /// ai := a⁻¹
 /// ```
 ///
-/// Two pivoting strategies are available:
-///
-/// * Partial (row) pivoting (the default) -- implemented in Rust. The algorithm
-///   uses analytical formulas for n ≤ 3 and augments `a` with the identity matrix
-///   (reducing `[a | I]` to `[I | a⁻¹]`) for n ≥ 4.
-/// * Full pivoting (`full_pivot = true`) -- delegates to `num_recipes_gaussj_inv`,
-///   which wraps the full-pivoting algorithm from Numerical Recipes (compiled C code).
-///   This is only applied for n ≥ 4, because the analytical solutions handle n ≤ 3.
+/// The analytical solutions are used for n ≤ 3, and Gauss-Jordan elimination
+/// with partial (row) pivoting is used for n ≥ 4.
 ///
 /// # Input
 ///
-/// * `ai` -- the (N,N) matrix that will hold the inverse
-/// * `a` -- the (N,N) square matrix, symmetric or not
-/// * `full_pivot` -- if true, use full pivoting; otherwise, use partial pivoting.
+/// * `ai` -- the (N,N) matrix that will hold the inverse; only the top-left
+///   (n,n) block is overwritten.
+/// * `a` -- the (N,N) square matrix, symmetric or not.
+/// * `n` -- the dimension of the (active) square matrix to invert; must satisfy
+///   `n ≤ N`.
 ///
 /// # Errors
 ///
-/// Returns an error if the matrix is singular.
+/// Returns an error if `n > N` or if the matrix is singular.
 ///
 /// # Examples
 ///
@@ -40,7 +36,7 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///         [1.0, 0.0, 6.0],
 ///     ];
 ///     let mut ai = [[0.0; 3]; 3];
-///     small_mat_inv(&mut ai, &a, false)?;
+///     small_mat_inv(&mut ai, &a, 3)?;
 ///     // check that a * ai == identity
 ///     for i in 0..3 {
 ///         for j in 0..3 {
@@ -55,13 +51,14 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///     Ok(())
 /// }
 /// ```
-pub fn small_mat_inv<const N: usize>(
-    ai: &mut [[f64; N]; N],
-    a: &[[f64; N]; N],
-    full_pivot: bool,
-) -> Result<(), StrError> {
+pub fn small_mat_inv<const N: usize>(ai: &mut [[f64; N]; N], a: &[[f64; N]; N], n: usize) -> Result<(), StrError> {
+    // Check dimension
+    if n > N {
+        return Err("n must be <= N");
+    }
+
     // Analytical solution for a 1×1 matrix
-    if N == 1 {
+    if n == 1 {
         let det = a[0][0];
         if det.abs() <= ZERO_DETERMINANT {
             return Err("matrix is singular");
@@ -71,7 +68,7 @@ pub fn small_mat_inv<const N: usize>(
     }
 
     // Analytical solution for a 2×2 matrix
-    if N == 2 {
+    if n == 2 {
         let det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
         if det.abs() <= ZERO_DETERMINANT {
             return Err("matrix is singular");
@@ -84,7 +81,7 @@ pub fn small_mat_inv<const N: usize>(
     }
 
     // Analytical solution for a 3×3 matrix
-    if N == 3 {
+    if n == 3 {
         let det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
             + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
         if det.abs() <= ZERO_DETERMINANT {
@@ -102,30 +99,23 @@ pub fn small_mat_inv<const N: usize>(
         return Ok(());
     }
 
-    // Use full pivoting when requested. This delegates to `num_recipes_gaussj_inv`
-    // (the Numerical Recipes algorithm, compiled C) and is only reached for n ≥ 4,
-    // because the analytical solutions above handle n ≤ 3.
-    if full_pivot {
-        *ai = *a;
-        return num_recipes_gaussj_inv(ai);
-    }
-
     // Gauss-Jordan elimination with partial (row) pivoting (n ≥ 4)
     //
-    // Copy `a` into a working matrix and set `ai` to the identity.
+    // Copy the top-left (n,n) block of `a` into a working matrix and set the
+    // top-left (n,n) block of `ai` to the identity.
     let mut a_work = *a;
-    for i in 0..N {
-        for j in 0..N {
+    for i in 0..n {
+        for j in 0..n {
             ai[i][j] = 0.0;
         }
         ai[i][i] = 1.0;
     }
 
-    for k in 0..N {
-        // Find the pivot: the largest |entry| in column k, over rows k..N
+    for k in 0..n {
+        // Find the pivot: the largest |entry| in column k, over rows k..n
         let mut max_index = k;
         let mut max_value = a_work[k][k].abs();
-        for i in (k + 1)..N {
+        for i in (k + 1)..n {
             let value = a_work[i][k].abs();
             if value > max_value {
                 max_value = value;
@@ -147,17 +137,17 @@ pub fn small_mat_inv<const N: usize>(
         // Normalize the pivot row (in both sides), forcing the exact diagonal
         let pivot = a_work[k][k];
 
-        // Hint to the compiler that loops match N for SIMD auto-vectorization
+        // Hint to the compiler that loops match n for SIMD auto-vectorization
         let row_a = &mut a_work[k];
         let row_ai = &mut ai[k];
-        for j in 0..N {
+        for j in 0..n {
             row_a[j] /= pivot;
             row_ai[j] /= pivot;
         }
         row_a[k] = 1.0;
 
         // Eliminate the pivot column from all other rows (in both sides)
-        for i in 0..N {
+        for i in 0..n {
             if i != k {
                 let factor = a_work[i][k];
                 if factor != 0.0 {
@@ -179,7 +169,7 @@ pub fn small_mat_inv<const N: usize>(
                         (&mut right[0], &left[k])
                     };
 
-                    for j in 0..N {
+                    for j in 0..n {
                         target_a[j] -= factor * source_a[j];
                         target_ai[j] -= factor * source_ai[j];
                     }
@@ -230,7 +220,7 @@ mod tests {
     fn inverse_1x1_works() {
         let a = [[2.0]];
         let mut ai = [[0.0; 1]; 1];
-        small_mat_inv(&mut ai, &a, false).unwrap();
+        small_mat_inv(&mut ai, &a, 1).unwrap();
         assert_eq!(ai, [[0.5]]);
         check_inverse(&a, &ai, 1e-15);
     }
@@ -239,7 +229,7 @@ mod tests {
     fn inverse_1x1_fails_on_zero_det() {
         let a = [[0.0]];
         let mut ai = [[0.0; 1]; 1];
-        assert_eq!(small_mat_inv(&mut ai, &a, false).err(), Some("matrix is singular"));
+        assert_eq!(small_mat_inv(&mut ai, &a, 1).err(), Some("matrix is singular"));
     }
 
     #[test]
@@ -251,7 +241,7 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 2]; 2];
-        small_mat_inv(&mut ai, &a, false).unwrap();
+        small_mat_inv(&mut ai, &a, 2).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [-0.5, 0.5],
@@ -269,7 +259,7 @@ mod tests {
             [2.0/3.0,    -1.0],
         ];
         let mut ai = [[0.0; 2]; 2];
-        assert_eq!(small_mat_inv(&mut ai, &a, false).err(), Some("matrix is singular"));
+        assert_eq!(small_mat_inv(&mut ai, &a, 2).err(), Some("matrix is singular"));
     }
 
     #[test]
@@ -282,7 +272,7 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 3]; 3];
-        small_mat_inv(&mut ai, &a, false).unwrap();
+        small_mat_inv(&mut ai, &a, 3).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [12.0/11.0, -6.0/11.0, -1.0/11.0],
@@ -302,7 +292,7 @@ mod tests {
             [1.0, 0.0, 6.0],
         ];
         let mut ai = [[0.0; 3]; 3];
-        assert_eq!(small_mat_inv(&mut ai, &a, false).err(), Some("matrix is singular"));
+        assert_eq!(small_mat_inv(&mut ai, &a, 3).err(), Some("matrix is singular"));
     }
 
     #[test]
@@ -316,7 +306,7 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 4]; 4];
-        small_mat_inv(&mut ai, &a, false).unwrap();
+        small_mat_inv(&mut ai, &a, 4).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [ 0.6,  0.0, -0.2,  0.0],
@@ -340,7 +330,7 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 5]; 5];
-        small_mat_inv(&mut ai, &a, false).unwrap();
+        small_mat_inv(&mut ai, &a, 5).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],
@@ -367,7 +357,7 @@ mod tests {
         ];
         let a = data;
         let mut ai = [[0.0; 6]; 6];
-        small_mat_inv(&mut ai, &a, false).unwrap();
+        small_mat_inv(&mut ai, &a, 6).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
             [ 6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
@@ -382,12 +372,61 @@ mod tests {
     }
 
     #[test]
-    fn inverse_full_pivot_works() {
-        let data = [[1.0, 2.0, 3.0], [0.0, 4.0, 5.0], [1.0, 0.0, 6.0]];
+    fn inverse_n_greater_than_N_fails() {
+        let a = [[1.0, 2.0], [3.0, 4.0]];
+        let mut ai = [[0.0; 2]; 2];
+        assert_eq!(small_mat_inv(&mut ai, &a, 3).err(), Some("n must be <= N"));
+    }
+
+    #[test]
+    fn inverse_sub_block_2x2_works() {
+        // invert only the top-left 2x2 block of a 3x3 matrix
+        let data = [
+            [1.0, 2.0, 9.0],
+            [3.0, 2.0, 9.0],
+            [9.0, 9.0, 9.0],
+        ];
         let a = data;
         let mut ai = [[0.0; 3]; 3];
-        small_mat_inv(&mut ai, &a, true).unwrap();
-        check_inverse(&data, &ai, 1e-14);
+        small_mat_inv(&mut ai, &a, 2).unwrap();
+        let ai_correct = [
+            [-0.5, 0.5, 0.0],
+            [0.75, -0.25, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        check_matrix(&ai, &ai_correct, 1e-15);
+    }
+
+    #[test]
+    fn inverse_sub_block_gauss_jordan_works() {
+        // invert only the top-left 4x4 block of a 5x5 matrix
+        let mut a = [[0.0; 5]; 5];
+        #[rustfmt::skip]
+        let data44 = [
+            [ 3.0,  0.0,  2.0, -1.0],
+            [ 1.0,  2.0,  0.0, -2.0],
+            [ 4.0,  0.0,  6.0, -3.0],
+            [ 5.0,  0.0,  2.0,  0.0],
+        ];
+        for i in 0..4 {
+            for j in 0..4 {
+                a[i][j] = data44[i][j];
+            }
+        }
+        let mut ai = [[0.0; 5]; 5];
+        small_mat_inv(&mut ai, &a, 4).unwrap();
+        #[rustfmt::skip]
+        let ai_correct = [
+            [ 0.6,  0.0, -0.2,  0.0],
+            [-2.5,  0.5,  0.5,  1.0],
+            [-1.5,  0.0,  0.5,  0.5],
+            [-2.2,  0.0,  0.4,  1.0],
+        ];
+        for i in 0..4 {
+            for j in 0..4 {
+                assert!((ai[i][j] - ai_correct[i][j]).abs() < 1e-15);
+            }
+        }
     }
 
     // --- extra tests ---
@@ -423,7 +462,7 @@ mod tests {
 
                 // 2. Compute the inverse
                 let mut inverted = [[0.0; N]; N];
-                let result = small_mat_inv(&mut inverted, &original, false);
+                let result = small_mat_inv(&mut inverted, &original, N);
 
                 assert!(result.is_ok(), "Matrix inversion failed for size {}", N);
 

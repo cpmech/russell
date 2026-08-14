@@ -2,57 +2,23 @@
 
 This directory contains the [Criterion](https://github.com/bheisler/criterion.rs) benchmarks for `russell_lab`.
 
-## System information
-
-The benchmark results in this directory were computed on the following machine
-(output of the `get_system_info` example from `russell_sparse`, run with Intel MKL):
-
-```text
---- OS ---
-NAME="Arch Linux"
-KERNEL=7.1.4-arch1-1
-
---- GPU ---
-GPU[0]: NVIDIA GeForce RTX 4090, 595.71.05, 24564 MiB
-
---- CPU ---
-Architecture       : x86_64
-CPU(s)             : 32
-On-line CPU(s) list: 0-31
-Model name         : 13th Gen Intel(R) Core(TM) i9-13900KF
-Thread(s) per core : 2
-Core(s) per socket : 24
-Socket(s)          : 1
-CPU(s) scaling MHz : 43%
-CPU max MHz        : 5800.0000
-CPU min MHz        : 800.0000
-BogoMIPS           : 5990.40
-L1d cache          : 896 KiB (24 instances)
-L1i cache          : 1.3 MiB (24 instances)
-L2 cache           : 32 MiB (12 instances)
-L3 cache           : 36 MiB (1 instance)
-NUMA node0 CPU(s)  : 0-31
-Vulnerability L1tf : Not affected
-
---- Memory ---
-MemTotal:       32615544 kB
-MemFree:          605312 kB
-MemAvailable:   22415912 kB
-SwapTotal:      36810532 kB
-```
-
-> **Note:** the `CPU(s) scaling MHz`, `MemFree`, and `MemAvailable` fields are
-> instantaneous snapshots and vary between runs; the remaining fields are stable.
-
 ## Contents <!-- omit from toc -->
 
-- [System information](#system-information)
 - [Benchmarks](#benchmarks)
   - [Chebyshev polynomial evaluation](#chebyshev-polynomial-evaluation)
   - [Matrix and vector operations](#matrix-and-vector-operations)
   - [Small matrix inversion](#small-matrix-inversion)
   - [Small operations](#small-operations)
+    - [Methodology](#methodology)
+    - [`mat_add` — `c := α⋅a + β⋅b`](#mat_add--c--αa--βb)
+    - [`mat_update` — `b += α⋅a`](#mat_update--b--αa)
+    - [`mat_mat_mul` — `c := α⋅a⋅b + β⋅c`](#mat_mat_mul--c--αab--βc)
+    - [`vec_add` — `w := α⋅u + β⋅v`](#vec_add--w--αu--βv)
+    - [`vec_update` — `v += α⋅u`](#vec_update--v--αu)
+    - [`solve_lin_sys` — `a⋅x = b`](#solve_lin_sys--ax--b)
+    - [Observations](#observations)
 - [How to run](#how-to-run)
+- [System information](#system-information)
 
 ## Benchmarks
 
@@ -227,3 +193,45 @@ cargo bench --bench small_mat_inv_benchmark --all-features -- '3'
 ```
 
 > **Note:** `--all-features` selects Intel MKL (when available) instead of OpenBLAS.
+
+## System information
+
+The benchmark results in this directory were computed on the following machine
+(output of the `get_system_info` example from `russell_sparse`, run with Intel MKL):
+
+```text
+--- OS ---
+NAME="Arch Linux"
+KERNEL=7.1.4-arch1-1
+
+--- GPU ---
+GPU[0]: NVIDIA GeForce RTX 4090, 595.71.05, 24564 MiB
+
+--- CPU ---
+Architecture       : x86_64
+CPU(s)             : 32
+On-line CPU(s) list: 0-31
+Model name         : 13th Gen Intel(R) Core(TM) i9-13900KF
+Thread(s) per core : 2
+Core(s) per socket : 24
+Socket(s)          : 1
+CPU(s) scaling MHz : 43%
+CPU max MHz        : 5800.0000
+CPU min MHz        : 800.0000
+BogoMIPS           : 5990.40
+L1d cache          : 896 KiB (24 instances)
+L1i cache          : 1.3 MiB (24 instances)
+L2 cache           : 32 MiB (12 instances)
+L3 cache           : 36 MiB (1 instance)
+NUMA node0 CPU(s)  : 0-31
+Vulnerability L1tf : Not affected
+
+--- Memory ---
+MemTotal:       32615544 kB
+MemFree:          605312 kB
+MemAvailable:   22415912 kB
+SwapTotal:      36810532 kB
+```
+
+> **Note:** the `CPU(s) scaling MHz`, `MemFree`, and `MemAvailable` fields are
+> instantaneous snapshots and vary between runs; the remaining fields are stable.

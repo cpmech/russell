@@ -3,6 +3,12 @@ use crate::StrError;
 /// Zero-determinant tolerance used to detect a singular matrix
 const ZERO_DETERMINANT: f64 = 1e-15;
 
+pub enum GaussJordanAlgo {
+    Default,
+    Alternative,
+    NumericalRecipes,
+}
+
 /// Computes the inverse of a small square matrix using Gauss-Jordan elimination
 ///
 /// The inverse is computed **in place**: on output, `a` holds `a⁻¹`.
@@ -52,7 +58,10 @@ const ZERO_DETERMINANT: f64 = 1e-15;
 ///     Ok(())
 /// }
 /// ```
-pub fn gauss_jordan_partial_pivoting<const N: usize>(a: &mut [[f64; N]; N]) -> Result<(), StrError> {
+pub fn gauss_jordan_partial_pivoting<const N: usize>(
+    a: &mut [[f64; N]; N],
+    algo: GaussJordanAlgo,
+) -> Result<(), StrError> {
     // The right-hand side starts as the identity matrix and accumulates the inverse.
     // `a` (the left-hand side) is reduced in place toward the identity.
     let mut ai = [[0.0; N]; N];
@@ -108,11 +117,73 @@ pub fn gauss_jordan_partial_pivoting<const N: usize>(a: &mut [[f64; N]; N]) -> R
     Ok(())
 }
 
+/// Inverts a 9x9 matrix in-place using Gauss-Jordan elimination with partial pivoting.
+/// Returns `Some(matrix)` if successful, or `None` if the matrix is singular (not invertible).
+pub fn invert_matrix_9x9(mut a: [[f64; 9]; 9]) -> Option<[[f64; 9]; 9]> {
+    let mut inv = [[0.0; 9]; 9];
+    for i in 0..9 {
+        inv[i][i] = 1.0;
+    }
+
+    for i in 0..9 {
+        // 1. Find the pivot row (Partial Pivoting)
+        let mut max_row = i;
+        let mut max_val = a[i][i].abs();
+
+        for r in (i + 1)..9 {
+            let val = a[r][i].abs();
+            if val > max_val {
+                max_val = val;
+                max_row = r;
+            }
+        }
+
+        // Check for singularity (with a small epsilon tolerance)
+        if max_val < 1e-12 {
+            return None;
+        }
+
+        // Swap rows in both matrices if necessary
+        if max_row != i {
+            a.swap(i, max_row);
+            inv.swap(i, max_row);
+        }
+
+        // 2. Scale the pivot row to make the diagonal element 1.0
+        let pivot = a[i][i];
+
+        // Unroll row normalization
+        for j in 0..9 {
+            a[i][j] /= pivot;
+            inv[i][j] /= pivot;
+        }
+        // Force the exact diagonal to 1.0 to eliminate rounding noise
+        a[i][i] = 1.0;
+
+        // 3. Eliminate columns below and above the pivot
+        for r in 0..9 {
+            if r != i {
+                let factor = a[r][i];
+                if factor != 0.0 {
+                    // Vectorizable inner loop
+                    for j in 0..9 {
+                        a[r][j] -= factor * a[i][j];
+                        inv[r][j] -= factor * inv[i][j];
+                    }
+                    a[r][i] = 0.0; // Force exact elimination
+                }
+            }
+        }
+    }
+
+    Some(inv)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::gauss_jordan_partial_pivoting;
+    use super::{GaussJordanAlgo, gauss_jordan_partial_pivoting};
 
     /// Checks that the two (N,N) matrices are approximately equal
     fn check_matrix<const N: usize>(a: &[[f64; N]; N], b: &[[f64; N]; N], tol: f64) {
@@ -145,7 +216,7 @@ mod tests {
     #[test]
     fn inverse_1x1_works() {
         let mut a = [[2.0]];
-        gauss_jordan_partial_pivoting(&mut a).unwrap();
+        gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).unwrap();
         assert_eq!(a, [[0.5]]);
         check_inverse(&[[2.0]], &a, 1e-15);
     }
@@ -154,7 +225,7 @@ mod tests {
     fn inverse_1x1_fails_on_zero_det() {
         let mut a = [[0.0]];
         assert_eq!(
-            gauss_jordan_partial_pivoting(&mut a).err(),
+            gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).err(),
             Some("matrix is singular")
         );
     }
@@ -167,7 +238,7 @@ mod tests {
             [3.0, 2.0],
         ];
         let mut a = data;
-        gauss_jordan_partial_pivoting(&mut a).unwrap();
+        gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [-0.5, 0.5],
@@ -185,7 +256,7 @@ mod tests {
             [2.0/3.0,    -1.0],
         ];
         assert_eq!(
-            gauss_jordan_partial_pivoting(&mut a).err(),
+            gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).err(),
             Some("matrix is singular")
         );
     }
@@ -199,7 +270,7 @@ mod tests {
             [1.0, 0.0, 6.0],
         ];
         let mut a = data;
-        gauss_jordan_partial_pivoting(&mut a).unwrap();
+        gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [12.0/11.0, -6.0/11.0, -1.0/11.0],
@@ -219,7 +290,7 @@ mod tests {
             [1.0, 0.0, 6.0],
         ];
         assert_eq!(
-            gauss_jordan_partial_pivoting(&mut a).err(),
+            gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).err(),
             Some("matrix is singular")
         );
     }
@@ -234,7 +305,7 @@ mod tests {
             [ 5.0,  0.0,  2.0,  0.0],
         ];
         let mut a = data;
-        gauss_jordan_partial_pivoting(&mut a).unwrap();
+        gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [ 0.6,  0.0, -0.2,  0.0],
@@ -257,7 +328,7 @@ mod tests {
             [ 9.0,  4.0, 13.0,  8.0, 22.0],
         ];
         let mut a = data;
-        gauss_jordan_partial_pivoting(&mut a).unwrap();
+        gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).unwrap();
         #[rustfmt::skip]
         let ai_correct = [
             [ 6.9128803717996279e-01, -7.4226114383340802e-01, -9.8756287260606410e-02, -6.9062496266472417e-01,  7.2471057693456553e-01],

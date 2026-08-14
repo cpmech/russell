@@ -18,3 +18,4 @@ rustc-ice-*.txt
 *.go
 *.rsa
 session.json
+old-session.json

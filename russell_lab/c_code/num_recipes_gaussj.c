@@ -19,6 +19,9 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+// zero-determinant tolerance used to detect a singular matrix
+#define ZERO_DETERMINANT 1e-15
+
 int32_t num_recipes_gaussj(double *a, int32_t n, double *b, int32_t m) {
     int32_t i, icol = 0, irow = 0, j, k, l, ll;
     double big, dum, pivinv;
@@ -61,6 +64,14 @@ int32_t num_recipes_gaussj(double *a, int32_t n, double *b, int32_t m) {
         }
         ++(ipiv[icol]);
 
+        // check for singularity (the pivot is the largest |element| found)
+        if (big <= ZERO_DETERMINANT) {
+            free(indxc);
+            free(indxr);
+            free(ipiv);
+            return 1;
+        }
+
         // interchange rows, if needed, to put the pivot on the diagonal. The
         // columns are not physically interchanged, only relabeled: indxc[i] is
         // the column reduced at this step, while indxr[i] is the row in which
@@ -80,12 +91,6 @@ int32_t num_recipes_gaussj(double *a, int32_t n, double *b, int32_t m) {
         }
         indxr[i] = irow;
         indxc[i] = icol;
-        if (a[icol * n + icol] == 0.0) {
-            free(indxc);
-            free(indxr);
-            free(ipiv);
-            return 1;
-        }
 
         // divide the pivot row by the pivot element
         pivinv = 1.0 / a[icol * n + icol];

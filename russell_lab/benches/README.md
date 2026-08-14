@@ -39,14 +39,19 @@ aᵢⱼ = 1       (off-diagonal)
 
 which is guaranteed to be non-singular.
 
-Indicative results (single machine, spot-check):
+Results (median time, single machine):
 
 | size | `mat_inverse` | `small_mat_inv_partial` | `small_mat_inv_full` |
 | ---- | ------------- | ----------------------- | -------------------- |
-| 3×3  | 6.6 ns        | 30 ns                   | 55 ns                |
-| 9×9  | 309 ns        | 213 ns                  | 645 ns               |
+| 3×3  | 6.58 ns       | 30.0 ns                 | 55.6 ns              |
+| 4×4  | 43.3 ns       | 46.9 ns                 | 98.3 ns              |
+| 5×5  | 69.1 ns       | 68.1 ns                 | 155 ns               |
+| 6×6  | 103 ns        | 120 ns                  | 235 ns               |
+| 7×7  | 192 ns        | 128 ns                  | 333 ns               |
+| 8×8  | 243 ns        | 196 ns                  | 512 ns               |
+| 9×9  | 308 ns        | 218 ns                  | 648 ns               |
 
-The partial-pivoting Rust implementation is faster than LAPACK at 9×9, while the full-pivoting C code is the slowest (it pays for `malloc`/`free` and the column-unscrambling bookkeeping on every call).
+At the smallest sizes, the LAPACK-based `mat_inverse` is fastest (especially for n ≤ 3, where it uses closed-form formulas). Around n = 5–6 the two pivoting strategies are roughly on par, and for n ≥ 7 the partial-pivoting Rust implementation overtakes LAPACK. The full-pivoting C code is always the slowest — it pays for `malloc`/`free` and the column-unscrambling bookkeeping on every call.
 
 ## How to run
 

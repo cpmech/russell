@@ -23,6 +23,11 @@ int32_t num_recipes_gaussj(double *a, int32_t n, double *b, int32_t m) {
     int32_t i, icol = 0, irow = 0, j, k, l, ll;
     double big, dum, pivinv;
 
+    // handle zero-sized matrix
+    if (n == 0) {
+        return 0;
+    }
+
     // integer arrays used for bookkeeping on the pivoting
     int32_t *indxc = (int32_t *)malloc((size_t)n * sizeof(int32_t));
     int32_t *indxr = (int32_t *)malloc((size_t)n * sizeof(int32_t));

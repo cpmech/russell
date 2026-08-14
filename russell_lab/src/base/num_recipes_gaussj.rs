@@ -163,6 +163,39 @@ mod tests {
         }
     }
 
+    /// Checks that `a * x == b` (single right-hand side)
+    fn check_solution<const N: usize>(a: &[[f64; N]; N], x: &[[f64; 1]; N], b: &[[f64; 1]; N], tol: f64) {
+        for i in 0..N {
+            let mut sum = 0.0;
+            for k in 0..N {
+                sum += a[i][k] * x[k][0];
+            }
+            assert!((sum - b[i][0]).abs() <= tol, "a*x[{i}] = {sum}");
+        }
+    }
+
+    /// Checks the solution of A·x = b where A is filled with 1.0 on/below the
+    /// diagonal and -1.0 above it, and b is filled with a constant (x = [c, 0, ...]).
+    fn check_constant_rhs<const N: usize>() {
+        const TARGET: f64 = 1234.0;
+        let mut a = [[1.0; N]; N];
+        for i in 0..N {
+            for j in (i + 1)..N {
+                a[i][j] = -1.0;
+            }
+        }
+        let mut b = [[TARGET; 1]; N];
+        let a_original = a;
+        let b_original = b;
+        num_recipes_gaussj_sol(&mut a, &mut b).unwrap();
+        // the solution is x = [TARGET, 0, 0, ...]
+        for i in 0..N {
+            let correct = if i == 0 { TARGET } else { 0.0 };
+            assert!((b[i][0] - correct).abs() < 1e-13, "b[{i}] = {}", b[i][0]);
+        }
+        check_solution(&a_original, &b, &b_original, 1e-13);
+    }
+
     #[test]
     fn inv_1x1_works() {
         let mut a = [[2.0]];
@@ -249,6 +282,108 @@ mod tests {
         let mut b = [
             [1.0],
             [2.0],
+        ];
+        assert_eq!(num_recipes_gaussj_sol(&mut a, &mut b).err(), Some("matrix is singular"));
+    }
+
+    #[test]
+    fn sol_0x0_works() {
+        let mut a = [[0.0; 0]; 0];
+        let mut b = [[0.0; 1]; 0];
+        num_recipes_gaussj_sol(&mut a, &mut b).unwrap();
+    }
+
+    #[test]
+    fn sol_4x4_works() {
+        // example from https://numericalalgorithmsgroup.github.io/LAPACK_Examples/examples/doc/dgesv_example.html
+        let a_original = [
+            [1.80, 2.88, 2.05, -0.89],
+            [5.25, -2.95, -0.95, -3.80],
+            [1.58, -2.69, -2.90, -1.04],
+            [-1.11, -0.66, -0.59, 0.80],
+        ];
+        let b_original = [
+            [9.52],
+            [24.35],
+            [0.77],
+            [-6.22],
+        ];
+        let mut a = a_original;
+        let mut b = b_original;
+        num_recipes_gaussj_sol(&mut a, &mut b).unwrap();
+        let x_correct = [
+            [1.0],
+            [-1.0],
+            [3.0],
+            [-5.0],
+        ];
+        for i in 0..4 {
+            assert!((b[i][0] - x_correct[i][0]).abs() < 1e-13, "b[{i}] = {}", b[i][0]);
+        }
+        check_solution(&a_original, &b, &b_original, 1e-13);
+    }
+
+    #[test]
+    fn sol_5x5_works() {
+        let a_original = [
+            [2.0, 1.0, 1.0, 3.0, 2.0],
+            [1.0, 2.0, 2.0, 1.0, 1.0],
+            [1.0, 2.0, 9.0, 1.0, 5.0],
+            [3.0, 1.0, 1.0, 7.0, 1.0],
+            [2.0, 1.0, 5.0, 1.0, 8.0],
+        ];
+        let b_original = [
+            [-2.0],
+            [4.0],
+            [3.0],
+            [-5.0],
+            [1.0],
+        ];
+        let mut a = a_original;
+        let mut b = b_original;
+        num_recipes_gaussj_sol(&mut a, &mut b).unwrap();
+        let x_correct = [
+            [-629.0 / 98.0],
+            [237.0 / 49.0],
+            [-53.0 / 49.0],
+            [62.0 / 49.0],
+            [23.0 / 14.0],
+        ];
+        for i in 0..5 {
+            assert!((b[i][0] - x_correct[i][0]).abs() < 1e-13, "b[{i}] = {}", b[i][0]);
+        }
+        check_solution(&a_original, &b, &b_original, 1e-13);
+    }
+
+    #[test]
+    fn sol_1x1_works() {
+        check_constant_rhs::<1>();
+    }
+
+    #[test]
+    fn sol_5x5_constant_rhs_works() {
+        check_constant_rhs::<5>();
+    }
+
+    #[test]
+    fn sol_7x7_constant_rhs_works() {
+        check_constant_rhs::<7>();
+    }
+
+    #[test]
+    fn sol_12x12_constant_rhs_works() {
+        check_constant_rhs::<12>();
+    }
+
+    #[test]
+    fn sol_singular_handles_error() {
+        let mut a = [
+            [0.0, 0.0],
+            [0.0, 1.0],
+        ];
+        let mut b = [
+            [1.0],
+            [1.0],
         ];
         assert_eq!(num_recipes_gaussj_sol(&mut a, &mut b).err(), Some("matrix is singular"));
     }

@@ -24,11 +24,13 @@ This directory contains the [Criterion](https://github.com/bheisler/criterion.rs
 
 `small_mat_inv_benchmark.rs` — compares three approaches to inverting an (n×n) matrix, for n = 3 … 9:
 
-| group                   | function                                                                            | pivoting      | implementation                                         |
-| ----------------------- | ----------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
-| `mat_inverse`           | [`mat_inverse`](https://docs.rs/russell_lab/latest/russell_lab/fn.mat_inverse.html) | LU            | LAPACK `dgetrf`/`dgetri` (analytic formulas for n ≤ 3) |
-| `small_mat_inv_partial` | `small_mat_inv(..., false)`                                                         | partial (row) | pure Rust (Gauss-Jordan)                               |
-| `small_mat_inv_full`    | `small_mat_inv(..., true)`                                                          | full          | compiled C (Numerical Recipes `gaussj`)                |
+| group                   | function                                                                            | pivoting      | implementation                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------- |
+| `mat_inverse`           | [`mat_inverse`](https://docs.rs/russell_lab/latest/russell_lab/fn.mat_inverse.html) | LU            | LAPACK `dgetrf`/`dgetri` (closed-form for n ≤ 3)                         |
+| `small_mat_inv_partial` | `small_mat_inv(..., false)`                                                         | partial (row) | closed-form for n ≤ 3; Gauss-Jordan (pure Rust) for n ≥ 4                |
+| `small_mat_inv_full`    | `small_mat_inv(..., true)`                                                          | full          | closed-form for n ≤ 3; Numerical Recipes `gaussj` (compiled C) for n ≥ 4 |
+
+Note: `small_mat_inv` uses the closed-form formulas for n ≤ 3 regardless of `full_pivot`, so the two `small_mat_inv` rows coincide at n = 3.
 
 All three groups invert the same, well-conditioned, diagonally dominant matrix
 
@@ -43,15 +45,15 @@ Results (median time, single machine):
 
 | size | `mat_inverse` | `small_mat_inv_partial` | `small_mat_inv_full` |
 | ---- | ------------- | ----------------------- | -------------------- |
-| 3×3  | 6.58 ns       | 30.0 ns                 | 55.6 ns              |
-| 4×4  | 43.3 ns       | 46.9 ns                 | 98.3 ns              |
-| 5×5  | 69.1 ns       | 68.1 ns                 | 155 ns               |
-| 6×6  | 103 ns        | 120 ns                  | 235 ns               |
-| 7×7  | 192 ns        | 128 ns                  | 333 ns               |
-| 8×8  | 243 ns        | 196 ns                  | 512 ns               |
-| 9×9  | 308 ns        | 218 ns                  | 648 ns               |
+| 3×3  | 6.57 ns       | 3.66 ns                 | 3.65 ns              |
+| 4×4  | 42.9 ns       | 44.8 ns                 | 97.9 ns              |
+| 5×5  | 71.6 ns       | 66.8 ns                 | 154 ns               |
+| 6×6  | 102 ns        | 90.2 ns                 | 226 ns               |
+| 7×7  | 190 ns        | 144 ns                  | 337 ns               |
+| 8×8  | 243 ns        | 193 ns                  | 467 ns               |
+| 9×9  | 310 ns        | 225 ns                  | 644 ns               |
 
-At the smallest sizes, the LAPACK-based `mat_inverse` is fastest (especially for n ≤ 3, where it uses closed-form formulas). Around n = 5–6 the two pivoting strategies are roughly on par, and for n ≥ 7 the partial-pivoting Rust implementation overtakes LAPACK. The full-pivoting C code is always the slowest — it pays for `malloc`/`free` and the column-unscrambling bookkeeping on every call.
+For n ≤ 3, `small_mat_inv` uses the same closed-form formulas as `mat_inverse` but operates on stack arrays, so it is faster (~3.7 ns vs ~6.6 ns). For n ≥ 4, the partial-pivoting Rust implementation is on par with LAPACK at n = 4 and faster for n ≥ 5. The full-pivoting C code is the slowest for n ≥ 4 — it pays for `malloc`/`free` and the column-unscrambling bookkeeping on every call.
 
 ## How to run
 

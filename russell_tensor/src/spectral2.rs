@@ -36,8 +36,7 @@ impl Spectral2 {
         if tt.rep != self.rep {
             return Err("the representation is incompatible");
         }
-        let dim = tt.vec.dim();
-        if dim == 4 {
+        if tt.dim == 4 {
             // eigenvalues and eigenvectors
             let (t22, mut a) = tt.as_matrix_2d();
             let mut l = Vector::new(2);
@@ -83,7 +82,7 @@ impl Spectral2 {
         if lambda.dim() != 3 {
             return Err("lambda.dim must be equal to 3");
         }
-        let n = self.projectors[0].vec.dim();
+        let n = self.projectors[0].dim;
         for i in 0..n {
             composed.vec[i] = lambda[0] * self.projectors[0].vec[i]
                 + lambda[1] * self.projectors[1].vec[i]

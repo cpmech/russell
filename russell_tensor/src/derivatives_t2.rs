@@ -26,11 +26,10 @@ use crate::Rep; // for documentation
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
     assert_eq!(d1.rep, sigma.rep);
-    let dim = d1.vec.dim();
     let n = sigma.norm();
     if n > 0.0 {
         d1.set_tensor(1.0, sigma);
-        for i in 0..dim {
+        for i in 0..d1.dim {
             d1.vec[i] /= n;
         }
         return Some(n);
@@ -128,11 +127,10 @@ pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) 
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_sigma_s(d1: &mut Tensor2, sigma: &Tensor2) {
     assert_eq!(d1.rep, sigma.rep);
-    let dim = d1.vec.dim();
     d1.vec[0] = 1.0 / SQRT_3;
     d1.vec[1] = 1.0 / SQRT_3;
     d1.vec[2] = 1.0 / SQRT_3;
-    for i in 3..dim {
+    for i in 3..d1.dim {
         d1.vec[i] = 0.0;
     }
 }
@@ -165,12 +163,11 @@ pub fn deriv1_invariant_sigma_s(d1: &mut Tensor2, sigma: &Tensor2) {
 pub fn deriv1_invariant_sigma_t(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
     assert!(sigma.rep.symmetric());
     assert_eq!(d1.rep, sigma.rep);
-    let dim = sigma.vec.dim();
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         let a = 1.0 / f64::sqrt(2.0 * jj2);
         deriv1_invariant_jj2(d1, sigma);
-        for i in 0..dim {
+        for i in 0..d1.dim {
             d1.vec[i] *= a;
         }
         return Some(jj2);
@@ -199,11 +196,10 @@ pub fn deriv1_invariant_sigma_t(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
     assert_eq!(d1.rep, sigma.rep);
-    let dim = d1.vec.dim();
     d1.vec[0] = ONE_BY_3;
     d1.vec[1] = ONE_BY_3;
     d1.vec[2] = ONE_BY_3;
-    for i in 3..dim {
+    for i in 3..d1.dim {
         d1.vec[i] = 0.0;
     }
 }
@@ -236,12 +232,11 @@ pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
 pub fn deriv1_invariant_q(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
     assert!(sigma.rep.symmetric());
     assert_eq!(d1.rep, sigma.rep);
-    let dim = sigma.vec.dim();
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         let a = 0.5 * SQRT_3 / f64::sqrt(jj2);
         deriv1_invariant_jj2(d1, sigma);
-        for i in 0..dim {
+        for i in 0..d1.dim {
             d1.vec[i] *= a;
         }
         return Some(jj2);
@@ -287,14 +282,13 @@ pub fn deriv1_invariant_lode(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2)
     assert!(sigma.rep.symmetric());
     assert_eq!(d1.rep, sigma.rep);
     assert_eq!(s.rep, sigma.rep);
-    let dim = sigma.vec.dim();
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         deriv1_invariant_jj3(d1, s, sigma); // d1 := dJ3/dσ
         let jj3 = sigma.invariant_jj3();
         let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
         let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
-        for i in 0..dim {
+        for i in 0..d1.dim {
             d1.vec[i] = a * d1.vec[i] - b * jj3 * s.vec[i];
         }
         return Some(jj2);
@@ -438,7 +432,7 @@ mod tests {
             m: 0,
         };
         let mut num_deriv = sigma.clone();
-        for m in 0..sigma.vec.dim() {
+        for m in 0..sigma.dim {
             args.m = m;
             let x = args.sigma.vec[m];
             let res = deriv1_central5(x, &mut args, f_sigma_mat).unwrap();

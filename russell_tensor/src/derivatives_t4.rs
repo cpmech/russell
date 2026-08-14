@@ -1,7 +1,43 @@
 use crate::{ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
 use crate::{Rep, Tensor2, Tensor4};
 use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd};
-use russell_lab::{mat_add, mat_mat_mul, mat_update};
+
+/// Computes `c := alpha * a + beta * b` (in place) for Tensor4
+#[inline]
+fn mat_add_t4(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
+    let dim = c.dim;
+    for i in 0..dim {
+        for j in 0..dim {
+            c.mat[i][j] = alpha * a.mat[i][j] + beta * b.mat[i][j];
+        }
+    }
+}
+
+/// Computes `b := alpha * a + b` (in place) for Tensor4
+#[inline]
+fn mat_update_t4(b: &mut Tensor4, alpha: f64, a: &Tensor4) {
+    let dim = b.dim;
+    for i in 0..dim {
+        for j in 0..dim {
+            b.mat[i][j] += alpha * a.mat[i][j];
+        }
+    }
+}
+
+/// Computes `b := alpha * a * c + beta * b` (in place) for Tensor4
+#[inline]
+fn mat_mat_mul_t4(b: &mut Tensor4, alpha: f64, a: &Tensor4, c: &Tensor4, beta: f64) {
+    let dim = b.dim;
+    for i in 0..dim {
+        for j in 0..dim {
+            let mut s = 0.0;
+            for k in 0..dim {
+                s += a.mat[i][k] * c.mat[k][j];
+            }
+            b.mat[i][j] = alpha * s + beta * b.mat[i][j];
+        }
+    }
+}
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -126,7 +162,7 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2)
     // compute A odyad I + I odyad transpose(A)
     for m in 0..9 {
         for n in 0..9 {
-            da2_da.mat.set(m, n, da2_da.mat.get(m, n) + ii_odyad_at.mat.get(m, n));
+            da2_da.mat[m][n] = da2_da.mat[m][n] + ii_odyad_at.mat[m][n];
         }
     }
 }
@@ -198,21 +234,19 @@ pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tens
 pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) {
     assert_eq!(d2.rep, Rep::Symmetric);
     assert!(sigma.rep.symmetric());
-    d2.mat.fill(0.0);
-    unsafe {
-        d2.mat.set_unchecked(0, 0, TWO_BY_3);
-        d2.mat.set_unchecked(0, 1, -ONE_BY_3);
-        d2.mat.set_unchecked(0, 2, -ONE_BY_3);
-        d2.mat.set_unchecked(1, 0, -ONE_BY_3);
-        d2.mat.set_unchecked(1, 1, TWO_BY_3);
-        d2.mat.set_unchecked(1, 2, -ONE_BY_3);
-        d2.mat.set_unchecked(2, 0, -ONE_BY_3);
-        d2.mat.set_unchecked(2, 1, -ONE_BY_3);
-        d2.mat.set_unchecked(2, 2, TWO_BY_3);
-        d2.mat.set_unchecked(3, 3, 1.0);
-        d2.mat.set_unchecked(4, 4, 1.0);
-        d2.mat.set_unchecked(5, 5, 1.0);
-    }
+    d2.mat = [[0.0; 9]; 9];
+    d2.mat[0][0] = TWO_BY_3;
+    d2.mat[0][1] = -ONE_BY_3;
+    d2.mat[0][2] = -ONE_BY_3;
+    d2.mat[1][0] = -ONE_BY_3;
+    d2.mat[1][1] = TWO_BY_3;
+    d2.mat[1][2] = -ONE_BY_3;
+    d2.mat[2][0] = -ONE_BY_3;
+    d2.mat[2][1] = -ONE_BY_3;
+    d2.mat[2][2] = TWO_BY_3;
+    d2.mat[3][3] = 1.0;
+    d2.mat[4][4] = 1.0;
+    d2.mat[5][5] = 1.0;
 }
 
 /// Holds auxiliary data to compute the second derivative of the J3 invariant
@@ -283,8 +317,8 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
     aux.aa.use_loops = d2.use_loops;
     t2_qsd_t2(&mut aux.aa, 0.5, &mut aux.s, &aux.ii); // aa := 0.5 qsd(s,I)
     t2_dyad_t2(&mut aux.bb, -TWO_BY_3, &aux.ii, &aux.s); // bb := -⅔ I ⊗ s
-    mat_mat_mul(&mut d2.mat, 1.0, &aux.aa.mat, &aux.psd.mat, 0.0).unwrap(); // d2 := 0.5 qsd(s,I) : Psd
-    mat_update(&mut d2.mat, 1.0, &aux.bb.mat).unwrap(); // d2 += -⅔ I ⊗ s
+    mat_mat_mul_t4(d2, 1.0, &aux.aa, &aux.psd, 0.0); // d2 := 0.5 qsd(s,I) : Psd
+    mat_update_t4(d2, 1.0, &aux.bb); // d2 += -⅔ I ⊗ s
 }
 
 /// Holds auxiliary data to compute the second derivative of σt (or q)
@@ -351,7 +385,7 @@ pub fn deriv2_invariant_sigma_t(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantSi
             deriv2_invariant_jj2(&mut aux.d2_jj2, sigma);
         }
         t2_dyad_t2(d2, -b, &aux.d1_jj2, &aux.d1_jj2);
-        mat_update(&mut d2.mat, a, &aux.d2_jj2.mat).unwrap();
+        mat_update_t4(d2, a, &aux.d2_jj2);
         return Some(jj2);
     }
     None
@@ -402,7 +436,7 @@ pub fn deriv2_invariant_q(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantSigmaT, 
             deriv2_invariant_jj2(&mut aux.d2_jj2, sigma);
         }
         t2_dyad_t2(d2, -b, &aux.d1_jj2, &aux.d1_jj2);
-        mat_update(&mut d2.mat, a, &aux.d2_jj2.mat).unwrap();
+        mat_update_t4(d2, a, &aux.d2_jj2);
         return Some(jj2);
     }
     None
@@ -510,10 +544,10 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj2, 1.0, &aux.d1_jj2, &aux.d1_jj2);
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj3, 1.0, &aux.d1_jj2, &aux.d1_jj3);
         t2_dyad_t2(&mut aux.d1_jj3_dy_d1_jj2, 1.0, &aux.d1_jj3, &aux.d1_jj2);
-        mat_add(&mut d2.mat, a, &aux.d2_jj3.mat, -b * jj3, &aux.d2_jj2.mat).unwrap();
-        mat_update(&mut d2.mat, -b, &aux.d1_jj3_dy_d1_jj2.mat).unwrap();
-        mat_update(&mut d2.mat, -b, &aux.d1_jj2_dy_d1_jj3.mat).unwrap();
-        mat_update(&mut d2.mat, c * jj3, &aux.d1_jj2_dy_d1_jj2.mat).unwrap();
+        mat_add_t4(d2, a, &aux.d2_jj3, -b * jj3, &aux.d2_jj2);
+        mat_update_t4(d2, -b, &aux.d1_jj3_dy_d1_jj2);
+        mat_update_t4(d2, -b, &aux.d1_jj2_dy_d1_jj3);
+        mat_update_t4(d2, c * jj3, &aux.d1_jj2_dy_d1_jj2);
         return Some(jj2);
     }
     None
@@ -527,6 +561,17 @@ mod tests {
     use crate::{MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
     use crate::{deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
+
+    // Returns the dim x dim Kelvin submatrix of a Tensor4 as a Matrix
+    fn kelvin_matrix(mat: &[[f64; 9]; 9], dim: usize) -> Matrix {
+        let mut m = Matrix::new(dim, dim);
+        for i in 0..dim {
+            for j in 0..dim {
+                m.set(i, j, mat[i][j]);
+            }
+        }
+        m
+    }
 
     // Holds arguments for numerical differentiation corresponding to ∂aiᵢⱼ/∂aₖₗ
     struct ArgsNumDerivInverse {
@@ -600,7 +645,7 @@ mod tests {
                 args.n = n;
                 let x = args.a.vec[args.n];
                 let res = deriv1_central5(x, &mut args, component_of_inverse_mat).unwrap();
-                num_deriv.mat.set(m, n, res);
+                num_deriv.mat[m][n] = res;
             }
         }
         num_deriv.as_matrix()
@@ -617,7 +662,7 @@ mod tests {
         args.a.vec[1] = a.vec[1];
         args.a.vec[2] = a.vec[2];
         args.a.vec[3] = a.vec[3];
-        if a.vec.dim() > 4 {
+        if a.dim > 4 {
             args.a.vec[4] = a.vec[4];
             args.a.vec[5] = a.vec[5];
         }
@@ -628,7 +673,7 @@ mod tests {
                 args.n = n;
                 let x = args.a.vec[args.n];
                 let res = deriv1_central5(x, &mut args, component_of_inverse_mat).unwrap();
-                num_deriv.mat.set(m, n, res);
+                num_deriv.mat[m][n] = res;
             }
         }
         num_deriv.as_matrix()
@@ -801,7 +846,7 @@ mod tests {
                 args.n = n;
                 let x = args.a.vec[args.n];
                 let res = deriv1_central5(x, &mut args, component_of_squared_mat).unwrap();
-                num_deriv.mat.set(m, n, res);
+                num_deriv.mat[m][n] = res;
             }
         }
         num_deriv.as_matrix()
@@ -818,7 +863,7 @@ mod tests {
         args.a.vec[1] = a.vec[1];
         args.a.vec[2] = a.vec[2];
         args.a.vec[3] = a.vec[3];
-        if a.vec.dim() > 4 {
+        if a.dim > 4 {
             args.a.vec[4] = a.vec[4];
             args.a.vec[5] = a.vec[5];
         }
@@ -829,7 +874,7 @@ mod tests {
                 args.n = n;
                 let x = args.a.vec[args.n];
                 let res = deriv1_central5(x, &mut args, component_of_squared_mat).unwrap();
-                num_deriv.mat.set(m, n, res);
+                num_deriv.mat[m][n] = res;
             }
         }
         num_deriv.as_matrix()
@@ -988,7 +1033,7 @@ mod tests {
         args.sigma.vec[1] = sigma.vec[1];
         args.sigma.vec[2] = sigma.vec[2];
         args.sigma.vec[3] = sigma.vec[3];
-        if sigma.vec.dim() > 4 {
+        if sigma.dim > 4 {
             args.sigma.vec[4] = sigma.vec[4];
             args.sigma.vec[5] = sigma.vec[5];
         }
@@ -999,7 +1044,7 @@ mod tests {
                 args.n = n;
                 let x = args.sigma.vec[args.n];
                 let res = deriv1_central5(x, &mut args, component_of_deriv1_inv_mat).unwrap();
-                num_deriv.mat.set(m, n, res);
+                num_deriv.mat[m][n] = res;
             }
         }
         num_deriv.as_matrix()
@@ -1012,7 +1057,7 @@ mod tests {
 
         // compare with Psymdev
         let pp_symdev = Tensor4::constant_pp_symdev(true);
-        mat_approx_eq(&dd2_ana.mat, &pp_symdev.mat, 1e-15);
+        mat_approx_eq(&Matrix::from(&dd2_ana.mat), &pp_symdev.mat, 1e-15);
 
         // check using numerical derivative
         let ana = dd2_ana.as_matrix();
@@ -1239,7 +1284,7 @@ mod tests {
             [-10.0*SQRT_2/3.0 , 5.0*SQRT_2/3.0 ,  5.0*SQRT_2/3.0 ,  3.0            , 8.0/3.0          , 2.0         ],
             [      SQRT_2     ,-2.0*SQRT_2     ,      SQRT_2     ,  5.0            , 2.0              , -1.0/3.0    ],
         ];
-        mat_approx_eq(&d2.mat, &correct, 1e-15);
+        mat_approx_eq(&kelvin_matrix(&d2.mat, d2.dim), &correct, 1e-15);
 
         let mut aux = AuxDeriv2InvariantLode::new();
         deriv2_invariant_lode(&mut d2, &mut aux, &sigma).unwrap();
@@ -1255,7 +1300,7 @@ mod tests {
             [-0.0354377940510052, 0.0234105185455438,   0.0120272755054614,  0.0103061398245104, -0.0308487598599826,  0.0128121444219201],
             [0.0131589501434791, -0.0229302648906723,   0.00977131474719321, 0.0374455252630319,  0.0128121444219201, -0.0345929640882181],
         ];
-        mat_approx_eq(&d2.mat, &correct, 1e-15);
+        mat_approx_eq(&kelvin_matrix(&d2.mat, d2.dim), &correct, 1e-15);
     }
 
     // check assertions -----------------------------------------------------------------------------

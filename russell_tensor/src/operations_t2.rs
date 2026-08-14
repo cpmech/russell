@@ -1,7 +1,6 @@
 use super::Tensor2;
 use crate::{Rep, SQRT_2};
 use russell_lab::{StrError, Vector};
-use russell_lab::{vec_add, vec_inner};
 
 /// Adds two second-order tensors
 ///
@@ -15,7 +14,33 @@ use russell_lab::{vec_add, vec_inner};
 pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) {
     assert_eq!(b.rep, a.rep);
     assert_eq!(c.rep, a.rep);
-    vec_add(&mut c.vec, alpha, &a.vec, beta, &b.vec).unwrap();
+    match a.dim {
+        4 => {
+            c.vec[0] = alpha * a.vec[0] + beta * b.vec[0];
+            c.vec[1] = alpha * a.vec[1] + beta * b.vec[1];
+            c.vec[2] = alpha * a.vec[2] + beta * b.vec[2];
+            c.vec[3] = alpha * a.vec[3] + beta * b.vec[3];
+        }
+        6 => {
+            c.vec[0] = alpha * a.vec[0] + beta * b.vec[0];
+            c.vec[1] = alpha * a.vec[1] + beta * b.vec[1];
+            c.vec[2] = alpha * a.vec[2] + beta * b.vec[2];
+            c.vec[3] = alpha * a.vec[3] + beta * b.vec[3];
+            c.vec[4] = alpha * a.vec[4] + beta * b.vec[4];
+            c.vec[5] = alpha * a.vec[5] + beta * b.vec[5];
+        }
+        _ => {
+            c.vec[0] = alpha * a.vec[0] + beta * b.vec[0];
+            c.vec[1] = alpha * a.vec[1] + beta * b.vec[1];
+            c.vec[2] = alpha * a.vec[2] + beta * b.vec[2];
+            c.vec[3] = alpha * a.vec[3] + beta * b.vec[3];
+            c.vec[4] = alpha * a.vec[4] + beta * b.vec[4];
+            c.vec[5] = alpha * a.vec[5] + beta * b.vec[5];
+            c.vec[6] = alpha * a.vec[6] + beta * b.vec[6];
+            c.vec[7] = alpha * a.vec[7] + beta * b.vec[7];
+            c.vec[8] = alpha * a.vec[8] + beta * b.vec[8];
+        }
+    }
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor2 (inner product)
@@ -80,7 +105,28 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 /// ```
 pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
     assert_eq!(a.rep, b.rep);
-    vec_inner(&a.vec, &b.vec)
+    match a.dim {
+        4 => a.vec[0] * b.vec[0] + a.vec[1] * b.vec[1] + a.vec[2] * b.vec[2] + a.vec[3] * b.vec[3],
+        6 => {
+            a.vec[0] * b.vec[0]
+                + a.vec[1] * b.vec[1]
+                + a.vec[2] * b.vec[2]
+                + a.vec[3] * b.vec[3]
+                + a.vec[4] * b.vec[4]
+                + a.vec[5] * b.vec[5]
+        }
+        _ => {
+            a.vec[0] * b.vec[0]
+                + a.vec[1] * b.vec[1]
+                + a.vec[2] * b.vec[2]
+                + a.vec[3] * b.vec[3]
+                + a.vec[4] * b.vec[4]
+                + a.vec[5] * b.vec[5]
+                + a.vec[6] * b.vec[6]
+                + a.vec[7] * b.vec[7]
+                + a.vec[8] * b.vec[8]
+        }
+    }
 }
 
 /// Performs the single dot operation between two Tensor2 (matrix multiplication)
@@ -150,7 +196,7 @@ pub fn t2_ddot_t2(a: &Tensor2, b: &Tensor2) -> f64 {
 pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
     assert_eq!(c.rep, Rep::General);
     assert_eq!(b.rep, a.rep);
-    let dim = a.vec.dim();
+    let dim = a.dim;
     let a = &a.vec;
     let b = &b.vec;
     let c = &mut c.vec;
@@ -246,7 +292,7 @@ pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
 /// }
 /// ```
 pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
-    if a.vec.dim() == 4 {
+    if a.dim == 4 {
         assert_eq!(v.dim(), 2);
         assert_eq!(u.dim(), 2);
         v[0] = alpha * (a.get(0, 0) * u[0] + a.get(0, 1) * u[1]);
@@ -318,7 +364,7 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
 /// }
 /// ```
 pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
-    if a.vec.dim() == 4 {
+    if a.dim == 4 {
         assert_eq!(v.dim(), 2);
         assert_eq!(u.dim(), 2);
         v[0] = alpha * (u[0] * a.get(0, 0) + u[1] * a.get(1, 0));
@@ -390,8 +436,7 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
 /// }
 /// ```
 pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
-    let dim = a.vec.dim();
-    if dim == 4 {
+    if a.dim == 4 {
         assert_eq!(v.dim(), 2);
         assert_eq!(u.dim(), 2);
         if (u[0] * v[1]) != (u[1] * v[0]) {
@@ -410,7 +455,7 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
         a.vec[3] = alpha * (u[0] * v[1] + u[1] * v[0]) / SQRT_2;
         a.vec[4] = alpha * (u[1] * v[2] + u[2] * v[1]) / SQRT_2;
         a.vec[5] = alpha * (u[0] * v[2] + u[2] * v[0]) / SQRT_2;
-        if dim == 6 {
+        if a.dim == 6 {
             if (u[0] * v[1]) != (u[1] * v[0]) || (u[1] * v[2]) != (u[2] * v[1]) || (u[0] * v[2]) != (u[2] * v[0]) {
                 return Err("dyadic product between u and v does not generate a symmetric tensor");
             }
@@ -429,7 +474,7 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
 mod tests {
     use super::*;
     use crate::Rep;
-    use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
+    use russell_lab::{approx_eq, array_approx_eq, mat_approx_eq, vec_approx_eq};
 
     #[test]
     #[should_panic]
@@ -574,7 +619,7 @@ mod tests {
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
         ], Rep::General).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        array_approx_eq(&c.vec, &correct.vec, 1e-13);
 
         // sym-3D . sym-3D
         #[rustfmt::skip]
@@ -597,7 +642,7 @@ mod tests {
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
         ], Rep::General).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        array_approx_eq(&c.vec, &correct.vec, 1e-13);
 
         // sym-2D . sym-2D
         #[rustfmt::skip]
@@ -620,7 +665,7 @@ mod tests {
             [22.0, 24.0, 0.0],
             [ 0.0,  0.0, 3.0],
         ], Rep::General).unwrap();
-        vec_approx_eq(&c.vec, &correct.vec, 1e-13);
+        array_approx_eq(&c.vec, &correct.vec, 1e-13);
     }
 
     #[test]
@@ -847,7 +892,7 @@ mod tests {
             6.0 * SQRT_2,
             12.0 * SQRT_2,
         ];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        array_approx_eq(tt.vector(), correct, 1e-14);
 
         // symmetric 3D
         let u = Vector::from(&[-2.0, -3.0, -4.0]);
@@ -855,7 +900,7 @@ mod tests {
         let mut tt = Tensor2::new(Rep::Symmetric);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        array_approx_eq(tt.vector(), correct, 1e-14);
 
         // symmetric 2D
         let u = Vector::from(&[-2.0, -3.0]);
@@ -863,6 +908,6 @@ mod tests {
         let mut tt = Tensor2::new(Rep::Symmetric2D);
         vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        array_approx_eq(tt.vector(), correct, 1e-14);
     }
 }

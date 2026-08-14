@@ -1,5 +1,5 @@
 use crate::{Rep, StrError, Tensor2, Tensor4, t4_ddot_t2};
-use russell_lab::mat_inverse;
+use russell_lab::small_mat_inv;
 
 /// Implements the linear elasticity equations for small-strain problems
 pub struct LinElasticity {
@@ -110,7 +110,7 @@ impl LinElasticity {
 
     /// Returns the representation
     pub fn rep(&self) -> Rep {
-        self.dd.rep
+        self.dd.rep()
     }
 
     /// Sets the Young's modulus and Poisson's coefficient
@@ -345,7 +345,7 @@ impl LinElasticity {
         if !self.plane_stress {
             return Err("out-of-plane strain works with plane-stress only");
         }
-        let eps_zz = -(stress.vec[0] + stress.vec[1]) * self.poisson / self.young;
+        let eps_zz = -(stress.vector()[0] + stress.vector()[1]) * self.poisson / self.young;
         Ok(eps_zz)
     }
 
@@ -383,7 +383,7 @@ impl LinElasticity {
     ///     let piso = Tensor4::constant_pp_iso(true);
     ///     let mut correct = Tensor4::new(Rep::Symmetric);
     ///     t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
-    ///     mat_approx_eq(cc.matrix(), correct.matrix(), 1e-15);
+    ///     mat_approx_eq(&cc.as_matrix(), &correct.as_matrix(), 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -391,7 +391,7 @@ impl LinElasticity {
         if self.plane_stress {
             return Err("The compliance modulus is not available for plane-stress");
         }
-        let _ = mat_inverse(&mut cc.mat, &self.dd.mat).map_err(|_| "cannot invert the rigidity modulus D")?;
+        small_mat_inv(cc.matrix_mut(), self.dd.matrix(), self.dd.dim()).map_err(|_| "cannot invert the rigidity modulus D")?;
         Ok(())
     }
 
@@ -399,27 +399,28 @@ impl LinElasticity {
     fn calc_rigidity(&mut self) {
         if self.plane_stress {
             let c = self.young / (1.0 - self.poisson * self.poisson);
-            self.dd.mat.set(0, 0, c);
-            self.dd.mat.set(0, 1, c * self.poisson);
-            self.dd.mat.set(1, 0, c * self.poisson);
-            self.dd.mat.set(1, 1, c);
-            self.dd.mat.set(3, 3, c * (1.0 - self.poisson)); // Rep: multiply by 2, so 1/2 disappears
+            self.dd.set(0, 0, c);
+            self.dd.set(0, 1, c * self.poisson);
+            self.dd.set(1, 0, c * self.poisson);
+            self.dd.set(1, 1, c);
+            self.dd.set(3, 3, c * (1.0 - self.poisson)); // Rep: multiply by 2, so 1/2 disappears
         } else {
             let c = self.young / ((1.0 + self.poisson) * (1.0 - 2.0 * self.poisson));
-            self.dd.mat.set(0, 0, c * (1.0 - self.poisson));
-            self.dd.mat.set(0, 1, c * self.poisson);
-            self.dd.mat.set(0, 2, c * self.poisson);
-            self.dd.mat.set(1, 0, c * self.poisson);
-            self.dd.mat.set(1, 1, c * (1.0 - self.poisson));
-            self.dd.mat.set(1, 2, c * self.poisson);
-            self.dd.mat.set(2, 0, c * self.poisson);
-            self.dd.mat.set(2, 1, c * self.poisson);
-            self.dd.mat.set(2, 2, c * (1.0 - self.poisson));
-            self.dd.mat.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Rep: multiply by 2, so 1/2 disappears
+            self.dd.set(0, 0, c * (1.0 - self.poisson));
+            self.dd.set(0, 1, c * self.poisson);
+            self.dd.set(0, 2, c * self.poisson);
+            self.dd.set(1, 0, c * self.poisson);
+            self.dd.set(1, 1, c * (1.0 - self.poisson));
+            self.dd.set(1, 2, c * self.poisson);
+            self.dd.set(2, 0, c * self.poisson);
+            self.dd.set(2, 1, c * self.poisson);
+            self.dd.set(2, 2, c * (1.0 - self.poisson));
+            self.dd.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Rep: multiply by 2, so 1/2 disappears
         }
-        if self.dd.mat.dims().0 > 4 {
-            self.dd.mat.set(4, 4, self.dd.mat.get(3, 3));
-            self.dd.mat.set(5, 5, self.dd.mat.get(3, 3));
+        if self.dd.dim() > 4 {
+            let g = self.dd.get_mn(3, 3);
+            self.dd.set(4, 4, g);
+            self.dd.set(5, 5, g);
         }
     }
 }
@@ -492,31 +493,31 @@ mod tests {
     fn set_get_parameters_works() {
         let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
         ela.set_young_poisson(6000.0, 0.2);
-        assert_eq!(ela.dd.mat.get(0, 0), 6250.0);
+        assert_eq!(ela.dd.get_mn(0, 0), 6250.0);
 
         let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
         ela.set_bulk_shear(1000.0, 600.0);
         assert_eq!(ela.young, 1500.0);
         assert_eq!(ela.poisson, 0.25);
-        assert_eq!(ela.dd.mat.get(0, 0), 1800.0);
-        assert_eq!(ela.dd.mat.get(0, 1), 600.0);
+        assert_eq!(ela.dd.get_mn(0, 0), 1800.0);
+        assert_eq!(ela.dd.get_mn(0, 1), 600.0);
         let c = ela.young / ((1.0 + ela.poisson) * (1.0 - 2.0 * ela.poisson));
-        assert_eq!(ela.dd.mat.get(0, 0), (1.0 - ela.poisson) * c);
-        assert_eq!(ela.dd.mat.get(0, 1), ela.poisson * c);
+        assert_eq!(ela.dd.get_mn(0, 0), (1.0 - ela.poisson) * c);
+        assert_eq!(ela.dd.get_mn(0, 1), ela.poisson * c);
 
         let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
         ela.set_young_poisson(1500.0, 0.25);
         assert_eq!(ela.get_young_poisson(), (1500.0, 0.25));
         assert_eq!(ela.get_bulk_shear(), (1000.0, 600.0));
-        assert_eq!(ela.dd.mat.get(0, 0), 1800.0);
-        assert_eq!(ela.dd.mat.get(0, 1), 600.0);
+        assert_eq!(ela.dd.get_mn(0, 0), 1800.0);
+        assert_eq!(ela.dd.get_mn(0, 1), 600.0);
     }
 
     #[test]
     fn get_modulus_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let dd = ela.get_modulus();
-        assert_eq!(dd.mat.get(0, 0), 3125.0);
+        assert_eq!(dd.get_mn(0, 0), 3125.0);
         check_symmetry(&dd.as_matrix()).unwrap();
     }
 
@@ -668,7 +669,7 @@ mod tests {
         let piso = Tensor4::constant_pp_iso(true);
         let mut correct = Tensor4::new(Rep::Symmetric);
         t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
-        mat_approx_eq(&cc.mat, &correct.mat, 1e-15);
+        mat_approx_eq(&cc.as_matrix(), &correct.as_matrix(), 1e-15);
 
         // change parameters
         let (kk, gg) = (1.0 / 6.0, 1.0 / 4.0);
@@ -678,6 +679,6 @@ mod tests {
         // check again
         t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
         // println!("{}", cc.as_matrix());
-        mat_approx_eq(&cc.mat, &correct.mat, 1e-15);
+        mat_approx_eq(&cc.as_matrix(), &correct.as_matrix(), 1e-15);
     }
 }

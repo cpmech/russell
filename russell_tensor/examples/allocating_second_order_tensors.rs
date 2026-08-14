@@ -1,3 +1,4 @@
+use russell_lab::Vector;
 use russell_tensor::{Rep, SQRT_2, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
@@ -11,7 +12,7 @@ fn main() -> Result<(), StrError> {
         Rep::General,
     )?;
     assert_eq!(
-        format!("{:.1}", a.vector()),
+        format!("{:.1}", Vector::from(&a.vector())),
         "┌      ┐\n\
          │  1.0 │\n\
          │  5.0 │\n\
@@ -35,7 +36,7 @@ fn main() -> Result<(), StrError> {
         Rep::Symmetric,
     )?;
     assert_eq!(
-        format!("{:.1}", b.vector()),
+        format!("{:.1}", Vector::from(&b.vector())),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\
@@ -52,7 +53,7 @@ fn main() -> Result<(), StrError> {
         Rep::Symmetric2D,
     )?;
     assert_eq!(
-        format!("{:.1}", c.vector()),
+        format!("{:.1}", Vector::from(&c.vector())),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\

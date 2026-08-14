@@ -1,5 +1,4 @@
 use super::{Tensor2, Tensor4};
-use russell_lab::{mat_vec_mul, mat_vec_mul_update, vec_mat_mul, vec_outer, vec_outer_update};
 
 #[allow(unused)]
 use crate::Rep; // for documentation
@@ -77,7 +76,12 @@ use crate::Rep; // for documentation
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
-    vec_outer(&mut dd.mat, alpha, &a.vec, &b.vec).unwrap();
+    let dim = dd.dim;
+    for m in 0..dim {
+        for n in 0..dim {
+            dd.mat[m][n] = alpha * a.vec[m] * b.vec[n];
+        }
+    }
 }
 
 /// Performs the dyadic product between two Tensor2 resulting in a Tensor4 (with update)
@@ -159,7 +163,12 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
-    vec_outer_update(&mut dd.mat, alpha, &a.vec, &b.vec).unwrap();
+    let dim = dd.dim;
+    for m in 0..dim {
+        for n in 0..dim {
+            dd.mat[m][n] += alpha * a.vec[m] * b.vec[n];
+        }
+    }
 }
 
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2
@@ -237,7 +246,14 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
-    mat_vec_mul(&mut b.vec, alpha, &dd.mat, &a.vec).unwrap();
+    let dim = b.dim;
+    for m in 0..dim {
+        let mut s = 0.0;
+        for n in 0..dim {
+            s += dd.mat[m][n] * a.vec[n];
+        }
+        b.vec[m] = alpha * s;
+    }
 }
 
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2 with update
@@ -322,7 +338,14 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2, beta: f64) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
-    mat_vec_mul_update(&mut b.vec, alpha, &dd.mat, &a.vec, beta).unwrap();
+    let dim = b.dim;
+    for m in 0..dim {
+        let mut s = 0.0;
+        for n in 0..dim {
+            s += dd.mat[m][n] * a.vec[n];
+        }
+        b.vec[m] = alpha * s + beta * b.vec[m];
+    }
 }
 
 /// Performs the double-dot (ddot) operation between a Tensor2 and a Tensor4
@@ -395,7 +418,14 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
-    vec_mat_mul(&mut b.vec, alpha, &a.vec, &dd.mat).unwrap();
+    let dim = b.dim;
+    for n in 0..dim {
+        let mut s = 0.0;
+        for m in 0..dim {
+            s += a.vec[m] * dd.mat[m][n];
+        }
+        b.vec[n] = alpha * s;
+    }
 }
 
 /// Computes Tensor2 double-dot Tensor4 double-dot Tensor2
@@ -438,11 +468,11 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
-    let dim = a.vec.dim();
+    let dim = a.dim;
     let mut s = 0.0;
     for m in 0..dim {
         for n in 0..dim {
-            s += a.vec[m] * dd.mat.get(m, n) * b.vec[n];
+            s += a.vec[m] * dd.mat[m][n] * b.vec[n];
         }
     }
     s
@@ -491,14 +521,13 @@ pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, be
     assert_eq!(a.rep, dd.rep);
     assert_eq!(b.rep, dd.rep);
     assert_eq!(ee.rep, dd.rep);
-    let dim = a.vec.dim();
+    let dim = a.dim;
     for m in 0..dim {
         for n in 0..dim {
-            ee.mat.set(m, n, alpha * dd.mat.get(m, n));
+            ee.mat[m][n] = alpha * dd.mat[m][n];
             for p in 0..dim {
                 for q in 0..dim {
-                    ee.mat
-                        .add(m, n, beta * dd.mat.get(m, p) * a.vec[p] * b.vec[q] * dd.mat.get(q, n));
+                    ee.mat[m][n] += beta * dd.mat[m][p] * a.vec[p] * b.vec[q] * dd.mat[q][n];
                 }
             }
         }

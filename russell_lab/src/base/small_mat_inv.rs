@@ -117,68 +117,6 @@ pub fn gauss_jordan_partial_pivoting<const N: usize>(
     Ok(())
 }
 
-/// Inverts a 9x9 matrix in-place using Gauss-Jordan elimination with partial pivoting.
-/// Returns `Some(matrix)` if successful, or `None` if the matrix is singular (not invertible).
-pub fn invert_matrix_9x9(mut a: [[f64; 9]; 9]) -> Option<[[f64; 9]; 9]> {
-    let mut inv = [[0.0; 9]; 9];
-    for i in 0..9 {
-        inv[i][i] = 1.0;
-    }
-
-    for i in 0..9 {
-        // 1. Find the pivot row (Partial Pivoting)
-        let mut max_row = i;
-        let mut max_val = a[i][i].abs();
-
-        for r in (i + 1)..9 {
-            let val = a[r][i].abs();
-            if val > max_val {
-                max_val = val;
-                max_row = r;
-            }
-        }
-
-        // Check for singularity (with a small epsilon tolerance)
-        if max_val < 1e-12 {
-            return None;
-        }
-
-        // Swap rows in both matrices if necessary
-        if max_row != i {
-            a.swap(i, max_row);
-            inv.swap(i, max_row);
-        }
-
-        // 2. Scale the pivot row to make the diagonal element 1.0
-        let pivot = a[i][i];
-
-        // Unroll row normalization
-        for j in 0..9 {
-            a[i][j] /= pivot;
-            inv[i][j] /= pivot;
-        }
-        // Force the exact diagonal to 1.0 to eliminate rounding noise
-        a[i][i] = 1.0;
-
-        // 3. Eliminate columns below and above the pivot
-        for r in 0..9 {
-            if r != i {
-                let factor = a[r][i];
-                if factor != 0.0 {
-                    // Vectorizable inner loop
-                    for j in 0..9 {
-                        a[r][j] -= factor * a[i][j];
-                        inv[r][j] -= factor * inv[i][j];
-                    }
-                    a[r][i] = 0.0; // Force exact elimination
-                }
-            }
-        }
-    }
-
-    Some(inv)
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -339,5 +277,32 @@ mod tests {
         ];
         check_matrix(&a, &ai_correct, 1e-13);
         check_inverse(&data, &a, 1e-12);
+    }
+
+    #[test]
+    fn inverse_6x6_works() {
+        // NOTE: this matrix is nearly non-invertible; it originated from an FEM analysis
+        #[rustfmt::skip]
+        let data = [
+            [ 3.46540497998689445e-05, -1.39368151175265866e-05, -1.39368151175265866e-05,  0.00000000000000000e+00, 7.15957288480514429e-23, -2.93617909908697186e+02],
+            [-1.39368151175265866e-05,  3.46540497998689445e-05, -1.39368151175265866e-05,  0.00000000000000000e+00, 7.15957288480514429e-23, -2.93617909908697186e+02],
+            [-1.39368151175265866e-05, -1.39368151175265866e-05,  3.46540497998689445e-05,  0.00000000000000000e+00, 7.15957288480514429e-23, -2.93617909908697186e+02],
+            [ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00,  4.85908649173955311e-05, 0.00000000000000000e+00,  0.00000000000000000e+00],
+            [ 3.13760264822604860e-18,  3.13760264822604860e-18,  3.13760264822604860e-18,  0.00000000000000000e+00, 1.00000000000000000e+00, -1.93012141894243434e+07],
+            [ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, -0.00000000000000000e+00, 0.00000000000000000e+00,  1.00000000000000000e+00],
+        ];
+        let mut a = data;
+        gauss_jordan_partial_pivoting(&mut a, GaussJordanAlgo::Default).unwrap();
+        #[rustfmt::skip]
+        let ai_correct = &[
+            [ 6.28811662297464645e+04,  4.23011662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
+            [ 4.23011662297464645e+04,  6.28811662297464645e+04,  4.23011662297464645e+04, 0.00000000000000000e+00, -1.05591885817167332e-17, 4.33037966311565489e+07],
+            [ 4.23011662297464645e+04,  4.23011662297464645e+04,  6.28811662297464645e+04, 0.00000000000000000e+00, -1.05591885817167348e-17, 4.33037966311565489e+07],
+            [ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 2.05800000000000000e+04,  0.00000000000000000e+00, 0.00000000000000000e+00],
+            [-4.62744616057000471e-13, -4.62744616057000471e-13, -4.62744616057000471e-13, 0.00000000000000000e+00,  1.00000000000000000e+00, 1.93012141894243434e+07],
+            [ 0.00000000000000000e+00,  0.00000000000000000e+00,  0.00000000000000000e+00, 0.00000000000000000e+00,  0.00000000000000000e+00, 1.00000000000000000e+00],
+        ];
+        check_matrix(&a, &ai_correct, 1e-15);
+        check_inverse(&data, &a, 1e-13);
     }
 }

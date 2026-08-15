@@ -2643,10 +2643,7 @@ mod tests {
         )
         .unwrap();
         let tt_sym = tt.sym2d_as_symmetric();
-        assert_eq!(
-            format!("{:.2?}", &tt.vec[0..tt.dim]),
-            "[1.00, 3.00, 4.00, 2.00]"
-        );
+        assert_eq!(format!("{:.2?}", &tt.vec[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
         assert_eq!(
             format!("{:.2?}", &tt_sym.vec[0..tt_sym.dim]),
             "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00]"

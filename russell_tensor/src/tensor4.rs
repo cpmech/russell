@@ -1519,7 +1519,11 @@ mod tests {
         let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_SAMPLE1_STD_MATRIX, Rep::Symmetric).unwrap();
         for m in 0..dd.dim() {
             for n in 0..dd.dim() {
-                approx_eq(dd.matrix()[m][n], SamplesTensor4::SYM_SAMPLE1_KELVIN_MATRIX[m][n], 1e-14);
+                approx_eq(
+                    dd.matrix()[m][n],
+                    SamplesTensor4::SYM_SAMPLE1_KELVIN_MATRIX[m][n],
+                    1e-14,
+                );
             }
         }
 

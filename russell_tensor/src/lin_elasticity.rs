@@ -391,7 +391,8 @@ impl LinElasticity {
         if self.plane_stress {
             return Err("The compliance modulus is not available for plane-stress");
         }
-        small_mat_inv(cc.matrix_mut(), self.dd.matrix(), self.dd.dim()).map_err(|_| "cannot invert the rigidity modulus D")?;
+        small_mat_inv(cc.matrix_mut(), self.dd.matrix(), self.dd.dim())
+            .map_err(|_| "cannot invert the rigidity modulus D")?;
         Ok(())
     }
 

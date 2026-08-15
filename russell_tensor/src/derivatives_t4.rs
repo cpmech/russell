@@ -198,7 +198,11 @@ pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tens
 pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) {
     assert_eq!(d2.rep, Rep::Symmetric);
     assert!(sigma.rep.symmetric());
-    d2.mat = [[0.0; 9]; 9];
+    for m in 0..d2.dim {
+        for n in 0..d2.dim {
+            d2.mat[m][n] = 0.0;
+        }
+    }
     d2.mat[0][0] = TWO_BY_3;
     d2.mat[0][1] = -ONE_BY_3;
     d2.mat[0][2] = -ONE_BY_3;

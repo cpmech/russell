@@ -661,7 +661,11 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     let dim = aa.dim;
     let a = &aa.vec;
     if dd.use_loops{
-        dd.mat = [[0.0; 9]; 9];
+        for m in 0..dim {
+            for n in 0..dim {
+                dd.mat[m][n] = 0.0;
+            }
+        }
         for m in 0..6 {
             let (i, j) = M_TO_IJ[m];
             let fm = if i == j { 1.0 } else { SQRT_2 };
@@ -843,7 +847,11 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     let a = &aa.vec;
     let b = &bb.vec;
     if dd.use_loops{
-        dd.mat = [[0.0; 9]; 9];
+        for m in 0..dim {
+            for n in 0..dim {
+                dd.mat[m][n] = 0.0;
+            }
+        }
         for m in 0..6 {
             let (i, j) = M_TO_IJ[m];
             let fm = if i == j { 1.0 } else { SQRT_2 };

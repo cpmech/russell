@@ -1406,7 +1406,11 @@ impl Tensor4 {
     ///             └                        ┘
     /// ```
     pub fn set_pp_symdev(&mut self) {
-        self.mat = [[0.0; 9]; 9];
+        for m in 0..self.dim {
+            for n in 0..self.dim {
+                self.mat[m][n] = 0.0;
+            }
+        }
         self.mat[0][0] = TWO_BY_3;
         self.mat[0][1] = -ONE_BY_3;
         self.mat[0][2] = -ONE_BY_3;

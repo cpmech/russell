@@ -19,4 +19,11 @@ russell_lab = { path = "../russell_lab", version = "2" }
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
+criterion = "0.8"
+russell_tensor_heap = { path = "../russell_tensor_heap", version = "2" }
 serde_json = "1.0"
+
+[[bench]]
+name = "tensor_benchmark"
+harness = false
+path = "benchmarks/tensor_benchmark.rs"

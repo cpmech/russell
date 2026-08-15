@@ -13,6 +13,7 @@
 //! * `loops` — `use_loops = true` (loop-based, uses `get`/`set` accessors)
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use russell_lab::{Matrix, mat_mat_mul};
 
 // stack-allocated (russell_tensor)
 use russell_tensor::{
@@ -21,7 +22,7 @@ use russell_tensor::{
 };
 use russell_tensor::{
     deriv2_invariant_jj3 as stack_deriv2_invariant_jj3, deriv2_invariant_lode as stack_deriv2_invariant_lode,
-    t2_qsd_t2 as stack_t2_qsd_t2, t2_ssd as stack_t2_ssd,
+    t2_dot_t2 as stack_t2_dot_t2, t2_qsd_t2 as stack_t2_qsd_t2, t2_ssd as stack_t2_ssd,
 };
 
 // heap-allocated (russell_tensor_heap)
@@ -31,11 +32,70 @@ use russell_tensor_heap::{
 };
 use russell_tensor_heap::{
     deriv2_invariant_jj3 as heap_deriv2_invariant_jj3, deriv2_invariant_lode as heap_deriv2_invariant_lode,
-    t2_qsd_t2 as heap_t2_qsd_t2, t2_ssd as heap_t2_ssd,
+    t2_dot_t2 as heap_t2_dot_t2, t2_qsd_t2 as heap_t2_qsd_t2, t2_ssd as heap_t2_ssd,
 };
 
 /// Fixed symmetric 3×3 matrix used to build the input tensors
 const SYMMETRIC: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [2.0, 4.0, 5.0], [3.0, 5.0, 6.0]];
+
+/// Fixed general (non-symmetric) 3×3 matrices used for the tensor multiplication
+const GENERAL_A: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
+const GENERAL_B: [[f64; 3]; 3] = [[0.9, 0.8, 0.7], [0.6, 0.5, 0.4], [0.3, 0.2, 0.1]];
+
+/// Benchmarks `t2_dot_t2` (tensor multiplication): direct Kelvin formula vs standard matrix multiply
+fn bench_t2_dot_t2(crit: &mut Criterion) {
+    let mut group = crit.benchmark_group("t2_dot_t2");
+
+    group.bench_with_input(BenchmarkId::new("stack", "direct"), &(), |b, _| {
+        let aa = StackTensor2::from_std_matrix(&GENERAL_A, StackRep::General).unwrap();
+        let bb = StackTensor2::from_std_matrix(&GENERAL_B, StackRep::General).unwrap();
+        let mut cc = StackTensor2::new(StackRep::General);
+        b.iter(|| {
+            stack_t2_dot_t2(&mut cc, &aa, &bb);
+            std::hint::black_box(cc.vector());
+        });
+    });
+
+    group.bench_with_input(BenchmarkId::new("stack", "standard"), &(), |b, _| {
+        let aa = StackTensor2::from_std_matrix(&GENERAL_A, StackRep::General).unwrap();
+        let bb = StackTensor2::from_std_matrix(&GENERAL_B, StackRep::General).unwrap();
+        let mut cc = StackTensor2::new(StackRep::General);
+        b.iter(|| {
+            let a_mat = aa.as_std_matrix();
+            let b_mat = bb.as_std_matrix();
+            let mut c_mat = Matrix::new(3, 3);
+            mat_mat_mul(&mut c_mat, 1.0, &a_mat, &b_mat, 0.0).unwrap();
+            cc.set_std_matrix(&c_mat).unwrap();
+            std::hint::black_box(cc.vector());
+        });
+    });
+
+    group.bench_with_input(BenchmarkId::new("heap", "direct"), &(), |b, _| {
+        let aa = HeapTensor2::from_std_matrix(&GENERAL_A, HeapRep::General).unwrap();
+        let bb = HeapTensor2::from_std_matrix(&GENERAL_B, HeapRep::General).unwrap();
+        let mut cc = HeapTensor2::new(HeapRep::General);
+        b.iter(|| {
+            heap_t2_dot_t2(&mut cc, &aa, &bb);
+            std::hint::black_box(cc.vector());
+        });
+    });
+
+    group.bench_with_input(BenchmarkId::new("heap", "standard"), &(), |b, _| {
+        let aa = HeapTensor2::from_std_matrix(&GENERAL_A, HeapRep::General).unwrap();
+        let bb = HeapTensor2::from_std_matrix(&GENERAL_B, HeapRep::General).unwrap();
+        let mut cc = HeapTensor2::new(HeapRep::General);
+        b.iter(|| {
+            let a_mat = aa.as_std_matrix();
+            let b_mat = bb.as_std_matrix();
+            let mut c_mat = Matrix::new(3, 3);
+            mat_mat_mul(&mut c_mat, 1.0, &a_mat, &b_mat, 0.0).unwrap();
+            cc.set_std_matrix(&c_mat).unwrap();
+            std::hint::black_box(cc.vector());
+        });
+    });
+
+    group.finish();
+}
 
 /// Benchmarks `t2_ssd` (self-sum-dyadic) for the stack and heap versions
 fn bench_t2_ssd(crit: &mut Criterion) {
@@ -237,5 +297,5 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_t2_ssd, bench_t2_qsd_t2, bench_deriv2_invariant_jj3, bench_deriv2_invariant_lode);
+criterion_group!(benches, bench_t2_dot_t2, bench_t2_ssd, bench_t2_qsd_t2, bench_deriv2_invariant_jj3, bench_deriv2_invariant_lode);
 criterion_main!(benches);

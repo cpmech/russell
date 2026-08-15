@@ -3,7 +3,20 @@ use crate::{AsMatrix9x9, ONE_BY_3, Rep, StrError, TWO_BY_3};
 use russell_lab::{Matrix, mat_update};
 use serde::{Deserialize, Serialize};
 
-/// Implements a fourth order-tensor, minor-symmetric or not
+/// Implements a fourth-order tensor, minor-symmetric or not
+///
+/// # Standard and Kelvin components
+///
+/// The methods of this struct follow a naming convention that distinguishes
+/// between the **standard** (Cartesian) components `Dᵢⱼₖₗ` and the **Kelvin**
+/// components stored internally:
+///
+/// * Methods dealing with **standard components** carry the `std` qualifier in
+///   their names (e.g., [`Tensor4::from_std_matrix`], [`Tensor4::get_std`],
+///   [`Tensor4::as_std_matrix`], [`Tensor4::sym_set_std`]).
+/// * Methods dealing directly with the **Kelvin components** carry no qualifier
+///   (e.g., [`Tensor4::matrix`], [`Tensor4::get_mn`], [`Tensor4::set`],
+///   [`Tensor4::update`]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///
@@ -186,6 +199,55 @@ impl Tensor4 {
         &mut self.mat
     }
 
+    /// Returns the (m,n) component of the Kelvin matrix
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row index (must be `< 9`)
+    /// * `n` -- the column index (must be `< 9`)
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the indices are out of range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor_heap::{Rep, Tensor4};
+    ///
+    /// let mut dd = Tensor4::new(Rep::General);
+    /// dd.set(0, 0, 123.0);
+    /// assert_eq!(dd.get_mn(0, 0), 123.0);
+    /// ```
+    pub fn get_mn(&self, m: usize, n: usize) -> f64 {
+        self.mat.get(m, n)
+    }
+
+    /// Sets the (m,n) component of the Kelvin matrix
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row index (must be `< 9`)
+    /// * `n` -- the column index (must be `< 9`)
+    /// * `value` -- the value to set
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the indices are out of range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor_heap::{Rep, Tensor4};
+    ///
+    /// let mut dd = Tensor4::new(Rep::General);
+    /// dd.set(0, 0, 123.0);
+    /// assert_eq!(dd.matrix().get(0, 0), 123.0);
+    /// ```
+    pub fn set(&mut self, m: usize, n: usize, value: f64) {
+        self.mat.set(m, n, value);
+    }
+
     /// Creates a new Tensor4 constructed from a nested array
     ///
     /// # Input
@@ -210,9 +272,9 @@ impl Tensor4 {
     ///             }
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_array(&inp, Rep::General)?;
+    ///     let dd = Tensor4::from_std_array(&inp, Rep::General)?;
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.as_matrix()),
+    ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
     ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
@@ -228,7 +290,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_array(inp: &[[[[f64; 3]; 3]; 3]; 3], rep: Rep) -> Result<Self, StrError> {
+    pub fn from_std_array(inp: &[[[[f64; 3]; 3]; 3]; 3], rep: Rep) -> Result<Self, StrError> {
         let dim = rep.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
@@ -355,9 +417,9 @@ impl Tensor4 {
     ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_matrix(&inp, Rep::General)?;
+    ///     let dd = Tensor4::from_std_matrix(&inp, Rep::General)?;
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.as_matrix()),
+    ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
     ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
@@ -373,7 +435,7 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(inp: &dyn AsMatrix9x9, rep: Rep) -> Result<Self, StrError> {
+    pub fn from_std_matrix(inp: &dyn AsMatrix9x9, rep: Rep) -> Result<Self, StrError> {
         let dim = rep.dim();
         let mut mat = Matrix::new(dim, dim);
         if dim == 4 || dim == 6 {
@@ -494,19 +556,19 @@ impl Tensor4 {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor4::from_matrix(&inp, Rep::General)?;
+    ///     let dd = Tensor4::from_std_matrix(&inp, Rep::General)?;
     ///
     ///     for m in 0..9 {
     ///         for n in 0..9 {
     ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
     ///             let val = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///             approx_eq(dd.get(i,j,k,l), val, 1e-12);
+    ///             approx_eq(dd.get_std(i,j,k,l), val, 1e-12);
     ///         }
     ///     }
     ///     Ok(())
     /// }
     /// ```
-    pub fn get(&self, i: usize, j: usize, k: usize, l: usize) -> f64 {
+    pub fn get_std(&self, i: usize, j: usize, k: usize, l: usize) -> f64 {
         match self.mat.dims().0 {
             4 => {
                 let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
@@ -626,11 +688,11 @@ impl Tensor4 {
     ///     }
     ///
     ///     let mut dd = Tensor4::new(Rep::General);
-    ///     let ee = Tensor4::from_matrix(&inp, Rep::General)?;
+    ///     let ee = Tensor4::from_std_matrix(&inp, Rep::General)?;
     ///     dd.update(2.0, &ee);
     ///
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.as_matrix()),
+    ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌                   ┐\n\
     ///          │ 2 2 2 2 0 0 0 0 0 │\n\
     ///          │ 2 2 2 2 0 0 0 0 0 │\n\
@@ -668,8 +730,8 @@ impl Tensor4 {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor4::from_matrix(&inp, Rep::General)?;
-    ///     let arr = dd.as_array();
+    ///     let dd = Tensor4::from_std_matrix(&inp, Rep::General)?;
+    ///     let arr = dd.as_std_array();
     ///
     ///     for m in 0..9 {
     ///         for n in 0..9 {
@@ -681,9 +743,9 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
+    pub fn as_std_array(&self) -> Vec<Vec<Vec<Vec<f64>>>> {
         let mut dd = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
-        self.to_array(&mut dd);
+        self.to_std_array(&mut dd);
         dd
     }
 
@@ -708,9 +770,9 @@ impl Tensor4 {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor4::from_matrix(&inp, Rep::General)?;
+    ///     let dd = Tensor4::from_std_matrix(&inp, Rep::General)?;
     ///     let mut arr = vec![vec![vec![vec![0.0; 3]; 3]; 3]; 3];
-    ///     dd.to_array(&mut arr);
+    ///     dd.to_std_array(&mut arr);
     ///
     ///     for m in 0..9 {
     ///         for n in 0..9 {
@@ -722,13 +784,13 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_array(&self, dd: &mut Vec<Vec<Vec<Vec<f64>>>>) {
+    pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<Vec<f64>>>>) {
         let dim = self.mat.dims().0;
         if dim < 9 {
             for m in 0..dim {
                 for n in 0..dim {
                     let (i, j, k, l) = MN_TO_IJKL[m][n];
-                    dd[i][j][k][l] = self.get(i, j, k, l);
+                    dd[i][j][k][l] = self.get_std(i, j, k, l);
                     if i != j || k != l {
                         dd[j][i][k][l] = dd[i][j][k][l];
                         dd[i][j][l][k] = dd[i][j][k][l];
@@ -741,7 +803,7 @@ impl Tensor4 {
                 for j in 0..3 {
                     for k in 0..3 {
                         for l in 0..3 {
-                            dd[i][j][k][l] = self.get(i, j, k, l);
+                            dd[i][j][k][l] = self.get_std(i, j, k, l);
                         }
                     }
                 }
@@ -766,9 +828,9 @@ impl Tensor4 {
     ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_matrix(&inp, Rep::General)?;
+    ///     let dd = Tensor4::from_std_matrix(&inp, Rep::General)?;
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.as_matrix()),
+    ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112 1123 1113 1121 1132 1131 │\n\
     ///          │ 2211 2222 2233 2212 2223 2213 2221 2232 2231 │\n\
@@ -784,9 +846,9 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_matrix(&self) -> Matrix {
+    pub fn as_std_matrix(&self) -> Matrix {
         let mut mat = Matrix::new(9, 9);
-        self.to_matrix(&mut mat);
+        self.to_std_matrix(&mut mat);
         mat
     }
 
@@ -814,9 +876,9 @@ impl Tensor4 {
     ///             inp[m][n] = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor4::from_matrix(&inp, Rep::General)?;
+    ///     let dd = Tensor4::from_std_matrix(&inp, Rep::General)?;
     ///     let mut mat = Matrix::new(9, 9);
-    ///     dd.to_matrix(&mut mat);
+    ///     dd.to_std_matrix(&mut mat);
     ///     assert_eq!(
     ///         format!("{:.0}", mat),
     ///         "┌                                              ┐\n\
@@ -834,12 +896,12 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_matrix(&self, mat: &mut Matrix) {
+    pub fn to_std_matrix(&self, mat: &mut Matrix) {
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
-                mat.set(m, n, self.get(i, j, k, l));
+                mat.set(m, n, self.get_std(i, j, k, l));
             }
         }
     }
@@ -867,11 +929,11 @@ impl Tensor4 {
     ///         for n in 0..4 {
     ///             let (i, j, k, l) = MN_TO_IJKL[m][n];
     ///             let value = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-    ///             dd.sym_set(i, j, k, l, value);
+    ///             dd.sym_set_std(i, j, k, l, value);
     ///         }
     ///     }
     ///     assert_eq!(
-    ///         format!("{:.0}", dd.as_matrix()),
+    ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌                                              ┐\n\
     ///          │ 1111 1122 1133 1112    0    0 1112    0    0 │\n\
     ///          │ 2211 2222 2233 2212    0    0 2212    0    0 │\n\
@@ -886,7 +948,7 @@ impl Tensor4 {
     ///     );
     /// }
     /// ```
-    pub fn sym_set(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
+    pub fn sym_set_std(&mut self, i: usize, j: usize, k: usize, l: usize, value: f64) {
         assert!(self.rep != Rep::General);
         let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
         if m < 3 && n < 3 {
@@ -926,12 +988,12 @@ impl Tensor4 {
     ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
     ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
     ///     ];
-    ///     let dd = Tensor4::from_matrix(data, Rep::General)?;
+    ///     let dd = Tensor4::from_std_matrix(data, Rep::General)?;
     ///     let mut ee = Tensor4::new(Rep::General);
     ///
     ///     ee.set_tensor(1.0, &dd);
     ///
-    ///     mat_approx_eq(&dd.as_matrix(), data, 1e-14);
+    ///     mat_approx_eq(&dd.as_std_matrix(), data, 1e-14);
     ///     Ok(())
     /// }
     /// ```
@@ -1392,14 +1454,14 @@ mod tests {
     }
 
     #[test]
-    fn from_array_fails_captures_errors() {
-        let res = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Rep::Symmetric);
+    fn from_std_array_fails_captures_errors() {
+        let res = Tensor4::from_std_array(&SamplesTensor4::SAMPLE1, Rep::Symmetric);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a symmetric tensor")
         );
 
-        let res = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric2D);
+        let res = Tensor4::from_std_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric2D);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a 2D symmetric tensor")
@@ -1407,9 +1469,9 @@ mod tests {
     }
 
     #[test]
-    fn from_array_works() {
+    fn from_std_array_works() {
         // general
-        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 assert_eq!(dd.mat.get(m, n), SamplesTensor4::SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1417,7 +1479,7 @@ mod tests {
         }
 
         // symmetric 3d
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 assert_eq!(dd.mat.get(m, n), SamplesTensor4::SYM_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1425,7 +1487,7 @@ mod tests {
         }
 
         // symmetric 2d
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 assert_eq!(dd.mat.get(m, n), SamplesTensor4::SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1434,10 +1496,10 @@ mod tests {
     }
 
     #[test]
-    fn from_matrix_fails_captures_errors() {
+    fn from_std_matrix_fails_captures_errors() {
         let mut inp = [[0.0; 9]; 9];
         inp[0][3] = 1e-15;
-        let res = Tensor4::from_matrix(&inp, Rep::Symmetric);
+        let res = Tensor4::from_std_matrix(&inp, Rep::Symmetric);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a symmetric tensor")
@@ -1446,7 +1508,7 @@ mod tests {
         inp[0][3] = 0.0;
         inp[0][4] = 1.0;
         inp[0][7] = 1.0;
-        let res = Tensor4::from_matrix(&inp, Rep::Symmetric2D);
+        let res = Tensor4::from_std_matrix(&inp, Rep::Symmetric2D);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a 2D symmetric tensor")
@@ -1454,9 +1516,9 @@ mod tests {
     }
 
     #[test]
-    fn from_matrix_works() {
+    fn from_std_matrix_works() {
         // general
-        let dd = Tensor4::from_matrix(&SamplesTensor4::SAMPLE1_STD_MATRIX, Rep::General).unwrap();
+        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SAMPLE1_STD_MATRIX, Rep::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 approx_eq(dd.mat.get(m, n), SamplesTensor4::SAMPLE1_KELVIN_MATRIX[m][n], 1e-15);
@@ -1464,7 +1526,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_SAMPLE1_STD_MATRIX, Rep::Symmetric).unwrap();
+        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_SAMPLE1_STD_MATRIX, Rep::Symmetric).unwrap();
         for m in 0..6 {
             for n in 0..6 {
                 approx_eq(dd.mat.get(m, n), SamplesTensor4::SYM_SAMPLE1_KELVIN_MATRIX[m][n], 1e-14);
@@ -1472,7 +1534,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         for m in 0..4 {
             for n in 0..4 {
                 approx_eq(
@@ -1487,36 +1549,40 @@ mod tests {
     #[test]
     fn get_works() {
         // general
-        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(dd.get(i, j, k, l), SamplesTensor4::SAMPLE1[i][j][k][l], 1e-13);
+                        approx_eq(dd.get_std(i, j, k, l), SamplesTensor4::SAMPLE1[i][j][k][l], 1e-13);
                     }
                 }
             }
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(dd.get(i, j, k, l), SamplesTensor4::SYM_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(dd.get_std(i, j, k, l), SamplesTensor4::SYM_SAMPLE1[i][j][k][l], 1e-14);
                     }
                 }
             }
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(dd.get(i, j, k, l), SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l], 1e-14);
+                        approx_eq(
+                            dd.get_std(i, j, k, l),
+                            SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l],
+                            1e-14,
+                        );
                     }
                 }
             }
@@ -1534,14 +1600,14 @@ mod tests {
     #[test]
     fn update_works() {
         let mut dd = Tensor4::new(Rep::Symmetric2D);
-        let ee = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
+        let ee = Tensor4::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
         dd.update(2.0, &ee);
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
                         approx_eq(
-                            dd.get(i, j, k, l),
+                            dd.get_std(i, j, k, l),
                             2.0 * SamplesTensor4::SYM_2D_SAMPLE1[i][j][k][l],
                             1e-14,
                         );
@@ -1552,10 +1618,10 @@ mod tests {
     }
 
     #[test]
-    fn as_array_and_to_array_work() {
+    fn as_std_array_and_to_std_array_work() {
         // general
-        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
-        let res = dd.as_array();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
+        let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1567,8 +1633,8 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
-        let res = dd.as_array();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
+        let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1580,8 +1646,8 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
-        let res = dd.as_array();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
+        let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1594,10 +1660,10 @@ mod tests {
     }
 
     #[test]
-    fn as_matrix_and_to_matrix_work() {
+    fn as_std_matrix_and_to_std_matrix_work() {
         // general
-        let dd = Tensor4::from_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
-        let mat = dd.as_matrix();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SAMPLE1, Rep::General).unwrap();
+        let mat = dd.as_std_matrix();
         for m in 0..9 {
             for n in 0..9 {
                 approx_eq(mat.get(m, n), SamplesTensor4::SAMPLE1_STD_MATRIX[m][n], 1e-13);
@@ -1605,8 +1671,8 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
-        let mat = dd.as_matrix();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric).unwrap();
+        let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
@@ -1615,8 +1681,8 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor4::from_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
-        let mat = dd.as_matrix();
+        let dd = Tensor4::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
+        let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 9));
         for m in 0..9 {
             for n in 0..9 {
@@ -1626,7 +1692,7 @@ mod tests {
     }
 
     #[test]
-    fn from_array_to_matrix_from_matrix_work() {
+    fn from_std_array_to_std_matrix_from_std_matrix_work() {
         // General
         let data = &[
             [
@@ -1645,8 +1711,8 @@ mod tests {
                 [[162.0, 144.0, 126.0], [108.0, 90.0, 72.0], [54.0, 36.0, 18.0]],
             ],
         ];
-        let dd = Tensor4::from_array(data, Rep::General).unwrap();
-        let m1 = dd.as_matrix();
+        let dd = Tensor4::from_std_array(data, Rep::General).unwrap();
+        let m1 = dd.as_std_matrix();
         let correct = &[
             [18.0, 10.0, 2.0, 16.0, 8.0, 14.0, 12.0, 4.0, 6.0],
             [90.0, 50.0, 10.0, 80.0, 40.0, 70.0, 60.0, 20.0, 30.0],
@@ -1659,8 +1725,8 @@ mod tests {
             [126.0, 70.0, 14.0, 112.0, 56.0, 98.0, 84.0, 28.0, 42.0],
         ];
         mat_approx_eq(&m1, correct, 1e-13);
-        let ee = Tensor4::from_matrix(correct, Rep::General).unwrap();
-        let m2 = ee.as_matrix();
+        let ee = Tensor4::from_std_matrix(correct, Rep::General).unwrap();
+        let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
         // Symmetric 3D
@@ -1681,8 +1747,8 @@ mod tests {
                 [[18.0, 30.0, 36.0], [30.0, 12.0, 24.0], [36.0, 24.0, 6.0]],
             ],
         ];
-        let dd = Tensor4::from_array(data, Rep::Symmetric).unwrap();
-        let m1 = dd.as_matrix();
+        let dd = Tensor4::from_std_array(data, Rep::Symmetric).unwrap();
+        let m1 = dd.as_std_matrix();
         let correct = &[
             [6.0, 4.0, 2.0, 10.0, 8.0, 12.0, 10.0, 8.0, 12.0],
             [12.0, 8.0, 4.0, 20.0, 16.0, 24.0, 20.0, 16.0, 24.0],
@@ -1695,8 +1761,8 @@ mod tests {
             [36.0, 24.0, 12.0, 60.0, 48.0, 72.0, 60.0, 48.0, 72.0],
         ];
         mat_approx_eq(&m1, correct, 1e-13);
-        let ee = Tensor4::from_matrix(correct, Rep::Symmetric).unwrap();
-        let m2 = ee.as_matrix();
+        let ee = Tensor4::from_std_matrix(correct, Rep::Symmetric).unwrap();
+        let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
         // Symmetric 2D
@@ -1717,8 +1783,8 @@ mod tests {
                 [[18.0, 24.0, 0.0], [24.0, 12.0, 0.0], [0.0, 0.0, 6.0]],
             ],
         ];
-        let dd = Tensor4::from_array(data, Rep::Symmetric2D).unwrap();
-        let m1 = dd.as_matrix();
+        let dd = Tensor4::from_std_array(data, Rep::Symmetric2D).unwrap();
+        let m1 = dd.as_std_matrix();
         let correct = &[
             [6.0, 4.0, 2.0, 8.0, 0.0, 0.0, 8.0, 0.0, 0.0],
             [12.0, 8.0, 4.0, 16.0, 0.0, 0.0, 16.0, 0.0, 0.0],
@@ -1731,8 +1797,8 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         ];
         mat_approx_eq(&m1, correct, 1e-13);
-        let ee = Tensor4::from_matrix(correct, Rep::Symmetric2D).unwrap();
-        let m2 = ee.as_matrix();
+        let ee = Tensor4::from_std_matrix(correct, Rep::Symmetric2D).unwrap();
+        let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
     }
 
@@ -1742,7 +1808,7 @@ mod tests {
             for n in 0..6 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
                 let value = (1000 * (i + 1) + 100 * (j + 1) + 10 * (k + 1) + (l + 1)) as f64;
-                dd.sym_set(i, j, k, l, value);
+                dd.sym_set_std(i, j, k, l, value);
             }
         }
         dd
@@ -1750,23 +1816,23 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "self.rep != Rep::General")]
-    fn sym_set_panics_on_non_sym() {
+    fn sym_set_std_panics_on_non_sym() {
         let mut dd = Tensor4::new(Rep::General);
-        dd.sym_set(0, 0, 0, 0, 1.0);
+        dd.sym_set_std(0, 0, 0, 0, 1.0);
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
-    fn sym_set_panics_on_incorrect_indices() {
+    fn sym_set_std_panics_on_incorrect_indices() {
         let mut dd = Tensor4::new(Rep::Symmetric2D);
-        dd.sym_set(0, 0, 0, 3, 5.0);
+        dd.sym_set_std(0, 0, 0, 3, 5.0);
     }
 
     #[test]
-    fn sym_set_works() {
+    fn sym_set_std_works() {
         let dd = generate_dd();
         assert_eq!(
-            format!("{:.0}", dd.as_matrix()),
+            format!("{:.0}", dd.as_std_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
@@ -1792,7 +1858,7 @@ mod tests {
     #[test]
     fn set_tensor_works() {
         #[rustfmt::skip]
-        let dd = Tensor4::from_matrix(&[
+        let dd = Tensor4::from_std_matrix(&[
                 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                 [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
                 [9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0, 9.0],
@@ -1817,7 +1883,7 @@ mod tests {
             [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0],
             [ 6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0,  6.0],
         ]);
-        mat_approx_eq(&ee.as_matrix(), &correct, 1e-14);
+        mat_approx_eq(&ee.as_std_matrix(), &correct, 1e-14);
     }
 
     #[test]
@@ -1827,7 +1893,7 @@ mod tests {
         let mut cloned = dd.clone();
         cloned.mat.set(0, 0, 9999.0);
         assert_eq!(
-            format!("{:.0}", dd.as_matrix()),
+            format!("{:.0}", dd.as_std_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
@@ -1841,7 +1907,7 @@ mod tests {
              └                                              ┘"
         );
         assert_eq!(
-            format!("{:.0}", cloned.as_matrix()),
+            format!("{:.0}", cloned.as_std_matrix()),
             "┌                                              ┐\n\
              │ 9999 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\
@@ -1860,7 +1926,7 @@ mod tests {
         // deserialize
         let from_json: Tensor4 = serde_json::from_str(&json).unwrap();
         assert_eq!(
-            format!("{:.0}", from_json.as_matrix()),
+            format!("{:.0}", from_json.as_std_matrix()),
             "┌                                              ┐\n\
              │ 1111 1122 1133 1112 1123 1113 1112 1123 1113 │\n\
              │ 2211 2222 2233 2212 2223 2213 2212 2223 2213 │\n\

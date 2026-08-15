@@ -62,7 +62,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// use russell_tensor_heap::{Rep, t4_ddot_t4, StrError, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let cc = Tensor4::from_matrix(
+///     let cc = Tensor4::from_std_matrix(
 ///         &[
 ///             [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ///             [1.0, 1.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -77,7 +77,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///         Rep::General,
 ///     )?;
 ///
-///     let dd = Tensor4::from_matrix(
+///     let dd = Tensor4::from_std_matrix(
 ///         &[
 ///             [-1.0, 1.0 / 3.0, 5.0 / 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ///             [1.0, -2.0 / 3.0, -1.0 / 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -95,7 +95,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///     let mut ee = Tensor4::new(Rep::General);
 ///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
 ///
-///     let out = ee.as_matrix();
+///     let out = ee.as_std_matrix();
 ///     for i in 0..9 {
 ///         for j in 0..9 {
 ///             if i == j {
@@ -187,8 +187,8 @@ mod tests {
         let mut a = Tensor4::new(Rep::Symmetric2D);
         let mut b = Tensor4::new(Rep::Symmetric2D);
         let mut c = Tensor4::new(Rep::Symmetric2D);
-        a.sym_set(0, 0, 0, 0, 1.0);
-        b.sym_set(0, 0, 0, 0, 1.0);
+        a.sym_set_std(0, 0, 0, 0, 1.0);
+        b.sym_set_std(0, 0, 0, 0, 1.0);
         t4_add(&mut c, 2.0, &a, 3.0, &b);
         #[rustfmt::skip]
         let correct = &[
@@ -202,7 +202,7 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         ];
-        mat_approx_eq(&c.as_matrix(), correct, 1e-14);
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-14);
     }
 
     #[test]
@@ -225,10 +225,10 @@ mod tests {
 
     #[test]
     fn t4_ddot_t4_works() {
-        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let cc = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 2.0, &cc, &cc);
-        let out = ee.as_matrix();
+        let out = ee.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                ┐\n\
@@ -265,14 +265,14 @@ mod tests {
 
     #[test]
     fn t4_ddot_t4_update_works() {
-        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let cc = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         let mut mat = Matrix::new(9, 9);
         mat.set(0, 0, 0.1);
         mat.set(1, 1, 0.1);
         mat.set(2, 2, 0.1);
-        let mut ee = Tensor4::from_matrix(&mat, Rep::Symmetric2D).unwrap();
+        let mut ee = Tensor4::from_std_matrix(&mat, Rep::Symmetric2D).unwrap();
         t4_ddot_t4_update(&mut ee, 2.0, &cc, &cc, 2.0);
-        let out = ee.as_matrix();
+        let out = ee.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                ┐\n\

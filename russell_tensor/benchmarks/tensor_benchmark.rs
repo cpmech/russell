@@ -58,7 +58,7 @@ fn bench_t2_ssd(crit: &mut Criterion) {
     });
 
     group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let aa = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
         let mut dd = HeapTensor4::new(HeapRep::Symmetric);
         dd.use_loops = false;
         b.iter(|| {
@@ -68,7 +68,7 @@ fn bench_t2_ssd(crit: &mut Criterion) {
     });
 
     group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let aa = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
         let mut dd = HeapTensor4::new(HeapRep::Symmetric);
         dd.use_loops = true;
         b.iter(|| {
@@ -107,8 +107,8 @@ fn bench_t2_qsd_t2(crit: &mut Criterion) {
     });
 
     group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let aa = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let bb = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let bb = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
         let mut dd = HeapTensor4::new(HeapRep::Symmetric);
         dd.use_loops = false;
         b.iter(|| {
@@ -118,8 +118,8 @@ fn bench_t2_qsd_t2(crit: &mut Criterion) {
     });
 
     group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let aa = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let bb = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let bb = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
         let mut dd = HeapTensor4::new(HeapRep::Symmetric);
         dd.use_loops = true;
         b.iter(|| {
@@ -158,7 +158,7 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
     });
 
     group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let sigma = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let sigma = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
         let mut d2 = HeapTensor4::new(HeapRep::Symmetric);
         let mut aux = HeapAux::new();
         d2.use_loops = false;
@@ -169,7 +169,7 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
     });
 
     group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let sigma = HeapTensor2::from_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
+        let sigma = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
         let mut d2 = HeapTensor4::new(HeapRep::Symmetric);
         let mut aux = HeapAux::new();
         d2.use_loops = true;

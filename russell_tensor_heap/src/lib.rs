@@ -30,6 +30,26 @@
 //! * [Rep::Symmetric] — 6×1 / 6×6 (symmetric tensors in 3D)
 //! * [Rep::Symmetric2D] — 4×1 / 4×4 (symmetric tensors in 2D)
 //!
+//! # Standard vs Kelvin components
+//!
+//! The tensor accessors follow a naming convention that distinguishes the
+//! **standard** (Cartesian) components `Tᵢⱼ` / `Dᵢⱼₖₗ` from the **Kelvin**
+//! components stored internally:
+//!
+//! * Accessors dealing with **standard components** carry the `std` qualifier
+//!   in their names:
+//!   * [Tensor2] — [`Tensor2::set_std_matrix`], [`Tensor2::from_std_matrix`],
+//!     [`Tensor2::get_std`], [`Tensor2::as_std_matrix`], [`Tensor2::to_std_matrix`],
+//!     [`Tensor2::as_std_matrix_2d`], [`Tensor2::sym_set_std`], [`Tensor2::sym_add_std`]
+//!   * [Tensor4] — [`Tensor4::from_std_array`], [`Tensor4::from_std_matrix`],
+//!     [`Tensor4::get_std`], [`Tensor4::as_std_array`], [`Tensor4::to_std_array`],
+//!     [`Tensor4::as_std_matrix`], [`Tensor4::to_std_matrix`], [`Tensor4::sym_set_std`]
+//! * Accessors dealing directly with the **Kelvin components** carry no qualifier:
+//!   * [Tensor2] — [`Tensor2::vector`], [`Tensor2::vector_mut`], [`Tensor2::set_vector`],
+//!     [`Tensor2::set_tensor`], [`Tensor2::update`], [`Tensor2::clear`]
+//!   * [Tensor4] — [`Tensor4::matrix`], [`Tensor4::matrix_mut`], [`Tensor4::get_mn`],
+//!     [`Tensor4::set`], [`Tensor4::set_tensor`], [`Tensor4::update`]
+//!
 //! # Examples
 //!
 //! ```
@@ -37,7 +57,7 @@
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // allocate a symmetric second-order tensor
-//!     let sigma = Tensor2::from_matrix(
+//!     let sigma = Tensor2::from_std_matrix(
 //!         &[
 //!             [1.0, 2.0, 3.0],
 //!             [2.0, 2.0, 4.0],

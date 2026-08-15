@@ -1,4 +1,5 @@
 use super::Tensor4;
+use russell_lab::{small_mat_add, small_mat_mat_mul};
 
 #[allow(unused)]
 use crate::Rep; // for documentation
@@ -15,12 +16,7 @@ use crate::Rep; // for documentation
 pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
     assert_eq!(b.rep, a.rep);
     assert_eq!(c.rep, a.rep);
-    let dim = c.dim;
-    for i in 0..dim {
-        for j in 0..dim {
-            c.mat[i][j] = alpha * a.mat[i][j] + beta * b.mat[i][j];
-        }
-    }
+    small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, c.dim);
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4
@@ -115,16 +111,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
     assert_eq!(cc.rep, dd.rep);
     assert_eq!(ee.rep, dd.rep);
-    let dim = ee.dim;
-    for i in 0..dim {
-        for j in 0..dim {
-            let mut s = 0.0;
-            for k in 0..dim {
-                s += cc.mat[i][k] * dd.mat[k][j];
-            }
-            ee.mat[i][j] = alpha * s;
-        }
-    }
+    small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, ee.dim);
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4 with update
@@ -166,16 +153,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4, beta: f64) {
     assert_eq!(cc.rep, dd.rep);
     assert_eq!(ee.rep, dd.rep);
-    let dim = ee.dim;
-    for i in 0..dim {
-        for j in 0..dim {
-            let mut s = 0.0;
-            for k in 0..dim {
-                s += cc.mat[i][k] * dd.mat[k][j];
-            }
-            ee.mat[i][j] = alpha * s + beta * ee.mat[i][j];
-        }
-    }
+    small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, ee.dim);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

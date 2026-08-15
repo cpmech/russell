@@ -1,43 +1,7 @@
 use crate::{ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
 use crate::{Rep, Tensor2, Tensor4};
 use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd};
-
-/// Computes `c := alpha * a + beta * b` (in place) for Tensor4
-#[inline]
-fn mat_add_t4(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
-    let dim = c.dim;
-    for i in 0..dim {
-        for j in 0..dim {
-            c.mat[i][j] = alpha * a.mat[i][j] + beta * b.mat[i][j];
-        }
-    }
-}
-
-/// Computes `b := alpha * a + b` (in place) for Tensor4
-#[inline]
-fn mat_update_t4(b: &mut Tensor4, alpha: f64, a: &Tensor4) {
-    let dim = b.dim;
-    for i in 0..dim {
-        for j in 0..dim {
-            b.mat[i][j] += alpha * a.mat[i][j];
-        }
-    }
-}
-
-/// Computes `b := alpha * a * c + beta * b` (in place) for Tensor4
-#[inline]
-fn mat_mat_mul_t4(b: &mut Tensor4, alpha: f64, a: &Tensor4, c: &Tensor4, beta: f64) {
-    let dim = b.dim;
-    for i in 0..dim {
-        for j in 0..dim {
-            let mut s = 0.0;
-            for k in 0..dim {
-                s += a.mat[i][k] * c.mat[k][j];
-            }
-            b.mat[i][j] = alpha * s + beta * b.mat[i][j];
-        }
-    }
-}
+use russell_lab::{small_mat_add, small_mat_mat_mul, small_mat_update};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -317,8 +281,8 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
     aux.aa.use_loops = d2.use_loops;
     t2_qsd_t2(&mut aux.aa, 0.5, &mut aux.s, &aux.ii); // aa := 0.5 qsd(s,I)
     t2_dyad_t2(&mut aux.bb, -TWO_BY_3, &aux.ii, &aux.s); // bb := -⅔ I ⊗ s
-    mat_mat_mul_t4(d2, 1.0, &aux.aa, &aux.psd, 0.0); // d2 := 0.5 qsd(s,I) : Psd
-    mat_update_t4(d2, 1.0, &aux.bb); // d2 += -⅔ I ⊗ s
+    small_mat_mat_mul(&mut d2.mat, 1.0, &aux.aa.mat, &aux.psd.mat, 0.0, d2.dim); // d2 := 0.5 qsd(s,I) : Psd
+    small_mat_update(&mut d2.mat, 1.0, &aux.bb.mat, d2.dim); // d2 += -⅔ I ⊗ s
 }
 
 /// Holds auxiliary data to compute the second derivative of σt (or q)
@@ -385,7 +349,7 @@ pub fn deriv2_invariant_sigma_t(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantSi
             deriv2_invariant_jj2(&mut aux.d2_jj2, sigma);
         }
         t2_dyad_t2(d2, -b, &aux.d1_jj2, &aux.d1_jj2);
-        mat_update_t4(d2, a, &aux.d2_jj2);
+        small_mat_update(&mut d2.mat, a, &aux.d2_jj2.mat, d2.dim);
         return Some(jj2);
     }
     None
@@ -436,7 +400,7 @@ pub fn deriv2_invariant_q(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantSigmaT, 
             deriv2_invariant_jj2(&mut aux.d2_jj2, sigma);
         }
         t2_dyad_t2(d2, -b, &aux.d1_jj2, &aux.d1_jj2);
-        mat_update_t4(d2, a, &aux.d2_jj2);
+        small_mat_update(&mut d2.mat, a, &aux.d2_jj2.mat, d2.dim);
         return Some(jj2);
     }
     None
@@ -544,10 +508,10 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj2, 1.0, &aux.d1_jj2, &aux.d1_jj2);
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj3, 1.0, &aux.d1_jj2, &aux.d1_jj3);
         t2_dyad_t2(&mut aux.d1_jj3_dy_d1_jj2, 1.0, &aux.d1_jj3, &aux.d1_jj2);
-        mat_add_t4(d2, a, &aux.d2_jj3, -b * jj3, &aux.d2_jj2);
-        mat_update_t4(d2, -b, &aux.d1_jj3_dy_d1_jj2);
-        mat_update_t4(d2, -b, &aux.d1_jj2_dy_d1_jj3);
-        mat_update_t4(d2, c * jj3, &aux.d1_jj2_dy_d1_jj2);
+        small_mat_add(&mut d2.mat, a, &aux.d2_jj3.mat, -b * jj3, &aux.d2_jj2.mat, d2.dim);
+        small_mat_update(&mut d2.mat, -b, &aux.d1_jj3_dy_d1_jj2.mat, d2.dim);
+        small_mat_update(&mut d2.mat, -b, &aux.d1_jj2_dy_d1_jj3.mat, d2.dim);
+        small_mat_update(&mut d2.mat, c * jj3, &aux.d1_jj2_dy_d1_jj2.mat, d2.dim);
         return Some(jj2);
     }
     None

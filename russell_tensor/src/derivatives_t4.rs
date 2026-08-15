@@ -559,10 +559,10 @@ mod tests {
     fn component_of_inverse(x: f64, args: &mut ArgsNumDerivInverse) -> Result<f64, StrError> {
         let original = args.a_mat.get(args.k, args.l);
         args.a_mat.set(args.k, args.l, x);
-        args.a.set_matrix(&args.a_mat).unwrap();
+        args.a.set_std_matrix(&args.a_mat).unwrap();
         args.a.inverse(&mut args.ai, 1e-10).unwrap();
         args.a_mat.set(args.k, args.l, original);
-        Ok(args.ai.get(args.i, args.j))
+        Ok(args.ai.get_std(args.i, args.j))
     }
 
     fn component_of_inverse_mat(x: f64, args: &mut ArgsNumDerivInverseM) -> Result<f64, StrError> {
@@ -575,7 +575,7 @@ mod tests {
 
     fn numerical_deriv_inverse(a: &Tensor2) -> Matrix {
         let mut args = ArgsNumDerivInverse {
-            a_mat: a.as_matrix(),
+            a_mat: a.as_std_matrix(),
             a: Tensor2::new(Rep::General),
             ai: Tensor2::new(Rep::General),
             i: 0,
@@ -612,7 +612,7 @@ mod tests {
                 num_deriv.mat[m][n] = res;
             }
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     fn numerical_deriv_inverse_sym_mat(a: &Tensor2) -> Matrix {
@@ -640,7 +640,7 @@ mod tests {
                 num_deriv.mat[m][n] = res;
             }
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     fn check_deriv_inverse(a: &Tensor2, tol: f64) {
@@ -653,8 +653,8 @@ mod tests {
         deriv_inverse_tensor(&mut dd_ana, &ai);
 
         // check using index expression
-        let arr = dd_ana.as_array();
-        let mat = ai.as_matrix();
+        let arr = dd_ana.as_std_array();
+        let mat = ai.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -666,7 +666,7 @@ mod tests {
         }
 
         // check using numerical derivative
-        let ana = dd_ana.as_matrix();
+        let ana = dd_ana.as_std_matrix();
         let num = numerical_deriv_inverse(&a);
         let num_mat = numerical_deriv_inverse_mat(&a);
         mat_approx_eq(&ana, &num, tol);
@@ -683,8 +683,8 @@ mod tests {
         deriv_inverse_tensor_sym(&mut dd_ana, &ai);
 
         // check using index expression
-        let arr = dd_ana.as_array();
-        let mat = ai.as_matrix();
+        let arr = dd_ana.as_std_array();
+        let mat = ai.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -700,7 +700,7 @@ mod tests {
         }
 
         // check using numerical derivative
-        let ana = dd_ana.as_matrix();
+        let ana = dd_ana.as_std_matrix();
         let num = numerical_deriv_inverse_sym_mat(&a);
         mat_approx_eq(&ana, &num, tol);
     }
@@ -709,17 +709,17 @@ mod tests {
     fn deriv_inverse_tensor_works() {
         // general
         let s = &SamplesTensor2::TENSOR_T;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::General).unwrap();
         check_deriv_inverse(&a, 1e-11);
 
         // symmetric
         let s = &SamplesTensor2::TENSOR_U;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         check_deriv_inverse(&a, 1e-7);
 
         // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         check_deriv_inverse(&a, 1e-12);
     }
 
@@ -727,12 +727,12 @@ mod tests {
     fn deriv_inverse_tensor_sym_works() {
         // symmetric
         let s = &SamplesTensor2::TENSOR_U;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         check_deriv_inverse_sym(&a, 1e-7);
 
         // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         check_deriv_inverse_sym(&a, 1e-12);
     }
 
@@ -760,10 +760,10 @@ mod tests {
     fn component_of_squared(x: f64, args: &mut ArgsNumDerivSquared) -> Result<f64, StrError> {
         let original = args.a_mat.get(args.k, args.l);
         args.a_mat.set(args.k, args.l, x);
-        args.a.set_matrix(&args.a_mat).unwrap();
+        args.a.set_std_matrix(&args.a_mat).unwrap();
         args.a.squared(&mut args.a2);
         args.a_mat.set(args.k, args.l, original);
-        Ok(args.a2.get(args.i, args.j))
+        Ok(args.a2.get_std(args.i, args.j))
     }
 
     fn component_of_squared_mat(x: f64, args: &mut ArgsNumDerivSquaredM) -> Result<f64, StrError> {
@@ -776,7 +776,7 @@ mod tests {
 
     fn numerical_deriv_squared(a: &Tensor2) -> Matrix {
         let mut args = ArgsNumDerivSquared {
-            a_mat: a.as_matrix(),
+            a_mat: a.as_std_matrix(),
             a: Tensor2::new(Rep::General),
             a2: Tensor2::new(Rep::General),
             i: 0,
@@ -813,7 +813,7 @@ mod tests {
                 num_deriv.mat[m][n] = res;
             }
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     fn numerical_deriv_squared_sym_mat(a: &Tensor2) -> Matrix {
@@ -841,7 +841,7 @@ mod tests {
                 num_deriv.mat[m][n] = res;
             }
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     fn check_deriv_squared(a: &Tensor2, tol: f64) {
@@ -851,8 +851,8 @@ mod tests {
         deriv_squared_tensor(&mut dd_ana, &mut ii, &a);
 
         // check using index expression
-        let arr = dd_ana.as_array();
-        let mat = a.as_matrix();
+        let arr = dd_ana.as_std_array();
+        let mat = a.as_std_matrix();
         let del = Matrix::diagonal(&[1.0, 1.0, 1.0]);
         for i in 0..3 {
             for j in 0..3 {
@@ -869,7 +869,7 @@ mod tests {
         }
 
         // check using numerical derivative
-        let ana = dd_ana.as_matrix();
+        let ana = dd_ana.as_std_matrix();
         let num = numerical_deriv_squared(&a);
         let num_mat = numerical_deriv_squared_mat(&a);
         mat_approx_eq(&ana, &num, tol);
@@ -883,8 +883,8 @@ mod tests {
         deriv_squared_tensor_sym(&mut dd_ana, &mut ii, &a);
 
         // check using index expression
-        let arr = dd_ana.as_array();
-        let mat = a.as_matrix();
+        let arr = dd_ana.as_std_array();
+        let mat = a.as_std_matrix();
         let del = Matrix::diagonal(&[1.0, 1.0, 1.0]);
         for i in 0..3 {
             for j in 0..3 {
@@ -904,7 +904,7 @@ mod tests {
         }
 
         // check using numerical derivative
-        let ana = dd_ana.as_matrix();
+        let ana = dd_ana.as_std_matrix();
         let num = numerical_deriv_squared_sym_mat(&a);
         mat_approx_eq(&ana, &num, tol);
     }
@@ -913,17 +913,17 @@ mod tests {
     fn deriv_squared_tensor_works() {
         // general
         let s = &SamplesTensor2::TENSOR_T;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::General).unwrap();
         check_deriv_squared(&a, 1e-10);
 
         // symmetric
         let s = &SamplesTensor2::TENSOR_U;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::General).unwrap();
         check_deriv_squared(&a, 1e-10);
 
         // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         check_deriv_squared(&a, 1e-10);
     }
 
@@ -931,12 +931,12 @@ mod tests {
     fn deriv_squared_tensor_sym_works() {
         // symmetric
         let s = &SamplesTensor2::TENSOR_U;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         check_deriv_squared_sym(&a, 1e-10);
 
         // symmetric 2d
         let s = &SamplesTensor2::TENSOR_Y;
-        let a = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let a = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         check_deriv_squared_sym(&a, 1e-10);
     }
 
@@ -1011,7 +1011,7 @@ mod tests {
                 num_deriv.mat[m][n] = res;
             }
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     fn check_deriv2_jj2(sigma: &Tensor2, tol: f64) {
@@ -1024,7 +1024,7 @@ mod tests {
         mat_approx_eq(&Matrix::from(&dd2_ana.mat), &pp_symdev.mat, 1e-15);
 
         // check using numerical derivative
-        let ana = dd2_ana.as_matrix();
+        let ana = dd2_ana.as_std_matrix();
         let num = numerical_deriv2_inv_sym_mat(&sigma, Invariant::J2);
         // println!("{}", ana);
         // println!("{}", num);
@@ -1038,7 +1038,7 @@ mod tests {
         deriv2_invariant_jj3(&mut dd2_ana, &mut aux, &sigma);
 
         // check using numerical derivative
-        let ana = dd2_ana.as_matrix();
+        let ana = dd2_ana.as_std_matrix();
         let num = numerical_deriv2_inv_sym_mat(&sigma, Invariant::J3);
         // println!("{}", ana);
         // println!("{}", num);
@@ -1052,7 +1052,7 @@ mod tests {
         deriv2_invariant_sigma_t(&mut dd2_ana, &mut aux, &sigma).unwrap();
 
         // check using numerical derivative
-        let ana = dd2_ana.as_matrix();
+        let ana = dd2_ana.as_std_matrix();
         let num = numerical_deriv2_inv_sym_mat(&sigma, Invariant::SigmaT);
         // println!("{}", ana);
         // println!("{}", num);
@@ -1066,7 +1066,7 @@ mod tests {
         deriv2_invariant_q(&mut dd2_ana, &mut aux, &sigma).unwrap();
 
         // check using numerical derivative
-        let ana = dd2_ana.as_matrix();
+        let ana = dd2_ana.as_std_matrix();
         let num = numerical_deriv2_inv_sym_mat(&sigma, Invariant::Q);
         // println!("{}", ana);
         // println!("{}", num);
@@ -1080,7 +1080,7 @@ mod tests {
         deriv2_invariant_lode(&mut dd2_ana, &mut aux, &sigma).unwrap();
 
         // check using numerical derivative
-        let ana = dd2_ana.as_matrix();
+        let ana = dd2_ana.as_std_matrix();
         let num = numerical_deriv2_inv_sym_mat(&sigma, Invariant::Lode);
         // println!("{}", ana);
         // println!("{}", num);
@@ -1090,61 +1090,61 @@ mod tests {
     #[test]
     fn deriv2_invariant_jj2_works() {
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
         // zero
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj2(&sigma, 1e-15);
 
         // one
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj2(&sigma, 1e-12);
     }
 
     #[test]
     fn deriv2_invariant_jj3_works() {
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
         // zero
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj3(&sigma, 1e-15);
 
         // one
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
         check_deriv2_jj3(&sigma, 1e-13);
     }
 
     #[test]
     fn deriv2_invariant_sigma_t_returns_none() {
         // identity
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
         let mut aux = AuxDeriv2InvariantSigmaT::new();
         assert_eq!(deriv2_invariant_sigma_t(&mut d2, &mut aux, &sigma), None);
@@ -1153,26 +1153,26 @@ mod tests {
     #[test]
     fn deriv2_invariant_sigma_t_works() {
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
 
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
     }
 
     #[test]
     fn deriv2_invariant_q_returns_none() {
         // identity
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
         let mut aux = AuxDeriv2InvariantSigmaT::new();
         assert_eq!(deriv2_invariant_q(&mut d2, &mut aux, &sigma), None);
@@ -1181,26 +1181,26 @@ mod tests {
     #[test]
     fn deriv2_invariant_q_works() {
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         check_deriv2_q(&sigma, 1e-11);
 
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
         check_deriv2_q(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_q(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_q(&sigma, 1e-11);
     }
 
     #[test]
     fn deriv2_invariant_lode_returns_none() {
         // identity
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
         let mut aux = AuxDeriv2InvariantLode::new();
         assert_eq!(deriv2_invariant_lode(&mut d2, &mut aux, &sigma), None);
@@ -1209,32 +1209,32 @@ mod tests {
     #[test]
     fn deriv2_invariant_lode_works() {
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         check_deriv2_lode(&sigma, 1e-10);
 
         // symmetric
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix, Rep::Symmetric).unwrap();
         check_deriv2_lode(&sigma, 1e-11);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_lode(&sigma, 1e-10);
 
         // symmetric 2d
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix, Rep::Symmetric2D).unwrap();
         check_deriv2_lode(&sigma, 1e-9);
     }
 
     #[test]
     fn example_second_deriv_jj3_lode() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         let mut s = Tensor2::new(Rep::Symmetric);
         sigma.deviator(&mut s);
         let mut aux = AuxDeriv2InvariantJ3::new();
         let mut d2 = Tensor4::new(Rep::Symmetric);
         deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
 
-        // println!("sigma =\n{:.1}", sigma.to_matrix());
+        // println!("sigma =\n{:.1}", sigma.to_std_matrix());
         // println!("sigma_mat =\n{}", sigma.vec);
         // println!("s = \n{}", s.vec);
         // println!("d2 = \n{}", d2.mat);

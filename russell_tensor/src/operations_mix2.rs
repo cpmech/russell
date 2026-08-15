@@ -668,7 +668,7 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
             for n in 0..6 {
                 let (k, l) = M_TO_IJ[n];
                 let fn_ = if k == l { 1.0 } else { SQRT_2 };
-                let dijkl = aa.get(i, k) * aa.get(j, l) + aa.get(i, l) * aa.get(j, k);
+                let dijkl = aa.get_std(i, k) * aa.get_std(j, l) + aa.get_std(i, l) * aa.get_std(j, k);
                 dd.mat[m][n] = s * fm * fn_ * dijkl;
             }
         }
@@ -850,8 +850,8 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
             for n in 0..6 {
                 let (k, l) = M_TO_IJ[n];
                 let fn_ = if k == l { 1.0 } else { SQRT_2 };
-                let dijkl = aa.get(i, k) * bb.get(j, l) + aa.get(i, l) * bb.get(j, k)
-                    + bb.get(i, k) * aa.get(j, l) + bb.get(i, l) * aa.get(j, k);
+                let dijkl = aa.get_std(i, k) * bb.get_std(j, l) + aa.get_std(i, l) * bb.get_std(j, k)
+                    + bb.get_std(i, k) * aa.get_std(j, l) + bb.get_std(i, l) * aa.get_std(j, k);
                 dd.mat[m][n] = s * fm * fn_ * dijkl;
             }
         }
@@ -1013,9 +1013,9 @@ mod tests {
     }
 
     fn check_odyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
-        let a = a_ten.as_matrix();
-        let b = b_ten.as_matrix();
-        let dd = dd_ten.as_matrix();
+        let a = a_ten.as_std_matrix();
+        let b = b_ten.as_std_matrix();
+        let dd = dd_ten.as_std_matrix();
         let mut correct = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -1030,20 +1030,20 @@ mod tests {
     fn t2_odyad_t2_works() {
         // general odyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [18.0, 32.0, 42.0, 16.0, 28.0, 14.0, 36.0, 48.0, 54.0],
             [48.0, 50.0, 48.0, 40.0, 40.0, 32.0, 60.0, 60.0, 72.0],
@@ -1060,20 +1060,20 @@ mod tests {
 
         // symmetric odyad symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [6.0, 40.0, 72.0, 10.0, 48.0, 12.0, 24.0, 60.0, 36.0],
             [40.0, 8.0, 40.0, 16.0, 16.0, 32.0, 20.0, 20.0, 50.0],
@@ -1090,20 +1090,20 @@ mod tests {
 
         // symmetric 2D odyad symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
             [6.0, 32.0, 0.0, 8.0, 0.0, 0.0, 24.0, 0.0, 0.0],
@@ -1139,9 +1139,9 @@ mod tests {
     }
 
     fn check_udyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
-        let a = a_ten.as_matrix();
-        let b = b_ten.as_matrix();
-        let dd = dd_ten.as_matrix();
+        let a = a_ten.as_std_matrix();
+        let b = b_ten.as_std_matrix();
+        let dd = dd_ten.as_std_matrix();
         let mut correct = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -1156,20 +1156,20 @@ mod tests {
     fn t2_udyad_t2_works() {
         // general udyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [18.0, 32.0, 42.0, 36.0, 48.0, 54.0, 16.0, 28.0, 14.0],
             [48.0, 50.0, 48.0, 60.0, 60.0, 72.0, 40.0, 40.0, 32.0],
@@ -1186,20 +1186,20 @@ mod tests {
 
         // symmetric udyad symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [6.0, 40.0, 72.0, 24.0, 60.0, 36.0, 10.0, 48.0, 12.0],
             [40.0, 8.0, 40.0, 20.0, 20.0, 50.0, 16.0, 16.0, 32.0],
@@ -1216,13 +1216,13 @@ mod tests {
 
         // symmetric 2D udyad symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
@@ -1241,7 +1241,7 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, -8.0, -8.0, 0.0, -16.0, -10.0],
         ]);
         mat_approx_eq(&Matrix::from(&dd.mat), &kelvin_mat, 1e-14);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [6.0, 32.0, 0.0, 24.0, 0.0, 0.0, 8.0, 0.0, 0.0],
             [32.0, 8.0, 0.0, 16.0, 0.0, 0.0, 16.0, 0.0, 0.0],
@@ -1266,8 +1266,8 @@ mod tests {
     }
 
     fn check_ssd(s: f64, a_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
-        let a = a_ten.as_matrix();
-        let dd = dd_ten.as_matrix();
+        let a = a_ten.as_std_matrix();
+        let dd = dd_ten.as_std_matrix();
         let mut correct = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -1282,14 +1282,14 @@ mod tests {
     fn t2_ssd_works() {
         // general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_ssd(&mut dd, 2.0, &a);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [4.0, 16.0, 36.0, 8.0, 24.0, 12.0, 8.0, 24.0, 12.0],
             [64.0, 100.0, 144.0, 80.0, 120.0, 96.0, 80.0, 120.0, 96.0],
@@ -1306,14 +1306,14 @@ mod tests {
 
         // symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_ssd(&mut dd, 2.0, &a);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [4.0, 64.0, 144.0, 16.0, 96.0, 24.0, 16.0, 96.0, 24.0],
             [64.0, 16.0, 100.0, 32.0, 40.0, 80.0, 32.0, 40.0, 80.0],
@@ -1330,14 +1330,14 @@ mod tests {
 
         // symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_ssd(&mut dd, 2.0, &a);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [4.0, 64.0, 0.0, 16.0, 0.0, 0.0, 16.0, 0.0, 0.0],
             [64.0, 16.0, 0.0, 32.0, 0.0, 0.0, 32.0, 0.0, 0.0],
@@ -1372,9 +1372,9 @@ mod tests {
     }
 
     fn check_qsd(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
-        let a = a_ten.as_matrix();
-        let b = b_ten.as_matrix();
-        let dd = dd_ten.as_matrix();
+        let a = a_ten.as_std_matrix();
+        let b = b_ten.as_std_matrix();
+        let dd = dd_ten.as_std_matrix();
         let mut correct = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -1397,20 +1397,20 @@ mod tests {
     fn t2_qsd_t2_works() {
         // general qsd general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [72.0, 128.0, 168.0, 104.0, 152.0, 136.0, 104.0, 152.0, 136.0],
             [192.0, 200.0, 192.0, 200.0, 200.0, 208.0, 200.0, 200.0, 208.0],
@@ -1427,20 +1427,20 @@ mod tests {
 
         // symmetric qsd symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [24.0, 160.0, 288.0, 68.0, 216.0, 96.0, 68.0, 216.0, 96.0],
             [160.0, 32.0, 160.0, 72.0, 72.0, 164.0, 72.0, 72.0, 164.0],
@@ -1457,20 +1457,20 @@ mod tests {
 
         // symmetric 2D qsd symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_qsd_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [24.0, 128.0, 0.0, 64.0, 0.0, 0.0, 64.0, 0.0, 0.0],
             [128.0, 32.0, 0.0, 64.0, 0.0, 0.0, 64.0, 0.0, 0.0],
@@ -1490,7 +1490,7 @@ mod tests {
     fn t2_ssd_use_loops_works() {
         // general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
@@ -1502,7 +1502,7 @@ mod tests {
 
         // symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
@@ -1514,7 +1514,7 @@ mod tests {
 
         // symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
@@ -1529,13 +1529,13 @@ mod tests {
     fn t2_qsd_t2_use_loops_works() {
         // general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
@@ -1547,13 +1547,13 @@ mod tests {
 
         // symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
@@ -1565,13 +1565,13 @@ mod tests {
 
         // symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],

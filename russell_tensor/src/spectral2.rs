@@ -38,7 +38,7 @@ impl Spectral2 {
         }
         if tt.dim == 4 {
             // eigenvalues and eigenvectors
-            let (t22, mut a) = tt.as_matrix_2d();
+            let (t22, mut a) = tt.as_std_matrix_2d();
             let mut l = Vector::new(2);
             let mut v = Matrix::new(2, 2);
             mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
@@ -57,7 +57,7 @@ impl Spectral2 {
             self.projectors[2].vec[2] = 1.0;
         } else {
             // eigenvalues and eigenvectors
-            let mut a = tt.as_matrix();
+            let mut a = tt.as_std_matrix();
             let mut v = Matrix::new(3, 3);
             mat_eigen_sym_jacobi(&mut self.lambda, &mut v, &mut a)?;
 
@@ -140,23 +140,23 @@ mod tests {
 
         // perform spectral decomposition of symmetric matrix
         let rep = spec.projectors[0].rep;
-        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let tt = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         spec.decompose(&tt).unwrap();
 
         // print results
-        // println!("a =\n{}", tt.as_matrix());
+        // println!("a =\n{}", tt.as_std_matrix());
         // println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-        // println!("P0 =\n{}", spec.projectors[0].as_matrix());
-        // println!("P1 =\n{}", spec.projectors[1].as_matrix());
-        // println!("P2 =\n{}", spec.projectors[2].as_matrix());
+        // println!("P0 =\n{}", spec.projectors[0].as_std_matrix());
+        // println!("P1 =\n{}", spec.projectors[1].as_std_matrix());
+        // println!("P2 =\n{}", spec.projectors[2].as_std_matrix());
 
         // check eigenvalues
         vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
         // check eigenprojectors
-        let pp0 = spec.projectors[0].as_matrix();
-        let pp1 = spec.projectors[1].as_matrix();
-        let pp2 = spec.projectors[2].as_matrix();
+        let pp0 = spec.projectors[0].as_std_matrix();
+        let pp1 = spec.projectors[1].as_std_matrix();
+        let pp2 = spec.projectors[2].as_std_matrix();
         let correct0 = Matrix::from(&correct_projectors[0]);
         let correct1 = Matrix::from(&correct_projectors[1]);
         let correct2 = Matrix::from(&correct_projectors[2]);
@@ -167,7 +167,7 @@ mod tests {
         // compose
         let mut tt_new = Tensor2::new(rep);
         spec.compose(&mut tt_new, &spec.lambda).unwrap();
-        let a_new = tt_new.as_matrix();
+        let a_new = tt_new.as_std_matrix();
         let a = Matrix::from(&sample.matrix);
         mat_approx_eq(&a, &a_new, tol_spectral);
     }

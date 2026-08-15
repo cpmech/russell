@@ -92,8 +92,8 @@ This section illustrates how to use `russell_tensor`. See also:
 use russell_tensor::{Rep, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
-    // allocate a symmetric second-order tensor
-    let sigma = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components
+    let sigma = Tensor2::from_std_matrix(
         &[
             [1.0, 2.0, 3.0],
             [2.0, 2.0, 4.0],
@@ -102,7 +102,7 @@ fn main() -> Result<(), StrError> {
         Rep::Symmetric,
     )?;
 
-    // compute the principal invariants
+    // Compute the principal invariants
     let ii1 = sigma.invariant_ii1();
     let ii2 = sigma.invariant_ii2();
     let ii3 = sigma.invariant_ii3();
@@ -121,8 +121,8 @@ use russell_lab::Vector;
 use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
 
 fn main() -> Result<(), StrError> {
-    // general
-    let a = Tensor2::from_matrix(
+    // Allocate a general second-order tensor given the standard components
+    let a = Tensor2::from_std_matrix(
         &[
             [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
@@ -145,8 +145,8 @@ fn main() -> Result<(), StrError> {
          └      ┘"
     );
 
-    // symmetric-3D
-    let b = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components
+    let b = Tensor2::from_std_matrix(
         &[
             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
@@ -166,8 +166,8 @@ fn main() -> Result<(), StrError> {
          └     ┘"
     );
 
-    // symmetric-2D
-    let c = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components for 2D problems
+    let c = Tensor2::from_std_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
         Rep::Symmetric2D,
     )?;

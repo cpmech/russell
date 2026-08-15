@@ -2,8 +2,8 @@ use russell_lab::Vector;
 use russell_tensor::{Rep, SQRT_2, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
-    // general
-    let a = Tensor2::from_matrix(
+    // Allocate a general second-order tensor given the standard components
+    let a = Tensor2::from_std_matrix(
         &[
             [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
@@ -26,8 +26,8 @@ fn main() -> Result<(), StrError> {
          └      ┘"
     );
 
-    // symmetric-3D
-    let b = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components
+    let b = Tensor2::from_std_matrix(
         &[
             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
@@ -47,8 +47,8 @@ fn main() -> Result<(), StrError> {
          └     ┘"
     );
 
-    // symmetric-2D
-    let c = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components for 2D problems
+    let c = Tensor2::from_std_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
         Rep::Symmetric2D,
     )?;

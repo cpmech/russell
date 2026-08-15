@@ -40,13 +40,13 @@ use crate::Rep; // for documentation
 /// use russell_tensor::{t2_dyad_t2, Rep, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let a = Tensor2::from_matrix(&[
+///     let a = Tensor2::from_std_matrix(&[
 ///         [ 1.0, 10.0, 0.0],
 ///         [-2.0, -1.0, 0.0],
 ///         [ 0.0,  0.0, 2.0],
 ///     ], Rep::General)?;
 ///
-///     let b = Tensor2::from_matrix(&[
+///     let b = Tensor2::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
@@ -56,7 +56,7 @@ use crate::Rep; // for documentation
 ///     t2_dyad_t2(&mut dd, 1.0, &a, &b);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", dd.as_matrix()),
+///         format!("{:.1}", dd.as_std_matrix()),
 ///         "┌                                                       ┐\n\
 ///          │   1.0   2.0   3.0   4.0   5.0   6.0   7.0   8.0   9.0 │\n\
 ///          │  -1.0  -2.0  -3.0  -4.0  -5.0  -6.0  -7.0  -8.0  -9.0 │\n\
@@ -125,25 +125,25 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 ///
 /// fn main() -> Result<(), StrError> {
 ///     #[rustfmt::skip]
-///     let a = Tensor2::from_matrix(&[
+///     let a = Tensor2::from_std_matrix(&[
 ///         [ 1.0, 10.0, 0.0],
 ///         [ 2.0,  1.0, 0.0],
 ///         [ 0.0,  0.0, 2.0],
 ///     ], Rep::General)?;
 ///
 ///     #[rustfmt::skip]
-///     let b = Tensor2::from_matrix(&[
+///     let b = Tensor2::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
 ///     ], Rep::General)?;
 ///
 ///     let mat = Matrix::filled(9, 9, 0.5);
-///     let mut dd = Tensor4::from_matrix(&mat, Rep::General)?;
+///     let mut dd = Tensor4::from_std_matrix(&mat, Rep::General)?;
 ///     t2_dyad_t2_update(&mut dd, 1.0, &a, &b);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", dd.as_matrix()),
+///         format!("{:.1}", dd.as_std_matrix()),
 ///         "┌                                              ┐\n\
 ///          │  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 │\n\
 ///          │  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 │\n\
@@ -211,7 +211,7 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 /// use russell_tensor::{t4_ddot_t2, Rep, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let dd = Tensor4::from_matrix(&[
+///     let dd = Tensor4::from_std_matrix(&[
 ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
 ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
 ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -223,7 +223,7 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///     ], Rep::General)?;
 ///
-///     let a = Tensor2::from_matrix(&[
+///     let a = Tensor2::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
@@ -233,7 +233,7 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///     t4_ddot_t2(&mut b, 1.0, &dd, &a);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", b.as_matrix()),
+///         format!("{:.1}", b.as_std_matrix()),
 ///         "┌                      ┐\n\
 ///          │  285.0 2850.0    0.0 │\n\
 ///          │ -570.0 -285.0    0.0 │\n\
@@ -299,7 +299,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 /// use russell_tensor::{t4_ddot_t2_update, Rep, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let dd = Tensor4::from_matrix(&[
+///     let dd = Tensor4::from_std_matrix(&[
 ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
 ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
 ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -311,13 +311,13 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///     ], Rep::General)?;
 ///
-///     let a = Tensor2::from_matrix(&[
+///     let a = Tensor2::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
 ///     ], Rep::General)?;
 ///
-///     let mut b = Tensor2::from_matrix(&[
+///     let mut b = Tensor2::from_std_matrix(&[
 ///         [1.0, 0.0, 0.0],
 ///         [0.0, 1.0, 0.0],
 ///         [0.0, 0.0, 1.0],
@@ -325,7 +325,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///     t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1000.0);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", b.as_matrix()),
+///         format!("{:.1}", b.as_std_matrix()),
 ///         "┌                      ┐\n\
 ///          │ 1285.0 2850.0    0.0 │\n\
 ///          │ -570.0  715.0    0.0 │\n\
@@ -383,13 +383,13 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 /// use russell_tensor::{t2_ddot_t4, Rep, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let a = Tensor2::from_matrix(&[
+///     let a = Tensor2::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
 ///     ], Rep::General)?;
 ///
-///     let dd = Tensor4::from_matrix(&[
+///     let dd = Tensor4::from_std_matrix(&[
 ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
 ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
 ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -405,7 +405,7 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///     t2_ddot_t4(&mut b, 1.0, &a, &dd);
 ///
 ///     assert_eq!(
-///         format!("{:.1}", b.as_matrix()),
+///         format!("{:.1}", b.as_std_matrix()),
 ///         "┌                   ┐\n\
 ///          │  31.0 124.0 186.0 │\n\
 ///          │ 217.0  62.0 155.0 │\n\
@@ -564,20 +564,20 @@ mod tests {
     fn t2_dyad_t2_works() {
         // general dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         assert_eq!(
             format!("{:.1}", mat),
             "┌                                     ┐\n\
@@ -595,20 +595,20 @@ mod tests {
 
         // sym-3D dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         assert_eq!(
             format!("{:.1}", mat),
             "┌                                     ┐\n\
@@ -626,20 +626,20 @@ mod tests {
 
         // sym-2D dyad sym-2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 0.0],
             [2.0, 5.0, 0.0],
             [0.0, 0.0, 9.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [0.5, 0.5, 0.0],
             [0.5, 0.5, 0.0],
             [0.0, 0.0, 0.5],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric2D);
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         assert_eq!(
             format!("{:.1}", mat),
             "┌                                     ┐\n\
@@ -678,21 +678,21 @@ mod tests {
     fn t2_dyad_t2_update_works() {
         // general dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
         ], Rep::General).unwrap();
         let mat = Matrix::filled(9, 9, 0.1);
-        let mut dd = Tensor4::from_matrix(&mat, Rep::General).unwrap();
+        let mut dd = Tensor4::from_std_matrix(&mat, Rep::General).unwrap();
         t2_dyad_t2_update(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         let correct = "┌                                     ┐\n\
                        │ 1.1 1.1 1.1 1.1 1.1 1.1 1.1 1.1 1.1 │\n\
                        │ 5.1 5.1 5.1 5.1 5.1 5.1 5.1 5.1 5.1 │\n\
@@ -708,9 +708,9 @@ mod tests {
     }
 
     fn check_dyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
-        let a = a_ten.as_matrix();
-        let b = b_ten.as_matrix();
-        let dd = dd_ten.as_matrix();
+        let a = a_ten.as_std_matrix();
+        let b = b_ten.as_std_matrix();
+        let dd = dd_ten.as_std_matrix();
         let mut correct = Matrix::new(9, 9);
         for m in 0..9 {
             for n in 0..9 {
@@ -725,20 +725,20 @@ mod tests {
     fn t2_dyad_t2_works_extra() {
         // general dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::General);
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
             [18.0, 10.0, 2.0, 16.0, 8.0, 14.0, 12.0, 4.0, 6.0],
@@ -756,20 +756,20 @@ mod tests {
 
         // symmetric dyad symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
             [6.0, 4.0, 2.0, 10.0, 8.0, 12.0, 10.0, 8.0, 12.0],
@@ -787,20 +787,20 @@ mod tests {
 
         // symmetric 2D dyad symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric2D);
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
-        let mat = dd.as_matrix();
+        let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
             [6.0, 4.0, 2.0, 8.0, 0.0, 0.0, 8.0, 0.0, 0.0],
@@ -837,15 +837,15 @@ mod tests {
 
     #[test]
     fn t4_ddot_t2_works() {
-        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]], Rep::Symmetric2D).unwrap();
         let mut b = Tensor2::new(Rep::Symmetric2D);
         t4_ddot_t2(&mut b, 1.0, &dd, &a);
-        let out = b.as_matrix();
+        let out = b.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
@@ -876,21 +876,21 @@ mod tests {
 
     #[test]
     fn t4_ddot_t2_update_works() {
-        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0],
         ], Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let mut b = Tensor2::from_matrix(&[
+        let mut b = Tensor2::from_std_matrix(&[
             [-1000.0, -1000.0,     0.0],
             [-1000.0, -1000.0,     0.0],
             [    0.0,     0.0, -1000.0],
         ], Rep::Symmetric2D).unwrap();
         t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 2.0);
-        let out = b.as_matrix();
+        let out = b.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                         ┐\n\
@@ -921,15 +921,15 @@ mod tests {
 
     #[test]
     fn t2_ddot_t4_works() {
-        let dd = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]], Rep::Symmetric2D).unwrap();
         let mut b = Tensor2::new(Rep::Symmetric2D);
         t2_ddot_t4(&mut b, 1.0, &a, &dd);
-        let out = b.as_matrix();
+        let out = b.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
@@ -961,19 +961,19 @@ mod tests {
     #[test]
     fn t2_ddot_t4_ddot_t2_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mat = Matrix::filled(9, 9, -1.0);
-        let dd = Tensor4::from_matrix(&mat, Rep::General).unwrap();
+        let dd = Tensor4::from_std_matrix(&mat, Rep::General).unwrap();
         let s = t2_ddot_t4_ddot_t2(&a, &dd, &b);
         approx_eq(s, -2025.0, 1e-15);
     }
@@ -1011,19 +1011,19 @@ mod tests {
     #[test]
     fn t4_ddot_t2_dyad_t2_ddot_t4_works1() {
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mat = Matrix::filled(9, 9, -1.0);
-        let dd = Tensor4::from_matrix(&mat, Rep::General).unwrap();
+        let dd = Tensor4::from_std_matrix(&mat, Rep::General).unwrap();
         let mut ee = Tensor4::new(Rep::General);
         t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
         let correct = [
@@ -1037,25 +1037,25 @@ mod tests {
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
         ];
-        mat_approx_eq(&ee.as_matrix(), &correct, 1e-15);
+        mat_approx_eq(&ee.as_std_matrix(), &correct, 1e-15);
     }
 
     /*
     #[test]
     fn t4_ddot_t2_dyad_t2_ddot_t4_works2() {
         #[rustfmt::skip]
-        let a = Tensor2::from_matrix(&[
+        let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
         ], Rep::Symmetric).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [1.0, 4.0, 5.0],
             [4.0, 2.0, 6.0],
             [5.0, 6.0, 3.0],
         ], Rep::Symmetric).unwrap();
-        let dd = Tensor4::from_matrix(
+        let dd = Tensor4::from_std_matrix(
             &[
                 [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 [2.0, 4.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -1072,7 +1072,7 @@ mod tests {
         .unwrap();
         let mut ee = Tensor4::new(Rep::Symmetric);
         t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
-        println!("{}", ee.as_matrix());
+        println!("{}", ee.as_std_matrix());
         let correct = [
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
@@ -1084,7 +1084,7 @@ mod tests {
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
         ];
-        mat_approx_eq(&ee.as_matrix(), &correct, 1e-15);
+        mat_approx_eq(&ee.as_std_matrix(), &correct, 1e-15);
     }
     */
 }

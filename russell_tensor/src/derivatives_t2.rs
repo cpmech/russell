@@ -369,7 +369,7 @@ mod tests {
     fn f_sigma(x: f64, args: &mut ArgsNumDeriv) -> Result<f64, StrError> {
         let original = args.sigma_mat.get(args.i, args.j);
         args.sigma_mat.set(args.i, args.j, x);
-        args.sigma.set_matrix(&args.sigma_mat).unwrap();
+        args.sigma.set_std_matrix(&args.sigma_mat).unwrap();
         let res = match args.fn_name {
             F::Norm => args.sigma.norm(),
             F::J2 => args.sigma.invariant_jj2(),
@@ -406,7 +406,7 @@ mod tests {
     fn numerical_deriv(sigma: &Tensor2, fn_name: F) -> Matrix {
         let mut args = ArgsNumDeriv {
             fn_name,
-            sigma_mat: sigma.as_matrix(),
+            sigma_mat: sigma.as_std_matrix(),
             sigma: sigma.as_general(),
             i: 0,
             j: 0,
@@ -438,15 +438,15 @@ mod tests {
             let res = deriv1_central5(x, &mut args, f_sigma_mat).unwrap();
             num_deriv.vec[m] = res;
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     // checks ∂f/∂σᵢⱼ
     fn check_deriv(fn_name: F, rep: Rep, sample: &SampleTensor2, tol: f64, _verbose: bool) {
-        let sigma = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let sigma = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         let mut d1 = Tensor2::new(rep);
         analytical_deriv(fn_name, &mut d1, &sigma);
-        let ana = d1.as_matrix();
+        let ana = d1.as_std_matrix();
         let num = numerical_deriv(&sigma, fn_name);
         let num_mat = numerical_deriv_mat(&sigma, fn_name);
         /*
@@ -534,7 +534,7 @@ mod tests {
 
     #[test]
     fn check_for_none() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
         let mut d1 = Tensor2::new(Rep::Symmetric);
         let mut s = Tensor2::new(Rep::Symmetric);
         assert_eq!(deriv1_norm(&mut d1, &sigma), None);

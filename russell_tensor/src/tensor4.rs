@@ -195,13 +195,25 @@ impl Tensor4 {
     }
 
     /// Returns an access to the underlying Kelvin matrix
-    pub fn matrix(&self) -> &[[f64; 9]; 9] {
-        &self.mat
+    ///
+    /// # Notes
+    ///
+    /// The returned slice holds the `dim` active rows of the tensor. Each row
+    /// is a fixed `[f64; 9]` array, so use [`Tensor4::dim`] as the column bound
+    /// when iterating over the components.
+    pub fn matrix(&self) -> &[[f64; 9]] {
+        &self.mat[0..self.dim]
     }
 
     /// Returns a mutable access to the underlying Kelvin matrix
-    pub fn matrix_mut(&mut self) -> &mut [[f64; 9]; 9] {
-        &mut self.mat
+    ///
+    /// # Notes
+    ///
+    /// The returned slice holds the `dim` active rows of the tensor. Each row
+    /// is a fixed `[f64; 9]` array, so use [`Tensor4::dim`] as the column bound
+    /// when iterating over the components.
+    pub fn matrix_mut(&mut self) -> &mut [[f64; 9]] {
+        &mut self.mat[0..self.dim]
     }
 
     /// Returns the (m,n) component of the Kelvin matrix

@@ -91,9 +91,11 @@ mod operations_mix2;
 mod operations_t2;
 mod operations_t4;
 mod samples_tensor2;
+mod samples_tensor3;
 mod samples_tensor4;
 mod spectral2;
 mod tensor2;
+mod tensor3;
 mod tensor4;
 
 pub use as_matrix_3x3::*;
@@ -108,9 +110,11 @@ pub use operations_mix2::*;
 pub use operations_t2::*;
 pub use operations_t4::*;
 pub use samples_tensor2::*;
+pub use samples_tensor3::*;
 pub use samples_tensor4::*;
 pub use spectral2::*;
 pub use tensor2::*;
+pub use tensor3::*;
 pub use tensor4::*;
 
 // run code from README file

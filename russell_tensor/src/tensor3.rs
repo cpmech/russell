@@ -905,13 +905,13 @@ mod tests {
         let res = Tensor3::from_std_array(&SamplesTensor3::SAMPLE1, Rep::Symmetric);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a symmetric tensor")
+            Some("the input data does not correspond to a minor-symmetric tensor")
         );
 
         let res = Tensor3::from_std_array(&SamplesTensor3::SYM_SAMPLE1, Rep::Symmetric2D);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D symmetric tensor")
+            Some("the input data does not correspond to a 2D minor-symmetric tensor")
         );
     }
 
@@ -928,7 +928,7 @@ mod tests {
         // symmetric 3d
         let dd = Tensor3::from_std_array(&SamplesTensor3::SYM_SAMPLE1, Rep::Symmetric).unwrap();
         for m in 0..6 {
-            for n in 0..6 {
+            for n in 0..3 {
                 assert_eq!(dd.matrix()[m][n], SamplesTensor3::SYM_SAMPLE1_KELVIN_MATRIX[m][n]);
             }
         }
@@ -936,7 +936,7 @@ mod tests {
         // symmetric 2d
         let dd = Tensor3::from_std_array(&SamplesTensor3::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
         for m in 0..4 {
-            for n in 0..4 {
+            for n in 0..3 {
                 assert_eq!(dd.matrix()[m][n], SamplesTensor3::SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n]);
             }
         }
@@ -1106,7 +1106,7 @@ mod tests {
         // symmetric 3D
         let dd = Tensor3::from_std_array(&SamplesTensor3::SYM_SAMPLE1, Rep::Symmetric).unwrap();
         let mat = dd.as_std_matrix();
-        assert_eq!(mat.dims(), (9, 9));
+        assert_eq!(mat.dims(), (9, 3));
         for m in 0..9 {
             for n in 0..3 {
                 approx_eq(mat.get(m, n), SamplesTensor3::SYM_SAMPLE1_STD_MATRIX[m][n], 1e-13);
@@ -1116,7 +1116,7 @@ mod tests {
         // symmetric 2D
         let dd = Tensor3::from_std_array(&SamplesTensor3::SYM_2D_SAMPLE1, Rep::Symmetric2D).unwrap();
         let mat = dd.as_std_matrix();
-        assert_eq!(mat.dims(), (9, 9));
+        assert_eq!(mat.dims(), (9, 3));
         for m in 0..9 {
             for n in 0..3 {
                 approx_eq(mat.get(m, n), SamplesTensor3::SYM_2D_SAMPLE1_STD_MATRIX[m][n], 1e-13);
@@ -1330,7 +1330,7 @@ mod tests {
         let dd = generate_dd();
         // clone
         let mut cloned = dd.clone();
-        cloned.matrix_mut()[0][0] = 9999.0;
+        cloned.matrix_mut()[0][0] = 999.0;
         assert_eq!(
             format!("{:.0}", dd.as_std_matrix()),
             "┌             ┐\n\

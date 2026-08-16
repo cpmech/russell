@@ -1,6 +1,6 @@
 use super::SQRT_2;
 
-/// Holds fourth-order tensor samples
+/// Holds third-order tensor samples
 pub struct SamplesTensor3;
 
 impl SamplesTensor3 {

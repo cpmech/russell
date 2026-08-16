@@ -17,8 +17,8 @@ use russell_lab::{Matrix, mat_mat_mul};
 
 // stack-allocated (russell_tensor)
 use russell_tensor::{
-    AuxDeriv2InvariantJ3 as StackAux, AuxDeriv2InvariantLode as StackAuxLode, Rep as StackRep,
-    Tensor2 as StackTensor2, Tensor4 as StackTensor4,
+    AuxDeriv2InvariantJ3 as StackAux, AuxDeriv2InvariantLode as StackAuxLode, Rep as StackRep, Tensor2 as StackTensor2,
+    Tensor4 as StackTensor4,
 };
 use russell_tensor::{
     deriv2_invariant_jj3 as stack_deriv2_invariant_jj3, deriv2_invariant_lode as stack_deriv2_invariant_lode,
@@ -27,8 +27,8 @@ use russell_tensor::{
 
 // heap-allocated (russell_tensor_heap)
 use russell_tensor_heap::{
-    AuxDeriv2InvariantJ3 as HeapAux, AuxDeriv2InvariantLode as HeapAuxLode, Rep as HeapRep,
-    Tensor2 as HeapTensor2, Tensor4 as HeapTensor4,
+    AuxDeriv2InvariantJ3 as HeapAux, AuxDeriv2InvariantLode as HeapAuxLode, Rep as HeapRep, Tensor2 as HeapTensor2,
+    Tensor4 as HeapTensor4,
 };
 use russell_tensor_heap::{
     deriv2_invariant_jj3 as heap_deriv2_invariant_jj3, deriv2_invariant_lode as heap_deriv2_invariant_lode,
@@ -297,5 +297,12 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_t2_dot_t2, bench_t2_ssd, bench_t2_qsd_t2, bench_deriv2_invariant_jj3, bench_deriv2_invariant_lode);
+criterion_group!(
+    benches,
+    bench_t2_dot_t2,
+    bench_t2_ssd,
+    bench_t2_qsd_t2,
+    bench_deriv2_invariant_jj3,
+    bench_deriv2_invariant_lode
+);
 criterion_main!(benches);

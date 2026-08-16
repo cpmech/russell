@@ -6,11 +6,12 @@
 //!
 //! # Introduction
 //!
-//! This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
+//! This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
 //!
 //! # Capabilities
 //!
 //! * [Tensor2] — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
+//! * [Tensor3] — third-order tensors (minor-symmetric or not)
 //! * [Tensor4] — fourth-order tensors (minor-symmetric or not)
 //! * Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products
 //! * Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
@@ -22,7 +23,7 @@
 //!
 //! Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
 //!
-//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector) and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
 //! The [Rep] enum specifies the available representations:
 //!
@@ -32,19 +33,24 @@
 //!
 //! # Standard vs Kelvin components
 //!
-//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Dᵢⱼₖₗ` from the **Kelvin** components stored internally:
+//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Dᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin** components stored internally:
 //!
 //! * Accessors dealing with **standard components** carry the `std` qualifier
 //!   in their names:
 //!   * [Tensor2] — [`Tensor2::set_std_matrix`], [`Tensor2::from_std_matrix`],
 //!     [`Tensor2::get_std`], [`Tensor2::as_std_matrix`], [`Tensor2::to_std_matrix`],
 //!     [`Tensor2::as_std_matrix_2d`], [`Tensor2::sym_set_std`], [`Tensor2::sym_add_std`]
+//!   * [Tensor3] — [`Tensor3::from_std_array`], [`Tensor3::from_std_matrix`],
+//!     [`Tensor3::get_std`], [`Tensor3::as_std_array`], [`Tensor3::to_std_array`],
+//!     [`Tensor3::as_std_matrix`], [`Tensor3::to_std_matrix`], [`Tensor3::sym_set_std`]
 //!   * [Tensor4] — [`Tensor4::from_std_array`], [`Tensor4::from_std_matrix`],
 //!     [`Tensor4::get_std`], [`Tensor4::as_std_array`], [`Tensor4::to_std_array`],
 //!     [`Tensor4::as_std_matrix`], [`Tensor4::to_std_matrix`], [`Tensor4::sym_set_std`]
 //! * Accessors dealing directly with the **Kelvin components** carry no qualifier:
 //!   * [Tensor2] — [`Tensor2::vector`], [`Tensor2::vector_mut`], [`Tensor2::set_vector`],
 //!     [`Tensor2::set_tensor`], [`Tensor2::update`], [`Tensor2::clear`]
+//!   * [Tensor3] — [`Tensor3::matrix`], [`Tensor3::matrix_mut`], [`Tensor3::get_mn`],
+//!     [`Tensor3::set`], [`Tensor3::set_tensor`], [`Tensor3::update`]
 //!   * [Tensor4] — [`Tensor4::matrix`], [`Tensor4::matrix_mut`], [`Tensor4::get_mn`],
 //!     [`Tensor4::set`], [`Tensor4::set_tensor`], [`Tensor4::update`]
 //!

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// # Standard and Kelvin components
 ///
 /// The methods of this struct follow a naming convention that distinguishes
-/// between the **standard** (Cartesian) components `Dᵢⱼₖₗ` and the **Kelvin**
+/// between the **standard** (Cartesian) components `Dᵢⱼₖ` and the **Kelvin**
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
@@ -182,8 +182,7 @@ impl Tensor3 {
     /// # Notes
     ///
     /// The returned slice holds the `dim` active rows of the tensor. Each row
-    /// is a fixed `[f64; 9]` array, so use [`Tensor3::dim`] as the column bound
-    /// when iterating over the components.
+    /// is a fixed `[f64; 3]` array with the three Kelvin components.
     pub fn matrix(&self) -> &[[f64; 3]] {
         &self.mat[0..self.dim]
     }
@@ -193,8 +192,7 @@ impl Tensor3 {
     /// # Notes
     ///
     /// The returned slice holds the `dim` active rows of the tensor. Each row
-    /// is a fixed `[f64; 9]` array, so use [`Tensor3::dim`] as the column bound
-    /// when iterating over the components.
+    /// is a fixed `[f64; 3]` array with the three Kelvin components.
     pub fn matrix_mut(&mut self) -> &mut [[f64; 3]] {
         &mut self.mat[0..self.dim]
     }

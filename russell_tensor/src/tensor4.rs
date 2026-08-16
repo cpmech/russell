@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 /// i>j & k>l:  Mijkl := (Djilk − Djikl − Dijlk + Dijkl) / 2
 /// ```
 ///
-/// **General:**
+/// [Rep::General]
 ///
 /// Then, the 81 Mijkl components of a Tensor4 are organized as follows:
 ///
@@ -62,7 +62,7 @@ use serde::{Deserialize, Serialize};
 /// the same order as the one for Tensor2. Likewise, the order of column
 /// indices (pairs (k,l) in (i,j,k,l)) follow the same order as for Tensor2.
 ///
-/// **Minor-symmetric 3D:**
+/// [Rep::Symmetric]
 ///
 /// If the tensor has Dijkl = Djikl = Dijlk = Djilk, the mapping simplifies to:
 ///
@@ -96,7 +96,7 @@ use serde::{Deserialize, Serialize};
 ///      5 0       5 1       5 2        5 3       5 4       5 5
 /// ```
 ///
-/// **Minor-symmetric 2D:**
+/// [Rep::Symmetric2D]
 ///
 /// In 2D, some components are zero, thus we may store only 16 components:
 ///
@@ -269,7 +269,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard (not Rep) Dijkl components given with
+    /// * `inp` -- the standard Dijkl components given with
     ///   respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     ///
@@ -322,13 +322,15 @@ impl Tensor4 {
                                     || inp[i][j][k][l] != inp[i][j][l][k]
                                     || inp[i][j][k][l] != inp[j][i][l][k]
                                 {
-                                    return Err("the input data does not correspond to a symmetric tensor");
+                                    return Err("the input data does not correspond to a minor-symmetric tensor");
                                 }
                             } else {
                                 let (m, n) = IJKL_TO_MN[i][j][k][l];
                                 if m > max || n > max {
                                     if inp[i][j][k][l] != 0.0 {
-                                        return Err("the input data does not correspond to a 2D symmetric tensor");
+                                        return Err(
+                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                        );
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
@@ -401,7 +403,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard (not Rep) matrix of components given with
+    /// * `inp` -- the standard matrix of components given with
     ///   respect to an orthonormal Cartesian basis. The matrix must be (9,9),
     ///   even if it corresponds to a minor-symmetric tensor.
     /// * `rep` -- the [Rep] representation
@@ -460,12 +462,14 @@ impl Tensor4 {
                                     || inp.at(m, n) != inp.at(r, s)
                                     || inp.at(m, n) != inp.at(u, v)
                                 {
-                                    return Err("the input data does not correspond to a symmetric tensor");
+                                    return Err("the input data does not correspond to a minor-symmetric tensor");
                                 }
                             } else {
                                 if m > max || n > max {
                                     if inp.at(m, n) != 0.0 {
-                                        return Err("the input data does not correspond to a 2D symmetric tensor");
+                                        return Err(
+                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                        );
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
@@ -824,7 +828,7 @@ impl Tensor4 {
 
     /// Returns a 9x9 matrix with the standard components
     ///
-    /// **Note:** The matrix will have the standard components (not Rep) and 9x9 dimension.
+    /// **Note:** The matrix will have the standard components and 9x9 dimension.
     ///
     /// # Examples
     ///
@@ -1477,13 +1481,13 @@ mod tests {
         let res = Tensor4::from_std_array(&SamplesTensor4::SAMPLE1, Rep::Symmetric);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a symmetric tensor")
+            Some("the input data does not correspond to a minor-symmetric tensor")
         );
 
         let res = Tensor4::from_std_array(&SamplesTensor4::SYM_SAMPLE1, Rep::Symmetric2D);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D symmetric tensor")
+            Some("the input data does not correspond to a 2D minor-symmetric tensor")
         );
     }
 
@@ -1521,7 +1525,7 @@ mod tests {
         let res = Tensor4::from_std_matrix(&inp, Rep::Symmetric);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a symmetric tensor")
+            Some("the input data does not correspond to a minor-symmetric tensor")
         );
 
         inp[0][3] = 0.0;
@@ -1530,7 +1534,7 @@ mod tests {
         let res = Tensor4::from_std_matrix(&inp, Rep::Symmetric2D);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D symmetric tensor")
+            Some("the input data does not correspond to a 2D minor-symmetric tensor")
         );
     }
 

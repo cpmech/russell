@@ -252,7 +252,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard (not Rep) Dijkl components given with
+    /// * `inp` -- the standard Dijkl components given with
     ///   respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     ///
@@ -395,7 +395,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard (not Rep) matrix of components given with
+    /// * `inp` -- the standard matrix of components given with
     ///   respect to an orthonormal Cartesian basis. The matrix must be (9,9),
     ///   even if it corresponds to a minor-symmetric tensor.
     /// * `rep` -- the [Rep] representation
@@ -813,7 +813,7 @@ impl Tensor4 {
 
     /// Returns a 9x9 matrix with the standard components
     ///
-    /// **Note:** The matrix will have the standard components (not Rep) and 9x9 dimension.
+    /// **Note:** The matrix will have the standard components and 9x9 dimension.
     ///
     /// # Examples
     ///

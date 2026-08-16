@@ -236,7 +236,7 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Rep) Tij components given  with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components given  with respect to an orthonormal Cartesian basis
     ///
     /// # Notes
     ///
@@ -342,7 +342,7 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Rep) Tij components with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components with respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     ///
     /// # Notes
@@ -528,7 +528,7 @@ impl Tensor2 {
 
     /// Returns a 3x3 matrix with the standard components
     ///
-    /// **Note:** The matrix will have the standard components (not Rep) and 3x3 dimension.
+    /// **Note:** The matrix will have the standard components and 3x3 dimension.
     ///
     /// # Examples
     ///
@@ -617,7 +617,7 @@ impl Tensor2 {
     ///
     /// # Notes
     ///
-    /// 1. The matrix will have the standard components (not Rep) and 2x2 dimension
+    /// 1. The matrix will have the standard components and 2x2 dimension
     /// 2. This function returns the third diagonal component T22 and the 2x2 matrix
     ///
     /// # Panics

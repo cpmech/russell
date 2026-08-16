@@ -524,7 +524,7 @@ pub const MN_TO_IJK: [[(usize,usize,usize); 3]; 9] = [
 ///
 /// ```
 /// use russell_tensor::IJK_TO_MN;
-/// assert_eq!(IJK_TO_MN[0][1][2], (3,2));
+/// assert_eq!(IJK_TO_MN[0][1][2], (3, 2));
 /// ```
 #[rustfmt::skip]
 pub const IJK_TO_MN: [[[(usize, usize); 3]; 3]; 3] = [
@@ -565,7 +565,7 @@ pub const IJK_TO_MN: [[[(usize, usize); 3]; 3]; 3] = [
 ///
 /// ```
 /// use russell_tensor::IJK_TO_MN_SYM;
-/// assert_eq!(IJK_TO_MN_SYM[0][1][0], (3,3));
+/// assert_eq!(IJK_TO_MN_SYM[0][1][2], (3, 2));
 /// ```
 #[rustfmt::skip]
 pub const IJK_TO_MN_SYM: [[[(usize, usize); 3]; 3]; 3] = [

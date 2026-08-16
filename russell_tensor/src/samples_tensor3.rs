@@ -259,18 +259,16 @@ impl SamplesTensor3 {
 #[cfg(test)]
 mod tests {
     use super::SamplesTensor3;
-    use crate::constants::IJKL_TO_MN;
+    use crate::constants::IJK_TO_MN;
 
     #[test]
     fn sample1_is_ok() {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    for l in 0..3 {
-                        let (m, n) = IJKL_TO_MN[i][j][k][l];
-                        let val = SamplesTensor3::SAMPLE1_STD_MATRIX[m][n];
-                        assert_eq!(SamplesTensor3::SAMPLE1[i][j][k][l], val);
-                    }
+                    let (m, n) = IJK_TO_MN[i][j][k];
+                    let val = SamplesTensor3::SAMPLE1_STD_MATRIX[m][n];
+                    assert_eq!(SamplesTensor3::SAMPLE1[i][j][k], val);
                 }
             }
         }
@@ -281,10 +279,8 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    for l in 0..3 {
-                        let val = (i + 1) * 1000 + (j + 1) * 100 + (k + 1) * 10 + (l + 1);
-                        assert_eq!(SamplesTensor3::SAMPLE2[i][j][k][l], val as f64);
-                    }
+                    let val = (i + 1) * 100 + (j + 1) * 10 + (k + 1);
+                    assert_eq!(SamplesTensor3::SAMPLE2[i][j][k], val as f64);
                 }
             }
         }
@@ -295,11 +291,9 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    for l in 0..3 {
-                        let (a, b) = IJKL_TO_MN[i][j][k][l];
-                        let val = SamplesTensor3::SYM_SAMPLE1_STD_MATRIX[a][b];
-                        assert_eq!(SamplesTensor3::SYM_SAMPLE1[i][j][k][l], val);
-                    }
+                    let (a, b) = IJK_TO_MN[i][j][k];
+                    let val = SamplesTensor3::SYM_SAMPLE1_STD_MATRIX[a][b];
+                    assert_eq!(SamplesTensor3::SYM_SAMPLE1[i][j][k], val);
                 }
             }
         }
@@ -310,11 +304,9 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    for l in 0..3 {
-                        let (m, n) = IJKL_TO_MN[i][j][k][l];
-                        let val = SamplesTensor3::SYM_2D_SAMPLE1_STD_MATRIX[m][n];
-                        assert_eq!(SamplesTensor3::SYM_2D_SAMPLE1[i][j][k][l], val);
-                    }
+                    let (m, n) = IJK_TO_MN[i][j][k];
+                    let val = SamplesTensor3::SYM_2D_SAMPLE1_STD_MATRIX[m][n];
+                    assert_eq!(SamplesTensor3::SYM_2D_SAMPLE1[i][j][k], val);
                 }
             }
         }

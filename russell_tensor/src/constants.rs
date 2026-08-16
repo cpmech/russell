@@ -720,8 +720,8 @@ pub const IJKL_TO_MN_SYM: [[[[(usize, usize); 3]; 3]; 3]; 3] = [
 #[cfg(test)]
 mod tests {
     use super::{
-        IJ_TO_M, IJ_TO_M_SYM, IJKL_TO_MN, IJKL_TO_MN_SYM, M_TO_IJ, MN_TO_IJKL, ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3,
-        SQRT_3_BY_2, SQRT_6, TWO_BY_3,
+        IJ_TO_M, IJ_TO_M_SYM, IJK_TO_MN, IJK_TO_MN_SYM, IJKL_TO_MN, IJKL_TO_MN_SYM, M_TO_IJ, MN_TO_IJK, MN_TO_IJKL,
+        ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, TWO_BY_3,
     };
 
     // #[test]
@@ -775,7 +775,10 @@ mod tests {
     }
 
     #[test]
-    fn maps_are_correct() {
+    fn tensor2_maps_are_correct() {
+        //
+        // Second-order tensors
+        //
         // M_TO_IJ => IJ_TO_M and IJ_TO_M_SYM
         for m in 0..9 {
             let (i, j) = M_TO_IJ[m];
@@ -788,7 +791,40 @@ mod tests {
             };
             assert_eq!(IJ_TO_M_SYM[i][j], m_sym);
         }
+    }
 
+    #[test]
+    fn tensor3_maps_are_correct() {
+        //
+        // Third-order tensors
+        //
+        // MN_TO_IJK => IJK_TO_MN and IJK_TO_MN_SYM
+        for m in 0..9 {
+            let m_sym = match m {
+                6 => 3,
+                7 => 4,
+                8 => 5,
+                _ => m,
+            };
+            for n in 0..3 {
+                let (i, j, k) = MN_TO_IJK[m][n];
+                assert_eq!(IJK_TO_MN[i][j][k], (m, n));
+                let n_sym = match n {
+                    6 => 3,
+                    7 => 4,
+                    8 => 5,
+                    _ => n,
+                };
+                assert_eq!(IJK_TO_MN_SYM[i][j][k], (m_sym, n_sym))
+            }
+        }
+    }
+
+    #[test]
+    fn tensor4_maps_are_correct() {
+        //
+        // Fourth-order tensors
+        //
         // MN_TO_IJKL => IJKL_TO_MN and IJKL_TO_MN_SYM
         for m in 0..9 {
             let m_sym = match m {

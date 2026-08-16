@@ -266,7 +266,7 @@ impl Tensor3 {
     ///     for i in 0..3 {
     ///         for j in 0..3 {
     ///             for k in 0..3 {
-    ///                     inp[i][j][k] = 100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
+    ///                 inp[i][j][k] = (100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
     ///             }
     ///         }
     ///     }
@@ -672,7 +672,7 @@ impl Tensor3 {
     /// use russell_tensor::{Rep, MN_TO_IJK, Tensor3, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let mut inp = [[0.0; 9]; 9];
+    ///     let mut inp = [[0.0; 3]; 9];
     ///     for m in 0..9 {
     ///         for n in 0..3 {
     ///             let (i, j, k) = MN_TO_IJK[m][n];
@@ -778,7 +778,7 @@ impl Tensor3 {
     ///     let mut dd = Tensor3::new(Rep::Symmetric2D);
     ///     for m in 0..4 {
     ///         for n in 0..3 {
-    ///             let (i, j, k) = MN_TO_IJKL[m][n];
+    ///             let (i, j, k) = MN_TO_IJK[m][n];
     ///             let value = (100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
     ///             dd.sym_set_std(i, j, k, value);
     ///         }

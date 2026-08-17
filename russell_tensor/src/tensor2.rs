@@ -1,8 +1,8 @@
-use crate::{AsMatrix3x3, Rep, StrError};
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
+use crate::{Rep, StrError};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
-use russell_lab::{Matrix, sort3};
+use russell_lab::{AsArray2D, Matrix, sort3};
 use serde::{Deserialize, Serialize};
 
 /// Implements a second-order tensor, symmetric or not
@@ -318,7 +318,10 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_std_matrix(&mut self, tt: &dyn AsMatrix3x3) -> Result<(), StrError> {
+    pub fn set_std_matrix<'a, S>(&mut self, tt: &'a S) -> Result<(), StrError>
+    where
+        S: AsArray2D<'a, f64>,
+    {
         if self.dim == 4 || self.dim == 6 {
             if tt.at(1, 0) != tt.at(0, 1) || tt.at(2, 1) != tt.at(1, 2) || tt.at(2, 0) != tt.at(0, 2) {
                 return Err("cannot set symmetric Tensor2 with non-symmetric data");
@@ -434,7 +437,10 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_std_matrix(tt: &dyn AsMatrix3x3, rep: Rep) -> Result<Self, StrError> {
+    pub fn from_std_matrix<'a, S>(tt: &'a S, rep: Rep) -> Result<Self, StrError>
+    where
+        S: AsArray2D<'a, f64>,
+    {
         let mut res = Tensor2::new(rep);
         res.set_std_matrix(tt)?;
         Ok(res)

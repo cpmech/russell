@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
-use crate::{AsMatrix9x9, ONE_BY_3, Rep, StrError, TWO_BY_3};
-use russell_lab::Matrix;
+use crate::{ONE_BY_3, Rep, StrError, TWO_BY_3};
+use russell_lab::{AsArray2D, Matrix};
 use serde::{Deserialize, Serialize};
 
 /// Implements a fourth-order tensor, minor-symmetric or not
@@ -443,7 +443,10 @@ impl Tensor4 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_std_matrix(inp: &dyn AsMatrix9x9, rep: Rep) -> Result<Self, StrError> {
+    pub fn from_std_matrix<'a, S>(inp: &'a S, rep: Rep) -> Result<Self, StrError>
+    where
+        S: AsArray2D<'a, f64>,
+    {
         let dim = rep.dim();
         let mut mat = [[0.0; 9]; 9];
         if dim == 4 || dim == 6 {

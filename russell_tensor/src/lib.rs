@@ -85,9 +85,6 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
-mod as_matrix_3x3;
-mod as_matrix_9x3;
-mod as_matrix_9x9;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
@@ -106,9 +103,6 @@ mod tensor2;
 mod tensor3;
 mod tensor4;
 
-pub use as_matrix_3x3::*;
-pub use as_matrix_9x3::*;
-pub use as_matrix_9x9::*;
 pub use constants::*;
 pub use derivatives_t2::*;
 pub use derivatives_t4::*;

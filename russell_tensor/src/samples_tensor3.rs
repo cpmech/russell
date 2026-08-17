@@ -6,7 +6,7 @@ pub struct SamplesTensor3;
 impl SamplesTensor3 {
     /// Tensor3 specified by standard 3x3x3 components
     #[rustfmt::skip]
-    pub const SAMPLE1: [[[f64; 3]; 3]; 3] = [
+    pub const CASE_A_SAMPLE1: [[[f64; 3]; 3]; 3] = [
         // [0]
         [
             [ 1.0,  2.0,  3.0], // [0][0][0], [0][0][1], [0][0][2]
@@ -29,7 +29,7 @@ impl SamplesTensor3 {
 
     /// Matrix representation of SAMPLE1
     #[rustfmt::skip]
-    pub const SAMPLE1_STD_MATRIX: [[f64; 3]; 9] = [
+    pub const CASE_A_SAMPLE1_STD_MATRIX: [[f64; 3]; 9] = [
         [ 1.0,  2.0,  3.0], // [0][0]...
         [ 4.0,  5.0,  6.0], // [1][1]...
         [ 7.0,  8.0,  9.0], // [2][2]...
@@ -43,7 +43,7 @@ impl SamplesTensor3 {
 
     /// Kelvin matrix representation of SAMPLE1
     #[rustfmt::skip]
-    pub const SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 9] = [
+    pub const CASE_A_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 9] = [
         [         1.0 ,          2.0 ,          3.0 ],
         [         4.0 ,          5.0 ,          6.0 ],
         [         7.0 ,          8.0 ,          9.0 ],
@@ -56,7 +56,7 @@ impl SamplesTensor3 {
     ];
 
     /// Tensor3 specified by standard 3x3x3 components
-    pub const SAMPLE2: [[[f64; 3]; 3]; 3] = [
+    pub const CASE_A_SAMPLE2: [[[f64; 3]; 3]; 3] = [
         // [0]
         [
             [111_f64, 112_f64, 113_f64], // [0][0][0], [0][0][1], [0][0][2]
@@ -79,7 +79,7 @@ impl SamplesTensor3 {
 
     /// Minor-symmetric Tensor3 specified by 3x3x3 components
     #[rustfmt::skip]
-    pub const SYM_SAMPLE1: [[[f64; 3]; 3]; 3] = [
+    pub const CASE_A_SYM_SAMPLE1: [[[f64; 3]; 3]; 3] = [
         // [0]
         [
             [ 1.0,  2.0,  3.0], // [0][0][0], [0][0][1], [0][0][2]
@@ -102,7 +102,7 @@ impl SamplesTensor3 {
 
     /// Matrix representation of SYM_SAMPLE1
     #[rustfmt::skip]
-    pub const SYM_SAMPLE1_STD_MATRIX: [[f64; 3]; 9] = [
+    pub const CASE_A_SYM_SAMPLE1_STD_MATRIX: [[f64; 3]; 9] = [
         [ 1.0,  2.0,  3.0], // [0][0]...
         [ 4.0,  5.0,  6.0], // [1][1]...
         [ 7.0,  8.0,  9.0], // [2][2]...
@@ -116,7 +116,7 @@ impl SamplesTensor3 {
 
     /// Kelvin matrix representation of SYM_SAMPLE1
     #[rustfmt::skip]
-    pub const SYM_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 6] = [
+    pub const CASE_A_SYM_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 6] = [
         [ 1.0       ,  2.0       ,  3.0       ],
         [ 4.0       ,  5.0       ,  6.0       ],
         [ 7.0       ,  8.0       ,  9.0       ],
@@ -127,7 +127,7 @@ impl SamplesTensor3 {
 
     /// Minor-symmetric Tensor3 specified by 3x3x3 components (2D problems)
     #[rustfmt::skip]
-    pub const SYM_2D_SAMPLE1: [[[f64; 3]; 3]; 3] = [
+    pub const CASE_A_SYM_2D_SAMPLE1: [[[f64; 3]; 3]; 3] = [
         // [0]
         [
             [ 1.0,  2.0,  3.0], // [0][0][0], [0][0][1], [0][0][2]
@@ -150,7 +150,7 @@ impl SamplesTensor3 {
 
     /// Matrix representation of SYM_2D_SAMPLE1
     #[rustfmt::skip]
-    pub const SYM_2D_SAMPLE1_STD_MATRIX: [[f64; 3]; 9] = [
+    pub const CASE_A_SYM_2D_SAMPLE1_STD_MATRIX: [[f64; 3]; 9] = [
         [ 1.0,  2.0,  3.0], // [0][0]...
         [ 4.0,  5.0,  6.0], // [1][1]...
         [ 7.0,  8.0,  9.0], // [2][2]...
@@ -164,7 +164,7 @@ impl SamplesTensor3 {
 
     /// Kelvin matrix representation of SYM_2D_SAMPLE1
     #[rustfmt::skip]
-    pub const SYM_2D_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 4] = [
+    pub const CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 4] = [
         [ 1.0       ,  2.0       ,  3.0       ],
         [ 4.0       ,  5.0       ,  6.0       ],
         [ 7.0       ,  8.0       ,  9.0       ],
@@ -177,7 +177,7 @@ impl SamplesTensor3 {
 #[cfg(test)]
 mod tests {
     use super::{SQRT_2, SamplesTensor3};
-    use crate::constants::IJK_TO_MN;
+    use crate::constants::IJK_TO_MN_CASE_A;
     use russell_lab::approx_eq;
 
     #[test]
@@ -185,23 +185,25 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    let (m, n) = IJK_TO_MN[i][j][k];
-                    let val = SamplesTensor3::SAMPLE1_STD_MATRIX[m][n];
-                    assert_eq!(SamplesTensor3::SAMPLE1[i][j][k], val);
+                    let (m, n) = IJK_TO_MN_CASE_A[i][j][k];
+                    let val = SamplesTensor3::CASE_A_SAMPLE1_STD_MATRIX[m][n];
+                    assert_eq!(SamplesTensor3::CASE_A_SAMPLE1[i][j][k], val);
                     if i == j {
                         assert_eq!(
-                            SamplesTensor3::SAMPLE1_KELVIN_MATRIX[m][n],
-                            SamplesTensor3::SAMPLE1[i][j][k]
+                            SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n],
+                            SamplesTensor3::CASE_A_SAMPLE1[i][j][k]
                         );
                     } else if i < j {
                         assert_eq!(
-                            SamplesTensor3::SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::SAMPLE1[i][j][k] + SamplesTensor3::SAMPLE1[j][i][k]) / SQRT_2
+                            SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n],
+                            (SamplesTensor3::CASE_A_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SAMPLE1[j][i][k])
+                                / SQRT_2
                         );
                     } else {
                         assert_eq!(
-                            SamplesTensor3::SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::SAMPLE1[j][i][k] - SamplesTensor3::SAMPLE1[i][j][k]) / SQRT_2
+                            SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n],
+                            (SamplesTensor3::CASE_A_SAMPLE1[j][i][k] - SamplesTensor3::CASE_A_SAMPLE1[i][j][k])
+                                / SQRT_2
                         );
                     }
                 }
@@ -215,7 +217,7 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     let val = (i + 1) * 100 + (j + 1) * 10 + (k + 1);
-                    assert_eq!(SamplesTensor3::SAMPLE2[i][j][k], val as f64);
+                    assert_eq!(SamplesTensor3::CASE_A_SAMPLE2[i][j][k], val as f64);
                 }
             }
         }
@@ -226,25 +228,28 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    let (m, n) = IJK_TO_MN[i][j][k];
-                    let val = SamplesTensor3::SYM_SAMPLE1_STD_MATRIX[m][n];
-                    assert_eq!(SamplesTensor3::SYM_SAMPLE1[i][j][k], val);
+                    let (m, n) = IJK_TO_MN_CASE_A[i][j][k];
+                    let val = SamplesTensor3::CASE_A_SYM_SAMPLE1_STD_MATRIX[m][n];
+                    assert_eq!(SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k], val);
                     if i == j {
                         assert_eq!(
-                            SamplesTensor3::SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                            SamplesTensor3::SYM_SAMPLE1[i][j][k]
+                            SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
+                            SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k]
                         );
                     } else if i < j {
                         approx_eq(
-                            SamplesTensor3::SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                            (SamplesTensor3::SYM_SAMPLE1[i][j][k] + SamplesTensor3::SYM_SAMPLE1[j][i][k]) / SQRT_2,
+                            SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
+                            (SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k] + SamplesTensor3::CASE_A_SYM_SAMPLE1[j][i][k])
+                                / SQRT_2,
                             1e-14,
                         );
                     } else {
                         if m < 6 {
                             assert_eq!(
-                                SamplesTensor3::SYM_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::SYM_SAMPLE1[j][i][k] - SamplesTensor3::SYM_SAMPLE1[i][j][k]) / SQRT_2
+                                SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
+                                (SamplesTensor3::CASE_A_SYM_SAMPLE1[j][i][k]
+                                    - SamplesTensor3::CASE_A_SYM_SAMPLE1[i][j][k])
+                                    / SQRT_2
                             );
                         }
                     }
@@ -258,19 +263,20 @@ mod tests {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
-                    let (m, n) = IJK_TO_MN[i][j][k];
-                    let val = SamplesTensor3::SYM_2D_SAMPLE1_STD_MATRIX[m][n];
-                    assert_eq!(SamplesTensor3::SYM_2D_SAMPLE1[i][j][k], val);
+                    let (m, n) = IJK_TO_MN_CASE_A[i][j][k];
+                    let val = SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_STD_MATRIX[m][n];
+                    assert_eq!(SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k], val);
                     if i == j {
                         assert_eq!(
-                            SamplesTensor3::SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                            SamplesTensor3::SYM_2D_SAMPLE1[i][j][k]
+                            SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
+                            SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k]
                         );
                     } else if i < j {
                         if m < 4 {
                             approx_eq(
-                                SamplesTensor3::SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::SYM_2D_SAMPLE1[i][j][k] + SamplesTensor3::SYM_2D_SAMPLE1[j][i][k])
+                                SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
+                                (SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k]
+                                    + SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[j][i][k])
                                     / SQRT_2,
                                 1e-14,
                             );
@@ -278,8 +284,9 @@ mod tests {
                     } else {
                         if m < 4 {
                             assert_eq!(
-                                SamplesTensor3::SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
-                                (SamplesTensor3::SYM_2D_SAMPLE1[j][i][k] - SamplesTensor3::SYM_2D_SAMPLE1[i][j][k])
+                                SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
+                                (SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[j][i][k]
+                                    - SamplesTensor3::CASE_A_SYM_2D_SAMPLE1[i][j][k])
                                     / SQRT_2
                             );
                         }

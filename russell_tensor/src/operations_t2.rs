@@ -619,7 +619,7 @@ mod tests {
             [ 84.0,  69.0, 54.0],
             [138.0, 114.0, 90.0],
         ], Rep::General).unwrap();
-        array_approx_eq(&c.vec, &correct.vec, 1e-13);
+        array_approx_eq(&c.vector(), &correct.vector(), 1e-13);
 
         // sym-3D . sym-3D
         #[rustfmt::skip]
@@ -642,7 +642,7 @@ mod tests {
             [52.0, 44.0, 37.0],
             [61.0, 52.0, 59.0],
         ], Rep::General).unwrap();
-        array_approx_eq(&c.vec, &correct.vec, 1e-13);
+        array_approx_eq(&c.vector(), &correct.vector(), 1e-13);
 
         // sym-2D . sym-2D
         #[rustfmt::skip]
@@ -665,7 +665,7 @@ mod tests {
             [22.0, 24.0, 0.0],
             [ 0.0,  0.0, 3.0],
         ], Rep::General).unwrap();
-        array_approx_eq(&c.vec, &correct.vec, 1e-13);
+        array_approx_eq(&c.vector(), &correct.vector(), 1e-13);
     }
 
     #[test]

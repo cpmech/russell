@@ -5,6 +5,9 @@ use russell_lab::math::PI;
 use russell_lab::{AsArray2D, Matrix, sort3};
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "heap")]
+use russell_lab::Vector;
+
 /// Implements a second-order tensor, symmetric or not
 ///
 /// # Standard and Kelvin components
@@ -72,7 +75,16 @@ pub struct Tensor2 {
 
     /// Holds the components in Kelvin basis as a vector.
     ///
+    /// Heap version => dynamically allocated memory
+    #[cfg(feature = "heap")]
+    pub(crate) vec: Vector,
+
+    /// Holds the components in Kelvin basis as a vector.
+    ///
+    /// Stack version => fixed size memory
+    ///
     /// This array may use more data than necessary in symmetric cases
+    #[cfg(not(feature = "heap"))]
     pub(crate) vec: [f64; 9],
 
     /// Holds the Rep (representation) enum
@@ -106,11 +118,24 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn new(rep: Rep) -> Self {
-        Tensor2 {
-            dim: rep.dim(),
-            vec: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            rep,
-            use_loops: false,
+        let dim = rep.dim();
+        #[cfg(feature = "heap")]
+        {
+            Tensor2 {
+                dim,
+                vec: Vector::new(rep.dim()),
+                rep,
+                use_loops: false,
+            }
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            Tensor2 {
+                dim,
+                vec: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                rep,
+                use_loops: false,
+            }
         }
     }
 
@@ -230,12 +255,26 @@ impl Tensor2 {
 
     /// Returns an access to the underlying Kelvin vector
     pub fn vector(&self) -> &[f64] {
-        &self.vec[0..self.dim]
+        #[cfg(feature = "heap")]
+        {
+            &self.vec.as_data()[0..self.dim]
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            &self.vec[0..self.dim]
+        }
     }
 
     /// Returns a mutable access to the underlying Kelvin vector
     pub fn vector_mut(&mut self) -> &mut [f64] {
-        &mut self.vec[0..self.dim]
+        #[cfg(feature = "heap")]
+        {
+            &mut self.vec.as_mut_data()[0..self.dim]
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            &mut self.vec[0..self.dim]
+        }
     }
 
     /// Sets the Tensor2 with standard components given in matrix form
@@ -2403,7 +2442,7 @@ mod tests {
     fn identity_works() {
         // general
         let ii = Tensor2::identity(Rep::General);
-        assert_eq!(&ii.vec, &IDENTITY2);
+        assert_eq!(ii.vector(), &IDENTITY2);
 
         // symmetric
         let ii = Tensor2::identity(Rep::Symmetric);
@@ -2592,9 +2631,9 @@ mod tests {
         )
         .unwrap();
         let tt_gen = tt.as_general();
-        assert_eq!(format!("{:.2?}", &tt.vec[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
+        assert_eq!(format!("{:.2?}", &tt.vector()[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
         assert_eq!(
-            format!("{:.2?}", &tt_gen.vec[0..tt_gen.dim]),
+            format!("{:.2?}", &tt_gen.vector()[0..tt_gen.dim]),
             "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00, 0.00, 0.00, 0.00]"
         );
 
@@ -2662,9 +2701,9 @@ mod tests {
         )
         .unwrap();
         let tt_sym = tt.sym2d_as_symmetric();
-        assert_eq!(format!("{:.2?}", &tt.vec[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
+        assert_eq!(format!("{:.2?}", &tt.vector()[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
         assert_eq!(
-            format!("{:.2?}", &tt_sym.vec[0..tt_sym.dim]),
+            format!("{:.2?}", &tt_sym.vector()[0..tt_sym.dim]),
             "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00]"
         );
     }
@@ -2713,7 +2752,9 @@ mod tests {
         ];
         let mut a = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         a.clear();
-        assert_eq!(&a.vec, &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        for m in 0..a.dim() {
+            assert_eq!(a.vector()[m], 0.0);
+        }
     }
 
     #[test]
@@ -3682,7 +3723,7 @@ mod tests {
         approx_eq(t1.vec[1], 0.0, 1e-15);
         approx_eq(t1.vec[2], 0.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        array_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        array_approx_eq(&t1.vector(), &t2.vector(), 1e-15);
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3695,7 +3736,7 @@ mod tests {
         approx_eq(t1.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(t1.vec[2], 1.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        array_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        array_approx_eq(&t1.vector(), &t2.vector(), 1e-15);
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3708,7 +3749,7 @@ mod tests {
         approx_eq(t1.vec[1], -1.0, 1e-15);
         approx_eq(t1.vec[2], 2.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        array_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        array_approx_eq(&t1.vector(), &t2.vector(), 1e-15);
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);

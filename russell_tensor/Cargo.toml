@@ -13,6 +13,7 @@ keywords = ["tensor", "continuum", "mechanics"]
 
 [features]
 intel_mkl = ["russell_lab/intel_mkl"]
+heap = []
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "2" }

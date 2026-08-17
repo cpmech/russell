@@ -58,7 +58,7 @@ use serde::{Deserialize, Serialize};
 ///   their names (e.g., [`Tensor3::from_std_matrix`], [`Tensor3::get_std`],
 ///   [`Tensor3::as_std_matrix`], [`Tensor3::sym_set_std`]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor3::matrix`], [`Tensor3::get_mn`], [`Tensor3::set`],
+///   (e.g., [`Tensor3::matrix`], [`Tensor3::get`], [`Tensor3::set`],
 ///   [`Tensor3::update`]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
@@ -335,7 +335,7 @@ impl Tensor3 {
     ///
     /// let mut dd = Tensor3::new(Rep::General, true);
     /// dd.set(0, 0, 123.0);
-    /// assert_eq!(dd.get_mn(0, 0), 123.0);
+    /// assert_eq!(dd.get(0, 0), 123.0);
     /// ```
     pub fn get(&self, m: usize, n: usize) -> f64 {
         self.mat[m][n]

@@ -320,7 +320,7 @@ impl Tensor3 {
     /// # Input
     ///
     /// * `m` -- the row index (must be `< 9`)
-    /// * `n` -- the column index (must be `< 3`)
+    /// * `n` -- the column index (must be `< 9`)
     ///
     /// # Panics
     ///
@@ -344,7 +344,7 @@ impl Tensor3 {
     /// # Input
     ///
     /// * `m` -- the row index (must be `< 9`)
-    /// * `n` -- the column index (must be `< 3`)
+    /// * `n` -- the column index (must be `< 9`)
     /// * `value` -- the value to set
     ///
     /// # Panics
@@ -368,7 +368,7 @@ impl Tensor3 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijkl components given with
+    /// * `inp` -- the standard Dijk components given with
     ///   respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     /// * `case_a` -- Case A instead of Case B
@@ -490,7 +490,7 @@ impl Tensor3 {
                 for i in 0..3 {
                     for j in 0..3 {
                         for k in 0..3 {
-                            let (m, n) = IJK_TO_MN_CASE_A[i][j][k];
+                            let (m, n) = IJK_TO_MN_CASE_B[i][j][k];
                             // ** j == k **
                             if j == k {
                                 mat[m][n] = inp[i][j][k];
@@ -832,6 +832,7 @@ impl Tensor3 {
     /// ```
     pub fn update(&mut self, alpha: f64, other: &Tensor3) {
         assert_eq!(other.rep, self.rep);
+        assert_eq!(other.case_a, self.case_a);
         for m in 0..self.nrow {
             for n in 0..self.ncol {
                 self.mat[m][n] += alpha * other.mat[m][n];
@@ -911,10 +912,18 @@ impl Tensor3 {
     /// }
     /// ```
     pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<f64>>>) {
-        // let (nrow, ncol) = if case_a { (rep.dim(), 3) } else { (3, rep.dim()) };
-        let dim = self.nrow;
         if self.case_a {
-            if dim < 9 {
+            if self.nrow == 9 {
+                // General
+                for i in 0..3 {
+                    for j in 0..3 {
+                        for k in 0..3 {
+                            dd[i][j][k] = self.get_std(i, j, k);
+                        }
+                    }
+                }
+            } else {
+                // Symmetric / Symmetric2D
                 for m in 0..self.nrow {
                     for n in 0..self.ncol {
                         let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
@@ -924,7 +933,10 @@ impl Tensor3 {
                         }
                     }
                 }
-            } else {
+            }
+        } else {
+            if self.ncol == 9 {
+                // General
                 for i in 0..3 {
                     for j in 0..3 {
                         for k in 0..3 {
@@ -932,23 +944,14 @@ impl Tensor3 {
                         }
                     }
                 }
-            }
-        } else {
-            if dim < 9 {
+            } else {
+                // Symmetric / Symmetric2D
                 for m in 0..self.nrow {
                     for n in 0..self.ncol {
                         let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
                         dd[i][j][k] = self.get_std(i, j, k);
                         if j != k {
                             dd[i][k][j] = dd[i][j][k];
-                        }
-                    }
-                }
-            } else {
-                for i in 0..3 {
-                    for j in 0..3 {
-                        for k in 0..3 {
-                            dd[i][j][k] = self.get_std(i, j, k);
                         }
                     }
                 }
@@ -992,7 +995,11 @@ impl Tensor3 {
     /// }
     /// ```
     pub fn as_std_matrix(&self) -> Matrix {
-        let mut mat = Matrix::new(9, 3);
+        let mut mat = if self.case_a {
+            Matrix::new(9, 3)
+        } else {
+            Matrix::new(3, 9)
+        };
         self.to_std_matrix(&mut mat);
         mat
     }
@@ -1042,11 +1049,21 @@ impl Tensor3 {
     /// }
     /// ```
     pub fn to_std_matrix(&self, mat: &mut Matrix) {
-        assert_eq!(mat.dims(), (9, 3));
-        for m in 0..9 {
-            for n in 0..3 {
-                let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
-                mat.set(m, n, self.get_std(i, j, k));
+        if self.case_a {
+            assert_eq!(mat.dims(), (9, 3));
+            for m in 0..9 {
+                for n in 0..3 {
+                    let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
+                    mat.set(m, n, self.get_std(i, j, k));
+                }
+            }
+        } else {
+            assert_eq!(mat.dims(), (3, 9));
+            for m in 0..3 {
+                for n in 0..9 {
+                    let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
+                    mat.set(m, n, self.get_std(i, j, k));
+                }
             }
         }
     }
@@ -1095,11 +1112,20 @@ impl Tensor3 {
     /// ```
     pub fn sym_set_std(&mut self, i: usize, j: usize, k: usize, value: f64) {
         assert!(self.rep != Rep::General);
-        let (m, n) = IJK_TO_MN_SYM_CASE_A[i][j][k];
-        if m < 3 {
-            self.mat[m][n] = value;
+        if self.case_a {
+            let (m, n) = IJK_TO_MN_SYM_CASE_A[i][j][k];
+            if m < 3 {
+                self.mat[m][n] = value;
+            } else {
+                self.mat[m][n] = value * SQRT_2;
+            }
         } else {
-            self.mat[m][n] = value * SQRT_2;
+            let (m, n) = IJK_TO_MN_SYM_CASE_B[i][j][k];
+            if n < 3 {
+                self.mat[m][n] = value;
+            } else {
+                self.mat[m][n] = value * SQRT_2;
+            }
         }
     }
 
@@ -1142,10 +1168,10 @@ impl Tensor3 {
     /// ```
     pub fn set_tensor(&mut self, alpha: f64, other: &Tensor3) {
         assert_eq!(other.rep, self.rep);
-        let dim = self.nrow;
-        for i in 0..dim {
-            for j in 0..3 {
-                self.mat[i][j] = alpha * other.mat[i][j];
+        assert_eq!(other.case_a, self.case_a);
+        for m in 0..self.nrow {
+            for n in 0..self.ncol {
+                self.mat[m][n] = alpha * other.mat[m][n];
             }
         }
     }
@@ -1155,7 +1181,7 @@ impl Tensor3 {
 
 #[cfg(test)]
 mod tests {
-    use super::{MN_TO_IJK_CASE_A, Tensor3};
+    use super::{MN_TO_IJK_CASE_A, MN_TO_IJK_CASE_B, Tensor3};
     use crate::{Rep, SamplesTensor3};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
@@ -1648,6 +1674,183 @@ mod tests {
             [ 6.0,  6.0,  6.0],
         ]);
         mat_approx_eq(&ee.as_std_matrix(), &correct, 1e-14);
+    }
+
+    /// Generates a non-symmetric standard 3x3x3 tensor with distinct components
+    fn generate_std_general() -> [[[f64; 3]; 3]; 3] {
+        let mut inp = [[[0.0; 3]; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    inp[i][j][k] = (100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
+                }
+            }
+        }
+        inp
+    }
+
+    /// Generates a standard 3x3x3 tensor that is minor-symmetric in (j,k)
+    fn generate_std_sym_case_b() -> [[[f64; 3]; 3]; 3] {
+        let mut inp = [[[0.0; 3]; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    let (a, b) = if j <= k { (j, k) } else { (k, j) };
+                    inp[i][j][k] = (100 * (i + 1) + 10 * (a + 1) + (b + 1)) as f64;
+                }
+            }
+        }
+        inp
+    }
+
+    #[test]
+    fn new_case_b_works() {
+        let cc = Tensor3::new(Rep::General, false);
+        assert_eq!(cc.dims(), (3, 9));
+        let dd = Tensor3::new(Rep::Symmetric, false);
+        assert_eq!(dd.dims(), (3, 6));
+        let ee = Tensor3::new(Rep::Symmetric2D, false);
+        assert_eq!(ee.dims(), (3, 4));
+    }
+
+    #[test]
+    fn from_std_array_case_b_general_works() {
+        let inp = generate_std_general();
+        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
+        assert_eq!(dd.dims(), (3, 9));
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn from_std_array_case_b_symmetric_works() {
+        let inp = generate_std_sym_case_b();
+        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric, false).unwrap();
+        assert_eq!(dd.dims(), (3, 6));
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn from_std_array_case_b_fails_captures_errors() {
+        // input that is not symmetric in (j,k) must fail for Symmetric
+        let mut inp = generate_std_general();
+        inp[0][1][2] = inp[0][2][1] + 1.0;
+        let res = Tensor3::from_std_array(&inp, Rep::Symmetric, false);
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a minor-symmetric tensor")
+        );
+    }
+
+    #[test]
+    fn from_std_matrix_case_b_general_works() {
+        let inp = generate_std_general();
+        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
+        let mat = dd.as_std_matrix();
+        assert_eq!(mat.dims(), (3, 9));
+        for m in 0..3 {
+            for n in 0..9 {
+                let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
+                approx_eq(mat.get(m, n), inp[i][j][k], 1e-12);
+            }
+        }
+        // round-trip through from_std_matrix
+        let ee = Tensor3::from_std_matrix(&mat, Rep::General, false).unwrap();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(ee.get_std(i, j, k), inp[i][j][k], 1e-12);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn as_std_array_case_b_works() {
+        let inp = generate_std_general();
+        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
+        let arr = dd.as_std_array();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(arr[i][j][k], inp[i][j][k], 1e-13);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn sym_set_std_case_b_works() {
+        let mut dd = Tensor3::new(Rep::Symmetric, false);
+        let inp = generate_std_sym_case_b();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    if j <= k {
+                        dd.sym_set_std(i, j, k, inp[i][j][k]);
+                    }
+                }
+            }
+        }
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn set_tensor_and_update_case_b_work() {
+        let inp = generate_std_general();
+        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
+
+        // set_tensor
+        let mut ee = Tensor3::new(Rep::General, false);
+        ee.set_tensor(2.0, &dd);
+        for m in 0..3 {
+            for n in 0..9 {
+                approx_eq(ee.matrix()[m][n], 2.0 * dd.matrix()[m][n], 1e-13);
+            }
+        }
+
+        // update
+        let mut ff = Tensor3::new(Rep::General, false);
+        ff.update(1.0, &dd);
+        ff.update(2.0, &dd);
+        for m in 0..3 {
+            for n in 0..9 {
+                approx_eq(ff.matrix()[m][n], 3.0 * dd.matrix()[m][n], 1e-13);
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn update_case_mismatch_panics() {
+        let mut dd = Tensor3::new(Rep::General, true);
+        let ee = Tensor3::new(Rep::General, false);
+        dd.update(1.0, &ee);
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_tensor_case_mismatch_panics() {
+        let dd = Tensor3::new(Rep::General, false);
+        let mut ee = Tensor3::new(Rep::General, true);
+        ee.set_tensor(1.0, &dd);
     }
 
     #[test]

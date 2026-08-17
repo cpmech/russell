@@ -191,12 +191,12 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor3 {
-    /// Holds the actual dimension of the Kelvin matrix
+    /// Holds the actual number of rows of the Kelvin matrix
     ///
-    /// * General: `dim = 9`
-    /// * Symmetric: `dim = 6`
-    /// * Symmetric2D: `dim = 4`
-    pub(crate) dim: usize,
+    /// * General: `nrow = 9`
+    /// * Symmetric: `nrow = 6`
+    /// * Symmetric2D: `nrow = 4`
+    pub(crate) nrow: usize,
 
     /// Holds the components in Kelvin basis as matrix.
     ///
@@ -235,7 +235,7 @@ impl Tensor3 {
     /// ```
     pub fn new(rep: Rep) -> Self {
         Tensor3 {
-            dim: rep.dim(),
+            nrow: rep.dim(),
             mat: [[0.0; 3]; 9],
             rep,
             use_loops: false,
@@ -269,7 +269,7 @@ impl Tensor3 {
 
     /// Returns the Kelvin matrix dimension (4, 6, or 9)
     pub fn dim(&self) -> usize {
-        self.dim
+        self.nrow
     }
 
     /// Returns an access to the underlying Kelvin matrix
@@ -279,7 +279,7 @@ impl Tensor3 {
     /// The returned slice holds the `dim` active rows of the tensor. Each row
     /// is a fixed `[f64; 3]` array with the three Kelvin components.
     pub fn matrix(&self) -> &[[f64; 3]] {
-        &self.mat[0..self.dim]
+        &self.mat[0..self.nrow]
     }
 
     /// Returns a mutable access to the underlying Kelvin matrix
@@ -289,7 +289,7 @@ impl Tensor3 {
     /// The returned slice holds the `dim` active rows of the tensor. Each row
     /// is a fixed `[f64; 3]` array with the three Kelvin components.
     pub fn matrix_mut(&mut self) -> &mut [[f64; 3]] {
-        &mut self.mat[0..self.dim]
+        &mut self.mat[0..self.nrow]
     }
 
     /// Returns the (m,n) component of the Kelvin matrix
@@ -430,7 +430,7 @@ impl Tensor3 {
             }
         }
         Ok(Tensor3 {
-            dim,
+            nrow: dim,
             mat,
             rep,
             use_loops: false,
@@ -533,7 +533,7 @@ impl Tensor3 {
             }
         }
         Ok(Tensor3 {
-            dim,
+            nrow: dim,
             mat,
             rep,
             use_loops: false,
@@ -570,7 +570,7 @@ impl Tensor3 {
     /// }
     /// ```
     pub fn get_std(&self, i: usize, j: usize, k: usize) -> f64 {
-        match self.dim {
+        match self.nrow {
             4 => {
                 let (m, n) = IJK_TO_MN_SYM[i][j][k];
                 if m > 3 {
@@ -654,7 +654,7 @@ impl Tensor3 {
     /// ```
     pub fn update(&mut self, alpha: f64, other: &Tensor3) {
         assert_eq!(other.rep, self.rep);
-        for m in 0..self.dim {
+        for m in 0..self.nrow {
             for n in 0..3 {
                 self.mat[m][n] += alpha * other.mat[m][n];
             }
@@ -733,7 +733,7 @@ impl Tensor3 {
     /// }
     /// ```
     pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<f64>>>) {
-        let dim = self.dim;
+        let dim = self.nrow;
         if dim < 9 {
             for m in 0..dim {
                 for n in 0..3 {
@@ -941,7 +941,7 @@ impl Tensor3 {
     /// ```
     pub fn set_tensor(&mut self, alpha: f64, other: &Tensor3) {
         assert_eq!(other.rep, self.rep);
-        let dim = self.dim;
+        let dim = self.nrow;
         for i in 0..dim {
             for j in 0..3 {
                 self.mat[i][j] = alpha * other.mat[i][j];

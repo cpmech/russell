@@ -13,7 +13,7 @@ use russell_lab::{StrError, Vector};
 pub fn t3_add(c: &mut Tensor3, alpha: f64, a: &Tensor3, beta: f64, b: &Tensor3) {
     assert_eq!(b.rep, a.rep);
     assert_eq!(c.rep, a.rep);
-    for i in 0..c.dim {
+    for i in 0..c.nrow {
         for j in 0..3 {
             c.mat[i][j] = alpha * a.mat[i][j] + beta * b.mat[i][j];
         }

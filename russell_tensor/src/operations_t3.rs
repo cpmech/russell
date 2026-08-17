@@ -131,6 +131,108 @@ mod tests {
     use russell_lab::{Matrix, Vector, mat_approx_eq, vec_approx_eq};
 
     #[test]
+    fn t3_add_works_case_a() {
+        // General
+        let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, Rep::General, true).unwrap();
+        let mut mm = Tensor3::new(Rep::General, true);
+        t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
+        let mm_expected = Tensor3::from_std_array(
+            &[
+                [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [40.0, 42.5, 45.0]],
+                [[47.5, 50.0, 52.5], [10.0, 12.5, 15.0], [32.5, 35.0, 37.5]],
+                [[62.5, 65.0, 67.5], [55.0, 57.5, 60.0], [17.5, 20.0, 22.5]],
+            ],
+            Rep::General,
+            true,
+        )
+        .unwrap();
+        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+
+        // Symmetric
+        let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, Rep::Symmetric, true).unwrap();
+        let mut mm = Tensor3::new(Rep::Symmetric, true);
+        t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
+        let mm_expected = Tensor3::from_std_array(
+            &[
+                [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [40.0, 42.5, 45.0]],
+                [[25.0, 27.5, 30.0], [10.0, 12.5, 15.0], [32.5, 35.0, 37.5]],
+                [[40.0, 42.5, 45.0], [32.5, 35.0, 37.5], [17.5, 20.0, 22.5]],
+            ],
+            Rep::Symmetric,
+            true,
+        )
+        .unwrap();
+        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+
+        // Symmetric2D
+        let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, Rep::Symmetric2D, true).unwrap();
+        let mut mm = Tensor3::new(Rep::Symmetric2D, true);
+        t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
+        let mm_expected = Tensor3::from_std_array(
+            &[
+                [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [0.0, 0.0, 0.0]],
+                [[25.0, 27.5, 30.0], [10.0, 12.5, 15.0], [0.0, 0.0, 0.0]],
+                [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [17.5, 20.0, 22.5]],
+            ],
+            Rep::Symmetric2D,
+            true,
+        )
+        .unwrap();
+        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+    }
+
+    #[test]
+    fn t3_add_works_case_b() {
+        // General
+        let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::General, false).unwrap();
+        let mut mm = Tensor3::new(Rep::General, false);
+        t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
+        let mm_expected = Tensor3::from_std_array(
+            &[
+                [[2.5, 25.0, 40.0], [47.5, 10.0, 32.5], [62.5, 55.0, 17.5]],
+                [[5.0, 27.5, 42.5], [50.0, 12.5, 35.0], [65.0, 57.5, 20.0]],
+                [[7.5, 30.0, 45.0], [52.5, 15.0, 37.5], [67.5, 60.0, 22.5]],
+            ],
+            Rep::General,
+            false,
+        )
+        .unwrap();
+        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+
+        // Symmetric
+        let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric, false).unwrap();
+        let mut mm = Tensor3::new(Rep::Symmetric, false);
+        t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
+        let mm_expected = Tensor3::from_std_array(
+            &[
+                [[2.5, 25.0, 40.0], [25.0, 10.0, 32.5], [40.0, 32.5, 17.5]],
+                [[5.0, 27.5, 42.5], [27.5, 12.5, 35.0], [42.5, 35.0, 20.0]],
+                [[7.5, 30.0, 45.0], [30.0, 15.0, 37.5], [45.0, 37.5, 22.5]],
+            ],
+            Rep::Symmetric,
+            false,
+        )
+        .unwrap();
+        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+
+        // Symmetric2D
+        let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
+        let mut mm = Tensor3::new(Rep::Symmetric2D, false);
+        t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
+        let mm_expected = Tensor3::from_std_array(
+            &[
+                [[2.5, 25.0, 0.0], [25.0, 10.0, 0.0], [0.0, 0.0, 17.5]],
+                [[5.0, 27.5, 0.0], [27.5, 12.5, 0.0], [0.0, 0.0, 20.0]],
+                [[7.5, 30.0, 0.0], [30.0, 15.0, 0.0], [0.0, 0.0, 22.5]],
+            ],
+            Rep::Symmetric2D,
+            false,
+        )
+        .unwrap();
+        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+    }
+
+    #[test]
     fn t3_dot_vec_works() {
         // General
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, Rep::General, true).unwrap();

@@ -1546,6 +1546,14 @@ mod tests {
     }
 
     #[test]
+    fn get_mn_and_set_work() {
+        let mut dd = Tensor4::new(Rep::Symmetric2D);
+        assert_eq!(dd.get_mn(0, 0), 0.0);
+        dd.set(0, 0, 2.0);
+        assert_eq!(dd.get_mn(0, 0), 2.0);
+    }
+
+    #[test]
     fn from_std_matrix_works() {
         // general
         let dd = Tensor4::from_std_matrix(&SamplesTensor4::SAMPLE1_STD_MATRIX, Rep::General).unwrap();

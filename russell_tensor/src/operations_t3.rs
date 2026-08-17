@@ -1,5 +1,4 @@
 use super::{Tensor2, Tensor3};
-use russell_lab::small_mat_add;
 use russell_lab::{StrError, Vector};
 
 /// Adds two third-order tensors

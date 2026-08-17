@@ -5,10 +5,50 @@ use serde::{Deserialize, Serialize};
 
 /// Implements a third-order tensor, minor-symmetric or not
 ///
+/// The matrix representation of Tensor3 results in a rectangular matrix.
+/// Therefore, two cases are considered here:
+///
+/// Case A: Tensor3 applied to a Tensor1 (vector) yielding a Tensor2
+/// Case B: Tensor3 applied to a Tensor2 yielding a Tensor1 (vector)
+///
+/// Symbolically:
+///
+/// ```text
+/// Case A =>  T = H . u
+/// Case B =>  v = M : S
+/// ```
+///
+/// where `T` and `S` are second-order tensors, `H` and `M` are third-order tensors
+/// and `u` and `v` are first-order tensors (vectors).
+///
+/// The matrix representations associated with the two cases are
+/// (symmetry here means minor-symmetry):
+///
+/// ```text
+/// Rep::General:
+///   Case A =>  [T]_(9×1) = [H]_(9×3) * [u]_(3×1)
+///   Case B =>  [v]_(3×1) = [M]_(3×9) * [S]_(9×1)
+/// ```
+///
+/// ```text
+/// Rep::Symmetric:
+///   Case A =>  [T]_(6×1) = [H]_(6×3) * [u]_(3×1)
+///   Case B =>  [v]_(3×1) = [M]_(3×6) * [S]_(6×1)
+/// ```
+///
+/// ```text
+/// Rep::Symmetric2D:
+///   Case A =>  [T]_(4×1) = [H]_(4×3) * [u]_(3×1)
+///   Case B =>  [v]_(3×1) = [M]_(3×4) * [S]_(4×1)
+/// ```
+///
+/// Note that the first-order tensors (vectors) are always given by the standard
+/// components in 3D. All functions here require vectors such as `[u] = {u0, u1, u2}`.
+///
 /// # Standard and Kelvin components
 ///
 /// The methods of this struct follow a naming convention that distinguishes
-/// between the **standard** (Cartesian) components `Dᵢⱼₖ` and the **Kelvin**
+/// between the **standard** (Cartesian) components `Hᵢⱼₖ` and the **Kelvin**
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
@@ -20,79 +60,134 @@ use serde::{Deserialize, Serialize};
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///
-/// First, the following mapping to the Kelvin space is considered:
+/// The Kelvin components Ĥijk are calculated from the standard components Hijk
+/// using the following expression for Case A:
 ///
 /// ```text
-/// i=j:  Mijk := Dijk
-/// i<j:  Mijk := (Dijk + Djik) / √2
-/// i>j:  Mijk := (Djik − Dijk) / √2
+/// Case A:
+///        ⎧ Hijk                if i = j
+/// Ĥijk = ⎨ (Hijk + Hjik) / √2  if i < j
+///        ⎩ (Hjik - Hijk) / √2  if i > j
 /// ```
+///
+/// The Kelvin components Ĥijk are calculated from the standard components Hijk
+/// using the following expression for Case B:
+///
+/// ```text
+/// Case B:
+///        ⎧ Hijk                if j = k
+/// Ĥijk = ⎨ (Hijk + Hikj) / √2  if j < k
+///        ⎩ (Hikj - Hijk) / √2  if j > k
+/// ```
+///
+/// In Case A, minor-symmetry means Hijk = Hjik. Then, the mapping simplifies to:
+///
+/// ```text
+/// Case A:
+///        ⎧ Hijk     if i = j
+/// Ĥijk = ⎨ Hijk √2  if i < j
+///        ⎩ 0        if i > j
+/// ```
+///
+/// In Case B, minor-symmetry means Hijk = Hikj. Then, the mapping simplifies to:
+///
+/// ```text
+/// Case B:
+///        ⎧ Hijk        if j = k
+/// Ĥijk = ⎨ Hijk √2  if j < k
+///        ⎩ 0        if j > k
+/// ```
+///
+/// The components are organized in matrices:
+/// * For Case A, the order of row indices, pairs (i,j) in (i,j,k), follow the same order used for Tensor2.
+/// * For Case B, the order of column indices, pairs (j,k) in (i,j,k), follow the same order as the one for Tensor2.
+///
+/// The matrices are illustrated as follows.
 ///
 /// [Rep::General]
 ///
-/// Then, the 27 Mijk components of a Tensor3 are organized as follows:
-///
 /// ```text
+/// Case A:
 ///      0 0   0 1   0 2
 ///    -----------------
-/// 0 │ M000  M001  M002
-/// 1 │ M110  M111  M112
-/// 2 │ M220  M221  M222
+/// 0 │ Ĥ000  Ĥ001  Ĥ002
+/// 1 │ Ĥ110  Ĥ111  Ĥ112
+/// 2 │ Ĥ220  Ĥ221  Ĥ222
 ///   │
-/// 3 │ M010  M011  M012
-/// 4 │ M120  M121  M122
-/// 5 │ M020  M021  M022
+/// 3 │ Ĥ010  Ĥ011  Ĥ012
+/// 4 │ Ĥ120  Ĥ121  Ĥ122
+/// 5 │ Ĥ020  Ĥ021  Ĥ022
 ///   │
-/// 6 │ M100  M101  M102
-/// 7 │ M210  M211  M212
-/// 8 │ M200  M201  M202
+/// 6 │ Ĥ100  Ĥ101  Ĥ102
+/// 7 │ Ĥ210  Ĥ211  Ĥ212
+/// 8 │ Ĥ200  Ĥ201  Ĥ202
 ///    -----------------
 ///      8 0   8 1   8 2
 /// ```
 ///
-/// Note that the order of row indices (pairs (i,j) in (i,j,k)) follow
-/// the same order as the one for Tensor2.
+/// ```text
+/// Case B:
+///      0 0  0 1  0 2  0 3  0 4  0 5  0 6  0 7  0 8
+///    ---------------------------------------------
+/// 0 │ Ĥ000 Ĥ011 Ĥ022 Ĥ001 Ĥ012 Ĥ002 Ĥ010 Ĥ021 Ĥ020
+/// 1 │ Ĥ100 Ĥ111 Ĥ122 Ĥ101 Ĥ112 Ĥ102 Ĥ110 Ĥ121 Ĥ120
+/// 2 │ Ĥ200 Ĥ211 Ĥ222 Ĥ201 Ĥ212 Ĥ202 Ĥ210 Ĥ221 Ĥ220
+///    ---------------------------------------------
+///      2 0  2 1  2 2  2 3  2 4  2 5  2 6  2 7  2 8
+/// ```
 ///
 /// [Rep::Symmetric]
 ///
-/// If the tensor has Dijk = Djik, the mapping simplifies to:
-///
 /// ```text
-/// i=j:  Mijk := Dijk
-/// i<j:  Mijk := Dijk * √2
-/// i>j:  Mijk := 0
-/// ```
-///
-/// Then, we only need to store 18 components as follows:
-///
-/// ```text
+/// Case A:
 ///      0 0      0 1      0 2    
 ///    --------------------------
-/// 0 │ D000     D001     D002
-/// 1 │ D110     D111     D112
-/// 2 │ D220     D221     D222
+/// 0 │ H000     H001     H002
+/// 1 │ H110     H111     H112
+/// 2 │ H220     H221     H222
 ///   │
-/// 3 │ D010*√2  D011*√2  D012*√2
-/// 4 │ D120*√2  D121*√2  D122*√2
-/// 5 │ D020*√2  D021*√2  D022*√2
+/// 3 │ H010*√2  H011*√2  H012*√2
+/// 4 │ H120*√2  H121*√2  H122*√2
+/// 5 │ H020*√2  H021*√2  H022*√2
 ///    --------------------------
 ///      5 0      5 1      5 2
 /// ```
 ///
+/// ```text
+/// Case B:
+///      0 0  0 1  0 2  0 3     0 4     0 5
+///    ---------------------------------------
+/// 0 │ H000 H011 H022 H001*√2 H012*√2 H002*√2
+/// 1 │ H100 H111 H122 H101*√2 H112*√2 H102*√2
+/// 2 │ H200 H211 H222 H201*√2 H212*√2 H202*√2
+///    ---------------------------------------
+///      2 0  2 1  2 2  2 3     2 4     2 5
+/// ```
+///
 /// [Rep::Symmetric2D]
 ///
-/// In 2D, some components are zero, thus we may store only 12 components:
-///
 /// ```text
+/// Case A:
 ///      0 0      0 1      0 2    
 ///    --------------------------
-/// 0 │ D000     D001     D002   
-/// 1 │ D110     D111     D112   
-/// 2 │ D220     D221     D222   
+/// 0 │ H000     H001     H002   
+/// 1 │ H110     H111     H112   
+/// 2 │ H220     H221     H222   
 ///   │
-/// 3 │ D010*√2  D011*√2  D012*√2
+/// 3 │ H010*√2  H011*√2  H012*√2
 ///    --------------------------
 ///      3 0      3 1      3 2
+/// ```
+///
+/// ```text
+/// Case B:
+///      0 0  0 1  0 2  0 3   
+///    -----------------------
+/// 0 │ H000 H011 H022 H001*√2
+/// 1 │ H100 H111 H122 H101*√2
+/// 2 │ H200 H211 H222 H201*√2
+///    -----------------------
+///      2 0  2 1  2 2  2 3
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor3 {

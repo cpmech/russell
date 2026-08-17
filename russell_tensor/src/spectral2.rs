@@ -33,10 +33,10 @@ impl Spectral2 {
     ///
     /// The results are available in [Spectral2::lambda] and [Spectral2::projectors].
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
-        if tt.rep != self.rep {
+        if tt.rep() != self.rep {
             return Err("the representation is incompatible");
         }
-        if tt.dim == 4 {
+        if tt.dim() == 4 {
             // eigenvalues and eigenvectors
             let (t22, mut a) = tt.as_std_matrix_2d();
             let mut l = Vector::new(2);
@@ -54,7 +54,7 @@ impl Spectral2 {
             vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
             vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
             self.projectors[2].clear();
-            self.projectors[2].vec[2] = 1.0;
+            self.projectors[2].set(2, 1.0);
         } else {
             // eigenvalues and eigenvectors
             let mut a = tt.as_std_matrix();
@@ -76,17 +76,20 @@ impl Spectral2 {
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
     pub fn compose(&self, composed: &mut Tensor2, lambda: &Vector) -> Result<(), StrError> {
-        if composed.rep != self.rep {
+        if composed.rep() != self.rep {
             return Err("the representation is incompatible");
         }
         if lambda.dim() != 3 {
             return Err("lambda.dim must be equal to 3");
         }
-        let n = self.projectors[0].dim;
-        for i in 0..n {
-            composed.vec[i] = lambda[0] * self.projectors[0].vec[i]
-                + lambda[1] * self.projectors[1].vec[i]
-                + lambda[2] * self.projectors[2].vec[i];
+        let dim = self.projectors[0].dim();
+        for m in 0..dim {
+            composed.set(
+                m,
+                lambda[0] * self.projectors[0].get(m)
+                    + lambda[1] * self.projectors[1].get(m)
+                    + lambda[2] * self.projectors[2].get(m),
+            );
         }
         Ok(())
     }
@@ -139,7 +142,7 @@ mod tests {
         let correct_projectors = sample.eigenprojectors.unwrap();
 
         // perform spectral decomposition of symmetric matrix
-        let rep = spec.projectors[0].rep;
+        let rep = spec.projectors[0].rep();
         let tt = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         spec.decompose(&tt).unwrap();
 
@@ -216,9 +219,9 @@ mod tests {
         let mut spec = Spectral2::new(two_dim);
         let mut tt = Tensor2::new_sym(two_dim);
         for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
-            tt.vec[0] = *sigma_1;
-            tt.vec[1] = *sigma_2;
-            tt.vec[2] = *sigma_3;
+            tt.set(0, *sigma_1);
+            tt.set(1, *sigma_2);
+            tt.set(2, *sigma_3);
             spec.decompose(&tt).unwrap();
             let (ls1, ls2, ls3) = spec.octahedral_basis();
             let radius = f64::sqrt(ls3 * ls3 + ls1 * ls1);

@@ -345,7 +345,7 @@ impl LinElasticity {
         if !self.plane_stress {
             return Err("out-of-plane strain works with plane-stress only");
         }
-        let eps_zz = -(stress.vector()[0] + stress.vector()[1]) * self.poisson / self.young;
+        let eps_zz = -(stress.get(0) + stress.get(1)) * self.poisson / self.young;
         Ok(eps_zz)
     }
 
@@ -391,7 +391,9 @@ impl LinElasticity {
         if self.plane_stress {
             return Err("The compliance modulus is not available for plane-stress");
         }
-        small_mat_inv(&mut cc.mat, &self.dd.mat, self.dd.dim()).map_err(|_| "cannot invert the rigidity modulus D")?;
+        self.dd
+            .calc_inverse(cc)
+            .map_err(|_| "cannot invert the rigidity modulus D")?;
         Ok(())
     }
 

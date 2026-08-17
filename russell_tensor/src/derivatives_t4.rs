@@ -126,7 +126,7 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2)
     // compute A odyad I + I odyad transpose(A)
     for m in 0..9 {
         for n in 0..9 {
-            da2_da.mat[m][n] = da2_da.mat[m][n] + ii_odyad_at.mat[m][n];
+            da2_da.set(m, n, da2_da.get(m, n) + ii_odyad_at.get(m, n));
         }
     }
 }

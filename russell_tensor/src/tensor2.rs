@@ -4,6 +4,8 @@ use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
 use russell_lab::{AsArray2D, Matrix, sort3};
 use serde::{Deserialize, Serialize};
+use std::cmp;
+use std::fmt::{self, Write};
 
 #[cfg(feature = "heap")]
 use russell_lab::Vector;
@@ -71,24 +73,24 @@ pub struct Tensor2 {
     /// * General: `dim = 9`
     /// * Symmetric: `dim = 6`
     /// * Symmetric2D: `dim = 4`
-    pub(crate) dim: usize,
+    dim: usize,
 
-    /// Holds the components in Kelvin basis as a vector.
+    /// Holds the components in Kelvin basis as a vector (heap).
     ///
     /// Heap version => dynamically allocated memory
     #[cfg(feature = "heap")]
-    pub(crate) vec: Vector,
+    vec: Vector,
 
-    /// Holds the components in Kelvin basis as a vector.
+    /// Holds the components in Kelvin basis as a vector (stack).
     ///
     /// Stack version => fixed size memory
     ///
     /// This array may use more data than necessary in symmetric cases
     #[cfg(not(feature = "heap"))]
-    pub(crate) vec: [f64; 9],
+    vec: [f64; 9],
 
     /// Holds the Rep (representation) enum
-    pub(crate) rep: Rep,
+    rep: Rep,
 
     /// BENCHMARKING. TODO: REMOVE THIS
     pub use_loops: bool,
@@ -244,37 +246,35 @@ impl Tensor2 {
     }
 
     /// Returns the representation associated with this Tensor2
+    #[inline]
     pub fn rep(&self) -> Rep {
         self.rep
     }
 
     /// Returns the Kelvin vector dimension (4, 6, or 9)
+    #[inline]
     pub fn dim(&self) -> usize {
         self.dim
     }
 
-    /// Returns an access to the underlying Kelvin vector
-    pub fn vector(&self) -> &[f64] {
-        #[cfg(feature = "heap")]
-        {
-            &self.vec.as_data()[0..self.dim]
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            &self.vec[0..self.dim]
-        }
+    /// Returns the m-component of the Kelvin vector
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the index is out of range.
+    #[inline]
+    pub fn get(&self, m: usize) -> f64 {
+        self.vec[m]
     }
 
-    /// Returns a mutable access to the underlying Kelvin vector
-    pub fn vector_mut(&mut self) -> &mut [f64] {
-        #[cfg(feature = "heap")]
-        {
-            &mut self.vec.as_mut_data()[0..self.dim]
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            &mut self.vec[0..self.dim]
-        }
+    /// Sets the m-component of the Kelvin vector
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the index is out of range.
+    #[inline]
+    pub fn set(&mut self, m: usize, value: f64) {
+        self.vec[m] = value;
     }
 
     /// Sets the Tensor2 with standard components given in matrix form
@@ -2163,6 +2163,41 @@ impl Tensor2 {
     }
 }
 
+impl fmt::Display for Tensor2 {
+    /// Generates a string representation of the Kelvin vector associated with this Tensor2
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // find largest width
+        let mut width = 0;
+        let mut buf = String::new();
+        for m in 0..self.dim() {
+            let val = self.vec.get(m);
+            match f.precision() {
+                Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                None => write!(&mut buf, "{}", val).unwrap(),
+            }
+            width = cmp::max(buf.chars().count(), width);
+            buf.clear();
+        }
+        // draw vector
+        width += 1;
+        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        for m in 0..self.dim() {
+            if m > 0 {
+                write!(f, " │\n").unwrap();
+            }
+            write!(f, "│").unwrap();
+            let val = self.get(m);
+            match f.precision() {
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                None => write!(f, "{:>1$}", val, width).unwrap(),
+            }
+        }
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width + 1).unwrap();
+        Ok(())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -2172,48 +2207,51 @@ mod tests {
     use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
 
     #[test]
-    fn new_and_getters_work() {
+    fn new_set_and_get_work() {
         // general
         let mut tt = Tensor2::new(Rep::General);
-        let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::General);
         assert_eq!(tt.dim(), 9);
-        assert_eq!(tt.vector(), correct);
-        tt.vector_mut()[0] = 1.0;
+        assert_eq!(tt.get(0), 123.0);
 
         // symmetric 3D
-        let tt = Tensor2::new(Rep::Symmetric);
-        let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let mut tt = Tensor2::new(Rep::Symmetric);
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::Symmetric);
         assert_eq!(tt.dim(), 6);
-        assert_eq!(tt.vector(), correct);
+        assert_eq!(tt.get(0), 123.0);
 
-        let tt = Tensor2::new_sym(false);
+        let mut tt = Tensor2::new_sym(false);
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::Symmetric);
         assert_eq!(tt.dim(), 6);
-        assert_eq!(tt.vector(), correct);
+        assert_eq!(tt.get(0), 123.0);
 
-        let tt = Tensor2::new_sym_ndim(3);
+        let mut tt = Tensor2::new_sym_ndim(3);
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::Symmetric);
         assert_eq!(tt.dim(), 6);
-        assert_eq!(tt.vector(), correct);
+        assert_eq!(tt.get(0), 123.0);
 
         // symmetric 2D
-        let tt = Tensor2::new(Rep::Symmetric2D);
-        let correct = &[0.0, 0.0, 0.0, 0.0];
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::Symmetric2D);
         assert_eq!(tt.dim(), 4);
-        assert_eq!(tt.vector(), correct);
+        assert_eq!(tt.get(0), 123.0);
 
-        let tt = Tensor2::new_sym(true);
+        let mut tt = Tensor2::new_sym(true);
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::Symmetric2D);
         assert_eq!(tt.dim(), 4);
-        assert_eq!(tt.vector(), correct);
+        assert_eq!(tt.get(0), 123.0);
 
-        let tt = Tensor2::new_sym_ndim(2);
+        let mut tt = Tensor2::new_sym_ndim(2);
+        tt.set(0, 123.0);
         assert_eq!(tt.rep(), Rep::Symmetric2D);
         assert_eq!(tt.dim(), 4);
-        assert_eq!(tt.vector(), correct);
+        assert_eq!(tt.get(0), 123.0);
     }
 
     #[test]
@@ -2296,7 +2334,9 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        array_approx_eq(tt.vector(), correct, 1e-15);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-15);
+        }
 
         // general (using nested Vec)
         let mut tt = Tensor2::new(Rep::General);
@@ -2314,7 +2354,9 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        array_approx_eq(tt.vector(), correct, 1e-15);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-15);
+        }
 
         // symmetric 3D
         let mut tt = Tensor2::new(Rep::Symmetric);
@@ -2322,7 +2364,9 @@ mod tests {
         tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        array_approx_eq(tt.vector(), correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
 
         // symmetric 2D
         let mut tt = Tensor2::new(Rep::Symmetric2D);
@@ -2330,7 +2374,9 @@ mod tests {
         tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        array_approx_eq(tt.vector(), correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
     }
 
     #[test]
@@ -2413,7 +2459,9 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        array_approx_eq(tt.vector(), correct, 1e-15);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -2424,7 +2472,9 @@ mod tests {
         ];
         let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        array_approx_eq(tt.vector(), correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -2435,22 +2485,30 @@ mod tests {
         ];
         let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        array_approx_eq(tt.vector(), correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
     }
 
     #[test]
     fn identity_works() {
         // general
         let ii = Tensor2::identity(Rep::General);
-        assert_eq!(ii.vector(), &IDENTITY2);
+        for m in 0..ii.dim() {
+            assert_eq!(ii.get(m), IDENTITY2[m]);
+        }
 
         // symmetric
         let ii = Tensor2::identity(Rep::Symmetric);
-        assert_eq!(ii.vector(), &IDENTITY2[0..6]);
+        for m in 0..ii.dim() {
+            assert_eq!(ii.get(m), IDENTITY2[m]);
+        }
 
         // symmetric 2d
         let ii = Tensor2::identity(Rep::Symmetric2D);
-        assert_eq!(ii.vector(), &IDENTITY2[0..4]);
+        for m in 0..ii.dim() {
+            assert_eq!(ii.get(m), IDENTITY2[m]);
+        }
     }
 
     #[test]
@@ -2631,9 +2689,11 @@ mod tests {
         )
         .unwrap();
         let tt_gen = tt.as_general();
-        assert_eq!(format!("{:.2?}", &tt.vector()[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
+        println!("{}", tt);
+        assert_eq!(format!("{}", tt), "[1.00, 3.00, 4.00, 2.00]");
+        println!("{}", tt_gen);
         assert_eq!(
-            format!("{:.2?}", &tt_gen.vector()[0..tt_gen.dim]),
+            format!("{}", tt_gen),
             "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00, 0.00, 0.00, 0.00]"
         );
 
@@ -2701,11 +2761,8 @@ mod tests {
         )
         .unwrap();
         let tt_sym = tt.sym2d_as_symmetric();
-        assert_eq!(format!("{:.2?}", &tt.vector()[0..tt.dim]), "[1.00, 3.00, 4.00, 2.00]");
-        assert_eq!(
-            format!("{:.2?}", &tt_sym.vector()[0..tt_sym.dim]),
-            "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00]"
-        );
+        assert_eq!(format!("{}", tt), "[1.00, 3.00, 4.00, 2.00]");
+        assert_eq!(format!("{}", tt_sym), "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00]");
     }
 
     #[test]
@@ -2753,7 +2810,7 @@ mod tests {
         let mut a = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         a.clear();
         for m in 0..a.dim() {
-            assert_eq!(a.vector()[m], 0.0);
+            assert_eq!(a.get(m), 0.0);
         }
     }
 
@@ -3723,7 +3780,9 @@ mod tests {
         approx_eq(t1.vec[1], 0.0, 1e-15);
         approx_eq(t1.vec[2], 0.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        array_approx_eq(&t1.vector(), &t2.vector(), 1e-15);
+        for m in 0..t1.dim() {
+            approx_eq(t1.get(m), t2.get(m), 1e-15);
+        }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3736,7 +3795,9 @@ mod tests {
         approx_eq(t1.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(t1.vec[2], 1.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        array_approx_eq(&t1.vector(), &t2.vector(), 1e-15);
+        for m in 0..t1.dim() {
+            approx_eq(t1.get(m), t2.get(m), 1e-15);
+        }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3749,7 +3810,9 @@ mod tests {
         approx_eq(t1.vec[1], -1.0, 1e-15);
         approx_eq(t1.vec[2], 2.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        array_approx_eq(&t1.vector(), &t2.vector(), 1e-15);
+        for m in 0..t1.dim() {
+            approx_eq(t1.get(m), t2.get(m), 1e-15);
+        }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);

@@ -1707,6 +1707,23 @@ mod tests {
         inp
     }
 
+    /// Generates a standard 3x3x3 tensor that is minor-symmetric in (j,k) and 2D (zero out-of-plane shears)
+    fn generate_std_sym_case_b_2d() -> [[[f64; 3]; 3]; 3] {
+        let mut inp = [[[0.0; 3]; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    let (a, b) = if j <= k { (j, k) } else { (k, j) };
+                    // zero out-of-plane shears (0,2) and (1,2)
+                    if a == b || (a, b) == (0, 1) {
+                        inp[i][j][k] = (100 * (i + 1) + 10 * (a + 1) + (b + 1)) as f64;
+                    }
+                }
+            }
+        }
+        inp
+    }
+
     #[test]
     fn new_case_b_works() {
         let cc = Tensor3::new(Rep::General, false);
@@ -1814,6 +1831,103 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn from_std_array_case_b_symmetric2d_works() {
+        let inp = generate_std_sym_case_b_2d();
+        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false).unwrap();
+        assert_eq!(dd.dims(), (3, 4));
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
+                }
+            }
+        }
+        // to_std_array symmetric path
+        let arr = dd.as_std_array();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(arr[i][j][k], inp[i][j][k], 1e-13);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn from_std_array_case_b_symmetric2d_fails() {
+        // a non-zero out-of-plane shear must fail for Symmetric2D
+        let mut inp = generate_std_sym_case_b_2d();
+        inp[0][0][2] = 5.0;
+        let res = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false);
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+        );
+    }
+
+    #[test]
+    fn from_std_matrix_case_b_symmetric_works() {
+        let inp = generate_std_sym_case_b();
+        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric, false).unwrap();
+        let mat = dd.as_std_matrix();
+        assert_eq!(mat.dims(), (3, 9));
+        let ee = Tensor3::from_std_matrix(&mat, Rep::Symmetric, false).unwrap();
+        assert_eq!(ee.dims(), (3, 6));
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(ee.get_std(i, j, k), inp[i][j][k], 1e-12);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn from_std_matrix_case_b_symmetric2d_works() {
+        let inp = generate_std_sym_case_b_2d();
+        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false).unwrap();
+        let mat = dd.as_std_matrix();
+        assert_eq!(mat.dims(), (3, 9));
+        let ee = Tensor3::from_std_matrix(&mat, Rep::Symmetric2D, false).unwrap();
+        assert_eq!(ee.dims(), (3, 4));
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(ee.get_std(i, j, k), inp[i][j][k], 1e-12);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn from_std_matrix_case_b_symmetric2d_fails() {
+        let inp = generate_std_sym_case_b_2d();
+        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false).unwrap();
+        let mut mat = dd.as_std_matrix();
+        // corrupt the out-of-plane shear (i,j,k) = (0,0,2) -> (m,n) = (0,5)
+        mat.set(0, 5, 5.0);
+        let res = Tensor3::from_std_matrix(&mat, Rep::Symmetric2D, false);
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+        );
+    }
+
+    #[test]
+    fn from_std_matrix_case_b_symmetric_fails() {
+        let inp = generate_std_sym_case_b();
+        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric, false).unwrap();
+        let mut mat = dd.as_std_matrix();
+        // break minor-symmetry: component (0,0,1) differs from its mirror (0,1,0)
+        mat.set(0, 3, mat.get(0, 3) + 1.0);
+        let res = Tensor3::from_std_matrix(&mat, Rep::Symmetric, false);
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a minor-symmetric tensor")
+        );
     }
 
     #[test]

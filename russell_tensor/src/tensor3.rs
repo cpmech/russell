@@ -1185,7 +1185,7 @@ impl Tensor3 {
 
 #[cfg(test)]
 mod tests {
-    use super::{MN_TO_IJK_CASE_A, MN_TO_IJK_CASE_B, Tensor3};
+    use super::{MN_TO_IJK_CASE_A, Tensor3};
     use crate::{Rep, SamplesTensor3};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
@@ -1735,78 +1735,228 @@ mod tests {
     }
 
     #[test]
-    fn from_std_array_case_b_general_works() {
-        let inp = generate_std_general();
-        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
-        assert_eq!(dd.dims(), (3, 9));
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn from_std_array_case_b_symmetric_works() {
-        let inp = generate_std_sym_case_b();
-        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric, false).unwrap();
-        assert_eq!(dd.dims(), (3, 6));
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
-                }
-            }
-        }
-    }
-
-    #[test]
     fn from_std_array_case_b_fails_captures_errors() {
-        // input that is not symmetric in (j,k) must fail for Symmetric
-        let mut inp = generate_std_general();
-        inp[0][1][2] = inp[0][2][1] + 1.0;
-        let res = Tensor3::from_std_array(&inp, Rep::Symmetric, false);
+        let res = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::Symmetric, false);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a minor-symmetric tensor")
         );
+
+        let res = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric2D, false);
+        assert_eq!(
+            res.err(),
+            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+        );
     }
 
     #[test]
-    fn from_std_matrix_case_b_general_works() {
-        let inp = generate_std_general();
-        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
+    fn from_std_array_case_b_works() {
+        // general
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::General, false).unwrap();
+        for m in 0..3 {
+            for n in 0..9 {
+                assert_eq!(dd.matrix()[m][n], SamplesTensor3::CASE_B_SAMPLE1_KELVIN_MATRIX[m][n]);
+            }
+        }
+
+        // symmetric 3D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric, false).unwrap();
+        for m in 0..3 {
+            for n in 0..6 {
+                assert_eq!(
+                    dd.matrix()[m][n],
+                    SamplesTensor3::CASE_B_SYM_SAMPLE1_KELVIN_MATRIX[m][n]
+                );
+            }
+        }
+
+        // symmetric 2D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
+        for m in 0..3 {
+            for n in 0..4 {
+                assert_eq!(
+                    dd.matrix()[m][n],
+                    SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn from_std_matrix_case_b_works() {
+        // general
+        let dd = Tensor3::from_std_matrix(&SamplesTensor3::CASE_B_SAMPLE1_STD_MATRIX, Rep::General, false).unwrap();
+        let (nrow, ncol) = dd.dims();
+        for m in 0..nrow {
+            for n in 0..ncol {
+                approx_eq(
+                    dd.matrix()[m][n],
+                    SamplesTensor3::CASE_B_SAMPLE1_KELVIN_MATRIX[m][n],
+                    1e-15,
+                );
+            }
+        }
+
+        // symmetric 3D
+        let dd =
+            Tensor3::from_std_matrix(&SamplesTensor3::CASE_B_SYM_SAMPLE1_STD_MATRIX, Rep::Symmetric, false).unwrap();
+        let (nrow, ncol) = dd.dims();
+        for m in 0..nrow {
+            for n in 0..ncol {
+                approx_eq(
+                    dd.matrix()[m][n],
+                    SamplesTensor3::CASE_B_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
+                    1e-14,
+                );
+            }
+        }
+
+        // symmetric 2D
+        let dd = Tensor3::from_std_matrix(
+            &SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_STD_MATRIX,
+            Rep::Symmetric2D,
+            false,
+        )
+        .unwrap();
+        let (nrow, ncol) = dd.dims();
+        for m in 0..nrow {
+            for n in 0..ncol {
+                approx_eq(
+                    dd.matrix()[m][n],
+                    SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
+                    1e-14,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn get_std_case_b_works() {
+        // general
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::General, false).unwrap();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(dd.get_std(i, j, k), SamplesTensor3::CASE_B_SAMPLE1[i][j][k], 1e-13);
+                }
+            }
+        }
+
+        // symmetric 3D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric, false).unwrap();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(dd.get_std(i, j, k), SamplesTensor3::CASE_B_SYM_SAMPLE1[i][j][k], 1e-14);
+                }
+            }
+        }
+
+        // symmetric 2D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(
+                        dd.get_std(i, j, k),
+                        SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k],
+                        1e-14,
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn update_case_b_works() {
+        let mut dd = Tensor3::new(Rep::Symmetric2D, false);
+        let ee = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
+        dd.update(2.0, &ee);
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(
+                        dd.get_std(i, j, k),
+                        2.0 * SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k],
+                        1e-14,
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn as_std_array_and_to_std_array_case_b_work() {
+        // general
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::General, false).unwrap();
+        let res = dd.as_std_array();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(res[i][j][k], SamplesTensor3::CASE_B_SAMPLE1[i][j][k], 1e-13);
+                }
+            }
+        }
+
+        // symmetric 3D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric, false).unwrap();
+        let res = dd.as_std_array();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(res[i][j][k], SamplesTensor3::CASE_B_SYM_SAMPLE1[i][j][k], 1e-14);
+                }
+            }
+        }
+
+        // symmetric 2D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
+        let res = dd.as_std_array();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    approx_eq(res[i][j][k], SamplesTensor3::CASE_B_SYM_2D_SAMPLE1[i][j][k], 1e-14);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn as_std_matrix_and_to_std_matrix_case_b_work() {
+        // general
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::General, false).unwrap();
+        let mat = dd.as_std_matrix();
+        for m in 0..3 {
+            for n in 0..9 {
+                approx_eq(mat.get(m, n), SamplesTensor3::CASE_B_SAMPLE1_STD_MATRIX[m][n], 1e-13);
+            }
+        }
+
+        // symmetric 3D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric, false).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (3, 9));
         for m in 0..3 {
             for n in 0..9 {
-                let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
-                approx_eq(mat.get(m, n), inp[i][j][k], 1e-12);
+                approx_eq(
+                    mat.get(m, n),
+                    SamplesTensor3::CASE_B_SYM_SAMPLE1_STD_MATRIX[m][n],
+                    1e-13,
+                );
             }
         }
-        // round-trip through from_std_matrix
-        let ee = Tensor3::from_std_matrix(&mat, Rep::General, false).unwrap();
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(ee.get_std(i, j, k), inp[i][j][k], 1e-12);
-                }
-            }
-        }
-    }
 
-    #[test]
-    fn as_std_array_case_b_works() {
-        let inp = generate_std_general();
-        let dd = Tensor3::from_std_array(&inp, Rep::General, false).unwrap();
-        let arr = dd.as_std_array();
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(arr[i][j][k], inp[i][j][k], 1e-13);
-                }
+        // symmetric 2D
+        let dd = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
+        let mat = dd.as_std_matrix();
+        assert_eq!(mat.dims(), (3, 9));
+        for m in 0..3 {
+            for n in 0..9 {
+                approx_eq(
+                    mat.get(m, n),
+                    SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_STD_MATRIX[m][n],
+                    1e-13,
+                );
             }
         }
     }
@@ -1828,75 +1978,6 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn from_std_array_case_b_symmetric2d_works() {
-        let inp = generate_std_sym_case_b_2d();
-        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false).unwrap();
-        assert_eq!(dd.dims(), (3, 4));
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(dd.get_std(i, j, k), inp[i][j][k], 1e-13);
-                }
-            }
-        }
-        // to_std_array symmetric path
-        let arr = dd.as_std_array();
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(arr[i][j][k], inp[i][j][k], 1e-13);
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn from_std_array_case_b_symmetric2d_fails() {
-        // a non-zero out-of-plane shear must fail for Symmetric2D
-        let mut inp = generate_std_sym_case_b_2d();
-        inp[0][0][2] = 5.0;
-        let res = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false);
-        assert_eq!(
-            res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
-        );
-    }
-
-    #[test]
-    fn from_std_matrix_case_b_symmetric_works() {
-        let inp = generate_std_sym_case_b();
-        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric, false).unwrap();
-        let mat = dd.as_std_matrix();
-        assert_eq!(mat.dims(), (3, 9));
-        let ee = Tensor3::from_std_matrix(&mat, Rep::Symmetric, false).unwrap();
-        assert_eq!(ee.dims(), (3, 6));
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(ee.get_std(i, j, k), inp[i][j][k], 1e-12);
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn from_std_matrix_case_b_symmetric2d_works() {
-        let inp = generate_std_sym_case_b_2d();
-        let dd = Tensor3::from_std_array(&inp, Rep::Symmetric2D, false).unwrap();
-        let mat = dd.as_std_matrix();
-        assert_eq!(mat.dims(), (3, 9));
-        let ee = Tensor3::from_std_matrix(&mat, Rep::Symmetric2D, false).unwrap();
-        assert_eq!(ee.dims(), (3, 4));
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(ee.get_std(i, j, k), inp[i][j][k], 1e-12);
                 }
             }
         }

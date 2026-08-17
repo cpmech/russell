@@ -220,8 +220,10 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `m` -- the row index (must be `< 9`)
-    /// * `n` -- the column index (must be `< 9`)
+    /// Check the range of indices by calling [Tensor4::dim()]
+    ///
+    /// * `m` -- the row index
+    /// * `n` -- the column index
     ///
     /// # Panics
     ///
@@ -244,8 +246,10 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `m` -- the row index (must be `< 9`)
-    /// * `n` -- the column index (must be `< 9`)
+    /// Check the range of indices by calling [Tensor4::dim()]
+    ///
+    /// * `m` -- the row index
+    /// * `n` -- the column index
     /// * `value` -- the value to set
     ///
     /// # Panics

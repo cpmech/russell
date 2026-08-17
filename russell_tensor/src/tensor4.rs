@@ -238,7 +238,7 @@ impl Tensor4 {
     /// dd.set(0, 0, 123.0);
     /// assert_eq!(dd.get_mn(0, 0), 123.0);
     /// ```
-    pub fn get_mn(&self, m: usize, n: usize) -> f64 {
+    pub fn get(&self, m: usize, n: usize) -> f64 {
         self.mat[m][n]
     }
 
@@ -1546,11 +1546,11 @@ mod tests {
     }
 
     #[test]
-    fn get_mn_and_set_work() {
+    fn get_and_set_work() {
         let mut dd = Tensor4::new(Rep::Symmetric2D);
-        assert_eq!(dd.get_mn(0, 0), 0.0);
+        assert_eq!(dd.get(0, 0), 0.0);
         dd.set(0, 0, 2.0);
-        assert_eq!(dd.get_mn(0, 0), 2.0);
+        assert_eq!(dd.get(0, 0), 2.0);
     }
 
     #[test]

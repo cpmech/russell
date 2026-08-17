@@ -418,7 +418,7 @@ impl LinElasticity {
             self.dd.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Rep: multiply by 2, so 1/2 disappears
         }
         if self.dd.dim() > 4 {
-            let g = self.dd.get_mn(3, 3);
+            let g = self.dd.get(3, 3);
             self.dd.set(4, 4, g);
             self.dd.set(5, 5, g);
         }
@@ -493,31 +493,31 @@ mod tests {
     fn set_get_parameters_works() {
         let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
         ela.set_young_poisson(6000.0, 0.2);
-        assert_eq!(ela.dd.get_mn(0, 0), 6250.0);
+        assert_eq!(ela.dd.get(0, 0), 6250.0);
 
         let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
         ela.set_bulk_shear(1000.0, 600.0);
         assert_eq!(ela.young, 1500.0);
         assert_eq!(ela.poisson, 0.25);
-        assert_eq!(ela.dd.get_mn(0, 0), 1800.0);
-        assert_eq!(ela.dd.get_mn(0, 1), 600.0);
+        assert_eq!(ela.dd.get(0, 0), 1800.0);
+        assert_eq!(ela.dd.get(0, 1), 600.0);
         let c = ela.young / ((1.0 + ela.poisson) * (1.0 - 2.0 * ela.poisson));
-        assert_eq!(ela.dd.get_mn(0, 0), (1.0 - ela.poisson) * c);
-        assert_eq!(ela.dd.get_mn(0, 1), ela.poisson * c);
+        assert_eq!(ela.dd.get(0, 0), (1.0 - ela.poisson) * c);
+        assert_eq!(ela.dd.get(0, 1), ela.poisson * c);
 
         let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
         ela.set_young_poisson(1500.0, 0.25);
         assert_eq!(ela.get_young_poisson(), (1500.0, 0.25));
         assert_eq!(ela.get_bulk_shear(), (1000.0, 600.0));
-        assert_eq!(ela.dd.get_mn(0, 0), 1800.0);
-        assert_eq!(ela.dd.get_mn(0, 1), 600.0);
+        assert_eq!(ela.dd.get(0, 0), 1800.0);
+        assert_eq!(ela.dd.get(0, 1), 600.0);
     }
 
     #[test]
     fn get_modulus_works() {
         let ela = LinElasticity::new(3000.0, 0.2, false, true);
         let dd = ela.get_modulus();
-        assert_eq!(dd.get_mn(0, 0), 3125.0);
+        assert_eq!(dd.get(0, 0), 3125.0);
         check_symmetry(&dd.as_std_matrix()).unwrap();
     }
 

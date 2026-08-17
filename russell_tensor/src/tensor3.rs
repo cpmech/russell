@@ -1295,7 +1295,7 @@ mod tests {
     #[test]
     fn from_std_matrix_works() {
         // general
-        let dd = Tensor3::from_std_matrix(&SamplesTensor3::CASE_A_SAMPLE1_STD_MATRIX, Rep::General, true).unwrap();
+        let mut dd = Tensor3::from_std_matrix(&SamplesTensor3::CASE_A_SAMPLE1_STD_MATRIX, Rep::General, true).unwrap();
         let (nrow, ncol) = dd.dims();
         for m in 0..nrow {
             for n in 0..ncol {
@@ -1306,6 +1306,9 @@ mod tests {
                 );
             }
         }
+        assert_eq!(dd.get_mn(0, 0), 1.0);
+        dd.set(0, 0, 2.0);
+        assert_eq!(dd.get_mn(0, 0), 2.0);
 
         // symmetric 3D
         let dd =

@@ -8,7 +8,6 @@ members = [
   "russell_sparse",
   "russell_stat",
   "russell_tensor",
-  "russell_tensor_heap",
 ]
 
 resolver = "2"

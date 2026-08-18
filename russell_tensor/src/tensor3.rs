@@ -1232,7 +1232,9 @@ impl Tensor3 {
     }
 
     /// Returns the permutation (Levi-Civita) tensor
-    pub fn constant_permutation(rep: Rep, case_a: bool) -> Result<Self, StrError> {
+    ///
+    /// This function is only available for [Rep::General]
+    pub fn constant_permutation(case_a: bool) -> Self {
         let pos_one = [(0, 1, 2), (1, 2, 0), (2, 0, 1)]; // even cyclic permutation
         let neg_one = [(0, 2, 1), (1, 0, 2), (2, 1, 0)]; // odd cyclic permutation
         let mut std_array = [[[0.0; 3]; 3]; 3];
@@ -1242,7 +1244,7 @@ impl Tensor3 {
         for (i, j, k) in neg_one {
             std_array[i][j][k] = -1.0;
         }
-        Tensor3::from_std_array(&std_array, rep, case_a)
+        Tensor3::from_std_array(&std_array, Rep::General, case_a).unwrap()
     }
 }
 
@@ -1292,7 +1294,7 @@ impl fmt::Display for Tensor3 {
 #[cfg(test)]
 mod tests {
     use super::{MN_TO_IJK_CASE_A, Tensor3};
-    use crate::{Rep, SamplesTensor3};
+    use crate::{Rep, SQRT_2, SamplesTensor3};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
@@ -2218,5 +2220,38 @@ mod tests {
     fn debug_works() {
         let dd = Tensor3::new(Rep::General, true);
         assert!(format!("{:?}", dd).len() > 0);
+    }
+
+    #[test]
+    fn constant_permutation_works() {
+        let perm_a = Tensor3::constant_permutation(true);
+        let expected = [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, SQRT_2],
+            [SQRT_2, 0.0, 0.0],
+            [0.0, -SQRT_2, 0.0],
+        ];
+        for m in 0..9 {
+            for n in 0..3 {
+                approx_eq(perm_a.get(m, n), expected[m][n], 1e-15);
+            }
+        }
+
+        let perm_b = Tensor3::constant_permutation(false);
+        let expected = [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, SQRT_2, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -SQRT_2],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, SQRT_2, 0.0, 0.0],
+        ];
+        for m in 0..3 {
+            for n in 0..9 {
+                approx_eq(perm_b.get(m, n), expected[m][n], 1e-15);
+            }
+        }
     }
 }

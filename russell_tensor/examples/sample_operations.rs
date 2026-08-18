@@ -98,7 +98,7 @@ fn main() -> Result<(), StrError> {
 
     // Levi-Civita (permutation) tensor (Case A)
     let case_a = true; // operate on vector
-    let perm_a = Tensor3::constant_permutation(Rep::General, case_a)?;
+    let perm_a = Tensor3::constant_permutation(case_a);
     let mat_perm_a = perm_a.as_std_matrix();
     println!("perm_a =\n{:.2}", mat_perm_a);
 
@@ -111,7 +111,7 @@ fn main() -> Result<(), StrError> {
 
     // Levi-Civita (permutation) tensor (Case B)
     let case_a = false; // operate on tensor
-    let perm_b = Tensor3::constant_permutation(Rep::General, case_a)?;
+    let perm_b = Tensor3::constant_permutation(case_a);
     let mat_perm_b = perm_b.as_std_matrix();
     println!("perm_b =\n{:.2}", mat_perm_b);
 

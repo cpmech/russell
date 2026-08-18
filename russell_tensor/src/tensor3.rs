@@ -1232,9 +1232,17 @@ impl Tensor3 {
     }
 
     /// Returns the permutation (Levi-Civita) tensor
-    pub fn constant_permutation(case_a: bool) -> Self {
-        let mut perm = Tensor3::new(Rep::General, case_a);
-        panic!("TODO")
+    pub fn constant_permutation(rep: Rep, case_a: bool) -> Result<Self, StrError> {
+        let pos_one = [(0, 1, 2), (1, 2, 0), (2, 0, 1)]; // even cyclic permutation
+        let neg_one = [(0, 2, 1), (1, 0, 2), (2, 1, 0)]; // odd cyclic permutation
+        let mut std_array = [[[0.0; 3]; 3]; 3];
+        for (i, j, k) in pos_one {
+            std_array[i][j][k] = 1.0;
+        }
+        for (i, j, k) in neg_one {
+            std_array[i][j][k] = -1.0;
+        }
+        Tensor3::from_std_array(&std_array, rep, case_a)
     }
 }
 

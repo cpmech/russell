@@ -783,28 +783,6 @@ where
         self.data[i + j * self.nrow] = value;
     }
 
-    /// Change the (i,j) component without bounds checking
-    ///
-    /// # Safety
-    ///
-    /// The caller must guarantee that `i < nrow` and `j < ncol`.
-    #[inline]
-    pub unsafe fn set_unchecked(&mut self, i: usize, j: usize, value: T) {
-        unsafe {
-            *self.data.get_unchecked_mut(i + j * self.nrow) = value;
-        }
-    }
-
-    /// Returns the (i,j) component without bounds checking
-    ///
-    /// # Safety
-    ///
-    /// The caller must guarantee that `i < nrow` and `j < ncol`.
-    #[inline]
-    pub unsafe fn get_unchecked(&self, i: usize, j: usize) -> T {
-        unsafe { *self.data.get_unchecked(i + j * self.nrow) }
-    }
-
     /// Adds a value to the (i,j) component
     ///
     /// ```text

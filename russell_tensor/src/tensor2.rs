@@ -2531,7 +2531,7 @@ mod tests {
 
     #[test]
     fn from_std_matrix_works() {
-        // general
+        // general -- example 1
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
@@ -2553,6 +2553,31 @@ mod tests {
         for m in 0..tt.dim() {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
+
+        // general -- example 2
+        let tt = Tensor2::from_std_matrix(
+            &[
+                [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+                [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+                [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+            ],
+            Rep::General,
+        )
+        .unwrap();
+        assert_eq!(
+            format!("{:.1}", tt),
+            "┌      ┐\n\
+             │  1.0 │\n\
+             │  5.0 │\n\
+             │  9.0 │\n\
+             │  6.0 │\n\
+             │ 14.0 │\n\
+             │ 10.0 │\n\
+             │ -2.0 │\n\
+             │ -2.0 │\n\
+             │ -4.0 │\n\
+             └      ┘"
+        );
 
         // symmetric 3D
         #[rustfmt::skip]

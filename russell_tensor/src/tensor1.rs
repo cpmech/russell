@@ -170,6 +170,22 @@ mod tests {
         u.set(2, 789.0);
         assert_eq!(u.get(0), 123.0);
         vec_approx_eq(&u.as_vector(), &[123.0, 456.0, 789.0], 1e-15);
+        assert_eq!(
+            format!("{}", u),
+            "┌     ┐\n\
+             │ 123 │\n\
+             │ 456 │\n\
+             │ 789 │\n\
+             └     ┘"
+        );
+        assert_eq!(
+            format!("{:.1}", u),
+            "┌       ┐\n\
+             │ 123.0 │\n\
+             │ 456.0 │\n\
+             │ 789.0 │\n\
+             └       ┘"
+        );
     }
 
     #[test]

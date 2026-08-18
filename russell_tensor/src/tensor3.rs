@@ -2241,6 +2241,20 @@ mod tests {
                 approx_eq(perm_a.get(m, n), expected[m][n], 1e-15);
             }
         }
+        assert_eq!(
+            format!("{:.3}", perm_a),
+            "┌                      ┐\n\
+             │  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  0.000 │\n\
+             │  0.000  0.000  1.414 │\n\
+             │  1.414  0.000  0.000 │\n\
+             │  0.000 -1.414  0.000 │\n\
+             └                      ┘"
+        );
 
         let perm_b = Tensor3::constant_permutation(false);
         let expected = [

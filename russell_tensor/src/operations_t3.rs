@@ -1,5 +1,4 @@
-use super::{Tensor2, Tensor3};
-use russell_lab::Vector;
+use super::{Tensor1, Tensor2, Tensor3};
 
 #[allow(unused)]
 use crate::Rep; // for documentation
@@ -55,19 +54,18 @@ pub fn t3_add(c: &mut Tensor3, alpha: f64, a: &Tensor3, beta: f64, b: &Tensor3) 
 ///
 /// * `alpha` -- the `α` multiplier
 /// * `hh` -- the third-order tensor
-/// * `u` -- the 3D vector; must have 3 components (w.r.t. standard Cartesian basis)
+/// * `u` -- the 3D vector (first-order tensor)
 ///
 /// # Panics
 ///
 /// 1. If `H` was not allocated for Case A
 /// 2. If `T` and `H` have different [Rep]
 /// 3. If `u` does not have 3 components
-pub fn t3_dot_vec(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Vector) {
+pub fn t3_dot_vec(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Tensor1) {
     assert!(hh.is_case_a());
     assert_eq!(tt.rep(), hh.rep());
-    assert_eq!(u.dim(), 3);
     for m in 0..hh.dims().0 {
-        tt.vec[m] = alpha * (hh.get(m, 0) * u[0] + hh.get(m, 1) * u[1] + hh.get(m, 2) * u[2]);
+        tt.vec[m] = alpha * (hh.get(m, 0) * u.get(0) + hh.get(m, 1) * u.get(1) + hh.get(m, 2) * u.get(2));
     }
 }
 
@@ -95,7 +93,7 @@ pub fn t3_dot_vec(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Vector) {
 ///
 /// # Output
 ///
-/// * `u` -- the resulting vector (with 3 standard components)
+/// * `u` -- the 3D vector (first-order tensor)
 ///
 /// # Input
 ///
@@ -107,18 +105,16 @@ pub fn t3_dot_vec(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Vector) {
 ///
 /// 1. If `H` was not allocated for Case B
 /// 2. If `T` and `H` have different [Rep]
-/// 3. If `u` does not have 3 components
-pub fn t3_dot_t2(u: &mut Vector, alpha: f64, hh: &Tensor3, tt: &Tensor2) {
+pub fn t3_dot_t2(u: &mut Tensor1, alpha: f64, hh: &Tensor3, tt: &Tensor2) {
     assert!(!hh.is_case_a());
     assert_eq!(tt.rep(), hh.rep());
-    assert_eq!(u.dim(), 3);
-    u[0] = 0.0;
-    u[1] = 0.0;
-    u[2] = 0.0;
+    u.set(0, 0.0);
+    u.set(1, 0.0);
+    u.set(2, 0.0);
     for n in 0..hh.dims().1 {
-        u[0] += alpha * hh.get(0, n) * tt.vec[n];
-        u[1] += alpha * hh.get(1, n) * tt.vec[n];
-        u[2] += alpha * hh.get(2, n) * tt.vec[n];
+        u.set(0, u.get(0) + alpha * hh.get(0, n) * tt.vec[n]);
+        u.set(1, u.get(1) + alpha * hh.get(1, n) * tt.vec[n]);
+        u.set(2, u.get(2) + alpha * hh.get(2, n) * tt.vec[n]);
     }
 }
 
@@ -127,8 +123,8 @@ pub fn t3_dot_t2(u: &mut Vector, alpha: f64, hh: &Tensor3, tt: &Tensor2) {
 #[cfg(test)]
 mod tests {
     use super::{t3_add, t3_dot_t2, t3_dot_vec};
-    use crate::{Rep, SamplesTensor3, Tensor2, Tensor3};
-    use russell_lab::{Matrix, Vector, mat_approx_eq, vec_approx_eq};
+    use crate::{Rep, SamplesTensor3, Tensor1, Tensor2, Tensor3};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
     fn t3_add_works_case_a() {
@@ -236,7 +232,7 @@ mod tests {
     fn t3_dot_vec_works() {
         // General
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, Rep::General, true).unwrap();
-        let u = Vector::from(&[1.0, 2.0, 3.0]);
+        let u = Tensor1::from(&[1.0, 2.0, 3.0]);
         let mut tt = Tensor2::new(Rep::General);
         t3_dot_vec(&mut tt, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
@@ -282,10 +278,11 @@ mod tests {
             Rep::General,
         )
         .unwrap();
-        let mut u = Vector::new(3);
+        let mut u = Tensor1::new();
         t3_dot_t2(&mut u, 0.5, &hh, &tt);
-        let vec_expected = Vector::from(&[328.5, 351.0, 373.5]);
-        vec_approx_eq(&u, &vec_expected, 1e-15);
+        approx_eq(u.get(0), 328.5, 1e-15);
+        approx_eq(u.get(1), 351.0, 1e-15);
+        approx_eq(u.get(2), 373.5, 1e-15);
 
         // Symmetric
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, Rep::Symmetric, false).unwrap();
@@ -298,10 +295,11 @@ mod tests {
             Rep::Symmetric,
         )
         .unwrap();
-        let mut u = Vector::new(3);
+        let mut u = Tensor1::new();
         t3_dot_t2(&mut u, 0.5, &hh, &tt);
-        let vec_expected = Vector::from(&[188.0, 206.5, 225.0]);
-        vec_approx_eq(&u, &vec_expected, 1e-15);
+        approx_eq(u.get(0), 188.0, 1e-15);
+        approx_eq(u.get(1), 206.5, 1e-15);
+        approx_eq(u.get(2), 225.0, 1e-15);
 
         // Symmetric2D
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, Rep::Symmetric2D, false).unwrap();
@@ -314,9 +312,10 @@ mod tests {
             Rep::Symmetric2D,
         )
         .unwrap();
-        let mut u = Vector::new(3);
+        let mut u = Tensor1::new();
         t3_dot_t2(&mut u, 0.5, &hh, &tt);
-        let vec_expected = Vector::from(&[62.0, 71.5, 81.0]);
-        vec_approx_eq(&u, &vec_expected, 1e-15);
+        approx_eq(u.get(0), 62.0, 1e-15);
+        approx_eq(u.get(1), 71.5, 1e-15);
+        approx_eq(u.get(2), 81.0, 1e-15);
     }
 }

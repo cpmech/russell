@@ -29,7 +29,7 @@ impl Tensor1 {
         }
         #[cfg(not(feature = "heap"))]
         {
-            Tensor2 { vec: [0.0, 0.0, 0.0] }
+            Tensor1 { vec: [0.0, 0.0, 0.0] }
         }
     }
 

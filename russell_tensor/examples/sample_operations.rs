@@ -1,7 +1,10 @@
 use russell_lab::{approx_eq, mat_approx_eq};
-use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_ddot_t2, t2_dot_t2};
+use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_add, t2_dot_t2};
 
 fn main() -> Result<(), StrError> {
+    // Select the representation
+    let rep = Rep::General;
+
     // Allocate a Tensor2
     let ten = Tensor2::from_std_matrix(
         &[
@@ -9,7 +12,7 @@ fn main() -> Result<(), StrError> {
             [6.0, 2.0, 4.0], // 1
             [8.0, 4.0, 2.0], // 2
         ],
-        Rep::General,
+        rep,
     )
     .unwrap();
     let mat_ten = ten.as_std_matrix();
@@ -17,8 +20,8 @@ fn main() -> Result<(), StrError> {
 
     // Determinant, transpose, and inverse
     let det = ten.determinant();
-    let mut tra = Tensor2::new(ten.rep());
-    let mut inv = Tensor2::new(ten.rep());
+    let mut tra = Tensor2::new(rep);
+    let mut inv = Tensor2::new(rep);
     ten.transpose(&mut tra);
     ten.inverse(&mut inv, 1e-15);
     let mat_tra = tra.as_std_matrix();
@@ -32,16 +35,24 @@ fn main() -> Result<(), StrError> {
     mat_approx_eq(&mat_inv, &correct_inv, 1e-14);
     mat_approx_eq(&mat_tra, &correct_tra, 1e-14);
 
+    // Check the inverse
+    let mut inv_dot_ten = Tensor2::new(rep);
+    t2_dot_t2(&mut inv_dot_ten, &inv, &ten);
+    let mat_inv_dot_ten = inv_dot_ten.as_std_matrix();
+    println!("inv_dot_ten =\n{:.2}", mat_inv_dot_ten);
+    let identity = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+    mat_approx_eq(&mat_inv_dot_ten, &identity, 1e-14);
+
     // Squared tensor
-    let mut ten2 = Tensor2::new(ten.rep());
+    let mut ten2 = Tensor2::new(rep);
     ten.squared(&mut ten2);
     let mat_ten2 = ten2.as_std_matrix();
     println!("ten2 =\n{:.2}", mat_ten2);
     let correct_ten2 = [[44.0, 20.0, 20.0], [68.0, 32.0, 28.0], [72.0, 32.0, 36.0]];
     mat_approx_eq(&mat_ten2, &correct_ten2, 1e-12);
 
-    // Tensor to the power 3
-    let mut ten3 = Tensor2::new(ten.rep());
+    // Tensor to the cubic power
+    let mut ten3 = Tensor2::new(rep);
     t2_dot_t2(&mut ten3, &ten, &ten2);
     let mat_ten3 = ten3.as_std_matrix();
     println!("ten3 =\n{:.2}", mat_ten3);
@@ -72,6 +83,15 @@ fn main() -> Result<(), StrError> {
     // Calculate the axial vector
     let omega = Tensor1::from(&[-skw.get_std(1, 2), skw.get_std(0, 2), -skw.get_std(0, 1)]);
     println!("omega = \n{:.2}", omega);
+
+    // Verify: det(I + W) = 1 + om . om
+    let ii = Tensor2::identity(rep);
+    let mut ii_plus_skw = Tensor2::new(rep);
+    t2_add(&mut ii_plus_skw, 1.0, &ii, 1.0, &skw);
+    let det_ii_plus_skw = ii_plus_skw.determinant();
+    let om_dot_om_plus_1 = omega.dot(&omega) + 1.0;
+    println!("det(I + W) = {} ({})", det_ii_plus_skw, om_dot_om_plus_1);
+    approx_eq(det_ii_plus_skw, om_dot_om_plus_1, 1e-15);
 
     // Levi-Civita (permutation) tensor
     let perm = Tensor3::constant_permutation(Rep::General, true)?;

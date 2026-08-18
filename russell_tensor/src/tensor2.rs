@@ -2210,7 +2210,7 @@ impl fmt::Display for Tensor2 {
 mod tests {
     use super::Tensor2;
     use crate::{IDENTITY2, Rep, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2};
-    use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
 
     fn kelvin_vector(tt: &Tensor2) -> Vec<f64> {
         let mut v = vec![0.0; tt.dim()];

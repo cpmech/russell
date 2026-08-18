@@ -290,6 +290,7 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
     aux.aa.use_loops = d2.use_loops;
     t2_qsd_t2(&mut aux.aa, 0.5, &mut aux.s, &aux.ii); // aa := 0.5 qsd(s,I)
     t2_dyad_t2(&mut aux.bb, -TWO_BY_3, &aux.ii, &aux.s); // bb := -⅔ I ⊗ s
+    #[cfg(not(feature = "heap"))]
     let dim = d2.dim();
     #[cfg(feature = "heap")]
     {
@@ -548,6 +549,7 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj2, 1.0, &aux.d1_jj2, &aux.d1_jj2);
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj3, 1.0, &aux.d1_jj2, &aux.d1_jj3);
         t2_dyad_t2(&mut aux.d1_jj3_dy_d1_jj2, 1.0, &aux.d1_jj3, &aux.d1_jj2);
+        #[cfg(not(feature = "heap"))]
         let dim = d2.dim();
         #[cfg(feature = "heap")]
         {

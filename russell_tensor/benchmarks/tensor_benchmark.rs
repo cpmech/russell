@@ -1,39 +1,23 @@
-//! Benchmarks comparing the stack-allocated (`russell_tensor`) and heap-allocated
-//! (`russell_tensor_heap`) implementations of selected tensor functions.
+//! Benchmarks for the `russell_tensor` crate.
 //!
-//! The two crates expose the same function names with the same signatures, but
-//! differ in their internal storage:
+//! The `heap` cargo feature selects between the stack-allocated and
+//! heap-allocated internal storage at compile time:
 //!
-//! * `russell_tensor` — `Tensor2.vec: [f64; 9]`, `Tensor4.mat: [[f64; 9]; 9]` (stack)
-//! * `russell_tensor_heap` — `Tensor2.vec: Vector`, `Tensor4.mat: Matrix` (heap)
+//! * without `--features heap` — `Tensor2.vec: [f64; 9]`, `Tensor4.mat: [[f64; 9]; 9]` (stack)
+//! * with `--features heap` — `Tensor2.vec: Vector`, `Tensor4.mat: Matrix` (heap)
 //!
-//! Each function is benchmarked in two modes, controlled by the `use_loops` flag:
+//! Run the benchmark twice (with and without `--features heap`) to compare the
+//! two storage layouts.
+//!
+//! Each function is also benchmarked in two modes, controlled by the `use_loops` flag:
 //!
 //! * `unrolled` — `use_loops = false` (the default, production path)
-//! * `loops` — `use_loops = true` (loop-based, uses `get`/`set` accessors)
+//! * `loops` — `use_loops = true` (loop-based, uses the `get`/`set` accessors)
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use russell_lab::{Matrix, mat_mat_mul};
-
-// stack-allocated (russell_tensor)
-use russell_tensor::{
-    AuxDeriv2InvariantJ3 as StackAux, AuxDeriv2InvariantLode as StackAuxLode, Rep as StackRep, Tensor2 as StackTensor2,
-    Tensor4 as StackTensor4,
-};
-use russell_tensor::{
-    deriv2_invariant_jj3 as stack_deriv2_invariant_jj3, deriv2_invariant_lode as stack_deriv2_invariant_lode,
-    t2_dot_t2 as stack_t2_dot_t2, t2_qsd_t2 as stack_t2_qsd_t2, t2_ssd as stack_t2_ssd,
-};
-
-// heap-allocated (russell_tensor_heap)
-use russell_tensor_heap::{
-    AuxDeriv2InvariantJ3 as HeapAux, AuxDeriv2InvariantLode as HeapAuxLode, Rep as HeapRep, Tensor2 as HeapTensor2,
-    Tensor4 as HeapTensor4,
-};
-use russell_tensor_heap::{
-    deriv2_invariant_jj3 as heap_deriv2_invariant_jj3, deriv2_invariant_lode as heap_deriv2_invariant_lode,
-    t2_dot_t2 as heap_t2_dot_t2, t2_qsd_t2 as heap_t2_qsd_t2, t2_ssd as heap_t2_ssd,
-};
+use russell_tensor::{AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, Rep, Tensor2, Tensor4};
+use russell_tensor::{deriv2_invariant_jj3, deriv2_invariant_lode, t2_dot_t2, t2_qsd_t2, t2_ssd};
 
 /// Fixed symmetric 3×3 matrix used to build the input tensors
 const SYMMETRIC: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [2.0, 4.0, 5.0], [3.0, 5.0, 6.0]];
@@ -46,200 +30,112 @@ const GENERAL_B: [[f64; 3]; 3] = [[0.9, 0.8, 0.7], [0.6, 0.5, 0.4], [0.3, 0.2, 0
 fn bench_t2_dot_t2(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("t2_dot_t2");
 
-    group.bench_with_input(BenchmarkId::new("stack", "direct"), &(), |b, _| {
-        let aa = StackTensor2::from_std_matrix(&GENERAL_A, StackRep::General).unwrap();
-        let bb = StackTensor2::from_std_matrix(&GENERAL_B, StackRep::General).unwrap();
-        let mut cc = StackTensor2::new(StackRep::General);
+    group.bench_with_input(BenchmarkId::new("direct", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&GENERAL_A, Rep::General).unwrap();
+        let bb = Tensor2::from_std_matrix(&GENERAL_B, Rep::General).unwrap();
+        let mut cc = Tensor2::new(Rep::General);
         b.iter(|| {
-            stack_t2_dot_t2(&mut cc, &aa, &bb);
-            std::hint::black_box(cc.vector());
+            t2_dot_t2(&mut cc, &aa, &bb);
+            std::hint::black_box(cc.get(0));
         });
     });
 
-    group.bench_with_input(BenchmarkId::new("stack", "standard"), &(), |b, _| {
-        let aa = StackTensor2::from_std_matrix(&GENERAL_A, StackRep::General).unwrap();
-        let bb = StackTensor2::from_std_matrix(&GENERAL_B, StackRep::General).unwrap();
-        let mut cc = StackTensor2::new(StackRep::General);
+    group.bench_with_input(BenchmarkId::new("standard", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&GENERAL_A, Rep::General).unwrap();
+        let bb = Tensor2::from_std_matrix(&GENERAL_B, Rep::General).unwrap();
+        let mut cc = Tensor2::new(Rep::General);
         b.iter(|| {
             let a_mat = aa.as_std_matrix();
             let b_mat = bb.as_std_matrix();
             let mut c_mat = Matrix::new(3, 3);
             mat_mat_mul(&mut c_mat, 1.0, &a_mat, &b_mat, 0.0).unwrap();
             cc.set_std_matrix(&c_mat).unwrap();
-            std::hint::black_box(cc.vector());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "direct"), &(), |b, _| {
-        let aa = HeapTensor2::from_std_matrix(&GENERAL_A, HeapRep::General).unwrap();
-        let bb = HeapTensor2::from_std_matrix(&GENERAL_B, HeapRep::General).unwrap();
-        let mut cc = HeapTensor2::new(HeapRep::General);
-        b.iter(|| {
-            heap_t2_dot_t2(&mut cc, &aa, &bb);
-            std::hint::black_box(cc.vector());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "standard"), &(), |b, _| {
-        let aa = HeapTensor2::from_std_matrix(&GENERAL_A, HeapRep::General).unwrap();
-        let bb = HeapTensor2::from_std_matrix(&GENERAL_B, HeapRep::General).unwrap();
-        let mut cc = HeapTensor2::new(HeapRep::General);
-        b.iter(|| {
-            let a_mat = aa.as_std_matrix();
-            let b_mat = bb.as_std_matrix();
-            let mut c_mat = Matrix::new(3, 3);
-            mat_mat_mul(&mut c_mat, 1.0, &a_mat, &b_mat, 0.0).unwrap();
-            cc.set_std_matrix(&c_mat).unwrap();
-            std::hint::black_box(cc.vector());
+            std::hint::black_box(cc.get(0));
         });
     });
 
     group.finish();
 }
 
-/// Benchmarks `t2_ssd` (self-sum-dyadic) for the stack and heap versions
+/// Benchmarks `t2_ssd` (self-sum-dyadic)
 fn bench_t2_ssd(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("t2_ssd");
 
-    group.bench_with_input(BenchmarkId::new("stack", "unrolled"), &(), |b, _| {
-        let aa = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut dd = StackTensor4::new(StackRep::Symmetric);
+    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         dd.use_loops = false;
         b.iter(|| {
-            stack_t2_ssd(&mut dd, 1.0, &aa);
-            std::hint::black_box(dd.matrix());
+            t2_ssd(&mut dd, 1.0, &aa);
+            std::hint::black_box(dd.get(0, 0));
         });
     });
 
-    group.bench_with_input(BenchmarkId::new("stack", "loops"), &(), |b, _| {
-        let aa = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut dd = StackTensor4::new(StackRep::Symmetric);
+    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         dd.use_loops = true;
         b.iter(|| {
-            stack_t2_ssd(&mut dd, 1.0, &aa);
-            std::hint::black_box(dd.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut dd = HeapTensor4::new(HeapRep::Symmetric);
-        dd.use_loops = false;
-        b.iter(|| {
-            heap_t2_ssd(&mut dd, 1.0, &aa);
-            std::hint::black_box(dd.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut dd = HeapTensor4::new(HeapRep::Symmetric);
-        dd.use_loops = true;
-        b.iter(|| {
-            heap_t2_ssd(&mut dd, 1.0, &aa);
-            std::hint::black_box(dd.matrix());
+            t2_ssd(&mut dd, 1.0, &aa);
+            std::hint::black_box(dd.get(0, 0));
         });
     });
 
     group.finish();
 }
 
-/// Benchmarks `t2_qsd_t2` (quartic-sum-dyadic) for the stack and heap versions
+/// Benchmarks `t2_qsd_t2` (quartic-sum-dyadic)
 fn bench_t2_qsd_t2(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("t2_qsd_t2");
 
-    group.bench_with_input(BenchmarkId::new("stack", "unrolled"), &(), |b, _| {
-        let aa = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let bb = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut dd = StackTensor4::new(StackRep::Symmetric);
+    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let bb = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         dd.use_loops = false;
         b.iter(|| {
-            stack_t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(dd.matrix());
+            t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
+            std::hint::black_box(dd.get(0, 0));
         });
     });
 
-    group.bench_with_input(BenchmarkId::new("stack", "loops"), &(), |b, _| {
-        let aa = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let bb = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut dd = StackTensor4::new(StackRep::Symmetric);
+    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let bb = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut dd = Tensor4::new(Rep::Symmetric);
         dd.use_loops = true;
         b.iter(|| {
-            stack_t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(dd.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let bb = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut dd = HeapTensor4::new(HeapRep::Symmetric);
-        dd.use_loops = false;
-        b.iter(|| {
-            heap_t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(dd.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let aa = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let bb = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut dd = HeapTensor4::new(HeapRep::Symmetric);
-        dd.use_loops = true;
-        b.iter(|| {
-            heap_t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(dd.matrix());
+            t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
+            std::hint::black_box(dd.get(0, 0));
         });
     });
 
     group.finish();
 }
 
-/// Benchmarks `deriv2_invariant_jj3` (second derivative of J3) for the stack and heap versions
+/// Benchmarks `deriv2_invariant_jj3` (second derivative of J3)
 fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("deriv2_invariant_jj3");
 
-    group.bench_with_input(BenchmarkId::new("stack", "unrolled"), &(), |b, _| {
-        let sigma = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut d2 = StackTensor4::new(StackRep::Symmetric);
-        let mut aux = StackAux::new();
+    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
+        let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Rep::Symmetric);
+        let mut aux = AuxDeriv2InvariantJ3::new();
         d2.use_loops = false;
         b.iter(|| {
-            stack_deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
+            deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+            std::hint::black_box(d2.get(0, 0));
         });
     });
 
-    group.bench_with_input(BenchmarkId::new("stack", "loops"), &(), |b, _| {
-        let sigma = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut d2 = StackTensor4::new(StackRep::Symmetric);
-        let mut aux = StackAux::new();
+    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
+        let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Rep::Symmetric);
+        let mut aux = AuxDeriv2InvariantJ3::new();
         d2.use_loops = true;
         b.iter(|| {
-            stack_deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let sigma = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut d2 = HeapTensor4::new(HeapRep::Symmetric);
-        let mut aux = HeapAux::new();
-        d2.use_loops = false;
-        b.iter(|| {
-            heap_deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let sigma = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut d2 = HeapTensor4::new(HeapRep::Symmetric);
-        let mut aux = HeapAux::new();
-        d2.use_loops = true;
-        b.iter(|| {
-            heap_deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
+            deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+            std::hint::black_box(d2.get(0, 0));
         });
     });
 
@@ -250,47 +146,25 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
 fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("deriv2_invariant_lode");
 
-    group.bench_with_input(BenchmarkId::new("stack", "unrolled"), &(), |b, _| {
-        let sigma = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut d2 = StackTensor4::new(StackRep::Symmetric);
-        let mut aux = StackAuxLode::new();
+    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
+        let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Rep::Symmetric);
+        let mut aux = AuxDeriv2InvariantLode::new();
         d2.use_loops = false;
         b.iter(|| {
-            stack_deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
+            deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
+            std::hint::black_box(d2.get(0, 0));
         });
     });
 
-    group.bench_with_input(BenchmarkId::new("stack", "loops"), &(), |b, _| {
-        let sigma = StackTensor2::from_std_matrix(&SYMMETRIC, StackRep::Symmetric).unwrap();
-        let mut d2 = StackTensor4::new(StackRep::Symmetric);
-        let mut aux = StackAuxLode::new();
+    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
+        let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
+        let mut d2 = Tensor4::new(Rep::Symmetric);
+        let mut aux = AuxDeriv2InvariantLode::new();
         d2.use_loops = true;
         b.iter(|| {
-            stack_deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "unrolled"), &(), |b, _| {
-        let sigma = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut d2 = HeapTensor4::new(HeapRep::Symmetric);
-        let mut aux = HeapAuxLode::new();
-        d2.use_loops = false;
-        b.iter(|| {
-            heap_deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("heap", "loops"), &(), |b, _| {
-        let sigma = HeapTensor2::from_std_matrix(&SYMMETRIC, HeapRep::Symmetric).unwrap();
-        let mut d2 = HeapTensor4::new(HeapRep::Symmetric);
-        let mut aux = HeapAuxLode::new();
-        d2.use_loops = true;
-        b.iter(|| {
-            heap_deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
-            std::hint::black_box(d2.matrix());
+            deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
+            std::hint::black_box(d2.get(0, 0));
         });
     });
 

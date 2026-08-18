@@ -1,16 +1,18 @@
 # Russell Tensor — Benchmarks
 
-This directory contains [Criterion](https://github.com/bheisler/criterion.rs) benchmarks that
-compare the **stack-allocated** (`russell_tensor`) and **heap-allocated**
-(`russell_tensor_heap`) implementations of selected tensor functions.
+This directory contains [Criterion](https://github.com/bheisler/criterion.rs) benchmarks for the
+`russell_tensor` crate.
 
-The two crates expose the same function names with the same signatures, but differ in their
-internal storage:
+The crate has a `heap` cargo feature that selects between two internal storage layouts at compile
+time:
 
-| crate                 | `Tensor2` storage | `Tensor4` storage         |
-| --------------------- | ----------------- | ------------------------- |
-| `russell_tensor`      | `vec: [f64; 9]`   | `mat: [[f64; 9]; 9]`      |
-| `russell_tensor_heap` | `vec: Vector`     | `mat: Matrix` (col-major) |
+| `Tensor2` storage | `Tensor4` storage         | selected by          |
+| ----------------- | ------------------------- | -------------------- |
+| `vec: [f64; 9]`   | `mat: [[f64; 9]; 9]`      | (no `heap` feature)  |
+| `vec: Vector`     | `mat: Matrix` (col-major) | `--features heap`    |
+
+To compare the **stack** and **heap** layouts, run the benchmark twice (once with and once without
+`--features heap`) and compare the results.
 
 ## System information
 
@@ -31,11 +33,13 @@ Each function is benchmarked in two modes, controlled by the `use_loops` flag:
 
 | function               | description                                       |
 | ---------------------- | ------------------------------------------------- |
+| `t2_dot_t2`            | tensor multiplication (direct Kelvin formula vs standard matrix multiply) |
 | `t2_ssd`               | self-sum-dyadic operation `D = s (A ⊗ A + A ⊗ A̅)` |
 | `t2_qsd_t2`            | quartic-sum-dyadic operation                      |
 | `deriv2_invariant_jj3` | second derivative of the J3 invariant             |
+| `deriv2_invariant_lode`| second derivative of the Lode invariant           |
 
-All benchmarks use a fixed symmetric 3×3 input tensor.
+All benchmarks use fixed 3×3 input tensors.
 
 ## Results
 
@@ -64,6 +68,10 @@ Median times (single machine, Intel MKL):
 Run the benchmark (from the workspace root):
 
 ```bash
+# stack (MKL, no heap feature)
+cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark
+
+# heap
 cargo bench -p russell_tensor --all-features --bench tensor_benchmark
 ```
 
@@ -73,4 +81,5 @@ Filter to a single function, e.g. `t2_ssd`:
 cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- t2_ssd
 ```
 
-> **Note:** `--all-features` selects Intel MKL (when available) instead of OpenBLAS.
+> **Note:** `--all-features` enables both Intel MKL (when available) and the `heap` feature. To
+> benchmark the stack layout, use `--features intel_mkl` instead.

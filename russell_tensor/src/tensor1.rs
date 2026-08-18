@@ -1,4 +1,5 @@
 use russell_lab::AsArray1D;
+
 #[cfg(feature = "heap")]
 use russell_lab::Vector;
 
@@ -118,6 +119,13 @@ impl Tensor1 {
 #[cfg(test)]
 mod tests {
     use super::Tensor1;
+
+    #[test]
+    fn new_set_get_work() {
+        let mut u = Tensor1::new();
+        u.set(0, 123.0);
+        assert_eq!(u.get(0), 123.0);
+    }
 
     #[test]
     fn cross_and_dot_work() {

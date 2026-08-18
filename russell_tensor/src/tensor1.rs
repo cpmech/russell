@@ -1,4 +1,6 @@
 use russell_lab::AsArray1D;
+use std::cmp;
+use std::fmt::{self, Write};
 
 #[cfg(feature = "heap")]
 use russell_lab::Vector;
@@ -111,6 +113,41 @@ impl Tensor1 {
     /// ```
     pub fn dot(&self, other: &Tensor1) -> f64 {
         self.vec[0] * other.vec[0] + self.vec[1] * other.vec[1] + self.vec[2] * other.vec[2]
+    }
+}
+
+impl fmt::Display for Tensor1 {
+    /// Generates a string representation of the Kelvin vector associated with this Tensor1
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // find largest width
+        let mut width = 0;
+        let mut buf = String::new();
+        for m in 0..3 {
+            let val = self.get(m);
+            match f.precision() {
+                Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                None => write!(&mut buf, "{}", val).unwrap(),
+            }
+            width = cmp::max(buf.chars().count(), width);
+            buf.clear();
+        }
+        // draw vector
+        width += 1;
+        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        for m in 0..3 {
+            if m > 0 {
+                write!(f, " │\n").unwrap();
+            }
+            write!(f, "│").unwrap();
+            let val = self.get(m);
+            match f.precision() {
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                None => write!(f, "{:>1$}", val, width).unwrap(),
+            }
+        }
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width + 1).unwrap();
+        Ok(())
     }
 }
 

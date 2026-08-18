@@ -57,11 +57,11 @@ use std::fmt::{self, Write};
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
-///   their names (e.g., [`Tensor3::from_std_matrix`], [`Tensor3::get_std`],
-///   [`Tensor3::as_std_matrix`], [`Tensor3::sym_set_std`]).
+///   their names (e.g., [Tensor3::from_std_matrix], [Tensor3::get_std],
+///   [Tensor3::as_std_matrix], [Tensor3::sym_set_std]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor3::get`], [`Tensor3::set`], [`Tensor3::set_tensor`],
-///   [`Tensor3::update`]).
+///   (e.g., [Tensor3::get], [Tensor3::set], [Tensor3::set_tensor],
+///   [Tensor3::update]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///

@@ -20,11 +20,11 @@ use russell_lab::small_mat_inv;
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
-///   their names (e.g., [`Tensor4::from_std_matrix`], [`Tensor4::get_std`],
-///   [`Tensor4::as_std_matrix`], [`Tensor4::sym_set_std`]).
+///   their names (e.g., [Tensor4::from_std_matrix], [Tensor4::get_std],
+///   [Tensor4::as_std_matrix], [Tensor4::sym_set_std]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor4::get`], [`Tensor4::set`], [`Tensor4::set_tensor`],
-///   [`Tensor4::update`]).
+///   (e.g., [Tensor4::get], [Tensor4::set], [Tensor4::set_tensor],
+///   [Tensor4::update]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///

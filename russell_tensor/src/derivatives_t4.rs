@@ -24,11 +24,11 @@ use russell_lab::{small_mat_add, small_mat_mat_mul, small_mat_update};
 ///  ∂Aₖₗ
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * `dai_da` -- the derivative of the inverse tensor
 ///
-/// ## Input
+/// # Input
 ///
 /// * `ai` -- the pre-computed inverse tensor
 /// * `a` -- the defining tensor
@@ -60,11 +60,11 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) {
 ///  ∂Aₖₗ      2
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * `dai_da` -- the derivative of the inverse tensor; it must be [Rep::Symmetric]
 ///
-/// ## Input
+/// # Input
 ///
 /// * `ai` -- the pre-computed inverse tensor; it must be symmetric
 ///
@@ -96,12 +96,12 @@ pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) {
 ///
 /// **Note:** Two temporary Tensor2 and a Tensor4 are allocated in this function.
 ///
-/// ## Output
+/// # Output
 ///
 /// * `da2_da` -- the derivative of the squared tensor; it must be [Rep::General]
 /// * `ii` -- second-order identity tensor; must have the same [Rep] as tensor `a`
 ///
-/// ## Input
+/// # Input
 ///
 /// * `a` -- the second-order tensor; must have the same [Rep] as tensor `ii`
 ///
@@ -154,12 +154,12 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2)
 ///  ∂Aₖₗ   2
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * `da2_da` -- the derivative of the squared tensor; it must be [Rep::Symmetric]
 /// * `ii` -- second-order identity tensor; must have the same [Rep] as tensor `a`
 ///
-/// ## Input
+/// # Input
 ///
 /// * `a` -- the second-order tensor; it must be symmetric
 ///
@@ -187,11 +187,11 @@ pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tens
 /// dσ ⊗ dσ
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * `d2` -- the second derivative of J2; it must be [Rep::Symmetric]
 ///
-/// ## Input
+/// # Input
 ///
 /// * `sigma` -- the given tensor; it must be symmetric
 ///
@@ -265,11 +265,11 @@ impl AuxDeriv2InvariantJ3 {
 /// (σ must be symmetric)
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * `d2` -- the second derivative of J3; it must be [Rep::Symmetric]
 ///
-/// ## Input
+/// # Input
 ///
 /// * `sigma` -- the given tensor; it must be symmetric
 ///
@@ -345,12 +345,12 @@ impl AuxDeriv2InvariantSigmaT {
 ///     2 pow(J2,0.5)       4 pow(J2,1.5)
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns None.
 /// * `d2` -- the second derivative of `l`; it must be [Rep::Symmetric]
 ///
-/// ## Input
+/// # Input
 ///
 /// * `sigma` -- the given tensor; it must be symmetric
 ///
@@ -404,12 +404,12 @@ pub fn deriv2_invariant_sigma_t(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantSi
 ///     2 pow(J2,0.5)       4 pow(J2,1.5)
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns None.
 /// * `d2` -- the second derivative of `l`; it must be [Rep::Symmetric]
 ///
-/// ## Input
+/// # Input
 ///
 /// * `sigma` -- the given tensor; it must be symmetric
 ///
@@ -510,12 +510,12 @@ impl AuxDeriv2InvariantLode {
 ///     2 pow(J2,1.5)       4 pow(J2,2.5)       8 pow(J2,3.5)
 /// ```
 ///
-/// ## Output
+/// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns None.
 /// * `d2` -- the second derivative of `l`; it must be [Rep::Symmetric]
 ///
-/// ## Input
+/// # Input
 ///
 /// * `sigma` -- the given tensor; it must be symmetric
 ///

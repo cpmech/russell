@@ -19,11 +19,11 @@ use russell_lab::Vector;
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
-///   their names (e.g., [`Tensor2::set_std_matrix`], [`Tensor2::get_std`],
-///   [`Tensor2::as_std_matrix`], [`Tensor2::sym_set_std`]).
+///   their names (e.g., [Tensor2::set_std_matrix], [Tensor2::get_std],
+///   [Tensor2::as_std_matrix], [Tensor2::sym_set_std]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor2::get`], [`Tensor2::set`], [`Tensor2::set_vector`],
-///   [`Tensor2::set_tensor`], [`Tensor2::update`]).
+///   (e.g., [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
+///   [Tensor2::set_tensor], [Tensor2::update]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///
@@ -1189,7 +1189,7 @@ impl Tensor2 {
     /// [Aᵀ]ᵢⱼ = [A]ⱼᵢ
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `at` -- a Tensor2 to hold the transpose tensor; with the same [Rep] as this tensor
     ///
@@ -1358,7 +1358,7 @@ impl Tensor2 {
     /// A² = A · A
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `a2` -- a Tensor2 to hold the squared tensor; with the same [Rep] as this tensor
     ///
@@ -1527,7 +1527,7 @@ impl Tensor2 {
     /// dev(σ) = σ - ⅓ tr(σ) I
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `dev` -- a Tensor2 to hold the deviator tensor; with the same [Rep] as this tensor
     ///

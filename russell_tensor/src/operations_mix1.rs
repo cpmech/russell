@@ -74,12 +74,12 @@ use crate::Rep; // for documentation
 /// ```
 #[inline]
 pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    let dim = dd.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    let dim = dd.dim();
     for m in 0..dim {
         for n in 0..dim {
-            dd.mat[m][n] = alpha * a.vec[m] * b.vec[n];
+            dd.set(m, n, alpha * a.vec[m] * b.vec[n]);
         }
     }
 }
@@ -161,12 +161,12 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 /// ```
 #[inline]
 pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    let dim = dd.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    let dim = dd.dim();
     for m in 0..dim {
         for n in 0..dim {
-            dd.mat[m][n] += alpha * a.vec[m] * b.vec[n];
+            dd.set(m, n, dd.get(m, n) + alpha * a.vec[m] * b.vec[n]);
         }
     }
 }
@@ -244,13 +244,13 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 /// }
 /// ```
 pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    let dim = b.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    let dim = b.dim();
     for m in 0..dim {
         let mut s = 0.0;
         for n in 0..dim {
-            s += dd.mat[m][n] * a.vec[n];
+            s += dd.get(m, n) * a.vec[n];
         }
         b.vec[m] = alpha * s;
     }
@@ -336,13 +336,13 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 /// }
 /// ```
 pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2, beta: f64) {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    let dim = b.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    let dim = b.dim();
     for m in 0..dim {
         let mut s = 0.0;
         for n in 0..dim {
-            s += dd.mat[m][n] * a.vec[n];
+            s += dd.get(m, n) * a.vec[n];
         }
         b.vec[m] = alpha * s + beta * b.vec[m];
     }
@@ -416,13 +416,13 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 /// }
 /// ```
 pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    let dim = b.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    let dim = b.dim();
     for n in 0..dim {
         let mut s = 0.0;
         for m in 0..dim {
-            s += a.vec[m] * dd.mat[m][n];
+            s += a.vec[m] * dd.get(m, n);
         }
         b.vec[n] = alpha * s;
     }
@@ -466,13 +466,13 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///
 /// A panic will occur if the tensors have different [Rep]
 pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    let dim = a.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    let dim = a.dim();
     let mut s = 0.0;
     for m in 0..dim {
         for n in 0..dim {
-            s += a.vec[m] * dd.mat[m][n] * b.vec[n];
+            s += a.vec[m] * dd.get(m, n) * b.vec[n];
         }
     }
     s
@@ -518,16 +518,20 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 ///
 /// A panic will occur if the tensors have different [Rep]
 pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, beta: f64, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(a.rep, dd.rep);
-    assert_eq!(b.rep, dd.rep);
-    assert_eq!(ee.rep, dd.rep);
-    let dim = a.dim;
+    assert_eq!(a.rep(), dd.rep());
+    assert_eq!(b.rep(), dd.rep());
+    assert_eq!(ee.rep(), dd.rep());
+    let dim = a.dim();
     for m in 0..dim {
         for n in 0..dim {
-            ee.mat[m][n] = alpha * dd.mat[m][n];
+            ee.set(m, n, alpha * dd.get(m, n));
             for p in 0..dim {
                 for q in 0..dim {
-                    ee.mat[m][n] += beta * dd.mat[m][p] * a.vec[p] * b.vec[q] * dd.mat[q][n];
+                    ee.set(
+                        m,
+                        n,
+                        ee.get(m, n) + beta * dd.get(m, p) * a.vec[p] * b.vec[q] * dd.get(q, n),
+                    );
                 }
             }
         }

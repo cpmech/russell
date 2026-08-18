@@ -1,5 +1,4 @@
 use crate::{Rep, StrError, Tensor2, Tensor4, t4_ddot_t2};
-use russell_lab::small_mat_inv;
 
 /// Implements the linear elasticity equations for small-strain problems
 pub struct LinElasticity {

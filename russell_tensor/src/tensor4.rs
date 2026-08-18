@@ -132,13 +132,13 @@ pub struct Tensor4 {
     ///
     /// Heap version => dynamically allocated memory
     #[cfg(feature = "heap")]
-    mat: Matrix,
+    pub(crate) mat: Matrix,
 
     /// Holds the components in Kelvin basis as matrix (stack).
     ///
     /// This array may use more data than necessary in symmetric cases
     #[cfg(not(feature = "heap"))]
-    mat: [[f64; 9]; 9],
+    pub(crate) mat: [[f64; 9]; 9],
 
     /// Holds the Rep (representation) enum
     rep: Rep,
@@ -279,7 +279,7 @@ impl Tensor4 {
     ///
     /// let mut dd = Tensor4::new(Rep::General);
     /// dd.set(0, 0, 123.0);
-    /// assert_eq!(dd.matrix()[0][0], 123.0);
+    /// assert_eq!(dd.get(0, 0), 123.0);
     /// ```
     #[inline]
     pub fn set(&mut self, m: usize, n: usize, value: f64) {
@@ -324,11 +324,11 @@ impl Tensor4 {
                                     }
                                     continue;
                                 } else if m < 3 && n < 3 {
-                                    self.mat.set(m, n, inp[i][j][k][l]);
+                                    self.set(m, n, inp[i][j][k][l]);
                                 } else if m > 2 && n > 2 {
-                                    self.mat.set(m, n, 2.0 * inp[i][j][k][l]);
+                                    self.set(m, n, 2.0 * inp[i][j][k][l]);
                                 } else {
-                                    self.mat.set(m, n, SQRT_2 * inp[i][j][k][l]);
+                                    self.set(m, n, SQRT_2 * inp[i][j][k][l]);
                                 }
                             }
                         }
@@ -344,27 +344,27 @@ impl Tensor4 {
                             // ** i == j **
                             // 1
                             if i == j && k == l {
-                                self.mat.set(m, n, inp[i][j][k][l]);
+                                self.set(m, n, inp[i][j][k][l]);
                             // 2
                             } else if i == j && k < l {
-                                self.mat.set(m, n, (inp[i][j][k][l] + inp[i][j][l][k]) / SQRT_2);
+                                self.set(m, n, (inp[i][j][k][l] + inp[i][j][l][k]) / SQRT_2);
                             // 3
                             } else if i == j && k > l {
-                                self.mat.set(m, n, (inp[i][j][l][k] - inp[i][j][k][l]) / SQRT_2);
+                                self.set(m, n, (inp[i][j][l][k] - inp[i][j][k][l]) / SQRT_2);
                             // ** i < j **
                             // 4
                             } else if i < j && k == l {
-                                self.mat.set(m, n, (inp[i][j][k][l] + inp[j][i][k][l]) / SQRT_2);
+                                self.set(m, n, (inp[i][j][k][l] + inp[j][i][k][l]) / SQRT_2);
                             // 5
                             } else if i < j && k < l {
-                                self.mat.set(
+                                self.set(
                                     m,
                                     n,
                                     (inp[i][j][k][l] + inp[i][j][l][k] + inp[j][i][k][l] + inp[j][i][l][k]) / 2.0,
                                 );
                             // 6
                             } else if i < j && k > l {
-                                self.mat.set(
+                                self.set(
                                     m,
                                     n,
                                     (inp[i][j][l][k] - inp[i][j][k][l] + inp[j][i][l][k] - inp[j][i][k][l]) / 2.0,
@@ -372,17 +372,17 @@ impl Tensor4 {
                             // ** i > j **
                             // 7
                             } else if i > j && k == l {
-                                self.mat.set(m, n, (inp[j][i][k][l] - inp[i][j][k][l]) / SQRT_2);
+                                self.set(m, n, (inp[j][i][k][l] - inp[i][j][k][l]) / SQRT_2);
                             // 8
                             } else if i > j && k < l {
-                                self.mat.set(
+                                self.set(
                                     m,
                                     n,
                                     (inp[j][i][k][l] + inp[j][i][l][k] - inp[i][j][k][l] - inp[i][j][l][k]) / 2.0,
                                 );
                             // 9
                             } else if i > j && k > l {
-                                self.mat.set(
+                                self.set(
                                     m,
                                     n,
                                     (inp[j][i][l][k] - inp[j][i][k][l] - inp[i][j][l][k] + inp[i][j][k][l]) / 2.0,
@@ -439,7 +439,7 @@ impl Tensor4 {
     /// ```
     pub fn from_std_array(inp: &[[[[f64; 3]; 3]; 3]; 3], rep: Rep) -> Result<Self, StrError> {
         let mut res = Tensor4::new(rep);
-        res.set_std_array(inp);
+        res.set_std_array(inp)?;
         Ok(res)
     }
 
@@ -605,7 +605,7 @@ impl Tensor4 {
         S: AsArray2D<'a, f64>,
     {
         let mut res = Tensor4::new(rep);
-        res.set_std_matrix(inp);
+        res.set_std_matrix(inp)?;
         Ok(res)
     }
 
@@ -1045,11 +1045,11 @@ impl Tensor4 {
         assert!(self.rep != Rep::General);
         let (m, n) = IJKL_TO_MN_SYM[i][j][k][l];
         if m < 3 && n < 3 {
-            self.mat.set(m, n, value);
+            self.set(m, n, value);
         } else if m > 2 && n > 2 {
-            self.mat.set(m, n, value * 2.0);
+            self.set(m, n, value * 2.0);
         } else {
-            self.mat.set(m, n, value * SQRT_2);
+            self.set(m, n, value * SQRT_2);
         }
     }
 
@@ -1445,7 +1445,7 @@ impl Tensor4 {
     pub fn set_pp_symdev(&mut self) {
         for m in 0..self.dim {
             for n in 0..self.dim {
-                self.mat.set(m, n, 0.0);
+                self.set(m, n, 0.0);
             }
         }
         self.set(0, 0, TWO_BY_3);

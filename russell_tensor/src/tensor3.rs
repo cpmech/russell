@@ -229,7 +229,7 @@ pub struct Tensor3 {
     ///
     /// Heap version => dynamically allocated memory
     #[cfg(feature = "heap")]
-    mat: Matrix,
+    pub(crate) mat: Matrix,
 
     /// Holds the components in Kelvin basis as matrix (stack).
     ///
@@ -237,7 +237,7 @@ pub struct Tensor3 {
     ///
     /// This array may use more data than necessary in symmetric cases
     #[cfg(not(feature = "heap"))]
-    mat: [[f64; 9]; 9],
+    pub(crate) mat: [[f64; 9]; 9],
 
     /// Holds the Rep (representation) enum
     rep: Rep,
@@ -389,7 +389,7 @@ impl Tensor3 {
     ///
     /// let mut dd = Tensor3::new(Rep::General, true);
     /// dd.set(0, 0, 123.0);
-    /// assert_eq!(dd.matrix()[0][0], 123.0);
+    /// assert_eq!(dd.get(0, 0), 123.0);
     /// ```
     #[inline]
     pub fn set(&mut self, m: usize, n: usize, value: f64) {
@@ -431,9 +431,9 @@ impl Tensor3 {
                                     }
                                     continue;
                                 } else if m < 3 {
-                                    self.mat.set(m, n, inp[i][j][k]);
+                                    self.set(m, n, inp[i][j][k]);
                                 } else {
-                                    self.mat.set(m, n, SQRT_2 * inp[i][j][k]);
+                                    self.set(m, n, SQRT_2 * inp[i][j][k]);
                                 }
                             }
                         }
@@ -446,13 +446,13 @@ impl Tensor3 {
                             let (m, n) = IJK_TO_MN_CASE_A[i][j][k];
                             // ** i == j **
                             if i == j {
-                                self.mat.set(m, n, inp[i][j][k]);
+                                self.set(m, n, inp[i][j][k]);
                             // ** i < j **
                             } else if i < j {
-                                self.mat.set(m, n, (inp[i][j][k] + inp[j][i][k]) / SQRT_2);
+                                self.set(m, n, (inp[i][j][k] + inp[j][i][k]) / SQRT_2);
                             // ** i > j **
                             } else if i > j {
-                                self.mat.set(m, n, (inp[j][i][k] - inp[i][j][k]) / SQRT_2);
+                                self.set(m, n, (inp[j][i][k] - inp[i][j][k]) / SQRT_2);
                             }
                         }
                     }
@@ -479,9 +479,9 @@ impl Tensor3 {
                                     }
                                     continue;
                                 } else if n < 3 {
-                                    self.mat.set(m, n, inp[i][j][k]);
+                                    self.set(m, n, inp[i][j][k]);
                                 } else {
-                                    self.mat.set(m, n, SQRT_2 * inp[i][j][k]);
+                                    self.set(m, n, SQRT_2 * inp[i][j][k]);
                                 }
                             }
                         }
@@ -494,13 +494,13 @@ impl Tensor3 {
                             let (m, n) = IJK_TO_MN_CASE_B[i][j][k];
                             // ** j == k **
                             if j == k {
-                                self.mat.set(m, n, inp[i][j][k]);
+                                self.set(m, n, inp[i][j][k]);
                             // ** j < k **
                             } else if j < k {
-                                self.mat.set(m, n, (inp[i][j][k] + inp[i][k][j]) / SQRT_2);
+                                self.set(m, n, (inp[i][j][k] + inp[i][k][j]) / SQRT_2);
                             // ** j > k **
                             } else if j > k {
-                                self.mat.set(m, n, (inp[i][k][j] - inp[i][j][k]) / SQRT_2);
+                                self.set(m, n, (inp[i][k][j] - inp[i][j][k]) / SQRT_2);
                             }
                         }
                     }
@@ -552,7 +552,7 @@ impl Tensor3 {
     /// ```
     pub fn from_std_array(inp: &[[[f64; 3]; 3]; 3], rep: Rep, case_a: bool) -> Result<Self, StrError> {
         let mut res = Tensor3::new(rep, case_a);
-        res.set_std_array(inp);
+        res.set_std_array(inp)?;
         Ok(res)
     }
 
@@ -732,7 +732,7 @@ impl Tensor3 {
         S: AsArray2D<'a, f64>,
     {
         let mut res = Tensor3::new(rep, case_a);
-        res.set_std_matrix(inp);
+        res.set_std_matrix(inp)?;
         Ok(res)
     }
 
@@ -1170,16 +1170,16 @@ impl Tensor3 {
         if self.case_a {
             let (m, n) = IJK_TO_MN_SYM_CASE_A[i][j][k];
             if m < 3 {
-                self.mat.set(m, n, value);
+                self.set(m, n, value);
             } else {
-                self.mat.set(m, n, value * SQRT_2);
+                self.set(m, n, value * SQRT_2);
             }
         } else {
             let (m, n) = IJK_TO_MN_SYM_CASE_B[i][j][k];
             if n < 3 {
-                self.mat.set(m, n, value);
+                self.set(m, n, value);
             } else {
-                self.mat.set(m, n, value * SQRT_2);
+                self.set(m, n, value * SQRT_2);
             }
         }
     }

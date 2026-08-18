@@ -1,4 +1,9 @@
 use super::Tensor4;
+
+#[cfg(feature = "heap")]
+use russell_lab::{mat_add, mat_mat_mul};
+
+#[cfg(not(feature = "heap"))]
 use russell_lab::{small_mat_add, small_mat_mat_mul};
 
 #[allow(unused)]
@@ -14,9 +19,17 @@ use crate::Rep; // for documentation
 ///
 /// A panic will occur if the tensors have different [Rep]
 pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
-    assert_eq!(b.rep, a.rep);
-    assert_eq!(c.rep, a.rep);
-    small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, c.dim);
+    assert_eq!(b.rep(), a.rep());
+    assert_eq!(c.rep(), a.rep());
+    #[cfg(feature = "heap")]
+    {
+        mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat).unwrap();
+    }
+    #[cfg(not(feature = "heap"))]
+    {
+        let dim = c.dim();
+        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, dim);
+    }
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4
@@ -109,9 +122,17 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// }
 /// ```
 pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
-    assert_eq!(cc.rep, dd.rep);
-    assert_eq!(ee.rep, dd.rep);
-    small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, ee.dim);
+    assert_eq!(cc.rep(), dd.rep());
+    assert_eq!(ee.rep(), dd.rep());
+    #[cfg(feature = "heap")]
+    {
+        mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0).unwrap();
+    }
+    #[cfg(not(feature = "heap"))]
+    {
+        let dim = ee.dim();
+        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, dim);
+    }
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4 with update
@@ -151,9 +172,17 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///
 /// A panic will occur if the tensors have different [Rep]
 pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4, beta: f64) {
-    assert_eq!(cc.rep, dd.rep);
-    assert_eq!(ee.rep, dd.rep);
-    small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, ee.dim);
+    assert_eq!(cc.rep(), dd.rep());
+    assert_eq!(ee.rep(), dd.rep());
+    #[cfg(feature = "heap")]
+    {
+        mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta).unwrap();
+    }
+    #[cfg(not(feature = "heap"))]
+    {
+        let dim = ee.dim();
+        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, dim);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

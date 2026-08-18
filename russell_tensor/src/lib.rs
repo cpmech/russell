@@ -6,10 +6,11 @@
 //!
 //! # Introduction
 //!
-//! This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
+//! This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
 //!
 //! # Capabilities
 //!
+//! * [Tensor1] — first-order tensors (vectors in R3) with operations such as the dot and cross products
 //! * [Tensor2] — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
 //! * [Tensor3] — third-order tensors (minor-symmetric or not)
 //! * [Tensor4] — fourth-order tensors (minor-symmetric or not)
@@ -47,12 +48,22 @@
 //!     [`Tensor4::get_std`], [`Tensor4::as_std_array`], [`Tensor4::to_std_array`],
 //!     [`Tensor4::as_std_matrix`], [`Tensor4::to_std_matrix`], [`Tensor4::sym_set_std`]
 //! * Accessors dealing directly with the **Kelvin components** carry no qualifier:
-//!   * [Tensor2] — [`Tensor2::vector`], [`Tensor2::vector_mut`], [`Tensor2::set_vector`],
+//!   * [Tensor2] — [`Tensor2::get`], [`Tensor2::set`], [`Tensor2::set_vector`],
 //!     [`Tensor2::set_tensor`], [`Tensor2::update`], [`Tensor2::clear`]
-//!   * [Tensor3] — [`Tensor3::matrix`], [`Tensor3::matrix_mut`], [`Tensor3::get_mn`],
-//!     [`Tensor3::set`], [`Tensor3::set_tensor`], [`Tensor3::update`]
-//!   * [Tensor4] — [`Tensor4::matrix`], [`Tensor4::matrix_mut`], [`Tensor4::get_mn`],
-//!     [`Tensor4::set`], [`Tensor4::set_tensor`], [`Tensor4::update`]
+//!   * [Tensor3] — [`Tensor3::get`], [`Tensor3::set`], [`Tensor3::set_tensor`], [`Tensor3::update`]
+//!   * [Tensor4] — [`Tensor4::get`], [`Tensor4::set`], [`Tensor4::set_tensor`], [`Tensor4::update`]
+//!
+//! **Note:** [Tensor1] stores the three **standard** components directly (there is
+//! no Kelvin mapping for first-order tensors); access them with [`Tensor1::get`] and
+//! [`Tensor1::set`].
+//!
+//! # Optional features
+//!
+//! The following (Rust) features are available:
+//!
+//! * `intel_mkl` — use Intel MKL instead of OpenBLAS
+//! * `heap` — use heap-allocated (dynamically allocated) storage for the tensor
+//!   components instead of the default stack-allocated (fixed-size) storage
 //!
 //! # Examples
 //!
@@ -82,7 +93,7 @@
 //! }
 //! ```
 
-/// Defines the error output as a static string
+/// Defines the error type as a static string
 pub type StrError = &'static str;
 
 mod constants;

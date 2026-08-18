@@ -23,7 +23,7 @@ use russell_lab::small_mat_inv;
 ///   their names (e.g., [`Tensor4::from_std_matrix`], [`Tensor4::get_std`],
 ///   [`Tensor4::as_std_matrix`], [`Tensor4::sym_set_std`]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor4::matrix`], [`Tensor4::get`], [`Tensor4::set`],
+///   (e.g., [`Tensor4::get`], [`Tensor4::set`], [`Tensor4::set_tensor`],
 ///   [`Tensor4::update`]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
@@ -143,7 +143,9 @@ pub struct Tensor4 {
     /// Holds the Rep (representation) enum
     rep: Rep,
 
-    /// BENCHMARKING. TODO: REMOVE THIS
+    /// Enables the loop-based implementation (instead of the unrolled one)
+    ///
+    /// **Note:** This field is temporary and will be removed in a future version.
     pub use_loops: bool,
 }
 
@@ -297,7 +299,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijkl components given with respect to standard basis
+    /// * `inp` -- the standard Dijkl components with respect to an orthonormal Cartesian basis
     pub fn set_std_array(&mut self, inp: &[[[[f64; 3]; 3]; 3]; 3]) -> Result<(), StrError> {
         let dim = self.rep.dim();
         if dim == 4 || dim == 6 {
@@ -400,7 +402,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijkl components given with respect to standard basis
+    /// * `inp` -- the standard Dijkl components with respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     ///
     /// # Examples
@@ -447,7 +449,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components given with respect to the standard basis.
+    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
     ///    The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics
@@ -561,7 +563,7 @@ impl Tensor4 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components given with respect to the standard basis.
+    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
     ///    The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
     /// * `rep` -- the [Rep] representation
     ///

@@ -22,11 +22,13 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
+This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
 
 ### Capabilities
 
+* `Tensor1` — first-order tensors (vectors in R3) with operations such as the dot and cross products
 * `Tensor2` — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
+* `Tensor3` — third-order tensors (minor-symmetric or not)
 * `Tensor4` — fourth-order tensors (minor-symmetric or not)
 * Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products
 * Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
@@ -38,7 +40,7 @@ This library implements structures and functions for tensor analysis and calculu
 
 Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
 
-In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector) and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 
 The `Rep` enum specifies the available representations:
 
@@ -74,6 +76,7 @@ russell_tensor = "*"
 The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `heap`: Use heap-allocated (dynamically allocated) storage for the tensor components instead of the default stack-allocated (fixed-size) storage
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -185,5 +188,5 @@ fn main() -> Result<(), StrError> {
 
 ## For developers
 
-* This crate is pure Rust with no C dependencies
+* This crate depends on `russell_lab`, which requires non-Rust high-performance libraries (see the Installation section)
 * Run the examples with `cargo run --example <name>`

@@ -51,7 +51,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///
 /// ```text
 /// Eₘₙ = α Σ Cₘₐ  Dₐₙ
-///         m
+///         a
 /// ```
 ///
 /// # Output
@@ -61,8 +61,8 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
+/// * `cc` -- the input fourth-order tensor; with the same [Rep] as `dd`
+/// * `dd` -- the fourth-order tensor; with the same [Rep] as `cc`
 ///
 /// # Panics
 ///
@@ -154,7 +154,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///
 /// ```text
 /// Eₘₙ = α (Σ Cₘₐ  Dₐₙ) + β Eₘₙ
-///          m
+///          a
 /// ```
 ///
 /// # Output
@@ -164,8 +164,8 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
+/// * `cc` -- the input fourth-order tensor; with the same [Rep] as `dd`
+/// * `dd` -- the fourth-order tensor; with the same [Rep] as `cc`
 /// * `beta` -- the other scalar multiplier
 ///
 /// # Panics
@@ -280,7 +280,7 @@ mod tests {
         let cc = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
         let dd = Tensor4::new(Rep::Symmetric2D);
         let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
+        t4_ddot_t4_update(&mut ee, 1.0, &cc, &dd, 1.0);
     }
 
     #[test]
@@ -289,7 +289,7 @@ mod tests {
         let cc = Tensor4::new(Rep::Symmetric2D);
         let dd = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
         let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
+        t4_ddot_t4_update(&mut ee, 1.0, &cc, &dd, 1.0);
     }
 
     #[test]

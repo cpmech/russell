@@ -60,7 +60,7 @@ use std::fmt::{self, Write};
 ///   their names (e.g., [`Tensor3::from_std_matrix`], [`Tensor3::get_std`],
 ///   [`Tensor3::as_std_matrix`], [`Tensor3::sym_set_std`]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor3::matrix`], [`Tensor3::get`], [`Tensor3::set`],
+///   (e.g., [`Tensor3::get`], [`Tensor3::set`], [`Tensor3::set_tensor`],
 ///   [`Tensor3::update`]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
@@ -242,7 +242,9 @@ pub struct Tensor3 {
     /// Holds the Rep (representation) enum
     rep: Rep,
 
-    /// BENCHMARKING. TODO: REMOVE THIS
+    /// Enables the loop-based implementation (instead of the unrolled one)
+    ///
+    /// **Note:** This field is temporary and will be removed in a future version.
     pub use_loops: bool,
 }
 
@@ -322,7 +324,7 @@ impl Tensor3 {
         self.rep
     }
 
-    /// Returns a whether the matrix representation adopted corresponds to Case A
+    /// Returns whether the matrix representation adopted corresponds to Case A
     #[inline]
     pub fn is_case_a(&self) -> bool {
         self.case_a
@@ -407,7 +409,7 @@ impl Tensor3 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijk components given with standard components
+    /// * `inp` -- the standard Dijk components with respect to an orthonormal Cartesian basis
     pub fn set_std_array(&mut self, inp: &[[[f64; 3]; 3]; 3]) -> Result<(), StrError> {
         let dim = self.rep.dim();
         if self.case_a {
@@ -514,7 +516,7 @@ impl Tensor3 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijk components given with standard components
+    /// * `inp` -- the standard Dijk components with respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     /// * `case_a` -- Case A instead of Case B
     ///
@@ -560,7 +562,7 @@ impl Tensor3 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components given standard components.
+    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
     ///   The matrix must be 9x3 for Case A or 3x9 for Case B
     ///   even if it corresponds to a minor-symmetric tensor.
     ///
@@ -684,7 +686,7 @@ impl Tensor3 {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components given standard components.
+    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
     ///   The matrix must be 9x3 for Case A or 3x9 for Case B
     ///   even if it corresponds to a minor-symmetric tensor.
     /// * `rep` -- the [Rep] representation

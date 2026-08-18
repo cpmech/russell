@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn t3_dot_vec_works() {
+    fn t3_dot_t1_works() {
         // General
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, Rep::General, true).unwrap();
         let u = Tensor1::from(&[1.0, 2.0, 3.0]);
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn t3_dot_t2_works() {
+    fn t3_ddot_t2_works() {
         // General
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, Rep::General, false).unwrap();
         let tt = Tensor2::from_std_matrix(

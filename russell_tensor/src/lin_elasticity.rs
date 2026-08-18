@@ -11,9 +11,9 @@ pub struct LinElasticity {
     /// Holds the plane-stress flag
     plane_stress: bool,
 
-    /// Holds the elastic rigiDity (stiffness) modulus
+    /// Holds the elastic rigidity (stiffness) modulus
     ///
-    /// The rigiDity modulus `D` is such that:
+    /// The rigidity modulus `D` is such that:
     ///
     /// ```text
     /// σ = D : ε
@@ -170,7 +170,7 @@ impl LinElasticity {
 
     /// Returns an access to the elastic rigidity (stiffness) modulus
     ///
-    /// The rigiDity modulus `D` is such that:
+    /// The rigidity modulus `D` is such that:
     ///
     /// ```text
     /// σ = D : ε

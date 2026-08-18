@@ -22,8 +22,8 @@ use russell_lab::Vector;
 ///   their names (e.g., [`Tensor2::set_std_matrix`], [`Tensor2::get_std`],
 ///   [`Tensor2::as_std_matrix`], [`Tensor2::sym_set_std`]).
 /// * Methods dealing directly with the **Kelvin components** carry no qualifier
-///   (e.g., [`Tensor2::vector`], [`Tensor2::vector_mut`], [`Tensor2::set_tensor`],
-///   [`Tensor2::update`]).
+///   (e.g., [`Tensor2::get`], [`Tensor2::set`], [`Tensor2::set_vector`],
+///   [`Tensor2::set_tensor`], [`Tensor2::update`]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///
@@ -92,7 +92,9 @@ pub struct Tensor2 {
     /// Holds the Rep (representation) enum
     rep: Rep,
 
-    /// BENCHMARKING. TODO: REMOVE THIS
+    /// Enables the loop-based implementation (instead of the unrolled one)
+    ///
+    /// **Note:** This field is temporary and will be removed in a future version.
     pub use_loops: bool,
 }
 
@@ -287,7 +289,7 @@ impl Tensor2 {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard Tij components given  with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components given with respect to an orthonormal Cartesian basis
     ///
     /// # Notes
     ///
@@ -531,7 +533,7 @@ impl Tensor2 {
     /// # Input
     ///
     /// * `i` -- the first index in `(0, 1, 2)`
-    /// * `j` -- the first index in `(0, 1, 2)`
+    /// * `j` -- the second index in `(0, 1, 2)`
     ///
     /// # Panics
     ///
@@ -1247,12 +1249,15 @@ impl Tensor2 {
     /// A · A⁻¹ = I
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `ai` -- a Tensor2 to hold the inverse tensor; with the same [Rep] as this tensor
+    ///
+    /// # Input
+    ///
     /// * `tolerance` -- a tolerance for the determinant such that the inverse is computed only if |det| > tolerance
     ///
-    /// ## Output
+    /// # Returns
     ///
     /// * If the determinant is zero, the inverse is not computed and returns `None`
     /// * Otherwise, the inverse is computed and returns the determinant
@@ -1599,7 +1604,7 @@ impl Tensor2 {
     /// Also the radius in the octahedral plane is:
     ///
     /// ```text
-    /// r = ‖s‖ =
+    /// r = ‖s‖
     /// ```
     ///
     /// # Examples

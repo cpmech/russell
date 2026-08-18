@@ -460,7 +460,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///
 /// # Output
 ///
-/// Returns the scalar results.
+/// Returns the scalar result.
 ///
 /// # Panics
 ///

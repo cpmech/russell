@@ -76,7 +76,7 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 ///
 /// # Panics
 ///
-/// A panic will occur `a` and `b` have different [Rep]
+/// A panic will occur if `a` and `b` have different [Rep]
 ///
 /// # Examples
 ///

@@ -69,7 +69,7 @@ impl Tensor1 {
     ///
     /// # Input
     ///
-    /// * `i` -- The index must be 0, 1, or 3
+    /// * `i` -- The index must be 0, 1, or 2
     /// * `value` -- The standard component value
     ///
     /// # Panics
@@ -83,7 +83,7 @@ impl Tensor1 {
     ///
     /// # Input
     ///
-    /// * `i` -- The index must be 0, 1, or 3
+    /// * `i` -- The index must be 0, 1, or 2
     ///
     /// # Panics
     ///
@@ -114,14 +114,14 @@ impl Tensor1 {
 
     /// Returns this Tensor1 as a Vector object from russell_lab
     ///
-    /// This function is useful for integrations and unit testing
+    /// This function is useful for integration with `russell_lab` and for unit testing
     pub fn as_vector(&self) -> Vector {
         Vector::from(&self.vec)
     }
 }
 
 impl fmt::Display for Tensor1 {
-    /// Generates a string representation of the Kelvin vector associated with this Tensor1
+    /// Generates a string representation of the standard components associated with this Tensor1
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;

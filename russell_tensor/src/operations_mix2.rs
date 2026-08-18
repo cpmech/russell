@@ -660,7 +660,7 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     let dim = aa.dim();
     let a = &aa.vec;
-    if dd.use_loops{
+    if dd.use_loops {
         let ddim = dd.dim();
         for m in 0..ddim {
             for n in 0..ddim {
@@ -838,7 +838,7 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 /// # Panics
 /// 
 /// 1. A panic will occur if `dd` is not [Rep::Symmetric]
-/// 2. A panic will occur `aa` and `bb` have different [Rep]
+/// 2. A panic will occur if `aa` and `bb` have different [Rep]
 #[rustfmt::skip]
 #[inline]
 pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
@@ -847,7 +847,7 @@ pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     let dim = aa.dim();
     let a = &aa.vec;
     let b = &bb.vec;
-    if dd.use_loops{
+    if dd.use_loops {
         let ddim = dd.dim();
         for m in 0..ddim {
             for n in 0..ddim {

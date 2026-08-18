@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use crate::{Tensor2, Tensor4}; // for documentation
+use crate::{Tensor2, Tensor3, Tensor4}; // for documentation
 
-/// Specifies the type of matrix representation (Kelvin notation) of Tensor2 and Tensor4
+/// Specifies the type of matrix representation (Kelvin notation) of Tensor2, Tensor3, and Tensor4
 ///
 /// In the Kelvin basis, a second-order tensor is mapped to a column matrix
-/// (vector) and a fourth-order tensor is mapped to a square matrix.
+/// (vector), a third-order tensor is mapped to a rectangular matrix, and a
+/// fourth-order tensor is mapped to a square matrix.
 ///
 /// This enum specifies the following representations:
 ///

@@ -14,7 +14,7 @@ pub const SQRT_6: f64 =
 pub const SQRT_2_BY_3: f64 =
     0.816496580927726032732428024901963797321982493552223376144230855750320125819105008846619811034880078272864f64;
 
-/// sqt(3/2) <https://oeis.org/A115754>
+/// sqrt(3/2) <https://oeis.org/A115754>
 pub const SQRT_3_BY_2: f64 =
     1.22474487139158904909864203735294569598297374032833506421634628362548018872865751326992971655232011f64;
 
@@ -36,10 +36,10 @@ pub const TWO_BY_3: f64 =
 ///     2 pow(J2,1.5)
 /// ```
 ///
-/// Note: pow(1e-9,1.5) = 3.16-14
+/// Note: pow(1e-9,1.5) = 3.16e-14
 pub const TOL_J2: f64 = 1e-9;
 
-/// 1 (just so we can get highlighting in the following constants)
+/// Holds the value 1.0 (f64); used to give the following constants the f64 type
 const ONE: f64 = 1.0;
 
 /// Second-order identity tensor in Kelvin basis (I)

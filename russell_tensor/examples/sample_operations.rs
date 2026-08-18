@@ -81,7 +81,8 @@ fn main() -> Result<(), StrError> {
     mat_approx_eq(&mat_skw, &correct_skw, 1e-15);
 
     // Calculate the axial vector
-    let omega = Tensor1::from(&[-skw.get_std(1, 2), skw.get_std(0, 2), -skw.get_std(0, 1)]);
+    let mut omega = Tensor1::new();
+    ten.axial_vector(&mut omega);
     println!("omega = \n{:.2}", omega);
     let expected_omega = [0.0, -3.0, 2.0];
     vec_approx_eq(&omega.as_vector(), &expected_omega, 1e-15);

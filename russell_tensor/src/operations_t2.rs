@@ -1,6 +1,6 @@
-use super::Tensor2;
+use super::{Tensor1, Tensor2};
 use crate::{Rep, SQRT_2};
-use russell_lab::{StrError, Vector};
+use russell_lab::StrError;
 
 /// Adds two second-order tensors
 ///
@@ -251,24 +251,18 @@ pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `v` -- the resulting vector; with `dim` compatible with the dimension of `a` (2D or 3D)
+/// * `v` -- the resulting first-order tensor
 ///
 /// # Input
 ///
 /// * `alpha` -- the `α` multiplier
 /// * `a` -- the second-order tensor
-/// * `u` -- the 2D or 3D vector; with `dim` compatible with the dimension of `a` (2D or 3D)
-///
-/// # Panics
-///
-/// 1. If `a` is 2D, a panic will occur if `u` or `v` are not `2D`
-/// 2. If `a` is 3D, a panic will occur if `u` or `v` are not `3D`
+/// * `u` -- a 3D vector (first-order tensor)
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_lab::Vector;
-/// use russell_tensor::{t2_dot_vec, Rep, Tensor2, StrError};
+/// use russell_tensor::{t2_dot_t1, Rep, Tensor1, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Tensor2::from_std_matrix(&[
@@ -277,33 +271,34 @@ pub fn t2_dot_t2(c: &mut Tensor2, a: &Tensor2, b: &Tensor2) {
 ///         [0.0,  0.0, 1.0],
 ///     ], Rep::Symmetric2D)?;
 ///
-///     let u = Vector::from(&[1.0, 2.0]);
-///     let mut v = Vector::new(2);
-///     t2_dot_vec(&mut v, 2.0, &a, &u);
+///     let u = Tensor1::from(&[1.0, 2.0, 0.0]);
+///     let mut v = Tensor1::new();
+///     t2_dot_t1(&mut v, 2.0, &a, &u);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", v),
 ///         "┌      ┐\n\
 ///          │  6.0 │\n\
 ///          │ -2.0 │\n\
+///          │  0.0 │\n\
 ///          └      ┘"
 ///     );
 ///     Ok(())
 /// }
 /// ```
-pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
-    if a.dim() == 4 {
-        assert_eq!(v.dim(), 2);
-        assert_eq!(u.dim(), 2);
-        v[0] = alpha * (a.get_std(0, 0) * u[0] + a.get_std(0, 1) * u[1]);
-        v[1] = alpha * (a.get_std(1, 0) * u[0] + a.get_std(1, 1) * u[1]);
-    } else {
-        assert_eq!(v.dim(), 3);
-        assert_eq!(u.dim(), 3);
-        v[0] = alpha * (a.get_std(0, 0) * u[0] + a.get_std(0, 1) * u[1] + a.get_std(0, 2) * u[2]);
-        v[1] = alpha * (a.get_std(1, 0) * u[0] + a.get_std(1, 1) * u[1] + a.get_std(1, 2) * u[2]);
-        v[2] = alpha * (a.get_std(2, 0) * u[0] + a.get_std(2, 1) * u[1] + a.get_std(2, 2) * u[2]);
-    }
+pub fn t2_dot_t1(v: &mut Tensor1, alpha: f64, a: &Tensor2, u: &Tensor1) {
+    v.set(
+        0,
+        alpha * (a.get_std(0, 0) * u.get(0) + a.get_std(0, 1) * u.get(1) + a.get_std(0, 2) * u.get(2)),
+    );
+    v.set(
+        1,
+        alpha * (a.get_std(1, 0) * u.get(0) + a.get_std(1, 1) * u.get(1) + a.get_std(1, 2) * u.get(2)),
+    );
+    v.set(
+        2,
+        alpha * (a.get_std(2, 0) * u.get(0) + a.get_std(2, 1) * u.get(1) + a.get_std(2, 2) * u.get(2)),
+    );
 }
 
 /// Performs the single dot operation between a vector and a Tensor2
@@ -323,59 +318,54 @@ pub fn t2_dot_vec(v: &mut Vector, alpha: f64, a: &Tensor2, u: &Vector) {
 ///
 /// # Output
 ///
-/// * `v` -- the resulting vector; with `dim` compatible with the dimension of `a` (2D or 3D)
+/// * `v` -- the resulting first-order tensor
 ///
 /// # Input
 ///
 /// * `alpha` -- the `α` multiplier
-/// * `u` -- the 2D or 3D vector; with `dim` compatible with the dimension of `a` (2D or 3D)
+/// * `u` -- the first-order tensor (3D vector)
 /// * `a` -- the second-order tensor
-///
-/// # Panics
-///
-/// 1. If `a` is 2D, a panic will occur if `u` or `v` are not `2D`
-/// 2. If `a` is 3D, a panic will occur if `u` or `v` are not `3D`
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_lab::Vector;
-/// use russell_tensor::{vec_dot_t2, Rep, Tensor2, StrError};
+/// use russell_tensor::{t1_dot_t2, Rep, Tensor1, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let u = Vector::from(&[1.0, 2.0]);
+///     let u = Tensor1::from(&[1.0, 2.0, 0.0]);
 ///     let a = Tensor2::from_std_matrix(&[
 ///         [1.0,  1.0, 0.0],
 ///         [1.0, -1.0, 0.0],
 ///         [0.0,  0.0, 1.0],
 ///     ], Rep::Symmetric2D)?;
 ///
-///     let mut v = Vector::new(2);
-///     vec_dot_t2(&mut v, 2.0, &u, &a);
+///     let mut v = Tensor1::new();
+///     t1_dot_t2(&mut v, 2.0, &u, &a);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", v),
 ///         "┌      ┐\n\
 ///          │  6.0 │\n\
 ///          │ -2.0 │\n\
+///          │  0.0 │\n\
 ///          └      ┘"
 ///     );
 ///     Ok(())
 /// }
 /// ```
-pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
-    if a.dim() == 4 {
-        assert_eq!(v.dim(), 2);
-        assert_eq!(u.dim(), 2);
-        v[0] = alpha * (u[0] * a.get_std(0, 0) + u[1] * a.get_std(1, 0));
-        v[1] = alpha * (u[0] * a.get_std(0, 1) + u[1] * a.get_std(1, 1));
-    } else {
-        assert_eq!(v.dim(), 3);
-        assert_eq!(u.dim(), 3);
-        v[0] = alpha * (u[0] * a.get_std(0, 0) + u[1] * a.get_std(1, 0) + u[2] * a.get_std(2, 0));
-        v[1] = alpha * (u[0] * a.get_std(0, 1) + u[1] * a.get_std(1, 1) + u[2] * a.get_std(2, 1));
-        v[2] = alpha * (u[0] * a.get_std(0, 2) + u[1] * a.get_std(1, 2) + u[2] * a.get_std(2, 2));
-    }
+pub fn t1_dot_t2(v: &mut Tensor1, alpha: f64, u: &Tensor1, a: &Tensor2) {
+    v.set(
+        0,
+        alpha * (u.get(0) * a.get_std(0, 0) + u.get(1) * a.get_std(1, 0) + u.get(2) * a.get_std(2, 0)),
+    );
+    v.set(
+        1,
+        alpha * (u.get(0) * a.get_std(0, 1) + u.get(1) * a.get_std(1, 1) + u.get(2) * a.get_std(2, 1)),
+    );
+    v.set(
+        2,
+        alpha * (u.get(0) * a.get_std(0, 2) + u.get(1) * a.get_std(1, 2) + u.get(2) * a.get_std(2, 2)),
+    );
 }
 
 /// Performs the dyadic product between two vectors resulting in a second-order tensor
@@ -403,26 +393,20 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
 /// # Input
 ///
 /// * `alpha` -- the `α` multiplier
-/// * `u` -- the 2D or 3D vector; with `dim` compatible with the dimension of `T` (2D or 3D)
-/// * `v` -- the 2D or 3D vector; with `dim` compatible with the dimension of `T` (2D or 3D)
-///
-/// # Panics
-///
-/// 1. If `A` is 2D, a panic will occur if `u` or `v` are not `2D`
-/// 2. If `A` is 3D, a panic will occur if `u` or `v` are not `3D`
+/// * `u` -- the first-order tensor; 3D vector
+/// * `v` -- the first-order tensor; 3D vector
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_lab::Vector;
-/// use russell_tensor::{vec_dyad_vec, Rep, Tensor2, StrError};
+/// use russell_tensor::{t1_dyad_t1, Rep, Tensor1, Tensor2, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let u = Vector::from(&[1.0, 1.0, 1.0]);
-///     let v = Vector::from(&[2.0, 2.0, 2.0]);
+///     let u = Tensor1::from(&[1.0, 1.0, 1.0]);
+///     let v = Tensor1::from(&[2.0, 2.0, 2.0]);
 ///
 ///     let mut tt = Tensor2::new(Rep::Symmetric);
-///     vec_dyad_vec(&mut tt, 1.0, &u, &v)?;
+///     t1_dyad_t1(&mut tt, 1.0, &u, &v)?;
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", tt.as_std_matrix()),
@@ -435,34 +419,33 @@ pub fn vec_dot_t2(v: &mut Vector, alpha: f64, u: &Vector, a: &Tensor2) {
 ///     Ok(())
 /// }
 /// ```
-pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Result<(), StrError> {
+pub fn t1_dyad_t1(a: &mut Tensor2, alpha: f64, u: &Tensor1, v: &Tensor1) -> Result<(), StrError> {
     if a.dim() == 4 {
-        assert_eq!(v.dim(), 2);
-        assert_eq!(u.dim(), 2);
-        if (u[0] * v[1]) != (u[1] * v[0]) {
+        if (u.get(0) * v.get(1)) != (u.get(1) * v.get(0)) {
             return Err("dyadic product between u and v does not generate a symmetric tensor");
         }
-        a.vec[0] = alpha * u[0] * v[0];
-        a.vec[1] = alpha * u[1] * v[1];
+        a.vec[0] = alpha * u.get(0) * v.get(0);
+        a.vec[1] = alpha * u.get(1) * v.get(1);
         a.vec[2] = 0.0;
-        a.vec[3] = alpha * (u[0] * v[1] + u[1] * v[0]) / SQRT_2;
+        a.vec[3] = alpha * (u.get(0) * v.get(1) + u.get(1) * v.get(0)) / SQRT_2;
     } else {
-        assert_eq!(v.dim(), 3);
-        assert_eq!(u.dim(), 3);
-        a.vec[0] = alpha * u[0] * v[0];
-        a.vec[1] = alpha * u[1] * v[1];
-        a.vec[2] = alpha * u[2] * v[2];
-        a.vec[3] = alpha * (u[0] * v[1] + u[1] * v[0]) / SQRT_2;
-        a.vec[4] = alpha * (u[1] * v[2] + u[2] * v[1]) / SQRT_2;
-        a.vec[5] = alpha * (u[0] * v[2] + u[2] * v[0]) / SQRT_2;
+        a.vec[0] = alpha * u.get(0) * v.get(0);
+        a.vec[1] = alpha * u.get(1) * v.get(1);
+        a.vec[2] = alpha * u.get(2) * v.get(2);
+        a.vec[3] = alpha * (u.get(0) * v.get(1) + u.get(1) * v.get(0)) / SQRT_2;
+        a.vec[4] = alpha * (u.get(1) * v.get(2) + u.get(2) * v.get(1)) / SQRT_2;
+        a.vec[5] = alpha * (u.get(0) * v.get(2) + u.get(2) * v.get(0)) / SQRT_2;
         if a.dim() == 6 {
-            if (u[0] * v[1]) != (u[1] * v[0]) || (u[1] * v[2]) != (u[2] * v[1]) || (u[0] * v[2]) != (u[2] * v[0]) {
+            if (u.get(0) * v.get(1)) != (u.get(1) * v.get(0))
+                || (u.get(1) * v.get(2)) != (u.get(2) * v.get(1))
+                || (u.get(0) * v.get(2)) != (u.get(2) * v.get(0))
+            {
                 return Err("dyadic product between u and v does not generate a symmetric tensor");
             }
         } else {
-            a.vec[6] = alpha * (u[0] * v[1] - u[1] * v[0]) / SQRT_2;
-            a.vec[7] = alpha * (u[1] * v[2] - u[2] * v[1]) / SQRT_2;
-            a.vec[8] = alpha * (u[0] * v[2] - u[2] * v[0]) / SQRT_2;
+            a.vec[6] = alpha * (u.get(0) * v.get(1) - u.get(1) * v.get(0)) / SQRT_2;
+            a.vec[7] = alpha * (u.get(1) * v.get(2) - u.get(2) * v.get(1)) / SQRT_2;
+            a.vec[8] = alpha * (u.get(0) * v.get(2) - u.get(2) * v.get(0)) / SQRT_2;
         }
     }
     Ok(())
@@ -473,8 +456,8 @@ pub fn vec_dyad_vec(a: &mut Tensor2, alpha: f64, u: &Vector, v: &Vector) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Rep;
-    use russell_lab::{approx_eq, array_approx_eq, mat_approx_eq, vec_approx_eq};
+    use crate::{Rep, Tensor1};
+    use russell_lab::{approx_eq, array_approx_eq, mat_approx_eq};
 
     fn kelvin_vector(tt: &Tensor2) -> Vec<f64> {
         let mut v = vec![0.0; tt.dim()];
@@ -677,43 +660,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn t2_dot_vec_panics_on_non_2d_vector_v() {
-        let mut v = Vector::new(3); // wrong; it must be 2
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::new(2);
-        t2_dot_vec(&mut v, 1.0, &a, &u);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_dot_vec_panics_on_non_2d_vector_u() {
-        let mut v = Vector::new(2);
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::new(3); // wrong; it must be 2
-        t2_dot_vec(&mut v, 1.0, &a, &u);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_dot_vec_panics_on_non_3d_vector_v() {
-        let mut v = Vector::new(2); // wrong; it must be 3
-        let a = Tensor2::new(Rep::General);
-        let u = Vector::new(3);
-        t2_dot_vec(&mut v, 1.0, &a, &u);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_dot_vec_panics_on_non_3d_vector_u() {
-        let mut v = Vector::new(3);
-        let a = Tensor2::new(Rep::General);
-        let u = Vector::new(2); // wrong; it must be 3
-        t2_dot_vec(&mut v, 1.0, &a, &u);
-    }
-
-    #[test]
-    fn t2_dot_vec_works() {
+    fn t2_dot_t1_works() {
         // general . vec
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
@@ -721,10 +668,12 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
-        let mut v = Vector::new(3);
-        t2_dot_vec(&mut v, 2.0, &a, &u);
-        vec_approx_eq(&v, &[-40.0, -94.0, -148.0], 1e-13);
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
+        let mut v = Tensor1::new();
+        t2_dot_t1(&mut v, 2.0, &a, &u);
+        approx_eq(v.get(0), -40.0, 1e-13);
+        approx_eq(v.get(1), -94.0, 1e-13);
+        approx_eq(v.get(2), -148.0, 1e-13);
 
         // sym-3D . vec
         #[rustfmt::skip]
@@ -733,10 +682,12 @@ mod tests {
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
         ], Rep::Symmetric).unwrap();
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
-        let mut v = Vector::new(3);
-        t2_dot_vec(&mut v, 2.0, &a, &u);
-        vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
+        let mut v = Tensor1::new();
+        t2_dot_t1(&mut v, 2.0, &a, &u);
+        approx_eq(v.get(0), -40.0, 1e-13);
+        approx_eq(v.get(1), -86.0, 1e-13);
+        approx_eq(v.get(2), -120.0, 1e-13);
 
         // sym-2D . vec
         #[rustfmt::skip]
@@ -745,150 +696,86 @@ mod tests {
             [2.0, 5.0, 0.0],
             [0.0, 0.0, 9.0],
         ], Rep::Symmetric2D).unwrap();
-        let u = Vector::from(&[-2.0, -3.0]);
-        let mut v = Vector::new(2);
-        t2_dot_vec(&mut v, 2.0, &a, &u);
-        vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
+        let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
+        let mut v = Tensor1::new();
+        t2_dot_t1(&mut v, 2.0, &a, &u);
+        approx_eq(v.get(0), -16.0, 1e-13);
+        approx_eq(v.get(1), -38.0, 1e-13);
+        approx_eq(v.get(2), 0.0, 1e-13);
     }
 
     #[test]
-    #[should_panic]
-    fn vec_dot_t2_panics_on_non_2d_vector_v() {
-        let mut v = Vector::new(3); // wrong; it must be 2
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::new(2);
-        vec_dot_t2(&mut v, 1.0, &u, &a);
-    }
-
-    #[test]
-    #[should_panic]
-    fn vec_dot_t2_panics_on_non_2d_vector_u() {
-        let mut v = Vector::new(2);
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::new(3); // wrong; it must be 2
-        vec_dot_t2(&mut v, 1.0, &u, &a);
-    }
-
-    #[test]
-    #[should_panic]
-    fn vec_dot_t2_panics_on_non_3d_vector_v() {
-        let mut v = Vector::new(2); // wrong; it must be 3
-        let a = Tensor2::new(Rep::General);
-        let u = Vector::new(3);
-        vec_dot_t2(&mut v, 1.0, &u, &a);
-    }
-
-    #[test]
-    #[should_panic]
-    fn vec_dot_t2_panics_on_non_3d_vector_u() {
-        let mut v = Vector::new(3);
-        let a = Tensor2::new(Rep::General);
-        let u = Vector::new(2); // wrong; it must be 3
-        vec_dot_t2(&mut v, 1.0, &u, &a);
-    }
-
-    #[test]
-    fn vec_dot_t2_works() {
-        // general . vec
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
+    fn t1_dot_t2_works() {
+        // vec . general
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
-        let mut v = Vector::new(3);
-        vec_dot_t2(&mut v, 2.0, &u, &a);
-        vec_approx_eq(&v, &[-84.0, -102.0, -120.0], 1e-13);
+        let mut v = Tensor1::new();
+        t1_dot_t2(&mut v, 2.0, &u, &a);
+        approx_eq(v.get(0), -84.0, 1e-13);
+        approx_eq(v.get(1), -102.0, 1e-13);
+        approx_eq(v.get(2), -120.0, 1e-13);
 
-        // sym-3D . vec
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
+        // vec . sym-3D
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
         ], Rep::Symmetric).unwrap();
-        let mut v = Vector::new(3);
-        vec_dot_t2(&mut v, 2.0, &u, &a);
-        vec_approx_eq(&v, &[-40.0, -86.0, -120.0], 1e-13);
+        let mut v = Tensor1::new();
+        t1_dot_t2(&mut v, 2.0, &u, &a);
+        approx_eq(v.get(0), -40.0, 1e-13);
+        approx_eq(v.get(1), -86.0, 1e-13);
+        approx_eq(v.get(2), -120.0, 1e-13);
 
-        // sym-2D . vec
-        let u = Vector::from(&[-2.0, -3.0]);
+        // vec . sym-2D
+        let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [1.0, 2.0, 0.0],
             [2.0, 5.0, 0.0],
             [0.0, 0.0, 9.0],
         ], Rep::Symmetric2D).unwrap();
-        let mut v = Vector::new(2);
-        vec_dot_t2(&mut v, 2.0, &u, &a);
-        vec_approx_eq(&v, &[-16.0, -38.0], 1e-13);
+        let mut v = Tensor1::new();
+        t1_dot_t2(&mut v, 2.0, &u, &a);
+        approx_eq(v.get(0), -16.0, 1e-13);
+        approx_eq(v.get(1), -38.0, 1e-13);
+        approx_eq(v.get(2), 0.0, 1e-13);
     }
 
     #[test]
-    #[should_panic]
-    fn vec_dyad_vec_panics_on_non_2d_vector_u() {
-        let mut a = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::new(3); // wrong; it must be 2
-        let v = Vector::new(2);
-        let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
-    }
-
-    #[test]
-    #[should_panic]
-    fn vec_dyad_vec_panics_on_non_2d_vector_v() {
-        let mut a = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::new(2);
-        let v = Vector::new(3); // wrong; it must be 2
-        let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
-    }
-
-    #[test]
-    #[should_panic]
-    fn vec_dyad_vec_panics_on_non_3d_vector_u() {
-        let mut a = Tensor2::new(Rep::General);
-        let u = Vector::new(2); // wrong; it must be 3
-        let v = Vector::new(3);
-        let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
-    }
-
-    #[test]
-    #[should_panic]
-    fn vec_dyad_vec_panics_on_non_3d_vector_v() {
-        let mut a = Tensor2::new(Rep::General);
-        let u = Vector::new(3);
-        let v = Vector::new(2); // wrong; it must be 3
-        let _ = vec_dyad_vec(&mut a, 1.0, &u, &v);
-    }
-
-    #[test]
-    fn vec_dyad_vec_captures_errors() {
+    fn t1_dyad_t1_captures_errors() {
         // symmetric 2D
         let mut tt = Tensor2::new(Rep::Symmetric2D);
-        let u = Vector::from(&[-2.0, -3.0]);
-        let v = Vector::from(&[4.0, 3.0]);
+        let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
+        let v = Tensor1::from(&[4.0, 3.0, 0.0]);
         assert_eq!(
-            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            t1_dyad_t1(&mut tt, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
         );
         // symmetric 3D
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
-        let v = Vector::from(&[4.0, 3.0, 2.0]);
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
+        let v = Tensor1::from(&[4.0, 3.0, 2.0]);
         let mut tt = Tensor2::new(Rep::Symmetric);
         assert_eq!(
-            vec_dyad_vec(&mut tt, 1.0, &u, &v).err(),
+            t1_dyad_t1(&mut tt, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
         );
     }
 
     #[test]
-    fn vec_dyad_vec_works() {
+    fn t1_dyad_t1_works() {
         // general
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
-        let v = Vector::from(&[4.0, 3.0, 2.0]);
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
+        let v = Tensor1::from(&[4.0, 3.0, 2.0]);
         let mut tt = Tensor2::new(Rep::General);
-        vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
+        t1_dyad_t1(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[
             -16.0,
             -18.0,
@@ -903,18 +790,18 @@ mod tests {
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
 
         // symmetric 3D
-        let u = Vector::from(&[-2.0, -3.0, -4.0]);
-        let v = Vector::from(&[2.0, 3.0, 4.0]);
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
+        let v = Tensor1::from(&[2.0, 3.0, 4.0]);
         let mut tt = Tensor2::new(Rep::Symmetric);
-        vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
+        t1_dyad_t1(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
 
         // symmetric 2D
-        let u = Vector::from(&[-2.0, -3.0]);
-        let v = Vector::from(&[2.0, 3.0]);
+        let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
+        let v = Tensor1::from(&[2.0, 3.0, 0.0]);
         let mut tt = Tensor2::new(Rep::Symmetric2D);
-        vec_dyad_vec(&mut tt, 2.0, &u, &v).unwrap();
+        t1_dyad_t1(&mut tt, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
     }

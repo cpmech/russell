@@ -61,7 +61,7 @@ pub fn t3_add(c: &mut Tensor3, alpha: f64, a: &Tensor3, beta: f64, b: &Tensor3) 
 /// 1. If `H` was not allocated for Case A
 /// 2. If `T` and `H` have different [Rep]
 /// 3. If `u` does not have 3 components
-pub fn t3_dot_vec(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Tensor1) {
+pub fn t3_dot_t1(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Tensor1) {
     assert!(hh.is_case_a());
     assert_eq!(tt.rep(), hh.rep());
     for m in 0..hh.dims().0 {
@@ -105,7 +105,7 @@ pub fn t3_dot_vec(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Tensor1) {
 ///
 /// 1. If `H` was not allocated for Case B
 /// 2. If `T` and `H` have different [Rep]
-pub fn t3_dot_t2(u: &mut Tensor1, alpha: f64, hh: &Tensor3, tt: &Tensor2) {
+pub fn t3_ddot_t2(u: &mut Tensor1, alpha: f64, hh: &Tensor3, tt: &Tensor2) {
     assert!(!hh.is_case_a());
     assert_eq!(tt.rep(), hh.rep());
     u.set(0, 0.0);
@@ -122,7 +122,7 @@ pub fn t3_dot_t2(u: &mut Tensor1, alpha: f64, hh: &Tensor3, tt: &Tensor2) {
 
 #[cfg(test)]
 mod tests {
-    use super::{t3_add, t3_dot_t2, t3_dot_vec};
+    use super::{t3_add, t3_ddot_t2, t3_dot_t1};
     use crate::{Rep, SamplesTensor3, Tensor1, Tensor2, Tensor3};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
@@ -234,7 +234,7 @@ mod tests {
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, Rep::General, true).unwrap();
         let u = Tensor1::from(&[1.0, 2.0, 3.0]);
         let mut tt = Tensor2::new(Rep::General);
-        t3_dot_vec(&mut tt, 0.5, &hh, &u);
+        t3_dot_t1(&mut tt, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
             [7.0, 34.0, 52.0],  // 0
             [61.0, 16.0, 43.0], // 1
@@ -245,7 +245,7 @@ mod tests {
         // Symmetric
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, Rep::Symmetric, true).unwrap();
         let mut tt = Tensor2::new(Rep::Symmetric);
-        t3_dot_vec(&mut tt, 0.5, &hh, &u);
+        t3_dot_t1(&mut tt, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
             [7.0, 34.0, 52.0],  // 0
             [34.0, 16.0, 43.0], // 1
@@ -256,7 +256,7 @@ mod tests {
         // Symmetric2D
         let hh = Tensor3::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, Rep::Symmetric2D, true).unwrap();
         let mut tt = Tensor2::new(Rep::Symmetric2D);
-        t3_dot_vec(&mut tt, 0.5, &hh, &u);
+        t3_dot_t1(&mut tt, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
             [7.0, 34.0, 0.0],  // 0
             [34.0, 16.0, 0.0], // 1
@@ -279,7 +279,7 @@ mod tests {
         )
         .unwrap();
         let mut u = Tensor1::new();
-        t3_dot_t2(&mut u, 0.5, &hh, &tt);
+        t3_ddot_t2(&mut u, 0.5, &hh, &tt);
         approx_eq(u.get(0), 328.5, 1e-15);
         approx_eq(u.get(1), 351.0, 1e-15);
         approx_eq(u.get(2), 373.5, 1e-15);
@@ -296,7 +296,7 @@ mod tests {
         )
         .unwrap();
         let mut u = Tensor1::new();
-        t3_dot_t2(&mut u, 0.5, &hh, &tt);
+        t3_ddot_t2(&mut u, 0.5, &hh, &tt);
         approx_eq(u.get(0), 188.0, 1e-15);
         approx_eq(u.get(1), 206.5, 1e-15);
         approx_eq(u.get(2), 225.0, 1e-15);
@@ -313,7 +313,7 @@ mod tests {
         )
         .unwrap();
         let mut u = Tensor1::new();
-        t3_dot_t2(&mut u, 0.5, &hh, &tt);
+        t3_ddot_t2(&mut u, 0.5, &hh, &tt);
         approx_eq(u.get(0), 62.0, 1e-15);
         approx_eq(u.get(1), 71.5, 1e-15);
         approx_eq(u.get(2), 81.0, 1e-15);

@@ -1,4 +1,4 @@
-use super::{Rep, SQRT_2, SQRT_3, SQRT_6, Tensor2, vec_dyad_vec};
+use super::{Rep, SQRT_2, SQRT_3, SQRT_6, Tensor1, Tensor2, t1_dyad_t1};
 use crate::StrError;
 use russell_lab::{Matrix, Vector, mat_eigen_sym_jacobi};
 
@@ -47,12 +47,12 @@ impl Spectral2 {
             self.lambda[2] = t22;
 
             // extract eigenvectors
-            let u0 = Vector::from(&[v.get(0, 0), v.get(1, 0)]);
-            let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1)]);
+            let u0 = Tensor1::from(&[v.get(0, 0), v.get(1, 0), 0.0]);
+            let u1 = Tensor1::from(&[v.get(0, 1), v.get(1, 1), 0.0]);
 
             // compute eigenprojectors
-            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
-            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
+            t1_dyad_t1(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
+            t1_dyad_t1(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
             self.projectors[2].clear();
             self.projectors[2].set(2, 1.0);
         } else {
@@ -62,14 +62,14 @@ impl Spectral2 {
             mat_eigen_sym_jacobi(&mut self.lambda, &mut v, &mut a)?;
 
             // extract eigenvectors
-            let u0 = Vector::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
-            let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
-            let u2 = Vector::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
+            let u0 = Tensor1::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
+            let u1 = Tensor1::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
+            let u2 = Tensor1::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
             // compute eigenprojectors
-            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
-            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
-            vec_dyad_vec(&mut self.projectors[2], 1.0, &u2, &u2).unwrap();
+            t1_dyad_t1(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
+            t1_dyad_t1(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
+            t1_dyad_t1(&mut self.projectors[2], 1.0, &u2, &u2).unwrap();
         }
         Ok(())
     }

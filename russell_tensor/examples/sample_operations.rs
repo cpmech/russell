@@ -1,5 +1,5 @@
-use russell_lab::{approx_eq, mat_approx_eq};
-use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_add, t2_dot_t2};
+use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
+use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_add, t2_dot_t2, t3_ddot_t2, t3_dot_t1};
 
 fn main() -> Result<(), StrError> {
     // Select the representation
@@ -83,6 +83,8 @@ fn main() -> Result<(), StrError> {
     // Calculate the axial vector
     let omega = Tensor1::from(&[-skw.get_std(1, 2), skw.get_std(0, 2), -skw.get_std(0, 1)]);
     println!("omega = \n{:.2}", omega);
+    let expected_omega = [0.0, -3.0, 2.0];
+    vec_approx_eq(&omega.as_vector(), &expected_omega, 1e-15);
 
     // Verify: det(I + W) = 1 + om . om
     let ii = Tensor2::identity(rep);
@@ -93,9 +95,30 @@ fn main() -> Result<(), StrError> {
     println!("det(I + W) = {} ({})", det_ii_plus_skw, om_dot_om_plus_1);
     approx_eq(det_ii_plus_skw, om_dot_om_plus_1, 1e-15);
 
-    // Levi-Civita (permutation) tensor
-    let perm = Tensor3::constant_permutation(Rep::General, true)?;
-    println!("{}", perm);
+    // Levi-Civita (permutation) tensor (Case A)
+    let case_a = true; // operate on vector
+    let perm_a = Tensor3::constant_permutation(Rep::General, case_a)?;
+    let mat_perm_a = perm_a.as_std_matrix();
+    println!("perm_a =\n{:.2}", mat_perm_a);
+
+    // Calculate: skw = -perm . om
+    let mut skw_again = Tensor2::new(rep);
+    t3_dot_t1(&mut skw_again, -1.0, &perm_a, &omega);
+    let mat_skw_again = skw_again.as_std_matrix();
+    println!("skw_again =\n{:.2}", mat_skw_again);
+    mat_approx_eq(&mat_skw_again, &correct_skw, 1e-15);
+
+    // Levi-Civita (permutation) tensor (Case B)
+    let case_a = false; // operate on tensor
+    let perm_b = Tensor3::constant_permutation(Rep::General, case_a)?;
+    let mat_perm_b = perm_b.as_std_matrix();
+    println!("perm_b =\n{:.2}", mat_perm_b);
+
+    // Calculate: om = - (1/2) perm : skw
+    let mut om_again = Tensor1::new();
+    t3_ddot_t2(&mut om_again, -0.5, &perm_b, &skw);
+    println!("omega_again = \n{:.2}", om_again);
+    vec_approx_eq(&om_again.as_vector(), &expected_omega, 1e-15);
 
     Ok(())
 }

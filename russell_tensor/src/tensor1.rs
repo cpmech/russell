@@ -1,9 +1,6 @@
-use russell_lab::AsArray1D;
+use russell_lab::{AsArray1D, Vector};
 use std::cmp;
 use std::fmt::{self, Write};
-
-#[cfg(feature = "heap")]
-use russell_lab::Vector;
 
 /// Defines a first-order tensor (vector) in R3
 ///
@@ -114,6 +111,13 @@ impl Tensor1 {
     pub fn dot(&self, other: &Tensor1) -> f64 {
         self.vec[0] * other.vec[0] + self.vec[1] * other.vec[1] + self.vec[2] * other.vec[2]
     }
+
+    /// Returns this Tensor1 as a Vector object from russell_lab
+    ///
+    /// This function is useful for integrations and unit testing
+    pub fn as_vector(&self) -> Vector {
+        Vector::from(&self.vec)
+    }
 }
 
 impl fmt::Display for Tensor1 {
@@ -156,12 +160,16 @@ impl fmt::Display for Tensor1 {
 #[cfg(test)]
 mod tests {
     use super::Tensor1;
+    use russell_lab::vec_approx_eq;
 
     #[test]
     fn new_set_get_work() {
         let mut u = Tensor1::new();
         u.set(0, 123.0);
+        u.set(1, 456.0);
+        u.set(2, 789.0);
         assert_eq!(u.get(0), 123.0);
+        vec_approx_eq(&u.as_vector(), &[123.0, 456.0, 789.0], 1e-15);
     }
 
     #[test]

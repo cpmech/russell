@@ -1,5 +1,5 @@
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
-use crate::{Rep, StrError};
+use crate::{Rep, StrError, Tensor1};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
 use russell_lab::{AsArray2D, Matrix, sort3};
@@ -1221,6 +1221,8 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
+        // The transpose is given by:
+        // [a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]
         assert_eq!(at.rep, self.rep);
         at.vec[0] = self.vec[0];
         at.vec[1] = self.vec[1];
@@ -1708,50 +1710,75 @@ impl Tensor2 {
 
     /// Decomposes this tensor into symmetric and skew-symmetric parts
     ///
-    /// * A symmetric Tensor2 is defined by Aᵀ = A
-    /// * A skew-symmetric Tensor2 is defined by Aᵀ = -A
+    /// * A symmetric Tensor2 is defined by Sᵀ = S
+    /// * A skew-symmetric Tensor2 is defined by Wᵀ = -W
+    ///
+    /// For this tensor (A):
     ///
     /// ```text
-    /// sym(A) = (A + Aᵀ) / 2
-    /// skew(A) = (A - Aᵀ) / 2
+    /// S := sym(A) = (A + Aᵀ) / 2
+    /// W := skw(A) = (A - Aᵀ) / 2
     /// ```
     ///
     /// # Panics
     ///
     /// This function will panic if sym or skew have a different [Rep] than this tensor
-    pub fn decompose(&self, sym: &mut Tensor2, skew: &mut Tensor2) {
+    pub fn decompose(&self, sym: &mut Tensor2, skw: &mut Tensor2) {
         assert_eq!(sym.rep, self.rep);
-        assert_eq!(skew.rep, self.rep);
-        let tra_0 = self.vec[0];
-        let tra_1 = self.vec[1];
-        let tra_2 = self.vec[2];
-        let tra_3 = self.vec[3];
-        sym.vec[0] = (self.vec[0] + tra_0) / 2.0;
-        sym.vec[1] = (self.vec[1] + tra_1) / 2.0;
-        sym.vec[2] = (self.vec[2] + tra_2) / 2.0;
-        sym.vec[3] = (self.vec[3] + tra_3) / 2.0;
-        skew.vec[0] = (self.vec[0] - tra_0) / 2.0;
-        skew.vec[1] = (self.vec[1] - tra_1) / 2.0;
-        skew.vec[2] = (self.vec[2] - tra_2) / 2.0;
-        skew.vec[3] = (self.vec[3] - tra_3) / 2.0;
-        if self.dim > 4 {
-            let tra_4 = self.vec[4];
-            let tra_5 = self.vec[5];
-            sym.vec[4] = (self.vec[4] + tra_4) / 2.0;
-            sym.vec[5] = (self.vec[5] + tra_5) / 2.0;
-            skew.vec[4] = (self.vec[4] - tra_4) / 2.0;
-            skew.vec[5] = (self.vec[5] - tra_5) / 2.0;
+        assert_eq!(skw.rep, self.rep);
+        if self.rep == Rep::General {
+            // The symmetric part is given by:
+            // [a0, a1, a2, a3, a4, a5, 0, 0, 0]
+            // The skew-symmetric part is given by:
+            // [0, 0, 0, 0, 0, 0, a6, a7, a8]
+            for m in 0..6 {
+                sym.vec[m] = self.vec[m];
+                skw.vec[m] = 0.0;
+            }
+            skw.set(6, self.vec[6]);
+            skw.set(7, self.vec[7]);
+            skw.set(8, self.vec[8]);
+        } else {
+            // There is only symmetric part
+            for m in 0..self.dim {
+                sym.vec[m] = self.vec[m];
+                skw.vec[m] = 0.0;
+            }
         }
-        if self.dim > 6 {
-            let tra_6 = -self.vec[6];
-            let tra_7 = -self.vec[7];
-            let tra_8 = -self.vec[8];
-            sym.vec[6] = (self.vec[6] + tra_6) / 2.0;
-            sym.vec[7] = (self.vec[7] + tra_7) / 2.0;
-            sym.vec[8] = (self.vec[8] + tra_8) / 2.0;
-            skew.vec[6] = (self.vec[6] - tra_6) / 2.0;
-            skew.vec[7] = (self.vec[7] - tra_7) / 2.0;
-            skew.vec[8] = (self.vec[8] - tra_8) / 2.0;
+    }
+
+    /// Calculates the axial vector omega associated with the skew-symmetric part of this tensor
+    ///
+    /// The axial vector omega satisfies the following equation:
+    ///
+    /// ```text
+    /// skw . u = omega × u
+    ///
+    /// For all u (vector) in R3
+    /// ```
+    ///
+    /// The axial vector is given by the following (standard) components
+    /// of the skew-symmetric part of the tensor:
+    ///
+    /// ```text
+    /// omega = [−skw_12, skw_02, −skw_01]
+    /// ```
+    pub fn axial_vector(&self, omega: &mut Tensor1) {
+        if self.rep == Rep::General {
+            // The skew-symmetric part is given by:
+            // skw_kelvin = [  0,  0,  0,   0,  0,  0,  a6, a7, a8]
+            //                00  11  22   01  12  02   10  21  20
+            // Converted back to standard basis, it is given by:
+            //           [   0     a6/√2   a8/√2]
+            // skw_std = [-a6/√2     0     a7/√2]
+            //           [-a8/√2  -a7/√2     0  ]
+            omega.set(0, -self.vec[7] / SQRT_2); // convert back to standard basis
+            omega.set(1, self.vec[8] / SQRT_2); // convert back to standard basis
+            omega.set(2, -self.vec[6] / SQRT_2); // convert back to standard basis
+        } else {
+            omega.set(0, 0.0);
+            omega.set(1, 0.0);
+            omega.set(2, 0.0);
         }
     }
 
@@ -2258,7 +2285,8 @@ impl fmt::Display for Tensor2 {
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{IDENTITY2, Rep, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2};
+    use crate::{IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
+    use crate::{Rep, SampleTensor2, SamplesTensor2, Tensor1};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
 
     fn kelvin_vector(tt: &Tensor2) -> Vec<f64> {
@@ -3466,7 +3494,7 @@ mod tests {
 
     #[test]
     fn decompose_works() {
-        // General
+        // General -- Example 1
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
@@ -3475,20 +3503,34 @@ mod tests {
         ];
         let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         let mut sym = Tensor2::new(Rep::General);
-        let mut skew = Tensor2::new(Rep::General);
-        ten.decompose(&mut sym, &mut skew);
+        let mut skw = Tensor2::new(Rep::General);
+        ten.decompose(&mut sym, &mut skw);
         let sym_mat = sym.as_std_matrix();
-        let skew_mat = skew.as_std_matrix();
-        /* Mathematica code:
-        ten = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
-        tra = Transpose[ten];
-        sym = (ten + tra)/2;
-        skew = (ten - tra)/2; */
+        let skw_mat = skw.as_std_matrix();
         let sym_correct = [[1.0, 3.0, 5.0], [3.0, 5.0, 7.0], [5.0, 7.0, 9.0]];
-        let skew_correct = [[0.0, -1.0, -2.0], [1.0, 0.0, -1.0], [2.0, 1.0, 0.0]];
+        let skw_correct = [[0.0, -1.0, -2.0], [1.0, 0.0, -1.0], [2.0, 1.0, 0.0]];
         mat_approx_eq(&sym_mat, &sym_correct, 1e-15);
-        mat_approx_eq(&skew_mat, &skew_correct, 1e-15);
-        assert_eq!(skew.trace(), 0.0);
+        mat_approx_eq(&skw_mat, &skw_correct, 1e-15);
+        assert_eq!(skw.trace(), 0.0);
+
+        // General -- Example 2
+        #[rustfmt::skip]
+        let comps_std = &[
+            [4.0, 2.0, 2.0],
+            [6.0, 2.0, 4.0],
+            [8.0, 4.0, 2.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut sym = Tensor2::new(Rep::General);
+        let mut skw = Tensor2::new(Rep::General);
+        ten.decompose(&mut sym, &mut skw);
+        let sym_mat = sym.as_std_matrix();
+        let skw_mat = skw.as_std_matrix();
+        let sym_correct = [[4.0, 4.0, 5.0], [4.0, 2.0, 4.0], [5.0, 4.0, 2.0]];
+        let skw_correct = [[0.0, -2.0, -3.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]];
+        mat_approx_eq(&sym_mat, &sym_correct, 1e-15);
+        mat_approx_eq(&skw_mat, &skw_correct, 1e-15);
+        assert_eq!(skw.trace(), 0.0);
 
         // Symmetric
         #[rustfmt::skip]
@@ -3499,11 +3541,11 @@ mod tests {
         ];
         let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         let mut sym = Tensor2::new(Rep::Symmetric);
-        let mut skew = Tensor2::new(Rep::Symmetric);
-        ten.decompose(&mut sym, &mut skew);
+        let mut skw = Tensor2::new(Rep::Symmetric);
+        ten.decompose(&mut sym, &mut skw);
         for m in 0..ten.dim() {
             assert_eq!(sym.get(m), ten.get(m));
-            assert_eq!(skew.get(m), 0.0);
+            assert_eq!(skw.get(m), 0.0);
         }
 
         // Symmetric2D
@@ -3515,12 +3557,71 @@ mod tests {
         ];
         let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let mut sym = Tensor2::new(Rep::Symmetric2D);
-        let mut skew = Tensor2::new(Rep::Symmetric2D);
-        ten.decompose(&mut sym, &mut skew);
+        let mut skw = Tensor2::new(Rep::Symmetric2D);
+        ten.decompose(&mut sym, &mut skw);
         for m in 0..ten.dim() {
             assert_eq!(sym.get(m), ten.get(m));
-            assert_eq!(skew.get(m), 0.0);
+            assert_eq!(skw.get(m), 0.0);
         }
+    }
+
+    #[test]
+    fn axial_vector_works() {
+        // General -- Example 1
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        approx_eq(omega.get(0), 1.0, 1e-15);
+        approx_eq(omega.get(1), -2.0, 1e-15);
+        approx_eq(omega.get(2), 1.0, 1e-15);
+
+        // General -- Example 2
+        #[rustfmt::skip]
+        let comps_std = &[
+            [4.0, 2.0, 2.0],
+            [6.0, 2.0, 4.0],
+            [8.0, 4.0, 2.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        approx_eq(omega.get(0), 0.0, 1e-15);
+        approx_eq(omega.get(1), -3.0, 1e-15);
+        approx_eq(omega.get(2), 2.0, 1e-15);
+
+        // Symmetric
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        assert_eq!(omega.get(0), 0.0);
+        assert_eq!(omega.get(1), 0.0);
+        assert_eq!(omega.get(2), 0.0);
+
+        // Symmetric2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 0.0],
+            [2.0, 5.0, 0.0],
+            [0.0, 0.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        assert_eq!(omega.get(0), 0.0);
+        assert_eq!(omega.get(1), 0.0);
+        assert_eq!(omega.get(2), 0.0);
     }
 
     fn check_sample(

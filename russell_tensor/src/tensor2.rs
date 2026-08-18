@@ -1706,6 +1706,55 @@ impl Tensor2 {
         }
     }
 
+    /// Decomposes this tensor into symmetric and skew-symmetric parts
+    ///
+    /// * A symmetric Tensor2 is defined by Aᵀ = A
+    /// * A skew-symmetric Tensor2 is defined by Aᵀ = -A
+    ///
+    /// ```text
+    /// sym(A) = (A + Aᵀ) / 2
+    /// skew(A) = (A - Aᵀ) / 2
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if sym or skew have a different [Rep] than this tensor
+    pub fn decompose(&self, sym: &mut Tensor2, skew: &mut Tensor2) {
+        assert_eq!(sym.rep, self.rep);
+        assert_eq!(skew.rep, self.rep);
+        let tra_0 = self.vec[0];
+        let tra_1 = self.vec[1];
+        let tra_2 = self.vec[2];
+        let tra_3 = self.vec[3];
+        sym.vec[0] = (self.vec[0] + tra_0) / 2.0;
+        sym.vec[1] = (self.vec[1] + tra_1) / 2.0;
+        sym.vec[2] = (self.vec[2] + tra_2) / 2.0;
+        sym.vec[3] = (self.vec[3] + tra_3) / 2.0;
+        skew.vec[0] = (self.vec[0] - tra_0) / 2.0;
+        skew.vec[1] = (self.vec[1] - tra_1) / 2.0;
+        skew.vec[2] = (self.vec[2] - tra_2) / 2.0;
+        skew.vec[3] = (self.vec[3] - tra_3) / 2.0;
+        if self.dim > 4 {
+            let tra_4 = self.vec[4];
+            let tra_5 = self.vec[5];
+            sym.vec[4] = (self.vec[4] + tra_4) / 2.0;
+            sym.vec[5] = (self.vec[5] + tra_5) / 2.0;
+            skew.vec[4] = (self.vec[4] - tra_4) / 2.0;
+            skew.vec[5] = (self.vec[5] - tra_5) / 2.0;
+        }
+        if self.dim > 6 {
+            let tra_6 = -self.vec[6];
+            let tra_7 = -self.vec[7];
+            let tra_8 = -self.vec[8];
+            sym.vec[6] = (self.vec[6] + tra_6) / 2.0;
+            sym.vec[7] = (self.vec[7] + tra_7) / 2.0;
+            sym.vec[8] = (self.vec[8] + tra_8) / 2.0;
+            skew.vec[6] = (self.vec[6] - tra_6) / 2.0;
+            skew.vec[7] = (self.vec[7] - tra_7) / 2.0;
+            skew.vec[8] = (self.vec[8] - tra_8) / 2.0;
+        }
+    }
+
     // --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
     /// Calculates I1, the first principal invariant
@@ -3413,6 +3462,65 @@ mod tests {
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
         approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+    }
+
+    #[test]
+    fn decompose_works() {
+        // General
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut sym = Tensor2::new(Rep::General);
+        let mut skew = Tensor2::new(Rep::General);
+        ten.decompose(&mut sym, &mut skew);
+        let sym_mat = sym.as_std_matrix();
+        let skew_mat = skew.as_std_matrix();
+        /* Mathematica code:
+        ten = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+        tra = Transpose[ten];
+        sym = (ten + tra)/2;
+        skew = (ten - tra)/2; */
+        let sym_correct = [[1.0, 3.0, 5.0], [3.0, 5.0, 7.0], [5.0, 7.0, 9.0]];
+        let skew_correct = [[0.0, -1.0, -2.0], [1.0, 0.0, -1.0], [2.0, 1.0, 0.0]];
+        mat_approx_eq(&sym_mat, &sym_correct, 1e-15);
+        mat_approx_eq(&skew_mat, &skew_correct, 1e-15);
+        assert_eq!(skew.trace(), 0.0);
+
+        // Symmetric
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let mut sym = Tensor2::new(Rep::Symmetric);
+        let mut skew = Tensor2::new(Rep::Symmetric);
+        ten.decompose(&mut sym, &mut skew);
+        for m in 0..ten.dim() {
+            assert_eq!(sym.get(m), ten.get(m));
+            assert_eq!(skew.get(m), 0.0);
+        }
+
+        // Symmetric2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 0.0],
+            [2.0, 5.0, 0.0],
+            [0.0, 0.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let mut sym = Tensor2::new(Rep::Symmetric2D);
+        let mut skew = Tensor2::new(Rep::Symmetric2D);
+        ten.decompose(&mut sym, &mut skew);
+        for m in 0..ten.dim() {
+            assert_eq!(sym.get(m), ten.get(m));
+            assert_eq!(skew.get(m), 0.0);
+        }
     }
 
     fn check_sample(

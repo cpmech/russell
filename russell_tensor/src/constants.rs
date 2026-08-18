@@ -933,6 +933,14 @@ mod tests {
                 assert_eq!(IJK_TO_MN_SYM_CASE_A[i][j][k], (m_sym, n))
             }
         }
+        // Compare with IJ_TO_M
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    assert_eq!(IJK_TO_MN_CASE_A[i][j][k], (IJ_TO_M[i][j], k));
+                }
+            }
+        }
     }
 
     #[test]
@@ -952,6 +960,14 @@ mod tests {
                     _ => n,
                 };
                 assert_eq!(IJK_TO_MN_SYM_CASE_B[i][j][k], (m, n_sym))
+            }
+        }
+        // Compare with IJ_TO_M
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    assert_eq!(IJK_TO_MN_CASE_B[i][j][k], (i, IJ_TO_M[j][k]));
+                }
             }
         }
     }

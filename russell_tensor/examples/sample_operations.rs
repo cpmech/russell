@@ -121,5 +121,16 @@ fn main() -> Result<(), StrError> {
     println!("omega_again = \n{:.2}", om_again);
     vec_approx_eq(&om_again.as_vector(), &expected_omega, 1e-15);
 
+    // Verify that 0 = perm : sym
+    let mut zero = Tensor1::new();
+    t3_ddot_t2(&mut zero, 1.0, &perm_b, &sym);
+    vec_approx_eq(&zero.as_vector(), &[0.0, 0.0, 0.0], 1e-15);
+
+    // Verify that omega = -(1/2) perm : ten
+    let mut om_again2 = Tensor1::new();
+    t3_ddot_t2(&mut om_again2, -0.5, &perm_b, &ten);
+    println!("omega_again2 = \n{:.2}", om_again2);
+    vec_approx_eq(&om_again2.as_vector(), &expected_omega, 1e-15);
+
     Ok(())
 }

@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, mat_approx_eq};
-use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3};
+use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_ddot_t2, t2_dot_t2};
 
 fn main() -> Result<(), StrError> {
     // Allocate a Tensor2
@@ -31,6 +31,30 @@ fn main() -> Result<(), StrError> {
     approx_eq(det, 8.0, 1e-13);
     mat_approx_eq(&mat_inv, &correct_inv, 1e-14);
     mat_approx_eq(&mat_tra, &correct_tra, 1e-14);
+
+    // Squared tensor
+    let mut ten2 = Tensor2::new(ten.rep());
+    ten.squared(&mut ten2);
+    let mat_ten2 = ten2.as_std_matrix();
+    println!("ten2 =\n{:.2}", mat_ten2);
+    let correct_ten2 = [[44.0, 20.0, 20.0], [68.0, 32.0, 28.0], [72.0, 32.0, 36.0]];
+    mat_approx_eq(&mat_ten2, &correct_ten2, 1e-12);
+
+    // Tensor to the power 3
+    let mut ten3 = Tensor2::new(ten.rep());
+    t2_dot_t2(&mut ten3, &ten, &ten2);
+    let mat_ten3 = ten3.as_std_matrix();
+    println!("ten3 =\n{:.2}", mat_ten3);
+    let correct_ten3 = [[456.0, 208.0, 208.0], [688.0, 312.0, 320.0], [768.0, 352.0, 344.0]];
+    mat_approx_eq(&mat_ten3, &correct_ten3, 1e-12);
+
+    // Check the determinant
+    let t = ten.trace();
+    let tt = ten2.trace();
+    let ttt = ten3.trace();
+    let expected_det = (2.0 * ttt - 3.0 * t * tt + t * t * t) / 6.0;
+    println!("expected_det = {}", expected_det);
+    approx_eq(det, expected_det, 1e-13);
 
     // Symmetric and skew-symmetric parts
     let mut sym = Tensor2::new(Rep::General);

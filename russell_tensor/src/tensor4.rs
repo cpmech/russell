@@ -1735,7 +1735,7 @@ mod tests {
 
     #[test]
     fn calc_inverse_works() {
-        let aa_std_lst = [
+        let aa_std = [
             [
                 [[1.0, 1.0, 3.0], [2.0, 1.0, 3.0], [3.0, 1.0, 1.0]],
                 [[2.0, 3.0, 8.0], [6.0, 3.0, 9.0], [7.0, 3.0, 5.0]],
@@ -1776,7 +1776,7 @@ mod tests {
             [9.0 * SQRT_2, SQRT_2, -3.0 * SQRT_2, 1.0, -0.5, 1.0, -16.0, -20.5, 5.0],
             [ 48.0 * SQRT_2, 7.0 / SQRT_2, -8.0 * SQRT_2, -17.5, -0.5, 8.0, -57.5, -55.5, 21.0, ],
         ];
-        let aa = Tensor4::from_std_array(&aa_std_lst, Rep::General).unwrap();
+        let aa = Tensor4::from_std_array(&aa_std, Rep::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
                 approx_eq(aa.get(m, n), aa_expected[m][n], 1e-14);
@@ -1788,6 +1788,27 @@ mod tests {
         for m in 0..9 {
             for n in 0..9 {
                 approx_eq(aa_inv.get(m, n), aa_inv_expected[m][n], 1e-10);
+            }
+        }
+        // Check Dijpq Dpqkl⁻¹ = δik δjl
+        let aa_inv_std = aa_inv.as_std_array();
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        let mut sum = 0.0;
+                        for p in 0..3 {
+                            for q in 0..3 {
+                                sum += aa_std[i][j][p][q] * aa_inv_std[p][q][k][l];
+                            }
+                        }
+                        if i == k && j == l {
+                            approx_eq(sum, 1.0, 1e-11);
+                        } else {
+                            approx_eq(sum, 0.0, 1e-11);
+                        }
+                    }
+                }
             }
         }
     }

@@ -10,7 +10,7 @@ use std::fmt::{self, Write};
 #[cfg(feature = "heap")]
 use russell_lab::Vector;
 
-/// Implements a second-order tensor, symmetric or not
+/// Defines a second-order tensor in R³×R³
 ///
 /// # Standard and Kelvin components
 ///

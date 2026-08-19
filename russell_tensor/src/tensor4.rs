@@ -11,7 +11,7 @@ use russell_lab::mat_inverse;
 #[cfg(not(feature = "heap"))]
 use russell_lab::small_mat_inv;
 
-/// Implements a fourth-order tensor, minor-symmetric or not
+/// Defines a fourth-order tensor in R³×R³×R³×R³
 ///
 /// # Standard and Kelvin components
 ///

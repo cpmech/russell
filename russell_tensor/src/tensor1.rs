@@ -2,7 +2,7 @@ use russell_lab::{AsArray1D, Vector};
 use std::cmp;
 use std::fmt::{self, Write};
 
-/// Defines a first-order tensor (vector) in R3
+/// Defines a first-order tensor (vector) in R³
 ///
 /// The "standard" components are recorded here where "standard" means with respect to an orthonormal Cartesian system.
 pub struct Tensor1 {

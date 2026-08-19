@@ -10,21 +10,21 @@
 //!
 //! # Capabilities
 //!
-//! * [Tensor1] — first-order tensors (vectors in R3) with operations such as the dot and cross products
-//! * [Tensor2] — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
-//! * [Tensor3] — third-order tensors (minor-symmetric or not)
-//! * [Tensor4] — fourth-order tensors (minor-symmetric or not)
-//! * Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products
-//! * Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
-//! * [Spectral2] — the spectral (eigen) representation of symmetric second-order tensors
-//! * [LinElasticity] — the linear elasticity equations for small-strain problems (Hooke's law)
-//! * Constants — identity, transposition, and projector tensors
+//! * [Tensor1] — First-order tensors (vectors) in R³. Includes operations such as the dot and cross products
+//! * [Tensor2] — Second-order tensors in R³×R³. Allows symmetric specialization. Includes functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
+//! * [Tensor3] — Third-order tensors R³×R³×R³. Allows minor-symmetric specialization. Includes functions such as permutation (Levi-Civita) tensor
+//! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
+//! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
+//! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
+//! * Constants — Includes Identity, transposition, and other projector tensors.
+//! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products.
+//! * Derivatives — Implements first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors)
 //!
 //! # Kelvin notation
 //!
-//! Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
+//! Internally, tensors are stored in the Kelvin basis (Kelvin notation).
 //!
-//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping invariant; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
 //! The [Rep] enum specifies the available representations:
 //!
@@ -34,7 +34,7 @@
 //!
 //! # Standard vs Kelvin components
 //!
-//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Dᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin** components stored internally:
+//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Hᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin** components stored internally:
 //!
 //! * Accessors dealing with **standard components** carry the `std` qualifier
 //!   in their names:
@@ -53,9 +53,7 @@
 //!   * [Tensor3] — [Tensor3::get], [Tensor3::set], [Tensor3::set_tensor], [Tensor3::update]
 //!   * [Tensor4] — [Tensor4::get], [Tensor4::set], [Tensor4::set_tensor], [Tensor4::update]
 //!
-//! **Note:** [Tensor1] stores the three **standard** components directly (there is
-//! no Kelvin mapping for first-order tensors); access them with [Tensor1::get] and
-//! [Tensor1::set].
+//! **Note:** [Tensor1] stores the three **standard** components directly (there is no Kelvin mapping for first-order tensors); access them with [Tensor1::get] and [Tensor1::set].
 //!
 //! # Optional features
 //!

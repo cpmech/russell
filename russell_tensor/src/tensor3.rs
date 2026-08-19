@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
 
-/// Implements a third-order tensor, minor-symmetric or not
+/// Defines a third-order tensor in R³×R³×R³
 ///
 /// The matrix representation of Tensor3 results in a rectangular matrix.
 /// Therefore, two cases are considered here:

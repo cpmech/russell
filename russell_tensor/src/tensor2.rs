@@ -2753,6 +2753,51 @@ mod tests {
     }
 
     #[test]
+    fn from_std_matrix_to_std_matrix_from_std_matrix_work() {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let m1 = tt.as_std_matrix();
+        mat_approx_eq(&m1, comps_std, 1e-13);
+        let ee = Tensor2::from_std_matrix(&m1, Rep::General).unwrap();
+        let m2 = ee.as_std_matrix();
+        mat_approx_eq(&m2, comps_std, 1e-13);
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let m1 = tt.as_std_matrix();
+        mat_approx_eq(&m1, comps_std, 1e-13);
+        let ee = Tensor2::from_std_matrix(&m1, Rep::Symmetric).unwrap();
+        let m2 = ee.as_std_matrix();
+        mat_approx_eq(&m2, comps_std, 1e-13);
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let m1 = tt.as_std_matrix();
+        mat_approx_eq(&m1, comps_std, 1e-13);
+        let ee = Tensor2::from_std_matrix(&m1, Rep::Symmetric2D).unwrap();
+        let m2 = ee.as_std_matrix();
+        mat_approx_eq(&m2, comps_std, 1e-13);
+    }
+
+    #[test]
     #[should_panic]
     fn as_std_matrix_2d_panics_on_3d() {
         #[rustfmt::skip]

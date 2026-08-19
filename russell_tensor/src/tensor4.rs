@@ -1514,7 +1514,7 @@ impl fmt::Display for Tensor4 {
 mod tests {
     use super::{MN_TO_IJKL, Tensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
-    use crate::{Rep, SamplesTensor4};
+    use crate::{Rep, SQRT_2, SamplesTensor4};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
@@ -1729,6 +1729,65 @@ mod tests {
                         );
                     }
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn calc_inverse_works() {
+        let aa_std_lst = [
+            [
+                [[1.0, 1.0, 3.0], [2.0, 1.0, 3.0], [3.0, 1.0, 1.0]],
+                [[2.0, 3.0, 8.0], [6.0, 3.0, 9.0], [7.0, 3.0, 5.0]],
+                [[2.0, 5.0, 13.0], [11.0, 6.0, 17.0], [12.0, 8.0, 14.0]],
+            ],
+            [
+                [[1.0, 2.0, 7.0], [7.0, 7.0, 13.0], [12.0, 11.0, 12.0]],
+                [[2.0, 5.0, 13.0], [14.0, 16.0, 27.0], [21.0, 20.0, 21.0]],
+                [[3.0, 5.0, 15.0], [13.0, 12.0, 25.0], [27.0, 21.0, 21.0]],
+            ],
+            [
+                [[3.0, 6.0, 17.0], [15.0, 13.0, 30.0], [33.0, 26.0, 29.0]],
+                [[3.0, 5.0, 14.0], [12.0, 12.0, 25.0], [30.0, 25.0, 25.0]],
+                [[1.0, 3.0, 9.0], [11.0, 16.0, 25.0], [28.0, 34.0, 36.0]],
+            ],
+        ];
+        #[rustfmt::skip]
+        let aa_expected = [
+            [ 1.0, 1.0, 1.0, 3.0 / SQRT_2, 2.0 * SQRT_2, 3.0 * SQRT_2, -1.0 / SQRT_2, SQRT_2, 0.0, ],
+            [ 2.0, 16.0, 21.0, 19.0 / SQRT_2, 47.0 / SQRT_2, 17.0 * SQRT_2, -9.0 / SQRT_2, 7.0 / SQRT_2, -4.0 * SQRT_2, ],
+            [ 1.0, 16.0, 36.0, 7.0 * SQRT_2, 59.0 / SQRT_2, 37.0 / SQRT_2, -4.0 * SQRT_2, -9.0 / SQRT_2, -19.0 / SQRT_2, ],
+            [ 3.0 / SQRT_2, 5.0 * SQRT_2, 17.0 / SQRT_2, 9.0, 18.0, 17.0, -4.0, 4.0, -2.0, ],
+            [ 3.0 * SQRT_2, 12.0 * SQRT_2, 23.0 * SQRT_2, 17.5, 48.0, 43.0, -7.5, 2.0, -14.0, ],
+            [ 5.0 / SQRT_2, 19.0 / SQRT_2, 43.0 / SQRT_2, 18.5, 40.5, 37.5, -7.5, 6.5, -7.5, ],
+            [ 1.0 / SQRT_2, -2.0 * SQRT_2, -7.0 / SQRT_2, 0.0, -6.0, -2.0, 1.0, 2.0, 3.0, ],
+            [0.0, 0.0, -2.0 * SQRT_2, 0.5, -2.0, -1.0, -0.5, 2.0, 2.0],
+            [ -1.0 / SQRT_2, -7.0 / SQRT_2, -15.0 / SQRT_2, -2.5, -15.5, -12.5, 1.5, 2.5, 8.5, ],
+        ];
+        #[rustfmt::skip]
+        let aa_inv_expected = [
+            [ 50.0, 2.0, 3.0, -22.0 * SQRT_2, -2.0 * SQRT_2, 13.0 / SQRT_2, -8.0 * SQRT_2, 8.0 * SQRT_2, 5.0 / SQRT_2, ],
+            [ -141.0, -7.0, 2.0, 107.0 / SQRT_2, 3.0 * SQRT_2, -17.0 * SQRT_2, 87.0 / SQRT_2, 9.0 * SQRT_2, -16.0 * SQRT_2, ],
+            [ -59.0, -3.0, 1.0, 45.0 / SQRT_2, SQRT_2, -7.0 * SQRT_2, 37.0 / SQRT_2, 4.0 * SQRT_2, -7.0 * SQRT_2, ],
+            [ -91.0 / SQRT_2, -4.0 * SQRT_2, 12.0 * SQRT_2, 4.0, 0.5, -5.5, 71.0, 82.5, -24.5, ],
+            [ 125.0 * SQRT_2, 7.0 * SQRT_2, -6.0 * SQRT_2, -84.0, -4.5, 28.0, -93.0, -44.5, 34.0, ],
+            [ -39.0 * SQRT_2, -3.0 / SQRT_2, -3.0 * SQRT_2, 38.5, 2.5, -11.0, 10.5, -18.5, -4.0, ],
+            [-7.0 / SQRT_2, SQRT_2, -6.0 * SQRT_2, 17.0, 1.5, -3.5, -20.0, -40.5, 7.5],
+            [9.0 * SQRT_2, SQRT_2, -3.0 * SQRT_2, 1.0, -0.5, 1.0, -16.0, -20.5, 5.0],
+            [ 48.0 * SQRT_2, 7.0 / SQRT_2, -8.0 * SQRT_2, -17.5, -0.5, 8.0, -57.5, -55.5, 21.0, ],
+        ];
+        let aa = Tensor4::from_std_array(&aa_std_lst, Rep::General).unwrap();
+        for m in 0..9 {
+            for n in 0..9 {
+                approx_eq(aa.get(m, n), aa_expected[m][n], 1e-14);
+            }
+        }
+        let mut aa_inv = Tensor4::new(Rep::General);
+        let det = aa.calc_inverse(&mut aa_inv).unwrap();
+        approx_eq(det, 1.0, 1e-12);
+        for m in 0..9 {
+            for n in 0..9 {
+                approx_eq(aa_inv.get(m, n), aa_inv_expected[m][n], 1e-10);
             }
         }
     }

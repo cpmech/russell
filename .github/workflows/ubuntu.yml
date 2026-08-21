@@ -35,11 +35,6 @@ jobs:
       - name: Generate code coverage
         if: startsWith(matrix.rust, 'nightly')
         run: |
-          cargo llvm-cov --workspace --features local_sparse --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' --lcov --output-path lcov.info
-      - name: Upload to codecov.io
-        if: startsWith(matrix.rust, 'nightly')
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{secrets.CODECOV_TOKEN}}
-          files: lcov.info
-          fail_ci_if_error: true
+          cargo llvm-cov --workspace --features local_sparse \
+            --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
+            --fail-under-lines 95

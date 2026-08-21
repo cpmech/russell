@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
 /// Gathers hardware and software information from the current Linux system.
@@ -142,6 +143,24 @@ pub fn get_system_info_macos() -> String {
     "NOT AVAILABLE".to_string()
 }
 
+/// Gathers system information for the current platform
+///
+/// On Linux, this collects the OS, GPU, CPU, and memory information.
+/// On other platforms, it returns `"NOT AVAILABLE"` because the system
+/// information gathering is only implemented for Linux at the moment.
+#[cfg(target_os = "linux")]
+pub fn get_system_info() -> String {
+    get_system_info_linux()
+}
+
+/// Gathers system information for the current platform
+///
+/// Returns `"NOT AVAILABLE"` — not yet implemented for this platform.
+#[cfg(not(target_os = "linux"))]
+pub fn get_system_info() -> String {
+    "NOT AVAILABLE".to_string()
+}
+
 // Versions of external sparse solver libraries installed via the project's bash scripts
 const CUDSS_SCRIPT_VERSION: &str = "0.8.0.10";
 const CUDA_SCRIPT_VERSION: &str = "13";
@@ -236,6 +255,19 @@ mod tests {
     fn get_system_info_linux_os_contains_name() {
         let info = get_system_info_linux();
         assert!(info.contains("NAME"), "Should contain OS name");
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn get_system_info_is_non_empty_on_linux() {
+        let info = get_system_info();
+        assert!(!info.is_empty(), "Linux system info should not be empty");
+    }
+
+    #[test]
+    #[cfg(not(target_os = "linux"))]
+    fn get_system_info_returns_not_available_on_non_linux() {
+        assert_eq!(get_system_info(), "NOT AVAILABLE");
     }
 
     #[test]

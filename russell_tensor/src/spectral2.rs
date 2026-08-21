@@ -1,4 +1,4 @@
-use super::{Rep, SQRT_2, SQRT_3, SQRT_6, Tensor2, vec_dyad_vec};
+use super::{Rep, SQRT_2, SQRT_3, SQRT_6, Tensor1, Tensor2, t1_dyad_t1};
 use crate::StrError;
 use russell_lab::{Matrix, Vector, mat_eigen_sym_jacobi};
 
@@ -33,13 +33,12 @@ impl Spectral2 {
     ///
     /// The results are available in [Spectral2::lambda] and [Spectral2::projectors].
     pub fn decompose(&mut self, tt: &Tensor2) -> Result<(), StrError> {
-        if tt.rep != self.rep {
+        if tt.rep() != self.rep {
             return Err("the representation is incompatible");
         }
-        let dim = tt.vec.dim();
-        if dim == 4 {
+        if tt.dim() == 4 {
             // eigenvalues and eigenvectors
-            let (t22, mut a) = tt.as_matrix_2d();
+            let (t22, mut a) = tt.as_std_matrix_2d();
             let mut l = Vector::new(2);
             let mut v = Matrix::new(2, 2);
             mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
@@ -48,46 +47,49 @@ impl Spectral2 {
             self.lambda[2] = t22;
 
             // extract eigenvectors
-            let u0 = Vector::from(&[v.get(0, 0), v.get(1, 0)]);
-            let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1)]);
+            let u0 = Tensor1::from(&[v.get(0, 0), v.get(1, 0), 0.0]);
+            let u1 = Tensor1::from(&[v.get(0, 1), v.get(1, 1), 0.0]);
 
             // compute eigenprojectors
-            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
-            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
+            t1_dyad_t1(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
+            t1_dyad_t1(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
             self.projectors[2].clear();
-            self.projectors[2].vec[2] = 1.0;
+            self.projectors[2].set(2, 1.0);
         } else {
             // eigenvalues and eigenvectors
-            let mut a = tt.as_matrix();
+            let mut a = tt.as_std_matrix();
             let mut v = Matrix::new(3, 3);
             mat_eigen_sym_jacobi(&mut self.lambda, &mut v, &mut a)?;
 
             // extract eigenvectors
-            let u0 = Vector::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
-            let u1 = Vector::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
-            let u2 = Vector::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
+            let u0 = Tensor1::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
+            let u1 = Tensor1::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
+            let u2 = Tensor1::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
             // compute eigenprojectors
-            vec_dyad_vec(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
-            vec_dyad_vec(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
-            vec_dyad_vec(&mut self.projectors[2], 1.0, &u2, &u2).unwrap();
+            t1_dyad_t1(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
+            t1_dyad_t1(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
+            t1_dyad_t1(&mut self.projectors[2], 1.0, &u2, &u2).unwrap();
         }
         Ok(())
     }
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
     pub fn compose(&self, composed: &mut Tensor2, lambda: &Vector) -> Result<(), StrError> {
-        if composed.rep != self.rep {
+        if composed.rep() != self.rep {
             return Err("the representation is incompatible");
         }
         if lambda.dim() != 3 {
             return Err("lambda.dim must be equal to 3");
         }
-        let n = self.projectors[0].vec.dim();
-        for i in 0..n {
-            composed.vec[i] = lambda[0] * self.projectors[0].vec[i]
-                + lambda[1] * self.projectors[1].vec[i]
-                + lambda[2] * self.projectors[2].vec[i];
+        let dim = self.projectors[0].dim();
+        for m in 0..dim {
+            composed.set(
+                m,
+                lambda[0] * self.projectors[0].get(m)
+                    + lambda[1] * self.projectors[1].get(m)
+                    + lambda[2] * self.projectors[2].get(m),
+            );
         }
         Ok(())
     }
@@ -140,24 +142,24 @@ mod tests {
         let correct_projectors = sample.eigenprojectors.unwrap();
 
         // perform spectral decomposition of symmetric matrix
-        let rep = spec.projectors[0].rep;
-        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let rep = spec.projectors[0].rep();
+        let tt = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         spec.decompose(&tt).unwrap();
 
         // print results
-        // println!("a =\n{}", tt.as_matrix());
+        // println!("a =\n{}", tt.as_std_matrix());
         // println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-        // println!("P0 =\n{}", spec.projectors[0].as_matrix());
-        // println!("P1 =\n{}", spec.projectors[1].as_matrix());
-        // println!("P2 =\n{}", spec.projectors[2].as_matrix());
+        // println!("P0 =\n{}", spec.projectors[0].as_std_matrix());
+        // println!("P1 =\n{}", spec.projectors[1].as_std_matrix());
+        // println!("P2 =\n{}", spec.projectors[2].as_std_matrix());
 
         // check eigenvalues
         vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
         // check eigenprojectors
-        let pp0 = spec.projectors[0].as_matrix();
-        let pp1 = spec.projectors[1].as_matrix();
-        let pp2 = spec.projectors[2].as_matrix();
+        let pp0 = spec.projectors[0].as_std_matrix();
+        let pp1 = spec.projectors[1].as_std_matrix();
+        let pp2 = spec.projectors[2].as_std_matrix();
         let correct0 = Matrix::from(&correct_projectors[0]);
         let correct1 = Matrix::from(&correct_projectors[1]);
         let correct2 = Matrix::from(&correct_projectors[2]);
@@ -168,7 +170,7 @@ mod tests {
         // compose
         let mut tt_new = Tensor2::new(rep);
         spec.compose(&mut tt_new, &spec.lambda).unwrap();
-        let a_new = tt_new.as_matrix();
+        let a_new = tt_new.as_std_matrix();
         let a = Matrix::from(&sample.matrix);
         mat_approx_eq(&a, &a_new, tol_spectral);
     }
@@ -217,9 +219,9 @@ mod tests {
         let mut spec = Spectral2::new(two_dim);
         let mut tt = Tensor2::new_sym(two_dim);
         for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
-            tt.vec[0] = *sigma_1;
-            tt.vec[1] = *sigma_2;
-            tt.vec[2] = *sigma_3;
+            tt.set(0, *sigma_1);
+            tt.set(1, *sigma_2);
+            tt.set(2, *sigma_3);
             spec.decompose(&tt).unwrap();
             let (ls1, ls2, ls3) = spec.octahedral_basis();
             let radius = f64::sqrt(ls3 * ls3 + ls1 * ls1);

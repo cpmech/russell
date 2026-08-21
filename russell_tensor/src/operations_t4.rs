@@ -1,5 +1,10 @@
 use super::Tensor4;
+
+#[cfg(feature = "heap")]
 use russell_lab::{mat_add, mat_mat_mul};
+
+#[cfg(not(feature = "heap"))]
+use russell_lab::{small_mat_add, small_mat_mat_mul};
 
 #[allow(unused)]
 use crate::Rep; // for documentation
@@ -14,9 +19,17 @@ use crate::Rep; // for documentation
 ///
 /// A panic will occur if the tensors have different [Rep]
 pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) {
-    assert_eq!(b.rep, a.rep);
-    assert_eq!(c.rep, a.rep);
-    mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat).unwrap();
+    assert_eq!(b.rep(), a.rep());
+    assert_eq!(c.rep(), a.rep());
+    #[cfg(feature = "heap")]
+    {
+        mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat).unwrap();
+    }
+    #[cfg(not(feature = "heap"))]
+    {
+        let dim = c.dim();
+        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, dim);
+    }
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4
@@ -38,7 +51,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///
 /// ```text
 /// Eₘₙ = α Σ Cₘₐ  Dₐₙ
-///         m
+///         a
 /// ```
 ///
 /// # Output
@@ -48,8 +61,8 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
+/// * `cc` -- the input fourth-order tensor; with the same [Rep] as `dd`
+/// * `dd` -- the fourth-order tensor; with the same [Rep] as `cc`
 ///
 /// # Panics
 ///
@@ -62,7 +75,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// use russell_tensor::{Rep, t4_ddot_t4, StrError, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let cc = Tensor4::from_matrix(
+///     let cc = Tensor4::from_std_matrix(
 ///         &[
 ///             [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ///             [1.0, 1.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -77,7 +90,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///         Rep::General,
 ///     )?;
 ///
-///     let dd = Tensor4::from_matrix(
+///     let dd = Tensor4::from_std_matrix(
 ///         &[
 ///             [-1.0, 1.0 / 3.0, 5.0 / 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ///             [1.0, -2.0 / 3.0, -1.0 / 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -95,7 +108,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///     let mut ee = Tensor4::new(Rep::General);
 ///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
 ///
-///     let out = ee.as_matrix();
+///     let out = ee.as_std_matrix();
 ///     for i in 0..9 {
 ///         for j in 0..9 {
 ///             if i == j {
@@ -109,9 +122,17 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 /// }
 /// ```
 pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
-    assert_eq!(cc.rep, dd.rep);
-    assert_eq!(ee.rep, dd.rep);
-    mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0).unwrap();
+    assert_eq!(cc.rep(), dd.rep());
+    assert_eq!(ee.rep(), dd.rep());
+    #[cfg(feature = "heap")]
+    {
+        mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0).unwrap();
+    }
+    #[cfg(not(feature = "heap"))]
+    {
+        let dim = ee.dim();
+        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, dim);
+    }
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4 with update
@@ -133,7 +154,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///
 /// ```text
 /// Eₘₙ = α (Σ Cₘₐ  Dₐₙ) + β Eₘₙ
-///          m
+///          a
 /// ```
 ///
 /// # Output
@@ -143,17 +164,25 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
+/// * `cc` -- the input fourth-order tensor; with the same [Rep] as `dd`
+/// * `dd` -- the fourth-order tensor; with the same [Rep] as `cc`
 /// * `beta` -- the other scalar multiplier
 ///
 /// # Panics
 ///
 /// A panic will occur if the tensors have different [Rep]
 pub fn t4_ddot_t4_update(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4, beta: f64) {
-    assert_eq!(cc.rep, dd.rep);
-    assert_eq!(ee.rep, dd.rep);
-    mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta).unwrap();
+    assert_eq!(cc.rep(), dd.rep());
+    assert_eq!(ee.rep(), dd.rep());
+    #[cfg(feature = "heap")]
+    {
+        mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta).unwrap();
+    }
+    #[cfg(not(feature = "heap"))]
+    {
+        let dim = ee.dim();
+        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, dim);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,8 +216,8 @@ mod tests {
         let mut a = Tensor4::new(Rep::Symmetric2D);
         let mut b = Tensor4::new(Rep::Symmetric2D);
         let mut c = Tensor4::new(Rep::Symmetric2D);
-        a.sym_set(0, 0, 0, 0, 1.0);
-        b.sym_set(0, 0, 0, 0, 1.0);
+        a.sym_set_std(0, 0, 0, 0, 1.0);
+        b.sym_set_std(0, 0, 0, 0, 1.0);
         t4_add(&mut c, 2.0, &a, 3.0, &b);
         #[rustfmt::skip]
         let correct = &[
@@ -202,7 +231,7 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         ];
-        mat_approx_eq(&c.as_matrix(), correct, 1e-14);
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-14);
     }
 
     #[test]
@@ -225,10 +254,10 @@ mod tests {
 
     #[test]
     fn t4_ddot_t4_works() {
-        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let cc = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         let mut ee = Tensor4::new(Rep::Symmetric2D);
         t4_ddot_t4(&mut ee, 2.0, &cc, &cc);
-        let out = ee.as_matrix();
+        let out = ee.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                ┐\n\
@@ -251,7 +280,7 @@ mod tests {
         let cc = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
         let dd = Tensor4::new(Rep::Symmetric2D);
         let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
+        t4_ddot_t4_update(&mut ee, 1.0, &cc, &dd, 1.0);
     }
 
     #[test]
@@ -260,19 +289,19 @@ mod tests {
         let cc = Tensor4::new(Rep::Symmetric2D);
         let dd = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `dd`
         let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
+        t4_ddot_t4_update(&mut ee, 1.0, &cc, &dd, 1.0);
     }
 
     #[test]
     fn t4_ddot_t4_update_works() {
-        let cc = Tensor4::from_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let cc = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
         let mut mat = Matrix::new(9, 9);
         mat.set(0, 0, 0.1);
         mat.set(1, 1, 0.1);
         mat.set(2, 2, 0.1);
-        let mut ee = Tensor4::from_matrix(&mat, Rep::Symmetric2D).unwrap();
+        let mut ee = Tensor4::from_std_matrix(&mat, Rep::Symmetric2D).unwrap();
         t4_ddot_t4_update(&mut ee, 2.0, &cc, &cc, 2.0);
-        let out = ee.as_matrix();
+        let out = ee.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                ┐\n\

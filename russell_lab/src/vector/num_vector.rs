@@ -426,16 +426,6 @@ where
         self.data[i] = value;
     }
 
-    /// Returns the i-th component without bounds checking
-    ///
-    /// # Safety
-    ///
-    /// The caller must guarantee that `i < dim`.
-    #[inline]
-    pub unsafe fn get_unchecked(&self, i: usize) -> T {
-        unsafe { *self.data.get_unchecked(i) }
-    }
-
     /// Copy another vector into this one
     ///
     /// # Panics

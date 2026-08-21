@@ -1,15 +1,33 @@
-use crate::{AsMatrix3x3, Rep, StrError};
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
+use crate::{Rep, StrError, Tensor1};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
-use russell_lab::{Matrix, Vector, sort3};
+use russell_lab::{AsArray2D, Matrix, sort3};
 use serde::{Deserialize, Serialize};
+use std::cmp;
+use std::fmt::{self, Write};
 
-/// Implements a second-order tensor, symmetric or not
+#[cfg(feature = "heap")]
+use russell_lab::Vector;
+
+/// Defines a second-order tensor in R³×R³
+///
+/// # Standard and Kelvin components
+///
+/// The methods of this struct follow a naming convention that distinguishes
+/// between the **standard** (Cartesian) components `Tᵢⱼ` and the **Kelvin**
+/// components stored internally:
+///
+/// * Methods dealing with **standard components** carry the `std` qualifier in
+///   their names (e.g., [Tensor2::set_std_matrix], [Tensor2::get_std],
+///   [Tensor2::as_std_matrix], [Tensor2::sym_set_std]).
+/// * Methods dealing directly with the **Kelvin components** carry no qualifier
+///   (e.g., [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
+///   [Tensor2::set_tensor], [Tensor2::update]).
 ///
 /// Internally, the components are converted to the Kelvin basis as follows.
 ///
-/// **General:**
+/// [Rep::General]
 ///
 /// ```text
 ///                       ┌                ┐
@@ -25,7 +43,7 @@ use serde::{Deserialize, Serialize};
 ///                       └                ┘
 /// ```
 ///
-/// **Symmetric 3D:**
+/// [Rep::Symmetric]
 ///
 /// ```text
 ///                       ┌          ┐
@@ -38,7 +56,7 @@ use serde::{Deserialize, Serialize};
 ///                       └          ┘
 /// ```
 ///
-/// **Symmetric 2D:**
+/// [Rep::Symmetric2D]
 ///
 /// ```text
 /// ┌             ┐       ┌          ┐
@@ -50,17 +68,33 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor2 {
-    /// Holds the components in Kelvin basis as a vector.
+    /// Holds the actual dimension of the Kelvin vector
     ///
-    /// * General: `vec.dim = 9`
-    /// * Symmetric in 3D: `vec.dim = 6`
-    /// * Symmetric in 2D: `vec.dim = 4`
+    /// * General: `dim = 9`
+    /// * Symmetric: `dim = 6`
+    /// * Symmetric2D: `dim = 4`
+    dim: usize,
+
+    /// Holds the components in Kelvin basis as a vector (heap).
+    ///
+    /// Heap version => dynamically allocated memory
+    #[cfg(feature = "heap")]
     pub(crate) vec: Vector,
 
-    /// Holds the Rep (representation) enum
-    pub(crate) rep: Rep,
+    /// Holds the components in Kelvin basis as a vector (stack).
+    ///
+    /// Stack version => fixed size memory
+    ///
+    /// This array may use more data than necessary in symmetric cases
+    #[cfg(not(feature = "heap"))]
+    pub(crate) vec: [f64; 9],
 
-    /// BENCHMARKING. TODO: REMOVE THIS
+    /// Holds the Rep (representation) enum
+    rep: Rep,
+
+    /// Enables the loop-based implementation (instead of the unrolled one)
+    ///
+    /// **Note:** This field is temporary and will be removed in a future version.
     pub use_loops: bool,
 }
 
@@ -78,20 +112,40 @@ impl Tensor2 {
     ///
     /// fn main() {
     ///     let a = Tensor2::new(Rep::General);
-    ///     assert_eq!(a.vector().as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///     for m in 0..a.dim() {
+    ///         assert_eq!(a.get(m), 0.0);
+    ///     }
     ///
     ///     let b = Tensor2::new(Rep::Symmetric);
-    ///     assert_eq!(b.vector().as_data(), &[0.0,0.0,0.0,  0.0,0.0,0.0]);
+    ///     for m in 0..b.dim() {
+    ///         assert_eq!(b.get(m), 0.0);
+    ///     }
     ///
     ///     let c = Tensor2::new(Rep::Symmetric2D);
-    ///     assert_eq!(c.vector().as_data(), &[0.0,0.0,0.0,  0.0]);
+    ///     for m in 0..c.dim() {
+    ///         assert_eq!(c.get(m), 0.0);
+    ///     }
     /// }
     /// ```
     pub fn new(rep: Rep) -> Self {
-        Tensor2 {
-            vec: Vector::new(rep.dim()),
-            rep,
-            use_loops: false,
+        let dim = rep.dim();
+        #[cfg(feature = "heap")]
+        {
+            Tensor2 {
+                dim,
+                vec: Vector::new(rep.dim()),
+                rep,
+                use_loops: false,
+            }
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            Tensor2 {
+                dim,
+                vec: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                rep,
+                use_loops: false,
+            }
         }
     }
 
@@ -200,30 +254,42 @@ impl Tensor2 {
     }
 
     /// Returns the representation associated with this Tensor2
+    #[inline]
     pub fn rep(&self) -> Rep {
         self.rep
     }
 
     /// Returns the Kelvin vector dimension (4, 6, or 9)
+    #[inline]
     pub fn dim(&self) -> usize {
-        self.vec.dim()
+        self.dim
     }
 
-    /// Returns an access to the underlying Kelvin vector
-    pub fn vector(&self) -> &Vector {
-        &self.vec
+    /// Returns the m-component of the Kelvin vector
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the index is out of range.
+    #[inline]
+    pub fn get(&self, m: usize) -> f64 {
+        self.vec[m]
     }
 
-    /// Returns a mutable access to the underlying Kelvin vector
-    pub fn vector_mut(&mut self) -> &mut Vector {
-        &mut self.vec
+    /// Sets the m-component of the Kelvin vector
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the index is out of range.
+    #[inline]
+    pub fn set(&mut self, m: usize, value: f64) {
+        self.vec[m] = value;
     }
 
     /// Sets the Tensor2 with standard components given in matrix form
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Rep) Tij components given  with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components given with respect to an orthonormal Cartesian basis
     ///
     /// # Notes
     ///
@@ -235,18 +301,19 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
+    /// use russell_lab::Vector;
     /// use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // general
     ///     let mut a = Tensor2::new(Rep::General);
-    ///     a.set_matrix(&[
+    ///     a.set_std_matrix(&[
     ///         [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
     ///         [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
     ///         [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
     ///     ])?;
     ///     assert_eq!(
-    ///         format!("{:.1}", a.vector()),
+    ///         format!("{:.1}", a),
     ///         "┌      ┐\n\
     ///          │  1.0 │\n\
     ///          │  5.0 │\n\
@@ -262,13 +329,13 @@ impl Tensor2 {
     ///
     ///     // symmetric-3D
     ///     let mut b = Tensor2::new(Rep::Symmetric);
-    ///     b.set_matrix(&[
+    ///     b.set_std_matrix(&[
     ///             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
     ///             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
     ///             [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
     ///     ])?;
     ///     assert_eq!(
-    ///         format!("{:.1}", b.vector()),
+    ///         format!("{:.1}", b),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -281,13 +348,13 @@ impl Tensor2 {
     ///
     ///     // symmetric-2D
     ///     let mut c = Tensor2::new(Rep::Symmetric2D);
-    ///     c.set_matrix(&[
+    ///     c.set_std_matrix(&[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
     ///             [4.0/SQRT_2,        2.0, 0.0],
     ///             [       0.0,        0.0, 3.0],
     ///     ])?;
     ///     assert_eq!(
-    ///         format!("{:.1}", c.vector()),
+    ///         format!("{:.1}", c),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -298,19 +365,21 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_matrix(&mut self, tt: &dyn AsMatrix3x3) -> Result<(), StrError> {
-        let dim = self.vec.dim();
-        if dim == 4 || dim == 6 {
+    pub fn set_std_matrix<'a, S>(&mut self, tt: &'a S) -> Result<(), StrError>
+    where
+        S: AsArray2D<'a, f64>,
+    {
+        if self.dim == 4 || self.dim == 6 {
             if tt.at(1, 0) != tt.at(0, 1) || tt.at(2, 1) != tt.at(1, 2) || tt.at(2, 0) != tt.at(0, 2) {
                 return Err("cannot set symmetric Tensor2 with non-symmetric data");
             }
-            if dim == 4 {
+            if self.dim == 4 {
                 if tt.at(1, 2) != 0.0 || tt.at(0, 2) != 0.0 {
                     return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
                 }
             }
         }
-        for m in 0..dim {
+        for m in 0..self.dim {
             let (i, j) = M_TO_IJ[m];
             if i == j {
                 self.vec[m] = tt.at(i, j);
@@ -325,11 +394,11 @@ impl Tensor2 {
         Ok(())
     }
 
-    /// Creates a new Tensor2 constructed from a 3x3 matrix
+    /// Creates a new Tensor2 constructed from a 3x3 matrix with standard components
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard (not Rep) Tij components with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components with respect to an orthonormal Cartesian basis
     /// * `rep` -- the [Rep] representation
     ///
     /// # Notes
@@ -345,11 +414,12 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
+    /// use russell_lab::Vector;
     /// use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // general
-    ///     let a = Tensor2::from_matrix(
+    ///     let a = Tensor2::from_std_matrix(
     ///         &[
     ///             [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
     ///             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
@@ -358,7 +428,7 @@ impl Tensor2 {
     ///         Rep::General,
     ///     )?;
     ///     assert_eq!(
-    ///         format!("{:.1}", a.vector()),
+    ///         format!("{:.1}", a),
     ///         "┌      ┐\n\
     ///          │  1.0 │\n\
     ///          │  5.0 │\n\
@@ -373,7 +443,7 @@ impl Tensor2 {
     ///     );
     ///
     ///     // symmetric-3D
-    ///     let b = Tensor2::from_matrix(
+    ///     let b = Tensor2::from_std_matrix(
     ///         &[
     ///             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
     ///             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
@@ -382,7 +452,7 @@ impl Tensor2 {
     ///         Rep::Symmetric,
     ///     )?;
     ///     assert_eq!(
-    ///         format!("{:.1}", b.vector()),
+    ///         format!("{:.1}", b),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -394,7 +464,7 @@ impl Tensor2 {
     ///     );
     ///
     ///     // symmetric-2D
-    ///     let c = Tensor2::from_matrix(
+    ///     let c = Tensor2::from_std_matrix(
     ///         &[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
     ///             [4.0/SQRT_2,        2.0, 0.0],
@@ -403,7 +473,7 @@ impl Tensor2 {
     ///         Rep::Symmetric2D,
     ///     )?;
     ///     assert_eq!(
-    ///         format!("{:.1}", c.vector()),
+    ///         format!("{:.1}", c),
     ///         "┌     ┐\n\
     ///          │ 1.0 │\n\
     ///          │ 2.0 │\n\
@@ -414,9 +484,12 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_matrix(tt: &dyn AsMatrix3x3, rep: Rep) -> Result<Self, StrError> {
+    pub fn from_std_matrix<'a, S>(tt: &'a S, rep: Rep) -> Result<Self, StrError>
+    where
+        S: AsArray2D<'a, f64>,
+    {
         let mut res = Tensor2::new(rep);
-        res.set_matrix(tt)?;
+        res.set_std_matrix(tt)?;
         Ok(res)
     }
 
@@ -425,12 +498,13 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
+    /// use russell_lab::Vector;
     /// use russell_tensor::{Rep, Tensor2};
     ///
     /// let ii = Tensor2::identity(Rep::General);
     ///
     /// assert_eq!(
-    ///     format!("{}", ii.vector()),
+    ///     format!("{}", ii),
     ///     "┌   ┐\n\
     ///      │ 1 │\n\
     ///      │ 1 │\n\
@@ -459,7 +533,7 @@ impl Tensor2 {
     /// # Input
     ///
     /// * `i` -- the first index in `(0, 1, 2)`
-    /// * `j` -- the first index in `(0, 1, 2)`
+    /// * `j` -- the second index in `(0, 1, 2)`
     ///
     /// # Panics
     ///
@@ -472,18 +546,18 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0,  2.0, 0.0],
     ///         [3.0, -1.0, 5.0],
     ///         [0.0,  4.0, 1.0],
     ///     ], Rep::General)?;
     ///
-    ///     approx_eq(a.get(1,2), 5.0, 1e-15);
+    ///     approx_eq(a.get_std(1,2), 5.0, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn get(&self, i: usize, j: usize) -> f64 {
-        match self.vec.dim() {
+    pub fn get_std(&self, i: usize, j: usize) -> f64 {
+        match self.dim {
             4 => {
                 let m = IJ_TO_M_SYM[i][j];
                 if m > 3 {
@@ -515,7 +589,7 @@ impl Tensor2 {
 
     /// Returns a 3x3 matrix with the standard components
     ///
-    /// **Note:** The matrix will have the standard components (not Rep) and 3x3 dimension.
+    /// **Note:** The matrix will have the standard components and 3x3 dimension.
     ///
     /// # Examples
     ///
@@ -523,13 +597,13 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0,  1.0, 0.0],
     ///         [1.0, -1.0, 0.0],
     ///         [0.0,  0.0, 1.0],
     ///     ], Rep::Symmetric2D)?;
     ///     assert_eq!(
-    ///         format!("{:.1}", a.as_matrix()),
+    ///         format!("{:.1}", a.as_std_matrix()),
     ///         "┌                ┐\n\
     ///          │  1.0  1.0  0.0 │\n\
     ///          │  1.0 -1.0  0.0 │\n\
@@ -539,9 +613,9 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_matrix(&self) -> Matrix {
+    pub fn as_std_matrix(&self) -> Matrix {
         let mut mat = Matrix::new(3, 3);
-        self.to_matrix(&mut mat);
+        self.to_std_matrix(&mut mat);
         mat
     }
 
@@ -562,13 +636,13 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0,  1.0, 0.0],
     ///         [1.0, -1.0, 0.0],
     ///         [0.0,  0.0, 1.0],
     ///     ], Rep::Symmetric2D)?;
     ///     let mut mat = Matrix::new(3, 3);
-    ///     a.to_matrix(&mut mat);
+    ///     a.to_std_matrix(&mut mat);
     ///     assert_eq!(
     ///         format!("{:.1}", mat),
     ///         "┌                ┐\n\
@@ -580,13 +654,12 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_matrix(&self, mat: &mut Matrix) {
+    pub fn to_std_matrix(&self, mat: &mut Matrix) {
         assert_eq!(mat.dims(), (3, 3));
-        let dim = self.vec.dim();
-        if dim < 9 {
-            for m in 0..dim {
+        if self.dim < 9 {
+            for m in 0..self.dim {
                 let (i, j) = M_TO_IJ[m];
-                mat.set(i, j, self.get(i, j));
+                mat.set(i, j, self.get_std(i, j));
                 if i != j {
                     mat.set(j, i, mat.get(i, j));
                 }
@@ -594,7 +667,7 @@ impl Tensor2 {
         } else {
             for i in 0..3 {
                 for j in 0..3 {
-                    mat.set(i, j, self.get(i, j));
+                    mat.set(i, j, self.get_std(i, j));
                 }
             }
         }
@@ -604,7 +677,7 @@ impl Tensor2 {
     ///
     /// # Notes
     ///
-    /// 1. The matrix will have the standard components (not Rep) and 2x2 dimension
+    /// 1. The matrix will have the standard components and 2x2 dimension
     /// 2. This function returns the third diagonal component T22 and the 2x2 matrix
     ///
     /// # Panics
@@ -617,12 +690,12 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let tt = Tensor2::from_matrix(&[
+    ///     let tt = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 0.0],
     ///         [2.0, 3.0, 0.0],
     ///         [0.0, 0.0, 4.0],
     ///     ], Rep::Symmetric2D)?;
-    ///     let (t22, res) = tt.as_matrix_2d();
+    ///     let (t22, res) = tt.as_std_matrix_2d();
     ///     assert_eq!(t22, 4.0);
     ///     assert_eq!(
     ///         format!("{:.1}", res),
@@ -634,14 +707,14 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_matrix_2d(&self) -> (f64, Matrix) {
+    pub fn as_std_matrix_2d(&self) -> (f64, Matrix) {
         assert_eq!(self.rep, Rep::Symmetric2D);
         let mut tt = Matrix::new(2, 2);
-        tt.set(0, 0, self.get(0, 0));
-        tt.set(0, 1, self.get(0, 1));
-        tt.set(1, 0, self.get(1, 0));
-        tt.set(1, 1, self.get(1, 1));
-        (self.get(2, 2), tt)
+        tt.set(0, 0, self.get_std(0, 0));
+        tt.set(0, 1, self.get_std(0, 1));
+        tt.set(1, 0, self.get_std(1, 0));
+        tt.set(1, 1, self.get_std(1, 1));
+        (self.get_std(2, 2), tt)
     }
 
     /// Returns a general Tensor2 regardless of Rep type
@@ -653,16 +726,17 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
+    /// use russell_lab::Vector;
     /// use russell_tensor::{Rep, Tensor2, StrError, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let tt = Tensor2::from_matrix(&[
+    ///     let tt = Tensor2::from_std_matrix(&[
     ///         [1.0,        2.0/SQRT_2, 0.0],
     ///         [2.0/SQRT_2, 3.0,        0.0],
     ///         [0.0,        0.0,        4.0],
     ///     ], Rep::Symmetric2D)?;
     ///     assert_eq!(
-    ///         format!("{:.2}", tt.vector()),
+    ///         format!("{:.2}", tt),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -673,7 +747,7 @@ impl Tensor2 {
     ///
     ///     let tt_gen = tt.as_general();
     ///     assert_eq!(
-    ///         format!("{:.2}", tt_gen.vector()),
+    ///         format!("{:.2}", tt_gen),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -695,12 +769,11 @@ impl Tensor2 {
         res.vec[1] = self.vec[1];
         res.vec[2] = self.vec[2];
         res.vec[3] = self.vec[3];
-        let original_dim = self.vec.dim();
-        if original_dim > 4 {
+        if self.dim > 4 {
             res.vec[4] = self.vec[4];
             res.vec[5] = self.vec[5];
         }
-        if original_dim > 6 {
+        if self.dim > 6 {
             res.vec[6] = self.vec[6];
             res.vec[7] = self.vec[7];
             res.vec[8] = self.vec[8];
@@ -721,16 +794,17 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
+    /// use russell_lab::Vector;
     /// use russell_tensor::{Rep, Tensor2, StrError, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let tt = Tensor2::from_matrix(&[
+    ///     let tt = Tensor2::from_std_matrix(&[
     ///         [1.0,        2.0/SQRT_2, 0.0],
     ///         [2.0/SQRT_2, 3.0,        0.0],
     ///         [0.0,        0.0,        4.0],
     ///     ], Rep::Symmetric2D)?;
     ///     assert_eq!(
-    ///         format!("{:.2}", tt.vector()),
+    ///         format!("{:.2}", tt),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -741,7 +815,7 @@ impl Tensor2 {
     ///
     ///     let tt_sym = tt.sym2d_as_symmetric();
     ///     assert_eq!(
-    ///         format!("{:.2}", tt_sym.vector()),
+    ///         format!("{:.2}", tt_sym),
     ///         "┌      ┐\n\
     ///          │ 1.00 │\n\
     ///          │ 3.00 │\n\
@@ -769,7 +843,7 @@ impl Tensor2 {
         self.vec.fill(0.0);
     }
 
-    /// Sets the (i,j) component of a symmetric Tensor2
+    /// Sets the (i,j) standard component of a symmetric Tensor2
     ///
     /// ```text
     /// σᵢⱼ = value
@@ -793,12 +867,12 @@ impl Tensor2 {
     ///
     /// fn main() {
     ///     let mut a = Tensor2::new(Rep::Symmetric2D);
-    ///     a.sym_set(0, 0, 1.0);
-    ///     a.sym_set(1, 1, 2.0);
-    ///     a.sym_set(2, 2, 3.0);
-    ///     a.sym_set(0, 1, 4.0);
+    ///     a.sym_set_std(0, 0, 1.0);
+    ///     a.sym_set_std(1, 1, 2.0);
+    ///     a.sym_set_std(2, 2, 3.0);
+    ///     a.sym_set_std(0, 1, 4.0);
     ///     assert_eq!(
-    ///         format!("{:.1}", a.as_matrix()),
+    ///         format!("{:.1}", a.as_std_matrix()),
     ///         "┌             ┐\n\
     ///          │ 1.0 4.0 0.0 │\n\
     ///          │ 4.0 2.0 0.0 │\n\
@@ -807,14 +881,14 @@ impl Tensor2 {
     ///     );
     ///
     ///     let mut b = Tensor2::new(Rep::Symmetric);
-    ///     b.sym_set(0, 0, 1.0);
-    ///     b.sym_set(1, 1, 2.0);
-    ///     b.sym_set(2, 2, 3.0);
-    ///     b.sym_set(0, 1, 4.0);
-    ///     b.sym_set(1, 0, 4.0);
-    ///     b.sym_set(2, 0, 5.0);
+    ///     b.sym_set_std(0, 0, 1.0);
+    ///     b.sym_set_std(1, 1, 2.0);
+    ///     b.sym_set_std(2, 2, 3.0);
+    ///     b.sym_set_std(0, 1, 4.0);
+    ///     b.sym_set_std(1, 0, 4.0);
+    ///     b.sym_set_std(2, 0, 5.0);
     ///     assert_eq!(
-    ///         format!("{:.1}", b.as_matrix()),
+    ///         format!("{:.1}", b.as_std_matrix()),
     ///         "┌             ┐\n\
     ///          │ 1.0 4.0 5.0 │\n\
     ///          │ 4.0 2.0 0.0 │\n\
@@ -823,7 +897,7 @@ impl Tensor2 {
     ///     );
     /// }
     /// ```
-    pub fn sym_set(&mut self, i: usize, j: usize, value: f64) {
+    pub fn sym_set_std(&mut self, i: usize, j: usize, value: f64) {
         assert!(self.rep != Rep::General);
         let m = IJ_TO_M_SYM[i][j];
         if i == j {
@@ -833,7 +907,7 @@ impl Tensor2 {
         }
     }
 
-    /// Updates the (i,j) component of a symmetric Tensor2
+    /// Updates the (i,j) standard component of a symmetric Tensor2
     ///
     /// ```text
     /// σᵢⱼ += α value
@@ -857,16 +931,16 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let mut a = Tensor2::from_matrix(&[
+    ///     let mut a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [2.0, 5.0, 6.0],
     ///         [3.0, 6.0, 9.0],
     ///     ], Rep::Symmetric)?;
     ///
-    ///     a.sym_add(0, 1, 2.0, 10.0);
+    ///     a.sym_add_std(0, 1, 2.0, 10.0);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.as_matrix()),
+    ///         format!("{:.1}", a.as_std_matrix()),
     ///         "┌                ┐\n\
     ///          │  1.0 22.0  3.0 │\n\
     ///          │ 22.0  5.0  6.0 │\n\
@@ -876,7 +950,7 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn sym_add(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
+    pub fn sym_add_std(&mut self, i: usize, j: usize, alpha: f64, value: f64) {
         assert!(self.rep != Rep::General);
         assert!(i <= j);
         let m = IJ_TO_M_SYM[i][j];
@@ -887,7 +961,7 @@ impl Tensor2 {
         }
     }
 
-    /// Sets this tensor equal to another tensor (given as a Kelvin vector)
+    /// Sets the Kelvin vector of this tensor as a scalar multiple of another Kelvin vector
     ///
     /// ```text
     /// self := α other
@@ -904,7 +978,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError, SQRT_2};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let mut a = Tensor2::from_matrix(&[
+    ///     let mut a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
@@ -921,10 +995,10 @@ impl Tensor2 {
     ///         -4.0 / SQRT_2,
     ///     ]);
     ///
-    ///     a.set_kelvin_vector(2.0, v_kelvin.as_data());
+    ///     a.set_vector(2.0, v_kelvin.as_data());
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.as_matrix()),
+    ///         format!("{:.1}", a.as_std_matrix()),
     ///         "┌                ┐\n\
     ///          │  2.0  4.0  6.0 │\n\
     ///          │  8.0 10.0 12.0 │\n\
@@ -934,25 +1008,24 @@ impl Tensor2 {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_kelvin_vector(&mut self, alpha: f64, other: &[f64]) {
-        assert_eq!(self.rep.dim(), other.len());
-        let dim = self.vec.dim();
+    pub fn set_vector(&mut self, alpha: f64, other: &[f64]) {
+        assert_eq!(self.dim, other.len());
         self.vec[0] = alpha * other[0];
         self.vec[1] = alpha * other[1];
         self.vec[2] = alpha * other[2];
         self.vec[3] = alpha * other[3];
-        if dim > 4 {
+        if self.dim > 4 {
             self.vec[4] = alpha * other[4];
             self.vec[5] = alpha * other[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             self.vec[6] = alpha * other[6];
             self.vec[7] = alpha * other[7];
             self.vec[8] = alpha * other[8];
         }
     }
 
-    /// Sets this tensor equal to another tensor
+    /// Makes this tensor equal to another tensor
     ///
     /// ```text
     /// self := α other
@@ -968,12 +1041,12 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let mut a = Tensor2::from_matrix(&[
+    ///     let mut a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
     ///     ], Rep::General)?;
-    ///     let b = Tensor2::from_matrix(&[
+    ///     let b = Tensor2::from_std_matrix(&[
     ///         [10.0, 20.0, 30.0],
     ///         [40.0, 50.0, 60.0],
     ///         [70.0, 80.0, 90.0],
@@ -982,7 +1055,7 @@ impl Tensor2 {
     ///     a.set_tensor(2.0, &b);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.as_matrix()),
+    ///         format!("{:.1}", a.as_std_matrix()),
     ///         "┌                   ┐\n\
     ///          │  20.0  40.0  60.0 │\n\
     ///          │  80.0 100.0 120.0 │\n\
@@ -994,16 +1067,15 @@ impl Tensor2 {
     /// ```
     pub fn set_tensor(&mut self, alpha: f64, other: &Tensor2) {
         assert_eq!(self.rep, other.rep);
-        let dim = self.vec.dim();
         self.vec[0] = alpha * other.vec[0];
         self.vec[1] = alpha * other.vec[1];
         self.vec[2] = alpha * other.vec[2];
         self.vec[3] = alpha * other.vec[3];
-        if dim > 4 {
+        if self.dim > 4 {
             self.vec[4] = alpha * other.vec[4];
             self.vec[5] = alpha * other.vec[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             self.vec[6] = alpha * other.vec[6];
             self.vec[7] = alpha * other.vec[7];
             self.vec[8] = alpha * other.vec[8];
@@ -1026,12 +1098,12 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let mut a = Tensor2::from_matrix(&[
+    ///     let mut a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
     ///     ], Rep::General)?;
-    ///     let b = Tensor2::from_matrix(&[
+    ///     let b = Tensor2::from_std_matrix(&[
     ///         [10.0, 20.0, 30.0],
     ///         [40.0, 50.0, 60.0],
     ///         [70.0, 80.0, 90.0],
@@ -1040,7 +1112,7 @@ impl Tensor2 {
     ///     a.update(2.0, &b);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", a.as_matrix()),
+    ///         format!("{:.1}", a.as_std_matrix()),
     ///         "┌                   ┐\n\
     ///          │  21.0  42.0  63.0 │\n\
     ///          │  84.0 105.0 126.0 │\n\
@@ -1052,16 +1124,15 @@ impl Tensor2 {
     /// ```
     pub fn update(&mut self, alpha: f64, other: &Tensor2) {
         assert_eq!(self.rep, other.rep);
-        let dim = self.vec.dim();
         self.vec[0] += alpha * other.vec[0];
         self.vec[1] += alpha * other.vec[1];
         self.vec[2] += alpha * other.vec[2];
         self.vec[3] += alpha * other.vec[3];
-        if dim > 4 {
+        if self.dim > 4 {
             self.vec[4] += alpha * other.vec[4];
             self.vec[5] += alpha * other.vec[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             self.vec[6] += alpha * other.vec[6];
             self.vec[7] += alpha * other.vec[7];
             self.vec[8] += alpha * other.vec[8];
@@ -1077,7 +1148,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
@@ -1089,7 +1160,7 @@ impl Tensor2 {
     /// ```
     pub fn determinant(&self) -> f64 {
         let a = &self.vec;
-        match self.vec.dim() {
+        match self.dim {
             4 => a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0,
             6 => {
                 a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0 - (a[0] * a[4] * a[4]) / 2.0
@@ -1118,7 +1189,7 @@ impl Tensor2 {
     /// [Aᵀ]ᵢⱼ = [A]ⱼᵢ
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `at` -- a Tensor2 to hold the transpose tensor; with the same [Rep] as this tensor
     ///
@@ -1129,11 +1200,11 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::vec_approx_eq;
+    /// use russell_lab::mat_approx_eq;
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.1, 1.2, 1.3],
     ///         [2.1, 2.2, 2.3],
     ///         [3.1, 3.2, 3.3],
@@ -1142,27 +1213,28 @@ impl Tensor2 {
     ///     let mut at = Tensor2::new(Rep::General);
     ///     a.transpose(&mut at);
     ///
-    ///     let at_correct = Tensor2::from_matrix(&[
+    ///     let at_correct = Tensor2::from_std_matrix(&[
     ///         [1.1, 2.1, 3.1],
     ///         [1.2, 2.2, 3.2],
     ///         [1.3, 2.3, 3.3],
     ///     ], Rep::General)?;
-    ///     vec_approx_eq(at.vector(), at_correct.vector(), 1e-15);
+    ///     mat_approx_eq(&at.as_std_matrix(), &at_correct.as_std_matrix(), 1e-15);
     ///     Ok(())
     /// }
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
+        // The transpose is given by:
+        // [a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]
         assert_eq!(at.rep, self.rep);
-        let dim = self.vec.dim();
         at.vec[0] = self.vec[0];
         at.vec[1] = self.vec[1];
         at.vec[2] = self.vec[2];
         at.vec[3] = self.vec[3];
-        if dim > 4 {
+        if self.dim > 4 {
             at.vec[4] = self.vec[4];
             at.vec[5] = self.vec[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             at.vec[6] = -self.vec[6];
             at.vec[7] = -self.vec[7];
             at.vec[8] = -self.vec[8];
@@ -1177,12 +1249,15 @@ impl Tensor2 {
     /// A · A⁻¹ = I
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `ai` -- a Tensor2 to hold the inverse tensor; with the same [Rep] as this tensor
+    ///
+    /// # Input
+    ///
     /// * `tolerance` -- a tolerance for the determinant such that the inverse is computed only if |det| > tolerance
     ///
-    /// ## Output
+    /// # Returns
     ///
     /// * If the determinant is zero, the inverse is not computed and returns `None`
     /// * Otherwise, the inverse is computed and returns the determinant
@@ -1198,7 +1273,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [6.0,  1.0,  2.0],
     ///         [3.0, 12.0,  4.0],
     ///         [5.0,  6.0, 15.0],
@@ -1212,8 +1287,8 @@ impl Tensor2 {
     ///         panic!("determinant is zero");
     ///     }
     ///
-    ///     let a_mat = a.as_matrix();
-    ///     let ai_mat = ai.as_matrix();
+    ///     let a_mat = a.as_std_matrix();
+    ///     let ai_mat = ai.as_std_matrix();
     ///     let mut a_times_ai = Matrix::new(3, 3);
     ///     mat_mat_mul(&mut a_times_ai, 1.0, &a_mat, &ai_mat, 0.0)?;
     ///
@@ -1224,9 +1299,8 @@ impl Tensor2 {
     /// ```
     pub fn inverse(&self, ai: &mut Tensor2, tolerance: f64) -> Option<f64> {
         assert_eq!(ai.rep, self.rep);
-        let dim = self.vec.dim();
         let a = &self.vec;
-        match dim {
+        match self.dim {
             4 => {
                 let det = a[0] * a[1] * a[2] - (a[2] * a[3] * a[3]) / 2.0;
                 if f64::abs(det) > tolerance {
@@ -1284,7 +1358,7 @@ impl Tensor2 {
     /// A² = A · A
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `a2` -- a Tensor2 to hold the squared tensor; with the same [Rep] as this tensor
     ///
@@ -1295,11 +1369,11 @@ impl Tensor2 {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::vec_approx_eq;
+    /// use russell_lab::mat_approx_eq;
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [10.0, 20.0, 10.0],
     ///         [ 4.0,  5.0,  6.0],
     ///         [ 2.0,  3.0,  5.0],
@@ -1308,21 +1382,20 @@ impl Tensor2 {
     ///     let mut a2 = Tensor2::new(Rep::General);
     ///     a.squared(&mut a2);
     ///
-    ///     let a2_correct = Tensor2::from_matrix(&[
+    ///     let a2_correct = Tensor2::from_std_matrix(&[
     ///         [200.0, 330.0, 270.0],
     ///         [ 72.0, 123.0, 100.0],
     ///         [ 42.0,  70.0,  63.0],
     ///     ], Rep::General)?;
-    ///     vec_approx_eq(a2.vector(), a2_correct.vector(), 1e-13);
+    ///     mat_approx_eq(&a2.as_std_matrix(), &a2_correct.as_std_matrix(), 1e-12);
     ///
     ///     Ok(())
     /// }
     /// ```
     pub fn squared(&self, a2: &mut Tensor2) {
         assert_eq!(a2.rep, self.rep);
-        let dim = self.vec.dim();
         let a = &self.vec;
-        match dim {
+        match self.dim {
             4 => {
                 a2.vec[0] = a[0] * a[0] + a[3] * a[3] / 2.0;
                 a2.vec[1] = a[1] * a[1] + a[3] * a[3] / 2.0;
@@ -1397,7 +1470,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
@@ -1424,7 +1497,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
@@ -1439,11 +1512,10 @@ impl Tensor2 {
             + self.vec[1] * self.vec[1]
             + self.vec[2] * self.vec[2]
             + self.vec[3] * self.vec[3];
-        let dim = self.vec.dim();
-        if dim > 4 {
+        if self.dim > 4 {
             sm += self.vec[4] * self.vec[4] + self.vec[5] * self.vec[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             sm += self.vec[6] * self.vec[6] + self.vec[7] * self.vec[7] + self.vec[8] * self.vec[8];
         }
         f64::sqrt(sm)
@@ -1455,7 +1527,7 @@ impl Tensor2 {
     /// dev(σ) = σ - ⅓ tr(σ) I
     /// ```
     ///
-    /// ## Output
+    /// # Output
     ///
     /// * `dev` -- a Tensor2 to hold the deviator tensor; with the same [Rep] as this tensor
     ///
@@ -1470,7 +1542,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 2.0, 3.0],
     ///         [4.0, 5.0, 6.0],
     ///         [7.0, 8.0, 9.0],
@@ -1481,7 +1553,7 @@ impl Tensor2 {
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", dev.as_matrix()),
+    ///         format!("{:.1}", dev.as_std_matrix()),
     ///         "┌                ┐\n\
     ///          │ -4.0  2.0  3.0 │\n\
     ///          │  4.0  0.0  6.0 │\n\
@@ -1493,17 +1565,16 @@ impl Tensor2 {
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) {
         assert_eq!(dev.rep, self.rep);
-        let dim = self.vec.dim();
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
         dev.vec[0] = self.vec[0] - m;
         dev.vec[1] = self.vec[1] - m;
         dev.vec[2] = self.vec[2] - m;
         dev.vec[3] = self.vec[3];
-        if dim > 4 {
+        if self.dim > 4 {
             dev.vec[4] = self.vec[4];
             dev.vec[5] = self.vec[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             dev.vec[6] = self.vec[6];
             dev.vec[7] = self.vec[7];
             dev.vec[8] = self.vec[8];
@@ -1533,7 +1604,7 @@ impl Tensor2 {
     /// Also the radius in the octahedral plane is:
     ///
     /// ```text
-    /// r = ‖s‖ =
+    /// r = ‖s‖
     /// ```
     ///
     /// # Examples
@@ -1543,7 +1614,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [6.0,  1.0,  2.0],
     ///         [3.0, 12.0,  4.0],
     ///         [5.0,  6.0, 15.0],
@@ -1554,7 +1625,7 @@ impl Tensor2 {
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", dev.as_matrix()),
+    ///         format!("{:.1}", dev.as_std_matrix()),
     ///         "┌                ┐\n\
     ///          │ -5.0  1.0  2.0 │\n\
     ///          │  3.0  1.0  4.0 │\n\
@@ -1573,11 +1644,10 @@ impl Tensor2 {
             + (a[0] - a[1]) * (a[0] - a[1]) / 3.0
             + (a[1] - a[2]) * (a[1] - a[2]) / 3.0
             + (a[2] - a[0]) * (a[2] - a[0]) / 3.0;
-        let dim = a.dim();
-        if dim > 4 {
+        if self.dim > 4 {
             sq_norm_s += a[4] * a[4] + a[5] * a[5];
         }
-        if dim > 6 {
+        if self.dim > 6 {
             sq_norm_s += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
         }
         f64::sqrt(sq_norm_s)
@@ -1596,7 +1666,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [6.0,  1.0,  2.0],
     ///         [3.0, 12.0,  4.0],
     ///         [5.0,  6.0, 15.0],
@@ -1607,7 +1677,7 @@ impl Tensor2 {
     ///     approx_eq(dev.trace(), 0.0, 1e-15);
     ///
     ///     assert_eq!(
-    ///         format!("{:.1}", dev.as_matrix()),
+    ///         format!("{:.1}", dev.as_std_matrix()),
     ///         "┌                ┐\n\
     ///          │ -5.0  1.0  2.0 │\n\
     ///          │  3.0  1.0  4.0 │\n\
@@ -1623,7 +1693,7 @@ impl Tensor2 {
     pub fn deviator_determinant(&self) -> f64 {
         let a = &self.vec;
         let m = (a[0] + a[1] + a[2]) / 3.0;
-        match self.vec.dim() {
+        match self.dim {
             4 => (a[2] - m) * (m * m + a[0] * a[1] - m * (a[0] + a[1]) - a[3] * a[3] / 2.0),
             6 => {
                 (2.0 * m * m * (a[0] + a[1] + a[2]) - a[2] * a[3] * a[3] + a[0] * (2.0 * a[1] * a[2] - a[4] * a[4])
@@ -1643,6 +1713,80 @@ impl Tensor2 {
         }
     }
 
+    /// Decomposes this tensor into symmetric and skew-symmetric parts
+    ///
+    /// * A symmetric Tensor2 is defined by Sᵀ = S
+    /// * A skew-symmetric Tensor2 is defined by Wᵀ = -W
+    ///
+    /// For this tensor (A):
+    ///
+    /// ```text
+    /// S := sym(A) = (A + Aᵀ) / 2
+    /// W := skw(A) = (A - Aᵀ) / 2
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if sym or skew have a different [Rep] than this tensor
+    pub fn decompose(&self, sym: &mut Tensor2, skw: &mut Tensor2) {
+        assert_eq!(sym.rep, self.rep);
+        assert_eq!(skw.rep, self.rep);
+        if self.rep == Rep::General {
+            // The symmetric part is given by:
+            // [a0, a1, a2, a3, a4, a5, 0, 0, 0]
+            // The skew-symmetric part is given by:
+            // [0, 0, 0, 0, 0, 0, a6, a7, a8]
+            for m in 0..6 {
+                sym.vec[m] = self.vec[m];
+                skw.vec[m] = 0.0;
+            }
+            skw.set(6, self.vec[6]);
+            skw.set(7, self.vec[7]);
+            skw.set(8, self.vec[8]);
+        } else {
+            // There is only symmetric part
+            for m in 0..self.dim {
+                sym.vec[m] = self.vec[m];
+                skw.vec[m] = 0.0;
+            }
+        }
+    }
+
+    /// Calculates the axial vector omega associated with the skew-symmetric part of this tensor
+    ///
+    /// The axial vector omega satisfies the following equation:
+    ///
+    /// ```text
+    /// skw . u = omega × u
+    ///
+    /// For all u (vector) in R3
+    /// ```
+    ///
+    /// The axial vector is given by the following (standard) components
+    /// of the skew-symmetric part of the tensor:
+    ///
+    /// ```text
+    /// omega = [−skw_12, skw_02, −skw_01]
+    /// ```
+    pub fn axial_vector(&self, omega: &mut Tensor1) {
+        if self.rep == Rep::General {
+            // The skew-symmetric part is given by:
+            // skw_kelvin = [  0,  0,  0,   0,  0,  0,  a6, a7, a8]
+            //                00  11  22   01  12  02   10  21  20
+            // Converted back to standard basis, it is given by:
+            //           [   0     a6/√2   a8/√2]
+            // skw_std = [-a6/√2     0     a7/√2]
+            //           [-a8/√2  -a7/√2     0  ]
+            omega.set(0, -self.vec[7] / SQRT_2); // convert back to standard basis
+            omega.set(1, self.vec[8] / SQRT_2); // convert back to standard basis
+            omega.set(2, -self.vec[6] / SQRT_2); // convert back to standard basis
+        } else {
+            omega.set(0, 0.0);
+            omega.set(1, 0.0);
+            omega.set(2, 0.0);
+        }
+    }
+
     // --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
     /// Calculates I1, the first principal invariant
@@ -1658,7 +1802,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let sig = Tensor2::from_matrix(&[
+    ///     let sig = Tensor2::from_std_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
     ///         [20.0, -10.0,  10.0],
@@ -1684,7 +1828,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let sig = Tensor2::from_matrix(&[
+    ///     let sig = Tensor2::from_std_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
     ///         [20.0, -10.0,  10.0],
@@ -1696,11 +1840,10 @@ impl Tensor2 {
     pub fn invariant_ii2(&self) -> f64 {
         let a = &self.vec;
         let mut ii2 = a[0] * a[1] + a[0] * a[2] + a[1] * a[2] - a[3] * a[3] / 2.0;
-        let dim = self.vec.dim();
-        if dim > 4 {
+        if self.dim > 4 {
             ii2 -= (a[4] * a[4] + a[5] * a[5]) / 2.0;
         }
-        if dim > 6 {
+        if self.dim > 6 {
             ii2 += (a[6] * a[6] + a[7] * a[7] + a[8] * a[8]) / 2.0;
         }
         ii2
@@ -1719,7 +1862,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let sig = Tensor2::from_matrix(&[
+    ///     let sig = Tensor2::from_std_matrix(&[
     ///         [50.0,  30.0,  20.0],
     ///         [30.0, -20.0, -10.0],
     ///         [20.0, -10.0,  10.0],
@@ -1761,7 +1904,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let sig = Tensor2::from_matrix(&[
+    ///     let sig = Tensor2::from_std_matrix(&[
     ///         [ 2.0, -3.0, 4.0],
     ///         [-3.0, -5.0, 1.0],
     ///         [ 4.0,  1.0, 6.0],
@@ -1772,7 +1915,7 @@ impl Tensor2 {
     /// ```
     pub fn invariant_jj2(&self) -> f64 {
         let a = &self.vec;
-        match self.vec.dim() {
+        match self.dim {
             4 => {
                 (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
                     + 3.0 * a[3] * a[3])
@@ -1806,7 +1949,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let sig = Tensor2::from_matrix(&[
+    ///     let sig = Tensor2::from_std_matrix(&[
     ///         [ 2.0, -3.0, 4.0],
     ///         [-3.0, -5.0, 1.0],
     ///         [ 4.0,  1.0, 6.0],
@@ -1834,7 +1977,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -1860,7 +2003,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -1888,7 +2031,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -1919,7 +2062,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -1945,7 +2088,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -1973,7 +2116,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -1999,7 +2142,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -2025,7 +2168,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -2057,7 +2200,7 @@ impl Tensor2 {
     /// use russell_tensor::{Rep, Tensor2, StrError};
     ///
     /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::from_matrix(&[
+    ///     let a = Tensor2::from_std_matrix(&[
     ///         [1.0, 0.0, 0.0],
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
@@ -2107,61 +2250,108 @@ impl Tensor2 {
     }
 }
 
+impl fmt::Display for Tensor2 {
+    /// Generates a string representation of the Kelvin vector associated with this Tensor2
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // find largest width
+        let mut width = 0;
+        let mut buf = String::new();
+        for m in 0..self.dim() {
+            let val = self.get(m);
+            match f.precision() {
+                Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
+                None => write!(&mut buf, "{}", val).unwrap(),
+            }
+            width = cmp::max(buf.chars().count(), width);
+            buf.clear();
+        }
+        // draw vector
+        width += 1;
+        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        for m in 0..self.dim() {
+            if m > 0 {
+                write!(f, " │\n").unwrap();
+            }
+            write!(f, "│").unwrap();
+            let val = self.get(m);
+            match f.precision() {
+                Some(v) => write!(f, "{:>1$.2$}", val, width, v).unwrap(),
+                None => write!(f, "{:>1$}", val, width).unwrap(),
+            }
+        }
+        write!(f, " │\n").unwrap();
+        write!(f, "└{:1$}┘", " ", width + 1).unwrap();
+        Ok(())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::Tensor2;
-    use crate::{IDENTITY2, Rep, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2};
-    use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq};
+    use crate::{IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
+    use crate::{Rep, SampleTensor2, SamplesTensor2, Tensor1};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
 
-    #[test]
-    fn new_and_getters_work() {
-        // general
-        let mut tt = Tensor2::new(Rep::General);
-        let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.rep(), Rep::General);
-        assert_eq!(tt.dim(), 9);
-        assert_eq!(tt.vector().as_data(), correct);
-        tt.vector_mut()[0] = 1.0;
-
-        // symmetric 3D
-        let tt = Tensor2::new(Rep::Symmetric);
-        let correct = &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.rep(), Rep::Symmetric);
-        assert_eq!(tt.dim(), 6);
-        assert_eq!(tt.vector().as_data(), correct);
-
-        let tt = Tensor2::new_sym(false);
-        assert_eq!(tt.rep(), Rep::Symmetric);
-        assert_eq!(tt.dim(), 6);
-        assert_eq!(tt.vector().as_data(), correct);
-
-        let tt = Tensor2::new_sym_ndim(3);
-        assert_eq!(tt.rep(), Rep::Symmetric);
-        assert_eq!(tt.dim(), 6);
-        assert_eq!(tt.vector().as_data(), correct);
-
-        // symmetric 2D
-        let tt = Tensor2::new(Rep::Symmetric2D);
-        let correct = &[0.0, 0.0, 0.0, 0.0];
-        assert_eq!(tt.rep(), Rep::Symmetric2D);
-        assert_eq!(tt.dim(), 4);
-        assert_eq!(tt.vector().as_data(), correct);
-
-        let tt = Tensor2::new_sym(true);
-        assert_eq!(tt.rep(), Rep::Symmetric2D);
-        assert_eq!(tt.dim(), 4);
-        assert_eq!(tt.vector().as_data(), correct);
-
-        let tt = Tensor2::new_sym_ndim(2);
-        assert_eq!(tt.rep(), Rep::Symmetric2D);
-        assert_eq!(tt.dim(), 4);
-        assert_eq!(tt.vector().as_data(), correct);
+    fn kelvin_vector(tt: &Tensor2) -> Vec<f64> {
+        let mut v = vec![0.0; tt.dim()];
+        for m in 0..tt.dim() {
+            v[m] = tt.get(m);
+        }
+        v
     }
 
     #[test]
-    fn set_matrix_captures_errors() {
+    fn new_set_and_get_work() {
+        // general
+        let mut tt = Tensor2::new(Rep::General);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::General);
+        assert_eq!(tt.dim(), 9);
+        assert_eq!(tt.get(0), 123.0);
+
+        // symmetric 3D
+        let mut tt = Tensor2::new(Rep::Symmetric);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::Symmetric);
+        assert_eq!(tt.dim(), 6);
+        assert_eq!(tt.get(0), 123.0);
+
+        let mut tt = Tensor2::new_sym(false);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::Symmetric);
+        assert_eq!(tt.dim(), 6);
+        assert_eq!(tt.get(0), 123.0);
+
+        let mut tt = Tensor2::new_sym_ndim(3);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::Symmetric);
+        assert_eq!(tt.dim(), 6);
+        assert_eq!(tt.get(0), 123.0);
+
+        // symmetric 2D
+        let mut tt = Tensor2::new(Rep::Symmetric2D);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::Symmetric2D);
+        assert_eq!(tt.dim(), 4);
+        assert_eq!(tt.get(0), 123.0);
+
+        let mut tt = Tensor2::new_sym(true);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::Symmetric2D);
+        assert_eq!(tt.dim(), 4);
+        assert_eq!(tt.get(0), 123.0);
+
+        let mut tt = Tensor2::new_sym_ndim(2);
+        tt.set(0, 123.0);
+        assert_eq!(tt.rep(), Rep::Symmetric2D);
+        assert_eq!(tt.dim(), 4);
+        assert_eq!(tt.get(0), 123.0);
+    }
+
+    #[test]
+    fn set_std_matrix_captures_errors() {
         // symmetric 3D
         let eps = 1e-15;
         #[rustfmt::skip]
@@ -2184,15 +2374,15 @@ mod tests {
         ];
         let mut tt = Tensor2::new(Rep::Symmetric);
         assert_eq!(
-            tt.set_matrix(comps_std_10).err(),
+            tt.set_std_matrix(comps_std_10).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
-            tt.set_matrix(comps_std_20).err(),
+            tt.set_std_matrix(comps_std_20).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
-            tt.set_matrix(comps_std_21).err(),
+            tt.set_std_matrix(comps_std_21).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
@@ -2212,22 +2402,22 @@ mod tests {
         ];
         let mut tt = Tensor2::new(Rep::Symmetric2D);
         assert_eq!(
-            tt.set_matrix(comps_std_12).err(),
+            tt.set_std_matrix(comps_std_12).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
         );
         assert_eq!(
-            tt.set_matrix(comps_std_02).err(),
+            tt.set_std_matrix(comps_std_02).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
         );
     }
 
     #[test]
-    fn set_matrix_works() {
+    fn set_std_matrix_works() {
         // general
         let mut tt = Tensor2::new(Rep::General);
         const NOISE: f64 = 1234.568;
         tt.vec.fill(NOISE);
-        tt.set_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
+        tt.set_std_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
             .unwrap();
         let correct = &[
             1.0,
@@ -2240,12 +2430,14 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(&tt.vec, correct, 1e-15);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-15);
+        }
 
         // general (using nested Vec)
         let mut tt = Tensor2::new(Rep::General);
         tt.vec.fill(NOISE);
-        tt.set_matrix(&vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0], vec![7.0, 8.0, 9.0]])
+        tt.set_std_matrix(&vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0], vec![7.0, 8.0, 9.0]])
             .unwrap();
         let correct = &[
             1.0,
@@ -2258,27 +2450,33 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(&tt.vec, correct, 1e-15);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-15);
+        }
 
         // symmetric 3D
         let mut tt = Tensor2::new(Rep::Symmetric);
         tt.vec.fill(NOISE);
-        tt.set_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
+        tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
 
         // symmetric 2D
         let mut tt = Tensor2::new(Rep::Symmetric2D);
         tt.vec.fill(NOISE);
-        tt.set_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
+        tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
     }
 
     #[test]
-    fn from_matrix_captures_errors() {
+    fn from_std_matrix_captures_errors() {
         // symmetric 3D
         let eps = 1e-15;
         #[rustfmt::skip]
@@ -2300,15 +2498,15 @@ mod tests {
             [6.0, 5.0+eps, 3.0],
         ];
         assert_eq!(
-            Tensor2::from_matrix(comps_std_10, Rep::Symmetric).err(),
+            Tensor2::from_std_matrix(comps_std_10, Rep::Symmetric).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
-            Tensor2::from_matrix(comps_std_20, Rep::Symmetric).err(),
+            Tensor2::from_std_matrix(comps_std_20, Rep::Symmetric).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
         assert_eq!(
-            Tensor2::from_matrix(comps_std_21, Rep::Symmetric).err(),
+            Tensor2::from_std_matrix(comps_std_21, Rep::Symmetric).err(),
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
@@ -2327,25 +2525,25 @@ mod tests {
             [0.0, 0.0+eps, 3.0],
         ];
         assert_eq!(
-            Tensor2::from_matrix(comps_std_12, Rep::Symmetric2D).err(),
+            Tensor2::from_std_matrix(comps_std_12, Rep::Symmetric2D).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
         );
         assert_eq!(
-            Tensor2::from_matrix(comps_std_02, Rep::Symmetric2D).err(),
+            Tensor2::from_std_matrix(comps_std_02, Rep::Symmetric2D).err(),
             Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
         );
     }
 
     #[test]
-    fn from_matrix_works() {
-        // general
+    fn from_std_matrix_works() {
+        // general -- example 1
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         let correct = &[
             1.0,
             5.0,
@@ -2357,7 +2555,34 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        vec_approx_eq(&tt.vec, correct, 1e-15);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
+
+        // general -- example 2
+        let tt = Tensor2::from_std_matrix(
+            &[
+                [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+                [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+                [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+            ],
+            Rep::General,
+        )
+        .unwrap();
+        assert_eq!(
+            format!("{:.1}", tt),
+            "┌      ┐\n\
+             │  1.0 │\n\
+             │  5.0 │\n\
+             │  9.0 │\n\
+             │  6.0 │\n\
+             │ 14.0 │\n\
+             │ 10.0 │\n\
+             │ -2.0 │\n\
+             │ -2.0 │\n\
+             │ -4.0 │\n\
+             └      ┘"
+        );
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -2366,9 +2591,11 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -2377,41 +2604,49 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        vec_approx_eq(&tt.vec, correct, 1e-14);
+        for m in 0..tt.dim() {
+            approx_eq(tt.get(m), correct[m], 1e-14);
+        }
     }
 
     #[test]
     fn identity_works() {
         // general
         let ii = Tensor2::identity(Rep::General);
-        assert_eq!(ii.vec.as_data(), &IDENTITY2);
+        for m in 0..ii.dim() {
+            assert_eq!(ii.get(m), IDENTITY2[m]);
+        }
 
         // symmetric
         let ii = Tensor2::identity(Rep::Symmetric);
-        assert_eq!(ii.vec.as_data(), &IDENTITY2[0..6]);
+        for m in 0..ii.dim() {
+            assert_eq!(ii.get(m), IDENTITY2[m]);
+        }
 
         // symmetric 2d
         let ii = Tensor2::identity(Rep::Symmetric2D);
-        assert_eq!(ii.vec.as_data(), &IDENTITY2[0..4]);
+        for m in 0..ii.dim() {
+            assert_eq!(ii.get(m), IDENTITY2[m]);
+        }
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
-    fn get_panics_on_incorrect_input() {
+    fn get_std_panics_on_incorrect_input() {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
-        tt.get(3, 3);
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        tt.get_std(3, 3);
     }
 
     #[test]
-    fn get_works() {
+    fn get_std_works() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -2419,10 +2654,10 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(tt.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -2433,10 +2668,10 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(tt.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -2447,30 +2682,30 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(tt.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(tt.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
     }
 
     #[test]
     #[should_panic]
-    fn to_matrix_panics_on_incorrect_input() {
+    fn to_std_matrix_panics_on_incorrect_input() {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         let mut mat = Matrix::new(2, 2);
-        tt.to_matrix(&mut mat);
+        tt.to_std_matrix(&mut mat);
     }
 
     #[test]
-    fn as_matrix_and_to_matrix_work() {
+    fn as_std_matrix_and_to_std_matrix_work() {
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -2478,8 +2713,8 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
-        let res = tt.as_matrix();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let res = tt.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2493,8 +2728,8 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
-        let res = tt.as_matrix();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let res = tt.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2508,8 +2743,8 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
-        let res = tt.as_matrix();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let res = tt.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2518,28 +2753,73 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn as_matrix_2d_panics_on_3d() {
+    fn from_std_matrix_to_std_matrix_from_std_matrix_work() {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let m1 = tt.as_std_matrix();
+        mat_approx_eq(&m1, comps_std, 1e-13);
+        let ee = Tensor2::from_std_matrix(&m1, Rep::General).unwrap();
+        let m2 = ee.as_std_matrix();
+        mat_approx_eq(&m2, comps_std, 1e-13);
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let m1 = tt.as_std_matrix();
+        mat_approx_eq(&m1, comps_std, 1e-13);
+        let ee = Tensor2::from_std_matrix(&m1, Rep::Symmetric).unwrap();
+        let m2 = ee.as_std_matrix();
+        mat_approx_eq(&m2, comps_std, 1e-13);
+
+        // symmetric 2D
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
-        tt.as_matrix_2d();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let m1 = tt.as_std_matrix();
+        mat_approx_eq(&m1, comps_std, 1e-13);
+        let ee = Tensor2::from_std_matrix(&m1, Rep::Symmetric2D).unwrap();
+        let m2 = ee.as_std_matrix();
+        mat_approx_eq(&m2, comps_std, 1e-13);
     }
 
     #[test]
-    fn as_matrix_2d_works() {
+    #[should_panic]
+    fn as_std_matrix_2d_panics_on_3d() {
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
-        let (t22, res) = tt.as_matrix_2d();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        tt.as_std_matrix_2d();
+    }
+
+    #[test]
+    fn as_std_matrix_2d_works() {
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let (t22, res) = tt.as_std_matrix_2d();
         assert_eq!(t22, 3.0);
         assert_eq!(
             format!("{:.1}", res),
@@ -2555,8 +2835,8 @@ mod tests {
             [2.0, 3.0, 0.0],
             [0.0, 0.0, 4.0],
         ];
-        let tt = Tensor2::from_matrix(data, Rep::Symmetric2D).unwrap();
-        let (t22, a) = tt.as_matrix_2d();
+        let tt = Tensor2::from_std_matrix(data, Rep::Symmetric2D).unwrap();
+        let (t22, a) = tt.as_std_matrix_2d();
         assert_eq!(t22, 4.0);
         assert_eq!(
             format!("{:.1}", a),
@@ -2569,34 +2849,16 @@ mod tests {
 
     #[test]
     fn as_general_works() {
-        let tt = Tensor2::from_matrix(
+        let tt = Tensor2::from_std_matrix(
             &[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]],
             Rep::Symmetric2D,
         )
         .unwrap();
         let tt_gen = tt.as_general();
+        assert_eq!(format!("{:.2?}", kelvin_vector(&tt)), "[1.00, 3.00, 4.00, 2.00]");
         assert_eq!(
-            format!("{:.2}", tt.vec),
-            "┌      ┐\n\
-             │ 1.00 │\n\
-             │ 3.00 │\n\
-             │ 4.00 │\n\
-             │ 2.00 │\n\
-             └      ┘"
-        );
-        assert_eq!(
-            format!("{:.2}", tt_gen.vec),
-            "┌      ┐\n\
-             │ 1.00 │\n\
-             │ 3.00 │\n\
-             │ 4.00 │\n\
-             │ 2.00 │\n\
-             │ 0.00 │\n\
-             │ 0.00 │\n\
-             │ 0.00 │\n\
-             │ 0.00 │\n\
-             │ 0.00 │\n\
-             └      ┘"
+            format!("{:.2?}", kelvin_vector(&tt_gen)),
+            "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00, 0.00, 0.00, 0.00]"
         );
 
         // general
@@ -2606,12 +2868,12 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         let res = tt.as_general();
-        assert_eq!(res.vec.dim(), 9);
+        assert_eq!(res.dim, 9);
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(res.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -2622,12 +2884,12 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         let res = tt.as_general();
-        assert_eq!(res.vec.dim(), 9);
+        assert_eq!(res.dim, 9);
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(res.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
 
@@ -2638,12 +2900,12 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let res = tt.as_general();
-        assert_eq!(res.vec.dim(), 9);
+        assert_eq!(res.dim, 9);
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+                approx_eq(res.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
     }
@@ -2657,58 +2919,43 @@ mod tests {
 
     #[test]
     fn sym2d_as_symmetric_works() {
-        let tt = Tensor2::from_matrix(
+        let tt = Tensor2::from_std_matrix(
             &[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]],
             Rep::Symmetric2D,
         )
         .unwrap();
         let tt_sym = tt.sym2d_as_symmetric();
+        assert_eq!(format!("{:.2?}", kelvin_vector(&tt)), "[1.00, 3.00, 4.00, 2.00]");
         assert_eq!(
-            format!("{:.2}", tt.vec),
-            "┌      ┐\n\
-             │ 1.00 │\n\
-             │ 3.00 │\n\
-             │ 4.00 │\n\
-             │ 2.00 │\n\
-             └      ┘"
-        );
-        assert_eq!(
-            format!("{:.2}", tt_sym.vec),
-            "┌      ┐\n\
-             │ 1.00 │\n\
-             │ 3.00 │\n\
-             │ 4.00 │\n\
-             │ 2.00 │\n\
-             │ 0.00 │\n\
-             │ 0.00 │\n\
-             └      ┘"
+            format!("{:.2?}", kelvin_vector(&tt_sym)),
+            "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00]"
         );
     }
 
     #[test]
     #[should_panic(expected = "self.rep != Rep::General")]
-    fn sym_set_panics_on_non_sym() {
+    fn sym_set_std_panics_on_non_sym() {
         let mut a = Tensor2::new(Rep::General);
-        a.sym_set(3, 3, 3.0);
+        a.sym_set_std(3, 3, 3.0);
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
-    fn sym_set_panics_on_incorrect_indices() {
+    fn sym_set_std_panics_on_incorrect_indices() {
         let mut a = Tensor2::new(Rep::Symmetric);
-        a.sym_set(3, 3, 3.0);
+        a.sym_set_std(3, 3, 3.0);
     }
 
     #[test]
-    fn sym_set_works() {
+    fn sym_set_std_works() {
         let mut a = Tensor2::new(Rep::Symmetric);
-        a.sym_set(0, 0, 1.0);
-        a.sym_set(1, 1, 2.0);
-        a.sym_set(2, 2, 3.0);
-        a.sym_set(0, 1, 4.0);
-        a.sym_set(1, 0, 4.0);
-        a.sym_set(2, 0, 5.0);
-        let out = a.as_matrix();
+        a.sym_set_std(0, 0, 1.0);
+        a.sym_set_std(1, 1, 2.0);
+        a.sym_set_std(2, 2, 3.0);
+        a.sym_set_std(0, 1, 4.0);
+        a.sym_set_std(1, 0, 4.0);
+        a.sym_set_std(2, 0, 5.0);
+        let out = a.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌             ┐\n\
@@ -2727,34 +2974,36 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let mut a = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let mut a = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         a.clear();
-        assert_eq!(a.vec.as_data(), &[0.0, 0.0, 0.0, 0.0]);
+        for m in 0..a.dim() {
+            assert_eq!(a.get(m), 0.0);
+        }
     }
 
     #[test]
     #[should_panic(expected = "self.rep != Rep::General")]
-    fn sym_add_panics_on_non_sym() {
+    fn sym_add_std_panics_on_non_sym() {
         let mut a = Tensor2::new(Rep::General);
-        a.sym_add(0, 0, 1.0, 1.0);
+        a.sym_add_std(0, 0, 1.0, 1.0);
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
-    fn sym_add_panics_on_incorrect_indices() {
+    fn sym_add_std_panics_on_incorrect_indices() {
         let mut a = Tensor2::new(Rep::Symmetric);
-        a.sym_add(3, 3, 5.0, 6.0);
+        a.sym_add_std(3, 3, 5.0, 6.0);
     }
 
     #[test]
     #[should_panic(expected = "i <= j")]
-    fn sym_add_panics_on_lower_diagonal() {
+    fn sym_add_std_panics_on_lower_diagonal() {
         let mut a = Tensor2::new(Rep::Symmetric2D);
-        a.sym_add(1, 0, 5.0, 6.0);
+        a.sym_add_std(1, 0, 5.0, 6.0);
     }
 
     #[test]
-    fn sym_add_works() {
+    fn sym_add_std_works() {
         // symmetric 2D
         #[rustfmt::skip]
         let comps_std = &[
@@ -2762,12 +3011,12 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let mut a = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
-        a.sym_add(0, 0, 10.0, 10.0);
-        a.sym_add(1, 1, 10.0, 10.0);
-        a.sym_add(2, 2, 10.0, 10.0);
-        a.sym_add(0, 1, 10.0, 10.0); // must not do (1,0)
-        let out = a.as_matrix();
+        let mut a = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        a.sym_add_std(0, 0, 10.0, 10.0);
+        a.sym_add_std(1, 1, 10.0, 10.0);
+        a.sym_add_std(2, 2, 10.0, 10.0);
+        a.sym_add_std(0, 1, 10.0, 10.0); // must not do (1,0)
+        let out = a.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                   ┐\n\
@@ -2784,14 +3033,14 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let mut a = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
-        a.sym_add(0, 0, 10.0, 10.0);
-        a.sym_add(1, 1, 10.0, 10.0);
-        a.sym_add(2, 2, 10.0, 10.0);
-        a.sym_add(0, 1, 10.0, 10.0); // must nod do (1,0)
-        a.sym_add(0, 2, 10.0, 10.0); // must not do (2,0)
-        a.sym_add(1, 2, 10.0, 10.0); // must not do (2,1)
-        let out = a.as_matrix();
+        let mut a = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        a.sym_add_std(0, 0, 10.0, 10.0);
+        a.sym_add_std(1, 1, 10.0, 10.0);
+        a.sym_add_std(2, 2, 10.0, 10.0);
+        a.sym_add_std(0, 1, 10.0, 10.0); // must nod do (1,0)
+        a.sym_add_std(0, 2, 10.0, 10.0); // must not do (2,0)
+        a.sym_add_std(1, 2, 10.0, 10.0); // must not do (2,1)
+        let out = a.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                   ┐\n\
@@ -2804,19 +3053,19 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn set_kelvin_vector_panics_panics_on_incorrect_input() {
+    fn set_vector_panics_on_incorrect_input() {
         let mut a = Tensor2::new(Rep::Symmetric2D);
-        let b = Vector::new(1);
-        a.set_kelvin_vector(2.0, b.as_data());
+        let b = [1.0];
+        a.set_vector(2.0, &b);
     }
 
     #[test]
-    fn set_kelvin_vector_works() {
+    fn set_vector_works() {
         // general
         let mut tt = Tensor2::new(Rep::General);
         const NOISE: f64 = 1234.568;
         tt.vec.fill(NOISE);
-        tt.set_kelvin_vector(
+        tt.set_vector(
             2.0,
             &[
                 1.0,
@@ -2831,26 +3080,26 @@ mod tests {
             ],
         );
         let correct = &[[2.0, 4.0, 6.0], [8.0, 10.0, 12.0], [14.0, 16.0, 18.0]];
-        mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
+        mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
 
         // symmetric 3D
         let mut tt = Tensor2::new(Rep::Symmetric);
         tt.vec.fill(NOISE);
-        tt.set_kelvin_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
+        tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
-        mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
+        mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
 
         // symmetric 2D
         let mut tt = Tensor2::new(Rep::Symmetric2D);
         tt.vec.fill(NOISE);
-        tt.set_kelvin_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
+        tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 0.0], [8.0, 4.0, 0.0], [0.0, 0.0, 6.0]];
-        mat_approx_eq(&tt.as_matrix(), correct, 1e-14);
+        mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
     }
 
     #[test]
     #[should_panic]
-    fn set_tensor_panics_panics_on_incorrect_input() {
+    fn set_tensor_panics_on_incorrect_input() {
         let mut a = Tensor2::new(Rep::General);
         let b = Tensor2::new(Rep::Symmetric);
         a.set_tensor(2.0, &b);
@@ -2869,20 +3118,20 @@ mod tests {
         // general
         let mut a = Tensor2::new(Rep::General);
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [1.0, 3.0, 1.0],
             [2.0, 2.0, 2.0],
             [3.0, 1.0, 3.0],
         ],
         Rep::General).unwrap();
-        let c = Tensor2::from_matrix(
+        let c = Tensor2::from_std_matrix(
             &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
             Rep::General,
         )
         .unwrap();
         a.set_tensor(2.0, &b);
         a.update(10.0, &c);
-        let out = a.as_matrix();
+        let out = a.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
@@ -2895,20 +3144,20 @@ mod tests {
         // symmetric 3D
         let mut a = Tensor2::new(Rep::Symmetric);
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [1.0, 3.0, 1.0],
             [3.0, 2.0, 2.0],
             [1.0, 2.0, 3.0],
         ],
         Rep::Symmetric).unwrap();
-        let c = Tensor2::from_matrix(
+        let c = Tensor2::from_std_matrix(
             &[[100.0, 100.0, 100.0], [100.0, 100.0, 100.0], [100.0, 100.0, 100.0]],
             Rep::Symmetric,
         )
         .unwrap();
         a.set_tensor(2.0, &b);
         a.update(10.0, &c);
-        let out = a.as_matrix();
+        let out = a.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
@@ -2921,20 +3170,20 @@ mod tests {
         // symmetric 2D
         let mut a = Tensor2::new(Rep::Symmetric2D);
         #[rustfmt::skip]
-        let b = Tensor2::from_matrix(&[
+        let b = Tensor2::from_std_matrix(&[
             [1.0, 3.0, 0.0],
             [3.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ],
         Rep::Symmetric2D).unwrap();
-        let c = Tensor2::from_matrix(
+        let c = Tensor2::from_std_matrix(
             &[[100.0, 100.0, 0.0], [100.0, 100.0, 0.0], [0.0, 0.0, 100.0]],
             Rep::Symmetric2D,
         )
         .unwrap();
         a.set_tensor(2.0, &b);
         a.update(10.0, &c);
-        let out = a.as_matrix();
+        let out = a.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                      ┐\n\
@@ -2953,12 +3202,12 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         // clone
         let mut cloned = tt.clone();
         cloned.vec[0] = -1.0;
         assert_eq!(
-            format!("{:.1}", tt.as_matrix()),
+            format!("{:.1}", tt.as_std_matrix()),
             "┌             ┐\n\
              │ 1.0 2.0 3.0 │\n\
              │ 4.0 5.0 6.0 │\n\
@@ -2966,7 +3215,7 @@ mod tests {
              └             ┘"
         );
         assert_eq!(
-            format!("{:.1}", cloned.as_matrix()),
+            format!("{:.1}", cloned.as_std_matrix()),
             "┌                ┐\n\
              │ -1.0  2.0  3.0 │\n\
              │  4.0  5.0  6.0 │\n\
@@ -2979,7 +3228,7 @@ mod tests {
         // deserialize
         let from_json: Tensor2 = serde_json::from_str(&json).unwrap();
         assert_eq!(
-            format!("{:.1}", from_json.as_matrix()),
+            format!("{:.1}", from_json.as_std_matrix()),
             "┌             ┐\n\
              │ 1.0 2.0 3.0 │\n\
              │ 4.0 5.0 6.0 │\n\
@@ -3003,7 +3252,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.determinant(), 0.0, 1e-13);
 
         // symmetric 3D
@@ -3013,7 +3262,7 @@ mod tests {
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         approx_eq(tt.determinant(), 101.0, 1e-13);
 
         // symmetric 3D (another test)
@@ -3023,7 +3272,7 @@ mod tests {
             [-3.0, -6.0, 1.0],
             [ 4.0,  1.0, 5.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         approx_eq(tt.determinant(), -4.0, 1e-13);
 
         // symmetric 2D
@@ -3033,7 +3282,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         approx_eq(tt.determinant(), -42.0, 1e-13);
     }
 
@@ -3046,8 +3295,8 @@ mod tests {
     }
 
     fn check_transpose(tt: &Tensor2, tt_tran: &Tensor2) {
-        let aa = tt.as_matrix();
-        let aa_tran = tt_tran.as_matrix();
+        let aa = tt.as_std_matrix();
+        let aa_tran = tt_tran.as_std_matrix();
         for i in 1..3 {
             for j in 1..3 {
                 assert_eq!(aa.get(i, j), aa_tran.get(j, i));
@@ -3059,21 +3308,21 @@ mod tests {
     fn transpose_works() {
         // general
         let s = &SamplesTensor2::TENSOR_T;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::General).unwrap();
         let mut tt2 = Tensor2::new(Rep::General);
         tt.transpose(&mut tt2);
         check_transpose(&tt, &tt2);
 
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         let mut tt2 = Tensor2::new(Rep::Symmetric);
         tt.transpose(&mut tt2);
         check_transpose(&tt, &tt2);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         let mut tt2 = Tensor2::new(Rep::Symmetric2D);
         tt.transpose(&mut tt2);
         check_transpose(&tt, &tt2);
@@ -3088,8 +3337,8 @@ mod tests {
     }
 
     fn check_inverse(tt: &Tensor2, tti: &Tensor2, tol: f64) {
-        let aa = tt.as_matrix();
-        let aai = tti.as_matrix();
+        let aa = tt.as_std_matrix();
+        let aai = tti.as_std_matrix();
         let mut ii = Matrix::new(3, 3);
         mat_mat_mul(&mut ii, 1.0, &aa, &aai, 0.0).unwrap();
         for i in 0..3 {
@@ -3112,14 +3361,14 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         let mut tti = Tensor2::new(Rep::General);
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
         // general with non-zero determinant
         let s = &SamplesTensor2::TENSOR_T;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::General).unwrap();
         let mut tti = Tensor2::new(Rep::General);
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
         assert_eq!(det, s.determinant);
@@ -3127,14 +3376,14 @@ mod tests {
 
         // symmetric 3D with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         let mut tti = Tensor2::new(Rep::Symmetric);
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         let mut tti = Tensor2::new(Rep::Symmetric);
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
         approx_eq(det, s.determinant, 1e-14);
@@ -3142,14 +3391,14 @@ mod tests {
 
         // symmetric 2D with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         let mut tti = Tensor2::new(Rep::Symmetric2D);
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         let mut tti = Tensor2::new(Rep::Symmetric2D);
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
         assert_eq!(det, s.determinant);
@@ -3165,8 +3414,8 @@ mod tests {
     }
 
     fn check_squared(tt: &Tensor2, tt2: &Tensor2, tol: f64) {
-        let aa = tt.as_matrix();
-        let aa2 = tt2.as_matrix();
+        let aa = tt.as_std_matrix();
+        let aa2 = tt2.as_std_matrix();
         let mut aa2_correct = Matrix::new(3, 3);
         mat_mat_mul(&mut aa2_correct, 1.0, &aa, &aa, 0.0).unwrap();
         mat_approx_eq(&aa2, &aa2_correct, tol);
@@ -3176,21 +3425,21 @@ mod tests {
     fn squared_works() {
         // general
         let s = &SamplesTensor2::TENSOR_T;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::General).unwrap();
         let mut tt2 = Tensor2::new(Rep::General);
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-13);
 
         // symmetric 3D
         let s = &SamplesTensor2::TENSOR_U;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric).unwrap();
         let mut tt2 = Tensor2::new(Rep::Symmetric);
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-14);
 
         // symmetric 2D
         let s = &SamplesTensor2::TENSOR_Y;
-        let tt = Tensor2::from_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(&s.matrix, Rep::Symmetric2D).unwrap();
         let mut tt2 = Tensor2::new(Rep::Symmetric2D);
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-15);
@@ -3204,7 +3453,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.trace(), 15.0, 1e-15);
     }
 
@@ -3217,7 +3466,7 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.norm(), f64::sqrt(285.0), 1e-15);
 
         // symmetric 3D
@@ -3227,7 +3476,7 @@ mod tests {
             [-3.0, -5.0, 1.0],
             [ 4.0,  1.0, 6.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         approx_eq(tt.norm(), f64::sqrt(117.0), 1e-15);
 
         // symmetric 2D
@@ -3237,7 +3486,7 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         approx_eq(tt.norm(), f64::sqrt(46.0), 1e-15);
     }
 
@@ -3258,12 +3507,12 @@ mod tests {
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::General).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         let mut dev = Tensor2::new(Rep::General);
         tt.deviator(&mut dev);
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
-            format!("{:.1}", dev.as_matrix()),
+            format!("{:.1}", dev.as_std_matrix()),
             "┌                ┐\n\
              │ -4.0  2.0  3.0 │\n\
              │  4.0  0.0  6.0 │\n\
@@ -3280,12 +3529,12 @@ mod tests {
             [-3.0, -5.0, 1.0],
             [ 4.0,  1.0, 6.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
         let mut dev = Tensor2::new(Rep::Symmetric);
         tt.deviator(&mut dev);
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
-            format!("{:.1}", dev.as_matrix()),
+            format!("{:.1}", dev.as_std_matrix()),
             "┌                ┐\n\
              │  1.0 -3.0  4.0 │\n\
              │ -3.0 -6.0  1.0 │\n\
@@ -3302,12 +3551,12 @@ mod tests {
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
         ];
-        let tt = Tensor2::from_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let tt = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
         let mut dev = Tensor2::new(Rep::Symmetric2D);
         tt.deviator(&mut dev);
         approx_eq(dev.trace(), 0.0, 1e-15);
         assert_eq!(
-            format!("{:.1}", dev.as_matrix()),
+            format!("{:.1}", dev.as_std_matrix()),
             "┌                ┐\n\
              │ -1.0  4.0  0.0 │\n\
              │  4.0  0.0  0.0 │\n\
@@ -3316,6 +3565,138 @@ mod tests {
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
         approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+    }
+
+    #[test]
+    fn decompose_works() {
+        // General -- Example 1
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut sym = Tensor2::new(Rep::General);
+        let mut skw = Tensor2::new(Rep::General);
+        ten.decompose(&mut sym, &mut skw);
+        let sym_mat = sym.as_std_matrix();
+        let skw_mat = skw.as_std_matrix();
+        let sym_correct = [[1.0, 3.0, 5.0], [3.0, 5.0, 7.0], [5.0, 7.0, 9.0]];
+        let skw_correct = [[0.0, -1.0, -2.0], [1.0, 0.0, -1.0], [2.0, 1.0, 0.0]];
+        mat_approx_eq(&sym_mat, &sym_correct, 1e-15);
+        mat_approx_eq(&skw_mat, &skw_correct, 1e-15);
+        assert_eq!(skw.trace(), 0.0);
+
+        // General -- Example 2
+        #[rustfmt::skip]
+        let comps_std = &[
+            [4.0, 2.0, 2.0],
+            [6.0, 2.0, 4.0],
+            [8.0, 4.0, 2.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut sym = Tensor2::new(Rep::General);
+        let mut skw = Tensor2::new(Rep::General);
+        ten.decompose(&mut sym, &mut skw);
+        let sym_mat = sym.as_std_matrix();
+        let skw_mat = skw.as_std_matrix();
+        let sym_correct = [[4.0, 4.0, 5.0], [4.0, 2.0, 4.0], [5.0, 4.0, 2.0]];
+        let skw_correct = [[0.0, -2.0, -3.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]];
+        mat_approx_eq(&sym_mat, &sym_correct, 1e-15);
+        mat_approx_eq(&skw_mat, &skw_correct, 1e-15);
+        assert_eq!(skw.trace(), 0.0);
+
+        // Symmetric
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let mut sym = Tensor2::new(Rep::Symmetric);
+        let mut skw = Tensor2::new(Rep::Symmetric);
+        ten.decompose(&mut sym, &mut skw);
+        for m in 0..ten.dim() {
+            assert_eq!(sym.get(m), ten.get(m));
+            assert_eq!(skw.get(m), 0.0);
+        }
+
+        // Symmetric2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 0.0],
+            [2.0, 5.0, 0.0],
+            [0.0, 0.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let mut sym = Tensor2::new(Rep::Symmetric2D);
+        let mut skw = Tensor2::new(Rep::Symmetric2D);
+        ten.decompose(&mut sym, &mut skw);
+        for m in 0..ten.dim() {
+            assert_eq!(sym.get(m), ten.get(m));
+            assert_eq!(skw.get(m), 0.0);
+        }
+    }
+
+    #[test]
+    fn axial_vector_works() {
+        // General -- Example 1
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        approx_eq(omega.get(0), 1.0, 1e-15);
+        approx_eq(omega.get(1), -2.0, 1e-15);
+        approx_eq(omega.get(2), 1.0, 1e-15);
+
+        // General -- Example 2
+        #[rustfmt::skip]
+        let comps_std = &[
+            [4.0, 2.0, 2.0],
+            [6.0, 2.0, 4.0],
+            [8.0, 4.0, 2.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        approx_eq(omega.get(0), 0.0, 1e-15);
+        approx_eq(omega.get(1), -3.0, 1e-15);
+        approx_eq(omega.get(2), 2.0, 1e-15);
+
+        // Symmetric
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        assert_eq!(omega.get(0), 0.0);
+        assert_eq!(omega.get(1), 0.0);
+        assert_eq!(omega.get(2), 0.0);
+
+        // Symmetric2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 0.0],
+            [2.0, 5.0, 0.0],
+            [0.0, 0.0, 9.0],
+        ];
+        let ten = Tensor2::from_std_matrix(comps_std, Rep::Symmetric2D).unwrap();
+        let mut omega = Tensor1::new();
+        ten.axial_vector(&mut omega);
+        assert_eq!(omega.get(0), 0.0);
+        assert_eq!(omega.get(1), 0.0);
+        assert_eq!(omega.get(2), 0.0);
     }
 
     fn check_sample(
@@ -3327,7 +3708,7 @@ mod tests {
         tol_dev_norm: f64,
         tol_dev_det: f64,
     ) {
-        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let tt = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         // println!("{}", sample.desc);
         // println!("    err(norm) = {:?}", tt.norm() - sample.norm);
         // println!("    err(trace) = {:?}", tt.trace() - sample.trace);
@@ -3379,7 +3760,7 @@ mod tests {
     /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
     fn check_iis(sample: &SampleTensor2, rep: Rep, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
-        let tt = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let tt = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         let jj2 = -sample.deviator_second_invariant;
         let jj3 = sample.deviator_determinant;
         // println!("{}", sample.desc);
@@ -3460,7 +3841,7 @@ mod tests {
         // α = 0
         let (l1, l2, l3) = (0.0, -0.5, 0.5);
         approx_eq(alpha_deg(l1, l2, l3), 0.0, 1e-15);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3472,7 +3853,7 @@ mod tests {
         // α = 30
         let (l1, l2, l3) = (1.0, 0.0, 1.0);
         approx_eq(alpha_deg(l1, l2, l3), 30.0, 1e-14);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3486,7 +3867,7 @@ mod tests {
         // α = 60
         let (l1, l2, l3) = (0.5, -0.5, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), 60.0, 1e-14);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3500,7 +3881,7 @@ mod tests {
         // α = 90
         let (l1, l2, l3) = (1.0, 0.0, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), 90.0, 1e-15);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3514,7 +3895,7 @@ mod tests {
         // α = 120
         let (l1, l2, l3) = (0.5, 0.0, -0.5);
         approx_eq(alpha_deg(l1, l2, l3), 120.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3528,7 +3909,7 @@ mod tests {
         // α = 150
         let (l1, l2, l3) = (1.0, 1.0, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), 150.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3542,7 +3923,7 @@ mod tests {
         // α = 180
         let (l1, l2, l3) = (0.0, 0.5, -0.5);
         approx_eq(alpha_deg(l1, l2, l3), 180.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3556,7 +3937,7 @@ mod tests {
         // α = -150
         let (l1, l2, l3) = (0.0, 1.0, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), -150.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3570,7 +3951,7 @@ mod tests {
         // α = -120
         let (l1, l2, l3) = (-0.5, 0.5, 0.0);
         approx_eq(alpha_deg(l1, l2, l3), -120.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3584,7 +3965,7 @@ mod tests {
         // α = -90
         let (l1, l2, l3) = (0.0, 1.0, 1.0);
         approx_eq(alpha_deg(l1, l2, l3), -90.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3598,7 +3979,7 @@ mod tests {
         // α = -60
         let (l1, l2, l3) = (-0.5, 0.0, 0.5);
         approx_eq(alpha_deg(l1, l2, l3), -60.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3612,7 +3993,7 @@ mod tests {
         // α = -30
         let (l1, l2, l3) = (0.0, 0.0, 1.0);
         approx_eq(alpha_deg(l1, l2, l3), -30.0, 1e-13);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
@@ -3628,7 +4009,7 @@ mod tests {
     fn octahedral_invariants_are_correct_simple() {
         // test from https://soilmodels.com/wp-content/uploads/2020/12/stress_space-2.wgl
         let (l1, l2, l3) = (193.18, 88.3, 18.52);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Rep::Symmetric).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], Rep::Symmetric).unwrap();
         approx_eq(tt.invariant_p(), 100.0, 1e-15);
         approx_eq(tt.invariant_q(), 152.28, 0.0053);
         let lode = tt.invariant_lode().unwrap();
@@ -3642,12 +4023,12 @@ mod tests {
 
         // norm(deviator) = 0  with l = 0
         let (l1, l2, l3) = (2.0, 2.0, 2.0);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         check_lode(tt.invariant_lode(), 0.0, 1e-15, true);
 
         // norm(deviator) > 1e-15  with l ~ -1 (note how l jumps from 0 to -1 for eps from -1e-5 to -1e-3)
         let (l1, l2, l3) = (2.0, 2.0, 2.0 - 1e-3);
-        let tt = Tensor2::from_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
+        let tt = Tensor2::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], c).unwrap();
         check_lode(tt.invariant_lode(), -1.0, 1e-7, false);
     }
 
@@ -3693,12 +4074,14 @@ mod tests {
 
         let t1 = Tensor2::new_from_octahedral(distance, radius, 1.0, true).unwrap();
         let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 2.0, true).unwrap();
-        assert_eq!(t1.vec.dim(), 4);
+        assert_eq!(t1.dim, 4);
         approx_eq(t1.vec[0], 3.0, 1e-15);
         approx_eq(t1.vec[1], 0.0, 1e-15);
         approx_eq(t1.vec[2], 0.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        for m in 0..t1.dim() {
+            approx_eq(t1.get(m), t2.get(m), 1e-15);
+        }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3706,12 +4089,14 @@ mod tests {
 
         let t1 = Tensor2::new_from_octahedral(distance, radius, 0.0, true).unwrap();
         let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 3.0, true).unwrap();
-        assert_eq!(t1.vec.dim(), 4);
+        assert_eq!(t1.dim, 4);
         approx_eq(t1.vec[0], 1.0 + SQRT_3, 1e-15);
         approx_eq(t1.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(t1.vec[2], 1.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        for m in 0..t1.dim() {
+            approx_eq(t1.get(m), t2.get(m), 1e-15);
+        }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3719,12 +4104,14 @@ mod tests {
 
         let t1 = Tensor2::new_from_octahedral(distance, radius, -1.0, true).unwrap();
         let t2 = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 6.0, true).unwrap();
-        assert_eq!(t1.vec.dim(), 4);
+        assert_eq!(t1.dim, 4);
         approx_eq(t1.vec[0], 2.0, 1e-15);
         approx_eq(t1.vec[1], -1.0, 1e-15);
         approx_eq(t1.vec[2], 2.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        vec_approx_eq(&t1.vec, &t2.vec, 1e-15);
+        for m in 0..t1.dim() {
+            approx_eq(t1.get(m), t2.get(m), 1e-15);
+        }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
         approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
         approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
@@ -3742,7 +4129,7 @@ mod tests {
 
         // 0 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, 0.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0, 1e-15);
         approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(tt.vec[2], 1.0 + SQRT_3, 1e-15);
@@ -3750,7 +4137,7 @@ mod tests {
 
         // 30 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 6.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 2.0, 1e-15);
         approx_eq(tt.vec[1], -1.0, 1e-15);
         approx_eq(tt.vec[2], 2.0, 1e-15);
@@ -3758,7 +4145,7 @@ mod tests {
 
         // 60 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 3.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
         approx_eq(tt.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(tt.vec[2], 1.0, 1e-15);
@@ -3766,7 +4153,7 @@ mod tests {
 
         // 90 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI / 2.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 3.0, 1e-15);
         approx_eq(tt.vec[1], 0.0, 1e-15);
         approx_eq(tt.vec[2], 0.0, 1e-15);
@@ -3774,7 +4161,7 @@ mod tests {
 
         // 120 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, 2.0 * PI / 3.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0 + SQRT_3, 1e-15);
         approx_eq(tt.vec[1], 1.0, 1e-15);
         approx_eq(tt.vec[2], 1.0 - SQRT_3, 1e-15);
@@ -3782,7 +4169,7 @@ mod tests {
 
         // 150 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, 5.0 * PI / 6.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 2.0, 1e-15);
         approx_eq(tt.vec[1], 2.0, 1e-15);
         approx_eq(tt.vec[2], -1.0, 1e-15);
@@ -3790,7 +4177,7 @@ mod tests {
 
         // 180 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, PI, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0, 1e-15);
         approx_eq(tt.vec[1], 1.0 + SQRT_3, 1e-15);
         approx_eq(tt.vec[2], 1.0 - SQRT_3, 1e-15);
@@ -3798,7 +4185,7 @@ mod tests {
 
         // -180 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0, 1e-15);
         approx_eq(tt.vec[1], 1.0 + SQRT_3, 1e-15);
         approx_eq(tt.vec[2], 1.0 - SQRT_3, 1e-15);
@@ -3806,7 +4193,7 @@ mod tests {
 
         // -150 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -5.0 * PI / 6.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 0.0, 1e-15);
         approx_eq(tt.vec[1], 3.0, 1e-15);
         approx_eq(tt.vec[2], 0.0, 1e-15);
@@ -3814,7 +4201,7 @@ mod tests {
 
         // -120 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -2.0 * PI / 3.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0 - SQRT_3, 1e-15);
         approx_eq(tt.vec[1], 1.0 + SQRT_3, 1e-15);
         approx_eq(tt.vec[2], 1.0, 1e-15);
@@ -3822,7 +4209,7 @@ mod tests {
 
         // -90 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI / 2.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], -1.0, 1e-15);
         approx_eq(tt.vec[1], 2.0, 1e-15);
         approx_eq(tt.vec[2], 2.0, 1e-15);
@@ -3830,7 +4217,7 @@ mod tests {
 
         // -60 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI / 3.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 1.0 - SQRT_3, 1e-15);
         approx_eq(tt.vec[1], 1.0, 1e-15);
         approx_eq(tt.vec[2], 1.0 + SQRT_3, 1e-15);
@@ -3838,7 +4225,7 @@ mod tests {
 
         // -30 degrees
         let tt = Tensor2::new_from_octahedral_alpha(distance, radius, -PI / 6.0, true).unwrap();
-        assert_eq!(tt.vec.dim(), 4);
+        assert_eq!(tt.dim, 4);
         approx_eq(tt.vec[0], 0.0, 1e-15);
         approx_eq(tt.vec[1], 0.0, 1e-15);
         approx_eq(tt.vec[2], 3.0, 1e-15);
@@ -3847,7 +4234,7 @@ mod tests {
 
     #[test]
     fn deviator_with_large_numbers_works() {
-        let tt = Tensor2::from_matrix(
+        let tt = Tensor2::from_std_matrix(
             &[
                 [-531906.3158661836, -459.8093541033259, 0.0],
                 [-459.8093541033259, -531567.8289754189, 0.0],

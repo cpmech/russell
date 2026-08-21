@@ -22,11 +22,13 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 ## Introduction
 
-This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes second-order and fourth-order tensors, scalar "invariants," and derivatives.
+This library implements structures and functions for tensor analysis and calculus, with focus on applications in engineering and [Continuum Mechanics](https://en.wikipedia.org/wiki/Continuum_mechanics). The essential functionality for the targeted applications includes first-order, second-order, third-order, and fourth-order tensors, scalar "invariants," and derivatives.
 
 ### Capabilities
 
+* `Tensor1` — first-order tensors (vectors in R3) with operations such as the dot and cross products
 * `Tensor2` — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
+* `Tensor3` — third-order tensors (minor-symmetric or not)
 * `Tensor4` — fourth-order tensors (minor-symmetric or not)
 * Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products
 * Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
@@ -38,7 +40,7 @@ This library implements structures and functions for tensor analysis and calculu
 
 Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
 
-In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector) and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 
 The `Rep` enum specifies the available representations:
 
@@ -74,6 +76,7 @@ russell_tensor = "*"
 The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `heap`: Use heap-allocated (dynamically allocated) storage for the tensor components instead of the default stack-allocated (fixed-size) storage
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 
@@ -92,8 +95,8 @@ This section illustrates how to use `russell_tensor`. See also:
 use russell_tensor::{Rep, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
-    // allocate a symmetric second-order tensor
-    let sigma = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components
+    let sigma = Tensor2::from_std_matrix(
         &[
             [1.0, 2.0, 3.0],
             [2.0, 2.0, 4.0],
@@ -102,7 +105,7 @@ fn main() -> Result<(), StrError> {
         Rep::Symmetric,
     )?;
 
-    // compute the principal invariants
+    // Compute the principal invariants
     let ii1 = sigma.invariant_ii1();
     let ii2 = sigma.invariant_ii2();
     let ii3 = sigma.invariant_ii3();
@@ -120,8 +123,8 @@ fn main() -> Result<(), StrError> {
 use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
 
 fn main() -> Result<(), StrError> {
-    // general
-    let a = Tensor2::from_matrix(
+    // Allocate a general second-order tensor given the standard components
+    let a = Tensor2::from_std_matrix(
         &[
             [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
             [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
@@ -130,7 +133,7 @@ fn main() -> Result<(), StrError> {
         Rep::General,
     )?;
     assert_eq!(
-        format!("{:.1}", a.vector()),
+        format!("{:.1}", a),
         "┌      ┐\n\
          │  1.0 │\n\
          │  5.0 │\n\
@@ -144,8 +147,8 @@ fn main() -> Result<(), StrError> {
          └      ┘"
     );
 
-    // symmetric-3D
-    let b = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components
+    let b = Tensor2::from_std_matrix(
         &[
             [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
             [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
@@ -154,7 +157,7 @@ fn main() -> Result<(), StrError> {
         Rep::Symmetric,
     )?;
     assert_eq!(
-        format!("{:.1}", b.vector()),
+        format!("{:.1}", b),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\
@@ -165,13 +168,13 @@ fn main() -> Result<(), StrError> {
          └     ┘"
     );
 
-    // symmetric-2D
-    let c = Tensor2::from_matrix(
+    // Allocate a symmetric second-order tensor given the standard components for 2D problems
+    let c = Tensor2::from_std_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
         Rep::Symmetric2D,
     )?;
     assert_eq!(
-        format!("{:.1}", c.vector()),
+        format!("{:.1}", c),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\
@@ -185,5 +188,5 @@ fn main() -> Result<(), StrError> {
 
 ## For developers
 
-* This crate is pure Rust with no C dependencies
+* This crate depends on `russell_lab`, which requires non-Rust high-performance libraries (see the Installation section)
 * Run the examples with `cargo run --example <name>`

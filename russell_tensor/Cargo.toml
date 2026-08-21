@@ -13,10 +13,17 @@ keywords = ["tensor", "continuum", "mechanics"]
 
 [features]
 intel_mkl = ["russell_lab/intel_mkl"]
+heap = []
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "2" }
 serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
+criterion = "0.8"
 serde_json = "1.0"
+
+[[bench]]
+name = "tensor_benchmark"
+harness = false
+path = "benchmarks/tensor_benchmark.rs"

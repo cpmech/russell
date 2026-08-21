@@ -25,15 +25,14 @@ use crate::Rep; // for documentation
 ///
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert_eq!(d1.rep, sigma.rep);
-    let dim = d1.vec.dim();
-    let n = sigma.norm();
-    if n > 0.0 {
+    assert_eq!(d1.rep(), sigma.rep());
+    let nrm = sigma.norm();
+    if nrm > 0.0 {
         d1.set_tensor(1.0, sigma);
-        for i in 0..dim {
-            d1.vec[i] /= n;
+        for m in 0..d1.dim() {
+            d1.vec[m] /= nrm;
         }
-        return Some(n);
+        return Some(nrm);
     }
     None
 }
@@ -64,8 +63,8 @@ pub fn deriv1_norm(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
 /// 2. A panic will occur if the tensors have different [Rep].
 #[inline]
 pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) {
-    assert!(sigma.rep.symmetric());
-    assert_eq!(d1.rep, sigma.rep);
+    assert!(sigma.rep().symmetric());
+    assert_eq!(d1.rep(), sigma.rep());
     sigma.deviator(d1);
 }
 
@@ -96,9 +95,9 @@ pub fn deriv1_invariant_jj2(d1: &mut Tensor2, sigma: &Tensor2) {
 /// 2. A panic will occur if the tensors have different [Rep].
 #[inline]
 pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) {
-    assert!(sigma.rep.symmetric());
-    assert_eq!(d1.rep, sigma.rep);
-    assert_eq!(s.rep, sigma.rep);
+    assert!(sigma.rep().symmetric());
+    assert_eq!(d1.rep(), sigma.rep());
+    assert_eq!(s.rep(), sigma.rep());
     let jj2 = sigma.invariant_jj2();
     sigma.deviator(s);
     s.squared(d1);
@@ -127,13 +126,12 @@ pub fn deriv1_invariant_jj3(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) 
 ///
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_sigma_s(d1: &mut Tensor2, sigma: &Tensor2) {
-    assert_eq!(d1.rep, sigma.rep);
-    let dim = d1.vec.dim();
+    assert_eq!(d1.rep(), sigma.rep());
     d1.vec[0] = 1.0 / SQRT_3;
     d1.vec[1] = 1.0 / SQRT_3;
     d1.vec[2] = 1.0 / SQRT_3;
-    for i in 3..dim {
-        d1.vec[i] = 0.0;
+    for m in 3..d1.dim() {
+        d1.vec[m] = 0.0;
     }
 }
 
@@ -163,15 +161,14 @@ pub fn deriv1_invariant_sigma_s(d1: &mut Tensor2, sigma: &Tensor2) {
 /// 1. A panic will occur if `sigma` is not symmetric.
 /// 2. A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_sigma_t(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert!(sigma.rep.symmetric());
-    assert_eq!(d1.rep, sigma.rep);
-    let dim = sigma.vec.dim();
+    assert!(sigma.rep().symmetric());
+    assert_eq!(d1.rep(), sigma.rep());
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         let a = 1.0 / f64::sqrt(2.0 * jj2);
         deriv1_invariant_jj2(d1, sigma);
-        for i in 0..dim {
-            d1.vec[i] *= a;
+        for m in 0..d1.dim() {
+            d1.vec[m] *= a;
         }
         return Some(jj2);
     }
@@ -198,13 +195,12 @@ pub fn deriv1_invariant_sigma_t(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64
 ///
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
-    assert_eq!(d1.rep, sigma.rep);
-    let dim = d1.vec.dim();
+    assert_eq!(d1.rep(), sigma.rep());
     d1.vec[0] = ONE_BY_3;
     d1.vec[1] = ONE_BY_3;
     d1.vec[2] = ONE_BY_3;
-    for i in 3..dim {
-        d1.vec[i] = 0.0;
+    for m in 3..d1.dim() {
+        d1.vec[m] = 0.0;
     }
 }
 
@@ -234,15 +230,14 @@ pub fn deriv1_invariant_p(d1: &mut Tensor2, sigma: &Tensor2) {
 /// 1. A panic will occur if `sigma` is not symmetric.
 /// 2. A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_q(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert!(sigma.rep.symmetric());
-    assert_eq!(d1.rep, sigma.rep);
-    let dim = sigma.vec.dim();
+    assert!(sigma.rep().symmetric());
+    assert_eq!(d1.rep(), sigma.rep());
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         let a = 0.5 * SQRT_3 / f64::sqrt(jj2);
         deriv1_invariant_jj2(d1, sigma);
-        for i in 0..dim {
-            d1.vec[i] *= a;
+        for m in 0..d1.dim() {
+            d1.vec[m] *= a;
         }
         return Some(jj2);
     }
@@ -284,18 +279,17 @@ pub fn deriv1_invariant_q(d1: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
 /// 1. A panic will occur if `sigma` is not symmetric.
 /// 2. A panic will occur if the tensors have different [Rep].
 pub fn deriv1_invariant_lode(d1: &mut Tensor2, s: &mut Tensor2, sigma: &Tensor2) -> Option<f64> {
-    assert!(sigma.rep.symmetric());
-    assert_eq!(d1.rep, sigma.rep);
-    assert_eq!(s.rep, sigma.rep);
-    let dim = sigma.vec.dim();
+    assert!(sigma.rep().symmetric());
+    assert_eq!(d1.rep(), sigma.rep());
+    assert_eq!(s.rep(), sigma.rep());
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         deriv1_invariant_jj3(d1, s, sigma); // d1 := dJ3/dσ
         let jj3 = sigma.invariant_jj3();
         let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
         let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
-        for i in 0..dim {
-            d1.vec[i] = a * d1.vec[i] - b * jj3 * s.vec[i];
+        for m in 0..d1.dim() {
+            d1.vec[m] = a * d1.vec[m] - b * jj3 * s.vec[m];
         }
         return Some(jj2);
     }
@@ -337,7 +331,7 @@ mod tests {
             }
             F::J2 => deriv1_invariant_jj2(d1, sigma),
             F::J3 => {
-                let mut s = Tensor2::new(sigma.rep);
+                let mut s = Tensor2::new(sigma.rep());
                 deriv1_invariant_jj3(d1, &mut s, sigma);
             }
             F::SigmaS => deriv1_invariant_sigma_s(d1, sigma),
@@ -349,7 +343,7 @@ mod tests {
                 deriv1_invariant_q(d1, sigma).unwrap();
             }
             F::Lode => {
-                let mut s = Tensor2::new(sigma.rep);
+                let mut s = Tensor2::new(sigma.rep());
                 deriv1_invariant_lode(d1, &mut s, sigma).unwrap();
             }
         };
@@ -375,7 +369,7 @@ mod tests {
     fn f_sigma(x: f64, args: &mut ArgsNumDeriv) -> Result<f64, StrError> {
         let original = args.sigma_mat.get(args.i, args.j);
         args.sigma_mat.set(args.i, args.j, x);
-        args.sigma.set_matrix(&args.sigma_mat).unwrap();
+        args.sigma.set_std_matrix(&args.sigma_mat).unwrap();
         let res = match args.fn_name {
             F::Norm => args.sigma.norm(),
             F::J2 => args.sigma.invariant_jj2(),
@@ -412,7 +406,7 @@ mod tests {
     fn numerical_deriv(sigma: &Tensor2, fn_name: F) -> Matrix {
         let mut args = ArgsNumDeriv {
             fn_name,
-            sigma_mat: sigma.as_matrix(),
+            sigma_mat: sigma.as_std_matrix(),
             sigma: sigma.as_general(),
             i: 0,
             j: 0,
@@ -438,21 +432,21 @@ mod tests {
             m: 0,
         };
         let mut num_deriv = sigma.clone();
-        for m in 0..sigma.vec.dim() {
+        for m in 0..sigma.dim() {
             args.m = m;
             let x = args.sigma.vec[m];
             let res = deriv1_central5(x, &mut args, f_sigma_mat).unwrap();
             num_deriv.vec[m] = res;
         }
-        num_deriv.as_matrix()
+        num_deriv.as_std_matrix()
     }
 
     // checks ∂f/∂σᵢⱼ
     fn check_deriv(fn_name: F, rep: Rep, sample: &SampleTensor2, tol: f64, _verbose: bool) {
-        let sigma = Tensor2::from_matrix(&sample.matrix, rep).unwrap();
+        let sigma = Tensor2::from_std_matrix(&sample.matrix, rep).unwrap();
         let mut d1 = Tensor2::new(rep);
         analytical_deriv(fn_name, &mut d1, &sigma);
-        let ana = d1.as_matrix();
+        let ana = d1.as_std_matrix();
         let num = numerical_deriv(&sigma, fn_name);
         let num_mat = numerical_deriv_mat(&sigma, fn_name);
         /*
@@ -540,7 +534,7 @@ mod tests {
 
     #[test]
     fn check_for_none() {
-        let sigma = Tensor2::from_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
+        let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_O.matrix, Rep::Symmetric).unwrap();
         let mut d1 = Tensor2::new(Rep::Symmetric);
         let mut s = Tensor2::new(Rep::Symmetric);
         assert_eq!(deriv1_norm(&mut d1, &sigma), None);
@@ -559,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "sigma.rep.symmetric()")]
+    #[should_panic(expected = "sigma.rep().symmetric()")]
     fn deriv1_invariant_jj2_panics_on_on_sym() {
         let mut d1_gen = Tensor2::new(Rep::General);
         let sigma_gen = Tensor2::new(Rep::General);
@@ -575,7 +569,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "sigma.rep.symmetric()")]
+    #[should_panic(expected = "sigma.rep().symmetric()")]
     fn deriv1_invariant_jj3_panics_on_non_sym() {
         let mut d1_gen = Tensor2::new(Rep::General);
         let mut s_gen = Tensor2::new(Rep::General);
@@ -610,7 +604,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "sigma.rep.symmetric()")]
+    #[should_panic(expected = "sigma.rep().symmetric()")]
     fn deriv1_invariant_q_panics_on_non_sym() {
         let mut d1_gen = Tensor2::new(Rep::General);
         let sigma_gen = Tensor2::new(Rep::General);
@@ -626,7 +620,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "sigma.rep.symmetric()")]
+    #[should_panic(expected = "sigma.rep().symmetric()")]
     fn deriv1_invariant_lode_panics_on_non_sym() {
         let mut d1_gen = Tensor2::new(Rep::General);
         let mut s_gen = Tensor2::new(Rep::General);

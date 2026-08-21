@@ -18,6 +18,7 @@
 //! * [math] (*not re-exported*) -- Mathematical "special" functions and constants
 //! * [matrix] -- Matrix struct and associated functions
 //! * [matvec] -- Functions operating on matrices and vectors
+//! * [small] -- Calculations with small matrices and vectors on the stack
 //! * [vector] -- Vector struct and associated functions
 //!
 //! Other functionality may be found in external crates, for instance:
@@ -27,6 +28,8 @@
 //! ## Linear algebra
 //!
 //! For linear algebra, the main structures are [NumVector] and [NumMatrix], that are generic Vector and Matrix structures. The Matrix data is stored as **column-major**. The [Vector] and [Matrix] are `f64` and `Complex64` aliases of `NumVector` and `NumMatrix`, respectively.
+//!
+//! Alternatively, for small data stored on the stack, the [SmallVector] and [SmallMatrix] type aliases are available.
 //!
 //! The figure below illustrates the base structures (struct) for linear algebra computations. The vector and matrix structures are generic but require the type parameter to implement a set of traits. The essential trait is the `Num` trait provided by the `num-traits` crate. This trait allows vectors and matrices in Russell to hold any numerical type. The `Copy` trait enables the possibility of cloning vectors and matrices directly; however, for efficiency, the BLAS functions can be called instead. `DeserializedOwned` and `Serialize` allow vectors and matrices to be serialized/deserialized, a feature that propagates for all other structures depending on `NumVector` and `NumMatrix`. This feature allows, for instance, writing and reading JSON files with simulation results. `NumCast` is required by `NumVector` because the `linspace` member function needs to cast the number of grid points to the final type (e.g., `f64`). `NumMatrix` requires the `AddAssign` and `MulAssign` traits to implement the convenience member functions named `add` and `mul`.
 //!
@@ -157,6 +160,7 @@ mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
+pub mod small;
 pub mod vector;
 
 pub use algo::*;
@@ -165,6 +169,7 @@ pub use check::*;
 use internal::*;
 pub use matrix::*;
 pub use matvec::*;
+pub use small::*;
 pub use vector::*;
 
 // run code from README file

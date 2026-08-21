@@ -37,6 +37,8 @@ unsafe extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 ///
+/// See also: [`crate::small_solve_lin_sys`] (the stack-allocated counterpart).
+///
 /// # Note
 ///
 /// 1. The matrix `a` will be modified

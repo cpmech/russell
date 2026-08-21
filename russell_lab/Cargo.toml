@@ -32,3 +32,19 @@ pkg-config = "0.3"
 [[bench]]
 name = "algo_chebyshev"
 harness = false
+path = "benchmarks/algo_chebyshev.rs"
+
+[[bench]]
+name = "matvec_benchmark"
+harness = false
+path = "benchmarks/matvec_benchmark.rs"
+
+[[bench]]
+name = "small_mat_inv_benchmark"
+harness = false
+path = "benchmarks/small_mat_inv_benchmark.rs"
+
+[[bench]]
+name = "small_ops_benchmark"
+harness = false
+path = "benchmarks/small_ops_benchmark.rs"

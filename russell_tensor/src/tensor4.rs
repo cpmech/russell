@@ -1753,7 +1753,7 @@ mod tests {
             ],
         ];
         #[rustfmt::skip]
-        let aa_expected = [
+        let aa_kel_expected = [
             [ 1.0, 1.0, 1.0, 3.0 / SQRT_2, 2.0 * SQRT_2, 3.0 * SQRT_2, -1.0 / SQRT_2, SQRT_2, 0.0, ],
             [ 2.0, 16.0, 21.0, 19.0 / SQRT_2, 47.0 / SQRT_2, 17.0 * SQRT_2, -9.0 / SQRT_2, 7.0 / SQRT_2, -4.0 * SQRT_2, ],
             [ 1.0, 16.0, 36.0, 7.0 * SQRT_2, 59.0 / SQRT_2, 37.0 / SQRT_2, -4.0 * SQRT_2, -9.0 / SQRT_2, -19.0 / SQRT_2, ],
@@ -1765,7 +1765,7 @@ mod tests {
             [ -1.0 / SQRT_2, -7.0 / SQRT_2, -15.0 / SQRT_2, -2.5, -15.5, -12.5, 1.5, 2.5, 8.5, ],
         ];
         #[rustfmt::skip]
-        let aa_inv_expected = [
+        let aa_kel_inv_expected = [
             [ 50.0, 2.0, 3.0, -22.0 * SQRT_2, -2.0 * SQRT_2, 13.0 / SQRT_2, -8.0 * SQRT_2, 8.0 * SQRT_2, 5.0 / SQRT_2, ],
             [ -141.0, -7.0, 2.0, 107.0 / SQRT_2, 3.0 * SQRT_2, -17.0 * SQRT_2, 87.0 / SQRT_2, 9.0 * SQRT_2, -16.0 * SQRT_2, ],
             [ -59.0, -3.0, 1.0, 45.0 / SQRT_2, SQRT_2, -7.0 * SQRT_2, 37.0 / SQRT_2, 4.0 * SQRT_2, -7.0 * SQRT_2, ],
@@ -1779,7 +1779,7 @@ mod tests {
         let aa = Tensor4::from_std_array(&aa_std, Rep::General).unwrap();
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(aa.get(m, n), aa_expected[m][n], 1e-14);
+                approx_eq(aa.get(m, n), aa_kel_expected[m][n], 1e-14);
             }
         }
         let mut aa_inv = Tensor4::new(Rep::General);
@@ -1787,15 +1787,33 @@ mod tests {
         approx_eq(det, 1.0, 1e-12);
         for m in 0..9 {
             for n in 0..9 {
-                approx_eq(aa_inv.get(m, n), aa_inv_expected[m][n], 1e-10);
+                approx_eq(aa_inv.get(m, n), aa_kel_inv_expected[m][n], 1e-10);
             }
         }
         // Check Dijpq Dpqkl⁻¹ = δik δjl
         let aa_inv_std = aa_inv.as_std_array();
+        let aa_inv_std_expected = [
+            [
+                [[50.0, -30.0, 9.0], [-14.0, 2.0, 6.0], [4.0, -10.0, 3.0]],
+                [[-49.0, 36.0, -13.0], [-15.0, -3.0, 22.0], [4.0, -20.0, 6.0]],
+                [[9.0, -13.0, 7.0], [34.0, 2.0, -36.0], [-10.0, 38.0, -11.0]],
+            ],
+            [
+                [[-42.0, 39.0, -17.0], [-52.0, -5.0, 61.0], [15.0, -62.0, 18.0]],
+                [[-141.0, 97.0, -33.0], [10.0, -7.0, 12.0], [-1.0, -6.0, 2.0]],
+                [[134.0, -96.0, 34.0], [13.0, 8.0, -35.0], [-5.0, 30.0, -9.0]],
+            ],
+            [
+                [[-87.0, 62.0, -22.0], [-6.0, -5.0, 20.0], [3.0, -17.0, 5.0]],
+                [[116.0, -81.0, 28.0], [-4.0, 6.0, -14.0], [-1.0, 10.0, -3.0]],
+                [[-59.0, 41.0, -14.0], [4.0, -3.0, 5.0], [0.0, -3.0, 1.0]],
+            ],
+        ];
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
+                        approx_eq(aa_inv_std[i][j][k][l], aa_inv_std_expected[i][j][k][l], 1e-10);
                         let mut sum = 0.0;
                         for p in 0..3 {
                             for q in 0..3 {

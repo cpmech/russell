@@ -27,13 +27,24 @@ pub fn t2_tra_dot_t2(cc: &mut Tensor2, aa: &Tensor2) {
 
 /// Performs the general tensor dot general tensor operation: C = A · B
 /// 
-/// # Arguments
-/// 
-/// TODO
+/// Computes:
+///
+/// ```text
+/// C = A · B
+/// ```
+///
+/// # Output
+///
+/// * `cc` -- the resulting tensor C; must be [Rep::General]
+///
+/// # Input
+///
+/// * `aa` -- the first tensor A; must be [Rep::General]
+/// * `bb` -- the second tensor B; must be [Rep::General]
 ///
 /// # Panics
 /// 
-/// A panic will occur if any tensor is not [Rep::General].
+/// A panic will occur if any of the tensors are not [Rep::General].
 #[rustfmt::skip]
 pub fn t2_gen_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(aa.rep(), Rep::General);
@@ -55,9 +66,20 @@ pub fn t2_gen_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 
 /// Performs the general tensor dot symmetric tensor operation: C = A · B
 /// 
-/// # Arguments
-/// 
-/// TODO
+/// Computes:
+///
+/// ```text
+/// C = A · B
+/// ```
+///
+/// # Output
+///
+/// * `cc` -- the resulting tensor C; must be [Rep::General]
+///
+/// # Input
+///
+/// * `aa` -- the first tensor A; must be [Rep::General]
+/// * `bb` -- the second tensor B (symmetric); must NOT be [Rep::General]
 ///
 /// # Panics
 /// 
@@ -83,9 +105,20 @@ pub fn t2_gen_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 
 /// Performs the symmetric tensor dot general tensor operation: C = A · B
 /// 
-/// # Arguments
-/// 
-/// TODO
+/// Computes:
+///
+/// ```text
+/// C = A · B
+/// ```
+///
+/// # Output
+///
+/// * `cc` -- the resulting tensor C; must be [Rep::General]
+///
+/// # Input
+///
+/// * `aa` -- the first tensor A (symmetric); must NOT be [Rep::General]
+/// * `bb` -- the second tensor B; must be [Rep::General]
 ///
 /// # Panics
 /// 
@@ -111,9 +144,20 @@ pub fn t2_sym_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 
 /// Performs the symmetric tensor dot symmetric tensor operation: C = A · B
 /// 
-/// # Arguments
-/// 
-/// TODO
+/// Computes:
+///
+/// ```text
+/// C = A · B
+/// ```
+///
+/// # Output
+///
+/// * `cc` -- the resulting tensor C; must be [Rep::General]
+///
+/// # Input
+///
+/// * `aa` -- the first tensor A (symmetric); must NOT be [Rep::General]
+/// * `bb` -- the second tensor B (symmetric); must NOT be [Rep::General]
 ///
 /// # Panics
 /// 
@@ -139,13 +183,24 @@ pub fn t2_sym_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 
 /// Computes the symmetric right stretch tensor: U = Rᵀ F
 /// 
-/// # Arguments
-/// 
-/// TODO
+/// Computes:
+///
+/// ```text
+/// U = Rᵀ · F
+/// ```
+///
+/// # Output
+///
+/// * `uu` -- the resulting right stretch tensor U; must be [Rep::Symmetric]
+///
+/// # Input
+///
+/// * `rr` -- the rotation tensor R; must be [Rep::General]
+/// * `ff` -- the deformation gradient tensor F; must be [Rep::General]
 ///
 /// # Panics
 /// 
-/// A panic will occur if `rr` and `ff` are not [Rep::General] or if `uu` is [Rep::Symmetric].
+/// A panic will occur if `rr` and `ff` are not [Rep::General] or if `uu` is [Rep::General].
 #[rustfmt::skip]
 pub fn t2_right_stretch(uu: &mut Tensor2, rr: &Tensor2, ff: &Tensor2) {
     assert_eq!(rr.rep(), Rep::General);
@@ -164,13 +219,24 @@ pub fn t2_right_stretch(uu: &mut Tensor2, rr: &Tensor2, ff: &Tensor2) {
 
 /// Computes the symmetric left stretch tensor: V = F Rᵀ
 /// 
-/// # Arguments
-/// 
-/// TODO
+/// Computes:
+///
+/// ```text
+/// V = F · Rᵀ
+/// ```
+///
+/// # Output
+///
+/// * `vv` -- the resulting left stretch tensor V; must be [Rep::Symmetric]
+///
+/// # Input
+///
+/// * `ff` -- the deformation gradient tensor F; must be [Rep::General]
+/// * `rr` -- the rotation tensor R; must be [Rep::General]
 ///
 /// # Panics
 /// 
-/// A panic will occur if `ff` and `rr` are not [Rep::General] or if `vv` is [Rep::Symmetric].
+/// A panic will occur if `ff` and `rr` are not [Rep::General] or if `vv` is [Rep::General].
 #[rustfmt::skip]
 pub fn t2_left_stretch(vv: &mut Tensor2, ff: &Tensor2, rr: &Tensor2) {
     assert_eq!(ff.rep(), Rep::General);

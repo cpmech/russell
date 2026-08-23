@@ -47,7 +47,7 @@ pub fn t4_add(c: &mut Tensor4, alpha: f64, a: &Tensor4, beta: f64, b: &Tensor4) 
 ///           s t
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// Eₘₙ = α Σ Cₘₐ  Dₐₙ
@@ -150,7 +150,7 @@ pub fn t4_ddot_t4(ee: &mut Tensor4, alpha: f64, cc: &Tensor4, dd: &Tensor4) {
 ///            s t
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// Eₘₙ = α (Σ Cₘₐ  Dₐₙ) + β Eₘₙ

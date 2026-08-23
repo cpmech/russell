@@ -39,7 +39,7 @@ pub fn t3_add(c: &mut Tensor3, alpha: f64, a: &Tensor3, beta: f64, b: &Tensor3) 
 ///        k
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// Tₘ = α Σ Hₘₖ uₖ
@@ -84,7 +84,7 @@ pub fn t3_dot_t1(tt: &mut Tensor2, alpha: f64, hh: &Tensor3, u: &Tensor1) {
 ///       j k
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// uᵢ = α Σ Hᵢₙ Tₙ

@@ -13,22 +13,22 @@ use russell_lab::small_mat_inv;
 
 /// Defines a fourth-order tensor in R³×R³×R³×R³
 ///
-/// # Standard and Kelvin components
+/// # Standard and Kelvin-Mandel components
 ///
 /// The methods of this struct follow a naming convention that distinguishes
-/// between the **standard** (Cartesian) components `Dᵢⱼₖₗ` and the **Kelvin**
+/// between the **standard** (Cartesian) components `Dᵢⱼₖₗ` and the **Kelvin-Mandel**
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
 ///   their names (e.g., [Tensor4::from_std_matrix], [Tensor4::get_std],
 ///   [Tensor4::as_std_matrix], [Tensor4::sym_set_std]).
-/// * Methods dealing directly with the **Kelvin components** carry no qualifier
+/// * Methods dealing directly with the **Kelvin-Mandel components** carry no qualifier
 ///   (e.g., [Tensor4::get], [Tensor4::set], [Tensor4::set_tensor],
 ///   [Tensor4::update]).
 ///
-/// Internally, the components are converted to the Kelvin basis as follows.
+/// Internally, the components are converted to the Kelvin-Mandel basis as follows.
 ///
-/// First, the following mapping to the Kelvin space is considered:
+/// First, the following mapping to the Kelvin-Mandel space is considered:
 ///
 /// ```text
 /// i=j & k=l:  Mijkl := Dijkl
@@ -121,20 +121,20 @@ use russell_lab::small_mat_inv;
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor4 {
-    /// Holds the actual dimension of the Kelvin matrix
+    /// Holds the actual dimension of the Kelvin-Mandel matrix
     ///
     /// * General: `dim = 9`
     /// * Symmetric: `dim = 6`
     /// * Symmetric2D: `dim = 4`
     dim: usize,
 
-    /// Holds the components in Kelvin basis as matrix (heap).
+    /// Holds the components in Kelvin-Mandel basis as matrix (heap).
     ///
     /// Heap version => dynamically allocated memory
     #[cfg(feature = "heap")]
     pub(crate) mat: Matrix,
 
-    /// Holds the components in Kelvin basis as matrix (stack).
+    /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     ///
     /// This array may use more data than necessary in symmetric cases
     #[cfg(not(feature = "heap"))]
@@ -220,13 +220,13 @@ impl Tensor4 {
         self.rep
     }
 
-    /// Returns the Kelvin matrix dimension (4, 6, or 9)
+    /// Returns the Kelvin-Mandel matrix dimension (4, 6, or 9)
     #[inline]
     pub fn dim(&self) -> usize {
         self.dim
     }
 
-    /// Returns the (m,n) component of the Kelvin matrix
+    /// Returns the (m,n) component of the Kelvin-Mandel matrix
     ///
     /// # Input
     ///
@@ -260,7 +260,7 @@ impl Tensor4 {
         }
     }
 
-    /// Sets the (m,n) component of the Kelvin matrix
+    /// Sets the (m,n) component of the Kelvin-Mandel matrix
     ///
     /// # Input
     ///
@@ -789,11 +789,11 @@ impl Tensor4 {
         }
     }
 
-    /// Calculates the inverse of the Kelvin matrix
+    /// Calculates the inverse of the Kelvin-Mandel matrix
     ///
-    /// Note: the inverse Tensor4 can be obtained by inverting the Kelvin matrix.
+    /// Note: the inverse Tensor4 can be obtained by inverting the Kelvin-Mandel matrix.
     ///
-    /// Returns the determinant of the Kelvin matrix and the inverse matrix/tensor in `inv`.
+    /// Returns the determinant of the Kelvin-Mandel matrix and the inverse matrix/tensor in `inv`.
     pub fn calc_inverse(&self, inv: &mut Tensor4) -> Result<f64, StrError> {
         if inv.rep != self.rep {
             return Err("the representation of the inverse tensor and this tensor must equal each other");
@@ -1112,7 +1112,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///        ┌                     ┐
     ///        │ 1 0 0  0 0 0  0 0 0 │
     ///        │ 0 1 0  0 0 0  0 0 0 │
@@ -1145,7 +1145,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///        ┌                        ┐
     ///        │ 1 0 0  0 0 0   0  0  0 │
     ///        │ 0 1 0  0 0 0   0  0  0 │
@@ -1183,7 +1183,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///        ┌                     ┐
     ///        │ 1 1 1  0 0 0  0 0 0 │
     ///        │ 1 1 1  0 0 0  0 0 0 │
@@ -1225,7 +1225,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///          ┌                     ┐
     ///          │ ⅓ ⅓ ⅓  0 0 0  0 0 0 │
     ///          │ ⅓ ⅓ ⅓  0 0 0  0 0 0 │
@@ -1268,7 +1268,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///          ┌                     ┐
     ///          │ 1 0 0  0 0 0  0 0 0 │
     ///          │ 0 1 0  0 0 0  0 0 0 │
@@ -1308,7 +1308,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///           ┌                     ┐
     ///           │ 0 0 0  0 0 0  0 0 0 │
     ///           │ 0 0 0  0 0 0  0 0 0 │
@@ -1340,7 +1340,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///          ┌                        ┐
     ///          │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
     ///          │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │
@@ -1385,7 +1385,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///             ┌                        ┐
     ///             │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
     ///             │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │
@@ -1431,7 +1431,7 @@ impl Tensor4 {
     /// ```
     ///
     /// ```text
-    /// Kelvin matrix:
+    /// Kelvin-Mandel matrix:
     ///             ┌                        ┐
     ///             │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
     ///             │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │
@@ -1468,7 +1468,7 @@ impl Tensor4 {
 }
 
 impl fmt::Display for Tensor4 {
-    /// Generates a string representation of Kelvin matrix associated with this Tensor4
+    /// Generates a string representation of Kelvin-Mandel matrix associated with this Tensor4
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;

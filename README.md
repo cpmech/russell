@@ -92,7 +92,7 @@ This project is split into the following crates:
     - Backends: OpenBLAS / Netlib LAPACK or Intel oneAPI MKL (via intel_mkl feature).
 2. [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) — Tensor calculus and continuum mechanics:
     - Tensor types: Tensor1 (3D vectors), Tensor2 (2nd-order), Tensor3 (3rd-order), Tensor4 (4th-order).
-    - Kelvin representation: Maps tensors to vector/matrix spaces preserving Euclidean norms (Rep::General, Rep::Symmetric, Rep::Symmetric2D).
+    - Kelvin-Mandel representation: Maps tensors to vector/matrix spaces preserving Euclidean norms (Rep::General, Rep::Symmetric, Rep::Symmetric2D).
     - Operations & Calculus: Dot/ddot contractions, dyadic products, polar decompositions, principal/deviatoric/octahedral invariants, Lode invariant, first and second derivatives of invariants and tensor functions, linear elasticity / Hooke's law.
 3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and direct solvers:
     - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).

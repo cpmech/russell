@@ -597,7 +597,7 @@ mod tests {
     use crate::{deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
-    // Returns the dim x dim Kelvin submatrix of a Tensor4 as a Matrix
+    // Returns the dim x dim Kelvin-Mandel submatrix of a Tensor4 as a Matrix
     fn kelvin_matrix(dd: &Tensor4) -> Matrix {
         let dim = dd.dim();
         let mut m = Matrix::new(dim, dim);

@@ -58,7 +58,7 @@ pub fn polar_rotation(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError>
     assert_eq!(ff.rep(), Rep::General);
     assert_eq!(rr.rep(), Rep::General);
 
-    // e and i_vec_minus_e are symmetric (Kelvin 6-component), matching the
+    // e and i_vec_minus_e are symmetric (Kelvin-Mandel 6-component), matching the
     // Fortran scalars E11, E22, E33, E23, E31, E12; a and x are general (9).
     let mut e = [0.0; 6];
     let mut a = [0.0; 9];

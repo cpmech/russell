@@ -41,7 +41,7 @@ impl SamplesTensor3 {
         [25.0, 26.0, 27.0], // [2][0]...
     ];
 
-    /// Kelvin matrix representation of SAMPLE1
+    /// Kelvin-Mandel matrix representation of SAMPLE1
     #[rustfmt::skip]
     pub const CASE_A_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 9] = [
         [         1.0 ,          2.0 ,          3.0 ],
@@ -114,7 +114,7 @@ impl SamplesTensor3 {
         [16.0, 17.0, 18.0], // [2][0]...
     ];
 
-    /// Kelvin matrix representation of SYM_SAMPLE1
+    /// Kelvin-Mandel matrix representation of SYM_SAMPLE1
     #[rustfmt::skip]
     pub const CASE_A_SYM_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 6] = [
         [ 1.0       ,  2.0       ,  3.0       ],
@@ -162,7 +162,7 @@ impl SamplesTensor3 {
         [ 0.0,  0.0,  0.0], // [2][0]...
     ];
 
-    /// Kelvin matrix representation of SYM_2D_SAMPLE1
+    /// Kelvin-Mandel matrix representation of SYM_2D_SAMPLE1
     #[rustfmt::skip]
     pub const CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX:[[f64; 3]; 4] = [
         [ 1.0       ,  2.0       ,  3.0       ],
@@ -202,7 +202,7 @@ impl SamplesTensor3 {
         [3.0, 6.0, 9.0, 12.0, 15.0, 18.0, 21.0, 24.0, 27.0], // [2][..]...
     ];
 
-    /// Kelvin matrix representation of CASE_B_SAMPLE1
+    /// Kelvin-Mandel matrix representation of CASE_B_SAMPLE1
     #[rustfmt::skip]
     pub const CASE_B_SAMPLE1_KELVIN_MATRIX: [[f64; 9]; 3] = [
         [1.0, 4.0, 7.0, 29.0/SQRT_2, 35.0/SQRT_2, 41.0/SQRT_2, -9.0/SQRT_2, -9.0/SQRT_2, -9.0/SQRT_2],
@@ -263,7 +263,7 @@ impl SamplesTensor3 {
         [3.0, 6.0, 9.0, 12.0, 15.0, 18.0, 12.0, 15.0, 18.0], // [2][..]...
     ];
 
-    /// Kelvin matrix representation of CASE_B_SYM_SAMPLE1
+    /// Kelvin-Mandel matrix representation of CASE_B_SYM_SAMPLE1
     #[rustfmt::skip]
     pub const CASE_B_SYM_SAMPLE1_KELVIN_MATRIX: [[f64; 6]; 3] = [
         [1.0, 4.0, 7.0, 10.0*SQRT_2, 13.0*SQRT_2, 16.0*SQRT_2],
@@ -302,7 +302,7 @@ impl SamplesTensor3 {
         [3.0, 6.0, 9.0, 12.0, 0.0, 0.0, 12.0, 0.0, 0.0], // [2][..]...
     ];
 
-    /// Kelvin matrix representation of CASE_B_SYM_2D_SAMPLE1
+    /// Kelvin-Mandel matrix representation of CASE_B_SYM_2D_SAMPLE1
     #[rustfmt::skip]
     pub const CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX: [[f64; 4]; 3] = [
         [1.0, 4.0, 7.0, 10.0*SQRT_2],

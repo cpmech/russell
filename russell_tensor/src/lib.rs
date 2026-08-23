@@ -20,11 +20,11 @@
 //! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products.
 //! * Derivatives — Implements first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors)
 //!
-//! # Kelvin notation
+//! # Kelvin-Mandel notation
 //!
-//! Internally, tensors are stored in the Kelvin basis (Kelvin notation).
+//! Internally, tensors are stored in the Kelvin-Mandel basis (Kelvin-Mandel notation).
 //!
-//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+//! In the Kelvin-Mandel basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
 //! The [Rep] enum specifies the available representations:
 //!
@@ -32,9 +32,9 @@
 //! * [Rep::Symmetric] — 6×1 / 6×6 (symmetric tensors in 3D)
 //! * [Rep::Symmetric2D] — 4×1 / 4×4 (symmetric tensors in 2D)
 //!
-//! # Standard vs Kelvin components
+//! # Standard vs Kelvin-Mandel components
 //!
-//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Hᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin** components stored internally:
+//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Hᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin-Mandel** components stored internally:
 //!
 //! * Accessors dealing with **standard components** carry the `std` qualifier
 //!   in their names:
@@ -47,13 +47,13 @@
 //!   * [Tensor4] — [Tensor4::from_std_array], [Tensor4::from_std_matrix],
 //!     [Tensor4::get_std], [Tensor4::as_std_array], [Tensor4::to_std_array],
 //!     [Tensor4::as_std_matrix], [Tensor4::to_std_matrix], [Tensor4::sym_set_std]
-//! * Accessors dealing directly with the **Kelvin components** carry no qualifier:
+//! * Accessors dealing directly with the **Kelvin-Mandel components** carry no qualifier:
 //!   * [Tensor2] — [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
 //!     [Tensor2::set_tensor], [Tensor2::update], [Tensor2::clear]
 //!   * [Tensor3] — [Tensor3::get], [Tensor3::set], [Tensor3::set_tensor], [Tensor3::update]
 //!   * [Tensor4] — [Tensor4::get], [Tensor4::set], [Tensor4::set_tensor], [Tensor4::update]
 //!
-//! **Note:** [Tensor1] stores the three **standard** components directly (there is no Kelvin mapping for first-order tensors); access them with [Tensor1::get] and [Tensor1::set].
+//! **Note:** [Tensor1] stores the three **standard** components directly (there is no Kelvin-Mandel mapping for first-order tensors); access them with [Tensor1::get] and [Tensor1::set].
 //!
 //! # Optional features
 //!

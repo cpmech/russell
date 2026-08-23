@@ -84,7 +84,7 @@ impl SamplesTensor4 {
         [61.0, 62.0, 63.0,  70.0, 71.0, 72.0,  79.0, 80.0, 81.0], // [2][0]...
     ];
 
-    /// Sample matrix representation with Kelvin components
+    /// Sample matrix representation with Kelvin-Mandel components
     #[rustfmt::skip]
     pub const SAMPLE1_KELVIN_MATRIX:[[f64; 9]; 9] = [
         [         1.0 ,          2.0 ,          3.0 , 29.0/SQRT_2 , 31.0/SQRT_2 , 33.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 , -9.0/SQRT_2 ],
@@ -244,7 +244,7 @@ impl SamplesTensor4 {
         [25.0, 26.0, 27.0,  34.0, 35.0, 36.0,  34.0, 35.0, 36.0], // [2][0]...
     ];
 
-    /// Sample matrix representation of symmetric tensor with Kelvin components
+    /// Sample matrix representation of symmetric tensor with Kelvin-Mandel components
     #[rustfmt::skip]
     pub const SYM_SAMPLE1_KELVIN_MATRIX:[[f64; 6]; 6] = [
         [ 1.0       ,  2.0       ,  3.0       , 10.0*SQRT_2, 11.0*SQRT_2, 12.0*SQRT_2],
@@ -335,7 +335,7 @@ impl SamplesTensor4 {
         [ 0.0,  0.0,  0.0,   0.0, 0.0, 0.0,   0.0, 0.0, 0.0], // [2][0]...
     ];
 
-    /// Sample matrix representation for 2D spaces with Kelvin components
+    /// Sample matrix representation for 2D spaces with Kelvin-Mandel components
     #[rustfmt::skip]
     pub const SYM_2D_SAMPLE1_KELVIN_MATRIX:[[f64; 4]; 4] = [
         [ 1.0       ,  2.0       ,  3.0       , 10.0*SQRT_2],

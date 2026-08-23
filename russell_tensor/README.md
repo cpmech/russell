@@ -8,7 +8,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 - [Introduction](#introduction)
   - [Capabilities](#capabilities)
-  - [Kelvin notation](#kelvin-notation)
+  - [Kelvin-Mandel notation](#kelvin-mandel-notation)
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
@@ -36,15 +36,13 @@ This library implements structures and functions for tensor analysis and calculu
 * `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
 * Constants — identity, transposition, and projector tensors
 
-### Kelvin notation
+### Kelvin-Mandel notation
 
-Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
-
-In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+Internally, tensors are stored as vectors/matrices with components given with respect to the Kelvin-Mandel basis, i.e., the *Kelvin-Mandel* notation, a norm-preserving alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation). In the Kelvin-Mandel notation, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. Factors such as `√2` multiply some components to yield the norm-preserving mapping.
 
 The `Rep` enum specifies the available representations:
 
-* `Rep::General` — 9×1 / 9×9 (all components)
+* `Rep::General` — 9×1 / 9×3 / 3×9 / 9×9 (all components)
 * `Rep::Symmetric` — 6×1 / 6×6 (symmetric tensors in 3D)
 * `Rep::Symmetric2D` — 4×1 / 4×4 (symmetric tensors in 2D)
 

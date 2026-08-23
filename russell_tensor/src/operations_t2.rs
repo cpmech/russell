@@ -61,7 +61,7 @@ pub fn t2_add(c: &mut Tensor2, alpha: f64, a: &Tensor2, beta: f64, b: &Tensor2) 
 ///     i j
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// s = Σ aₘ bₘ

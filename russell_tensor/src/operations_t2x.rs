@@ -8,7 +8,7 @@ use crate::{Rep, SQRT_2, StrError};
 /// | Formula | `a` Rep | `b` Rep | `c` Rep | `tra_a` | `tra_b` |
 /// | :--- | :--- | :--- | :--- | :--- | :--- |
 /// | C = α A · B | `General` | `General` | `General` | `false` | `false` |
-/// | C = α A · A | `General` | (same as a) | `Symmetric` | `false` | `false` |
+/// | C = α A · A | `General` | (same as a) | `General` | `false` | `false` |
 /// | C = α A · Bᵀ | `General` | `Symmetric` | `General` | `false` | `true` |
 /// | C = α A · B | `General` | `Symmetric` | `General` | `false` | `false` |
 /// | C = α Aᵀ · B | `Symmetric` | `General` | `General` | `true` | `false` |
@@ -62,8 +62,8 @@ pub fn t2_matmul(
     match (a.rep(), b.rep(), tra_a, tra_b) {
         (Rep::General, Rep::General, false, false) => {
             if std::ptr::eq(a, b) {
-                if c.rep() != Rep::Symmetric {
-                    return Err("c must be Symmetric for this combination");
+                if c.rep() != Rep::General {
+                    return Err("c must be General for this combination");
                 }
                 t2_gen_dot_self(c.as_mut_data(), alpha, a.as_data());
             } else {
@@ -897,19 +897,51 @@ mod tests {
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
         ], Rep::General).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
-            [   1.00000,    2.00000,    3.00000],
-            [   4.00000,    5.00000,    6.00000],
-            [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_matmul(&mut c, 2.0, &a, false, &b, false).unwrap();
+        t2_matmul(&mut c, 2.0, &a, false, &a, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [  60.00000,   72.00000,   84.00000],
             [ 132.00000,  162.00000,  192.00000],
             [ 204.00000,  252.00000,  300.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_matmul_tra_self_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_matmul(&mut c, 2.0, &a, true, &a, false).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            [ 132.00000,  156.00000,  180.00000],
+            [ 156.00000,  186.00000,  216.00000],
+            [ 180.00000,  216.00000,  252.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_matmul_self_tra_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_matmul(&mut c, 2.0, &a, false, &a, true).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            [  28.00000,   64.00000,  100.00000],
+            [  64.00000,  154.00000,  244.00000],
+            [ 100.00000,  244.00000,  388.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
@@ -922,14 +954,8 @@ mod tests {
             [   4.00000,    2.00000,    5.00000],
             [   6.00000,    5.00000,    3.00000],
         ], Rep::Symmetric).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
-            [   1.00000,    4.00000,    6.00000],
-            [   4.00000,    2.00000,    5.00000],
-            [   6.00000,    5.00000,    3.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::General);
-        t2_matmul(&mut c, 2.0, &a, false, &b, false).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_matmul(&mut c, 2.0, &a, false, &a, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [ 106.00000,   84.00000,   88.00000],

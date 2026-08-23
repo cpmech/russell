@@ -21,10 +21,6 @@ use russell_tensor::{deriv2_invariant_jj3, deriv2_invariant_lode, t2_qsd_t2, t2_
 /// Fixed symmetric 3×3 matrix used to build the input tensors
 const SYMMETRIC: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [2.0, 4.0, 5.0], [3.0, 5.0, 6.0]];
 
-/// Fixed general (non-symmetric) 3×3 matrices used for the tensor multiplication
-const GENERAL_A: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
-const GENERAL_B: [[f64; 3]; 3] = [[0.9, 0.8, 0.7], [0.6, 0.5, 0.4], [0.3, 0.2, 0.1]];
-
 /// Benchmarks `t2_ssd` (self-sum-dyadic)
 fn bench_t2_ssd(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("t2_ssd");

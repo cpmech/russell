@@ -17,6 +17,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Computing the Invariants](#computing-the-invariants)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 - [For developers](#for-developers)
+- [Principal invariants (Rep::Symmetric)](#principal-invariants-repsymmetric)
 
 
 
@@ -205,3 +206,35 @@ fn main() -> Result<(), StrError> {
 
 * This crate depends on `russell_lab`, which requires non-Rust high-performance libraries (see the Installation section)
 * Run the examples with `cargo run --example <name>`
+
+
+
+## Principal invariants (Rep::Symmetric)
+
+For a symmetric second-order tensor with standard components $\sigma_{11}, \sigma_{22}, \sigma_{33}, \sigma_{12}, \sigma_{23}, \sigma_{13}$:
+
+$$
+I_1 = \sigma_{11} + \sigma_{22} + \sigma_{33}
+$$
+
+$$
+I_2 = \sigma_{11}\sigma_{22} + \sigma_{22}\sigma_{33} + \sigma_{33}\sigma_{11} - \sigma_{12}^2 - \sigma_{23}^2 - \sigma_{13}^2
+$$
+
+$$
+I_3 = \sigma_{11}\sigma_{22}\sigma_{33} + 2\,\sigma_{12}\sigma_{23}\sigma_{13} - \sigma_{33}\sigma_{12}^2 - \sigma_{11}\sigma_{23}^2 - \sigma_{22}\sigma_{13}^2
+$$
+
+In terms of the Kelvin-Mandel components $\underline{\sigma}_1, \underline{\sigma}_2, \underline{\sigma}_3, \underline{\sigma}_4, \underline{\sigma}_5, \underline{\sigma}_6$ (the values actually stored):
+
+$$
+I_1 = \underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3
+$$
+
+$$
+I_2 = \underline{\sigma}_1\underline{\sigma}_2 + \underline{\sigma}_1\underline{\sigma}_3 + \underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_5^2 - \frac{1}{2}\underline{\sigma}_6^2
+$$
+
+$$
+I_3 = \underline{\sigma}_1\underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_3\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_1\underline{\sigma}_5^2 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5\underline{\sigma}_6 - \frac{1}{2}\underline{\sigma}_2\underline{\sigma}_6^2
+$$

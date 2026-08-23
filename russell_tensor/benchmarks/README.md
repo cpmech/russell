@@ -87,44 +87,47 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- t2_ssd
 
 ## Polar decomposition benchmark
 
-`polar_decomp_benchmark` compares the speed of the two polar-decomposition
-algorithms across the condition-number range:
+`polar_decomp_benchmark` compares the speed of the polar-rotation algorithms:
 
 | algorithm | description |
 | --------- | ----------- |
-| `brannon` | `polar_rotation_brannon` — iterative fixed-point (Bjorck–Bowie) |
-| `higham`  | `polar_quaternion_higham` — quaternion-based, direct (Higham & Noferini, 2016) |
+| `brannon` | `polar_rotation_brannon` — iterative fixed-point (3×3) |
+| `brannon2d` | `polar_rotation_brannon2d` — closed-form (in-plane only) |
+| `higham` | `polar_quaternion_higham` — quaternion-based, direct (3×3) |
 
-Cases (the condition number κ is the ratio of the largest to the smallest
-singular value of `F`):
+> **Note:** `polar_quaternion_higham` computes the stretch `H` together with the
+> rotation `Q` (the quaternion algorithm does not separate them), whereas the
+> Brannon routines compute only `R`.
 
-| case | κ | input |
-| ---- | - | ----- |
-| `well_conditioned` | ≈ 4 | example 03 (McGinty) |
-| `moderate_conditioned` | ≈ 6·10² | Higham test 5.2, `y = 1e-3` |
-| `ill_conditioned` | ≈ 6·10⁷ | Higham test 5.2, `y = 1e-8` |
+### General (3×3): Brannon vs Higham
 
-Median times (single machine, Intel MKL):
+| case | κ | `brannon` | `higham` | higham speedup |
+| ---- | -- | --------- | -------- | -------------- |
+| `well_conditioned` | ≈ 4 | 195 ns | 124 ns | 1.6× |
+| `moderate_conditioned` | ≈ 6·10² | 718 ns | 164 ns | 4.4× |
+| `ill_conditioned` | ≈ 6·10⁷ | 1.89 µs | 202 ns | 9.4× |
 
-| case | `brannon` | `higham` | higham speedup |
-| ---- | --------- | -------- | -------------- |
-| `well_conditioned` | 208 ns | 125 ns | 1.7× |
-| `moderate_conditioned` | 731 ns | 165 ns | 4.4× |
-| `ill_conditioned` | 1.91 µs | 202 ns | 9.5× |
+### In-plane: all three algorithms
+
+| algorithm | time |
+| --------- | ---- |
+| `brannon` | 255 ns |
+| `brannon2d` | 6.4 ns |
+| `higham` | 129 ns |
 
 ### Observations
 
-- **Higham is faster in every case**, including well-conditioned ones. Its
-  direct algorithm does a fixed amount of work (~125–200 ns), whereas Brannon's
-  fixed-point iteration performs several iterations even for well-conditioned
-  `F`.
-- **The gap widens with conditioning** (1.7× → 4.4× → 9.5×): Brannon iterates
-  more as κ grows, while Higham's cost stays nearly constant (the small rise is
-  from the extra pivoting/QR fallback paths taken for ill-conditioned inputs).
+- **Higham is faster than the iterative Brannon in every case** — by ~1.6× for
+  well-conditioned `F`, growing to ~9.4× for ill-conditioned `F` (Brannon
+  iterates more as κ grows, while Higham's cost stays nearly constant).
+- **For in-plane `F`, the closed-form `brannon2d` is by far the fastest**
+  (~6 ns), about 40× faster than the iterative `brannon` and 20× faster than
+  `higham`.
 - Combined with the accuracy cross-check (Higham stays at ~1e-16 for
-  ill-conditioned `F` where Brannon degrades to ~1e-12), Higham's algorithm is
-  both faster and more robust here; Brannon's remains the reference for its
-  simplicity and for the 2×2 case.
+  ill-conditioned `F` where the iterative Brannon degrades to ~1e-12), Higham's
+  algorithm is both faster and more robust; the iterative Brannon remains the
+  reference for its simplicity, and `brannon2d` is the clear choice for planar
+  deformations.
 
 ### How to run
 

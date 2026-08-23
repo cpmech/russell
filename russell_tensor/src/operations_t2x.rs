@@ -5,19 +5,20 @@ use crate::{Rep, StrError, SQRT_2};
 ///
 /// # Supported Combinations
 ///
-/// | Formula | `a` Rep | `b` Rep | `c` Rep | `tra_a` | `tra_b` | Equivalent/Notes |
-/// | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-/// | C = α A · B | `General` | `General` | `General` | `false` | `false` | Standard dot product |
-/// | C = α Aᵀ · B | `General` | `General` | `General` | `true` | `false` | Left transpose |
-/// | C = α A · Bᵀ | `General` | `General` | `General` | `false` | `true` | Right transpose |
-/// | C = α Aᵀ · A | `General` | (same as `a`) | `Symmetric` | `true` | `false` | Tensor multiplied by itself |
-/// | C = α sym(Aᵀ · B) | `General` | `General` | `Symmetric` | `true` | `false` | Skew components chopped |
-/// | C = α sym(A · Bᵀ) | `General` | `General` | `Symmetric` | `false` | `true` | Skew components chopped |
-/// | C = α A · B | `General` | `Symmetric` | `General` | `false` | `any` | Transposing B is a no-op |
-/// | C = α Aᵀ · B | `General` | `Symmetric` | `General` | `true` | `any` | |
-/// | C = α A · B | `Symmetric` | `General` | `General` | `any` | `false` | Transposing A is a no-op |
-/// | C = α A · Bᵀ | `Symmetric` | `General` | `General` | `any` | `true` | |
-/// | C = α A · B | `Symmetric` | `Symmetric` | `General` | `any` | `any` | Product is NOT symmetric in general |
+/// | Formula | `a` Rep | `b` Rep | `c` Rep | `tra_a` | `tra_b` |
+/// | :--- | :--- | :--- | :--- | :--- | :--- |
+/// | C = α A · B | `General` | `General` | `General` | `false` | `false` |
+/// | C = α A · Bᵀ | `General` | `Symmetric` | `General` | `false` | `true` |
+/// | C = α A · B | `General` | `Symmetric` | `General` | `false` | `false` |
+/// | C = α Aᵀ · B | `Symmetric` | `General` | `General` | `true` | `false` |
+/// | C = α A · B | `Symmetric` | `General` | `General` | `false` | `false` |
+/// | C = α Aᵀ · Bᵀ | `Symmetric` | `Symmetric` | `General` | `true` | `true` |
+/// | C = α Aᵀ · B | `Symmetric` | `Symmetric` | `General` | `true` | `false` |
+/// | C = α A · Bᵀ | `Symmetric` | `Symmetric` | `General` | `false` | `true` |
+/// | C = α A · B | `Symmetric` | `Symmetric` | `General` | `false` | `false` |
+/// | C = α Aᵀ · A | `General` | (same as a) | `Symmetric` | `true` | `false` |
+/// | C = α sym(Aᵀ · B) | `General` | `General` | `Symmetric or General` | `true` | `false` |
+/// | C = α sym(A · Bᵀ) | `General` | `General` | `Symmetric or General` | `false` | `true` |
 ///
 /// # Output
 ///
@@ -75,7 +76,7 @@ pub fn t2_matmul(
         (Rep::General, Rep::General, true, false) => {
             if std::ptr::eq(a, b) {
                 if c.rep() != Rep::Symmetric {
-                    return Err("c must be Symmetric");
+                    return Err("c must be Symmetric for this combination");
                 }
                 t2_gen_tra_dot_self(c.as_mut_data(), alpha, a.as_data());
             } else {
@@ -84,7 +85,7 @@ pub fn t2_matmul(
                 } else if c.rep() == Rep::General {
                     t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
                 } else {
-                    return Err("c must be Symmetric or General");
+                    return Err("c must be Symmetric or General for this combination");
                 }
             }
         }
@@ -94,7 +95,7 @@ pub fn t2_matmul(
             } else if c.rep() == Rep::General {
                 t2_gen_dot_gen_tra_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
             } else {
-                return Err("c must be Symmetric or General");
+                return Err("c must be Symmetric or General for this combination");
             }
         }
         _ => return Err("t2_matmul: combination of representations and transpositions is unavailable"),
@@ -106,10 +107,10 @@ pub fn t2_matmul(
 ///
 /// # Supported Combinations
 ///
-/// | Formula | `a` Rep | `b` Rep | `c` Rep | `forward` | Notes |
-/// | :--- | :--- | :--- | :--- | :--- | :--- |
-/// | C = α A · B · Aᵀ | `General` | `Symmetric` | `Symmetric` | `true` | e.g., Push-forward of Piola-Kirchhoff stress to Cauchy stress |
-/// | C = α Aᵀ · B · A | `General` | `Symmetric` | `Symmetric` | `false` | e.g., Pull-back of Cauchy stress to Piola-Kirchhoff stress |
+/// | Formula | `a` Rep | `b` Rep | `c` Rep | `forward` |
+/// | :--- | :--- | :--- | :--- | :--- |
+/// | C = α A · B · Aᵀ | `General` | `Symmetric` | `Symmetric` | `true` |
+/// | C = α Aᵀ · B · A | `General` | `Symmetric` | `Symmetric` | `false` |
 ///
 /// # Output
 ///
@@ -148,6 +149,86 @@ pub fn t2_matmulx(
         _ => return Err("t2_matmulx: unsupported combination"),
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod dispatcher_tests {
+    use super::*;
+    use crate::{Rep, Tensor2};
+
+    #[test]
+    fn test_t2_matmul_dispatcher() {
+        let a_gen = Tensor2::new(Rep::General);
+        let b_gen = Tensor2::new(Rep::General);
+        let a_sym = Tensor2::new(Rep::Symmetric);
+        let b_sym = Tensor2::new(Rep::Symmetric);
+        let mut c_gen = Tensor2::new(Rep::General);
+        let mut c_sym = Tensor2::new(Rep::Symmetric);
+
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, false).is_err());
+        
+        // Test ptr::eq(a, b) cases
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &a_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &a_gen, false).is_err()); // Must fail because c must be Symmetric for A^T * A
+    }
+
+    #[test]
+    fn test_t2_matmulx_dispatcher() {
+        let a_gen = Tensor2::new(Rep::General);
+        let b_gen = Tensor2::new(Rep::General);
+        let a_sym = Tensor2::new(Rep::Symmetric);
+        let b_sym = Tensor2::new(Rep::Symmetric);
+        let mut c_gen = Tensor2::new(Rep::General);
+        let mut c_sym = Tensor2::new(Rep::Symmetric);
+
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_sym).is_ok());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, false, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, false, &b_sym).is_ok());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, true, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, true, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, false, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, false, &b_sym).is_err());
+    }
 }
 
 /// Performs the general tensor dot general tensor operation: C = A · B

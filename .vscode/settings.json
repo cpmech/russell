@@ -12,6 +12,7 @@
     "argsort",
     "Arioli",
     "Armijo",
+    "matmulx",
     "atol",
     "autostep",
     "bbox",

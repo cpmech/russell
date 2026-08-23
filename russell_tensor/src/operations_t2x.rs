@@ -1,5 +1,143 @@
 use super::Tensor2;
-use crate::{Rep, SQRT_2};
+use crate::{Rep, StrError, SQRT_2};
+
+/// Performs the matrix multiplication between two Tensor2
+///
+/// Computes:
+///
+/// ```text
+/// C = α A · B
+/// ```
+///
+/// Or with transposed inputs:
+///
+/// ```text
+/// C = α Aᵀ · B
+/// C = α A · Bᵀ
+/// C = α Aᵀ · Bᵀ
+/// ```
+///
+/// # Output
+///
+/// * `c` -- the resulting tensor
+///
+/// # Input
+///
+/// * `alpha` -- the multiplier α
+/// * `a` -- the first tensor A
+/// * `tra_a` -- whether to use Aᵀ instead of A
+/// * `b` -- the second tensor B
+/// * `tra_b` -- whether to use Bᵀ instead of B
+///
+/// # Returns
+///
+/// Returns an error if the combination of representations and transpositions is unavailable or impossible.
+pub fn t2_matmul(
+    c: &mut Tensor2,
+    alpha: f64,
+    a: &Tensor2,
+    tra_a: bool,
+    b: &Tensor2,
+    tra_b: bool,
+) -> Result<(), StrError> {
+    match (a.rep(), b.rep(), tra_a, tra_b) {
+        (Rep::General, Rep::General, false, false) => {
+            if c.rep() != Rep::General {
+                return Err("c must be General for A_gen * B_gen");
+            }
+            t2_gen_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+        }
+        (Rep::General, Rep::Symmetric, false, false) |
+        (Rep::General, Rep::Symmetric, false, true) => {
+            // b is symmetric, so tra_b doesn't matter
+            if c.rep() != Rep::General {
+                return Err("c must be General for A_gen * B_sym");
+            }
+            t2_gen_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+        }
+        (Rep::Symmetric, Rep::General, false, false) |
+        (Rep::Symmetric, Rep::General, true, false) => {
+            // a is symmetric, so tra_a doesn't matter
+            if c.rep() != Rep::General {
+                return Err("c must be General for A_sym * B_gen");
+            }
+            t2_sym_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+        }
+        (Rep::Symmetric, Rep::Symmetric, _, _) => {
+            // a and b are symmetric, so tra_a and tra_b don't matter
+            if c.rep() != Rep::General {
+                return Err("c must be General for A_sym * B_sym");
+            }
+            t2_sym_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+        }
+        (Rep::General, Rep::General, true, false) => {
+            if std::ptr::eq(a, b) {
+                if c.rep() != Rep::Symmetric {
+                    return Err("c must be Symmetric for A_gen^T * A_gen");
+                }
+                t2_gen_tra_dot_self(c.as_mut_data(), alpha, a.as_data());
+            } else if c.rep() == Rep::Symmetric {
+                t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), true);
+            } else if c.rep() == Rep::General {
+                t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
+            } else {
+                return Err("c must be Symmetric or General for A_gen^T * B_gen");
+            }
+        }
+        (Rep::General, Rep::General, false, true) => {
+            if c.rep() == Rep::Symmetric {
+                t2_gen_dot_gen_tra_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), true);
+            } else if c.rep() == Rep::General {
+                t2_gen_dot_gen_tra_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
+            } else {
+                return Err("c must be Symmetric or General for A_gen * B_gen^T");
+            }
+        }
+        _ => return Err("t2_matmul: combination of representations and transpositions is unavailable"),
+    }
+    Ok(())
+}
+
+/// Performs a triple matrix multiplication: C = α A · B · Aᵀ or C = α Aᵀ · B · A
+///
+/// # Output
+///
+/// * `c` -- the resulting tensor
+///
+/// # Input
+///
+/// * `alpha` -- the multiplier α
+/// * `a` -- the outer tensor A
+/// * `tra_a` -- if true, computes Aᵀ · B · A instead of A · B · Aᵀ
+/// * `b` -- the inner tensor B
+///
+/// # Returns
+///
+/// Returns an error if the combination is unsupported.
+pub fn t2_matmulx(
+    c: &mut Tensor2,
+    alpha: f64,
+    a: &Tensor2,
+    tra_a: bool,
+    b: &Tensor2,
+) -> Result<(), StrError> {
+    match (a.rep(), b.rep(), tra_a) {
+        (Rep::General, Rep::Symmetric, false) => {
+            if c.rep() != Rep::Symmetric {
+                return Err("c must be Symmetric for A_gen * B_sym * A_gen^T");
+            }
+            t2_gen_dot_sym_dot_self_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+        }
+        (Rep::General, Rep::Symmetric, true) => {
+            if c.rep() != Rep::Symmetric {
+                return Err("c must be Symmetric for A_gen^T * B_sym * A_gen");
+            }
+            t2_gen_tra_dot_sym_dot_self(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+        }
+        _ => return Err("t2_matmulx: unsupported combination"),
+    }
+    Ok(())
+}
 
 /// Performs the general tensor dot general tensor operation: C = A · B
 /// 
@@ -11,33 +149,30 @@ use crate::{Rep, SQRT_2};
 ///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::General]
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::General]
-/// * `bb` -- the second tensor B; must be [Rep::General]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 ///
 /// # Panics
 /// 
-/// A panic will occur if `cc` is not [Rep::General], `aa` is not [Rep::General], or `bb` is not [Rep::General].
+/// A panic will occur if `c.len()` is incorrect, `a.len()` is incorrect, or `b.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_gen_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(aa.rep(), Rep::General);
-    assert_eq!(bb.rep(), Rep::General);
-    assert_eq!(cc.rep(), Rep::General);
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
-    c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * (b[3] - b[6]) + (a[5] + a[8]) * (b[5] - b[8])) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * (b[3] + b[6]) + (a[4] + a[7]) * (b[4] - b[7])) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * (b[4] + b[7]) + (a[5] - a[8]) * (b[5] + b[8])) / 2.0;
-    c[3] = (2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] - b[7]) + SQRT_2 * (a[4] + a[7]) * (b[5] - b[8])) / 4.0;
-    c[4] = (2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] + SQRT_2 * (a[5] - a[8]) * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] + b[8])) / 4.0;
-    c[5] = (2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] + SQRT_2 * (a[4] - a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
-    c[6] = (-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] - 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] - b[7]) - SQRT_2 * (a[4] + a[7]) * (b[5] - b[8])) / 4.0;
-    c[7] = (-2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] - SQRT_2 * (a[5] - a[8]) * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] + b[8])) / 4.0;
-    c[8] = (-2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] - SQRT_2 * (a[4] - a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
+pub(crate) fn t2_gen_dot_gen(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(b.len() >= 9);
+    debug_assert!(c.len() >= 9);
+    c[0] = alpha * ((2.0 * a[0] * b[0] + (a[3] + a[6]) * (b[3] - b[6]) + (a[5] + a[8]) * (b[5] - b[8])) / 2.0);
+    c[1] = alpha * ((2.0 * a[1] * b[1] + (a[3] - a[6]) * (b[3] + b[6]) + (a[4] + a[7]) * (b[4] - b[7])) / 2.0);
+    c[2] = alpha * ((2.0 * a[2] * b[2] + (a[4] - a[7]) * (b[4] + b[7]) + (a[5] - a[8]) * (b[5] + b[8])) / 2.0);
+    c[3] = alpha * ((2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] - b[7]) + SQRT_2 * (a[4] + a[7]) * (b[5] - b[8])) / 4.0);
+    c[4] = alpha * ((2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] + SQRT_2 * (a[5] - a[8]) * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] + b[8])) / 4.0);
+    c[5] = alpha * ((2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] + SQRT_2 * (a[4] - a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0);
+    c[6] = alpha * ((-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] - 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] - b[7]) - SQRT_2 * (a[4] + a[7]) * (b[5] - b[8])) / 4.0);
+    c[7] = alpha * ((-2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] - SQRT_2 * (a[5] - a[8]) * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] + b[8])) / 4.0);
+    c[8] = alpha * ((-2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] - SQRT_2 * (a[4] - a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0);
 }
 
 /// Performs the general tensor dot symmetric tensor operation: C = A · B
@@ -50,38 +185,30 @@ pub fn t2_gen_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::General]
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::General]
-/// * `bb` -- the second tensor B; must be [Rep::Symmetric]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 ///
 /// # Panics
 /// 
-/// A panic will occur if `cc` is not [Rep::General], `aa` is not [Rep::General], or `bb` is not [Rep::Symmetric].
+/// A panic will occur if `c.len()` is incorrect, `a.len()` is incorrect, or `b.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_gen_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(aa.rep(), Rep::General);
-    assert_eq!(bb.rep(), Rep::Symmetric);
-    assert_eq!(cc.rep(), Rep::General);
-    t2_gen_dot_sym_stack(cc.as_mut_data(), aa.as_data(), bb.as_data());
-}
-
-/// Performs the general tensor dot symmetric tensor operation (stack version): C = A · B
-///
-/// Note: B must be symmetric (components `b[6]`, `b[7]`, `b[8]` are zero).
-#[rustfmt::skip]
-pub(crate) fn t2_gen_dot_sym_stack(c: &mut [f64], a: &[f64], b: &[f64]) {
-    c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5]) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * b[3] + (a[4] + a[7]) * b[4]) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * b[4] + (a[5] - a[8]) * b[5]) / 2.0;
-    c[3] = (SQRT_2 * a[6] * (-b[0] + b[1]) + SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[8] * b[4] + a[4] * b[5] + a[7] * b[5]) / (2.0 * SQRT_2);
-    c[4] = (SQRT_2 * a[7] * (-b[1] + b[2]) + SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2);
-    c[5] = (SQRT_2 * a[8] * (-b[0] + b[2]) + SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] - a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
-    c[6] = (-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * b[3] - 2.0 * a[1] * b[3] + SQRT_2 * (a[5] + a[8]) * b[4] - SQRT_2 * (a[4] + a[7]) * b[5]) / 4.0;
-    c[7] = (SQRT_2 * a[4] * (-b[1] + b[2]) + SQRT_2 * a[7] * (b[1] + b[2]) - a[5] * b[3] + a[8] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2);
-    c[8] = (SQRT_2 * a[5] * (-b[0] + b[2]) + SQRT_2 * a[8] * (b[0] + b[2]) - a[4] * b[3] + a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
+pub(crate) fn t2_gen_dot_sym(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(b.len() >= 6);
+    debug_assert!(c.len() >= 9);
+    c[0] = alpha * ((2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5]) / 2.0);
+    c[1] = alpha * ((2.0 * a[1] * b[1] + (a[3] - a[6]) * b[3] + (a[4] + a[7]) * b[4]) / 2.0);
+    c[2] = alpha * ((2.0 * a[2] * b[2] + (a[4] - a[7]) * b[4] + (a[5] - a[8]) * b[5]) / 2.0);
+    c[3] = alpha * ((SQRT_2 * a[6] * (-b[0] + b[1]) + SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[8] * b[4] + a[4] * b[5] + a[7] * b[5]) / (2.0 * SQRT_2));
+    c[4] = alpha * ((SQRT_2 * a[7] * (-b[1] + b[2]) + SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2));
+    c[5] = alpha * ((SQRT_2 * a[8] * (-b[0] + b[2]) + SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] - a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2));
+    c[6] = alpha * ((-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * b[3] - 2.0 * a[1] * b[3] + SQRT_2 * (a[5] + a[8]) * b[4] - SQRT_2 * (a[4] + a[7]) * b[5]) / 4.0);
+    c[7] = alpha * ((SQRT_2 * a[4] * (-b[1] + b[2]) + SQRT_2 * a[7] * (b[1] + b[2]) - a[5] * b[3] + a[8] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2));
+    c[8] = alpha * ((SQRT_2 * a[5] * (-b[0] + b[2]) + SQRT_2 * a[8] * (b[0] + b[2]) - a[4] * b[3] + a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2));
 }
 
 /// Performs the symmetric tensor dot general tensor operation: C = A · B
@@ -94,33 +221,30 @@ pub(crate) fn t2_gen_dot_sym_stack(c: &mut [f64], a: &[f64], b: &[f64]) {
 ///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::General]
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::Symmetric]
-/// * `bb` -- the second tensor B; must be [Rep::General]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 ///
 /// # Panics
 /// 
-/// A panic will occur if `cc` is not [Rep::General], `aa` is not [Rep::Symmetric], or `bb` is not [Rep::General].
+/// A panic will occur if `c.len()` is incorrect, `a.len()` is incorrect, or `b.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_sym_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(aa.rep(), Rep::Symmetric);
-    assert_eq!(bb.rep(), Rep::General);
-    assert_eq!(cc.rep(), Rep::General);
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
-    c[0] = (2.0 * a[0] * b[0] + a[3] * (b[3] - b[6]) + a[5] * (b[5] - b[8])) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + a[3] * (b[3] + b[6]) + a[4] * (b[4] - b[7])) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + a[4] * (b[4] + b[7]) + a[5] * (b[5] + b[8])) / 2.0;
-    c[3] = (SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[4] * b[5] - SQRT_2 * a[1] * b[6] + SQRT_2 * a[0] * (b[3] + b[6]) - a[5] * b[7] - a[4] * b[8]) / (2.0 * SQRT_2);
-    c[4] = (2.0 * a[4] * b[1] + 2.0 * a[4] * b[2] + SQRT_2 * a[5] * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * a[3] * (b[5] + b[8])) / 4.0;
-    c[5] = (2.0 * a[5] * b[0] + 2.0 * a[5] * b[2] + SQRT_2 * a[4] * (b[3] - b[6]) + SQRT_2 * a[3] * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
-    c[6] = (SQRT_2 * a[3] * (-b[0] + b[1]) - SQRT_2 * a[1] * b[3] + a[5] * b[4] - a[4] * b[5] + SQRT_2 * a[1] * b[6] + SQRT_2 * a[0] * (b[3] + b[6]) - a[5] * b[7] + a[4] * b[8]) / (2.0 * SQRT_2);
-    c[7] = (-2.0 * a[4] * b[1] + 2.0 * a[4] * b[2] - SQRT_2 * a[5] * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * a[3] * (b[5] + b[8])) / 4.0;
-    c[8] = (-2.0 * a[5] * b[0] + 2.0 * a[5] * b[2] - SQRT_2 * a[4] * (b[3] - b[6]) + SQRT_2 * a[3] * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
+pub(crate) fn t2_sym_dot_gen(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]) {
+    debug_assert!(a.len() >= 6);
+    debug_assert!(b.len() >= 9);
+    debug_assert!(c.len() >= 9);
+    c[0] = alpha * ((2.0 * a[0] * b[0] + a[3] * (b[3] - b[6]) + a[5] * (b[5] - b[8])) / 2.0);
+    c[1] = alpha * ((2.0 * a[1] * b[1] + a[3] * (b[3] + b[6]) + a[4] * (b[4] - b[7])) / 2.0);
+    c[2] = alpha * ((2.0 * a[2] * b[2] + a[4] * (b[4] + b[7]) + a[5] * (b[5] + b[8])) / 2.0);
+    c[3] = alpha * ((SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[4] * b[5] - SQRT_2 * a[1] * b[6] + SQRT_2 * a[0] * (b[3] + b[6]) - a[5] * b[7] - a[4] * b[8]) / (2.0 * SQRT_2));
+    c[4] = alpha * ((2.0 * a[4] * b[1] + 2.0 * a[4] * b[2] + SQRT_2 * a[5] * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * a[3] * (b[5] + b[8])) / 4.0);
+    c[5] = alpha * ((2.0 * a[5] * b[0] + 2.0 * a[5] * b[2] + SQRT_2 * a[4] * (b[3] - b[6]) + SQRT_2 * a[3] * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0);
+    c[6] = alpha * ((SQRT_2 * a[3] * (-b[0] + b[1]) - SQRT_2 * a[1] * b[3] + a[5] * b[4] - a[4] * b[5] + SQRT_2 * a[1] * b[6] + SQRT_2 * a[0] * (b[3] + b[6]) - a[5] * b[7] + a[4] * b[8]) / (2.0 * SQRT_2));
+    c[7] = alpha * ((-2.0 * a[4] * b[1] + 2.0 * a[4] * b[2] - SQRT_2 * a[5] * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * a[3] * (b[5] + b[8])) / 4.0);
+    c[8] = alpha * ((-2.0 * a[5] * b[0] + 2.0 * a[5] * b[2] - SQRT_2 * a[4] * (b[3] - b[6]) + SQRT_2 * a[3] * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0);
 }
 
 /// Performs the symmetric tensor dot symmetric tensor operation: C = A · B
@@ -133,33 +257,30 @@ pub fn t2_sym_dot_gen(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::General]
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::Symmetric]
-/// * `bb` -- the second tensor B; must be [Rep::Symmetric]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 ///
 /// # Panics
 /// 
-/// A panic will occur if `cc` is not [Rep::General], `aa` is not [Rep::Symmetric], or `bb` is not [Rep::Symmetric].
+/// A panic will occur if `c.len()` is incorrect, `a.len()` is incorrect, or `b.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_sym_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(aa.rep(), Rep::Symmetric);
-    assert_eq!(bb.rep(), Rep::Symmetric);
-    assert_eq!(cc.rep(), Rep::General);
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
-    c[0] = (2.0 * a[0] * b[0] + a[3] * b[3] + a[5] * b[5]) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + a[3] * b[3] + a[4] * b[4]) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + a[4] * b[4] + a[5] * b[5]) / 2.0;
-    c[3] = (SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[4] * b[5]) / (2.0 * SQRT_2);
-    c[4] = (SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5]) / (2.0 * SQRT_2);
-    c[5] = (SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
-    c[6] = (SQRT_2 * a[3] * (-b[0] + b[1]) + SQRT_2 * a[0] * b[3] - SQRT_2 * a[1] * b[3] + a[5] * b[4] - a[4] * b[5]) / (2.0 * SQRT_2);
-    c[7] = (SQRT_2 * a[4] * (-b[1] + b[2]) - a[5] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5]) / (2.0 * SQRT_2);
-    c[8] = (SQRT_2 * a[5] * (-b[0] + b[2]) - a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
+pub(crate) fn t2_sym_dot_sym(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]) {
+    debug_assert!(a.len() >= 6);
+    debug_assert!(b.len() >= 6);
+    debug_assert!(c.len() >= 9);
+    c[0] = alpha * ((2.0 * a[0] * b[0] + a[3] * b[3] + a[5] * b[5]) / 2.0);
+    c[1] = alpha * ((2.0 * a[1] * b[1] + a[3] * b[3] + a[4] * b[4]) / 2.0);
+    c[2] = alpha * ((2.0 * a[2] * b[2] + a[4] * b[4] + a[5] * b[5]) / 2.0);
+    c[3] = alpha * ((SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[4] * b[5]) / (2.0 * SQRT_2));
+    c[4] = alpha * ((SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5]) / (2.0 * SQRT_2));
+    c[5] = alpha * ((SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2));
+    c[6] = alpha * ((SQRT_2 * a[3] * (-b[0] + b[1]) + SQRT_2 * a[0] * b[3] - SQRT_2 * a[1] * b[3] + a[5] * b[4] - a[4] * b[5]) / (2.0 * SQRT_2));
+    c[7] = alpha * ((SQRT_2 * a[4] * (-b[1] + b[2]) - a[5] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5]) / (2.0 * SQRT_2));
+    c[8] = alpha * ((SQRT_2 * a[5] * (-b[0] + b[2]) - a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2));
 }
 
 /// Performs the general transposed tensor dot itself operation: C = Aᵀ · A
@@ -172,34 +293,25 @@ pub fn t2_sym_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::Symmetric]
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::General]
+/// * `a` -- the first tensor A (slice)
 ///
 /// # Panics
 /// 
-/// A panic will occur if `cc` is not [Rep::Symmetric] or `aa` is not [Rep::General].
+/// A panic will occur if `c.len()` is incorrect or `a.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_gen_tra_dot_self(cc: &mut Tensor2, aa: &Tensor2) {
-    assert_eq!(aa.rep(), Rep::General);
-    assert_eq!(cc.rep(), Rep::Symmetric);
-    t2_gen_tra_dot_self_stack(cc.as_mut_data(), aa.as_data());
-}
-
-/// Performs the general transposed tensor dot itself operation (stack version): C = Aᵀ · A
-///
-/// Note: only the symmetric components `c[0..6]` are written; the skew
-/// components `c[6]`, `c[7]`, `c[8]` are left untouched.
-#[rustfmt::skip]
-pub(crate) fn t2_gen_tra_dot_self_stack(c: &mut [f64], a: &[f64]) {
-    c[0] = (2.0 * (a[0] * a[0]) + (a[3] - a[6]) * (a[3] - a[6]) + (a[5] - a[8]) * (a[5] - a[8])) / 2.0;
-    c[1] = (2.0 * (a[1] * a[1]) + (a[3] + a[6]) * (a[3] + a[6]) + (a[4] - a[7]) * (a[4] - a[7])) / 2.0;
-    c[2] = (2.0 * (a[2] * a[2]) + (a[4] + a[7]) * (a[4] + a[7]) + (a[5] + a[8]) * (a[5] + a[8])) / 2.0;
-    c[3] = a[1] * (a[3] - a[6]) + a[0] * (a[3] + a[6]) + (a[4] - a[7]) * (a[5] - a[8]) / SQRT_2;
-    c[4] = a[2] * (a[4] - a[7]) + a[1] * (a[4] + a[7]) + (a[3] + a[6]) * (a[5] + a[8]) / SQRT_2;
-    c[5] = (a[3] - a[6]) * (a[4] + a[7]) / SQRT_2 + a[2] * (a[5] - a[8]) + a[0] * (a[5] + a[8]);
+pub(crate) fn t2_gen_tra_dot_self(c: &mut [f64], alpha: f64, a: &[f64]) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(c.len() >= 6);
+    c[0] = alpha * ((2.0 * (a[0] * a[0]) + (a[3] - a[6]) * (a[3] - a[6]) + (a[5] - a[8]) * (a[5] - a[8])) / 2.0);
+    c[1] = alpha * ((2.0 * (a[1] * a[1]) + (a[3] + a[6]) * (a[3] + a[6]) + (a[4] - a[7]) * (a[4] - a[7])) / 2.0);
+    c[2] = alpha * ((2.0 * (a[2] * a[2]) + (a[4] + a[7]) * (a[4] + a[7]) + (a[5] + a[8]) * (a[5] + a[8])) / 2.0);
+    c[3] = alpha * (a[1] * (a[3] - a[6]) + a[0] * (a[3] + a[6]) + (a[4] - a[7]) * (a[5] - a[8]) / SQRT_2);
+    c[4] = alpha * (a[2] * (a[4] - a[7]) + a[1] * (a[4] + a[7]) + (a[3] + a[6]) * (a[5] + a[8]) / SQRT_2);
+    c[5] = alpha * ((a[3] - a[6]) * (a[4] + a[7]) / SQRT_2 + a[2] * (a[5] - a[8]) + a[0] * (a[5] + a[8]));
 }
 
 /// Performs the general transposed tensor dot general tensor operation: C = Aᵀ · B
@@ -210,49 +322,38 @@ pub(crate) fn t2_gen_tra_dot_self_stack(c: &mut [f64], a: &[f64]) {
 /// C = Aᵀ · B
 /// ```
 ///
-/// When `chop` is `true`, only the symmetric part of C is computed and the
-/// skew components are chopped off (discarded), so `cc` must be
-/// [Rep::Symmetric]. This is used, for example, to compute the right
-/// stretch `U = Rᵀ · F`, which is symmetric.
-///
-/// When `chop` is `false`, the full (general) result is computed, including
-/// the skew components `c[6]`, `c[7]`, `c[8]`.
-///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::Symmetric] if chop is true, or [Rep::General] otherwise
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::General]
-/// * `bb` -- the second tensor B; must be [Rep::General]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 /// * `chop` -- if true, ignores the skew components and treats C as symmetric
 ///
 /// # Panics
 /// 
-/// A panic will occur if `aa` is not [Rep::General], `bb` is not [Rep::General], or `cc` representation does not match the chop flag.
+/// A panic will occur if `a.len()` is incorrect, `b.len()` is incorrect, or `c.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_gen_tra_dot_gen_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, chop: bool) {
-    assert_eq!(aa.rep(), Rep::General);
-    assert_eq!(bb.rep(), Rep::General);
+pub(crate) fn t2_gen_tra_dot_gen_chop(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], chop: bool) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(b.len() >= 9);
     if chop {
-        assert_eq!(cc.rep(), Rep::Symmetric);
+        debug_assert!(c.len() >= 6);
     } else {
-        assert_eq!(cc.rep(), Rep::General);
+        debug_assert!(c.len() >= 9);
     }
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
-    c[0] = (2.0 * a[0] * b[0] + (a[3] - a[6]) * (b[3] - b[6]) + (a[5] - a[8]) * (b[5] - b[8])) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + (a[3] + a[6]) * (b[3] + b[6]) + (a[4] - a[7]) * (b[4] - b[7])) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + (a[4] + a[7]) * (b[4] + b[7]) + (a[5] + a[8]) * (b[5] + b[8])) / 2.0;
-    c[3] = (2.0 * (a[3] + a[6]) * b[0] + 2.0 * (a[3] - a[6]) * b[1] + 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] - a[8]) * (b[4] - b[7]) + SQRT_2 * (a[4] - a[7]) * (b[5] - b[8])) / 4.0;
-    c[4] = (2.0 * (a[4] + a[7]) * b[1] + 2.0 * (a[4] - a[7]) * b[2] + SQRT_2 * (a[5] + a[8]) * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] + a[6]) * (b[5] + b[8])) / 4.0;
-    c[5] = (2.0 * (a[5] + a[8]) * b[0] + 2.0 * (a[5] - a[8]) * b[2] + SQRT_2 * (a[4] + a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] - a[6]) * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
+    c[0] = alpha * ((2.0 * a[0] * b[0] + (a[3] - a[6]) * (b[3] - b[6]) + (a[5] - a[8]) * (b[5] - b[8])) / 2.0);
+    c[1] = alpha * ((2.0 * a[1] * b[1] + (a[3] + a[6]) * (b[3] + b[6]) + (a[4] - a[7]) * (b[4] - b[7])) / 2.0);
+    c[2] = alpha * ((2.0 * a[2] * b[2] + (a[4] + a[7]) * (b[4] + b[7]) + (a[5] + a[8]) * (b[5] + b[8])) / 2.0);
+    c[3] = alpha * ((2.0 * (a[3] + a[6]) * b[0] + 2.0 * (a[3] - a[6]) * b[1] + 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] - a[8]) * (b[4] - b[7]) + SQRT_2 * (a[4] - a[7]) * (b[5] - b[8])) / 4.0);
+    c[4] = alpha * ((2.0 * (a[4] + a[7]) * b[1] + 2.0 * (a[4] - a[7]) * b[2] + SQRT_2 * (a[5] + a[8]) * (b[3] + b[6]) + 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] + a[6]) * (b[5] + b[8])) / 4.0);
+    c[5] = alpha * ((2.0 * (a[5] + a[8]) * b[0] + 2.0 * (a[5] - a[8]) * b[2] + SQRT_2 * (a[4] + a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] - a[6]) * (b[4] + b[7]) + 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0);
     if !chop {
-        c[6] = (-2.0 * (a[3] + a[6]) * b[0] + 2.0 * (a[3] - a[6]) * b[1] - 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] - a[8]) * (b[4] - b[7]) - SQRT_2 * (a[4] - a[7]) * (b[5] - b[8])) / 4.0;
-        c[7] = (-2.0 * (a[4] + a[7]) * b[1] + 2.0 * (a[4] - a[7]) * b[2] - SQRT_2 * (a[5] + a[8]) * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] + a[6]) * (b[5] + b[8])) / 4.0;
-        c[8] = (-2.0 * (a[5] + a[8]) * b[0] + 2.0 * (a[5] - a[8]) * b[2] - SQRT_2 * (a[4] + a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] - a[6]) * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0;
+        c[6] = alpha * ((-2.0 * (a[3] + a[6]) * b[0] + 2.0 * (a[3] - a[6]) * b[1] - 2.0 * a[1] * (b[3] - b[6]) + 2.0 * a[0] * (b[3] + b[6]) + SQRT_2 * (a[5] - a[8]) * (b[4] - b[7]) - SQRT_2 * (a[4] - a[7]) * (b[5] - b[8])) / 4.0);
+        c[7] = alpha * ((-2.0 * (a[4] + a[7]) * b[1] + 2.0 * (a[4] - a[7]) * b[2] - SQRT_2 * (a[5] + a[8]) * (b[3] + b[6]) - 2.0 * a[2] * (b[4] - b[7]) + 2.0 * a[1] * (b[4] + b[7]) + SQRT_2 * (a[3] + a[6]) * (b[5] + b[8])) / 4.0);
+        c[8] = alpha * ((-2.0 * (a[5] + a[8]) * b[0] + 2.0 * (a[5] - a[8]) * b[2] - SQRT_2 * (a[4] + a[7]) * (b[3] - b[6]) + SQRT_2 * (a[3] - a[6]) * (b[4] + b[7]) - 2.0 * a[2] * (b[5] - b[8]) + 2.0 * a[0] * (b[5] + b[8])) / 4.0);
     }
 }
 
@@ -264,49 +365,38 @@ pub fn t2_gen_tra_dot_gen_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, cho
 /// C = A · Bᵀ
 /// ```
 ///
-/// When `chop` is `true`, only the symmetric part of C is computed and the
-/// skew components are chopped off (discarded), so `cc` must be
-/// [Rep::Symmetric]. This is used, for example, to compute the left
-/// stretch `V = F · Rᵀ`, which is symmetric.
-///
-/// When `chop` is `false`, the full (general) result is computed, including
-/// the skew components `c[6]`, `c[7]`, `c[8]`.
-///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::Symmetric] if chop is true, or [Rep::General] otherwise
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::General]
-/// * `bb` -- the second tensor B; must be [Rep::General]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 /// * `chop` -- if true, ignores the skew components and treats C as symmetric
 ///
 /// # Panics
 /// 
-/// A panic will occur if `aa` is not [Rep::General], `bb` is not [Rep::General], or `cc` representation does not match the chop flag.
+/// A panic will occur if `a.len()` is incorrect, `b.len()` is incorrect, or `c.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_gen_dot_gen_tra_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, chop: bool) {
-    assert_eq!(aa.rep(), Rep::General);
-    assert_eq!(bb.rep(), Rep::General);
+pub(crate) fn t2_gen_dot_gen_tra_chop(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], chop: bool) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(b.len() >= 9);
     if chop {
-        assert_eq!(cc.rep(), Rep::Symmetric);
+        debug_assert!(c.len() >= 6);
     } else {
-        assert_eq!(cc.rep(), Rep::General);
+        debug_assert!(c.len() >= 9);
     }
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
-    c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * (b[3] + b[6]) + (a[5] + a[8]) * (b[5] + b[8])) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * (b[3] - b[6]) + (a[4] + a[7]) * (b[4] + b[7])) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * (b[4] - b[7]) + (a[5] - a[8]) * (b[5] - b[8])) / 2.0;
-    c[3] = (2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * (b[3] - b[6]) + 2.0 * a[1] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] + b[7]) + SQRT_2 * (a[4] + a[7]) * (b[5] + b[8])) / 4.0;
-    c[4] = (2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] + SQRT_2 * (a[5] - a[8]) * (b[3] - b[6]) + 2.0 * a[1] * (b[4] - b[7]) + 2.0 * a[2] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] - b[8])) / 4.0;
-    c[5] = (2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] + SQRT_2 * (a[4] - a[7]) * (b[3] + b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] - b[7]) + 2.0 * a[0] * (b[5] - b[8]) + 2.0 * a[2] * (b[5] + b[8])) / 4.0;
+    c[0] = alpha * ((2.0 * a[0] * b[0] + (a[3] + a[6]) * (b[3] + b[6]) + (a[5] + a[8]) * (b[5] + b[8])) / 2.0);
+    c[1] = alpha * ((2.0 * a[1] * b[1] + (a[3] - a[6]) * (b[3] - b[6]) + (a[4] + a[7]) * (b[4] + b[7])) / 2.0);
+    c[2] = alpha * ((2.0 * a[2] * b[2] + (a[4] - a[7]) * (b[4] - b[7]) + (a[5] - a[8]) * (b[5] - b[8])) / 2.0);
+    c[3] = alpha * ((2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * (b[3] - b[6]) + 2.0 * a[1] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] + b[7]) + SQRT_2 * (a[4] + a[7]) * (b[5] + b[8])) / 4.0);
+    c[4] = alpha * ((2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] + SQRT_2 * (a[5] - a[8]) * (b[3] - b[6]) + 2.0 * a[1] * (b[4] - b[7]) + 2.0 * a[2] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] - b[8])) / 4.0);
+    c[5] = alpha * ((2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] + SQRT_2 * (a[4] - a[7]) * (b[3] + b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] - b[7]) + 2.0 * a[0] * (b[5] - b[8]) + 2.0 * a[2] * (b[5] + b[8])) / 4.0);
     if !chop {
-        c[6] = (-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * (b[3] - b[6]) - 2.0 * a[1] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] + b[7]) - SQRT_2 * (a[4] + a[7]) * (b[5] + b[8])) / 4.0;
-        c[7] = (-2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] - SQRT_2 * (a[5] - a[8]) * (b[3] - b[6]) + 2.0 * a[1] * (b[4] - b[7]) - 2.0 * a[2] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] - b[8])) / 4.0;
-        c[8] = (-2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] - SQRT_2 * (a[4] - a[7]) * (b[3] + b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] - b[7]) + 2.0 * a[0] * (b[5] - b[8]) - 2.0 * a[2] * (b[5] + b[8])) / 4.0;
+        c[6] = alpha * ((-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * (b[3] - b[6]) - 2.0 * a[1] * (b[3] + b[6]) + SQRT_2 * (a[5] + a[8]) * (b[4] + b[7]) - SQRT_2 * (a[4] + a[7]) * (b[5] + b[8])) / 4.0);
+        c[7] = alpha * ((-2.0 * (a[4] - a[7]) * b[1] + 2.0 * (a[4] + a[7]) * b[2] - SQRT_2 * (a[5] - a[8]) * (b[3] - b[6]) + 2.0 * a[1] * (b[4] - b[7]) - 2.0 * a[2] * (b[4] + b[7]) + SQRT_2 * (a[3] - a[6]) * (b[5] - b[8])) / 4.0);
+        c[8] = alpha * ((-2.0 * (a[5] - a[8]) * b[0] + 2.0 * (a[5] + a[8]) * b[2] - SQRT_2 * (a[4] - a[7]) * (b[3] + b[6]) + SQRT_2 * (a[3] + a[6]) * (b[4] - b[7]) + 2.0 * a[0] * (b[5] - b[8]) - 2.0 * a[2] * (b[5] + b[8])) / 4.0);
     }
 }
 
@@ -320,32 +410,87 @@ pub fn t2_gen_dot_gen_tra_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, cho
 ///
 /// # Output
 ///
-/// * `cc` -- the resulting tensor C; must be [Rep::Symmetric]
+/// * `c` -- the resulting tensor C (slice)
 ///
 /// # Input
 ///
-/// * `aa` -- the first tensor A; must be [Rep::General]
-/// * `bb` -- the second tensor B; must be [Rep::Symmetric]
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
 ///
 /// # Panics
 /// 
-/// A panic will occur if `cc` is not [Rep::Symmetric], `aa` is not [Rep::General], or `bb` is not [Rep::Symmetric].
+/// A panic will occur if `c.len()` is incorrect, `a.len()` is incorrect, or `b.len()` is incorrect.
 #[rustfmt::skip]
-pub fn t2_gen_dot_sym_dot_self_tra(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(aa.rep(), Rep::General);
-    assert_eq!(bb.rep(), Rep::Symmetric);
-    assert_eq!(cc.rep(), Rep::Symmetric);
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
-    c[0] = (SQRT_2 * (a[3] + a[6]) * (SQRT_2 * (a[3] + a[6]) * b[1] + SQRT_2 * a[0] * b[3] + (a[5] + a[8]) * b[4]) + SQRT_2 * (a[5] + a[8]) * (SQRT_2 * (a[5] + a[8]) * b[2] + (a[3] + a[6]) * b[4] + SQRT_2 * a[0] * b[5]) + 2.0 * a[0] * (2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5])) / 4.0;
-    c[1] = (a[3] * a[3] * b[0] + a[6] * a[6] * b[0] + 2.0 * (a[1] * a[1]) * b[1] + a[4] * a[4] * b[2] + 2.0 * a[4] * a[7] * b[2] + a[7] * a[7] * b[2] + 2.0 * a[1] * a[4] * b[4] + 2.0 * a[1] * a[7] * b[4] - a[6] * (2.0 * a[1] * b[3] + SQRT_2 * (a[4] + a[7]) * b[5]) + a[3] * (-2.0 * a[6] * b[0] + 2.0 * a[1] * b[3] + SQRT_2 * (a[4] + a[7]) * b[5])) / 2.0;
-    c[2] = (a[5] * a[5] * b[0] + a[8] * a[8] * b[0] + a[4] * a[4] * b[1] - 2.0 * a[4] * a[7] * b[1] + a[7] * a[7] * b[1] + 2.0 * (a[2] * a[2]) * b[2] + 2.0 * a[2] * a[4] * b[4] - 2.0 * a[2] * a[7] * b[4] + a[8] * (-(SQRT_2 * a[4] * b[3]) + SQRT_2 * a[7] * b[3] - 2.0 * a[2] * b[5]) + a[5] * (-2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] - SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0;
-    c[3] = (SQRT_2 * a[4] * a[5] * b[2] + SQRT_2 * a[5] * a[7] * b[2] + SQRT_2 * a[4] * a[8] * b[2] + SQRT_2 * a[7] * a[8] * b[2] + a[3] * a[3] * b[3] - a[6] * a[6] * b[3] + a[3] * a[4] * b[4] + a[4] * a[6] * b[4] + a[3] * a[7] * b[4] + a[6] * a[7] * b[4] + a[1] * (2.0 * a[3] * b[1] + 2.0 * a[6] * b[1] + SQRT_2 * (a[5] + a[8]) * b[4]) + a[3] * a[5] * b[5] - a[5] * a[6] * b[5] + a[3] * a[8] * b[5] - a[6] * a[8] * b[5] + a[0] * (2.0 * a[3] * b[0] - 2.0 * a[6] * b[0] + 2.0 * a[1] * b[3] + SQRT_2 * a[4] * b[5] + SQRT_2 * a[7] * b[5])) / 2.0;
-    c[4] = (SQRT_2 * a[6] * a[8] * b[0] + 2.0 * a[1] * a[4] * b[1] - 2.0 * a[1] * a[7] * b[1] + 2.0 * a[2] * a[4] * b[2] + 2.0 * a[2] * a[7] * b[2] - a[4] * a[6] * b[3] + a[6] * a[7] * b[3] - SQRT_2 * a[1] * a[8] * b[3] + 2.0 * a[1] * a[2] * b[4] + a[4] * a[4] * b[4] - a[7] * a[7] * b[4] - SQRT_2 * a[2] * a[6] * b[5] - a[4] * a[8] * b[5] - a[7] * a[8] * b[5] + a[3] * (SQRT_2 * a[5] * b[0] - SQRT_2 * a[8] * b[0] + a[4] * b[3] - a[7] * b[3] + SQRT_2 * a[2] * b[5]) + a[5] * (-(SQRT_2 * a[6] * b[0]) + SQRT_2 * a[1] * b[3] + (a[4] + a[7]) * b[5])) / 2.0;
-    c[5] = (SQRT_2 * a[4] * a[6] * b[1] - SQRT_2 * a[6] * a[7] * b[1] + 2.0 * a[2] * a[5] * b[2] + 2.0 * a[2] * a[8] * b[2] + a[5] * a[6] * b[3] - a[6] * a[8] * b[3] + a[4] * a[5] * b[4] + SQRT_2 * a[2] * a[6] * b[4] - a[5] * a[7] * b[4] + a[4] * a[8] * b[4] - a[7] * a[8] * b[4] + a[3] * (SQRT_2 * a[4] * b[1] - SQRT_2 * a[7] * b[1] + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[2] * b[4]) + a[5] * a[5] * b[5] - a[8] * a[8] * b[5] + a[0] * (2.0 * a[5] * b[0] - 2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] - SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0;
+pub(crate) fn t2_gen_dot_sym_dot_self_tra(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(b.len() >= 6);
+    debug_assert!(c.len() >= 6);
+    c[0] = alpha * ((SQRT_2 * (a[3] + a[6]) * (SQRT_2 * (a[3] + a[6]) * b[1] + SQRT_2 * a[0] * b[3] + (a[5] + a[8]) * b[4]) + SQRT_2 * (a[5] + a[8]) * (SQRT_2 * (a[5] + a[8]) * b[2] + (a[3] + a[6]) * b[4] + SQRT_2 * a[0] * b[5]) + 2.0 * a[0] * (2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5])) / 4.0);
+    c[1] = alpha * ((a[3] * a[3] * b[0] + a[6] * a[6] * b[0] + 2.0 * (a[1] * a[1]) * b[1] + a[4] * a[4] * b[2] + 2.0 * a[4] * a[7] * b[2] + a[7] * a[7] * b[2] + 2.0 * a[1] * a[4] * b[4] + 2.0 * a[1] * a[7] * b[4] - a[6] * (2.0 * a[1] * b[3] + SQRT_2 * (a[4] + a[7]) * b[5]) + a[3] * (-2.0 * a[6] * b[0] + 2.0 * a[1] * b[3] + SQRT_2 * (a[4] + a[7]) * b[5])) / 2.0);
+    c[2] = alpha * ((a[5] * a[5] * b[0] + a[8] * a[8] * b[0] + a[4] * a[4] * b[1] - 2.0 * a[4] * a[7] * b[1] + a[7] * a[7] * b[1] + 2.0 * (a[2] * a[2]) * b[2] + 2.0 * a[2] * a[4] * b[4] - 2.0 * a[2] * a[7] * b[4] + a[8] * (-(SQRT_2 * a[4] * b[3]) + SQRT_2 * a[7] * b[3] - 2.0 * a[2] * b[5]) + a[5] * (-2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] - SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0);
+    c[3] = alpha * ((SQRT_2 * a[4] * a[5] * b[2] + SQRT_2 * a[5] * a[7] * b[2] + SQRT_2 * a[4] * a[8] * b[2] + SQRT_2 * a[7] * a[8] * b[2] + a[3] * a[3] * b[3] - a[6] * a[6] * b[3] + a[3] * a[4] * b[4] + a[4] * a[6] * b[4] + a[3] * a[7] * b[4] + a[6] * a[7] * b[4] + a[1] * (2.0 * a[3] * b[1] + 2.0 * a[6] * b[1] + SQRT_2 * (a[5] + a[8]) * b[4]) + a[3] * a[5] * b[5] - a[5] * a[6] * b[5] + a[3] * a[8] * b[5] - a[6] * a[8] * b[5] + a[0] * (2.0 * a[3] * b[0] - 2.0 * a[6] * b[0] + 2.0 * a[1] * b[3] + SQRT_2 * a[4] * b[5] + SQRT_2 * a[7] * b[5])) / 2.0);
+    c[4] = alpha * ((SQRT_2 * a[6] * a[8] * b[0] + 2.0 * a[1] * a[4] * b[1] - 2.0 * a[1] * a[7] * b[1] + 2.0 * a[2] * a[4] * b[2] + 2.0 * a[2] * a[7] * b[2] - a[4] * a[6] * b[3] + a[6] * a[7] * b[3] - SQRT_2 * a[1] * a[8] * b[3] + 2.0 * a[1] * a[2] * b[4] + a[4] * a[4] * b[4] - a[7] * a[7] * b[4] - SQRT_2 * a[2] * a[6] * b[5] - a[4] * a[8] * b[5] - a[7] * a[8] * b[5] + a[3] * (SQRT_2 * a[5] * b[0] - SQRT_2 * a[8] * b[0] + a[4] * b[3] - a[7] * b[3] + SQRT_2 * a[2] * b[5]) + a[5] * (-(SQRT_2 * a[6] * b[0]) + SQRT_2 * a[1] * b[3] + (a[4] + a[7]) * b[5])) / 2.0);
+    c[5] = alpha * ((SQRT_2 * a[4] * a[6] * b[1] - SQRT_2 * a[6] * a[7] * b[1] + 2.0 * a[2] * a[5] * b[2] + 2.0 * a[2] * a[8] * b[2] + a[5] * a[6] * b[3] - a[6] * a[8] * b[3] + a[4] * a[5] * b[4] + SQRT_2 * a[2] * a[6] * b[4] - a[5] * a[7] * b[4] + a[4] * a[8] * b[4] - a[7] * a[8] * b[4] + a[3] * (SQRT_2 * a[4] * b[1] - SQRT_2 * a[7] * b[1] + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[2] * b[4]) + a[5] * a[5] * b[5] - a[8] * a[8] * b[5] + a[0] * (2.0 * a[5] * b[0] - 2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] - SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0);
 }
 
+/// Performs the general transposed tensor dot symmetric tensor dot itself operation: C = Aᵀ · B · A
+/// 
+/// Computes:
+///
+/// ```text
+/// C = Aᵀ · B · A
+/// ```
+///
+/// # Output
+///
+/// * `c` -- the resulting tensor C (slice)
+///
+/// # Input
+///
+/// * `a` -- the first tensor A (slice)
+/// * `b` -- the second tensor B (slice)
+///
+/// # Panics
+/// 
+/// A panic will occur if `c.len()` is incorrect, `a.len()` is incorrect, or `b.len()` is incorrect.
+#[rustfmt::skip]
+pub(crate) fn t2_gen_tra_dot_sym_dot_self(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]) {
+    debug_assert!(a.len() >= 9);
+    debug_assert!(b.len() >= 6);
+    debug_assert!(c.len() >= 6);
+    c[0] = alpha * ((2.0 * (a[0] * a[0]) * b[0] + a[3] * a[3] * b[1] + a[6] * a[6] * b[1] + a[5] * a[5] * b[2] - 2.0 * a[5] * a[8] * b[2] + a[8] * a[8] * b[2] - SQRT_2 * a[5] * a[6] * b[4] + SQRT_2 * a[6] * a[8] * b[4] + a[3] * (-2.0 * a[6] * b[1] + SQRT_2 * (a[5] - a[8]) * b[4]) + 2.0 * a[0] * (a[3] * b[3] - a[6] * b[3] + (a[5] - a[8]) * b[5])) / 2.0);
+    c[1] = alpha * ((a[3] * a[3] * b[0] + a[6] * a[6] * b[0] + 2.0 * (a[1] * a[1]) * b[1] + a[4] * a[4] * b[2] - 2.0 * a[4] * a[7] * b[2] + a[7] * a[7] * b[2] + 2.0 * a[1] * a[4] * b[4] - 2.0 * a[1] * a[7] * b[4] + a[6] * (2.0 * a[1] * b[3] + SQRT_2 * (a[4] - a[7]) * b[5]) + a[3] * (2.0 * a[6] * b[0] + 2.0 * a[1] * b[3] + SQRT_2 * (a[4] - a[7]) * b[5])) / 2.0);
+    c[2] = alpha * ((SQRT_2 * (a[4] + a[7]) * (SQRT_2 * (a[4] + a[7]) * b[1] + (a[5] + a[8]) * b[3] + SQRT_2 * a[2] * b[4]) + SQRT_2 * (a[5] + a[8]) * (SQRT_2 * (a[5] + a[8]) * b[0] + (a[4] + a[7]) * b[3] + SQRT_2 * a[2] * b[5]) + 2.0 * a[2] * (2.0 * a[2] * b[2] + (a[4] + a[7]) * b[4] + (a[5] + a[8]) * b[5])) / 4.0);
+    c[3] = alpha * ((SQRT_2 * a[4] * a[5] * b[2] - SQRT_2 * a[5] * a[7] * b[2] - SQRT_2 * a[4] * a[8] * b[2] + SQRT_2 * a[7] * a[8] * b[2] + a[3] * a[3] * b[3] - a[6] * a[6] * b[3] + a[3] * a[4] * b[4] - a[4] * a[6] * b[4] - a[3] * a[7] * b[4] + a[6] * a[7] * b[4] + a[1] * (2.0 * a[3] * b[1] - 2.0 * a[6] * b[1] + SQRT_2 * (a[5] - a[8]) * b[4]) + a[3] * a[5] * b[5] + a[5] * a[6] * b[5] - a[3] * a[8] * b[5] - a[6] * a[8] * b[5] + a[0] * (2.0 * a[3] * b[0] + 2.0 * a[6] * b[0] + 2.0 * a[1] * b[3] + SQRT_2 * a[4] * b[5] - SQRT_2 * a[7] * b[5])) / 2.0);
+    c[4] = alpha * ((SQRT_2 * a[6] * a[8] * b[0] + 2.0 * a[1] * a[4] * b[1] + 2.0 * a[1] * a[7] * b[1] + 2.0 * a[2] * a[4] * b[2] - 2.0 * a[2] * a[7] * b[2] + a[4] * a[6] * b[3] + a[6] * a[7] * b[3] + SQRT_2 * a[1] * a[8] * b[3] + 2.0 * a[1] * a[2] * b[4] + a[4] * a[4] * b[4] - a[7] * a[7] * b[4] + SQRT_2 * a[2] * a[6] * b[5] + a[4] * a[8] * b[5] - a[7] * a[8] * b[5] + a[3] * (SQRT_2 * a[5] * b[0] + SQRT_2 * a[8] * b[0] + a[4] * b[3] + a[7] * b[3] + SQRT_2 * a[2] * b[5]) + a[5] * (SQRT_2 * a[6] * b[0] + SQRT_2 * a[1] * b[3] + (a[4] - a[7]) * b[5])) / 2.0);
+    c[5] = alpha * ((-(SQRT_2 * a[4] * a[6] * b[1]) - SQRT_2 * a[6] * a[7] * b[1] + 2.0 * a[2] * a[5] * b[2] - 2.0 * a[2] * a[8] * b[2] - a[5] * a[6] * b[3] - a[6] * a[8] * b[3] + a[4] * a[5] * b[4] - SQRT_2 * a[2] * a[6] * b[4] + a[5] * a[7] * b[4] - a[4] * a[8] * b[4] - a[7] * a[8] * b[4] + a[3] * (SQRT_2 * a[4] * b[1] + SQRT_2 * a[7] * b[1] + a[5] * b[3] + a[8] * b[3] + SQRT_2 * a[2] * b[4]) + a[5] * a[5] * b[5] - a[8] * a[8] * b[5] + a[0] * (2.0 * a[5] * b[0] + 2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] + SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0);
+}
+
+
+// --- Manual Stack Functions ---
+
+#[rustfmt::skip]
+pub(crate) fn t2_gen_dot_sym_stack(c: &mut [f64], a: &[f64], b: &[f64]) {
+    c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5]) / 2.0;
+    c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * b[3] + (a[4] + a[7]) * b[4]) / 2.0;
+    c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * b[4] + (a[5] - a[8]) * b[5]) / 2.0;
+    c[3] = (SQRT_2 * a[6] * (-b[0] + b[1]) + SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[8] * b[4] + a[4] * b[5] + a[7] * b[5]) / (2.0 * SQRT_2);
+    c[4] = (SQRT_2 * a[7] * (-b[1] + b[2]) + SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2);
+    c[5] = (SQRT_2 * a[8] * (-b[0] + b[2]) + SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] - a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
+    c[6] = (-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * b[3] - 2.0 * a[1] * b[3] + SQRT_2 * (a[5] + a[8]) * b[4] - SQRT_2 * (a[4] + a[7]) * b[5]) / 4.0;
+    c[7] = (SQRT_2 * a[4] * (-b[1] + b[2]) + SQRT_2 * a[7] * (b[1] + b[2]) - a[5] * b[3] + a[8] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2);
+    c[8] = (SQRT_2 * a[5] * (-b[0] + b[2]) + SQRT_2 * a[8] * (b[0] + b[2]) - a[4] * b[3] + a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
+}
+
+#[rustfmt::skip]
+pub(crate) fn t2_gen_tra_dot_self_stack(c: &mut [f64], a: &[f64]) {
+    c[0] = (2.0 * (a[0] * a[0]) + (a[3] - a[6]) * (a[3] - a[6]) + (a[5] - a[8]) * (a[5] - a[8])) / 2.0;
+    c[1] = (2.0 * (a[1] * a[1]) + (a[3] + a[6]) * (a[3] + a[6]) + (a[4] - a[7]) * (a[4] - a[7])) / 2.0;
+    c[2] = (2.0 * (a[2] * a[2]) + (a[4] + a[7]) * (a[4] + a[7]) + (a[5] + a[8]) * (a[5] + a[8])) / 2.0;
+    c[3] = a[1] * (a[3] - a[6]) + a[0] * (a[3] + a[6]) + (a[4] - a[7]) * (a[5] - a[8]) / SQRT_2;
+    c[4] = a[2] * (a[4] - a[7]) + a[1] * (a[4] + a[7]) + (a[3] + a[6]) * (a[5] + a[8]) / SQRT_2;
+    c[5] = (a[3] - a[6]) * (a[4] + a[7]) / SQRT_2 + a[2] * (a[5] - a[8]) + a[0] * (a[5] + a[8]);
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -356,7 +501,7 @@ mod tests {
     use russell_lab::mat_approx_eq;
 
     #[test]
-    fn t2_gen_dot_gen_works() {
+    fn t2_matmul_gen_gen_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -370,18 +515,18 @@ mod tests {
             [   3.00000,    2.00000,    1.00000],
         ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_gen_dot_gen(&mut c, &a, &b);
+        t2_matmul(&mut c, 2.0, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  30.00000,   24.00000,   18.00000],
-            [  84.00000,   69.00000,   54.00000],
-            [ 138.00000,  114.00000,   90.00000],
+            [  60.00000,   48.00000,   36.00000],
+            [ 168.00000,  138.00000,  108.00000],
+            [ 276.00000,  228.00000,  180.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_gen_dot_sym_works() {
+    fn t2_matmul_gen_sym_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -395,18 +540,18 @@ mod tests {
             [   6.00000,    4.00000,    1.00000],
         ], Rep::Symmetric).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_gen_dot_sym(&mut c, &a, &b);
+        t2_matmul(&mut c, 3.0, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  31.00000,   21.00000,   17.00000],
-            [  73.00000,   54.00000,   50.00000],
-            [ 115.00000,   87.00000,   83.00000],
+            [  93.00000,   63.00000,   51.00000],
+            [ 219.00000,  162.00000,  150.00000],
+            [ 345.00000,  261.00000,  249.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_sym_dot_gen_works() {
+    fn t2_matmul_sym_gen_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    4.00000,    6.00000],
@@ -420,18 +565,18 @@ mod tests {
             [   3.00000,    2.00000,    1.00000],
         ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_sym_dot_gen(&mut c, &a, &b);
+        t2_matmul(&mut c, 1.5, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  51.00000,   40.00000,   29.00000],
-            [  63.00000,   52.00000,   41.00000],
-            [  93.00000,   79.00000,   65.00000],
+            [  76.50000,   60.00000,   43.50000],
+            [  94.50000,   78.00000,   61.50000],
+            [ 139.50000,  118.50000,   97.50000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_sym_dot_sym_works() {
+    fn t2_matmul_sym_sym_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    4.00000,    6.00000],
@@ -445,37 +590,18 @@ mod tests {
             [   6.00000,    4.00000,    1.00000],
         ], Rep::Symmetric).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_sym_dot_sym(&mut c, &a, &b);
+        t2_matmul(&mut c, 0.5, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  59.00000,   37.00000,   28.00000],
-            [  52.00000,   44.00000,   37.00000],
-            [  61.00000,   52.00000,   59.00000],
+            [  29.50000,   18.50000,   14.00000],
+            [  26.00000,   22.00000,   18.50000],
+            [  30.50000,   26.00000,   29.50000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_gen_tra_dot_self_works() {
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [   1.00000,    2.00000,    3.00000],
-            [   4.00000,    5.00000,    6.00000],
-            [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
-        t2_gen_tra_dot_self(&mut c, &a);
-        #[rustfmt::skip]
-        let correct = &[
-            [  66.00000,   78.00000,   90.00000],
-            [  78.00000,   93.00000,  108.00000],
-            [  90.00000,  108.00000,  126.00000],
-        ];
-        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
-    }
-
-    #[test]
-    fn t2_gen_tra_dot_gen_chop_works() {
+    fn t2_matmul_tra_gen_gen_chop_false_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -489,18 +615,18 @@ mod tests {
             [   3.00000,    2.00000,    1.00000],
         ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_gen_tra_dot_gen_chop(&mut c, &a, &b, false);
+        t2_matmul(&mut c, 2.0, &a, true, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  54.00000,   42.00000,   30.00000],
-            [  72.00000,   57.00000,   42.00000],
-            [  90.00000,   72.00000,   54.00000],
+            [ 108.00000,   84.00000,   60.00000],
+            [ 144.00000,  114.00000,   84.00000],
+            [ 180.00000,  144.00000,  108.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_gen_tra_dot_gen_chop_works_chopped() {
+    fn t2_matmul_tra_gen_gen_chop_true_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -514,18 +640,18 @@ mod tests {
             [   3.00000,    2.00000,    1.00000],
         ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::Symmetric);
-        t2_gen_tra_dot_gen_chop(&mut c, &a, &b, true);
+        t2_matmul(&mut c, 2.0, &a, true, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  54.00000,   57.00000,   60.00000],
-            [  57.00000,   57.00000,   57.00000],
-            [  60.00000,   57.00000,   54.00000],
+            [ 108.00000,  114.00000,  120.00000],
+            [ 114.00000,  114.00000,  114.00000],
+            [ 120.00000,  114.00000,  108.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_gen_dot_gen_tra_chop_works() {
+    fn t2_matmul_gen_tra_gen_chop_false_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -539,18 +665,18 @@ mod tests {
             [   3.00000,    2.00000,    1.00000],
         ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::General);
-        t2_gen_dot_gen_tra_chop(&mut c, &a, &b, false);
+        t2_matmul(&mut c, 2.0, &a, false, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  46.00000,   28.00000,   10.00000],
-            [ 118.00000,   73.00000,   28.00000],
-            [ 190.00000,  118.00000,   46.00000],
+            [  92.00000,   56.00000,   20.00000],
+            [ 236.00000,  146.00000,   56.00000],
+            [ 380.00000,  236.00000,   92.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_gen_dot_gen_tra_chop_works_chopped() {
+    fn t2_matmul_gen_tra_gen_chop_true_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -564,18 +690,18 @@ mod tests {
             [   3.00000,    2.00000,    1.00000],
         ], Rep::General).unwrap();
         let mut c = Tensor2::new(Rep::Symmetric);
-        t2_gen_dot_gen_tra_chop(&mut c, &a, &b, true);
+        t2_matmul(&mut c, 2.0, &a, false, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [  46.00000,   73.00000,  100.00000],
-            [  73.00000,   73.00000,   73.00000],
-            [ 100.00000,   73.00000,   46.00000],
+            [  92.00000,  146.00000,  200.00000],
+            [ 146.00000,  146.00000,  146.00000],
+            [ 200.00000,  146.00000,   92.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
 
     #[test]
-    fn t2_gen_dot_sym_dot_self_tra_works() {
+    fn t2_matmulx_sym_dot_self_tra_works() {
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
@@ -589,12 +715,37 @@ mod tests {
             [   6.00000,    4.00000,    1.00000],
         ], Rep::Symmetric).unwrap();
         let mut c = Tensor2::new(Rep::Symmetric);
-        t2_gen_dot_sym_dot_self_tra(&mut c, &a, &b);
+        t2_matmulx(&mut c, 1.5, &a, false, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
-            [ 124.00000,  331.00000,  538.00000],
-            [ 331.00000,  862.00000, 1393.00000],
-            [ 538.00000, 1393.00000, 2248.00000],
+            [ 186.00000,  496.50000,  807.00000],
+            [ 496.50000, 1293.00000, 2089.50000],
+            [ 807.00000, 2089.50000, 3372.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_matmulx_tra_sym_dot_self_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   3.00000,    5.00000,    6.00000],
+            [   5.00000,    2.00000,    4.00000],
+            [   6.00000,    4.00000,    1.00000],
+        ], Rep::Symmetric).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_matmulx(&mut c, 1.5, &a, true, &b).unwrap();
+        #[rustfmt::skip]
+        let correct = &[
+            [ 648.00000,  850.50000, 1053.00000],
+            [ 850.50000, 1107.00000, 1363.50000],
+            [1053.00000, 1363.50000, 1674.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }

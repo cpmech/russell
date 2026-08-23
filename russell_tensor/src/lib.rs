@@ -28,9 +28,11 @@
 //!
 //! The [Rep] enum specifies the available representations:
 //!
-//! * [Rep::General] — 9×1 / 9×9 (all components)
-//! * [Rep::Symmetric] — 6×1 / 6×6 (symmetric tensors in 3D)
-//! * [Rep::Symmetric2D] — 4×1 / 4×4 (symmetric tensors in 2D)
+//! * [Rep::General] — 9×1 / 9×3 / 3×9 / 9×9 (all components)
+//! * [Rep::Symmetric] — 6×1 / 6×3 / 3×6 / 6×6 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 3D)
+//! * [Rep::Symmetric2D] — 4×1 / 4×3 / 3×4 / 4×4 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 2D)
+//!
+//! The dimensions above correspond to [Tensor2] (vector), [Tensor3] (Case A / Case B rectangular matrix), and [Tensor4] (square matrix), respectively.
 //!
 //! # Standard vs Kelvin-Mandel components
 //!

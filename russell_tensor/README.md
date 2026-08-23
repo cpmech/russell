@@ -43,8 +43,25 @@ Internally, tensors are stored as vectors/matrices with components given with re
 The `Rep` enum specifies the available representations:
 
 * `Rep::General` — 9×1 / 9×3 / 3×9 / 9×9 (all components)
-* `Rep::Symmetric` — 6×1 / 6×6 (symmetric tensors in 3D)
-* `Rep::Symmetric2D` — 4×1 / 4×4 (symmetric tensors in 2D)
+* `Rep::Symmetric` — 6×1 / 6×3 / 3×6 / 6×6 (symmetric `Tensor2`; minor-symmetric `Tensor3`/`Tensor4`; 3D)
+* `Rep::Symmetric2D` — 4×1 / 4×3 / 3×4 / 4×4 (symmetric `Tensor2`; minor-symmetric `Tensor3`/`Tensor4`; 2D)
+
+The dimensions above correspond to `Tensor2` (vector), `Tensor3` (Case A / Case B rectangular matrix), and `Tensor4` (square matrix), respectively.
+
+For second-order tensors, the stored component order is:
+
+| Representation     | Stored components                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Rep::General`     | `T11`, `T22`, `T33`, `(T12 + T21)/√2`, `(T23 + T32)/√2`, `(T13 + T31)/√2`, `(T12 - T21)/√2`, `(T23 - T32)/√2`, `(T13 - T31)/√2` |
+| `Rep::Symmetric`   | `T11`, `T22`, `T33`, `√2 T12`, `√2 T23`, `√2 T13`                                                                               |
+| `Rep::Symmetric2D` | `T11`, `T22`, `T33`, `√2 T12`                                                                                                   |
+
+Use the `*_std*` constructors and accessors when working with ordinary Cartesian
+components, such as `Tensor2::from_std_matrix` and `Tensor2::get_std`. Use the
+accessors without `std` only when working directly with the stored
+Kelvin-Mandel components. For example, an off-diagonal component `T12 = 4`
+is stored as `√2 × 4` in a symmetric tensor, so `from_std_matrix` expects `4`
+while `get(3)` returns `√2 × 4`.
 
 ### Documentation
 

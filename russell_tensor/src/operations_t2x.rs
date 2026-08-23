@@ -65,9 +65,14 @@ pub fn t2_gen_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(aa.rep(), Rep::General);
     assert_eq!(bb.rep(), Rep::Symmetric);
     assert_eq!(cc.rep(), Rep::General);
-    let c = &mut cc.vec;
-    let a = &aa.vec;
-    let b = &bb.vec;
+    t2_gen_dot_sym_stack(cc.as_mut_data(), aa.as_data(), bb.as_data());
+}
+
+/// Performs the general tensor dot symmetric tensor operation (stack version): C = A · B
+///
+/// Note: B must be symmetric (components `b[6]`, `b[7]`, `b[8]` are zero).
+#[rustfmt::skip]
+pub(crate) fn t2_gen_dot_sym_stack(c: &mut [f64], a: &[f64], b: &[f64]) {
     c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5]) / 2.0;
     c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * b[3] + (a[4] + a[7]) * b[4]) / 2.0;
     c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * b[4] + (a[5] - a[8]) * b[5]) / 2.0;
@@ -180,8 +185,15 @@ pub fn t2_sym_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 pub fn t2_gen_tra_dot_self(cc: &mut Tensor2, aa: &Tensor2) {
     assert_eq!(aa.rep(), Rep::General);
     assert_eq!(cc.rep(), Rep::Symmetric);
-    let c = &mut cc.vec;
-    let a = &aa.vec;
+    t2_gen_tra_dot_self_stack(cc.as_mut_data(), aa.as_data());
+}
+
+/// Performs the general transposed tensor dot itself operation (stack version): C = Aᵀ · A
+///
+/// Note: only the symmetric components `c[0..6]` are written; the skew
+/// components `c[6]`, `c[7]`, `c[8]` are left untouched.
+#[rustfmt::skip]
+pub(crate) fn t2_gen_tra_dot_self_stack(c: &mut [f64], a: &[f64]) {
     c[0] = (2.0 * (a[0] * a[0]) + (a[3] - a[6]) * (a[3] - a[6]) + (a[5] - a[8]) * (a[5] - a[8])) / 2.0;
     c[1] = (2.0 * (a[1] * a[1]) + (a[3] + a[6]) * (a[3] + a[6]) + (a[4] - a[7]) * (a[4] - a[7])) / 2.0;
     c[2] = (2.0 * (a[2] * a[2]) + (a[4] + a[7]) * (a[4] + a[7]) + (a[5] + a[8]) * (a[5] + a[8])) / 2.0;
@@ -203,8 +215,8 @@ pub fn t2_gen_tra_dot_self(cc: &mut Tensor2, aa: &Tensor2) {
 /// [Rep::Symmetric]. This is used, for example, to compute the right
 /// stretch `U = Rᵀ · F`, which is symmetric.
 ///
-/// When `chop` is `false`, the full (general) result is expected, but the
-/// skew components `c[6]`, `c[7]`, `c[8]` are not implemented yet.
+/// When `chop` is `false`, the full (general) result is computed, including
+/// the skew components `c[6]`, `c[7]`, `c[8]`.
 ///
 /// # Output
 ///
@@ -257,8 +269,8 @@ pub fn t2_gen_tra_dot_gen_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, cho
 /// [Rep::Symmetric]. This is used, for example, to compute the left
 /// stretch `V = F · Rᵀ`, which is symmetric.
 ///
-/// When `chop` is `false`, the full (general) result is expected, but the
-/// skew components `c[6]`, `c[7]`, `c[8]` are not implemented yet.
+/// When `chop` is `false`, the full (general) result is computed, including
+/// the skew components `c[6]`, `c[7]`, `c[8]`.
 ///
 /// # Output
 ///

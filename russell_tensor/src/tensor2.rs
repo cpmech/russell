@@ -285,6 +285,36 @@ impl Tensor2 {
         self.vec[m] = value;
     }
 
+    /// Returns a slice to the Kelvin vector data (crate-internal)
+    ///
+    /// Note: the slice length equals the Kelvin vector dimension (4, 6, or 9).
+    #[inline]
+    pub(crate) fn as_data(&self) -> &[f64] {
+        #[cfg(feature = "heap")]
+        {
+            self.vec.as_data().as_slice()
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            &self.vec[..]
+        }
+    }
+
+    /// Returns a mutable slice to the Kelvin vector data (crate-internal)
+    ///
+    /// Note: the slice length equals the Kelvin vector dimension (4, 6, or 9).
+    #[inline]
+    pub(crate) fn as_mut_data(&mut self) -> &mut [f64] {
+        #[cfg(feature = "heap")]
+        {
+            self.vec.as_mut_data().as_mut_slice()
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            &mut self.vec[..]
+        }
+    }
+
     /// Sets the Tensor2 with standard components given in matrix form
     ///
     /// # Input

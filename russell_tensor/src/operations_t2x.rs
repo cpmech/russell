@@ -7,17 +7,17 @@ use crate::{Rep, StrError, SQRT_2};
 ///
 /// | Formula | `a` Rep | `b` Rep | `c` Rep | `tra_a` | `tra_b` | Equivalent/Notes |
 /// | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-/// | $C = \alpha A \cdot B$ | `General` | `General` | `General` | `false` | `false` | Standard dot product |
-/// | $C = \alpha A^T \cdot B$ | `General` | `General` | `General` | `true` | `false` | Left transpose |
-/// | $C = \alpha A \cdot B^T$ | `General` | `General` | `General` | `false` | `true` | Right transpose |
-/// | $C = \alpha A^T \cdot A$ | `General` | (same as `a`) | `Symmetric` | `true` | `false` | Tensor multiplied by itself |
-/// | $C = \alpha \text{sym}(A^T \cdot B)$ | `General` | `General` | `Symmetric` | `true` | `false` | Skew components chopped |
-/// | $C = \alpha \text{sym}(A \cdot B^T)$ | `General` | `General` | `Symmetric` | `false` | `true` | Skew components chopped |
-/// | $C = \alpha A \cdot B$ | `General` | `Symmetric` | `General` | `false` | `any` | Transposing $B$ is a no-op |
-/// | $C = \alpha A^T \cdot B$ | `General` | `Symmetric` | `General` | `true` | `any` | |
-/// | $C = \alpha A \cdot B$ | `Symmetric` | `General` | `General` | `any` | `false` | Transposing $A$ is a no-op |
-/// | $C = \alpha A \cdot B^T$ | `Symmetric` | `General` | `General` | `any` | `true` | |
-/// | $C = \alpha A \cdot B$ | `Symmetric` | `Symmetric` | `General` | `any` | `any` | Product is NOT symmetric in general |
+/// | C = α A · B | `General` | `General` | `General` | `false` | `false` | Standard dot product |
+/// | C = α Aᵀ · B | `General` | `General` | `General` | `true` | `false` | Left transpose |
+/// | C = α A · Bᵀ | `General` | `General` | `General` | `false` | `true` | Right transpose |
+/// | C = α Aᵀ · A | `General` | (same as `a`) | `Symmetric` | `true` | `false` | Tensor multiplied by itself |
+/// | C = α sym(Aᵀ · B) | `General` | `General` | `Symmetric` | `true` | `false` | Skew components chopped |
+/// | C = α sym(A · Bᵀ) | `General` | `General` | `Symmetric` | `false` | `true` | Skew components chopped |
+/// | C = α A · B | `General` | `Symmetric` | `General` | `false` | `any` | Transposing B is a no-op |
+/// | C = α Aᵀ · B | `General` | `Symmetric` | `General` | `true` | `any` | |
+/// | C = α A · B | `Symmetric` | `General` | `General` | `any` | `false` | Transposing A is a no-op |
+/// | C = α A · Bᵀ | `Symmetric` | `General` | `General` | `any` | `true` | |
+/// | C = α A · B | `Symmetric` | `Symmetric` | `General` | `any` | `any` | Product is NOT symmetric in general |
 ///
 /// # Output
 ///
@@ -45,45 +45,47 @@ pub fn t2_matmul(
     match (a.rep(), b.rep(), tra_a, tra_b) {
         (Rep::General, Rep::General, false, false) => {
             if c.rep() != Rep::General {
-                return Err("c must be General for A_gen * B_gen");
+                return Err("c must be General for this combination");
             }
             t2_gen_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::General, Rep::Symmetric, false, false) |
-        (Rep::General, Rep::Symmetric, false, true) => {
-            // b is symmetric, so tra_b doesn't matter
+        (Rep::General, Rep::Symmetric, false, true) |
+        (Rep::General, Rep::Symmetric, false, false) => {
             if c.rep() != Rep::General {
-                return Err("c must be General for A_gen * B_sym");
+                return Err("c must be General for this combination");
             }
             t2_gen_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::General, false, false) |
-        (Rep::Symmetric, Rep::General, true, false) => {
-            // a is symmetric, so tra_a doesn't matter
+        (Rep::Symmetric, Rep::General, true, false) |
+        (Rep::Symmetric, Rep::General, false, false) => {
             if c.rep() != Rep::General {
-                return Err("c must be General for A_sym * B_gen");
+                return Err("c must be General for this combination");
             }
             t2_sym_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::Symmetric, _, _) => {
-            // a and b are symmetric, so tra_a and tra_b don't matter
+        (Rep::Symmetric, Rep::Symmetric, true, true) |
+        (Rep::Symmetric, Rep::Symmetric, true, false) |
+        (Rep::Symmetric, Rep::Symmetric, false, true) |
+        (Rep::Symmetric, Rep::Symmetric, false, false) => {
             if c.rep() != Rep::General {
-                return Err("c must be General for A_sym * B_sym");
+                return Err("c must be General for this combination");
             }
             t2_sym_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
         (Rep::General, Rep::General, true, false) => {
             if std::ptr::eq(a, b) {
                 if c.rep() != Rep::Symmetric {
-                    return Err("c must be Symmetric for A_gen^T * A_gen");
+                    return Err("c must be Symmetric");
                 }
                 t2_gen_tra_dot_self(c.as_mut_data(), alpha, a.as_data());
-            } else if c.rep() == Rep::Symmetric {
-                t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), true);
-            } else if c.rep() == Rep::General {
-                t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
             } else {
-                return Err("c must be Symmetric or General for A_gen^T * B_gen");
+                if c.rep() == Rep::Symmetric {
+                    t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), true);
+                } else if c.rep() == Rep::General {
+                    t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
+                } else {
+                    return Err("c must be Symmetric or General");
+                }
             }
         }
         (Rep::General, Rep::General, false, true) => {
@@ -92,7 +94,7 @@ pub fn t2_matmul(
             } else if c.rep() == Rep::General {
                 t2_gen_dot_gen_tra_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data(), false);
             } else {
-                return Err("c must be Symmetric or General for A_gen * B_gen^T");
+                return Err("c must be Symmetric or General");
             }
         }
         _ => return Err("t2_matmul: combination of representations and transpositions is unavailable"),
@@ -106,8 +108,9 @@ pub fn t2_matmul(
 ///
 /// | Formula | `a` Rep | `b` Rep | `c` Rep | `forward` | Notes |
 /// | :--- | :--- | :--- | :--- | :--- | :--- |
-/// | $C = \alpha A \cdot B \cdot A^T$ | `General` | `Symmetric` | `Symmetric` | `true` | e.g., Push-forward of Piola-Kirchhoff stress to Cauchy stress |
-/// | $C = \alpha A^T \cdot B \cdot A$ | `General` | `Symmetric` | `Symmetric` | `false` | e.g., Pull-back of Cauchy stress to Piola-Kirchhoff stress |
+/// | C = α A · B · Aᵀ | `General` | `Symmetric` | `Symmetric` | `true` | e.g., Push-forward of Piola-Kirchhoff stress to Cauchy stress |
+/// | C = α Aᵀ · B · A | `General` | `Symmetric` | `Symmetric` | `false` | e.g., Pull-back of Cauchy stress to Piola-Kirchhoff stress |
+///
 /// # Output
 ///
 /// * `c` -- the resulting tensor
@@ -132,13 +135,13 @@ pub fn t2_matmulx(
     match (a.rep(), b.rep(), forward) {
         (Rep::General, Rep::Symmetric, true) => {
             if c.rep() != Rep::Symmetric {
-                return Err("c must be Symmetric for A_gen * B_sym * A_gen^T");
+                return Err("c must be Symmetric for this combination");
             }
             t2_gen_dot_sym_dot_self_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
         (Rep::General, Rep::Symmetric, false) => {
             if c.rep() != Rep::Symmetric {
-                return Err("c must be Symmetric for A_gen^T * B_sym * A_gen");
+                return Err("c must be Symmetric for this combination");
             }
             t2_gen_tra_dot_sym_dot_self(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }

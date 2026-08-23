@@ -1,18 +1,23 @@
 use super::Tensor2;
 use crate::{Rep, SQRT_2};
 
-/// Performs the transpose(Tensor2) dot Tensor2 operation returning a symmetric tensor: C = Aᵀ · A
-/// 
-/// # Arguments
-/// 
-/// * `cc` -- (out) Symmetrized tensor C = Aᵀ A; must be [Rep::Symmetric]
-/// * `aa` -- (in) General tensor; must be [Rep::General]
-/// 
+/// Performs the transpose(Tensor2) dot Tensor2 operation: C = Aᵀ · A
+///
+/// The result C is symmetric.
+///
+/// # Output
+///
+/// * `cc` -- the resulting symmetric tensor C = Aᵀ · A; must be [Rep::Symmetric]
+///
+/// # Input
+///
+/// * `aa` -- the tensor A; must be [Rep::General]
+///
 /// # Panics
 ///
 /// A panic will occur if the required [Rep] enums are incorrect.
 #[rustfmt::skip]
-pub fn t2_tra_dot_t2(cc: &mut Tensor2, aa: &Tensor2) {
+pub fn t2_gen_tra_dot_gen(cc: &mut Tensor2, aa: &Tensor2) {
     assert_eq!(aa.rep(), Rep::General);
     assert_eq!(cc.rep(), Rep::Symmetric);
     let a = &aa.vec;
@@ -181,26 +186,37 @@ pub fn t2_sym_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
     c[8] = (SQRT_2 * a[5] * (-b[0] + b[2]) - a[4] * b[3] + a[3] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
 }
 
-/// Computes the symmetric right stretch tensor: U = Rᵀ F
+/// Performs the transpose(general tensor) dot general tensor operation: C = Aᵀ · B
 /// 
 /// Computes:
 ///
 /// ```text
-/// U = Rᵀ · F
+/// C = Aᵀ · B
 /// ```
+///
+/// When `chop` is `true`, only the symmetric part of C is computed and the
+/// skew components are chopped off (discarded), so `cc` must be
+/// [Rep::Symmetric]. This is used, for example, to compute the right
+/// stretch `U = Rᵀ · F`, which is symmetric.
+///
+/// When `chop` is `false`, the full (general) result is expected, but the
+/// skew components `c[6]`, `c[7]`, `c[8]` are not implemented yet.
 ///
 /// # Output
 ///
-/// * `uu` -- the resulting right stretch tensor U; must be [Rep::Symmetric]
+/// * `cc` -- the resulting tensor C; must be [Rep::Symmetric] if `chop` is
+///   `true`, or [Rep::General] if `chop` is `false`
 ///
 /// # Input
 ///
-/// * `rr` -- the rotation tensor R; must be [Rep::General]
-/// * `ff` -- the deformation gradient tensor F; must be [Rep::General]
+/// * `aa` -- the first tensor A (which gets transposed); must be [Rep::General]
+/// * `bb` -- the second tensor B; must be [Rep::General]
+/// * `chop` -- if `true`, chop off (discard) the skew components of C
 ///
 /// # Panics
 /// 
-/// A panic will occur if `rr` and `ff` are not [Rep::General] or if `uu` is [Rep::General].
+/// A panic will occur if `aa` and `bb` are not [Rep::General], or if `cc`
+/// does not have the [Rep] required by `chop`.
 #[rustfmt::skip]
 pub fn t2_gen_tra_dot_gen_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, chop: bool) {
     assert_eq!(aa.rep(), Rep::General);
@@ -218,30 +234,41 @@ pub fn t2_gen_tra_dot_gen_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, cho
         assert_eq!(cc.rep(), Rep::Symmetric);
     } else {
         assert_eq!(cc.rep(), Rep::General);
-        // TODO
+        // TODO: compute the skew components c[6], c[7], c[8] of C = Aᵀ · B
     }
 }
 
-/// Computes the symmetric left stretch tensor: V = F Rᵀ
+/// Performs the general tensor dot transpose(general tensor) operation: C = A · Bᵀ
 /// 
 /// Computes:
 ///
 /// ```text
-/// V = F · Rᵀ
+/// C = A · Bᵀ
 /// ```
+///
+/// When `chop` is `true`, only the symmetric part of C is computed and the
+/// skew components are chopped off (discarded), so `cc` must be
+/// [Rep::Symmetric]. This is used, for example, to compute the left
+/// stretch `V = F · Rᵀ`, which is symmetric.
+///
+/// When `chop` is `false`, the full (general) result is expected, but the
+/// skew components `c[6]`, `c[7]`, `c[8]` are not implemented yet.
 ///
 /// # Output
 ///
-/// * `vv` -- the resulting left stretch tensor V; must be [Rep::Symmetric]
+/// * `cc` -- the resulting tensor C; must be [Rep::Symmetric] if `chop` is
+///   `true`, or [Rep::General] if `chop` is `false`
 ///
 /// # Input
 ///
-/// * `ff` -- the deformation gradient tensor F; must be [Rep::General]
-/// * `rr` -- the rotation tensor R; must be [Rep::General]
+/// * `aa` -- the first tensor A; must be [Rep::General]
+/// * `bb` -- the second tensor B (which gets transposed); must be [Rep::General]
+/// * `chop` -- if `true`, chop off (discard) the skew components of C
 ///
 /// # Panics
 /// 
-/// A panic will occur if `ff` and `rr` are not [Rep::General] or if `vv` is [Rep::General].
+/// A panic will occur if `aa` and `bb` are not [Rep::General], or if `cc`
+/// does not have the [Rep] required by `chop`.
 #[rustfmt::skip]
 pub fn t2_gen_dot_gen_tra_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, chop: bool) {
     assert_eq!(aa.rep(), Rep::General);
@@ -259,6 +286,6 @@ pub fn t2_gen_dot_gen_tra_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, cho
         assert_eq!(cc.rep(), Rep::Symmetric);
     } else {
         assert_eq!(cc.rep(), Rep::General);
-        // TODO
+        // TODO: compute the skew components c[6], c[7], c[8] of C = A · Bᵀ
     }
 }

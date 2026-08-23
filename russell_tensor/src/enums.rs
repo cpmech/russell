@@ -170,7 +170,7 @@ impl Rep {
 
     /// Returns whether the Kelvin vector or matrix corresponds a symmetric tensor or not
     pub fn symmetric(&self) -> bool {
-        if *self == Rep::General { false } else { true }
+        *self != Rep::General
     }
 }
 

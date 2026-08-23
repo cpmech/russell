@@ -450,7 +450,7 @@ impl Tensor4 {
     /// # Input
     ///
     /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
-    ///    The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
+    ///   The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics
     ///
@@ -564,7 +564,7 @@ impl Tensor4 {
     /// # Input
     ///
     /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
-    ///    The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
+    ///   The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
     /// * `rep` -- the [Rep] representation
     ///
     /// # Panics

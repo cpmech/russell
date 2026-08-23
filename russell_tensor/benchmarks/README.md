@@ -92,8 +92,8 @@ algorithms across the condition-number range:
 
 | algorithm | description |
 | --------- | ----------- |
-| `brannon` | `polar_decomp` — iterative fixed-point (Bjorck–Bowie) |
-| `higham`  | `polar_decomp_higham` — quaternion-based, direct (Higham & Noferini, 2016) |
+| `brannon` | `polar_rotation_brannon` — iterative fixed-point (Bjorck–Bowie) |
+| `higham`  | `polar_quaternion_higham` — quaternion-based, direct (Higham & Noferini, 2016) |
 
 Cases (the condition number κ is the ratio of the largest to the smallest
 singular value of `F`):

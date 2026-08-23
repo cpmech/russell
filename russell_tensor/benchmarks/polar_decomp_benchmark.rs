@@ -1,7 +1,7 @@
 //! Benchmarks comparing the speed of the two polar-decomposition algorithms:
 //!
-//! * **Brannon** (iterative fixed-point) — `polar_decomp`
-//! * **Higham & Noferini** (quaternion, direct) — `polar_decomp_higham`
+//! * **Brannon** (iterative fixed-point) — `polar_rotation_brannon`
+//! * **Higham & Noferini** (quaternion, direct) — `polar_quaternion_higham`
 //!
 //! Three cases are benchmarked, spanning the condition-number range:
 //!
@@ -14,7 +14,7 @@
 //! depend on the conditioning.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use russell_tensor::{polar_decomp, polar_decomp_higham, Rep, Tensor2};
+use russell_tensor::{polar_decomp, PolarAlgo, Rep, Tensor2};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
 const WELL_CONDITIONED: [[f64; 3]; 3] = [[1.0, 0.495, 0.5], [-0.333, 1.0, -0.247], [0.959, 0.0, 1.5]];
@@ -22,9 +22,21 @@ const WELL_CONDITIONED: [[f64; 3]; 3] = [[1.0, 0.495, 0.5], [-0.333, 1.0, -0.247
 /// Higham & Noferini test (5.2) for a given scale factor y; κ ≈ 1/(√3 y).
 fn case52(y: f64) -> [[f64; 3]; 3] {
     [
-        [(720.0 * y - 25.0) / 1275.0, (-650.0 * y + 300.0) / 1275.0, (710.0 * y + 300.0) / 1275.0],
-        [(396.0 * y + 70.0) / 1275.0, (-145.0 * y - 840.0) / 1275.0, (178.0 * y - 840.0) / 1275.0],
-        [(972.0 * y - 10.0) / 1275.0, (610.0 * y + 120.0) / 1275.0, (-529.0 * y + 120.0) / 1275.0],
+        [
+            (720.0 * y - 25.0) / 1275.0,
+            (-650.0 * y + 300.0) / 1275.0,
+            (710.0 * y + 300.0) / 1275.0,
+        ],
+        [
+            (396.0 * y + 70.0) / 1275.0,
+            (-145.0 * y - 840.0) / 1275.0,
+            (178.0 * y - 840.0) / 1275.0,
+        ],
+        [
+            (972.0 * y - 10.0) / 1275.0,
+            (610.0 * y + 120.0) / 1275.0,
+            (-529.0 * y + 120.0) / 1275.0,
+        ],
     ]
 }
 
@@ -38,7 +50,7 @@ fn bench_case(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3]) {
         let mut rr = Tensor2::new(Rep::General);
         let mut uu = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_decomp(&ff, &mut rr, &mut uu, None).unwrap();
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box(rr.get(0));
         });
     });
@@ -49,7 +61,7 @@ fn bench_case(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3]) {
         let mut qq = Tensor2::new(Rep::General);
         let mut hh = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_decomp_higham(&mut qq, &mut hh, &ff);
+            polar_decomp(&mut qq, &mut hh, None, PolarAlgo::Higham, &ff).unwrap();
             std::hint::black_box(qq.get(0));
         });
     });

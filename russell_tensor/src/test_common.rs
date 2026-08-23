@@ -1,14 +1,13 @@
 //! Test cases and check helpers shared by the two polar-decomposition
-//! implementations: Brannon's `polar_decomp` (iterative) and Higham &
-//! Noferini's `polar_decomp_higham` (quaternion).
+//! implementations: Brannon's `polar_rotation_brannon` (iterative) and
+//! Higham & Noferini's `polar_quaternion_higham` (quaternion).
 //!
 //! Each implementation is validated against all of these test cases and
 //! cross-checked against the other implementation.
 
-use crate::polar_decomp::polar_decomp;
-use crate::polar_decomp_higham::polar_decomp_higham;
+use crate::polar_decomp::{polar_decomp, PolarAlgo};
 use crate::{Rep, Tensor2};
-use russell_lab::{mat_approx_eq, mat_mat_mul, mat_t_mat_mul, Matrix};
+use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
 // Test matrices
@@ -65,7 +64,11 @@ pub fn case52(y: f64) -> Tensor2 {
 
 /// Reference rotation for example 01 (60° about E3).
 pub fn example01_rotation() -> [[f64; 3]; 3] {
-    [[0.5, -0.8660254037844386, 0.0], [0.8660254037844386, 0.5, 0.0], [0.0, 0.0, 1.0]]
+    [
+        [0.5, -0.8660254037844386, 0.0],
+        [0.8660254037844386, 0.5, 0.0],
+        [0.0, 0.0, 1.0],
+    ]
 }
 
 /// Reference right stretch for example 01.
@@ -117,13 +120,13 @@ pub fn check_agree(a: &Tensor2) {
     let mut rb = Tensor2::new(Rep::General);
     let mut ub = Tensor2::new(Rep::Symmetric);
     let mut vb = Tensor2::new(Rep::Symmetric);
-    polar_decomp(a, &mut rb, &mut ub, Some(&mut vb)).unwrap();
+    polar_decomp(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Brannon, a).unwrap();
     check_polar(a, &rb, &ub, 1e-13);
 
     // Higham & Noferini (quaternion)
     let mut qh = Tensor2::new(Rep::General);
     let mut hh = Tensor2::new(Rep::Symmetric);
-    polar_decomp_higham(&mut qh, &mut hh, a);
+    polar_decomp(&mut qh, &mut hh, None, PolarAlgo::Higham, a).unwrap();
     check_polar(a, &qh, &hh, 1e-13);
 
     // The two implementations must agree

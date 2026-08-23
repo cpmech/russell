@@ -2,14 +2,14 @@
 //!
 //! This example computes the polar decomposition `A = Q · H` of a 3×3 matrix,
 //! where `Q` is orthogonal (a rotation) and `H` is symmetric positive
-//! semidefinite (a stretch), using the quaternion-based algorithm of
-//! Higham & Noferini (2016).
+//! semidefinite (a stretch). The unified `polar_decomp` dispatcher is used,
+//! selecting the quaternion-based algorithm of Higham & Noferini (2016).
 //!
 //! Reference: N. J. Higham and V. Noferini, "An algorithm to compute the polar
-//! decomposition of a 3×3 matrix", Num. Algorithms, 73(2):349–369, 2016.
+//! decomposition of a 3×3 matrix", Numer. Algorithms, 73(2):349–369, 2016.
 
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
-use russell_tensor::{Rep, StrError, Tensor2, polar_decomp_higham};
+use russell_tensor::{polar_decomp, PolarAlgo, Rep, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
     // Input matrix (Higham & Noferini, test 5.1)
@@ -27,8 +27,8 @@ fn main() -> Result<(), StrError> {
     let mut q = Tensor2::new(Rep::General);
     let mut h = Tensor2::new(Rep::Symmetric);
 
-    // Compute the polar decomposition: A = Q · H
-    polar_decomp_higham(&mut q, &mut h, &a);
+    // Compute the polar decomposition A = Q · H (using the Higham algorithm)
+    polar_decomp(&mut q, &mut h, None, PolarAlgo::Higham, &a).unwrap();
 
     // Print the factors
     println!("Q =\n{:.6}", q.as_std_matrix());

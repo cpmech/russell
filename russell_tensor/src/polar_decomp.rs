@@ -1,185 +1,103 @@
-use super::{Tensor2, t2_gen_dot_gen_tra_chop, t2_gen_dot_sym, t2_gen_tra_dot_gen_chop, t2_gen_tra_dot_self};
-use crate::Rep;
+use crate::polar_brannon::polar_rotation_brannon;
+use crate::polar_higham::polar_quaternion_higham;
+use crate::{t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop, Rep, Tensor2};
 use russell_lab::StrError;
 
-const BRANNON_MAX_NIT: usize = 2000;
+/// Specifies the polar decomposition algorithm
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PolarAlgo {
+    /// Rebecca Brannon's iterative fixed-point algorithm (3×3)
+    Brannon,
+    /// Brannon's closed-form algorithm for 2×2 (in-plane) matrices
+    Brannon2d,
+    /// Higham & Noferini (2016) quaternion-based direct algorithm (3×3)
+    Higham,
+}
 
 /// Performs the polar decomposition F = R U = V R
 ///
-/// Note: This is the only function where the output arguments are not the first parameters of the function.
+/// # Output
 ///
-/// # Arguments
-///
-/// * `ff` -- (in) F: the deformation gradient; must be [Rep::General]
 /// * `rr` -- (out) R: the rotation tensor; must be [Rep::General]
 /// * `uu` -- (out) U: the right stretch tensor; must be [Rep::Symmetric]
 /// * `vv` -- (out) V: the left stretch tensor; must be [Rep::Symmetric] -- Optional
 ///
-/// Returns the number of iterations taken for the rotation tensor to converge
+/// # Input
 ///
-/// # Panics
-///
-/// A panic will occur if the required [Rep] enums are incorrect.
-pub fn polar_decomp(
-    ff: &Tensor2,
-    rr: &mut Tensor2,
-    uu: &mut Tensor2,
-    vv: Option<&mut Tensor2>,
-) -> Result<usize, StrError> {
-    assert_eq!(ff.rep(), Rep::General);
-    assert_eq!(rr.rep(), Rep::General);
-    assert_eq!(uu.rep(), Rep::Symmetric);
-    let nit = polar_rotation(rr, ff)?;
-    t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F
-    if let Some(v) = vv {
-        assert_eq!(v.rep(), Rep::Symmetric);
-        t2_gen_dot_gen_tra_chop(v.as_mut_data(), 1.0, ff.as_data(), rr.as_data()); // V = F Rᵀ
-    }
-    Ok(nit)
-}
-
-/// Computes the polar rotation tensor R of a general tensor F
-///
-/// Uses the iterative fixed-point algorithm by Rebecca Brannon.
-///
-/// # Arguments
-///
-/// * `rr` -- (out) R: the rotation tensor; must be [Rep::General]
+/// * `algo` -- the algorithm to use
 /// * `ff` -- (in) F: the deformation gradient; must be [Rep::General]
 ///
 /// # Returns
 ///
-/// Returns the number of iterations taken for convergence.
+/// Returns the number of iterations taken for the rotation tensor to converge.
+/// This is always zero for the non-iterative algorithms (`Higham`, `Brannon2d`).
 ///
-/// # Panics
+/// # Errors
 ///
-/// A panic will occur if the required [Rep] enums are incorrect.
-pub fn polar_rotation(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError> {
-    assert_eq!(ff.rep(), Rep::General);
-    assert_eq!(rr.rep(), Rep::General);
+/// Returns an error if the required [Rep] enums are incorrect.
+pub fn polar_decomp(
+    rr: &mut Tensor2,
+    uu: &mut Tensor2,
+    vv: Option<&mut Tensor2>,
+    algo: PolarAlgo,
+    ff: &Tensor2,
+) -> Result<usize, StrError> {
+    if ff.rep() != Rep::General {
+        return Err("ff must be Rep::General");
+    }
+    if rr.rep() != Rep::General {
+        return Err("rr must be Rep::General");
+    }
+    if uu.rep() != Rep::Symmetric {
+        return Err("uu must be Rep::Symmetric");
+    }
 
-    // e and i_vec_minus_e are symmetric (Kelvin-Mandel 6-component), matching the
-    // Fortran scalars E11, E22, E33, E23, E31, E12; a and x are general (9).
-    let mut e = [0.0; 6];
-    let mut a = [0.0; 9];
-    let mut x = [0.0; 9];
-    let mut i_vec_minus_e = [0.0; 6];
-
-    // Step 1: E = F^T F
-    t2_gen_tra_dot_self(&mut e, 1.0, ff.as_data());
-
-    // Step 2: Scale F to guarantee convergence
-    let mut s = 3.0 / (e[0] + e[1] + e[2]);
-    for i in 0..6 {
-        if i < 3 {
-            e[i] = 0.5 * (s * e[i] - 1.0);
-        } else {
-            e[i] = 0.5 * (s * e[i]);
+    // Polar rotation R and right stretch U
+    let nit = match algo {
+        PolarAlgo::Brannon => {
+            let nit = polar_rotation_brannon(rr, ff)?;
+            t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F
+            nit
         }
-    }
-
-    // Step 3: First guess A = sqrt(s) F
-    s = f64::sqrt(s);
-    for i in 0..9 {
-        a[i] = s * ff.get(i);
-    }
-
-    // Step 4: Initial error using vector dot product
-    let mut errz = 0.0;
-    for i in 0..6 {
-        errz += e[i] * e[i];
-    }
-
-    // Steps 5-9: iterate until the error stops decreasing (machine
-    //             precision). The cap BRANNON_MAX_NIT guards against
-    //             near-singular F.
-    //
-    //             Note: "errz + 1.0 <= 1.0" is Brannon's test for
-    //             "errz is zero to machine precision"; it covers the
-    //             case where scaling alone already produced a rotation.
-    let mut knt = 0;
-    let mut converged = errz + 1.0 <= 1.0;
-    while !converged && knt < BRANNON_MAX_NIT {
-        // Step 6: X = A(I - E)
-        for i in 0..6 {
-            if i < 3 {
-                i_vec_minus_e[i] = 1.0 - e[i];
-            } else {
-                i_vec_minus_e[i] = -e[i];
-            }
+        PolarAlgo::Brannon2d => {
+            return Err("polar_decomp: Brannon2d is not implemented yet");
         }
-        t2_gen_dot_sym(&mut x, 1.0, &a, &i_vec_minus_e);
-        a.copy_from_slice(&x);
-
-        // Step 7: E = 1/2(A^T A - I)
-        t2_gen_tra_dot_self(&mut e, 1.0, &a);
-        for i in 0..6 {
-            if i < 3 {
-                e[i] = 0.5 * (e[i] - 1.0);
-            } else {
-                e[i] = 0.5 * e[i];
-            }
+        PolarAlgo::Higham => {
+            polar_quaternion_higham(rr, uu, ff); // R = Q, U = H
+            0
         }
+    };
 
-        // Step 8: New error
-        let mut err = 0.0;
-        for i in 0..6 {
-            err += e[i] * e[i];
+    // Left stretch V = F Rᵀ (common to all algorithms)
+    if let Some(v) = vv {
+        if v.rep() != Rep::Symmetric {
+            return Err("vv must be Rep::Symmetric");
         }
-
-        knt += 1;
-
-        // Step 9: stop if the error stopped decreasing
-        if err >= errz {
-            converged = true;
-        } else {
-            errz = err;
-        }
+        t2_gen_dot_gen_tra_chop(v.as_mut_data(), 1.0, ff.as_data(), rr.as_data());
     }
 
-    if !converged {
-        return Err("polar_rotation did not converge");
-    }
-
-    // Step 10: round the rotation to machine precision using Brannon's
-    //           "(1 + A) - 1" trick (a no-op on IEEE-754 f64, but kept
-    //           for fidelity) and copy it to the output
-    for i in 0..9 {
-        rr.vec[i] = (1.0 + a[i]) - 1.0;
-    }
-    Ok(knt)
+    Ok(nit)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
-    use super::{polar_decomp, polar_rotation};
+    use super::{polar_decomp, PolarAlgo};
     use crate::test_common::{
-        case51, case52, check_agree, check_polar, example01, example01_rotation, example03, example03_rotation,
-        example03_stretch,
+        case51, case52, check_agree, check_polar, example03, example03_rotation, example03_stretch,
     };
     use crate::{Rep, Tensor2};
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul};
 
     #[test]
-    fn polar_rotation_works() {
-        // Example 01: the polar rotation is 60° about E3 (Brannon, Eq. 12.38)
-        let ff = example01();
-        let mut rr = Tensor2::new(Rep::General);
-        let nit = polar_rotation(&mut rr, &ff).unwrap();
-        assert!(nit > 0);
-        mat_approx_eq(&rr.as_std_matrix(), &example01_rotation(), 1e-13);
-    }
-
-    #[test]
-    fn polar_decomp_works() {
+    fn polar_decomp_brannon_works() {
         // Example 03: fully 3-D deformation gradient (McGinty)
         let ff = example03();
         let mut rr = Tensor2::new(Rep::General);
         let mut uu = Tensor2::new(Rep::Symmetric);
         let mut vv = Tensor2::new(Rep::Symmetric);
-        let nit = polar_decomp(&ff, &mut rr, &mut uu, Some(&mut vv)).unwrap();
+        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon, &ff).unwrap();
         assert!(nit > 0);
 
         // F = R U and Q orthogonal
@@ -199,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn polar_decomp_on_higham_cases() {
+    fn polar_decomp_brannon_on_higham_cases() {
         // Higham & Noferini test (5.1), cross-checked against their algorithm
         check_agree(&case51());
 
@@ -209,7 +127,7 @@ mod tests {
             let mut rr = Tensor2::new(Rep::General);
             let mut uu = Tensor2::new(Rep::Symmetric);
             let mut vv = Tensor2::new(Rep::Symmetric);
-            polar_decomp(&a, &mut rr, &mut uu, Some(&mut vv)).unwrap();
+            polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon, &a).unwrap();
             // Brannon's algorithm is only accurate to ~1e-8 for very
             // ill-conditioned F (kappa ~ 1/y), so loosen the tolerance there.
             let tol = if y == 1.0 { 1e-13 } else { 1e-8 };
@@ -218,5 +136,16 @@ mod tests {
                 check_agree(&a);
             }
         }
+    }
+
+    #[test]
+    fn polar_decomp_higham_algo_works() {
+        // Higham & Noferini test (5.1), via the dispatcher
+        let a = case51();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        let nit = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &a).unwrap();
+        assert_eq!(nit, 0); // Higham is non-iterative
+        check_polar(&a, &rr, &uu, 1e-13);
     }
 }

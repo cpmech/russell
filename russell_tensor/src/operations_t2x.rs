@@ -36,6 +36,8 @@ use crate::{Rep, SQRT_2, StrError};
 /// **Note:** The use of `chop` is decided by the representation (`Rep`) of the output tensor `c`.
 /// Also, `chop` doesn't actually check for symmetry; it just ignores (chops) the last 3 rows of the Kelvin-Mandel vector.
 ///
+/// **Note:** `Symmetric2D` is not supported (use `Symmetric` instead).
+///
 /// # Output
 ///
 /// * `c` -- the resulting tensor
@@ -50,7 +52,7 @@ use crate::{Rep, SQRT_2, StrError};
 ///
 /// # Returns
 ///
-/// Returns an error if the combination of representations and transpositions is unavailable or impossible.
+/// Returns an error if the combination of representations and transpositions is unavailable or impossible, or if `Symmetric2D` is used.
 pub fn t2_matmul(
     c: &mut Tensor2,
     alpha: f64,
@@ -151,7 +153,9 @@ pub fn t2_matmul(
             }
             t2_gen_tra_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        _ => return Err("t2_matmul: combination of representations and transpositions is unavailable"),
+        (Rep::Symmetric2D, _, _, _) | (_, Rep::Symmetric2D, _, _) => {
+            return Err("t2_matmul: Symmetric2D is not supported; use Symmetric instead");
+        }
     }
     Ok(())
 }

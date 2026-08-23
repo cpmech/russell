@@ -1,5 +1,5 @@
 use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
-use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_add, t2_dot_t2, t3_ddot_t2, t3_dot_t1};
+use russell_tensor::{Rep, StrError, Tensor1, Tensor2, Tensor3, t2_add, t2_matmul, t3_ddot_t2, t3_dot_t1};
 
 fn main() -> Result<(), StrError> {
     // Select the representation
@@ -37,7 +37,7 @@ fn main() -> Result<(), StrError> {
 
     // Check the inverse
     let mut inv_dot_ten = Tensor2::new(rep);
-    t2_dot_t2(&mut inv_dot_ten, &inv, &ten);
+    t2_matmul(&mut inv_dot_ten, 1.0, &inv, false, &ten, false)?;
     let mat_inv_dot_ten = inv_dot_ten.as_std_matrix();
     println!("inv_dot_ten =\n{:.2}", mat_inv_dot_ten);
     let identity = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
@@ -53,7 +53,7 @@ fn main() -> Result<(), StrError> {
 
     // Tensor to the cubic power
     let mut ten3 = Tensor2::new(rep);
-    t2_dot_t2(&mut ten3, &ten, &ten2);
+    t2_matmul(&mut ten3, 1.0, &ten, false, &ten2, false)?;
     let mat_ten3 = ten3.as_std_matrix();
     println!("ten3 =\n{:.2}", mat_ten3);
     let correct_ten3 = [[456.0, 208.0, 208.0], [688.0, 312.0, 320.0], [768.0, 352.0, 344.0]];

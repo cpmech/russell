@@ -165,4 +165,14 @@ mod tests {
         mat_approx_eq(&rr.as_std_matrix(), &example01_rotation(), 1e-13);
         mat_approx_eq(&uu.as_std_matrix(), &example01_stretch(), 1e-13);
     }
+
+    #[test]
+    fn polar_decomp_brannon2d_rejects_non_planar() {
+        // Example 03 is fully 3-D (non-zero out-of-plane shear), so Brannon2d must fail
+        let ff = example03();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        let res = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
+        assert!(res.is_err());
+    }
 }

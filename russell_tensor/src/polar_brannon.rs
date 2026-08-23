@@ -146,6 +146,12 @@ pub fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result<(), St
         return Err("rr must be Rep::General");
     }
 
+    // F must be an in-plane (planar) deformation: the out-of-plane shear
+    // components F13, F23, F31, F32 must be zero.
+    if ff.get_std(0, 2) != 0.0 || ff.get_std(1, 2) != 0.0 || ff.get_std(2, 0) != 0.0 || ff.get_std(2, 1) != 0.0 {
+        return Err("ff must be an in-plane deformation (F13 = F23 = F31 = F32 = 0)");
+    }
+
     // Closed-form in-plane rotation
     let mut c = ff.get_std(0, 0) + ff.get_std(1, 1);
     let mut s = ff.get_std(1, 0) - ff.get_std(0, 1);

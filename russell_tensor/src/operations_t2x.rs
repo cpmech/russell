@@ -1,5 +1,5 @@
 use super::Tensor2;
-use crate::{Rep, StrError, SQRT_2};
+use crate::{Rep, SQRT_2, StrError};
 
 /// Performs the matrix multiplication between two Tensor2
 ///
@@ -53,24 +53,22 @@ pub fn t2_matmul(
             }
             t2_gen_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::General, Rep::Symmetric, false, true) |
-        (Rep::General, Rep::Symmetric, false, false) => {
+        (Rep::General, Rep::Symmetric, false, true) | (Rep::General, Rep::Symmetric, false, false) => {
             if c.rep() != Rep::General {
                 return Err("c must be General for this combination");
             }
             t2_gen_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::General, true, false) |
-        (Rep::Symmetric, Rep::General, false, false) => {
+        (Rep::Symmetric, Rep::General, true, false) | (Rep::Symmetric, Rep::General, false, false) => {
             if c.rep() != Rep::General {
                 return Err("c must be General for this combination");
             }
             t2_sym_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::Symmetric, true, true) |
-        (Rep::Symmetric, Rep::Symmetric, true, false) |
-        (Rep::Symmetric, Rep::Symmetric, false, true) |
-        (Rep::Symmetric, Rep::Symmetric, false, false) => {
+        (Rep::Symmetric, Rep::Symmetric, true, true)
+        | (Rep::Symmetric, Rep::Symmetric, true, false)
+        | (Rep::Symmetric, Rep::Symmetric, false, true)
+        | (Rep::Symmetric, Rep::Symmetric, false, false) => {
             if c.rep() != Rep::General {
                 return Err("c must be General for this combination");
             }
@@ -129,13 +127,7 @@ pub fn t2_matmul(
 /// # Returns
 ///
 /// Returns an error if the combination is unsupported.
-pub fn t2_matmulx(
-    c: &mut Tensor2,
-    alpha: f64,
-    a: &Tensor2,
-    forward: bool,
-    b: &Tensor2,
-) -> Result<(), StrError> {
+pub fn t2_matmulx(c: &mut Tensor2, alpha: f64, a: &Tensor2, forward: bool, b: &Tensor2) -> Result<(), StrError> {
     match (a.rep(), b.rep(), forward) {
         (Rep::General, Rep::Symmetric, true) => {
             if c.rep() != Rep::Symmetric {
@@ -200,7 +192,7 @@ mod dispatcher_tests {
         assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, true).is_err());
         assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, false).is_ok());
         assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, false).is_err());
-        
+
         // Test ptr::eq(a, b) cases
         assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &a_gen, false).is_ok());
         assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &a_gen, false).is_err()); // Must fail because c must be Symmetric for A^T * A
@@ -561,32 +553,6 @@ pub(crate) fn t2_gen_tra_dot_sym_dot_self(c: &mut [f64], alpha: f64, a: &[f64], 
     c[5] = alpha * ((-(SQRT_2 * a[4] * a[6] * b[1]) - SQRT_2 * a[6] * a[7] * b[1] + 2.0 * a[2] * a[5] * b[2] - 2.0 * a[2] * a[8] * b[2] - a[5] * a[6] * b[3] - a[6] * a[8] * b[3] + a[4] * a[5] * b[4] - SQRT_2 * a[2] * a[6] * b[4] + a[5] * a[7] * b[4] - a[4] * a[8] * b[4] - a[7] * a[8] * b[4] + a[3] * (SQRT_2 * a[4] * b[1] + SQRT_2 * a[7] * b[1] + a[5] * b[3] + a[8] * b[3] + SQRT_2 * a[2] * b[4]) + a[5] * a[5] * b[5] - a[8] * a[8] * b[5] + a[0] * (2.0 * a[5] * b[0] + 2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] + SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0);
 }
 
-
-// --- Manual Stack Functions ---
-
-#[rustfmt::skip]
-pub(crate) fn t2_gen_dot_sym_stack(c: &mut [f64], a: &[f64], b: &[f64]) {
-    c[0] = (2.0 * a[0] * b[0] + (a[3] + a[6]) * b[3] + (a[5] + a[8]) * b[5]) / 2.0;
-    c[1] = (2.0 * a[1] * b[1] + (a[3] - a[6]) * b[3] + (a[4] + a[7]) * b[4]) / 2.0;
-    c[2] = (2.0 * a[2] * b[2] + (a[4] - a[7]) * b[4] + (a[5] - a[8]) * b[5]) / 2.0;
-    c[3] = (SQRT_2 * a[6] * (-b[0] + b[1]) + SQRT_2 * a[3] * (b[0] + b[1]) + SQRT_2 * a[0] * b[3] + SQRT_2 * a[1] * b[3] + a[5] * b[4] + a[8] * b[4] + a[4] * b[5] + a[7] * b[5]) / (2.0 * SQRT_2);
-    c[4] = (SQRT_2 * a[7] * (-b[1] + b[2]) + SQRT_2 * a[4] * (b[1] + b[2]) + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[1] * b[4] + SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2);
-    c[5] = (SQRT_2 * a[8] * (-b[0] + b[2]) + SQRT_2 * a[5] * (b[0] + b[2]) + a[4] * b[3] - a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] + SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
-    c[6] = (-2.0 * (a[3] - a[6]) * b[0] + 2.0 * (a[3] + a[6]) * b[1] + 2.0 * a[0] * b[3] - 2.0 * a[1] * b[3] + SQRT_2 * (a[5] + a[8]) * b[4] - SQRT_2 * (a[4] + a[7]) * b[5]) / 4.0;
-    c[7] = (SQRT_2 * a[4] * (-b[1] + b[2]) + SQRT_2 * a[7] * (b[1] + b[2]) - a[5] * b[3] + a[8] * b[3] + SQRT_2 * a[1] * b[4] - SQRT_2 * a[2] * b[4] + a[3] * b[5] - a[6] * b[5]) / (2.0 * SQRT_2);
-    c[8] = (SQRT_2 * a[5] * (-b[0] + b[2]) + SQRT_2 * a[8] * (b[0] + b[2]) - a[4] * b[3] + a[7] * b[3] + a[3] * b[4] + a[6] * b[4] + SQRT_2 * a[0] * b[5] - SQRT_2 * a[2] * b[5]) / (2.0 * SQRT_2);
-}
-
-#[rustfmt::skip]
-pub(crate) fn t2_gen_tra_dot_self_stack(c: &mut [f64], a: &[f64]) {
-    c[0] = (2.0 * (a[0] * a[0]) + (a[3] - a[6]) * (a[3] - a[6]) + (a[5] - a[8]) * (a[5] - a[8])) / 2.0;
-    c[1] = (2.0 * (a[1] * a[1]) + (a[3] + a[6]) * (a[3] + a[6]) + (a[4] - a[7]) * (a[4] - a[7])) / 2.0;
-    c[2] = (2.0 * (a[2] * a[2]) + (a[4] + a[7]) * (a[4] + a[7]) + (a[5] + a[8]) * (a[5] + a[8])) / 2.0;
-    c[3] = a[1] * (a[3] - a[6]) + a[0] * (a[3] + a[6]) + (a[4] - a[7]) * (a[5] - a[8]) / SQRT_2;
-    c[4] = a[2] * (a[4] - a[7]) + a[1] * (a[4] + a[7]) + (a[3] + a[6]) * (a[5] + a[8]) / SQRT_2;
-    c[5] = (a[3] - a[6]) * (a[4] + a[7]) / SQRT_2 + a[2] * (a[5] - a[8]) + a[0] * (a[5] + a[8]);
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -844,5 +810,4 @@ mod tests {
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
     }
-
 }

@@ -1,4 +1,4 @@
-use super::{t2_gen_dot_gen_tra_chop, t2_gen_dot_sym_stack, t2_gen_tra_dot_gen_chop, t2_gen_tra_dot_self_stack, Tensor2};
+use super::{Tensor2, t2_gen_dot_gen_tra_chop, t2_gen_dot_sym, t2_gen_tra_dot_gen_chop, t2_gen_tra_dot_self};
 use crate::Rep;
 use russell_lab::StrError;
 
@@ -66,7 +66,7 @@ pub fn polar_rotation(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError>
     let mut i_vec_minus_e = [0.0; 6];
 
     // Step 1: E = F^T F
-    t2_gen_tra_dot_self_stack(&mut e, ff.as_data());
+    t2_gen_tra_dot_self(&mut e, 1.0, ff.as_data());
 
     // Step 2: Scale F to guarantee convergence
     let mut s = 3.0 / (e[0] + e[1] + e[2]);
@@ -108,11 +108,11 @@ pub fn polar_rotation(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError>
                 i_vec_minus_e[i] = -e[i];
             }
         }
-        t2_gen_dot_sym_stack(&mut x, &a, &i_vec_minus_e);
+        t2_gen_dot_sym(&mut x, 1.0, &a, &i_vec_minus_e);
         a.copy_from_slice(&x);
 
         // Step 7: E = 1/2(A^T A - I)
-        t2_gen_tra_dot_self_stack(&mut e, &a);
+        t2_gen_tra_dot_self(&mut e, 1.0, &a);
         for i in 0..6 {
             if i < 3 {
                 e[i] = 0.5 * (e[i] - 1.0);

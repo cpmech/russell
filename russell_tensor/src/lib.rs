@@ -24,7 +24,7 @@
 //!
 //! Internally, tensors are stored in the Kelvin basis (Kelvin notation).
 //!
-//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping invariant; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
 //! The [Rep] enum specifies the available representations:
 //!

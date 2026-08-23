@@ -33,7 +33,6 @@ Each function is benchmarked in two modes, controlled by the `use_loops` flag:
 
 | function               | description                                       |
 | ---------------------- | ------------------------------------------------- |
-| `t2_dot_t2`            | tensor multiplication (direct Kelvin formula vs standard matrix multiply) |
 | `t2_ssd`               | self-sum-dyadic operation `D = s (A ⊗ A + A ⊗ A̅)` |
 | `t2_qsd_t2`            | quartic-sum-dyadic operation                      |
 | `deriv2_invariant_jj3` | second derivative of the J3 invariant             |

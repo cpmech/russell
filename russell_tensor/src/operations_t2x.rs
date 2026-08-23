@@ -345,3 +345,258 @@ pub fn t2_gen_dot_sym_dot_self_tra(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2)
     c[4] = (SQRT_2 * a[6] * a[8] * b[0] + 2.0 * a[1] * a[4] * b[1] - 2.0 * a[1] * a[7] * b[1] + 2.0 * a[2] * a[4] * b[2] + 2.0 * a[2] * a[7] * b[2] - a[4] * a[6] * b[3] + a[6] * a[7] * b[3] - SQRT_2 * a[1] * a[8] * b[3] + 2.0 * a[1] * a[2] * b[4] + a[4] * a[4] * b[4] - a[7] * a[7] * b[4] - SQRT_2 * a[2] * a[6] * b[5] - a[4] * a[8] * b[5] - a[7] * a[8] * b[5] + a[3] * (SQRT_2 * a[5] * b[0] - SQRT_2 * a[8] * b[0] + a[4] * b[3] - a[7] * b[3] + SQRT_2 * a[2] * b[5]) + a[5] * (-(SQRT_2 * a[6] * b[0]) + SQRT_2 * a[1] * b[3] + (a[4] + a[7]) * b[5])) / 2.0;
     c[5] = (SQRT_2 * a[4] * a[6] * b[1] - SQRT_2 * a[6] * a[7] * b[1] + 2.0 * a[2] * a[5] * b[2] + 2.0 * a[2] * a[8] * b[2] + a[5] * a[6] * b[3] - a[6] * a[8] * b[3] + a[4] * a[5] * b[4] + SQRT_2 * a[2] * a[6] * b[4] - a[5] * a[7] * b[4] + a[4] * a[8] * b[4] - a[7] * a[8] * b[4] + a[3] * (SQRT_2 * a[4] * b[1] - SQRT_2 * a[7] * b[1] + a[5] * b[3] - a[8] * b[3] + SQRT_2 * a[2] * b[4]) + a[5] * a[5] * b[5] - a[8] * a[8] * b[5] + a[0] * (2.0 * a[5] * b[0] - 2.0 * a[8] * b[0] + SQRT_2 * a[4] * b[3] - SQRT_2 * a[7] * b[3] + 2.0 * a[2] * b[5])) / 2.0;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Rep, Tensor2};
+    use russell_lab::mat_approx_eq;
+
+    #[test]
+    fn t2_gen_dot_gen_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   9.00000,    8.00000,    7.00000],
+            [   6.00000,    5.00000,    4.00000],
+            [   3.00000,    2.00000,    1.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::General);
+        t2_gen_dot_gen(&mut c, &a, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [  30.00000,   24.00000,   18.00000],
+            [  84.00000,   69.00000,   54.00000],
+            [ 138.00000,  114.00000,   90.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_dot_sym_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   3.00000,    5.00000,    6.00000],
+            [   5.00000,    2.00000,    4.00000],
+            [   6.00000,    4.00000,    1.00000],
+        ], Rep::Symmetric).unwrap();
+        let mut c = Tensor2::new(Rep::General);
+        t2_gen_dot_sym(&mut c, &a, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [  31.00000,   21.00000,   17.00000],
+            [  73.00000,   54.00000,   50.00000],
+            [ 115.00000,   87.00000,   83.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_sym_dot_gen_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    4.00000,    6.00000],
+            [   4.00000,    2.00000,    5.00000],
+            [   6.00000,    5.00000,    3.00000],
+        ], Rep::Symmetric).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   9.00000,    8.00000,    7.00000],
+            [   6.00000,    5.00000,    4.00000],
+            [   3.00000,    2.00000,    1.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::General);
+        t2_sym_dot_gen(&mut c, &a, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [  51.00000,   40.00000,   29.00000],
+            [  63.00000,   52.00000,   41.00000],
+            [  93.00000,   79.00000,   65.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_sym_dot_sym_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    4.00000,    6.00000],
+            [   4.00000,    2.00000,    5.00000],
+            [   6.00000,    5.00000,    3.00000],
+        ], Rep::Symmetric).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   3.00000,    5.00000,    6.00000],
+            [   5.00000,    2.00000,    4.00000],
+            [   6.00000,    4.00000,    1.00000],
+        ], Rep::Symmetric).unwrap();
+        let mut c = Tensor2::new(Rep::General);
+        t2_sym_dot_sym(&mut c, &a, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [  59.00000,   37.00000,   28.00000],
+            [  52.00000,   44.00000,   37.00000],
+            [  61.00000,   52.00000,   59.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_tra_dot_self_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_gen_tra_dot_self(&mut c, &a);
+        #[rustfmt::skip]
+        let correct = &[
+            [  66.00000,   78.00000,   90.00000],
+            [  78.00000,   93.00000,  108.00000],
+            [  90.00000,  108.00000,  126.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_tra_dot_gen_chop_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   9.00000,    8.00000,    7.00000],
+            [   6.00000,    5.00000,    4.00000],
+            [   3.00000,    2.00000,    1.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::General);
+        t2_gen_tra_dot_gen_chop(&mut c, &a, &b, false);
+        #[rustfmt::skip]
+        let correct = &[
+            [  54.00000,   42.00000,   30.00000],
+            [  72.00000,   57.00000,   42.00000],
+            [  90.00000,   72.00000,   54.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_tra_dot_gen_chop_works_chopped() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   9.00000,    8.00000,    7.00000],
+            [   6.00000,    5.00000,    4.00000],
+            [   3.00000,    2.00000,    1.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_gen_tra_dot_gen_chop(&mut c, &a, &b, true);
+        #[rustfmt::skip]
+        let correct = &[
+            [  54.00000,   57.00000,   60.00000],
+            [  57.00000,   57.00000,   57.00000],
+            [  60.00000,   57.00000,   54.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_dot_gen_tra_chop_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   9.00000,    8.00000,    7.00000],
+            [   6.00000,    5.00000,    4.00000],
+            [   3.00000,    2.00000,    1.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::General);
+        t2_gen_dot_gen_tra_chop(&mut c, &a, &b, false);
+        #[rustfmt::skip]
+        let correct = &[
+            [  46.00000,   28.00000,   10.00000],
+            [ 118.00000,   73.00000,   28.00000],
+            [ 190.00000,  118.00000,   46.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_dot_gen_tra_chop_works_chopped() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   9.00000,    8.00000,    7.00000],
+            [   6.00000,    5.00000,    4.00000],
+            [   3.00000,    2.00000,    1.00000],
+        ], Rep::General).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_gen_dot_gen_tra_chop(&mut c, &a, &b, true);
+        #[rustfmt::skip]
+        let correct = &[
+            [  46.00000,   73.00000,  100.00000],
+            [  73.00000,   73.00000,   73.00000],
+            [ 100.00000,   73.00000,   46.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    #[test]
+    fn t2_gen_dot_sym_dot_self_tra_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [   1.00000,    2.00000,    3.00000],
+            [   4.00000,    5.00000,    6.00000],
+            [   7.00000,    8.00000,    9.00000],
+        ], Rep::General).unwrap();
+        #[rustfmt::skip]
+        let b = Tensor2::from_std_matrix(&[
+            [   3.00000,    5.00000,    6.00000],
+            [   5.00000,    2.00000,    4.00000],
+            [   6.00000,    4.00000,    1.00000],
+        ], Rep::Symmetric).unwrap();
+        let mut c = Tensor2::new(Rep::Symmetric);
+        t2_gen_dot_sym_dot_self_tra(&mut c, &a, &b);
+        #[rustfmt::skip]
+        let correct = &[
+            [ 124.00000,  331.00000,  538.00000],
+            [ 331.00000,  862.00000, 1393.00000],
+            [ 538.00000, 1393.00000, 2248.00000],
+        ];
+        mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+}

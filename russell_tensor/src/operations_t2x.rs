@@ -17,8 +17,11 @@ use crate::{Rep, StrError, SQRT_2};
 /// | C = α A · Bᵀ | `Symmetric` | `Symmetric` | `General` | `false` | `true` |
 /// | C = α A · B | `Symmetric` | `Symmetric` | `General` | `false` | `false` |
 /// | C = α Aᵀ · A | `General` | (same as a) | `Symmetric` | `true` | `false` |
-/// | C = α sym(Aᵀ · B) | `General` | `General` | `Symmetric or General` | `true` | `false` |
-/// | C = α sym(A · Bᵀ) | `General` | `General` | `Symmetric or General` | `false` | `true` |
+/// | C = α chop(Aᵀ · B) | `General` | `General` | `Symmetric or General` | `true` | `false` |
+/// | C = α chop(A · Bᵀ) | `General` | `General` | `Symmetric or General` | `false` | `true` |
+///
+/// **Note:** The use of `chop` is decided by the representation (`Rep`) of the output tensor `c`.
+/// Also, `chop` doesn't actually check for symmetry; it just ignores (chops) the last 3 rows of the Kelvin-Mandel vector.
 ///
 /// # Output
 ///

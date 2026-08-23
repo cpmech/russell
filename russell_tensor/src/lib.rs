@@ -118,6 +118,9 @@ mod tensor2;
 mod tensor3;
 mod tensor4;
 
+#[cfg(test)]
+mod test_common;
+
 pub use constants::*;
 pub use derivatives_t2::*;
 pub use derivatives_t4::*;

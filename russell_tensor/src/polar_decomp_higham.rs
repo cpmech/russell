@@ -811,96 +811,60 @@ fn mat4t_times_4x2(il: &[[f64; 4]; 4], m: &[[f64; 2]; 4]) -> [[f64; 2]; 4] {
 #[cfg(test)]
 mod tests {
     use super::polar_decomp_higham;
+    use crate::test_common::{
+        case51, case52, case52_rotation, check_agree, check_polar, example01, example01_rotation, example01_stretch,
+        example03, example03_rotation, example03_stretch,
+    };
     use crate::{Rep, Tensor2};
-    use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
-
-    fn check(a: &Tensor2, q: &Tensor2, h: &Tensor2) {
-        let am = a.as_std_matrix();
-        let qm = q.as_std_matrix();
-        let hm = h.as_std_matrix();
-        // A = Q H
-        let mut qh = Matrix::new(3, 3);
-        mat_mat_mul(&mut qh, 1.0, &qm, &hm, 0.0).unwrap();
-        mat_approx_eq(&qh, &am, 1e-13);
-        // Q^T Q = I
-        let mut qtq = Matrix::new(3, 3);
-        mat_t_mat_mul(&mut qtq, 1.0, &qm, &qm, 0.0).unwrap();
-        mat_approx_eq(&qtq, &Matrix::diagonal(&[1.0, 1.0, 1.0]), 1e-13);
-    }
+    use russell_lab::mat_approx_eq;
 
     #[test]
     fn polar_decomp_higham_works_case51() {
-        // Test (5.1) from the paper
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [0.1, 0.2, 0.3],
-            [0.1, 0.1, 0.0],
-            [0.3, 0.2, 0.1],
-        ], Rep::General).unwrap();
+        // Higham & Noferini test (5.1)
+        let a = case51();
         let mut q = Tensor2::new(Rep::General);
         let mut h = Tensor2::new(Rep::Symmetric);
         polar_decomp_higham(&mut q, &mut h, &a);
-        check(&a, &q, &h);
+        check_polar(&a, &q, &h, 1e-13);
     }
 
     #[test]
     fn polar_decomp_higham_works_case52() {
-        // Test (5.2) from the paper, over a range of condition numbers
+        // Higham & Noferini test (5.2) over a range of condition numbers
         // (y = sqrt([1, 1e-4, 1e-8, 1e-12, 1e-16]))
         for y in [1.0f64, 1e-2, 1e-4, 1e-6, 1e-8] {
-            #[rustfmt::skip]
-            let a = Tensor2::from_std_matrix(&[
-                [
-                    (720.0 * y - 25.0) / 1275.0,
-                    (-650.0 * y + 300.0) / 1275.0,
-                    (710.0 * y + 300.0) / 1275.0,
-                ],
-                [
-                    (396.0 * y + 70.0) / 1275.0,
-                    (-145.0 * y - 840.0) / 1275.0,
-                    (178.0 * y - 840.0) / 1275.0,
-                ],
-                [
-                    (972.0 * y - 10.0) / 1275.0,
-                    (610.0 * y + 120.0) / 1275.0,
-                    (-529.0 * y + 120.0) / 1275.0,
-                ],
-            ], Rep::General).unwrap();
+            let a = case52(y);
             let mut q = Tensor2::new(Rep::General);
             let mut h = Tensor2::new(Rep::Symmetric);
             polar_decomp_higham(&mut q, &mut h, &a);
-            check(&a, &q, &h);
+            check_polar(&a, &q, &h, 1e-13);
         }
-
         // Compare Q with the exact Q1 from the paper (well-conditioned case y = 1)
-        let y = 1.0f64;
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [
-                (720.0 * y - 25.0) / 1275.0,
-                (-650.0 * y + 300.0) / 1275.0,
-                (710.0 * y + 300.0) / 1275.0,
-            ],
-            [
-                (396.0 * y + 70.0) / 1275.0,
-                (-145.0 * y - 840.0) / 1275.0,
-                (178.0 * y - 840.0) / 1275.0,
-            ],
-            [
-                (972.0 * y - 10.0) / 1275.0,
-                (610.0 * y + 120.0) / 1275.0,
-                (-529.0 * y + 120.0) / 1275.0,
-            ],
-        ], Rep::General).unwrap();
+        let a = case52(1.0);
         let mut q = Tensor2::new(Rep::General);
         let mut h = Tensor2::new(Rep::Symmetric);
         polar_decomp_higham(&mut q, &mut h, &a);
-        #[rustfmt::skip]
-        let q1 = &[
-            [139.0/255.0, -14.0/51.0, 202.0/255.0],
-            [466.0/1275.0, -197.0/255.0, -662.0/1275.0],
-            [962.0/1275.0, 146.0/255.0, -409.0/1275.0],
-        ];
-        mat_approx_eq(&q.as_std_matrix(), q1, 1e-13);
+        mat_approx_eq(&q.as_std_matrix(), &case52_rotation(), 1e-13);
+    }
+
+    #[test]
+    fn polar_decomp_higham_on_brannon_cases() {
+        // Brannon's example 01 (in-plane), cross-checked against her algorithm
+        let a = example01();
+        let mut q = Tensor2::new(Rep::General);
+        let mut h = Tensor2::new(Rep::Symmetric);
+        polar_decomp_higham(&mut q, &mut h, &a);
+        check_agree(&a);
+        mat_approx_eq(&q.as_std_matrix(), &example01_rotation(), 1e-13);
+        mat_approx_eq(&h.as_std_matrix(), &example01_stretch(), 1e-13);
+
+        // Brannon's example 03 (fully 3-D), cross-checked against her algorithm
+        let a = example03();
+        let mut q = Tensor2::new(Rep::General);
+        let mut h = Tensor2::new(Rep::Symmetric);
+        polar_decomp_higham(&mut q, &mut h, &a);
+        check_agree(&a);
+        mat_approx_eq(&q.as_std_matrix(), &example03_rotation(), 1e-3);
+        mat_approx_eq(&h.as_std_matrix(), &example03_stretch(), 1e-3);
     }
 }

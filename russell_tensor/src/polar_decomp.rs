@@ -30,10 +30,10 @@ pub fn polar_decomp(
     assert_eq!(rr.rep(), Rep::General);
     assert_eq!(uu.rep(), Rep::Symmetric);
     let nit = polar_rotation(rr, ff)?;
-    t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data(), true); // U = Rᵀ F
+    t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F
     if let Some(v) = vv {
         assert_eq!(v.rep(), Rep::Symmetric);
-        t2_gen_dot_gen_tra_chop(v.as_mut_data(), 1.0, ff.as_data(), rr.as_data(), true); // V = F Rᵀ
+        t2_gen_dot_gen_tra_chop(v.as_mut_data(), 1.0, ff.as_data(), rr.as_data()); // V = F Rᵀ
     }
     Ok(nit)
 }

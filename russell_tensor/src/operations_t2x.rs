@@ -3,19 +3,21 @@ use crate::{Rep, StrError, SQRT_2};
 
 /// Performs the matrix multiplication between two Tensor2
 ///
-/// Computes:
+/// # Supported Combinations
 ///
-/// ```text
-/// C = α A · B
-/// ```
-///
-/// Or with transposed inputs:
-///
-/// ```text
-/// C = α Aᵀ · B
-/// C = α A · Bᵀ
-/// C = α Aᵀ · Bᵀ
-/// ```
+/// | Formula | `a` Rep | `b` Rep | `c` Rep | `tra_a` | `tra_b` | Equivalent/Notes |
+/// | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+/// | $C = \alpha A \cdot B$ | `General` | `General` | `General` | `false` | `false` | Standard dot product |
+/// | $C = \alpha A^T \cdot B$ | `General` | `General` | `General` | `true` | `false` | Left transpose |
+/// | $C = \alpha A \cdot B^T$ | `General` | `General` | `General` | `false` | `true` | Right transpose |
+/// | $C = \alpha A^T \cdot A$ | `General` | (same as `a`) | `Symmetric` | `true` | `false` | Tensor multiplied by itself |
+/// | $C = \alpha \text{sym}(A^T \cdot B)$ | `General` | `General` | `Symmetric` | `true` | `false` | Skew components chopped |
+/// | $C = \alpha \text{sym}(A \cdot B^T)$ | `General` | `General` | `Symmetric` | `false` | `true` | Skew components chopped |
+/// | $C = \alpha A \cdot B$ | `General` | `Symmetric` | `General` | `false` | `any` | Transposing $B$ is a no-op |
+/// | $C = \alpha A^T \cdot B$ | `General` | `Symmetric` | `General` | `true` | `any` | |
+/// | $C = \alpha A \cdot B$ | `Symmetric` | `General` | `General` | `any` | `false` | Transposing $A$ is a no-op |
+/// | $C = \alpha A \cdot B^T$ | `Symmetric` | `General` | `General` | `any` | `true` | |
+/// | $C = \alpha A \cdot B$ | `Symmetric` | `Symmetric` | `General` | `any` | `any` | Product is NOT symmetric in general |
 ///
 /// # Output
 ///
@@ -100,6 +102,12 @@ pub fn t2_matmul(
 
 /// Performs a triple matrix multiplication: C = α A · B · Aᵀ or C = α Aᵀ · B · A
 ///
+/// # Supported Combinations
+///
+/// | Formula | `a` Rep | `b` Rep | `c` Rep | `forward` | Notes |
+/// | :--- | :--- | :--- | :--- | :--- | :--- |
+/// | $C = \alpha A \cdot B \cdot A^T$ | `General` | `Symmetric` | `Symmetric` | `true` | e.g., Push-forward of Piola-Kirchhoff stress to Cauchy stress |
+/// | $C = \alpha A^T \cdot B \cdot A$ | `General` | `Symmetric` | `Symmetric` | `false` | e.g., Pull-back of Cauchy stress to Piola-Kirchhoff stress |
 /// # Output
 ///
 /// * `c` -- the resulting tensor
@@ -108,7 +116,7 @@ pub fn t2_matmul(
 ///
 /// * `alpha` -- the multiplier α
 /// * `a` -- the outer tensor A
-/// * `tra_a` -- if true, computes Aᵀ · B · A instead of A · B · Aᵀ
+/// * `forward` -- if true, computes A · B · Aᵀ. If false, computes Aᵀ · B · A
 /// * `b` -- the inner tensor B
 ///
 /// # Returns
@@ -118,17 +126,17 @@ pub fn t2_matmulx(
     c: &mut Tensor2,
     alpha: f64,
     a: &Tensor2,
-    tra_a: bool,
+    forward: bool,
     b: &Tensor2,
 ) -> Result<(), StrError> {
-    match (a.rep(), b.rep(), tra_a) {
-        (Rep::General, Rep::Symmetric, false) => {
+    match (a.rep(), b.rep(), forward) {
+        (Rep::General, Rep::Symmetric, true) => {
             if c.rep() != Rep::Symmetric {
                 return Err("c must be Symmetric for A_gen * B_sym * A_gen^T");
             }
             t2_gen_dot_sym_dot_self_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::General, Rep::Symmetric, true) => {
+        (Rep::General, Rep::Symmetric, false) => {
             if c.rep() != Rep::Symmetric {
                 return Err("c must be Symmetric for A_gen^T * B_sym * A_gen");
             }
@@ -715,7 +723,7 @@ mod tests {
             [   6.00000,    4.00000,    1.00000],
         ], Rep::Symmetric).unwrap();
         let mut c = Tensor2::new(Rep::Symmetric);
-        t2_matmulx(&mut c, 1.5, &a, false, &b).unwrap();
+        t2_matmulx(&mut c, 1.5, &a, true, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [ 186.00000,  496.50000,  807.00000],
@@ -740,7 +748,7 @@ mod tests {
             [   6.00000,    4.00000,    1.00000],
         ], Rep::Symmetric).unwrap();
         let mut c = Tensor2::new(Rep::Symmetric);
-        t2_matmulx(&mut c, 1.5, &a, true, &b).unwrap();
+        t2_matmulx(&mut c, 1.5, &a, false, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
             [ 648.00000,  850.50000, 1053.00000],

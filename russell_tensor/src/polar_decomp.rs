@@ -1,4 +1,4 @@
-use super::{Tensor2, t2_left_stretch, t2_right_stretch};
+use super::{Tensor2, t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop};
 use crate::{Rep, SQRT_2};
 use russell_lab::StrError;
 
@@ -30,10 +30,10 @@ pub fn polar_decomp(
     assert_eq!(rr.rep(), Rep::General);
     assert_eq!(uu.rep(), Rep::Symmetric);
     let nit = polar_rotation(rr, ff)?;
-    t2_right_stretch(uu, rr, ff);
+    t2_gen_tra_dot_gen_chop(uu, rr, ff, true); // U = Rᵀ F
     if let Some(v) = vv {
         assert_eq!(v.rep(), Rep::Symmetric);
-        t2_left_stretch(v, ff, rr);
+        t2_gen_dot_gen_tra_chop(v, ff, rr, true); // V = F Rᵀ
     }
     Ok(nit)
 }

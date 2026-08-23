@@ -202,19 +202,24 @@ pub fn t2_sym_dot_sym(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2) {
 /// 
 /// A panic will occur if `rr` and `ff` are not [Rep::General] or if `uu` is [Rep::General].
 #[rustfmt::skip]
-pub fn t2_right_stretch(uu: &mut Tensor2, rr: &Tensor2, ff: &Tensor2) {
-    assert_eq!(rr.rep(), Rep::General);
-    assert_eq!(ff.rep(), Rep::General);
-    assert_eq!(uu.rep(), Rep::Symmetric);
-    let r = &rr.vec;
-    let f = &ff.vec;
-    let u = &mut uu.vec;
-    u[0] = r[0] * f[0] + 0.5 * (r[3] - r[6]) * (f[3] - f[6]) + 0.5 * (r[5] - r[8]) * (f[5] - f[8]);
-    u[1] = r[1] * f[1] + 0.5 * (r[3] + r[6]) * (f[3] + f[6]) + 0.5 * (r[4] - r[7]) * (f[4] - f[7]);
-    u[2] = r[2] * f[2] + 0.5 * (r[4] + r[7]) * (f[4] + f[7]) + 0.5 * (r[5] + r[8]) * (f[5] + f[8]);
-    u[3] = 0.5 * (r[0] * (f[3] + f[6]) + f[1] * (r[3] - r[6]) + f[0] * (r[3] + r[6]) + r[1] * (f[3] - f[6]) + ((r[5] - r[8]) * (f[4] - f[7]) + (r[4] - r[7]) * (f[5] - f[8])) / SQRT_2);
-    u[4] = 0.5 * (r[1] * (f[4] + f[7]) + f[2] * (r[4] - r[7]) + f[1] * (r[4] + r[7]) + r[2] * (f[4] - f[7]) + ((r[3] + r[6]) * (f[5] + f[8]) + (r[5] + r[8]) * (f[3] + f[6])) / SQRT_2);
-    u[5] = 0.5 * (r[0] * (f[5] + f[8]) + f[2] * (r[5] - r[8]) + f[0] * (r[5] + r[8]) + r[2] * (f[5] - f[8]) + ((r[3] - r[6]) * (f[4] + f[7]) + (r[4] + r[7]) * (f[3] - f[6])) / SQRT_2);
+pub fn t2_gen_tra_dot_gen_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, chop: bool) {
+    assert_eq!(aa.rep(), Rep::General);
+    assert_eq!(bb.rep(), Rep::General);
+    let a = &aa.vec;
+    let b = &bb.vec;
+    let c = &mut cc.vec;
+    c[0] = a[0] * b[0] + 0.5 * (a[3] - a[6]) * (b[3] - b[6]) + 0.5 * (a[5] - a[8]) * (b[5] - b[8]);
+    c[1] = a[1] * b[1] + 0.5 * (a[3] + a[6]) * (b[3] + b[6]) + 0.5 * (a[4] - a[7]) * (b[4] - b[7]);
+    c[2] = a[2] * b[2] + 0.5 * (a[4] + a[7]) * (b[4] + b[7]) + 0.5 * (a[5] + a[8]) * (b[5] + b[8]);
+    c[3] = 0.5 * (a[0] * (b[3] + b[6]) + b[1] * (a[3] - a[6]) + b[0] * (a[3] + a[6]) + a[1] * (b[3] - b[6]) + ((a[5] - a[8]) * (b[4] - b[7]) + (a[4] - a[7]) * (b[5] - b[8])) / SQRT_2);
+    c[4] = 0.5 * (a[1] * (b[4] + b[7]) + b[2] * (a[4] - a[7]) + b[1] * (a[4] + a[7]) + a[2] * (b[4] - b[7]) + ((a[3] + a[6]) * (b[5] + b[8]) + (a[5] + a[8]) * (b[3] + b[6])) / SQRT_2);
+    c[5] = 0.5 * (a[0] * (b[5] + b[8]) + b[2] * (a[5] - a[8]) + b[0] * (a[5] + a[8]) + a[2] * (b[5] - b[8]) + ((a[3] - a[6]) * (b[4] + b[7]) + (a[4] + a[7]) * (b[3] - b[6])) / SQRT_2);
+    if chop {
+        assert_eq!(cc.rep(), Rep::Symmetric);
+    } else {
+        assert_eq!(cc.rep(), Rep::General);
+        // TODO
+    }
 }
 
 /// Computes the symmetric left stretch tensor: V = F Rᵀ
@@ -238,17 +243,22 @@ pub fn t2_right_stretch(uu: &mut Tensor2, rr: &Tensor2, ff: &Tensor2) {
 /// 
 /// A panic will occur if `ff` and `rr` are not [Rep::General] or if `vv` is [Rep::General].
 #[rustfmt::skip]
-pub fn t2_left_stretch(vv: &mut Tensor2, ff: &Tensor2, rr: &Tensor2) {
-    assert_eq!(ff.rep(), Rep::General);
-    assert_eq!(rr.rep(), Rep::General);
-    assert_eq!(vv.rep(), Rep::Symmetric);
-    let f = &ff.vec;
-    let r = &rr.vec;
-    let v = &mut vv.vec;
-    v[0] = f[0] * r[0] + 0.5 * (f[3] + f[6]) * (r[3] + r[6]) + 0.5 * (f[5] + f[8]) * (r[5] + r[8]);
-    v[1] = f[1] * r[1] + 0.5 * (f[3] - f[6]) * (r[3] - r[6]) + 0.5 * (f[4] + f[7]) * (r[4] + r[7]);
-    v[2] = f[2] * r[2] + 0.5 * (f[4] - f[7]) * (r[4] - r[7]) + 0.5 * (f[5] - f[8]) * (r[5] - r[8]);
-    v[3] = 0.5 * (f[0] * (r[3] - r[6]) + r[1] * (f[3] + f[6]) + r[0] * (f[3] - f[6]) + f[1] * (r[3] + r[6]) + ((f[5] + f[8]) * (r[4] + r[7]) + (f[4] + f[7]) * (r[5] + r[8])) / SQRT_2);
-    v[4] = 0.5 * (f[1] * (r[4] - r[7]) + r[2] * (f[4] + f[7]) + r[1] * (f[4] - f[7]) + f[2] * (r[4] + r[7]) + ((f[3] - f[6]) * (r[5] - r[8]) + (f[5] - f[8]) * (r[3] - r[6])) / SQRT_2);
-    v[5] = 0.5 * (f[0] * (r[5] - r[8]) + r[2] * (f[5] + f[8]) + r[0] * (f[5] - f[8]) + f[2] * (r[5] + r[8]) + ((f[3] + f[6]) * (r[4] - r[7]) + (f[4] - f[7]) * (r[3] + r[6])) / SQRT_2);
+pub fn t2_gen_dot_gen_tra_chop(cc: &mut Tensor2, aa: &Tensor2, bb: &Tensor2, chop: bool) {
+    assert_eq!(aa.rep(), Rep::General);
+    assert_eq!(bb.rep(), Rep::General);
+    let a = &aa.vec;
+    let b = &bb.vec;
+    let c = &mut cc.vec;
+    c[0] = a[0] * b[0] + 0.5 * (a[3] + a[6]) * (b[3] + b[6]) + 0.5 * (a[5] + a[8]) * (b[5] + b[8]);
+    c[1] = a[1] * b[1] + 0.5 * (a[3] - a[6]) * (b[3] - b[6]) + 0.5 * (a[4] + a[7]) * (b[4] + b[7]);
+    c[2] = a[2] * b[2] + 0.5 * (a[4] - a[7]) * (b[4] - b[7]) + 0.5 * (a[5] - a[8]) * (b[5] - b[8]);
+    c[3] = 0.5 * (a[0] * (b[3] - b[6]) + b[1] * (a[3] + a[6]) + b[0] * (a[3] - a[6]) + a[1] * (b[3] + b[6]) + ((a[5] + a[8]) * (b[4] + b[7]) + (a[4] + a[7]) * (b[5] + b[8])) / SQRT_2);
+    c[4] = 0.5 * (a[1] * (b[4] - b[7]) + b[2] * (a[4] + a[7]) + b[1] * (a[4] - a[7]) + a[2] * (b[4] + b[7]) + ((a[3] - a[6]) * (b[5] - b[8]) + (a[5] - a[8]) * (b[3] - b[6])) / SQRT_2);
+    c[5] = 0.5 * (a[0] * (b[5] - b[8]) + b[2] * (a[5] + a[8]) + b[0] * (a[5] - a[8]) + a[2] * (b[5] + b[8]) + ((a[3] + a[6]) * (b[4] - b[7]) + (a[4] - a[7]) * (b[3] + b[6])) / SQRT_2);
+    if chop {
+        assert_eq!(cc.rep(), Rep::Symmetric);
+    } else {
+        assert_eq!(cc.rep(), Rep::General);
+        // TODO
+    }
 }

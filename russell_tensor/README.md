@@ -238,3 +238,59 @@ $$
 $$
 I_3 = \underline{\sigma}_1\underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_3\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_1\underline{\sigma}_5^2 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5\underline{\sigma}_6 - \frac{1}{2}\underline{\sigma}_2\underline{\sigma}_6^2
 $$
+
+The deviator $\underline{s} = \mathrm{dev}(\underline{\sigma})$, in terms of the Kelvin-Mandel components:
+
+$$
+\underline{s}_1 = \underline{\sigma}_1 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
+$$
+
+$$
+\underline{s}_2 = \underline{\sigma}_2 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
+$$
+
+$$
+\underline{s}_3 = \underline{\sigma}_3 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
+$$
+
+$$
+\underline{s}_4 = \underline{\sigma}_4, \qquad \underline{s}_5 = \underline{\sigma}_5, \qquad \underline{s}_6 = \underline{\sigma}_6
+$$
+
+The squared tensor $\underline{p} = \underline{\sigma}\cdot\underline{\sigma}$, in terms of the Kelvin-Mandel components:
+
+$$
+\underline{p}_1 = \underline{\sigma}_1^2 + \frac{1}{2}\underline{\sigma}_4^2 + \frac{1}{2}\underline{\sigma}_6^2
+$$
+
+$$
+\underline{p}_2 = \underline{\sigma}_2^2 + \frac{1}{2}\underline{\sigma}_4^2 + \frac{1}{2}\underline{\sigma}_5^2
+$$
+
+$$
+\underline{p}_3 = \underline{\sigma}_3^2 + \frac{1}{2}\underline{\sigma}_5^2 + \frac{1}{2}\underline{\sigma}_6^2
+$$
+
+$$
+\underline{p}_4 = \left(\underline{\sigma}_1 + \underline{\sigma}_2\right)\underline{\sigma}_4 + \frac{1}{\sqrt{2}}\underline{\sigma}_5\underline{\sigma}_6
+$$
+
+$$
+\underline{p}_5 = \left(\underline{\sigma}_2 + \underline{\sigma}_3\right)\underline{\sigma}_5 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_6
+$$
+
+$$
+\underline{p}_6 = \left(\underline{\sigma}_1 + \underline{\sigma}_3\right)\underline{\sigma}_6 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5
+$$
+
+The deviatoric invariants $J_2 = \mathrm{invariant\\_jj2}$ and $J_3 = \mathrm{invariant\\_jj3}$, in terms of the Kelvin-Mandel components:
+
+$$
+J_2 = \frac{1}{6}\left[(\underline{\sigma}_1-\underline{\sigma}_2)^2 + (\underline{\sigma}_2-\underline{\sigma}_3)^2 + (\underline{\sigma}_3-\underline{\sigma}_1)^2\right] + \frac{1}{2}\left(\underline{\sigma}_4^2+\underline{\sigma}_5^2+\underline{\sigma}_6^2\right)
+$$
+
+$$
+J_3 = \underline{s}_1\underline{s}_2\underline{s}_3 - \frac{1}{2}\underline{s}_3\underline{s}_4^2 - \frac{1}{2}\underline{s}_1\underline{s}_5^2 + \frac{1}{\sqrt{2}}\underline{s}_4\underline{s}_5\underline{s}_6 - \frac{1}{2}\underline{s}_2\underline{s}_6^2
+$$
+
+where $\underline{s}_1, \underline{s}_2, \underline{s}_3$ are the deviator components defined above, and $\underline{s}_4=\underline{\sigma}_4$, $\underline{s}_5=\underline{\sigma}_5$, $\underline{s}_6=\underline{\sigma}_6$.

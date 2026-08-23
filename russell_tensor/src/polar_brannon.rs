@@ -116,6 +116,46 @@ pub fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, S
     Ok(knt)
 }
 
+/// Computes the polar rotation tensor R of an in-plane (2D) deformation F
+///
+/// Uses the closed-form formula of Brannon (Eqs. 12.60a, 12.62):
+/// `cos = (F11+F22)/D` and `sin = (F21-F12)/D`, with
+/// `D = sqrt((F11+F22)² + (F21-F12)²)`.
+///
+/// # Output
+///
+/// * `rr` -- (out) R: the rotation tensor; must be [Rep::General]
+///
+/// # Input
+///
+/// * `ff` -- (in) F: the deformation gradient; must be [Rep::General]
+///
+/// # Errors
+///
+/// Returns an error if the required [Rep] enums are incorrect.
+///
+/// # Note
+///
+/// `F` is assumed to be an in-plane (planar) deformation: the third axis is
+/// decoupled (`R(3,3) = 1`, and `F(3,3)` is carried through to `U = Rᵀ F`).
+pub fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result<(), StrError> {
+    if ff.rep() != Rep::General {
+        return Err("ff must be Rep::General");
+    }
+    if rr.rep() != Rep::General {
+        return Err("rr must be Rep::General");
+    }
+
+    // Closed-form in-plane rotation
+    let mut c = ff.get_std(0, 0) + ff.get_std(1, 1);
+    let mut s = ff.get_std(1, 0) - ff.get_std(0, 1);
+    let d = (c * c + s * s).sqrt();
+    c /= d;
+    s /= d;
+    let r = [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]];
+    rr.set_std_matrix(&r)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use crate::polar_brannon::polar_rotation_brannon;
+use crate::polar_brannon::{polar_rotation_brannon, polar_rotation_brannon2d};
 use crate::polar_higham::polar_quaternion_higham;
 use crate::{t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop, Rep, Tensor2};
 use russell_lab::StrError;
@@ -60,7 +60,9 @@ pub fn polar_decomp(
             nit
         }
         PolarAlgo::Brannon2d => {
-            return Err("polar_decomp: Brannon2d is not implemented yet");
+            polar_rotation_brannon2d(rr, ff)?;
+            t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F
+            0
         }
         PolarAlgo::Higham => {
             polar_quaternion_higham(rr, uu, ff); // R = Q, U = H
@@ -85,7 +87,8 @@ pub fn polar_decomp(
 mod tests {
     use super::{polar_decomp, PolarAlgo};
     use crate::test_common::{
-        case51, case52, check_agree, check_polar, example03, example03_rotation, example03_stretch,
+        case51, case52, check_agree, check_polar, example01, example01_rotation, example01_stretch, example03,
+        example03_rotation, example03_stretch,
     };
     use crate::{Rep, Tensor2};
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul};
@@ -147,5 +150,19 @@ mod tests {
         let nit = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &a).unwrap();
         assert_eq!(nit, 0); // Higham is non-iterative
         check_polar(&a, &rr, &uu, 1e-13);
+    }
+
+    #[test]
+    fn polar_decomp_brannon2d_works() {
+        // Example 01 is in-plane; the closed-form 2×2 rotation must match the 3×3 one
+        let ff = example01();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        let mut vv = Tensor2::new(Rep::Symmetric);
+        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon2d, &ff).unwrap();
+        assert_eq!(nit, 0); // Brannon2d is non-iterative
+        check_polar(&ff, &rr, &uu, 1e-13);
+        mat_approx_eq(&rr.as_std_matrix(), &example01_rotation(), 1e-13);
+        mat_approx_eq(&uu.as_std_matrix(), &example01_stretch(), 1e-13);
     }
 }

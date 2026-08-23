@@ -82,3 +82,52 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- t2_ssd
 
 > **Note:** `--all-features` enables both Intel MKL (when available) and the `heap` feature. To
 > benchmark the stack layout, use `--features intel_mkl` instead.
+
+---
+
+## Polar decomposition benchmark
+
+`polar_decomp_benchmark` compares the speed of the two polar-decomposition
+algorithms across the condition-number range:
+
+| algorithm | description |
+| --------- | ----------- |
+| `brannon` | `polar_decomp` — iterative fixed-point (Bjorck–Bowie) |
+| `higham`  | `polar_decomp_higham` — quaternion-based, direct (Higham & Noferini, 2016) |
+
+Cases (the condition number κ is the ratio of the largest to the smallest
+singular value of `F`):
+
+| case | κ | input |
+| ---- | - | ----- |
+| `well_conditioned` | ≈ 4 | example 03 (McGinty) |
+| `moderate_conditioned` | ≈ 6·10² | Higham test 5.2, `y = 1e-3` |
+| `ill_conditioned` | ≈ 6·10⁷ | Higham test 5.2, `y = 1e-8` |
+
+Median times (single machine, Intel MKL):
+
+| case | `brannon` | `higham` | higham speedup |
+| ---- | --------- | -------- | -------------- |
+| `well_conditioned` | 208 ns | 125 ns | 1.7× |
+| `moderate_conditioned` | 731 ns | 165 ns | 4.4× |
+| `ill_conditioned` | 1.91 µs | 202 ns | 9.5× |
+
+### Observations
+
+- **Higham is faster in every case**, including well-conditioned ones. Its
+  direct algorithm does a fixed amount of work (~125–200 ns), whereas Brannon's
+  fixed-point iteration performs several iterations even for well-conditioned
+  `F`.
+- **The gap widens with conditioning** (1.7× → 4.4× → 9.5×): Brannon iterates
+  more as κ grows, while Higham's cost stays nearly constant (the small rise is
+  from the extra pivoting/QR fallback paths taken for ill-conditioned inputs).
+- Combined with the accuracy cross-check (Higham stays at ~1e-16 for
+  ill-conditioned `F` where Brannon degrades to ~1e-12), Higham's algorithm is
+  both faster and more robust here; Brannon's remains the reference for its
+  simplicity and for the 2×2 case.
+
+### How to run
+
+```bash
+cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark
+```

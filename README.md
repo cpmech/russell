@@ -85,13 +85,30 @@ This project aims to deliver efficient, reliable, and easy-to-maintain code. To 
 
 This project is split into the following crates:
 
-- [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) Scientific laboratory with special math functions, linear algebra, interpolation, quadrature, root-finding, numerical derivation, and more (e.g., matrices/vectors (col-major), BLAS/LAPACK).
-- [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) Numerical Continuation methods to solve nonlinear systems of equations (natural continuation + pseudo-arclength).
-- [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) Solvers for ordinary differential equations (ODEs) and differential algebraic equations (DAEs) (DoPri5/8, Radau5, Euler).
-- [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) Essential tools to solve partial differential equations; not a full-fledged PDE solver (spectral collocation + finite differences; 1D/2D)
-- [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) Solvers for large sparse linear systems (wraps cuDSS, MUMPS, and UMFPACK) + COO/CSC/CSR formats + complex numbers support.
-- [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) Statistics calculations and (engineering) probability distributions (Frechet, Gumbel, Normal).
-- [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) Tensor analysis, calculus, and functions for continuum mechanics
+1. [![Crates.io](https://img.shields.io/crates/v/russell_lab.svg)](https://crates.io/crates/russell_lab) [russell_lab](https://github.com/cpmech/russell/tree/main/russell_lab) — Core mathematical and linear algebra laboratory:
+    - Data structures: NumVector, NumMatrix (column-major layout for direct BLAS/LAPACK interoperability), and stack-allocated SmallVector/SmallMatrix.
+    - Linear Algebra: BLAS 1/2/3 and LAPACK routines (dense solves, SVD, Cholesky, symmetric and general eigenvalues/eigenvectors for real and complex numbers).
+    - Numerics & Special Functions: Bessel, modified Bessel, Beta, Gamma, Erf, Elliptic integrals, Chebyshev/Legendre polynomials, Lagrange interpolation, B-splines, quadrature, Brent's root-finding, Newton solver, cubic solver, and numerical derivatives/Jacobians.
+    - Backends: OpenBLAS / Netlib LAPACK or Intel oneAPI MKL (via intel_mkl feature).
+2. [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) — Tensor calculus and continuum mechanics:
+    - Tensor types: Tensor1 (3D vectors), Tensor2 (2nd-order), Tensor3 (3rd-order), Tensor4 (4th-order).
+    - Kelvin representation: Maps tensors to vector/matrix spaces preserving Euclidean norms (Rep::General, Rep::Symmetric, Rep::Symmetric2D).
+    - Operations & Calculus: Dot/ddot contractions, dyadic products, polar decompositions, principal/deviatoric/octahedral invariants, Lode invariant, first and second derivatives of invariants and tensor functions, linear elasticity / Hooke's law.
+3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and direct solvers:
+    - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).
+    - Direct Solvers: UMFPACK (SuiteSparse), MUMPS (local_sparse), and NVIDIA cuDSS (cudss).
+    - Utilities: Matrix Market I/O, vismatrix exporter, numerical Jacobian assembly, linear system verification.
+4. [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) — ODE and Index-1 DAE solvers:
+    - Explicit Runge-Kutta (DoPri5, DoPri8, Forward Euler) with stiffness detection and dense output.
+    - Implicit solvers: Backward Euler and Radau5 (supports mass matrices, DAEs, and concurrent real/complex linear solves).
+5. [![Crates.io](https://img.shields.io/crates/v/russell_pde.svg)](https://crates.io/crates/russell_pde) [russell_pde](https://github.com/cpmech/russell/tree/main/russell_pde) — Partial differential equation tools:
+    - 1D/2D Finite Difference Methods (FDM) and Spectral Collocation (SPC) on Chebyshev/Legendre-Lobatto nodes.
+    - Transfinite mappings for deformed/curved domains.
+    - Essential boundary conditions via System Partitioning (SPS) or Lagrange Multipliers (LMM).
+6. [![Crates.io](https://img.shields.io/crates/v/russell_nonlin.svg)](https://crates.io/crates/russell_nonlin) [russell_nonlin](https://github.com/cpmech/russell/tree/main/russell_nonlin) — Continuation methods for parameterized nonlinear systems $G(u, \lambda) = 0$:
+    - Predictor-corrector continuation: Natural continuation and Pseudo-arclength continuation (handling folds/limit points).
+7. [![Crates.io](https://img.shields.io/crates/v/russell_stat.svg)](https://crates.io/crates/russell_stat) [russell_stat](https://github.com/cpmech/russell/tree/main/russell_stat) — Engineering statistics and extreme value distributions
+    - Frechet, Gumbel, Lognormal, Normal, Uniform, quantiles, IQR, ASCII histogram generation.
 
 Below is a summary of internal dependencies:
 

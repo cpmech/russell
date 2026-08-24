@@ -1,4 +1,4 @@
-use super::{t2_gen_dot_sym, t2_gen_tra_dot_self, Tensor2};
+use super::{Tensor2, t2_gen_dot_sym, t2_gen_tra_dot_self};
 use crate::Rep;
 use russell_lab::StrError;
 
@@ -17,12 +17,17 @@ const BRANNON_MAX_NIT: usize = 2000;
 ///
 /// Returns the number of iterations taken for convergence.
 ///
-/// # Panics
+/// # Errors
 ///
-/// A panic will occur if the required [Rep] enums are incorrect.
+/// Returns an error if the required [Rep] enums are incorrect or if the
+/// algorithm did not converge.
 pub fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError> {
-    assert_eq!(ff.rep(), Rep::General);
-    assert_eq!(rr.rep(), Rep::General);
+    if ff.rep() != Rep::General {
+        return Err("ff must be Rep::General");
+    }
+    if rr.rep() != Rep::General {
+        return Err("rr must be Rep::General");
+    }
 
     // e and i_vec_minus_e are symmetric (Kelvin-Mandel 6-component), matching the
     // Fortran scalars E11, E22, E33, E23, E31, E12; a and x are general (9).
@@ -156,6 +161,9 @@ pub fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result<(), St
     let mut c = ff.get_std(0, 0) + ff.get_std(1, 1);
     let mut s = ff.get_std(1, 0) - ff.get_std(0, 1);
     let d = (c * c + s * s).sqrt();
+    if d == 0.0 {
+        return Err("ff has no unique in-plane rotation (singular)");
+    }
     c /= d;
     s /= d;
     let r = [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]];

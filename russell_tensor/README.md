@@ -36,6 +36,7 @@ This library implements structures and functions for tensor analysis and calculu
 * `Spectral2` — the spectral (eigen) representation of symmetric second-order tensors
 * `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
 * Constants — identity, transposition, and projector tensors
+* Polar decomposition — `F = R U = V R` via the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini (2016) algorithm (`PolarAlgo`, `polar_decomp`)
 
 ### Kelvin-Mandel notation
 

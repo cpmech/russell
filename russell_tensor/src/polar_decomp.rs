@@ -1,6 +1,6 @@
 use crate::polar_brannon::{polar_rotation_brannon, polar_rotation_brannon2d};
 use crate::polar_higham::polar_quaternion_higham;
-use crate::{t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop, Rep, Tensor2};
+use crate::{Rep, Tensor2, t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop};
 use russell_lab::StrError;
 
 /// Specifies the polar decomposition algorithm
@@ -51,6 +51,11 @@ pub fn polar_decomp(
     if uu.rep() != Rep::Symmetric {
         return Err("uu must be Rep::Symmetric");
     }
+    if let Some(v) = vv.as_deref() {
+        if v.rep() != Rep::Symmetric {
+            return Err("vv must be Rep::Symmetric");
+        }
+    }
 
     // Polar rotation R and right stretch U
     let nit = match algo {
@@ -65,16 +70,13 @@ pub fn polar_decomp(
             0
         }
         PolarAlgo::Higham => {
-            polar_quaternion_higham(rr, uu, ff); // R = Q, U = H
+            polar_quaternion_higham(rr, uu, ff)?; // R = Q, U = H
             0
         }
     };
 
     // Left stretch V = F Rᵀ (common to all algorithms)
     if let Some(v) = vv {
-        if v.rep() != Rep::Symmetric {
-            return Err("vv must be Rep::Symmetric");
-        }
         t2_gen_dot_gen_tra_chop(v.as_mut_data(), 1.0, ff.as_data(), rr.as_data());
     }
 
@@ -85,7 +87,7 @@ pub fn polar_decomp(
 
 #[cfg(test)]
 mod tests {
-    use super::{polar_decomp, PolarAlgo};
+    use super::{PolarAlgo, polar_decomp};
     use crate::test_common::{
         case51, case52, check_agree, check_polar, example01, example01_rotation, example01_stretch, example03,
         example03_rotation, example03_stretch,
@@ -170,6 +172,17 @@ mod tests {
     fn polar_decomp_brannon2d_rejects_non_planar() {
         // Example 03 is fully 3-D (non-zero out-of-plane shear), so Brannon2d must fail
         let ff = example03();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        let res = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn polar_decomp_brannon2d_rejects_singular() {
+        // In-plane reflection F = diag(1, -1, 1): F11+F22 = 0 and F21-F12 = 0,
+        // so the in-plane rotation is undefined (d = 0)
+        let ff = Tensor2::from_std_matrix(&[[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]], Rep::General).unwrap();
         let mut rr = Tensor2::new(Rep::General);
         let mut uu = Tensor2::new(Rep::Symmetric);
         let res = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);

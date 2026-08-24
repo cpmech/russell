@@ -1,5 +1,6 @@
 use super::Tensor2;
 use crate::Rep;
+use russell_lab::StrError;
 
 /// Performs the polar decomposition A = Q · H using the quaternion-based algorithm
 /// by Higham & Noferini (2016)
@@ -25,13 +26,19 @@ use crate::Rep;
 ///
 /// * `a` -- the matrix A; must be [Rep::General]
 ///
-/// # Panics
+/// # Errors
 ///
-/// A panic will occur if the required [Rep] enums are incorrect.
-pub fn polar_quaternion_higham(q: &mut Tensor2, h: &mut Tensor2, a: &Tensor2) {
-    assert_eq!(a.rep(), Rep::General);
-    assert_eq!(q.rep(), Rep::General);
-    assert_eq!(h.rep(), Rep::Symmetric);
+/// Returns an error if the required [Rep] enums are incorrect.
+pub fn polar_quaternion_higham(q: &mut Tensor2, h: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
+    if a.rep() != Rep::General {
+        return Err("a must be Rep::General");
+    }
+    if q.rep() != Rep::General {
+        return Err("q must be Rep::General");
+    }
+    if h.rep() != Rep::Symmetric {
+        return Err("h must be Rep::Symmetric");
+    }
 
     let mut aa = [[0.0f64; 3]; 3];
     for i in 0..3 {
@@ -44,6 +51,7 @@ pub fn polar_quaternion_higham(q: &mut Tensor2, h: &mut Tensor2, a: &Tensor2) {
 
     q.set_std_matrix(&qq).unwrap();
     h.set_std_matrix(&hh).unwrap();
+    Ok(())
 }
 
 /// Port of `polar_quaternion.m` (Higham & Noferini, 2016).
@@ -824,7 +832,7 @@ mod tests {
         let a = case51();
         let mut q = Tensor2::new(Rep::General);
         let mut h = Tensor2::new(Rep::Symmetric);
-        polar_quaternion_higham(&mut q, &mut h, &a);
+        polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
         check_polar(&a, &q, &h, 1e-13);
     }
 
@@ -836,14 +844,14 @@ mod tests {
             let a = case52(y);
             let mut q = Tensor2::new(Rep::General);
             let mut h = Tensor2::new(Rep::Symmetric);
-            polar_quaternion_higham(&mut q, &mut h, &a);
+            polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
             check_polar(&a, &q, &h, 1e-13);
         }
         // Compare Q with the exact Q1 from the paper (well-conditioned case y = 1)
         let a = case52(1.0);
         let mut q = Tensor2::new(Rep::General);
         let mut h = Tensor2::new(Rep::Symmetric);
-        polar_quaternion_higham(&mut q, &mut h, &a);
+        polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
         mat_approx_eq(&q.as_std_matrix(), &case52_rotation(), 1e-13);
     }
 
@@ -853,7 +861,7 @@ mod tests {
         let a = example01();
         let mut q = Tensor2::new(Rep::General);
         let mut h = Tensor2::new(Rep::Symmetric);
-        polar_quaternion_higham(&mut q, &mut h, &a);
+        polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
         check_agree(&a);
         mat_approx_eq(&q.as_std_matrix(), &example01_rotation(), 1e-13);
         mat_approx_eq(&h.as_std_matrix(), &example01_stretch(), 1e-13);
@@ -862,7 +870,7 @@ mod tests {
         let a = example03();
         let mut q = Tensor2::new(Rep::General);
         let mut h = Tensor2::new(Rep::Symmetric);
-        polar_quaternion_higham(&mut q, &mut h, &a);
+        polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
         check_agree(&a);
         mat_approx_eq(&q.as_std_matrix(), &example03_rotation(), 1e-3);
         mat_approx_eq(&h.as_std_matrix(), &example03_stretch(), 1e-3);

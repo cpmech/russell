@@ -14,8 +14,8 @@
 //! rotation `Q` (the quaternion algorithm does not separate them), whereas
 //! `polar_rotation_brannon` and `polar_rotation_brannon2d` compute only `R`.
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use russell_tensor::{polar_quaternion_higham, polar_rotation_brannon, polar_rotation_brannon2d, Rep, Tensor2};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use russell_tensor::{Rep, Tensor2, polar_quaternion_higham, polar_rotation_brannon, polar_rotation_brannon2d};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
 const WELL_CONDITIONED: [[f64; 3]; 3] = [[1.0, 0.495, 0.5], [-0.333, 1.0, -0.247], [0.959, 0.0, 1.5]];
@@ -68,7 +68,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3]) {
         let mut qq = Tensor2::new(Rep::General);
         let mut hh = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_quaternion_higham(&mut qq, &mut hh, &ff);
+            polar_quaternion_higham(&mut qq, &mut hh, &ff).unwrap();
             std::hint::black_box(qq.get(0));
         });
     });
@@ -106,7 +106,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut qq = Tensor2::new(Rep::General);
         let mut hh = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_quaternion_higham(&mut qq, &mut hh, &ff);
+            polar_quaternion_higham(&mut qq, &mut hh, &ff).unwrap();
             std::hint::black_box(qq.get(0));
         });
     });

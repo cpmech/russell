@@ -5,7 +5,7 @@
 //! Each implementation is validated against all of these test cases and
 //! cross-checked against the other implementation.
 
-use crate::polar_decomp::{polar_decomp, PolarAlgo};
+use crate::polar_decomp::{PolarAlgo, polar_decomp};
 use crate::{Rep, Tensor2};
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 

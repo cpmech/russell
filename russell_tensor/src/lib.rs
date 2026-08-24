@@ -16,6 +16,7 @@
 //! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
 //! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
+//! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp]).
 //! * Constants — Includes Identity, transposition, and other projector tensors.
 //! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products.
 //! * Derivatives — Implements first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors)

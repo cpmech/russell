@@ -9,7 +9,7 @@
 //! decomposition of a 3×3 matrix", Numer. Algorithms, 73(2):349–369, 2016.
 
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
-use russell_tensor::{polar_decomp, PolarAlgo, Rep, StrError, Tensor2};
+use russell_tensor::{PolarAlgo, Rep, StrError, Tensor2, polar_decomp};
 
 fn main() -> Result<(), StrError> {
     // Input matrix (Higham & Noferini, test 5.1)

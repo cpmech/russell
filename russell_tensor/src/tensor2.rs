@@ -1246,21 +1246,29 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
+        assert_eq!(at.rep, self.rep);
+        self.transpose_stack(at.as_mut_data());
+    }
+
+    /// Returns the transpose tensor components in a caller-provided array (crate-internal)
+    ///
+    /// Mirrors [transpose] but returns the components instead of writing to a [Tensor2].
+    #[inline]
+    pub(crate) fn transpose_stack(&self, at: &mut [f64]) {
         // The transpose is given by:
         // [a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]
-        assert_eq!(at.rep, self.rep);
-        at.vec[0] = self.vec[0];
-        at.vec[1] = self.vec[1];
-        at.vec[2] = self.vec[2];
-        at.vec[3] = self.vec[3];
+        at[0] = self.vec[0];
+        at[1] = self.vec[1];
+        at[2] = self.vec[2];
+        at[3] = self.vec[3];
         if self.dim > 4 {
-            at.vec[4] = self.vec[4];
-            at.vec[5] = self.vec[5];
+            at[4] = self.vec[4];
+            at[5] = self.vec[5];
         }
         if self.dim > 6 {
-            at.vec[6] = -self.vec[6];
-            at.vec[7] = -self.vec[7];
-            at.vec[8] = -self.vec[8];
+            at[6] = -self.vec[6];
+            at[7] = -self.vec[7];
+            at[8] = -self.vec[8];
         }
     }
 

@@ -11,29 +11,6 @@ use russell_lab::{mat_add, mat_update};
 #[cfg(not(feature = "heap"))]
 use russell_lab::{small_mat_add, small_mat_update};
 
-/// Transposes a Kelvin-Mandel vector into a stack-allocated array (no allocation)
-///
-/// The transpose is `[a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]`; the antisymmetric
-/// components (6, 7, 8) are only negated when present (i.e., `dim == 9`).
-#[inline]
-fn transpose_data(a: &[f64], dim: usize) -> [f64; 9] {
-    let mut at = [0.0f64; 9];
-    at[0] = a[0];
-    at[1] = a[1];
-    at[2] = a[2];
-    at[3] = a[3];
-    if dim > 4 {
-        at[4] = a[4];
-        at[5] = a[5];
-    }
-    if dim > 6 {
-        at[6] = -a[6];
-        at[7] = -a[7];
-        at[8] = -a[8];
-    }
-    at
-}
-
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
 /// ```text
@@ -64,7 +41,8 @@ fn transpose_data(a: &[f64], dim: usize) -> [f64; 9] {
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) {
     assert_eq!(dai_da.rep(), Rep::General);
-    let at = transpose_data(ai.as_data(), ai.dim());
+    let mut at = [0.0; 9];
+    ai.transpose_stack(&mut at);
     t2_odyad_t2_stack(dai_da, -1.0, ai.as_data(), &at, ai.dim());
 }
 
@@ -137,7 +115,8 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) {
     assert_eq!(da2_da.rep(), Rep::General);
     let dim = a.dim();
     let a_data = a.as_data();
-    let at = transpose_data(a_data, dim);
+    let mut at = [0.0; 9];
+    a.transpose_stack(&mut at);
 
     // da2_da := A ⊗̄ I + I ⊗̄ Aᵀ
     t2_odyad_t2_stack(da2_da, 1.0, a_data, &IDENTITY2, dim);

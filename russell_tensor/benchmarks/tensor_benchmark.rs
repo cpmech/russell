@@ -15,7 +15,7 @@
 //! * `loops` — the loop-based reference implementation from `russell_tensor::test_loops`
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::test_loops::{
+use russell_tensor::z_reference_loop_fns::{
     deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, t2_qsd_t2_loops, t2_ssd_loops,
 };
 use russell_tensor::{AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, Rep, Tensor2, Tensor4};

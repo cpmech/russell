@@ -294,3 +294,45 @@ J_3 = \underline{s}_1\underline{s}_2\underline{s}_3 - \frac{1}{2}\underline{s}_3
 $$
 
 where $\underline{s}_1, \underline{s}_2, \underline{s}_3$ are the deviator components defined above, and $\underline{s}_4=\underline{\sigma}_4$, $\underline{s}_5=\underline{\sigma}_5$, $\underline{s}_6=\underline{\sigma}_6$.
+
+For a tensor $\underline{a}$ with Kelvin-Mandel components $\underline{a}_1,\ldots,\underline{a}_6$, the inverse $\underline{a}^{-1}$ is given by:
+
+$$
+\det(\underline{a}) = \underline{a}_1\underline{a}_2\underline{a}_3 - \frac{1}{2}\underline{a}_3\underline{a}_4^2 - \frac{1}{2}\underline{a}_1\underline{a}_5^2 + \frac{1}{\sqrt{2}}\underline{a}_4\underline{a}_5\underline{a}_6 - \frac{1}{2}\underline{a}_2\underline{a}_6^2
+$$
+
+$$
+\underline{a}^{-1}_1 = \frac{\underline{a}_2\underline{a}_3 - \frac{1}{2}\underline{a}_5^2}{\det(\underline{a})}, \qquad
+\underline{a}^{-1}_2 = \frac{\underline{a}_1\underline{a}_3 - \frac{1}{2}\underline{a}_6^2}{\det(\underline{a})}, \qquad
+\underline{a}^{-1}_3 = \frac{\underline{a}_1\underline{a}_2 - \frac{1}{2}\underline{a}_4^2}{\det(\underline{a})}
+$$
+
+$$
+\underline{a}^{-1}_4 = \frac{\sqrt{2}\,\underline{a}_5\underline{a}_6 - 2\,\underline{a}_3\underline{a}_4}{2\det(\underline{a})}, \qquad
+\underline{a}^{-1}_5 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_6 - 2\,\underline{a}_1\underline{a}_5}{2\det(\underline{a})}, \qquad
+\underline{a}^{-1}_6 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_5 - 2\,\underline{a}_2\underline{a}_6}{2\det(\underline{a})}
+$$
+
+For a tensor $\underline{F}$ (`Rep::General`) with Kelvin-Mandel components $\underline{F}_1,\ldots,\underline{F}_9$, the inverse $\underline{F}^{-1}$ is given by:
+
+$$
+\det(\underline{F}) = \underline{F}_1\underline{F}_2\underline{F}_3 - \frac{1}{2}\underline{F}_3\underline{F}_4^2 - \frac{1}{2}\underline{F}_1\underline{F}_5^2 + \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_5\underline{F}_6 - \frac{1}{2}\underline{F}_2\underline{F}_6^2 + \frac{1}{2}\underline{F}_3\underline{F}_7^2 + \frac{1}{\sqrt{2}}\underline{F}_6\underline{F}_7\underline{F}_8 + \frac{1}{2}\underline{F}_1\underline{F}_8^2 - \frac{1}{\sqrt{2}}\underline{F}_5\underline{F}_7\underline{F}_9 - \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_8\underline{F}_9 + \frac{1}{2}\underline{F}_2\underline{F}_9^2
+$$
+
+$$
+\underline{F}^{-1}_1 = \frac{2\underline{F}_2\underline{F}_3 - \underline{F}_5^2 + \underline{F}_8^2}{2\det(\underline{F})}, \qquad
+\underline{F}^{-1}_2 = \frac{2\underline{F}_1\underline{F}_3 - \underline{F}_6^2 + \underline{F}_9^2}{2\det(\underline{F})}, \qquad
+\underline{F}^{-1}_3 = \frac{2\underline{F}_1\underline{F}_2 - \underline{F}_4^2 + \underline{F}_7^2}{2\det(\underline{F})}
+$$
+
+$$
+\underline{F}^{-1}_4 = -\frac{\sqrt{2}\,\underline{F}_3\underline{F}_4 - \underline{F}_5\underline{F}_6 + \underline{F}_8\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_5 = -\frac{\sqrt{2}\,\underline{F}_1\underline{F}_5 - \underline{F}_4\underline{F}_6 + \underline{F}_7\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_6 = \frac{\underline{F}_4\underline{F}_5 - \sqrt{2}\,\underline{F}_2\underline{F}_6 + \underline{F}_7\underline{F}_8}{\sqrt{2}\det(\underline{F})}
+$$
+
+$$
+\underline{F}^{-1}_7 = -\frac{\sqrt{2}\,\underline{F}_3\underline{F}_7 + \underline{F}_6\underline{F}_8 - \underline{F}_5\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_8 = -\frac{\underline{F}_6\underline{F}_7 + \sqrt{2}\,\underline{F}_1\underline{F}_8 - \underline{F}_4\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_9 = \frac{\underline{F}_5\underline{F}_7 + \underline{F}_4\underline{F}_8 - \sqrt{2}\,\underline{F}_2\underline{F}_9}{\sqrt{2}\det(\underline{F})}
+$$

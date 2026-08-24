@@ -12,7 +12,7 @@
 //! Each function is also benchmarked in two variants:
 //!
 //! * `unrolled` — the production (manually-unrolled) implementation
-//! * `loops` — the loop-based reference implementation from `russell_tensor::test_loops`
+//! * `loops` — the loop-based reference implementation from `russell_tensor::z_reference_loop_fns`
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use russell_tensor::z_reference_loop_fns::{

@@ -26,17 +26,18 @@ To compare the **stack** and **heap** layouts, run the benchmark twice (once wit
 
 ## Benchmarked functions
 
-Each function is benchmarked in two modes, controlled by the `use_loops` flag:
+Each function is benchmarked in two variants:
 
-- `unrolled` — `use_loops = false` (the default, production path; direct component access)
-- `loops` — `use_loops = true` (loop-based; uses the `get`/`set` accessors)
+- `unrolled` — the production implementation (manually unrolled, direct component access)
+- `loops` — the loop-based reference implementation from `z_reference_loop_fns`
 
-| function                | description                             |
-| ----------------------- | --------------------------------------- |
-| `ssd_fn`                | self-sum-dyadic operation               |
-| `qsd_fn`                | quad-sum-dyadic operation               |
-| `deriv2_invariant_jj3`  | second derivative of the J3 invariant   |
-| `deriv2_invariant_lode` | second derivative of the Lode invariant |
+| function                | description                                        |
+| ----------------------- | -------------------------------------------------- |
+| `ssd_fn`                | self-sum-dyadic operation                          |
+| `qsd_fn`                | quad-sum-dyadic operation                          |
+| `deriv2_invariant_jj3`  | second derivative of the J3 invariant              |
+| `deriv2_invariant_lode` | second derivative of the Lode invariant            |
+| `deriv_squared_tensor`  | derivative of the squared tensor (general Tensor2) |
 
 All benchmarks use fixed 3×3 input tensors.
 
@@ -44,23 +45,24 @@ All benchmarks use fixed 3×3 input tensors.
 
 Median times (single machine, Intel MKL):
 
-| function               | stack/unrolled | heap/unrolled | stack/loops | heap/loops |
-| ---------------------- | -------------- | ------------- | ----------- | ---------- |
-| `ssd_fn`               | 5.53 ns        | 10.17 ns      | 211.02 ns   | 211.12 ns  |
-| `qsd_fn`               | 7.25 ns        | 14.63 ns      | 436.57 ns   | 437.80 ns  |
-| `deriv2_invariant_jj3` | 74.64 ns       | 99.18 ns      | 495.21 ns   | 527.16 ns  |
+| function                | stack/unrolled | heap/unrolled | stack/loops | heap/loops |
+| ----------------------- | -------------- | ------------- | ----------- | ---------- |
+| `ssd_fn`                | 3.52 ns        | 5.99 ns       | 181.28 ns   | 252.29 ns  |
+| `qsd_fn`                | 6.72 ns        | 10.41 ns      | 372.14 ns   | 512.96 ns  |
+| `deriv2_invariant_jj3`  | 19.48 ns       | 25.58 ns      | 347.93 ns   | 434.22 ns  |
+| `deriv2_invariant_lode` | 98.59 ns       | 147.86 ns     | 494.03 ns   | 663.02 ns  |
+| `deriv_squared_tensor`  | 23.28 ns       | 47.37 ns      | 77.73 ns    | 110.54 ns  |
 
 ## Observations
 
-- **Unrolled path:** the stack version is ~2× faster across the board. The heap version's
-  `Matrix::set_unchecked` carries the column-major access overhead, whereas the stack version
-  writes directly to `[[f64; 9]; 9]`.
-- **Loops path:** stack and heap are essentially identical (~0.05–6% difference) — the loop
-  overhead (iteration, `M_TO_IJ` lookups, `get_std`/`set` calls, and the conditional `√2`
-  factors) dominates and masks the storage-layout difference.
-- **Unrolled vs loops:** the unrolled path is ~40–60× faster for `ssd_fn`/`qsd_fn` and ~7×
-  faster for `deriv2_invariant_jj3` (which spends proportionally more time in the
-  `deviator`/matrix-multiplication steps).
+- **Unrolled path:** the stack version is ~1.3–2× faster across the board. The heap version's
+  `Matrix` carries the column-major access overhead, whereas the stack version writes directly
+  to `[[f64; 9]; 9]`.
+- **Loops path:** the stack version is ~1.3–1.4× faster; the loop overhead (iteration,
+  `M_TO_IJ`/`MN_TO_IJKL` lookups, and `get_std`/`set` accessors) dominates but does not fully
+  mask the storage-layout difference.
+- **Unrolled vs loops:** the unrolled path is ~40–55× faster for `ssd_fn`/`qsd_fn`, ~17× for
+  `deriv2_invariant_jj3`, ~5× for `deriv2_invariant_lode`, and ~2–3× for `deriv_squared_tensor`.
 
 ## How to run
 

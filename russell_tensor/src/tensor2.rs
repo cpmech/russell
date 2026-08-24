@@ -91,11 +91,6 @@ pub struct Tensor2 {
 
     /// Holds the Rep (representation) enum
     rep: Rep,
-
-    /// Enables the loop-based implementation (instead of the unrolled one)
-    ///
-    /// **Note:** This field is temporary and will be removed in a future version.
-    pub use_loops: bool,
 }
 
 impl Tensor2 {
@@ -135,7 +130,6 @@ impl Tensor2 {
                 dim,
                 vec: Vector::new(rep.dim()),
                 rep,
-                use_loops: false,
             }
         }
         #[cfg(not(feature = "heap"))]
@@ -144,7 +138,6 @@ impl Tensor2 {
                 dim,
                 vec: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 rep,
-                use_loops: false,
             }
         }
     }

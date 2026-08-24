@@ -142,11 +142,6 @@ pub struct Tensor4 {
 
     /// Holds the Rep (representation) enum
     rep: Rep,
-
-    /// Enables the loop-based implementation (instead of the unrolled one)
-    ///
-    /// **Note:** This field is temporary and will be removed in a future version.
-    pub use_loops: bool,
 }
 
 impl Tensor4 {
@@ -180,7 +175,6 @@ impl Tensor4 {
                 dim,
                 mat: Matrix::new(dim, dim),
                 rep,
-                use_loops: false,
             }
         }
         #[cfg(not(feature = "heap"))]
@@ -189,7 +183,6 @@ impl Tensor4 {
                 dim,
                 mat: [[0.0; 9]; 9],
                 rep,
-                use_loops: false,
             }
         }
     }

@@ -513,7 +513,6 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
         let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
         let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
         let c = 5.625 * SQRT_3 / f64::powf(jj2, 3.5);
-        aux.d2_jj3.use_loops = d2.use_loops;
         if sigma.rep() == Rep::Symmetric2D {
             let sig3d = sigma.sym2d_as_symmetric();
             deriv1_invariant_jj2(&mut aux.d1_jj2, &sig3d);

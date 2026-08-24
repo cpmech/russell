@@ -241,11 +241,6 @@ pub struct Tensor3 {
 
     /// Holds the Rep (representation) enum
     rep: Rep,
-
-    /// Enables the loop-based implementation (instead of the unrolled one)
-    ///
-    /// **Note:** This field is temporary and will be removed in a future version.
-    pub use_loops: bool,
 }
 
 impl Tensor3 {
@@ -282,7 +277,6 @@ impl Tensor3 {
                 ncol,
                 mat: Matrix::new(nrow, ncol),
                 rep,
-                use_loops: false,
             }
         }
         #[cfg(not(feature = "heap"))]
@@ -293,7 +287,6 @@ impl Tensor3 {
                 ncol,
                 mat: [[0.0; 9]; 9],
                 rep,
-                use_loops: false,
             }
         }
     }

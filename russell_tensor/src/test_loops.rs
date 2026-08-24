@@ -11,7 +11,7 @@ use russell_lab::Matrix;
 ///
 /// `Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)`
 ///
-/// Reference implementation of [t2_ssd].
+/// Reference implementation of [`crate::t2_ssd`].
 pub fn t2_ssd_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     let ddim = dd.dim();
@@ -36,7 +36,7 @@ pub fn t2_ssd_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 ///
 /// `Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)`
 ///
-/// Reference implementation of [t2_qsd_t2].
+/// Reference implementation of [`crate::t2_qsd_t2`].
 pub fn t2_qsd_t2_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     assert_eq!(bb.rep(), aa.rep());
@@ -65,7 +65,7 @@ pub fn t2_qsd_t2_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// `∂A²ᵢⱼ/∂Aₖₗ = Aᵢₖ δⱼₗ + δᵢₖ Aₗⱼ`
 ///
-/// Reference implementation of [deriv_squared_tensor].
+/// Reference implementation of [`crate::deriv_squared_tensor`].
 pub fn deriv_squared_tensor_loops(da2_da: &mut Tensor4, a: &Tensor2) {
     assert_eq!(da2_da.rep(), Rep::General);
     let a = a.as_std_matrix();
@@ -85,7 +85,7 @@ pub fn deriv_squared_tensor_loops(da2_da: &mut Tensor4, a: &Tensor2) {
 ///
 /// `d²J3/dσdσ = ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)`, with `s = deviator(σ)`
 ///
-/// Reference implementation of [deriv2_invariant_jj3].
+/// Reference implementation of [`crate::deriv2_invariant_jj3`].
 pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
     assert_eq!(d2.rep(), Rep::Symmetric);
     assert!(sigma.rep().symmetric());
@@ -120,7 +120,7 @@ pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
 ///
 /// `d²l/dσdσ = a·d²J3 − b·J3·d²J2 − b·(dJ3⊗dJ2 + dJ2⊗dJ3) + c·J3·(dJ2⊗dJ2)`
 ///
-/// Reference implementation of [deriv2_invariant_lode].
+/// Reference implementation of [`crate::deriv2_invariant_lode`].
 pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<f64> {
     assert_eq!(d2.rep(), Rep::Symmetric);
     assert!(sigma.rep().symmetric());

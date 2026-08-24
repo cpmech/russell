@@ -9,12 +9,15 @@
 //! Run the benchmark twice (with and without `--features heap`) to compare the
 //! two storage layouts.
 //!
-//! Each function is also benchmarked in two modes, controlled by the `use_loops` flag:
+//! Each function is also benchmarked in two variants:
 //!
-//! * `unrolled` — `use_loops = false` (the default, production path)
-//! * `loops` — `use_loops = true` (loop-based, uses the `get`/`set` accessors)
+//! * `unrolled` — the production (manually-unrolled) implementation
+//! * `loops` — the loop-based reference implementation from `russell_tensor::test_loops`
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use russell_tensor::test_loops::{
+    deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, t2_qsd_t2_loops, t2_ssd_loops,
+};
 use russell_tensor::{AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, Rep, Tensor2, Tensor4};
 use russell_tensor::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, t2_qsd_t2, t2_ssd};
 
@@ -31,7 +34,6 @@ fn bench_t2_ssd(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = false;
         b.iter(|| {
             t2_ssd(&mut dd, 1.0, &aa);
             std::hint::black_box(dd.get(0, 0));
@@ -41,9 +43,8 @@ fn bench_t2_ssd(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
         b.iter(|| {
-            t2_ssd(&mut dd, 1.0, &aa);
+            t2_ssd_loops(&mut dd, 1.0, &aa);
             std::hint::black_box(dd.get(0, 0));
         });
     });
@@ -59,7 +60,6 @@ fn bench_t2_qsd_t2(crit: &mut Criterion) {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let bb = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = false;
         b.iter(|| {
             t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
             std::hint::black_box(dd.get(0, 0));
@@ -70,9 +70,8 @@ fn bench_t2_qsd_t2(crit: &mut Criterion) {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let bb = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
         b.iter(|| {
-            t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
+            t2_qsd_t2_loops(&mut dd, 1.0, &aa, &bb);
             std::hint::black_box(dd.get(0, 0));
         });
     });
@@ -88,7 +87,6 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
         let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
         let mut aux = AuxDeriv2InvariantJ3::new();
-        d2.use_loops = false;
         b.iter(|| {
             deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
             std::hint::black_box(d2.get(0, 0));
@@ -98,10 +96,8 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
         let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
-        let mut aux = AuxDeriv2InvariantJ3::new();
-        d2.use_loops = true;
         b.iter(|| {
-            deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+            deriv2_invariant_jj3_loops(&mut d2, &sigma);
             std::hint::black_box(d2.get(0, 0));
         });
     });
@@ -117,7 +113,6 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
         let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
         let mut aux = AuxDeriv2InvariantLode::new();
-        d2.use_loops = false;
         b.iter(|| {
             deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
             std::hint::black_box(d2.get(0, 0));
@@ -127,10 +122,8 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
         let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
-        let mut aux = AuxDeriv2InvariantLode::new();
-        d2.use_loops = true;
         b.iter(|| {
-            deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
+            deriv2_invariant_lode_loops(&mut d2, &sigma);
             std::hint::black_box(d2.get(0, 0));
         });
     });
@@ -142,12 +135,21 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
 fn bench_deriv_squared_tensor(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("deriv_squared_tensor");
 
-    group.bench_with_input(BenchmarkId::new("general", ""), &(), |b, _| {
+    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
         let aa = Tensor2::from_std_matrix(&GENERAL, Rep::General).unwrap();
         let mut da2_da = Tensor4::new(Rep::General);
         let mut ii = Tensor2::new(Rep::General);
         b.iter(|| {
             deriv_squared_tensor(&mut da2_da, &mut ii, &aa);
+            std::hint::black_box(da2_da.get(0, 0));
+        });
+    });
+
+    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
+        let aa = Tensor2::from_std_matrix(&GENERAL, Rep::General).unwrap();
+        let mut da2_da = Tensor4::new(Rep::General);
+        b.iter(|| {
+            deriv_squared_tensor_loops(&mut da2_da, &aa);
             std::hint::black_box(da2_da.get(0, 0));
         });
     });

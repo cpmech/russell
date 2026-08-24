@@ -123,8 +123,7 @@ mod tensor4;
 #[cfg(test)]
 mod test_common;
 
-#[cfg(test)]
-mod test_loops;
+pub mod test_loops;
 
 pub use constants::*;
 pub use derivatives_t2::*;

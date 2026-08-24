@@ -1,12 +1,38 @@
-use crate::{ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
+use crate::{IDENTITY2, ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
 use crate::{Rep, Tensor2, Tensor4};
-use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd};
+use crate::{
+    deriv1_invariant_jj2, deriv1_invariant_jj3, qsd_fn_stack, ssd_fn_stack, t2_dyad_t2, t2_odyad_t2_stack,
+    t2_odyad_t2_update_stack,
+};
 
 #[cfg(feature = "heap")]
 use russell_lab::{mat_add, mat_update};
 
 #[cfg(not(feature = "heap"))]
 use russell_lab::{small_mat_add, small_mat_update};
+
+/// Transposes a Kelvin-Mandel vector into a stack-allocated array (no allocation)
+///
+/// The transpose is `[a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]`; the antisymmetric
+/// components (6, 7, 8) are only negated when present (i.e., `dim == 9`).
+#[inline]
+fn transpose_data(a: &[f64], dim: usize) -> [f64; 9] {
+    let mut at = [0.0f64; 9];
+    at[0] = a[0];
+    at[1] = a[1];
+    at[2] = a[2];
+    at[3] = a[3];
+    if dim > 4 {
+        at[4] = a[4];
+        at[5] = a[5];
+    }
+    if dim > 6 {
+        at[6] = -a[6];
+        at[7] = -a[7];
+        at[8] = -a[8];
+    }
+    at
+}
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -37,9 +63,9 @@ use russell_lab::{small_mat_add, small_mat_update};
 ///
 /// A panic will occur if the tensors have different [Rep].
 pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) {
-    let mut ai_t = ai.clone();
-    ai.transpose(&mut ai_t);
-    t2_odyad_t2(dai_da, -1.0, &ai, &ai_t);
+    assert_eq!(dai_da.rep(), Rep::General);
+    let at = transpose_data(ai.as_data(), ai.dim());
+    t2_odyad_t2_stack(dai_da, -1.0, ai.as_data(), &at, ai.dim());
 }
 
 /// Calculates the derivative of the inverse tensor w.r.t. a symmetric Tensor2
@@ -75,7 +101,7 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) {
 pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) {
     assert_eq!(dai_da.rep(), Rep::Symmetric);
     assert!(ai.rep().symmetric());
-    t2_ssd(dai_da, -0.5, ai);
+    ssd_fn_stack(dai_da, -0.5, ai.as_data(), ai.dim());
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a Tensor2
@@ -94,46 +120,28 @@ pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) {
 ///  ∂Aₖₗ
 /// ```
 ///
-/// **Note:** Two temporary Tensor2 and a Tensor4 are allocated in this function.
+/// **Note:** No temporary tensors are allocated in this function.
 ///
 /// # Output
 ///
 /// * `da2_da` -- the derivative of the squared tensor; it must be [Rep::General]
-/// * `ii` -- second-order identity tensor; must have the same [Rep] as tensor `a`
 ///
 /// # Input
 ///
-/// * `a` -- the second-order tensor; must have the same [Rep] as tensor `ii`
+/// * `a` -- the second-order tensor
 ///
 /// # Panics
 ///
-/// 1. A panic will occur if `da2_da` is not [Rep::General]
-/// 2. A panic will occur if `ii` has a different [Rep] than `a`
-pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2) {
+/// A panic will occur if `da2_da` is not [Rep::General]
+pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) {
     assert_eq!(da2_da.rep(), Rep::General);
-    assert_eq!(ii.rep(), a.rep());
+    let dim = a.dim();
+    let a_data = a.as_data();
+    let at = transpose_data(a_data, dim);
 
-    // set identity tensor
-    ii.clear();
-    ii.vec[0] = 1.0;
-    ii.vec[1] = 1.0;
-    ii.vec[2] = 1.0;
-
-    // compute A odyad I
-    t2_odyad_t2(da2_da, 1.0, &a, &ii);
-
-    // compute I odyad transpose(A)
-    let mut at = a.clone();
-    a.transpose(&mut at);
-    let mut ii_odyad_at = Tensor4::new(Rep::General);
-    t2_odyad_t2(&mut ii_odyad_at, 1.0, &ii, &at);
-
-    // compute A odyad I + I odyad transpose(A)
-    for m in 0..9 {
-        for n in 0..9 {
-            da2_da.set(m, n, da2_da.get(m, n) + ii_odyad_at.get(m, n));
-        }
-    }
+    // da2_da := A ⊗̄ I + I ⊗̄ Aᵀ
+    t2_odyad_t2_stack(da2_da, 1.0, a_data, &IDENTITY2, dim);
+    t2_odyad_t2_update_stack(da2_da, 1.0, &IDENTITY2, &at, dim);
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a symmetric Tensor2
@@ -157,7 +165,6 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2)
 /// # Output
 ///
 /// * `da2_da` -- the derivative of the squared tensor; it must be [Rep::Symmetric]
-/// * `ii` -- second-order identity tensor; must have the same [Rep] as tensor `a`
 ///
 /// # Input
 ///
@@ -167,16 +174,10 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2)
 ///
 /// 1. A panic will occur if `da2_da` is not [Rep::Symmetric]
 /// 2. A panic will occur if `a` is not symmetric
-/// 3. A panic will occur if `ii` has a different [Rep] than `a`
-pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, ii: &mut Tensor2, a: &Tensor2) {
+pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, a: &Tensor2) {
     assert_eq!(da2_da.rep(), Rep::Symmetric);
     assert!(a.rep().symmetric());
-    assert_eq!(ii.rep(), a.rep());
-    ii.clear();
-    ii.vec[0] = 1.0;
-    ii.vec[1] = 1.0;
-    ii.vec[2] = 1.0;
-    t2_qsd_t2(da2_da, 0.5, a, &ii);
+    qsd_fn_stack(da2_da, 0.5, a.as_data(), &IDENTITY2, a.dim());
 }
 
 /// Calculates the second derivative of the J2 invariant w.r.t. the stress tensor
@@ -226,9 +227,6 @@ pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) {
 pub struct AuxDeriv2InvariantJ3 {
     /// deviator tensor (Symmetric or Symmetric2D)
     pub s: Tensor2,
-
-    /// identity tensor (Symmetric or Symmetric2D)
-    pub ii: Tensor2,
 }
 
 impl AuxDeriv2InvariantJ3 {
@@ -236,7 +234,6 @@ impl AuxDeriv2InvariantJ3 {
     pub fn new() -> Self {
         AuxDeriv2InvariantJ3 {
             s: Tensor2::new(Rep::Symmetric),
-            ii: Tensor2::identity(Rep::Symmetric),
         }
     }
 }
@@ -276,7 +273,7 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
         sigma.deviator(&mut aux.s);
     }
     // d2 := ½ qsd(s,I)
-    t2_qsd_t2(d2, 0.5, &aux.s, &aux.ii);
+    qsd_fn_stack(d2, 0.5, aux.s.as_data(), &IDENTITY2, aux.s.dim());
     // d2 := ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)
     let dim = d2.dim();
     for m in 0..dim {
@@ -284,7 +281,7 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
             d2.set(
                 m,
                 n,
-                d2.get(m, n) - TWO_BY_3 * (aux.s.get(m) * aux.ii.get(n) + aux.ii.get(m) * aux.s.get(n)),
+                d2.get(m, n) - TWO_BY_3 * (aux.s.get(m) * IDENTITY2[n] + IDENTITY2[m] * aux.s.get(n)),
             );
         }
     }
@@ -898,8 +895,7 @@ mod tests {
     fn check_deriv_squared(a: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::new(Rep::General);
-        let mut ii = Tensor2::new(a.rep());
-        deriv_squared_tensor(&mut dd_ana, &mut ii, &a);
+        deriv_squared_tensor(&mut dd_ana, &a);
 
         // check using index expression
         let arr = dd_ana.as_std_array();
@@ -930,8 +926,7 @@ mod tests {
     fn check_deriv_squared_sym(a: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::new(Rep::Symmetric);
-        let mut ii = Tensor2::new(a.rep());
-        deriv_squared_tensor_sym(&mut dd_ana, &mut ii, &a);
+        deriv_squared_tensor_sym(&mut dd_ana, &a);
 
         // check using index expression
         let arr = dd_ana.as_std_array();
@@ -1348,45 +1343,24 @@ mod tests {
     #[should_panic]
     fn deriv_squared_tensor_panics_on_non_general() {
         let a = Tensor2::new(Rep::Symmetric2D);
-        let mut ii = Tensor2::new(Rep::Symmetric2D);
         let mut da2_da = Tensor4::new(Rep::Symmetric); // wrong; it must be general
-        deriv_squared_tensor(&mut da2_da, &mut ii, &a);
-    }
-
-    #[test]
-    #[should_panic]
-    fn deriv_squared_tensor_panics_on_different_mat() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let mut ii = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
-        let mut da2_da = Tensor4::new(Rep::General);
-        deriv_squared_tensor(&mut da2_da, &mut ii, &a);
+        deriv_squared_tensor(&mut da2_da, &a);
     }
 
     #[test]
     #[should_panic]
     fn deriv_squared_tensor_sym_panics_on_non_sym1() {
         let a = Tensor2::new(Rep::Symmetric2D);
-        let mut ii = Tensor2::new(Rep::Symmetric2D);
         let mut da2_da = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
-        deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a);
+        deriv_squared_tensor_sym(&mut da2_da, &a);
     }
 
     #[test]
     #[should_panic(expected = "a.rep().symmetric()")]
     fn deriv_squared_tensor_sym_panics_on_non_sym2() {
         let a = Tensor2::new(Rep::General); // wrong; it must be symmetric
-        let mut ii = Tensor2::new(Rep::General);
         let mut da2_da = Tensor4::new(Rep::Symmetric);
-        deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a);
-    }
-
-    #[test]
-    #[should_panic]
-    fn deriv_squared_tensor_sym_panics_on_different_mat() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let mut ii = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
-        let mut da2_da = Tensor4::new(Rep::Symmetric);
-        deriv_squared_tensor_sym(&mut da2_da, &mut ii, &a);
+        deriv_squared_tensor_sym(&mut da2_da, &a);
     }
 
     #[test]

@@ -16,10 +16,10 @@
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use russell_tensor::z_reference_loop_fns::{
-    deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, t2_qsd_t2_loops, t2_ssd_loops,
+    deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
 };
 use russell_tensor::{AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, Rep, Tensor2, Tensor4};
-use russell_tensor::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, t2_qsd_t2, t2_ssd};
+use russell_tensor::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
 
 /// Fixed symmetric 3×3 matrix used to build the input tensors
 const SYMMETRIC: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [2.0, 4.0, 5.0], [3.0, 5.0, 6.0]];
@@ -27,15 +27,15 @@ const SYMMETRIC: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [2.0, 4.0, 5.0], [3.0, 5.0, 6
 /// Fixed general (non-symmetric) 3×3 matrix used to build the input tensors
 const GENERAL: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
 
-/// Benchmarks `t2_ssd` (self-sum-dyadic)
-fn bench_t2_ssd(crit: &mut Criterion) {
-    let mut group = crit.benchmark_group("t2_ssd");
+/// Benchmarks `ssd_fn` (self-sum-dyadic)
+fn bench_ssd_fn(crit: &mut Criterion) {
+    let mut group = crit.benchmark_group("ssd_fn");
 
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         b.iter(|| {
-            t2_ssd(&mut dd, 1.0, &aa);
+            ssd_fn(&mut dd, 1.0, &aa);
             std::hint::black_box(dd.get(0, 0));
         });
     });
@@ -44,7 +44,7 @@ fn bench_t2_ssd(crit: &mut Criterion) {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         b.iter(|| {
-            t2_ssd_loops(&mut dd, 1.0, &aa);
+            ssd_fn_loops(&mut dd, 1.0, &aa);
             std::hint::black_box(dd.get(0, 0));
         });
     });
@@ -52,16 +52,16 @@ fn bench_t2_ssd(crit: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmarks `t2_qsd_t2` (quartic-sum-dyadic)
-fn bench_t2_qsd_t2(crit: &mut Criterion) {
-    let mut group = crit.benchmark_group("t2_qsd_t2");
+/// Benchmarks `qsd_fn` (quad-sum-dyadic)
+fn bench_qsd_fn(crit: &mut Criterion) {
+    let mut group = crit.benchmark_group("qsd_fn");
 
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
         let aa = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let bb = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         b.iter(|| {
-            t2_qsd_t2(&mut dd, 1.0, &aa, &bb);
+            qsd_fn(&mut dd, 1.0, &aa, &bb);
             std::hint::black_box(dd.get(0, 0));
         });
     });
@@ -71,7 +71,7 @@ fn bench_t2_qsd_t2(crit: &mut Criterion) {
         let bb = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
         b.iter(|| {
-            t2_qsd_t2_loops(&mut dd, 1.0, &aa, &bb);
+            qsd_fn_loops(&mut dd, 1.0, &aa, &bb);
             std::hint::black_box(dd.get(0, 0));
         });
     });
@@ -138,9 +138,8 @@ fn bench_deriv_squared_tensor(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
         let aa = Tensor2::from_std_matrix(&GENERAL, Rep::General).unwrap();
         let mut da2_da = Tensor4::new(Rep::General);
-        let mut ii = Tensor2::new(Rep::General);
         b.iter(|| {
-            deriv_squared_tensor(&mut da2_da, &mut ii, &aa);
+            deriv_squared_tensor(&mut da2_da, &aa);
             std::hint::black_box(da2_da.get(0, 0));
         });
     });
@@ -159,8 +158,8 @@ fn bench_deriv_squared_tensor(crit: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bench_t2_ssd,
-    bench_t2_qsd_t2,
+    bench_ssd_fn,
+    bench_qsd_fn,
     bench_deriv2_invariant_jj3,
     bench_deriv2_invariant_lode,
     bench_deriv_squared_tensor

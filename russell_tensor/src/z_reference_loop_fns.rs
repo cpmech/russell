@@ -11,8 +11,8 @@ use russell_lab::Matrix;
 ///
 /// `Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)`
 ///
-/// Reference implementation of [`crate::t2_ssd`].
-pub fn t2_ssd_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
+/// Reference implementation of [`crate::ssd_fn`].
+pub fn ssd_fn_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     let ndim = dd.dim();
     for m in 0..ndim {
@@ -36,8 +36,8 @@ pub fn t2_ssd_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 ///
 /// `Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)`
 ///
-/// Reference implementation of [`crate::t2_qsd_t2`].
-pub fn t2_qsd_t2_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
+/// Reference implementation of [`crate::qsd_fn`].
+pub fn qsd_fn_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     assert_eq!(bb.rep(), aa.rep());
     let ndim = dd.dim();
@@ -191,11 +191,10 @@ pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<
 #[cfg(test)]
 mod tests {
     use super::{
-        deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, t2_qsd_t2_loops,
-        t2_ssd_loops,
+        deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
     };
     use crate::{Rep, Tensor2, Tensor4};
-    use crate::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, t2_qsd_t2, t2_ssd};
+    use crate::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
     use russell_lab::mat_approx_eq;
 
     const GENERAL_A: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
@@ -210,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_ssd_loops_matches() {
+    fn ssd_fn_loops_matches() {
         for (mat, rep) in [
             (&GENERAL_A, Rep::General),
             (&SYMMETRIC_A, Rep::Symmetric),
@@ -219,14 +218,14 @@ mod tests {
             let a = Tensor2::from_std_matrix(mat, rep).unwrap();
             let mut dd = Tensor4::new(Rep::Symmetric);
             let mut dd_ref = Tensor4::new(Rep::Symmetric);
-            t2_ssd(&mut dd, 2.0, &a);
-            t2_ssd_loops(&mut dd_ref, 2.0, &a);
+            ssd_fn(&mut dd, 2.0, &a);
+            ssd_fn_loops(&mut dd_ref, 2.0, &a);
             assert_same_t4(&dd, &dd_ref, 1e-12);
         }
     }
 
     #[test]
-    fn t2_qsd_t2_loops_matches() {
+    fn qsd_fn_loops_matches() {
         for (mat_a, mat_b, rep) in [
             (&GENERAL_A, &GENERAL_B, Rep::General),
             (&SYMMETRIC_A, &SYMMETRIC_B, Rep::Symmetric),
@@ -236,8 +235,8 @@ mod tests {
             let b = Tensor2::from_std_matrix(mat_b, rep).unwrap();
             let mut dd = Tensor4::new(Rep::Symmetric);
             let mut dd_ref = Tensor4::new(Rep::Symmetric);
-            t2_qsd_t2(&mut dd, 2.0, &a, &b);
-            t2_qsd_t2_loops(&mut dd_ref, 2.0, &a, &b);
+            qsd_fn(&mut dd, 2.0, &a, &b);
+            qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
             assert_same_t4(&dd, &dd_ref, 1e-12);
         }
     }
@@ -246,8 +245,7 @@ mod tests {
     fn deriv_squared_tensor_loops_matches() {
         let a = Tensor2::from_std_matrix(&GENERAL_A, Rep::General).unwrap();
         let mut da2_da = Tensor4::new(Rep::General);
-        let mut ii = Tensor2::new(Rep::General);
-        deriv_squared_tensor(&mut da2_da, &mut ii, &a);
+        deriv_squared_tensor(&mut da2_da, &a);
         let mut da2_da_ref = Tensor4::new(Rep::General);
         deriv_squared_tensor_loops(&mut da2_da_ref, &a);
         assert_same_t4(&da2_da, &da2_da_ref, 1e-12);

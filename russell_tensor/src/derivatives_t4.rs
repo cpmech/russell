@@ -3,10 +3,10 @@ use crate::{Rep, Tensor2, Tensor4};
 use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, t2_dyad_t2, t2_odyad_t2, t2_qsd_t2, t2_ssd};
 
 #[cfg(feature = "heap")]
-use russell_lab::{mat_add, mat_mat_mul, mat_update};
+use russell_lab::{mat_add, mat_update};
 
 #[cfg(not(feature = "heap"))]
-use russell_lab::{small_mat_add, small_mat_mat_mul, small_mat_update};
+use russell_lab::{small_mat_add, small_mat_update};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -229,15 +229,6 @@ pub struct AuxDeriv2InvariantJ3 {
 
     /// identity tensor (Symmetric or Symmetric2D)
     pub ii: Tensor2,
-
-    /// isotropic making projector Psymdev (Symmetric)
-    pub psd: Tensor4,
-
-    /// auxiliary fourth-order tensor (Symmetric)
-    pub aa: Tensor4,
-
-    /// auxiliary fourth-order tensor (Symmetric)
-    pub bb: Tensor4,
 }
 
 impl AuxDeriv2InvariantJ3 {
@@ -246,9 +237,6 @@ impl AuxDeriv2InvariantJ3 {
         AuxDeriv2InvariantJ3 {
             s: Tensor2::new(Rep::Symmetric),
             ii: Tensor2::identity(Rep::Symmetric),
-            psd: Tensor4::constant_pp_symdev(true),
-            aa: Tensor4::new(Rep::Symmetric),
-            bb: Tensor4::new(Rep::Symmetric),
         }
     }
 }
@@ -258,9 +246,9 @@ impl AuxDeriv2InvariantJ3 {
 /// ```text
 /// s := deviator(σ)
 ///
-///  d²J3     1                    2
-/// ─────── = ─ qsd(s,I):Psymdev - ─ I ⊗ s
-/// dσ ⊗ dσ   2                    3
+///  d²J3     1            2
+/// ─────── = ─ qsd(s,I) − ─ (s ⊗ I + I ⊗ s)
+/// dσ ⊗ dσ   2            3
 ///
 /// (σ must be symmetric)
 /// ```
@@ -287,26 +275,18 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, si
     } else {
         sigma.deviator(&mut aux.s);
     }
-    aux.aa.use_loops = d2.use_loops;
-    t2_qsd_t2(&mut aux.aa, 0.5, &mut aux.s, &aux.ii); // aa := 0.5 qsd(s,I)
-    t2_dyad_t2(&mut aux.bb, -TWO_BY_3, &aux.ii, &aux.s); // bb := -⅔ I ⊗ s
-    #[cfg(not(feature = "heap"))]
+    // d2 := ½ qsd(s,I)
+    t2_qsd_t2(d2, 0.5, &aux.s, &aux.ii);
+    // d2 := ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)
     let dim = d2.dim();
-    #[cfg(feature = "heap")]
-    {
-        mat_mat_mul(&mut d2.mat, 1.0, &aux.aa.mat, &aux.psd.mat, 0.0).unwrap(); // d2 := 0.5 qsd(s,I) : Psd
-    }
-    #[cfg(not(feature = "heap"))]
-    {
-        small_mat_mat_mul(&mut d2.mat, 1.0, &aux.aa.mat, &aux.psd.mat, 0.0, dim); // d2 := 0.5 qsd(s,I) : Psd
-    }
-    #[cfg(feature = "heap")]
-    {
-        mat_update(&mut d2.mat, 1.0, &aux.bb.mat).unwrap(); // d2 += -⅔ I ⊗ s
-    }
-    #[cfg(not(feature = "heap"))]
-    {
-        small_mat_update(&mut d2.mat, 1.0, &aux.bb.mat, dim); // d2 += -⅔ I ⊗ s
+    for m in 0..dim {
+        for n in 0..dim {
+            d2.set(
+                m,
+                n,
+                d2.get(m, n) - TWO_BY_3 * (aux.s.get(m) * aux.ii.get(n) + aux.ii.get(m) * aux.s.get(n)),
+            );
+        }
     }
 }
 

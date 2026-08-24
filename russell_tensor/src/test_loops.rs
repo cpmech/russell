@@ -14,9 +14,9 @@ use russell_lab::Matrix;
 /// Reference implementation of [`crate::t2_ssd`].
 pub fn t2_ssd_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
-    let ddim = dd.dim();
-    for m in 0..ddim {
-        for n in 0..ddim {
+    let ndim = dd.dim();
+    for m in 0..ndim {
+        for n in 0..ndim {
             dd.set(m, n, 0.0);
         }
     }
@@ -40,9 +40,9 @@ pub fn t2_ssd_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 pub fn t2_qsd_t2_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     assert_eq!(bb.rep(), aa.rep());
-    let ddim = dd.dim();
-    for m in 0..ddim {
-        for n in 0..ddim {
+    let ndim = dd.dim();
+    for m in 0..ndim {
+        for n in 0..ndim {
             dd.set(m, n, 0.0);
         }
     }
@@ -83,7 +83,7 @@ pub fn deriv_squared_tensor_loops(da2_da: &mut Tensor4, a: &Tensor2) {
 
 /// Computes the second derivative of the J3 invariant using loops
 ///
-/// `d²J3/dσdσ = ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)`, with `s = deviator(σ)`
+/// `d²J3/dσ⊗dσ = ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)`, with `s = deviator(σ)`
 ///
 /// Reference implementation of [`crate::deriv2_invariant_jj3`].
 pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
@@ -91,9 +91,9 @@ pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
     assert!(sigma.rep().symmetric());
     let mut s = Tensor2::new(sigma.rep());
     sigma.deviator(&mut s);
-    let ddim = d2.dim();
-    for m in 0..ddim {
-        for n in 0..ddim {
+    let ndim = d2.dim();
+    for m in 0..ndim {
+        for n in 0..ndim {
             d2.set(m, n, 0.0);
         }
     }
@@ -118,7 +118,7 @@ pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
 
 /// Computes the second derivative of the Lode invariant using loops
 ///
-/// `d²l/dσdσ = a·d²J3 − b·J3·d²J2 − b·(dJ3⊗dJ2 + dJ2⊗dJ3) + c·J3·(dJ2⊗dJ2)`
+/// `d²l/dσ⊗dσ = a·d²J3 − b·J3·d²J2 − b·(dJ3⊗dJ2 + dJ2⊗dJ3) + c·J3·(dJ2⊗dJ2)`
 ///
 /// Reference implementation of [`crate::deriv2_invariant_lode`].
 pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<f64> {
@@ -151,9 +151,9 @@ pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<
     }
 
     // assemble the 6x6 result via loops
-    let ddim = d2.dim();
-    for m in 0..ddim {
-        for n in 0..ddim {
+    let ndim = d2.dim();
+    for m in 0..ndim {
+        for n in 0..ndim {
             d2.set(m, n, 0.0);
         }
     }

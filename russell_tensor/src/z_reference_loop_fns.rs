@@ -256,8 +256,7 @@ mod tests {
         for (mat, rep) in [(&SYMMETRIC_A, Rep::Symmetric), (&SYM2D_A, Rep::Symmetric2D)] {
             let sigma = Tensor2::from_std_matrix(mat, rep).unwrap();
             let mut d2 = Tensor4::new(Rep::Symmetric);
-            let mut aux = crate::AuxDeriv2InvariantJ3::new();
-            deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+            deriv2_invariant_jj3(&mut d2, &sigma);
             let mut d2_ref = Tensor4::new(Rep::Symmetric);
             deriv2_invariant_jj3_loops(&mut d2_ref, &sigma);
             assert_same_t4(&d2, &d2_ref, 1e-11);

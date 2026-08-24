@@ -1588,30 +1588,38 @@ impl Tensor2 {
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) {
         assert_eq!(dev.rep, self.rep);
+        self.deviator_stack(dev.as_mut_data());
+    }
+
+    /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
+    ///
+    /// Mirrors [deviator] but returns the components instead of writing to a [Tensor2].
+    #[inline]
+    pub(crate) fn deviator_stack(&self, dev: &mut [f64]) {
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
-        dev.vec[0] = self.vec[0] - m;
-        dev.vec[1] = self.vec[1] - m;
-        dev.vec[2] = self.vec[2] - m;
-        dev.vec[3] = self.vec[3];
+        dev[0] = self.vec[0] - m;
+        dev[1] = self.vec[1] - m;
+        dev[2] = self.vec[2] - m;
+        dev[3] = self.vec[3];
         if self.dim > 4 {
-            dev.vec[4] = self.vec[4];
-            dev.vec[5] = self.vec[5];
+            dev[4] = self.vec[4];
+            dev[5] = self.vec[5];
         }
         if self.dim > 6 {
-            dev.vec[6] = self.vec[6];
-            dev.vec[7] = self.vec[7];
-            dev.vec[8] = self.vec[8];
+            dev[6] = self.vec[6];
+            dev[7] = self.vec[7];
+            dev[8] = self.vec[8];
         }
-        let new_trace_s = dev.vec[0] + dev.vec[1] + dev.vec[2];
+        let new_trace_s = dev[0] + dev[1] + dev[2];
         if f64::abs(new_trace_s) > 1e-10 {
             // fix error due to large magnitudes
             let mut v = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
             sort3(&mut v);
             let d = f64::max(1.0, v.2);
             let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
-            dev.vec[0] = (self.vec[0] / d - m) * d;
-            dev.vec[1] = (self.vec[1] / d - m) * d;
-            dev.vec[2] = (self.vec[2] / d - m) * d;
+            dev[0] = (self.vec[0] / d - m) * d;
+            dev[1] = (self.vec[1] / d - m) * d;
+            dev[2] = (self.vec[2] / d - m) * d;
         }
     }
 

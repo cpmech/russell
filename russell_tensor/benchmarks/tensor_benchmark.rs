@@ -18,7 +18,7 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use russell_tensor::z_reference_loop_fns::{
     deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
 };
-use russell_tensor::{AuxDeriv2InvariantJ3, AuxDeriv2InvariantLode, Rep, Tensor2, Tensor4};
+use russell_tensor::{AuxDeriv2InvariantLode, Rep, Tensor2, Tensor4};
 use russell_tensor::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
 
 /// Fixed symmetric 3×3 matrix used to build the input tensors
@@ -86,9 +86,8 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
         let sigma = Tensor2::from_std_matrix(&SYMMETRIC, Rep::Symmetric).unwrap();
         let mut d2 = Tensor4::new(Rep::Symmetric);
-        let mut aux = AuxDeriv2InvariantJ3::new();
         b.iter(|| {
-            deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+            deriv2_invariant_jj3(&mut d2, &sigma);
             std::hint::black_box(d2.get(0, 0));
         });
     });

@@ -223,21 +223,6 @@ pub fn deriv2_invariant_jj2(d2: &mut Tensor4, sigma: &Tensor2) {
     d2.set(5, 5, 1.0);
 }
 
-/// Holds auxiliary data to compute the second derivative of the J3 invariant
-pub struct AuxDeriv2InvariantJ3 {
-    /// deviator tensor (Symmetric or Symmetric2D)
-    pub s: Tensor2,
-}
-
-impl AuxDeriv2InvariantJ3 {
-    /// Returns a new instance
-    pub fn new() -> Self {
-        AuxDeriv2InvariantJ3 {
-            s: Tensor2::new(Rep::Symmetric),
-        }
-    }
-}
-
 /// Calculates the second derivative of the J3 invariant w.r.t. the stress tensor
 ///
 /// ```text
@@ -263,25 +248,25 @@ impl AuxDeriv2InvariantJ3 {
 /// 1. A panic will occur if `d2` is not [Rep::Symmetric]
 /// 2. A panic will occur if `sigma` is not symmetric
 #[inline]
-pub fn deriv2_invariant_jj3(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantJ3, sigma: &Tensor2) {
+pub fn deriv2_invariant_jj3(d2: &mut Tensor4, sigma: &Tensor2) {
     assert_eq!(d2.rep(), Rep::Symmetric);
     assert!(sigma.rep().symmetric());
-    if sigma.rep() == Rep::Symmetric2D {
-        let sig3d = sigma.sym2d_as_symmetric();
-        sig3d.deviator(&mut aux.s);
-    } else {
-        sigma.deviator(&mut aux.s);
-    }
+
+    // deviator: s = dev(σ) (stack array)
+    let mut s = [0.0; 9];
+    sigma.deviator_stack(&mut s);
+
     // d2 := ½ qsd(s,I)
-    qsd_fn_stack(d2, 0.5, aux.s.as_data(), &IDENTITY2, aux.s.dim());
+    qsd_fn_stack(d2, 0.5, &s, &IDENTITY2, 6);
+
     // d2 := ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)
-    let dim = d2.dim();
-    for m in 0..dim {
-        for n in 0..dim {
+    let ndim = d2.dim();
+    for i in 0..ndim {
+        for j in 0..ndim {
             d2.set(
-                m,
-                n,
-                d2.get(m, n) - TWO_BY_3 * (aux.s.get(m) * IDENTITY2[n] + IDENTITY2[m] * aux.s.get(n)),
+                i,
+                j,
+                d2.get(i, j) - TWO_BY_3 * (s[i] * IDENTITY2[j] + IDENTITY2[i] * s[j]),
             );
         }
     }
@@ -426,9 +411,6 @@ pub fn deriv2_invariant_q(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantSigmaT, 
 
 /// Holds auxiliary data to compute the second derivative of the Lode invariant
 pub struct AuxDeriv2InvariantLode {
-    /// auxiliary data to compute the second derivative of J3
-    pub aux_jj3: AuxDeriv2InvariantJ3,
-
     /// deviator tensor (Symmetric or Symmetric2D)
     pub s: Tensor2,
 
@@ -458,7 +440,6 @@ impl AuxDeriv2InvariantLode {
     /// Returns a new instance
     pub fn new() -> Self {
         AuxDeriv2InvariantLode {
-            aux_jj3: AuxDeriv2InvariantJ3::new(),
             s: Tensor2::new(Rep::Symmetric),
             d1_jj2: Tensor2::new(Rep::Symmetric),
             d1_jj3: Tensor2::new(Rep::Symmetric),
@@ -515,12 +496,12 @@ pub fn deriv2_invariant_lode(d2: &mut Tensor4, aux: &mut AuxDeriv2InvariantLode,
             deriv1_invariant_jj2(&mut aux.d1_jj2, &sig3d);
             deriv1_invariant_jj3(&mut aux.d1_jj3, &mut aux.s, &sig3d);
             deriv2_invariant_jj2(&mut aux.d2_jj2, &sig3d);
-            deriv2_invariant_jj3(&mut aux.d2_jj3, &mut aux.aux_jj3, &sig3d);
+            deriv2_invariant_jj3(&mut aux.d2_jj3, &sig3d);
         } else {
             deriv1_invariant_jj2(&mut aux.d1_jj2, sigma);
             deriv1_invariant_jj3(&mut aux.d1_jj3, &mut aux.s, sigma);
             deriv2_invariant_jj2(&mut aux.d2_jj2, sigma);
-            deriv2_invariant_jj3(&mut aux.d2_jj3, &mut aux.aux_jj3, sigma);
+            deriv2_invariant_jj3(&mut aux.d2_jj3, sigma);
         }
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj2, 1.0, &aux.d1_jj2, &aux.d1_jj2);
         t2_dyad_t2(&mut aux.d1_jj2_dy_d1_jj3, 1.0, &aux.d1_jj2, &aux.d1_jj3);
@@ -573,7 +554,7 @@ mod tests {
     use crate::{deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
-    // Returns the dim x dim Kelvin-Mandel submatrix of a Tensor4 as a Matrix
+    // Returns the dim x dim Kelvin-Mandel sub matrix of a Tensor4 as a Matrix
     fn kelvin_matrix(dd: &Tensor4) -> Matrix {
         let dim = dd.dim();
         let mut m = Matrix::new(dim, dim);
@@ -1080,8 +1061,7 @@ mod tests {
     fn check_deriv2_jj3(sigma: &Tensor2, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::new(Rep::Symmetric);
-        let mut aux = AuxDeriv2InvariantJ3::new();
-        deriv2_invariant_jj3(&mut dd2_ana, &mut aux, &sigma);
+        deriv2_invariant_jj3(&mut dd2_ana, &sigma);
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
@@ -1276,9 +1256,8 @@ mod tests {
         let sigma = Tensor2::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix, Rep::Symmetric).unwrap();
         let mut s = Tensor2::new(Rep::Symmetric);
         sigma.deviator(&mut s);
-        let mut aux = AuxDeriv2InvariantJ3::new();
         let mut d2 = Tensor4::new(Rep::Symmetric);
-        deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+        deriv2_invariant_jj3(&mut d2, &sigma);
 
         // println!("sigma =\n{:.1}", sigma.to_std_matrix());
         // println!("sigma_mat =\n{}", sigma.vec);
@@ -1382,19 +1361,17 @@ mod tests {
     #[test]
     #[should_panic]
     fn deriv2_invariant_jj3_panics_on_non_sym1() {
-        let mut aux = AuxDeriv2InvariantJ3::new();
         let sigma = Tensor2::new(Rep::Symmetric);
         let mut d2 = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
-        deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+        deriv2_invariant_jj3(&mut d2, &sigma);
     }
 
     #[test]
     #[should_panic(expected = "sigma.rep().symmetric()")]
     fn deriv2_invariant_jj3_panics_on_non_sym2() {
-        let mut aux = AuxDeriv2InvariantJ3::new();
         let sigma = Tensor2::new(Rep::General); // wrong; it must be symmetric
         let mut d2 = Tensor4::new(Rep::Symmetric);
-        deriv2_invariant_jj3(&mut d2, &mut aux, &sigma);
+        deriv2_invariant_jj3(&mut d2, &sigma);
     }
 
     #[test]

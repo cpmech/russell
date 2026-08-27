@@ -50,22 +50,22 @@ use std::fmt::{self, Write};
 /// Note that the first-order tensors (vectors) are always given by the standard
 /// components in 3D. All functions here require vectors such as `[u] = {u0, u1, u2}`.
 ///
-/// # Standard and Kelvin components
+/// # Standard and Kelvin-Mandel components
 ///
 /// The methods of this struct follow a naming convention that distinguishes
-/// between the **standard** (Cartesian) components `Hᵢⱼₖ` and the **Kelvin**
+/// between the **standard** (Cartesian) components `Hᵢⱼₖ` and the **Kelvin-Mandel**
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
 ///   their names (e.g., [Tensor3::from_std_matrix], [Tensor3::get_std],
 ///   [Tensor3::as_std_matrix], [Tensor3::sym_set_std]).
-/// * Methods dealing directly with the **Kelvin components** carry no qualifier
+/// * Methods dealing directly with the **Kelvin-Mandel components** carry no qualifier
 ///   (e.g., [Tensor3::get], [Tensor3::set], [Tensor3::set_tensor],
 ///   [Tensor3::update]).
 ///
-/// Internally, the components are converted to the Kelvin basis as follows.
+/// Internally, the components are converted to the Kelvin-Mandel basis as follows.
 ///
-/// The Kelvin components Ĥijk are calculated from the standard components Hijk
+/// The Kelvin-Mandel components Ĥijk are calculated from the standard components Hijk
 /// using the following expression for Case A:
 ///
 /// ```text
@@ -75,7 +75,7 @@ use std::fmt::{self, Write};
 ///        ⎩ (Hjik - Hijk) / √2  if i > j
 /// ```
 ///
-/// The Kelvin components Ĥijk are calculated from the standard components Hijk
+/// The Kelvin-Mandel components Ĥijk are calculated from the standard components Hijk
 /// using the following expression for Case B:
 ///
 /// ```text
@@ -199,7 +199,7 @@ pub struct Tensor3 {
     /// Indicates Case A; otherwise Case B
     case_a: bool,
 
-    /// Holds the actual number of rows of the Kelvin matrix
+    /// Holds the actual number of rows of the Kelvin-Mandel matrix
     ///
     /// Case A:
     /// * General: `nrow = 9`
@@ -212,7 +212,7 @@ pub struct Tensor3 {
     /// * Symmetric2D: `nrow = 3`
     nrow: usize,
 
-    /// Holds the actual number of columns of the Kelvin matrix
+    /// Holds the actual number of columns of the Kelvin-Mandel matrix
     ///
     /// Case A:
     /// * General: `ncol = 3`
@@ -225,13 +225,13 @@ pub struct Tensor3 {
     /// * Symmetric2D: `ncol = 4`
     ncol: usize,
 
-    /// Holds the components in Kelvin basis as matrix (heap).
+    /// Holds the components in Kelvin-Mandel basis as matrix (heap).
     ///
     /// Heap version => dynamically allocated memory
     #[cfg(feature = "heap")]
     pub(crate) mat: Matrix,
 
-    /// Holds the components in Kelvin basis as matrix (stack).
+    /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     ///
     /// Stack version => fixed size memory
     ///
@@ -241,11 +241,6 @@ pub struct Tensor3 {
 
     /// Holds the Rep (representation) enum
     rep: Rep,
-
-    /// Enables the loop-based implementation (instead of the unrolled one)
-    ///
-    /// **Note:** This field is temporary and will be removed in a future version.
-    pub use_loops: bool,
 }
 
 impl Tensor3 {
@@ -282,7 +277,6 @@ impl Tensor3 {
                 ncol,
                 mat: Matrix::new(nrow, ncol),
                 rep,
-                use_loops: false,
             }
         }
         #[cfg(not(feature = "heap"))]
@@ -293,7 +287,6 @@ impl Tensor3 {
                 ncol,
                 mat: [[0.0; 9]; 9],
                 rep,
-                use_loops: false,
             }
         }
     }
@@ -330,13 +323,13 @@ impl Tensor3 {
         self.case_a
     }
 
-    /// Returns the Kelvin matrix dimension (nrow, ncol)
+    /// Returns the Kelvin-Mandel matrix dimension (nrow, ncol)
     #[inline]
     pub fn dims(&self) -> (usize, usize) {
         (self.nrow, self.ncol)
     }
 
-    /// Returns the (m,n) component of the Kelvin matrix
+    /// Returns the (m,n) component of the Kelvin-Mandel matrix
     ///
     /// # Input
     ///
@@ -370,7 +363,7 @@ impl Tensor3 {
         }
     }
 
-    /// Sets the (m,n) component of the Kelvin matrix
+    /// Sets the (m,n) component of the Kelvin-Mandel matrix
     ///
     /// # Input
     ///
@@ -1251,7 +1244,7 @@ impl Tensor3 {
 }
 
 impl fmt::Display for Tensor3 {
-    /// Generates a string representation of Kelvin matrix associated with this Tensor3
+    /// Generates a string representation of Kelvin-Mandel matrix associated with this Tensor3
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;

@@ -27,3 +27,8 @@ serde_json = "1.0"
 name = "tensor_benchmark"
 harness = false
 path = "benchmarks/tensor_benchmark.rs"
+
+[[bench]]
+name = "polar_decomp_benchmark"
+harness = false
+path = "benchmarks/polar_decomp_benchmark.rs"

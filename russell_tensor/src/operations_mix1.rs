@@ -15,7 +15,7 @@ use crate::Rep; // for documentation
 /// Dᵢⱼₖₗ = α aᵢⱼ bₖₗ
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// Dₘₙ = α aₘ bₙ
@@ -98,7 +98,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 /// Dᵢⱼₖₗ += α aᵢⱼ bₖₗ
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// Dₘₙ += α aₘ bₙ
@@ -184,7 +184,7 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///         k l
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// bₘ = α Σ Dₘₙ aₙ
@@ -271,7 +271,7 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///         k l
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// bₘ = α Σ Dₘₙ aₙ + β bₘ
@@ -443,7 +443,7 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///     i j k l
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// s = Σ Σ aₘ Dₘₙ bₙ
@@ -493,7 +493,7 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 ///                     s t o p
 /// ```
 ///
-/// Or, in Kelvin basis:
+/// Or, in Kelvin-Mandel basis:
 ///
 /// ```text
 /// Eₘₙ = α Dₘₙ + β Σ Σ (Dₘₐ aₐ) (bₑ Dₑₙ)

@@ -17,5 +17,4 @@ rustc-ice-*.txt
 *.aider*
 *.go
 *.rsa
-session.json
-old-session.json
+session*.json

@@ -1,5 +1,5 @@
 use super::{Tensor2, Tensor4};
-use crate::{M_TO_IJ, Rep, SQRT_2};
+use crate::{Rep, SQRT_2};
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
@@ -9,7 +9,7 @@ use crate::{M_TO_IJ, Rep, SQRT_2};
 ///         _
 /// D = s A ⊗ B
 /// ```
-/// 
+///
 /// With orthonormal Cartesian components:
 ///
 /// ```text
@@ -31,14 +31,17 @@ use crate::{M_TO_IJ, Rep, SQRT_2};
 ///
 /// 1. A panic will occur if `dd` is not [Rep::General]
 /// 2. A panic will occur if `a` and `b` have different [Rep]
-#[rustfmt::skip]
 #[inline]
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::General);
     assert_eq!(bb.rep(), aa.rep());
-    let dim = aa.dim();
-    let a = &aa.vec;
-    let b = &bb.vec;
+    t2_odyad_t2_stack(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+}
+
+/// Internal (unrolled) overbar dyadic product on raw Kelvin-Mandel vectors.
+#[rustfmt::skip]
+#[inline]
+pub(crate) fn t2_odyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
         dd.set(0, 0, s*a[0]*b[0]);
@@ -313,6 +316,238 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     }
 }
 
+/// Internal (unrolled) overbar dyadic product (accumulate) on raw Kelvin-Mandel vectors.
+///
+/// Computes `dd += s (A ⊗ B)`.
+#[rustfmt::skip]
+#[inline]
+pub(crate) fn t2_odyad_t2_update_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+    let tsq2 = 2.0 * SQRT_2;
+    if dim == 4 {
+        dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
+        dd.set(0, 1, dd.get(0, 1) + s*(a[3]*b[3])/2.0);
+        dd.set(0, 3, dd.get(0, 3) + s*(a[3]*b[0] + a[0]*b[3])/2.0);
+        dd.set(0, 6, dd.get(0, 6) + s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
+
+        dd.set(1, 0, dd.get(1, 0) + s*(a[3]*b[3])/2.0);
+        dd.set(1, 1, dd.get(1, 1) + s*a[1]*b[1]);
+        dd.set(1, 3, dd.get(1, 3) + s*(a[3]*b[1] + a[1]*b[3])/2.0);
+        dd.set(1, 6, dd.get(1, 6) + s*(a[3]*b[1] - a[1]*b[3])/2.0);
+
+        dd.set(2, 2, dd.get(2, 2) + s*a[2]*b[2]);
+
+        dd.set(3, 0, dd.get(3, 0) + s*(a[3]*b[0] + a[0]*b[3])/2.0);
+        dd.set(3, 1, dd.get(3, 1) + s*(a[3]*b[1] + a[1]*b[3])/2.0);
+        dd.set(3, 3, dd.get(3, 3) + s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0);
+        dd.set(3, 6, dd.get(3, 6) + s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
+
+        dd.set(4, 4, dd.get(4, 4) + s*(a[2]*b[1] + a[1]*b[2])/2.0);
+        dd.set(4, 5, dd.get(4, 5) + s*(a[3]*b[2] + a[2]*b[3])/tsq2);
+        dd.set(4, 7, dd.get(4, 7) + s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
+        dd.set(4, 8, dd.get(4, 8) + s*(a[3]*b[2] - a[2]*b[3])/tsq2);
+
+        dd.set(5, 4, dd.get(5, 4) + s*(a[3]*b[2] + a[2]*b[3])/tsq2);
+        dd.set(5, 5, dd.get(5, 5) + s*(a[2]*b[0] + a[0]*b[2])/2.0);
+        dd.set(5, 7, dd.get(5, 7) + s*(a[3]*b[2] - a[2]*b[3])/tsq2);
+        dd.set(5, 8, dd.get(5, 8) + s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
+
+        dd.set(6, 0, dd.get(6, 0) + s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
+        dd.set(6, 1, dd.get(6, 1) + s*(a[3]*b[1] - a[1]*b[3])/2.0);
+        dd.set(6, 3, dd.get(6, 3) + s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
+        dd.set(6, 6, dd.get(6, 6) + s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3])/2.0);
+
+        dd.set(7, 4, dd.get(7, 4) + s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
+        dd.set(7, 5, dd.get(7, 5) + s*(a[3]*b[2] - a[2]*b[3])/tsq2);
+        dd.set(7, 7, dd.get(7, 7) + s*(a[2]*b[1] + a[1]*b[2])/2.0);
+        dd.set(7, 8, dd.get(7, 8) + s*(a[3]*b[2] + a[2]*b[3])/tsq2);
+
+        dd.set(8, 4, dd.get(8, 4) + s*(a[3]*b[2] - a[2]*b[3])/tsq2);
+        dd.set(8, 5, dd.get(8, 5) + s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
+        dd.set(8, 7, dd.get(8, 7) + s*(a[3]*b[2] + a[2]*b[3])/tsq2);
+        dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2])/2.0);
+    } else if dim == 6 {
+        dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
+        dd.set(0, 1, dd.get(0, 1) + s*(a[3]*b[3])/2.0);
+        dd.set(0, 2, dd.get(0, 2) + s*(a[5]*b[5])/2.0);
+        dd.set(0, 3, dd.get(0, 3) + s*(a[3]*b[0] + a[0]*b[3])/2.0);
+        dd.set(0, 4, dd.get(0, 4) + s*(a[5]*b[3] + a[3]*b[5])/tsq2);
+        dd.set(0, 5, dd.get(0, 5) + s*(a[5]*b[0] + a[0]*b[5])/2.0);
+        dd.set(0, 6, dd.get(0, 6) + s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
+        dd.set(0, 7, dd.get(0, 7) + s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2);
+        dd.set(0, 8, dd.get(0, 8) + s*(-(a[5]*b[0]) + a[0]*b[5])/2.0);
+
+        dd.set(1, 0, dd.get(1, 0) + s*(a[3]*b[3])/2.0);
+        dd.set(1, 1, dd.get(1, 1) + s*a[1]*b[1]);
+        dd.set(1, 2, dd.get(1, 2) + s*(a[4]*b[4])/2.0);
+        dd.set(1, 3, dd.get(1, 3) + s*(a[3]*b[1] + a[1]*b[3])/2.0);
+        dd.set(1, 4, dd.get(1, 4) + s*(a[4]*b[1] + a[1]*b[4])/2.0);
+        dd.set(1, 5, dd.get(1, 5) + s*(a[4]*b[3] + a[3]*b[4])/tsq2);
+        dd.set(1, 6, dd.get(1, 6) + s*(a[3]*b[1] - a[1]*b[3])/2.0);
+        dd.set(1, 7, dd.get(1, 7) + s*(-(a[4]*b[1]) + a[1]*b[4])/2.0);
+        dd.set(1, 8, dd.get(1, 8) + s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2);
+
+        dd.set(2, 0, dd.get(2, 0) + s*(a[5]*b[5])/2.0);
+        dd.set(2, 1, dd.get(2, 1) + s*(a[4]*b[4])/2.0);
+        dd.set(2, 2, dd.get(2, 2) + s*a[2]*b[2]);
+        dd.set(2, 3, dd.get(2, 3) + s*(a[5]*b[4] + a[4]*b[5])/tsq2);
+        dd.set(2, 4, dd.get(2, 4) + s*(a[4]*b[2] + a[2]*b[4])/2.0);
+        dd.set(2, 5, dd.get(2, 5) + s*(a[5]*b[2] + a[2]*b[5])/2.0);
+        dd.set(2, 6, dd.get(2, 6) + s*(a[5]*b[4] - a[4]*b[5])/tsq2);
+        dd.set(2, 7, dd.get(2, 7) + s*(a[4]*b[2] - a[2]*b[4])/2.0);
+        dd.set(2, 8, dd.get(2, 8) + s*(a[5]*b[2] - a[2]*b[5])/2.0);
+
+        dd.set(3, 0, dd.get(3, 0) + s*(a[3]*b[0] + a[0]*b[3])/2.0);
+        dd.set(3, 1, dd.get(3, 1) + s*(a[3]*b[1] + a[1]*b[3])/2.0);
+        dd.set(3, 2, dd.get(3, 2) + s*(a[5]*b[4] + a[4]*b[5])/tsq2);
+        dd.set(3, 3, dd.get(3, 3) + s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3])/2.0);
+        dd.set(3, 4, dd.get(3, 4) + s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
+        dd.set(3, 5, dd.get(3, 5) + s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
+        dd.set(3, 6, dd.get(3, 6) + s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
+        dd.set(3, 7, dd.get(3, 7) + s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
+        dd.set(3, 8, dd.get(3, 8) + s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
+
+        dd.set(4, 0, dd.get(4, 0) + s*(a[5]*b[3] + a[3]*b[5])/tsq2);
+        dd.set(4, 1, dd.get(4, 1) + s*(a[4]*b[1] + a[1]*b[4])/2.0);
+        dd.set(4, 2, dd.get(4, 2) + s*(a[4]*b[2] + a[2]*b[4])/2.0);
+        dd.set(4, 3, dd.get(4, 3) + s*(SQRT_2*a[5]*b[1] + a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
+        dd.set(4, 4, dd.get(4, 4) + s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4])/2.0);
+        dd.set(4, 5, dd.get(4, 5) + s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
+        dd.set(4, 6, dd.get(4, 6) + s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
+        dd.set(4, 7, dd.get(4, 7) + s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
+        dd.set(4, 8, dd.get(4, 8) + s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0);
+
+        dd.set(5, 0, dd.get(5, 0) + s*(a[5]*b[0] + a[0]*b[5])/2.0);
+        dd.set(5, 1, dd.get(5, 1) + s*(a[4]*b[3] + a[3]*b[4])/tsq2);
+        dd.set(5, 2, dd.get(5, 2) + s*(a[5]*b[2] + a[2]*b[5])/2.0);
+        dd.set(5, 3, dd.get(5, 3) + s*(SQRT_2*a[4]*b[0] + a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
+        dd.set(5, 4, dd.get(5, 4) + s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
+        dd.set(5, 5, dd.get(5, 5) + s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])/2.0);
+        dd.set(5, 6, dd.get(5, 6) + s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
+        dd.set(5, 7, dd.get(5, 7) + s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0);
+        dd.set(5, 8, dd.get(5, 8) + s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
+
+        dd.set(6, 0, dd.get(6, 0) + s*(-(a[3]*b[0]) + a[0]*b[3])/2.0);
+        dd.set(6, 1, dd.get(6, 1) + s*(a[3]*b[1] - a[1]*b[3])/2.0);
+        dd.set(6, 2, dd.get(6, 2) + s*(a[5]*b[4] - a[4]*b[5])/tsq2);
+        dd.set(6, 3, dd.get(6, 3) + s*(-(a[1]*b[0]) + a[0]*b[1])/2.0);
+        dd.set(6, 4, dd.get(6, 4) + s*(SQRT_2*a[5]*b[1] - a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
+        dd.set(6, 5, dd.get(6, 5) + s*(-(SQRT_2*a[4]*b[0]) + a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
+        dd.set(6, 6, dd.get(6, 6) + s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3])/2.0);
+        dd.set(6, 7, dd.get(6, 7) + s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
+        dd.set(6, 8, dd.get(6, 8) + s*(SQRT_2*a[4]*b[0] - a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
+
+        dd.set(7, 0, dd.get(7, 0) + s*(-(a[5]*b[3]) + a[3]*b[5])/tsq2);
+        dd.set(7, 1, dd.get(7, 1) + s*(-(a[4]*b[1]) + a[1]*b[4])/2.0);
+        dd.set(7, 2, dd.get(7, 2) + s*(a[4]*b[2] - a[2]*b[4])/2.0);
+        dd.set(7, 3, dd.get(7, 3) + s*(-(SQRT_2*a[5]*b[1]) - a[4]*b[3] + a[3]*b[4] + SQRT_2*a[1]*b[5])/4.0);
+        dd.set(7, 4, dd.get(7, 4) + s*(-(a[2]*b[1]) + a[1]*b[2])/2.0);
+        dd.set(7, 5, dd.get(7, 5) + s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] - a[5]*b[4] + a[4]*b[5])/4.0);
+        dd.set(7, 6, dd.get(7, 6) + s*(-(SQRT_2*a[5]*b[1]) + a[4]*b[3] + a[3]*b[4] - SQRT_2*a[1]*b[5])/4.0);
+        dd.set(7, 7, dd.get(7, 7) + s*(a[2]*b[1] + a[1]*b[2] - a[4]*b[4])/2.0);
+        dd.set(7, 8, dd.get(7, 8) + s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
+
+        dd.set(8, 0, dd.get(8, 0) + s*(-(a[5]*b[0]) + a[0]*b[5])/2.0);
+        dd.set(8, 1, dd.get(8, 1) + s*(-(a[4]*b[3]) + a[3]*b[4])/tsq2);
+        dd.set(8, 2, dd.get(8, 2) + s*(a[5]*b[2] - a[2]*b[5])/2.0);
+        dd.set(8, 3, dd.get(8, 3) + s*(-(SQRT_2*a[4]*b[0]) - a[5]*b[3] + SQRT_2*a[0]*b[4] + a[3]*b[5])/4.0);
+        dd.set(8, 4, dd.get(8, 4) + s*(SQRT_2*a[3]*b[2] - SQRT_2*a[2]*b[3] + a[5]*b[4] - a[4]*b[5])/4.0);
+        dd.set(8, 5, dd.get(8, 5) + s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
+        dd.set(8, 6, dd.get(8, 6) + s*(SQRT_2*a[4]*b[0] - a[5]*b[3] + SQRT_2*a[0]*b[4] - a[3]*b[5])/4.0);
+        dd.set(8, 7, dd.get(8, 7) + s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
+        dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0);
+    } else {
+        dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
+        dd.set(0, 1, dd.get(0, 1) + s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
+        dd.set(0, 2, dd.get(0, 2) + s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
+        dd.set(0, 3, dd.get(0, 3) + s*(a[3]*b[0] + a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
+        dd.set(0, 4, dd.get(0, 4) + s*((a[5] + a[8])*(b[3] + b[6]) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
+        dd.set(0, 5, dd.get(0, 5) + s*(a[5]*b[0] + a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
+        dd.set(0, 6, dd.get(0, 6) + s*(-(a[3]*b[0]) - a[6]*b[0] + a[0]*(b[3] + b[6]))/2.0);
+        dd.set(0, 7, dd.get(0, 7) + s*(-((a[5] + a[8])*(b[3] + b[6])) + (a[3] + a[6])*(b[5] + b[8]))/tsq2);
+        dd.set(0, 8, dd.get(0, 8) + s*(-(a[5]*b[0]) - a[8]*b[0] + a[0]*(b[5] + b[8]))/2.0);
+
+        dd.set(1, 0, dd.get(1, 0) + s*((a[3] - a[6])*(b[3] - b[6]))/2.0);
+        dd.set(1, 1, dd.get(1, 1) + s*a[1]*b[1]);
+        dd.set(1, 2, dd.get(1, 2) + s*((a[4] + a[7])*(b[4] + b[7]))/2.0);
+        dd.set(1, 3, dd.get(1, 3) + s*(a[3]*b[1] - a[6]*b[1] + a[1]*(b[3] - b[6]))/2.0);
+        dd.set(1, 4, dd.get(1, 4) + s*(a[4]*b[1] + a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
+        dd.set(1, 5, dd.get(1, 5) + s*((a[4] + a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
+        dd.set(1, 6, dd.get(1, 6) + s*(a[3]*b[1] - a[6]*b[1] + a[1]*(-b[3] + b[6]))/2.0);
+        dd.set(1, 7, dd.get(1, 7) + s*(-(a[4]*b[1]) - a[7]*b[1] + a[1]*(b[4] + b[7]))/2.0);
+        dd.set(1, 8, dd.get(1, 8) + s*(-((a[4] + a[7])*(b[3] - b[6])) + (a[3] - a[6])*(b[4] + b[7]))/tsq2);
+
+        dd.set(2, 0, dd.get(2, 0) + s*((a[5] - a[8])*(b[5] - b[8]))/2.0);
+        dd.set(2, 1, dd.get(2, 1) + s*((a[4] - a[7])*(b[4] - b[7]))/2.0);
+        dd.set(2, 2, dd.get(2, 2) + s*a[2]*b[2]);
+        dd.set(2, 3, dd.get(2, 3) + s*((a[5] - a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] - b[8]))/tsq2);
+        dd.set(2, 4, dd.get(2, 4) + s*(a[4]*b[2] - a[7]*b[2] + a[2]*(b[4] - b[7]))/2.0);
+        dd.set(2, 5, dd.get(2, 5) + s*(a[5]*b[2] - a[8]*b[2] + a[2]*(b[5] - b[8]))/2.0);
+        dd.set(2, 6, dd.get(2, 6) + s*((a[5] - a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] - b[8]))/tsq2);
+        dd.set(2, 7, dd.get(2, 7) + s*(a[4]*b[2] - a[7]*b[2] + a[2]*(-b[4] + b[7]))/2.0);
+        dd.set(2, 8, dd.get(2, 8) + s*(a[5]*b[2] - a[8]*b[2] + a[2]*(-b[5] + b[8]))/2.0);
+
+        dd.set(3, 0, dd.get(3, 0) + s*(a[3]*b[0] - a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
+        dd.set(3, 1, dd.get(3, 1) + s*(a[3]*b[1] + a[6]*b[1] + a[1]*(b[3] + b[6]))/2.0);
+        dd.set(3, 2, dd.get(3, 2) + s*((a[5] + a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] + b[8]))/tsq2);
+        dd.set(3, 3, dd.get(3, 3) + s*(a[1]*b[0] + a[0]*b[1] + a[3]*b[3] - a[6]*b[6])/2.0);
+        dd.set(3, 4, dd.get(3, 4) + s*(SQRT_2*(a[5] + a[8])*b[1] + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+        dd.set(3, 5, dd.get(3, 5) + s*(SQRT_2*(a[4] + a[7])*b[0] + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
+        dd.set(3, 6, dd.get(3, 6) + s*(-(a[1]*b[0]) + a[0]*b[1] - a[6]*b[3] + a[3]*b[6])/2.0);
+        dd.set(3, 7, dd.get(3, 7) + s*(-(SQRT_2*(a[5] + a[8])*b[1]) - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) + SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+        dd.set(3, 8, dd.get(3, 8) + s*(-(SQRT_2*(a[4] + a[7])*b[0]) - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) + (a[3] - a[6])*(b[5] + b[8]))/4.0);
+
+        dd.set(4, 0, dd.get(4, 0) + s*((a[5] - a[8])*(b[3] - b[6]) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
+        dd.set(4, 1, dd.get(4, 1) + s*(a[4]*b[1] - a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
+        dd.set(4, 2, dd.get(4, 2) + s*(a[4]*b[2] + a[7]*b[2] + a[2]*(b[4] + b[7]))/2.0);
+        dd.set(4, 3, dd.get(4, 3) + s*(SQRT_2*(a[5] - a[8])*b[1] + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+        dd.set(4, 4, dd.get(4, 4) + s*(a[2]*b[1] + a[1]*b[2] + a[4]*b[4] - a[7]*b[7])/2.0);
+        dd.set(4, 5, dd.get(4, 5) + s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
+        dd.set(4, 6, dd.get(4, 6) + s*(SQRT_2*(a[5] - a[8])*b[1] - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+        dd.set(4, 7, dd.get(4, 7) + s*(-(a[2]*b[1]) + a[1]*b[2] - a[7]*b[4] + a[4]*b[7])/2.0);
+        dd.set(4, 8, dd.get(4, 8) + s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) + (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0);
+
+        dd.set(5, 0, dd.get(5, 0) + s*(a[5]*b[0] - a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
+        dd.set(5, 1, dd.get(5, 1) + s*((a[4] - a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
+        dd.set(5, 2, dd.get(5, 2) + s*(a[5]*b[2] + a[8]*b[2] + a[2]*(b[5] + b[8]))/2.0);
+        dd.set(5, 3, dd.get(5, 3) + s*(SQRT_2*(a[4] - a[7])*b[0] + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
+        dd.set(5, 4, dd.get(5, 4) + s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
+        dd.set(5, 5, dd.get(5, 5) + s*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5] - a[8]*b[8])/2.0);
+        dd.set(5, 6, dd.get(5, 6) + s*(-(SQRT_2*(a[4] - a[7])*b[0]) + (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0);
+        dd.set(5, 7, dd.get(5, 7) + s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) + (a[4] - a[7])*(b[5] + b[8]))/4.0);
+        dd.set(5, 8, dd.get(5, 8) + s*(-(a[2]*b[0]) + a[0]*b[2] - a[8]*b[5] + a[5]*b[8])/2.0);
+
+        dd.set(6, 0, dd.get(6, 0) + s*(-(a[3]*b[0]) + a[6]*b[0] + a[0]*(b[3] - b[6]))/2.0);
+        dd.set(6, 1, dd.get(6, 1) + s*(a[3]*b[1] + a[6]*b[1] - a[1]*(b[3] + b[6]))/2.0);
+        dd.set(6, 2, dd.get(6, 2) + s*((a[5] + a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] + b[8]))/tsq2);
+        dd.set(6, 3, dd.get(6, 3) + s*(-(a[1]*b[0]) + a[0]*b[1] + a[6]*b[3] - a[3]*b[6])/2.0);
+        dd.set(6, 4, dd.get(6, 4) + s*(SQRT_2*(a[5] + a[8])*b[1] - (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+        dd.set(6, 5, dd.get(6, 5) + s*(-(SQRT_2*(a[4] + a[7])*b[0]) + (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
+        dd.set(6, 6, dd.get(6, 6) + s*(a[1]*b[0] + a[0]*b[1] - a[3]*b[3] + a[6]*b[6])/2.0);
+        dd.set(6, 7, dd.get(6, 7) + s*(-(SQRT_2*(a[5] + a[8])*b[1]) + (a[4] + a[7])*(b[3] + b[6]) + (a[3] + a[6])*(b[4] + b[7]) - SQRT_2*a[1]*(b[5] + b[8]))/4.0);
+        dd.set(6, 8, dd.get(6, 8) + s*(SQRT_2*(a[4] + a[7])*b[0] - (a[5] + a[8])*(b[3] - b[6]) + SQRT_2*a[0]*(b[4] + b[7]) - (a[3] - a[6])*(b[5] + b[8]))/4.0);
+
+        dd.set(7, 0, dd.get(7, 0) + s*(-((a[5] - a[8])*(b[3] - b[6])) + (a[3] - a[6])*(b[5] - b[8]))/tsq2);
+        dd.set(7, 1, dd.get(7, 1) + s*(-(a[4]*b[1]) + a[7]*b[1] + a[1]*(b[4] - b[7]))/2.0);
+        dd.set(7, 2, dd.get(7, 2) + s*(a[4]*b[2] + a[7]*b[2] - a[2]*(b[4] + b[7]))/2.0);
+        dd.set(7, 3, dd.get(7, 3) + s*(-(SQRT_2*(a[5] - a[8])*b[1]) - (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) + SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+        dd.set(7, 4, dd.get(7, 4) + s*(-(a[2]*b[1]) + a[1]*b[2] + a[7]*b[4] - a[4]*b[7])/2.0);
+        dd.set(7, 5, dd.get(7, 5) + s*(SQRT_2*(a[3] - a[6])*b[2] - SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) + (a[4] + a[7])*(b[5] - b[8]))/4.0);
+        dd.set(7, 6, dd.get(7, 6) + s*(-(SQRT_2*(a[5] - a[8])*b[1]) + (a[4] - a[7])*(b[3] - b[6]) + (a[3] - a[6])*(b[4] - b[7]) - SQRT_2*a[1]*(b[5] - b[8]))/4.0);
+        dd.set(7, 7, dd.get(7, 7) + s*(a[2]*b[1] + a[1]*b[2] - a[4]*b[4] + a[7]*b[7])/2.0);
+        dd.set(7, 8, dd.get(7, 8) + s*(SQRT_2*(a[3] - a[6])*b[2] + SQRT_2*a[2]*(b[3] - b[6]) - (a[5] - a[8])*(b[4] + b[7]) - (a[4] + a[7])*(b[5] - b[8]))/4.0);
+
+        dd.set(8, 0, dd.get(8, 0) + s*(-(a[5]*b[0]) + a[8]*b[0] + a[0]*(b[5] - b[8]))/2.0);
+        dd.set(8, 1, dd.get(8, 1) + s*(-((a[4] - a[7])*(b[3] + b[6])) + (a[3] + a[6])*(b[4] - b[7]))/tsq2);
+        dd.set(8, 2, dd.get(8, 2) + s*(a[5]*b[2] + a[8]*b[2] - a[2]*(b[5] + b[8]))/2.0);
+        dd.set(8, 3, dd.get(8, 3) + s*(-(SQRT_2*(a[4] - a[7])*b[0]) - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) + (a[3] + a[6])*(b[5] - b[8]))/4.0);
+        dd.set(8, 4, dd.get(8, 4) + s*(SQRT_2*(a[3] + a[6])*b[2] - SQRT_2*a[2]*(b[3] + b[6]) + (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
+        dd.set(8, 5, dd.get(8, 5) + s*(-(a[2]*b[0]) + a[0]*b[2] + a[8]*b[5] - a[5]*b[8])/2.0);
+        dd.set(8, 6, dd.get(8, 6) + s*(SQRT_2*(a[4] - a[7])*b[0] - (a[5] - a[8])*(b[3] + b[6]) + SQRT_2*a[0]*(b[4] - b[7]) - (a[3] + a[6])*(b[5] - b[8]))/4.0);
+        dd.set(8, 7, dd.get(8, 7) + s*(SQRT_2*(a[3] + a[6])*b[2] + SQRT_2*a[2]*(b[3] + b[6]) - (a[5] + a[8])*(b[4] - b[7]) - (a[4] - a[7])*(b[5] + b[8]))/4.0);
+        dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5] + a[8]*b[8])/2.0);
+    }
+}
+
 /// Performs the underbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
 /// Computes:
@@ -321,7 +556,7 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// D = s A ⊗ B
 ///         ‾
 /// ```
-/// 
+///
 /// With orthonormal Cartesian components:
 ///
 /// ```text
@@ -343,14 +578,17 @@ pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 ///
 /// 1. A panic will occur if `dd` is not [Rep::General]
 /// 2. A panic will occur if the `a` and `b` have different [Rep]
-#[rustfmt::skip]
 #[inline]
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::General);
     assert_eq!(bb.rep(), aa.rep());
-    let dim = aa.dim();
-    let a = &aa.vec;
-    let b = &bb.vec;
+    t2_udyad_t2_stack(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+}
+
+/// Internal (unrolled) underbar dyadic product on raw Kelvin-Mandel vectors.
+#[rustfmt::skip]
+#[inline]
+pub(crate) fn t2_udyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
         dd.set(0, 0, s*a[0]*b[0]);
@@ -634,13 +872,13 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// D = s (A ⊗ A + A ⊗ A)
 ///                  ‾
 /// ```
-/// 
+///
 /// With orthonormal Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)
 /// ```
-/// 
+///
 /// **Important:** Even if `A` is Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
 ///
 /// # Output
@@ -650,35 +888,20 @@ pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// # Input
 ///
 /// * `aa` -- Second-order tensor, symmetric or not.
-/// 
+///
 /// # Panics
-/// 
+///
 /// A panic will occur if `dd` is not [Rep::Symmetric]
+#[inline]
+pub fn ssd_fn(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
+    assert_eq!(dd.rep(), Rep::Symmetric);
+    ssd_fn_stack(dd, s, aa.as_data(), aa.dim());
+}
+
+/// Internal (unrolled) self-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::Symmetric);
-    let dim = aa.dim();
-    let a = &aa.vec;
-    if dd.use_loops {
-        let ddim = dd.dim();
-        for m in 0..ddim {
-            for n in 0..ddim {
-                dd.set(m, n, 0.0);
-            }
-        }
-        for m in 0..6 {
-            let (i, j) = M_TO_IJ[m];
-            let fm = if i == j { 1.0 } else { SQRT_2 };
-            for n in 0..6 {
-                let (k, l) = M_TO_IJ[n];
-                let fn_ = if k == l { 1.0 } else { SQRT_2 };
-                let dijkl = aa.get_std(i, k) * aa.get_std(j, l) + aa.get_std(i, l) * aa.get_std(j, k);
-                dd.set(m, n, s * fm * fn_ * dijkl);
-            }
-        }
-        return;
-    }
+pub(crate) fn ssd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
     if dim == 4 {
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*(a[3]*a[3]));
@@ -817,7 +1040,7 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 /// D = s (A ⊗ B + A ⊗ B + B ⊗ A + B ⊗ A)
 ///                  ‾               ‾
 /// ```
-/// 
+///
 /// With orthonormal Cartesian components:
 ///
 /// ```text
@@ -834,39 +1057,22 @@ pub fn t2_ssd(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 ///
 /// * `aa` -- Second-order tensor, symmetric or not; with the same [Rep] as `bb`
 /// * `bb` -- Second-order tensor, symmetric or not; with the same [Rep] as `aa`
-/// 
+///
 /// # Panics
-/// 
+///
 /// 1. A panic will occur if `dd` is not [Rep::Symmetric]
 /// 2. A panic will occur if `aa` and `bb` have different [Rep]
-#[rustfmt::skip]
 #[inline]
-pub fn t2_qsd_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
+pub fn qsd_fn(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     assert_eq!(bb.rep(), aa.rep());
-    let dim = aa.dim();
-    let a = &aa.vec;
-    let b = &bb.vec;
-    if dd.use_loops {
-        let ddim = dd.dim();
-        for m in 0..ddim {
-            for n in 0..ddim {
-                dd.set(m, n, 0.0);
-            }
-        }
-        for m in 0..6 {
-            let (i, j) = M_TO_IJ[m];
-            let fm = if i == j { 1.0 } else { SQRT_2 };
-            for n in 0..6 {
-                let (k, l) = M_TO_IJ[n];
-                let fn_ = if k == l { 1.0 } else { SQRT_2 };
-                let dijkl = aa.get_std(i, k) * bb.get_std(j, l) + aa.get_std(i, l) * bb.get_std(j, k)
-                    + bb.get_std(i, k) * aa.get_std(j, l) + bb.get_std(i, l) * aa.get_std(j, k);
-                dd.set(m, n, s * fm * fn_ * dijkl);
-            }
-        }
-        return;
-    }
+    qsd_fn_stack(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+}
+
+/// Internal (unrolled) quad-sum-dyadic operation on raw Kelvin-Mandel vectors.
+#[rustfmt::skip]
+#[inline]
+pub(crate) fn qsd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     if dim == 4 {
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*a[3]*b[3]));
@@ -1142,6 +1348,43 @@ mod tests {
     }
 
     #[test]
+    fn t2_odyad_t2_update_stack_works() {
+        // dd += s (A ⊗̄ B) for each representation
+        for (mat_a, mat_b, rep) in [
+            (
+                &[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+                &[[9.0, 8.0, 7.0], [6.0, 5.0, 4.0], [3.0, 2.0, 1.0]],
+                Rep::General,
+            ),
+            (
+                &[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]],
+                &[[3.0, 5.0, 6.0], [5.0, 2.0, 4.0], [6.0, 4.0, 1.0]],
+                Rep::Symmetric,
+            ),
+            (
+                &[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]],
+                &[[3.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 1.0]],
+                Rep::Symmetric2D,
+            ),
+        ] {
+            let a = Tensor2::from_std_matrix(mat_a, rep).unwrap();
+            let b = Tensor2::from_std_matrix(mat_b, rep).unwrap();
+
+            // dd := 2.0 (A ⊗̄ B)
+            let mut dd = Tensor4::new(Rep::General);
+            t2_odyad_t2(&mut dd, 2.0, &a, &b);
+
+            // dd += 3.0 (A ⊗̄ B)  =>  dd == 5.0 (A ⊗̄ B)
+            t2_odyad_t2_update_stack(&mut dd, 3.0, a.as_data(), b.as_data(), a.dim());
+
+            // reference
+            let mut dd_ref = Tensor4::new(Rep::General);
+            t2_odyad_t2(&mut dd_ref, 5.0, &a, &b);
+            mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
+        }
+    }
+
+    #[test]
     #[should_panic]
     fn t2_udyad_t2_panics_on_non_general() {
         let a = Tensor2::new(Rep::Symmetric2D);
@@ -1280,10 +1523,10 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn t2_ssd_panics_on_non_sym() {
+    fn ssd_fn_panics_on_non_sym() {
         let a = Tensor2::new(Rep::Symmetric2D);
         let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
-        t2_ssd(&mut dd, 1.0, &a);
+        ssd_fn(&mut dd, 1.0, &a);
     }
 
     fn check_ssd(s: f64, a_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
@@ -1300,7 +1543,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_ssd_works() {
+    fn ssd_fn_works() {
         // general
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
@@ -1309,7 +1552,7 @@ mod tests {
             [7.0, 8.0, 9.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_ssd(&mut dd, 2.0, &a);
+        ssd_fn(&mut dd, 2.0, &a);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [4.0, 16.0, 36.0, 8.0, 24.0, 12.0, 8.0, 24.0, 12.0],
@@ -1333,7 +1576,7 @@ mod tests {
             [6.0, 5.0, 3.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_ssd(&mut dd, 2.0, &a);
+        ssd_fn(&mut dd, 2.0, &a);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [4.0, 64.0, 144.0, 16.0, 96.0, 24.0, 16.0, 96.0, 24.0],
@@ -1357,7 +1600,7 @@ mod tests {
             [0.0, 0.0, 3.0],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_ssd(&mut dd, 2.0, &a);
+        ssd_fn(&mut dd, 2.0, &a);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [4.0, 64.0, 0.0, 16.0, 0.0, 0.0, 16.0, 0.0, 0.0],
@@ -1376,20 +1619,20 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn t2_qsd_t2_panics_on_non_sym() {
+    fn qsd_fn_panics_on_non_sym() {
         let a = Tensor2::new(Rep::Symmetric2D);
         let b = Tensor2::new(Rep::Symmetric2D);
         let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
-        t2_qsd_t2(&mut dd, 1.0, &a, &b);
+        qsd_fn(&mut dd, 1.0, &a, &b);
     }
 
     #[test]
     #[should_panic]
-    fn t2_qsd_t2_panics_on_different_rep() {
+    fn qsd_fn_panics_on_different_rep() {
         let a = Tensor2::new(Rep::Symmetric2D);
         let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_qsd_t2(&mut dd, 1.0, &a, &b);
+        qsd_fn(&mut dd, 1.0, &a, &b);
     }
 
     fn check_qsd(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
@@ -1415,7 +1658,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_qsd_t2_works() {
+    fn qsd_fn_works() {
         // general qsd general
         #[rustfmt::skip]
         let a = Tensor2::from_std_matrix(&[
@@ -1430,7 +1673,7 @@ mod tests {
             [3.0, 2.0, 1.0],
         ], Rep::General).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_qsd_t2(&mut dd, 2.0, &a, &b);
+        qsd_fn(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [72.0, 128.0, 168.0, 104.0, 152.0, 136.0, 104.0, 152.0, 136.0],
@@ -1460,7 +1703,7 @@ mod tests {
             [6.0, 4.0, 1.0],
         ], Rep::Symmetric).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_qsd_t2(&mut dd, 2.0, &a, &b);
+        qsd_fn(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [24.0, 160.0, 288.0, 68.0, 216.0, 96.0, 68.0, 216.0, 96.0],
@@ -1490,7 +1733,7 @@ mod tests {
             [0.0, 0.0, 1.0],
         ], Rep::Symmetric2D).unwrap();
         let mut dd = Tensor4::new(Rep::Symmetric);
-        t2_qsd_t2(&mut dd, 2.0, &a, &b);
+        qsd_fn(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
             [24.0, 128.0, 0.0, 64.0, 0.0, 0.0, 64.0, 0.0, 0.0],
@@ -1505,101 +1748,5 @@ mod tests {
         ]);
         mat_approx_eq(&mat, &correct, 1e-13);
         check_qsd(2.0, &a, &b, &dd, 1e-14);
-    }
-
-    #[test]
-    fn t2_ssd_use_loops_works() {
-        // general
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
-        t2_ssd(&mut dd, 2.0, &a);
-        check_ssd(2.0, &a, &dd, 1e-12);
-
-        // symmetric
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 4.0, 6.0],
-            [4.0, 2.0, 5.0],
-            [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
-        t2_ssd(&mut dd, 2.0, &a);
-        check_ssd(2.0, &a, &dd, 1e-12);
-
-        // symmetric 2D
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 4.0, 0.0],
-            [4.0, 2.0, 0.0],
-            [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
-        t2_ssd(&mut dd, 2.0, &a);
-        check_ssd(2.0, &a, &dd, 1e-12);
-    }
-
-    #[test]
-    fn t2_qsd_t2_use_loops_works() {
-        // general
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
-            [9.0, 8.0, 7.0],
-            [6.0, 5.0, 4.0],
-            [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
-        t2_qsd_t2(&mut dd, 2.0, &a, &b);
-        check_qsd(2.0, &a, &b, &dd, 1e-12);
-
-        // symmetric
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 4.0, 6.0],
-            [4.0, 2.0, 5.0],
-            [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
-            [3.0, 5.0, 6.0],
-            [5.0, 2.0, 4.0],
-            [6.0, 4.0, 1.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
-        t2_qsd_t2(&mut dd, 2.0, &a, &b);
-        check_qsd(2.0, &a, &b, &dd, 1e-12);
-
-        // symmetric 2D
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 4.0, 0.0],
-            [4.0, 2.0, 0.0],
-            [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
-            [3.0, 4.0, 0.0],
-            [4.0, 2.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        dd.use_loops = true;
-        t2_qsd_t2(&mut dd, 2.0, &a, &b);
-        check_qsd(2.0, &a, &b, &dd, 1e-12);
     }
 }

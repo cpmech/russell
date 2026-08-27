@@ -42,10 +42,10 @@ pub const TOL_J2: f64 = 1e-9;
 /// Holds the value 1.0 (f64); used to give the following constants the f64 type
 const ONE: f64 = 1.0;
 
-/// Second-order identity tensor in Kelvin basis (I)
+/// Second-order identity tensor in Kelvin-Mandel basis (I)
 ///
 /// ```text
-/// Kelvin vector:
+/// Kelvin-Mandel vector:
 ///       ┌   ┐
 ///       │ 1 │
 ///       │ 1 │
@@ -60,7 +60,7 @@ const ONE: f64 = 1.0;
 /// ```
 pub const IDENTITY2: [f64; 9] = [ONE, ONE, ONE, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
-/// Fourth-order identity tensor in Kelvin basis (II)
+/// Fourth-order identity tensor in Kelvin-Mandel basis (II)
 ///
 /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
 ///
@@ -71,7 +71,7 @@ pub const IDENTITY2: [f64; 9] = [ONE, ONE, ONE, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///        ┌                     ┐
 ///        │ 1 0 0  0 0 0  0 0 0 │
 ///        │ 0 1 0  0 0 0  0 0 0 │
@@ -96,7 +96,7 @@ pub const IDENTITY4: [[f64; 9]; 9] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ONE],
 ];
 
-/// Fourth-order transposition tensor in Kelvin basis (TT)
+/// Fourth-order transposition tensor in Kelvin-Mandel basis (TT)
 ///
 /// **Note:** this tensor cannot be represented in reduced-dimension because it is not minor-symmetric.
 ///
@@ -108,7 +108,7 @@ pub const IDENTITY4: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///        ┌                        ┐
 ///        │ 1 0 0  0 0 0   0  0  0 │
 ///        │ 0 1 0  0 0 0   0  0  0 │
@@ -144,7 +144,7 @@ pub const TRANSPOSITION: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///        ┌                     ┐
 ///        │ 1 1 1  0 0 0  0 0 0 │
 ///        │ 1 1 1  0 0 0  0 0 0 │
@@ -180,7 +180,7 @@ pub const TRACE_PROJECTION: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///          ┌                     ┐
 ///          │ ⅓ ⅓ ⅓  0 0 0  0 0 0 │
 ///          │ ⅓ ⅓ ⅓  0 0 0  0 0 0 │
@@ -217,7 +217,7 @@ pub const P_ISO: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///          ┌                     ┐
 ///          │ 1 0 0  0 0 0  0 0 0 │
 ///          │ 0 1 0  0 0 0  0 0 0 │
@@ -254,7 +254,7 @@ pub const P_SYM: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///           ┌                     ┐
 ///           │ 0 0 0  0 0 0  0 0 0 │
 ///           │ 0 0 0  0 0 0  0 0 0 │
@@ -290,7 +290,7 @@ pub const P_SKEW: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///          ┌                        ┐
 ///          │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
 ///          │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │
@@ -315,7 +315,7 @@ pub const P_DEV: [[f64; 9]; 9] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ONE],
 ];
 
-/// Fourth-order symmetric-deviatoric projector in Kelvin basis
+/// Fourth-order symmetric-deviatoric projector in Kelvin-Mandel basis
 ///
 /// Note: this tensor can be represented in reduced-dimension.
 ///
@@ -327,7 +327,7 @@ pub const P_DEV: [[f64; 9]; 9] = [
 /// ```
 ///
 /// ```text
-/// Kelvin matrix:
+/// Kelvin-Mandel matrix:
 ///             ┌                        ┐
 ///             │  ⅔ -⅓ -⅓  0 0 0  0 0 0 │
 ///             │ -⅓  ⅔ -⅓  0 0 0  0 0 0 │

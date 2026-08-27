@@ -16,25 +16,28 @@
 //! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
 //! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
+//! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp]).
 //! * Constants — Includes Identity, transposition, and other projector tensors.
 //! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products.
 //! * Derivatives — Implements first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors)
 //!
-//! # Kelvin notation
+//! # Kelvin-Mandel notation
 //!
-//! Internally, tensors are stored in the Kelvin basis (Kelvin notation).
+//! Internally, tensors are stored in the Kelvin-Mandel basis (Kelvin-Mandel notation).
 //!
-//! In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping invariant; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+//! In the Kelvin-Mandel basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
 //! The [Rep] enum specifies the available representations:
 //!
-//! * [Rep::General] — 9×1 / 9×9 (all components)
-//! * [Rep::Symmetric] — 6×1 / 6×6 (symmetric tensors in 3D)
-//! * [Rep::Symmetric2D] — 4×1 / 4×4 (symmetric tensors in 2D)
+//! * [Rep::General] — 9×1 / 9×3 / 3×9 / 9×9 (all components)
+//! * [Rep::Symmetric] — 6×1 / 6×3 / 3×6 / 6×6 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 3D)
+//! * [Rep::Symmetric2D] — 4×1 / 4×3 / 3×4 / 4×4 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 2D)
 //!
-//! # Standard vs Kelvin components
+//! The dimensions above correspond to [Tensor2] (vector), [Tensor3] (Case A / Case B rectangular matrix), and [Tensor4] (square matrix), respectively.
 //!
-//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Hᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin** components stored internally:
+//! # Standard vs Kelvin-Mandel components
+//!
+//! The tensor accessors follow a naming convention that distinguishes the **standard** (Cartesian) components `Tᵢⱼ` / `Hᵢⱼₖ` / `Dᵢⱼₖₗ` from the **Kelvin-Mandel** components stored internally:
 //!
 //! * Accessors dealing with **standard components** carry the `std` qualifier
 //!   in their names:
@@ -47,13 +50,13 @@
 //!   * [Tensor4] — [Tensor4::from_std_array], [Tensor4::from_std_matrix],
 //!     [Tensor4::get_std], [Tensor4::as_std_array], [Tensor4::to_std_array],
 //!     [Tensor4::as_std_matrix], [Tensor4::to_std_matrix], [Tensor4::sym_set_std]
-//! * Accessors dealing directly with the **Kelvin components** carry no qualifier:
+//! * Accessors dealing directly with the **Kelvin-Mandel components** carry no qualifier:
 //!   * [Tensor2] — [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
 //!     [Tensor2::set_tensor], [Tensor2::update], [Tensor2::clear]
 //!   * [Tensor3] — [Tensor3::get], [Tensor3::set], [Tensor3::set_tensor], [Tensor3::update]
 //!   * [Tensor4] — [Tensor4::get], [Tensor4::set], [Tensor4::set_tensor], [Tensor4::update]
 //!
-//! **Note:** [Tensor1] stores the three **standard** components directly (there is no Kelvin mapping for first-order tensors); access them with [Tensor1::get] and [Tensor1::set].
+//! **Note:** [Tensor1] stores the three **standard** components directly (there is no Kelvin-Mandel mapping for first-order tensors); access them with [Tensor1::get] and [Tensor1::set].
 //!
 //! # Optional features
 //!
@@ -102,8 +105,12 @@ mod lin_elasticity;
 mod operations_mix1;
 mod operations_mix2;
 mod operations_t2;
+mod operations_t2x;
 mod operations_t3;
 mod operations_t4;
+mod polar_brannon;
+mod polar_decomp;
+mod polar_higham;
 mod samples_tensor2;
 mod samples_tensor3;
 mod samples_tensor4;
@@ -113,6 +120,11 @@ mod tensor2;
 mod tensor3;
 mod tensor4;
 
+#[cfg(test)]
+mod test_common;
+
+pub mod z_reference_loop_fns;
+
 pub use constants::*;
 pub use derivatives_t2::*;
 pub use derivatives_t4::*;
@@ -121,8 +133,12 @@ pub use lin_elasticity::*;
 pub use operations_mix1::*;
 pub use operations_mix2::*;
 pub use operations_t2::*;
+pub use operations_t2x::*;
 pub use operations_t3::*;
 pub use operations_t4::*;
+pub use polar_brannon::*;
+pub use polar_decomp::*;
+pub use polar_higham::*;
 pub use samples_tensor2::*;
 pub use samples_tensor3::*;
 pub use samples_tensor4::*;

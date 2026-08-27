@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 #[allow(unused)]
 use crate::{Tensor2, Tensor3, Tensor4}; // for documentation
 
-/// Specifies the type of matrix representation (Kelvin notation) of Tensor2, Tensor3, and Tensor4
+/// Specifies the type of matrix representation (Kelvin-Mandel notation) of Tensor2, Tensor3, and Tensor4
 ///
-/// In the Kelvin basis, a second-order tensor is mapped to a column matrix
+/// In the Kelvin-Mandel basis, a second-order tensor is mapped to a column matrix
 /// (vector), a third-order tensor is mapped to a rectangular matrix, and a
 /// fourth-order tensor is mapped to a square matrix.
 ///
@@ -27,7 +27,7 @@ pub enum Rep {
     /// * [Tensor2] becomes a 9×1 column matrix (vector), keeping all components.
     /// * [Tensor4] becomes a 9×9 square matrix, keeping all components.
     ///
-    /// In Kelvin notation, a [Tensor2] is mapped as follows:
+    /// In Kelvin-Mandel notation, a [Tensor2] is mapped as follows:
     ///
     /// ```text
     ///                       ┌                ┐
@@ -72,7 +72,7 @@ pub enum Rep {
     /// * [Tensor2] becomes a 6×1 column matrix (vector), dropping the last three rows.
     /// * [Tensor4] becomes a 6×6 square matrix, dropping the last three rows and columns.
     ///
-    /// In Kelvin notation, a [Tensor2] is mapped as follows:
+    /// In Kelvin-Mandel notation, a [Tensor2] is mapped as follows:
     ///
     /// ```text
     ///                       ┌          ┐
@@ -109,7 +109,7 @@ pub enum Rep {
     /// * [Tensor2] becomes a 4×1 column matrix (vector), dropping the last five rows.
     /// * [Tensor4] becomes a 4×4 square matrix, dropping the last five rows and columns.
     ///
-    /// In Kelvin notation, a [Tensor2] is mapped as follows:
+    /// In Kelvin-Mandel notation, a [Tensor2] is mapped as follows:
     ///
     /// ```text
     /// ┌             ┐       ┌          ┐
@@ -148,7 +148,7 @@ impl Rep {
         }
     }
 
-    /// Returns the dimension of the Kelvin vector
+    /// Returns the dimension of the Kelvin-Mandel vector
     pub fn dim(&self) -> usize {
         match self {
             Rep::General => 9,
@@ -168,9 +168,9 @@ impl Rep {
         }
     }
 
-    /// Returns whether the Kelvin vector or matrix corresponds a symmetric tensor or not
+    /// Returns whether the Kelvin-Mandel vector or matrix corresponds a symmetric tensor or not
     pub fn symmetric(&self) -> bool {
-        if *self == Rep::General { false } else { true }
+        *self != Rep::General
     }
 }
 

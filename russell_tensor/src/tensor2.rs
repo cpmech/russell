@@ -12,20 +12,20 @@ use russell_lab::Vector;
 
 /// Defines a second-order tensor in R³×R³
 ///
-/// # Standard and Kelvin components
+/// # Standard and Kelvin-Mandel components
 ///
 /// The methods of this struct follow a naming convention that distinguishes
-/// between the **standard** (Cartesian) components `Tᵢⱼ` and the **Kelvin**
+/// between the **standard** (Cartesian) components `Tᵢⱼ` and the **Kelvin-Mandel**
 /// components stored internally:
 ///
 /// * Methods dealing with **standard components** carry the `std` qualifier in
 ///   their names (e.g., [Tensor2::set_std_matrix], [Tensor2::get_std],
 ///   [Tensor2::as_std_matrix], [Tensor2::sym_set_std]).
-/// * Methods dealing directly with the **Kelvin components** carry no qualifier
+/// * Methods dealing directly with the **Kelvin-Mandel components** carry no qualifier
 ///   (e.g., [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
 ///   [Tensor2::set_tensor], [Tensor2::update]).
 ///
-/// Internally, the components are converted to the Kelvin basis as follows.
+/// Internally, the components are converted to the Kelvin-Mandel basis as follows.
 ///
 /// [Rep::General]
 ///
@@ -68,20 +68,20 @@ use russell_lab::Vector;
 /// ```
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tensor2 {
-    /// Holds the actual dimension of the Kelvin vector
+    /// Holds the actual dimension of the Kelvin-Mandel vector
     ///
     /// * General: `dim = 9`
     /// * Symmetric: `dim = 6`
     /// * Symmetric2D: `dim = 4`
     dim: usize,
 
-    /// Holds the components in Kelvin basis as a vector (heap).
+    /// Holds the components in Kelvin-Mandel basis as a vector (heap).
     ///
     /// Heap version => dynamically allocated memory
     #[cfg(feature = "heap")]
     pub(crate) vec: Vector,
 
-    /// Holds the components in Kelvin basis as a vector (stack).
+    /// Holds the components in Kelvin-Mandel basis as a vector (stack).
     ///
     /// Stack version => fixed size memory
     ///
@@ -91,11 +91,6 @@ pub struct Tensor2 {
 
     /// Holds the Rep (representation) enum
     rep: Rep,
-
-    /// Enables the loop-based implementation (instead of the unrolled one)
-    ///
-    /// **Note:** This field is temporary and will be removed in a future version.
-    pub use_loops: bool,
 }
 
 impl Tensor2 {
@@ -135,7 +130,6 @@ impl Tensor2 {
                 dim,
                 vec: Vector::new(rep.dim()),
                 rep,
-                use_loops: false,
             }
         }
         #[cfg(not(feature = "heap"))]
@@ -144,7 +138,6 @@ impl Tensor2 {
                 dim,
                 vec: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
                 rep,
-                use_loops: false,
             }
         }
     }
@@ -259,13 +252,13 @@ impl Tensor2 {
         self.rep
     }
 
-    /// Returns the Kelvin vector dimension (4, 6, or 9)
+    /// Returns the Kelvin-Mandel vector dimension (4, 6, or 9)
     #[inline]
     pub fn dim(&self) -> usize {
         self.dim
     }
 
-    /// Returns the m-component of the Kelvin vector
+    /// Returns the m-component of the Kelvin-Mandel vector
     ///
     /// # Panics
     ///
@@ -275,7 +268,7 @@ impl Tensor2 {
         self.vec[m]
     }
 
-    /// Sets the m-component of the Kelvin vector
+    /// Sets the m-component of the Kelvin-Mandel vector
     ///
     /// # Panics
     ///
@@ -283,6 +276,36 @@ impl Tensor2 {
     #[inline]
     pub fn set(&mut self, m: usize, value: f64) {
         self.vec[m] = value;
+    }
+
+    /// Returns a slice to the Kelvin-Mandel vector data (crate-internal)
+    ///
+    /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
+    #[inline]
+    pub(crate) fn as_data(&self) -> &[f64] {
+        #[cfg(feature = "heap")]
+        {
+            self.vec.as_data().as_slice()
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            &self.vec[..]
+        }
+    }
+
+    /// Returns a mutable slice to the Kelvin-Mandel vector data (crate-internal)
+    ///
+    /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
+    #[inline]
+    pub(crate) fn as_mut_data(&mut self) -> &mut [f64] {
+        #[cfg(feature = "heap")]
+        {
+            self.vec.as_mut_data().as_mut_slice()
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            &mut self.vec[..]
+        }
     }
 
     /// Sets the Tensor2 with standard components given in matrix form
@@ -961,7 +984,7 @@ impl Tensor2 {
         }
     }
 
-    /// Sets the Kelvin vector of this tensor as a scalar multiple of another Kelvin vector
+    /// Sets the Kelvin-Mandel vector of this tensor as a scalar multiple of another Kelvin-Mandel vector
     ///
     /// ```text
     /// self := α other
@@ -1223,21 +1246,29 @@ impl Tensor2 {
     /// }
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
+        assert_eq!(at.rep, self.rep);
+        self.transpose_stack(at.as_mut_data());
+    }
+
+    /// Returns the transpose tensor components in a caller-provided array (crate-internal)
+    ///
+    /// Mirrors [transpose] but returns the components instead of writing to a [Tensor2].
+    #[inline]
+    pub(crate) fn transpose_stack(&self, at: &mut [f64]) {
         // The transpose is given by:
         // [a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]
-        assert_eq!(at.rep, self.rep);
-        at.vec[0] = self.vec[0];
-        at.vec[1] = self.vec[1];
-        at.vec[2] = self.vec[2];
-        at.vec[3] = self.vec[3];
+        at[0] = self.vec[0];
+        at[1] = self.vec[1];
+        at[2] = self.vec[2];
+        at[3] = self.vec[3];
         if self.dim > 4 {
-            at.vec[4] = self.vec[4];
-            at.vec[5] = self.vec[5];
+            at[4] = self.vec[4];
+            at[5] = self.vec[5];
         }
         if self.dim > 6 {
-            at.vec[6] = -self.vec[6];
-            at.vec[7] = -self.vec[7];
-            at.vec[8] = -self.vec[8];
+            at[6] = -self.vec[6];
+            at[7] = -self.vec[7];
+            at[8] = -self.vec[8];
         }
     }
 
@@ -1565,30 +1596,38 @@ impl Tensor2 {
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) {
         assert_eq!(dev.rep, self.rep);
+        self.deviator_stack(dev.as_mut_data());
+    }
+
+    /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
+    ///
+    /// Mirrors [deviator] but returns the components instead of writing to a [Tensor2].
+    #[inline]
+    pub(crate) fn deviator_stack(&self, dev: &mut [f64]) {
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
-        dev.vec[0] = self.vec[0] - m;
-        dev.vec[1] = self.vec[1] - m;
-        dev.vec[2] = self.vec[2] - m;
-        dev.vec[3] = self.vec[3];
+        dev[0] = self.vec[0] - m;
+        dev[1] = self.vec[1] - m;
+        dev[2] = self.vec[2] - m;
+        dev[3] = self.vec[3];
         if self.dim > 4 {
-            dev.vec[4] = self.vec[4];
-            dev.vec[5] = self.vec[5];
+            dev[4] = self.vec[4];
+            dev[5] = self.vec[5];
         }
         if self.dim > 6 {
-            dev.vec[6] = self.vec[6];
-            dev.vec[7] = self.vec[7];
-            dev.vec[8] = self.vec[8];
+            dev[6] = self.vec[6];
+            dev[7] = self.vec[7];
+            dev[8] = self.vec[8];
         }
-        let new_trace_s = dev.vec[0] + dev.vec[1] + dev.vec[2];
+        let new_trace_s = dev[0] + dev[1] + dev[2];
         if f64::abs(new_trace_s) > 1e-10 {
             // fix error due to large magnitudes
             let mut v = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
             sort3(&mut v);
             let d = f64::max(1.0, v.2);
             let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
-            dev.vec[0] = (self.vec[0] / d - m) * d;
-            dev.vec[1] = (self.vec[1] / d - m) * d;
-            dev.vec[2] = (self.vec[2] / d - m) * d;
+            dev[0] = (self.vec[0] / d - m) * d;
+            dev[1] = (self.vec[1] / d - m) * d;
+            dev[2] = (self.vec[2] / d - m) * d;
         }
     }
 
@@ -2251,7 +2290,7 @@ impl Tensor2 {
 }
 
 impl fmt::Display for Tensor2 {
-    /// Generates a string representation of the Kelvin vector associated with this Tensor2
+    /// Generates a string representation of the Kelvin-Mandel vector associated with this Tensor2
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;

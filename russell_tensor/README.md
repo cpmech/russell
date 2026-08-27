@@ -8,7 +8,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 
 - [Introduction](#introduction)
   - [Capabilities](#capabilities)
-  - [Kelvin notation](#kelvin-notation)
+  - [Kelvin-Mandel notation](#kelvin-mandel-notation)
   - [Documentation](#documentation)
 - [Installation](#installation)
   - [Setting Cargo.toml](#setting-cargotoml)
@@ -17,6 +17,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Computing the Invariants](#computing-the-invariants)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 - [For developers](#for-developers)
+- [Principal invariants (Rep::Symmetric)](#principal-invariants-repsymmetric)
 
 
 
@@ -35,18 +36,34 @@ This library implements structures and functions for tensor analysis and calculu
 * `Spectral2` — the spectral (eigen) representation of symmetric second-order tensors
 * `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
 * Constants — identity, transposition, and projector tensors
+* Polar decomposition — `F = R U = V R` via the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini (2016) algorithm (`PolarAlgo`, `polar_decomp`)
 
-### Kelvin notation
+### Kelvin-Mandel notation
 
-Internally, tensors are stored in the Kelvin basis (Kelvin notation), an isometric (norm-preserving) alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation).
-
-In the Kelvin basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
+Internally, tensors are stored as vectors/matrices with components given with respect to the Kelvin-Mandel basis, i.e., the *Kelvin-Mandel* notation, a norm-preserving alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation). In the Kelvin-Mandel notation, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. Factors such as `√2` multiply some components to yield the norm-preserving mapping.
 
 The `Rep` enum specifies the available representations:
 
-* `Rep::General` — 9×1 / 9×9 (all components)
-* `Rep::Symmetric` — 6×1 / 6×6 (symmetric tensors in 3D)
-* `Rep::Symmetric2D` — 4×1 / 4×4 (symmetric tensors in 2D)
+* `Rep::General` — 9×1 / 9×3 / 3×9 / 9×9 (all components)
+* `Rep::Symmetric` — 6×1 / 6×3 / 3×6 / 6×6 (symmetric `Tensor2`; minor-symmetric `Tensor3`/`Tensor4`; 3D)
+* `Rep::Symmetric2D` — 4×1 / 4×3 / 3×4 / 4×4 (symmetric `Tensor2`; minor-symmetric `Tensor3`/`Tensor4`; 2D)
+
+The dimensions above correspond to `Tensor2` (vector), `Tensor3` (Case A / Case B rectangular matrix), and `Tensor4` (square matrix), respectively.
+
+For second-order tensors, the stored component order is:
+
+| Representation     | Stored components                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Rep::General`     | `T11`, `T22`, `T33`, `(T12 + T21)/√2`, `(T23 + T32)/√2`, `(T13 + T31)/√2`, `(T12 - T21)/√2`, `(T23 - T32)/√2`, `(T13 - T31)/√2` |
+| `Rep::Symmetric`   | `T11`, `T22`, `T33`, `√2 T12`, `√2 T23`, `√2 T13`                                                                               |
+| `Rep::Symmetric2D` | `T11`, `T22`, `T33`, `√2 T12`                                                                                                   |
+
+Use the `*_std*` constructors and accessors when working with ordinary Cartesian
+components, such as `Tensor2::from_std_matrix` and `Tensor2::get_std`. Use the
+accessors without `std` only when working directly with the stored
+Kelvin-Mandel components. For example, an off-diagonal component `T12 = 4`
+is stored as `√2 × 4` in a symmetric tensor, so `from_std_matrix` expects `4`
+while `get(3)` returns `√2 × 4`.
 
 ### Documentation
 
@@ -190,3 +207,133 @@ fn main() -> Result<(), StrError> {
 
 * This crate depends on `russell_lab`, which requires non-Rust high-performance libraries (see the Installation section)
 * Run the examples with `cargo run --example <name>`
+
+
+
+## Principal invariants (Rep::Symmetric)
+
+For a symmetric second-order tensor with standard components $\sigma_{11}, \sigma_{22}, \sigma_{33}, \sigma_{12}, \sigma_{23}, \sigma_{13}$:
+
+$$
+I_1 = \sigma_{11} + \sigma_{22} + \sigma_{33}
+$$
+
+$$
+I_2 = \sigma_{11}\sigma_{22} + \sigma_{22}\sigma_{33} + \sigma_{33}\sigma_{11} - \sigma_{12}^2 - \sigma_{23}^2 - \sigma_{13}^2
+$$
+
+$$
+I_3 = \sigma_{11}\sigma_{22}\sigma_{33} + 2\,\sigma_{12}\sigma_{23}\sigma_{13} - \sigma_{33}\sigma_{12}^2 - \sigma_{11}\sigma_{23}^2 - \sigma_{22}\sigma_{13}^2
+$$
+
+In terms of the Kelvin-Mandel components $\underline{\sigma}_1, \underline{\sigma}_2, \underline{\sigma}_3, \underline{\sigma}_4, \underline{\sigma}_5, \underline{\sigma}_6$ (the values actually stored):
+
+$$
+I_1 = \underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3
+$$
+
+$$
+I_2 = \underline{\sigma}_1\underline{\sigma}_2 + \underline{\sigma}_1\underline{\sigma}_3 + \underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_5^2 - \frac{1}{2}\underline{\sigma}_6^2
+$$
+
+$$
+I_3 = \underline{\sigma}_1\underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_3\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_1\underline{\sigma}_5^2 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5\underline{\sigma}_6 - \frac{1}{2}\underline{\sigma}_2\underline{\sigma}_6^2
+$$
+
+The deviator $\underline{s} = \mathrm{dev}(\underline{\sigma})$, in terms of the Kelvin-Mandel components:
+
+$$
+\underline{s}_1 = \underline{\sigma}_1 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
+$$
+
+$$
+\underline{s}_2 = \underline{\sigma}_2 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
+$$
+
+$$
+\underline{s}_3 = \underline{\sigma}_3 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
+$$
+
+$$
+\underline{s}_4 = \underline{\sigma}_4, \qquad \underline{s}_5 = \underline{\sigma}_5, \qquad \underline{s}_6 = \underline{\sigma}_6
+$$
+
+The squared tensor $\underline{p} = \underline{\sigma}\cdot\underline{\sigma}$, in terms of the Kelvin-Mandel components:
+
+$$
+\underline{p}_1 = \underline{\sigma}_1^2 + \frac{1}{2}\underline{\sigma}_4^2 + \frac{1}{2}\underline{\sigma}_6^2
+$$
+
+$$
+\underline{p}_2 = \underline{\sigma}_2^2 + \frac{1}{2}\underline{\sigma}_4^2 + \frac{1}{2}\underline{\sigma}_5^2
+$$
+
+$$
+\underline{p}_3 = \underline{\sigma}_3^2 + \frac{1}{2}\underline{\sigma}_5^2 + \frac{1}{2}\underline{\sigma}_6^2
+$$
+
+$$
+\underline{p}_4 = \left(\underline{\sigma}_1 + \underline{\sigma}_2\right)\underline{\sigma}_4 + \frac{1}{\sqrt{2}}\underline{\sigma}_5\underline{\sigma}_6
+$$
+
+$$
+\underline{p}_5 = \left(\underline{\sigma}_2 + \underline{\sigma}_3\right)\underline{\sigma}_5 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_6
+$$
+
+$$
+\underline{p}_6 = \left(\underline{\sigma}_1 + \underline{\sigma}_3\right)\underline{\sigma}_6 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5
+$$
+
+The deviatoric invariants $J_2 = \mathrm{invariant\\_jj2}$ and $J_3 = \mathrm{invariant\\_jj3}$, in terms of the Kelvin-Mandel components:
+
+$$
+J_2 = \frac{1}{6}\left[(\underline{\sigma}_1-\underline{\sigma}_2)^2 + (\underline{\sigma}_2-\underline{\sigma}_3)^2 + (\underline{\sigma}_3-\underline{\sigma}_1)^2\right] + \frac{1}{2}\left(\underline{\sigma}_4^2+\underline{\sigma}_5^2+\underline{\sigma}_6^2\right)
+$$
+
+$$
+J_3 = \underline{s}_1\underline{s}_2\underline{s}_3 - \frac{1}{2}\underline{s}_3\underline{s}_4^2 - \frac{1}{2}\underline{s}_1\underline{s}_5^2 + \frac{1}{\sqrt{2}}\underline{s}_4\underline{s}_5\underline{s}_6 - \frac{1}{2}\underline{s}_2\underline{s}_6^2
+$$
+
+where $\underline{s}_1, \underline{s}_2, \underline{s}_3$ are the deviator components defined above, and $\underline{s}_4=\underline{\sigma}_4$, $\underline{s}_5=\underline{\sigma}_5$, $\underline{s}_6=\underline{\sigma}_6$.
+
+For a tensor $\underline{a}$ with Kelvin-Mandel components $\underline{a}_1,\ldots,\underline{a}_6$, the inverse $\underline{a}^{-1}$ is given by:
+
+$$
+\det(\underline{a}) = \underline{a}_1\underline{a}_2\underline{a}_3 - \frac{1}{2}\underline{a}_3\underline{a}_4^2 - \frac{1}{2}\underline{a}_1\underline{a}_5^2 + \frac{1}{\sqrt{2}}\underline{a}_4\underline{a}_5\underline{a}_6 - \frac{1}{2}\underline{a}_2\underline{a}_6^2
+$$
+
+$$
+\underline{a}^{-1}_1 = \frac{\underline{a}_2\underline{a}_3 - \frac{1}{2}\underline{a}_5^2}{\det(\underline{a})}, \qquad
+\underline{a}^{-1}_2 = \frac{\underline{a}_1\underline{a}_3 - \frac{1}{2}\underline{a}_6^2}{\det(\underline{a})}, \qquad
+\underline{a}^{-1}_3 = \frac{\underline{a}_1\underline{a}_2 - \frac{1}{2}\underline{a}_4^2}{\det(\underline{a})}
+$$
+
+$$
+\underline{a}^{-1}_4 = \frac{\sqrt{2}\,\underline{a}_5\underline{a}_6 - 2\,\underline{a}_3\underline{a}_4}{2\det(\underline{a})}, \qquad
+\underline{a}^{-1}_5 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_6 - 2\,\underline{a}_1\underline{a}_5}{2\det(\underline{a})}, \qquad
+\underline{a}^{-1}_6 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_5 - 2\,\underline{a}_2\underline{a}_6}{2\det(\underline{a})}
+$$
+
+For a tensor $\underline{F}$ (`Rep::General`) with Kelvin-Mandel components $\underline{F}_1,\ldots,\underline{F}_9$, the inverse $\underline{F}^{-1}$ is given by:
+
+$$
+\det(\underline{F}) = \underline{F}_1\underline{F}_2\underline{F}_3 - \frac{1}{2}\underline{F}_3\underline{F}_4^2 - \frac{1}{2}\underline{F}_1\underline{F}_5^2 + \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_5\underline{F}_6 - \frac{1}{2}\underline{F}_2\underline{F}_6^2 + \frac{1}{2}\underline{F}_3\underline{F}_7^2 + \frac{1}{\sqrt{2}}\underline{F}_6\underline{F}_7\underline{F}_8 + \frac{1}{2}\underline{F}_1\underline{F}_8^2 - \frac{1}{\sqrt{2}}\underline{F}_5\underline{F}_7\underline{F}_9 - \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_8\underline{F}_9 + \frac{1}{2}\underline{F}_2\underline{F}_9^2
+$$
+
+$$
+\underline{F}^{-1}_1 = \frac{2\underline{F}_2\underline{F}_3 - \underline{F}_5^2 + \underline{F}_8^2}{2\det(\underline{F})}, \qquad
+\underline{F}^{-1}_2 = \frac{2\underline{F}_1\underline{F}_3 - \underline{F}_6^2 + \underline{F}_9^2}{2\det(\underline{F})}, \qquad
+\underline{F}^{-1}_3 = \frac{2\underline{F}_1\underline{F}_2 - \underline{F}_4^2 + \underline{F}_7^2}{2\det(\underline{F})}
+$$
+
+$$
+\underline{F}^{-1}_4 = -\frac{\sqrt{2}\,\underline{F}_3\underline{F}_4 - \underline{F}_5\underline{F}_6 + \underline{F}_8\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_5 = -\frac{\sqrt{2}\,\underline{F}_1\underline{F}_5 - \underline{F}_4\underline{F}_6 + \underline{F}_7\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_6 = \frac{\underline{F}_4\underline{F}_5 - \sqrt{2}\,\underline{F}_2\underline{F}_6 + \underline{F}_7\underline{F}_8}{\sqrt{2}\det(\underline{F})}
+$$
+
+$$
+\underline{F}^{-1}_7 = -\frac{\sqrt{2}\,\underline{F}_3\underline{F}_7 + \underline{F}_6\underline{F}_8 - \underline{F}_5\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_8 = -\frac{\underline{F}_6\underline{F}_7 + \sqrt{2}\,\underline{F}_1\underline{F}_8 - \underline{F}_4\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
+\underline{F}^{-1}_9 = \frac{\underline{F}_5\underline{F}_7 + \underline{F}_4\underline{F}_8 - \sqrt{2}\,\underline{F}_2\underline{F}_9}{\sqrt{2}\det(\underline{F})}
+$$

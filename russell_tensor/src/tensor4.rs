@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{ONE_BY_3, Rep, StrError, TWO_BY_3};
-use russell_lab::{AsArray2D, Matrix};
+use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues};
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
@@ -940,6 +940,108 @@ impl Tensor4 {
         mat
     }
 
+    /// Calculates the eigenvalues of the Kelvin-Mandel matrix (without eigenvectors)
+    ///
+    /// # Warning
+    ///
+    /// The Kelvin-Mandel matrix is implicitly assumed symmetric (i.e., the tensor has
+    /// major symmetry). Otherwise, only the lower triangle is used and the results are
+    /// wrong without raising an error.
+    ///
+    /// # Output
+    ///
+    /// * `l` -- (lambda) will hold the eigenvalues (sorted in ascending order);
+    ///   it must have dimension equal to [Tensor4::dim]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * the tensor is not symmetric
+    /// * `l.dim()` is not equal to [Tensor4::dim]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Rep, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut dd = Tensor4::new(Rep::Symmetric);
+    ///     dd.set(0, 0, 2.0);
+    ///     dd.set(1, 1, 3.0);
+    ///     dd.set(2, 2, 5.0);
+    ///     dd.set(3, 3, 7.0);
+    ///     dd.set(4, 4, 11.0);
+    ///     dd.set(5, 5, 13.0);
+    ///     let mut l = Vector::new(6);
+    ///     dd.eigenvalues_sym(&mut l)?;
+    ///     assert_eq!(format!("{:.0}", l), "┌    ┐\n│  2 │\n│  3 │\n│  5 │\n│  7 │\n│ 11 │\n│ 13 │\n└    ┘");
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn eigenvalues_sym(&self, l: &mut Vector) -> Result<(), StrError> {
+        if self.rep == Rep::General {
+            return Err("the tensor must be symmetric");
+        }
+        let dim = self.dim();
+        if l.dim() != dim {
+            return Err("l.dim must be equal to the tensor dimension");
+        }
+        let mut a = Matrix::new(dim, dim);
+        for m in 0..dim {
+            for n in 0..dim {
+                a.set(m, n, self.get(m, n));
+            }
+        }
+        mat_eigen_sym(l, &mut a, false)?;
+        Ok(())
+    }
+
+    /// Calculates the eigenvalues of the Kelvin-Mandel matrix (without eigenvectors)
+    ///
+    /// # Output
+    ///
+    /// * `l_real` -- will hold the real part of the eigenvalues; it must have dimension
+    ///   equal to [Tensor4::dim]
+    /// * `l_imag` -- will hold the imaginary part of the eigenvalues; it must have dimension
+    ///   equal to [Tensor4::dim]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `l_real.dim()` or `l_imag.dim()` is not equal to [Tensor4::dim]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Rep, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut dd = Tensor4::new(Rep::General);
+    ///     for m in 0..9 {
+    ///         dd.set(m, m, (m + 1) as f64);
+    ///     }
+    ///     let mut l_real = Vector::new(9);
+    ///     let mut l_imag = Vector::new(9);
+    ///     dd.eigenvalues(&mut l_real, &mut l_imag)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn eigenvalues(&self, l_real: &mut Vector, l_imag: &mut Vector) -> Result<(), StrError> {
+        let dim = self.dim();
+        if l_real.dim() != dim || l_imag.dim() != dim {
+            return Err("l_real.dim and l_imag.dim must be equal to the tensor dimension");
+        }
+        let mut a = Matrix::new(dim, dim);
+        for m in 0..dim {
+            for n in 0..dim {
+                a.set(m, n, self.get(m, n));
+            }
+        }
+        mat_eigenvalues(l_real, l_imag, &mut a)?;
+        Ok(())
+    }
+
     /// Converts this tensor to a 9x9 matrix with the standard components
     ///
     /// # Input
@@ -1508,7 +1610,63 @@ mod tests {
     use super::{MN_TO_IJKL, Tensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
     use crate::{Rep, SQRT_2, SamplesTensor4};
-    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
+    use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, vec_approx_eq};
+
+    #[test]
+    fn eigenvalues_sym_works() {
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        dd.set(0, 0, 2.0);
+        dd.set(1, 1, 3.0);
+        dd.set(2, 2, 5.0);
+        dd.set(3, 3, 7.0);
+        dd.set(4, 4, 11.0);
+        dd.set(5, 5, 13.0);
+        let mut l = Vector::new(6);
+        dd.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[2.0, 3.0, 5.0, 7.0, 11.0, 13.0], 1e-13);
+    }
+
+    #[test]
+    fn eigenvalues_sym_returns_err() {
+        let dd = Tensor4::new(Rep::General);
+        let mut l = Vector::new(9);
+        assert_eq!(dd.eigenvalues_sym(&mut l).err(), Some("the tensor must be symmetric"));
+        let dd = Tensor4::new(Rep::Symmetric);
+        let mut l = Vector::new(4);
+        assert_eq!(
+            dd.eigenvalues_sym(&mut l).err(),
+            Some("l.dim must be equal to the tensor dimension")
+        );
+    }
+
+    #[test]
+    fn eigenvalues_works() {
+        let mut dd = Tensor4::new(Rep::General);
+        for m in 0..9 {
+            dd.set(m, m, (m + 1) as f64);
+        }
+        let mut lr = Vector::new(9);
+        let mut li = Vector::new(9);
+        dd.eigenvalues(&mut lr, &mut li).unwrap();
+        // sum of real parts = trace = 1 + 2 + ... + 9 = 45
+        let sum: f64 = lr.as_data().iter().sum();
+        approx_eq(sum, 45.0, 1e-12);
+        // all imaginary parts are zero (diagonal matrix)
+        for k in 0..9 {
+            approx_eq(li[k], 0.0, 1e-13);
+        }
+    }
+
+    #[test]
+    fn eigenvalues_returns_err() {
+        let dd = Tensor4::new(Rep::General);
+        let mut lr = Vector::new(9);
+        let mut li = Vector::new(8);
+        assert_eq!(
+            dd.eigenvalues(&mut lr, &mut li).err(),
+            Some("l_real.dim and l_imag.dim must be equal to the tensor dimension")
+        );
+    }
 
     #[test]
     fn new_set_and_get_work() {

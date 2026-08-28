@@ -2,13 +2,10 @@ use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{Rep, StrError, Tensor1};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
-use russell_lab::{AsArray2D, Matrix, sort3};
+use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues, sort3};
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
-
-#[cfg(feature = "heap")]
-use russell_lab::Vector;
 
 /// Defines a second-order tensor in R³×R³
 ///
@@ -738,6 +735,89 @@ impl Tensor2 {
         tt.set(1, 0, self.get_std(1, 0));
         tt.set(1, 1, self.get_std(1, 1));
         (self.get_std(2, 2), tt)
+    }
+
+    /// Calculates the eigenvalues of this symmetric tensor (without eigenvectors)
+    ///
+    /// The eigenvalues correspond to the principal values of the tensor.
+    ///
+    /// # Output
+    ///
+    /// * `l` -- (lambda) will hold the eigenvalues (sorted in ascending order);
+    ///   it must have dimension 3
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * the tensor is not symmetric
+    /// * `l.dim()` is not equal to 3
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Rep, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_std_matrix(&[
+    ///         [2.0, 0.0, 0.0],
+    ///         [0.0, 3.0, 4.0],
+    ///         [0.0, 4.0, 9.0],
+    ///     ], Rep::Symmetric)?;
+    ///     let mut l = Vector::new(3);
+    ///     a.eigenvalues_sym(&mut l)?;
+    ///     assert_eq!(format!("{:.0}", l), "┌    ┐\n│  1 │\n│  2 │\n│ 11 │\n└    ┘");
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn eigenvalues_sym(&self, l: &mut Vector) -> Result<(), StrError> {
+        if !self.rep.symmetric() {
+            return Err("the tensor must be symmetric");
+        }
+        if l.dim() != 3 {
+            return Err("l.dim must be equal to 3");
+        }
+        let mut a = self.as_std_matrix();
+        mat_eigen_sym(l, &mut a, false)?;
+        Ok(())
+    }
+
+    /// Calculates the eigenvalues of this (general) tensor (without eigenvectors)
+    ///
+    /// # Output
+    ///
+    /// * `l_real` -- will hold the real part of the eigenvalues; it must have dimension 3
+    /// * `l_imag` -- will hold the imaginary part of the eigenvalues; it must have dimension 3
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `l_real.dim()` or `l_imag.dim()` is not equal to 3
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Rep, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_std_matrix(&[
+    ///         [2.0, 0.0, 0.0],
+    ///         [0.0, 3.0, 4.0],
+    ///         [0.0, 4.0, 9.0],
+    ///     ], Rep::General)?;
+    ///     let mut l_real = Vector::new(3);
+    ///     let mut l_imag = Vector::new(3);
+    ///     a.eigenvalues(&mut l_real, &mut l_imag)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn eigenvalues(&self, l_real: &mut Vector, l_imag: &mut Vector) -> Result<(), StrError> {
+        if l_real.dim() != 3 || l_imag.dim() != 3 {
+            return Err("l_real.dim and l_imag.dim must be equal to 3");
+        }
+        let mut a = self.as_std_matrix();
+        mat_eigenvalues(l_real, l_imag, &mut a)?;
+        Ok(())
     }
 
     /// Returns a general Tensor2 regardless of Rep type
@@ -2331,7 +2411,7 @@ mod tests {
     use super::Tensor2;
     use crate::{IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
     use crate::{Rep, SampleTensor2, SamplesTensor2, Tensor1};
-    use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
+    use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq};
 
     fn kelvin_vector(tt: &Tensor2) -> Vec<f64> {
         let mut v = vec![0.0; tt.dim()];
@@ -3494,6 +3574,72 @@ mod tests {
         ];
         let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.trace(), 15.0, 1e-15);
+    }
+
+    #[test]
+    fn eigenvalues_sym_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [2.0, 0.0, 0.0],
+            [0.0, 3.0, 4.0],
+            [0.0, 4.0, 9.0],
+        ], Rep::Symmetric).unwrap();
+        let mut l = Vector::new(3);
+        a.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[1.0, 2.0, 11.0], 1e-13);
+    }
+
+    #[test]
+    fn eigenvalues_sym_returns_err() {
+        let a = Tensor2::new(Rep::General);
+        let mut l = Vector::new(3);
+        assert_eq!(a.eigenvalues_sym(&mut l).err(), Some("the tensor must be symmetric"));
+        let a = Tensor2::new(Rep::Symmetric);
+        let mut l = Vector::new(2);
+        assert_eq!(a.eigenvalues_sym(&mut l).err(), Some("l.dim must be equal to 3"));
+    }
+
+    #[test]
+    fn eigenvalues_works() {
+        // rotation about e3 by 90 degrees: eigenvalues {i, -i, 2}
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [0.0, -1.0, 0.0],
+            [1.0,  0.0, 0.0],
+            [0.0,  0.0, 2.0],
+        ], Rep::General).unwrap();
+        let mut lr = Vector::new(3);
+        let mut li = Vector::new(3);
+        a.eigenvalues(&mut lr, &mut li).unwrap();
+        let close = |x: f64, y: f64| (x - y).abs() < 1e-13;
+        let mut has_i = false;
+        let mut has_minus_i = false;
+        let mut has_2 = false;
+        for k in 0..3 {
+            let r = lr[k];
+            let im = li[k];
+            if close(r, 0.0) && close(im, 1.0) {
+                has_i = true;
+            }
+            if close(r, 0.0) && close(im, -1.0) {
+                has_minus_i = true;
+            }
+            if close(r, 2.0) && close(im, 0.0) {
+                has_2 = true;
+            }
+        }
+        assert!(has_i && has_minus_i && has_2);
+    }
+
+    #[test]
+    fn eigenvalues_returns_err() {
+        let a = Tensor2::new(Rep::General);
+        let mut lr = Vector::new(3);
+        let mut li = Vector::new(2);
+        assert_eq!(
+            a.eigenvalues(&mut lr, &mut li).err(),
+            Some("l_real.dim and l_imag.dim must be equal to 3")
+        );
     }
 
     #[test]

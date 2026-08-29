@@ -1205,6 +1205,10 @@ impl Tensor4 {
     /// The output of this function corresponds to equation (27) of Reference 1
     /// and the H tensor in Equation (4.1) of Reference 2
     ///
+    /// # Arguments
+    ///
+    /// * `sigma` -- Cauchy stress tensor; must be [Rep::Symmetric]
+    ///
     /// # References
     ///
     /// 1. J. W. Morris Jr. & C. R. Krenn (2000) The internal stability of an elastic solid,
@@ -1212,7 +1216,11 @@ impl Tensor4 {
     /// 2. M. Maździarz (2025) Mechanical stability conditions for 3D and 2D crystals under arbitrary load,
     ///    Archives of mechanics, 77 (4), 379–399, 2025, <https://doi.org/10.24423/aom.4679>
     ///
+    /// # Panics
+    ///
+    /// A panic will occur if sigma is not [Rep::Symmetric].
     pub fn internal_stability_tensor(&self, sigma: &Tensor2) -> Self {
+        assert_eq!(sigma.rep(), Rep::Symmetric);
         let mut hh = Tensor4::new(Rep::Symmetric);
         let sig = sigma.as_data();
 

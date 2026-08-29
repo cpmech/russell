@@ -7,7 +7,7 @@
 //! quaternion-based algorithm of Higham & Noferini (2016).
 //!
 //! Reference: N. J. Higham and V. Noferini, "An algorithm to compute the polar
-//! decomposition of a 3×3 matrix", Numer. Algorithms, 73(2):349–369, 2016.
+//! decomposition of a 3×3 matrix", Num. Algorithms, 73(2):349–369, 2016.
 
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 use russell_tensor::{PolarAlgo, Rep, StrError, Tensor2, polar_decomp};

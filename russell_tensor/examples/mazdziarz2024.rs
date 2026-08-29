@@ -30,6 +30,8 @@ fn main() -> Result<(), StrError> {
     )?;
     let mut ss = Tensor4::new(Rep::Symmetric);
     print("NiAl Eq(11)", &analysis::voigt_reuss_hill(&mut ss, &cc)?);
+    // Expected output:
+    // NiAl Eq(11): Kh = 158.90, Gh = 64.37, Au = 3.92
 
     // Eq (16) Al2O3 oriented X=[100] Y=[-1 Sqrt[3] 0] Z=[001]
     #[rustfmt::skip]
@@ -46,6 +48,8 @@ fn main() -> Result<(), StrError> {
     )?;
     let mut ss = Tensor4::new(Rep::Symmetric);
     print("Al2O3 Eq(16)", &analysis::voigt_reuss_hill(&mut ss, &cc)?);
+    // Expected output:
+    // Al2O3 Eq(16): Kh = 242.15, Gh = 131.11, Au = 2.03
 
     // Eq (19) Al2O3 - NiAl oriented X=[100] Y=[010] Z=[001]
     #[rustfmt::skip]
@@ -62,6 +66,8 @@ fn main() -> Result<(), StrError> {
     )?;
     let mut ss = Tensor4::new(Rep::Symmetric);
     print("Al2O3-NiAl Eq(19)", &analysis::voigt_reuss_hill(&mut ss, &cc)?);
+    // Expected output:
+    // Al2O3-NiAl Eq(19): Kh = 145.19, Gh = 84.19, Au = 1.45
 
     Ok(())
 }

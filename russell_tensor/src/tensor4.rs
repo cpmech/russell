@@ -1,12 +1,9 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{ONE_BY_3, Rep, StrError, TWO_BY_3, Tensor2};
-use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues};
+use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues, mat_inverse};
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
-
-#[cfg(feature = "heap")]
-use russell_lab::mat_inverse;
 
 #[cfg(not(feature = "heap"))]
 use russell_lab::small_mat_inv;
@@ -1275,6 +1272,65 @@ impl Tensor4 {
         hh
     }
 
+    /// Computes the Voigt-Reuss-Hill averages and the universal anisotropy index (Au)
+    ///
+    /// # Warning
+    ///
+    /// The Kelvin-Mandel matrix is implicitly assumed symmetric (i.e., the tensor has
+    /// major symmetry). Otherwise, the results are wrong without raising an error.
+    ///
+    /// Returns `Kh, Gh, Au` where:
+    ///
+    /// * `Kh` -- the Voigt-Reuss-Hill average of the bulk modulus
+    /// * `Gh` -- the Voigt-Reuss-Hill average of the shear modulus
+    /// * `Au` -- the universal anisotropy index
+    pub fn vrh_anisotropy_index(&self) -> Result<(f64, f64, f64), StrError> {
+        // Ensure the tensor is Symmetric
+        if self.rep != Rep::Symmetric {
+            return Err("The tensor must be Rep::Symmetric");
+        }
+
+        // Stiffness matrix (Kelvin-Mandel)
+        let mut c_mat = Matrix::new(6, 6);
+        for m in 0..6 {
+            for n in 0..6 {
+                c_mat.set(m, n, self.get(m, n));
+            }
+        }
+
+        // Compliance matrix (Kelvin-Mandel)
+        let mut s_mat = Matrix::new(6, 6);
+        mat_inverse(&mut s_mat, &c_mat)?;
+
+        // Extract Stiffness components (Rust is 0-indexed)
+        let sum_c_diag = c_mat.get(0, 0) + c_mat.get(1, 1) + c_mat.get(2, 2);
+        let sum_c_off = c_mat.get(0, 1) + c_mat.get(0, 2) + c_mat.get(1, 2);
+        let sum_c_shear = c_mat.get(3, 3) + c_mat.get(4, 4) + c_mat.get(5, 5);
+
+        // Extract Compliance components
+        let sum_s_diag = s_mat.get(0, 0) + s_mat.get(1, 1) + s_mat.get(2, 2);
+        let sum_s_off = s_mat.get(0, 1) + s_mat.get(0, 2) + s_mat.get(1, 2);
+        let sum_s_shear = s_mat.get(3, 3) + s_mat.get(4, 4) + s_mat.get(5, 5);
+
+        // Voigt Averaging (using Stiffness)
+        let k_v = (1.0 / 9.0) * (sum_c_diag + 2.0 * sum_c_off);
+        let g_v = (1.0 / 15.0) * (sum_c_diag - sum_c_off + 1.5 * sum_c_shear);
+
+        // Reuss Averaging (using Compliance)
+        let k_r = 1.0 / (sum_s_diag + 2.0 * sum_s_off);
+        let g_r = 15.0 / (4.0 * sum_s_diag - 4.0 * sum_s_off + 6.0 * sum_s_shear);
+
+        // Hill Averaging (Arithmetic Mean)
+        let k_h = (k_v + k_r) / 2.0;
+        let g_h = (g_v + g_r) / 2.0;
+
+        // Calculate Universal anisotropic index
+        let a_u = 5.0 * (g_v / g_r) + (k_v / k_r) - 6.0;
+
+        // Output as a struct for easy data extraction
+        Ok((k_h, g_h, a_u))
+    }
+
     //
     // --- constants tensors ---
     //
@@ -1853,6 +1909,41 @@ mod tests {
                 approx_eq(hh.get(m, n), correct[m][n], 1e-12);
             }
         }
+    }
+
+    #[test]
+    fn vrh_anisotropy_index_works() {
+        // Eq19 from Maździarz (2025), in Voigt notation
+        #[rustfmt::skip]
+        let voigt = [
+            [296.57, 144.76, 125.5, -35.27, -2.5, 3.45],
+            [144.76, 273.54, 74.42, 17.96, -4.93, 1.37],
+            [125.5, 74.42, 169.18, -39.37, -18.81, 9.45],
+            [-35.27, 17.96, -39.37, 110.56, 0.02, 0.17],
+            [-2.5, -4.93, -18.81, 0.02, 113.03, -31.15],
+            [3.45, 1.37, 9.45, 0.17, -31.15, 112.41],
+        ];
+
+        // convert Voigt -> Kelvin-Mandel
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        for m in 0..6 {
+            for n in 0..6 {
+                let factor = if m < 3 && n < 3 {
+                    1.0
+                } else if (m < 3) != (n < 3) {
+                    SQRT_2
+                } else {
+                    2.0
+                };
+                dd.set(m, n, factor * voigt[m][n]);
+            }
+        }
+
+        // check
+        let (kh, gh, au) = dd.vrh_anisotropy_index().unwrap();
+        approx_eq(kh, 145.18871482316814, 1e-12);
+        approx_eq(gh, 84.19208635704888, 1e-12);
+        approx_eq(au, 1.4499452844495009, 1e-12);
     }
 
     #[test]

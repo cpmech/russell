@@ -260,7 +260,7 @@ mod tests {
     use russell_lab::approx_eq;
 
     #[test]
-    fn calc_internal_stability_tensor_works() {
+    fn internal_stability_tensor_works() {
         // reference: Maździarz (2025), for sigma = diag(27.06, 27.06, 20.585)
         let sigma = Tensor2::from_std_matrix(
             &[[27.06, 0.0, 0.0], [0.0, 27.06, 0.0], [0.0, 0.0, 20.585]],
@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_voigt_reuss_hill_works() {
+    fn voigt_reuss_hill_works() {
         // Eq19 from Maździarz (2025)
         let cc = Tensor4::from_std_array(
             &[

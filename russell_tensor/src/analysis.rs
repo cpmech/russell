@@ -264,7 +264,7 @@ pub fn calc_internal_stability_tensor(hh: &mut Tensor4, sigma: &Tensor2) -> Resu
 #[cfg(test)]
 mod tests {
     use super::{calc_internal_stability_tensor, calc_voigt_reuss_hill};
-    use crate::{Rep, SQRT_2, Tensor2, Tensor4};
+    use crate::{Rep, Tensor2, Tensor4};
     use russell_lab::approx_eq;
 
     #[test]
@@ -295,31 +295,28 @@ mod tests {
 
     #[test]
     fn calc_voigt_reuss_hill_works() {
-        // Eq19 from Maździarz (2025), in Voigt notation
-        #[rustfmt::skip]
-        let voigt = [
-            [296.57, 144.76, 125.5, -35.27, -2.5, 3.45],
-            [144.76, 273.54, 74.42, 17.96, -4.93, 1.37],
-            [125.5, 74.42, 169.18, -39.37, -18.81, 9.45],
-            [-35.27, 17.96, -39.37, 110.56, 0.02, 0.17],
-            [-2.5, -4.93, -18.81, 0.02, 113.03, -31.15],
-            [3.45, 1.37, 9.45, 0.17, -31.15, 112.41],
-        ];
-
-        // convert Voigt -> Kelvin-Mandel
-        let mut cc = Tensor4::new(Rep::Symmetric);
-        for m in 0..6 {
-            for n in 0..6 {
-                let factor = if m < 3 && n < 3 {
-                    1.0
-                } else if (m < 3) != (n < 3) {
-                    SQRT_2
-                } else {
-                    2.0
-                };
-                cc.set(m, n, factor * voigt[m][n]);
-            }
-        }
+        // Eq19 from Maździarz (2025)
+        let cc = Tensor4::from_std_array(
+            &[
+                [
+                    [[296.57, -35.27, 3.45], [-35.27, 144.76, -2.5], [3.45, -2.5, 125.5]],
+                    [[-35.27, 110.56, 0.17], [110.56, 17.96, 0.02], [0.17, 0.02, -39.37]],
+                    [[3.45, 0.17, 112.41], [0.17, 1.37, -31.15], [112.41, -31.15, 9.45]],
+                ],
+                [
+                    [[-35.27, 110.56, 0.17], [110.56, 17.96, 0.02], [0.17, 0.02, -39.37]],
+                    [[144.76, 17.96, 1.37], [17.96, 273.54, -4.93], [1.37, -4.93, 74.42]],
+                    [[-2.5, 0.02, -31.15], [0.02, -4.93, 113.03], [-31.15, 113.03, -18.81]],
+                ],
+                [
+                    [[3.45, 0.17, 112.41], [0.17, 1.37, -31.15], [112.41, -31.15, 9.45]],
+                    [[-2.5, 0.02, -31.15], [0.02, -4.93, 113.03], [-31.15, 113.03, -18.81]],
+                    [[125.5, -39.37, 9.45], [-39.37, 74.42, -18.81], [9.45, -18.81, 169.18]],
+                ],
+            ],
+            Rep::Symmetric,
+        )
+        .unwrap();
 
         // calculate the averages
         let mut ss = Tensor4::new(Rep::Symmetric);

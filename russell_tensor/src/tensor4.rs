@@ -1,5 +1,5 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
-use crate::{ONE_BY_3, Rep, StrError, TWO_BY_3};
+use crate::{ONE_BY_3, Rep, StrError, TWO_BY_3, Tensor2};
 use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues};
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -1197,6 +1197,83 @@ impl Tensor4 {
     }
 
     //
+    // --- auxiliary functions ---
+    //
+
+    /// Returns the internal stability tensor for the analysis of symmetric tensors
+    ///
+    /// The output of this function corresponds to equation (27) of Reference 1
+    /// and the H tensor in Equation (4.1) of Reference 2
+    ///
+    /// # References
+    ///
+    /// 1. J. W. Morris Jr. & C. R. Krenn (2000) The internal stability of an elastic solid,
+    ///    Philosophical Magazine A, 80:12, 2827-2840, <https://doi.org/10.1080/01418610008223897>
+    /// 2. M. Maździarz (2025) Mechanical stability conditions for 3D and 2D crystals under arbitrary load,
+    ///    Archives of mechanics, 77 (4), 379–399, 2025, <https://doi.org/10.24423/aom.4679>
+    ///
+    pub fn internal_stability_matrix(&self, sigma: &Tensor2) -> Self {
+        let mut hh = Tensor4::new(Rep::Symmetric);
+        let sig = sigma.as_data();
+        let aa_kelvin_matrix = [
+            [
+                sig[0],
+                (-sig[0] - sig[1]) / 2.0,
+                (-sig[0] - sig[2]) / 2.0,
+                sig[3] / 2.0,
+                -1.0 / 2.0 * sig[4],
+                sig[5] / 2.0,
+            ],
+            [
+                (-sig[0] - sig[1]) / 2.0,
+                sig[1],
+                (-sig[1] - sig[2]) / 2.0,
+                sig[3] / 2.0,
+                sig[4] / 2.0,
+                -1.0 / 2.0 * sig[5],
+            ],
+            [
+                (-sig[0] - sig[2]) / 2.0,
+                (-sig[1] - sig[2]) / 2.0,
+                sig[2],
+                -1.0 / 2.0 * sig[3],
+                sig[4] / 2.0,
+                sig[5] / 2.0,
+            ],
+            [
+                sig[3] / 2.0,
+                sig[3] / 2.0,
+                -1.0 / 2.0 * sig[3],
+                sig[0] + sig[1],
+                sig[5] / SQRT_2,
+                sig[4] / SQRT_2,
+            ],
+            [
+                -1.0 / 2.0 * sig[4],
+                sig[4] / 2.0,
+                sig[4] / 2.0,
+                sig[5] / SQRT_2,
+                sig[1] + sig[2],
+                sig[3] / SQRT_2,
+            ],
+            [
+                sig[5] / 2.0,
+                -1.0 / 2.0 * sig[5],
+                sig[5] / 2.0,
+                sig[4] / SQRT_2,
+                sig[3] / SQRT_2,
+                sig[0] + sig[2],
+            ],
+        ];
+        for m in 0..6 {
+            for n in 0..6 {
+                hh.set(m, n, aa_kelvin_matrix[m][n]);
+            }
+        }
+        hh
+    }
+
+    //
     // --- constants tensors ---
     //
 
@@ -1613,7 +1690,7 @@ impl fmt::Display for Tensor4 {
 mod tests {
     use super::{MN_TO_IJKL, Tensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
-    use crate::{Rep, SQRT_2, SamplesTensor4};
+    use crate::{Rep, SQRT_2, SamplesTensor4, Tensor2};
     use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, vec_approx_eq};
 
     #[test]
@@ -1747,6 +1824,32 @@ mod tests {
         for k in 0..9 {
             approx_eq(got[k].0, expected[k].0, 1e-13);
             approx_eq(got[k].1, expected[k].1, 1e-13);
+        }
+    }
+
+    #[test]
+    fn internal_stability_matrix_works() {
+        // reference: Maździarz (2025), for sigma = diag(27.06, 27.06, 20.585)
+        let sigma = Tensor2::from_std_matrix(
+            &[[27.06, 0.0, 0.0], [0.0, 27.06, 0.0], [0.0, 0.0, 20.585]],
+            Rep::Symmetric,
+        )
+        .unwrap();
+        let dd = Tensor4::new(Rep::Symmetric);
+        let hh = dd.internal_stability_matrix(&sigma);
+        #[rustfmt::skip]
+        let correct = [
+            [27.06, -27.06, -23.8225, 0.0, 0.0, 0.0],
+            [-27.06, 27.06, -23.8225, 0.0, 0.0, 0.0],
+            [-23.8225, -23.8225, 20.585, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 54.12, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 47.645, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 47.645],
+        ];
+        for m in 0..6 {
+            for n in 0..6 {
+                approx_eq(hh.get(m, n), correct[m][n], 1e-12);
+            }
         }
     }
 

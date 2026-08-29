@@ -295,9 +295,16 @@ impl Tensor4 {
     /// * `inp` -- the Kelvin-Mandel matrix; it must have dimensions equal to [Tensor4::dim]
     ///   (9×9 for [Rep::General], 6×6 for [Rep::Symmetric], and 4×4 for [Rep::Symmetric2D])
     ///
+    /// # Warning
+    ///
+    /// For [Rep::Symmetric] and [Rep::Symmetric2D], the input matrix must be symmetric
+    /// (i.e., the tensor has minor symmetry). Otherwise, an error is returned.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the input matrix does not have dimensions equal to [Tensor4::dim].
+    /// Returns an error if:
+    /// * the input matrix does not have dimensions equal to [Tensor4::dim]
+    /// * the input matrix is not symmetric (only for [Rep::Symmetric] and [Rep::Symmetric2D])
     ///
     /// # Examples
     ///
@@ -328,6 +335,16 @@ impl Tensor4 {
         let (m, n) = inp.size();
         if m != dim || n != dim {
             return Err("the input matrix must have dimensions equal to dim()");
+        }
+        // check symmetry (the Kelvin-Mandel matrix of a symmetric tensor must be symmetric)
+        if self.rep != Rep::General {
+            for i in 0..dim {
+                for j in (i + 1)..dim {
+                    if inp.at(i, j) != inp.at(j, i) {
+                        return Err("the input matrix must be symmetric");
+                    }
+                }
+            }
         }
         for i in 0..dim {
             for j in 0..dim {
@@ -661,9 +678,16 @@ impl Tensor4 {
     ///   (9×9 for [Rep::General], 6×6 for [Rep::Symmetric], and 4×4 for [Rep::Symmetric2D])
     /// * `rep` -- the [Rep] representation
     ///
+    /// # Warning
+    ///
+    /// For [Rep::Symmetric] and [Rep::Symmetric2D], the input matrix must be symmetric
+    /// (i.e., the tensor has minor symmetry). Otherwise, an error is returned.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the input matrix does not have dimensions equal to [Rep::dim].
+    /// Returns an error if:
+    /// * the input matrix does not have dimensions equal to [Rep::dim]
+    /// * the input matrix is not symmetric (only for [Rep::Symmetric] and [Rep::Symmetric2D])
     ///
     /// # Examples
     ///
@@ -1890,7 +1914,7 @@ mod tests {
 
     #[test]
     fn set_matrix_works() {
-        // general (9x9)
+        // general (9x9) -- symmetry is not required
         let mut dd = Tensor4::new(Rep::General);
         let mut mat = [[0.0; 9]; 9];
         for m in 0..9 {
@@ -1907,12 +1931,13 @@ mod tests {
         let mut mat = [[0.0; 6]; 6];
         for m in 0..6 {
             for n in 0..6 {
-                mat[m][n] = (10 * (m + 1) + (n + 1)) as f64;
+                mat[m][n] = ((m + 1) + (n + 1)) as f64;
             }
         }
         dd.set_matrix(&mat).unwrap();
-        assert_eq!(dd.get(0, 0), 11.0);
-        assert_eq!(dd.get(5, 5), 66.0);
+        assert_eq!(dd.get(0, 0), 2.0);
+        assert_eq!(dd.get(5, 5), 12.0);
+        assert_eq!(dd.get(0, 1), 3.0);
 
         // error: wrong dimensions
         let mut dd = Tensor4::new(Rep::Symmetric);
@@ -1921,6 +1946,19 @@ mod tests {
             dd.set_matrix(&mat).err(),
             Some("the input matrix must have dimensions equal to dim()")
         );
+
+        // error: not symmetric
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        #[rustfmt::skip]
+        let mat = [
+            [1.0, 2.0, 0.0, 0.0, 0.0, 0.0],
+            [3.0, 4.0, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 5.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 6.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 7.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 8.0],
+        ];
+        assert_eq!(dd.set_matrix(&mat).err(), Some("the input matrix must be symmetric"));
     }
 
     #[test]
@@ -1942,14 +1980,14 @@ mod tests {
         let mut mat = [[0.0; 6]; 6];
         for m in 0..6 {
             for n in 0..6 {
-                mat[m][n] = (10 * (m + 1) + (n + 1)) as f64;
+                mat[m][n] = ((m + 1) + (n + 1)) as f64;
             }
         }
         let dd = Tensor4::from_matrix(&mat, Rep::Symmetric).unwrap();
         assert_eq!(dd.rep(), Rep::Symmetric);
         assert_eq!(dd.dim(), 6);
-        assert_eq!(dd.get(0, 0), 11.0);
-        assert_eq!(dd.get(5, 5), 66.0);
+        assert_eq!(dd.get(0, 0), 2.0);
+        assert_eq!(dd.get(5, 5), 12.0);
 
         // error: wrong dimensions
         let mat = [[0.0; 5]; 5];

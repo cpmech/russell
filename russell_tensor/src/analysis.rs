@@ -111,7 +111,7 @@ impl fmt::Display for VoigtReussHill {
 /// R. Hill (1952) The elastic behavior of a crystalline aggregate,
 /// Proceedings of the Physical Society. Section A, 65(5), 349–354,
 /// <https://doi.org/10.1088/0370-1298/65/5/307>
-pub fn calc_voigt_reuss_hill(ss: &mut Tensor4, cc: &Tensor4) -> Result<VoigtReussHill, StrError> {
+pub fn voigt_reuss_hill(ss: &mut Tensor4, cc: &Tensor4) -> Result<VoigtReussHill, StrError> {
     // check
     if ss.rep() != Rep::Symmetric {
         return Err("ss must be Rep::Symmetric");
@@ -198,7 +198,7 @@ pub fn calc_voigt_reuss_hill(ss: &mut Tensor4, cc: &Tensor4) -> Result<VoigtReus
 ///    Philosophical Magazine A, 80:12, 2827-2840, <https://doi.org/10.1080/01418610008223897>
 /// 2. M. Maździarz (2025) Mechanical stability conditions for 3D and 2D crystals under arbitrary load,
 ///    Archives of Mechanics, 77(4), 379–399, 2025, <https://doi.org/10.24423/aom.4679>
-pub fn calc_internal_stability_tensor(hh: &mut Tensor4, sigma: &Tensor2) -> Result<(), StrError> {
+pub fn internal_stability_tensor(hh: &mut Tensor4, sigma: &Tensor2) -> Result<(), StrError> {
     // check
     if hh.rep() != Rep::Symmetric {
         return Err("hh must be Rep::Symmetric");
@@ -263,7 +263,7 @@ pub fn calc_internal_stability_tensor(hh: &mut Tensor4, sigma: &Tensor2) -> Resu
 
 #[cfg(test)]
 mod tests {
-    use super::{calc_internal_stability_tensor, calc_voigt_reuss_hill};
+    use super::{internal_stability_tensor, voigt_reuss_hill};
     use crate::{Rep, Tensor2, Tensor4};
     use russell_lab::approx_eq;
 
@@ -276,7 +276,7 @@ mod tests {
         )
         .unwrap();
         let mut hh = Tensor4::new(Rep::Symmetric);
-        calc_internal_stability_tensor(&mut hh, &sigma).unwrap();
+        internal_stability_tensor(&mut hh, &sigma).unwrap();
         #[rustfmt::skip]
         let correct = [
             [27.06, -27.06, -23.8225, 0.0, 0.0, 0.0],
@@ -320,7 +320,7 @@ mod tests {
 
         // calculate the averages
         let mut ss = Tensor4::new(Rep::Symmetric);
-        let vrh = calc_voigt_reuss_hill(&mut ss, &cc).unwrap();
+        let vrh = voigt_reuss_hill(&mut ss, &cc).unwrap();
 
         // check
         approx_eq(vrh.kk_v, 158.7388888888889, 1e-12);

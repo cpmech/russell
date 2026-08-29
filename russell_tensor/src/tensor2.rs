@@ -3642,6 +3642,82 @@ mod tests {
         );
     }
 
+    // sorts complex eigenvalues (as (real, imag) pairs) in ascending order
+    fn sorted_complex(lr: &Vector, li: &Vector) -> Vec<(f64, f64)> {
+        let mut v: Vec<(f64, f64)> = (0..lr.dim()).map(|k| (lr[k], li[k])).collect();
+        v.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().then(a.1.partial_cmp(&b.1).unwrap()));
+        v
+    }
+
+    // Python reference (numpy + scipy):
+    // ```python
+    // import numpy as np
+    // from scipy import linalg
+    // A = np.array([[7.0, -2.0, 0.0], [-2.0, 6.0, -2.0], [0.0, -2.0, 5.0]])
+    // linalg.eigvalsh(A)  # -> array([3., 6., 9.])
+    // ```
+    #[test]
+    fn eigenvalues_sym_works_non_diagonal() {
+        // non-diagonal symmetric matrix: eigenvalues [3, 6, 9]
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [7.0, -2.0,  0.0],
+            [-2.0, 6.0, -2.0],
+            [0.0, -2.0,  5.0],
+        ], Rep::Symmetric).unwrap();
+        let mut l = Vector::new(3);
+        a.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[3.0, 6.0, 9.0], 1e-13);
+    }
+
+    // Python reference (numpy + scipy):
+    // ```python
+    // import numpy as np
+    // from scipy import linalg
+    // C = np.array([[2.0, -1.0, -1.0], [-1.0, 2.0, -1.0], [-1.0, -1.0, 2.0]])
+    // linalg.eigvalsh(C)  # -> array([0., 3., 3.])  (3 has multiplicity 2)
+    // ```
+    #[test]
+    fn eigenvalues_sym_works_repeated() {
+        // non-diagonal symmetric matrix: eigenvalues [0, 3, 3] (3 has multiplicity 2)
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [2.0, -1.0, -1.0],
+            [-1.0, 2.0, -1.0],
+            [-1.0, -1.0, 2.0],
+        ], Rep::Symmetric).unwrap();
+        let mut l = Vector::new(3);
+        a.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[0.0, 3.0, 3.0], 1e-13);
+    }
+
+    // Python reference (numpy + scipy):
+    // ```python
+    // import numpy as np
+    // from scipy import linalg
+    // B = np.array([[2.0, -1.0, 0.0], [1.0, 2.0, 0.0], [0.0, 0.0, 5.0]])
+    // linalg.eigvals(B)  # -> array([2.-1.j, 2.+1.j, 5.+0.j])
+    // ```
+    #[test]
+    fn eigenvalues_works_complex_pair() {
+        // general matrix: eigenvalues {2+i, 2-i, 5}
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [2.0, -1.0, 0.0],
+            [1.0,  2.0, 0.0],
+            [0.0,  0.0, 5.0],
+        ], Rep::General).unwrap();
+        let mut lr = Vector::new(3);
+        let mut li = Vector::new(3);
+        a.eigenvalues(&mut lr, &mut li).unwrap();
+        let got = sorted_complex(&lr, &li);
+        let expected = [(2.0, -1.0), (2.0, 1.0), (5.0, 0.0)];
+        for k in 0..3 {
+            approx_eq(got[k].0, expected[k].0, 1e-13);
+            approx_eq(got[k].1, expected[k].1, 1e-13);
+        }
+    }
+
     #[test]
     fn norm_works() {
         // general

@@ -39,26 +39,18 @@ pub struct VoigtReussHill {
 }
 
 impl fmt::Display for VoigtReussHill {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match f.precision() {
             Some(p) => {
                 write!(
-                    f,
-                    "Kv = {:.p$}\nGv = {:.p$}\nKr = {:.p$}\nGr = {:.p$}\nKh = {:.p$}\nGh = {:.p$}\nAu = {:.p$}",
-                    self.kk_v,
-                    self.gg_v,
-                    self.kk_r,
-                    self.gg_r,
-                    self.kk_h,
-                    self.gg_h,
-                    self.aa_u,
-                    p = p,
+                    f, "Kv = {:.p$}\nGv = {:.p$}\nKr = {:.p$}\nGr = {:.p$}\nKh = {:.p$}\nGh = {:.p$}\nAu = {:.p$}",
+                    self.kk_v, self.gg_v, self.kk_r, self.gg_r, self.kk_h, self.gg_h, self.aa_u, p = p,
                 )
             }
             None => {
                 write!(
-                    f,
-                    "Kv = {}\nGv = {}\nKr = {}\nGr = {}\nKh = {}\nGh = {}\nAu = {}",
+                    f, "Kv = {}\nGv = {}\nKr = {}\nGr = {}\nKh = {}\nGh = {}\nAu = {}",
                     self.kk_v, self.gg_v, self.kk_r, self.gg_r, self.kk_h, self.gg_h, self.aa_u
                 )
             }

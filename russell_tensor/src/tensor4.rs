@@ -288,6 +288,55 @@ impl Tensor4 {
         }
     }
 
+    /// Sets the Kelvin-Mandel matrix directly
+    ///
+    /// # Input
+    ///
+    /// * `inp` -- the Kelvin-Mandel matrix; it must have dimensions equal to [Tensor4::dim]
+    ///   (9×9 for [Rep::General], 6×6 for [Rep::Symmetric], and 4×4 for [Rep::Symmetric2D])
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input matrix does not have dimensions equal to [Tensor4::dim].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor::{Rep, Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut dd = Tensor4::new(Rep::Symmetric);
+    ///     #[rustfmt::skip]
+    ///     let mat = [
+    ///         [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    ///         [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    ///         [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+    ///         [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+    ///     ];
+    ///     dd.set_matrix(&mat)?;
+    ///     assert_eq!(dd.get(3, 3), 1.0);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn set_matrix<'a, S>(&mut self, inp: &'a S) -> Result<(), StrError>
+    where
+        S: AsArray2D<'a, f64>,
+    {
+        let dim = self.dim;
+        let (m, n) = inp.size();
+        if m != dim || n != dim {
+            return Err("the input matrix must have dimensions equal to dim()");
+        }
+        for i in 0..dim {
+            for j in 0..dim {
+                self.set(i, j, inp.at(i, j));
+            }
+        }
+        Ok(())
+    }
+
     /// Sets this tensor from a nested array containing the standard components
     ///
     /// # Input
@@ -1796,6 +1845,41 @@ mod tests {
         assert_eq!(dd.rep(), Rep::Symmetric2D);
         assert_eq!(dd.dim(), 4);
         assert_eq!(dd.get(0, 0), 123.0);
+    }
+
+    #[test]
+    fn set_matrix_works() {
+        // general (9x9)
+        let mut dd = Tensor4::new(Rep::General);
+        let mut mat = [[0.0; 9]; 9];
+        for m in 0..9 {
+            for n in 0..9 {
+                mat[m][n] = (100 * (m + 1) + (n + 1)) as f64;
+            }
+        }
+        dd.set_matrix(&mat).unwrap();
+        assert_eq!(dd.get(0, 0), 101.0);
+        assert_eq!(dd.get(8, 8), 909.0);
+
+        // symmetric (6x6)
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        let mut mat = [[0.0; 6]; 6];
+        for m in 0..6 {
+            for n in 0..6 {
+                mat[m][n] = (10 * (m + 1) + (n + 1)) as f64;
+            }
+        }
+        dd.set_matrix(&mat).unwrap();
+        assert_eq!(dd.get(0, 0), 11.0);
+        assert_eq!(dd.get(5, 5), 66.0);
+
+        // error: wrong dimensions
+        let mut dd = Tensor4::new(Rep::Symmetric);
+        let mat = [[0.0; 5]; 5];
+        assert_eq!(
+            dd.set_matrix(&mat).err(),
+            Some("the input matrix must have dimensions equal to dim()")
+        );
     }
 
     #[test]

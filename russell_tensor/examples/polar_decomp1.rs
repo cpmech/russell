@@ -23,7 +23,6 @@ fn main() -> Result<(), StrError> {
         ],
         Rep::General,
     )?;
-    println!("F =\n{:.6}", ff.as_std_matrix());
 
     // Allocate the rotation tensor R (orthogonal) and the right stretch U (symmetric)
     let mut rr = Tensor2::new(Rep::General);

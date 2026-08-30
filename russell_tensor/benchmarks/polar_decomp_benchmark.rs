@@ -1,7 +1,8 @@
-//! Benchmarks comparing the speed of the polar-decomposition algorithms:
+//! Benchmarks comparing the speed of the polar-decomposition algorithms,
+//! all invoked through the unified `polar_decomp` dispatcher:
 //!
-//! * `polar_rotation_brannon` — iterative fixed-point (3×3)
-//! * `polar_quaternion_higham` — quaternion-based, direct (3×3)
+//! * `PolarAlgo::Brannon` — iterative fixed-point (3×3)
+//! * `PolarAlgo::Higham` — quaternion-based, direct (3×3)
 //! * `PolarAlgo::Eigen` — classic: eigenvalues of C = Fᵀ F (3×3)
 //! * `PolarAlgo::SVD` — classic: singular value decomposition (3×3)
 //!
@@ -13,15 +14,14 @@
 //!
 //! Notes:
 //!
-//! * `polar_quaternion_higham`, `PolarAlgo::Eigen`, and `PolarAlgo::SVD`
-//!   compute the stretch `U` (or `H`) together with the rotation `R`, whereas
-//!   `polar_rotation_brannon` computes only `R`.
+//! * Every algorithm is benchmarked through `polar_decomp`, which computes
+//!   the rotation `R` and the right stretch `U` together.
 //! * `PolarAlgo::Eigen` squares the condition number (via `C = Fᵀ F`), so it
 //!   fails for very ill-conditioned `F` (when `det(F) < 1e-15`); it is not
 //!   benchmarked for the ill-conditioned case.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{PolarAlgo, Rep, Tensor2, polar_decomp, polar_quaternion_higham, polar_rotation_brannon};
+use russell_tensor::{PolarAlgo, Rep, Tensor2, polar_decomp};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
 const WELL_CONDITIONED: [[f64; 3]; 3] = [[1.0, 0.495, 0.5], [-0.333, 1.0, -0.247], [0.959, 0.0, 1.5]];
@@ -61,24 +61,25 @@ fn case52(y: f64) -> [[f64; 3]; 3] {
 fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eigen: bool) {
     let mut group = crit.benchmark_group(format!("polar_rotation_general_{}", name));
 
-    // Brannon (iterative fixed-point; rotation only)
+    // Brannon (iterative fixed-point)
     group.bench_with_input(BenchmarkId::new("brannon", ""), &(), |b, _| {
         let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
         let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_rotation_brannon(&mut rr, &ff).unwrap();
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box(rr.get(0));
         });
     });
 
-    // Higham & Noferini (quaternion, direct; also computes the stretch H)
+    // Higham & Noferini (quaternion, direct)
     group.bench_with_input(BenchmarkId::new("higham", ""), &(), |b, _| {
         let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
-        let mut qq = Tensor2::new(Rep::General);
-        let mut hh = Tensor2::new(Rep::Symmetric);
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_quaternion_higham(&mut qq, &mut hh, &ff).unwrap();
-            std::hint::black_box(qq.get(0));
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+            std::hint::black_box(rr.get(0));
         });
     });
 
@@ -117,8 +118,9 @@ fn bench_in_plane(crit: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("brannon", ""), &(), |b, _| {
         let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
         let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_rotation_brannon(&mut rr, &ff).unwrap();
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box(rr.get(0));
         });
     });
@@ -126,11 +128,11 @@ fn bench_in_plane(crit: &mut Criterion) {
     // Higham & Noferini (quaternion, direct)
     group.bench_with_input(BenchmarkId::new("higham", ""), &(), |b, _| {
         let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
-        let mut qq = Tensor2::new(Rep::General);
-        let mut hh = Tensor2::new(Rep::Symmetric);
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
         b.iter(|| {
-            polar_quaternion_higham(&mut qq, &mut hh, &ff).unwrap();
-            std::hint::black_box(qq.get(0));
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+            std::hint::black_box(rr.get(0));
         });
     });
 

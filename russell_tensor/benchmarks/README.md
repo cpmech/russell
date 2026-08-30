@@ -98,8 +98,9 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 | `eigen`   | `PolarAlgo::Eigen` — classic: eigenvalues of `C = Fᵀ F` (3×3)   |
 | `svd`     | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)  |
 
-> **Note:** `higham`, `eigen`, and `svd` compute the stretch `U` (or `H`)
-> together with the rotation `R`, whereas `brannon` computes only `R`.
+> **Note:** all algorithms are benchmarked through the unified `polar_decomp`
+> dispatcher, which computes the rotation `R` and the right stretch `U` together
+> for every algorithm.
 
 ### General (3×3): all algorithms
 

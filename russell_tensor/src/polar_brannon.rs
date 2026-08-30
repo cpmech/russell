@@ -21,7 +21,7 @@ const BRANNON_MAX_NIT: usize = 2000;
 ///
 /// Returns an error if the required [Rep] enums are incorrect or if the
 /// algorithm did not converge.
-pub fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError> {
+pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError> {
     if ff.rep() != Rep::General {
         return Err("ff must be Rep::General");
     }
@@ -143,7 +143,7 @@ pub fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, S
 ///
 /// `F` is assumed to be an in-plane (planar) deformation: the third axis is
 /// decoupled (`R(3,3) = 1`, and `F(3,3)` is carried through to `U = Rᵀ F`).
-pub fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result<(), StrError> {
+pub(crate) fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result<(), StrError> {
     if ff.rep() != Rep::General {
         return Err("ff must be Rep::General");
     }

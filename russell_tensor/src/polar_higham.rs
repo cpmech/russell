@@ -29,7 +29,7 @@ use russell_lab::StrError;
 /// # Errors
 ///
 /// Returns an error if the required [Rep] enums are incorrect.
-pub fn polar_quaternion_higham(q: &mut Tensor2, h: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
+pub(crate) fn polar_quaternion_higham(q: &mut Tensor2, h: &mut Tensor2, a: &Tensor2) -> Result<(), StrError> {
     if a.rep() != Rep::General {
         return Err("a must be Rep::General");
     }

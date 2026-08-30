@@ -18,7 +18,7 @@ fn main() -> Result<(), StrError> {
     let mut uu = Tensor2::new(Rep::Symmetric);
 
     // Compute the polar decomposition F = R · U (using the Higham algorithm)
-    polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+    polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;
 
     // Print the factors
     println!("R =\n{:.6}", rr.as_std_matrix());

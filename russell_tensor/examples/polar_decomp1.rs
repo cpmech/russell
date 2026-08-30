@@ -14,11 +14,12 @@ use russell_tensor::{PolarAlgo, Rep, StrError, Tensor2, polar_decomp};
 
 fn main() -> Result<(), StrError> {
     // Deformation gradient (Higham & Noferini, test 5.1)
+    #[rustfmt::skip]
     let ff = Tensor2::from_std_matrix(
         &[
-            [0.1, 0.2, 0.3], // row 1
-            [0.1, 0.1, 0.0], // row 2
-            [0.3, 0.2, 0.1], // row 3
+            [0.1, 0.2, 0.3],
+            [0.1, 0.1, 0.0],
+            [0.3, 0.2, 0.1],
         ],
         Rep::General,
     )?;

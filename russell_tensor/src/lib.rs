@@ -110,6 +110,7 @@ mod operations_t2x;
 mod operations_t3;
 mod operations_t4;
 mod polar_brannon;
+mod polar_classic;
 mod polar_decomp;
 mod polar_higham;
 mod samples_tensor2;

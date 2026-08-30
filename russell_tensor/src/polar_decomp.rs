@@ -1,4 +1,5 @@
 use crate::polar_brannon::{polar_rotation_brannon, polar_rotation_brannon2d};
+use crate::polar_classic::{polar_decomp_eigen, polar_decomp_svd};
 use crate::polar_higham::polar_quaternion_higham;
 use crate::{Rep, Tensor2, t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop};
 use russell_lab::StrError;
@@ -6,10 +7,18 @@ use russell_lab::StrError;
 /// Specifies the polar decomposition algorithm
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PolarAlgo {
+    /// Classic: Using eigenvalues/eigenvectors
+    Eigen,
+
+    /// Classic: Using singular-value-decomposition (SVD)
+    SVD,
+
     /// Rebecca Brannon's iterative fixed-point algorithm (3×3)
     Brannon,
+
     /// Brannon's closed-form algorithm for 2×2 (in-plane) matrices
     Brannon2d,
+
     /// Higham & Noferini (2016) quaternion-based direct algorithm (3×3)
     Higham,
 }
@@ -59,6 +68,14 @@ pub fn polar_decomp(
 
     // Polar rotation R and right stretch U
     let nit = match algo {
+        PolarAlgo::Eigen => {
+            polar_decomp_eigen(rr, uu, ff)?; // classic: eigenvalues of C = Fᵀ F
+            0
+        }
+        PolarAlgo::SVD => {
+            polar_decomp_svd(rr, uu, ff)?; // classic: singular value decomposition
+            0
+        }
         PolarAlgo::Brannon => {
             let nit = polar_rotation_brannon(rr, ff)?;
             t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F

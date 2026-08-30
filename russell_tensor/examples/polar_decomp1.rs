@@ -24,7 +24,7 @@ fn main() -> Result<(), StrError> {
         Rep::General,
     )?;
 
-    // Allocate the rotation tensor R (orthogonal) and the right stretch U (symmetric)
+    // Allocate the rotation tensor R and the right stretch U
     let mut rr = Tensor2::new(Rep::General);
     let mut uu = Tensor2::new(Rep::Symmetric);
 

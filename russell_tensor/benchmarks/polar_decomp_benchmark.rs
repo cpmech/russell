@@ -1,21 +1,27 @@
-//! Benchmarks comparing the speed of the polar-rotation algorithms:
+//! Benchmarks comparing the speed of the polar-decomposition algorithms:
 //!
 //! * `polar_rotation_brannon` — iterative fixed-point (3×3)
 //! * `polar_quaternion_higham` — quaternion-based, direct (3×3)
-//! * `polar_rotation_brannon2d` — closed-form, in-plane only (2×2)
+//! * `PolarAlgo::Eigen` — classic: eigenvalues of C = Fᵀ F (3×3)
+//! * `PolarAlgo::SVD` — classic: singular value decomposition (3×3)
 //!
 //! Two benchmark groups:
 //!
-//! 1. `polar_rotation_general_{case}` — Brannon vs Higham for well-,
+//! 1. `polar_rotation_general_{case}` — all algorithms for well-,
 //!    moderately-, and ill-conditioned 3×3 matrices.
-//! 2. `polar_rotation_in_plane` — all three algorithms for an in-plane matrix.
+//! 2. `polar_rotation_in_plane` — all algorithms for an in-plane matrix.
 //!
-//! Note: `polar_quaternion_higham` computes the stretch `H` together with the
-//! rotation `Q` (the quaternion algorithm does not separate them), whereas
-//! `polar_rotation_brannon` and `polar_rotation_brannon2d` compute only `R`.
+//! Notes:
+//!
+//! * `polar_quaternion_higham`, `PolarAlgo::Eigen`, and `PolarAlgo::SVD`
+//!   compute the stretch `U` (or `H`) together with the rotation `R`, whereas
+//!   `polar_rotation_brannon` computes only `R`.
+//! * `PolarAlgo::Eigen` squares the condition number (via `C = Fᵀ F`), so it
+//!   fails for very ill-conditioned `F` (when `det(F) < 1e-15`); it is not
+//!   benchmarked for the ill-conditioned case.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{Rep, Tensor2, polar_quaternion_higham, polar_rotation_brannon, polar_rotation_brannon2d};
+use russell_tensor::{PolarAlgo, Rep, Tensor2, polar_decomp, polar_quaternion_higham, polar_rotation_brannon};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
 const WELL_CONDITIONED: [[f64; 3]; 3] = [[1.0, 0.495, 0.5], [-0.333, 1.0, -0.247], [0.959, 0.0, 1.5]];
@@ -48,8 +54,11 @@ fn case52(y: f64) -> [[f64; 3]; 3] {
     ]
 }
 
-/// Benchmarks Brannon vs Higham for a given input matrix
-fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3]) {
+/// Benchmarks all algorithms for a given input matrix
+///
+/// The `with_eigen` flag controls whether the Eigen algorithm is benchmarked;
+/// it fails for very ill-conditioned matrices (`det(F) < 1e-15`).
+fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eigen: bool) {
     let mut group = crit.benchmark_group(format!("polar_rotation_general_{}", name));
 
     // Brannon (iterative fixed-point; rotation only)
@@ -73,10 +82,34 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3]) {
         });
     });
 
+    // Eigen (classic: eigenvalues of C = Fᵀ F)
+    if with_eigen {
+        group.bench_with_input(BenchmarkId::new("eigen", ""), &(), |b, _| {
+            let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
+            let mut rr = Tensor2::new(Rep::General);
+            let mut uu = Tensor2::new(Rep::Symmetric);
+            b.iter(|| {
+                polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
+                std::hint::black_box(rr.get(0));
+            });
+        });
+    }
+
+    // SVD (classic: singular value decomposition)
+    group.bench_with_input(BenchmarkId::new("svd", ""), &(), |b, _| {
+        let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        b.iter(|| {
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
+            std::hint::black_box(rr.get(0));
+        });
+    });
+
     group.finish();
 }
 
-/// Benchmarks all three algorithms for an in-plane matrix
+/// Benchmarks all algorithms for an in-plane matrix
 fn bench_in_plane(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("polar_rotation_in_plane");
 
@@ -86,16 +119,6 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::new(Rep::General);
         b.iter(|| {
             polar_rotation_brannon(&mut rr, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
-        });
-    });
-
-    // Brannon (closed-form, 2×2)
-    group.bench_with_input(BenchmarkId::new("brannon2d", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        b.iter(|| {
-            polar_rotation_brannon2d(&mut rr, &ff).unwrap();
             std::hint::black_box(rr.get(0));
         });
     });
@@ -111,19 +134,41 @@ fn bench_in_plane(crit: &mut Criterion) {
         });
     });
 
+    // Eigen (classic)
+    group.bench_with_input(BenchmarkId::new("eigen", ""), &(), |b, _| {
+        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        b.iter(|| {
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
+            std::hint::black_box(rr.get(0));
+        });
+    });
+
+    // SVD (classic)
+    group.bench_with_input(BenchmarkId::new("svd", ""), &(), |b, _| {
+        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        b.iter(|| {
+            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
+            std::hint::black_box(rr.get(0));
+        });
+    });
+
     group.finish();
 }
 
 fn bench_well_conditioned(crit: &mut Criterion) {
-    bench_general(crit, "well_conditioned", &WELL_CONDITIONED);
+    bench_general(crit, "well_conditioned", &WELL_CONDITIONED, true);
 }
 
 fn bench_moderate_conditioned(crit: &mut Criterion) {
-    bench_general(crit, "moderate_conditioned", &case52(1e-3));
+    bench_general(crit, "moderate_conditioned", &case52(1e-3), true);
 }
 
 fn bench_ill_conditioned(crit: &mut Criterion) {
-    bench_general(crit, "ill_conditioned", &case52(1e-8));
+    bench_general(crit, "ill_conditioned", &case52(1e-8), false);
 }
 
 criterion_group!(

@@ -89,50 +89,54 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 
 ## Polar decomposition benchmark
 
-`polar_decomp_benchmark` compares the speed of the polar-rotation algorithms:
+`polar_decomp_benchmark` compares the speed of the polar-decomposition algorithms:
 
-| algorithm   | description                                                |
-| ----------- | ---------------------------------------------------------- |
-| `brannon`   | `polar_rotation_brannon` — iterative fixed-point (3×3)     |
-| `brannon2d` | `polar_rotation_brannon2d` — closed-form (in-plane only)   |
-| `higham`    | `polar_quaternion_higham` — quaternion-based, direct (3×3) |
+| algorithm | description                                                     |
+| --------- | --------------------------------------------------------------- |
+| `brannon` | `polar_rotation_brannon` — iterative fixed-point (3×3)          |
+| `higham`  | `polar_quaternion_higham` — quaternion-based, direct (3×3)      |
+| `eigen`   | `PolarAlgo::Eigen` — classic: eigenvalues of `C = Fᵀ F` (3×3)   |
+| `svd`     | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)  |
 
-> **Note:** `polar_quaternion_higham` computes the stretch `H` together with the
-> rotation `Q` (the quaternion algorithm does not separate them), whereas the
-> Brannon routines compute only `R`.
+> **Note:** `higham`, `eigen`, and `svd` compute the stretch `U` (or `H`)
+> together with the rotation `R`, whereas `brannon` computes only `R`.
 
-### General (3×3): Brannon vs Higham
+### General (3×3): all algorithms
 
-| case                   | κ       | `brannon` | `higham` | higham speedup |
-| ---------------------- | ------- | --------- | -------- | -------------- |
-| `well_conditioned`     | ≈ 4     | 195 ns    | 124 ns   | 1.6×           |
-| `moderate_conditioned` | ≈ 6·10² | 718 ns    | 164 ns   | 4.4×           |
-| `ill_conditioned`      | ≈ 6·10⁷ | 1.89 µs   | 202 ns   | 9.4×           |
+| case                   | κ       | `brannon` | `higham` | `eigen` | `svd`  |
+| ---------------------- | ------- | --------- | -------- | ------- | ------ |
+| `well_conditioned`     | ≈ 4     | 216 ns    | 126 ns   | 786 ns  | 740 ns |
+| `moderate_conditioned` | ≈ 6·10² | 768 ns    | 164 ns   | 711 ns  | 636 ns |
+| `ill_conditioned`      | ≈ 6·10⁷ | 2.02 µs   | 200 ns   | —       | 582 ns |
 
-### In-plane: all three algorithms
+### In-plane: all algorithms
 
-| algorithm   | time   |
-| ----------- | ------ |
-| `brannon`   | 255 ns |
-| `brannon2d` | 6.4 ns |
-| `higham`    | 129 ns |
+| algorithm | time   |
+| --------- | ------ |
+| `brannon` | 275 ns |
+| `higham`  | 131 ns |
+| `eigen`   | 455 ns |
+| `svd`     | 320 ns |
 
 ### Observations
 
-- **Higham is faster than the iterative Brannon in every case** — by ~1.6× for
-  well-conditioned `F`, growing to ~9.4× for ill-conditioned `F` (Brannon
-  iterates more as κ grows, while Higham's cost stays nearly constant).
-- **For in-plane `F`, the closed-form `brannon2d` is by far the fastest**
-  (~6 ns), about 40× faster than the iterative `brannon` and 20× faster than
-  `higham`.
-- Combined with the accuracy cross-check (Higham stays at ~1e-16 for
-  ill-conditioned `F` where the iterative Brannon degrades to ~1e-12), Higham's
-  algorithm is both faster and more robust; the iterative Brannon remains the
-  reference for its simplicity, and `brannon2d` is the clear choice for planar
-  deformations.
+- **Higham is the fastest in every case**, and its cost is nearly constant
+  (~126–200 ns). The iterative `brannon` is competitive only for well-conditioned
+  `F` and degrades sharply as κ grows (216 ns → 2.02 µs).
+- **The classic `eigen`/`svd` algorithms are the slowest** (~320–786 ns) because
+  they call general LAPACK routines (`dsyev`/`dgesvd`) instead of a
+  3×3-specialized method. `svd` is somewhat faster than `eigen`.
+- **`eigen` squares the condition number** (via `C = Fᵀ F`), so it fails for very
+  ill-conditioned `F` (`det(F) < 1e-15`); it is not benchmarked for the
+  ill-conditioned case. This makes the SVD-based classic algorithm the more
+  robust of the two, and the only classic choice for ill-conditioned `F`.
+- Accuracy-wise, `higham`, `eigen`, and `svd` all match the published reference
+  values for well-conditioned `F`; for ill-conditioned `F`, `higham` and `svd`
+  stay accurate while the iterative `brannon` degrades.
 
 ### How to run
 
 ```bash
-cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark
+cargo bench -p russell_tensor --all-features --bench polar_decomp_benchmark
 ```
+

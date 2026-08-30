@@ -1327,14 +1327,14 @@ impl Tensor2 {
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
         assert_eq!(at.rep, self.rep);
-        self.transpose_stack(at.as_mut_data());
+        self.transpose_slice(at.as_mut_data());
     }
 
     /// Returns the transpose tensor components in a caller-provided array (crate-internal)
     ///
     /// Mirrors [transpose] but returns the components instead of writing to a [Tensor2].
     #[inline]
-    pub(crate) fn transpose_stack(&self, at: &mut [f64]) {
+    pub(crate) fn transpose_slice(&self, at: &mut [f64]) {
         // The transpose is given by:
         // [a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]
         at[0] = self.vec[0];
@@ -1676,14 +1676,14 @@ impl Tensor2 {
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) {
         assert_eq!(dev.rep, self.rep);
-        self.deviator_stack(dev.as_mut_data());
+        self.deviator_slice(dev.as_mut_data());
     }
 
     /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
     ///
     /// Mirrors [deviator] but returns the components instead of writing to a [Tensor2].
     #[inline]
-    pub(crate) fn deviator_stack(&self, dev: &mut [f64]) {
+    pub(crate) fn deviator_slice(&self, dev: &mut [f64]) {
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
         dev[0] = self.vec[0] - m;
         dev[1] = self.vec[1] - m;

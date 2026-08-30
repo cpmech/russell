@@ -35,15 +35,17 @@ use crate::{Rep, SQRT_2};
 pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::General);
     assert_eq!(bb.rep(), aa.rep());
-    t2_odyad_t2_stack(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+    t2_odyad_t2_slice(dd, s, aa.as_data(), bb.as_data(), aa.dim());
 }
 
 /// Internal (unrolled) overbar dyadic product on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_odyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn t2_odyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
+        let a = &a[..4];
+        let b = &b[..4];
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, 0.0);
@@ -134,6 +136,8 @@ pub(crate) fn t2_odyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 7, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
         dd.set(8, 8, s*(a[2]*b[0] + a[0]*b[2])/2.0);
     } else if dim == 6 {
+        let a = &a[..6];
+        let b = &b[..6];
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, s*(a[5]*b[5])/2.0);
@@ -224,6 +228,8 @@ pub(crate) fn t2_odyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 7, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
         dd.set(8, 8, s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0);
     } else {
+        let a = &a[..9];
+        let b = &b[..9];
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
         dd.set(0, 2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
@@ -321,9 +327,11 @@ pub(crate) fn t2_odyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
 /// Computes `dd += s (A ⊗ B)`.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_odyad_t2_update_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn t2_odyad_t2_update_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
+        let a = &a[..4];
+        let b = &b[..4];
         dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
         dd.set(0, 1, dd.get(0, 1) + s*(a[3]*b[3])/2.0);
         dd.set(0, 3, dd.get(0, 3) + s*(a[3]*b[0] + a[0]*b[3])/2.0);
@@ -366,6 +374,8 @@ pub(crate) fn t2_odyad_t2_update_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &
         dd.set(8, 7, dd.get(8, 7) + s*(a[3]*b[2] + a[2]*b[3])/tsq2);
         dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2])/2.0);
     } else if dim == 6 {
+        let a = &a[..6];
+        let b = &b[..6];
         dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
         dd.set(0, 1, dd.get(0, 1) + s*(a[3]*b[3])/2.0);
         dd.set(0, 2, dd.get(0, 2) + s*(a[5]*b[5])/2.0);
@@ -456,6 +466,8 @@ pub(crate) fn t2_odyad_t2_update_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &
         dd.set(8, 7, dd.get(8, 7) + s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
         dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0);
     } else {
+        let a = &a[..9];
+        let b = &b[..9];
         dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
         dd.set(0, 1, dd.get(0, 1) + s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
         dd.set(0, 2, dd.get(0, 2) + s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
@@ -582,15 +594,17 @@ pub(crate) fn t2_odyad_t2_update_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &
 pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::General);
     assert_eq!(bb.rep(), aa.rep());
-    t2_udyad_t2_stack(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+    t2_udyad_t2_slice(dd, s, aa.as_data(), bb.as_data(), aa.dim());
 }
 
 /// Internal (unrolled) underbar dyadic product on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_udyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn t2_udyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     let tsq2 = 2.0 * SQRT_2;
     if dim == 4 {
+        let a = &a[..4];
+        let b = &b[..4];
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, 0.0);
@@ -681,6 +695,8 @@ pub(crate) fn t2_udyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 7, s*(-(a[3]*b[2] + a[2]*b[3])/tsq2));
         dd.set(8, 8, s*(-(a[2]*b[0]) - a[0]*b[2])/2.0);
     } else if dim == 6 {
+        let a = &a[..6];
+        let b = &b[..6];
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, s*(a[5]*b[5])/2.0);
@@ -771,6 +787,8 @@ pub(crate) fn t2_udyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 7, s*(-(SQRT_2*a[3]*b[2]) - SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
         dd.set(8, 8, s*(-(a[2]*b[0]) - a[0]*b[2] + a[5]*b[5])/2.0);
     } else {
+        let a = &a[..9];
+        let b = &b[..9];
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
         dd.set(0, 2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
@@ -895,14 +913,15 @@ pub(crate) fn t2_udyad_t2_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
 #[inline]
 pub fn ssd_fn(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
-    ssd_fn_stack(dd, s, aa.as_data(), aa.dim());
+    ssd_fn_slice(dd, s, aa.as_data(), aa.dim());
 }
 
 /// Internal (unrolled) self-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn ssd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
+pub(crate) fn ssd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
     if dim == 4 {
+        let a = &a[..4];
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*(a[3]*a[3]));
         dd.set(0, 2, 0.0);
@@ -945,6 +964,7 @@ pub(crate) fn ssd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
         dd.set(5, 4, s*(SQRT_2*a[2]*a[3]));
         dd.set(5, 5, s*(2.0*a[0]*a[2]));
     } else if dim == 6 {
+        let a = &a[..6];
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*(a[3]*a[3]));
         dd.set(0, 2, s*(a[5]*a[5]));
@@ -987,6 +1007,7 @@ pub(crate) fn ssd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
         dd.set(5, 4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
         dd.set(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
     } else {
+        let a = &a[..9];
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*((a[3] + a[6])*(a[3] + a[6])));
         dd.set(0, 2, s*((a[5] + a[8])*(a[5] + a[8])));
@@ -1066,13 +1087,13 @@ pub(crate) fn ssd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
 pub fn qsd_fn(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
     assert_eq!(dd.rep(), Rep::Symmetric);
     assert_eq!(bb.rep(), aa.rep());
-    qsd_fn_stack(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+    qsd_fn_slice(dd, s, aa.as_data(), bb.as_data(), aa.dim());
 }
 
 /// Internal (unrolled) quad-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn qsd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn qsd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
     if dim == 4 {
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*a[3]*b[3]));
@@ -1116,6 +1137,8 @@ pub(crate) fn qsd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: 
         dd.set(5, 4, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3])));
         dd.set(5, 5, s*(2.0*(a[2]*b[0] + a[0]*b[2])));
     } else if dim == 6 {
+        let a = &a[..6];
+        let b = &b[..6];
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*a[3]*b[3]));
         dd.set(0, 2, s*(2.0*a[5]*b[5]));
@@ -1158,6 +1181,8 @@ pub(crate) fn qsd_fn_stack(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: 
         dd.set(5, 4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5]));
         dd.set(5, 5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])));
     } else {
+        let a = &a[..9];
+        let b = &b[..9];
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*(a[3] + a[6])*(b[3] + b[6])));
         dd.set(0, 2, s*(2.0*(a[5] + a[8])*(b[5] + b[8])));
@@ -1348,7 +1373,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_odyad_t2_update_stack_works() {
+    fn t2_odyad_t2_update_slice_works() {
         // dd += s (A ⊗̄ B) for each representation
         for (mat_a, mat_b, rep) in [
             (
@@ -1375,7 +1400,7 @@ mod tests {
             t2_odyad_t2(&mut dd, 2.0, &a, &b);
 
             // dd += 3.0 (A ⊗̄ B)  =>  dd == 5.0 (A ⊗̄ B)
-            t2_odyad_t2_update_stack(&mut dd, 3.0, a.as_data(), b.as_data(), a.dim());
+            t2_odyad_t2_update_slice(&mut dd, 3.0, a.as_data(), b.as_data(), a.dim());
 
             // reference
             let mut dd_ref = Tensor4::new(Rep::General);

@@ -31,7 +31,7 @@ fn main() -> Result<(), StrError> {
     // Compute the polar decomposition F = R U (using the Higham algorithm)
     polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;
 
-    // Print the factors
+    // Print the results
     println!("R =\n{:.6}", rr.as_std_matrix());
     println!("U =\n{:.6}", uu.as_std_matrix());
 

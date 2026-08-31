@@ -1,5 +1,4 @@
 use super::{Tensor2, t2_gen_dot_sym, t2_gen_tra_dot_self};
-use crate::Rep;
 use russell_lab::StrError;
 
 const BRANNON_MAX_NIT: usize = 2000;
@@ -10,8 +9,8 @@ const BRANNON_MAX_NIT: usize = 2000;
 ///
 /// # Arguments
 ///
-/// * `rr` -- (out) R: the rotation tensor; must be [Rep::General]
-/// * `ff` -- (in) F: the deformation gradient; must be [Rep::General]
+/// * `rr` -- (out) R: the rotation tensor
+/// * `ff` -- (in) F: the deformation gradient
 ///
 /// # Returns
 ///
@@ -19,16 +18,8 @@ const BRANNON_MAX_NIT: usize = 2000;
 ///
 /// # Errors
 ///
-/// Returns an error if the required [Rep] enums are incorrect or if the
-/// algorithm did not converge.
-pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<usize, StrError> {
-    if ff.rep() != Rep::General {
-        return Err("ff must be Rep::General");
-    }
-    if rr.rep() != Rep::General {
-        return Err("rr must be Rep::General");
-    }
-
+/// Returns an error if the algorithm did not converge.
+pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Result<usize, StrError> {
     // e and i_vec_minus_e are symmetric (Kelvin-Mandel 6-component), matching the
     // Fortran scalars E11, E22, E33, E23, E31, E12; a and x are general (9).
     let mut e = [0.0; 6];
@@ -129,28 +120,17 @@ pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2, ff: &Tensor2) -> Result<u
 ///
 /// # Output
 ///
-/// * `rr` -- (out) R: the rotation tensor; must be [Rep::General]
+/// * `rr` -- (out) R: the rotation tensor
 ///
 /// # Input
 ///
-/// * `ff` -- (in) F: the deformation gradient; must be [Rep::General]
-///
-/// # Errors
-///
-/// Returns an error if the required [Rep] enums are incorrect.
+/// * `ff` -- (in) F: the deformation gradient
 ///
 /// # Note
 ///
 /// `F` is assumed to be an in-plane (planar) deformation: the third axis is
 /// decoupled (`R(3,3) = 1`, and `F(3,3)` is carried through to `U = Rᵀ F`).
-pub(crate) fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result<(), StrError> {
-    if ff.rep() != Rep::General {
-        return Err("ff must be Rep::General");
-    }
-    if rr.rep() != Rep::General {
-        return Err("rr must be Rep::General");
-    }
-
+pub(crate) fn polar_rotation_brannon2d(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Result<(), StrError> {
     // F must be an in-plane (planar) deformation: the out-of-plane shear
     // components F13, F23, F31, F32 must be zero.
     if ff.get_std(0, 2) != 0.0 || ff.get_std(1, 2) != 0.0 || ff.get_std(2, 0) != 0.0 || ff.get_std(2, 1) != 0.0 {
@@ -175,15 +155,15 @@ pub(crate) fn polar_rotation_brannon2d(rr: &mut Tensor2, ff: &Tensor2) -> Result
 #[cfg(test)]
 mod tests {
     use super::polar_rotation_brannon;
+    use crate::Tensor2;
     use crate::test_common::{example01, example01_rotation};
-    use crate::{Rep, Tensor2};
     use russell_lab::mat_approx_eq;
 
     #[test]
     fn polar_rotation_brannon_works() {
         // Example 01: the polar rotation is 60° about E3 (Brannon, Eq. 12.38)
         let ff = example01();
-        let mut rr = Tensor2::new(Rep::General);
+        let mut rr = Tensor2::<9>::new();
         let nit = polar_rotation_brannon(&mut rr, &ff).unwrap();
         assert!(nit > 0);
         mat_approx_eq(&rr.as_std_matrix(), &example01_rotation(), 1e-13);

@@ -5,8 +5,8 @@
 //! Each implementation is validated against all of these test cases and
 //! cross-checked against the other implementation.
 
+use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp};
-use crate::{Rep, Tensor2};
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
@@ -15,46 +15,46 @@ use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 /// Example 01 (Brannon, Eq. 12.39): in-plane deformation gradient;
 /// the polar rotation is a 60° rotation about the E3 axis.
-pub fn example01() -> Tensor2 {
+pub fn example01() -> Tensor2<9> {
     #[rustfmt::skip]
-    let a = Tensor2::from_std_matrix(&[
+    let a = Tensor2::<9>::from_std_matrix(&[
         [ 0.61784609690826542, -0.70889727457341833, 0.0],
         [ 0.59014083110323967,  0.13215390309173483, 0.0],
         [ 0.0,                  0.0,                 3.0],
-    ], Rep::General).unwrap();
+    ]).unwrap();
     a
 }
 
 /// Example 03 (McGinty, continuummechanics.org): fully 3-D deformation gradient.
-pub fn example03() -> Tensor2 {
+pub fn example03() -> Tensor2<9> {
     #[rustfmt::skip]
-    let a = Tensor2::from_std_matrix(&[
+    let a = Tensor2::<9>::from_std_matrix(&[
         [ 1.000,  0.495,  0.500],
         [-0.333,  1.000, -0.247],
         [ 0.959,  0.000,  1.500],
-    ], Rep::General).unwrap();
+    ]).unwrap();
     a
 }
 
 /// Higham & Noferini test (5.1).
-pub fn case51() -> Tensor2 {
+pub fn case51() -> Tensor2<9> {
     #[rustfmt::skip]
-    let a = Tensor2::from_std_matrix(&[
+    let a = Tensor2::<9>::from_std_matrix(&[
         [0.1, 0.2, 0.3],
         [0.1, 0.1, 0.0],
         [0.3, 0.2, 0.1],
-    ], Rep::General).unwrap();
+    ]).unwrap();
     a
 }
 
 /// Higham & Noferini test (5.2), for a given scale factor `y`.
-pub fn case52(y: f64) -> Tensor2 {
+pub fn case52(y: f64) -> Tensor2<9> {
     #[rustfmt::skip]
-    let a = Tensor2::from_std_matrix(&[
+    let a = Tensor2::<9>::from_std_matrix(&[
         [(720.0 * y - 25.0) / 1275.0, (-650.0 * y + 300.0) / 1275.0, (710.0 * y + 300.0) / 1275.0],
         [(396.0 * y + 70.0) / 1275.0, (-145.0 * y - 840.0) / 1275.0, (178.0 * y - 840.0) / 1275.0],
         [(972.0 * y - 10.0) / 1275.0, (610.0 * y + 120.0) / 1275.0, (-529.0 * y + 120.0) / 1275.0],
-    ], Rep::General).unwrap();
+    ]).unwrap();
     a
 }
 
@@ -100,7 +100,7 @@ pub fn case52_rotation() -> [[f64; 3]; 3] {
 // -----------------------------------------------------------------------------------
 
 /// Checks that `A = Q · H` with `Q` orthogonal, within the given tolerance.
-pub fn check_polar(a: &Tensor2, q: &Tensor2, h: &Tensor2, tol: f64) {
+pub fn check_polar(a: &Tensor2<9>, q: &Tensor2<9>, h: &Tensor2<6>, tol: f64) {
     let am = a.as_std_matrix();
     let qm = q.as_std_matrix();
     let hm = h.as_std_matrix();
@@ -115,17 +115,17 @@ pub fn check_polar(a: &Tensor2, q: &Tensor2, h: &Tensor2, tol: f64) {
 /// Runs both algorithms on `a` and checks that each satisfies `A = Q · H`
 /// (with `Q` orthogonal) and that the two agree (the polar decomposition is
 /// unique when `det(A) > 0`).
-pub fn check_agree(a: &Tensor2) {
+pub fn check_agree(a: &Tensor2<9>) {
     // Brannon (iterative)
-    let mut rb = Tensor2::new(Rep::General);
-    let mut ub = Tensor2::new(Rep::Symmetric);
-    let mut vb = Tensor2::new(Rep::Symmetric);
+    let mut rb = Tensor2::<9>::new();
+    let mut ub = Tensor2::<6>::new();
+    let mut vb = Tensor2::<6>::new();
     polar_decomp(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Brannon, a).unwrap();
     check_polar(a, &rb, &ub, 1e-13);
 
     // Higham & Noferini (quaternion)
-    let mut qh = Tensor2::new(Rep::General);
-    let mut hh = Tensor2::new(Rep::Symmetric);
+    let mut qh = Tensor2::<9>::new();
+    let mut hh = Tensor2::<6>::new();
     polar_decomp(&mut qh, &mut hh, None, PolarAlgo::Higham, a).unwrap();
     check_polar(a, &qh, &hh, 1e-13);
 

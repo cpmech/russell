@@ -1,5 +1,4 @@
 use super::Tensor2;
-use crate::Rep;
 use russell_lab::{Matrix, StrError, Vector, mat_eigen_sym, mat_inverse, mat_mat_mul, mat_svd, mat_t_mat_mul};
 
 /// Calculates the polar decomposition F = R U using the eigenvalues of C = Fᵀ · F
@@ -12,17 +11,17 @@ use russell_lab::{Matrix, StrError, Vector, mat_eigen_sym, mat_inverse, mat_mat_
 ///
 /// # Output
 ///
-/// * `rr` -- the rotation tensor R; must be [Rep::General]
-/// * `uu` -- the right stretch tensor U; must be [Rep::Symmetric]
+/// * `rr` -- the rotation tensor R
+/// * `uu` -- the right stretch tensor U
 ///
 /// # Input
 ///
-/// * `ff` -- the deformation gradient F; must be [Rep::General]
+/// * `ff` -- the deformation gradient F
 ///
 /// # Errors
 ///
-/// Returns an error if the required [Rep] enums are incorrect or if U cannot be inverted.
-pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2, uu: &mut Tensor2, ff: &Tensor2) -> Result<(), StrError> {
+/// Returns an error if U cannot be inverted.
+pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &Tensor2<9>) -> Result<(), StrError> {
     /* (*Mathematica:*)
     PolarDecEigen[ff_] := Module[{cc, vals, vecs, uuPrinc, uu, rr},
        cc = Transpose[ff] . ff;
@@ -33,15 +32,6 @@ pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2, uu: &mut Tensor2, ff: &Tensor
        {rr, uu}];
     */
     // check
-    if ff.rep() != Rep::General {
-        return Err("ff must be Rep::General");
-    }
-    if rr.rep() != Rep::General {
-        return Err("rr must be Rep::General");
-    }
-    if uu.rep() != Rep::Symmetric {
-        return Err("uu must be Rep::Symmetric");
-    }
 
     // C = Fᵀ · F
     let a = ff.as_std_matrix();
@@ -87,17 +77,13 @@ pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2, uu: &mut Tensor2, ff: &Tensor
 ///
 /// # Output
 ///
-/// * `rr` -- the rotation tensor R; must be [Rep::General]
-/// * `uu` -- the right stretch tensor U; must be [Rep::Symmetric]
+/// * `rr` -- the rotation tensor R
+/// * `uu` -- the right stretch tensor U
 ///
 /// # Input
 ///
-/// * `ff` -- the deformation gradient F; must be [Rep::General]
-///
-/// # Errors
-///
-/// Returns an error if the required [Rep] enums are incorrect.
-pub(crate) fn polar_decomp_svd(rr: &mut Tensor2, uu: &mut Tensor2, ff: &Tensor2) -> Result<(), StrError> {
+/// * `ff` -- the deformation gradient F
+pub(crate) fn polar_decomp_svd(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &Tensor2<9>) -> Result<(), StrError> {
     /* (*Mathematica:*)
     PolarDecSVD[ff_] := Module[{pp, dd, qq, uu, rr},
        {pp, dd, qq} = SingularValueDecomposition[N[ff]];(* F = P.D.Q^T *)
@@ -106,15 +92,6 @@ pub(crate) fn polar_decomp_svd(rr: &mut Tensor2, uu: &mut Tensor2, ff: &Tensor2)
        {rr, uu}];
     */
     // check
-    if ff.rep() != Rep::General {
-        return Err("ff must be Rep::General");
-    }
-    if rr.rep() != Rep::General {
-        return Err("rr must be Rep::General");
-    }
-    if uu.rep() != Rep::Symmetric {
-        return Err("uu must be Rep::Symmetric");
-    }
 
     // SVD: F = P · D · Qᵀ (a is overwritten by dgesvd)
     let mut a = ff.as_std_matrix();
@@ -151,12 +128,12 @@ pub(crate) fn polar_decomp_svd(rr: &mut Tensor2, uu: &mut Tensor2, ff: &Tensor2)
 #[cfg(test)]
 mod tests {
     use super::{polar_decomp_eigen, polar_decomp_svd};
-    use crate::{Rep, Tensor2};
+    use crate::Tensor2;
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
     const TOL: f64 = 1e-12;
 
-    fn check_polar(ff: &Tensor2, rr: &Tensor2, uu: &Tensor2, tol: f64) {
+    fn check_polar(ff: &Tensor2<9>, rr: &Tensor2<9>, uu: &Tensor2<6>, tol: f64) {
         // check that F = R · U
         let f = ff.as_std_matrix();
         let r = rr.as_std_matrix();
@@ -178,18 +155,18 @@ mod tests {
         }
     }
 
-    fn check_ref(ff: &Tensor2, r_ref: &[[f64; 3]; 3], u_ref: &[[f64; 3]; 3], tol: f64) {
+    fn check_ref(ff: &Tensor2<9>, r_ref: &[[f64; 3]; 3], u_ref: &[[f64; 3]; 3], tol: f64) {
         // eigen
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         polar_decomp_eigen(&mut rr, &mut uu, ff).unwrap();
         check_polar(ff, &rr, &uu, tol);
         mat_approx_eq(&rr.as_std_matrix(), r_ref, tol);
         mat_approx_eq(&uu.as_std_matrix(), u_ref, tol);
 
         // svd
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         polar_decomp_svd(&mut rr, &mut uu, ff).unwrap();
         check_polar(ff, &rr, &uu, tol);
         mat_approx_eq(&rr.as_std_matrix(), r_ref, tol);
@@ -220,11 +197,11 @@ mod tests {
     fn polar_decomp_classic_works() {
         // well-conditioned general matrix
         #[rustfmt::skip]
-        let ff = Tensor2::from_std_matrix(&[
+        let ff = Tensor2::<9>::from_std_matrix(&[
             [ 1.0,  0.495,  0.5  ],
             [-0.333, 1.0,   -0.247],
             [ 0.959, 0.0,    1.5  ],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
         let r_ref = [
             [ 0.9143288659766733,  0.3769304925214390, -0.1480747400786342],
@@ -241,11 +218,11 @@ mod tests {
 
         // general matrix (all components distinct)
         #[rustfmt::skip]
-        let ff = Tensor2::from_std_matrix(&[
+        let ff = Tensor2::<9>::from_std_matrix(&[
             [2.0, 1.0,   0.5],
             [0.3, 3.0,   1.0],
             [0.7, -0.2,  2.5],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
         let r_ref = [
             [ 0.9812167785042613,  0.1797641567869235, -0.0699891528481767],
@@ -262,11 +239,11 @@ mod tests {
 
         // reflection (det < 0): R has det = -1
         #[rustfmt::skip]
-        let ff = Tensor2::from_std_matrix(&[
+        let ff = Tensor2::<9>::from_std_matrix(&[
             [1.0,  0.5,  0.0],
             [0.2,  1.0,  0.3],
             [0.0, -0.4, -1.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
         let r_ref = [
             [ 0.9883141202500686,  0.1508649447384873, -0.0217937643234417],

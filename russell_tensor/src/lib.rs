@@ -101,14 +101,14 @@ mod constants;
 // mod lin_elasticity;
 // mod operations_mix1;
 // mod operations_mix2;
-// mod operations_t2;
-// mod operations_t2x;
+mod operations_t2;
+mod operations_t2x;
 // mod operations_t3;
 // mod operations_t4;
-// mod polar_brannon;
-// mod polar_classic;
-// mod polar_decomp;
-// mod polar_higham;
+mod polar_brannon;
+mod polar_classic;
+mod polar_decomp;
+mod polar_higham;
 mod samples_tensor2;
 mod samples_tensor3;
 mod samples_tensor4;
@@ -119,7 +119,7 @@ mod tensor3;
 mod tensor4;
 
 // #[cfg(test)]
-// mod test_common;
+mod test_common;
 
 // pub mod z_reference_loop_fns;
 
@@ -129,8 +129,8 @@ pub use constants::*;
 // pub use lin_elasticity::*;
 // pub use operations_mix1::*;
 // pub use operations_mix2::*;
-// pub use operations_t2::*;
-// pub use operations_t2x::*;
+pub use operations_t2::*;
+pub use operations_t2x::*;
 // pub use operations_t3::*;
 // pub use operations_t4::*;
 // pub use polar_decomp::*;

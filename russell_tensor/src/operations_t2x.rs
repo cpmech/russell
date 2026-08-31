@@ -1,11 +1,11 @@
 use super::Tensor2;
-use crate::{Rep, SQRT_2, StrError};
+use crate::{SQRT_2, StrError};
 
 /// Performs the matrix multiplication between two Tensor2
 ///
 /// # Supported Combinations
 ///
-/// | Formula | `a` Rep | `b` Rep | `c` Rep | `tra_a` | `tra_b` |
+/// | Formula | `a` | `b` | `c` | `tra_a` | `tra_b` |
 /// | :--- | :--- | :--- | :--- | :--- | :--- |
 /// | C = α A · B | `General` | `General` | `General` | `false` | `false` |
 /// | C = α A · A | `General` | (same as a) | `General` | `false` | `false` |
@@ -33,7 +33,7 @@ use crate::{Rep, SQRT_2, StrError};
 /// | C = α Aᵀ · Bᵀ | `General` | `Symmetric` | `General` | `true` | `true` |
 /// | C = α Aᵀ · B | `General` | `Symmetric` | `General` | `true` | `false` |
 ///
-/// **Note:** The use of `chop` is decided by the representation (`Rep`) of the output tensor `c`.
+/// **Note:** The use of `chop` is decided by the N of the output tensor `c`.
 /// Also, `chop` doesn't actually check for symmetry; it just ignores (chops) the last 3 rows of the Kelvin-Mandel vector.
 ///
 /// **Note:** `Symmetric2D` is not supported (use `Symmetric` instead).
@@ -53,109 +53,107 @@ use crate::{Rep, SQRT_2, StrError};
 /// # Returns
 ///
 /// Returns an error if the combination of representations and transpositions is unavailable or impossible, or if `Symmetric2D` is used.
-pub fn t2_matmul(
-    c: &mut Tensor2,
+pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
+    c: &mut Tensor2<L>,
     alpha: f64,
-    a: &Tensor2,
+    a: &Tensor2<M>,
     tra_a: bool,
-    b: &Tensor2,
+    b: &Tensor2<N>,
     tra_b: bool,
 ) -> Result<(), StrError> {
-    match (a.rep(), b.rep(), tra_a, tra_b) {
-        (Rep::General, Rep::General, false, false) => {
-            if std::ptr::eq(a, b) {
-                if c.rep() != Rep::General {
+    match (M, N, tra_a, tra_b) {
+        (9, 9, false, false) => {
+            if a as *const _ as *const () == b as *const _ as *const () {
+                if L != 9 {
                     return Err("c must be General for this combination");
                 }
                 t2_gen_dot_self(c.as_mut_data(), alpha, a.as_data());
             } else {
-                if c.rep() != Rep::General {
+                if L != 9 {
                     return Err("c must be General for this combination");
                 }
                 t2_gen_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
             }
         }
-        (Rep::General, Rep::Symmetric, false, true) | (Rep::General, Rep::Symmetric, false, false) => {
-            if c.rep() != Rep::General {
+        (9, 6, false, true) | (9, 6, false, false) => {
+            if L != 9 {
                 return Err("c must be General for this combination");
             }
             t2_gen_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::General, true, false) | (Rep::Symmetric, Rep::General, false, false) => {
-            if c.rep() != Rep::General {
+        (6, 9, true, false) | (6, 9, false, false) => {
+            if L != 9 {
                 return Err("c must be General for this combination");
             }
             t2_sym_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::Symmetric, true, true)
-        | (Rep::Symmetric, Rep::Symmetric, true, false)
-        | (Rep::Symmetric, Rep::Symmetric, false, true)
-        | (Rep::Symmetric, Rep::Symmetric, false, false) => {
-            if std::ptr::eq(a, b) {
-                if c.rep() != Rep::Symmetric {
+        (6, 6, true, true) | (6, 6, true, false) | (6, 6, false, true) | (6, 6, false, false) => {
+            if a as *const _ as *const () == b as *const _ as *const () {
+                if L != 6 {
                     return Err("c must be Symmetric for this combination");
                 }
                 t2_sym_dot_self(c.as_mut_data(), alpha, a.as_data());
             } else {
-                if c.rep() != Rep::General {
+                if L != 9 {
                     return Err("c must be General for this combination");
                 }
                 t2_sym_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
             }
         }
-        (Rep::General, Rep::General, true, false) => {
-            if std::ptr::eq(a, b) {
-                if c.rep() != Rep::Symmetric {
+        (9, 9, true, false) => {
+            if a as *const _ as *const () == b as *const _ as *const () {
+                if L != 6 {
                     return Err("c must be Symmetric for this combination");
                 }
                 t2_gen_tra_dot_self(c.as_mut_data(), alpha, a.as_data());
             } else {
-                if c.rep() == Rep::Symmetric {
+                if L == 6 {
                     t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data());
-                } else if c.rep() == Rep::General {
+                } else if L == 9 {
                     t2_gen_tra_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
                 } else {
                     return Err("c must be Symmetric or General for this combination");
                 }
             }
         }
-        (Rep::General, Rep::General, false, true) => {
-            if std::ptr::eq(a, b) {
-                if c.rep() != Rep::Symmetric {
+        (9, 9, false, true) => {
+            if a as *const _ as *const () == b as *const _ as *const () {
+                if L != 6 {
                     return Err("c must be Symmetric for this combination");
                 }
                 t2_gen_dot_self_tra(c.as_mut_data(), alpha, a.as_data());
             } else {
-                if c.rep() == Rep::Symmetric {
+                if L == 6 {
                     t2_gen_dot_gen_tra_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data());
-                } else if c.rep() == Rep::General {
+                } else if L == 9 {
                     t2_gen_dot_gen_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
                 } else {
                     return Err("c must be Symmetric or General for this combination");
                 }
             }
         }
-        (Rep::General, Rep::General, true, true) => {
-            if c.rep() != Rep::General {
+        (9, 9, true, true) => {
+            if L != 9 {
                 return Err("c must be General for this combination");
             }
             t2_gen_tra_dot_gen_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric, Rep::General, true, true) | (Rep::Symmetric, Rep::General, false, true) => {
-            if c.rep() != Rep::General {
+        (6, 9, true, true) | (6, 9, false, true) => {
+            if L != 9 {
                 return Err("c must be General for this combination");
             }
             t2_sym_dot_gen_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::General, Rep::Symmetric, true, true) | (Rep::General, Rep::Symmetric, true, false) => {
-            if c.rep() != Rep::General {
+        (9, 6, true, true) | (9, 6, true, false) => {
+            if L != 9 {
                 return Err("c must be General for this combination");
             }
             t2_gen_tra_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::Symmetric2D, _, _, _) | (_, Rep::Symmetric2D, _, _) => {
+        (4, _, _, _) | (_, 4, _, _) => {
             return Err("t2_matmul: Symmetric2D is not supported; use Symmetric instead");
         }
+        _ => return Err("t2_matmul: unsupported combination"),
     }
     Ok(())
 }
@@ -164,7 +162,7 @@ pub fn t2_matmul(
 ///
 /// # Supported Combinations
 ///
-/// | Formula | `a` Rep | `b` Rep | `c` Rep | `forward` |
+/// | Formula | `a` | `b` | `c` | `forward` |
 /// | :--- | :--- | :--- | :--- | :--- |
 /// | C = α A · B · Aᵀ | `General` | `Symmetric` | `Symmetric` | `true` |
 /// | C = α Aᵀ · B · A | `General` | `Symmetric` | `Symmetric` | `false` |
@@ -183,17 +181,23 @@ pub fn t2_matmul(
 /// # Returns
 ///
 /// Returns an error if the combination is unsupported.
-pub fn t2_matmulx(c: &mut Tensor2, alpha: f64, a: &Tensor2, forward: bool, b: &Tensor2) -> Result<(), StrError> {
-    match (a.rep(), b.rep(), forward) {
-        (Rep::General, Rep::Symmetric, true) => {
-            if c.rep() != Rep::Symmetric {
-                return Err("c must be Symmetric for this combination");
+pub fn t2_matmulx<const L: usize, const M: usize, const N: usize>(
+    c: &mut Tensor2<L>,
+    alpha: f64,
+    a: &Tensor2<M>,
+    forward: bool,
+    b: &Tensor2<N>,
+) -> Result<(), StrError> {
+    match (M, N, forward) {
+        (9, 6, true) => {
+            if L != 6 {
+                return Err("c must be symmetric for this combination");
             }
             t2_gen_dot_sym_dot_self_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
-        (Rep::General, Rep::Symmetric, false) => {
-            if c.rep() != Rep::Symmetric {
-                return Err("c must be Symmetric for this combination");
+        (9, 6, false) => {
+            if L != 6 {
+                return Err("c must be symmetric for this combination");
             }
             t2_gen_tra_dot_sym_dot_self(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
@@ -205,18 +209,18 @@ pub fn t2_matmulx(c: &mut Tensor2, alpha: f64, a: &Tensor2, forward: bool, b: &T
 #[cfg(test)]
 mod dispatcher_tests {
     use super::*;
-    use crate::{Rep, Tensor2};
+    use crate::Tensor2;
 
     #[test]
     fn test_t2_matmul_dispatcher() {
-        let a_gen = Tensor2::new(Rep::General);
-        let b_gen = Tensor2::new(Rep::General);
-        let a_sym = Tensor2::new(Rep::Symmetric);
-        let b_sym = Tensor2::new(Rep::Symmetric);
-        let a_2d = Tensor2::new(Rep::Symmetric2D);
-        let mut c_gen = Tensor2::new(Rep::General);
-        let mut c_sym = Tensor2::new(Rep::Symmetric);
-        let mut c_2d = Tensor2::new(Rep::Symmetric2D);
+        let a_gen = Tensor2::<9>::new();
+        let b_gen = Tensor2::<9>::new();
+        let a_sym = Tensor2::<6>::new();
+        let b_sym = Tensor2::<6>::new();
+        let a_2d = Tensor2::<4>::new();
+        let mut c_gen = Tensor2::<9>::new();
+        let mut c_sym = Tensor2::<6>::new();
+        let mut c_2d = Tensor2::<4>::new();
 
         assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, true).is_ok());
         assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, true).is_err());
@@ -270,12 +274,12 @@ mod dispatcher_tests {
 
     #[test]
     fn test_t2_matmulx_dispatcher() {
-        let a_gen = Tensor2::new(Rep::General);
-        let b_gen = Tensor2::new(Rep::General);
-        let a_sym = Tensor2::new(Rep::Symmetric);
-        let b_sym = Tensor2::new(Rep::Symmetric);
-        let mut c_gen = Tensor2::new(Rep::General);
-        let mut c_sym = Tensor2::new(Rep::Symmetric);
+        let a_gen = Tensor2::<9>::new();
+        let b_gen = Tensor2::<9>::new();
+        let a_sym = Tensor2::<6>::new();
+        let b_sym = Tensor2::<6>::new();
+        let mut c_gen = Tensor2::<9>::new();
+        let mut c_sym = Tensor2::<6>::new();
 
         assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_gen).is_err());
         assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_gen).is_err());
@@ -884,18 +888,18 @@ pub(crate) fn t2_gen_tra_dot_sym(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Rep, Tensor2};
+    use crate::Tensor2;
     use russell_lab::mat_approx_eq;
 
     #[test]
     fn t2_matmul_gen_self_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, false, &a, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -909,12 +913,12 @@ mod tests {
     #[test]
     fn t2_matmul_tra_self_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmul(&mut c, 2.0, &a, true, &a, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -928,12 +932,12 @@ mod tests {
     #[test]
     fn t2_matmul_self_tra_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmul(&mut c, 2.0, &a, false, &a, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -947,12 +951,12 @@ mod tests {
     #[test]
     fn t2_matmul_sym_self_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [   1.00000,    4.00000,    6.00000],
             [   4.00000,    2.00000,    5.00000],
             [   6.00000,    5.00000,    3.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmul(&mut c, 2.0, &a, false, &a, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -966,18 +970,18 @@ mod tests {
     #[test]
     fn t2_matmul_tra_gen_gen_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, true, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -991,18 +995,18 @@ mod tests {
     #[test]
     fn t2_matmul_gen_tra_gen_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, false, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1016,18 +1020,18 @@ mod tests {
     #[test]
     fn t2_matmul_tra_gen_tra_gen_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, true, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1041,18 +1045,18 @@ mod tests {
     #[test]
     fn t2_matmul_sym_tra_gen_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [   1.00000,    4.00000,    6.00000],
             [   4.00000,    2.00000,    5.00000],
             [   6.00000,    5.00000,    3.00000],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, false, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1066,18 +1070,18 @@ mod tests {
     #[test]
     fn t2_matmul_gen_tra_sym_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [   3.00000,    5.00000,    6.00000],
             [   5.00000,    2.00000,    4.00000],
             [   6.00000,    4.00000,    1.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, true, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1091,18 +1095,18 @@ mod tests {
     #[test]
     fn t2_matmul_gen_gen_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1116,18 +1120,18 @@ mod tests {
     #[test]
     fn t2_matmul_gen_sym_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [   3.00000,    5.00000,    6.00000],
             [   5.00000,    2.00000,    4.00000],
             [   6.00000,    4.00000,    1.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 3.0, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1141,18 +1145,18 @@ mod tests {
     #[test]
     fn t2_matmul_sym_gen_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [   1.00000,    4.00000,    6.00000],
             [   4.00000,    2.00000,    5.00000],
             [   6.00000,    5.00000,    3.00000],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 1.5, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1166,18 +1170,18 @@ mod tests {
     #[test]
     fn t2_matmul_sym_sym_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [   1.00000,    4.00000,    6.00000],
             [   4.00000,    2.00000,    5.00000],
             [   6.00000,    5.00000,    3.00000],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [   3.00000,    5.00000,    6.00000],
             [   5.00000,    2.00000,    4.00000],
             [   6.00000,    4.00000,    1.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 0.5, &a, false, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1191,18 +1195,18 @@ mod tests {
     #[test]
     fn t2_matmul_tra_gen_gen_chop_false_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, true, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1216,18 +1220,18 @@ mod tests {
     #[test]
     fn t2_matmul_tra_gen_gen_chop_true_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmul(&mut c, 2.0, &a, true, &b, false).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1241,18 +1245,18 @@ mod tests {
     #[test]
     fn t2_matmul_gen_tra_gen_chop_false_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::General);
+        ]).unwrap();
+        let mut c = Tensor2::<9>::new();
         t2_matmul(&mut c, 2.0, &a, false, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1266,18 +1270,18 @@ mod tests {
     #[test]
     fn t2_matmul_gen_tra_gen_chop_true_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [   9.00000,    8.00000,    7.00000],
             [   6.00000,    5.00000,    4.00000],
             [   3.00000,    2.00000,    1.00000],
-        ], Rep::General).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmul(&mut c, 2.0, &a, false, &b, true).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1291,18 +1295,18 @@ mod tests {
     #[test]
     fn t2_matmulx_sym_dot_self_tra_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [   3.00000,    5.00000,    6.00000],
             [   5.00000,    2.00000,    4.00000],
             [   6.00000,    4.00000,    1.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmulx(&mut c, 1.5, &a, true, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[
@@ -1316,18 +1320,18 @@ mod tests {
     #[test]
     fn t2_matmulx_tra_sym_dot_self_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [   1.00000,    2.00000,    3.00000],
             [   4.00000,    5.00000,    6.00000],
             [   7.00000,    8.00000,    9.00000],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [   3.00000,    5.00000,    6.00000],
             [   5.00000,    2.00000,    4.00000],
             [   6.00000,    4.00000,    1.00000],
-        ], Rep::Symmetric).unwrap();
-        let mut c = Tensor2::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut c = Tensor2::<6>::new();
         t2_matmulx(&mut c, 1.5, &a, false, &b).unwrap();
         #[rustfmt::skip]
         let correct = &[

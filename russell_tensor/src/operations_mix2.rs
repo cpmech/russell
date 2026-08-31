@@ -1,5 +1,5 @@
 use super::{Tensor2, Tensor4};
-use crate::{Rep, SQRT_2};
+use crate::SQRT_2;
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///
@@ -16,36 +16,27 @@ use crate::{Rep, SQRT_2};
 /// Dᵢⱼₖₗ = s Aᵢₖ Bⱼₗ
 /// ```
 ///
-/// **Important:** The result is **not** necessarily minor-symmetric; therefore `D` must be General.
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `D` is general.
 ///
 /// # Output
 ///
-/// * `dd` -- the tensor `D`; it must be [Rep::General]
+/// * `dd` -- the tensor `D`
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Rep] as `b`
-/// * `b` -- second tensor; with the same [Rep] as `a`
-///
-/// # Panics
-///
-/// 1. A panic will occur if `dd` is not [Rep::General]
-/// 2. A panic will occur if `a` and `b` have different [Rep]
+/// * `a` -- first tensor
+/// * `b` -- second tensor
 #[inline]
-pub fn t2_odyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::General);
-    assert_eq!(bb.rep(), aa.rep());
-    t2_odyad_t2_slice(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+pub fn t2_odyad_t2<const N: usize>(dd: &mut Tensor4<9>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
+    t2_odyad_t2_slice::<N>(dd, s, aa.as_data(), bb.as_data());
 }
 
 /// Internal (unrolled) overbar dyadic product on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_odyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn t2_odyad_t2_slice<const N: usize>(dd: &mut Tensor4<9>, s: f64, a: &[f64], b: &[f64]) {
     let tsq2 = 2.0 * SQRT_2;
-    if dim == 4 {
-        let a = &a[..4];
-        let b = &b[..4];
+    if N == 4 {
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, 0.0);
@@ -135,9 +126,7 @@ pub(crate) fn t2_odyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 6, 0.0);
         dd.set(8, 7, s*(a[3]*b[2] + a[2]*b[3])/tsq2);
         dd.set(8, 8, s*(a[2]*b[0] + a[0]*b[2])/2.0);
-    } else if dim == 6 {
-        let a = &a[..6];
-        let b = &b[..6];
+    } else if N == 6 {
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, s*(a[5]*b[5])/2.0);
@@ -228,8 +217,8 @@ pub(crate) fn t2_odyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 7, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
         dd.set(8, 8, s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0);
     } else {
-        let a = &a[..9];
-        let b = &b[..9];
+        debug_assert!(N == 9);
+
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
         dd.set(0, 2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
@@ -327,11 +316,9 @@ pub(crate) fn t2_odyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
 /// Computes `dd += s (A ⊗ B)`.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_odyad_t2_update_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn t2_odyad_t2_update_slice<const N: usize>(dd: &mut Tensor4<9>, s: f64, a: &[f64], b: &[f64]) {
     let tsq2 = 2.0 * SQRT_2;
-    if dim == 4 {
-        let a = &a[..4];
-        let b = &b[..4];
+    if N == 4 {
         dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
         dd.set(0, 1, dd.get(0, 1) + s*(a[3]*b[3])/2.0);
         dd.set(0, 3, dd.get(0, 3) + s*(a[3]*b[0] + a[0]*b[3])/2.0);
@@ -373,9 +360,7 @@ pub(crate) fn t2_odyad_t2_update_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &
         dd.set(8, 5, dd.get(8, 5) + s*(-(a[2]*b[0]) + a[0]*b[2])/2.0);
         dd.set(8, 7, dd.get(8, 7) + s*(a[3]*b[2] + a[2]*b[3])/tsq2);
         dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2])/2.0);
-    } else if dim == 6 {
-        let a = &a[..6];
-        let b = &b[..6];
+    } else if N == 6 {
         dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
         dd.set(0, 1, dd.get(0, 1) + s*(a[3]*b[3])/2.0);
         dd.set(0, 2, dd.get(0, 2) + s*(a[5]*b[5])/2.0);
@@ -466,8 +451,8 @@ pub(crate) fn t2_odyad_t2_update_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &
         dd.set(8, 7, dd.get(8, 7) + s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] - a[5]*b[4] - a[4]*b[5])/4.0);
         dd.set(8, 8, dd.get(8, 8) + s*(a[2]*b[0] + a[0]*b[2] - a[5]*b[5])/2.0);
     } else {
-        let a = &a[..9];
-        let b = &b[..9];
+        debug_assert!(N == 9);
+
         dd.set(0, 0, dd.get(0, 0) + s*a[0]*b[0]);
         dd.set(0, 1, dd.get(0, 1) + s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
         dd.set(0, 2, dd.get(0, 2) + s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
@@ -575,36 +560,27 @@ pub(crate) fn t2_odyad_t2_update_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &
 /// Dᵢⱼₖₗ = s Aᵢₗ Bⱼₖ
 /// ```
 ///
-/// **Important:** The result is **not** necessarily minor-symmetric; therefore `D` must be General.
+/// **Important:** The result is **not** necessarily minor-symmetric; therefore `D` is general.
 ///
 /// # Output
 ///
-/// * `dd` -- the tensor `D`; it must be [Rep::General]
+/// * `dd` -- the tensor `D`
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Rep] as `b`
-/// * `b` -- second tensor; with the same [Rep] as `a`
-///
-/// # Panics
-///
-/// 1. A panic will occur if `dd` is not [Rep::General]
-/// 2. A panic will occur if the `a` and `b` have different [Rep]
+/// * `a` -- first tensor
+/// * `b` -- second tensor
 #[inline]
-pub fn t2_udyad_t2(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::General);
-    assert_eq!(bb.rep(), aa.rep());
-    t2_udyad_t2_slice(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+pub fn t2_udyad_t2<const N: usize>(dd: &mut Tensor4<9>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
+    t2_udyad_t2_slice::<N>(dd, s, aa.as_data(), bb.as_data());
 }
 
 /// Internal (unrolled) underbar dyadic product on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_udyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
+pub(crate) fn t2_udyad_t2_slice<const N:usize>(dd: &mut Tensor4<9>, s: f64, a: &[f64], b: &[f64]) {
     let tsq2 = 2.0 * SQRT_2;
-    if dim == 4 {
-        let a = &a[..4];
-        let b = &b[..4];
+    if N == 4 {
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, 0.0);
@@ -694,9 +670,7 @@ pub(crate) fn t2_udyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 6, 0.0);
         dd.set(8, 7, s*(-(a[3]*b[2] + a[2]*b[3])/tsq2));
         dd.set(8, 8, s*(-(a[2]*b[0]) - a[0]*b[2])/2.0);
-    } else if dim == 6 {
-        let a = &a[..6];
-        let b = &b[..6];
+    } else if N == 6 {
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*(a[3]*b[3])/2.0);
         dd.set(0, 2, s*(a[5]*b[5])/2.0);
@@ -787,8 +761,8 @@ pub(crate) fn t2_udyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
         dd.set(8, 7, s*(-(SQRT_2*a[3]*b[2]) - SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5])/4.0);
         dd.set(8, 8, s*(-(a[2]*b[0]) - a[0]*b[2] + a[5]*b[5])/2.0);
     } else {
-        let a = &a[..9];
-        let b = &b[..9];
+        debug_assert!(N == 9);
+
         dd.set(0, 0, s*a[0]*b[0]);
         dd.set(0, 1, s*((a[3] + a[6])*(b[3] + b[6]))/2.0);
         dd.set(0, 2, s*((a[5] + a[8])*(b[5] + b[8]))/2.0);
@@ -901,27 +875,21 @@ pub(crate) fn t2_udyad_t2_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], 
 ///
 /// # Output
 ///
-/// * `dd` -- The resulting tensor (minor-symmetric); it must be [Rep::Symmetric]
+/// * `dd` -- The resulting tensor (minor-symmetric)
 ///
 /// # Input
 ///
 /// * `aa` -- Second-order tensor, symmetric or not.
-///
-/// # Panics
-///
-/// A panic will occur if `dd` is not [Rep::Symmetric]
 #[inline]
-pub fn ssd_fn(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::Symmetric);
-    ssd_fn_slice(dd, s, aa.as_data(), aa.dim());
+pub fn ssd_fn<const N: usize>(dd: &mut Tensor4<6>, s: f64, aa: &Tensor2<N>) {
+    ssd_fn_slice::<N>(dd, s, aa.as_data());
 }
 
 /// Internal (unrolled) self-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn ssd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
-    if dim == 4 {
-        let a = &a[..4];
+pub(crate) fn ssd_fn_slice<const N: usize>(dd: &mut Tensor4<6>, s: f64, a: &[f64]) {
+    if N == 4 {
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*(a[3]*a[3]));
         dd.set(0, 2, 0.0);
@@ -963,8 +931,7 @@ pub(crate) fn ssd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
         dd.set(5, 3, 0.0);
         dd.set(5, 4, s*(SQRT_2*a[2]*a[3]));
         dd.set(5, 5, s*(2.0*a[0]*a[2]));
-    } else if dim == 6 {
-        let a = &a[..6];
+    } else if N == 6 {
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*(a[3]*a[3]));
         dd.set(0, 2, s*(a[5]*a[5]));
@@ -1007,7 +974,8 @@ pub(crate) fn ssd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
         dd.set(5, 4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
         dd.set(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
     } else {
-        let a = &a[..9];
+        debug_assert!(N == 9);
+
         dd.set(0, 0, s*(2.0*a[0]*a[0]));
         dd.set(0, 1, s*((a[3] + a[6])*(a[3] + a[6])));
         dd.set(0, 2, s*((a[5] + a[8])*(a[5] + a[8])));
@@ -1072,29 +1040,22 @@ pub(crate) fn ssd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], dim: usize) {
 ///
 /// # Output
 ///
-/// * `dd` -- The resulting tensor (minor-symmetric); it must be [Rep::Symmetric]
+/// * `dd` -- The resulting tensor (minor-symmetric)
 ///
 /// # Input
 ///
-/// * `aa` -- Second-order tensor, symmetric or not; with the same [Rep] as `bb`
-/// * `bb` -- Second-order tensor, symmetric or not; with the same [Rep] as `aa`
-///
-/// # Panics
-///
-/// 1. A panic will occur if `dd` is not [Rep::Symmetric]
-/// 2. A panic will occur if `aa` and `bb` have different [Rep]
+/// * `aa` -- Second-order tensor, symmetric or not
+/// * `bb` -- Second-order tensor, symmetric or not
 #[inline]
-pub fn qsd_fn(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::Symmetric);
-    assert_eq!(bb.rep(), aa.rep());
-    qsd_fn_slice(dd, s, aa.as_data(), bb.as_data(), aa.dim());
+pub fn qsd_fn<const N: usize>(dd: &mut Tensor4<6>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
+    qsd_fn_slice::<N>(dd, s, aa.as_data(), bb.as_data());
 }
 
 /// Internal (unrolled) quad-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn qsd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: usize) {
-    if dim == 4 {
+pub(crate) fn qsd_fn_slice<const N: usize>(dd: &mut Tensor4<6>, s: f64, a: &[f64], b: &[f64]) {
+    if N == 4 {
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*a[3]*b[3]));
         dd.set(0, 2, 0.0);
@@ -1136,9 +1097,7 @@ pub(crate) fn qsd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: 
         dd.set(5, 3, 0.0);
         dd.set(5, 4, s*(SQRT_2*(a[3]*b[2] + a[2]*b[3])));
         dd.set(5, 5, s*(2.0*(a[2]*b[0] + a[0]*b[2])));
-    } else if dim == 6 {
-        let a = &a[..6];
-        let b = &b[..6];
+    } else if N == 6 {
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*a[3]*b[3]));
         dd.set(0, 2, s*(2.0*a[5]*b[5]));
@@ -1181,8 +1140,8 @@ pub(crate) fn qsd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: 
         dd.set(5, 4, s*(SQRT_2*a[3]*b[2] + SQRT_2*a[2]*b[3] + a[5]*b[4] + a[4]*b[5]));
         dd.set(5, 5, s*(2.0*(a[2]*b[0] + a[0]*b[2] + a[5]*b[5])));
     } else {
-        let a = &a[..9];
-        let b = &b[..9];
+        debug_assert!(N == 9);
+
         dd.set(0, 0, s*(4.0*a[0]*b[0]));
         dd.set(0, 1, s*(2.0*(a[3] + a[6])*(b[3] + b[6])));
         dd.set(0, 2, s*(2.0*(a[5] + a[8])*(b[5] + b[8])));
@@ -1232,43 +1191,24 @@ pub(crate) fn qsd_fn_slice(dd: &mut Tensor4, s: f64, a: &[f64], b: &[f64], dim: 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MN_TO_IJKL, Rep};
+    use crate::MN_TO_IJKL;
     use russell_lab::{Matrix, mat_approx_eq};
 
-    fn kelvin_matrix(dd: &Tensor4) -> Matrix {
-        let dim = dd.dim();
-        let mut m = Matrix::new(dim, dim);
-        for i in 0..dim {
-            for j in 0..dim {
+    fn kelvin_matrix<const N: usize>(dd: &Tensor4<N>) -> Matrix {
+        let mut m = Matrix::new(N, N);
+        for i in 0..N {
+            for j in 0..N {
                 m.set(i, j, dd.get(i, j));
             }
         }
         m
     }
 
-    #[test]
-    #[should_panic]
-    fn t2_odyad_t2_panics_on_non_general() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be General
-        t2_odyad_t2(&mut dd, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_odyad_t2_panics_on_different_rep() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
-        let mut dd = Tensor4::new(Rep::General);
-        t2_odyad_t2(&mut dd, 1.0, &a, &b);
-    }
-
-    fn check_odyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+    fn check_odyad<const N: usize>(s: f64, a_ten: &Tensor2<N>, b_ten: &Tensor2<N>, dd_ten: &Tensor4<9>, tol: f64) {
         let a = a_ten.as_std_matrix();
         let b = b_ten.as_std_matrix();
         let dd = dd_ten.as_std_matrix();
-        let mut correct = Matrix::new(9, 9);
+        let mut correct = Matrix::new(9, 9); // Use 9 here due to the conversion to "STD"
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -1282,18 +1222,18 @@ mod tests {
     fn t2_odyad_t2_works() {
         // general odyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1312,18 +1252,18 @@ mod tests {
 
         // symmetric odyad symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1342,18 +1282,18 @@ mod tests {
 
         // symmetric 2D odyad symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_odyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
@@ -1369,69 +1309,68 @@ mod tests {
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 24.0, 18.0],
         ]);
         mat_approx_eq(&mat, &correct, 1e-14);
-        check_odyad(2.0, &a, &b, &dd, 1e-15);
+        check_odyad(2.0, &a, &b, &dd, 1e-14);
     }
 
     #[test]
     fn t2_odyad_t2_update_slice_works() {
-        // dd += s (A ⊗̄ B) for each representation
-        for (mat_a, mat_b, rep) in [
-            (
-                &[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
-                &[[9.0, 8.0, 7.0], [6.0, 5.0, 4.0], [3.0, 2.0, 1.0]],
-                Rep::General,
-            ),
-            (
-                &[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]],
-                &[[3.0, 5.0, 6.0], [5.0, 2.0, 4.0], [6.0, 4.0, 1.0]],
-                Rep::Symmetric,
-            ),
-            (
-                &[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]],
-                &[[3.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 1.0]],
-                Rep::Symmetric2D,
-            ),
-        ] {
-            let a = Tensor2::from_std_matrix(mat_a, rep).unwrap();
-            let b = Tensor2::from_std_matrix(mat_b, rep).unwrap();
+        //
+        // --- General ---
+        //
+        // dd := 2.0 (A ⊗̄ B)
+        let a = Tensor2::<9>::from_std_matrix(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]).unwrap();
+        let b = Tensor2::<9>::from_std_matrix(&[[9.0, 8.0, 7.0], [6.0, 5.0, 4.0], [3.0, 2.0, 1.0]]).unwrap();
+        let mut dd = Tensor4::<9>::new();
+        t2_odyad_t2(&mut dd, 2.0, &a, &b);
 
-            // dd := 2.0 (A ⊗̄ B)
-            let mut dd = Tensor4::new(Rep::General);
-            t2_odyad_t2(&mut dd, 2.0, &a, &b);
+        // dd += 3.0 (A ⊗̄ B)  =>  dd == 5.0 (A ⊗̄ B)
+        t2_odyad_t2_update_slice::<9>(&mut dd, 3.0, a.as_data(), b.as_data());
 
-            // dd += 3.0 (A ⊗̄ B)  =>  dd == 5.0 (A ⊗̄ B)
-            t2_odyad_t2_update_slice(&mut dd, 3.0, a.as_data(), b.as_data(), a.dim());
+        // reference
+        let mut dd_ref = Tensor4::<9>::new();
+        t2_odyad_t2(&mut dd_ref, 5.0, &a, &b);
+        mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
 
-            // reference
-            let mut dd_ref = Tensor4::new(Rep::General);
-            t2_odyad_t2(&mut dd_ref, 5.0, &a, &b);
-            mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
-        }
+        //
+        // --- Symmetric ---
+        //
+        // dd := 2.0 (A ⊗̄ B)
+        let a = Tensor2::<6>::from_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]]).unwrap();
+        let b = Tensor2::<6>::from_std_matrix(&[[3.0, 5.0, 6.0], [5.0, 2.0, 4.0], [6.0, 4.0, 1.0]]).unwrap();
+        let mut dd = Tensor4::<9>::new();
+        t2_odyad_t2(&mut dd, 2.0, &a, &b);
+
+        // dd += 3.0 (A ⊗̄ B)  =>  dd == 5.0 (A ⊗̄ B)
+        t2_odyad_t2_update_slice::<6>(&mut dd, 3.0, a.as_data(), b.as_data());
+
+        // reference
+        let mut dd_ref = Tensor4::<9>::new();
+        t2_odyad_t2(&mut dd_ref, 5.0, &a, &b);
+        mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
+
+        //
+        // --- Symmetric 2D ---
+        //
+        // dd := 2.0 (A ⊗̄ B)
+        let a = Tensor2::<4>::from_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]]).unwrap();
+        let b = Tensor2::<4>::from_std_matrix(&[[3.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 1.0]]).unwrap();
+        let mut dd = Tensor4::<9>::new();
+        t2_odyad_t2(&mut dd, 2.0, &a, &b);
+
+        // dd += 3.0 (A ⊗̄ B)  =>  dd == 5.0 (A ⊗̄ B)
+        t2_odyad_t2_update_slice::<4>(&mut dd, 3.0, a.as_data(), b.as_data());
+
+        // reference
+        let mut dd_ref = Tensor4::<9>::new();
+        t2_odyad_t2(&mut dd_ref, 5.0, &a, &b);
+        mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
     }
 
-    #[test]
-    #[should_panic]
-    fn t2_udyad_t2_panics_on_non_general() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be General
-        t2_udyad_t2(&mut dd, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_udyad_t2_panics_on_different_rep() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
-        let mut dd = Tensor4::new(Rep::General);
-        t2_udyad_t2(&mut dd, 1.0, &a, &b);
-    }
-
-    fn check_udyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+    fn check_udyad<const N: usize>(s: f64, a_ten: &Tensor2<N>, b_ten: &Tensor2<N>, dd_ten: &Tensor4<9>, tol: f64) {
         let a = a_ten.as_std_matrix();
         let b = b_ten.as_std_matrix();
         let dd = dd_ten.as_std_matrix();
-        let mut correct = Matrix::new(9, 9);
+        let mut correct = Matrix::new(9, 9); // Use 9 here due to the conversion to "STD"
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -1445,18 +1384,18 @@ mod tests {
     fn t2_udyad_t2_works() {
         // general udyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1475,18 +1414,18 @@ mod tests {
 
         // symmetric udyad symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1505,18 +1444,18 @@ mod tests {
 
         // symmetric 2D udyad symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<4>::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_udyad_t2(&mut dd, 2.0, &a, &b);
         let kelvin_mat = Matrix::from(&[
             [6.0, 32.0, 0.0, 16.0 * SQRT_2, 0.0, 0.0, 8.0 * SQRT_2, 0.0, 0.0],
@@ -1546,18 +1485,10 @@ mod tests {
         check_udyad(2.0, &a, &b, &dd, 1e-15);
     }
 
-    #[test]
-    #[should_panic]
-    fn ssd_fn_panics_on_non_sym() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
-        ssd_fn(&mut dd, 1.0, &a);
-    }
-
-    fn check_ssd(s: f64, a_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+    fn check_ssd<const N: usize>(s: f64, a_ten: &Tensor2<N>, dd_ten: &Tensor4<6>, tol: f64) {
         let a = a_ten.as_std_matrix();
         let dd = dd_ten.as_std_matrix();
-        let mut correct = Matrix::new(9, 9);
+        let mut correct = Matrix::new(9, 9); // Use 9 here due to the conversion to "STD"
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -1571,12 +1502,12 @@ mod tests {
     fn ssd_fn_works() {
         // general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         ssd_fn(&mut dd, 2.0, &a);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1595,12 +1526,12 @@ mod tests {
 
         // symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         ssd_fn(&mut dd, 2.0, &a);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1619,12 +1550,12 @@ mod tests {
 
         // symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         ssd_fn(&mut dd, 2.0, &a);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1642,29 +1573,11 @@ mod tests {
         check_ssd(2.0, &a, &dd, 1e-14);
     }
 
-    #[test]
-    #[should_panic]
-    fn qsd_fn_panics_on_non_sym() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let mut dd = Tensor4::new(Rep::Symmetric2D); // wrong; it must be Symmetric
-        qsd_fn(&mut dd, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn qsd_fn_panics_on_different_rep() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `a`
-        let mut dd = Tensor4::new(Rep::Symmetric);
-        qsd_fn(&mut dd, 1.0, &a, &b);
-    }
-
-    fn check_qsd(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+    fn check_qsd<const N: usize>(s: f64, a_ten: &Tensor2<N>, b_ten: &Tensor2<N>, dd_ten: &Tensor4<6>, tol: f64) {
         let a = a_ten.as_std_matrix();
         let b = b_ten.as_std_matrix();
         let dd = dd_ten.as_std_matrix();
-        let mut correct = Matrix::new(9, 9);
+        let mut correct = Matrix::new(9, 9); // Use 9 here due to the conversion to "STD"
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -1686,18 +1599,18 @@ mod tests {
     fn qsd_fn_works() {
         // general qsd general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         qsd_fn(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1716,18 +1629,18 @@ mod tests {
 
         // symmetric qsd symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         qsd_fn(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[
@@ -1746,18 +1659,18 @@ mod tests {
 
         // symmetric 2D qsd symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<4>::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         qsd_fn(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = Matrix::from(&[

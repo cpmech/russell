@@ -1,8 +1,8 @@
 use crate::{IDENTITY2, ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
 use crate::{Rep, Tensor2, Tensor4};
 use crate::{
-    deriv1_invariant_jj2, deriv1_invariant_jj3, qsd_fn_stack, ssd_fn_stack, t2_dyad_t2, t2_odyad_t2_stack,
-    t2_odyad_t2_update_stack,
+    deriv1_invariant_jj2, deriv1_invariant_jj3, qsd_fn_slice, ssd_fn_slice, t2_dyad_t2, t2_odyad_t2_slice,
+    t2_odyad_t2_update_slice,
 };
 
 #[cfg(feature = "heap")]
@@ -42,8 +42,8 @@ use russell_lab::{small_mat_add, small_mat_update};
 pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) {
     assert_eq!(dai_da.rep(), Rep::General);
     let mut at = [0.0; 9];
-    ai.transpose_stack(&mut at);
-    t2_odyad_t2_stack(dai_da, -1.0, ai.as_data(), &at, ai.dim());
+    ai.transpose_slice(&mut at);
+    t2_odyad_t2_slice(dai_da, -1.0, ai.as_data(), &at, ai.dim());
 }
 
 /// Calculates the derivative of the inverse tensor w.r.t. a symmetric Tensor2
@@ -79,7 +79,7 @@ pub fn deriv_inverse_tensor(dai_da: &mut Tensor4, ai: &Tensor2) {
 pub fn deriv_inverse_tensor_sym(dai_da: &mut Tensor4, ai: &Tensor2) {
     assert_eq!(dai_da.rep(), Rep::Symmetric);
     assert!(ai.rep().symmetric());
-    ssd_fn_stack(dai_da, -0.5, ai.as_data(), ai.dim());
+    ssd_fn_slice(dai_da, -0.5, ai.as_data(), ai.dim());
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a Tensor2
@@ -116,11 +116,11 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) {
     let dim = a.dim();
     let a_data = a.as_data();
     let mut at = [0.0; 9];
-    a.transpose_stack(&mut at);
+    a.transpose_slice(&mut at);
 
     // da2_da := A ⊗̄ I + I ⊗̄ Aᵀ
-    t2_odyad_t2_stack(da2_da, 1.0, a_data, &IDENTITY2, dim);
-    t2_odyad_t2_update_stack(da2_da, 1.0, &IDENTITY2, &at, dim);
+    t2_odyad_t2_slice(da2_da, 1.0, a_data, &IDENTITY2, dim);
+    t2_odyad_t2_update_slice(da2_da, 1.0, &IDENTITY2, &at, dim);
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a symmetric Tensor2
@@ -156,7 +156,7 @@ pub fn deriv_squared_tensor(da2_da: &mut Tensor4, a: &Tensor2) {
 pub fn deriv_squared_tensor_sym(da2_da: &mut Tensor4, a: &Tensor2) {
     assert_eq!(da2_da.rep(), Rep::Symmetric);
     assert!(a.rep().symmetric());
-    qsd_fn_stack(da2_da, 0.5, a.as_data(), &IDENTITY2, a.dim());
+    qsd_fn_slice(da2_da, 0.5, a.as_data(), &IDENTITY2, a.dim());
 }
 
 /// Calculates the second derivative of the J2 invariant w.r.t. the stress tensor
@@ -233,10 +233,10 @@ pub fn deriv2_invariant_jj3(d2: &mut Tensor4, sigma: &Tensor2) {
 
     // deviator: s = dev(σ) (stack array)
     let mut s = [0.0; 9];
-    sigma.deviator_stack(&mut s);
+    sigma.deviator_slice(&mut s);
 
     // d2 := ½ qsd(s,I)
-    qsd_fn_stack(d2, 0.5, &s, &IDENTITY2, 6);
+    qsd_fn_slice(d2, 0.5, &s, &IDENTITY2, 6);
 
     // d2 := ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)
     let ndim = d2.dim();

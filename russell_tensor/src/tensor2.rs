@@ -2,13 +2,10 @@ use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{Rep, StrError, Tensor1};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use russell_lab::math::PI;
-use russell_lab::{AsArray2D, Matrix, sort3};
+use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues, sort3};
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
-
-#[cfg(feature = "heap")]
-use russell_lab::Vector;
 
 /// Defines a second-order tensor in R³×R³
 ///
@@ -740,6 +737,89 @@ impl Tensor2 {
         (self.get_std(2, 2), tt)
     }
 
+    /// Calculates the eigenvalues of this symmetric tensor (without eigenvectors)
+    ///
+    /// The eigenvalues correspond to the principal values of the tensor.
+    ///
+    /// # Output
+    ///
+    /// * `l` -- (lambda) will hold the eigenvalues (sorted in ascending order);
+    ///   it must have dimension 3
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// * the tensor is not symmetric
+    /// * `l.dim()` is not equal to 3
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Rep, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_std_matrix(&[
+    ///         [2.0, 0.0, 0.0],
+    ///         [0.0, 3.0, 4.0],
+    ///         [0.0, 4.0, 9.0],
+    ///     ], Rep::Symmetric)?;
+    ///     let mut l = Vector::new(3);
+    ///     a.eigenvalues_sym(&mut l)?;
+    ///     assert_eq!(format!("{:.0}", l), "┌    ┐\n│  1 │\n│  2 │\n│ 11 │\n└    ┘");
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn eigenvalues_sym(&self, l: &mut Vector) -> Result<(), StrError> {
+        if !self.rep.symmetric() {
+            return Err("the tensor must be symmetric");
+        }
+        if l.dim() != 3 {
+            return Err("l.dim must be equal to 3");
+        }
+        let mut a = self.as_std_matrix();
+        mat_eigen_sym(l, &mut a, false)?;
+        Ok(())
+    }
+
+    /// Calculates the eigenvalues of this (general) tensor (without eigenvectors)
+    ///
+    /// # Output
+    ///
+    /// * `l_real` -- will hold the real part of the eigenvalues; it must have dimension 3
+    /// * `l_imag` -- will hold the imaginary part of the eigenvalues; it must have dimension 3
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `l_real.dim()` or `l_imag.dim()` is not equal to 3
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::Vector;
+    /// use russell_tensor::{Rep, Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::from_std_matrix(&[
+    ///         [2.0, 0.0, 0.0],
+    ///         [0.0, 3.0, 4.0],
+    ///         [0.0, 4.0, 9.0],
+    ///     ], Rep::General)?;
+    ///     let mut l_real = Vector::new(3);
+    ///     let mut l_imag = Vector::new(3);
+    ///     a.eigenvalues(&mut l_real, &mut l_imag)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn eigenvalues(&self, l_real: &mut Vector, l_imag: &mut Vector) -> Result<(), StrError> {
+        if l_real.dim() != 3 || l_imag.dim() != 3 {
+            return Err("l_real.dim and l_imag.dim must be equal to 3");
+        }
+        let mut a = self.as_std_matrix();
+        mat_eigenvalues(l_real, l_imag, &mut a)?;
+        Ok(())
+    }
+
     /// Returns a general Tensor2 regardless of Rep type
     ///
     /// # Output
@@ -1247,14 +1327,14 @@ impl Tensor2 {
     /// ```
     pub fn transpose(&self, at: &mut Tensor2) {
         assert_eq!(at.rep, self.rep);
-        self.transpose_stack(at.as_mut_data());
+        self.transpose_slice(at.as_mut_data());
     }
 
     /// Returns the transpose tensor components in a caller-provided array (crate-internal)
     ///
     /// Mirrors [transpose] but returns the components instead of writing to a [Tensor2].
     #[inline]
-    pub(crate) fn transpose_stack(&self, at: &mut [f64]) {
+    pub(crate) fn transpose_slice(&self, at: &mut [f64]) {
         // The transpose is given by:
         // [a0, a1, a2, a3, a4, a5, -a6, -a7, -a8]
         at[0] = self.vec[0];
@@ -1596,14 +1676,14 @@ impl Tensor2 {
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2) {
         assert_eq!(dev.rep, self.rep);
-        self.deviator_stack(dev.as_mut_data());
+        self.deviator_slice(dev.as_mut_data());
     }
 
     /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
     ///
     /// Mirrors [deviator] but returns the components instead of writing to a [Tensor2].
     #[inline]
-    pub(crate) fn deviator_stack(&self, dev: &mut [f64]) {
+    pub(crate) fn deviator_slice(&self, dev: &mut [f64]) {
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
         dev[0] = self.vec[0] - m;
         dev[1] = self.vec[1] - m;
@@ -2331,7 +2411,7 @@ mod tests {
     use super::Tensor2;
     use crate::{IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
     use crate::{Rep, SampleTensor2, SamplesTensor2, Tensor1};
-    use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, math::PI};
+    use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq};
 
     fn kelvin_vector(tt: &Tensor2) -> Vec<f64> {
         let mut v = vec![0.0; tt.dim()];
@@ -3494,6 +3574,148 @@ mod tests {
         ];
         let tt = Tensor2::from_std_matrix(comps_std, Rep::General).unwrap();
         approx_eq(tt.trace(), 15.0, 1e-15);
+    }
+
+    #[test]
+    fn eigenvalues_sym_works() {
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [2.0, 0.0, 0.0],
+            [0.0, 3.0, 4.0],
+            [0.0, 4.0, 9.0],
+        ], Rep::Symmetric).unwrap();
+        let mut l = Vector::new(3);
+        a.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[1.0, 2.0, 11.0], 1e-13);
+    }
+
+    #[test]
+    fn eigenvalues_sym_returns_err() {
+        let a = Tensor2::new(Rep::General);
+        let mut l = Vector::new(3);
+        assert_eq!(a.eigenvalues_sym(&mut l).err(), Some("the tensor must be symmetric"));
+        let a = Tensor2::new(Rep::Symmetric);
+        let mut l = Vector::new(2);
+        assert_eq!(a.eigenvalues_sym(&mut l).err(), Some("l.dim must be equal to 3"));
+    }
+
+    #[test]
+    fn eigenvalues_works() {
+        // rotation about e3 by 90 degrees: eigenvalues {i, -i, 2}
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [0.0, -1.0, 0.0],
+            [1.0,  0.0, 0.0],
+            [0.0,  0.0, 2.0],
+        ], Rep::General).unwrap();
+        let mut lr = Vector::new(3);
+        let mut li = Vector::new(3);
+        a.eigenvalues(&mut lr, &mut li).unwrap();
+        let close = |x: f64, y: f64| (x - y).abs() < 1e-13;
+        let mut has_i = false;
+        let mut has_minus_i = false;
+        let mut has_2 = false;
+        for k in 0..3 {
+            let r = lr[k];
+            let im = li[k];
+            if close(r, 0.0) && close(im, 1.0) {
+                has_i = true;
+            }
+            if close(r, 0.0) && close(im, -1.0) {
+                has_minus_i = true;
+            }
+            if close(r, 2.0) && close(im, 0.0) {
+                has_2 = true;
+            }
+        }
+        assert!(has_i && has_minus_i && has_2);
+    }
+
+    #[test]
+    fn eigenvalues_returns_err() {
+        let a = Tensor2::new(Rep::General);
+        let mut lr = Vector::new(3);
+        let mut li = Vector::new(2);
+        assert_eq!(
+            a.eigenvalues(&mut lr, &mut li).err(),
+            Some("l_real.dim and l_imag.dim must be equal to 3")
+        );
+    }
+
+    // sorts complex eigenvalues (as (real, imag) pairs) in ascending order
+    fn sorted_complex(lr: &Vector, li: &Vector) -> Vec<(f64, f64)> {
+        let mut v: Vec<(f64, f64)> = (0..lr.dim()).map(|k| (lr[k], li[k])).collect();
+        v.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap().then(a.1.partial_cmp(&b.1).unwrap()));
+        v
+    }
+
+    // Python reference (numpy + scipy):
+    // ```python
+    // import numpy as np
+    // from scipy import linalg
+    // A = np.array([[7.0, -2.0, 0.0], [-2.0, 6.0, -2.0], [0.0, -2.0, 5.0]])
+    // linalg.eigvalsh(A)  # -> array([3., 6., 9.])
+    // ```
+    #[test]
+    fn eigenvalues_sym_works_non_diagonal() {
+        // non-diagonal symmetric matrix: eigenvalues [3, 6, 9]
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [7.0, -2.0,  0.0],
+            [-2.0, 6.0, -2.0],
+            [0.0, -2.0,  5.0],
+        ], Rep::Symmetric).unwrap();
+        let mut l = Vector::new(3);
+        a.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[3.0, 6.0, 9.0], 1e-13);
+    }
+
+    // Python reference (numpy + scipy):
+    // ```python
+    // import numpy as np
+    // from scipy import linalg
+    // C = np.array([[2.0, -1.0, -1.0], [-1.0, 2.0, -1.0], [-1.0, -1.0, 2.0]])
+    // linalg.eigvalsh(C)  # -> array([0., 3., 3.])  (3 has multiplicity 2)
+    // ```
+    #[test]
+    fn eigenvalues_sym_works_repeated() {
+        // non-diagonal symmetric matrix: eigenvalues [0, 3, 3] (3 has multiplicity 2)
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [2.0, -1.0, -1.0],
+            [-1.0, 2.0, -1.0],
+            [-1.0, -1.0, 2.0],
+        ], Rep::Symmetric).unwrap();
+        let mut l = Vector::new(3);
+        a.eigenvalues_sym(&mut l).unwrap();
+        vec_approx_eq(&l, &[0.0, 3.0, 3.0], 1e-13);
+    }
+
+    // Python reference (numpy + scipy):
+    // ```python
+    // import numpy as np
+    // from scipy import linalg
+    // B = np.array([[2.0, -1.0, 0.0], [1.0, 2.0, 0.0], [0.0, 0.0, 5.0]])
+    // linalg.eigvals(B)  # -> array([2.-1.j, 2.+1.j, 5.+0.j])
+    // ```
+    #[test]
+    fn eigenvalues_works_complex_pair() {
+        // general matrix: eigenvalues {2+i, 2-i, 5}
+        #[rustfmt::skip]
+        let a = Tensor2::from_std_matrix(&[
+            [2.0, -1.0, 0.0],
+            [1.0,  2.0, 0.0],
+            [0.0,  0.0, 5.0],
+        ], Rep::General).unwrap();
+        let mut lr = Vector::new(3);
+        let mut li = Vector::new(3);
+        a.eigenvalues(&mut lr, &mut li).unwrap();
+        let got = sorted_complex(&lr, &li);
+        let expected = [(2.0, -1.0), (2.0, 1.0), (5.0, 0.0)];
+        for k in 0..3 {
+            approx_eq(got[k].0, expected[k].0, 1e-13);
+            approx_eq(got[k].1, expected[k].1, 1e-13);
+        }
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use crate::polar_brannon::{polar_rotation_brannon, polar_rotation_brannon2d};
+use crate::polar_classic::{polar_decomp_eigen, polar_decomp_svd};
 use crate::polar_higham::polar_quaternion_higham;
 use crate::{Rep, Tensor2, t2_gen_dot_gen_tra_chop, t2_gen_tra_dot_gen_chop};
 use russell_lab::StrError;
@@ -6,10 +7,18 @@ use russell_lab::StrError;
 /// Specifies the polar decomposition algorithm
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PolarAlgo {
+    /// Classic: Using eigenvalues/eigenvectors
+    Eigen,
+
+    /// Classic: Using singular-value-decomposition (SVD)
+    SVD,
+
     /// Rebecca Brannon's iterative fixed-point algorithm (3×3)
     Brannon,
+
     /// Brannon's closed-form algorithm for 2×2 (in-plane) matrices
     Brannon2d,
+
     /// Higham & Noferini (2016) quaternion-based direct algorithm (3×3)
     Higham,
 }
@@ -59,6 +68,14 @@ pub fn polar_decomp(
 
     // Polar rotation R and right stretch U
     let nit = match algo {
+        PolarAlgo::Eigen => {
+            polar_decomp_eigen(rr, uu, ff)?; // classic: eigenvalues of C = Fᵀ F
+            0
+        }
+        PolarAlgo::SVD => {
+            polar_decomp_svd(rr, uu, ff)?; // classic: singular value decomposition
+            0
+        }
         PolarAlgo::Brannon => {
             let nit = polar_rotation_brannon(rr, ff)?;
             t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F
@@ -187,5 +204,106 @@ mod tests {
         let mut uu = Tensor2::new(Rep::Symmetric);
         let res = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn polar_decomp_eigen_works() {
+        // Example 03: fully 3-D deformation gradient (McGinty)
+        let ff = example03();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        let mut vv = Tensor2::new(Rep::Symmetric);
+        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Eigen, &ff).unwrap();
+        assert_eq!(nit, 0); // Eigen is non-iterative
+
+        // F = R U and R orthogonal
+        check_polar(&ff, &rr, &uu, 1e-13);
+
+        // F = V R (left stretch)
+        let f = ff.as_std_matrix();
+        let r = rr.as_std_matrix();
+        let v = vv.as_std_matrix();
+        let mut vr = Matrix::new(3, 3);
+        mat_mat_mul(&mut vr, 1.0, &v, &r, 0.0).unwrap();
+        mat_approx_eq(&vr, &f, 1e-13);
+
+        // Reference values (3-decimal published)
+        mat_approx_eq(&r, &example03_rotation(), 1e-3);
+        mat_approx_eq(&uu.as_std_matrix(), &example03_stretch(), 1e-3);
+    }
+
+    #[test]
+    fn polar_decomp_svd_works() {
+        // Example 03: fully 3-D deformation gradient (McGinty)
+        let ff = example03();
+        let mut rr = Tensor2::new(Rep::General);
+        let mut uu = Tensor2::new(Rep::Symmetric);
+        let mut vv = Tensor2::new(Rep::Symmetric);
+        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::SVD, &ff).unwrap();
+        assert_eq!(nit, 0); // SVD is non-iterative
+
+        // F = R U and R orthogonal
+        check_polar(&ff, &rr, &uu, 1e-13);
+
+        // F = V R (left stretch)
+        let f = ff.as_std_matrix();
+        let r = rr.as_std_matrix();
+        let v = vv.as_std_matrix();
+        let mut vr = Matrix::new(3, 3);
+        mat_mat_mul(&mut vr, 1.0, &v, &r, 0.0).unwrap();
+        mat_approx_eq(&vr, &f, 1e-13);
+
+        // Reference values (3-decimal published)
+        mat_approx_eq(&r, &example03_rotation(), 1e-3);
+        mat_approx_eq(&uu.as_std_matrix(), &example03_stretch(), 1e-3);
+    }
+
+    #[test]
+    fn polar_decomp_eigen_on_higham_cases() {
+        // Higham & Noferini test (5.1), cross-checked against Higham's algorithm
+        let a = case51();
+        let mut r_e = Tensor2::new(Rep::General);
+        let mut u_e = Tensor2::new(Rep::Symmetric);
+        polar_decomp(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
+        check_polar(&a, &r_e, &u_e, 1e-13);
+        let mut r_h = Tensor2::new(Rep::General);
+        let mut u_h = Tensor2::new(Rep::Symmetric);
+        polar_decomp(&mut r_h, &mut u_h, None, PolarAlgo::Higham, &a).unwrap();
+        mat_approx_eq(&r_e.as_std_matrix(), &r_h.as_std_matrix(), 1e-13);
+        mat_approx_eq(&u_e.as_std_matrix(), &u_h.as_std_matrix(), 1e-13);
+
+        // Higham & Noferini test (5.2), well-conditioned case. Note: the eigen
+        // approach squares the condition number of F (via C = Fᵀ F), so it is
+        // only reliable for well-conditioned F.
+        let a = case52(1.0);
+        let mut r_e = Tensor2::new(Rep::General);
+        let mut u_e = Tensor2::new(Rep::Symmetric);
+        polar_decomp(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
+        check_polar(&a, &r_e, &u_e, 1e-13);
+    }
+
+    #[test]
+    fn polar_decomp_svd_on_higham_cases() {
+        // Higham & Noferini test (5.1), cross-checked against Higham's algorithm
+        let a = case51();
+        let mut r_s = Tensor2::new(Rep::General);
+        let mut u_s = Tensor2::new(Rep::Symmetric);
+        polar_decomp(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
+        check_polar(&a, &r_s, &u_s, 1e-13);
+        let mut r_h = Tensor2::new(Rep::General);
+        let mut u_h = Tensor2::new(Rep::Symmetric);
+        polar_decomp(&mut r_h, &mut u_h, None, PolarAlgo::Higham, &a).unwrap();
+        mat_approx_eq(&r_s.as_std_matrix(), &r_h.as_std_matrix(), 1e-13);
+        mat_approx_eq(&u_s.as_std_matrix(), &u_h.as_std_matrix(), 1e-13);
+
+        // Higham & Noferini test (5.2) over a range of condition numbers
+        for y in [1.0f64, 1e-2, 1e-4, 1e-6, 1e-8] {
+            let a = case52(y);
+            let tol = if y == 1.0 { 1e-13 } else { 1e-8 };
+            let mut r_s = Tensor2::new(Rep::General);
+            let mut u_s = Tensor2::new(Rep::Symmetric);
+            polar_decomp(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
+            check_polar(&a, &r_s, &u_s, tol);
+        }
     }
 }

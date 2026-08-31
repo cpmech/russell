@@ -7,31 +7,31 @@
 //! quaternion-based algorithm of Higham & Noferini (2016).
 //!
 //! Reference: N. J. Higham and V. Noferini, "An algorithm to compute the polar
-//! decomposition of a 3×3 matrix", Numer. Algorithms, 73(2):349–369, 2016.
+//! decomposition of a 3×3 matrix", Num. Algorithms, 73(2):349–369, 2016.
 
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 use russell_tensor::{PolarAlgo, Rep, StrError, Tensor2, polar_decomp};
 
 fn main() -> Result<(), StrError> {
     // Deformation gradient (Higham & Noferini, test 5.1)
+    #[rustfmt::skip]
     let ff = Tensor2::from_std_matrix(
         &[
-            [0.1, 0.2, 0.3], // row 1
-            [0.1, 0.1, 0.0], // row 2
-            [0.3, 0.2, 0.1], // row 3
+            [0.1, 0.2, 0.3],
+            [0.1, 0.1, 0.0],
+            [0.3, 0.2, 0.1],
         ],
         Rep::General,
     )?;
-    println!("F =\n{:.6}", ff.as_std_matrix());
 
-    // Allocate the rotation tensor R (orthogonal) and the right stretch U (symmetric)
+    // Allocate the rotation tensor R and the right stretch U
     let mut rr = Tensor2::new(Rep::General);
     let mut uu = Tensor2::new(Rep::Symmetric);
 
-    // Compute the polar decomposition F = R · U (using the Higham algorithm)
-    polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+    // Compute the polar decomposition F = R U (using the Higham algorithm)
+    polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;
 
-    // Print the factors
+    // Print the results
     println!("R =\n{:.6}", rr.as_std_matrix());
     println!("U =\n{:.6}", uu.as_std_matrix());
 

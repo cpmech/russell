@@ -2346,7 +2346,7 @@ impl<const N: usize> fmt::Display for Tensor2<N> {
 mod tests {
     use super::Tensor2;
     use crate::{IDENTITY2, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
-    use crate::{SamplesTensor2, Tensor1};
+    use crate::{SampleTensor2, SamplesTensor2, Tensor1};
     use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, mat_mat_mul, math::PI, vec_approx_eq};
 
     fn kelvin_vector<const N: usize>(tt: &Tensor2<N>) -> Vec<f64> {
@@ -3805,121 +3805,99 @@ mod tests {
         assert_eq!(omega.get(2), 0.0);
     }
 
-    //     fn check_sample(
-    //         sample: &SampleTensor2,
-    //         rep: Rep,
-    //         tol_norm: f64,
-    //         tol_trace: f64,
-    //         tol_det: f64,
-    //         tol_dev_norm: f64,
-    //         tol_dev_det: f64,
-    //     ) {
-    //         let tt = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-    //         // println!("{}", sample.desc);
-    //         // println!("    err(norm) = {:?}", tt.norm() - sample.norm);
-    //         // println!("    err(trace) = {:?}", tt.trace() - sample.trace);
-    //         // println!("    err(determinant) = {:?}", tt.determinant() - sample.determinant);
-    //         // println!(
-    //         //     "    err(deviator_norm) = {:?}",
-    //         //     tt.deviator_norm() - sample.deviator_norm
-    //         // );
-    //         // println!(
-    //         //     "    err(deviator_determinant) = {:?}",
-    //         //     tt.deviator_determinant() - sample.deviator_determinant
-    //         // );
-    //         approx_eq(tt.norm(), sample.norm, tol_norm);
-    //         approx_eq(tt.trace(), sample.trace, tol_trace);
-    //         approx_eq(tt.determinant(), sample.determinant, tol_det);
-    //         approx_eq(tt.deviator_norm(), sample.deviator_norm, tol_dev_norm);
-    //         approx_eq(tt.deviator_determinant(), sample.deviator_determinant, tol_dev_det);
-    //     }
+    fn check_sample<const N: usize>(
+        sample: &SampleTensor2,
+        tol_norm: f64,
+        tol_trace: f64,
+        tol_det: f64,
+        tol_dev_norm: f64,
+        tol_dev_det: f64,
+    ) {
+        let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
+        approx_eq(tt.norm(), sample.norm, tol_norm);
+        approx_eq(tt.trace(), sample.trace, tol_trace);
+        approx_eq(tt.determinant(), sample.determinant, tol_det);
+        approx_eq(tt.deviator_norm(), sample.deviator_norm, tol_dev_norm);
+        approx_eq(tt.deviator_determinant(), sample.deviator_determinant, tol_dev_det);
+    }
 
-    // removed test attribute
-    // removed skip attribute
-    //     fn properties_are_correct() {
-    //         //                                                       norm   trace  det dev_norm dev_det
-    //         check_sample(&SamplesTensor2::TENSOR_O, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_I, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_X, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
-    //         check_sample(&SamplesTensor2::TENSOR_Y, Rep::General, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_Z, Rep::General, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_U, Rep::General, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
-    //         check_sample(&SamplesTensor2::TENSOR_S, Rep::General, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
-    //         check_sample(&SamplesTensor2::TENSOR_R, Rep::General, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_T, Rep::General, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15);
-    //         //                                                         norm   trace  det dev_norm dev_det
-    //         check_sample(&SamplesTensor2::TENSOR_O, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_I, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_X, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
-    //         check_sample(&SamplesTensor2::TENSOR_Y, Rep::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_Z, Rep::Symmetric, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
-    //         check_sample(&SamplesTensor2::TENSOR_U, Rep::Symmetric, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
-    //         check_sample(&SamplesTensor2::TENSOR_S, Rep::Symmetric, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
-    //         //                                                           norm   trace  det dev_norm dev_det
-    //         check_sample(&SamplesTensor2::TENSOR_O, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_I, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_X, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
-    //         check_sample(&SamplesTensor2::TENSOR_Y, Rep::Symmetric2D, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_sample(&SamplesTensor2::TENSOR_Z, Rep::Symmetric2D, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
-    //     }
+    #[test]
+    #[rustfmt::skip]
+    fn properties_are_correct() {
+        // General
+        //                                          norm   trace  det dev_norm dev_det
+        check_sample::<9>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<9>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<9>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample::<9>(&SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<9>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_sample::<9>(&SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
+        check_sample::<9>(&SamplesTensor2::TENSOR_S, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
+        check_sample::<9>(&SamplesTensor2::TENSOR_R, 1e-13, 1e-15, 1e-13, 1e-13, 1e-15);
+        check_sample::<9>(&SamplesTensor2::TENSOR_T, 1e-13, 1e-15, 1e-15, 1e-14, 1e-15);
+        // Symmetric
+        //                                          norm   trace  det dev_norm dev_det
+        check_sample::<6>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<6>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<6>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample::<6>(&SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<6>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
+        check_sample::<6>(&SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
+        check_sample::<6>(&SamplesTensor2::TENSOR_S, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
+        // Symmetric 2D
+        //                                                           norm   trace  det dev_norm dev_det
+        check_sample::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<4>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15, 1e-15, 1e-13);
+        check_sample::<4>(&SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_sample::<4>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
+    }
 
-    /// --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
-    //
-    //     // fn check_iis(sample: &SampleTensor2, rep: tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
-    //         let tt = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-    //         let jj2 = -sample.deviator_second_invariant;
-    //         let jj3 = sample.deviator_determinant;
-    //         // println!("{}", sample.desc);
-    //         // println!("    err(I1) = {:?}", f64::abs(tt.invariant_ii1() - sample.trace));
-    //         // println!(
-    //         //     "    err(I2) = {:?}",
-    //         //     f64::abs(tt.invariant_ii2() - sample.second_invariant)
-    //         // );
-    //         // println!("    err(I3) = {:?}", f64::abs(tt.invariant_ii3() - sample.determinant));
-    //         // println!("    err(J2) = {:?}", f64::abs(tt.invariant_jj2() - jj2));
-    //         // println!("    err(J3) = {:?}", f64::abs(tt.invariant_jj3() - jj3));
-    //         // if rep == Rep::Symmetric || rep == Rep::Symmetric2D {
-    //         //     let norm_s = tt.deviator_norm();
-    //         //     println!("    err(J2 - ½‖s‖²) = {:?}", f64::abs(jj2 - norm_s * norm_s / 2.0));
-    //         // }
-    //         approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
-    //         approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
-    //         approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
-    //         approx_eq(tt.invariant_jj2(), jj2, tol_c);
-    //         approx_eq(tt.invariant_jj3(), jj3, tol_c);
-    //         if rep == Rep::Symmetric || rep == Rep::Symmetric2D {
-    //             let norm_s = tt.deviator_norm();
-    //             approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
-    //         }
-    //     }
+    // --- PRINCIPAL INVARIANTS -------------------------------------------------------------------------------------------
 
-    // removed test attribute
-    // removed skip attribute
-    //     fn principal_invariants_are_correct() {
-    //         check_iis(&SamplesTensor2::TENSOR_O, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_I, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_X, Rep::General, 1e-15, 1e-15, 1e-13, 1e-13);
-    //         check_iis(&SamplesTensor2::TENSOR_Y, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_Z, Rep::General, 1e-15, 1e-14, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_U, Rep::General, 1e-15, 1e-14, 1e-13, 1e-13);
-    //         check_iis(&SamplesTensor2::TENSOR_S, Rep::General, 1e-15, 1e-14, 1e-13, 1e-13);
-    //         check_iis(&SamplesTensor2::TENSOR_R, Rep::General, 1e-15, 1e-13, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_T, Rep::General, 1e-15, 1e-15, 1e-15, 1e-15);
-    //
-    //         check_iis(&SamplesTensor2::TENSOR_O, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_I, Rep::Symmetric, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_X, Rep::Symmetric, 1e-15, 1e-15, 1e-13, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_Y, Rep::Symmetric, 1e-13, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_Z, Rep::Symmetric, 1e-15, 1e-14, 1e-14, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_U, Rep::Symmetric, 1e-15, 1e-14, 1e-13, 1e-13);
-    //         check_iis(&SamplesTensor2::TENSOR_S, Rep::Symmetric, 1e-15, 1e-14, 1e-13, 1e-14);
-    //
-    //         check_iis(&SamplesTensor2::TENSOR_O, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_I, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_X, Rep::Symmetric2D, 1e-15, 1e-15, 1e-13, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_Y, Rep::Symmetric2D, 1e-15, 1e-15, 1e-15, 1e-15);
-    //         check_iis(&SamplesTensor2::TENSOR_Z, Rep::Symmetric2D, 1e-15, 1e-14, 1e-15, 1e-15);
-    //     }
+    fn check_iis<const N: usize>(sample: &SampleTensor2, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
+        let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
+        let jj2 = -sample.deviator_second_invariant;
+        let jj3 = sample.deviator_determinant;
+        approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
+        approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
+        approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
+        approx_eq(tt.invariant_jj2(), jj2, tol_c);
+        approx_eq(tt.invariant_jj3(), jj3, tol_c);
+        if N == 4 || N == 6 {
+            let norm_s = tt.deviator_norm();
+            approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
+        }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn principal_invariants_are_correct() {
+        // General
+        check_iis::<9>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<9>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<9>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-13, 1e-13);
+        check_iis::<9>(&SamplesTensor2::TENSOR_Y, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<9>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_iis::<9>(&SamplesTensor2::TENSOR_U, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis::<9>(&SamplesTensor2::TENSOR_S, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis::<9>(&SamplesTensor2::TENSOR_R, 1e-15, 1e-13, 1e-15, 1e-15);
+        check_iis::<9>(&SamplesTensor2::TENSOR_T, 1e-15, 1e-15, 1e-15, 1e-15);
+        // Symmetric
+        check_iis::<6>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<6>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<6>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-13, 1e-15);
+        check_iis::<6>(&SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15, 1e-15);
+        check_iis::<6>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-14, 1e-14, 1e-15);
+        check_iis::<6>(&SamplesTensor2::TENSOR_U, 1e-15, 1e-14, 1e-13, 1e-13);
+        check_iis::<6>(&SamplesTensor2::TENSOR_S, 1e-15, 1e-14, 1e-13, 1e-14);
+        // Symmetric 2D
+        check_iis::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<4>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-13, 1e-15);
+        check_iis::<4>(&SamplesTensor2::TENSOR_Y, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<4>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-14, 1e-15, 1e-15);
+    }
 
     /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
 

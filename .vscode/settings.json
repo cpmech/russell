@@ -113,6 +113,7 @@
     "Eigen",
     "eigenprojectors",
     "Eᵢⱼₖₗ",
+    "elastoplastic",
     "engfracmech",
     "epel",
     "erfinv",

@@ -1,8 +1,5 @@
 use super::{Tensor2, Tensor4};
 
-#[allow(unused)]
-use crate::Rep; // for documentation
-
 /// Performs the dyadic product between two Tensor2 resulting a Tensor4
 ///
 /// ```text
@@ -23,36 +20,32 @@ use crate::Rep; // for documentation
 ///
 /// # Output
 ///
-/// * `dd` -- the tensor `D`; with the same [Rep] as `a` and `b`
+/// * `dd` -- the tensor `D`
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Rep] as `b` and `dd`
-/// * `b` -- second tensor; with the same [Rep] as `a` and `dd`
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
+/// * `a` -- first tensor
+/// * `b` -- second tensor
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_tensor::{t2_dyad_t2, Rep, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t2_dyad_t2, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let a = Tensor2::from_std_matrix(&[
+///     let a = Tensor2::<9>::from_std_matrix(&[
 ///         [ 1.0, 10.0, 0.0],
 ///         [-2.0, -1.0, 0.0],
 ///         [ 0.0,  0.0, 2.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let b = Tensor2::from_std_matrix(&[
+///     let b = Tensor2::<9>::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let mut dd = Tensor4::new(Rep::General);
+///     let mut dd = Tensor4::<9>::new();
 ///     t2_dyad_t2(&mut dd, 1.0, &a, &b);
 ///
 ///     assert_eq!(
@@ -73,9 +66,7 @@ use crate::Rep; // for documentation
 /// }
 /// ```
 #[inline]
-pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
+pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
     let dim = dd.dim();
     for m in 0..dim {
         for n in 0..dim {
@@ -106,40 +97,36 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `dd` -- the tensor `D`; with the same [Rep] as `a` and `b`
+/// * `dd` -- the tensor `D`
 ///
 /// # Input
 ///
-/// * `a` -- first tensor; with the same [Rep] as `b` and `dd`
-/// * `b` -- second tensor; with the same [Rep] as `a` and `dd`
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
+/// * `a` -- first tensor
+/// * `b` -- second tensor
 ///
 /// # Examples
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// use russell_tensor::{t2_dyad_t2_update, Rep, StrError, Tensor2, Tensor4};
+/// use russell_tensor::{t2_dyad_t2_update, StrError, Tensor2, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     #[rustfmt::skip]
-///     let a = Tensor2::from_std_matrix(&[
+///     let a = Tensor2::<9>::from_std_matrix(&[
 ///         [ 1.0, 10.0, 0.0],
 ///         [ 2.0,  1.0, 0.0],
 ///         [ 0.0,  0.0, 2.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
 ///     #[rustfmt::skip]
-///     let b = Tensor2::from_std_matrix(&[
+///     let b = Tensor2::<9>::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
 ///     let mat = Matrix::filled(9, 9, 0.5);
-///     let mut dd = Tensor4::from_std_matrix(&mat, Rep::General)?;
+///     let mut dd = Tensor4::<9>::from_std_matrix(&mat)?;
 ///     t2_dyad_t2_update(&mut dd, 1.0, &a, &b);
 ///
 ///     assert_eq!(
@@ -160,9 +147,7 @@ pub fn t2_dyad_t2(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
 /// }
 /// ```
 #[inline]
-pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
+pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
     let dim = dd.dim();
     for m in 0..dim {
         for n in 0..dim {
@@ -193,25 +178,21 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///
 /// # Output
 ///
-/// * `b` -- the resulting second-order tensor; with the same [Rep] as `a` and `dd`
+/// * `b` -- the resulting second-order tensor
 ///
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
+/// * `dd` -- the fourth-order tensor
+/// * `a` -- the input second-order tensor
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_tensor::{t4_ddot_t2, Rep, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t4_ddot_t2, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let dd = Tensor4::from_std_matrix(&[
+///     let dd = Tensor4::<9>::from_std_matrix(&[
 ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
 ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
 ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -221,15 +202,15 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let a = Tensor2::from_std_matrix(&[
+///     let a = Tensor2::<9>::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let mut b = Tensor2::new(Rep::General);
+///     let mut b = Tensor2::<9>::new();
 ///     t4_ddot_t2(&mut b, 1.0, &dd, &a);
 ///
 ///     assert_eq!(
@@ -243,13 +224,10 @@ pub fn t2_dyad_t2_update(dd: &mut Tensor4, alpha: f64, a: &Tensor2, b: &Tensor2)
 ///     Ok(())
 /// }
 /// ```
-pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
-    let dim = b.dim();
-    for m in 0..dim {
+pub fn t4_ddot_t2<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N>, a: &Tensor2<N>) {
+    for m in 0..N {
         let mut s = 0.0;
-        for n in 0..dim {
+        for n in 0..N {
             s += dd.get(m, n) * a.vec[n];
         }
         b.vec[m] = alpha * s;
@@ -280,26 +258,22 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///
 /// # Output
 ///
-/// * `b` -- the resulting second-order tensor; with the same [Rep] as `a` and `dd`
+/// * `b` -- the resulting second-order tensor
 ///
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
+/// * `a` -- the input second-order tensor
+/// * `dd` -- the fourth-order tensor
 /// * `beta` -- the other scalar multiplier
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_tensor::{t4_ddot_t2_update, Rep, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t4_ddot_t2_update, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let dd = Tensor4::from_std_matrix(&[
+///     let dd = Tensor4::<9>::from_std_matrix(&[
 ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
 ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
 ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -309,19 +283,19 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let a = Tensor2::from_std_matrix(&[
+///     let a = Tensor2::<9>::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let mut b = Tensor2::from_std_matrix(&[
+///     let mut b = Tensor2::<9>::from_std_matrix(&[
 ///         [1.0, 0.0, 0.0],
 ///         [0.0, 1.0, 0.0],
 ///         [0.0, 0.0, 1.0],
-///     ], Rep::General)?;
+///     ])?;
 ///     t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1000.0);
 ///
 ///     assert_eq!(
@@ -335,13 +309,10 @@ pub fn t4_ddot_t2(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2) {
 ///     Ok(())
 /// }
 /// ```
-pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2, beta: f64) {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
-    let dim = b.dim();
-    for m in 0..dim {
+pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N>, a: &Tensor2<N>, beta: f64) {
+    for m in 0..N {
         let mut s = 0.0;
-        for n in 0..dim {
+        for n in 0..N {
             s += dd.get(m, n) * a.vec[n];
         }
         b.vec[m] = alpha * s + beta * b.vec[m];
@@ -365,31 +336,27 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///
 /// # Output
 ///
-/// * `b` -- the resulting second-order tensor; with the same [Rep] as `a` and `dd`
+/// * `b` -- the resulting second-order tensor
 ///
 /// # Input
 ///
 /// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
+/// * `a` -- the input second-order tensor
+/// * `dd` -- the fourth-order tensor
 ///
 /// # Examples
 ///
 /// ```
-/// use russell_tensor::{t2_ddot_t4, Rep, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t2_ddot_t4, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
-///     let a = Tensor2::from_std_matrix(&[
+///     let a = Tensor2::<9>::from_std_matrix(&[
 ///         [1.0, 4.0, 6.0],
 ///         [7.0, 2.0, 5.0],
 ///         [9.0, 8.0, 3.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let dd = Tensor4::from_std_matrix(&[
+///     let dd = Tensor4::<9>::from_std_matrix(&[
 ///         [  1.0,  2.0,  3.0,  4.0,  5.0,  6.0,  7.0,  8.0,  9.0],
 ///         [ -1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0, -8.0, -9.0],
 ///         [  2.0,  4.0,  6.0,  8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
@@ -399,9 +366,9 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///         [ -2.0, -4.0, -6.0, -8.0,-10.0,-12.0,-14.0,-16.0,-18.0],
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
 ///         [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
-///     ], Rep::General)?;
+///     ])?;
 ///
-///     let mut b = Tensor2::new(Rep::General);
+///     let mut b = Tensor2::<9>::new();
 ///     t2_ddot_t4(&mut b, 1.0, &a, &dd);
 ///
 ///     assert_eq!(
@@ -415,13 +382,10 @@ pub fn t4_ddot_t2_update(b: &mut Tensor2, alpha: f64, dd: &Tensor4, a: &Tensor2,
 ///     Ok(())
 /// }
 /// ```
-pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
-    let dim = b.dim();
-    for n in 0..dim {
+pub fn t2_ddot_t4<const N: usize>(b: &mut Tensor2<N>, alpha: f64, a: &Tensor2<N>, dd: &Tensor4<N>) {
+    for n in 0..N {
         let mut s = 0.0;
-        for m in 0..dim {
+        for m in 0..N {
             s += a.vec[m] * dd.get(m, n);
         }
         b.vec[n] = alpha * s;
@@ -454,24 +418,17 @@ pub fn t2_ddot_t4(b: &mut Tensor2, alpha: f64, a: &Tensor2, dd: &Tensor4) {
 ///
 /// # Input
 ///
-/// * `a` -- the first second-order tensor; with the same [Rep] as `b` and `dd`
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as `a` and `b`
-/// * `b` -- the second second-order tensor; with the same [Rep] as `a` and `dd`
+/// * `a` -- the first second-order tensor
+/// * `dd` -- the fourth-order tensor
+/// * `b` -- the second second-order tensor
 ///
 /// # Output
 ///
 /// Returns the scalar result.
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
-pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
-    let dim = a.dim();
+pub fn t2_ddot_t4_ddot_t2<const N: usize>(a: &Tensor2<N>, dd: &Tensor4<N>, b: &Tensor2<N>) -> f64 {
     let mut s = 0.0;
-    for m in 0..dim {
-        for n in 0..dim {
+    for m in 0..N {
+        for n in 0..N {
             s += a.vec[m] * dd.get(m, n) * b.vec[n];
         }
     }
@@ -504,29 +461,28 @@ pub fn t2_ddot_t4_ddot_t2(a: &Tensor2, dd: &Tensor4, b: &Tensor2) -> f64 {
 ///
 /// # Output
 ///
-/// * `ee` -- the resulting fourth-order tensor; with the same [Rep] as the other tensors
+/// * `ee` -- the resulting fourth-order tensor
 ///
 /// # Input
 ///
 /// * `alpha` -- the first scalar multiplier
-/// * `dd` -- the fourth-order tensor; with the same [Rep] as the other tensors
+/// * `dd` -- the fourth-order tensor;
 /// * `beta` -- the second scalar multiplier
-/// * `a` -- the first second-order tensor; with the same [Rep] as the other tensors
-/// * `b` -- the second second-order tensor; with the same [Rep] as the other tensors
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different [Rep]
-pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, beta: f64, a: &Tensor2, b: &Tensor2) {
-    assert_eq!(a.rep(), dd.rep());
-    assert_eq!(b.rep(), dd.rep());
-    assert_eq!(ee.rep(), dd.rep());
-    let dim = a.dim();
-    for m in 0..dim {
-        for n in 0..dim {
+/// * `a` -- the first second-order tensor
+/// * `b` -- the second second-order tensor
+pub fn t4_ddot_t2_dyad_t2_ddot_t4<const N: usize>(
+    ee: &mut Tensor4<N>,
+    alpha: f64,
+    dd: &Tensor4<N>,
+    beta: f64,
+    a: &Tensor2<N>,
+    b: &Tensor2<N>,
+) {
+    for m in 0..N {
+        for n in 0..N {
             ee.set(m, n, alpha * dd.get(m, n));
-            for p in 0..dim {
-                for q in 0..dim {
+            for p in 0..N {
+                for q in 0..N {
                     ee.set(
                         m,
                         n,
@@ -543,43 +499,25 @@ pub fn t4_ddot_t2_dyad_t2_ddot_t4(ee: &mut Tensor4, alpha: f64, dd: &Tensor4, be
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MN_TO_IJKL, Rep, SamplesTensor4};
+    use crate::{MN_TO_IJKL, SamplesTensor4};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
-
-    #[test]
-    #[should_panic]
-    fn t2_dyad_t2_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be Symmetric2D
-        let mut dd = Tensor4::new(Rep::Symmetric2D);
-        t2_dyad_t2(&mut dd, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_dyad_t2_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let mut dd = Tensor4::new(Rep::Symmetric); // wrong; it must be Symmetric2D
-        t2_dyad_t2(&mut dd, 1.0, &a, &b);
-    }
 
     #[test]
     fn t2_dyad_t2_works() {
         // general dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         assert_eq!(
@@ -599,18 +537,18 @@ mod tests {
 
         // sym-3D dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [2.0, 5.0, 6.0],
             [3.0, 6.0, 9.0],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         assert_eq!(
@@ -630,18 +568,18 @@ mod tests {
 
         // sym-2D dyad sym-2D
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 2.0, 0.0],
             [2.0, 5.0, 0.0],
             [0.0, 0.0, 9.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<4>::from_std_matrix(&[
             [0.5, 0.5, 0.0],
             [0.5, 0.5, 0.0],
             [0.0, 0.0, 0.5],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric2D);
+        ]).unwrap();
+        let mut dd = Tensor4::<4>::new();
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         assert_eq!(
@@ -661,40 +599,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn t2_dyad_t2_update_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be Symmetric2D
-        let mut dd = Tensor4::new(Rep::Symmetric2D);
-        t2_dyad_t2_update(&mut dd, 1.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_dyad_t2_update_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let mut dd = Tensor4::new(Rep::Symmetric); // wrong; it must be Symmetric2D
-        t2_dyad_t2_update(&mut dd, 1.0, &a, &b);
-    }
-
-    #[test]
     fn t2_dyad_t2_update_works() {
         // general dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
             [0.5, 0.5, 0.5],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         let mat = Matrix::filled(9, 9, 0.1);
-        let mut dd = Tensor4::from_std_matrix(&mat, Rep::General).unwrap();
+        let mut dd = Tensor4::<9>::from_std_matrix(&mat).unwrap();
         t2_dyad_t2_update(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = "┌                                     ┐\n\
@@ -711,11 +631,11 @@ mod tests {
         assert_eq!(format!("{:.1}", mat), correct);
     }
 
-    fn check_dyad(s: f64, a_ten: &Tensor2, b_ten: &Tensor2, dd_ten: &Tensor4, tol: f64) {
+    fn check_dyad<const N: usize>(s: f64, a_ten: &Tensor2<N>, b_ten: &Tensor2<N>, dd_ten: &Tensor4<N>, tol: f64) {
         let a = a_ten.as_std_matrix();
         let b = b_ten.as_std_matrix();
         let dd = dd_ten.as_std_matrix();
-        let mut correct = Matrix::new(9, 9);
+        let mut correct = Matrix::new(9, 9); // Use 9 here because all matrices are "std"
         for m in 0..9 {
             for n in 0..9 {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
@@ -729,18 +649,18 @@ mod tests {
     fn t2_dyad_t2_works_extra() {
         // general dyad general
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
-        let mut dd = Tensor4::new(Rep::General);
+        ]).unwrap();
+        let mut dd = Tensor4::<9>::new();
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
@@ -760,18 +680,18 @@ mod tests {
 
         // symmetric dyad symmetric
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<6>::from_std_matrix(&[
             [1.0, 4.0, 6.0],
             [4.0, 2.0, 5.0],
             [6.0, 5.0, 3.0],
-        ], Rep::Symmetric).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<6>::from_std_matrix(&[
             [3.0, 5.0, 6.0],
             [5.0, 2.0, 4.0],
             [6.0, 4.0, 1.0],
-        ], Rep::Symmetric).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric);
+        ]).unwrap();
+        let mut dd = Tensor4::<6>::new();
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
@@ -791,18 +711,18 @@ mod tests {
 
         // symmetric 2D dyad symmetric 2D
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 3.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<4>::from_std_matrix(&[
             [3.0, 4.0, 0.0],
             [4.0, 2.0, 0.0],
             [0.0, 0.0, 1.0],
-        ], Rep::Symmetric2D).unwrap();
-        let mut dd = Tensor4::new(Rep::Symmetric2D);
+        ]).unwrap();
+        let mut dd = Tensor4::<4>::new();
         t2_dyad_t2(&mut dd, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
@@ -822,32 +742,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn t4_ddot_t2_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let mut b = Tensor2::new(Rep::Symmetric2D);
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2(&mut b, 1.0, &dd, &a);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t4_ddot_t2_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let mut b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2(&mut b, 1.0, &dd, &a);
-    }
-
-    #[test]
     fn t4_ddot_t2_works() {
-        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
-            [ 0.0,  0.0, -3.0]], Rep::Symmetric2D).unwrap();
-        let mut b = Tensor2::new(Rep::Symmetric2D);
+            [ 0.0,  0.0, -3.0]]).unwrap();
+        let mut b = Tensor2::<4>::new();
         t4_ddot_t2(&mut b, 1.0, &dd, &a);
         let out = b.as_std_matrix();
         assert_eq!(
@@ -861,38 +763,20 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn t4_ddot_t2_update_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let mut b = Tensor2::new(Rep::Symmetric2D);
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1.0);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t4_ddot_update_t2_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let mut b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1.0);
-    }
-
-    #[test]
     fn t4_ddot_t2_update_works() {
-        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let mut b = Tensor2::from_std_matrix(&[
+        let mut b = Tensor2::<4>::from_std_matrix(&[
             [-1000.0, -1000.0,     0.0],
             [-1000.0, -1000.0,     0.0],
             [    0.0,     0.0, -1000.0],
-        ], Rep::Symmetric2D).unwrap();
+        ]).unwrap();
         t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 2.0);
         let out = b.as_std_matrix();
         assert_eq!(
@@ -906,32 +790,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn t2_ddot_t4_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let mut b = Tensor2::new(Rep::Symmetric2D);
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t2_ddot_t4(&mut b, 1.0, &a, &dd);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_ddot_t4_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let mut b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t2_ddot_t4(&mut b, 1.0, &a, &dd);
-    }
-
-    #[test]
     fn t2_ddot_t4_works() {
-        let dd = Tensor4::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX, Rep::Symmetric2D).unwrap();
+        let dd = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<4>::from_std_matrix(&[
             [-1.0, -2.0,  0.0],
             [-2.0,  2.0,  0.0],
-            [ 0.0,  0.0, -3.0]], Rep::Symmetric2D).unwrap();
-        let mut b = Tensor2::new(Rep::Symmetric2D);
+            [ 0.0,  0.0, -3.0]]).unwrap();
+        let mut b = Tensor2::<4>::new();
         t2_ddot_t4(&mut b, 1.0, &a, &dd);
         let out = b.as_std_matrix();
         assert_eq!(
@@ -945,90 +811,42 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn t2_ddot_t4_ddot_t2_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t2_ddot_t4_ddot_t2(&a, &dd, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2_ddot_t4_ddot_t2_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `dd`
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        t2_ddot_t4_ddot_t2(&a, &dd, &b);
-    }
-
-    #[test]
     fn t2_ddot_t4_ddot_t2_works() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         let mat = Matrix::filled(9, 9, -1.0);
-        let dd = Tensor4::from_std_matrix(&mat, Rep::General).unwrap();
+        let dd = Tensor4::<9>::from_std_matrix(&mat).unwrap();
         let s = t2_ddot_t4_ddot_t2(&a, &dd, &b);
         approx_eq(s, -2025.0, 1e-15);
     }
 
     #[test]
-    #[should_panic]
-    fn t4_ddot_t2_dyad_t2_ddot_t4_panics_on_different_mat1() {
-        let a = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `ee`
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t4_ddot_t2_dyad_t2_ddot_t4_panics_on_different_mat2() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric); // wrong; it must be the same as `ee`
-        let dd = Tensor4::new(Rep::Symmetric2D);
-        let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
-    }
-
-    #[test]
-    #[should_panic]
-    fn t4_ddot_t2_dyad_t2_ddot_t4_panics_on_different_mat3() {
-        let a = Tensor2::new(Rep::Symmetric2D);
-        let b = Tensor2::new(Rep::Symmetric2D);
-        let dd = Tensor4::new(Rep::Symmetric); // wrong; it must be the same as `ee`
-        let mut ee = Tensor4::new(Rep::Symmetric2D);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
-    }
-
-    #[test]
     fn t4_ddot_t2_dyad_t2_ddot_t4_works1() {
         #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
+        let a = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0],
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
+        let b = Tensor2::<9>::from_std_matrix(&[
             [9.0, 8.0, 7.0],
             [6.0, 5.0, 4.0],
             [3.0, 2.0, 1.0],
-        ], Rep::General).unwrap();
+        ]).unwrap();
         let mat = Matrix::filled(9, 9, -1.0);
-        let dd = Tensor4::from_std_matrix(&mat, Rep::General).unwrap();
-        let mut ee = Tensor4::new(Rep::General);
+        let dd = Tensor4::<9>::from_std_matrix(&mat).unwrap();
+        let mut ee = Tensor4::<9>::new();
         t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
         let correct = [
             [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
@@ -1043,52 +861,4 @@ mod tests {
         ];
         mat_approx_eq(&ee.as_std_matrix(), &correct, 1e-15);
     }
-
-    /*
-    #[test]
-    fn t4_ddot_t2_dyad_t2_ddot_t4_works2() {
-        #[rustfmt::skip]
-        let a = Tensor2::from_std_matrix(&[
-            [1.0, 2.0, 3.0],
-            [2.0, 5.0, 6.0],
-            [3.0, 6.0, 9.0],
-        ], Rep::Symmetric).unwrap();
-        #[rustfmt::skip]
-        let b = Tensor2::from_std_matrix(&[
-            [1.0, 4.0, 5.0],
-            [4.0, 2.0, 6.0],
-            [5.0, 6.0, 3.0],
-        ], Rep::Symmetric).unwrap();
-        let dd = Tensor4::from_std_matrix(
-            &[
-                [1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [2.0, 4.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [3.0, 3.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            ],
-            Rep::Symmetric,
-        )
-        .unwrap();
-        let mut ee = Tensor4::new(Rep::Symmetric);
-        t4_ddot_t2_dyad_t2_ddot_t4(&mut ee, 2.0, &dd, 3.0, &a, &b);
-        println!("{}", ee.as_std_matrix());
-        let correct = [
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-            [6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073., 6073.],
-        ];
-        mat_approx_eq(&ee.as_std_matrix(), &correct, 1e-15);
-    }
-    */
 }

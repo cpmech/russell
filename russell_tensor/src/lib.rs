@@ -73,14 +73,11 @@
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // Allocate a symmetric second-order tensor given the standard components
-//!     let sigma = Tensor2::from_std_matrix(
-//!         &[
-//!             [1.0, 2.0, 3.0],
-//!             [2.0, 2.0, 4.0],
-//!             [3.0, 4.0, 3.0],
-//!         ],
-//!         Rep::Symmetric,
-//!     )?;
+//!     let sigma = Tensor2::<6>::from_std_matrix(&[
+//!         [1.0, 2.0, 3.0],
+//!         [2.0, 2.0, 4.0],
+//!         [3.0, 4.0, 3.0],
+//!     ])?;
 //!
 //!     // Compute the principal invariants
 //!     let ii1 = sigma.invariant_ii1();
@@ -97,52 +94,50 @@
 /// Defines the error type as a static string
 pub type StrError = &'static str;
 
-pub mod analysis;
+// pub mod analysis;
 mod constants;
-mod derivatives_t2;
-mod derivatives_t4;
-mod enums;
-mod lin_elasticity;
-mod operations_mix1;
-mod operations_mix2;
-mod operations_t2;
-mod operations_t2x;
-mod operations_t3;
-mod operations_t4;
-mod polar_brannon;
-mod polar_classic;
-mod polar_decomp;
-mod polar_higham;
+// mod derivatives_t2;
+// mod derivatives_t4;
+// mod lin_elasticity;
+// mod operations_mix1;
+// mod operations_mix2;
+// mod operations_t2;
+// mod operations_t2x;
+// mod operations_t3;
+// mod operations_t4;
+// mod polar_brannon;
+// mod polar_classic;
+// mod polar_decomp;
+// mod polar_higham;
 mod samples_tensor2;
 mod samples_tensor3;
 mod samples_tensor4;
-mod spectral2;
+// mod spectral2;
 mod tensor1;
 mod tensor2;
 mod tensor3;
 mod tensor4;
 
-#[cfg(test)]
-mod test_common;
+// #[cfg(test)]
+// mod test_common;
 
-pub mod z_reference_loop_fns;
+// pub mod z_reference_loop_fns;
 
 pub use constants::*;
-pub use derivatives_t2::*;
-pub use derivatives_t4::*;
-pub use enums::*;
-pub use lin_elasticity::*;
-pub use operations_mix1::*;
-pub use operations_mix2::*;
-pub use operations_t2::*;
-pub use operations_t2x::*;
-pub use operations_t3::*;
-pub use operations_t4::*;
-pub use polar_decomp::*;
+// pub use derivatives_t2::*;
+// pub use derivatives_t4::*;
+// pub use lin_elasticity::*;
+// pub use operations_mix1::*;
+// pub use operations_mix2::*;
+// pub use operations_t2::*;
+// pub use operations_t2x::*;
+// pub use operations_t3::*;
+// pub use operations_t4::*;
+// pub use polar_decomp::*;
 pub use samples_tensor2::*;
 pub use samples_tensor3::*;
 pub use samples_tensor4::*;
-pub use spectral2::*;
+// pub use spectral2::*;
 pub use tensor1::*;
 pub use tensor2::*;
 pub use tensor3::*;

@@ -109,18 +109,15 @@ This section illustrates how to use `russell_tensor`. See also:
 ### Computing the Invariants
 
 ```rust
-use russell_tensor::{Rep, StrError, Tensor2};
+use russell_tensor::{StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
     // Allocate a symmetric second-order tensor given the standard components
-    let sigma = Tensor2::from_std_matrix(
-        &[
-            [1.0, 2.0, 3.0],
-            [2.0, 2.0, 4.0],
-            [3.0, 4.0, 3.0],
-        ],
-        Rep::Symmetric,
-    )?;
+    let sigma = Tensor2::<6>::from_std_matrix(&[
+        [1.0, 2.0, 3.0],
+        [2.0, 2.0, 4.0],
+        [3.0, 4.0, 3.0],
+    ])?;
 
     // Compute the principal invariants
     let ii1 = sigma.invariant_ii1();
@@ -137,18 +134,15 @@ fn main() -> Result<(), StrError> {
 ### Allocating Second Order Tensors
 
 ```rust
-use russell_tensor::{Rep, StrError, Tensor2, SQRT_2};
+use russell_tensor::{StrError, Tensor2, SQRT_2};
 
 fn main() -> Result<(), StrError> {
     // Allocate a general second-order tensor given the standard components
-    let a = Tensor2::from_std_matrix(
-        &[
-            [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
-            [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
-            [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
-        ],
-        Rep::General,
-    )?;
+    let a = Tensor2::<9>::from_std_matrix(&[
+        [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+        [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+        [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+    ])?;
     assert_eq!(
         format!("{:.1}", a),
         "┌      ┐\n\
@@ -165,14 +159,11 @@ fn main() -> Result<(), StrError> {
     );
 
     // Allocate a symmetric second-order tensor given the standard components
-    let b = Tensor2::from_std_matrix(
-        &[
-            [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
-            [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
-            [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
-        ],
-        Rep::Symmetric,
-    )?;
+    let b = Tensor2::<6>::from_std_matrix(&[
+        [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
+        [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
+        [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
+    ])?;
     assert_eq!(
         format!("{:.1}", b),
         "┌     ┐\n\
@@ -186,9 +177,8 @@ fn main() -> Result<(), StrError> {
     );
 
     // Allocate a symmetric second-order tensor given the standard components for 2D problems
-    let c = Tensor2::from_std_matrix(
+    let c = Tensor2::<4>::from_std_matrix(
         &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
-        Rep::Symmetric2D,
     )?;
     assert_eq!(
         format!("{:.1}", c),

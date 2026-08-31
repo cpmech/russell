@@ -123,17 +123,17 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// fn main() {
     ///     let a = Tensor2::<9>::new();
-    ///     for m in 0..a.dim() {
+    ///     for m in 0..9 {
     ///         assert_eq!(a.get(m), 0.0);
     ///     }
     ///
     ///     let b = Tensor2::<6>::new();
-    ///     for m in 0..b.dim() {
+    ///     for m in 0..6 {
     ///         assert_eq!(b.get(m), 0.0);
     ///     }
     ///
     ///     let c = Tensor2::<4>::new();
-    ///     for m in 0..c.dim() {
+    ///     for m in 0..4 {
     ///         assert_eq!(c.get(m), 0.0);
     ///     }
     /// }
@@ -232,12 +232,6 @@ impl<const N: usize> Tensor2<N> {
         tt.vec[1] = -star1 / SQRT_6 + star2 / SQRT_3 - star3 / SQRT_2;
         tt.vec[2] = -star1 / SQRT_6 + star2 / SQRT_3 + star3 / SQRT_2;
         Ok(tt)
-    }
-
-    /// Returns the Kelvin-Mandel vector dimension (4, 6, or 9)
-    #[inline]
-    pub fn dim(&self) -> usize {
-        N
     }
 
     /// Returns the m-component of the Kelvin-Mandel vector
@@ -2362,39 +2356,32 @@ mod tests {
         // general
         let mut tt = Tensor2::<9>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 9);
         assert_eq!(tt.get(0), 123.0);
 
         // symmetric 3D
         let mut tt = Tensor2::<6>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 6);
         assert_eq!(tt.get(0), 123.0);
 
         let mut tt = Tensor2::<6>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 6);
         assert_eq!(tt.get(0), 123.0);
 
         let mut tt = Tensor2::<6>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 6);
         assert_eq!(tt.get(0), 123.0);
 
         // symmetric 2D
         let mut tt = Tensor2::<4>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 4);
         assert_eq!(tt.get(0), 123.0);
 
         let mut tt = Tensor2::<4>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 4);
         assert_eq!(tt.get(0), 123.0);
 
         let mut tt = Tensor2::<4>::new();
         tt.set(0, 123.0);
-        assert_eq!(tt.dim(), 4);
         assert_eq!(tt.get(0), 123.0);
     }
 
@@ -2478,7 +2465,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        for m in 0..tt.dim() {
+        for m in 0..9 {
             approx_eq(tt.get(m), correct[m], 1e-15);
         }
 
@@ -2498,7 +2485,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        for m in 0..tt.dim() {
+        for m in 0..9 {
             approx_eq(tt.get(m), correct[m], 1e-15);
         }
 
@@ -2508,7 +2495,7 @@ mod tests {
         tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        for m in 0..tt.dim() {
+        for m in 0..6 {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
@@ -2518,7 +2505,7 @@ mod tests {
         tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
             .unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        for m in 0..tt.dim() {
+        for m in 0..4 {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
     }
@@ -2603,7 +2590,7 @@ mod tests {
             -2.0 / SQRT_2,
             -4.0 / SQRT_2,
         ];
-        for m in 0..tt.dim() {
+        for m in 0..9 {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
@@ -2638,7 +2625,7 @@ mod tests {
         ];
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2];
-        for m in 0..tt.dim() {
+        for m in 0..6 {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
@@ -2651,7 +2638,7 @@ mod tests {
         ];
         let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
         let correct = &[1.0, 2.0, 3.0, 4.0 * SQRT_2];
-        for m in 0..tt.dim() {
+        for m in 0..4 {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
     }
@@ -2660,19 +2647,19 @@ mod tests {
     fn identity_works() {
         // general
         let ii = Tensor2::<9>::identity();
-        for m in 0..ii.dim() {
+        for m in 0..9 {
             assert_eq!(ii.get(m), IDENTITY2[m]);
         }
 
         // symmetric
         let ii = Tensor2::<6>::identity();
-        for m in 0..ii.dim() {
+        for m in 0..6 {
             assert_eq!(ii.get(m), IDENTITY2[m]);
         }
 
         // symmetric 2d
         let ii = Tensor2::<4>::identity();
-        for m in 0..ii.dim() {
+        for m in 0..4 {
             assert_eq!(ii.get(m), IDENTITY2[m]);
         }
     }
@@ -3724,7 +3711,7 @@ mod tests {
         let mut sym = Tensor2::<6>::new();
         let mut skw = Tensor2::<6>::new();
         ten.decompose(&mut sym, &mut skw);
-        for m in 0..ten.dim() {
+        for m in 0..6 {
             assert_eq!(sym.get(m), ten.get(m));
             assert_eq!(skw.get(m), 0.0);
         }
@@ -3740,7 +3727,7 @@ mod tests {
         let mut sym = Tensor2::<4>::new();
         let mut skw = Tensor2::<4>::new();
         ten.decompose(&mut sym, &mut skw);
-        for m in 0..ten.dim() {
+        for m in 0..4 {
             assert_eq!(sym.get(m), ten.get(m));
             assert_eq!(skw.get(m), 0.0);
         }
@@ -4159,7 +4146,7 @@ mod tests {
         approx_eq(t1.vec[1], 0.0, 1e-15);
         approx_eq(t1.vec[2], 0.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        for m in 0..t1.dim() {
+        for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
@@ -4173,7 +4160,7 @@ mod tests {
         approx_eq(t1.vec[1], 1.0 - SQRT_3, 1e-15);
         approx_eq(t1.vec[2], 1.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        for m in 0..t1.dim() {
+        for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
@@ -4187,7 +4174,7 @@ mod tests {
         approx_eq(t1.vec[1], -1.0, 1e-15);
         approx_eq(t1.vec[2], 2.0, 1e-15);
         assert_eq!(t1.vec[3], 0.0);
-        for m in 0..t1.dim() {
+        for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
         approx_eq(t1.invariant_sigma_s(), distance, 1e-15);

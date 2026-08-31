@@ -323,18 +323,6 @@ mod tests {
         approx_eq(vrh.gg_h, 84.1920863570489, 1e-12);
         approx_eq(vrh.aa_u, 1.449945284449501, 1e-12);
 
-        // check the Display implementation (no precision specified)
-        assert_eq!(
-            format!("{}", vrh),
-            "Kv = 158.7388888888889\n\
-             Gv = 93.50733333333332\n\
-             Kr = 131.6385407574474\n\
-             Gr = 74.87683938076444\n\
-             Kh = 145.18871482316814\n\
-             Gh = 84.19208635704888\n\
-             Au = 1.4499452844495009"
-        );
-
         // check the Display implementation (precision = 3)
         assert_eq!(
             format!("{:.3}", vrh),

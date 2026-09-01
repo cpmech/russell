@@ -92,7 +92,7 @@ This project is split into the following crates:
     - Backends: OpenBLAS / Netlib LAPACK or Intel oneAPI MKL (via intel_mkl feature).
 2. [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) — Tensor calculus and continuum mechanics:
     - Tensor types: Tensor1 (3D vectors), Tensor2 (2nd-order), Tensor3 (3rd-order), Tensor4 (4th-order).
-    - Kelvin-Mandel representation: Maps tensors to vector/matrix spaces preserving Euclidean norms (Rep::General, Rep::Symmetric, Rep::Symmetric2D).
+    - Kelvin-Mandel representation: Maps tensors to vector/matrix spaces preserving Euclidean norms.
     - Operations & Calculus: Dot/ddot contractions, dyadic products, polar decompositions, principal/deviatoric/octahedral invariants, Lode invariant, first and second derivatives of invariants and tensor functions, linear elasticity / Hooke's law.
 3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and direct solvers:
     - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).
@@ -991,20 +991,17 @@ std_dev = 312.7131690782321
 ### (tensor) Allocate second-order tensors
 
 ```rust
-use russell_tensor::*;
+use russell_tensor::{SQRT_2, StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
-    // general
-    let a = Tensor2::from_matrix(
-        &[
-            [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
-            [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
-            [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
-        ],
-        Rep::General,
-    )?;
+    // Allocate a general second-order tensor given the standard components
+    let a = Tensor2::<9>::from_std_matrix(&[
+        [1.0, SQRT_2 * 2.0, SQRT_2 * 3.0],
+        [SQRT_2 * 4.0, 5.0, SQRT_2 * 6.0],
+        [SQRT_2 * 7.0, SQRT_2 * 8.0, 9.0],
+    ])?;
     assert_eq!(
-        format!("{:.1}", a.vec),
+        format!("{:.1}", a),
         "┌      ┐\n\
          │  1.0 │\n\
          │  5.0 │\n\
@@ -1018,17 +1015,14 @@ fn main() -> Result<(), StrError> {
          └      ┘"
     );
 
-    // symmetric-3D
-    let b = Tensor2::from_matrix(
-        &[
-            [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
-            [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
-            [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
-        ],
-        Rep::Symmetric,
-    )?;
+    // Allocate a symmetric second-order tensor given the standard components
+    let b = Tensor2::<6>::from_std_matrix(&[
+        [1.0, 4.0 / SQRT_2, 6.0 / SQRT_2],
+        [4.0 / SQRT_2, 2.0, 5.0 / SQRT_2],
+        [6.0 / SQRT_2, 5.0 / SQRT_2, 3.0],
+    ])?;
     assert_eq!(
-        format!("{:.1}", b.vec),
+        format!("{:.1}", b),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\
@@ -1039,13 +1033,14 @@ fn main() -> Result<(), StrError> {
          └     ┘"
     );
 
-    // symmetric-2D
-    let c = Tensor2::from_matrix(
-        &[[1.0, 4.0 / SQRT_2, 0.0], [4.0 / SQRT_2, 2.0, 0.0], [0.0, 0.0, 3.0]],
-        Rep::Symmetric2D,
-    )?;
+    // Allocate a symmetric second-order tensor given the standard components for 2D problems
+    let c = Tensor2::<4>::from_std_matrix(&[
+        [1.0, 4.0 / SQRT_2, 0.0],
+        [4.0 / SQRT_2, 2.0, 0.0],
+        [0.0, 0.0, 3.0]
+    ])?;
     assert_eq!(
-        format!("{:.1}", c.vec),
+        format!("{:.1}", c),
         "┌     ┐\n\
          │ 1.0 │\n\
          │ 2.0 │\n\

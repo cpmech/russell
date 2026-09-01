@@ -47,16 +47,11 @@ Median times (single machine, Intel MKL):
 
 | function                | stack/unrolled | heap/unrolled | stack/loops | heap/loops |
 | ----------------------- | -------------- | ------------- | ----------- | ---------- |
-| `ssd_fn`                | 0.18 ns        | 6.38 ns       | 20.91 ns    | 70.20 ns   |
-| `qsd_fn`                | 5.51 ns        | 9.12 ns       | 126.09 ns   | 140.21 ns  |
-| `deriv2_invariant_jj3`  | 6.76 ns        | 11.80 ns      | 119.72 ns   | 142.11 ns  |
-| `deriv2_invariant_lode` | 49.92 ns       | 68.96 ns      | 163.64 ns   | 197.37 ns  |
-| `deriv_squared_tensor`  | 7.58 ns        | 41.82 ns      | 77.81 ns    | 85.32 ns   |
-
-> **Note:** the `ssd_fn` stack/unrolled value (0.18 ns) is below the physical floor
-> for writing a full 6×6 tensor, so it reflects dead-code elimination of the
-> components not observed by `black_box`; treat it as a lower bound rather than a
-> real measurement.
+| `ssd_fn`                | 3.36 ns        | 6.07 ns       | 20.90 ns    | 70.27 ns   |
+| `qsd_fn`                | 5.44 ns        | 9.03 ns       | 125.58 ns   | 140.28 ns  |
+| `deriv2_invariant_jj3`  | 6.71 ns        | 11.77 ns      | 126.35 ns   | 135.36 ns  |
+| `deriv2_invariant_lode` | 48.72 ns       | 69.04 ns      | 162.93 ns   | 205.25 ns  |
+| `deriv_squared_tensor`  | 6.47 ns        | 43.03 ns      | 77.62 ns    | 82.17 ns   |
 
 ## Observations
 
@@ -111,20 +106,20 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 
 ### General (3×3): all algorithms
 
-| case                   | κ       | `brannon` | `higham` | `eigen` | `svd`  |
-| ---------------------- | ------- | --------- | -------- | ------- | ------ |
-| `well_conditioned`     | ≈ 4     | 229 ns    | 124 ns   | 757 ns  | 729 ns |
-| `moderate_conditioned` | ≈ 6·10² | 801 ns    | 163 ns   | 679 ns  | 624 ns |
-| `ill_conditioned`      | ≈ 6·10⁷ | 2.07 µs   | 202 ns   | —       | 570 ns |
+| case                   | κ       | `brannon` | `higham`  | `eigen`   | `svd`     |
+| ---------------------- | ------- | --------- | --------- | --------- | --------- |
+| `well_conditioned`     | ≈ 4     | 208.47 ns | 117.88 ns | 746.44 ns | 753.34 ns |
+| `moderate_conditioned` | ≈ 6·10² | 733.29 ns | 156.50 ns | 669.60 ns | 628.87 ns |
+| `ill_conditioned`      | ≈ 6·10⁷ | 1.91 µs   | 195.06 ns | —         | 572.46 ns |
 
 ### In-plane: all algorithms
 
-| algorithm | time   |
-| --------- | ------ |
-| `brannon` | 290 ns |
-| `higham`  | 129 ns |
-| `eigen`   | 422 ns |
-| `svd`     | 305 ns |
+| algorithm | time      |
+| --------- | --------- |
+| `brannon` | 263.35 ns |
+| `higham`  | 122.34 ns |
+| `eigen`   | 420.95 ns |
+| `svd`     | 307.65 ns |
 
 ### Observations
 

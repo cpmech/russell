@@ -91,12 +91,12 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 
 `polar_decomp_benchmark` compares the speed of the polar-decomposition algorithms:
 
-| algorithm | description                                                     |
-| --------- | --------------------------------------------------------------- |
-| `brannon` | `polar_rotation_brannon` — iterative fixed-point (3×3)          |
-| `higham`  | `polar_quaternion_higham` — quaternion-based, direct (3×3)      |
-| `eigen`   | `PolarAlgo::Eigen` — classic: eigenvalues of `C = Fᵀ F` (3×3)   |
-| `svd`     | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)  |
+| algorithm | description                                                    |
+| --------- | -------------------------------------------------------------- |
+| `brannon` | `polar_rotation_brannon` — iterative fixed-point (3×3)         |
+| `higham`  | `polar_quaternion_higham` — quaternion-based, direct (3×3)     |
+| `eigen`   | `PolarAlgo::Eigen` — classic: eigenvalues of `C = Fᵀ F` (3×3)  |
+| `svd`     | `PolarAlgo::SVD` — classic: singular value decomposition (3×3) |
 
 > **Note:** all algorithms are benchmarked through the unified `polar_decomp`
 > dispatcher, which computes the rotation `R` and the right stretch `U` together

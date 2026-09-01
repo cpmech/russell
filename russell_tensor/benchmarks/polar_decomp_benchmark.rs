@@ -21,16 +21,20 @@
 //!   benchmarked for the ill-conditioned case.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{PolarAlgo, Rep, Tensor2, polar_decomp};
+use russell_tensor::{PolarAlgo, Tensor2, polar_decomp};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
-const WELL_CONDITIONED: [[f64; 3]; 3] = [[1.0, 0.495, 0.5], [-0.333, 1.0, -0.247], [0.959, 0.0, 1.5]];
+const WELL_CONDITIONED: [[f64; 3]; 3] = [
+    [1.0, 0.495, 0.5],     // 1
+    [-0.333, 1.0, -0.247], // 2
+    [0.959, 0.0, 1.5],     // 3
+];
 
 /// In-plane matrix (example 01, Brannon; 60° rotation about E3, κ ≈ 6)
 const IN_PLANE: [[f64; 3]; 3] = [
-    [0.61784609690826542, -0.70889727457341833, 0.0],
-    [0.59014083110323967, 0.13215390309173483, 0.0],
-    [0.0, 0.0, 3.0],
+    [0.61784609690826542, -0.70889727457341833, 0.0], // 1
+    [0.59014083110323967, 0.13215390309173483, 0.0],  // 2
+    [0.0, 0.0, 3.0],                                  // 3
 ];
 
 /// Higham & Noferini test (5.2) for a given scale factor y; κ ≈ 1/(√3 y).
@@ -63,9 +67,9 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
 
     // Brannon (iterative fixed-point)
     group.bench_with_input(BenchmarkId::new("brannon", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(aa).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box(rr.get(0));
@@ -74,9 +78,9 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
 
     // Higham & Noferini (quaternion, direct)
     group.bench_with_input(BenchmarkId::new("higham", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(aa).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
             std::hint::black_box(rr.get(0));
@@ -86,9 +90,9 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
     // Eigen (classic: eigenvalues of C = Fᵀ F)
     if with_eigen {
         group.bench_with_input(BenchmarkId::new("eigen", ""), &(), |b, _| {
-            let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
-            let mut rr = Tensor2::new(Rep::General);
-            let mut uu = Tensor2::new(Rep::Symmetric);
+            let ff = Tensor2::<9>::from_std_matrix(aa).unwrap();
+            let mut rr = Tensor2::<9>::new();
+            let mut uu = Tensor2::<6>::new();
             b.iter(|| {
                 polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
                 std::hint::black_box(rr.get(0));
@@ -98,9 +102,9 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
 
     // SVD (classic: singular value decomposition)
     group.bench_with_input(BenchmarkId::new("svd", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(aa, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(aa).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
             std::hint::black_box(rr.get(0));
@@ -116,9 +120,9 @@ fn bench_in_plane(crit: &mut Criterion) {
 
     // Brannon (iterative, 3×3)
     group.bench_with_input(BenchmarkId::new("brannon", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(&IN_PLANE).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box(rr.get(0));
@@ -127,9 +131,9 @@ fn bench_in_plane(crit: &mut Criterion) {
 
     // Higham & Noferini (quaternion, direct)
     group.bench_with_input(BenchmarkId::new("higham", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(&IN_PLANE).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
             std::hint::black_box(rr.get(0));
@@ -138,9 +142,9 @@ fn bench_in_plane(crit: &mut Criterion) {
 
     // Eigen (classic)
     group.bench_with_input(BenchmarkId::new("eigen", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(&IN_PLANE).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
             std::hint::black_box(rr.get(0));
@@ -149,9 +153,9 @@ fn bench_in_plane(crit: &mut Criterion) {
 
     // SVD (classic)
     group.bench_with_input(BenchmarkId::new("svd", ""), &(), |b, _| {
-        let ff = Tensor2::from_std_matrix(&IN_PLANE, Rep::General).unwrap();
-        let mut rr = Tensor2::new(Rep::General);
-        let mut uu = Tensor2::new(Rep::Symmetric);
+        let ff = Tensor2::<9>::from_std_matrix(&IN_PLANE).unwrap();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
             std::hint::black_box(rr.get(0));

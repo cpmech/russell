@@ -44,7 +44,7 @@ fn bench_ssd_fn(crit: &mut Criterion) {
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
             ssd_fn(&mut dd, 1.0, &aa);
-            std::hint::black_box(dd.get(0, 0));
+            std::hint::black_box(&dd);
         });
     });
 
@@ -53,7 +53,7 @@ fn bench_ssd_fn(crit: &mut Criterion) {
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
             ssd_fn_loops(&mut dd, 1.0, &aa);
-            std::hint::black_box(dd.get(0, 0));
+            std::hint::black_box(&dd);
         });
     });
 
@@ -70,7 +70,7 @@ fn bench_qsd_fn(crit: &mut Criterion) {
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
             qsd_fn(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(dd.get(0, 0));
+            std::hint::black_box(&dd);
         });
     });
 
@@ -80,7 +80,7 @@ fn bench_qsd_fn(crit: &mut Criterion) {
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
             qsd_fn_loops(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(dd.get(0, 0));
+            std::hint::black_box(&dd);
         });
     });
 
@@ -96,7 +96,7 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
         let mut d2 = Tensor4::<6>::new();
         b.iter(|| {
             deriv2_invariant_jj3(&mut d2, &sigma);
-            std::hint::black_box(d2.get(0, 0));
+            std::hint::black_box(&d2);
         });
     });
 
@@ -105,7 +105,7 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
         let mut d2 = Tensor4::<6>::new();
         b.iter(|| {
             deriv2_invariant_jj3_loops(&mut d2, &sigma);
-            std::hint::black_box(d2.get(0, 0));
+            std::hint::black_box(&d2);
         });
     });
 
@@ -122,7 +122,7 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
         let mut work = WorkspaceDeriv2Lode::new();
         b.iter(|| {
             deriv2_invariant_lode(&mut d2, &mut work, &sigma);
-            std::hint::black_box(d2.get(0, 0));
+            std::hint::black_box(&d2);
         });
     });
 
@@ -131,7 +131,7 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
         let mut d2 = Tensor4::<6>::new();
         b.iter(|| {
             deriv2_invariant_lode_loops(&mut d2, &sigma);
-            std::hint::black_box(d2.get(0, 0));
+            std::hint::black_box(&d2);
         });
     });
 
@@ -147,7 +147,7 @@ fn bench_deriv_squared_tensor(crit: &mut Criterion) {
         let mut da2_da = Tensor4::<9>::new();
         b.iter(|| {
             deriv_squared_tensor(&mut da2_da, &aa);
-            std::hint::black_box(da2_da.get(0, 0));
+            std::hint::black_box(&da2_da);
         });
     });
 
@@ -156,7 +156,7 @@ fn bench_deriv_squared_tensor(crit: &mut Criterion) {
         let mut da2_da = Tensor4::<9>::new();
         b.iter(|| {
             deriv_squared_tensor_loops(&mut da2_da, &aa);
-            std::hint::black_box(da2_da.get(0, 0));
+            std::hint::black_box(&da2_da);
         });
     });
 

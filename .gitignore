@@ -17,4 +17,6 @@ rustc-ice-*.txt
 *.aider*
 *.go
 *.rsa
+*.pyc
+__pycache__/
 session*.json

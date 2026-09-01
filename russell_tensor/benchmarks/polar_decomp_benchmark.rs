@@ -72,7 +72,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 
@@ -83,7 +83,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 
@@ -95,7 +95,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
             let mut uu = Tensor2::<6>::new();
             b.iter(|| {
                 polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
-                std::hint::black_box(rr.get(0));
+                std::hint::black_box((&rr, &uu));
             });
         });
     }
@@ -107,7 +107,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 
@@ -125,7 +125,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 
@@ -136,7 +136,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 
@@ -147,7 +147,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 
@@ -158,7 +158,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
             polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
-            std::hint::black_box(rr.get(0));
+            std::hint::black_box((&rr, &uu));
         });
     });
 

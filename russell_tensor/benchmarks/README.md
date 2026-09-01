@@ -18,7 +18,7 @@ To compare the **stack** and **heap** layouts, run the benchmark twice (once wit
 
 | component | value                                              |
 | --------- | -------------------------------------------------- |
-| OS        | Arch Linux (kernel 7.1.4)                          |
+| OS        | Arch Linux (kernel 7.1.9)                          |
 | CPU       | 13th Gen Intel(R) Core(TM) i9-13900KF (32 threads) |
 | GPU       | NVIDIA GeForce RTX 4090                            |
 | Memory    | 32 GB                                              |
@@ -47,22 +47,29 @@ Median times (single machine, Intel MKL):
 
 | function                | stack/unrolled | heap/unrolled | stack/loops | heap/loops |
 | ----------------------- | -------------- | ------------- | ----------- | ---------- |
-| `ssd_fn`                | 3.52 ns        | 5.99 ns       | 181.28 ns   | 252.29 ns  |
-| `qsd_fn`                | 6.72 ns        | 10.41 ns      | 372.14 ns   | 512.96 ns  |
-| `deriv2_invariant_jj3`  | 19.48 ns       | 25.58 ns      | 347.93 ns   | 434.22 ns  |
-| `deriv2_invariant_lode` | 98.59 ns       | 147.86 ns     | 494.03 ns   | 663.02 ns  |
-| `deriv_squared_tensor`  | 23.28 ns       | 47.37 ns      | 77.73 ns    | 110.54 ns  |
+| `ssd_fn`                | 0.18 ns        | 6.38 ns       | 20.91 ns    | 70.20 ns   |
+| `qsd_fn`                | 5.51 ns        | 9.12 ns       | 126.09 ns   | 140.21 ns  |
+| `deriv2_invariant_jj3`  | 6.76 ns        | 11.80 ns      | 119.72 ns   | 142.11 ns  |
+| `deriv2_invariant_lode` | 49.92 ns       | 68.96 ns      | 163.64 ns   | 197.37 ns  |
+| `deriv_squared_tensor`  | 7.58 ns        | 41.82 ns      | 77.81 ns    | 85.32 ns   |
+
+> **Note:** the `ssd_fn` stack/unrolled value (0.18 ns) is below the physical floor
+> for writing a full 6×6 tensor, so it reflects dead-code elimination of the
+> components not observed by `black_box`; treat it as a lower bound rather than a
+> real measurement.
 
 ## Observations
 
-- **Unrolled path:** the stack version is ~1.3–2× faster across the board. The heap version's
-  `Matrix` carries the column-major access overhead, whereas the stack version writes directly
-  to `[[f64; 9]; 9]`.
-- **Loops path:** the stack version is ~1.3–1.4× faster; the loop overhead (iteration,
-  `M_TO_IJ`/`MN_TO_IJKL` lookups, and `get_std`/`set` accessors) dominates but does not fully
-  mask the storage-layout difference.
-- **Unrolled vs loops:** the unrolled path is ~40–55× faster for `ssd_fn`/`qsd_fn`, ~17× for
-  `deriv2_invariant_jj3`, ~5× for `deriv2_invariant_lode`, and ~2–3× for `deriv_squared_tensor`.
+- **Unrolled path:** the stack version is faster than the heap version, with the gap
+  ranging from ~1.4× (`deriv2_invariant_lode`) to ~5.5× (`deriv_squared_tensor`). The
+  heap version's `Matrix` carries the column-major access overhead, whereas the stack
+  version writes directly to `[[f64; N]; N]`.
+- **Loops path:** the stack version is only ~1.1–1.4× faster (`ssd_fn` is the
+  exception at ~3.4×); the loop overhead (iteration, `M_TO_IJ`/`MN_TO_IJKL` lookups,
+  and `get_std`/`set` accessors) dominates and largely masks the storage-layout
+  difference.
+- **Unrolled vs loops:** the unrolled path is ~18–23× faster for `qsd_fn`/`deriv2_invariant_jj3`,
+  ~10× for `deriv_squared_tensor`, and ~3.3× for `deriv2_invariant_lode`.
 
 ## How to run
 
@@ -106,25 +113,25 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 
 | case                   | κ       | `brannon` | `higham` | `eigen` | `svd`  |
 | ---------------------- | ------- | --------- | -------- | ------- | ------ |
-| `well_conditioned`     | ≈ 4     | 216 ns    | 126 ns   | 786 ns  | 740 ns |
-| `moderate_conditioned` | ≈ 6·10² | 768 ns    | 164 ns   | 711 ns  | 636 ns |
-| `ill_conditioned`      | ≈ 6·10⁷ | 2.02 µs   | 200 ns   | —       | 582 ns |
+| `well_conditioned`     | ≈ 4     | 229 ns    | 124 ns   | 757 ns  | 729 ns |
+| `moderate_conditioned` | ≈ 6·10² | 801 ns    | 163 ns   | 679 ns  | 624 ns |
+| `ill_conditioned`      | ≈ 6·10⁷ | 2.07 µs   | 202 ns   | —       | 570 ns |
 
 ### In-plane: all algorithms
 
 | algorithm | time   |
 | --------- | ------ |
-| `brannon` | 275 ns |
-| `higham`  | 131 ns |
-| `eigen`   | 455 ns |
-| `svd`     | 320 ns |
+| `brannon` | 290 ns |
+| `higham`  | 129 ns |
+| `eigen`   | 422 ns |
+| `svd`     | 305 ns |
 
 ### Observations
 
 - **Higham is the fastest in every case**, and its cost is nearly constant
-  (~126–200 ns). The iterative `brannon` is competitive only for well-conditioned
-  `F` and degrades sharply as κ grows (216 ns → 2.02 µs).
-- **The classic `eigen`/`svd` algorithms are the slowest** (~320–786 ns) because
+  (~124–202 ns). The iterative `brannon` is competitive only for well-conditioned
+  `F` and degrades sharply as κ grows (229 ns → 2.07 µs).
+- **The classic `eigen`/`svd` algorithms are the slowest** (~305–757 ns) because
   they call general LAPACK routines (`dsyev`/`dgesvd`) instead of a
   3×3-specialized method. `svd` is somewhat faster than `eigen`.
 - **`eigen` squares the condition number** (via `C = Fᵀ F`), so it fails for very

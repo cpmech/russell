@@ -97,7 +97,7 @@ pub type StrError = &'static str;
 // pub mod analysis;
 mod constants;
 mod derivatives_t2;
-// mod derivatives_t4;
+mod derivatives_t4;
 mod lin_elasticity;
 mod operations_mix1;
 mod operations_mix2;
@@ -125,7 +125,7 @@ mod test_common;
 
 pub use constants::*;
 pub use derivatives_t2::*;
-// pub use derivatives_t4::*;
+pub use derivatives_t4::*;
 pub use lin_elasticity::*;
 pub use operations_mix1::*;
 pub use operations_mix2::*;

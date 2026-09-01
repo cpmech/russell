@@ -1,26 +1,26 @@
-use crate::{ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3, Tensor2};
+use crate::{ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3, Tensor2, squared_tensor_slice};
 
 /// Calculates the first derivative of the norm w.r.t. the defining Tensor2
 ///
 /// ```text
-/// d‖σ‖    σ
+/// d‖T‖    T
 /// ──── = ───
-///  dσ    ‖σ‖
+///  dT    ‖T‖
 /// ```
 ///
 /// # Output
 ///
-/// If `‖σ‖ > 0`, returns `‖σ‖`; otherwise, returns `None`.
+/// If `‖T‖ > 0`, returns `‖T‖`; otherwise, returns `None`.
 ///
 /// * `d1` -- a tensor to hold the resulting derivative
 ///
 /// # Input
 ///
-/// * `sigma` -- the stress tensor
-pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N>) -> Option<f64> {
-    let nrm = sigma.norm();
+/// * `sigma` -- the `T` tensor
+pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, tt: &Tensor2<N>) -> Option<f64> {
+    let nrm = tt.norm();
     if nrm > 0.0 {
-        d1.set_tensor(1.0, sigma);
+        d1.set_tensor(1.0, tt);
         for m in 0..N {
             d1.vec[m] /= nrm;
         }
@@ -47,12 +47,11 @@ pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N>) -> O
 ///
 /// # Input
 ///
-/// * `sigma` -- symmetric tensor, i.e., N = 4 or N = 6.
+/// * `sigma` -- the symmetric stress tensor, i.e., N = 4 or N = 6.
 ///
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-#[inline]
 pub fn deriv1_invariant_jj2<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N>) {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     sigma.deviator(d1);
@@ -73,24 +72,29 @@ pub fn deriv1_invariant_jj2<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2
 /// # Output
 ///
 /// * `d1` -- a tensor to hold the resulting derivative
-/// * `s` -- the resulting deviator tensor
 ///
 /// # Input
 ///
-/// * `sigma` -- symmetric tensor, i.e., N = 4 or N = 6.
+/// * `sigma` -- the symmetric stress tensor, i.e., N = 4 or N = 6.
 ///
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-#[inline]
-pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, s: &mut Tensor2<N>, sigma: &Tensor2<N>) {
+pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N>) {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
+    let mut s = [0.0; 6];
+    deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, &sigma);
+}
+
+/// Calculates the first derivative of the J3 invariant (crate-internal)
+#[inline]
+pub(crate) fn deriv1_invariant_jj3_slice<const N: usize>(d1: &mut [f64], s: &mut [f64], sigma: &Tensor2<N>) {
     let jj2 = sigma.invariant_jj2();
-    sigma.deviator(s);
-    s.squared(d1);
-    d1.vec[0] -= TWO_BY_3 * jj2;
-    d1.vec[1] -= TWO_BY_3 * jj2;
-    d1.vec[2] -= TWO_BY_3 * jj2;
+    sigma.deviator_slice(s);
+    squared_tensor_slice::<N>(d1.as_mut(), s);
+    d1[0] -= TWO_BY_3 * jj2;
+    d1[1] -= TWO_BY_3 * jj2;
+    d1[2] -= TWO_BY_3 * jj2;
 }
 
 /// Calculates the first derivative of σs w.r.t. the stress tensor
@@ -99,6 +103,8 @@ pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, s: &mut Tensor2
 /// dσs   1
 /// ─── = ── I
 /// dσ    √3
+///
+/// (σ is symmetric)
 /// ```
 ///
 /// # Output
@@ -107,8 +113,14 @@ pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, s: &mut Tensor2
 ///
 /// # Input
 ///
-/// * `sigma` -- the stress tensor (it's not actually used here, but kept for consistency)
+/// * `sigma` -- the symmetric stress tensor, i.e., N = 4 or N = 6
+///   (it's not actually used here, but kept for consistency)
+///
+/// # Panics
+///
+/// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
 pub fn deriv1_invariant_sigma_s<const N: usize>(d1: &mut Tensor2<N>, _sigma: &Tensor2<N>) {
+    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     d1.vec[0] = 1.0 / SQRT_3;
     d1.vec[1] = 1.0 / SQRT_3;
     d1.vec[2] = 1.0 / SQRT_3;
@@ -161,6 +173,8 @@ pub fn deriv1_invariant_sigma_t<const N: usize>(d1: &mut Tensor2<N>, sigma: &Ten
 /// dp   1
 /// ── = ─ I
 /// dσ   3
+///
+/// (σ is symmetric)
 /// ```
 ///
 /// # Output
@@ -169,8 +183,14 @@ pub fn deriv1_invariant_sigma_t<const N: usize>(d1: &mut Tensor2<N>, sigma: &Ten
 ///
 /// # Input
 ///
-/// * `sigma` -- the stress tensor (it's not actually used here, but kept for consistency)
+/// * `sigma` -- symmetric tensor, i.e., N = 4 or N = 6.
+///   (it's not actually used here, but kept for consistency)
+///
+/// # Panics
+///
+/// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
 pub fn deriv1_invariant_p<const N: usize>(d1: &mut Tensor2<N>, _sigma: &Tensor2<N>) {
+    assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     d1.vec[0] = ONE_BY_3;
     d1.vec[1] = ONE_BY_3;
     d1.vec[2] = ONE_BY_3;
@@ -241,25 +261,21 @@ pub fn deriv1_invariant_q<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns `None`.
 /// * `d1` -- a tensor to hold the resulting derivative
-/// * `s` -- the resulting deviator tensor
 ///
 /// # Input
 ///
 /// * `sigma` -- symmetric tensor, i.e., N = 4 or N = 6.
-pub fn deriv1_invariant_lode<const N: usize>(
-    d1: &mut Tensor2<N>,
-    s: &mut Tensor2<N>,
-    sigma: &Tensor2<N>,
-) -> Option<f64> {
+pub fn deriv1_invariant_lode<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N>) -> Option<f64> {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     let jj2 = sigma.invariant_jj2();
+    let mut s = [0.0; 6];
     if jj2 > TOL_J2 {
-        deriv1_invariant_jj3(d1, s, sigma); // d1 := dJ3/dσ
+        deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, sigma); // d1 := dJ3/dσ
         let jj3 = sigma.invariant_jj3();
         let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
         let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
         for m in 0..N {
-            d1.vec[m] = a * d1.vec[m] - b * jj3 * s.vec[m];
+            d1.vec[m] = a * d1.vec[m] - b * jj3 * s[m];
         }
         return Some(jj2);
     }
@@ -301,8 +317,7 @@ mod tests {
             }
             F::J2 => deriv1_invariant_jj2(d1, sigma),
             F::J3 => {
-                let mut s = Tensor2::<N>::new();
-                deriv1_invariant_jj3(d1, &mut s, sigma);
+                deriv1_invariant_jj3(d1, sigma);
             }
             F::SigmaS => deriv1_invariant_sigma_s(d1, sigma),
             F::SigmaT => {
@@ -313,8 +328,7 @@ mod tests {
                 deriv1_invariant_q(d1, sigma).unwrap();
             }
             F::Lode => {
-                let mut s = Tensor2::<N>::new();
-                deriv1_invariant_lode(d1, &mut s, sigma).unwrap();
+                deriv1_invariant_lode(d1, sigma).unwrap();
             }
         };
     }
@@ -459,7 +473,6 @@ mod tests {
     #[test]
     fn deriv_sigma_s_works() {
         let v = false;
-        check_deriv::<9>(F::SigmaS, &SamplesTensor2::TENSOR_T, 1e-11, v);
         check_deriv::<6>(F::SigmaS, &SamplesTensor2::TENSOR_S, 1e-11, v);
         check_deriv::<4>(F::SigmaS, &SamplesTensor2::TENSOR_Z, 1e-11, v);
     }
@@ -477,7 +490,6 @@ mod tests {
     #[test]
     fn deriv_p_works() {
         let v = false;
-        check_deriv::<9>(F::P, &SamplesTensor2::TENSOR_T, 1e-12, v);
         check_deriv::<6>(F::P, &SamplesTensor2::TENSOR_S, 1e-11, v);
         check_deriv::<4>(F::P, &SamplesTensor2::TENSOR_Z, 1e-12, v);
     }
@@ -506,10 +518,9 @@ mod tests {
     fn check_for_none() {
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_O.matrix).unwrap();
         let mut d1 = Tensor2::<4>::new();
-        let mut s = Tensor2::<4>::new();
         assert_eq!(deriv1_norm(&mut d1, &sigma), None);
         assert_eq!(deriv1_invariant_q(&mut d1, &sigma), None);
-        assert_eq!(deriv1_invariant_lode(&mut d1, &mut s, &sigma), None);
+        assert_eq!(deriv1_invariant_lode(&mut d1, &sigma), None);
     }
 
     // check assertions -----------------------------------------------------------------------------
@@ -526,9 +537,8 @@ mod tests {
     #[should_panic(expected = "the stress tensor must be symmetric with N = 4 or N = 6")]
     fn deriv1_invariant_jj3_panics_on_non_gen() {
         let mut d1_gen = Tensor2::<9>::new();
-        let mut s_gen = Tensor2::<9>::new();
         let sigma_gen = Tensor2::<9>::new();
-        deriv1_invariant_jj3(&mut d1_gen, &mut s_gen, &sigma_gen);
+        deriv1_invariant_jj3(&mut d1_gen, &sigma_gen);
     }
 
     #[test]
@@ -543,8 +553,7 @@ mod tests {
     #[should_panic(expected = "the stress tensor must be symmetric with N = 4 or N = 6")]
     fn deriv1_invariant_lode_panics_on_non_gen() {
         let mut d1_gen = Tensor2::<9>::new();
-        let mut s_gen = Tensor2::<9>::new();
         let sigma_gen = Tensor2::<9>::new();
-        deriv1_invariant_lode(&mut d1_gen, &mut s_gen, &sigma_gen);
+        deriv1_invariant_lode(&mut d1_gen, &sigma_gen);
     }
 }

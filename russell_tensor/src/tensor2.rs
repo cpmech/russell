@@ -855,59 +855,6 @@ impl<const N: usize> Tensor2<N> {
         res
     }
 
-    /// Returns a symmetric tensor
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if the tensor is not symmetric 2D
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::Vector;
-    /// use russell_tensor::{Tensor2, StrError, SQRT_2};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let tt = Tensor2::<4>::from_std_matrix(&[
-    ///         [1.0,        2.0/SQRT_2, 0.0],
-    ///         [2.0/SQRT_2, 3.0,        0.0],
-    ///         [0.0,        0.0,        4.0],
-    ///     ])?;
-    ///     assert_eq!(
-    ///         format!("{:.2}", tt),
-    ///         "┌      ┐\n\
-    ///          │ 1.00 │\n\
-    ///          │ 3.00 │\n\
-    ///          │ 4.00 │\n\
-    ///          │ 2.00 │\n\
-    ///          └      ┘"
-    ///     );
-    ///
-    ///     let tt_sym = tt.sym2d_as_symmetric();
-    ///     assert_eq!(
-    ///         format!("{:.2}", tt_sym),
-    ///         "┌      ┐\n\
-    ///          │ 1.00 │\n\
-    ///          │ 3.00 │\n\
-    ///          │ 4.00 │\n\
-    ///          │ 2.00 │\n\
-    ///          │ 0.00 │\n\
-    ///          │ 0.00 │\n\
-    ///          └      ┘"
-    ///     );
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn sym2d_as_symmetric(&self) -> Tensor2<6> {
-        assert_eq!(N, 4, "the tensor must be symmetric in 2D");
-        let mut res = Tensor2::<6>::new();
-        res.vec[0] = self.vec[0];
-        res.vec[1] = self.vec[1];
-        res.vec[2] = self.vec[2];
-        res.vec[3] = self.vec[3];
-        res
-    }
-
     /// Set all values to zero
     pub fn clear(&mut self) {
         self.vec.fill(0.0);
@@ -1282,8 +1229,6 @@ impl<const N: usize> Tensor2<N> {
     }
 
     /// Returns the transpose tensor components in a caller-provided array (crate-internal)
-    ///
-    /// Mirrors [transpose] but returns the components instead of writing to a [Tensor2].
     #[inline]
     pub(crate) fn transpose_slice(&self, at: &mut [f64]) {
         // The transpose is given by:
@@ -1446,67 +1391,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn squared(&self, a2: &mut Tensor2<N>) {
-        let a = &self.vec;
-        match N {
-            4 => {
-                a2.vec[0] = a[0] * a[0] + a[3] * a[3] / 2.0;
-                a2.vec[1] = a[1] * a[1] + a[3] * a[3] / 2.0;
-                a2.vec[2] = a[2] * a[2];
-                a2.vec[3] = (SQRT_2 * a[0] * a[3] + SQRT_2 * a[1] * a[3]) / SQRT_2;
-            }
-            6 => {
-                a2.vec[0] = a[0] * a[0] + a[3] * a[3] / 2.0 + a[5] * a[5] / 2.0;
-                a2.vec[1] = a[1] * a[1] + a[3] * a[3] / 2.0 + a[4] * a[4] / 2.0;
-                a2.vec[2] = a[2] * a[2] + a[4] * a[4] / 2.0 + a[5] * a[5] / 2.0;
-                a2.vec[3] = a[0] * a[3] + a[1] * a[3] + a[4] * a[5] / SQRT_2;
-                a2.vec[4] = a[1] * a[4] + a[2] * a[4] + a[3] * a[5] / SQRT_2;
-                a2.vec[5] = a[0] * a[5] + a[2] * a[5] + a[3] * a[4] / SQRT_2;
-            }
-            _ => {
-                a2.vec[0] = a[0] * a[0] + ((a[3] - a[6]) * (a[3] + a[6])) / 2.0 + ((a[5] - a[8]) * (a[5] + a[8])) / 2.0;
-                a2.vec[1] = a[1] * a[1] + ((a[3] - a[6]) * (a[3] + a[6])) / 2.0 + ((a[4] - a[7]) * (a[4] + a[7])) / 2.0;
-                a2.vec[2] = a[2] * a[2] + ((a[4] - a[7]) * (a[4] + a[7])) / 2.0 + ((a[5] - a[8]) * (a[5] + a[8])) / 2.0;
-                a2.vec[3] = ((a[0] * (a[3] - a[6])) / SQRT_2
-                    + (a[1] * (a[3] - a[6])) / SQRT_2
-                    + (a[0] * (a[3] + a[6])) / SQRT_2
-                    + (a[1] * (a[3] + a[6])) / SQRT_2
-                    + ((a[4] + a[7]) * (a[5] - a[8])) / 2.0
-                    + ((a[4] - a[7]) * (a[5] + a[8])) / 2.0)
-                    / SQRT_2;
-                a2.vec[4] = ((a[1] * (a[4] - a[7])) / SQRT_2
-                    + (a[2] * (a[4] - a[7])) / SQRT_2
-                    + (a[1] * (a[4] + a[7])) / SQRT_2
-                    + (a[2] * (a[4] + a[7])) / SQRT_2
-                    + ((a[3] + a[6]) * (a[5] - a[8])) / 2.0
-                    + ((a[3] - a[6]) * (a[5] + a[8])) / 2.0)
-                    / SQRT_2;
-                a2.vec[5] = ((a[0] * (a[5] + a[8])) / SQRT_2
-                    + (a[2] * (a[5] + a[8])) / SQRT_2
-                    + (a[0] * (a[5] - a[8])) / SQRT_2
-                    + (a[2] * (a[5] - a[8])) / SQRT_2
-                    + ((a[3] - a[6]) * (a[4] - a[7])) / 2.0
-                    + ((a[3] + a[6]) * (a[4] + a[7])) / 2.0)
-                    / SQRT_2;
-                a2.vec[6] = (-(a[0] * (a[3] - a[6])) / SQRT_2 - (a[1] * (a[3] - a[6])) / SQRT_2
-                    + (a[0] * (a[3] + a[6])) / SQRT_2
-                    + (a[1] * (a[3] + a[6])) / SQRT_2
-                    - ((a[4] + a[7]) * (a[5] - a[8])) / 2.0
-                    + ((a[4] - a[7]) * (a[5] + a[8])) / 2.0)
-                    / SQRT_2;
-                a2.vec[7] = (-(a[1] * (a[4] - a[7])) / SQRT_2 - (a[2] * (a[4] - a[7])) / SQRT_2
-                    + (a[1] * (a[4] + a[7])) / SQRT_2
-                    + (a[2] * (a[4] + a[7])) / SQRT_2
-                    - ((a[3] + a[6]) * (a[5] - a[8])) / 2.0
-                    + ((a[3] - a[6]) * (a[5] + a[8])) / 2.0)
-                    / SQRT_2;
-                a2.vec[8] = (-(a[0] * (a[5] - a[8])) / SQRT_2 - (a[2] * (a[5] - a[8])) / SQRT_2
-                    + (a[0] * (a[5] + a[8])) / SQRT_2
-                    + (a[2] * (a[5] + a[8])) / SQRT_2
-                    - ((a[3] - a[6]) * (a[4] - a[7])) / 2.0
-                    + ((a[3] + a[6]) * (a[4] + a[7])) / 2.0)
-                    / SQRT_2;
-            }
-        }
+        squared_tensor_slice::<N>(a2.as_mut_data(), self.as_data());
     }
 
     /// Calculates the trace
@@ -1616,8 +1501,6 @@ impl<const N: usize> Tensor2<N> {
     }
 
     /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
-    ///
-    /// Mirrors [deviator] but returns the components instead of writing to a [Tensor2].
     #[inline]
     pub(crate) fn deviator_slice(&self, dev: &mut [f64]) {
         let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
@@ -2299,6 +2182,71 @@ impl<const N: usize> Tensor2<N> {
     }
 }
 
+/// Computes the squared tensor (crate-internal)
+#[inline]
+pub(crate) fn squared_tensor_slice<const N: usize>(a2: &mut [f64], a: &[f64]) {
+    match N {
+        4 => {
+            a2[0] = a[0] * a[0] + a[3] * a[3] / 2.0;
+            a2[1] = a[1] * a[1] + a[3] * a[3] / 2.0;
+            a2[2] = a[2] * a[2];
+            a2[3] = (SQRT_2 * a[0] * a[3] + SQRT_2 * a[1] * a[3]) / SQRT_2;
+        }
+        6 => {
+            a2[0] = a[0] * a[0] + a[3] * a[3] / 2.0 + a[5] * a[5] / 2.0;
+            a2[1] = a[1] * a[1] + a[3] * a[3] / 2.0 + a[4] * a[4] / 2.0;
+            a2[2] = a[2] * a[2] + a[4] * a[4] / 2.0 + a[5] * a[5] / 2.0;
+            a2[3] = a[0] * a[3] + a[1] * a[3] + a[4] * a[5] / SQRT_2;
+            a2[4] = a[1] * a[4] + a[2] * a[4] + a[3] * a[5] / SQRT_2;
+            a2[5] = a[0] * a[5] + a[2] * a[5] + a[3] * a[4] / SQRT_2;
+        }
+        _ => {
+            a2[0] = a[0] * a[0] + ((a[3] - a[6]) * (a[3] + a[6])) / 2.0 + ((a[5] - a[8]) * (a[5] + a[8])) / 2.0;
+            a2[1] = a[1] * a[1] + ((a[3] - a[6]) * (a[3] + a[6])) / 2.0 + ((a[4] - a[7]) * (a[4] + a[7])) / 2.0;
+            a2[2] = a[2] * a[2] + ((a[4] - a[7]) * (a[4] + a[7])) / 2.0 + ((a[5] - a[8]) * (a[5] + a[8])) / 2.0;
+            a2[3] = ((a[0] * (a[3] - a[6])) / SQRT_2
+                + (a[1] * (a[3] - a[6])) / SQRT_2
+                + (a[0] * (a[3] + a[6])) / SQRT_2
+                + (a[1] * (a[3] + a[6])) / SQRT_2
+                + ((a[4] + a[7]) * (a[5] - a[8])) / 2.0
+                + ((a[4] - a[7]) * (a[5] + a[8])) / 2.0)
+                / SQRT_2;
+            a2[4] = ((a[1] * (a[4] - a[7])) / SQRT_2
+                + (a[2] * (a[4] - a[7])) / SQRT_2
+                + (a[1] * (a[4] + a[7])) / SQRT_2
+                + (a[2] * (a[4] + a[7])) / SQRT_2
+                + ((a[3] + a[6]) * (a[5] - a[8])) / 2.0
+                + ((a[3] - a[6]) * (a[5] + a[8])) / 2.0)
+                / SQRT_2;
+            a2[5] = ((a[0] * (a[5] + a[8])) / SQRT_2
+                + (a[2] * (a[5] + a[8])) / SQRT_2
+                + (a[0] * (a[5] - a[8])) / SQRT_2
+                + (a[2] * (a[5] - a[8])) / SQRT_2
+                + ((a[3] - a[6]) * (a[4] - a[7])) / 2.0
+                + ((a[3] + a[6]) * (a[4] + a[7])) / 2.0)
+                / SQRT_2;
+            a2[6] = (-(a[0] * (a[3] - a[6])) / SQRT_2 - (a[1] * (a[3] - a[6])) / SQRT_2
+                + (a[0] * (a[3] + a[6])) / SQRT_2
+                + (a[1] * (a[3] + a[6])) / SQRT_2
+                - ((a[4] + a[7]) * (a[5] - a[8])) / 2.0
+                + ((a[4] - a[7]) * (a[5] + a[8])) / 2.0)
+                / SQRT_2;
+            a2[7] = (-(a[1] * (a[4] - a[7])) / SQRT_2 - (a[2] * (a[4] - a[7])) / SQRT_2
+                + (a[1] * (a[4] + a[7])) / SQRT_2
+                + (a[2] * (a[4] + a[7])) / SQRT_2
+                - ((a[3] + a[6]) * (a[5] - a[8])) / 2.0
+                + ((a[3] - a[6]) * (a[5] + a[8])) / 2.0)
+                / SQRT_2;
+            a2[8] = (-(a[0] * (a[5] - a[8])) / SQRT_2 - (a[2] * (a[5] - a[8])) / SQRT_2
+                + (a[0] * (a[5] + a[8])) / SQRT_2
+                + (a[2] * (a[5] + a[8])) / SQRT_2
+                - ((a[3] - a[6]) * (a[4] - a[7])) / 2.0
+                + ((a[3] + a[6]) * (a[4] + a[7])) / 2.0)
+                / SQRT_2;
+        }
+    }
+}
+
 impl<const N: usize> fmt::Display for Tensor2<N> {
     /// Generates a string representation of the Kelvin-Mandel vector associated with this Tensor2
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2934,25 +2882,6 @@ mod tests {
                 approx_eq(res.get_std(i, j), comps_std[i][j], 1e-14);
             }
         }
-    }
-
-    #[test]
-    #[should_panic]
-    fn sym2d_as_symmetric_panics_on_non_sym2d() {
-        let tt = Tensor2::<6>::new();
-        tt.sym2d_as_symmetric();
-    }
-
-    #[test]
-    fn sym2d_as_symmetric_works() {
-        let tt = Tensor2::<4>::from_std_matrix(&[[1.0, 2.0 / SQRT_2, 0.0], [2.0 / SQRT_2, 3.0, 0.0], [0.0, 0.0, 4.0]])
-            .unwrap();
-        let tt_sym = tt.sym2d_as_symmetric();
-        assert_eq!(format!("{:.2?}", kelvin_vector(&tt)), "[1.00, 3.00, 4.00, 2.00]");
-        assert_eq!(
-            format!("{:.2?}", kelvin_vector(&tt_sym)),
-            "[1.00, 3.00, 4.00, 2.00, 0.00, 0.00]"
-        );
     }
 
     #[test]

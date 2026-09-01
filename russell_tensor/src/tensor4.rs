@@ -1616,10 +1616,8 @@ impl<const N: usize> Tensor4<N> {
         self.set(2, 1, -ONE_BY_3);
         self.set(2, 2, TWO_BY_3);
         self.set(3, 3, 1.0);
-        if N > 4 {
-            self.set(4, 4, 1.0);
-            self.set(5, 5, 1.0);
-        }
+        self.set(4, 4, 1.0);
+        self.set(5, 5, 1.0);
     }
 }
 

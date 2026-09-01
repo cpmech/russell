@@ -259,7 +259,7 @@ impl<'de, const M: usize, const N: usize> Deserialize<'de> for Tensor3<M, N> {
 
 impl<const M: usize, const N: usize> Tensor3<M, N> {
     // Case A: M = {4,6,9}, N = 3
-    // Case B: M = 3, M = {4,6,9}
+    // Case B: M = 3, N = {4,6,9}
     const VALIDATE_DIM: () = assert!(
         ((M == 4 || M == 6 || M == 9) && N == 3) || (M == 3 && (N == 4 || N == 6 || N == 9)),
         "Tensor dimension must be such that (DIM,3) for Case A or (3,DIM) for case B with DIM = 4, 6, or 9."
@@ -1072,7 +1072,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     ///
     /// # Panics
     ///
-    /// 1. A panic will occur if the tensor is is not symmetric; i.e., DIM = 9 instead of 4,6
+    /// 1. A panic will occur if the tensor is not symmetric; i.e., DIM = 9 instead of 4,6
     /// 2. A panic will occur if the indices are out of range
     ///
     /// # Examples

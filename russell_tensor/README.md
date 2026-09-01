@@ -50,6 +50,11 @@ The `Rep` enum specifies the available representations:
 
 The dimensions above correspond to `Tensor2` (vector), `Tensor3` (Case A / Case B rectangular matrix), and `Tensor4` (square matrix), respectively.
 
+A `Tensor3` is stored as a rectangular Kelvin-Mandel matrix with dimensions `(M, N)` set by const generics. Two cases are considered, where `DIM` (the leading dimension) is one of 4, 6, or 9:
+
+* **Case A** — `(DIM, 3)`, i.e. `M = DIM` and `N = 3`: the Tensor3 acts on a `Tensor1` (vector) yielding a `Tensor2` (`T = H · u`)
+* **Case B** — `(3, DIM)`, i.e. `M = 3` and `N = DIM`: the Tensor3 acts on a `Tensor2` yielding a `Tensor1` (vector) (`v = M : S`)
+
 For second-order tensors, the stored component order is:
 
 | Representation     | Stored components                                                                                                               |

@@ -1,5 +1,6 @@
-use crate::{Rep, SQRT_2, StrError, Tensor2, Tensor4};
+use crate::{SQRT_2, StrError, Tensor2, Tensor4};
 use russell_lab::{Matrix, mat_inverse};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Holds the Voigt-Reuss-Hill averages and the universal anisotropy index (Au)
@@ -14,7 +15,7 @@ use std::fmt;
 /// R. Hill (1952) The elastic behavior of a crystalline aggregate,
 /// Proceedings of the Physical Society. Section A, 65(5), 349–354,
 /// <https://doi.org/10.1088/0370-1298/65/5/307>
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct VoigtReussHill {
     /// `Kv`: the Voigt average of the bulk modulus
     pub kk_v: f64,
@@ -103,15 +104,7 @@ impl fmt::Display for VoigtReussHill {
 /// R. Hill (1952) The elastic behavior of a crystalline aggregate,
 /// Proceedings of the Physical Society. Section A, 65(5), 349–354,
 /// <https://doi.org/10.1088/0370-1298/65/5/307>
-pub fn voigt_reuss_hill(ss: &mut Tensor4, cc: &Tensor4) -> Result<VoigtReussHill, StrError> {
-    // check
-    if ss.rep() != Rep::Symmetric {
-        return Err("ss must be Rep::Symmetric");
-    }
-    if cc.rep() != Rep::Symmetric {
-        return Err("cc must be Rep::Symmetric");
-    }
-
+pub fn voigt_reuss_hill(ss: &mut Tensor4<6>, cc: &Tensor4<6>) -> Result<VoigtReussHill, StrError> {
     // stiffness matrix (Kelvin-Mandel)
     let mut c_mat = Matrix::new(6, 6);
     for m in 0..6 {
@@ -190,14 +183,7 @@ pub fn voigt_reuss_hill(ss: &mut Tensor4, cc: &Tensor4) -> Result<VoigtReussHill
 ///    Philosophical Magazine A, 80:12, 2827-2840, <https://doi.org/10.1080/01418610008223897>
 /// 2. M. Maździarz (2025) Mechanical stability conditions for 3D and 2D crystals under arbitrary load,
 ///    Archives of Mechanics, 77(4), 379–399, 2025, <https://doi.org/10.24423/aom.4679>
-pub fn internal_stability_tensor(hh: &mut Tensor4, sigma: &Tensor2) -> Result<(), StrError> {
-    // check
-    if hh.rep() != Rep::Symmetric {
-        return Err("hh must be Rep::Symmetric");
-    }
-    if sigma.rep() != Rep::Symmetric {
-        return Err("sigma must be Rep::Symmetric");
-    }
+pub fn internal_stability_tensor(hh: &mut Tensor4<6>, sigma: &Tensor2<6>) -> Result<(), StrError> {
     let sig = sigma.as_data();
 
     // row 0
@@ -256,18 +242,19 @@ pub fn internal_stability_tensor(hh: &mut Tensor4, sigma: &Tensor2) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::{internal_stability_tensor, voigt_reuss_hill};
-    use crate::{Rep, Tensor2, Tensor4};
+    use crate::{Tensor2, Tensor4};
     use russell_lab::approx_eq;
 
     #[test]
     fn internal_stability_tensor_works() {
         // reference: Maździarz (2025), for sigma = diag(27.06, 27.06, 20.585)
-        let sigma = Tensor2::from_std_matrix(
-            &[[27.06, 0.0, 0.0], [0.0, 27.06, 0.0], [0.0, 0.0, 20.585]],
-            Rep::Symmetric,
-        )
+        let sigma = Tensor2::<6>::from_std_matrix(&[
+            [27.06, 0.0, 0.0],  // 1
+            [0.0, 27.06, 0.0],  // 2
+            [0.0, 0.0, 20.585], // 3
+        ])
         .unwrap();
-        let mut hh = Tensor4::new(Rep::Symmetric);
+        let mut hh = Tensor4::<6>::new();
         internal_stability_tensor(&mut hh, &sigma).unwrap();
         #[rustfmt::skip]
         let correct = [
@@ -288,40 +275,37 @@ mod tests {
     #[test]
     fn voigt_reuss_hill_works() {
         // Eq19 from Maździarz (2025)
-        let cc = Tensor4::from_std_array(
-            &[
-                [
-                    [[296.57, -35.27, 3.45], [-35.27, 144.76, -2.5], [3.45, -2.5, 125.5]],
-                    [[-35.27, 110.56, 0.17], [110.56, 17.96, 0.02], [0.17, 0.02, -39.37]],
-                    [[3.45, 0.17, 112.41], [0.17, 1.37, -31.15], [112.41, -31.15, 9.45]],
-                ],
-                [
-                    [[-35.27, 110.56, 0.17], [110.56, 17.96, 0.02], [0.17, 0.02, -39.37]],
-                    [[144.76, 17.96, 1.37], [17.96, 273.54, -4.93], [1.37, -4.93, 74.42]],
-                    [[-2.5, 0.02, -31.15], [0.02, -4.93, 113.03], [-31.15, 113.03, -18.81]],
-                ],
-                [
-                    [[3.45, 0.17, 112.41], [0.17, 1.37, -31.15], [112.41, -31.15, 9.45]],
-                    [[-2.5, 0.02, -31.15], [0.02, -4.93, 113.03], [-31.15, 113.03, -18.81]],
-                    [[125.5, -39.37, 9.45], [-39.37, 74.42, -18.81], [9.45, -18.81, 169.18]],
-                ],
+        let cc = Tensor4::<6>::from_std_array(&[
+            [
+                [[296.57, -35.27, 3.45], [-35.27, 144.76, -2.5], [3.45, -2.5, 125.5]],
+                [[-35.27, 110.56, 0.17], [110.56, 17.96, 0.02], [0.17, 0.02, -39.37]],
+                [[3.45, 0.17, 112.41], [0.17, 1.37, -31.15], [112.41, -31.15, 9.45]],
             ],
-            Rep::Symmetric,
-        )
+            [
+                [[-35.27, 110.56, 0.17], [110.56, 17.96, 0.02], [0.17, 0.02, -39.37]],
+                [[144.76, 17.96, 1.37], [17.96, 273.54, -4.93], [1.37, -4.93, 74.42]],
+                [[-2.5, 0.02, -31.15], [0.02, -4.93, 113.03], [-31.15, 113.03, -18.81]],
+            ],
+            [
+                [[3.45, 0.17, 112.41], [0.17, 1.37, -31.15], [112.41, -31.15, 9.45]],
+                [[-2.5, 0.02, -31.15], [0.02, -4.93, 113.03], [-31.15, 113.03, -18.81]],
+                [[125.5, -39.37, 9.45], [-39.37, 74.42, -18.81], [9.45, -18.81, 169.18]],
+            ],
+        ])
         .unwrap();
 
         // calculate the averages
-        let mut ss = Tensor4::new(Rep::Symmetric);
+        let mut ss = Tensor4::<6>::new();
         let vrh = voigt_reuss_hill(&mut ss, &cc).unwrap();
 
         // check
-        approx_eq(vrh.kk_v, 158.7388888888889, 1e-12);
-        approx_eq(vrh.gg_v, 93.5073333333333, 1e-12);
-        approx_eq(vrh.kk_r, 131.6385407574474, 1e-12);
-        approx_eq(vrh.gg_r, 74.87683938076444, 1e-12);
-        approx_eq(vrh.kk_h, 145.1887148231681, 1e-12);
-        approx_eq(vrh.gg_h, 84.1920863570489, 1e-12);
-        approx_eq(vrh.aa_u, 1.449945284449501, 1e-12);
+        approx_eq(vrh.kk_v, 158.7388888888889, 1e-13);
+        approx_eq(vrh.gg_v, 93.5073333333333, 1e-13);
+        approx_eq(vrh.kk_r, 131.6385407574474, 1e-13);
+        approx_eq(vrh.gg_r, 74.87683938076444, 1e-13);
+        approx_eq(vrh.kk_h, 145.1887148231681, 1e-13);
+        approx_eq(vrh.gg_h, 84.1920863570489, 1e-13);
+        approx_eq(vrh.aa_u, 1.449945284449501, 1e-13);
 
         // check the Display implementation (precision = 3)
         assert_eq!(

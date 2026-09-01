@@ -94,7 +94,7 @@
 /// Defines the error type as a static string
 pub type StrError = &'static str;
 
-// pub mod analysis;
+pub mod analysis;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
@@ -121,7 +121,7 @@ mod tensor4;
 // #[cfg(test)]
 mod test_common;
 
-// pub mod z_reference_loop_fns;
+pub mod z_reference_loop_fns;
 
 pub use constants::*;
 pub use derivatives_t2::*;

@@ -18,7 +18,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
     }
     #[cfg(not(feature = "heap"))]
     {
-        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat);
+        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, N);
     }
 }
 
@@ -108,8 +108,7 @@ pub fn t4_ddot_t4<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, cc: &Tensor4<
     }
     #[cfg(not(feature = "heap"))]
     {
-        let dim = ee.dim();
-        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, dim);
+        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, N);
     }
 }
 
@@ -152,8 +151,7 @@ pub fn t4_ddot_t4_update<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, cc: &T
     }
     #[cfg(not(feature = "heap"))]
     {
-        let dim = ee.dim();
-        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, dim);
+        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, N);
     }
 }
 

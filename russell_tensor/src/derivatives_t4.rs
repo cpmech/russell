@@ -190,35 +190,57 @@ pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<6>, _sigma: &Tensor
 pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
 
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-    // TODO
-
     // deviator: s = dev(σ) (stack array)
     let mut s = [0.0; 6];
     sigma.deviator_slice(&mut s);
 
-    // d2 := ½ qsd(s,I)
-    qsd_fn_slice::<6>(d2, 0.5, &s, &IDENTITY2);
+    // row 0
+    d2.set(0, 0, 2.0 * s[0] / 3.0);
+    d2.set(0, 1, -2.0 * (s[0] + s[1]) / 3.0);
+    d2.set(0, 2, -2.0 * (s[0] + s[2]) / 3.0);
+    d2.set(0, 3, s[3] / 3.0);
+    d2.set(0, 4, -2.0 * s[4] / 3.0);
+    d2.set(0, 5, s[5] / 3.0);
 
-    // d2 := ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)
-    for i in 0..6 {
-        for j in 0..6 {
-            d2.set(
-                i,
-                j,
-                d2.get(i, j) - TWO_BY_3 * (s[i] * IDENTITY2[j] + IDENTITY2[i] * s[j]),
-            );
-        }
-    }
+    // row 1
+    d2.set(1, 0, -2.0 * (s[0] + s[1]) / 3.0);
+    d2.set(1, 1, 2.0 * s[1] / 3.0);
+    d2.set(1, 2, -2.0 * (s[1] + s[2]) / 3.0);
+    d2.set(1, 3, s[3] / 3.0);
+    d2.set(1, 4, s[4] / 3.0);
+    d2.set(1, 5, -2.0 * s[5] / 3.0);
+
+    // row 2
+    d2.set(2, 0, -2.0 * (s[0] + s[2]) / 3.0);
+    d2.set(2, 1, -2.0 * (s[1] + s[2]) / 3.0);
+    d2.set(2, 2, 2.0 * s[2] / 3.0);
+    d2.set(2, 3, -2.0 * s[3] / 3.0);
+    d2.set(2, 4, s[4] / 3.0);
+    d2.set(2, 5, s[5] / 3.0);
+
+    // row 3
+    d2.set(3, 0, s[3] / 3.0);
+    d2.set(3, 1, s[3] / 3.0);
+    d2.set(3, 2, -2.0 * s[3] / 3.0);
+    d2.set(3, 3, s[0] + s[1]);
+    d2.set(3, 4, s[5] / SQRT_2);
+    d2.set(3, 5, s[4] / SQRT_2);
+
+    // row 4
+    d2.set(4, 0, -2.0 * s[4] / 3.0);
+    d2.set(4, 1, s[4] / 3.0);
+    d2.set(4, 2, s[4] / 3.0);
+    d2.set(4, 3, s[5] / SQRT_2);
+    d2.set(4, 4, s[1] + s[2]);
+    d2.set(4, 5, s[3] / SQRT_2);
+
+    // row 5
+    d2.set(5, 0, s[5] / 3.0);
+    d2.set(5, 1, -2.0 * s[5] / 3.0);
+    d2.set(5, 2, s[5] / 3.0);
+    d2.set(5, 3, s[4] / SQRT_2);
+    d2.set(5, 4, s[3] / SQRT_2);
+    d2.set(5, 5, s[0] + s[2]);
 }
 
 /// Calculates the second derivative of the σt w.r.t. the stress tensor

@@ -22,7 +22,7 @@ To compare the **stack** and **heap** layouts, run the benchmark twice (once wit
 | CPU       | 13th Gen Intel(R) Core(TM) i9-13900KF (32 threads) |
 | GPU       | NVIDIA GeForce RTX 4090                            |
 | Memory    | 32 GB                                              |
-| BLAS      | Intel MKL (`--all-features`)                       |
+| BLAS      | Intel MKL (`--features intel_mkl`)                  |
 
 ## Benchmarked functions
 
@@ -56,15 +56,16 @@ Median times (single machine, Intel MKL):
 ## Observations
 
 - **Unrolled path:** the stack version is faster than the heap version, with the gap
-  ranging from ~1.4× (`deriv2_invariant_lode`) to ~5.5× (`deriv_squared_tensor`). The
+  ranging from ~1.4× (`deriv2_invariant_lode`) to ~6.7× (`deriv_squared_tensor`). The
   heap version's `Matrix` carries the column-major access overhead, whereas the stack
   version writes directly to `[[f64; N]; N]`.
-- **Loops path:** the stack version is only ~1.1–1.4× faster (`ssd_fn` is the
+- **Loops path:** the stack version is only ~1.1–1.3× faster (`ssd_fn` is the
   exception at ~3.4×); the loop overhead (iteration, `M_TO_IJ`/`MN_TO_IJKL` lookups,
   and `get_std`/`set` accessors) dominates and largely masks the storage-layout
   difference.
-- **Unrolled vs loops:** the unrolled path is ~18–23× faster for `qsd_fn`/`deriv2_invariant_jj3`,
-  ~10× for `deriv_squared_tensor`, and ~3.3× for `deriv2_invariant_lode`.
+- **Unrolled vs loops:** the unrolled path is ~23× faster for `qsd_fn`, ~19× for
+  `deriv2_invariant_jj3`, ~12× for `deriv_squared_tensor`, ~6× for `ssd_fn`, and
+  ~3.3× for `deriv2_invariant_lode`.
 
 ## How to run
 
@@ -75,17 +76,23 @@ Run the benchmark (from the workspace root):
 cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark
 
 # heap
-cargo bench -p russell_tensor --all-features --bench tensor_benchmark
+cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark
 ```
 
 Filter to a single function, e.g. `ssd_fn`:
 
 ```bash
-cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
+cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark -- ssd_fn
 ```
 
-> **Note:** `--all-features` enables both Intel MKL (when available) and the `heap` feature. To
+> **Note:** the `heap` feature selects the heap-allocated storage layout. To
 > benchmark the stack layout, use `--features intel_mkl` instead.
+
+Alternatively, run all benchmarks and regenerate `RESULTS.md` in one go with:
+
+```bash
+python3 run_all.py
+```
 
 ---
 
@@ -124,11 +131,12 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 ### Observations
 
 - **Higham is the fastest in every case**, and its cost is nearly constant
-  (~124–202 ns). The iterative `brannon` is competitive only for well-conditioned
-  `F` and degrades sharply as κ grows (229 ns → 2.07 µs).
-- **The classic `eigen`/`svd` algorithms are the slowest** (~305–757 ns) because
+  (~118–195 ns). The iterative `brannon` is competitive only for well-conditioned
+  `F` and degrades sharply as κ grows (208 ns → 1.91 µs).
+- **The classic `eigen`/`svd` algorithms are the slowest** (~308–753 ns) because
   they call general LAPACK routines (`dsyev`/`dgesvd`) instead of a
-  3×3-specialized method. `svd` is somewhat faster than `eigen`.
+  3×3-specialized method. `svd` is faster than `eigen` for moderately-conditioned
+  and in-plane `F`, but the two are roughly tied for the well-conditioned case.
 - **`eigen` squares the condition number** (via `C = Fᵀ F`), so it fails for very
   ill-conditioned `F` (`det(F) < 1e-15`); it is not benchmarked for the
   ill-conditioned case. This makes the SVD-based classic algorithm the more
@@ -140,6 +148,6 @@ cargo bench -p russell_tensor --all-features --bench tensor_benchmark -- ssd_fn
 ### How to run
 
 ```bash
-cargo bench -p russell_tensor --all-features --bench polar_decomp_benchmark
+cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark
 ```
 

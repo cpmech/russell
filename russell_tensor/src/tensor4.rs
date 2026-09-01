@@ -193,12 +193,6 @@ impl<const N: usize> Tensor4<N> {
         }
     }
 
-    /// Returns the Kelvin-Mandel matrix dimension (4, 6, or 9)
-    // #[inline]
-    // pub fn dim(&self) -> usize {
-    //     N
-    // }
-
     /// Returns the (m,n) component of the Kelvin-Mandel matrix
     ///
     /// # Input

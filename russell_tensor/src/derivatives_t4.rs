@@ -157,7 +157,6 @@ pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<6>, a: &Ten
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-#[inline]
 pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<6>, _sigma: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     d2.set_pp_symdev();
@@ -186,7 +185,6 @@ pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<6>, _sigma: &Tensor
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-#[inline]
 pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
 
@@ -381,7 +379,6 @@ impl WorkspaceDeriv2Lode {
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-#[inline]
 pub fn deriv2_invariant_lode<const N: usize>(
     d2: &mut Tensor4<6>,
     work: &mut WorkspaceDeriv2Lode,

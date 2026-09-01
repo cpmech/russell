@@ -75,6 +75,7 @@ impl Tensor1 {
     /// # Panics
     ///
     /// A panic may occur if the index is out of range
+    #[inline]
     pub fn set(&mut self, i: usize, value: f64) {
         self.vec[i] = value;
     }
@@ -88,6 +89,7 @@ impl Tensor1 {
     /// # Panics
     ///
     /// A panic may occur if the index is out of range
+    #[inline]
     pub fn get(&self, i: usize) -> f64 {
         self.vec[i]
     }

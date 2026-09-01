@@ -67,9 +67,8 @@ use super::{Tensor2, Tensor4};
 /// ```
 #[inline]
 pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
-    let dim = dd.dim();
-    for m in 0..dim {
-        for n in 0..dim {
+    for m in 0..N {
+        for n in 0..N {
             dd.set(m, n, alpha * a.vec[m] * b.vec[n]);
         }
     }
@@ -148,9 +147,8 @@ pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N
 /// ```
 #[inline]
 pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
-    let dim = dd.dim();
-    for m in 0..dim {
-        for n in 0..dim {
+    for m in 0..N {
+        for n in 0..N {
             dd.set(m, n, dd.get(m, n) + alpha * a.vec[m] * b.vec[n]);
         }
     }

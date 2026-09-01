@@ -18,8 +18,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
     }
     #[cfg(not(feature = "heap"))]
     {
-        let dim = c.dim();
-        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, dim);
+        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat);
     }
 }
 

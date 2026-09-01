@@ -11,16 +11,17 @@ use std::fmt::{self, Write};
 /// Defines a third-order tensor in R³×R³×R³
 ///
 /// The matrix representation of Tensor3 results in a rectangular matrix.
-/// Therefore, two cases are considered here:
+/// Therefore, two matrices with max dimensions DIM×3 or 3×DIM are considered here,
+/// where DIM (the leading dimension) is one of 4, 6, or 9. The cases are:
 ///
-/// Case A: Tensor3 applied to a Tensor1 (vector) yielding a Tensor2
-/// Case B: Tensor3 applied to a Tensor2 yielding a Tensor1 (vector)
+/// Case A (DIM×3): Tensor3 applied to a Tensor1 (vector) yielding a Tensor2
+/// Case B (3×DIM): Tensor3 applied to a Tensor2 yielding a Tensor1 (vector)
 ///
 /// Symbolically:
 ///
 /// ```text
-/// Case A =>  T = H . u   (Tᵢⱼ = Σ_k Hᵢⱼₖ uₖ)
-/// Case B =>  v = M : S   (vᵢ = Σ_j Σ_k Mᵢⱼₖ Sⱼₖ)
+/// Case A (DIM×3) =>  T = H . u   (Tᵢⱼ = Σ_k Hᵢⱼₖ uₖ)
+/// Case B (3×DIM) =>  v = M : S   (vᵢ = Σ_j Σ_k Mᵢⱼₖ Sⱼₖ)
 /// ```
 ///
 /// where `T` and `S` are second-order tensors, `H` and `M` are third-order tensors
@@ -30,19 +31,19 @@ use std::fmt::{self, Write};
 /// (symmetry here means minor-symmetry):
 ///
 /// ```text
-/// 9:
+/// DIM = 9:
 ///   Case A =>  [T]_(9×1) = [H]_(9×3) * [u]_(3×1)
 ///   Case B =>  [v]_(3×1) = [M]_(3×9) * [S]_(9×1)
 /// ```
 ///
 /// ```text
-/// 6:
+/// DIM = 6:
 ///   Case A =>  [T]_(6×1) = [H]_(6×3) * [u]_(3×1)
 ///   Case B =>  [v]_(3×1) = [M]_(3×6) * [S]_(6×1)
 /// ```
 ///
 /// ```text
-/// 4:
+/// DIM = 4:
 ///   Case A =>  [T]_(4×1) = [H]_(4×3) * [u]_(3×1)
 ///   Case B =>  [v]_(3×1) = [M]_(3×4) * [S]_(4×1)
 /// ```
@@ -109,7 +110,7 @@ use std::fmt::{self, Write};
 ///
 /// The matrices are illustrated as follows.
 ///
-/// N = 9:
+/// max(DIM) = 9:
 ///
 /// ```text
 /// Case A:
@@ -141,7 +142,7 @@ use std::fmt::{self, Write};
 ///      2 0  2 1  2 2  2 3  2 4  2 5  2 6  2 7  2 8
 /// ```
 ///
-/// N = 6:
+/// max(DIM) = 6:
 ///
 /// ```text
 /// Case A:
@@ -169,7 +170,7 @@ use std::fmt::{self, Write};
 ///      2 0  2 1  2 2  2 3     2 4     2 5
 /// ```
 ///
-/// N = 4:
+/// max(DIM) = 4:
 ///
 /// ```text
 /// Case A:
@@ -195,36 +196,7 @@ use std::fmt::{self, Write};
 ///      2 0  2 1  2 2  2 3
 /// ```
 #[derive(Clone, Debug)]
-pub struct Tensor3<const N: usize> {
-    /// Indicates Case A; otherwise Case B
-    case_a: bool,
-
-    /// Holds the actual number of rows of the Kelvin-Mandel matrix
-    ///
-    /// Case A:
-    /// * General: `nrow = 9`
-    /// * Symmetric: `nrow = 6`
-    /// * Symmetric2D: `nrow = 4`
-    ///
-    /// Case B:
-    /// * General: `nrow = 3`
-    /// * Symmetric: `nrow = 3`
-    /// * Symmetric2D: `nrow = 3`
-    nrow: usize,
-
-    /// Holds the actual number of columns of the Kelvin-Mandel matrix
-    ///
-    /// Case A:
-    /// * General: `ncol = 3`
-    /// * Symmetric: `ncol = 3`
-    /// * Symmetric2D: `ncol = 3`
-    ///
-    /// Case B:
-    /// * General: `ncol = 9`
-    /// * Symmetric: `ncol = 6`
-    /// * Symmetric2D: `ncol = 4`
-    ncol: usize,
-
+pub struct Tensor3<const M: usize, const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as matrix (heap).
     ///
     /// Heap version => dynamically allocated memory
@@ -237,39 +209,35 @@ pub struct Tensor3<const N: usize> {
     ///
     /// This array may use more data than necessary in symmetric cases
     #[cfg(not(feature = "heap"))]
-    pub(crate) mat: [[f64; N]; N],
+    pub(crate) mat: [[f64; N]; M],
 }
 
 // Manual Serialize/Deserialize implementations: serde only implements the traits
 // for concrete array sizes, so the derive fails for the generic `[[f64; N]; N]`.
 // Since N is known to be 4, 6, or 9 only, we serialize `(case_a, components)` where
 // the components are the active `nrow x ncol` Kelvin-Mandel block.
-impl<const N: usize> Serialize for Tensor3<N> {
+impl<const M: usize, const N: usize> Serialize for Tensor3<M, N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(2)?;
-        tup.serialize_element(&self.case_a)?;
-        let mut data = Vec::with_capacity(self.nrow * self.ncol);
-        for m in 0..self.nrow {
-            for n in 0..self.ncol {
+        let mut data = Vec::with_capacity(M * N);
+        for m in 0..M {
+            for n in 0..N {
                 data.push(self.get(m, n));
             }
         }
-        tup.serialize_element(&data)?;
-        tup.end()
+        data.serialize(serializer)
     }
 }
 
-impl<'de, const N: usize> Deserialize<'de> for Tensor3<N> {
+impl<'de, const M: usize, const N: usize> Deserialize<'de> for Tensor3<M, N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let (case_a, data): (bool, Vec<f64>) = Deserialize::deserialize(deserializer)?;
-        let expected = 3 * N;
+        let data = Vec::<f64>::deserialize(deserializer)?;
+        let expected = M * N;
         if data.len() != expected {
             return Err(serde::de::Error::custom(format!(
                 "Tensor3 dimension mismatch: expected {} components, got {}",
@@ -277,86 +245,43 @@ impl<'de, const N: usize> Deserialize<'de> for Tensor3<N> {
                 data.len()
             )));
         }
-        let mut tt = Tensor3::new(case_a);
-        let (nrow, ncol) = tt.dims();
+        let mut dd = Tensor3::new();
         let mut k = 0;
-        for m in 0..nrow {
-            for n in 0..ncol {
-                tt.set(m, n, data[k]);
+        for m in 0..M {
+            for n in 0..N {
+                dd.set(m, n, data[k]);
                 k += 1;
             }
         }
-        Ok(tt)
+        Ok(dd)
     }
 }
 
-impl<const N: usize> Tensor3<N> {
-    const VALIDATE_DIM: () = assert!(N == 4 || N == 6 || N == 9, "Tensor dimension must be 4, 6, or 9");
+impl<const M: usize, const N: usize> Tensor3<M, N> {
+    // Case A: M = {4,6,9}, N = 3
+    // Case B: M = 3, M = {4,6,9}
+    const VALIDATE_DIM: () = assert!(
+        ((M == 4 || M == 6 || M == 9) && N == 3) || (M == 3 && (N == 4 || N == 6 || N == 9)),
+        "Tensor dimension must be such that (DIM,3) for Case A or (3,DIM) for case B with DIM = 4, 6, or 9."
+    );
 
     /// Creates a new (zeroed) Tensor3
-    ///
-    /// # Input
-    ///
-    /// * `case_a` -- Case A instead of Case B
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_tensor::{StrError, Tensor3};
-    ///
-    /// fn main() {
-    ///     let cc = Tensor3::<9>::new(true);
-    ///     assert_eq!(cc.dims(), (9, 3));
-    ///
-    ///     let dd = Tensor3::<6>::new(true);
-    ///     assert_eq!(dd.dims(), (6, 3));
-    ///
-    ///     let ee = Tensor3::<4>::new(true);
-    ///     assert_eq!(ee.dims(), (4, 3));
-    /// }
-    /// ```
-    pub fn new(case_a: bool) -> Self {
+    pub fn new() -> Self {
         let _ = Self::VALIDATE_DIM;
-
-        let (nrow, ncol) = if case_a { (N, 3) } else { (3, N) };
 
         #[cfg(feature = "heap")]
         {
-            Tensor3 {
-                case_a,
-                nrow,
-                ncol,
-                mat: Matrix::new(nrow, ncol),
-            }
+            Tensor3 { mat: Matrix::new(M, N) }
         }
         #[cfg(not(feature = "heap"))]
         {
-            Tensor3 {
-                case_a,
-                nrow,
-                ncol,
-                mat: [[0.0; N]; N],
-            }
+            Tensor3 { mat: [[0.0; N]; M] }
         }
-    }
-
-    /// Returns whether the matrix representation adopted corresponds to Case A
-    #[inline]
-    pub fn is_case_a(&self) -> bool {
-        self.case_a
-    }
-
-    /// Returns the Kelvin-Mandel matrix dimension (nrow, ncol)
-    #[inline]
-    pub fn dims(&self) -> (usize, usize) {
-        (self.nrow, self.ncol)
     }
 
     /// Returns the (m,n) component of the Kelvin-Mandel matrix
     ///
     /// # Input
-    ///
-    /// Check the range of indices by calling [Tensor3::dims()]
     ///
     /// * `m` -- the row index
     /// * `n` -- the column index
@@ -370,7 +295,7 @@ impl<const N: usize> Tensor3<N> {
     /// ```
     /// use russell_tensor::{Tensor3};
     ///
-    /// let mut dd = Tensor3::<9>::new(true);
+    /// let mut dd = Tensor3::<9, 3>::new();
     /// dd.set(0, 0, 123.0);
     /// assert_eq!(dd.get(0, 0), 123.0);
     /// ```
@@ -390,8 +315,6 @@ impl<const N: usize> Tensor3<N> {
     ///
     /// # Input
     ///
-    /// Check the range of indices by calling [Tensor3::dims()]
-    ///
     /// * `m` -- the row index
     /// * `n` -- the column index
     /// * `value` -- the value to set
@@ -405,7 +328,7 @@ impl<const N: usize> Tensor3<N> {
     /// ```
     /// use russell_tensor::{Tensor3};
     ///
-    /// let mut dd = Tensor3::<9>::new(true);
+    /// let mut dd = Tensor3::<9, 3>::new();
     /// dd.set(0, 0, 123.0);
     /// assert_eq!(dd.get(0, 0), 123.0);
     /// ```
@@ -427,9 +350,10 @@ impl<const N: usize> Tensor3<N> {
     ///
     /// * `inp` -- the standard Dijk components with respect to an orthonormal Cartesian basis
     pub fn set_std_array(&mut self, inp: &[[[f64; 3]; 3]; 3]) -> Result<(), StrError> {
-        if self.case_a {
-            if N == 4 || N == 6 {
-                let max = if N == 4 { 3 } else { 6 };
+        if M > N {
+            // Case A: (M, 3) with M = 4,6,9
+            if M == 4 || M == 6 {
+                let max = if M == 4 { 3 } else { 6 };
                 for i in 0..3 {
                     for j in 0..3 {
                         for k in 0..3 {
@@ -476,6 +400,7 @@ impl<const N: usize> Tensor3<N> {
                 }
             }
         } else {
+            // Case B: (3, N) with N = 4,6,9
             if N == 4 || N == 6 {
                 let max = if N == 4 { 3 } else { 6 };
                 for i in 0..3 {
@@ -532,7 +457,6 @@ impl<const N: usize> Tensor3<N> {
     /// # Input
     ///
     /// * `inp` -- the standard Dijk components with respect to an orthonormal Cartesian basis
-    /// * `case_a` -- Case A instead of Case B
     ///
     /// # Examples
     ///
@@ -548,7 +472,7 @@ impl<const N: usize> Tensor3<N> {
     ///             }
     ///         }
     ///     }
-    ///     let dd = Tensor3::<9>::from_std_array(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_array(&inp)?;
     ///     assert_eq!(
     ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌             ┐\n\
@@ -566,8 +490,8 @@ impl<const N: usize> Tensor3<N> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_std_array(inp: &[[[f64; 3]; 3]; 3], case_a: bool) -> Result<Self, StrError> {
-        let mut res = Tensor3::new(case_a);
+    pub fn from_std_array(inp: &[[[f64; 3]; 3]; 3]) -> Result<Self, StrError> {
+        let mut res = Tensor3::new();
         res.set_std_array(inp)?;
         Ok(res)
     }
@@ -576,22 +500,23 @@ impl<const N: usize> Tensor3<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
-    ///   The matrix must be 9x3 for Case A or 3x9 for Case B
-    ///   even if it corresponds to a minor-symmetric tensor.
+    /// * `inp` -- the standard matrix of components with respect to an
+    ///   orthonormal Cartesian basis. The matrix must be 9x3 for Case A or
+    ///   3x9 for Case B even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics
     ///
     /// A panic will occur if the matrix has the incorrect dimensions:
-    /// * Case A: 9x3
-    /// * Case B: 3x9
+    /// * Case A: 9x3 required
+    /// * Case B: 3x9 required
     pub fn set_std_matrix<'a, S>(&mut self, inp: &'a S) -> Result<(), StrError>
     where
         S: AsArray2D<'a, f64>,
     {
-        if self.case_a {
-            if N == 4 || N == 6 {
-                let max = if N == 4 { 3 } else { 6 };
+        if M > N {
+            // Case A: (M, 3) with M = 4,6,9
+            if M == 4 || M == 6 {
+                let max = if M == 4 { 3 } else { 6 };
                 for i in 0..3 {
                     for j in 0..3 {
                         for k in 0..3 {
@@ -641,6 +566,7 @@ impl<const N: usize> Tensor3<N> {
                 }
             }
         } else {
+            // Case B: (3, N) with N = 4,6,9
             if N == 4 || N == 6 {
                 let max = if N == 4 { 3 } else { 6 };
                 for i in 0..3 {
@@ -699,16 +625,15 @@ impl<const N: usize> Tensor3<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
-    ///   The matrix must be 9x3 for Case A or 3x9 for Case B
-    ///   even if it corresponds to a minor-symmetric tensor.
-    /// * `case_a` -- Case A instead of Case B
+    /// * `inp` -- the standard matrix of components with respect to an
+    ///   orthonormal Cartesian basis. The matrix must be 9x3 for Case A or
+    ///   3x9 for Case B even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics
     ///
     /// A panic will occur if the matrix has the incorrect dimensions:
-    /// * Case A: 9x3
-    /// * Case B: 3x9
+    /// * Case A: 9x3 required
+    /// * Case B: 3x9 required
     ///
     /// # Examples
     ///
@@ -723,7 +648,7 @@ impl<const N: usize> Tensor3<N> {
     ///             inp[m][n] = (100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///     assert_eq!(
     ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌             ┐\n\
@@ -741,11 +666,11 @@ impl<const N: usize> Tensor3<N> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn from_std_matrix<'a, S>(inp: &'a S, case_a: bool) -> Result<Self, StrError>
+    pub fn from_std_matrix<'a, S>(inp: &'a S) -> Result<Self, StrError>
     where
         S: AsArray2D<'a, f64>,
     {
-        let mut res = Tensor3::new(case_a);
+        let mut res = Tensor3::new();
         res.set_std_matrix(inp)?;
         Ok(res)
     }
@@ -767,7 +692,7 @@ impl<const N: usize> Tensor3<N> {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///
     ///     for m in 0..9 {
     ///         for n in 0..3 {
@@ -780,8 +705,9 @@ impl<const N: usize> Tensor3<N> {
     /// }
     /// ```
     pub fn get_std(&self, i: usize, j: usize, k: usize) -> f64 {
-        if self.case_a {
-            match self.nrow {
+        if M > N {
+            // Case A: (M, 3) with M = 4,6,9
+            match M {
                 4 => {
                     let (m, n) = IJK_TO_MN_SYM_CASE_A[i][j][k];
                     if m > 3 {
@@ -816,7 +742,8 @@ impl<const N: usize> Tensor3<N> {
                 }
             }
         } else {
-            match self.ncol {
+            // Case B: (3, N) with N = 4,6,9
+            match N {
                 4 => {
                     let (m, n) = IJK_TO_MN_SYM_CASE_B[i][j][k];
                     if n > 3 {
@@ -878,8 +805,8 @@ impl<const N: usize> Tensor3<N> {
     ///         }
     ///     }
     ///
-    ///     let mut dd = Tensor3::<9>::new(true);
-    ///     let ee = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let mut dd = Tensor3::<9, 3>::new();
+    ///     let ee = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///     dd.update(2.0, &ee);
     ///
     ///     assert_eq!(
@@ -899,10 +826,9 @@ impl<const N: usize> Tensor3<N> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn update(&mut self, alpha: f64, other: &Tensor3<N>) {
-        assert_eq!(other.case_a, self.case_a);
-        for m in 0..self.nrow {
-            for n in 0..self.ncol {
+    pub fn update(&mut self, alpha: f64, other: &Tensor3<M, N>) {
+        for m in 0..M {
+            for n in 0..N {
                 self.set(m, n, self.get(m, n) + alpha * other.get(m, n));
             }
         }
@@ -925,7 +851,7 @@ impl<const N: usize> Tensor3<N> {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///     let arr = dd.as_std_array();
     ///
     ///     for m in 0..9 {
@@ -965,7 +891,7 @@ impl<const N: usize> Tensor3<N> {
     ///         }
     ///     }
     ///
-    ///     let dd = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///     let mut arr = vec![vec![vec![0.0; 3]; 3]; 3];
     ///     dd.to_std_array(&mut arr);
     ///
@@ -980,8 +906,9 @@ impl<const N: usize> Tensor3<N> {
     /// }
     /// ```
     pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<f64>>>) {
-        if self.case_a {
-            if self.nrow == 9 {
+        if M > N {
+            // Case A: (M, 3) with M = 4,6,9
+            if M == 9 {
                 // General
                 for i in 0..3 {
                     for j in 0..3 {
@@ -992,8 +919,8 @@ impl<const N: usize> Tensor3<N> {
                 }
             } else {
                 // Symmetric / Symmetric2D
-                for m in 0..self.nrow {
-                    for n in 0..self.ncol {
+                for m in 0..M {
+                    for n in 0..N {
                         let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
                         dd[i][j][k] = self.get_std(i, j, k);
                         if i != j {
@@ -1003,7 +930,8 @@ impl<const N: usize> Tensor3<N> {
                 }
             }
         } else {
-            if self.ncol == 9 {
+            // Case B: (3, N) with N = 4,6,9
+            if N == 9 {
                 // General
                 for i in 0..3 {
                     for j in 0..3 {
@@ -1014,8 +942,8 @@ impl<const N: usize> Tensor3<N> {
                 }
             } else {
                 // Symmetric / Symmetric2D
-                for m in 0..self.nrow {
-                    for n in 0..self.ncol {
+                for m in 0..M {
+                    for n in 0..N {
                         let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
                         dd[i][j][k] = self.get_std(i, j, k);
                         if j != k {
@@ -1044,7 +972,7 @@ impl<const N: usize> Tensor3<N> {
     ///             inp[m][n] = (100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///     assert_eq!(
     ///         format!("{:.0}", dd.as_std_matrix()),
     ///         "┌             ┐\n\
@@ -1063,11 +991,8 @@ impl<const N: usize> Tensor3<N> {
     /// }
     /// ```
     pub fn as_std_matrix(&self) -> Matrix {
-        let mut mat = if self.case_a {
-            Matrix::new(9, 3)
-        } else {
-            Matrix::new(3, 9)
-        };
+        // Note: always return the general matrix, (9,3) or (3,9)
+        let mut mat = if M > N { Matrix::new(9, 3) } else { Matrix::new(3, 9) };
         self.to_std_matrix(&mut mat);
         mat
     }
@@ -1096,7 +1021,7 @@ impl<const N: usize> Tensor3<N> {
     ///             inp[m][n] = (100 * (i + 1) + 10 * (j + 1) + (k + 1)) as f64;
     ///         }
     ///     }
-    ///     let dd = Tensor3::<9>::from_std_matrix(&inp, true)?;
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(&inp)?;
     ///     let mut mat = Matrix::new(9, 3);
     ///     dd.to_std_matrix(&mut mat);
     ///     assert_eq!(
@@ -1117,8 +1042,9 @@ impl<const N: usize> Tensor3<N> {
     /// }
     /// ```
     pub fn to_std_matrix(&self, mat: &mut Matrix) {
-        if self.case_a {
-            assert_eq!(mat.dims(), (9, 3));
+        if M > N {
+            // Case A: (M, 3) with M = 4,6,9
+            assert_eq!(mat.dims(), (9, 3), "Matrix dimensions must be (9, 3), Case A");
             for m in 0..9 {
                 for n in 0..3 {
                     let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
@@ -1126,7 +1052,8 @@ impl<const N: usize> Tensor3<N> {
                 }
             }
         } else {
-            assert_eq!(mat.dims(), (3, 9));
+            // Case B: (3, N) with N = 4,6,9
+            assert_eq!(mat.dims(), (3, 9), "Matrix dimensions must be (3, 9), Case B");
             for m in 0..3 {
                 for n in 0..9 {
                     let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
@@ -1145,7 +1072,7 @@ impl<const N: usize> Tensor3<N> {
     ///
     /// # Panics
     ///
-    /// 1. A panic will occur if the tensor is [9]
+    /// 1. A panic will occur if the tensor is is not symmetric; i.e., DIM = 9 instead of 4,6
     /// 2. A panic will occur if the indices are out of range
     ///
     /// # Examples
@@ -1154,7 +1081,7 @@ impl<const N: usize> Tensor3<N> {
     /// use russell_tensor::{MN_TO_IJK_CASE_A, Tensor3};
     ///
     /// fn main() {
-    ///     let mut dd = Tensor3::<4>::new(true);
+    ///     let mut dd = Tensor3::<4, 3>::new();
     ///     for m in 0..4 {
     ///         for n in 0..3 {
     ///             let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
@@ -1179,8 +1106,9 @@ impl<const N: usize> Tensor3<N> {
     /// }
     /// ```
     pub fn sym_set_std(&mut self, i: usize, j: usize, k: usize, value: f64) {
-        assert!(N != 9);
-        if self.case_a {
+        if M > N {
+            // Case A: (M, 3) with M = 4,6,9
+            assert!(M != 9, "minor-symmetric case A requires M = 4,6");
             let (m, n) = IJK_TO_MN_SYM_CASE_A[i][j][k];
             if m < 3 {
                 self.set(m, n, value);
@@ -1188,6 +1116,8 @@ impl<const N: usize> Tensor3<N> {
                 self.set(m, n, value * SQRT_2);
             }
         } else {
+            // Case B: (3, N) with N = 4,6,9
+            assert!(N != 9, "minor-symmetric case B requires N = 4,6");
             let (m, n) = IJK_TO_MN_SYM_CASE_B[i][j][k];
             if n < 3 {
                 self.set(m, n, value);
@@ -1202,10 +1132,6 @@ impl<const N: usize> Tensor3<N> {
     /// ```text
     /// self := α other
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if the tensors have different `case_a`.
     ///
     /// # Examples
     ///
@@ -1225,8 +1151,8 @@ impl<const N: usize> Tensor3<N> {
     ///         [  0.0,  0.0,  0.0],
     ///         [  0.0,  0.0,  0.0],
     ///     ];
-    ///     let dd = Tensor3::<9>::from_std_matrix(data, true)?;
-    ///     let mut ee = Tensor3::<9>::new(true);
+    ///     let dd = Tensor3::<9, 3>::from_std_matrix(data)?;
+    ///     let mut ee = Tensor3::<9, 3>::new();
     ///
     ///     ee.set_tensor(1.0, &dd);
     ///
@@ -1234,10 +1160,9 @@ impl<const N: usize> Tensor3<N> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn set_tensor(&mut self, alpha: f64, other: &Tensor3<N>) {
-        assert_eq!(other.case_a, self.case_a);
-        for m in 0..self.nrow {
-            for n in 0..self.ncol {
+    pub fn set_tensor(&mut self, alpha: f64, other: &Tensor3<M, N>) {
+        for m in 0..M {
+            for n in 0..N {
                 self.set(m, n, alpha * other.get(m, n));
             }
         }
@@ -1245,8 +1170,8 @@ impl<const N: usize> Tensor3<N> {
 
     /// Returns the permutation (Levi-Civita) tensor
     ///
-    /// This function is only available for [9]
-    pub fn constant_permutation(case_a: bool) -> Self {
+    /// This function is only available for DIM = 9
+    pub fn constant_permutation() -> Self {
         let pos_one = [(0, 1, 2), (1, 2, 0), (2, 0, 1)]; // even cyclic permutation
         let neg_one = [(0, 2, 1), (1, 0, 2), (2, 1, 0)]; // odd cyclic permutation
         let mut std_array = [[[0.0; 3]; 3]; 3];
@@ -1256,18 +1181,18 @@ impl<const N: usize> Tensor3<N> {
         for (i, j, k) in neg_one {
             std_array[i][j][k] = -1.0;
         }
-        Tensor3::from_std_array(&std_array, case_a).unwrap()
+        Tensor3::from_std_array(&std_array).unwrap()
     }
 }
 
-impl<const N: usize> fmt::Display for Tensor3<N> {
+impl<const M: usize, const N: usize> fmt::Display for Tensor3<M, N> {
     /// Generates a string representation of Kelvin-Mandel matrix associated with this Tensor3
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // find largest width
         let mut width = 0;
         let mut buf = String::new();
-        for i in 0..self.nrow {
-            for j in 0..self.ncol {
+        for i in 0..M {
+            for j in 0..N {
                 let val = self.get(i, j);
                 match f.precision() {
                     Some(v) => write!(&mut buf, "{:.1$}", val, v).unwrap(),
@@ -1279,12 +1204,12 @@ impl<const N: usize> fmt::Display for Tensor3<N> {
         }
         // draw matrix
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1).unwrap();
-        for i in 0..self.nrow {
+        write!(f, "┌{:1$}┐\n", " ", width * N + 1).unwrap();
+        for i in 0..M {
             if i > 0 {
                 write!(f, " │\n").unwrap();
             }
-            for j in 0..self.ncol {
+            for j in 0..N {
                 if j == 0 {
                     write!(f, "│").unwrap();
                 }
@@ -1296,7 +1221,7 @@ impl<const N: usize> fmt::Display for Tensor3<N> {
             }
         }
         write!(f, " │\n").unwrap();
-        write!(f, "└{:1$}┘", " ", width * self.ncol + 1).unwrap();
+        write!(f, "└{:1$}┘", " ", width * N + 1).unwrap();
         Ok(())
     }
 }
@@ -1312,33 +1237,30 @@ mod tests {
     #[test]
     fn new_set_and_get_work() {
         // general
-        let mut dd = Tensor3::<9>::new(true);
+        let mut dd = Tensor3::<9, 3>::new();
         dd.set(0, 0, 123.0);
-        assert_eq!(dd.dims(), (9, 3));
         assert_eq!(dd.get(0, 0), 123.0);
 
         // symmetric
-        let mut dd = Tensor3::<6>::new(true);
+        let mut dd = Tensor3::<6, 3>::new();
         dd.set(0, 0, 123.0);
-        assert_eq!(dd.dims(), (6, 3));
         assert_eq!(dd.get(0, 0), 123.0);
 
         // symmetric 2d
-        let mut dd = Tensor3::<4>::new(true);
+        let mut dd = Tensor3::<4, 3>::new();
         dd.set(0, 0, 123.0);
-        assert_eq!(dd.dims(), (4, 3));
         assert_eq!(dd.get(0, 0), 123.0);
     }
 
     #[test]
     fn from_std_array_fails_captures_errors() {
-        let res = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true);
+        let res = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a minor-symmetric tensor")
         );
 
-        let res = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true);
+        let res = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a 2D minor-symmetric tensor")
@@ -1348,7 +1270,7 @@ mod tests {
     #[test]
     fn from_std_array_works() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         for m in 0..9 {
             for n in 0..3 {
                 assert_eq!(dd.get(m, n), SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1356,7 +1278,7 @@ mod tests {
         }
 
         // symmetric 3d
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         for m in 0..6 {
             for n in 0..3 {
                 assert_eq!(dd.get(m, n), SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1364,7 +1286,7 @@ mod tests {
         }
 
         // symmetric 2d
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         for m in 0..4 {
             for n in 0..3 {
                 assert_eq!(dd.get(m, n), SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1376,7 +1298,7 @@ mod tests {
     fn from_std_matrix_fails_captures_errors() {
         let mut inp = [[0.0; 3]; 9];
         inp[3][0] = 1e-15;
-        let res = Tensor3::<6>::from_std_matrix(&inp, true);
+        let res = Tensor3::<6, 3>::from_std_matrix(&inp);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a minor-symmetric tensor")
@@ -1385,7 +1307,7 @@ mod tests {
         inp[3][0] = 0.0;
         inp[4][0] = 1.0;
         inp[7][0] = 1.0;
-        let res = Tensor3::<4>::from_std_matrix(&inp, true);
+        let res = Tensor3::<4, 3>::from_std_matrix(&inp);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a 2D minor-symmetric tensor")
@@ -1394,7 +1316,7 @@ mod tests {
 
     #[test]
     fn get_and_set_work() {
-        let mut dd = Tensor3::<4>::new(true);
+        let mut dd = Tensor3::<4, 3>::new();
         assert_eq!(dd.get(0, 0), 0.0);
         dd.set(0, 0, 2.0);
         assert_eq!(dd.get(0, 0), 2.0);
@@ -1403,19 +1325,17 @@ mod tests {
     #[test]
     fn from_std_matrix_works() {
         // general
-        let dd = Tensor3::<9>::from_std_matrix(&SamplesTensor3::CASE_A_SAMPLE1_STD_MATRIX, true).unwrap();
-        let (nrow, ncol) = dd.dims();
-        for m in 0..nrow {
-            for n in 0..ncol {
+        let dd = Tensor3::<9, 3>::from_std_matrix(&SamplesTensor3::CASE_A_SAMPLE1_STD_MATRIX).unwrap();
+        for m in 0..9 {
+            for n in 0..3 {
                 approx_eq(dd.get(m, n), SamplesTensor3::CASE_A_SAMPLE1_KELVIN_MATRIX[m][n], 1e-15);
             }
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_SAMPLE1_STD_MATRIX, true).unwrap();
-        let (nrow, ncol) = dd.dims();
-        for m in 0..nrow {
-            for n in 0..ncol {
+        let dd = Tensor3::<6, 3>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_SAMPLE1_STD_MATRIX).unwrap();
+        for m in 0..6 {
+            for n in 0..3 {
                 approx_eq(
                     dd.get(m, n),
                     SamplesTensor3::CASE_A_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
@@ -1425,10 +1345,9 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_STD_MATRIX, true).unwrap();
-        let (nrow, ncol) = dd.dims();
-        for m in 0..nrow {
-            for n in 0..ncol {
+        let dd = Tensor3::<4, 3>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
+        for m in 0..4 {
+            for n in 0..3 {
                 approx_eq(
                     dd.get(m, n),
                     SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
@@ -1441,7 +1360,7 @@ mod tests {
     #[test]
     fn get_std_works() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1451,7 +1370,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1461,7 +1380,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1477,8 +1396,8 @@ mod tests {
 
     #[test]
     fn update_works() {
-        let mut dd = Tensor3::<4>::new(true);
-        let ee = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
+        let mut dd = Tensor3::<4, 3>::new();
+        let ee = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         dd.update(2.0, &ee);
         for i in 0..3 {
             for j in 0..3 {
@@ -1496,7 +1415,7 @@ mod tests {
     #[test]
     fn as_std_array_and_to_std_array_work() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -1507,7 +1426,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -1518,7 +1437,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -1532,7 +1451,7 @@ mod tests {
     #[test]
     fn as_std_matrix_and_to_std_matrix_work() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         for m in 0..9 {
             for n in 0..3 {
@@ -1541,7 +1460,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 3));
         for m in 0..9 {
@@ -1555,7 +1474,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
+        let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 3));
         for m in 0..9 {
@@ -1590,7 +1509,7 @@ mod tests {
                 [162.0, 144.0, 126.0],
             ],
         ];
-        let dd = Tensor3::<9>::from_std_array(data, true).unwrap();
+        let dd = Tensor3::<9, 3>::from_std_array(data).unwrap();
         let m1 = dd.as_std_matrix();
         #[rustfmt::skip]
         let correct = &[
@@ -1605,7 +1524,7 @@ mod tests {
             [126.0, 112.0,  98.0],
         ];
         mat_approx_eq(&m1, correct, 1e-13);
-        let ee = Tensor3::<9>::from_std_matrix(correct, true).unwrap();
+        let ee = Tensor3::<9, 3>::from_std_matrix(correct).unwrap();
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
@@ -1628,7 +1547,7 @@ mod tests {
                 [18.0, 30.0, 36.0],
             ],
         ];
-        let dd = Tensor3::<6>::from_std_array(data, true).unwrap();
+        let dd = Tensor3::<6, 3>::from_std_array(data).unwrap();
         let m1 = dd.as_std_matrix();
         #[rustfmt::skip]
         let correct = &[
@@ -1643,7 +1562,7 @@ mod tests {
             [36.0, 60.0, 72.0],
         ];
         mat_approx_eq(&m1, correct, 1e-13);
-        let ee = Tensor3::<6>::from_std_matrix(correct, true).unwrap();
+        let ee = Tensor3::<6, 3>::from_std_matrix(correct).unwrap();
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
@@ -1666,7 +1585,7 @@ mod tests {
                 [18.0, 24.0, 0.0],
             ],
         ];
-        let dd = Tensor3::<4>::from_std_array(data, true).unwrap();
+        let dd = Tensor3::<4, 3>::from_std_array(data).unwrap();
         let m1 = dd.as_std_matrix();
         #[rustfmt::skip]
         let correct = &[
@@ -1681,13 +1600,13 @@ mod tests {
             [ 0.0,  0.0, 0.0],
         ];
         mat_approx_eq(&m1, correct, 1e-13);
-        let ee = Tensor3::<4>::from_std_matrix(correct, true).unwrap();
+        let ee = Tensor3::<4, 3>::from_std_matrix(correct).unwrap();
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
     }
 
-    fn generate_dd() -> Tensor3<6> {
-        let mut dd = Tensor3::<6>::new(true);
+    fn generate_dd_sym() -> Tensor3<6, 3> {
+        let mut dd = Tensor3::new();
         for m in 0..6 {
             for n in 0..3 {
                 let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
@@ -1699,22 +1618,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "N != 9")]
+    #[should_panic(expected = "minor-symmetric case A requires M = 4,6")]
     fn sym_set_std_panics_on_non_sym() {
-        let mut dd = Tensor3::<9>::new(true);
+        let mut dd = Tensor3::<9, 3>::new();
         dd.sym_set_std(0, 0, 0, 0.0);
     }
 
     #[test]
     #[should_panic(expected = "the len is 3 but the index is 3")]
     fn sym_set_std_panics_on_incorrect_indices() {
-        let mut dd = Tensor3::<4>::new(true);
+        let mut dd = Tensor3::<4, 3>::new();
         dd.sym_set_std(0, 0, 3, 5.0);
     }
 
     #[test]
     fn sym_set_std_works() {
-        let dd = generate_dd();
+        let dd = generate_dd_sym();
         assert_eq!(
             format!("{:.0}", dd.as_std_matrix()),
             "┌             ┐\n\
@@ -1734,18 +1653,18 @@ mod tests {
     #[test]
     fn set_tensor_works() {
         #[rustfmt::skip]
-        let dd = Tensor3::<9>::from_std_matrix(&[
-                [1.0, 1.0, 1.0],
-                [5.0, 5.0, 5.0],
-                [9.0, 9.0, 9.0],
-                [2.0, 2.0, 2.0],
-                [6.0, 6.0, 6.0],
-                [3.0, 3.0, 3.0],
-                [2.0, 2.0, 2.0],
-                [6.0, 6.0, 6.0],
-                [3.0, 3.0, 3.0],
-        ], true).unwrap();
-        let mut ee = Tensor3::<9>::new(true);
+        let dd = Tensor3::<9,3>::from_std_matrix(&[
+            [1.0, 1.0, 1.0],
+            [5.0, 5.0, 5.0],
+            [9.0, 9.0, 9.0],
+            [2.0, 2.0, 2.0],
+            [6.0, 6.0, 6.0],
+            [3.0, 3.0, 3.0],
+            [2.0, 2.0, 2.0],
+            [6.0, 6.0, 6.0],
+            [3.0, 3.0, 3.0],
+        ]).unwrap();
+        let mut ee = Tensor3::<9, 3>::new();
         ee.set_tensor(2.0, &dd);
         #[rustfmt::skip]
         let correct = Matrix::from(&[
@@ -1808,23 +1727,20 @@ mod tests {
 
     #[test]
     fn new_case_b_works() {
-        let cc = Tensor3::<9>::new(false);
-        assert_eq!(cc.dims(), (3, 9));
-        let dd = Tensor3::<6>::new(false);
-        assert_eq!(dd.dims(), (3, 6));
-        let ee = Tensor3::<4>::new(false);
-        assert_eq!(ee.dims(), (3, 4));
+        let _ = Tensor3::<3, 9>::new();
+        let _ = Tensor3::<3, 6>::new();
+        let _ = Tensor3::<3, 4>::new();
     }
 
     #[test]
     fn from_std_array_case_b_fails_captures_errors() {
-        let res = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false);
+        let res = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a minor-symmetric tensor")
         );
 
-        let res = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false);
+        let res = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a 2D minor-symmetric tensor")
@@ -1834,7 +1750,7 @@ mod tests {
     #[test]
     fn from_std_array_case_b_works() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         for m in 0..3 {
             for n in 0..9 {
                 assert_eq!(dd.get(m, n), SamplesTensor3::CASE_B_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1842,7 +1758,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         for m in 0..3 {
             for n in 0..6 {
                 assert_eq!(dd.get(m, n), SamplesTensor3::CASE_B_SYM_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1850,7 +1766,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         for m in 0..3 {
             for n in 0..4 {
                 assert_eq!(dd.get(m, n), SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n]);
@@ -1861,19 +1777,17 @@ mod tests {
     #[test]
     fn from_std_matrix_case_b_works() {
         // general
-        let dd = Tensor3::<9>::from_std_matrix(&SamplesTensor3::CASE_B_SAMPLE1_STD_MATRIX, false).unwrap();
-        let (nrow, ncol) = dd.dims();
-        for m in 0..nrow {
-            for n in 0..ncol {
+        let dd = Tensor3::<3, 9>::from_std_matrix(&SamplesTensor3::CASE_B_SAMPLE1_STD_MATRIX).unwrap();
+        for m in 0..3 {
+            for n in 0..9 {
                 approx_eq(dd.get(m, n), SamplesTensor3::CASE_B_SAMPLE1_KELVIN_MATRIX[m][n], 1e-15);
             }
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_SAMPLE1_STD_MATRIX, false).unwrap();
-        let (nrow, ncol) = dd.dims();
-        for m in 0..nrow {
-            for n in 0..ncol {
+        let dd = Tensor3::<3, 6>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_SAMPLE1_STD_MATRIX).unwrap();
+        for m in 0..3 {
+            for n in 0..6 {
                 approx_eq(
                     dd.get(m, n),
                     SamplesTensor3::CASE_B_SYM_SAMPLE1_KELVIN_MATRIX[m][n],
@@ -1883,10 +1797,9 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_STD_MATRIX, false).unwrap();
-        let (nrow, ncol) = dd.dims();
-        for m in 0..nrow {
-            for n in 0..ncol {
+        let dd = Tensor3::<3, 4>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
+        for m in 0..3 {
+            for n in 0..4 {
                 approx_eq(
                     dd.get(m, n),
                     SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_KELVIN_MATRIX[m][n],
@@ -1899,7 +1812,7 @@ mod tests {
     #[test]
     fn get_std_case_b_works() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1909,7 +1822,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1919,7 +1832,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1935,8 +1848,8 @@ mod tests {
 
     #[test]
     fn update_case_b_works() {
-        let mut dd = Tensor3::<4>::new(false);
-        let ee = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
+        let mut dd = Tensor3::<3, 4>::new();
+        let ee = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         dd.update(2.0, &ee);
         for i in 0..3 {
             for j in 0..3 {
@@ -1954,7 +1867,7 @@ mod tests {
     #[test]
     fn as_std_array_and_to_std_array_case_b_work() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -1965,7 +1878,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -1976,7 +1889,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
             for j in 0..3 {
@@ -1990,7 +1903,7 @@ mod tests {
     #[test]
     fn as_std_matrix_and_to_std_matrix_case_b_work() {
         // general
-        let dd = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         for m in 0..3 {
             for n in 0..9 {
@@ -1999,7 +1912,7 @@ mod tests {
         }
 
         // symmetric 3D
-        let dd = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (3, 9));
         for m in 0..3 {
@@ -2013,7 +1926,7 @@ mod tests {
         }
 
         // symmetric 2D
-        let dd = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
+        let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (3, 9));
         for m in 0..3 {
@@ -2029,7 +1942,7 @@ mod tests {
 
     #[test]
     fn sym_set_std_case_b_works() {
-        let mut dd = Tensor3::<6>::new(false);
+        let mut dd = Tensor3::<3, 6>::new();
         let inp = generate_std_sym_case_b();
         for i in 0..3 {
             for j in 0..3 {
@@ -2052,11 +1965,11 @@ mod tests {
     #[test]
     fn from_std_matrix_case_b_symmetric2d_fails() {
         let inp = generate_std_sym_case_b_2d();
-        let dd = Tensor3::<4>::from_std_array(&inp, false).unwrap();
+        let dd = Tensor3::<3, 4>::from_std_array(&inp).unwrap();
         let mut mat = dd.as_std_matrix();
         // corrupt the out-of-plane shear (i,j,k) = (0,0,2) -> (m,n) = (0,5)
         mat.set(0, 5, 5.0);
-        let res = Tensor3::<4>::from_std_matrix(&mat, false);
+        let res = Tensor3::<3, 4>::from_std_matrix(&mat);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a 2D minor-symmetric tensor")
@@ -2066,11 +1979,11 @@ mod tests {
     #[test]
     fn from_std_matrix_case_b_symmetric_fails() {
         let inp = generate_std_sym_case_b();
-        let dd = Tensor3::<6>::from_std_array(&inp, false).unwrap();
+        let dd = Tensor3::<3, 6>::from_std_array(&inp).unwrap();
         let mut mat = dd.as_std_matrix();
         // break minor-symmetry: component (0,0,1) differs from its mirror (0,1,0)
         mat.set(0, 3, mat.get(0, 3) + 1.0);
-        let res = Tensor3::<6>::from_std_matrix(&mat, false);
+        let res = Tensor3::<3, 6>::from_std_matrix(&mat);
         assert_eq!(
             res.err(),
             Some("the input data does not correspond to a minor-symmetric tensor")
@@ -2080,10 +1993,10 @@ mod tests {
     #[test]
     fn set_tensor_and_update_case_b_work() {
         let inp = generate_std_general();
-        let dd = Tensor3::<9>::from_std_array(&inp, false).unwrap();
+        let dd = Tensor3::<3, 9>::from_std_array(&inp).unwrap();
 
         // set_tensor
-        let mut ee = Tensor3::<9>::new(false);
+        let mut ee = Tensor3::<3, 9>::new();
         ee.set_tensor(2.0, &dd);
         for m in 0..3 {
             for n in 0..9 {
@@ -2092,7 +2005,7 @@ mod tests {
         }
 
         // update
-        let mut ff = Tensor3::<9>::new(false);
+        let mut ff = Tensor3::<3, 9>::new();
         ff.update(1.0, &dd);
         ff.update(2.0, &dd);
         for m in 0..3 {
@@ -2103,24 +2016,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn update_case_mismatch_panics() {
-        let mut dd = Tensor3::<9>::new(true);
-        let ee = Tensor3::<9>::new(false);
-        dd.update(1.0, &ee);
-    }
-
-    #[test]
-    #[should_panic]
-    fn set_tensor_case_mismatch_panics() {
-        let dd = Tensor3::<9>::new(false);
-        let mut ee = Tensor3::<9>::new(true);
-        ee.set_tensor(1.0, &dd);
-    }
-
-    #[test]
     fn clone_and_serialize_work() {
-        let dd = generate_dd();
+        let dd = generate_dd_sym();
         // clone
         let mut cloned = dd.clone();
         cloned.set(0, 0, 999.0);
@@ -2156,7 +2053,7 @@ mod tests {
         let json = serde_json::to_string(&dd).unwrap();
         assert!(json.len() > 0);
         // deserialize
-        let from_json: Tensor3<6> = serde_json::from_str(&json).unwrap();
+        let from_json: Tensor3<6, 3> = serde_json::from_str(&json).unwrap();
         assert_eq!(
             format!("{:.0}", from_json.as_std_matrix()),
             "┌             ┐\n\
@@ -2175,13 +2072,13 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let dd = Tensor3::<9>::new(true);
+        let dd = Tensor3::<4, 3>::new();
         assert!(format!("{:?}", dd).len() > 0);
     }
 
     #[test]
     fn constant_permutation_works() {
-        let perm_a = Tensor3::<9>::constant_permutation(true);
+        let perm_a = Tensor3::<9, 3>::constant_permutation();
         let expected = [
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
@@ -2213,7 +2110,7 @@ mod tests {
              └                      ┘"
         );
 
-        let perm_b = Tensor3::<9>::constant_permutation(false);
+        let perm_b = Tensor3::<3, 9>::constant_permutation();
         let expected = [
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, SQRT_2, 0.0],
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -SQRT_2],

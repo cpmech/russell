@@ -5,21 +5,23 @@ use super::{Tensor1, Tensor2, Tensor3};
 /// ```text
 /// c := α⋅a + β⋅b
 /// ```
-///
-/// # Panics
-///
-/// A panic will occur if the tensors have different case flags
-pub fn t3_add<const N: usize>(c: &mut Tensor3<N>, alpha: f64, a: &Tensor3<N>, beta: f64, b: &Tensor3<N>) {
-    assert_eq!(b.is_case_a(), a.is_case_a());
-    assert_eq!(c.is_case_a(), a.is_case_a());
-    for i in 0..a.dims().0 {
-        for j in 0..a.dims().1 {
+pub fn t3_add<const M: usize, const N: usize>(
+    c: &mut Tensor3<M, N>,
+    alpha: f64,
+    a: &Tensor3<M, N>,
+    beta: f64,
+    b: &Tensor3<M, N>,
+) {
+    for i in 0..M {
+        for j in 0..N {
             c.set(i, j, alpha * a.get(i, j) + beta * b.get(i, j));
         }
     }
 }
 
 /// Performs the single-dot operation between a Tensor3 and a vector resulting in a Tensor2 (Case A)
+///
+/// Note: Case A is (M, 3) with M = 4,6,9
 ///
 /// Computes:
 ///
@@ -50,18 +52,15 @@ pub fn t3_add<const N: usize>(c: &mut Tensor3<N>, alpha: f64, a: &Tensor3<N>, be
 /// * `alpha` -- the `α` multiplier
 /// * `hh` -- the third-order tensor
 /// * `u` -- the 3D vector (first-order tensor)
-///
-/// # Panics
-///
-/// A panic will occur if `H` was not allocated for Case A
-pub fn t3_dot_t1<const N: usize>(tt: &mut Tensor2<N>, alpha: f64, hh: &Tensor3<N>, u: &Tensor1) {
-    assert!(hh.is_case_a());
-    for m in 0..hh.dims().0 {
+pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, alpha: f64, hh: &Tensor3<M, N>, u: &Tensor1) {
+    for m in 0..M {
         tt.vec[m] = alpha * (hh.get(m, 0) * u.get(0) + hh.get(m, 1) * u.get(1) + hh.get(m, 2) * u.get(2));
     }
 }
 
 /// Performs the double-dot operation between a Tensor3 and a Tensor2 resulting in a vector (Case B)
+///
+/// Note: Case B is (3, N) with N = 4,6,9
 ///
 /// Computes:
 ///
@@ -92,16 +91,11 @@ pub fn t3_dot_t1<const N: usize>(tt: &mut Tensor2<N>, alpha: f64, hh: &Tensor3<N
 /// * `alpha` -- the `α` multiplier
 /// * `hh` -- the third-order tensor
 /// * `T` -- the second-order tensor
-///
-/// # Panics
-///
-/// A panic will occur if `H` was not allocated for Case B
-pub fn t3_ddot_t2<const N: usize>(u: &mut Tensor1, alpha: f64, hh: &Tensor3<N>, tt: &Tensor2<N>) {
-    assert!(!hh.is_case_a());
+pub fn t3_ddot_t2<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, hh: &Tensor3<M, N>, tt: &Tensor2<N>) {
     u.set(0, 0.0);
     u.set(1, 0.0);
     u.set(2, 0.0);
-    for n in 0..hh.dims().1 {
+    for n in 0..N {
         u.set(0, u.get(0) + alpha * hh.get(0, n) * tt.vec[n]);
         u.set(1, u.get(1) + alpha * hh.get(1, n) * tt.vec[n]);
         u.set(2, u.get(2) + alpha * hh.get(2, n) * tt.vec[n]);
@@ -119,47 +113,38 @@ mod tests {
     #[test]
     fn t3_add_works_case_a() {
         // General
-        let hh = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true).unwrap();
-        let mut mm = Tensor3::<9>::new(true);
+        let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
+        let mut mm = Tensor3::<9, 3>::new();
         t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
-        let mm_expected = Tensor3::<9>::from_std_array(
-            &[
-                [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [40.0, 42.5, 45.0]],
-                [[47.5, 50.0, 52.5], [10.0, 12.5, 15.0], [32.5, 35.0, 37.5]],
-                [[62.5, 65.0, 67.5], [55.0, 57.5, 60.0], [17.5, 20.0, 22.5]],
-            ],
-            true,
-        )
+        let mm_expected = Tensor3::<9, 3>::from_std_array(&[
+            [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [40.0, 42.5, 45.0]],
+            [[47.5, 50.0, 52.5], [10.0, 12.5, 15.0], [32.5, 35.0, 37.5]],
+            [[62.5, 65.0, 67.5], [55.0, 57.5, 60.0], [17.5, 20.0, 22.5]],
+        ])
         .unwrap();
         mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
 
         // Symmetric
-        let hh = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true).unwrap();
-        let mut mm = Tensor3::<6>::new(true);
+        let hh = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
+        let mut mm = Tensor3::<6, 3>::new();
         t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
-        let mm_expected = Tensor3::<6>::from_std_array(
-            &[
-                [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [40.0, 42.5, 45.0]],
-                [[25.0, 27.5, 30.0], [10.0, 12.5, 15.0], [32.5, 35.0, 37.5]],
-                [[40.0, 42.5, 45.0], [32.5, 35.0, 37.5], [17.5, 20.0, 22.5]],
-            ],
-            true,
-        )
+        let mm_expected = Tensor3::<6, 3>::from_std_array(&[
+            [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [40.0, 42.5, 45.0]],
+            [[25.0, 27.5, 30.0], [10.0, 12.5, 15.0], [32.5, 35.0, 37.5]],
+            [[40.0, 42.5, 45.0], [32.5, 35.0, 37.5], [17.5, 20.0, 22.5]],
+        ])
         .unwrap();
         mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
 
         // Symmetric2D
-        let hh = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
-        let mut mm = Tensor3::<4>::new(true);
+        let hh = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
+        let mut mm = Tensor3::<4, 3>::new();
         t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
-        let mm_expected = Tensor3::<4>::from_std_array(
-            &[
-                [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [0.0, 0.0, 0.0]],
-                [[25.0, 27.5, 30.0], [10.0, 12.5, 15.0], [0.0, 0.0, 0.0]],
-                [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [17.5, 20.0, 22.5]],
-            ],
-            true,
-        )
+        let mm_expected = Tensor3::<4, 3>::from_std_array(&[
+            [[2.5, 5.0, 7.5], [25.0, 27.5, 30.0], [0.0, 0.0, 0.0]],
+            [[25.0, 27.5, 30.0], [10.0, 12.5, 15.0], [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [17.5, 20.0, 22.5]],
+        ])
         .unwrap();
         mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
     }
@@ -167,47 +152,38 @@ mod tests {
     #[test]
     fn t3_add_works_case_b() {
         // General
-        let hh = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false).unwrap();
-        let mut mm = Tensor3::<9>::new(false);
+        let hh = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
+        let mut mm = Tensor3::<3, 9>::new();
         t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
-        let mm_expected = Tensor3::<9>::from_std_array(
-            &[
-                [[2.5, 25.0, 40.0], [47.5, 10.0, 32.5], [62.5, 55.0, 17.5]],
-                [[5.0, 27.5, 42.5], [50.0, 12.5, 35.0], [65.0, 57.5, 20.0]],
-                [[7.5, 30.0, 45.0], [52.5, 15.0, 37.5], [67.5, 60.0, 22.5]],
-            ],
-            false,
-        )
+        let mm_expected = Tensor3::<3, 9>::from_std_array(&[
+            [[2.5, 25.0, 40.0], [47.5, 10.0, 32.5], [62.5, 55.0, 17.5]],
+            [[5.0, 27.5, 42.5], [50.0, 12.5, 35.0], [65.0, 57.5, 20.0]],
+            [[7.5, 30.0, 45.0], [52.5, 15.0, 37.5], [67.5, 60.0, 22.5]],
+        ])
         .unwrap();
         mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
 
         // Symmetric
-        let hh = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false).unwrap();
-        let mut mm = Tensor3::<6>::new(false);
+        let hh = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
+        let mut mm = Tensor3::<3, 6>::new();
         t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
-        let mm_expected = Tensor3::<6>::from_std_array(
-            &[
-                [[2.5, 25.0, 40.0], [25.0, 10.0, 32.5], [40.0, 32.5, 17.5]],
-                [[5.0, 27.5, 42.5], [27.5, 12.5, 35.0], [42.5, 35.0, 20.0]],
-                [[7.5, 30.0, 45.0], [30.0, 15.0, 37.5], [45.0, 37.5, 22.5]],
-            ],
-            false,
-        )
+        let mm_expected = Tensor3::<3, 6>::from_std_array(&[
+            [[2.5, 25.0, 40.0], [25.0, 10.0, 32.5], [40.0, 32.5, 17.5]],
+            [[5.0, 27.5, 42.5], [27.5, 12.5, 35.0], [42.5, 35.0, 20.0]],
+            [[7.5, 30.0, 45.0], [30.0, 15.0, 37.5], [45.0, 37.5, 22.5]],
+        ])
         .unwrap();
         mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
 
         // Symmetric2D
-        let hh = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
-        let mut mm = Tensor3::<4>::new(false);
+        let hh = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
+        let mut mm = Tensor3::<3, 4>::new();
         t3_add(&mut mm, 0.5, &hh, 2.0, &hh);
-        let mm_expected = Tensor3::<4>::from_std_array(
-            &[
-                [[2.5, 25.0, 0.0], [25.0, 10.0, 0.0], [0.0, 0.0, 17.5]],
-                [[5.0, 27.5, 0.0], [27.5, 12.5, 0.0], [0.0, 0.0, 20.0]],
-                [[7.5, 30.0, 0.0], [30.0, 15.0, 0.0], [0.0, 0.0, 22.5]],
-            ],
-            false,
-        )
+        let mm_expected = Tensor3::<3, 4>::from_std_array(&[
+            [[2.5, 25.0, 0.0], [25.0, 10.0, 0.0], [0.0, 0.0, 17.5]],
+            [[5.0, 27.5, 0.0], [27.5, 12.5, 0.0], [0.0, 0.0, 20.0]],
+            [[7.5, 30.0, 0.0], [30.0, 15.0, 0.0], [0.0, 0.0, 22.5]],
+        ])
         .unwrap();
         mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
     }
@@ -215,7 +191,7 @@ mod tests {
     #[test]
     fn t3_dot_t1_works() {
         // General
-        let hh = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1, true).unwrap();
+        let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         let u = Tensor1::from(&[1.0, 2.0, 3.0]);
         let mut tt = Tensor2::<9>::new();
         t3_dot_t1(&mut tt, 0.5, &hh, &u);
@@ -227,7 +203,7 @@ mod tests {
         mat_approx_eq(&tt.as_std_matrix(), &mat_expected, 1e-13);
 
         // Symmetric
-        let hh = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1, true).unwrap();
+        let hh = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let mut tt = Tensor2::<6>::new();
         t3_dot_t1(&mut tt, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
@@ -238,7 +214,7 @@ mod tests {
         mat_approx_eq(&tt.as_std_matrix(), &mat_expected, 1e-13);
 
         // Symmetric2D
-        let hh = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1, true).unwrap();
+        let hh = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         let mut tt = Tensor2::<4>::new();
         t3_dot_t1(&mut tt, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
@@ -252,7 +228,7 @@ mod tests {
     #[test]
     fn t3_ddot_t2_works() {
         // General
-        let hh = Tensor3::<9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1, false).unwrap();
+        let hh = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         let tt = Tensor2::<9>::from_std_matrix(&[
             [1.0, 2.0, 3.0], // 0
             [4.0, 5.0, 6.0], // 1
@@ -266,7 +242,7 @@ mod tests {
         approx_eq(u.get(2), 373.5, 1e-15);
 
         // Symmetric
-        let hh = Tensor3::<6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1, false).unwrap();
+        let hh = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let tt = Tensor2::<6>::from_std_matrix(&[
             [1.0, 2.0, 3.0], // 0
             [2.0, 5.0, 6.0], // 1
@@ -280,7 +256,7 @@ mod tests {
         approx_eq(u.get(2), 225.0, 1e-15);
 
         // Symmetric2D
-        let hh = Tensor3::<4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1, false).unwrap();
+        let hh = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         let tt = Tensor2::<4>::from_std_matrix(&[
             [1.0, 2.0, 0.0], // 0
             [2.0, 5.0, 0.0], // 1

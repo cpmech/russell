@@ -262,19 +262,19 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the Kelvin-Mandel matrix; it must have dimensions equal to [Tensor4::dim]
-    ///   (9×9 for [9], 6×6 for [6], and 4×4 for [4])
+    /// * `inp` -- the Kelvin-Mandel matrix; it must have dimensions equal to `N`
+    ///   (9×9 for `N = 9`, 6×6 for `N = 6`, and 4×4 for `N = 4`)
     ///
     /// # Warning
     ///
-    /// For [6] and [4], the input matrix must be symmetric
+    /// For `N = 6` and `N = 4`, the input matrix must be symmetric
     /// (i.e., the tensor has minor symmetry). Otherwise, an error is returned.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// * the input matrix does not have dimensions equal to [Tensor4::dim]
-    /// * the input matrix is not symmetric (only for [6] and [4])
+    /// * the input matrix does not have dimensions equal to `N`
+    /// * the input matrix is not symmetric (only for `N = 6` and `N = 4`)
     ///
     /// # Examples
     ///
@@ -639,19 +639,19 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the Kelvin-Mandel matrix; it must have dimensions equal to N
-    ///   (9×9 for [9], 6×6 for [6], and 4×4 for [4])
+    /// * `inp` -- the Kelvin-Mandel matrix; it must have dimensions equal to `N`
+    ///   (9×9 for `N = 9`, 6×6 for `N = 6`, and 4×4 for `N = 4`)
     ///
     /// # Warning
     ///
-    /// For [6] and [4], the input matrix must be symmetric
+    /// For `N = 6` and `N = 4`, the input matrix must be symmetric
     /// (i.e., the tensor has minor symmetry). Otherwise, an error is returned.
     ///
     /// # Errors
     ///
     /// Returns an error if:
-    /// * the input matrix does not have dimensions equal to N
-    /// * the input matrix is not symmetric (only for [6] and [4])
+    /// * the input matrix does not have dimensions equal to `N`
+    /// * the input matrix is not symmetric (only for `N = 6` and `N = 4`)
     ///
     /// # Examples
     ///
@@ -1170,7 +1170,7 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Panics
     ///
-    /// 1. A panic will occur if the tensor is [9]
+    /// 1. A panic will occur if the tensor is general, i.e., `N = 9`
     /// 2. A panic will occur if the indices are out of range
     ///
     /// # Examples
@@ -1658,6 +1658,7 @@ impl<const N: usize> fmt::Display for Tensor4<N> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(test)]
 mod tests {
     use super::{MN_TO_IJKL, Tensor4};
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};

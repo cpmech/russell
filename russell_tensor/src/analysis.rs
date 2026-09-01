@@ -69,11 +69,11 @@ impl fmt::Display for VoigtReussHill {
 ///
 /// # Output
 ///
-/// * `ss` -- the compliance tensor `S` (the inverse of `cc`); must be [Rep::Symmetric]
+/// * `ss` -- the compliance tensor `S` (the inverse of `cc`); must be symmetric
 ///
 /// # Input
 ///
-/// * `cc` -- the elasticity (stiffness) tensor `C`; must be [Rep::Symmetric]
+/// * `cc` -- the elasticity (stiffness) tensor `C`; must be symmetric
 ///
 /// # Returns
 ///
@@ -97,7 +97,7 @@ impl fmt::Display for VoigtReussHill {
 ///
 /// # Errors
 ///
-/// Returns an error if `ss` or `cc` is not [Rep::Symmetric], or if `cc` cannot be inverted.
+/// Returns an error if `ss` or `cc` is not symmetric, or if `cc` cannot be inverted.
 ///
 /// # Reference
 ///
@@ -167,15 +167,15 @@ pub fn voigt_reuss_hill(ss: &mut Tensor4<6>, cc: &Tensor4<6>) -> Result<VoigtReu
 ///
 /// # Output
 ///
-/// * `hh` -- the internal stability tensor; must be [Rep::Symmetric]
+/// * `hh` -- the internal stability tensor; must be symmetric
 ///
 /// # Input
 ///
-/// * `sigma` -- the Cauchy stress tensor; must be [Rep::Symmetric]
+/// * `sigma` -- the Cauchy stress tensor; must be symmetric
 ///
 /// # Errors
 ///
-/// Returns an error if `hh` or `sigma` is not [Rep::Symmetric].
+/// Returns an error if `hh` or `sigma` is not symmetric.
 ///
 /// # References
 ///

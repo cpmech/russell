@@ -214,7 +214,7 @@ pub fn deriv1_invariant_p<const N: usize>(d1: &mut Tensor2<N>, _sigma: &Tensor2<
 /// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns `None`.
-/// * `d1` -- a tensor to hold the resulting derivative; with the same [Rep] as `sigma`
+/// * `d1` -- a tensor to hold the resulting derivative; with the same dimension as `sigma`
 ///
 /// # Input
 ///

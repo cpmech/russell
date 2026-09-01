@@ -1,8 +1,6 @@
-use crate::{IDENTITY2, P_SYMDEV, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3, deriv1_invariant_jj3_slice};
+use crate::{IDENTITY2, P_SYMDEV, SQRT_2, SQRT_3, TOL_J2, deriv1_invariant_jj3_slice};
 use crate::{Tensor2, Tensor4};
-use crate::{
-    deriv1_invariant_jj2, deriv1_invariant_jj3, qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice, t2_odyad_t2_update_slice,
-};
+use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice, t2_odyad_t2_update_slice};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -432,7 +430,7 @@ pub fn deriv2_invariant_lode<const N: usize>(
 mod tests {
     use super::*;
     use crate::{MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
-    use crate::{deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
+    use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
     // Returns the dim x dim Kelvin-Mandel sub matrix of a Tensor4 as a Matrix

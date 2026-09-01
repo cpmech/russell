@@ -1170,8 +1170,12 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
 
     /// Returns the permutation (Levi-Civita) tensor
     ///
-    /// This function is only available for DIM = 9
+    /// # Panics
+    ///
+    /// A panic will occur if `DIM != 9`, i.e., if the tensor is not general
+    /// (Case A with `M = 9` or Case B with `N = 9`).
     pub fn constant_permutation() -> Self {
+        assert!(M == 9 || N == 9, "the permutation (Levi-Civita) tensor requires DIM = 9");
         let pos_one = [(0, 1, 2), (1, 2, 0), (2, 0, 1)]; // even cyclic permutation
         let neg_one = [(0, 2, 1), (1, 0, 2), (2, 1, 0)]; // odd cyclic permutation
         let mut std_array = [[[0.0; 3]; 3]; 3];

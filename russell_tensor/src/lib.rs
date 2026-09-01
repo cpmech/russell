@@ -27,11 +27,12 @@
 //!
 //! In the Kelvin-Mandel basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
-//! The [Rep] enum specifies the available representations:
+//! The dimension — the const generic `N` of [Tensor2]/[Tensor4], and `M`/`N` of
+//! [Tensor3] — selects the representation:
 //!
-//! * [Rep::General] — 9×1 / 9×3 / 3×9 / 9×9 (all components)
-//! * [Rep::Symmetric] — 6×1 / 6×3 / 3×6 / 6×6 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 3D)
-//! * [Rep::Symmetric2D] — 4×1 / 4×3 / 3×4 / 4×4 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 2D)
+//! * `9` — all components (general): 9×1 / 9×3 / 3×9 / 9×9
+//! * `6` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (3D): 6×1 / 6×3 / 3×6 / 6×6
+//! * `4` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (2D): 4×1 / 4×3 / 3×4 / 4×4
 //!
 //! The dimensions above correspond to [Tensor2] (vector), [Tensor3] (Case A / Case B rectangular matrix), and [Tensor4] (square matrix), respectively.
 //!
@@ -127,7 +128,7 @@ mod tensor2;
 mod tensor3;
 mod tensor4;
 
-// #[cfg(test)]
+#[cfg(test)]
 mod test_common;
 
 pub mod z_reference_loop_fns;

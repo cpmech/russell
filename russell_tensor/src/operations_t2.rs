@@ -308,6 +308,9 @@ pub fn t1_dyad_t1<const N: usize>(a: &mut Tensor2<N>, alpha: f64, u: &Tensor1, v
         if (u.get(0) * v.get(1)) != (u.get(1) * v.get(0)) {
             return Err("dyadic product between u and v does not generate a symmetric tensor");
         }
+        if u.get(2) != 0.0 || v.get(2) != 0.0 {
+            return Err("dyadic product between u and v does not generate a 2D tensor");
+        }
         a.vec[0] = alpha * u.get(0) * v.get(0);
         a.vec[1] = alpha * u.get(1) * v.get(1);
         a.vec[2] = 0.0;
@@ -526,6 +529,14 @@ mod tests {
         assert_eq!(
             t1_dyad_t1(&mut tt, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
+        );
+        // symmetric in-plane but with out-of-plane components => not 2D
+        let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
+        let v = Tensor1::from(&[2.0, 3.0, 4.0]);
+        let mut tt = Tensor2::<4>::new();
+        assert_eq!(
+            t1_dyad_t1(&mut tt, 1.0, &u, &v).err(),
+            Some("dyadic product between u and v does not generate a 2D tensor")
         );
     }
 

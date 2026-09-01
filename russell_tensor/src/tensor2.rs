@@ -1197,7 +1197,7 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Panics
     ///
-    /// A panic will occur if `at` has a different [Rep].
+    /// A panic will occur if `at` has a different dimension.
     ///
     /// # Examples
     ///
@@ -1675,6 +1675,9 @@ impl<const N: usize> Tensor2<N> {
             skw.set(6, self.vec[6]);
             skw.set(7, self.vec[7]);
             skw.set(8, self.vec[8]);
+            sym.set(6, 0.0);
+            sym.set(7, 0.0);
+            sym.set(8, 0.0);
         } else {
             // There is only symmetric part
             for m in 0..N {
@@ -3660,6 +3663,26 @@ mod tests {
             assert_eq!(sym.get(m), ten.get(m));
             assert_eq!(skw.get(m), 0.0);
         }
+    }
+
+    #[test]
+    fn decompose_zeroes_skew_slots_of_symmetric_part() {
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let ten = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
+        let mut sym = Tensor2::<9>::new();
+        let mut skw = Tensor2::<9>::new();
+        // pre-fill the skew slots with garbage to ensure they are overwritten
+        sym.set(6, 42.0);
+        sym.set(7, 42.0);
+        sym.set(8, 42.0);
+        ten.decompose(&mut sym, &mut skw);
+        assert_eq!(sym.get(6), 0.0);
+        assert_eq!(sym.get(7), 0.0);
+        assert_eq!(sym.get(8), 0.0);
     }
 
     #[test]

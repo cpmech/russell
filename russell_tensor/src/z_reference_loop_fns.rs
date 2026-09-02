@@ -183,7 +183,7 @@ mod tests {
     use super::{
         deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
     };
-    use crate::{Tensor2, Tensor4, WorkspaceDeriv2Lode};
+    use crate::{SET, Tensor2, Tensor4, WorkspaceDeriv2Lode};
     use crate::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
     use russell_lab::mat_approx_eq;
 
@@ -204,7 +204,7 @@ mod tests {
         let a = Tensor2::<9>::from_std_matrix(&GENERAL_A).unwrap();
         let mut dd = Tensor4::<6>::new();
         let mut dd_ref = Tensor4::<6>::new();
-        ssd_fn(&mut dd, 2.0, &a);
+        ssd_fn(&mut dd, SET, 2.0, &a);
         ssd_fn_loops(&mut dd_ref, 2.0, &a);
         assert_same_t4(&dd, &dd_ref, 1e-12);
 
@@ -212,7 +212,7 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC_A).unwrap();
         let mut dd = Tensor4::<6>::new();
         let mut dd_ref = Tensor4::<6>::new();
-        ssd_fn(&mut dd, 2.0, &a);
+        ssd_fn(&mut dd, SET, 2.0, &a);
         ssd_fn_loops(&mut dd_ref, 2.0, &a);
         assert_same_t4(&dd, &dd_ref, 1e-12);
 
@@ -220,7 +220,7 @@ mod tests {
         let a = Tensor2::<4>::from_std_matrix(&SYM2D_A).unwrap();
         let mut dd = Tensor4::<6>::new();
         let mut dd_ref = Tensor4::<6>::new();
-        ssd_fn(&mut dd, 2.0, &a);
+        ssd_fn(&mut dd, SET, 2.0, &a);
         ssd_fn_loops(&mut dd_ref, 2.0, &a);
         assert_same_t4(&dd, &dd_ref, 1e-12);
     }
@@ -232,7 +232,7 @@ mod tests {
         let b = Tensor2::<9>::from_std_matrix(&GENERAL_B).unwrap();
         let mut dd = Tensor4::<6>::new();
         let mut dd_ref = Tensor4::<6>::new();
-        qsd_fn(&mut dd, 2.0, &a, &b);
+        qsd_fn(&mut dd, SET, 2.0, &a, &b);
         qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
         assert_same_t4(&dd, &dd_ref, 1e-12);
 
@@ -241,7 +241,7 @@ mod tests {
         let b = Tensor2::<6>::from_std_matrix(&SYMMETRIC_B).unwrap();
         let mut dd = Tensor4::<6>::new();
         let mut dd_ref = Tensor4::<6>::new();
-        qsd_fn(&mut dd, 2.0, &a, &b);
+        qsd_fn(&mut dd, SET, 2.0, &a, &b);
         qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
         assert_same_t4(&dd, &dd_ref, 1e-12);
 
@@ -250,7 +250,7 @@ mod tests {
         let b = Tensor2::<4>::from_std_matrix(&SYM2D_B).unwrap();
         let mut dd = Tensor4::<6>::new();
         let mut dd_ref = Tensor4::<6>::new();
-        qsd_fn(&mut dd, 2.0, &a, &b);
+        qsd_fn(&mut dd, SET, 2.0, &a, &b);
         qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
         assert_same_t4(&dd, &dd_ref, 1e-12);
     }

@@ -1,6 +1,6 @@
-use crate::{IDENTITY2, P_SYMDEV, SQRT_2, SQRT_3, TOL_J2, deriv1_invariant_jj3_slice};
+use crate::{ADD, IDENTITY2, P_SYMDEV, SET, SQRT_2, SQRT_3, TOL_J2, deriv1_invariant_jj3_slice};
 use crate::{Tensor2, Tensor4};
-use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice, t2_odyad_t2_update_slice};
+use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -29,7 +29,7 @@ use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice, t2_odyad_t2_update_sl
 pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor2<N>) {
     let mut at = [0.0; 9];
     ai.transpose_slice(&mut at);
-    t2_odyad_t2_slice::<N>(dai_da, -1.0, ai.as_data(), &at);
+    t2_odyad_t2_slice::<N>(dai_da, SET, -1.0, ai.as_data(), &at);
 }
 
 /// Calculates the derivative of the inverse tensor w.r.t. a symmetric Tensor2
@@ -63,7 +63,7 @@ pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor
 /// A panic will occur if `ai` is not symmetric, i.e., N = 9.
 pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<6>, ai: &Tensor2<N>) {
     assert!(N != 9, "the inverse tensor must be symmetric with N = 4 or N = 6");
-    ssd_fn_slice::<N>(dai_da, -0.5, ai.as_data());
+    ssd_fn_slice::<N>(dai_da, SET, -0.5, ai.as_data());
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a Tensor2
@@ -97,8 +97,8 @@ pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2
     a.transpose_slice(&mut at);
 
     // da2_da := A ⊗̄ I + I ⊗̄ Aᵀ
-    t2_odyad_t2_slice::<N>(da2_da, 1.0, a_data, &IDENTITY2);
-    t2_odyad_t2_update_slice::<N>(da2_da, 1.0, &IDENTITY2, &at);
+    t2_odyad_t2_slice::<N>(da2_da, SET, 1.0, a_data, &IDENTITY2);
+    t2_odyad_t2_slice::<N>(da2_da, ADD, 1.0, &IDENTITY2, &at);
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a symmetric Tensor2
@@ -132,7 +132,7 @@ pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
 pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<6>, a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
-    qsd_fn_slice::<N>(da2_da, 0.5, a.as_data(), &IDENTITY2);
+    qsd_fn_slice::<N>(da2_da, SET, 0.5, a.as_data(), &IDENTITY2);
 }
 
 /// Calculates the second derivative of the J2 invariant w.r.t. the stress tensor

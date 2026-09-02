@@ -18,7 +18,7 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use russell_tensor::z_reference_loop_fns::{
     deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
 };
-use russell_tensor::{Tensor2, Tensor4, WorkspaceDeriv2Lode};
+use russell_tensor::{SET, Tensor2, Tensor4, WorkspaceDeriv2Lode};
 use russell_tensor::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
 
 /// Fixed symmetric 3×3 matrix used to build the input tensors
@@ -43,7 +43,7 @@ fn bench_ssd_fn(crit: &mut Criterion) {
         let aa = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
-            ssd_fn(&mut dd, 1.0, &aa);
+            ssd_fn(&mut dd, SET, 1.0, &aa);
             std::hint::black_box(&dd);
         });
     });
@@ -69,7 +69,7 @@ fn bench_qsd_fn(crit: &mut Criterion) {
         let bb = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
-            qsd_fn(&mut dd, 1.0, &aa, &bb);
+            qsd_fn(&mut dd, SET, 1.0, &aa, &bb);
             std::hint::black_box(&dd);
         });
     });

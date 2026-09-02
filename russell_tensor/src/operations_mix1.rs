@@ -6,7 +6,7 @@ use super::{Tensor2, Tensor4};
 /// D = α a ⊗ b
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ = α aᵢⱼ bₖₗ
@@ -82,7 +82,7 @@ pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N
 /// D += α a ⊗ b
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ += α aᵢⱼ bₖₗ
@@ -160,7 +160,7 @@ pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Te
 /// b = α D : a
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// bᵢⱼ = α Σ Σ Dᵢⱼₖₗ aₖₗ
@@ -240,7 +240,7 @@ pub fn t4_ddot_t2<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N
 /// b = α D : a + β b
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// bᵢⱼ = α Σ Σ Dᵢⱼₖₗ aₖₗ + β bᵢⱼ
@@ -325,7 +325,7 @@ pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Te
 /// b = α a : D
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// bₖₗ = α Σ Σ aᵢⱼ Dᵢⱼₖₗ
@@ -398,7 +398,7 @@ pub fn t2_ddot_t4<const N: usize>(b: &mut Tensor2<N>, alpha: f64, a: &Tensor2<N>
 /// s = a : D : b
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// s = Σ Σ Σ Σ aᵢⱼ Dᵢⱼₖₗ bₖₗ
@@ -441,7 +441,7 @@ pub fn t2_ddot_t4_ddot_t2<const N: usize>(a: &Tensor2<N>, dd: &Tensor4<N>, b: &T
 /// E = α D + β (D : a) ⊗ (b : D)
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Eᵢⱼₖₗ = α Dᵢⱼₖₗ + β Σ Σ Σ Σ (Dᵢⱼₛₜ aₛₜ) (bₒₚ Dₒₚₖₗ)

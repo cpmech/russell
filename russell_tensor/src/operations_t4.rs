@@ -30,7 +30,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 /// E = α C : D
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Eᵢⱼₖₗ = α Σ Σ Cᵢⱼₛₜ : Dₛₜₖₗ
@@ -120,7 +120,7 @@ pub fn t4_ddot_t4<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, cc: &Tensor4<
 /// E = α C : D + β E
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Eᵢⱼₖₗ = α (Σ Σ Cᵢⱼₛₜ : Dₛₜₖₗ) + β Eᵢⱼₖₗ

@@ -10,7 +10,7 @@ use crate::SQRT_2;
 /// D = s A ⊗ B
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ = s Aᵢₖ Bⱼₗ
@@ -554,7 +554,7 @@ pub(crate) fn t2_odyad_t2_update_slice<const N: usize>(dd: &mut Tensor4<9>, s: f
 ///         ‾
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ = s Aᵢₗ Bⱼₖ
@@ -865,7 +865,7 @@ pub(crate) fn t2_udyad_t2_slice<const N:usize>(dd: &mut Tensor4<9>, s: f64, a: &
 ///                  ‾
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)
@@ -1030,7 +1030,7 @@ pub(crate) fn ssd_fn_slice<const N: usize>(dd: &mut Tensor4<6>, s: f64, a: &[f64
 ///                  ‾               ‾
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)

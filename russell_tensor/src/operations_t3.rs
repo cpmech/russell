@@ -19,9 +19,9 @@ pub fn t3_add<const M: usize, const N: usize>(
     }
 }
 
-/// Performs the single-dot operation between a Tensor3 and a vector resulting in a Tensor2 (Case A)
+/// Performs the single-dot operation between a Tensor3 and a Tensor1 resulting in a Tensor2 (Case A)
 ///
-/// Note: Case A is (M, 3) with M = 4,6,9
+/// Note: Case A (ij-pairwise) is (M, 3) with M = 4,6,9
 ///
 /// Computes:
 ///
@@ -29,7 +29,7 @@ pub fn t3_add<const M: usize, const N: usize>(
 /// T = α H · u
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Tᵢⱼ = α Σ Hᵢⱼₖ uₖ
@@ -58,9 +58,53 @@ pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, alpha: f64
     }
 }
 
+/// Performs the double-dot operation between a Tensor2 and a Tensor3 resulting in a Tensor1 (Case A)
+///
+/// Note: Case A (ij-pairwise) is (M, 3) with M = 4,6,9
+///
+/// Computes:
+///
+/// ```text
+/// u = α T : H
+/// ```
+///
+/// With Cartesian components:
+///
+/// ```text
+/// uₖ = α Σ Σ Tᵢⱼ Hᵢⱼₖ
+///        i j
+/// ```
+///
+/// Or, in Kelvin-Mandel basis:
+///
+/// ```text
+/// uₖ = α Σ Tₘ Hₘₖ
+///        m
+/// ```
+///
+/// # Output
+///
+/// * `u` -- the 3D vector (first-order tensor)
+///
+/// # Input
+///
+/// * `alpha` -- the `α` multiplier
+/// * `T` -- the second-order tensor
+/// * `hh` -- the third-order tensor
+pub fn t2_ddot_t3<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, tt: &Tensor2<M>, hh: &Tensor3<M, N>) {
+    u.set(0, 0.0);
+    u.set(1, 0.0);
+    u.set(2, 0.0);
+    for m in 0..M {
+        u.set(0, u.get(0) + alpha * tt.get(m) * hh.get(m, 0));
+        u.set(1, u.get(1) + alpha * tt.get(m) * hh.get(m, 1));
+        u.set(2, u.get(2) + alpha * tt.get(m) * hh.get(m, 2));
+    }
+}
+
 /// Performs the double-dot operation between a Tensor3 and a Tensor2 resulting in a vector (Case B)
 ///
-/// Note: Case B is (3, N) with N = 4,6,9
+/// Note: Case B (jk-pairwise) is (3, N) with N = 4,6,9
 ///
 /// Computes:
 ///
@@ -68,7 +112,7 @@ pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, alpha: f64
 /// u = α H : T
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// uᵢ = α Σ Σ Hᵢⱼₖ Tⱼₖ
@@ -99,6 +143,45 @@ pub fn t3_ddot_t2<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, h
         u.set(0, u.get(0) + alpha * hh.get(0, n) * tt.vec[n]);
         u.set(1, u.get(1) + alpha * hh.get(1, n) * tt.vec[n]);
         u.set(2, u.get(2) + alpha * hh.get(2, n) * tt.vec[n]);
+    }
+}
+
+/// Performs the single-dot operation between a Tensor3 and a vector resulting in a Tensor2 (Case B)
+///
+/// Note: Case B (jk-pairwise) is (3, N) with N = 4,6,9
+///
+/// Computes:
+///
+/// ```text
+/// T = α u · H
+/// ```
+///
+/// With Cartesian components:
+///
+/// ```text
+/// Tⱼₖ = α Σ uᵢ Hᵢⱼₖ
+///         i
+/// ```
+///
+/// Or, in Kelvin-Mandel basis:
+///
+/// ```text
+/// Tₙ = α Σ uᵢ Hᵢₙ
+///        k
+/// ```
+///
+/// # Output
+///
+/// * `T` -- the resulting second-order tensor
+///
+/// # Input
+///
+/// * `alpha` -- the `α` multiplier
+/// * `u` -- the 3D vector (first-order tensor)
+/// * `hh` -- the third-order tensor
+pub fn t1_dot_t3<const M: usize, const N: usize>(tt: &mut Tensor2<N>, alpha: f64, u: &Tensor1, hh: &Tensor3<M, N>) {
+    for n in 0..N {
+        tt.vec[n] = alpha * (u.get(0) * hh.get(0, n) + u.get(1) * hh.get(1, n) + u.get(2) * hh.get(2, n));
     }
 }
 

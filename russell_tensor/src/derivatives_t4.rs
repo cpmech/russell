@@ -11,7 +11,7 @@ use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice, t2_odyad_t2_update_sl
 /// ```
 ///
 /// ```text
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ∂A⁻¹ᵢⱼ
 /// ────── = - A⁻¹ᵢₖ A⁻ᵀⱼₗ
@@ -43,7 +43,7 @@ pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor
 /// ```
 ///
 /// ```text
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ∂A⁻¹ᵢⱼ     1
 /// ────── = - ─ (A⁻¹ᵢₖ A⁻¹ⱼₗ + A⁻¹ᵢₗ A⁻¹ⱼₖ)
@@ -75,7 +75,7 @@ pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<6>, ai: &Te
 /// ```
 ///
 /// ```text
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ∂A²ᵢⱼ
 /// ───── = Aᵢₖ δⱼₗ + δᵢₖ Aₗⱼ
@@ -112,7 +112,7 @@ pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2
 /// ```
 ///
 /// ```text
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ∂A²ᵢⱼ   1
 /// ───── = ─ (Aᵢₖ δⱼₗ + Aᵢₗ δⱼₖ + δᵢₖ Aⱼₗ + δᵢₗ Aⱼₖ)
@@ -430,7 +430,9 @@ pub fn deriv2_invariant_lode<const N: usize>(
 mod tests {
     use super::*;
     use crate::{MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
-    use crate::{deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t};
+    use crate::{
+        deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t,
+    };
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
     // Returns the dim x dim Kelvin-Mandel sub matrix of a Tensor4 as a Matrix

@@ -12,40 +12,37 @@ use std::fmt::{self, Write};
 ///
 /// The matrix representation of Tensor3 results in a rectangular matrix.
 /// Therefore, two matrices with max dimensions DIM×3 or 3×DIM are considered here,
-/// where DIM (the leading dimension) is one of 4, 6, or 9. The cases are:
+/// where DIM (the leading dimension) is one of 4, 6, or 9. For a third-order tensor
+/// with indices ijk, the cases are:
 ///
-/// Case A (DIM×3): Tensor3 applied to a Tensor1 (vector) yielding a Tensor2
-/// Case B (3×DIM): Tensor3 applied to a Tensor2 yielding a Tensor1 (vector)
+/// Case A: ij-pairwise => (ij)k => (m)k => (DIM×3)
+/// Case B: jk-pairwise => i(jk) => i(n) => (3×DIM)
 ///
-/// Symbolically:
+/// Given u, T, and H as first-, second-, and third-order tensors, the
+/// main operations involving a third-order tensor are:
 ///
 /// ```text
-/// Case A (DIM×3) =>  T = H . u   (Tᵢⱼ = Σ_k Hᵢⱼₖ uₖ)
-/// Case B (3×DIM) =>  v = M : S   (vᵢ = Σ_j Σ_k Mᵢⱼₖ Sⱼₖ)
+/// Case A (ij)k =>  T = H · u   or   u = T : H
+/// Case B i(jk) =>  u = H : T   or   T = u · H
 /// ```
 ///
-/// where `T` and `S` are second-order tensors, `H` and `M` are third-order tensors
-/// and `u` and `v` are first-order tensors (vectors).
+/// In index notation (with i,j,k = 1...3):
+///
+/// ```text
+/// Case A (ij)k =>  Tᵢⱼ = Σ H₍ᵢⱼ₎ₖ uₖ      or  uₖ = Σ Σ Tᵢⱼ H₍ᵢⱼ₎ₖ
+///                       k                        i j
+/// Case B i(jk) =>  uᵢ = Σ Σ Hᵢ₍ⱼₖ₎ Tⱼₖ  or  Tⱼₖ = Σ uᵢ Hᵢ₍ⱼₖ₎
+///                      j k                      i
+/// ```
 ///
 /// The matrix representations associated with the two cases are
-/// (symmetry here means minor-symmetry):
+/// (with m,n = 1...DIM and DIM = {4,6,9}):
 ///
 /// ```text
-/// DIM = 9:
-///   Case A =>  [T]_(9×1) = [H]_(9×3) * [u]_(3×1)
-///   Case B =>  [v]_(3×1) = [M]_(3×9) * [S]_(9×1)
-/// ```
-///
-/// ```text
-/// DIM = 6:
-///   Case A =>  [T]_(6×1) = [H]_(6×3) * [u]_(3×1)
-///   Case B =>  [v]_(3×1) = [M]_(3×6) * [S]_(6×1)
-/// ```
-///
-/// ```text
-/// DIM = 4:
-///   Case A =>  [T]_(4×1) = [H]_(4×3) * [u]_(3×1)
-///   Case B =>  [v]_(3×1) = [M]_(3×4) * [S]_(4×1)
+/// Case A (m)k =>  Tₘ = Σ H₍ₘ₎ₖ uₖ  or  uₖ = Σ Tₘ H₍ₘ₎ₖ
+///                      k                    m
+/// Case B i(n) =>  uᵢ = Σ Hᵢ₍ₙ₎ Tₙ   or  Tₙ = Σ uᵢ Hᵢ₍ₙ₎
+///                     n                    i
 /// ```
 ///
 /// Note that the first-order tensors (vectors) are always given by the standard
@@ -1209,7 +1206,10 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// A panic will occur if `DIM != 9`, i.e., if the tensor is not general
     /// (Case A with `M = 9` or Case B with `N = 9`).
     pub fn constant_permutation() -> Self {
-        assert!(M == 9 || N == 9, "the permutation (Levi-Civita) tensor requires DIM = 9");
+        assert!(
+            M == 9 || N == 9,
+            "the permutation (Levi-Civita) tensor requires DIM = 9"
+        );
         let pos_one = [(0, 1, 2), (1, 2, 0), (2, 0, 1)]; // even cyclic permutation
         let neg_one = [(0, 2, 1), (1, 0, 2), (2, 1, 0)]; // odd cyclic permutation
         let mut std_array = [[[0.0; 3]; 3]; 3];
@@ -1291,16 +1291,32 @@ mod tests {
         let dd = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_A_SAMPLE1), 1e-13);
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
-        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1), 1e-13);
+        approx_eq(
+            dd.norm(),
+            norm_from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1),
+            1e-13,
+        );
         let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
-        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1), 1e-13);
+        approx_eq(
+            dd.norm(),
+            norm_from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1),
+            1e-13,
+        );
         // Case B
         let dd = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_B_SAMPLE1), 1e-13);
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
-        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1), 1e-13);
+        approx_eq(
+            dd.norm(),
+            norm_from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1),
+            1e-13,
+        );
         let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
-        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1), 1e-13);
+        approx_eq(
+            dd.norm(),
+            norm_from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1),
+            1e-13,
+        );
     }
 
     #[test]

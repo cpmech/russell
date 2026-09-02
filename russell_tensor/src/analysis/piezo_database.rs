@@ -49,15 +49,15 @@ impl PiezoDatabase {
         ))
     }
 
-    /// Returns eps, e, d, C, and S tensors
+    /// Returns per, e, d, C, and S tensors
     ///
-    /// Returns `(eps, e, d, C, S)` where:
+    /// Returns `(per, e, d, cc, ss)` where:
     ///
-    /// * `eps` -- Dielectric permittivity tensor (symmetric; `Tensor2<6>`)
+    /// * `per` -- Dielectric permittivity tensor (symmetric; `Tensor2<6>`)
     /// * `e` -- Piezoelectric stress tensor (Case B; `Tensor3<3, 6>`)
     /// * `d` -- Piezoelectric strain tensor (Case B; `Tensor3<3, 6>`)
-    /// * `C` -- elastic stiffness tensor (minor-symmetric; `Tensor4<6>`)
-    /// * `S` -- elastic compliance tensor (minor-symmetric; `Tensor4<6>`)
+    /// * `cc` -- elastic stiffness tensor (minor-symmetric; `Tensor4<6>`)
+    /// * `ss` -- elastic compliance tensor (minor-symmetric; `Tensor4<6>`)
     pub fn get_tensors(
         &self,
         material_id: &str,
@@ -66,12 +66,12 @@ impl PiezoDatabase {
             .materials
             .get(material_id)
             .ok_or("material not found in the database")?;
-        let eps = Tensor2::<6>::from_std_matrix(&symmetrize3(&mat.epsilon_tensor))?;
+        let per = Tensor2::<6>::from_std_matrix(&symmetrize3(&mat.epsilon_tensor))?;
         let e = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&mat.e_tensor))?;
         let d = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&mat.d_tensor))?;
         let cc = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&mat.cc_tensor))?;
         let ss = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&mat.ss_tensor))?;
-        Ok((eps, e, d, cc, ss))
+        Ok((per, e, d, cc, ss))
     }
 }
 

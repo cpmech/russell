@@ -45,7 +45,7 @@ pub fn t2_add<const N: usize>(c: &mut Tensor2<N>, alpha: f64, a: &Tensor2<N>, be
 /// s = a : b
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// s = Σ Σ aᵢⱼ bᵢⱼ
@@ -126,7 +126,7 @@ pub fn t2_ddot_t2<const N: usize>(a: &Tensor2<N>, b: &Tensor2<N>) -> f64 {
 /// v = α a · u
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// vᵢ = α Σ aᵢⱼ uⱼ
@@ -193,7 +193,7 @@ pub fn t2_dot_t1<const N: usize>(v: &mut Tensor1, alpha: f64, a: &Tensor2<N>, u:
 /// v = α u · a
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// vⱼ = α Σ uᵢ aᵢⱼ
@@ -260,7 +260,7 @@ pub fn t1_dot_t2<const N: usize>(v: &mut Tensor1, alpha: f64, u: &Tensor1, a: &T
 /// A = α u ⊗ v
 /// ```
 ///
-/// With orthonormal Cartesian components:
+/// With Cartesian components:
 ///
 /// ```text
 /// Aᵢⱼ = α uᵢ vⱼ

@@ -780,6 +780,40 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
         }
     }
 
+    /// Calculates the Euclidean norm
+    ///
+    /// ```text
+    /// norm(H) = √(H:H)
+    /// ```
+    ///
+    /// The norm is computed with the Kelvin-Mandel components, which yields the
+    /// same value as the Frobenius norm of the standard components because the
+    /// Kelvin-Mandel mapping is norm-preserving.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::{Tensor3, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // the permutation (Levi-Civita) tensor has norm = √6
+    ///     let dd = Tensor3::<9, 3>::constant_permutation();
+    ///     approx_eq(dd.norm(), f64::sqrt(6.0), 1e-13);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn norm(&self) -> f64 {
+        let mut sm = 0.0;
+        for m in 0..M {
+            for n in 0..N {
+                let v = self.get(m, n);
+                sm += v * v;
+            }
+        }
+        f64::sqrt(sm)
+    }
+
     /// Adds another tensor to this one
     ///
     /// ```text
@@ -1237,6 +1271,37 @@ mod tests {
     use super::{MN_TO_IJK_CASE_A, Tensor3};
     use crate::{SQRT_2, SamplesTensor3};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
+
+    // Computes the reference norm from the standard components
+    fn norm_from_std_array(arr: &[[[f64; 3]; 3]; 3]) -> f64 {
+        let mut sm = 0.0;
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    sm += arr[i][j][k] * arr[i][j][k];
+                }
+            }
+        }
+        f64::sqrt(sm)
+    }
+
+    #[test]
+    fn norm_works() {
+        // Case A
+        let dd = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_A_SAMPLE1), 1e-13);
+        let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1), 1e-13);
+        let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1), 1e-13);
+        // Case B
+        let dd = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_B_SAMPLE1), 1e-13);
+        let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1), 1e-13);
+        let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1), 1e-13);
+    }
 
     #[test]
     fn new_set_and_get_work() {

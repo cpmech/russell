@@ -805,6 +805,40 @@ impl<const N: usize> Tensor4<N> {
         }
     }
 
+    /// Calculates the Euclidean norm
+    ///
+    /// ```text
+    /// norm(D) = √(D:D)
+    /// ```
+    ///
+    /// The norm is computed with the Kelvin-Mandel components, which yields the
+    /// same value as the Frobenius norm of the standard components because the
+    /// Kelvin-Mandel mapping is norm-preserving.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::{Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     // the identity tensor II has norm = 3
+    ///     let dd = Tensor4::<9>::constant_ii();
+    ///     approx_eq(dd.norm(), 3.0, 1e-13);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn norm(&self) -> f64 {
+        let mut sm = 0.0;
+        for m in 0..N {
+            for n in 0..N {
+                let v = self.get(m, n);
+                sm += v * v;
+            }
+        }
+        f64::sqrt(sm)
+    }
+
     /// Adds another tensor to this one
     ///
     /// ```text
@@ -1664,6 +1698,31 @@ mod tests {
     use crate::{IDENTITY4, P_DEV, P_ISO, P_SKEW, P_SYM, P_SYMDEV, TRACE_PROJECTION, TRANSPOSITION};
     use crate::{SQRT_2, SamplesTensor4};
     use russell_lab::{Matrix, Vector, approx_eq, mat_approx_eq, vec_approx_eq};
+
+    // Computes the reference norm from the standard components
+    fn norm_from_std_array(arr: &[[[[f64; 3]; 3]; 3]; 3]) -> f64 {
+        let mut sm = 0.0;
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        sm += arr[i][j][k][l] * arr[i][j][k][l];
+                    }
+                }
+            }
+        }
+        f64::sqrt(sm)
+    }
+
+    #[test]
+    fn norm_works() {
+        let dd = Tensor4::<9>::from_std_array(&SamplesTensor4::SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor4::SAMPLE1), 1e-13);
+        let dd = Tensor4::<6>::from_std_array(&SamplesTensor4::SYM_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor4::SYM_SAMPLE1), 1e-13);
+        let dd = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1).unwrap();
+        approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1), 1e-13);
+    }
 
     #[test]
     fn eigenvalues_sym_works() {

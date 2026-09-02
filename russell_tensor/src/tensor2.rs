@@ -298,7 +298,7 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard Tij components given with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components given with respect to a Cartesian system
     ///
     /// # Notes
     ///
@@ -407,7 +407,7 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Input
     ///
-    /// * `tt` -- the standard Tij components with respect to an orthonormal Cartesian basis
+    /// * `tt` -- the standard Tij components with respect to a Cartesian system
     ///
     /// # Notes
     ///

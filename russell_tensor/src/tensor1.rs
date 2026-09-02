@@ -4,7 +4,7 @@ use std::fmt::{self, Write};
 
 /// Defines a first-order tensor (vector) in R³
 ///
-/// The "standard" components are recorded here where "standard" means with respect to an orthonormal Cartesian system.
+/// The "standard" components are recorded here where "standard" means with respect to a Cartesian system.
 pub struct Tensor1 {
     /// Holds the 3 standard components (heap)
     ///

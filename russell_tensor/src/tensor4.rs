@@ -361,7 +361,7 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijkl components with respect to an orthonormal Cartesian basis
+    /// * `inp` -- the standard Dijkl components with respect to a Cartesian system
     pub fn set_std_array(&mut self, inp: &[[[[f64; 3]; 3]; 3]; 3]) -> Result<(), StrError> {
         if N == 4 || N == 6 {
             let max = if N == 4 { 3 } else { 6 };
@@ -463,7 +463,7 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijkl components with respect to an orthonormal Cartesian basis
+    /// * `inp` -- the standard Dijkl components with respect to a Cartesian system
     ///
     /// # Examples
     ///
@@ -509,7 +509,7 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
+    /// * `inp` -- the standard matrix of components with respect to a Cartesian system.
     ///   The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics
@@ -622,7 +622,7 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components with respect to an orthonormal Cartesian basis.
+    /// * `inp` -- the standard matrix of components with respect to a Cartesian system.
     ///   The matrix must be 9x9, even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics

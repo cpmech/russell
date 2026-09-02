@@ -379,7 +379,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijk components with respect to an orthonormal Cartesian basis
+    /// * `inp` -- the standard Dijk components with respect to a Cartesian system
     pub fn set_std_array(&mut self, inp: &[[[f64; 3]; 3]; 3]) -> Result<(), StrError> {
         if M > N {
             // Case A: (M, 3) with M = 4,6,9
@@ -487,7 +487,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard Dijk components with respect to an orthonormal Cartesian basis
+    /// * `inp` -- the standard Dijk components with respect to a Cartesian system
     ///
     /// # Examples
     ///

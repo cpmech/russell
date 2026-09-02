@@ -1,4 +1,5 @@
 use super::Tensor4;
+use crate::ADD;
 
 #[cfg(feature = "heap")]
 use russell_lab::{mat_add, mat_mat_mul};
@@ -27,10 +28,10 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 /// Computes:
 ///
 /// ```text
-/// E = α C : D
+/// ADD: E += α C : D  or  SET: E = α C : D
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// Eᵢⱼₖₗ = α Σ Σ Cᵢⱼₛₜ : Dₛₜₖₗ
@@ -50,6 +51,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the scalar multiplier
 /// * `cc` -- the input fourth-order tensor
 /// * `dd` -- the fourth-order tensor
@@ -58,7 +60,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 ///
 /// ```
 /// use russell_lab::approx_eq;
-/// use russell_tensor::{t4_ddot_t4, StrError, Tensor4};
+/// use russell_tensor::{t4_ddot_t4, SET, StrError, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let cc = Tensor4::<9>::from_std_matrix(&[
@@ -86,7 +88,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 ///     ])?;
 ///
 ///     let mut ee = Tensor4::<9>::new();
-///     t4_ddot_t4(&mut ee, 1.0, &cc, &dd);
+///     t4_ddot_t4(&mut ee, SET, 1.0, &cc, &dd);
 ///
 ///     let out = ee.as_std_matrix();
 ///     for i in 0..9 {
@@ -101,50 +103,8 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 ///     Ok(())
 /// }
 /// ```
-pub fn t4_ddot_t4<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, cc: &Tensor4<N>, dd: &Tensor4<N>) {
-    #[cfg(feature = "heap")]
-    {
-        mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0).unwrap();
-    }
-    #[cfg(not(feature = "heap"))]
-    {
-        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, 0.0, N);
-    }
-}
-
-/// Performs the double-dot (ddot) operation between two Tensor4 with update
-///
-/// Computes:
-///
-/// ```text
-/// E = α C : D + β E
-/// ```
-///
-/// With Cartesian components:
-///
-/// ```text
-/// Eᵢⱼₖₗ = α (Σ Σ Cᵢⱼₛₜ : Dₛₜₖₗ) + β Eᵢⱼₖₗ
-///            s t
-/// ```
-///
-/// Or, in Kelvin-Mandel basis:
-///
-/// ```text
-/// Eₘₙ = α (Σ Cₘₐ  Dₐₙ) + β Eₘₙ
-///          a
-/// ```
-///
-/// # Output
-///
-/// * `ee` -- the resulting fourth-order tensor
-///
-/// # Input
-///
-/// * `alpha` -- the scalar multiplier
-/// * `cc` -- the input fourth-order tensor
-/// * `dd` -- the fourth-order tensor
-/// * `beta` -- the other scalar multiplier
-pub fn t4_ddot_t4_update<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, cc: &Tensor4<N>, dd: &Tensor4<N>, beta: f64) {
+pub fn t4_ddot_t4<const N: usize>(ee: &mut Tensor4<N>, op: u8, alpha: f64, cc: &Tensor4<N>, dd: &Tensor4<N>) {
+    let beta = if op == ADD { 1.0 } else { 0.0 };
     #[cfg(feature = "heap")]
     {
         mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta).unwrap();
@@ -160,7 +120,7 @@ pub fn t4_ddot_t4_update<const N: usize>(ee: &mut Tensor4<N>, alpha: f64, cc: &T
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::SamplesTensor4;
+    use crate::{ADD, SET, SamplesTensor4};
     use russell_lab::{Matrix, mat_approx_eq};
 
     #[test]
@@ -187,10 +147,10 @@ mod tests {
     }
 
     #[test]
-    fn t4_ddot_t4_works() {
+    fn t4_ddot_t4_set_works() {
         let cc = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         let mut ee = Tensor4::<4>::new();
-        t4_ddot_t4(&mut ee, 2.0, &cc, &cc);
+        t4_ddot_t4(&mut ee, SET, 2.0, &cc, &cc);
         let out = ee.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -209,21 +169,21 @@ mod tests {
     }
 
     #[test]
-    fn t4_ddot_t4_update_works() {
+    fn t4_ddot_t4_add_works() {
         let cc = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         let mut mat = Matrix::new(9, 9);
         mat.set(0, 0, 0.1);
         mat.set(1, 1, 0.1);
         mat.set(2, 2, 0.1);
         let mut ee = Tensor4::<4>::from_std_matrix(&mat).unwrap();
-        t4_ddot_t4_update(&mut ee, 2.0, &cc, &cc, 2.0);
+        t4_ddot_t4(&mut ee, ADD, 2.0, &cc, &cc);
         let out = ee.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                ┐\n\
-             │  820.2  872.0  924.0 1288.0    0.0    0.0 1288.0    0.0    0.0 │\n\
-             │ 1120.0 1202.2 1284.0 1858.0    0.0    0.0 1858.0    0.0    0.0 │\n\
-             │ 1420.0 1532.0 1644.2 2428.0    0.0    0.0 2428.0    0.0    0.0 │\n\
+             │  820.1  872.0  924.0 1288.0    0.0    0.0 1288.0    0.0    0.0 │\n\
+             │ 1120.0 1202.1 1284.0 1858.0    0.0    0.0 1858.0    0.0    0.0 │\n\
+             │ 1420.0 1532.0 1644.1 2428.0    0.0    0.0 2428.0    0.0    0.0 │\n\
              │ 2620.0 2852.0 3084.0 4708.0    0.0    0.0 4708.0    0.0    0.0 │\n\
              │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\
              │    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0    0.0 │\n\

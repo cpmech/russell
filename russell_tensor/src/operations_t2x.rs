@@ -206,100 +206,6 @@ pub fn t2_matmulx<const L: usize, const M: usize, const N: usize>(
     Ok(())
 }
 
-#[cfg(test)]
-mod dispatcher_tests {
-    use super::*;
-    use crate::Tensor2;
-
-    #[test]
-    fn test_t2_matmul_dispatcher() {
-        let a_gen = Tensor2::<9>::new();
-        let b_gen = Tensor2::<9>::new();
-        let a_sym = Tensor2::<6>::new();
-        let b_sym = Tensor2::<6>::new();
-        let a_2d = Tensor2::<4>::new();
-        let mut c_gen = Tensor2::<9>::new();
-        let mut c_sym = Tensor2::<6>::new();
-        let mut c_2d = Tensor2::<4>::new();
-
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, false).is_ok());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_gen, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_gen, true).is_ok());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_gen, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_gen, false).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_sym, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_sym, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_sym, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_sym, false).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_sym, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_sym, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_sym, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_sym, false).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_gen, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_gen, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_gen, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_gen, false).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_gen, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_gen, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_gen, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_gen, false).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_sym, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_sym, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_sym, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_sym, false).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, true).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, true).is_err());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, false).is_ok());
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, false).is_err());
-
-        // Test ptr::eq(a, b) cases
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &a_gen, false).is_ok());
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &a_gen, false).is_err()); // Must fail because c must be Symmetric for A^T * A
-
-        // c must be General for A·A (same tensor, no transpose)
-        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &a_gen, false).is_err());
-        // c must be Symmetric for A·A (same symmetric tensor)
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &a_sym, false).is_err());
-        // c must be Symmetric for A·Aᵀ (same tensor)
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &a_gen, true).is_err());
-        // c must be Symmetric or General (c is Symmetric2D)
-        assert!(t2_matmul(&mut c_2d, 1.0, &a_gen, true, &b_gen, false).is_err());
-        assert!(t2_matmul(&mut c_2d, 1.0, &a_gen, false, &b_gen, true).is_err());
-        // unsupported combination (Symmetric2D input)
-        assert!(t2_matmul(&mut c_gen, 1.0, &a_2d, false, &b_gen, false).is_err());
-    }
-
-    #[test]
-    fn test_t2_matmulx_dispatcher() {
-        let a_gen = Tensor2::<9>::new();
-        let b_gen = Tensor2::<9>::new();
-        let a_sym = Tensor2::<6>::new();
-        let b_sym = Tensor2::<6>::new();
-        let mut c_gen = Tensor2::<9>::new();
-        let mut c_sym = Tensor2::<6>::new();
-
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, false, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, false, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_sym).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_sym).is_ok());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, false, &b_sym).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, false, &b_sym).is_ok());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, true, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, true, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, false, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, false, &b_gen).is_err());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, true, &b_sym).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, true, &b_sym).is_err());
-        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, false, &b_sym).is_err());
-        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, false, &b_sym).is_err());
-    }
-}
-
 /// Performs the general tensor dot general tensor operation: C = A · B
 /// 
 /// Computes:
@@ -1340,5 +1246,97 @@ mod tests {
             [1053.00000, 1363.50000, 1674.00000],
         ];
         mat_approx_eq(&c.as_std_matrix(), correct, 1e-12);
+    }
+
+    //
+    // --- dispatcher tests ---
+    //
+
+    #[test]
+    fn test_t2_matmul_dispatcher() {
+        let a_gen = Tensor2::<9>::new();
+        let b_gen = Tensor2::<9>::new();
+        let a_sym = Tensor2::<6>::new();
+        let b_sym = Tensor2::<6>::new();
+        let a_2d = Tensor2::<4>::new();
+        let mut c_gen = Tensor2::<9>::new();
+        let mut c_sym = Tensor2::<6>::new();
+        let mut c_2d = Tensor2::<4>::new();
+
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_gen, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_gen, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, true, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, true, &b_sym, false).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, true).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, true).is_err());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &b_sym, false).is_ok());
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_sym, false, &b_sym, false).is_err());
+
+        // Test ptr::eq(a, b) cases
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, true, &a_gen, false).is_ok());
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, true, &a_gen, false).is_err()); // Must fail because c must be Symmetric for A^T * A
+
+        // c must be General for A·A (same tensor, no transpose)
+        assert!(t2_matmul(&mut c_sym, 1.0, &a_gen, false, &a_gen, false).is_err());
+        // c must be Symmetric for A·A (same symmetric tensor)
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_sym, false, &a_sym, false).is_err());
+        // c must be Symmetric for A·Aᵀ (same tensor)
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_gen, false, &a_gen, true).is_err());
+        // c must be Symmetric or General (c is Symmetric2D)
+        assert!(t2_matmul(&mut c_2d, 1.0, &a_gen, true, &b_gen, false).is_err());
+        assert!(t2_matmul(&mut c_2d, 1.0, &a_gen, false, &b_gen, true).is_err());
+        // unsupported combination (Symmetric2D input)
+        assert!(t2_matmul(&mut c_gen, 1.0, &a_2d, false, &b_gen, false).is_err());
+    }
+
+    #[test]
+    fn test_t2_matmulx_dispatcher() {
+        let a_gen = Tensor2::<9>::new();
+        let b_gen = Tensor2::<9>::new();
+        let a_sym = Tensor2::<6>::new();
+        let b_sym = Tensor2::<6>::new();
+        let mut c_gen = Tensor2::<9>::new();
+        let mut c_sym = Tensor2::<6>::new();
+
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, true, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, true, &b_sym).is_ok());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_gen, false, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_gen, false, &b_sym).is_ok());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, true, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, false, &b_gen).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, true, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, true, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_gen, 1.0, &a_sym, false, &b_sym).is_err());
+        assert!(t2_matmulx(&mut c_sym, 1.0, &a_sym, false, &b_sym).is_err());
     }
 }

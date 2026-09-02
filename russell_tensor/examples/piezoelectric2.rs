@@ -1,6 +1,6 @@
 use russell_tensor::StrError;
 use russell_tensor::analysis::*;
-use russell_tensor::{ADD, SET, Tensor1, Tensor2};
+use russell_tensor::{ADD, SET, Tensor1, Tensor2, Tensor4};
 use russell_tensor::{t1_dot_t3, t2_dot_t1, t3_ddot_t2, t4_ddot_t2};
 use std::env;
 use std::path::PathBuf;
@@ -18,6 +18,10 @@ fn main() -> Result<(), StrError> {
     println!("Piezoelectric charge tensor =\n{:.4}", d);
     println!("Stiffness tensor =\n{:.4}", cc);
     println!("Compliance tensor =\n{:.4}", ss);
+
+    let mut ss_ref = Tensor4::<6>::new();
+    let det_cc = cc.inverse(&mut ss_ref)?;
+    println!("det(C) = {}", det_cc);
 
     // Small strain tensor. TODO: find correct value range
     let eps = Tensor2::<6>::from_std_matrix(&[

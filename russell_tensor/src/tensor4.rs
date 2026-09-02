@@ -967,7 +967,7 @@ impl<const N: usize> Tensor4<N> {
     /// Note: the inverse Tensor4 can be obtained by inverting the Kelvin-Mandel matrix.
     ///
     /// Returns the determinant of the Kelvin-Mandel matrix and the inverse matrix/tensor in `inv`.
-    pub fn calc_inverse(&self, inv: &mut Tensor4<N>) -> Result<f64, StrError> {
+    pub fn inverse(&self, inv: &mut Tensor4<N>) -> Result<f64, StrError> {
         #[cfg(feature = "heap")]
         {
             mat_inverse(&mut inv.mat, &self.mat)
@@ -2203,7 +2203,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_inverse_works() {
+    fn inverse_works() {
         let aa_std = [
             [
                 [[1.0, 1.0, 3.0], [2.0, 1.0, 3.0], [3.0, 1.0, 1.0]],
@@ -2252,7 +2252,7 @@ mod tests {
             }
         }
         let mut aa_inv = Tensor4::<9>::new();
-        let det = aa.calc_inverse(&mut aa_inv).unwrap();
+        let det = aa.inverse(&mut aa_inv).unwrap();
         approx_eq(det, 1.0, 1e-12);
         for m in 0..9 {
             for n in 0..9 {

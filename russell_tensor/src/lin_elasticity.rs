@@ -383,7 +383,7 @@ impl<const N: usize> LinElasticity<N> {
             return Err("The compliance modulus is not available for plane-stress");
         }
         self.dd
-            .calc_inverse(cc)
+            .inverse(cc)
             .map_err(|_| "cannot invert the rigidity modulus D")?;
         Ok(())
     }

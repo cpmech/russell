@@ -1468,6 +1468,37 @@ impl<const N: usize> Tensor2<N> {
         f64::sqrt(sm)
     }
 
+    /// Scales this tensor in-place
+    ///
+    /// ```text
+    /// self := α self
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut tt = Tensor2::<6>::from_std_matrix(&[
+    ///         [1.0, 2.0, 3.0],
+    ///         [2.0, 5.0, 6.0],
+    ///         [3.0, 6.0, 9.0],
+    ///     ])?;
+    ///     tt.scale(2.0);
+    ///     assert_eq!(tt.get(0), 2.0);
+    ///     assert_eq!(tt.get(1), 10.0);
+    ///     assert_eq!(tt.get(2), 18.0);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[inline]
+    pub fn scale(&mut self, alpha: f64) {
+        for m in 0..N {
+            self.vec[m] *= alpha;
+        }
+    }
+
     /// Calculates the deviator tensor
     ///
     /// ```text
@@ -3531,6 +3562,22 @@ mod tests {
         ];
         let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.norm(), f64::sqrt(46.0), 1e-15);
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut tt = Tensor2::<6>::from_std_matrix(&[
+            [1.0, 2.0, 3.0],
+            [2.0, 5.0, 6.0],
+            [3.0, 6.0, 9.0],
+        ]).unwrap();
+        tt.scale(2.0);
+        approx_eq(tt.get(0), 2.0, 1e-14);
+        approx_eq(tt.get(1), 10.0, 1e-14);
+        approx_eq(tt.get(2), 18.0, 1e-14);
+        approx_eq(tt.get(3), 4.0 * SQRT_2, 1e-14);
+        approx_eq(tt.get(4), 12.0 * SQRT_2, 1e-14);
+        approx_eq(tt.get(5), 6.0 * SQRT_2, 1e-14);
     }
 
     #[test]

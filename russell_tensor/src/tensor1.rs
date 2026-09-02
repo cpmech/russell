@@ -95,6 +95,29 @@ impl Tensor1 {
         self.vec[i] += value;
     }
 
+    /// Scales this tensor in-place
+    ///
+    /// ```text
+    /// self := α self
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::vec_approx_eq;
+    /// use russell_tensor::Tensor1;
+    ///
+    /// let mut u = Tensor1::from(&[1.0, 2.0, 3.0]);
+    /// u.scale(2.0);
+    /// vec_approx_eq(&u.as_vector(), &[2.0, 4.0, 6.0], 1e-15);
+    /// ```
+    #[inline]
+    pub fn scale(&mut self, alpha: f64) {
+        self.vec[0] *= alpha;
+        self.vec[1] *= alpha;
+        self.vec[2] *= alpha;
+    }
+
     /// Gets the i-th standard component
     ///
     /// # Input
@@ -127,6 +150,26 @@ impl Tensor1 {
     /// ```
     pub fn dot(&self, other: &Tensor1) -> f64 {
         self.vec[0] * other.vec[0] + self.vec[1] * other.vec[1] + self.vec[2] * other.vec[2]
+    }
+
+    /// Calculates the Euclidean norm
+    ///
+    /// ```text
+    /// norm(u) = √(u·u) = √(u₀² + u₁² + u₂²)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::Tensor1;
+    ///
+    /// let u = Tensor1::from(&[3.0, 4.0, 12.0]);
+    /// approx_eq(u.norm(), 13.0, 1e-13);
+    /// ```
+    #[inline]
+    pub fn norm(&self) -> f64 {
+        f64::sqrt(self.vec[0] * self.vec[0] + self.vec[1] * self.vec[1] + self.vec[2] * self.vec[2])
     }
 
     /// Returns this Tensor1 as a Vector object from russell_lab
@@ -177,7 +220,20 @@ impl fmt::Display for Tensor1 {
 #[cfg(test)]
 mod tests {
     use super::Tensor1;
-    use russell_lab::vec_approx_eq;
+    use russell_lab::{approx_eq, vec_approx_eq};
+
+    #[test]
+    fn norm_works() {
+        let u = Tensor1::from(&[3.0, 4.0, 12.0]);
+        approx_eq(u.norm(), 13.0, 1e-13);
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut u = Tensor1::from(&[1.0, -2.0, 3.0]);
+        u.scale(2.0);
+        vec_approx_eq(&u.as_vector(), &[2.0, -4.0, 6.0], 1e-15);
+    }
 
     #[test]
     fn new_set_get_work() {

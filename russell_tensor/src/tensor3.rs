@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
 
+#[cfg(feature = "heap")]
+use russell_lab::mat_scale;
+
 /// Defines a third-order tensor in R³×R³×R³
 ///
 /// The matrix representation of Tensor3 results in a rectangular matrix.
@@ -845,6 +848,45 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
         f64::sqrt(sm)
     }
 
+    /// Scales this tensor in-place
+    ///
+    /// ```text
+    /// self := α self
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor3, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut dd = Tensor3::<9, 3>::new();
+    ///     dd.set(0, 0, 1.0);
+    ///     dd.set(1, 1, 2.0);
+    ///     dd.set(2, 2, 3.0);
+    ///     dd.scale(2.0);
+    ///     assert_eq!(dd.get(0, 0), 2.0);
+    ///     assert_eq!(dd.get(1, 1), 4.0);
+    ///     assert_eq!(dd.get(2, 2), 6.0);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[inline]
+    pub fn scale(&mut self, alpha: f64) {
+        #[cfg(feature = "heap")]
+        {
+            mat_scale(&mut self.mat, alpha);
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            for m in 0..M {
+                for n in 0..N {
+                    self.mat[m][n] *= alpha;
+                }
+            }
+        }
+    }
+
     /// Adds another tensor to this one
     ///
     /// ```text
@@ -1351,6 +1393,18 @@ mod tests {
             norm_from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1),
             1e-13,
         );
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut dd = Tensor3::<9, 3>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(1, 1, 2.0);
+        dd.set(2, 2, 3.0);
+        dd.scale(2.0);
+        assert_eq!(dd.get(0, 0), 2.0);
+        assert_eq!(dd.get(1, 1), 4.0);
+        assert_eq!(dd.get(2, 2), 6.0);
     }
 
     #[test]

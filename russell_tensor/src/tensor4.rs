@@ -6,7 +6,7 @@ use std::cmp;
 use std::fmt::{self, Write};
 
 #[cfg(feature = "heap")]
-use russell_lab::mat_inverse;
+use russell_lab::{mat_inverse, mat_scale};
 
 #[cfg(not(feature = "heap"))]
 use russell_lab::small_mat_inv;
@@ -871,6 +871,45 @@ impl<const N: usize> Tensor4<N> {
             }
         }
         f64::sqrt(sm)
+    }
+
+    /// Scales this tensor in-place
+    ///
+    /// ```text
+    /// self := α self
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor4, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let mut dd = Tensor4::<9>::new();
+    ///     dd.set(0, 0, 1.0);
+    ///     dd.set(1, 1, 2.0);
+    ///     dd.set(2, 2, 3.0);
+    ///     dd.scale(2.0);
+    ///     assert_eq!(dd.get(0, 0), 2.0);
+    ///     assert_eq!(dd.get(1, 1), 4.0);
+    ///     assert_eq!(dd.get(2, 2), 6.0);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[inline]
+    pub fn scale(&mut self, alpha: f64) {
+        #[cfg(feature = "heap")]
+        {
+            mat_scale(&mut self.mat, alpha);
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            for m in 0..N {
+                for n in 0..N {
+                    self.mat[m][n] *= alpha;
+                }
+            }
+        }
     }
 
     /// Adds another tensor to this one
@@ -1756,6 +1795,18 @@ mod tests {
         approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor4::SYM_SAMPLE1), 1e-13);
         let dd = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1).unwrap();
         approx_eq(dd.norm(), norm_from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1), 1e-13);
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut dd = Tensor4::<9>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(1, 1, 2.0);
+        dd.set(2, 2, 3.0);
+        dd.scale(2.0);
+        assert_eq!(dd.get(0, 0), 2.0);
+        assert_eq!(dd.get(1, 1), 4.0);
+        assert_eq!(dd.get(2, 2), 6.0);
     }
 
     #[test]

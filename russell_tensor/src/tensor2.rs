@@ -254,6 +254,16 @@ impl<const N: usize> Tensor2<N> {
         self.vec[m] = value;
     }
 
+    /// Adds a value to the m-component of the Kelvin-Mandel vector
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the index is out of range.
+    #[inline]
+    pub fn add(&mut self, m: usize, value: f64) {
+        self.vec[m] += value;
+    }
+
     /// Returns a slice to the Kelvin-Mandel vector data (crate-internal)
     ///
     /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
@@ -3668,9 +3678,9 @@ mod tests {
     #[test]
     fn decompose_zeroes_skew_slots_of_symmetric_part() {
         let comps_std = &[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
+            [1.0, 2.0, 3.0], // 1
+            [4.0, 5.0, 6.0], // 2
+            [7.0, 8.0, 9.0], // 3
         ];
         let ten = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         let mut sym = Tensor2::<9>::new();

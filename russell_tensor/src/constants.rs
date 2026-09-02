@@ -26,6 +26,16 @@ pub const ONE_BY_3: f64 =
 pub const TWO_BY_3: f64 =
     0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
+/// Identifies an operation as an addition (update)
+///
+/// Example u += A . v
+pub const ADD: u8 = 1;
+
+/// Identifies an operation as a setting
+///
+/// Example u = A . v
+pub const SET: u8 = 0;
+
 /// Tolerance to avoid zero division with the J2 invariant
 ///
 /// This constant is used, for instance, in the calculation of the Lode invariant using the following expression:

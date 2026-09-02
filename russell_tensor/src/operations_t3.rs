@@ -1,4 +1,5 @@
 use super::{Tensor1, Tensor2, Tensor3};
+use crate::{ADD, SET};
 
 /// Adds two third-order tensors
 ///
@@ -26,17 +27,17 @@ pub fn t3_add<const M: usize, const N: usize>(
 /// Computes:
 ///
 /// ```text
-/// T = α H · u
+/// ADD: T += α H · u  or  SET: T = α H · u
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// Tᵢⱼ = α Σ Hᵢⱼₖ uₖ
 ///        k
 /// ```
 ///
-/// Or, in Kelvin-Mandel basis:
+/// Or, in Kelvin-Mandel basis (example with SET):
 ///
 /// ```text
 /// Tₘ = α Σ Hₘₖ uₖ
@@ -45,16 +46,29 @@ pub fn t3_add<const M: usize, const N: usize>(
 ///
 /// # Output
 ///
-/// * `T` -- the resulting second-order tensor
+/// * `tt` -- the resulting second-order tensor (T)
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the `α` multiplier
-/// * `hh` -- the third-order tensor
+/// * `hh` -- the third-order tensor (H)
 /// * `u` -- the 3D vector (first-order tensor)
-pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, alpha: f64, hh: &Tensor3<M, N>, u: &Tensor1) {
-    for m in 0..M {
-        tt.vec[m] = alpha * (hh.get(m, 0) * u.get(0) + hh.get(m, 1) * u.get(1) + hh.get(m, 2) * u.get(2));
+pub fn t3_dot_t1<const M: usize, const N: usize>(
+    tt: &mut Tensor2<M>,
+    op: u8,
+    alpha: f64,
+    hh: &Tensor3<M, N>,
+    u: &Tensor1,
+) {
+    if op == ADD {
+        for m in 0..M {
+            tt.vec[m] += alpha * (hh.get(m, 0) * u.get(0) + hh.get(m, 1) * u.get(1) + hh.get(m, 2) * u.get(2));
+        }
+    } else {
+        for m in 0..M {
+            tt.vec[m] = alpha * (hh.get(m, 0) * u.get(0) + hh.get(m, 1) * u.get(1) + hh.get(m, 2) * u.get(2));
+        }
     }
 }
 
@@ -65,17 +79,17 @@ pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, alpha: f64
 /// Computes:
 ///
 /// ```text
-/// u = α T : H
+/// ADD: u += α T : H   or   SET: u = α T : H
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// uₖ = α Σ Σ Tᵢⱼ Hᵢⱼₖ
 ///        i j
 /// ```
 ///
-/// Or, in Kelvin-Mandel basis:
+/// Or, in Kelvin-Mandel basis (example with SET):
 ///
 /// ```text
 /// uₖ = α Σ Tₘ Hₘₖ
@@ -88,13 +102,22 @@ pub fn t3_dot_t1<const M: usize, const N: usize>(tt: &mut Tensor2<M>, alpha: f64
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the `α` multiplier
-/// * `T` -- the second-order tensor
-/// * `hh` -- the third-order tensor
-pub fn t2_ddot_t3<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, tt: &Tensor2<M>, hh: &Tensor3<M, N>) {
-    u.set(0, 0.0);
-    u.set(1, 0.0);
-    u.set(2, 0.0);
+/// * `tt` -- the second-order tensor (T)
+/// * `hh` -- the third-order tensor (H)
+pub fn t2_ddot_t3<const M: usize, const N: usize>(
+    u: &mut Tensor1,
+    op: u8,
+    alpha: f64,
+    tt: &Tensor2<M>,
+    hh: &Tensor3<M, N>,
+) {
+    if op == SET {
+        u.set(0, 0.0);
+        u.set(1, 0.0);
+        u.set(2, 0.0);
+    }
     for m in 0..M {
         u.set(0, u.get(0) + alpha * tt.get(m) * hh.get(m, 0));
         u.set(1, u.get(1) + alpha * tt.get(m) * hh.get(m, 1));
@@ -109,17 +132,17 @@ pub fn t2_ddot_t3<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, t
 /// Computes:
 ///
 /// ```text
-/// u = α H : T
+/// ADD: u += α H : T  or  SET: u = α H : T
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// uᵢ = α Σ Σ Hᵢⱼₖ Tⱼₖ
 ///       j k
 /// ```
 ///
-/// Or, in Kelvin-Mandel basis:
+/// Or, in Kelvin-Mandel basis (example with SET):
 ///
 /// ```text
 /// uᵢ = α Σ Hᵢₙ Tₙ
@@ -132,13 +155,22 @@ pub fn t2_ddot_t3<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, t
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the `α` multiplier
-/// * `hh` -- the third-order tensor
-/// * `T` -- the second-order tensor
-pub fn t3_ddot_t2<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, hh: &Tensor3<M, N>, tt: &Tensor2<N>) {
-    u.set(0, 0.0);
-    u.set(1, 0.0);
-    u.set(2, 0.0);
+/// * `hh` -- the third-order tensor (H)
+/// * `tt` -- the second-order tensor (T)
+pub fn t3_ddot_t2<const M: usize, const N: usize>(
+    u: &mut Tensor1,
+    op: u8,
+    alpha: f64,
+    hh: &Tensor3<M, N>,
+    tt: &Tensor2<N>,
+) {
+    if op == SET {
+        u.set(0, 0.0);
+        u.set(1, 0.0);
+        u.set(2, 0.0);
+    }
     for n in 0..N {
         u.set(0, u.get(0) + alpha * hh.get(0, n) * tt.vec[n]);
         u.set(1, u.get(1) + alpha * hh.get(1, n) * tt.vec[n]);
@@ -153,17 +185,17 @@ pub fn t3_ddot_t2<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, h
 /// Computes:
 ///
 /// ```text
-/// T = α u · H
+/// ADD: T += α u · H  or  SET: T = α u · H
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// Tⱼₖ = α Σ uᵢ Hᵢⱼₖ
 ///         i
 /// ```
 ///
-/// Or, in Kelvin-Mandel basis:
+/// Or, in Kelvin-Mandel basis (example with SET):
 ///
 /// ```text
 /// Tₙ = α Σ uᵢ Hᵢₙ
@@ -172,16 +204,29 @@ pub fn t3_ddot_t2<const M: usize, const N: usize>(u: &mut Tensor1, alpha: f64, h
 ///
 /// # Output
 ///
-/// * `T` -- the resulting second-order tensor
+/// * `tt` -- the resulting second-order tensor (T)
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the `α` multiplier
 /// * `u` -- the 3D vector (first-order tensor)
-/// * `hh` -- the third-order tensor
-pub fn t1_dot_t3<const M: usize, const N: usize>(tt: &mut Tensor2<N>, alpha: f64, u: &Tensor1, hh: &Tensor3<M, N>) {
-    for n in 0..N {
-        tt.vec[n] = alpha * (u.get(0) * hh.get(0, n) + u.get(1) * hh.get(1, n) + u.get(2) * hh.get(2, n));
+/// * `hh` -- the third-order tensor (H)
+pub fn t1_dot_t3<const M: usize, const N: usize>(
+    tt: &mut Tensor2<N>,
+    op: u8,
+    alpha: f64,
+    u: &Tensor1,
+    hh: &Tensor3<M, N>,
+) {
+    if op == ADD {
+        for n in 0..N {
+            tt.vec[n] += alpha * (u.get(0) * hh.get(0, n) + u.get(1) * hh.get(1, n) + u.get(2) * hh.get(2, n));
+        }
+    } else {
+        for n in 0..N {
+            tt.vec[n] = alpha * (u.get(0) * hh.get(0, n) + u.get(1) * hh.get(1, n) + u.get(2) * hh.get(2, n));
+        }
     }
 }
 
@@ -189,8 +234,8 @@ pub fn t1_dot_t3<const M: usize, const N: usize>(tt: &mut Tensor2<N>, alpha: f64
 
 #[cfg(test)]
 mod tests {
-    use super::{t3_add, t3_ddot_t2, t3_dot_t1};
-    use crate::{SamplesTensor3, Tensor1, Tensor2, Tensor3};
+    use super::{t1_dot_t3, t2_ddot_t3, t3_add, t3_ddot_t2, t3_dot_t1};
+    use crate::{ADD, SET, SamplesTensor3, Tensor1, Tensor2, Tensor3};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
@@ -277,7 +322,7 @@ mod tests {
         let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         let u = Tensor1::from(&[1.0, 2.0, 3.0]);
         let mut tt = Tensor2::<9>::new();
-        t3_dot_t1(&mut tt, 0.5, &hh, &u);
+        t3_dot_t1(&mut tt, SET, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
             [7.0, 34.0, 52.0],  // 0
             [61.0, 16.0, 43.0], // 1
@@ -288,7 +333,7 @@ mod tests {
         // Symmetric
         let hh = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let mut tt = Tensor2::<6>::new();
-        t3_dot_t1(&mut tt, 0.5, &hh, &u);
+        t3_dot_t1(&mut tt, SET, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
             [7.0, 34.0, 52.0],  // 0
             [34.0, 16.0, 43.0], // 1
@@ -299,11 +344,30 @@ mod tests {
         // Symmetric2D
         let hh = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         let mut tt = Tensor2::<4>::new();
-        t3_dot_t1(&mut tt, 0.5, &hh, &u);
+        t3_dot_t1(&mut tt, SET, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
             [7.0, 34.0, 0.0],  // 0
             [34.0, 16.0, 0.0], // 1
             [0.0, 0.0, 25.0],  // 2
+        ]);
+        mat_approx_eq(&tt.as_std_matrix(), &mat_expected, 1e-13);
+    }
+
+    #[test]
+    fn t3_dot_t1_add_works() {
+        // General
+        let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
+        let u = Tensor1::from(&[1.0, 2.0, 3.0]);
+        let mut tt = Tensor2::<9>::from_std_matrix(&[
+            [100.0, 0.0, 0.0],
+            [0.0, 200.0, 0.0],
+            [0.0, 0.0, 300.0],
+        ]).unwrap();
+        t3_dot_t1(&mut tt, ADD, 0.5, &hh, &u);
+        let mat_expected = Matrix::from(&[
+            [107.0, 34.0, 52.0],
+            [61.0, 216.0, 43.0],
+            [79.0, 70.0, 325.0],
         ]);
         mat_approx_eq(&tt.as_std_matrix(), &mat_expected, 1e-13);
     }
@@ -319,7 +383,7 @@ mod tests {
         ])
         .unwrap();
         let mut u = Tensor1::new();
-        t3_ddot_t2(&mut u, 0.5, &hh, &tt);
+        t3_ddot_t2(&mut u, SET, 0.5, &hh, &tt);
         approx_eq(u.get(0), 328.5, 1e-15);
         approx_eq(u.get(1), 351.0, 1e-15);
         approx_eq(u.get(2), 373.5, 1e-15);
@@ -333,7 +397,7 @@ mod tests {
         ])
         .unwrap();
         let mut u = Tensor1::new();
-        t3_ddot_t2(&mut u, 0.5, &hh, &tt);
+        t3_ddot_t2(&mut u, SET, 0.5, &hh, &tt);
         approx_eq(u.get(0), 188.0, 1e-15);
         approx_eq(u.get(1), 206.5, 1e-15);
         approx_eq(u.get(2), 225.0, 1e-15);
@@ -347,9 +411,93 @@ mod tests {
         ])
         .unwrap();
         let mut u = Tensor1::new();
-        t3_ddot_t2(&mut u, 0.5, &hh, &tt);
+        t3_ddot_t2(&mut u, SET, 0.5, &hh, &tt);
         approx_eq(u.get(0), 62.0, 1e-15);
         approx_eq(u.get(1), 71.5, 1e-15);
         approx_eq(u.get(2), 81.0, 1e-15);
+    }
+
+    #[test]
+    fn t3_ddot_t2_add_works() {
+        // General
+        let hh = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
+        let tt = Tensor2::<9>::from_std_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]).unwrap();
+        let mut u = Tensor1::from(&[100.0, 200.0, 300.0]);
+        t3_ddot_t2(&mut u, ADD, 0.5, &hh, &tt);
+        approx_eq(u.get(0), 428.5, 1e-13);
+        approx_eq(u.get(1), 551.0, 1e-13);
+        approx_eq(u.get(2), 673.5, 1e-13);
+    }
+
+    #[test]
+    fn t2_ddot_t3_works() {
+        // Case A general
+        let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
+        let tt = Tensor2::<9>::from_std_matrix(&[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]).unwrap();
+        // reference: u_k = 0.5 Σᵢ Σⱼ Tᵢⱼ Hᵢⱼₖ
+        let hh_std = hh.as_std_array();
+        let tt_std = tt.as_std_matrix();
+        let mut correct = [0.0; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    correct[k] += 0.5 * tt_std.get(i, j) * hh_std[i][j][k];
+                }
+            }
+        }
+        // SET
+        let mut u = Tensor1::new();
+        t2_ddot_t3(&mut u, SET, 0.5, &tt, &hh);
+        approx_eq(u.get(0), correct[0], 1e-12);
+        approx_eq(u.get(1), correct[1], 1e-12);
+        approx_eq(u.get(2), correct[2], 1e-12);
+        // ADD
+        let mut u = Tensor1::from(&[100.0, 200.0, 300.0]);
+        t2_ddot_t3(&mut u, ADD, 0.5, &tt, &hh);
+        approx_eq(u.get(0), 100.0 + correct[0], 1e-12);
+        approx_eq(u.get(1), 200.0 + correct[1], 1e-12);
+        approx_eq(u.get(2), 300.0 + correct[2], 1e-12);
+    }
+
+    #[test]
+    fn t1_dot_t3_works() {
+        // Case B general
+        let hh = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
+        let u = Tensor1::from(&[1.0, 2.0, 3.0]);
+        // reference: Tⱼₖ = 0.5 Σᵢ uᵢ Hᵢⱼₖ
+        let hh_std = hh.as_std_array();
+        let mut correct = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    correct[j][k] += 0.5 * u.get(i) * hh_std[i][j][k];
+                }
+            }
+        }
+        // SET
+        let mut tt = Tensor2::<9>::new();
+        t1_dot_t3(&mut tt, SET, 0.5, &u, &hh);
+        mat_approx_eq(&tt.as_std_matrix(), &correct, 1e-12);
+        // ADD
+        let mut tt = Tensor2::<9>::from_std_matrix(&[
+            [100.0, 0.0, 0.0],
+            [0.0, 200.0, 0.0],
+            [0.0, 0.0, 300.0],
+        ]).unwrap();
+        t1_dot_t3(&mut tt, ADD, 0.5, &u, &hh);
+        let correct_add = [
+            [100.0 + correct[0][0], correct[0][1], correct[0][2]],
+            [correct[1][0], 200.0 + correct[1][1], correct[1][2]],
+            [correct[2][0], correct[2][1], 300.0 + correct[2][2]],
+        ];
+        mat_approx_eq(&tt.as_std_matrix(), &correct_add, 1e-12);
     }
 }

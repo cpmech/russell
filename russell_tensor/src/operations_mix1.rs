@@ -1,18 +1,19 @@
 use super::{Tensor2, Tensor4};
+use crate::ADD;
 
 /// Performs the dyadic product between two Tensor2 resulting a Tensor4
 ///
 /// ```text
-/// D = α a ⊗ b
+/// ADD: D += α a ⊗ b  or  SET: D = α a ⊗ b
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// Dᵢⱼₖₗ = α aᵢⱼ bₖₗ
 /// ```
 ///
-/// Or, in Kelvin-Mandel basis:
+/// Or, in Kelvin-Mandel basis (example with SET):
 ///
 /// ```text
 /// Dₘₙ = α aₘ bₙ
@@ -24,13 +25,16 @@ use super::{Tensor2, Tensor4};
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `a` -- first tensor
 /// * `b` -- second tensor
 ///
 /// # Examples
 ///
+/// ## Example with SET
+///
 /// ```
-/// use russell_tensor::{t2_dyad_t2, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t2_dyad_t2, Tensor2, Tensor4, SET, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Tensor2::<9>::from_std_matrix(&[
@@ -46,7 +50,7 @@ use super::{Tensor2, Tensor4};
 ///     ])?;
 ///
 ///     let mut dd = Tensor4::<9>::new();
-///     t2_dyad_t2(&mut dd, 1.0, &a, &b);
+///     t2_dyad_t2(&mut dd, SET, 1.0, &a, &b);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", dd.as_std_matrix()),
@@ -64,50 +68,14 @@ use super::{Tensor2, Tensor4};
 ///     );
 ///     Ok(())
 /// }
-/// ```
-#[inline]
-pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
-    for m in 0..N {
-        for n in 0..N {
-            dd.set(m, n, alpha * a.vec[m] * b.vec[n]);
-        }
-    }
-}
-
-/// Performs the dyadic product between two Tensor2 resulting in a Tensor4 (with update)
 ///
-/// Computes:
-///
-/// ```text
-/// D += α a ⊗ b
 /// ```
 ///
-/// With Cartesian components:
-///
-/// ```text
-/// Dᵢⱼₖₗ += α aᵢⱼ bₖₗ
-/// ```
-///
-/// Or, in Kelvin-Mandel basis:
-///
-/// ```text
-/// Dₘₙ += α aₘ bₙ
-/// ```
-///
-/// # Output
-///
-/// * `dd` -- the tensor `D`
-///
-/// # Input
-///
-/// * `a` -- first tensor
-/// * `b` -- second tensor
-///
-/// # Examples
+/// ## Example with ADD
 ///
 /// ```
 /// use russell_lab::Matrix;
-/// use russell_tensor::{t2_dyad_t2_update, StrError, Tensor2, Tensor4};
+/// use russell_tensor::{ADD, t2_dyad_t2, StrError, Tensor2, Tensor4};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     #[rustfmt::skip]
@@ -126,7 +94,7 @@ pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N
 ///
 ///     let mat = Matrix::filled(9, 9, 0.5);
 ///     let mut dd = Tensor4::<9>::from_std_matrix(&mat)?;
-///     t2_dyad_t2_update(&mut dd, 1.0, &a, &b);
+///     t2_dyad_t2(&mut dd, ADD, 1.0, &a, &b);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", dd.as_std_matrix()),
@@ -145,11 +113,18 @@ pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N
 ///     Ok(())
 /// }
 /// ```
-#[inline]
-pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
-    for m in 0..N {
-        for n in 0..N {
-            dd.set(m, n, dd.get(m, n) + alpha * a.vec[m] * b.vec[n]);
+pub fn t2_dyad_t2<const N: usize>(dd: &mut Tensor4<N>, op: u8, alpha: f64, a: &Tensor2<N>, b: &Tensor2<N>) {
+    if op == ADD {
+        for m in 0..N {
+            for n in 0..N {
+                dd.add(m, n, alpha * a.vec[m] * b.vec[n]);
+            }
+        }
+    } else {
+        for m in 0..N {
+            for n in 0..N {
+                dd.set(m, n, alpha * a.vec[m] * b.vec[n]);
+            }
         }
     }
 }
@@ -157,17 +132,17 @@ pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Te
 /// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2
 ///
 /// ```text
-/// b = α D : a
+/// ADD: b += α D : a  or  SET: b = α D : a
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// bᵢⱼ = α Σ Σ Dᵢⱼₖₗ aₖₗ
 ///         k l
 /// ```
 ///
-/// Or, in Kelvin-Mandel basis:
+/// Or, in Kelvin-Mandel basis (example with SET):
 ///
 /// ```text
 /// bₘ = α Σ Dₘₙ aₙ
@@ -180,14 +155,17 @@ pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Te
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the scalar multiplier
 /// * `dd` -- the fourth-order tensor
 /// * `a` -- the input second-order tensor
 ///
 /// # Examples
 ///
+/// ## Example with SET
+///
 /// ```
-/// use russell_tensor::{t4_ddot_t2, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t4_ddot_t2, Tensor2, Tensor4, SET, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let dd = Tensor4::<9>::from_std_matrix(&[
@@ -209,7 +187,7 @@ pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Te
 ///     ])?;
 ///
 ///     let mut b = Tensor2::<9>::new();
-///     t4_ddot_t2(&mut b, 1.0, &dd, &a);
+///     t4_ddot_t2(&mut b, SET, 1.0, &dd, &a);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", b.as_std_matrix()),
@@ -222,53 +200,13 @@ pub fn t2_dyad_t2_update<const N: usize>(dd: &mut Tensor4<N>, alpha: f64, a: &Te
 ///     Ok(())
 /// }
 /// ```
-pub fn t4_ddot_t2<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N>, a: &Tensor2<N>) {
-    for m in 0..N {
-        let mut s = 0.0;
-        for n in 0..N {
-            s += dd.get(m, n) * a.vec[n];
-        }
-        b.vec[m] = alpha * s;
-    }
-}
-
-/// Performs the double-dot (ddot) operation between a Tensor4 and a Tensor2 with update
-///
-/// Computes:
-///
-/// ```text
-/// b = α D : a + β b
-/// ```
-///
-/// With Cartesian components:
-///
-/// ```text
-/// bᵢⱼ = α Σ Σ Dᵢⱼₖₗ aₖₗ + β bᵢⱼ
-///         k l
-/// ```
-///
-/// Or, in Kelvin-Mandel basis:
-///
-/// ```text
-/// bₘ = α Σ Dₘₙ aₙ + β bₘ
-///        n
-/// ```
-///
-/// # Output
-///
-/// * `b` -- the resulting second-order tensor
-///
-/// # Input
-///
-/// * `alpha` -- the scalar multiplier
-/// * `a` -- the input second-order tensor
-/// * `dd` -- the fourth-order tensor
-/// * `beta` -- the other scalar multiplier
 ///
 /// # Examples
 ///
+/// ## Example with ADD
+///
 /// ```
-/// use russell_tensor::{t4_ddot_t2_update, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{ADD, t4_ddot_t2, Tensor2, Tensor4, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let dd = Tensor4::<9>::from_std_matrix(&[
@@ -290,11 +228,11 @@ pub fn t4_ddot_t2<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N
 ///     ])?;
 ///
 ///     let mut b = Tensor2::<9>::from_std_matrix(&[
-///         [1.0, 0.0, 0.0],
-///         [0.0, 1.0, 0.0],
-///         [0.0, 0.0, 1.0],
+///         [1000.0, 0.0, 0.0],
+///         [0.0, 1000.0, 0.0],
+///         [0.0, 0.0, 1000.0],
 ///     ])?;
-///     t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 1000.0);
+///     t4_ddot_t2(&mut b, ADD, 1.0, &dd, &a);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", b.as_std_matrix()),
@@ -307,13 +245,23 @@ pub fn t4_ddot_t2<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N
 ///     Ok(())
 /// }
 /// ```
-pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Tensor4<N>, a: &Tensor2<N>, beta: f64) {
-    for m in 0..N {
-        let mut s = 0.0;
-        for n in 0..N {
-            s += dd.get(m, n) * a.vec[n];
+pub fn t4_ddot_t2<const N: usize>(b: &mut Tensor2<N>, op: u8, alpha: f64, dd: &Tensor4<N>, a: &Tensor2<N>) {
+    if op == ADD {
+        for m in 0..N {
+            let mut s = 0.0;
+            for n in 0..N {
+                s += dd.get(m, n) * a.vec[n];
+            }
+            b.vec[m] += alpha * s;
         }
-        b.vec[m] = alpha * s + beta * b.vec[m];
+    } else {
+        for m in 0..N {
+            let mut s = 0.0;
+            for n in 0..N {
+                s += dd.get(m, n) * a.vec[n];
+            }
+            b.vec[m] = alpha * s;
+        }
     }
 }
 
@@ -322,10 +270,10 @@ pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Te
 /// Computes:
 ///
 /// ```text
-/// b = α a : D
+/// ADD: b += α a : D  or  SET: b = α a : D
 /// ```
 ///
-/// With Cartesian components:
+/// With Cartesian components (example with SET):
 ///
 /// ```text
 /// bₖₗ = α Σ Σ aᵢⱼ Dᵢⱼₖₗ
@@ -338,6 +286,7 @@ pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Te
 ///
 /// # Input
 ///
+/// * `op` -- operation: ADD or SET
 /// * `alpha` -- the scalar multiplier
 /// * `a` -- the input second-order tensor
 /// * `dd` -- the fourth-order tensor
@@ -345,7 +294,7 @@ pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Te
 /// # Examples
 ///
 /// ```
-/// use russell_tensor::{t2_ddot_t4, Tensor2, Tensor4, StrError};
+/// use russell_tensor::{t2_ddot_t4, Tensor2, Tensor4, SET, StrError};
 ///
 /// fn main() -> Result<(), StrError> {
 ///     let a = Tensor2::<9>::from_std_matrix(&[
@@ -367,7 +316,7 @@ pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Te
 ///     ])?;
 ///
 ///     let mut b = Tensor2::<9>::new();
-///     t2_ddot_t4(&mut b, 1.0, &a, &dd);
+///     t2_ddot_t4(&mut b, SET, 1.0, &a, &dd);
 ///
 ///     assert_eq!(
 ///         format!("{:.1}", b.as_std_matrix()),
@@ -380,13 +329,23 @@ pub fn t4_ddot_t2_update<const N: usize>(b: &mut Tensor2<N>, alpha: f64, dd: &Te
 ///     Ok(())
 /// }
 /// ```
-pub fn t2_ddot_t4<const N: usize>(b: &mut Tensor2<N>, alpha: f64, a: &Tensor2<N>, dd: &Tensor4<N>) {
-    for n in 0..N {
-        let mut s = 0.0;
-        for m in 0..N {
-            s += a.vec[m] * dd.get(m, n);
+pub fn t2_ddot_t4<const N: usize>(b: &mut Tensor2<N>, op: u8, alpha: f64, a: &Tensor2<N>, dd: &Tensor4<N>) {
+    if op == ADD {
+        for n in 0..N {
+            let mut s = 0.0;
+            for m in 0..N {
+                s += a.vec[m] * dd.get(m, n);
+            }
+            b.vec[n] += alpha * s;
         }
-        b.vec[n] = alpha * s;
+    } else {
+        for n in 0..N {
+            let mut s = 0.0;
+            for m in 0..N {
+                s += a.vec[m] * dd.get(m, n);
+            }
+            b.vec[n] = alpha * s;
+        }
     }
 }
 
@@ -497,7 +456,7 @@ pub fn t4_ddot_t2_dyad_t2_ddot_t4<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MN_TO_IJKL, SamplesTensor4};
+    use crate::{MN_TO_IJKL, SET, SamplesTensor4};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     #[test]
@@ -516,7 +475,7 @@ mod tests {
             [0.5, 0.5, 0.5],
         ]).unwrap();
         let mut dd = Tensor4::<9>::new();
-        t2_dyad_t2(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, SET, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         assert_eq!(
             format!("{:.1}", mat),
@@ -547,7 +506,7 @@ mod tests {
             [0.5, 0.5, 0.5],
         ]).unwrap();
         let mut dd = Tensor4::<6>::new();
-        t2_dyad_t2(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, SET, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         assert_eq!(
             format!("{:.1}", mat),
@@ -578,7 +537,7 @@ mod tests {
             [0.0, 0.0, 0.5],
         ]).unwrap();
         let mut dd = Tensor4::<4>::new();
-        t2_dyad_t2(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, SET, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         assert_eq!(
             format!("{:.1}", mat),
@@ -597,7 +556,7 @@ mod tests {
     }
 
     #[test]
-    fn t2_dyad_t2_update_works() {
+    fn t2_dyad_t2_add_works() {
         // general dyad general
         #[rustfmt::skip]
         let a = Tensor2::<9>::from_std_matrix(&[
@@ -613,7 +572,7 @@ mod tests {
         ]).unwrap();
         let mat = Matrix::filled(9, 9, 0.1);
         let mut dd = Tensor4::<9>::from_std_matrix(&mat).unwrap();
-        t2_dyad_t2_update(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, ADD, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         let correct = "┌                                     ┐\n\
                        │ 1.1 1.1 1.1 1.1 1.1 1.1 1.1 1.1 1.1 │\n\
@@ -659,7 +618,7 @@ mod tests {
             [3.0, 2.0, 1.0],
         ]).unwrap();
         let mut dd = Tensor4::<9>::new();
-        t2_dyad_t2(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, SET, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
@@ -690,7 +649,7 @@ mod tests {
             [6.0, 4.0, 1.0],
         ]).unwrap();
         let mut dd = Tensor4::<6>::new();
-        t2_dyad_t2(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, SET, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
@@ -721,7 +680,7 @@ mod tests {
             [0.0, 0.0, 1.0],
         ]).unwrap();
         let mut dd = Tensor4::<4>::new();
-        t2_dyad_t2(&mut dd, 2.0, &a, &b);
+        t2_dyad_t2(&mut dd, SET, 2.0, &a, &b);
         let mat = dd.as_std_matrix();
         // println!("{:.1}", mat);
         let correct = Matrix::from(&[
@@ -748,7 +707,7 @@ mod tests {
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]]).unwrap();
         let mut b = Tensor2::<4>::new();
-        t4_ddot_t2(&mut b, 1.0, &dd, &a);
+        t4_ddot_t2(&mut b, SET, 1.0, &dd, &a);
         let out = b.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -761,7 +720,7 @@ mod tests {
     }
 
     #[test]
-    fn t4_ddot_t2_update_works() {
+    fn t4_ddot_t2_add_works() {
         let dd = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
@@ -771,11 +730,11 @@ mod tests {
         ]).unwrap();
         #[rustfmt::skip]
         let mut b = Tensor2::<4>::from_std_matrix(&[
-            [-1000.0, -1000.0,     0.0],
-            [-1000.0, -1000.0,     0.0],
-            [    0.0,     0.0, -1000.0],
+            [-2000.0, -2000.0,     0.0],
+            [-2000.0, -2000.0,     0.0],
+            [    0.0,     0.0, -2000.0],
         ]).unwrap();
-        t4_ddot_t2_update(&mut b, 1.0, &dd, &a, 2.0);
+        t4_ddot_t2(&mut b, ADD, 1.0, &dd, &a);
         let out = b.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -796,7 +755,7 @@ mod tests {
             [-2.0,  2.0,  0.0],
             [ 0.0,  0.0, -3.0]]).unwrap();
         let mut b = Tensor2::<4>::new();
-        t2_ddot_t4(&mut b, 1.0, &a, &dd);
+        t2_ddot_t4(&mut b, SET, 1.0, &a, &dd);
         let out = b.as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
@@ -806,6 +765,28 @@ mod tests {
              │    0.0    0.0 -102.0 │\n\
              └                      ┘"
         );
+    }
+
+    #[test]
+    fn t2_ddot_t4_add_works() {
+        let dd = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
+        #[rustfmt::skip]
+        let a = Tensor2::<4>::from_std_matrix(&[
+            [-1.0, -2.0,  0.0],
+            [-2.0,  2.0,  0.0],
+            [ 0.0,  0.0, -3.0]]).unwrap();
+        let mut b = Tensor2::<4>::from_std_matrix(&[
+            [1000.0, 0.0, 0.0],
+            [0.0, 2000.0, 0.0],
+            [0.0, 0.0, 3000.0],
+        ]).unwrap();
+        t2_ddot_t4(&mut b, ADD, 1.0, &a, &dd);
+        let correct = &[
+            [910.0, -144.0, 0.0],
+            [-144.0, 1904.0, 0.0],
+            [0.0, 0.0, 2898.0],
+        ];
+        mat_approx_eq(&b.as_std_matrix(), correct, 1e-13);
     }
 
     #[test]

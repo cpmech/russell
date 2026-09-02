@@ -1,4 +1,4 @@
-use super::{SQRT_2, SQRT_3, SQRT_6, Tensor1, Tensor2, t1_dyad_t1};
+use super::{SET, SQRT_2, SQRT_3, SQRT_6, Tensor1, Tensor2, t1_dyad_t1};
 use crate::StrError;
 use russell_lab::{Matrix, Vector, mat_eigen_sym_jacobi};
 
@@ -39,9 +39,9 @@ impl Spectral2 {
         let u2 = Tensor1::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
         // compute eigenprojectors
-        t1_dyad_t1(&mut self.projectors[0], 1.0, &u0, &u0).unwrap();
-        t1_dyad_t1(&mut self.projectors[1], 1.0, &u1, &u1).unwrap();
-        t1_dyad_t1(&mut self.projectors[2], 1.0, &u2, &u2).unwrap();
+        t1_dyad_t1(&mut self.projectors[0], SET, 1.0, &u0, &u0).unwrap();
+        t1_dyad_t1(&mut self.projectors[1], SET, 1.0, &u1, &u1).unwrap();
+        t1_dyad_t1(&mut self.projectors[2], SET, 1.0, &u2, &u2).unwrap();
         Ok(())
     }
 

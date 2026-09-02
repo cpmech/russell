@@ -1,5 +1,6 @@
 use russell_lab::{approx_eq, mat_approx_eq, vec_approx_eq};
-use russell_tensor::{StrError, Tensor1, Tensor2, Tensor3, t2_add, t2_matmul, t3_ddot_t2, t3_dot_t1};
+use russell_tensor::{SET, StrError, Tensor1, Tensor2, Tensor3};
+use russell_tensor::{t2_add, t2_matmul, t3_ddot_t2, t3_dot_t1};
 
 fn main() -> Result<(), StrError> {
     // Allocate a Tensor2
@@ -97,7 +98,7 @@ fn main() -> Result<(), StrError> {
 
     // Calculate: skw = -perm . om
     let mut skw_again = Tensor2::<9>::new();
-    t3_dot_t1(&mut skw_again, -1.0, &perm_a, &omega);
+    t3_dot_t1(&mut skw_again, SET, -1.0, &perm_a, &omega);
     let mat_skw_again = skw_again.as_std_matrix();
     println!("skw_again =\n{:.2}", mat_skw_again);
     mat_approx_eq(&mat_skw_again, &correct_skw, 1e-15);
@@ -109,18 +110,18 @@ fn main() -> Result<(), StrError> {
 
     // Calculate: om = - (1/2) perm : skw
     let mut om_again = Tensor1::new();
-    t3_ddot_t2(&mut om_again, -0.5, &perm_b, &skw);
+    t3_ddot_t2(&mut om_again, SET, -0.5, &perm_b, &skw);
     println!("omega_again = \n{:.2}", om_again);
     vec_approx_eq(&om_again.as_vector(), &expected_omega, 1e-15);
 
     // Verify that 0 = perm : sym
     let mut zero = Tensor1::new();
-    t3_ddot_t2(&mut zero, 1.0, &perm_b, &sym);
+    t3_ddot_t2(&mut zero, SET, 1.0, &perm_b, &sym);
     vec_approx_eq(&zero.as_vector(), &[0.0, 0.0, 0.0], 1e-15);
 
     // Verify that omega = -(1/2) perm : ten
     let mut om_again2 = Tensor1::new();
-    t3_ddot_t2(&mut om_again2, -0.5, &perm_b, &ten);
+    t3_ddot_t2(&mut om_again2, SET, -0.5, &perm_b, &ten);
     println!("omega_again2 = \n{:.2}", om_again2);
     vec_approx_eq(&om_again2.as_vector(), &expected_omega, 1e-15);
 

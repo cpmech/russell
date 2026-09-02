@@ -1,4 +1,4 @@
-use crate::{StrError, Tensor2, Tensor4, t4_ddot_t2};
+use crate::{SET, StrError, Tensor2, Tensor4, t4_ddot_t2};
 
 /// Implements the linear elasticity equations for small-strain problems
 pub struct LinElasticity<const N: usize> {
@@ -302,7 +302,7 @@ impl<const N: usize> LinElasticity<N> {
     /// }
     /// ```
     pub fn calc_stress(&self, stress: &mut Tensor2<N>, strain: &Tensor2<N>) {
-        t4_ddot_t2(stress, 1.0, &self.dd, strain);
+        t4_ddot_t2(stress, SET, 1.0, &self.dd, strain);
     }
 
     /// Calculates and sets the out-of-plane strain in the Plane-Stress case

@@ -258,6 +258,40 @@ impl<const N: usize> Tensor4<N> {
         }
     }
 
+    /// Adds a value to the (m,n) component of the Kelvin-Mandel matrix
+    ///
+    /// # Input
+    ///
+    /// * `m` -- the row index
+    /// * `n` -- the column index
+    /// * `value` -- the value to be added
+    ///
+    /// # Panics
+    ///
+    /// A panic will occur if the indices are out of range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_tensor::{Tensor4};
+    ///
+    /// let mut dd = Tensor4::<9>::new();
+    /// dd.set(0, 0, 123.0);
+    /// dd.add(0, 0, 321.0);
+    /// assert_eq!(dd.get(0, 0), 444.0);
+    /// ```
+    #[inline]
+    pub fn add(&mut self, m: usize, n: usize, value: f64) {
+        #[cfg(feature = "heap")]
+        {
+            self.mat.add(m, n, value);
+        }
+        #[cfg(not(feature = "heap"))]
+        {
+            self.mat[m][n] += value;
+        }
+    }
+
     /// Sets the Kelvin-Mandel matrix directly
     ///
     /// # Input

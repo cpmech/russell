@@ -80,6 +80,21 @@ impl Tensor1 {
         self.vec[i] = value;
     }
 
+    /// Adds a value to the i-th standard component
+    ///
+    /// # Input
+    ///
+    /// * `i` -- The index must be 0, 1, or 2
+    /// * `value` -- The standard component value to be added
+    ///
+    /// # Panics
+    ///
+    /// A panic may occur if the index is out of range
+    #[inline]
+    pub fn add(&mut self, i: usize, value: f64) {
+        self.vec[i] += value;
+    }
+
     /// Gets the i-th standard component
     ///
     /// # Input

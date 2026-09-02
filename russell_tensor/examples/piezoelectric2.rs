@@ -1,10 +1,7 @@
 use russell_tensor::StrError;
 use russell_tensor::analysis::*;
-use russell_tensor::t1_dot_t3;
-use russell_tensor::t2_dot_t1;
-use russell_tensor::t3_ddot_t2;
-use russell_tensor::t4_ddot_t2;
-use russell_tensor::{Tensor1, Tensor2};
+use russell_tensor::{ADD, SET, Tensor1, Tensor2};
+use russell_tensor::{t1_dot_t3, t2_dot_t1, t3_ddot_t2, t4_ddot_t2};
 use std::env;
 use std::path::PathBuf;
 
@@ -15,8 +12,8 @@ fn main() -> Result<(), StrError> {
 
     let db = PiezoDatabase::from_file(&full_path).unwrap();
     println!("{}", db.info("mp-774922")?);
-    let (per, e, d, cc, ss) = db.get_tensors("mp-774922")?;
-    println!("Dielectric permittivity =\n{:.4}", per);
+    let (p, e, d, cc, ss) = db.get_tensors("mp-774922")?;
+    println!("Dielectric permittivity =\n{:.4}", p);
     println!("Piezoelectric tensor =\n{:.4}", e);
     println!("Piezoelectric charge tensor =\n{:.4}", d);
     println!("Stiffness tensor =\n{:.4}", cc);
@@ -34,15 +31,16 @@ fn main() -> Result<(), StrError> {
 
     // Compute stress: sig = cc : eps - ee . e
     let mut sig = Tensor2::<6>::new();
-    let mut res = Tensor2::<6>::new();
-    t4_ddot_t2(&mut sig, 1.0, &cc, &eps);
-    t1_dot_t3(&mut res, -1.0, &ee, &e); // TODO: create t1_dot_t3_update
+    t4_ddot_t2(&mut sig, SET, 1.0, &cc, &eps); // sig = cc : eps
+    t1_dot_t3(&mut sig, ADD, -1.0, &ee, &e); // sig += -ee . e
 
-    // Compute electric displacement: dd = e . eps + per . ee
+    // Compute electric displacement: dd = e . eps + p . ee
     let mut dd = Tensor1::new();
-    let mut tmp = Tensor1::new();
-    t3_ddot_t2(&mut dd, 1.0, &e, &eps);
-    t2_dot_t1(&mut tmp, 1.0, &per, &ee); // TODO: create t2_dot_t1_update
+    t3_ddot_t2(&mut dd, SET, 1.0, &e, &eps); // dd = e . eps
+    t2_dot_t1(&mut dd, ADD, 1.0, &p, &ee); // dd += p . ee
+
+    println!("sig =\n{}", sig);
+    println!("D =\n{}", dd);
 
     Ok(())
 }

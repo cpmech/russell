@@ -531,8 +531,8 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components with respect to an
-    ///   orthonormal Cartesian basis. The matrix must be 9x3 for Case A or
+    /// * `inp` -- the standard matrix of components with respect to a
+    ///   Cartesian system. The matrix must be 9x3 for Case A or
     ///   3x9 for Case B even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics
@@ -656,8 +656,8 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     ///
     /// # Input
     ///
-    /// * `inp` -- the standard matrix of components with respect to an
-    ///   orthonormal Cartesian basis. The matrix must be 9x3 for Case A or
+    /// * `inp` -- the standard matrix of components with respect to a
+    ///   Cartesian system. The matrix must be 9x3 for Case A or
     ///   3x9 for Case B even if it corresponds to a minor-symmetric tensor.
     ///
     /// # Panics

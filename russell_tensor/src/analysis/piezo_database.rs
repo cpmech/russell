@@ -37,42 +37,29 @@ impl PiezoDatabase {
         Ok(db)
     }
 
-    /// Returns information about the material
-    pub fn info(&self, material_id: &str) -> Result<String, StrError> {
-        let mat = self
-            .materials
+    /// Gets a reference to a material in the database
+    pub fn get(&self, material_id: &str) -> Result<&Material, StrError> {
+        self.materials
             .get(material_id)
-            .ok_or("material not found in the database")?;
-        Ok(format!(
-            "{} ({}) : Crystal System {} : Space Group {}",
-            mat.formula, material_id, mat.crystal_system, mat.space_group_symbol
-        ))
+            .ok_or("material not found in the database")
     }
+}
 
-    /// Returns p, e, d, C, and S tensors
-    ///
-    /// Returns `(p, e, d, cc, ss)` where:
-    ///
-    /// * `p` -- Dielectric permittivity tensor (symmetric; `Tensor2<6>`)
-    /// * `e` -- Piezoelectric stress tensor (Case B; `Tensor3<3, 6>`)
-    /// * `d` -- Piezoelectric strain tensor (Case B; `Tensor3<3, 6>`)
-    /// * `cc` -- elastic stiffness tensor (minor-symmetric; `Tensor4<6>`)
-    /// * `ss` -- elastic compliance tensor (minor-symmetric; `Tensor4<6>`)
-    pub fn get_tensors(
-        &self,
-        material_id: &str,
-    ) -> Result<(Tensor2<6>, Tensor3<3, 6>, Tensor3<3, 6>, Tensor4<6>, Tensor4<6>), StrError> {
-        let mat = self
-            .materials
-            .get(material_id)
-            .ok_or("material not found in the database")?;
-        let p = Tensor2::<6>::from_std_matrix(&symmetrize3(&mat.epsilon_tensor))?;
-        let e = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&mat.e_tensor))?;
-        let d = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&mat.d_tensor))?;
-        let cc = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&mat.cc_tensor))?;
-        let ss = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&mat.ss_tensor))?;
-        Ok((p, e, d, cc, ss))
-    }
+/// Physical units mapping for the exported tensors and moduli.
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct Units {
+    pub e_tensor: String,
+    pub e_voigt: String,
+    pub cc_tensor: String,
+    pub cc_voigt: String,
+    pub kk_v: String,
+    pub gg_v: String,
+    pub kk_r: String,
+    pub gg_r: String,
+    pub kk_h: String,
+    pub gg_h: String,
+    pub aa_u: String,
+    pub epsilon_tensor: String,
 }
 
 /// Stores standard definitions and rules applied across the database.
@@ -83,6 +70,9 @@ pub struct Metadata {
 
     /// Detailed notes regarding the specific IEEE standard mapping used.
     pub voigt_mapping_notes: String,
+
+    /// The physical units corresponding to the numerical tensor values.
+    pub units: Units,
 }
 
 /// Represents the physical properties and tensors for a single crystalline material.
@@ -92,6 +82,9 @@ pub struct Metadata {
 /// as well as the elastic tensors `C` and `S` are strictly optional.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Material {
+    /// The Materials Project unique identifier.
+    pub material_id: String,
+
     /// The chemical formula of the material (e.g. "LiNbO3").
     pub formula: String,
 
@@ -115,14 +108,6 @@ pub struct Material {
     /// The Voigt-reduced Piezoelectric Stress Tensor ($e_{i\alpha}$) (3x6 matrix).
     pub e_voigt: Vec<Vec<f64>>,
 
-    /// The fully expanded Cartesian Piezoelectric Strain Tensor ($d_{ijk}$) (3x3x3 array).
-    ///
-    /// Represents polarization generated per unit stress, fully scaled for shear terms.
-    pub d_tensor: Vec<Vec<Vec<f64>>>,
-
-    /// The Voigt-reduced Piezoelectric Strain Tensor ($d_{i\alpha}$) (3x6 matrix).
-    pub d_voigt: Vec<Vec<f64>>,
-
     /// The fully expanded Cartesian Elastic Stiffness Tensor ($C_{ijkl}$) (3x3x3x3 array).
     ///
     /// Derived from the `elasticity` dataset in GPa.
@@ -130,16 +115,6 @@ pub struct Material {
 
     /// The Voigt-reduced Elastic Stiffness Tensor ($C_{\alpha\beta}$) (6x6 matrix).
     pub cc_voigt: Vec<Vec<f64>>,
-
-    //
-    // Elastic compliance tensors
-    //
-    /// The fully expanded Cartesian Elastic Compliance Tensor ($S_{ijkl}$) (3x3x3x3 array).
-    /// Derived symmetrically via the inverse stiffness.
-    pub ss_tensor: Vec<Vec<Vec<Vec<f64>>>>,
-
-    /// The Voigt-reduced Elastic Compliance Tensor ($S_{\alpha\beta}$) (6x6 matrix).
-    pub ss_voigt: Vec<Vec<f64>>,
 
     //
     // Scalar Elastic Moduli
@@ -170,6 +145,30 @@ pub struct Material {
     //
     /// Extracted directly from the `dielectric` dataset.
     pub epsilon_tensor: Vec<Vec<f64>>,
+}
+
+impl Material {
+    /// Returns information about this material
+    pub fn info(&self) -> String {
+        format!(
+            "{} ({}) : Crystal System {} : Space Group {}",
+            self.formula, self.material_id, self.crystal_system, self.space_group_symbol
+        )
+    }
+
+    /// Returns the p, e, and C moduli
+    ///
+    /// Returns `(p, e, cc)` where:
+    ///
+    /// * `p` -- Dielectric permittivity tensor (symmetric; `Tensor2<6>`)
+    /// * `e` -- Piezoelectric stress tensor (Case B; `Tensor3<3, 6>`)
+    /// * `cc` -- elastic stiffness tensor (minor-symmetric; `Tensor4<6>`)
+    pub fn moduli(&self) -> Result<(Tensor2<6>, Tensor3<3, 6>, Tensor4<6>), StrError> {
+        let p = Tensor2::<6>::from_std_matrix(&symmetrize3(&self.epsilon_tensor))?;
+        let e = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&self.e_tensor))?;
+        let cc = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&self.cc_tensor))?;
+        Ok((p, e, cc))
+    }
 }
 
 /// Converts a Vec-based 3×3×3 array into a fixed-size `[[[f64; 3]; 3]; 3]`
@@ -257,18 +256,19 @@ mod tests {
     }
 
     #[test]
-    fn get_tensors_works() {
+    fn material_moduli_works() {
         let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
         let path = root.join("data/piezo_data.json");
         let db = PiezoDatabase::from_file(path).expect("Failed to parse JSON database");
 
-        let (eps, e, d, cc, ss) = db.get_tensors("mp-3731").unwrap();
+        let mat = db.get("mp-3731").unwrap();
+        let (p, e, cc) = mat.moduli().unwrap();
         let linbo3 = &db.materials["mp-3731"];
 
         // dielectric permittivity
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(eps.get_std(i, j), linbo3.epsilon_tensor[i][j], 1e-13);
+                approx_eq(p.get_std(i, j), linbo3.epsilon_tensor[i][j], 1e-13);
             }
         }
 
@@ -281,32 +281,12 @@ mod tests {
             }
         }
 
-        // piezoelectric strain tensor
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    approx_eq(d.get_std(i, j, k), linbo3.d_tensor[i][j][k], 1e-13);
-                }
-            }
-        }
-
         // elastic stiffness tensor
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
                         approx_eq(cc.get_std(i, j, k, l), linbo3.cc_tensor[i][j][k][l], 1e-13);
-                    }
-                }
-            }
-        }
-
-        // elastic compliance tensor
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    for l in 0..3 {
-                        approx_eq(ss.get_std(i, j, k, l), linbo3.ss_tensor[i][j][k][l], 1e-13);
                     }
                 }
             }

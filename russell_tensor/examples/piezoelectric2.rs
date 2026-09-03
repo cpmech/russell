@@ -11,11 +11,12 @@ fn main() -> Result<(), StrError> {
     let full_path = root.join("data/piezo_data.json");
 
     let db = PiezoDatabase::from_file(&full_path).unwrap();
-    println!("{}", db.info("mp-774922")?);
-    let (p, e, _, cc, _) = db.get_tensors("mp-774922")?;
+    let mat = db.get("mp-774922")?;
+    println!("{}", mat.info());
+    let (p, e, cc) = mat.moduli()?;
     println!("Dielectric permittivity =\n{:.4}", p);
-    println!("Piezoelectric tensor =\n{:.4}", e);
-    println!("Stiffness tensor =\n{:.4}", cc);
+    println!("Piezoelectric tensor (C/m^2) =\n{:.4}", e);
+    println!("Stiffness tensor (GPa) =\n{:.4}", cc);
 
     // Small strain tensor. TODO: find correct value range
     let eps = Tensor2::<6>::from_std_matrix(&[

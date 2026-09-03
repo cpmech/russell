@@ -56,29 +56,16 @@ with MPRester(API_KEY) as mpr:
         
         e_doc = elastic_map.get(doc.material_id)
         if e_doc:
-            # --- ELASTIC TENSORS (C and S) ---
+            # --- ELASTIC TENSORS (C) ---
             # Stored in the IEEE format directly, which aligns with standard Voigt mappings.
             print("\n--- Elastic Tensors [GPa] ---")
             print("Stiffness Tensor (C):")
             print(np.array(e_doc.elastic_tensor.ieee_format))
-            print("Compliance Tensor (S):")
-            s_matrix = np.array(e_doc.compliance_tensor.ieee_format)
-            print(s_matrix)
-            
-            # --- PIEZOELECTRIC STRAIN TENSOR (d) ---
-            # To get 'd', we must mathematically compute it: d = e * S
-            # S is natively in GPa^-1 (which is 10^-9 m^2/N).
-            # e is in C/m^2.
-            # Multiplying them yields units of 10^-9 C/N.
-            # Multiplying the result by 1000 gives standard units of pC/N (10^-12 C/N).
-            print("\n--- Piezoelectric Strain Tensor (d) [pC/N] ---")
-            d_matrix = np.matmul(e_matrix, s_matrix) * 1000
-            print("Voigt Notation (3x6):")
-            print(d_matrix)
         else:
-            print("\n--- Elastic & Strain-Charge Tensors ---")
-            print("Elastic data not available for this material (cannot compute 'd' tensor).")
+            print("\n--- Elastic Tensors ---")
+            print("Elastic data not available for this material.")
             
+
         d_doc = dielectric_map.get(doc.material_id)
         if d_doc:
             # --- DIELECTRIC PERMITTIVITY TENSOR (\epsilon) ---
@@ -103,7 +90,21 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
     data = {
         "_metadata": {
             "voigt_mapping": "11, 22, 33, 23, 13, 12",
-            "voigt_mapping_notes": "Standard IEEE mapping: 1->11, 2->22, 3->33, 4->23 (or 32), 5->13 (or 31), 6->12 (or 21)."
+            "voigt_mapping_notes": "Standard IEEE mapping: 1->11, 2->22, 3->33, 4->23 (or 32), 5->13 (or 31), 6->12 (or 21).",
+            "units": {
+                "e_tensor": "C/m^2",
+                "e_voigt": "C/m^2",
+                "cc_tensor": "GPa",
+                "cc_voigt": "GPa",
+                "kk_v": "GPa",
+                "gg_v": "GPa",
+                "kk_r": "GPa",
+                "gg_r": "GPa",
+                "kk_h": "GPa",
+                "gg_h": "GPa",
+                "aa_u": "dimensionless",
+                "epsilon_tensor": "dimensionless"
+            }
         }
     }
     
@@ -118,12 +119,8 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
         e_doc = elastic_map.get(mat_id)
         
         # Initialize default values for conditionally available tensors
-        d_full = None
         c_full = None
-        s_full = None
-        d_voigt_list = None
         c_voigt_list = None
-        s_voigt_list = None
         kk_v = None
         gg_v = None
         kk_r = None
@@ -133,28 +130,14 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
         aa_u = None
         
         if e_doc:
-            # 2. Expand the Elastic Tensors (C and S)
+            # 2. Expand the Elastic Tensor (C)
             # PyMatgen's native classes inherently handle the internal factors of 2 and 4 
             # associated with expanding elastic tensors from Voigt notation.
             c_voigt = np.array(e_doc.elastic_tensor.ieee_format)
-            s_voigt = np.array(e_doc.compliance_tensor.ieee_format)
             c_full = ElasticTensor.from_voigt(c_voigt).tolist()
-            s_full = ComplianceTensor.from_voigt(s_voigt).tolist()
-            
             c_voigt_list = c_voigt.tolist()
-            s_voigt_list = s_voigt.tolist()
             
-            # 3. Expand the Piezoelectric Strain Tensor (d)
-            d_voigt = np.matmul(e_voigt, s_voigt) * 1000
-            d_voigt_list = d_voigt.tolist()
-            
-            # CRITICAL PHYSICS STEP: Unlike the e-tensor, the d-tensor relates to shear STRAIN.
-            # Thus, its 4th, 5th, and 6th Voigt columns are defined with a factor of 2.
-            # To expand this properly into a 3x3x3 Cartesian tensor, we must strictly halve these columns.
-            d_scaled_for_voigt = d_voigt.copy()
-            d_scaled_for_voigt[:, 3:6] /= 2.0
-            d_full = Tensor.from_voigt(d_scaled_for_voigt).tolist()
-            
+
             # Extract Scalar Moduli
             kk_v = float(e_doc.bulk_modulus.voigt) if e_doc.bulk_modulus else None
             gg_v = float(e_doc.shear_modulus.voigt) if e_doc.shear_modulus else None
@@ -169,7 +152,7 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
         eps_full = np.array(d_doc.total).tolist() if d_doc else None
             
         # 5. Completeness Check
-        if any(v is None for v in [e_full, d_full, c_full, eps_full, kk_v, gg_v, kk_r, gg_r, kk_h, gg_h, aa_u]):
+        if any(v is None for v in [e_full, c_full, eps_full, kk_v, gg_v, kk_r, gg_r, kk_h, gg_h, aa_u]):
             print(f"Material {mat_id} ({doc.formula_pretty}) skipped: Not all data available.")
             continue
             
@@ -182,12 +165,8 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
             "space_group_number": doc.symmetry.number,
             "e_tensor": e_full,
             "e_voigt": e_voigt.tolist(),
-            "d_tensor": d_full,
-            "d_voigt": d_voigt_list,
             "cc_tensor": c_full,
             "cc_voigt": c_voigt_list,
-            "ss_tensor": s_full,
-            "ss_voigt": s_voigt_list,
             "kk_v": kk_v,
             "gg_v": gg_v,
             "kk_r": kk_r,

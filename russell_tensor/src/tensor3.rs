@@ -18,8 +18,10 @@ use russell_lab::mat_scale;
 /// where DIM (the leading dimension) is one of 4, 6, or 9. For a third-order tensor
 /// with indices ijk, the cases are:
 ///
+/// ```text
 /// Case A: ij-pairwise => (ij)k => (m)k => (DIM×3)
 /// Case B: jk-pairwise => i(jk) => i(n) => (3×DIM)
+/// ```
 ///
 /// Given u, T, and H as first-, second-, and third-order tensors, the
 /// main operations involving a third-order tensor are:

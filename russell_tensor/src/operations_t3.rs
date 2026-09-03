@@ -167,7 +167,7 @@ pub fn t2_ddot_t3<const M: usize, const N: usize>(
 ///
 /// ```text
 /// [u] = α [H]  [T]
-/// 3×1     3×M  M×1
+/// 3×1     3×N  N×1
 /// ```
 ///
 /// # Output
@@ -220,14 +220,14 @@ pub fn t3_ddot_t2<const M: usize, const N: usize>(
 ///
 /// ```text
 /// Tₙ = α Σ uᵢ Hᵢₙ
-///        k
+///        i
 /// ```
 ///
 /// In matrix notation (KM basis), this operation corresponds to:
 ///
 /// ```text
 /// [T] = α [H]ᵀ [u]
-/// M×1     M×3  3×1
+/// N×1     N×3  3×1
 /// ```
 ///
 /// # Output

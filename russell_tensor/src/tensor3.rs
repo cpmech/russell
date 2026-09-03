@@ -213,9 +213,9 @@ pub struct Tensor3<const M: usize, const N: usize> {
 }
 
 // Manual Serialize/Deserialize implementations: serde only implements the traits
-// for concrete array sizes, so the derive fails for the generic `[[f64; N]; N]`.
-// Since N is known to be 4, 6, or 9 only, we serialize `(case_a, components)` where
-// the components are the active `nrow x ncol` Kelvin-Mandel block.
+// for concrete array sizes, so the derive fails for the generic `[[f64; N]; M]`.
+// Since M and N are known to be 4, 6, or 9 (with the other being 3), we serialize
+// the components as a flat sequence of M*N values (row-major).
 impl<const M: usize, const N: usize> Serialize for Tensor3<M, N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -924,10 +924,6 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// ```text
     /// self += α other
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if the tensors have different `case_a`.
     ///
     /// # Examples
     ///

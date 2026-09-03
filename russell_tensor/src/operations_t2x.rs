@@ -5,38 +5,40 @@ use crate::{SQRT_2, StrError};
 ///
 /// # Supported Combinations
 ///
+/// The dimension `9` means general (all components), and `6` means symmetric (3D).
+///
 /// | Formula | `a` | `b` | `c` | `tra_a` | `tra_b` |
 /// | :--- | :--- | :--- | :--- | :--- | :--- |
-/// | C = α A · B | `General` | `General` | `General` | `false` | `false` |
-/// | C = α A · A | `General` | (same as a) | `General` | `false` | `false` |
-/// | C = α A · Bᵀ | `General` | `Symmetric` | `General` | `false` | `true` |
-/// | C = α A · B | `General` | `Symmetric` | `General` | `false` | `false` |
-/// | C = α Aᵀ · B | `Symmetric` | `General` | `General` | `true` | `false` |
-/// | C = α A · B | `Symmetric` | `General` | `General` | `false` | `false` |
-/// | C = α Aᵀ · Bᵀ | `Symmetric` | `Symmetric` | `General` | `true` | `true` |
-/// | C = α Aᵀ · A | `Symmetric` | (same as a) | `Symmetric` | `true` | `true` |
-/// | C = α Aᵀ · B | `Symmetric` | `Symmetric` | `General` | `true` | `false` |
-/// | C = α Aᵀ · A | `Symmetric` | (same as a) | `Symmetric` | `true` | `false` |
-/// | C = α A · Bᵀ | `Symmetric` | `Symmetric` | `General` | `false` | `true` |
-/// | C = α A · A | `Symmetric` | (same as a) | `Symmetric` | `false` | `true` |
-/// | C = α A · B | `Symmetric` | `Symmetric` | `General` | `false` | `false` |
-/// | C = α A · A | `Symmetric` | (same as a) | `Symmetric` | `false` | `false` |
-/// | C = α Aᵀ · A | `General` | (same as a) | `Symmetric` | `true` | `false` |
-/// | C = α chop(Aᵀ · B) | `General` | `General` | `Symmetric or General` | `true` | `false` |
-/// | C = α Aᵀ · B | `General` | `General` | `General` | `true` | `false` |
-/// | C = α A · A | `General` | (same as a) | `Symmetric` | `false` | `true` |
-/// | C = α chop(A · Bᵀ) | `General` | `General` | `Symmetric or General` | `false` | `true` |
-/// | C = α A · Bᵀ | `General` | `General` | `General` | `false` | `true` |
-/// | C = α Aᵀ · Bᵀ | `General` | `General` | `General` | `true` | `true` |
-/// | C = α Aᵀ · Bᵀ | `Symmetric` | `General` | `General` | `true` | `true` |
-/// | C = α A · Bᵀ | `Symmetric` | `General` | `General` | `false` | `true` |
-/// | C = α Aᵀ · Bᵀ | `General` | `Symmetric` | `General` | `true` | `true` |
-/// | C = α Aᵀ · B | `General` | `Symmetric` | `General` | `true` | `false` |
+/// | C = α A · B | `9` | `9` | `9` | `false` | `false` |
+/// | C = α A · A | `9` | (same as a) | `9` | `false` | `false` |
+/// | C = α A · Bᵀ | `9` | `6` | `9` | `false` | `true` |
+/// | C = α A · B | `9` | `6` | `9` | `false` | `false` |
+/// | C = α Aᵀ · B | `6` | `9` | `9` | `true` | `false` |
+/// | C = α A · B | `6` | `9` | `9` | `false` | `false` |
+/// | C = α Aᵀ · Bᵀ | `6` | `6` | `9` | `true` | `true` |
+/// | C = α Aᵀ · A | `6` | (same as a) | `6` | `true` | `true` |
+/// | C = α Aᵀ · B | `6` | `6` | `9` | `true` | `false` |
+/// | C = α Aᵀ · A | `6` | (same as a) | `6` | `true` | `false` |
+/// | C = α A · Bᵀ | `6` | `6` | `9` | `false` | `true` |
+/// | C = α A · A | `6` | (same as a) | `6` | `false` | `true` |
+/// | C = α A · B | `6` | `6` | `9` | `false` | `false` |
+/// | C = α A · A | `6` | (same as a) | `6` | `false` | `false` |
+/// | C = α Aᵀ · A | `9` | (same as a) | `6` | `true` | `false` |
+/// | C = α chop(Aᵀ · B) | `9` | `9` | `6 or 9` | `true` | `false` |
+/// | C = α Aᵀ · B | `9` | `9` | `9` | `true` | `false` |
+/// | C = α A · A | `9` | (same as a) | `6` | `false` | `true` |
+/// | C = α chop(A · Bᵀ) | `9` | `9` | `6 or 9` | `false` | `true` |
+/// | C = α A · Bᵀ | `9` | `9` | `9` | `false` | `true` |
+/// | C = α Aᵀ · Bᵀ | `9` | `9` | `9` | `true` | `true` |
+/// | C = α Aᵀ · Bᵀ | `6` | `9` | `9` | `true` | `true` |
+/// | C = α A · Bᵀ | `6` | `9` | `9` | `false` | `true` |
+/// | C = α Aᵀ · Bᵀ | `9` | `6` | `9` | `true` | `true` |
+/// | C = α Aᵀ · B | `9` | `6` | `9` | `true` | `false` |
 ///
-/// **Note:** The use of `chop` is decided by the N of the output tensor `c`.
-/// Also, `chop` doesn't actually check for symmetry; it just ignores (chops) the last 3 rows of the Kelvin-Mandel vector.
+/// **Note:** The use of `chop` is decided by the dimension `L` of the output tensor `c`.
+/// Also, `chop` doesn't actually check for symmetry; it just ignores (chops) the last 3 components of the Kelvin-Mandel vector.
 ///
-/// **Note:** `Symmetric2D` is not supported (use `Symmetric` instead).
+/// **Note:** the dimension `4` (symmetric 2D) is not supported (use `6` instead).
 ///
 /// # Output
 ///
@@ -52,7 +54,7 @@ use crate::{SQRT_2, StrError};
 ///
 /// # Returns
 ///
-/// Returns an error if the combination of representations and transpositions is unavailable or impossible, or if `Symmetric2D` is used.
+/// Returns an error if the combination of dimensions and transpositions is unavailable or impossible, or if `4` is used.
 pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
     c: &mut Tensor2<L>,
     alpha: f64,
@@ -162,10 +164,12 @@ pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
 ///
 /// # Supported Combinations
 ///
+/// The dimension `9` means general (all components), and `6` means symmetric (3D).
+///
 /// | Formula | `a` | `b` | `c` | `forward` |
 /// | :--- | :--- | :--- | :--- | :--- |
-/// | C = α A · B · Aᵀ | `General` | `Symmetric` | `Symmetric` | `true` |
-/// | C = α Aᵀ · B · A | `General` | `Symmetric` | `Symmetric` | `false` |
+/// | C = α A · B · Aᵀ | `9` | `6` | `6` | `true` |
+/// | C = α Aᵀ · B · A | `9` | `6` | `6` | `false` |
 ///
 /// # Output
 ///

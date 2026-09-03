@@ -25,8 +25,9 @@ use crate::{ADD, SQRT_2};
 /// # Input
 ///
 /// * `op` -- operation: ADD or SET
-/// * `a` -- first tensor
-/// * `b` -- second tensor
+/// * `s` -- the multiplier
+/// * `aa` -- first tensor
+/// * `bb` -- second tensor
 pub fn t2_odyad_t2<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
     t2_odyad_t2_slice::<N>(dd, op, s, aa.as_data(), bb.as_data());
 }
@@ -610,8 +611,10 @@ pub(crate) fn t2_odyad_t2_slice<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: 
 ///
 /// # Input
 ///
-/// * `a` -- first tensor
-/// * `b` -- second tensor
+/// * `op` -- operation: ADD or SET
+/// * `s` -- the multiplier
+/// * `aa` -- first tensor
+/// * `bb` -- second tensor
 pub fn t2_udyad_t2<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
     t2_udyad_t2_slice::<N>(dd, op, s, aa.as_data(), bb.as_data());
 }
@@ -1188,7 +1191,7 @@ pub(crate) fn t2_udyad_t2_slice<const N:usize>(dd: &mut Tensor4<9>, op: u8, s: f
 /// Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)
 /// ```
 ///
-/// **Important:** Even if `A` is Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
+/// **Important:** Even if `A` has dimension 4 (symmetric 2D), the result may not be expressed by a dimension-4 (symmetric 2D) Tensor4.
 ///
 /// # Output
 ///
@@ -1485,7 +1488,7 @@ pub(crate) fn ssd_fn_slice<const N: usize>(dd: &mut Tensor4<6>, op: u8, s: f64, 
 /// Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)
 /// ```
 ///
-/// **Important:** Even if `A` and `B` are Symmetric 2D, the result may not be expressed by a Symmetric 2D Tensor4.
+/// **Important:** Even if `A` and `B` have dimension 4 (symmetric 2D), the result may not be expressed by a dimension-4 (symmetric 2D) Tensor4.
 ///
 /// # Output
 ///

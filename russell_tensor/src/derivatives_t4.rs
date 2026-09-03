@@ -25,7 +25,6 @@ use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice};
 /// # Input
 ///
 /// * `ai` -- the pre-computed inverse tensor
-/// * `a` -- the defining tensor
 pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor2<N>) {
     let mut at = [0.0; 9];
     ai.transpose_slice(&mut at);

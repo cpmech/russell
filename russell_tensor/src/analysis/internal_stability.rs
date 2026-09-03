@@ -11,11 +11,7 @@ use crate::{SQRT_2, StrError, Tensor2, Tensor4};
 ///
 /// # Input
 ///
-/// * `sigma` -- the Cauchy stress tensor; must be symmetric
-///
-/// # Errors
-///
-/// Returns an error if `hh` or `sigma` is not symmetric.
+/// * `sigma` -- the Cauchy stress tensor (symmetric; `Tensor2<6>`)
 ///
 /// # References
 ///

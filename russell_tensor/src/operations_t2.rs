@@ -300,7 +300,7 @@ pub fn t1_dot_t2<const N: usize>(v: &mut Tensor1, op: u8, alpha: f64, u: &Tensor
 ///
 /// **Important:** The dyadic product between two vectors may result in a **non-symmetric**
 /// second-order tensor. Therefore, if the input tensor `A` is symmetric, an error may occur.
-/// Thus, make sure that the you expect `u ⊗ v` to be symmetric when passing a symmetric tensor `A`.
+/// Thus, make sure that you expect `u ⊗ v` to be symmetric when passing a symmetric tensor `A`.
 ///
 /// # Output
 ///

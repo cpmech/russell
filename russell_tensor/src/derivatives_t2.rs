@@ -16,7 +16,7 @@ use crate::{ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3, Tensor2, squared_tensor_slice};
 ///
 /// # Input
 ///
-/// * `sigma` -- the `T` tensor
+/// * `tt` -- the `T` tensor
 pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, tt: &Tensor2<N>) -> Option<f64> {
     let nrm = tt.norm();
     if nrm > 0.0 {
@@ -437,7 +437,7 @@ mod tests {
         if verbose {
             println!("analytical derivative:\n{}", ana);
             println!("numerical derivative:\n{}", num);
-            println!("numerical derivative (Rep):\n{}", num_mat);
+            println!("numerical derivative (matrix):\n{}", num_mat);
         }
         */
         mat_approx_eq(&ana, &num, tol);

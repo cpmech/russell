@@ -396,7 +396,7 @@ impl<const N: usize> LinElasticity<N> {
             self.dd.set(0, 1, c * self.poisson);
             self.dd.set(1, 0, c * self.poisson);
             self.dd.set(1, 1, c);
-            self.dd.set(3, 3, c * (1.0 - self.poisson)); // Rep: multiply by 2, so 1/2 disappears
+            self.dd.set(3, 3, c * (1.0 - self.poisson)); // Kelvin-Mandel shear component is 2·G, so the 1/2 disappears
         } else {
             let c = self.young / ((1.0 + self.poisson) * (1.0 - 2.0 * self.poisson));
             self.dd.set(0, 0, c * (1.0 - self.poisson));
@@ -408,7 +408,7 @@ impl<const N: usize> LinElasticity<N> {
             self.dd.set(2, 0, c * self.poisson);
             self.dd.set(2, 1, c * self.poisson);
             self.dd.set(2, 2, c * (1.0 - self.poisson));
-            self.dd.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Rep: multiply by 2, so 1/2 disappears
+            self.dd.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Kelvin-Mandel shear component is 2·G, so the 1/2 disappears
         }
         if N > 4 {
             let g = self.dd.get(3, 3);

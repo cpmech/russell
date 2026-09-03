@@ -2199,17 +2199,13 @@ impl<const N: usize> Tensor2<N> {
 
     /// Calculates the octahedral invariants
     ///
-    /// # Input
+    /// # Returns
     ///
     /// Returns `(distance, radius, lode)` where:
     ///
     /// * `distance` -- distance `d` from the octahedral plane to the origin
     /// * `radius` -- radius `r` on the octahedral plane
-    /// * `lode` -- Lode invariant `l` in `-1 ≤ lode ≤ 1`
-    ///
-    /// # Returns
-    ///
-    /// If `J2 > TOL_J2`, returns `l`. Otherwise, returns None.
+    /// * `lode` -- Lode invariant `l` in `-1 ≤ lode ≤ 1`; `None` if `J2 ≤ TOL_J2`
     ///
     /// # Definitions
     ///
@@ -2225,7 +2221,7 @@ impl<const N: usize> Tensor2<N> {
         (distance, radius, lode)
     }
 
-    /// Returns the Kelvin-Mandel matrix in scientific notation
+    /// Returns the Kelvin-Mandel vector in scientific notation
     ///
     /// The returned [String] can be printed (e.g., `println!("{}", ...)`) or
     /// saved to a log file.

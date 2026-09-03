@@ -26,6 +26,7 @@ use crate::ADD;
 /// # Input
 ///
 /// * `op` -- operation: ADD or SET
+/// * `alpha` -- the multiplier α
 /// * `a` -- first tensor
 /// * `b` -- second tensor
 ///

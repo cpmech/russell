@@ -44,6 +44,13 @@ pub fn t3_add<const M: usize, const N: usize>(
 ///        k
 /// ```
 ///
+/// In matrix notation (KM basis), this operation corresponds to:
+///
+/// ```text
+/// [T] = α [H] [u]
+/// M×1     M×3 3×1
+/// ```
+///
 /// # Output
 ///
 /// * `tt` -- the resulting second-order tensor (T)
@@ -94,6 +101,13 @@ pub fn t3_dot_t1<const M: usize, const N: usize>(
 /// ```text
 /// uₖ = α Σ Tₘ Hₘₖ
 ///        m
+/// ```
+///
+/// In matrix notation (KM basis), this operation corresponds to:
+///
+/// ```text
+/// [u] = α [H]ᵀ [T]
+/// 3×1     3×M  M×1
 /// ```
 ///
 /// # Output
@@ -149,6 +163,13 @@ pub fn t2_ddot_t3<const M: usize, const N: usize>(
 ///       n
 /// ```
 ///
+/// In matrix notation (KM basis), this operation corresponds to:
+///
+/// ```text
+/// [u] = α [H]  [T]
+/// 3×1     3×M  M×1
+/// ```
+///
 /// # Output
 ///
 /// * `u` -- the 3D vector (first-order tensor)
@@ -202,6 +223,13 @@ pub fn t3_ddot_t2<const M: usize, const N: usize>(
 ///        k
 /// ```
 ///
+/// In matrix notation (KM basis), this operation corresponds to:
+///
+/// ```text
+/// [T] = α [H]ᵀ [u]
+/// M×1     M×3  3×1
+/// ```
+///
 /// # Output
 ///
 /// * `tt` -- the resulting second-order tensor (T)
@@ -236,7 +264,7 @@ pub fn t1_dot_t3<const M: usize, const N: usize>(
 mod tests {
     use super::{t1_dot_t3, t2_ddot_t3, t3_add, t3_ddot_t2, t3_dot_t1};
     use crate::{ADD, SET, SamplesTensor3, Tensor1, Tensor2, Tensor3};
-    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
     #[test]
     fn t3_add_works_case_a() {
@@ -503,5 +531,123 @@ mod tests {
             [correct[2][0], correct[2][1], 300.0 + correct[2][2]],
         ];
         mat_approx_eq(&tt.as_std_matrix(), &correct_add, 1e-12);
+    }
+
+    //
+    // --- using matmul ---
+    //
+
+    // Returns the M x 1 Kelvin-Mandel matrix representing a Tensor2
+    fn kelvin_matrix_t2<const M: usize>(tt: &Tensor2<M>) -> Matrix {
+        let mut mat = Matrix::new(M, 1);
+        for m in 0..M {
+            mat.set(m, 0, tt.get(m));
+        }
+        mat
+    }
+
+    // Returns the M x N Kelvin-Mandel matrix representing a Tensor3
+    fn kelvin_matrix_t3<const M: usize, const N: usize>(hh: &Tensor3<M, N>) -> Matrix {
+        let mut mat = Matrix::new(M, N);
+        for m in 0..M {
+            for n in 0..N {
+                mat.set(m, n, hh.get(m, n));
+            }
+        }
+        mat
+    }
+
+    #[test]
+    fn check_t3_dot_t1_using_matrix_notation() {
+        // Case A
+        // [T] = α [H] [u]
+        // M×1     M×3 3×1
+        // tensor form
+        let hh_ten = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
+        let mut tt_ten = Tensor2::<9>::new();
+        let u_ten = Tensor1::from(&[1.0, 2.0, 3.0]);
+        t3_dot_t1(&mut tt_ten, SET, 1.0, &hh_ten, &u_ten);
+        // matrix form
+        let hh = kelvin_matrix_t3(&hh_ten);
+        let u = Matrix::from(&[[1.0], [2.0], [3.0]]);
+        let mut tt = Matrix::new(9, 1);
+        mat_mat_mul(&mut tt, 1.0, &hh, &u, 0.0).unwrap();
+        // check
+        for m in 0..9 {
+            approx_eq(tt[(m, 0)], tt_ten.get(m), 1e-13);
+        }
+    }
+
+    #[test]
+    fn check_t2_ddot_t3_using_matrix_notation() {
+        // Case A
+        // [u] = α [H]ᵀ [T]
+        // 3×1     3×M  M×1
+        // tensor form
+        let hh_ten = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
+        let tt_ten = Tensor2::<9>::from_std_matrix(&[
+            [1.0, 0.5, 0.1], // 0
+            [0.4, 2.0, 0.3], // 1
+            [0.2, 0.1, 3.0], // 2
+        ])
+        .unwrap();
+        let mut u_ten = Tensor1::new();
+        t2_ddot_t3(&mut u_ten, SET, 1.0, &tt_ten, &hh_ten);
+        // matrix form
+        let hh = kelvin_matrix_t3(&hh_ten);
+        let tt = kelvin_matrix_t2(&tt_ten);
+        let mut u = Matrix::new(3, 1);
+        mat_t_mat_mul(&mut u, 1.0, &hh, &tt, 0.0).unwrap();
+        // check
+        for i in 0..3 {
+            approx_eq(u[(i, 0)], u_ten.get(i), 1e-13);
+        }
+    }
+
+    #[test]
+    fn check_t3_ddot_t2_using_matrix_notation() {
+        // Case B
+        // [u] = α [H]  [T]
+        // 3×1     3×M  M×1
+        // tensor form
+        let hh_ten = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
+        let tt_ten = Tensor2::<9>::from_std_matrix(&[
+            [1.0, 0.5, 0.1], // 0
+            [0.4, 2.0, 0.3], // 1
+            [0.2, 0.1, 3.0], // 2
+        ])
+        .unwrap();
+        let mut u_ten = Tensor1::new();
+        t3_ddot_t2(&mut u_ten, SET, 1.0, &hh_ten, &tt_ten);
+        // matrix form
+        let hh = kelvin_matrix_t3(&hh_ten);
+        let tt = kelvin_matrix_t2(&tt_ten);
+        let mut u = Matrix::new(3, 1);
+        mat_mat_mul(&mut u, 1.0, &hh, &tt, 0.0).unwrap();
+        // check
+        for i in 0..3 {
+            approx_eq(u[(i, 0)], u_ten.get(i), 1e-14);
+        }
+    }
+
+    #[test]
+    fn check_t1_dot_t3_using_matrix_notation() {
+        // Case B
+        // [T] = α [H]ᵀ [u]
+        // M×1     M×3  3×1
+        // tensor form
+        let hh_ten = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
+        let u_ten = Tensor1::from(&[1.0, 2.0, 3.0]);
+        let mut tt_ten = Tensor2::<9>::new();
+        t1_dot_t3(&mut tt_ten, SET, 1.0, &u_ten, &hh_ten);
+        // matrix form
+        let hh = kelvin_matrix_t3(&hh_ten);
+        let u = Matrix::from(&[[1.0], [2.0], [3.0]]);
+        let mut tt = Matrix::new(9, 1);
+        mat_t_mat_mul(&mut tt, 1.0, &hh, &u, 0.0).unwrap();
+        // check
+        for m in 0..9 {
+            approx_eq(tt[(m, 0)], tt_ten.get(m), 1e-13);
+        }
     }
 }

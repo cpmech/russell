@@ -21,7 +21,7 @@ if not API_KEY:
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(description="Fetch and compute tensor properties for Materials Project materials.")
-parser.add_argument("materials", nargs="*", default=["661", "2133", "3731", "3666", "6945", "20459", "774922"],
+parser.add_argument("materials", nargs="*", default=["661", "2133", "3731", "3666", "5020", "6945", "20459", "774922"],
                     help="Material IDs (numbers only, without 'mp-'). E.g., 3731 6945.")
 args = parser.parse_args()
 
@@ -70,10 +70,10 @@ with MPRester(API_KEY) as mpr:
         if d_doc:
             # --- DIELECTRIC PERMITTIVITY TENSOR (\epsilon) ---
             # Stored natively as a 3x3 Cartesian tensor.
-            print("\n--- Dielectric Permittivity Tensor (ε) ---")
+            print("\n--- Relative Permittivity Tensor (ε_r) ---")
             print(np.array(d_doc.total))
         else:
-            print("\n--- Dielectric Permittivity Tensor ---")
+            print("\n--- Relative Permittivity Tensor ---")
             print("Not available for this material.")
 
         print("\n")
@@ -96,7 +96,7 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
                 "e_voigt": "C/m^2",
                 "cc_tensor": "GPa",
                 "cc_voigt": "GPa",
-                "epsilon_tensor": "dimensionless"
+                "relative_permittivity_tensor": "dimensionless"
             }
         }
     }
@@ -144,7 +144,7 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
             "e_voigt": e_voigt.tolist(),
             "cc_tensor": c_full,
             "cc_voigt": c_voigt_list,
-            "epsilon_tensor": eps_full
+            "relative_permittivity_tensor": eps_full
         }
         
     with open(filename, "w") as f:

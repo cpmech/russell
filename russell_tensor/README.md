@@ -17,7 +17,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Computing the Invariants](#computing-the-invariants)
   - [Allocating Second Order Tensors](#allocating-second-order-tensors)
 - [For developers](#for-developers)
-- [Principal invariants (Rep::Symmetric)](#principal-invariants-repsymmetric)
+- [Principal invariants (symmetric)](#principal-invariants-symmetric)
 
 
 
@@ -31,22 +31,23 @@ This library implements structures and functions for tensor analysis and calculu
 * `Tensor2` — second-order tensors (symmetric or not) with functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
 * `Tensor3` — third-order tensors (minor-symmetric or not)
 * `Tensor4` — fourth-order tensors (minor-symmetric or not)
-* Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products
+* Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products; most operations support both overwriting (`SET`) and accumulation (`ADD`)
 * Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
 * `Spectral2` — the spectral (eigen) representation of symmetric second-order tensors
 * `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
-* Constants — identity, transposition, and projector tensors
+* `PiezoDatabase` — a database of piezoelectric materials (permittivity, piezoelectric, and stiffness tensors) loaded from JSON
+* Constants — identity, transposition, and projector tensors, as well as the `ADD`/`SET` operation selectors
 * Polar decomposition — `F = R U = V R` via the classic Eigen/SVD algorithms, the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini (2016) algorithm (`PolarAlgo`, `polar_decomp`)
 
 ### Kelvin-Mandel notation
 
 Internally, tensors are stored as vectors/matrices with components given with respect to the Kelvin-Mandel basis, i.e., the *Kelvin-Mandel* notation, a norm-preserving alternative to [Voigt notation](https://en.wikipedia.org/wiki/Voigt_notation). In the Kelvin-Mandel notation, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. Factors such as `√2` multiply some components to yield the norm-preserving mapping.
 
-The `Rep` enum specifies the available representations:
+The dimension — the const generic `N` of `Tensor2`/`Tensor4`, and `M`/`N` of `Tensor3` — selects the representation:
 
-* `Rep::General` — 9×1 / 9×3 / 3×9 / 9×9 (all components)
-* `Rep::Symmetric` — 6×1 / 6×3 / 3×6 / 6×6 (symmetric `Tensor2`; minor-symmetric `Tensor3`/`Tensor4`; 3D)
-* `Rep::Symmetric2D` — 4×1 / 4×3 / 3×4 / 4×4 (symmetric `Tensor2`; minor-symmetric `Tensor3`/`Tensor4`; 2D)
+* `9` — all components (general): 9×1 / 9×3 / 3×9 / 9×9
+* `6` — symmetric `Tensor2` / minor-symmetric `Tensor3`/`Tensor4` (3D): 6×1 / 6×3 / 3×6 / 6×6
+* `4` — symmetric `Tensor2` / minor-symmetric `Tensor3`/`Tensor4` (2D): 4×1 / 4×3 / 3×4 / 4×4
 
 The dimensions above correspond to `Tensor2` (vector), `Tensor3` (Case A / Case B rectangular matrix), and `Tensor4` (square matrix), respectively.
 
@@ -59,9 +60,9 @@ For second-order tensors, the stored component order is:
 
 | Representation     | Stored components                                                                                                               |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `Rep::General`     | `T11`, `T22`, `T33`, `(T12 + T21)/√2`, `(T23 + T32)/√2`, `(T13 + T31)/√2`, `(T12 - T21)/√2`, `(T23 - T32)/√2`, `(T13 - T31)/√2` |
-| `Rep::Symmetric`   | `T11`, `T22`, `T33`, `√2 T12`, `√2 T23`, `√2 T13`                                                                               |
-| `Rep::Symmetric2D` | `T11`, `T22`, `T33`, `√2 T12`                                                                                                   |
+| `9` (general)      | `T11`, `T22`, `T33`, `(T12 + T21)/√2`, `(T23 + T32)/√2`, `(T13 + T31)/√2`, `(T12 - T21)/√2`, `(T23 - T32)/√2`, `(T13 - T31)/√2` |
+| `6` (symmetric)    | `T11`, `T22`, `T33`, `√2 T12`, `√2 T23`, `√2 T13`                                                                               |
+| `4` (symmetric 2D) | `T11`, `T22`, `T33`, `√2 T12`                                                                                                   |
 
 Use the `*_std*` constructors and accessors when working with ordinary Cartesian
 components, such as `Tensor2::from_std_matrix` and `Tensor2::get_std`. Use the
@@ -205,7 +206,7 @@ fn main() -> Result<(), StrError> {
 
 
 
-## Principal invariants (Rep::Symmetric)
+## Principal invariants (symmetric)
 
 For a symmetric second-order tensor with standard components $\sigma_{11}, \sigma_{22}, \sigma_{33}, \sigma_{12}, \sigma_{23}, \sigma_{13}$:
 
@@ -309,7 +310,7 @@ $$
 \underline{a}^{-1}_6 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_5 - 2\,\underline{a}_2\underline{a}_6}{2\det(\underline{a})}
 $$
 
-For a tensor $\underline{F}$ (`Rep::General`) with Kelvin-Mandel components $\underline{F}_1,\ldots,\underline{F}_9$, the inverse $\underline{F}^{-1}$ is given by:
+For a tensor $\underline{F}$ (general, `N = 9`) with Kelvin-Mandel components $\underline{F}_1,\ldots,\underline{F}_9$, the inverse $\underline{F}^{-1}$ is given by:
 
 $$
 \det(\underline{F}) = \underline{F}_1\underline{F}_2\underline{F}_3 - \frac{1}{2}\underline{F}_3\underline{F}_4^2 - \frac{1}{2}\underline{F}_1\underline{F}_5^2 + \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_5\underline{F}_6 - \frac{1}{2}\underline{F}_2\underline{F}_6^2 + \frac{1}{2}\underline{F}_3\underline{F}_7^2 + \frac{1}{\sqrt{2}}\underline{F}_6\underline{F}_7\underline{F}_8 + \frac{1}{2}\underline{F}_1\underline{F}_8^2 - \frac{1}{\sqrt{2}}\underline{F}_5\underline{F}_7\underline{F}_9 - \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_8\underline{F}_9 + \frac{1}{2}\underline{F}_2\underline{F}_9^2

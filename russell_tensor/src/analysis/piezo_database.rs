@@ -52,13 +52,6 @@ pub struct Units {
     pub e_voigt: String,
     pub cc_tensor: String,
     pub cc_voigt: String,
-    pub kk_v: String,
-    pub gg_v: String,
-    pub kk_r: String,
-    pub gg_r: String,
-    pub kk_h: String,
-    pub gg_h: String,
-    pub aa_u: String,
     pub epsilon_tensor: String,
 }
 
@@ -115,30 +108,6 @@ pub struct Material {
 
     /// The Voigt-reduced Elastic Stiffness Tensor ($C_{\alpha\beta}$) (6x6 matrix).
     pub cc_voigt: Vec<Vec<f64>>,
-
-    //
-    // Scalar Elastic Moduli
-    //
-    /// Bulk modulus (Voigt average) in GPa.
-    pub kk_v: f64,
-
-    /// Shear modulus (Voigt average) in GPa.
-    pub gg_v: f64,
-
-    /// Bulk modulus (Reuss average) in GPa.
-    pub kk_r: f64,
-
-    /// Shear modulus (Reuss average) in GPa.
-    pub gg_r: f64,
-
-    /// Bulk modulus (Voigt-Reuss-Hill average) in GPa.
-    pub kk_h: f64,
-
-    /// Shear modulus (Voigt-Reuss-Hill average) in GPa.
-    pub gg_h: f64,
-
-    /// Universal anisotropy index.
-    pub aa_u: f64,
 
     //
     // Dielectric permittivity tensors ($\epsilon_{ij}$) (3x3 Cartesian array).
@@ -233,6 +202,7 @@ mod tests {
         // Test parsing a specific material (e.g. LiNbO3 -> mp-3731)
         assert!(db.materials.contains_key("mp-3731"), "Missing mp-3731");
         let linbo3 = &db.materials["mp-3731"];
+        assert_eq!(linbo3.material_id, "mp-3731");
         assert_eq!(linbo3.formula, "LiNbO3");
         assert_eq!(linbo3.crystal_system, "Trigonal");
         assert_eq!(linbo3.space_group_number, 161);
@@ -250,9 +220,6 @@ mod tests {
         let cc_voigt = &linbo3.cc_voigt;
         assert_eq!(cc_voigt.len(), 6);
         assert_eq!(cc_voigt[0].len(), 6);
-
-        assert!(linbo3.kk_v > 0.0, "kk_v should be parsed");
-        assert!(linbo3.aa_u > 0.0, "aa_u should be parsed");
     }
 
     #[test]

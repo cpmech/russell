@@ -96,13 +96,6 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
                 "e_voigt": "C/m^2",
                 "cc_tensor": "GPa",
                 "cc_voigt": "GPa",
-                "kk_v": "GPa",
-                "gg_v": "GPa",
-                "kk_r": "GPa",
-                "gg_r": "GPa",
-                "kk_h": "GPa",
-                "gg_h": "GPa",
-                "aa_u": "dimensionless",
                 "epsilon_tensor": "dimensionless"
             }
         }
@@ -121,13 +114,6 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
         # Initialize default values for conditionally available tensors
         c_full = None
         c_voigt_list = None
-        kk_v = None
-        gg_v = None
-        kk_r = None
-        gg_r = None
-        kk_h = None
-        gg_h = None
-        aa_u = None
         
         if e_doc:
             # 2. Expand the Elastic Tensor (C)
@@ -137,27 +123,18 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
             c_full = ElasticTensor.from_voigt(c_voigt).tolist()
             c_voigt_list = c_voigt.tolist()
             
-
-            # Extract Scalar Moduli
-            kk_v = float(e_doc.bulk_modulus.voigt) if e_doc.bulk_modulus else None
-            gg_v = float(e_doc.shear_modulus.voigt) if e_doc.shear_modulus else None
-            kk_r = float(e_doc.bulk_modulus.reuss) if e_doc.bulk_modulus else None
-            gg_r = float(e_doc.shear_modulus.reuss) if e_doc.shear_modulus else None
-            kk_h = float(e_doc.bulk_modulus.vrh) if e_doc.bulk_modulus else None
-            gg_h = float(e_doc.shear_modulus.vrh) if e_doc.shear_modulus else None
-            aa_u = float(e_doc.universal_anisotropy) if e_doc.universal_anisotropy is not None else None
-            
         # 4. Extract the Dielectric Tensor
         d_doc = dielectric_map.get(mat_id)
         eps_full = np.array(d_doc.total).tolist() if d_doc else None
             
         # 5. Completeness Check
-        if any(v is None for v in [e_full, c_full, eps_full, kk_v, gg_v, kk_r, gg_r, kk_h, gg_h, aa_u]):
+        if any(v is None for v in [e_full, c_full, eps_full]):
             print(f"Material {mat_id} ({doc.formula_pretty}) skipped: Not all data available.")
             continue
             
         # Pack the finalized, nested multi-dimensional arrays and metadata into the JSON map
         data[mat_id] = {
+            "material_id": mat_id,
             "formula": doc.formula_pretty,
             "crystal_system": str(doc.symmetry.crystal_system),
             "point_group": str(doc.symmetry.point_group),
@@ -167,13 +144,6 @@ def export_tensors_to_json(piezo_docs, elastic_map, dielectric_map, filename="pi
             "e_voigt": e_voigt.tolist(),
             "cc_tensor": c_full,
             "cc_voigt": c_voigt_list,
-            "kk_v": kk_v,
-            "gg_v": gg_v,
-            "kk_r": kk_r,
-            "gg_r": gg_r,
-            "kk_h": kk_h,
-            "gg_h": gg_h,
-            "aa_u": aa_u,
             "epsilon_tensor": eps_full
         }
         

@@ -7,7 +7,7 @@
             "e_voigt": "C/m^2",
             "cc_tensor": "GPa",
             "cc_voigt": "GPa",
-            "epsilon_tensor": "dimensionless"
+            "relative_permittivity_tensor": "dimensionless"
         }
     },
     "mp-661": {
@@ -307,7 +307,7 @@
                 125.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 8.22658384153804,
                 1.3633123030425947e-17,
@@ -622,7 +622,7 @@
                 42.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 10.533545681509114,
                 -4.5762508932792194e-17,
@@ -937,7 +937,7 @@
                 75.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 38.60438082604736,
                 2.857941424627697e-06,
@@ -1252,7 +1252,7 @@
                 57.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 45.06829264014585,
                 -8.904080080454303e-06,
@@ -1567,7 +1567,7 @@
                 27.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 4.066600025,
                 0.0,
@@ -1882,7 +1882,7 @@
                 86.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 55.001543885,
                 0.0,
@@ -2197,7 +2197,7 @@
                 13.0
             ]
         ],
-        "epsilon_tensor": [
+        "relative_permittivity_tensor": [
             [
                 11.899701973037155,
                 3.751366089796737,

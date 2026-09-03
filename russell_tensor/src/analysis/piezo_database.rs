@@ -5,6 +5,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+/// Holds the Vacuum Electric Permittivity constant
+///
+/// ε₀ Units: F/m
+///
+/// See: <https://physics.nist.gov/cgi-bin/cuu/Value?ep0>
+const VACUUM_ELECTRIC_PERMITTIVITY: f64 = 8.854_187_8188e-12;
+
 /// Represents the entire database deserialized from the JSON file.
 ///
 /// The JSON structure contains a specific `_metadata` key with global metadata,
@@ -52,7 +59,7 @@ pub struct Units {
     pub e_voigt: String,
     pub cc_tensor: String,
     pub cc_voigt: String,
-    pub epsilon_tensor: String,
+    pub relative_permittivity_tensor: String,
 }
 
 /// Stores standard definitions and rules applied across the database.
@@ -112,8 +119,8 @@ pub struct Material {
     //
     // Dielectric permittivity tensors ($\epsilon_{ij}$) (3x3 Cartesian array).
     //
-    /// Extracted directly from the `dielectric` dataset.
-    pub epsilon_tensor: Vec<Vec<f64>>,
+    /// Extracted directly from the `dielectric` dataset. Represents relative permittivity (dimensionless).
+    pub relative_permittivity_tensor: Vec<Vec<f64>>,
 }
 
 impl Material {
@@ -133,9 +140,10 @@ impl Material {
     /// * `e` -- Piezoelectric stress tensor (Case B; `Tensor3<3, 6>`)
     /// * `cc` -- elastic stiffness tensor (minor-symmetric; `Tensor4<6>`)
     pub fn moduli(&self) -> Result<(Tensor2<6>, Tensor3<3, 6>, Tensor4<6>), StrError> {
-        let p = Tensor2::<6>::from_std_matrix(&symmetrize3(&self.epsilon_tensor))?;
+        let mut p = Tensor2::<6>::from_std_matrix(&symmetrize3(&self.relative_permittivity_tensor))?;
         let e = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&self.e_tensor))?;
         let cc = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&self.cc_tensor))?;
+        p.scale(VACUUM_ELECTRIC_PERMITTIVITY);
         Ok((p, e, cc))
     }
 }
@@ -235,7 +243,11 @@ mod tests {
         // dielectric permittivity
         for i in 0..3 {
             for j in 0..3 {
-                approx_eq(p.get_std(i, j), linbo3.epsilon_tensor[i][j], 1e-13);
+                approx_eq(
+                    p.get_std(i, j),
+                    VACUUM_ELECTRIC_PERMITTIVITY * linbo3.relative_permittivity_tensor[i][j],
+                    1e-13,
+                );
             }
         }
 

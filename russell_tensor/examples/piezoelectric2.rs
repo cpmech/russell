@@ -11,6 +11,17 @@ use std::path::PathBuf;
 // D = e:ε + p·E   [C/m² = (C/m²)(−) + (F/m)(V/m) = C/m²]
 //
 // Outputs the norms of σ and D
+//
+// Expected results:
+// Material    ||sig|| [MPa]  ||D|| [C/m^2]
+// AlN             4.646E+01      2.689E-04
+// ZnO             2.878E+01      2.309E-04
+// LiNbO3          2.754E+01      3.559E-04
+// LiTaO3          3.588E+01      2.121E-04
+// BaTiO3          2.856E+01      2.370E-04
+// SiO2            5.800E+00      3.438E-05
+// TiPbO3          6.696E+00      5.005E-04
+// Ti3TeO8         2.240E+00      1.234E-04
 
 fn main() -> Result<(), StrError> {
     // Get the asset's full path (the JSON file is in the crate's data/ directory)

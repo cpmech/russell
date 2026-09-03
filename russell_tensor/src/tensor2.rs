@@ -2225,20 +2225,32 @@ impl<const N: usize> Tensor2<N> {
         (distance, radius, lode)
     }
 
-    /// Prints the Kelvin-Mandel matrix in scientific notation
-    pub fn print(&self, label: &str, factor: f64, width: usize, precision: usize) {
-        println!("{} =", label);
-        println!("┌{:1$}┐", " ", width + 1);
+    /// Returns the Kelvin-Mandel matrix in scientific notation
+    ///
+    /// The returned [String] can be printed (e.g., `println!("{}", ...)`) or
+    /// saved to a log file.
+    ///
+    /// # Input
+    ///
+    /// * `label` -- a label (e.g., a description of the tensor)
+    /// * `factor` -- a factor to multiply the components before printing (e.g., a unit conversion factor)
+    /// * `width` -- the field width used to print each component
+    /// * `precision` -- the number of digits after the decimal point
+    pub fn scientific(&self, label: &str, factor: f64, width: usize, precision: usize) -> String {
+        let mut buf = String::new();
+        writeln!(&mut buf, "{} =", label).unwrap();
+        writeln!(&mut buf, "┌{:1$}┐", " ", width + 1).unwrap();
         for m in 0..N {
             if m > 0 {
-                println!(" │");
+                writeln!(&mut buf, " │").unwrap();
             }
-            print!("│");
+            write!(&mut buf, "│").unwrap();
             let val = self.vec[m] * factor;
-            print!("{:>1$}", format_scientific(val, width, precision), width);
+            write!(&mut buf, "{:>1$}", format_scientific(val, width, precision), width).unwrap();
         }
-        println!(" │");
-        println!("└{:1$}┘", " ", width + 1);
+        writeln!(&mut buf, " │").unwrap();
+        writeln!(&mut buf, "└{:1$}┘", " ", width + 1).unwrap();
+        buf
     }
 }
 
@@ -3590,6 +3602,29 @@ mod tests {
         approx_eq(tt.get(3), 4.0 * SQRT_2, 1e-14);
         approx_eq(tt.get(4), 12.0 * SQRT_2, 1e-14);
         approx_eq(tt.get(5), 6.0 * SQRT_2, 1e-14);
+    }
+
+    #[test]
+    fn scientific_works() {
+        let mut tt = Tensor2::<6>::new();
+        tt.set(0, 1.0);
+        tt.set(1, 2.0);
+        tt.set(2, 3.0);
+        tt.set(3, 4.0);
+        tt.set(4, 5.0);
+        tt.set(5, 6.0);
+        assert_eq!(
+            tt.scientific("tt", 1.0, 10, 2),
+            "tt =\n\
+             ┌           ┐\n\
+             │  1.00E+00 │\n\
+             │  2.00E+00 │\n\
+             │  3.00E+00 │\n\
+             │  4.00E+00 │\n\
+             │  5.00E+00 │\n\
+             │  6.00E+00 │\n\
+             └           ┘\n"
+        );
     }
 
     #[test]

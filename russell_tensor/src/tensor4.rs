@@ -912,7 +912,10 @@ impl<const N: usize> Tensor4<N> {
         }
     }
 
-    /// Prints the Kelvin-Mandel matrix in scientific notation
+    /// Returns the Kelvin-Mandel matrix in scientific notation
+    ///
+    /// The returned [String] can be printed (e.g., `println!("{}", ...)`) or
+    /// saved to a log file.
     ///
     /// # Input
     ///
@@ -920,23 +923,25 @@ impl<const N: usize> Tensor4<N> {
     /// * `factor` -- a factor to multiply the components before printing (e.g., a unit conversion factor)
     /// * `width` -- the field width used to print each component
     /// * `precision` -- the number of digits after the decimal point
-    pub fn print(&self, label: &str, factor: f64, width: usize, precision: usize) {
-        println!("{} =", label);
-        println!("┌{:1$}┐", " ", N * width + 1);
+    pub fn scientific(&self, label: &str, factor: f64, width: usize, precision: usize) -> String {
+        let mut buf = String::new();
+        writeln!(&mut buf, "{} =", label).unwrap();
+        writeln!(&mut buf, "┌{:1$}┐", " ", N * width + 1).unwrap();
         for m in 0..N {
             if m > 0 {
-                println!(" │");
+                writeln!(&mut buf, " │").unwrap();
             }
             for n in 0..N {
                 if n == 0 {
-                    print!("│");
+                    write!(&mut buf, "│").unwrap();
                 }
                 let val = self.get(m, n) * factor;
-                print!("{:>1$}", format_scientific(val, width, precision), width);
+                write!(&mut buf, "{:>1$}", format_scientific(val, width, precision), width).unwrap();
             }
         }
-        println!(" │");
-        println!("└{:1$}┘", " ", N * width + 1);
+        writeln!(&mut buf, " │").unwrap();
+        writeln!(&mut buf, "└{:1$}┘", " ", N * width + 1).unwrap();
+        buf
     }
 
     /// Adds another tensor to this one
@@ -1834,6 +1839,25 @@ mod tests {
         assert_eq!(dd.get(0, 0), 2.0);
         assert_eq!(dd.get(1, 1), 4.0);
         assert_eq!(dd.get(2, 2), 6.0);
+    }
+
+    #[test]
+    fn scientific_works() {
+        let mut dd = Tensor4::<4>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(1, 1, 2.0);
+        dd.set(2, 2, 3.0);
+        dd.set(3, 3, 4.0);
+        assert_eq!(
+            dd.scientific("dd", 1.0, 10, 2),
+            "dd =\n\
+             ┌                                         ┐\n\
+             │  1.00E+00  0.00E+00  0.00E+00  0.00E+00 │\n\
+             │  0.00E+00  2.00E+00  0.00E+00  0.00E+00 │\n\
+             │  0.00E+00  0.00E+00  3.00E+00  0.00E+00 │\n\
+             │  0.00E+00  0.00E+00  0.00E+00  4.00E+00 │\n\
+             └                                         ┘\n"
+        );
     }
 
     #[test]

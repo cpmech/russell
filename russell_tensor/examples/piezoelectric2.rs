@@ -36,13 +36,13 @@ fn main() -> Result<(), StrError> {
 
     // Print the results
     println!("{}", mat.info());
-    p.print("Permittivity [F/m] p", 1.0, 10, 2);
-    e.print("Piezoelectric tensor [C/m^2] e", 1.0, 10, 2);
-    cc.print("Stiffness tensor [GPa] C", 1e-9, 10, 2);
-    eps.print("Small strain tensor [-] eps", 1.0, 10, 2);
-    ee.print("Electric field [V/m] E", 1.0, 10, 2);
-    sig.print("Stress [kPa] sig", 1e-3, 10, 2);
-    dd.print("Electric displacement [C/m^2] D", 1.0, 10, 2);
+    print!("{}", p.scientific("Permittivity [F/m] p", 1.0, 10, 2));
+    print!("{}", e.scientific("Piezoelectric tensor [C/m^2] e", 1.0, 10, 2));
+    print!("{}", cc.scientific("Stiffness tensor [GPa] C", 1e-9, 10, 2));
+    print!("{}", eps.scientific("Small strain tensor [-] eps", 1.0, 10, 2));
+    print!("{}", ee.scientific("Electric field [V/m] E", 1.0, 10, 2));
+    print!("{}", sig.scientific("Stress [kPa] sig", 1e-3, 10, 2));
+    print!("{}", dd.scientific("Electric displacement [C/m^2] D", 1.0, 10, 2));
 
     Ok(())
 }

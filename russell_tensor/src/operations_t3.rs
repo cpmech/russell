@@ -359,15 +359,16 @@ mod tests {
         let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         let u = Tensor1::from(&[1.0, 2.0, 3.0]);
         let mut tt = Tensor2::<9>::from_std_matrix(&[
-            [100.0, 0.0, 0.0],
-            [0.0, 200.0, 0.0],
-            [0.0, 0.0, 300.0],
-        ]).unwrap();
+            [100.0, 0.0, 0.0], // 0
+            [0.0, 200.0, 0.0], // 1
+            [0.0, 0.0, 300.0], // 2
+        ])
+        .unwrap();
         t3_dot_t1(&mut tt, ADD, 0.5, &hh, &u);
         let mat_expected = Matrix::from(&[
-            [107.0, 34.0, 52.0],
-            [61.0, 216.0, 43.0],
-            [79.0, 70.0, 325.0],
+            [107.0, 34.0, 52.0], // 0
+            [61.0, 216.0, 43.0], // 1
+            [79.0, 70.0, 325.0], // 2
         ]);
         mat_approx_eq(&tt.as_std_matrix(), &mat_expected, 1e-13);
     }
@@ -422,10 +423,11 @@ mod tests {
         // General
         let hh = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         let tt = Tensor2::<9>::from_std_matrix(&[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ]).unwrap();
+            [1.0, 2.0, 3.0], // 0
+            [4.0, 5.0, 6.0], // 1
+            [7.0, 8.0, 9.0], // 2
+        ])
+        .unwrap();
         let mut u = Tensor1::from(&[100.0, 200.0, 300.0]);
         t3_ddot_t2(&mut u, ADD, 0.5, &hh, &tt);
         approx_eq(u.get(0), 428.5, 1e-13);
@@ -438,10 +440,11 @@ mod tests {
         // Case A general
         let hh = Tensor3::<9, 3>::from_std_array(&SamplesTensor3::CASE_A_SAMPLE1).unwrap();
         let tt = Tensor2::<9>::from_std_matrix(&[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ]).unwrap();
+            [1.0, 2.0, 3.0], // 0
+            [4.0, 5.0, 6.0], // 1
+            [7.0, 8.0, 9.0], // 2
+        ])
+        .unwrap();
         // reference: u_k = 0.5 Σᵢ Σⱼ Tᵢⱼ Hᵢⱼₖ
         let hh_std = hh.as_std_array();
         let tt_std = tt.as_std_matrix();
@@ -488,10 +491,11 @@ mod tests {
         mat_approx_eq(&tt.as_std_matrix(), &correct, 1e-12);
         // ADD
         let mut tt = Tensor2::<9>::from_std_matrix(&[
-            [100.0, 0.0, 0.0],
-            [0.0, 200.0, 0.0],
-            [0.0, 0.0, 300.0],
-        ]).unwrap();
+            [100.0, 0.0, 0.0], // 0
+            [0.0, 200.0, 0.0], // 1
+            [0.0, 0.0, 300.0], // 2
+        ])
+        .unwrap();
         t1_dot_t3(&mut tt, ADD, 0.5, &u, &hh);
         let correct_add = [
             [100.0 + correct[0][0], correct[0][1], correct[0][2]],

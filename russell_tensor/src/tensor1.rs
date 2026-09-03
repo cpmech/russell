@@ -1,4 +1,4 @@
-use russell_lab::{AsArray1D, Vector};
+use russell_lab::{AsArray1D, Vector, format_scientific};
 use std::cmp;
 use std::fmt::{self, Write};
 
@@ -177,6 +177,29 @@ impl Tensor1 {
     /// This function is useful for integration with `russell_lab` and for unit testing
     pub fn as_vector(&self) -> Vector {
         Vector::from(&self.vec)
+    }
+
+    /// Prints the components in scientific notation
+    ///
+    /// # Input
+    ///
+    /// * `label` -- a label (e.g., a description of the tensor)
+    /// * `factor` -- a factor to multiply the components before printing (e.g., a unit conversion factor)
+    /// * `width` -- the field width used to print each component
+    /// * `precision` -- the number of digits after the decimal point
+    pub fn print(&self, label: &str, factor: f64, width: usize, precision: usize) {
+        println!("{} =", label);
+        println!("┌{:1$}┐", " ", width + 1);
+        for m in 0..3 {
+            if m > 0 {
+                println!(" │");
+            }
+            print!("│");
+            let val = self.vec[m] * factor;
+            print!("{:>1$}", format_scientific(val, width, precision), width);
+        }
+        println!(" │");
+        println!("└{:1$}┘", " ", width + 1);
     }
 }
 

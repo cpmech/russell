@@ -1,6 +1,6 @@
 use super::{IJKL_TO_MN, IJKL_TO_MN_SYM, MN_TO_IJKL, SQRT_2};
 use crate::{ONE_BY_3, StrError, TWO_BY_3};
-use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues};
+use russell_lab::{AsArray2D, Matrix, Vector, format_scientific, mat_eigen_sym, mat_eigenvalues};
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
@@ -910,6 +910,33 @@ impl<const N: usize> Tensor4<N> {
                 }
             }
         }
+    }
+
+    /// Prints the Kelvin-Mandel matrix in scientific notation
+    ///
+    /// # Input
+    ///
+    /// * `label` -- a label (e.g., a description of the tensor)
+    /// * `factor` -- a factor to multiply the components before printing (e.g., a unit conversion factor)
+    /// * `width` -- the field width used to print each component
+    /// * `precision` -- the number of digits after the decimal point
+    pub fn print(&self, label: &str, factor: f64, width: usize, precision: usize) {
+        println!("{} =", label);
+        println!("┌{:1$}┐", " ", N * width + 1);
+        for m in 0..N {
+            if m > 0 {
+                println!(" │");
+            }
+            for n in 0..N {
+                if n == 0 {
+                    print!("│");
+                }
+                let val = self.get(m, n) * factor;
+                print!("{:>1$}", format_scientific(val, width, precision), width);
+            }
+        }
+        println!(" │");
+        println!("└{:1$}┘", " ", N * width + 1);
     }
 
     /// Adds another tensor to this one

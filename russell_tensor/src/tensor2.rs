@@ -2,7 +2,7 @@ use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
 use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use crate::{StrError, Tensor1};
 use russell_lab::math::PI;
-use russell_lab::{AsArray2D, Matrix, Vector, mat_eigen_sym, mat_eigenvalues, sort3};
+use russell_lab::{AsArray2D, Matrix, Vector, format_scientific, mat_eigen_sym, mat_eigenvalues, sort3};
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
@@ -2224,6 +2224,22 @@ impl<const N: usize> Tensor2<N> {
         let lode = self.invariant_lode();
         (distance, radius, lode)
     }
+
+    /// Prints the Kelvin-Mandel matrix in scientific notation
+    pub fn print(&self, label: &str, factor: f64, width: usize, precision: usize) {
+        println!("{} =", label);
+        println!("┌{:1$}┐", " ", width + 1);
+        for m in 0..N {
+            if m > 0 {
+                println!(" │");
+            }
+            print!("│");
+            let val = self.vec[m] * factor;
+            print!("{:>1$}", format_scientific(val, width, precision), width);
+        }
+        println!(" │");
+        println!("└{:1$}┘", " ", width + 1);
+    }
 }
 
 /// Computes the squared tensor (crate-internal)
@@ -3566,11 +3582,7 @@ mod tests {
 
     #[test]
     fn scale_works() {
-        let mut tt = Tensor2::<6>::from_std_matrix(&[
-            [1.0, 2.0, 3.0],
-            [2.0, 5.0, 6.0],
-            [3.0, 6.0, 9.0],
-        ]).unwrap();
+        let mut tt = Tensor2::<6>::from_std_matrix(&[[1.0, 2.0, 3.0], [2.0, 5.0, 6.0], [3.0, 6.0, 9.0]]).unwrap();
         tt.scale(2.0);
         approx_eq(tt.get(0), 2.0, 1e-14);
         approx_eq(tt.get(1), 10.0, 1e-14);

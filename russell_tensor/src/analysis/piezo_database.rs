@@ -136,14 +136,15 @@ impl Material {
     ///
     /// Returns `(p, e, cc)` where:
     ///
-    /// * `p` -- Dielectric permittivity tensor (symmetric; `Tensor2<6>`)
-    /// * `e` -- Piezoelectric stress tensor (Case B; `Tensor3<3, 6>`)
-    /// * `cc` -- elastic stiffness tensor (minor-symmetric; `Tensor4<6>`)
+    /// * `p` -- Dielectric permittivity tensor in [F/m]
+    /// * `e` -- Piezoelectric stress tensor in [C/m^2]
+    /// * `cc` -- elastic stiffness tensor in [Pa]
     pub fn moduli(&self) -> Result<(Tensor2<6>, Tensor3<3, 6>, Tensor4<6>), StrError> {
         let mut p = Tensor2::<6>::from_std_matrix(&symmetrize3(&self.relative_permittivity_tensor))?;
         let e = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&self.e_tensor))?;
-        let cc = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&self.cc_tensor))?;
+        let mut cc = Tensor4::<6>::from_std_array(&vec_to_std_array_4(&self.cc_tensor))?;
         p.scale(VACUUM_ELECTRIC_PERMITTIVITY);
+        cc.scale(1e9); // GPa to Pa
         Ok((p, e, cc))
     }
 }
@@ -260,12 +261,12 @@ mod tests {
             }
         }
 
-        // elastic stiffness tensor
+        // elastic stiffness tensor (Pa)
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
-                        approx_eq(cc.get_std(i, j, k, l), linbo3.cc_tensor[i][j][k][l], 1e-13);
+                        approx_eq(cc.get_std(i, j, k, l), 1e9 * linbo3.cc_tensor[i][j][k][l], 1e-4);
                     }
                 }
             }

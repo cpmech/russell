@@ -1,5 +1,5 @@
 use russell_tensor::StrError;
-use russell_tensor::analysis::*;
+use russell_tensor::analysis::PiezoDatabase;
 use russell_tensor::{ADD, SET, Tensor1, Tensor2};
 use russell_tensor::{t1_dot_t3, t2_dot_t1, t3_ddot_t2, t4_ddot_t2};
 use std::env;

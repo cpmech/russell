@@ -136,9 +136,9 @@ impl Material {
     ///
     /// Returns `(p, e, cc)` where:
     ///
-    /// * `p` -- Dielectric permittivity tensor in [F/m]
-    /// * `e` -- Piezoelectric stress tensor in [C/m^2]
-    /// * `cc` -- elastic stiffness tensor in [Pa]
+    /// * `p` -- Dielectric permittivity tensor in F/m
+    /// * `e` -- Piezoelectric stress tensor in C/m^2
+    /// * `cc` -- elastic stiffness tensor in Pa
     pub fn moduli(&self) -> Result<(Tensor2<6>, Tensor3<3, 6>, Tensor4<6>), StrError> {
         let mut p = Tensor2::<6>::from_std_matrix(&symmetrize3(&self.relative_permittivity_tensor))?;
         let e = Tensor3::<3, 6>::from_std_array(&vec_to_std_array_3(&self.e_tensor))?;

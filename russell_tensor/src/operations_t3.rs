@@ -608,7 +608,7 @@ mod tests {
     fn check_t3_ddot_t2_using_matrix_notation() {
         // Case B
         // [u] = α [H]  [T]
-        // 3×1     3×M  M×1
+        // 3×1     3×N  N×1
         // tensor form
         let hh_ten = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         let tt_ten = Tensor2::<9>::from_std_matrix(&[
@@ -634,7 +634,7 @@ mod tests {
     fn check_t1_dot_t3_using_matrix_notation() {
         // Case B
         // [T] = α [H]ᵀ [u]
-        // M×1     M×3  3×1
+        // N×1     N×3  3×1
         // tensor form
         let hh_ten = Tensor3::<3, 9>::from_std_array(&SamplesTensor3::CASE_B_SAMPLE1).unwrap();
         let u_ten = Tensor1::from(&[1.0, 2.0, 3.0]);

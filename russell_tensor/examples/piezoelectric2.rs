@@ -5,8 +5,8 @@ use std::env;
 use std::path::PathBuf;
 
 // Calculates:
-// σ = C:ε − E·e [Pa = (Pa)(−) − (C/m²)(V/m) = N/m²]
-// D = e:ε + p·E [C/m² = (C/m²)(−) + (F/m)(V/m) = C/m²]
+// σ = C:ε − E·e   [Pa = (Pa)(−) − (C/m²)(V/m) = N/m²]
+// D = e:ε + p·E   [C/m² = (C/m²)(−) + (F/m)(V/m) = C/m²]
 //
 // Expected output:
 //

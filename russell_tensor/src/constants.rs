@@ -26,6 +26,16 @@ pub const ONE_BY_3: f64 =
 pub const TWO_BY_3: f64 =
     0.66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666f64;
 
+/// Identifies an operation as an addition (update)
+///
+/// Example u += A . v
+pub const ADD: u8 = 1;
+
+/// Identifies an operation as a setting
+///
+/// Example u = A . v
+pub const SET: u8 = 0;
+
 /// Tolerance to avoid zero division with the J2 invariant
 ///
 /// This constant is used, for instance, in the calculation of the Lode invariant using the following expression:
@@ -360,7 +370,7 @@ pub const P_SYMDEV: [[f64; 9]; 9] = [
 
 /// Maps the m-th position in the vector representation to the index (i,j) of Tensor2
 ///
-/// Diagonal goes first, then the upper diagonals, and, finally, the lower diagonals.
+/// Diagonal goes first, then the upper off-diagonal entries (i < j), and, finally, the lower off-diagonal entries (i > j).
 ///
 /// ```text
 /// ┌   ┐    ┌    ┐
@@ -400,7 +410,7 @@ pub const M_TO_IJ: [(usize, usize); 9] = [
 
 /// Maps (i,j) of Tensor2 to the m-th position in the vector representation
 ///
-/// Diagonal goes first, then the upper diagonals, and, finally, the lower diagonals.
+/// Diagonal goes first, then the upper off-diagonal entries (i < j), and, finally, the lower off-diagonal entries (i > j).
 ///
 /// ```text
 ///                 ┌    ┐    ┌   ┐

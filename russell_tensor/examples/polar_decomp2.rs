@@ -1,21 +1,18 @@
 use russell_lab::mat_approx_eq;
-use russell_tensor::{PolarAlgo, Rep, SQRT_2, StrError, Tensor2, polar_decomp};
+use russell_tensor::{PolarAlgo, SQRT_2, StrError, Tensor2, polar_decomp};
 
 fn main() -> Result<(), StrError> {
     #[rustfmt::skip]
-    let ff = Tensor2::from_std_matrix(
-        &[
-            [(1.0 + 4.0 * SQRT_2) / 9.0, (8.0 + SQRT_2) / 18.0, (32.0 + SQRT_2) / 36.0],
-            [(8.0 + 5.0 * SQRT_2) / 18.0, (7.0 + 2.0 * SQRT_2) / 9.0, (-4.0 + SQRT_2) / 9.0],
-            [(-32.0 + 7.0 * SQRT_2) / 36.0, -4.0 * (-1.0 + SQRT_2) / 9.0, (-1.0 - 2.0 * SQRT_2) / 9.0],
-        ],
-        Rep::General,
-    )?;
+    let ff = Tensor2::<9>::from_std_matrix(&[
+        [(1.0 + 4.0 * SQRT_2) / 9.0, (8.0 + SQRT_2) / 18.0, (32.0 + SQRT_2) / 36.0],
+        [(8.0 + 5.0 * SQRT_2) / 18.0, (7.0 + 2.0 * SQRT_2) / 9.0, (-4.0 + SQRT_2) / 9.0],
+        [(-32.0 + 7.0 * SQRT_2) / 36.0, -4.0 * (-1.0 + SQRT_2) / 9.0, (-1.0 - 2.0 * SQRT_2) / 9.0],
+    ])?;
     println!("F =\n{:.6}", ff.as_std_matrix());
 
     // Allocate the rotation tensor R (orthogonal) and the right stretch U (symmetric)
-    let mut rr = Tensor2::new(Rep::General);
-    let mut uu = Tensor2::new(Rep::Symmetric);
+    let mut rr = Tensor2::<9>::new();
+    let mut uu = Tensor2::<6>::new();
 
     // Compute the polar decomposition F = R · U (using the Higham algorithm)
     polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;

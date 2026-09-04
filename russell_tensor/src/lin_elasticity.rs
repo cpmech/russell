@@ -1,7 +1,7 @@
-use crate::{Rep, StrError, Tensor2, Tensor4, t4_ddot_t2};
+use crate::{SET, StrError, Tensor2, Tensor4, t4_ddot_t2};
 
 /// Implements the linear elasticity equations for small-strain problems
-pub struct LinElasticity {
+pub struct LinElasticity<const N: usize> {
     /// Holds the Young's modulus
     young: f64,
 
@@ -18,98 +18,92 @@ pub struct LinElasticity {
     /// ```text
     /// σ = D : ε
     /// ```
-    dd: Tensor4,
+    dd: Tensor4<N>,
 }
 
-impl LinElasticity {
+impl<const N: usize> LinElasticity<N> {
     /// Allocates a new instance
     ///
     /// # Input
     ///
     /// * `young` -- Young's modulus
     /// * `poisson` -- Poisson's coefficient
-    /// * `two_dim` -- 2D instead of 3D
-    /// * `plane_stress` -- specifies a Plane-Stress problem and
-    ///   automatically set `two_dim` as appropriate.
+    /// * `plane_stress` -- specifies a Plane-Stress problem; only valid if N = 4 (2D)
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::LinElasticity;
+    /// use russell_tensor::{LinElasticity, StrError};
     ///
-    /// // 3D
-    /// let ela = LinElasticity::new(900.0, 0.25, false, false);
-    /// let dd = ela.get_modulus().as_std_matrix();
-    /// assert_eq!(
-    ///     format!("{}", dd),
-    ///     "┌                                              ┐\n\
-    ///      │ 1080  360  360    0    0    0    0    0    0 │\n\
-    ///      │  360 1080  360    0    0    0    0    0    0 │\n\
-    ///      │  360  360 1080    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0  360    0    0  360    0    0 │\n\
-    ///      │    0    0    0    0  360    0    0  360    0 │\n\
-    ///      │    0    0    0    0    0  360    0    0  360 │\n\
-    ///      │    0    0    0  360    0    0  360    0    0 │\n\
-    ///      │    0    0    0    0  360    0    0  360    0 │\n\
-    ///      │    0    0    0    0    0  360    0    0  360 │\n\
-    ///      └                                              ┘"
-    /// );
+    /// fn main() -> Result<(), StrError> {
+    ///     // Symmetric
+    ///     let ela = LinElasticity::<6>::new(900.0, 0.25, false)?;
+    ///     let dd = ela.stiffness().as_std_matrix();
+    ///     assert_eq!(
+    ///         format!("{}", dd),
+    ///         "┌                                              ┐\n\
+    ///          │ 1080  360  360    0    0    0    0    0    0 │\n\
+    ///          │  360 1080  360    0    0    0    0    0    0 │\n\
+    ///          │  360  360 1080    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0  360    0    0  360    0 │\n\
+    ///          │    0    0    0    0    0  360    0    0  360 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0  360    0    0  360    0 │\n\
+    ///          │    0    0    0    0    0  360    0    0  360 │\n\
+    ///          └                                              ┘"
+    ///     );
     ///
-    /// // 2D plane-strain
-    /// let ela = LinElasticity::new(900.0, 0.25, true, false);
-    /// let dd = ela.get_modulus().as_std_matrix();
-    /// assert_eq!(
-    ///     format!("{}", dd),
-    ///     "┌                                              ┐\n\
-    ///      │ 1080  360  360    0    0    0    0    0    0 │\n\
-    ///      │  360 1080  360    0    0    0    0    0    0 │\n\
-    ///      │  360  360 1080    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0  360    0    0  360    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0  360    0    0  360    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      └                                              ┘"
-    /// );
+    ///     // 2D plane-strain
+    ///     let ela = LinElasticity::<4>::new(900.0, 0.25, false)?;
+    ///     let dd = ela.stiffness().as_std_matrix();
+    ///     assert_eq!(
+    ///         format!("{}", dd),
+    ///         "┌                                              ┐\n\
+    ///          │ 1080  360  360    0    0    0    0    0    0 │\n\
+    ///          │  360 1080  360    0    0    0    0    0    0 │\n\
+    ///          │  360  360 1080    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0  360    0    0  360    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          └                                              ┘"
+    ///     );
     ///
-    /// // 2D plane-stress
-    /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
-    /// let dd = ela.get_modulus().as_std_matrix();
-    /// assert_eq!(
-    ///     format!("{}", dd),
-    ///     "┌                                              ┐\n\
-    ///      │ 3125  625    0    0    0    0    0    0    0 │\n\
-    ///      │  625 3125    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      └                                              ┘"
-    /// );
+    ///     // 2D plane-stress
+    ///     let ela = LinElasticity::<4>::new(3000.0, 0.2, true)?;
+    ///     let dd = ela.stiffness().as_std_matrix();
+    ///     assert_eq!(
+    ///         format!("{}", dd),
+    ///         "┌                                              ┐\n\
+    ///          │ 3125  625    0    0    0    0    0    0    0 │\n\
+    ///          │  625 3125    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn new(young: f64, poisson: f64, two_dim: bool, plane_stress: bool) -> Self {
-        let rep = if two_dim || plane_stress {
-            Rep::Symmetric2D
-        } else {
-            Rep::Symmetric
-        };
+    pub fn new(young: f64, poisson: f64, plane_stress: bool) -> Result<Self, StrError> {
+        if plane_stress && N != 4 {
+            return Err("plane-stress assumption is only available for N = 4 (2D)");
+        }
         let mut res = LinElasticity {
             young,
             poisson,
             plane_stress,
-            dd: Tensor4::new(rep),
+            dd: Tensor4::new(),
         };
         res.calc_rigidity();
-        res
-    }
-
-    /// Returns the representation
-    pub fn rep(&self) -> Rep {
-        self.dd.rep()
+        Ok(res)
     }
 
     /// Sets the Young's modulus and Poisson's coefficient
@@ -117,26 +111,29 @@ impl LinElasticity {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::LinElasticity;
-    /// let two_dim = true;
-    /// let plane_stress = true;
-    /// let mut ela = LinElasticity::new(3000.0, 0.2, two_dim, plane_stress);
-    /// ela.set_young_poisson(6000.0, 0.2);
-    /// let dd = ela.get_modulus().as_std_matrix();
-    /// assert_eq!(
-    ///     format!("{}", dd),
-    ///     "┌                                              ┐\n\
-    ///      │ 6250 1250    0    0    0    0    0    0    0 │\n\
-    ///      │ 1250 6250    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0 2500    0    0 2500    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0 2500    0    0 2500    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      └                                              ┘"
-    /// );
+    /// use russell_tensor::{LinElasticity, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let plane_stress = true;
+    ///     let mut ela = LinElasticity::<4>::new(3000.0, 0.2, plane_stress)?;
+    ///     ela.set_young_poisson(6000.0, 0.2);
+    ///     let dd = ela.stiffness().as_std_matrix();
+    ///     assert_eq!(
+    ///         format!("{}", dd),
+    ///         "┌                                              ┐\n\
+    ///          │ 6250 1250    0    0    0    0    0    0    0 │\n\
+    ///          │ 1250 6250    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0 2500    0    0 2500    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0 2500    0    0 2500    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
     pub fn set_young_poisson(&mut self, young: f64, poisson: f64) {
         self.young = young;
@@ -168,7 +165,7 @@ impl LinElasticity {
         )
     }
 
-    /// Returns an access to the elastic rigidity (stiffness) modulus
+    /// Returns an access to the elastic stiffness tensor
     ///
     /// The rigidity modulus `D` is such that:
     ///
@@ -179,25 +176,29 @@ impl LinElasticity {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::LinElasticity;
-    /// let ela = LinElasticity::new(3000.0, 0.2, false, true);
-    /// let out = ela.get_modulus().as_std_matrix();
-    /// assert_eq!(
-    ///     format!("{}", out),
-    ///     "┌                                              ┐\n\
-    ///      │ 3125  625    0    0    0    0    0    0    0 │\n\
-    ///      │  625 3125    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0 1250    0    0 1250    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      │    0    0    0    0    0    0    0    0    0 │\n\
-    ///      └                                              ┘"
-    /// );
+    /// use russell_tensor::{LinElasticity, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let ela = LinElasticity::<4>::new(3000.0, 0.2, true)?;
+    ///     let out = ela.stiffness().as_std_matrix();
+    ///     assert_eq!(
+    ///         format!("{}", out),
+    ///         "┌                                              ┐\n\
+    ///          │ 3125  625    0    0    0    0    0    0    0 │\n\
+    ///          │  625 3125    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0 1250    0    0 1250    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          │    0    0    0    0    0    0    0    0    0 │\n\
+    ///          └                                              ┘"
+    ///     );
+    ///     Ok(())
+    /// }
     /// ```
-    pub fn get_modulus(&self) -> &Tensor4 {
+    pub fn stiffness(&self) -> &Tensor4<N> {
         &self.dd
     }
 
@@ -209,20 +210,16 @@ impl LinElasticity {
     ///
     /// # Output
     ///
-    /// * `stress` -- the stress tensor σ; with the same [Rep] as `strain`
+    /// * `stress` -- the stress tensor σ
     ///
     /// # Input
     ///
-    /// * `strain` -- the strain tensor ε; with the same [Rep] as `stress`
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if the tensors have different [Rep]
+    /// * `strain` -- the strain tensor ε
     ///
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Rep, LinElasticity, StrError, Tensor2};
+    /// use russell_tensor::{LinElasticity, StrError, Tensor2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // define the strain matrix => will cause sum of rows of D
@@ -240,8 +237,8 @@ impl LinElasticity {
     ///     // 3D
     ///     // sum of first 3 rows = 1800
     ///     // sum of other rows = 720
-    ///     let ela = LinElasticity::new(900.0, 0.25, false, false);
-    ///     let out = ela.get_modulus().as_std_matrix();
+    ///     let ela = LinElasticity::<6>::new(900.0, 0.25, false)?;
+    ///     let out = ela.stiffness().as_std_matrix();
     ///     assert_eq!(
     ///         format!("{}", out),
     ///         "┌                                              ┐\n\
@@ -256,8 +253,8 @@ impl LinElasticity {
     ///          │    0    0    0    0    0  360    0    0  360 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     let strain = Tensor2::from_std_matrix(strain_matrix_3d, Rep::Symmetric)?;
-    ///     let mut stress = Tensor2::new(Rep::Symmetric);
+    ///     let strain = Tensor2::<6>::from_std_matrix(strain_matrix_3d)?;
+    ///     let mut stress = Tensor2::<6>::new();
     ///     ela.calc_stress(&mut stress, &strain);
     ///     let out = stress.as_std_matrix();
     ///     assert_eq!(
@@ -272,8 +269,8 @@ impl LinElasticity {
     ///     // 2D plane-strain
     ///     // sum of first 3 rows = 1800
     ///     // sum of other rows = 720
-    ///     let ela = LinElasticity::new(900.0, 0.25, true, false);
-    ///     let out = ela.get_modulus().as_std_matrix();
+    ///     let ela = LinElasticity::<4>::new(900.0, 0.25, false)?;
+    ///     let out = ela.stiffness().as_std_matrix();
     ///     println!("{}", out);
     ///     assert_eq!(
     ///         format!("{}", out),
@@ -289,8 +286,8 @@ impl LinElasticity {
     ///          │    0    0    0    0    0    0    0    0    0 │\n\
     ///          └                                              ┘"
     ///     );
-    ///     let strain = Tensor2::from_std_matrix(strain_matrix_2d, Rep::Symmetric2D)?;
-    ///     let mut stress = Tensor2::new(Rep::Symmetric2D);
+    ///     let strain = Tensor2::<4>::from_std_matrix(strain_matrix_2d)?;
+    ///     let mut stress = Tensor2::<4>::new();
     ///     ela.calc_stress(&mut stress, &strain);
     ///     let out = stress.as_std_matrix();
     ///     assert_eq!(
@@ -304,8 +301,8 @@ impl LinElasticity {
     ///     Ok(())
     /// }
     /// ```
-    pub fn calc_stress(&self, stress: &mut Tensor2, strain: &Tensor2) {
-        t4_ddot_t2(stress, 1.0, &self.dd, strain);
+    pub fn calc_stress(&self, stress: &mut Tensor2<N>, strain: &Tensor2<N>) {
+        t4_ddot_t2(stress, SET, 1.0, &self.dd, strain);
     }
 
     /// Calculates and sets the out-of-plane strain in the Plane-Stress case
@@ -321,26 +318,25 @@ impl LinElasticity {
     /// # Examples
     ///
     /// ```
-    /// use russell_tensor::{Rep, LinElasticity, StrError, Tensor2};
+    /// use russell_tensor::{LinElasticity, StrError, Tensor2};
     ///
     /// fn main() -> Result<(), StrError> {
     ///     let young = 2500.0;
     ///     let poisson = 0.25;
-    ///     let ela = LinElasticity::new(young, poisson, true, true);
+    ///     let ela = LinElasticity::<4>::new(young, poisson, true)?;
     ///     let (sig_xx, sig_yy) = (2000.0, 1000.0);
-    ///     let stress = Tensor2::from_std_matrix(&[
-    ///             [sig_xx,     0.0, 0.0],
-    ///             [   0.0,  sig_yy, 0.0],
-    ///             [   0.0,     0.0, 0.0],
-    ///         ], Rep::Symmetric2D,
-    ///     )?;
+    ///     let stress = Tensor2::<4>::from_std_matrix(&[
+    ///         [sig_xx,     0.0, 0.0],
+    ///         [   0.0,  sig_yy, 0.0],
+    ///         [   0.0,     0.0, 0.0],
+    ///     ])?;
     ///     let eps_zz = ela.out_of_plane_strain(&stress)?;
     ///     let eps_zz_correct = -(poisson / young) * (sig_xx + sig_yy);
     ///     assert_eq!(eps_zz, eps_zz);
     ///     Ok(())
     /// }
     /// ```
-    pub fn out_of_plane_strain(&self, stress: &Tensor2) -> Result<f64, StrError> {
+    pub fn out_of_plane_strain(&self, stress: &Tensor2<N>) -> Result<f64, StrError> {
         if !self.plane_stress {
             return Err("out-of-plane strain works with plane-stress only");
         }
@@ -360,10 +356,6 @@ impl LinElasticity {
     ///
     /// The compliance modulus is calculate as `C = D⁻¹`
     ///
-    /// # Panics
-    ///
-    /// A panic will occur if `cc` has a different [Rep] than `dd`.
-    ///
     /// # Examples
     ///
     /// ```
@@ -372,26 +364,26 @@ impl LinElasticity {
     ///
     /// fn main() -> Result<(), StrError> {
     ///     // calculate C
-    ///     let ela = LinElasticity::new(900.0, 0.25, false, false);
-    ///     let mut cc = Tensor4::new(ela.rep());
+    ///     let ela = LinElasticity::<6>::new(900.0, 0.25, false)?;
+    ///     let mut cc = Tensor4::<6>::new();
     ///     ela.calc_compliance(&mut cc).unwrap();
     ///
     ///     // check
     ///     let (kk, gg) = ela.get_bulk_shear();
-    ///     let psd = Tensor4::constant_pp_symdev(true);
-    ///     let piso = Tensor4::constant_pp_iso(true);
-    ///     let mut correct = Tensor4::new(Rep::Symmetric);
+    ///     let psd = Tensor4::<6>::constant_pp_symdev();
+    ///     let piso = Tensor4::<6>::constant_pp_iso();
+    ///     let mut correct = Tensor4::<6>::new();
     ///     t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
     ///     mat_approx_eq(&cc.as_std_matrix(), &correct.as_std_matrix(), 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn calc_compliance(&self, cc: &mut Tensor4) -> Result<(), StrError> {
+    pub fn calc_compliance(&self, cc: &mut Tensor4<N>) -> Result<(), StrError> {
         if self.plane_stress {
             return Err("The compliance modulus is not available for plane-stress");
         }
         self.dd
-            .calc_inverse(cc)
+            .inverse(cc)
             .map_err(|_| "cannot invert the rigidity modulus D")?;
         Ok(())
     }
@@ -404,7 +396,7 @@ impl LinElasticity {
             self.dd.set(0, 1, c * self.poisson);
             self.dd.set(1, 0, c * self.poisson);
             self.dd.set(1, 1, c);
-            self.dd.set(3, 3, c * (1.0 - self.poisson)); // Rep: multiply by 2, so 1/2 disappears
+            self.dd.set(3, 3, c * (1.0 - self.poisson)); // Kelvin-Mandel shear component is 2·G, so the 1/2 disappears
         } else {
             let c = self.young / ((1.0 + self.poisson) * (1.0 - 2.0 * self.poisson));
             self.dd.set(0, 0, c * (1.0 - self.poisson));
@@ -416,9 +408,9 @@ impl LinElasticity {
             self.dd.set(2, 0, c * self.poisson);
             self.dd.set(2, 1, c * self.poisson);
             self.dd.set(2, 2, c * (1.0 - self.poisson));
-            self.dd.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Rep: multiply by 2, so 1/2 disappears
+            self.dd.set(3, 3, c * (1.0 - 2.0 * self.poisson)); // Kelvin-Mandel shear component is 2·G, so the 1/2 disappears
         }
-        if self.dd.dim() > 4 {
+        if N > 4 {
             let g = self.dd.get(3, 3);
             self.dd.set(4, 4, g);
             self.dd.set(5, 5, g);
@@ -432,7 +424,7 @@ impl LinElasticity {
 mod tests {
     use super::LinElasticity;
     use crate::StrError;
-    use crate::{Rep, Tensor2, Tensor4, t4_add};
+    use crate::{Tensor2, Tensor4, t4_add};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
     // Checks the symmetry of a square matrix
@@ -451,8 +443,8 @@ mod tests {
     fn new_works() {
         // plane-stress
         // from Bhatti page 511 (Young divided by 1000)
-        let ela = LinElasticity::new(3000.0, 0.2, false, true);
-        let out = ela.dd.as_std_matrix();
+        let ela = LinElasticity::<4>::new(3000.0, 0.2, true).unwrap();
+        let out = ela.stiffness().as_std_matrix();
         assert_eq!(
             format!("{}", out),
             "┌                                              ┐\n\
@@ -471,8 +463,8 @@ mod tests {
 
         // plane-strain
         // from Bhatti page 519
-        let ela = LinElasticity::new(30000.0, 0.3, true, false);
-        let out = ela.dd.as_std_matrix();
+        let ela = LinElasticity::<4>::new(30000.0, 0.3, false).unwrap();
+        let out = ela.stiffness().as_std_matrix();
         assert_eq!(
             format!("{:.1}", out),
             "┌                                                                         ┐\n\
@@ -492,32 +484,32 @@ mod tests {
 
     #[test]
     fn set_get_parameters_works() {
-        let mut ela = LinElasticity::new(3000.0, 0.2, false, true);
+        let mut ela = LinElasticity::<4>::new(3000.0, 0.2, true).unwrap();
         ela.set_young_poisson(6000.0, 0.2);
-        assert_eq!(ela.dd.get(0, 0), 6250.0);
+        assert_eq!(ela.stiffness().get(0, 0), 6250.0);
 
-        let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
+        let mut ela = LinElasticity::<6>::new(3000.0, 0.2, false).unwrap();
         ela.set_bulk_shear(1000.0, 600.0);
         assert_eq!(ela.young, 1500.0);
         assert_eq!(ela.poisson, 0.25);
-        assert_eq!(ela.dd.get(0, 0), 1800.0);
-        assert_eq!(ela.dd.get(0, 1), 600.0);
+        assert_eq!(ela.stiffness().get(0, 0), 1800.0);
+        assert_eq!(ela.stiffness().get(0, 1), 600.0);
         let c = ela.young / ((1.0 + ela.poisson) * (1.0 - 2.0 * ela.poisson));
-        assert_eq!(ela.dd.get(0, 0), (1.0 - ela.poisson) * c);
-        assert_eq!(ela.dd.get(0, 1), ela.poisson * c);
+        assert_eq!(ela.stiffness().get(0, 0), (1.0 - ela.poisson) * c);
+        assert_eq!(ela.stiffness().get(0, 1), ela.poisson * c);
 
-        let mut ela = LinElasticity::new(3000.0, 0.2, false, false);
+        let mut ela = LinElasticity::<6>::new(3000.0, 0.2, false).unwrap();
         ela.set_young_poisson(1500.0, 0.25);
         assert_eq!(ela.get_young_poisson(), (1500.0, 0.25));
         assert_eq!(ela.get_bulk_shear(), (1000.0, 600.0));
-        assert_eq!(ela.dd.get(0, 0), 1800.0);
-        assert_eq!(ela.dd.get(0, 1), 600.0);
+        assert_eq!(ela.stiffness().get(0, 0), 1800.0);
+        assert_eq!(ela.stiffness().get(0, 1), 600.0);
     }
 
     #[test]
-    fn get_modulus_works() {
-        let ela = LinElasticity::new(3000.0, 0.2, false, true);
-        let dd = ela.get_modulus();
+    fn stiffness_works() {
+        let ela = LinElasticity::<4>::new(3000.0, 0.2, true).unwrap();
+        let dd = ela.stiffness();
         assert_eq!(dd.get(0, 0), 3125.0);
         check_symmetry(&dd.as_std_matrix()).unwrap();
     }
@@ -526,17 +518,14 @@ mod tests {
     fn calc_stress_works() {
         // plane-stress
         // from Bhatti page 514 (Young divided by 1000)
-        let ela = LinElasticity::new(3000.0, 0.2, false, true);
+        let ela = LinElasticity::<4>::new(3000.0, 0.2, true).unwrap();
         #[rustfmt::skip]
-        let strain = Tensor2::from_std_matrix(
-            &[
-                [-0.036760, 0.0667910,       0.0],
-                [ 0.066791, 0.0164861,       0.0],
-                [      0.0,       0.0, 0.0050847],
-            ],
-            Rep::Symmetric2D,
-        ).unwrap();
-        let mut stress = Tensor2::new(Rep::Symmetric2D);
+        let strain = Tensor2::<4>::from_std_matrix(&[
+            [-0.036760, 0.0667910,       0.0],
+            [ 0.066791, 0.0164861,       0.0],
+            [      0.0,       0.0, 0.0050847],
+        ]).unwrap();
+        let mut stress = Tensor2::<4>::new();
         ela.calc_stress(&mut stress, &strain);
         let out = stress.as_std_matrix();
         assert_eq!(
@@ -550,17 +539,14 @@ mod tests {
 
         // plane-strain
         // from Bhatti page 523
-        let ela = LinElasticity::new(30000.0, 0.3, true, false);
+        let ela = LinElasticity::<4>::new(30000.0, 0.3, false).unwrap();
         #[rustfmt::skip]
-        let strain = Tensor2::from_std_matrix(
-            &[
-                [    3.6836e-6, -2.675290e-4, 0.0],
-                [ -2.675290e-4,    3.6836e-6, 0.0],
-                [          0.0,          0.0, 0.0],
-            ],
-            Rep::Symmetric2D,
-        ).unwrap();
-        let mut stress = Tensor2::new(Rep::Symmetric2D);
+        let strain = Tensor2::<4>::from_std_matrix(&[
+            [    3.6836e-6, -2.675290e-4, 0.0],
+            [ -2.675290e-4,    3.6836e-6, 0.0],
+            [          0.0,          0.0, 0.0],
+        ]).unwrap();
+        let mut stress = Tensor2::<4>::new();
         ela.calc_stress(&mut stress, &strain);
         let out = stress.as_std_matrix();
         assert_eq!(
@@ -575,8 +561,8 @@ mod tests {
         // 3D
         // sum of first 3 rows = 1800
         // sum of other rows = 720
-        let ela = LinElasticity::new(900.0, 0.25, false, false);
-        let out = ela.dd.as_std_matrix();
+        let ela = LinElasticity::<6>::new(900.0, 0.25, false).unwrap();
+        let out = ela.stiffness().as_std_matrix();
         assert_eq!(
             format!("{}", out),
             "┌                                              ┐\n\
@@ -592,12 +578,12 @@ mod tests {
              └                                              ┘"
         );
         #[rustfmt::skip]
-        let strain = Tensor2::from_std_matrix(&[
+        let strain = Tensor2::<6>::from_std_matrix(&[
             [1.0, 1.0, 1.0],
             [1.0, 1.0, 1.0],
-            [1.0, 1.0, 1.0]],
-        Rep::Symmetric).unwrap();
-        let mut stress = Tensor2::new(Rep::Symmetric);
+            [1.0, 1.0, 1.0],
+        ]).unwrap();
+        let mut stress = Tensor2::<6>::new();
         ela.calc_stress(&mut stress, &strain);
         let out = stress.as_std_matrix();
         assert_eq!(
@@ -612,45 +598,39 @@ mod tests {
 
     #[test]
     fn out_of_plane_strain_fails_on_wrong_input() {
-        let ela = LinElasticity::new(900.0, 0.25, true, false);
+        let ela = LinElasticity::<4>::new(900.0, 0.25, false).unwrap();
         #[rustfmt::skip]
-        let stress = Tensor2::from_std_matrix(
-            &[
-                [100.0,   0.0, 0.0],
-                [  0.0, 100.0, 0.0],
-                [  0.0,   0.0, 0.0],
-            ],
-            Rep::Symmetric2D,
-        ).unwrap();
+        let stress = Tensor2::<4>::from_std_matrix(&[
+            [100.0,   0.0, 0.0],
+            [  0.0, 100.0, 0.0],
+            [  0.0,   0.0, 0.0],
+        ]).unwrap();
         let res = ela.out_of_plane_strain(&stress);
         assert_eq!(res.err(), Some("out-of-plane strain works with plane-stress only"));
     }
 
     #[test]
     fn out_of_plane_strain_works() {
-        let ela = LinElasticity::new(3000.0, 0.2, false, true);
+        let ela = LinElasticity::<4>::new(3000.0, 0.2, true).unwrap();
         #[rustfmt::skip]
-        let stress = Tensor2::from_std_matrix(
-            &[
-                [-104.571, 166.977, 0.0],
-                [ 166.977,  28.544, 0.0],
-                [   0.0,     0.0,   0.0],
-            ],
-            Rep::Symmetric2D,
-        ).unwrap();
+        let stress = Tensor2::from_std_matrix(&[
+            [-104.571, 166.977, 0.0],
+            [ 166.977,  28.544, 0.0],
+            [   0.0,     0.0,   0.0],
+        ]).unwrap();
         let eps_zz = ela.out_of_plane_strain(&stress).unwrap();
         approx_eq(eps_zz, 0.0050847, 1e-4);
     }
 
     #[test]
     fn calc_compliance_modulus_handles_errors() {
-        let ela = LinElasticity::new(900.0, 0.25, false, true); // plane-stress
-        let mut cc = Tensor4::new(ela.rep());
+        let ela = LinElasticity::<4>::new(900.0, 0.25, true).unwrap(); // plane-stress
+        let mut cc = Tensor4::<4>::new();
         assert_eq!(
             ela.calc_compliance(&mut cc).err(),
             Some("The compliance modulus is not available for plane-stress")
         );
-        let ela = LinElasticity::new(0.0, 0.0, true, false); // two-dim
+        let ela = LinElasticity::<4>::new(0.0, 0.0, false).unwrap(); // zero values (indeterminate)
         assert_eq!(
             ela.calc_compliance(&mut cc).err(),
             Some("cannot invert the rigidity modulus D")
@@ -660,15 +640,15 @@ mod tests {
     #[test]
     fn compliance_modulus_works() {
         // calculate C
-        let mut ela = LinElasticity::new(900.0, 0.25, false, false);
-        let mut cc = Tensor4::new(ela.rep());
+        let mut ela = LinElasticity::<6>::new(900.0, 0.25, false).unwrap();
+        let mut cc = Tensor4::<6>::new();
         ela.calc_compliance(&mut cc).unwrap();
 
         // check
         let (kk, gg) = ela.get_bulk_shear();
-        let psd = Tensor4::constant_pp_symdev(true);
-        let piso = Tensor4::constant_pp_iso(true);
-        let mut correct = Tensor4::new(Rep::Symmetric);
+        let psd = Tensor4::<6>::constant_pp_symdev();
+        let piso = Tensor4::<6>::constant_pp_iso();
+        let mut correct = Tensor4::<6>::new();
         t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
         mat_approx_eq(&cc.as_std_matrix(), &correct.as_std_matrix(), 1e-15);
 

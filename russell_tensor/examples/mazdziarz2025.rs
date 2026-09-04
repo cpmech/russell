@@ -1,5 +1,5 @@
 use russell_lab::Vector;
-use russell_tensor::{Rep, StrError, Tensor2, Tensor4};
+use russell_tensor::{StrError, Tensor2, Tensor4};
 use russell_tensor::{analysis, t4_add};
 
 // Calculate the eigenvalues and stability properties
@@ -34,31 +34,28 @@ use russell_tensor::{analysis, t4_add};
 fn main() -> Result<(), StrError> {
     // Eq (B.3) NiAl oriented X=[100] Y=[010] Z=[001]
     #[rustfmt::skip]
-    let cc = Tensor4::from_matrix(
-        &[
-            [1.179, 9.579,  3.781,    0.0,    0.0,    0.0],
-            [9.579, 1.179,  3.781,    0.0,    0.0,    0.0],
-            [3.781, 3.781, 53.815,    0.0,    0.0,    0.0],
-            [  0.0,   0.0,    0.0, 79.308,    0.0,    0.0],
-            [  0.0,   0.0,    0.0,    0.0, 59.011,    0.0],
-            [  0.0,   0.0,    0.0,    0.0,    0.0, 59.011],
-        ],
-        Rep::Symmetric,
-    )?;
+    let cc = Tensor4::<6>::from_matrix(&[
+        [1.179, 9.579,  3.781,    0.0,    0.0,    0.0],
+        [9.579, 1.179,  3.781,    0.0,    0.0,    0.0],
+        [3.781, 3.781, 53.815,    0.0,    0.0,    0.0],
+        [  0.0,   0.0,    0.0, 79.308,    0.0,    0.0],
+        [  0.0,   0.0,    0.0,    0.0, 59.011,    0.0],
+        [  0.0,   0.0,    0.0,    0.0,    0.0, 59.011],
+    ])?;
 
     // Internal stability tensor
-    let mut hh = Tensor4::new(Rep::Symmetric);
+    let mut hh = Tensor4::<6>::new();
     #[rustfmt::skip]
-    let sigma = Tensor2::from_std_matrix(&[
+    let sigma = Tensor2::<6>::from_std_matrix(&[
         [27.06,   0.0,    0.0],
         [  0.0, 27.06,    0.0],
         [  0.0,   0.0, 20.585],
-    ],Rep::Symmetric)?;
+    ])?;
     analysis::internal_stability_tensor(&mut hh, &sigma)?;
     println!("H = \n{:.3}", hh);
 
     // Tangent modulus L
-    let mut ll = Tensor4::new(Rep::Symmetric);
+    let mut ll = Tensor4::<6>::new();
     t4_add(&mut ll, 1.0, &cc, 1.0, &hh);
     println!("L = \n{:.3}", ll);
 

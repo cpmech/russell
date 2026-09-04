@@ -16,10 +16,12 @@
 //! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
 //! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
+//! * [analysis::PiezoDatabase] — A database of piezoelectric materials (dielectric permittivity, piezoelectric, and stiffness tensors) loaded from JSON.
 //! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the classic Eigen/SVD algorithms, the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp]).
-//! * Constants — Includes Identity, transposition, and other projector tensors.
-//! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products.
+//! * Constants — Includes identity, transposition, and projector tensors, as well as the [ADD]/[SET] operation selectors.
+//! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products. Most operations support both overwriting ([SET]) and accumulation ([ADD]) semantics.
 //! * Derivatives — Implements first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors)
+//! * Display — The tensors implement the `Display` trait (with configurable precision) and provide a `scientific` method returning a scientific-notation string for printing or logging.
 //!
 //! # Kelvin-Mandel notation
 //!
@@ -27,13 +29,23 @@
 //!
 //! In the Kelvin-Mandel basis, a second-order tensor is mapped to a column matrix (vector), a third-order tensor is mapped to a rectangular matrix, and a fourth-order tensor is mapped to a square matrix. The `√2` factors make the mapping isometric; thus the tensor norm is preserved and standard matrix/vector operations can be used directly.
 //!
-//! The [Rep] enum specifies the available representations:
+//! The dimension — the const generic `N` of [Tensor2]/[Tensor4], and `M`/`N` of
+//! [Tensor3] — selects the representation:
 //!
-//! * [Rep::General] — 9×1 / 9×3 / 3×9 / 9×9 (all components)
-//! * [Rep::Symmetric] — 6×1 / 6×3 / 3×6 / 6×6 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 3D)
-//! * [Rep::Symmetric2D] — 4×1 / 4×3 / 3×4 / 4×4 (symmetric [Tensor2]; minor-symmetric [Tensor3]/[Tensor4]; 2D)
+//! * `9` — all components (general): 9×1 / 9×3 / 3×9 / 9×9
+//! * `6` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (3D): 6×1 / 6×3 / 3×6 / 6×6
+//! * `4` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (2D): 4×1 / 4×3 / 3×4 / 4×4
 //!
 //! The dimensions above correspond to [Tensor2] (vector), [Tensor3] (Case A / Case B rectangular matrix), and [Tensor4] (square matrix), respectively.
+//!
+//! A [Tensor3] is stored as a rectangular Kelvin-Mandel matrix with dimensions `(M, N)`
+//! set by const generics. Two cases are considered, where `DIM` (the leading dimension)
+//! is one of 4, 6, or 9:
+//!
+//! * **Case A** `(DIM, 3)` — `M = DIM`, `N = 3`: the Tensor3 acts on a [Tensor1] (vector)
+//!   yielding a [Tensor2] (`T = H · u`)
+//! * **Case B** `(3, DIM)` — `M = 3`, `N = DIM`: the Tensor3 acts on a [Tensor2] yielding
+//!   a [Tensor1] (vector) (`v = M : S`)
 //!
 //! # Standard vs Kelvin-Mandel components
 //!
@@ -73,14 +85,11 @@
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // Allocate a symmetric second-order tensor given the standard components
-//!     let sigma = Tensor2::from_std_matrix(
-//!         &[
-//!             [1.0, 2.0, 3.0],
-//!             [2.0, 2.0, 4.0],
-//!             [3.0, 4.0, 3.0],
-//!         ],
-//!         Rep::Symmetric,
-//!     )?;
+//!     let sigma = Tensor2::<6>::from_std_matrix(&[
+//!         [1.0, 2.0, 3.0],
+//!         [2.0, 2.0, 4.0],
+//!         [3.0, 4.0, 3.0],
+//!     ])?;
 //!
 //!     // Compute the principal invariants
 //!     let ii1 = sigma.invariant_ii1();
@@ -101,7 +110,6 @@ pub mod analysis;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
-mod enums;
 mod lin_elasticity;
 mod operations_mix1;
 mod operations_mix2;
@@ -130,7 +138,6 @@ pub mod z_reference_loop_fns;
 pub use constants::*;
 pub use derivatives_t2::*;
 pub use derivatives_t4::*;
-pub use enums::*;
 pub use lin_elasticity::*;
 pub use operations_mix1::*;
 pub use operations_mix2::*;

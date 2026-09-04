@@ -4,7 +4,7 @@
 //! cross-check the optimized (unrolled) production implementations.
 
 use crate::{M_TO_IJ, MN_TO_IJKL, ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
-use crate::{Rep, Tensor2, Tensor4};
+use crate::{Tensor2, Tensor4};
 use russell_lab::Matrix;
 
 /// Computes the self-sum-dyadic (ssd) operation using loops
@@ -12,22 +12,20 @@ use russell_lab::Matrix;
 /// `Dᵢⱼₖₗ = s (Aᵢₖ Aⱼₗ + Aᵢₗ Aⱼₖ)`
 ///
 /// Reference implementation of [`crate::ssd_fn`].
-pub fn ssd_fn_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::Symmetric);
-    let ndim = dd.dim();
-    for m in 0..ndim {
-        for n in 0..ndim {
+pub fn ssd_fn_loops<const N: usize>(dd: &mut Tensor4<6>, s: f64, aa: &Tensor2<N>) {
+    for m in 0..6 {
+        for n in 0..6 {
             dd.set(m, n, 0.0);
         }
     }
     for m in 0..6 {
         let (i, j) = M_TO_IJ[m];
-        let fm = if i == j { 1.0 } else { SQRT_2 };
+        let cm = if i == j { 1.0 } else { SQRT_2 };
         for n in 0..6 {
             let (k, l) = M_TO_IJ[n];
-            let fn_ = if k == l { 1.0 } else { SQRT_2 };
+            let cn = if k == l { 1.0 } else { SQRT_2 };
             let dijkl = aa.get_std(i, k) * aa.get_std(j, l) + aa.get_std(i, l) * aa.get_std(j, k);
-            dd.set(m, n, s * fm * fn_ * dijkl);
+            dd.set(m, n, s * cm * cn * dijkl);
         }
     }
 }
@@ -37,26 +35,23 @@ pub fn ssd_fn_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2) {
 /// `Dᵢⱼₖₗ = s (Aᵢₖ Bⱼₗ + Aᵢₗ Bⱼₖ + Bᵢₖ Aⱼₗ + Bᵢₗ Aⱼₖ)`
 ///
 /// Reference implementation of [`crate::qsd_fn`].
-pub fn qsd_fn_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
-    assert_eq!(dd.rep(), Rep::Symmetric);
-    assert_eq!(bb.rep(), aa.rep());
-    let ndim = dd.dim();
-    for m in 0..ndim {
-        for n in 0..ndim {
+pub fn qsd_fn_loops<const N: usize>(dd: &mut Tensor4<6>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
+    for m in 0..6 {
+        for n in 0..6 {
             dd.set(m, n, 0.0);
         }
     }
     for m in 0..6 {
         let (i, j) = M_TO_IJ[m];
-        let fm = if i == j { 1.0 } else { SQRT_2 };
+        let cm = if i == j { 1.0 } else { SQRT_2 };
         for n in 0..6 {
             let (k, l) = M_TO_IJ[n];
-            let fn_ = if k == l { 1.0 } else { SQRT_2 };
+            let cn = if k == l { 1.0 } else { SQRT_2 };
             let dijkl = aa.get_std(i, k) * bb.get_std(j, l)
                 + aa.get_std(i, l) * bb.get_std(j, k)
                 + bb.get_std(i, k) * aa.get_std(j, l)
                 + bb.get_std(i, l) * aa.get_std(j, k);
-            dd.set(m, n, s * fm * fn_ * dijkl);
+            dd.set(m, n, s * cm * cn * dijkl);
         }
     }
 }
@@ -66,8 +61,7 @@ pub fn qsd_fn_loops(dd: &mut Tensor4, s: f64, aa: &Tensor2, bb: &Tensor2) {
 /// `∂A²ᵢⱼ/∂Aₖₗ = Aᵢₖ δⱼₗ + δᵢₖ Aₗⱼ`
 ///
 /// Reference implementation of [`crate::deriv_squared_tensor`].
-pub fn deriv_squared_tensor_loops(da2_da: &mut Tensor4, a: &Tensor2) {
-    assert_eq!(da2_da.rep(), Rep::General);
+pub fn deriv_squared_tensor_loops<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2<N>) {
     let a = a.as_std_matrix();
     let mut mat = Matrix::new(9, 9);
     for m in 0..9 {
@@ -86,23 +80,21 @@ pub fn deriv_squared_tensor_loops(da2_da: &mut Tensor4, a: &Tensor2) {
 /// `d²J3/dσ⊗dσ = ½ qsd(s,I) − ⅔ (s ⊗ I + I ⊗ s)`, with `s = deviator(σ)`
 ///
 /// Reference implementation of [`crate::deriv2_invariant_jj3`].
-pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
-    assert_eq!(d2.rep(), Rep::Symmetric);
-    assert!(sigma.rep().symmetric());
-    let mut s = Tensor2::new(sigma.rep());
+pub fn deriv2_invariant_jj3_loops<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) {
+    assert!(N != 9, "function requires symmetric sigma with N = 4 or N = 6");
+    let mut s = Tensor2::<N>::new();
     sigma.deviator(&mut s);
-    let ndim = d2.dim();
-    for m in 0..ndim {
-        for n in 0..ndim {
+    for m in 0..6 {
+        for n in 0..6 {
             d2.set(m, n, 0.0);
         }
     }
     for m in 0..6 {
         let (i, j) = M_TO_IJ[m];
-        let fm = if i == j { 1.0 } else { SQRT_2 };
+        let cm = if i == j { 1.0 } else { SQRT_2 };
         for n in 0..6 {
             let (k, l) = M_TO_IJ[n];
-            let fn_ = if k == l { 1.0 } else { SQRT_2 };
+            let cn = if k == l { 1.0 } else { SQRT_2 };
             let dik = if i == k { 1.0 } else { 0.0 };
             let djl = if j == l { 1.0 } else { 0.0 };
             let dil = if i == l { 1.0 } else { 0.0 };
@@ -111,7 +103,7 @@ pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
             let dkl = if k == l { 1.0 } else { 0.0 };
             let qsd = s.get_std(i, k) * djl + s.get_std(i, l) * djk + dik * s.get_std(j, l) + dil * s.get_std(j, k);
             let d2_ijkl = 0.5 * qsd - TWO_BY_3 * (s.get_std(i, j) * dkl + dij * s.get_std(k, l));
-            d2.set(m, n, fm * fn_ * d2_ijkl);
+            d2.set(m, n, cm * cn * d2_ijkl);
         }
     }
 }
@@ -121,9 +113,8 @@ pub fn deriv2_invariant_jj3_loops(d2: &mut Tensor4, sigma: &Tensor2) {
 /// `d²l/dσ⊗dσ = a·d²J3 − b·J3·d²J2 − b·(dJ3⊗dJ2 + dJ2⊗dJ3) + c·J3·(dJ2⊗dJ2)`
 ///
 /// Reference implementation of [`crate::deriv2_invariant_lode`].
-pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<f64> {
-    assert_eq!(d2.rep(), Rep::Symmetric);
-    assert!(sigma.rep().symmetric());
+pub fn deriv2_invariant_lode_loops<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) -> Option<f64> {
+    assert!(N != 9, "function requires symmetric sigma with N = 4 or N = 6");
     let jj2 = sigma.invariant_jj2();
     if jj2 <= TOL_J2 {
         return None;
@@ -134,7 +125,7 @@ pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<
     let c = 5.625 * SQRT_3 / jj2.powf(3.5);
 
     // deviator s = dJ2/dσ
-    let mut s = Tensor2::new(sigma.rep());
+    let mut s = Tensor2::<N>::new();
     sigma.deviator(&mut s);
 
     // dJ3/dσ = s·s − (2/3) J2 I  (standard 3x3)
@@ -151,18 +142,17 @@ pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<
     }
 
     // assemble the 6x6 result via loops
-    let ndim = d2.dim();
-    for m in 0..ndim {
-        for n in 0..ndim {
+    for m in 0..6 {
+        for n in 0..6 {
             d2.set(m, n, 0.0);
         }
     }
     for m in 0..6 {
         let (i, j) = M_TO_IJ[m];
-        let fm = if i == j { 1.0 } else { SQRT_2 };
+        let cm = if i == j { 1.0 } else { SQRT_2 };
         for n in 0..6 {
             let (k, l) = M_TO_IJ[n];
-            let fn_ = if k == l { 1.0 } else { SQRT_2 };
+            let cn = if k == l { 1.0 } else { SQRT_2 };
             let dik = if i == k { 1.0 } else { 0.0 };
             let djl = if j == l { 1.0 } else { 0.0 };
             let dil = if i == l { 1.0 } else { 0.0 };
@@ -180,7 +170,7 @@ pub fn deriv2_invariant_lode_loops(d2: &mut Tensor4, sigma: &Tensor2) -> Option<
             let dj3_ij = d3.get(i, j);
             let dj3_kl = d3.get(k, l);
             let val = a * d2j3 - b * jj3 * psd - b * (dj3_ij * dj2_kl + dj2_ij * dj3_kl) + c * jj3 * (dj2_ij * dj2_kl);
-            d2.set(m, n, fm * fn_ * val);
+            d2.set(m, n, cm * cn * val);
         }
     }
     Some(jj2)
@@ -193,7 +183,7 @@ mod tests {
     use super::{
         deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
     };
-    use crate::{Rep, Tensor2, Tensor4};
+    use crate::{SET, Tensor2, Tensor4, WorkspaceDeriv2Lode};
     use crate::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
     use russell_lab::mat_approx_eq;
 
@@ -204,85 +194,130 @@ mod tests {
     const SYM2D_A: [[f64; 3]; 3] = [[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]];
     const SYM2D_B: [[f64; 3]; 3] = [[3.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 1.0]];
 
-    fn assert_same_t4(a: &Tensor4, b: &Tensor4, tol: f64) {
+    fn assert_same_t4<const N: usize>(a: &Tensor4<N>, b: &Tensor4<N>, tol: f64) {
         mat_approx_eq(&a.as_std_matrix(), &b.as_std_matrix(), tol);
     }
 
     #[test]
     fn ssd_fn_loops_matches() {
-        for (mat, rep) in [
-            (&GENERAL_A, Rep::General),
-            (&SYMMETRIC_A, Rep::Symmetric),
-            (&SYM2D_A, Rep::Symmetric2D),
-        ] {
-            let a = Tensor2::from_std_matrix(mat, rep).unwrap();
-            let mut dd = Tensor4::new(Rep::Symmetric);
-            let mut dd_ref = Tensor4::new(Rep::Symmetric);
-            ssd_fn(&mut dd, 2.0, &a);
-            ssd_fn_loops(&mut dd_ref, 2.0, &a);
-            assert_same_t4(&dd, &dd_ref, 1e-12);
-        }
+        // general
+        let a = Tensor2::<9>::from_std_matrix(&GENERAL_A).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        ssd_fn(&mut dd, SET, 2.0, &a);
+        ssd_fn_loops(&mut dd_ref, 2.0, &a);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+
+        // symmetric
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC_A).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        ssd_fn(&mut dd, SET, 2.0, &a);
+        ssd_fn_loops(&mut dd_ref, 2.0, &a);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+
+        // symmetric 2d
+        let a = Tensor2::<4>::from_std_matrix(&SYM2D_A).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        ssd_fn(&mut dd, SET, 2.0, &a);
+        ssd_fn_loops(&mut dd_ref, 2.0, &a);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
     }
 
     #[test]
     fn qsd_fn_loops_matches() {
-        for (mat_a, mat_b, rep) in [
-            (&GENERAL_A, &GENERAL_B, Rep::General),
-            (&SYMMETRIC_A, &SYMMETRIC_B, Rep::Symmetric),
-            (&SYM2D_A, &SYM2D_B, Rep::Symmetric2D),
-        ] {
-            let a = Tensor2::from_std_matrix(mat_a, rep).unwrap();
-            let b = Tensor2::from_std_matrix(mat_b, rep).unwrap();
-            let mut dd = Tensor4::new(Rep::Symmetric);
-            let mut dd_ref = Tensor4::new(Rep::Symmetric);
-            qsd_fn(&mut dd, 2.0, &a, &b);
-            qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
-            assert_same_t4(&dd, &dd_ref, 1e-12);
-        }
+        // general
+        let a = Tensor2::<9>::from_std_matrix(&GENERAL_A).unwrap();
+        let b = Tensor2::<9>::from_std_matrix(&GENERAL_B).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        qsd_fn(&mut dd, SET, 2.0, &a, &b);
+        qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+
+        // symmetric
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC_A).unwrap();
+        let b = Tensor2::<6>::from_std_matrix(&SYMMETRIC_B).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        qsd_fn(&mut dd, SET, 2.0, &a, &b);
+        qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+
+        // symmetric 2d
+        let a = Tensor2::<4>::from_std_matrix(&SYM2D_A).unwrap();
+        let b = Tensor2::<4>::from_std_matrix(&SYM2D_B).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        qsd_fn(&mut dd, SET, 2.0, &a, &b);
+        qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
     }
 
     #[test]
     fn deriv_squared_tensor_loops_matches() {
-        let a = Tensor2::from_std_matrix(&GENERAL_A, Rep::General).unwrap();
-        let mut da2_da = Tensor4::new(Rep::General);
+        let a = Tensor2::<9>::from_std_matrix(&GENERAL_A).unwrap();
+        let mut da2_da = Tensor4::<9>::new();
         deriv_squared_tensor(&mut da2_da, &a);
-        let mut da2_da_ref = Tensor4::new(Rep::General);
+        let mut da2_da_ref = Tensor4::<9>::new();
         deriv_squared_tensor_loops(&mut da2_da_ref, &a);
         assert_same_t4(&da2_da, &da2_da_ref, 1e-12);
     }
 
     #[test]
     fn deriv2_invariant_jj3_loops_matches() {
-        for (mat, rep) in [(&SYMMETRIC_A, Rep::Symmetric), (&SYM2D_A, Rep::Symmetric2D)] {
-            let sigma = Tensor2::from_std_matrix(mat, rep).unwrap();
-            let mut d2 = Tensor4::new(Rep::Symmetric);
-            deriv2_invariant_jj3(&mut d2, &sigma);
-            let mut d2_ref = Tensor4::new(Rep::Symmetric);
-            deriv2_invariant_jj3_loops(&mut d2_ref, &sigma);
-            assert_same_t4(&d2, &d2_ref, 1e-11);
-        }
+        // symmetric
+        let sigma = Tensor2::<6>::from_std_matrix(&SYMMETRIC_A).unwrap();
+        let mut d2 = Tensor4::<6>::new();
+        deriv2_invariant_jj3(&mut d2, &sigma);
+        let mut d2_ref = Tensor4::<6>::new();
+        deriv2_invariant_jj3_loops(&mut d2_ref, &sigma);
+        assert_same_t4(&d2, &d2_ref, 1e-11);
+
+        // symmetric 2d
+        let sigma = Tensor2::<4>::from_std_matrix(&SYM2D_A).unwrap();
+        let mut d2 = Tensor4::<6>::new();
+        deriv2_invariant_jj3(&mut d2, &sigma);
+        let mut d2_ref = Tensor4::<6>::new();
+        deriv2_invariant_jj3_loops(&mut d2_ref, &sigma);
+        assert_same_t4(&d2, &d2_ref, 1e-11);
     }
 
     #[test]
     fn deriv2_invariant_lode_loops_matches() {
-        for (mat, rep) in [(&SYMMETRIC_A, Rep::Symmetric), (&SYM2D_A, Rep::Symmetric2D)] {
-            let sigma = Tensor2::from_std_matrix(mat, rep).unwrap();
-            let mut d2 = Tensor4::new(Rep::Symmetric);
-            let mut aux = crate::AuxDeriv2InvariantLode::new();
-            let res = deriv2_invariant_lode(&mut d2, &mut aux, &sigma);
-            let mut d2_ref = Tensor4::new(Rep::Symmetric);
-            let res_ref = deriv2_invariant_lode_loops(&mut d2_ref, &sigma);
-            assert!(res.is_some());
-            assert_eq!(res.unwrap(), res_ref.unwrap());
-            assert_same_t4(&d2, &d2_ref, 1e-10);
-        }
+        // symmetric
+        let sigma = Tensor2::<6>::from_std_matrix(&SYMMETRIC_A).unwrap();
+        let mut d2 = Tensor4::<6>::new();
+        let mut work = WorkspaceDeriv2Lode::new();
+        let res = deriv2_invariant_lode(&mut d2, &mut work, &sigma);
+        let mut d2_ref = Tensor4::<6>::new();
+        let res_ref = deriv2_invariant_lode_loops(&mut d2_ref, &sigma);
+        assert!(res.is_some());
+        assert_eq!(res.unwrap(), res_ref.unwrap());
+        assert_same_t4(&d2, &d2_ref, 1e-10);
+
+        // symmetric 2d
+        let sigma = Tensor2::<4>::from_std_matrix(&SYM2D_A).unwrap();
+        let mut d2 = Tensor4::<6>::new();
+        let mut work = WorkspaceDeriv2Lode::new();
+        let res = deriv2_invariant_lode(&mut d2, &mut work, &sigma);
+        let mut d2_ref = Tensor4::<6>::new();
+        let res_ref = deriv2_invariant_lode_loops(&mut d2_ref, &sigma);
+        assert!(res.is_some());
+        assert_eq!(res.unwrap(), res_ref.unwrap());
+        assert_same_t4(&d2, &d2_ref, 1e-10);
     }
 
     #[test]
     fn deriv2_invariant_lode_loops_returns_none() {
-        let sigma =
-            Tensor2::from_std_matrix(&[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], Rep::Symmetric).unwrap();
-        let mut d2 = Tensor4::new(Rep::Symmetric);
+        let sigma = Tensor2::<6>::from_std_matrix(&[
+            [1.0, 0.0, 0.0], // 1
+            [0.0, 1.0, 0.0], // 2
+            [0.0, 0.0, 1.0], // 3
+        ])
+        .unwrap();
+        let mut d2 = Tensor4::<6>::new();
         assert_eq!(deriv2_invariant_lode_loops(&mut d2, &sigma), None);
     }
 }

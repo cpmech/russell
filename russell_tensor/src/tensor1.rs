@@ -1,10 +1,10 @@
-use russell_lab::{AsArray1D, Vector};
+use russell_lab::{AsArray1D, Vector, format_scientific};
 use std::cmp;
 use std::fmt::{self, Write};
 
 /// Defines a first-order tensor (vector) in R³
 ///
-/// The "standard" components are recorded here where "standard" means with respect to an orthonormal Cartesian system.
+/// The "standard" components are recorded here where "standard" means with respect to a Cartesian system.
 pub struct Tensor1 {
     /// Holds the 3 standard components (heap)
     ///
@@ -75,8 +75,47 @@ impl Tensor1 {
     /// # Panics
     ///
     /// A panic may occur if the index is out of range
+    #[inline]
     pub fn set(&mut self, i: usize, value: f64) {
         self.vec[i] = value;
+    }
+
+    /// Adds a value to the i-th standard component
+    ///
+    /// # Input
+    ///
+    /// * `i` -- The index must be 0, 1, or 2
+    /// * `value` -- The standard component value to be added
+    ///
+    /// # Panics
+    ///
+    /// A panic may occur if the index is out of range
+    #[inline]
+    pub fn add(&mut self, i: usize, value: f64) {
+        self.vec[i] += value;
+    }
+
+    /// Scales this tensor in-place
+    ///
+    /// ```text
+    /// self := α self
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::vec_approx_eq;
+    /// use russell_tensor::Tensor1;
+    ///
+    /// let mut u = Tensor1::from(&[1.0, 2.0, 3.0]);
+    /// u.scale(2.0);
+    /// vec_approx_eq(&u.as_vector(), &[2.0, 4.0, 6.0], 1e-15);
+    /// ```
+    #[inline]
+    pub fn scale(&mut self, alpha: f64) {
+        self.vec[0] *= alpha;
+        self.vec[1] *= alpha;
+        self.vec[2] *= alpha;
     }
 
     /// Gets the i-th standard component
@@ -88,6 +127,7 @@ impl Tensor1 {
     /// # Panics
     ///
     /// A panic may occur if the index is out of range
+    #[inline]
     pub fn get(&self, i: usize) -> f64 {
         self.vec[i]
     }
@@ -112,11 +152,59 @@ impl Tensor1 {
         self.vec[0] * other.vec[0] + self.vec[1] * other.vec[1] + self.vec[2] * other.vec[2]
     }
 
+    /// Calculates the Euclidean norm
+    ///
+    /// ```text
+    /// norm(u) = √(u·u) = √(u₀² + u₁² + u₂²)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::Tensor1;
+    ///
+    /// let u = Tensor1::from(&[3.0, 4.0, 12.0]);
+    /// approx_eq(u.norm(), 13.0, 1e-13);
+    /// ```
+    #[inline]
+    pub fn norm(&self) -> f64 {
+        f64::sqrt(self.vec[0] * self.vec[0] + self.vec[1] * self.vec[1] + self.vec[2] * self.vec[2])
+    }
+
     /// Returns this Tensor1 as a Vector object from russell_lab
     ///
     /// This function is useful for integration with `russell_lab` and for unit testing
     pub fn as_vector(&self) -> Vector {
         Vector::from(&self.vec)
+    }
+
+    /// Returns the components in scientific notation
+    ///
+    /// The returned [String] can be printed (e.g., `println!("{}", ...)`) or
+    /// saved to a log file.
+    ///
+    /// # Input
+    ///
+    /// * `label` -- a label (e.g., a description of the tensor)
+    /// * `factor` -- a factor to multiply the components before printing (e.g., a unit conversion factor)
+    /// * `width` -- the field width used to print each component
+    /// * `precision` -- the number of digits after the decimal point
+    pub fn scientific(&self, label: &str, factor: f64, width: usize, precision: usize) -> String {
+        let mut buf = String::new();
+        writeln!(&mut buf, "{} =", label).unwrap();
+        writeln!(&mut buf, "┌{:1$}┐", " ", width + 1).unwrap();
+        for m in 0..3 {
+            if m > 0 {
+                writeln!(&mut buf, " │").unwrap();
+            }
+            write!(&mut buf, "│").unwrap();
+            let val = self.vec[m] * factor;
+            write!(&mut buf, "{:>1$}", format_scientific(val, width, precision), width).unwrap();
+        }
+        writeln!(&mut buf, " │").unwrap();
+        writeln!(&mut buf, "└{:1$}┘", " ", width + 1).unwrap();
+        buf
     }
 }
 
@@ -160,7 +248,44 @@ impl fmt::Display for Tensor1 {
 #[cfg(test)]
 mod tests {
     use super::Tensor1;
-    use russell_lab::vec_approx_eq;
+    use russell_lab::{approx_eq, vec_approx_eq};
+
+    #[test]
+    fn norm_works() {
+        let u = Tensor1::from(&[3.0, 4.0, 12.0]);
+        approx_eq(u.norm(), 13.0, 1e-13);
+    }
+
+    #[test]
+    fn scale_works() {
+        let mut u = Tensor1::from(&[1.0, -2.0, 3.0]);
+        u.scale(2.0);
+        vec_approx_eq(&u.as_vector(), &[2.0, -4.0, 6.0], 1e-15);
+    }
+
+    #[test]
+    fn scientific_works() {
+        let u = Tensor1::from(&[1.0, -2.0, 3.0]);
+        assert_eq!(
+            u.scientific("u", 1.0, 10, 2),
+            "u =\n\
+             ┌           ┐\n\
+             │  1.00E+00 │\n\
+             │ -2.00E+00 │\n\
+             │  3.00E+00 │\n\
+             └           ┘\n"
+        );
+        // factor
+        assert_eq!(
+            u.scientific("u", 2.0, 10, 2),
+            "u =\n\
+             ┌           ┐\n\
+             │  2.00E+00 │\n\
+             │ -4.00E+00 │\n\
+             │  6.00E+00 │\n\
+             └           ┘\n"
+        );
+    }
 
     #[test]
     fn new_set_get_work() {

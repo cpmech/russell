@@ -56,12 +56,12 @@ fn main() -> Result<(), StrError> {
         let (p, e, cc) = mat.moduli()?;
 
         // Stress [Pa] sig = C : eps - E . e
-        t4_ddot_t2(&mut sig, SET, 1.0, &cc, &eps); // sig = C : eps
-        t1_dot_t3(&mut sig, ADD, -1.0, &ee, &e); // sig += -E . e
+        t4_ddot_t2(&mut sig, SET, 1.0, &cc, &eps); // sig  = C : eps
+        t1_dot_t3(&mut sig, ADD, -1.0, &ee, &e); //   sig += -E . e
 
-        // Electric displacement [C/m^2] D = e . eps + p . E
-        t3_ddot_t2(&mut dd, SET, 1.0, &e, &eps); // D = e . eps
-        t2_dot_t1(&mut dd, ADD, 1.0, &p, &ee); // D += p . E
+        // Electric displacement [C/m^2] D = e : eps + p . E
+        t3_ddot_t2(&mut dd, SET, 1.0, &e, &eps); // D  = e : eps
+        t2_dot_t1(&mut dd, ADD, 1.0, &p, &ee); //   D += p . E
 
         // Save results
         norm_sig.insert(id, sig.norm());

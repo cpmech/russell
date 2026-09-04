@@ -120,9 +120,10 @@ pub fn deriv2_invariant_lode_loops<const N: usize>(d2: &mut Tensor4<6>, sigma: &
         return None;
     }
     let jj3 = sigma.invariant_jj3();
-    let a = 1.5 * SQRT_3 / jj2.powf(1.5);
-    let b = 2.25 * SQRT_3 / jj2.powf(2.5);
-    let c = 5.625 * SQRT_3 / jj2.powf(3.5);
+    let sqrt_j2 = jj2.sqrt();
+    let a = 1.5 * SQRT_3 / (jj2 * sqrt_j2);
+    let b = 2.25 * SQRT_3 / (jj2 * jj2 * sqrt_j2);
+    let c = 5.625 * SQRT_3 / (jj2 * jj2 * jj2 * sqrt_j2);
 
     // deviator s = dJ2/dσ
     let mut s = Tensor2::<N>::new();

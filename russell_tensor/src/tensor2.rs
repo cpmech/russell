@@ -2191,7 +2191,7 @@ impl<const N: usize> Tensor2<N> {
         let jj2 = self.invariant_jj2();
         if jj2 > TOL_J2 {
             let jj3 = self.invariant_jj3();
-            Some(1.5 * SQRT_3 * jj3 / f64::powf(jj2, 1.5))
+            Some(1.5 * SQRT_3 * jj3 / (jj2 * f64::sqrt(jj2)))
         } else {
             None
         }

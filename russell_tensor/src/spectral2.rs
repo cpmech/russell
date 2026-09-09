@@ -17,6 +17,9 @@ const TOL_DI: f64 = 1e-15;
 const TOL_J3: f64 = 1e-15;
 const TOL_INVERSE: f64 = 1e-14;
 
+/// Holds indices for permutation by looping in 0..3
+const INDICES: [usize; 5] = [0, 1, 2, 0, 1];
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EigMethod {
     /// Jacobi iterations
@@ -194,17 +197,6 @@ impl Spectral2 {
                         self.lambda[0] = shift + 2.0 * cd;
                         self.lambda[1] = shift - cd + sd;
                         self.lambda[2] = shift - cd - sd;
-                        let indices = [0, 1, 2, 0, 1];
-                        for i in 0..3 {
-                            let r = indices[i];
-                            let s = indices[i + 1];
-                            let t = indices[i + 2];
-                            let p = -self.lambda[s];
-                            let q = -self.lambda[t];
-                            let f = 1.0 / ((self.lambda[r] - self.lambda[s]) * (self.lambda[r] - self.lambda[t]));
-                            // Set P[r] = f * (A - λ[s] I) . (A - λ[t] I)
-                            t2_plus_diag_product(self.projectors[r].as_mut_data(), f, &aa.as_data(), p, q);
-                        }
                     }
                     let d0 = self.lambda[0] - self.lambda[1];
                     let d1 = self.lambda[1] - self.lambda[2];
@@ -213,13 +205,23 @@ impl Spectral2 {
                     println!("d1 = {}", d1);
                     println!("d2 = {}", d2);
                     if f64::abs(d0) < TOL_COALESCE {
-                        //
+                        println!(" >>. d0");
                     } else if f64::abs(d1) < TOL_COALESCE {
-                        //
+                        println!(" >>. d1");
                     } else if f64::abs(d2) < TOL_COALESCE {
-                        //
+                        println!(" >>. d2");
                     } else {
-                        //
+                        println!(" !!!!!!!!!!!!!!!!!");
+                        for i in 0..3 {
+                            let r = INDICES[i];
+                            let s = INDICES[i + 1];
+                            let t = INDICES[i + 2];
+                            let p = -self.lambda[s];
+                            let q = -self.lambda[t];
+                            let f = 1.0 / ((self.lambda[r] - self.lambda[s]) * (self.lambda[r] - self.lambda[t]));
+                            // Set P[r] = f * (A - λ[s] I) . (A - λ[t] I)
+                            t2_plus_diag_product(self.projectors[r].as_mut_data(), f, &aa.as_data(), p, q);
+                        }
                     }
                 }
             }
@@ -360,6 +362,148 @@ mod tests {
     use super::{EigMethod, Spectral2, t2_plus_diag_product};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
     use russell_lab::{Matrix, Vector, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul, vec_approx_eq};
+
+    //
+    // --- auxiliary --------------------------
+    //
+
+    /// Performs similarity transformation (make sure to return a symmetric matrix)
+    ///
+    /// ```text
+    /// A = Q . L . Q^T
+    /// ```
+    fn transform(aa: &mut [[f64; 3]; 3], ll: &[[f64; 3]; 3], qq: &[[f64; 3]; 3]) {
+        for i in 0..3 {
+            for j in 0..3 {
+                aa[i][j] = 0.0;
+                for k in 0..3 {
+                    for l in 0..3 {
+                        aa[i][j] += qq[i][k] * ll[k][l] * qq[j][l];
+                    }
+                }
+            }
+        }
+        for i in 0..3 {
+            for j in i..3 {
+                approx_eq(aa[i][j], aa[j][i], 1e-15);
+                aa[i][j] = aa[j][i]; // symmetrize
+            }
+        }
+    }
+
+    #[test]
+    fn check_transform() {
+        // Q rotates axes to octahedral system
+        #[rustfmt::skip]
+        let qq_3x3 = [
+            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
+            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
+            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
+        ];
+        let l1 = 1.0;
+        let l2 = 2.0;
+        let l3 = 3.0;
+        let ll = [[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]];
+        let mut aa_3x3 = [[0.0; 3]; 3];
+        // transform and check invariants
+        transform(&mut aa_3x3, &ll, &qq_3x3);
+        let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+        approx_eq(aa.invariant_ii1(), l1 + l2 + l3, 1e-15);
+        approx_eq(aa.invariant_ii2(), l1 * l2 + l2 * l3 + l3 * l1, 1e-14);
+        approx_eq(aa.invariant_ii3(), l1 * l2 * l3, 1e-14);
+        approx_eq(aa.norm(), f64::sqrt(l1 * l1 + l2 * l2 + l3 * l3), 1e-15);
+        #[rustfmt::skip]
+        let qqt_3x3 = [
+            [ 2.0 / SQRT_6, 1.0 / SQRT_3,  0.0         ],
+            [-1.0 / SQRT_6, 1.0 / SQRT_3, -1.0 / SQRT_2],
+            [-1.0 / SQRT_6, 1.0 / SQRT_3,  1.0 / SQRT_2],
+        ];
+        // transform back and compare matrices
+        let mut ll_3x3 = [[0.0; 3]; 3];
+        transform(&mut ll_3x3, &aa_3x3, &qqt_3x3);
+        mat_approx_eq(&Matrix::from(&ll_3x3), &ll, 1e-14);
+    }
+
+    /// Sort eigenvalues and projectors in descending order
+    fn sort_eigen(lambda: &mut [f64; 3], projectors: &mut [[[f64; 3]; 3]; 3]) {
+        let mut indices = [0, 1, 2];
+        indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
+        let sorted_lambda = [lambda[indices[0]], lambda[indices[1]], lambda[indices[2]]];
+        let sorted_projectors = [
+            projectors[indices[0]].clone(),
+            projectors[indices[1]].clone(),
+            projectors[indices[2]].clone(),
+        ];
+        *lambda = sorted_lambda;
+        *projectors = sorted_projectors;
+    }
+
+    /// Generates eigen-problem
+    ///
+    /// Returns `(expected_lambda, expected_projectors)` sorted in decreasing order by lambda
+    fn generate_eigen_problem(l1: f64, l2: f64, l3: f64) -> ([f64; 3], [[[f64; 3]; 3]; 3]) {
+        // Q rotates axes to octahedral system
+        #[rustfmt::skip]
+        let qq_3x3 = [
+            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
+            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
+            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
+        ];
+        // eigenvectors
+        #[rustfmt::skip]
+        let n0 = [
+            2.0 / SQRT_6,
+            1.0 / SQRT_3,
+            0.0,        
+        ];
+        #[rustfmt::skip]
+        let n1 = [
+            -1.0 / SQRT_6,
+             1.0 / SQRT_3,
+            -1.0 / SQRT_2,
+        ];
+        #[rustfmt::skip]
+        let n2 = [
+            -1.0 / SQRT_6,
+             1.0 / SQRT_3,
+             1.0 / SQRT_2,
+        ];
+        // expected eigenprojectors
+        let pp0_3x3 = [
+            [n0[0] * n0[0], n0[0] * n0[1], n0[0] * n0[2]],
+            [n0[1] * n0[0], n0[1] * n0[1], n0[1] * n0[2]],
+            [n0[2] * n0[0], n0[2] * n0[1], n0[2] * n0[2]],
+        ];
+        let pp1_3x3 = [
+            [n1[0] * n1[0], n1[0] * n1[1], n1[0] * n1[2]],
+            [n1[1] * n1[0], n1[1] * n1[1], n1[1] * n1[2]],
+            [n1[2] * n1[0], n1[2] * n1[1], n1[2] * n1[2]],
+        ];
+        let pp2_3x3 = [
+            [n2[0] * n2[0], n2[0] * n2[1], n2[0] * n2[2]],
+            [n2[1] * n2[0], n2[1] * n2[1], n2[1] * n2[2]],
+            [n2[2] * n2[0], n2[2] * n2[1], n2[2] * n2[2]],
+        ];
+        // check
+        let mut expected_lambda = [l1, l2, l3];
+        let mut expected_projectors = [pp0_3x3, pp1_3x3, pp2_3x3];
+        sort_eigen(&mut expected_lambda, &mut expected_projectors);
+        let e_projectors = [
+            Tensor2::<6>::from_std_matrix(&expected_projectors[0]).unwrap(),
+            Tensor2::<6>::from_std_matrix(&expected_projectors[1]).unwrap(),
+            Tensor2::<6>::from_std_matrix(&expected_projectors[2]).unwrap(),
+        ];
+        check_eigenprojectors(&e_projectors, 1e-15);
+        // output
+        println!("pp0_3x3 = \n{}", Matrix::from(&pp0_3x3));
+        println!("pp1_3x3 = \n{}", Matrix::from(&pp1_3x3));
+        println!("pp2_3x3 = \n{}", Matrix::from(&pp2_3x3));
+        (expected_lambda, expected_projectors)
+    }
+
+    //
+    // --- test -------------------------------
+    //
 
     #[test]
     fn compose_capture_errors() {
@@ -504,7 +648,7 @@ mod tests {
     }
 
     fn check_eigenprojectors(pp_all: &[Tensor2<6>], tol: f64) {
-        // P0 + P1 + P2 = I
+        // sum check: P0 + P1 + P2 = I
         let mut sum = [0.0; 6];
         for i in 0..3 {
             for m in 0..6 {
@@ -512,7 +656,8 @@ mod tests {
             }
         }
         array_approx_eq(&sum, &IDENTITY2[..6], tol);
-        // P[i] . P[j] = δ[i,j] P[i]
+
+        // orthogonality check: P[i] . P[j] = δ[i,j] P[i]
         let zero = Matrix::new(3, 3);
         let mut ppi_times_ppj = Matrix::new(3, 3);
         for i in 0..3 {
@@ -579,110 +724,15 @@ mod tests {
         mat_approx_eq(&a, &a_new, tol_spectral);
     }
 
-    fn transform(aa: &mut [[f64; 3]; 3], ll: &[[f64; 3]; 3], qq: &[[f64; 3]; 3]) {
-        for i in 0..3 {
-            for j in 0..3 {
-                aa[i][j] = 0.0;
-                for k in 0..3 {
-                    for l in 0..3 {
-                        aa[i][j] += qq[i][k] * ll[k][l] * qq[j][l];
-                    }
-                }
-            }
-        }
-        for i in 0..3 {
-            for j in i..3 {
-                approx_eq(aa[i][j], aa[j][i], 1e-15);
-                aa[i][j] = aa[j][i]; // symmetrize
-            }
-        }
-    }
-
-    #[test]
-    fn check_transform() {
-        // Q rotates axes to octahedral system
-        #[rustfmt::skip]
-        let qq_3x3 = [
-            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
-            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
-            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
-        ];
-        let l1 = 1.0;
-        let l2 = 2.0;
-        let l3 = 3.0;
-        let ll = [[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]];
-        let mut aa_3x3 = [[0.0; 3]; 3];
-        // transform and check invariants
-        transform(&mut aa_3x3, &ll, &qq_3x3);
-        let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-        approx_eq(aa.invariant_ii1(), l1 + l2 + l3, 1e-15);
-        approx_eq(aa.invariant_ii2(), l1 * l2 + l2 * l3 + l3 * l1, 1e-14);
-        approx_eq(aa.invariant_ii3(), l1 * l2 * l3, 1e-14);
-        approx_eq(aa.norm(), f64::sqrt(l1 * l1 + l2 * l2 + l3 * l3), 1e-15);
-        #[rustfmt::skip]
-        let qqt_3x3 = [
-            [ 2.0 / SQRT_6, 1.0 / SQRT_3,  0.0         ],
-            [-1.0 / SQRT_6, 1.0 / SQRT_3, -1.0 / SQRT_2],
-            [-1.0 / SQRT_6, 1.0 / SQRT_3,  1.0 / SQRT_2],
-        ];
-        // transform back and compare matrices
-        let mut ll_3x3 = [[0.0; 3]; 3];
-        transform(&mut ll_3x3, &aa_3x3, &qqt_3x3);
-        mat_approx_eq(&Matrix::from(&ll_3x3), &ll, 1e-14);
-    }
-
     #[test]
     fn deriv_eigenproj_works_1() {
-        // Q rotates axes to octahedral system
-        #[rustfmt::skip]
-        let qq_3x3 = [
-            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
-            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
-            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
-        ];
-        // eigenvectors
-        #[rustfmt::skip]
-        let n0 = [
-            2.0 / SQRT_6,
-            1.0 / SQRT_3,
-            0.0,        
-        ];
-        #[rustfmt::skip]
-        let n1 = [
-            -1.0 / SQRT_6,
-             1.0 / SQRT_3,
-            -1.0 / SQRT_2,
-        ];
-        #[rustfmt::skip]
-        let n2 = [
-            -1.0 / SQRT_6,
-             1.0 / SQRT_3,
-             1.0 / SQRT_2,
-        ];
-        // expected eigenprojectors
-        let pp0_3x3 = [
-            [n0[0] * n0[0], n0[0] * n0[1], n0[0] * n0[2]],
-            [n0[1] * n0[0], n0[1] * n0[1], n0[1] * n0[2]],
-            [n0[2] * n0[0], n0[2] * n0[1], n0[2] * n0[2]],
-        ];
-        let pp1_3x3 = [
-            [n1[0] * n1[0], n1[0] * n1[1], n1[0] * n1[2]],
-            [n1[1] * n1[0], n1[1] * n1[1], n1[1] * n1[2]],
-            [n1[2] * n1[0], n1[2] * n1[1], n1[2] * n1[2]],
-        ];
-        let pp2_3x3 = [
-            [n2[0] * n0[0], n0[0] * n0[1], n0[0] * n0[2]],
-            [n2[1] * n0[0], n0[1] * n0[1], n0[1] * n0[2]],
-            [n2[2] * n0[0], n0[2] * n0[1], n0[2] * n0[2]],
-        ];
-
         // setup 3x3 matrix
         let l1 = 1.0;
         let l2 = 2.0;
         let l3 = 3.0;
         let ll = [[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]];
         let mut aa_3x3 = [[0.0; 3]; 3];
-        transform(&mut aa_3x3, &ll, &qq_3x3);
+        // transform(&mut aa_3x3, &ll, &qq_3x3);
 
         // setup symmetric tensor
         let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
@@ -691,10 +741,17 @@ mod tests {
         // perform spectral decomposition
         let mut spec = Spectral2::new();
         spec.decompose(&mut aa, EigMethod::Analytical).unwrap();
+
+        let pp0_mat = spec.projectors[0].as_std_matrix();
+        let pp1_mat = spec.projectors[1].as_std_matrix();
+        let pp2_mat = spec.projectors[2].as_std_matrix();
+
         println!("{}", spec.lambda);
-        println!("{}", spec.projectors[0].as_std_matrix());
-        println!("{}", spec.projectors[1].as_std_matrix());
-        println!("{}", spec.projectors[2].as_std_matrix());
+        println!("{}", pp0_mat);
+        // println!("{}", pp1_mat);
+        // println!("{}", pp2_mat);
+
+        check_eigenprojectors(&spec.projectors, 1e-15);
 
         // let tt = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         // let tt = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();

@@ -39,7 +39,7 @@ pub struct Spectral2 {
     /// Holds the eigenprojectors
     ///
     /// Set of 3 symmetric Tensor2
-    pub projectors: Vec<Tensor2<6>>,
+    pub proj: Vec<Tensor2<6>>,
 
     /// Holds the derivatives of the eigenprojectors w.r.t the defining tensor
     ///
@@ -91,7 +91,7 @@ impl Spectral2 {
     pub fn new() -> Self {
         Spectral2 {
             lambda: Vector::new(3),
-            projectors: vec![Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
+            proj: vec![Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
             dpp: Vec::new(),
             inverse: Tensor2::<6>::new(),
             yy: None,
@@ -126,9 +126,9 @@ impl Spectral2 {
                 let u2 = Tensor1::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
 
                 // compute eigenprojectors
-                t1_dyad_t1(&mut self.projectors[0], SET, 1.0, &u0, &u0).unwrap();
-                t1_dyad_t1(&mut self.projectors[1], SET, 1.0, &u1, &u1).unwrap();
-                t1_dyad_t1(&mut self.projectors[2], SET, 1.0, &u2, &u2).unwrap();
+                t1_dyad_t1(&mut self.proj[0], SET, 1.0, &u0, &u0).unwrap();
+                t1_dyad_t1(&mut self.proj[1], SET, 1.0, &u1, &u1).unwrap();
+                t1_dyad_t1(&mut self.proj[2], SET, 1.0, &u2, &u2).unwrap();
             }
             EigMethod::Analytical => {
                 let ii1 = aa.invariant_ii1();
@@ -141,26 +141,26 @@ impl Spectral2 {
                     self.lambda[2] = shift;
                     // Setting so that A = Σ_{k=1,2,3} λ[k] P[k] still works)
                     // P0
-                    self.projectors[0].vec[0] = 1.0;
-                    self.projectors[0].vec[1] = 0.0;
-                    self.projectors[0].vec[2] = 0.0;
-                    self.projectors[0].vec[3] = 0.0;
-                    self.projectors[0].vec[4] = 0.0;
-                    self.projectors[0].vec[5] = 0.0;
+                    self.proj[0].vec[0] = 1.0;
+                    self.proj[0].vec[1] = 0.0;
+                    self.proj[0].vec[2] = 0.0;
+                    self.proj[0].vec[3] = 0.0;
+                    self.proj[0].vec[4] = 0.0;
+                    self.proj[0].vec[5] = 0.0;
                     // P1
-                    self.projectors[1].vec[0] = 0.0;
-                    self.projectors[1].vec[1] = 1.0;
-                    self.projectors[1].vec[2] = 0.0;
-                    self.projectors[1].vec[3] = 0.0;
-                    self.projectors[1].vec[4] = 0.0;
-                    self.projectors[1].vec[5] = 0.0;
+                    self.proj[1].vec[0] = 0.0;
+                    self.proj[1].vec[1] = 1.0;
+                    self.proj[1].vec[2] = 0.0;
+                    self.proj[1].vec[3] = 0.0;
+                    self.proj[1].vec[4] = 0.0;
+                    self.proj[1].vec[5] = 0.0;
                     // P2
-                    self.projectors[2].vec[0] = 0.0;
-                    self.projectors[2].vec[1] = 0.0;
-                    self.projectors[2].vec[2] = 1.0;
-                    self.projectors[2].vec[3] = 0.0;
-                    self.projectors[2].vec[4] = 0.0;
-                    self.projectors[2].vec[5] = 0.0;
+                    self.proj[2].vec[0] = 0.0;
+                    self.proj[2].vec[1] = 0.0;
+                    self.proj[2].vec[2] = 1.0;
+                    self.proj[2].vec[3] = 0.0;
+                    self.proj[2].vec[4] = 0.0;
+                    self.proj[2].vec[5] = 0.0;
                 } else {
                     let sqrt_jj2 = f64::sqrt(jj2);
                     let fac1 = 2.0 * jj2 / 3.0;
@@ -220,7 +220,7 @@ impl Spectral2 {
                             let q = -self.lambda[t];
                             let f = 1.0 / ((self.lambda[r] - self.lambda[s]) * (self.lambda[r] - self.lambda[t]));
                             // Set P[r] = f * (A - λ[s] I) . (A - λ[t] I)
-                            t2_plus_diag_product(self.projectors[r].as_mut_data(), f, &aa.as_data(), p, q);
+                            t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
                         }
                     }
                 }
@@ -230,19 +230,17 @@ impl Spectral2 {
     }
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
-    pub fn compose(&self, composed: &mut Tensor2<6>, lambda: &Vector) -> Result<(), StrError> {
-        if lambda.dim() != 3 {
-            return Err("lambda.dim must be equal to 3");
-        }
-        for m in 0..6 {
-            composed.set(
-                m,
-                lambda[0] * self.projectors[0].get(m)
-                    + lambda[1] * self.projectors[1].get(m)
-                    + lambda[2] * self.projectors[2].get(m),
-            );
-        }
-        Ok(())
+    ///
+    /// ```text
+    /// ```
+    #[rustfmt::skip]
+    pub fn compose(&self, bb: &mut Tensor2<6>, d: &[f64; 3]) {
+        bb.vec[0] = d[0] * self.proj[0].vec[0] + d[1] * self.proj[1].vec[0] + d[2] * self.proj[2].vec[0];
+        bb.vec[1] = d[0] * self.proj[0].vec[1] + d[1] * self.proj[1].vec[1] + d[2] * self.proj[2].vec[1];
+        bb.vec[2] = d[0] * self.proj[0].vec[2] + d[1] * self.proj[1].vec[2] + d[2] * self.proj[2].vec[2];
+        bb.vec[3] = d[0] * self.proj[0].vec[3] + d[1] * self.proj[1].vec[3] + d[2] * self.proj[2].vec[3];
+        bb.vec[4] = d[0] * self.proj[0].vec[4] + d[1] * self.proj[1].vec[4] + d[2] * self.proj[2].vec[4];
+        bb.vec[5] = d[0] * self.proj[0].vec[5] + d[1] * self.proj[1].vec[5] + d[2] * self.proj[2].vec[5];
     }
 
     /// Calculates the octahedral basis on the principal values space
@@ -293,9 +291,9 @@ impl Spectral2 {
         if self.p_dy_p.len() != 3 {
             self.p_dy_p = vec![Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
         }
-        t2_dyad_t2(&mut self.p_dy_p[0], SET, 1.0, &self.projectors[0], &self.projectors[0]);
-        t2_dyad_t2(&mut self.p_dy_p[1], SET, 1.0, &self.projectors[1], &self.projectors[1]);
-        t2_dyad_t2(&mut self.p_dy_p[2], SET, 1.0, &self.projectors[2], &self.projectors[2]);
+        t2_dyad_t2(&mut self.p_dy_p[0], SET, 1.0, &self.proj[0], &self.proj[0]);
+        t2_dyad_t2(&mut self.p_dy_p[1], SET, 1.0, &self.proj[1], &self.proj[1]);
+        t2_dyad_t2(&mut self.p_dy_p[2], SET, 1.0, &self.proj[2], &self.proj[2]);
 
         // Calculate auxiliary coefficients
         let ii1 = tt.invariant_ii1();
@@ -458,7 +456,35 @@ mod tests {
         assert_eq!(projectors[2][0][0], aaa);
     }
 
-    /// Generates eigen-problem
+    /// Check the properties of eigenprojectors
+    fn check_eigenprojectors(pp_all: &[Tensor2<6>], tol: f64) {
+        // sum check: P0 + P1 + P2 = I
+        let mut sum = [0.0; 6];
+        for i in 0..3 {
+            for m in 0..6 {
+                sum[m] += pp_all[i].get(m);
+            }
+        }
+        array_approx_eq(&sum, &IDENTITY2[..6], tol);
+
+        // orthogonality check: P[i] . P[j] = δ[i,j] P[i]
+        let zero = [[0.0; 3]; 3];
+        let mut ppi_times_ppj = Matrix::new(3, 3);
+        for i in 0..3 {
+            let ppi = pp_all[i].as_std_matrix();
+            for j in 0..3 {
+                let ppj = pp_all[j].as_std_matrix();
+                mat_mat_mul(&mut ppi_times_ppj, 1.0, &ppi, &ppj, 0.0).unwrap();
+                if i == j {
+                    mat_approx_eq(&ppi_times_ppj, &ppi, tol);
+                } else {
+                    mat_approx_eq(&ppi_times_ppj, &zero, tol);
+                }
+            }
+        }
+    }
+
+    /// Generates eigen-problem (with checks using check_eigenprojectors)
     ///
     /// Returns `(expected_lambda, expected_projectors)` sorted in decreasing order by lambda
     fn generate_eigen_problem(l1: f64, l2: f64, l3: f64) -> ([f64; 3], [[[f64; 3]; 3]; 3]) {
@@ -525,81 +551,58 @@ mod tests {
     // --- test -------------------------------
     //
 
-    #[test]
-    fn compose_capture_errors() {
-        let spec = Spectral2::new();
-        let mut tt = Tensor2::<6>::new();
-        let lambda = Vector::new(1);
-        assert_eq!(
-            spec.compose(&mut tt, &lambda).err(),
-            Some("lambda.dim must be equal to 3")
-        );
-    }
-
-    fn check(
-        method: EigMethod,
-        spec: &mut Spectral2,
-        sample: &SampleTensor2,
-        tol_lambda: f64,
-        tol_proj: f64,
-        tol_spectral: f64,
-    ) {
+    /// Checks the eigen-problem by comparing with known values
+    fn check1(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_spectral: f64) {
         let correct_lambda = sample.eigenvalues.unwrap();
         let correct_projectors = sample.eigenprojectors.unwrap();
 
         // perform spectral decomposition of symmetric matrix
         let tt = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-        spec.decompose(&tt, method).unwrap();
-
-        // print results
-        println!("a =\n{}", tt.as_std_matrix());
-        println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-        println!("P0 =\n{}", spec.projectors[0].as_std_matrix());
-        println!("P1 =\n{}", spec.projectors[1].as_std_matrix());
-        println!("P2 =\n{}", spec.projectors[2].as_std_matrix());
+        spec.decompose(&tt, EigMethod::Jacobi).unwrap();
 
         // check eigenvalues
         vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
         // check eigenprojectors
-        let pp0 = spec.projectors[0].as_std_matrix();
-        let pp1 = spec.projectors[1].as_std_matrix();
-        let pp2 = spec.projectors[2].as_std_matrix();
+        let pp0 = spec.proj[0].as_std_matrix();
+        let pp1 = spec.proj[1].as_std_matrix();
+        let pp2 = spec.proj[2].as_std_matrix();
         let correct0 = Matrix::from(&correct_projectors[0]);
         let correct1 = Matrix::from(&correct_projectors[1]);
         let correct2 = Matrix::from(&correct_projectors[2]);
         mat_approx_eq(&correct0, &pp0, tol_proj);
         mat_approx_eq(&correct1, &pp1, tol_proj);
         mat_approx_eq(&correct2, &pp2, tol_proj);
+        check_eigenprojectors(&spec.proj, tol_proj);
 
-        // compose
-        let mut tt_new = Tensor2::<6>::new();
-        spec.compose(&mut tt_new, &spec.lambda).unwrap();
-        let a_new = tt_new.as_std_matrix();
+        // check compose
+        let mut bb = Tensor2::<6>::new();
+        let d = &[spec.lambda[0], spec.lambda[1], spec.lambda[2]];
+        spec.compose(&mut bb, &d);
+        let a_new = bb.as_std_matrix();
         let a = Matrix::from(&sample.matrix);
         mat_approx_eq(&a, &a_new, tol_spectral);
     }
 
     #[test]
-    fn decompose_and_compose_work_3d() {
+    fn decompose_and_compose_work_using_jacobi_method() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::Jacobi;
-        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
+        check1(&mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
+        check1(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check1(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
     }
 
     #[test]
-    fn octahedral_basis_works() {
+    fn octahedral_basis_works_using_jacobi_method() {
         // the following data corresponds to p = 1 and q = 3
         #[rustfmt::skip]
         let principal_stresses_and_lode = [
@@ -618,12 +621,11 @@ mod tests {
         ];
         let mut spec = Spectral2::new();
         let mut tt = Tensor2::<6>::new();
-        let m = EigMethod::Jacobi;
         for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
             tt.set(0, *sigma_1);
             tt.set(1, *sigma_2);
             tt.set(2, *sigma_3);
-            spec.decompose(&tt, m).unwrap();
+            spec.decompose(&tt, EigMethod::Jacobi).unwrap();
             let (ls1, ls2, ls3) = spec.octahedral_basis();
             let radius = f64::sqrt(ls3 * ls3 + ls1 * ls1);
             let distance = ls2;
@@ -667,33 +669,6 @@ mod tests {
         array_approx_eq(expected.as_data(), &res, 1e-14);
     }
 
-    fn check_eigenprojectors(pp_all: &[Tensor2<6>], tol: f64) {
-        // sum check: P0 + P1 + P2 = I
-        let mut sum = [0.0; 6];
-        for i in 0..3 {
-            for m in 0..6 {
-                sum[m] += pp_all[i].get(m);
-            }
-        }
-        array_approx_eq(&sum, &IDENTITY2[..6], tol);
-
-        // orthogonality check: P[i] . P[j] = δ[i,j] P[i]
-        let zero = Matrix::new(3, 3);
-        let mut ppi_times_ppj = Matrix::new(3, 3);
-        for i in 0..3 {
-            let ppi = pp_all[i].as_std_matrix();
-            for j in 0..3 {
-                let ppj = pp_all[j].as_std_matrix();
-                mat_mat_mul(&mut ppi_times_ppj, 1.0, &ppi, &ppj, 0.0).unwrap();
-                if i == j {
-                    mat_approx_eq(&ppi_times_ppj, &ppi, tol);
-                } else {
-                    mat_approx_eq(&ppi_times_ppj, &zero, tol);
-                }
-            }
-        }
-    }
-
     fn check2(
         method: EigMethod,
         spec: &mut Spectral2,
@@ -723,23 +698,24 @@ mod tests {
             "λ* = {}, {}, {}",
             sorted_correct_lambda[0], sorted_correct_lambda[1], sorted_correct_lambda[2]
         );
-        println!("P0 =\n{}", spec.projectors[0].as_std_matrix());
-        println!("P1 =\n{}", spec.projectors[1].as_std_matrix());
-        println!("P2 =\n{}", spec.projectors[2].as_std_matrix());
+        println!("P0 =\n{}", spec.proj[0].as_std_matrix());
+        println!("P1 =\n{}", spec.proj[1].as_std_matrix());
+        println!("P2 =\n{}", spec.proj[2].as_std_matrix());
 
         // check eigenvalues
         vec_approx_eq(&spec.lambda, &sorted_correct_lambda, tol_lambda);
 
         // check eigenprojectors
-        let pp0 = spec.projectors[0].as_std_matrix();
-        let pp1 = spec.projectors[1].as_std_matrix();
-        let pp2 = spec.projectors[2].as_std_matrix();
-        check_eigenprojectors(&spec.projectors, tol_proj);
+        let pp0 = spec.proj[0].as_std_matrix();
+        let pp1 = spec.proj[1].as_std_matrix();
+        let pp2 = spec.proj[2].as_std_matrix();
+        check_eigenprojectors(&spec.proj, tol_proj);
 
         // compose
-        let mut tt_new = Tensor2::<6>::new();
-        spec.compose(&mut tt_new, &spec.lambda).unwrap();
-        let a_new = tt_new.as_std_matrix();
+        let mut bb = Tensor2::<6>::new();
+        let d = &[spec.lambda[0], spec.lambda[1], spec.lambda[2]];
+        spec.compose(&mut bb, &d);
+        let a_new = bb.as_std_matrix();
         let a = Matrix::from(&sample.matrix);
         mat_approx_eq(&a, &a_new, tol_spectral);
     }
@@ -762,16 +738,16 @@ mod tests {
         let mut spec = Spectral2::new();
         spec.decompose(&mut aa, EigMethod::Analytical).unwrap();
 
-        let pp0_mat = spec.projectors[0].as_std_matrix();
-        let pp1_mat = spec.projectors[1].as_std_matrix();
-        let pp2_mat = spec.projectors[2].as_std_matrix();
+        let pp0_mat = spec.proj[0].as_std_matrix();
+        let pp1_mat = spec.proj[1].as_std_matrix();
+        let pp2_mat = spec.proj[2].as_std_matrix();
 
         println!("{}", spec.lambda);
         println!("{}", pp0_mat);
         // println!("{}", pp1_mat);
         // println!("{}", pp2_mat);
 
-        check_eigenprojectors(&spec.projectors, 1e-15);
+        check_eigenprojectors(&spec.proj, 1e-15);
 
         // let tt = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         // let tt = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();

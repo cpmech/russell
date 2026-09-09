@@ -425,7 +425,7 @@ mod tests {
     }
 
     /// Sort eigenvalues and projectors in descending order
-    fn sort_eigen(lambda: &mut [f64; 3], projectors: &mut [[[f64; 3]; 3]; 3]) {
+    fn sort_projectors(lambda: &mut [f64; 3], projectors: &mut [[[f64; 3]; 3]; 3]) {
         let mut indices = [0, 1, 2];
         indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
         let sorted_lambda = [lambda[indices[0]], lambda[indices[1]], lambda[indices[2]]];
@@ -436,6 +436,26 @@ mod tests {
         ];
         *lambda = sorted_lambda;
         *projectors = sorted_projectors;
+    }
+
+    #[test]
+    fn check_sort() {
+        let mut lambda = [1.0, 3.0, 2.0];
+        let aaa = 123.0;
+        let bbb = 456.0;
+        let ccc = 789.0;
+        let mut projectors = [
+            [[aaa, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, bbb, 0.0], [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, ccc]],
+        ];
+        sort_projectors(&mut lambda, &mut projectors);
+        assert_eq!(lambda[0], 3.0);
+        assert_eq!(lambda[1], 2.0);
+        assert_eq!(lambda[2], 1.0);
+        assert_eq!(projectors[0][1][1], bbb);
+        assert_eq!(projectors[1][2][2], ccc);
+        assert_eq!(projectors[2][0][0], aaa);
     }
 
     /// Generates eigen-problem
@@ -487,7 +507,7 @@ mod tests {
         // check
         let mut expected_lambda = [l1, l2, l3];
         let mut expected_projectors = [pp0_3x3, pp1_3x3, pp2_3x3];
-        sort_eigen(&mut expected_lambda, &mut expected_projectors);
+        sort_projectors(&mut expected_lambda, &mut expected_projectors);
         let e_projectors = [
             Tensor2::<6>::from_std_matrix(&expected_projectors[0]).unwrap(),
             Tensor2::<6>::from_std_matrix(&expected_projectors[1]).unwrap(),

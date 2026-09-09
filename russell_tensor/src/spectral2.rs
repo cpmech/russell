@@ -486,16 +486,19 @@ mod tests {
 
     /// Generates eigen-problem (with checks using check_eigenprojectors)
     ///
-    /// Returns `(expected_lambda, expected_projectors)` sorted in decreasing order by lambda
-    fn generate_eigen_problem(l1: f64, l2: f64, l3: f64) -> ([f64; 3], [[[f64; 3]; 3]; 3]) {
+    /// Returns `(aa, expected_lambda, expected_proj)` sorted in decreasing order by lambda
+    fn generate_eigen_problem(l1: f64, l2: f64, l3: f64) -> ([[f64; 3]; 3], [f64; 3], [[[f64; 3]; 3]; 3]) {
         // Q rotates axes to octahedral system
         #[rustfmt::skip]
-        let qq_3x3 = [
+        let qq = [
             [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
             [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
             [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
         ];
-        // eigenvectors
+        // A = Q . L . Q^T
+        let mut aa = [[0.0; 3]; 3];
+        transform(&mut aa, &[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], &qq);
+        // expected eigenvectors
         #[rustfmt::skip]
         let n0 = [
             2.0 / SQRT_6,
@@ -515,36 +518,34 @@ mod tests {
              1.0 / SQRT_2,
         ];
         // expected eigenprojectors
-        let pp0_3x3 = [
+        let pp0 = [
             [n0[0] * n0[0], n0[0] * n0[1], n0[0] * n0[2]],
             [n0[1] * n0[0], n0[1] * n0[1], n0[1] * n0[2]],
             [n0[2] * n0[0], n0[2] * n0[1], n0[2] * n0[2]],
         ];
-        let pp1_3x3 = [
+        let pp1 = [
             [n1[0] * n1[0], n1[0] * n1[1], n1[0] * n1[2]],
             [n1[1] * n1[0], n1[1] * n1[1], n1[1] * n1[2]],
             [n1[2] * n1[0], n1[2] * n1[1], n1[2] * n1[2]],
         ];
-        let pp2_3x3 = [
+        let pp2 = [
             [n2[0] * n2[0], n2[0] * n2[1], n2[0] * n2[2]],
             [n2[1] * n2[0], n2[1] * n2[1], n2[1] * n2[2]],
             [n2[2] * n2[0], n2[2] * n2[1], n2[2] * n2[2]],
         ];
-        // check
+        // sort eigen variables
         let mut expected_lambda = [l1, l2, l3];
-        let mut expected_projectors = [pp0_3x3, pp1_3x3, pp2_3x3];
-        sort_projectors(&mut expected_lambda, &mut expected_projectors);
+        let mut expected_proj = [pp0, pp1, pp2];
+        sort_projectors(&mut expected_lambda, &mut expected_proj);
         let e_projectors = [
-            Tensor2::<6>::from_std_matrix(&expected_projectors[0]).unwrap(),
-            Tensor2::<6>::from_std_matrix(&expected_projectors[1]).unwrap(),
-            Tensor2::<6>::from_std_matrix(&expected_projectors[2]).unwrap(),
+            Tensor2::<6>::from_std_matrix(&expected_proj[0]).unwrap(),
+            Tensor2::<6>::from_std_matrix(&expected_proj[1]).unwrap(),
+            Tensor2::<6>::from_std_matrix(&expected_proj[2]).unwrap(),
         ];
+        // check
         check_eigenprojectors(&e_projectors, 1e-15);
-        // output
-        println!("pp0_3x3 = \n{}", Matrix::from(&pp0_3x3));
-        println!("pp1_3x3 = \n{}", Matrix::from(&pp1_3x3));
-        println!("pp2_3x3 = \n{}", Matrix::from(&pp2_3x3));
-        (expected_lambda, expected_projectors)
+        // results
+        (aa, expected_lambda, expected_proj)
     }
 
     /// Check the the solution to the eigen-problem on tensor A
@@ -595,7 +596,7 @@ mod tests {
     //
 
     #[test]
-    fn decompose_and_compose_work_using_jacobi_method() {
+    fn decompose_and_compose_work_using_jacobi_method_work() {
         let mut spec = Spectral2::new();
         check_j(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check_j(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
@@ -612,7 +613,7 @@ mod tests {
     }
 
     #[test]
-    fn octahedral_basis_works_using_jacobi_method() {
+    fn octahedral_basis_using_jacobi_method_works() {
         // the following data corresponds to p = 1 and q = 3
         #[rustfmt::skip]
         let principal_stresses_and_lode = [
@@ -678,18 +679,16 @@ mod tests {
     }
 
     #[test]
-    fn deriv_eigenproj_works_1() {
-        // setup 3x3 matrix
+    fn decompose_analytical_works() {
+        // generate eigen-problem
         let l1 = 1.0;
         let l2 = 2.0;
         let l3 = 3.0;
-        let ll = [[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]];
-        let mut aa_3x3 = [[0.0; 3]; 3];
-        // transform(&mut aa_3x3, &ll, &qq_3x3);
+        let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
 
         // setup symmetric tensor
         let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-        println!("{}", aa.as_std_matrix());
+        println!("A =\n{}", aa.as_std_matrix());
 
         // perform spectral decomposition
         let mut spec = Spectral2::new();
@@ -699,21 +698,15 @@ mod tests {
         let pp1_mat = spec.proj[1].as_std_matrix();
         let pp2_mat = spec.proj[2].as_std_matrix();
 
-        println!("{}", spec.lambda);
-        println!("{}", pp0_mat);
-        // println!("{}", pp1_mat);
-        // println!("{}", pp2_mat);
+        println!("L = \n{}", spec.lambda);
+        println!("P0 = \n{:.20}", pp0_mat);
+        println!("P1 = \n{:.20}", pp1_mat);
+        println!("P2 = \n{:.20}", pp2_mat);
 
         check_eigenprojectors(&spec.proj, 1e-15);
-
-        // let tt = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
-        // let tt = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();
-        // spec.deriv_eigenproj(&tt).unwrap();
-        // let m = EigMethod::Analytical;
-        // check2(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        // check2(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        // check2(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        // check2(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
+        mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15);
+        mat_approx_eq(&pp1_mat, &expected_proj[1], 1e-15);
+        mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15);
     }
 }
 

@@ -547,23 +547,35 @@ mod tests {
         (expected_lambda, expected_projectors)
     }
 
-    //
-    // --- test -------------------------------
-    //
+    /// Check the the solution to the eigen-problem on tensor A
+    fn check_eigen_problem(aa: &Tensor2<6>, spec: &Spectral2, tol_proj: f64, tol_compose: f64) {
+        // check eigenprojectors
+        let pp0 = spec.proj[0].as_std_matrix();
+        let pp1 = spec.proj[1].as_std_matrix();
+        let pp2 = spec.proj[2].as_std_matrix();
+        check_eigenprojectors(&spec.proj, tol_proj);
+
+        // check compose
+        let mut bb = Tensor2::<6>::new();
+        let d = &[spec.lambda[0], spec.lambda[1], spec.lambda[2]];
+        spec.compose(&mut bb, &d);
+        vec_approx_eq(&aa.vec, &bb.vec, tol_compose);
+    }
 
     /// Checks the eigen-problem by comparing with known values
-    fn check1(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_spectral: f64) {
+    fn check_j(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_compose: f64) {
+        // extract eigenvalues and projectors
         let correct_lambda = sample.eigenvalues.unwrap();
         let correct_projectors = sample.eigenprojectors.unwrap();
 
-        // perform spectral decomposition of symmetric matrix
-        let tt = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-        spec.decompose(&tt, EigMethod::Jacobi).unwrap();
+        // perform the spectral decomposition
+        let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+        spec.decompose(&aa, EigMethod::Jacobi).unwrap();
 
-        // check eigenvalues
+        // compare eigenvalues
         vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
-        // check eigenprojectors
+        // compare eigenprojectors
         let pp0 = spec.proj[0].as_std_matrix();
         let pp1 = spec.proj[1].as_std_matrix();
         let pp2 = spec.proj[2].as_std_matrix();
@@ -573,32 +585,30 @@ mod tests {
         mat_approx_eq(&correct0, &pp0, tol_proj);
         mat_approx_eq(&correct1, &pp1, tol_proj);
         mat_approx_eq(&correct2, &pp2, tol_proj);
-        check_eigenprojectors(&spec.proj, tol_proj);
 
-        // check compose
-        let mut bb = Tensor2::<6>::new();
-        let d = &[spec.lambda[0], spec.lambda[1], spec.lambda[2]];
-        spec.compose(&mut bb, &d);
-        let a_new = bb.as_std_matrix();
-        let a = Matrix::from(&sample.matrix);
-        mat_approx_eq(&a, &a_new, tol_spectral);
+        // further checks
+        check_eigen_problem(&aa, spec, tol_proj, tol_compose);
     }
+
+    //
+    // --- tests -------------------------------
+    //
 
     #[test]
     fn decompose_and_compose_work_using_jacobi_method() {
         let mut spec = Spectral2::new();
-        check1(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
-        check1(&mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
-        check1(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
-        check1(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check_j(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
     }
 
     #[test]
@@ -639,8 +649,6 @@ mod tests {
         }
     }
 
-    // ---------------
-
     #[test]
     fn t2_plus_diag_product_works() {
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
@@ -667,57 +675,6 @@ mod tests {
         }
         let expected = Tensor2::<6>::from_std_matrix(&expected_mat).unwrap();
         array_approx_eq(expected.as_data(), &res, 1e-14);
-    }
-
-    fn check2(
-        method: EigMethod,
-        spec: &mut Spectral2,
-        sample: &SampleTensor2,
-        tol_lambda: f64,
-        tol_proj: f64,
-        tol_spectral: f64,
-    ) {
-        let correct_lambda = sample.eigenvalues.unwrap();
-        let correct_projectors = sample.eigenprojectors.unwrap();
-
-        // reverse sort the correct eigenvalues to compare with the computed ones
-        let sorted_correct_lambda = {
-            let mut v = correct_lambda.clone();
-            v.sort_by(|a, b| b.partial_cmp(a).unwrap());
-            v
-        };
-
-        // perform spectral decomposition of symmetric matrix
-        let tt = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-        spec.decompose(&tt, method).unwrap();
-
-        // print results
-        println!("a =\n{}", tt.as_std_matrix());
-        println!("λ = {}, {}, {}", spec.lambda[0], spec.lambda[1], spec.lambda[2]);
-        println!(
-            "λ* = {}, {}, {}",
-            sorted_correct_lambda[0], sorted_correct_lambda[1], sorted_correct_lambda[2]
-        );
-        println!("P0 =\n{}", spec.proj[0].as_std_matrix());
-        println!("P1 =\n{}", spec.proj[1].as_std_matrix());
-        println!("P2 =\n{}", spec.proj[2].as_std_matrix());
-
-        // check eigenvalues
-        vec_approx_eq(&spec.lambda, &sorted_correct_lambda, tol_lambda);
-
-        // check eigenprojectors
-        let pp0 = spec.proj[0].as_std_matrix();
-        let pp1 = spec.proj[1].as_std_matrix();
-        let pp2 = spec.proj[2].as_std_matrix();
-        check_eigenprojectors(&spec.proj, tol_proj);
-
-        // compose
-        let mut bb = Tensor2::<6>::new();
-        let d = &[spec.lambda[0], spec.lambda[1], spec.lambda[2]];
-        spec.compose(&mut bb, &d);
-        let a_new = bb.as_std_matrix();
-        let a = Matrix::from(&sample.matrix);
-        mat_approx_eq(&a, &a_new, tol_spectral);
     }
 
     #[test]

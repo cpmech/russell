@@ -347,6 +347,189 @@ mod tests {
         }
     }
 
+    /// Reference test cases ported from the `eig3x3` library
+    ///
+    /// See `benchmarks/examples.py` and `benchmarks/test_eigvals.py` of
+    /// <https://github.com/michalhabera/eig3x3>.
+    ///
+    /// The test matrices are built as `A = U ⋅ diag(d) ⋅ U⁻¹` where `U` is either an
+    /// orthogonal matrix (`symm`) for symmetric matrices, or a well-conditioned
+    /// non-orthogonal matrix (`u1`). The computed eigenvalues are compared against the
+    /// prescribed diagonal entries.
+    #[test]
+    fn eig3x3_reference_cases_symmetric() {
+        // orthogonal transformation (cond = 1)
+        let r2 = std::f64::consts::SQRT_2;
+        #[rustfmt::skip]
+        let u = [
+            [1.0 / r2, -0.5,      0.5      ],
+            [1.0 / r2,  0.5,     -0.5      ],
+            [0.0,       1.0 / r2, 1.0 / r2 ],
+        ];
+        for name in eig3x3_cases() {
+            for &delta in &eig3x3_deltas() {
+                let d = eig3x3_diagonal(name, delta);
+                let a = u_d_ut(&u, &d);
+                let mut exact = d;
+                exact.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let mut w = eigvalss(&a);
+                w.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let tol = frobenius(&a) * 10.0 * f64::EPSILON;
+                for i in 0..3 {
+                    let diff = (w[i] - exact[i]).abs();
+                    assert!(
+                        diff < tol,
+                        "case = {}, delta = {}, i = {}: w = {:?}, exact = {:?}, diff = {:e}, tol = {:e}",
+                        name,
+                        delta,
+                        i,
+                        w,
+                        exact,
+                        diff,
+                        tol
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn eig3x3_reference_cases_general() {
+        // well-conditioned non-orthogonal transformation (cond = 2)
+        #[rustfmt::skip]
+        let u = [
+            [ 1.0, -1.0, 1.0],
+            [ 1.0,  1.0, 1.0],
+            [-1.0, -1.0, 1.0],
+        ];
+        for name in eig3x3_cases() {
+            for &delta in &eig3x3_deltas() {
+                let d = eig3x3_diagonal(name, delta);
+                let a = u_d_uinv(&u, &d);
+                let mut exact = d;
+                exact.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let mut w = eigvals(&a);
+                w.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let tol = 2.0 * frobenius(&a) * 10.0 * f64::EPSILON;
+                for i in 0..3 {
+                    let diff = (w[i] - exact[i]).abs();
+                    assert!(
+                        diff < tol,
+                        "case = {}, delta = {}, i = {}: w = {:?}, exact = {:?}, diff = {:e}, tol = {:e}",
+                        name,
+                        delta,
+                        i,
+                        w,
+                        exact,
+                        diff,
+                        tol
+                    );
+                }
+            }
+        }
+    }
+
+    /// Diagonal matrices from the `eig3x3` test suite (real cases only)
+    fn eig3x3_diagonal(name: &str, delta: f64) -> [f64; 3] {
+        let a = 1.0;
+        match name {
+            "single" => [(-1.0 * a) / 4.0, (1.0 * a) / 4.0, (2.0 + 2.0 * delta) * a / 4.0],
+            "single_lim_J3" => [(-1.0 - delta) * a / 4.0, 0.0, (1.0 + 2.0 * delta) * a / 4.0],
+            "single_lim_disc_t" => [-1.0 * a, 1.0 * a, (1.0 + delta) * a],
+            "single_lim_disc_n" => [0.0, (2.0 - delta) * a / 2.0, (2.0 + delta) * a / 2.0],
+            "single_lim_J3J2" => [(1.0 - delta) * a, 1.0 * a, (1.0 + 2.0 * delta) * a],
+            "single_J3" => [(-1.0 - delta) * a / 2.0, 0.0, (1.0 + delta) * a / 2.0],
+            "single_J3_lim_J2" => [(1.0 - delta) * a, 1.0 * a, (1.0 + delta) * a],
+            "double" => [(-1.0 - delta) * a, 1.0 * a, 1.0 * a],
+            "double_lim_J3J2" => [1.0 * a, 1.0 * a, (1.0 + delta) * a],
+            "triple_J3" => [-delta, 0.0, delta],
+            "d3" => [0.0, 1.0 * a, (2.0 + delta) * a],
+            _ => panic!("unknown eig3x3 case: {}", name),
+        }
+    }
+
+    /// Test case names from the `eig3x3` test suite (real cases only)
+    fn eig3x3_cases() -> [&'static str; 11] {
+        [
+            "single",
+            "single_lim_J3",
+            "single_lim_disc_t",
+            "single_lim_disc_n",
+            "single_lim_J3J2",
+            "single_J3",
+            "single_J3_lim_J2",
+            "double",
+            "double_lim_J3J2",
+            "triple_J3",
+            "d3",
+        ]
+    }
+
+    /// Test deltas from the `eig3x3` test suite
+    fn eig3x3_deltas() -> [f64; 10] {
+        [1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0]
+    }
+
+    /// Computes A = U ⋅ diag(d) ⋅ Uᵀ
+    fn u_d_ut(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+        let mut a = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    a[i][j] += u[i][k] * d[k] * u[j][k];
+                }
+            }
+        }
+        a
+    }
+
+    /// Computes A = U ⋅ diag(d) ⋅ U⁻¹
+    fn u_d_uinv(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+        let ui = inv3(u);
+        let mut a = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    a[i][j] += u[i][k] * d[k] * ui[k][j];
+                }
+            }
+        }
+        a
+    }
+
+    /// Inverse of a 3×3 matrix (adjugate / determinant)
+    fn inv3(a: &[[f64; 3]; 3]) -> [[f64; 3]; 3] {
+        let det = det(a);
+        [
+            [
+                (a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det,
+                (a[0][2] * a[2][1] - a[0][1] * a[2][2]) / det,
+                (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det,
+            ],
+            [
+                (a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det,
+                (a[0][0] * a[2][2] - a[0][2] * a[2][0]) / det,
+                (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det,
+            ],
+            [
+                (a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det,
+                (a[0][1] * a[2][0] - a[0][0] * a[2][1]) / det,
+                (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det,
+            ],
+        ]
+    }
+
+    /// Frobenius norm of a 3×3 matrix
+    fn frobenius(a: &[[f64; 3]; 3]) -> f64 {
+        let mut s = 0.0;
+        for i in 0..3 {
+            for j in 0..3 {
+                s += a[i][j] * a[i][j];
+            }
+        }
+        f64::sqrt(s)
+    }
+
     fn trace2(a: &[[f64; 3]; 3]) -> f64 {
         let mut s = 0.0;
         for i in 0..3 {

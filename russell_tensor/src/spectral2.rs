@@ -833,6 +833,165 @@ mod tests {
         check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
     }
 
+    /// Computes the Kelvin-Mandel components of the projector v ⊗ v
+    fn projector(v: &[f64; 3]) -> [f64; 6] {
+        [
+            v[0] * v[0],
+            v[1] * v[1],
+            v[2] * v[2],
+            SQRT_2 * v[0] * v[1],
+            SQRT_2 * v[1] * v[2],
+            SQRT_2 * v[0] * v[2],
+        ]
+    }
+
+    /// Tests ported from TFEL's `tests/Math/stensor/stensor_eigenvectors3.cxx`
+    #[test]
+    fn decompose_tfel_tests_work() {
+        const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
+        let methods = [
+            EigMethod::HaberaZilian,
+            EigMethod::HarariAlbocher22,
+            EigMethod::HarariAlbocher23,
+            EigMethod::Jacobi,
+        ];
+
+        // ---------------------------------------------------------------------
+        // Test 1: general case
+        // TFEL tensor (order: T00, T11, T22, T01√2, T02√2, T12√2):
+        //     {1.232, 2.5198, 0.234, 1.5634, 3.3425, 0.9765}
+        // ---------------------------------------------------------------------
+        #[rustfmt::skip]
+        let matrix = [
+            [1.232,         1.5634 * R1_2, 3.3425 * R1_2],
+            [1.5634 * R1_2, 2.5198,        0.9765 * R1_2],
+            [3.3425 * R1_2, 0.9765 * R1_2, 0.234        ],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(&matrix).unwrap();
+        // TFEL eigenvectors (columns), ordered by eigenvalue 4.167..., 1.507..., -1.689...
+        // (the ordering was verified against NumPy)
+        let tfel_e = [
+            [-0.6208263966073649, -0.6185290894233862, -0.4816599950303030],
+            [0.4557421346177839, -0.7846718738721010, 0.4202251266738716],
+            [-0.6378665158240716, 0.0413740968617118, 0.7690347795121735],
+        ];
+        let correct_lambda = [4.16709379934921, 1.50793773158270, -1.68923153093191];
+        let correct_proj = [projector(&tfel_e[0]), projector(&tfel_e[1]), projector(&tfel_e[2])];
+        for method in methods {
+            let mut spec = Spectral2::new();
+            let status = spec.decompose_mx(&tt, method).unwrap();
+            assert_eq!(status, EigStatus::Distinct);
+            array_approx_eq(&spec.lam, &correct_lambda, 1e-12);
+            for r in 0..3 {
+                array_approx_eq(spec.proj[r].as_data(), &correct_proj[r], 1e-12);
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Test 2: identity tensor (spherical)
+        // ---------------------------------------------------------------------
+        let tt = Tensor2::<6>::identity();
+        for method in methods {
+            let mut spec = Spectral2::new();
+            let status = spec.decompose_mx(&tt, method).unwrap();
+            assert_eq!(status, EigStatus::Spherical);
+            array_approx_eq(&spec.lam, &[1.0, 1.0, 1.0], 1e-15);
+        }
+
+        // ---------------------------------------------------------------------
+        // Test 3: diagonal tensor with a repeated eigenvalue (coalescent)
+        // ---------------------------------------------------------------------
+        #[rustfmt::skip]
+        let matrix = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(&matrix).unwrap();
+        let e3_proj = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]; // e3 ⊗ e3
+        for method in methods {
+            let mut spec = Spectral2::new();
+            let status = spec.decompose_mx(&tt, method).unwrap();
+            assert_eq!(status, EigStatus::Coalesce01);
+            array_approx_eq(&spec.lam, &[1.0, 1.0, 0.0], 1e-15);
+            // the distinct eigenvalue (zero) has the projector e3 ⊗ e3
+            array_approx_eq(spec.proj[2].as_data(), &e3_proj, 1e-15);
+        }
+    }
+
+    /// Tests inspired by jaxmat's `tests/tensors/test_linear_algebra.py`
+    ///
+    /// Checks the eigen-decomposition reconstruction `A = Σ λᵢ Pᵢ` for random-like,
+    /// two-nearly-equal, and triple-equal eigenvalues.
+    #[test]
+    fn decompose_jaxmat_reconstruction_works() {
+        let r2 = f64::sqrt(2.0);
+        let r3 = f64::sqrt(3.0);
+        let r6 = f64::sqrt(6.0);
+        // orthogonal matrices
+        #[rustfmt::skip]
+        let rotations = [
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            [
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+            ],
+            [
+                [2.0 / r6, -1.0 / r6, -1.0 / r6],
+                [1.0 / r3,  1.0 / r3,  1.0 / r3],
+                [0.0,      -1.0 / r2,  1.0 / r2],
+            ],
+        ];
+        // diagonals: random-like, two-nearly-equal, and triple-equal
+        let mut diagonals: Vec<[f64; 3]> = vec![[3.0, 1.0, 2.0]];
+        for eps in [1e-3, 1e-6, 1e-9, 1e-12, 1e-15] {
+            diagonals.push([1.0, -0.5 + eps / 2.0, -0.5 - eps / 2.0]);
+        }
+        diagonals.push([1.0, 1.0, 1.0]);
+        // loop
+        for d in &diagonals {
+            for r in &rotations {
+                // A = R ⋅ diag(d) ⋅ Rᵀ
+                let mut a = [[0.0; 3]; 3];
+                for i in 0..3 {
+                    for j in 0..3 {
+                        for k in 0..3 {
+                            a[i][j] += r[i][k] * d[k] * r[j][k];
+                        }
+                    }
+                }
+                // symmetrize (to remove the tiny rounding asymmetries)
+                for i in 0..3 {
+                    for j in (i + 1)..3 {
+                        let m = 0.5 * (a[i][j] + a[j][i]);
+                        a[i][j] = m;
+                        a[j][i] = m;
+                    }
+                }
+                let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
+                let mut spec = Spectral2::new();
+                spec.decompose_mx(&tt, EigMethod::HaberaZilian).unwrap();
+                // check the eigenvalues
+                let mut w = spec.lam;
+                w.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let mut d_sorted = *d;
+                d_sorted.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                for i in 0..3 {
+                    approx_eq(w[i], d_sorted[i], 1e-12);
+                }
+                // check the reconstruction A = Σ λᵢ Pᵢ
+                let mut bb = Tensor2::<6>::new();
+                spec.compose(&mut bb, &spec.lam);
+                mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-12);
+            }
+        }
+    }
+
     #[test]
     fn decompose_coalesce_works() {
         for (l1, l2, l3) in [

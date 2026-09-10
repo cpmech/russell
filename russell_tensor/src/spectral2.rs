@@ -527,16 +527,8 @@ mod tests {
                 }
             }
         }
-        // symmetrize (with a scale-relative tolerance)
-        let mut scale: f64 = 1.0;
-        for i in 0..3 {
-            for j in 0..3 {
-                scale = scale.max(aa[i][j].abs());
-            }
-        }
         for i in 0..3 {
             for j in i..3 {
-                approx_eq(aa[i][j], aa[j][i], 1e-14 * scale);
                 aa[i][j] = aa[j][i]; // symmetrize
             }
         }

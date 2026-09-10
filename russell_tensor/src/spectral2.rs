@@ -233,8 +233,13 @@ impl Spectral2 {
                         l1 = shift - cd + sd;
                         l2 = shift - cd - sd;
                     }
+                    // sort the eigenvalues in descending order
                     sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
-                    self.compute_projectors(aa, l0, l1, l2);
+                    self.lam[0] = l0;
+                    self.lam[1] = l1;
+                    self.lam[2] = l2;
+                    // compute the eigenprojectors
+                    self.compute_projectors(aa);
                 }
             }
         }
@@ -242,11 +247,7 @@ impl Spectral2 {
     }
 
     /// (internal) Compute the eigenprojectors given the SORTED eigenvalues
-    fn compute_projectors(&mut self, aa: &Tensor2<6>, l0: f64, l1: f64, l2: f64) {
-        // sort the eigenvalues in descending order
-        self.lam[0] = l0;
-        self.lam[1] = l1;
-        self.lam[2] = l2;
+    fn compute_projectors(&mut self, aa: &Tensor2<6>) {
         // compute a scale to detect coalescent eigenvalues
         let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
         let tol = TOL_COALESCE * scale;
@@ -254,9 +255,9 @@ impl Spectral2 {
         let d01 = self.lam[0] - self.lam[1];
         let d12 = self.lam[1] - self.lam[2];
         let d20 = self.lam[2] - self.lam[0];
+        // handle coalescent eigenvalues (there is no |d20| case because the eigenvalue are sorted)
         if f64::abs(d01) < tol {
-            println!("HERE: d01");
-            // lam0 ≈ lam1 => lam_distinct = lam2
+            // lam0 ≈ lam1 > lam2
             assert!(f64::abs(d20) > 0.0, "|d20| must be > 0 when lam0 = lam1");
             let f = 1.0 / d20;
             let l = self.lam[0];
@@ -266,8 +267,7 @@ impl Spectral2 {
                 self.proj[1].vec[m] = 0.0;
             }
         } else if f64::abs(d12) < tol {
-            println!("HERE: d12");
-            // lam1 ≈ lam2 => lam_distinct = lam0
+            // lam0 > lam1 ≈ lam2
             assert!(f64::abs(d01) > 0.0, "|d01| must be > 0 when lam1 = lam2");
             let f = 1.0 / d01;
             let l = self.lam[1];
@@ -276,21 +276,7 @@ impl Spectral2 {
                 self.proj[1].vec[m] = IDENTITY2[m] - self.proj[0].vec[m];
                 self.proj[2].vec[m] = 0.0;
             }
-        } else if f64::abs(d20) < tol {
-            // lam2 ≈ lam0 => lam_distinct = lam1
-            panic!("HERE: d20 (cannot occur");
-            /*
-            assert!(f64::abs(d12) > 0.0, "|d12| must be > 0 when lam2 = lam0");
-            let f = 1.0 / d12;
-            let l = self.lam[2];
-            for m in 0..6 {
-                self.proj[1].vec[m] = f * (aa.vec[m] - l * IDENTITY2[m]);
-                self.proj[2].vec[m] = IDENTITY2[m] - self.proj[1].vec[m];
-                self.proj[0].vec[m] = 0.0;
-            }
-            */
         } else {
-            println!("HERE: all distinct");
             // all distinct: P[r] = f * (A - λ[s] I) . (A - λ[t] I)
             for i in 0..3 {
                 let r = INDICES[i];
@@ -452,7 +438,10 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 mod tests {
     use super::{EigMethod, Spectral2, t2_plus_diag_product};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
-    use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul, vec_approx_eq};
+    use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul};
+
+    #[cfg(feature = "heap")]
+    use russell_lab::vec_approx_eq;
 
     //
     // --- auxiliary --------------------------
@@ -719,6 +708,69 @@ mod tests {
         check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-14, 1e-14);
         check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-14, 1e-14);
         check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
+    }
+
+    #[test]
+    fn decompose_coalesce_works() {
+        for (l1, l2, l3) in [
+            // d01
+            (1.0, 2.0, 2.0),
+            (2.0, 1.0, 2.0),
+            (2.0, 2.0, 1.0),
+            // d12
+            (2.0, 1.0, 1.0),
+            (1.0, 2.0, 1.0),
+            (1.0, 1.0, 2.0),
+            // d01
+            (-2.0, -1.0, -1.0),
+            (-1.0, -2.0, -1.0),
+            (-1.0, -1.0, -2.0),
+            // d12
+            (-1.0, -2.0, -2.0),
+            (-2.0, -1.0, -2.0),
+            (-2.0, -2.0, -1.0),
+            // d01
+            (0.0, 1.0, 1.0),
+            (1.0, 0.0, 1.0),
+            (1.0, 1.0, 0.0),
+            // d12
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 1.0),
+            // d01
+            (-1.0, 0.0, 0.0),
+            (0.0, -1.0, 0.0),
+            (0.0, 0.0, -1.0),
+            // d12
+            (0.0, -1.0, -1.0),
+            (-1.0, 0.0, -1.0),
+            (-1.0, -1.0, 0.0),
+        ] {
+            // generate matrix
+            let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
+
+            // perform spectral decomposition
+            let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+            let mut spec = Spectral2::new();
+            spec.decompose_mx(&mut aa, EigMethod::Analytical2).unwrap();
+            // println!("A =\n{}", aa.as_std_matrix());
+            // println!("lambda = {:?}", spec.lam);
+
+            // check
+            array_approx_eq(&spec.lam, &expected_lambda, 1e-15);
+            check_eigenprojectors(&spec.proj, 1e-15);
+            assert_eq!(spec.all_distinct(), false);
+            let is_d01_case = f64::abs(spec.lam[0] - spec.lam[1]) < 1e-8;
+            if is_d01_case {
+                // println!("d01");
+                let pp2_mat = spec.proj[2].as_std_matrix();
+                mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15); // d01
+            } else {
+                // println!("d12");
+                let pp0_mat = spec.proj[0].as_std_matrix();
+                mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15); // d12
+            }
+        }
     }
 
     // #[test]

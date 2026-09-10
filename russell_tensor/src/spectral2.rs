@@ -1,6 +1,6 @@
 use super::{IDENTITY2, P_SYM, SET, SQRT_2, SQRT_3, SQRT_6, TOL_J2};
 use crate::{StrError, Tensor2, Tensor4, ssd_fn, t2_dyad_t2};
-use russell_lab::small_mat_eigen_sym_jacobi;
+use russell_lab::{small_mat_eigen_sym_jacobi, sort3};
 
 /// Tolerance to assume zero eigenvalue of the deviatoric matrix
 const TOL_ZERO_DEV_LAMBDA: f64 = 1e-15;
@@ -50,10 +50,10 @@ pub enum EigMethod {
 ///     k=1
 /// ```
 pub struct Spectral2 {
-    /// Holds the eigenvalues (possibly unsorted)
+    /// Holds the eigenvalues (sorted in descending order)
     pub lam: [f64; 3],
 
-    /// Holds the eigenprojectors
+    /// Holds the eigenprojectors associated with the (sorted) eigenvalues
     ///
     /// Set of 3 symmetric Tensor2
     pub proj: [Tensor2<6>; 3],
@@ -139,6 +139,8 @@ impl Spectral2 {
     }
 
     /// Performs the spectral decomposition of a symmetric second-order tensor
+    ///
+    /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
     pub fn decompose(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
         match method {
             EigMethod::Jacobi => {
@@ -205,21 +207,29 @@ impl Spectral2 {
                     let den = sq_norm_diff(&self.tt, fac2, &self.ss);
                     let d_box = f64::sqrt(num / den); // this is not d in Eq (70) of Ref #1; it is a newly defined variable d in Box 1 of Ref #1
                     let sj = f64::signum(1.0 - d_box);
+                    let mut l0;
+                    let mut l1;
+                    let mut l2;
                     if sj * (1.0 - d_box) < TOL_ZERO_DEV_LAMBDA {
                         // deviatoric matrix has a zero eigenvalue
-                        self.lam[0] = shift + sqrt_jj2;
-                        self.lam[1] = shift;
-                        self.lam[2] = shift - sqrt_jj2;
+                        l0 = shift + sqrt_jj2;
+                        l1 = shift;
+                        l2 = shift - sqrt_jj2;
                     } else {
                         // deviatoric matrix doesn't have zero eigenvalue
                         let dsj = if sj < 0.0 { 1.0 / d_box } else { d_box };
                         let alpha = 2.0 * f64::atan(dsj) / 3.0;
                         let cd = sj * fac2 * f64::cos(alpha);
                         let sd = sqrt_jj2 * f64::sin(alpha);
-                        self.lam[0] = shift + 2.0 * cd;
-                        self.lam[1] = shift - cd + sd;
-                        self.lam[2] = shift - cd - sd;
+                        l0 = shift + 2.0 * cd;
+                        l1 = shift - cd + sd;
+                        l2 = shift - cd - sd;
                     }
+                    // sort the eigenvalues in descending order
+                    sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
+                    self.lam[0] = l0;
+                    self.lam[1] = l1;
+                    self.lam[2] = l2;
                     // compute a scale to detect coalescent eigenvalues
                     let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
                     let tol = TOL_COALESCE * scale;
@@ -250,8 +260,9 @@ impl Spectral2 {
                             self.proj[2].vec[m] = 0.0;
                         }
                     } else if f64::abs(d20) < tol {
-                        println!("HERE: d20");
                         // lam2 ≈ lam0 => lam_distinct = lam1
+                        panic!("HERE: d20 (cannot occur");
+                        /*
                         assert!(f64::abs(d12) > 0.0, "|d12| must be > 0 when lam2 = lam0");
                         let f = 1.0 / d12;
                         let l = self.lam[2];
@@ -260,6 +271,7 @@ impl Spectral2 {
                             self.proj[2].vec[m] = IDENTITY2[m] - self.proj[1].vec[m];
                             self.proj[0].vec[m] = 0.0;
                         }
+                        */
                     } else {
                         println!("HERE: all distinct");
                         // all distinct: P[r] = f * (A - λ[s] I) . (A - λ[t] I)
@@ -660,14 +672,21 @@ mod tests {
     }
 
     /// Checks the eigen-problem by comparing with known values
-    fn check_j(spec: &mut Spectral2, sample: &SampleTensor2, tol_lambda: f64, tol_proj: f64, tol_compose: f64) {
+    fn check(
+        method: EigMethod,
+        spec: &mut Spectral2,
+        sample: &SampleTensor2,
+        tol_lambda: f64,
+        tol_proj: f64,
+        tol_compose: f64,
+    ) {
         // extract eigenvalues and projectors
         let correct_lambda = sample.eigenvalues.unwrap();
         let correct_projectors = sample.eigenprojectors.unwrap();
 
         // perform the spectral decomposition
         let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-        spec.decompose(&aa, EigMethod::Jacobi).unwrap();
+        spec.decompose(&aa, method).unwrap();
 
         // compare eigenvalues
         array_approx_eq(&spec.lam, &correct_lambda, tol_lambda);
@@ -692,15 +711,29 @@ mod tests {
     //
 
     #[test]
-    fn decompose_and_compose_work_using_jacobi_method_work() {
+    fn decompose_and_compose_using_jacobi_work_with_samples() {
         let mut spec = Spectral2::new();
-        check_j(&mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check_j(&mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check_j(&mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check_j(&mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
-        check_j(&mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
-        check_j(&mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
-        check_j(&mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
+        let m = EigMethod::Jacobi;
+        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
+    }
+
+    #[test]
+    fn decompose_and_compose_using_analytical_work_with_samples() {
+        let mut spec = Spectral2::new();
+        let m = EigMethod::Analytical;
+        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-14);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-14, 1e-14);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
+        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
     }
 
     #[test]
@@ -798,7 +831,7 @@ mod tests {
         println!("P2 = \n{:.20}", pp2_mat);
 
         check_eigenprojectors(&spec.proj, 1e-15);
-        // let coalescent = spec.has_coalescent_eigenvalues();
+        let coalescent = spec.coalescent_status();
         mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15);
         // mat_approx_eq(&pp1_mat, &expected_proj[1], 1e-15);
         // mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15);

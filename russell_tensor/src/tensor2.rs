@@ -1560,9 +1560,9 @@ impl<const N: usize> Tensor2<N> {
         let new_trace_s = dev[0] + dev[1] + dev[2];
         if f64::abs(new_trace_s) > 1e-10 {
             // fix error due to large magnitudes
-            let mut v = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
-            sort3(&mut v);
-            let d = f64::max(1.0, v.2);
+            let (mut v0, mut v1, mut v2) = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
+            sort3(&mut v0, &mut v1, &mut v2);
+            let d = f64::max(1.0, v2);
             let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
             dev[0] = (self.vec[0] / d - m) * d;
             dev[1] = (self.vec[1] / d - m) * d;

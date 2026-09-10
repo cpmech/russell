@@ -661,19 +661,18 @@ impl<const N: usize> Tensor2<N> {
     /// ```
     pub fn to_std_matrix(&self, mat: &mut Matrix) {
         assert_eq!(mat.dims(), (3, 3));
-        if N < 9 {
-            for m in 0..N {
-                let (i, j) = M_TO_IJ[m];
+        for i in 0..3 {
+            for j in 0..3 {
                 mat.set(i, j, self.get_std(i, j));
-                if i != j {
-                    mat.set(j, i, mat.get(i, j));
-                }
             }
-        } else {
-            for i in 0..3 {
-                for j in 0..3 {
-                    mat.set(i, j, self.get_std(i, j));
-                }
+        }
+    }
+
+    /// Converts this tensor to a 3x3 matrix with the standard components (internal slice version)
+    pub(crate) fn to_std_matrix_slice(&self, mat: &mut [[f64; 3]; 3]) {
+        for i in 0..3 {
+            for j in 0..3 {
+                mat[i][j] = self.get_std(i, j);
             }
         }
     }
@@ -2753,7 +2752,10 @@ mod tests {
     }
 
     #[test]
-    fn as_std_matrix_and_to_std_matrix_work() {
+    fn to_std_matrix_works() {
+        // will be overwritten, so the test will check it clean up
+        let mut res = Matrix::new(3, 3);
+
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -2762,7 +2764,7 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
-        let res = tt.as_std_matrix();
+        tt.to_std_matrix(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2777,7 +2779,7 @@ mod tests {
             [6.0, 5.0, 3.0],
         ];
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
-        let res = tt.as_std_matrix();
+        tt.to_std_matrix(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2792,10 +2794,79 @@ mod tests {
             [0.0, 0.0, 3.0],
         ];
         let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn as_std_matrix_works() {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         let res = tt.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn to_std_matrix_slice_works() {
+        // will be overwritten, so the test will check it clean up
+        let mut res = [[0.0; 3]; 3];
+
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix_slice(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix_slice(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix_slice(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
             }
         }
     }

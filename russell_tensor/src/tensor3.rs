@@ -1043,50 +1043,10 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// }
     /// ```
     pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<f64>>>) {
-        if M > N {
-            // Case A: (M, 3) with M = 4,6,9
-            if M == 9 {
-                // General
-                for i in 0..3 {
-                    for j in 0..3 {
-                        for k in 0..3 {
-                            dd[i][j][k] = self.get_std(i, j, k);
-                        }
-                    }
-                }
-            } else {
-                // Symmetric / Symmetric2D
-                for m in 0..M {
-                    for n in 0..N {
-                        let (i, j, k) = MN_TO_IJK_CASE_A[m][n];
-                        dd[i][j][k] = self.get_std(i, j, k);
-                        if i != j {
-                            dd[j][i][k] = dd[i][j][k];
-                        }
-                    }
-                }
-            }
-        } else {
-            // Case B: (3, N) with N = 4,6,9
-            if N == 9 {
-                // General
-                for i in 0..3 {
-                    for j in 0..3 {
-                        for k in 0..3 {
-                            dd[i][j][k] = self.get_std(i, j, k);
-                        }
-                    }
-                }
-            } else {
-                // Symmetric / Symmetric2D
-                for m in 0..M {
-                    for n in 0..N {
-                        let (i, j, k) = MN_TO_IJK_CASE_B[m][n];
-                        dd[i][j][k] = self.get_std(i, j, k);
-                        if j != k {
-                            dd[i][k][j] = dd[i][j][k];
-                        }
-                    }
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    dd[i][j][k] = self.get_std(i, j, k);
                 }
             }
         }

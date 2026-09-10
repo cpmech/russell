@@ -16,14 +16,14 @@ use crate::AsArray2D;
 /// use russell_lab::{small_mat_approx_eq, Matrix};
 ///
 /// fn main() {
-///     let a = Matrix::from(&[
+///     let a = [
 ///         [1.0, 2.0],
 ///         [3.0, 4.0],
-///     ]);
-///     let b = Matrix::from(&[
+///     ];
+///     let b = [
 ///         [1.01, 2.01],
 ///         [3.01, 4.01],
-///     ]);
+///     ];
 ///     small_mat_approx_eq(&a, &b, 0.011);
 /// }
 /// ```
@@ -34,14 +34,14 @@ use crate::AsArray2D;
 /// use russell_lab::{small_mat_approx_eq, Matrix};
 ///
 /// fn main() {
-///     let a = Matrix::from(&[
+///     let a = [
 ///         [1.0, 2.0],
 ///         [3.0, 4.0],
-///     ]);
-///     let b = Matrix::from(&[
+///     ];
+///     let b = [
 ///         [1.01, 2.01],
 ///         [3.01, 4.01],
-///     ]);
+///     ];
 ///     small_mat_approx_eq(&a, &b, 0.001);
 /// }
 /// ```

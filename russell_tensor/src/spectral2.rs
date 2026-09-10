@@ -2,7 +2,7 @@
 
 use super::{IDENTITY2, P_SYM, SET, SQRT_2, SQRT_3, SQRT_6, TOL_J2};
 use crate::{StrError, Tensor1, Tensor2, Tensor4, ssd_fn, t1_dyad_t1, t2_dyad_t2};
-use russell_lab::{Matrix, Vector, approx_eq, mat_eigen_sym_jacobi, math::PI};
+use russell_lab::{Matrix, Vector, approx_eq, math::PI, small_mat_eigen_sym_jacobi};
 
 /// Tolerance to assume zero eigenvalue
 ///
@@ -34,12 +34,12 @@ pub struct Spectral2 {
     /// Holds the eigenvalues
     ///
     /// dim = 3
-    pub lambda: Vector,
+    pub lambda: [f64; 3],
 
     /// Holds the eigenprojectors
     ///
     /// Set of 3 symmetric Tensor2
-    pub proj: Vec<Tensor2<6>>,
+    pub proj: [Tensor2<6>; 3],
 
     /// Holds the derivatives of the eigenprojectors w.r.t the defining tensor
     ///
@@ -52,6 +52,12 @@ pub struct Spectral2 {
     /// T⁻¹
     /// ```
     pub inverse: Tensor2<6>,
+
+    /// Input tensor as a 3x3 matrix (for Jacobi method)
+    aa_3x3: [[f64; 3]; 3],
+
+    /// Matrix whose columns are the eigenvectors (for Jacobi method)
+    vv_3x3: [[f64; 3]; 3],
 
     /// Auxiliary tensor: ssd(inverse(T))
     ///
@@ -90,10 +96,12 @@ impl Spectral2 {
     /// **Note:** Must call [Spectral2::compose] to calculate `lambda` and `projectors`.
     pub fn new() -> Self {
         Spectral2 {
-            lambda: Vector::new(3),
-            proj: vec![Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
+            lambda: [0.0; 3],
+            proj: [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
             dpp: Vec::new(),
             inverse: Tensor2::<6>::new(),
+            aa_3x3: [[0.0; 3]; 3],
+            vv_3x3: [[0.0; 3]; 3],
             yy: None,
             p_dy_p: Vec::new(),
             // auxiliary tensors
@@ -116,14 +124,13 @@ impl Spectral2 {
         match method {
             EigMethod::Jacobi => {
                 // eigenvalues and eigenvectors
-                let mut a = aa.as_std_matrix();
-                let mut v = Matrix::new(3, 3);
-                mat_eigen_sym_jacobi(&mut self.lambda, &mut v, &mut a)?;
+                aa.to_std_matrix_slice(&mut self.aa_3x3);
+                small_mat_eigen_sym_jacobi(&mut self.lambda, &mut self.vv_3x3, &mut self.aa_3x3)?;
 
                 // extract eigenvectors
-                let u0 = Tensor1::from(&[v.get(0, 0), v.get(1, 0), v.get(2, 0)]);
-                let u1 = Tensor1::from(&[v.get(0, 1), v.get(1, 1), v.get(2, 1)]);
-                let u2 = Tensor1::from(&[v.get(0, 2), v.get(1, 2), v.get(2, 2)]);
+                let u0 = Tensor1::from(&[self.vv_3x3[0][0], self.vv_3x3[1][0], self.vv_3x3[2][0]]);
+                let u1 = Tensor1::from(&[self.vv_3x3[0][1], self.vv_3x3[1][1], self.vv_3x3[2][1]]);
+                let u2 = Tensor1::from(&[self.vv_3x3[0][2], self.vv_3x3[1][2], self.vv_3x3[2][2]]);
 
                 // compute eigenprojectors
                 t1_dyad_t1(&mut self.proj[0], SET, 1.0, &u0, &u0).unwrap();
@@ -560,7 +567,10 @@ mod tests {
         let mut bb = Tensor2::<6>::new();
         let d = &[spec.lambda[0], spec.lambda[1], spec.lambda[2]];
         spec.compose(&mut bb, &d);
+        #[cfg(feature = "heap")]
         vec_approx_eq(&aa.vec, &bb.vec, tol_compose);
+        #[cfg(not(feature = "heap"))]
+        array_approx_eq(&aa.vec, &bb.vec, tol_compose);
     }
 
     /// Checks the eigen-problem by comparing with known values
@@ -574,7 +584,7 @@ mod tests {
         spec.decompose(&aa, EigMethod::Jacobi).unwrap();
 
         // compare eigenvalues
-        vec_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
+        array_approx_eq(&spec.lambda, &correct_lambda, tol_lambda);
 
         // compare eigenprojectors
         let pp0 = spec.proj[0].as_std_matrix();
@@ -698,7 +708,7 @@ mod tests {
         let pp1_mat = spec.proj[1].as_std_matrix();
         let pp2_mat = spec.proj[2].as_std_matrix();
 
-        println!("L = \n{}", spec.lambda);
+        println!("L = \n{:?}", spec.lambda);
         println!("P0 = \n{:.20}", pp0_mat);
         println!("P1 = \n{:.20}", pp1_mat);
         println!("P2 = \n{:.20}", pp2_mat);

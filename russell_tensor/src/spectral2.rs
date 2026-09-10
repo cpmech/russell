@@ -1,4 +1,4 @@
-use super::{IDENTITY2, P_SYM, SET, SQRT_2, SQRT_3, SQRT_6, TOL_J2};
+use super::{IDENTITY2, P_SYM, SET, SQRT_2, SQRT_3, SQRT_6};
 use crate::{StrError, Tensor2, Tensor4, ssd_fn, t2_dyad_t2};
 use russell_lab::{small_mat_eigen_sym_jacobi, sort3};
 
@@ -46,6 +46,22 @@ pub enum EigMethod {
     ///
     /// Note: This method also computes the eigenprojectors
     Jacobi,
+}
+
+/// Specifies the current status of the eigenvalues
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EigStatus {
+    /// All eigenvalues are distinct
+    Distinct,
+
+    /// Coalescent eigenvalues λ0 ≈ λ1 > λ2
+    Coalesce01,
+
+    /// Coalescent eigenvalues λ0 > λ1 ≈ λ2
+    Coalesce12,
+
+    /// All eigenvalues are equal λ0 ≈ λ1 ≈ λ2
+    Spherical,
 }
 
 /// Holds the spectral representation of a symmetric second-order tensor
@@ -139,179 +155,165 @@ impl Spectral2 {
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
     #[inline]
-    pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
+    pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
         self.decompose_mx(aa, EigMethod::Analytical1)
     }
 
     /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
-    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
-        match method {
-            EigMethod::Jacobi => {
-                // eigenvalues and eigenvectors
-                aa.to_std_matrix_slice(&mut self.aa_3x3);
-                let mut lambda = [0.0; 3];
-                small_mat_eigen_sym_jacobi(&mut lambda, &mut self.vv_3x3, &mut self.aa_3x3)?;
-
-                // get indices to sort eigenvalues in descending order
-                let mut indices = [0, 1, 2];
-                indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
-
-                // store sorted eigenvalues and eigenprojectors
-                for i in 0..3 {
-                    let j = indices[i];
-                    self.lam[i] = lambda[j];
-                    let pp = &mut self.proj[i].vec;
-                    let qq = &self.vv_3x3;
-                    pp[0] = qq[0][j] * qq[0][j];
-                    pp[1] = qq[1][j] * qq[1][j];
-                    pp[2] = qq[2][j] * qq[2][j];
-                    pp[3] = (qq[0][j] * qq[1][j] + qq[1][j] * qq[0][j]) / SQRT_2;
-                    pp[4] = (qq[1][j] * qq[2][j] + qq[2][j] * qq[1][j]) / SQRT_2;
-                    pp[5] = (qq[0][j] * qq[2][j] + qq[2][j] * qq[0][j]) / SQRT_2;
-                }
-            }
-            EigMethod::Analytical1 => {
-                // clear the output projectors
-                for m in 0..6 {
-                    self.proj[0].vec[m] = 0.0;
-                    self.proj[1].vec[m] = 0.0;
-                    self.proj[2].vec[m] = 0.0;
-                }
-                // calculate the invariants
-                let ii1 = aa.invariant_ii1();
-                let jj2 = aa.invariant_jj2();
-                let shift = ii1 / 3.0; // shift
-                // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
-                let scale = aa.norm();
-                if jj2 < 1e3 * f64::EPSILON * f64::EPSILON * scale * scale {
-                    // spherical
-                    self.lam[0] = shift;
-                    self.lam[1] = shift;
-                    self.lam[2] = shift;
-                    self.proj[0].vec[0] = 1.0;
-                    self.proj[1].vec[1] = 1.0;
-                    self.proj[2].vec[2] = 1.0;
-                } else {
-                    const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
-                    let a = &aa.vec;
-                    let d12 = a[0] - a[1];
-                    let d23 = a[1] - a[2];
-                    let d31 = a[2] - a[0];
-                    let s01 = a[3] * R1_2;
-                    let s12 = a[4] * R1_2;
-                    let s02 = a[5] * R1_2;
-                    let jj3 = aa.deviator_determinant();
-                    let sd = if jj3 >= 0.0 { 1.0 } else { -1.0 };
-                    // discriminant as a sum of seven squares (Reference 1, Equation 17)
-                    let hx = d12 * d23 * d31 + s01 * s01 * d12 + s12 * s12 * d23 + s02 * s02 * d31;
-                    let hy1 =
-                        s12 * (2.0 * s12 * s12 - s02 * s02 - s01 * s01 + 2.0 * d12 * d31) + s01 * s02 * (d12 - d31);
-                    let hy2 =
-                        s02 * (2.0 * s02 * s02 - s12 * s12 - s01 * s01 + 2.0 * d23 * d12) + s01 * s12 * (d23 - d12);
-                    let hy3 =
-                        s01 * (2.0 * s01 * s01 - s12 * s12 - s02 * s02 + 2.0 * d31 * d23) + s02 * s12 * (d31 - d23);
-                    let hz1 = s12 * (s02 * s02 - s01 * s01) + s01 * s02 * d23;
-                    let hz2 = s02 * (s01 * s01 - s12 * s12) + s12 * s01 * d31;
-                    let hz3 = s01 * (s12 * s12 - s02 * s02) + s02 * s12 * d12;
-                    let delta =
-                        (hx * hx + hy1 * hy1 + hy2 * hy2 + hy3 * hy3 + 15.0 * (hz1 * hz1 + hz2 * hz2 + hz3 * hz3))
-                            .max(0.0);
-                    // mixed tangent angle (Reference 1, Equation 11)
-                    let sqrt_jj2 = f64::sqrt(jj2);
-                    let numerator = f64::sqrt(delta);
-                    let denominator = 2.0 * jj2 * sqrt_jj2 + 3.0 * SQRT_3 * sd * jj3;
-                    let alpha = (2.0 / 3.0) * f64::atan2(numerator, denominator);
-                    // deviatoric eigenvalues (Reference 1, Equations 12-14)
-                    let lambda1 = 2.0 * sd * f64::sqrt(jj2 / 3.0) * f64::cos(alpha);
-                    let lambda2 = sd * sqrt_jj2 * f64::sin(alpha) - lambda1 / 2.0;
-                    let lambda3 = -sd * sqrt_jj2 * f64::sin(alpha) - lambda1 / 2.0;
-                    // shift back and sort the eigenvalues in descending order
-                    let mut l0 = shift + lambda1;
-                    let mut l1 = shift + lambda2;
-                    let mut l2 = shift + lambda3;
-                    sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
-                    self.lam[0] = l0;
-                    self.lam[1] = l1;
-                    self.lam[2] = l2;
-                    // compute the eigenprojectors
-                    self.compute_projectors(aa);
-                }
-            }
-            EigMethod::Analytical2 => {
-                // clear the output projectors
-                for m in 0..6 {
-                    self.proj[0].vec[m] = 0.0;
-                    self.proj[1].vec[m] = 0.0;
-                    self.proj[2].vec[m] = 0.0;
-                }
-                // calculate the eigenvalues
-                let ii1 = aa.invariant_ii1();
-                let jj2 = aa.invariant_jj2();
-                let shift = ii1 / 3.0; // shift
-                if jj2 < TOL_J2 {
-                    // spherical
-                    self.lam[0] = shift;
-                    self.lam[1] = shift;
-                    self.lam[2] = shift;
-                    self.proj[0].vec[0] = 1.0;
-                    self.proj[1].vec[1] = 1.0;
-                    self.proj[2].vec[2] = 1.0;
-                } else {
-                    let sqrt_jj2 = f64::sqrt(jj2);
-                    let fac1 = 2.0 * jj2 / 3.0;
-                    let fac2 = sqrt_jj2 / SQRT_3;
-                    self.ss[0] = aa.vec[0] - ii1 / 3.0;
-                    self.ss[1] = aa.vec[1] - ii1 / 3.0;
-                    self.ss[2] = aa.vec[2] - ii1 / 3.0;
-                    self.ss[3] = aa.vec[3];
-                    self.ss[4] = aa.vec[4];
-                    self.ss[5] = aa.vec[5];
-                    let s = &self.ss;
-                    self.tt[0] = s[0] * s[0] + s[3] * s[3] / 2.0 + s[5] * s[5] / 2.0 - fac1;
-                    self.tt[1] = s[1] * s[1] + s[3] * s[3] / 2.0 + s[4] * s[4] / 2.0 - fac1;
-                    self.tt[2] = s[2] * s[2] + s[4] * s[4] / 2.0 + s[5] * s[5] / 2.0 - fac1;
-                    self.tt[3] = (s[0] + s[1]) * s[3] + s[4] * s[5] / SQRT_2;
-                    self.tt[4] = (s[1] + s[2]) * s[4] + s[3] * s[5] / SQRT_2;
-                    self.tt[5] = (s[0] + s[2]) * s[5] + s[3] * s[4] / SQRT_2;
-                    let num = sq_norm_diff(&self.tt, -fac2, &self.ss);
-                    let den = sq_norm_diff(&self.tt, fac2, &self.ss);
-                    let d_box = f64::sqrt(num / den); // this is not d in Eq (70) of Ref #1; it is a newly defined variable d in Box 1 of Ref #1
-                    let sj = f64::signum(1.0 - d_box);
-                    let mut l0;
-                    let mut l1;
-                    let mut l2;
-                    if sj * (1.0 - d_box) < TOL_ZERO_DEV_LAMBDA {
-                        // deviatoric matrix has a zero eigenvalue
-                        l0 = shift + sqrt_jj2;
-                        l1 = shift;
-                        l2 = shift - sqrt_jj2;
-                    } else {
-                        // deviatoric matrix doesn't have zero eigenvalue
-                        let dsj = if sj < 0.0 { 1.0 / d_box } else { d_box };
-                        let alpha = 2.0 * f64::atan(dsj) / 3.0;
-                        let cd = sj * fac2 * f64::cos(alpha);
-                        let sd = sqrt_jj2 * f64::sin(alpha);
-                        l0 = shift + 2.0 * cd;
-                        l1 = shift - cd + sd;
-                        l2 = shift - cd - sd;
-                    }
-                    // sort the eigenvalues in descending order
-                    sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
-                    self.lam[0] = l0;
-                    self.lam[1] = l1;
-                    self.lam[2] = l2;
-                    // compute the eigenprojectors
-                    self.compute_projectors(aa);
-                }
-            }
+    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigStatus, StrError> {
+        // clear previous eigenprojectors data
+        for m in 0..6 {
+            self.proj[0].vec[m] = 0.0;
+            self.proj[1].vec[m] = 0.0;
+            self.proj[2].vec[m] = 0.0;
         }
-        Ok(())
+
+        // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
+        let ii1 = aa.invariant_ii1();
+        let iso = ii1 / 3.0;
+        let scale = aa.norm();
+        let jj2 = aa.invariant_jj2();
+        if jj2 <= 1e3 * f64::EPSILON * f64::EPSILON * scale * scale {
+            self.lam[0] = iso;
+            self.lam[1] = iso;
+            self.lam[2] = iso;
+            self.proj[0].vec[0] = 1.0;
+            self.proj[1].vec[1] = 1.0;
+            self.proj[2].vec[2] = 1.0;
+            return Ok(EigStatus::Spherical);
+        }
+
+        // Jacobi iterative method: calculate the eigenvalues and eigenprojectors for non-spherical cases
+        if method == EigMethod::Jacobi {
+            // eigenvalues and eigenvectors
+            aa.to_std_matrix_slice(&mut self.aa_3x3);
+            let mut lambda = [0.0; 3];
+            small_mat_eigen_sym_jacobi(&mut lambda, &mut self.vv_3x3, &mut self.aa_3x3)?;
+
+            // get indices to sort eigenvalues in descending order
+            let mut indices = [0, 1, 2];
+            indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
+
+            // store sorted eigenvalues and eigenprojectors
+            for i in 0..3 {
+                let j = indices[i];
+                self.lam[i] = lambda[j];
+                let pp = &mut self.proj[i].vec;
+                let qq = &self.vv_3x3;
+                pp[0] = qq[0][j] * qq[0][j];
+                pp[1] = qq[1][j] * qq[1][j];
+                pp[2] = qq[2][j] * qq[2][j];
+                pp[3] = (qq[0][j] * qq[1][j] + qq[1][j] * qq[0][j]) / SQRT_2;
+                pp[4] = (qq[1][j] * qq[2][j] + qq[2][j] * qq[1][j]) / SQRT_2;
+                pp[5] = (qq[0][j] * qq[2][j] + qq[2][j] * qq[0][j]) / SQRT_2;
+            }
+            return Ok(self.classify());
+        }
+
+        // Analytical method: calculate the eigenvalues for non-spherical cases
+        let (mut l0, mut l1, mut l2) = if method == EigMethod::Analytical1 {
+            //
+            // Harari I. and Albocher U. (2023)
+            //
+            const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
+            let a = &aa.vec;
+            let d12 = a[0] - a[1];
+            let d23 = a[1] - a[2];
+            let d31 = a[2] - a[0];
+            let s01 = a[3] * R1_2;
+            let s12 = a[4] * R1_2;
+            let s02 = a[5] * R1_2;
+            let jj3 = aa.deviator_determinant();
+            let sd = if jj3 >= 0.0 { 1.0 } else { -1.0 };
+            // discriminant as a sum of seven squares (Reference 1, Equation 17)
+            let hx = d12 * d23 * d31 + s01 * s01 * d12 + s12 * s12 * d23 + s02 * s02 * d31;
+            let hy1 = s12 * (2.0 * s12 * s12 - s02 * s02 - s01 * s01 + 2.0 * d12 * d31) + s01 * s02 * (d12 - d31);
+            let hy2 = s02 * (2.0 * s02 * s02 - s12 * s12 - s01 * s01 + 2.0 * d23 * d12) + s01 * s12 * (d23 - d12);
+            let hy3 = s01 * (2.0 * s01 * s01 - s12 * s12 - s02 * s02 + 2.0 * d31 * d23) + s02 * s12 * (d31 - d23);
+            let hz1 = s12 * (s02 * s02 - s01 * s01) + s01 * s02 * d23;
+            let hz2 = s02 * (s01 * s01 - s12 * s12) + s12 * s01 * d31;
+            let hz3 = s01 * (s12 * s12 - s02 * s02) + s02 * s12 * d12;
+            let delta =
+                (hx * hx + hy1 * hy1 + hy2 * hy2 + hy3 * hy3 + 15.0 * (hz1 * hz1 + hz2 * hz2 + hz3 * hz3)).max(0.0);
+            // mixed tangent angle (Reference 1, Equation 11)
+            let sqrt_jj2 = f64::sqrt(jj2);
+            let numerator = f64::sqrt(delta);
+            let denominator = 2.0 * jj2 * sqrt_jj2 + 3.0 * SQRT_3 * sd * jj3;
+            let alpha = (2.0 / 3.0) * f64::atan2(numerator, denominator);
+            // deviatoric eigenvalues (Reference 1, Equations 12-14)
+            let lambda1 = 2.0 * sd * f64::sqrt(jj2 / 3.0) * f64::cos(alpha);
+            let lambda2 = sd * sqrt_jj2 * f64::sin(alpha) - lambda1 / 2.0;
+            let lambda3 = -sd * sqrt_jj2 * f64::sin(alpha) - lambda1 / 2.0;
+            // shift back and sort the eigenvalues in descending order
+            (iso + lambda1, iso + lambda2, iso + lambda3)
+        } else {
+            //
+            // Harari I. and Albocher U. (2022)
+            //
+            let sqrt_jj2 = f64::sqrt(jj2);
+            let fac1 = 2.0 * jj2 / 3.0;
+            let fac2 = sqrt_jj2 / SQRT_3;
+            self.ss[0] = aa.vec[0] - ii1 / 3.0;
+            self.ss[1] = aa.vec[1] - ii1 / 3.0;
+            self.ss[2] = aa.vec[2] - ii1 / 3.0;
+            self.ss[3] = aa.vec[3];
+            self.ss[4] = aa.vec[4];
+            self.ss[5] = aa.vec[5];
+            let s = &self.ss;
+            self.tt[0] = s[0] * s[0] + s[3] * s[3] / 2.0 + s[5] * s[5] / 2.0 - fac1;
+            self.tt[1] = s[1] * s[1] + s[3] * s[3] / 2.0 + s[4] * s[4] / 2.0 - fac1;
+            self.tt[2] = s[2] * s[2] + s[4] * s[4] / 2.0 + s[5] * s[5] / 2.0 - fac1;
+            self.tt[3] = (s[0] + s[1]) * s[3] + s[4] * s[5] / SQRT_2;
+            self.tt[4] = (s[1] + s[2]) * s[4] + s[3] * s[5] / SQRT_2;
+            self.tt[5] = (s[0] + s[2]) * s[5] + s[3] * s[4] / SQRT_2;
+            let num = sq_norm_diff(&self.tt, -fac2, &self.ss);
+            let den = sq_norm_diff(&self.tt, fac2, &self.ss);
+            let d_box = f64::sqrt(num / den); // this is not d in Eq (70) of Ref #1; it is a newly defined variable d in Box 1 of Ref #1
+            let sj = f64::signum(1.0 - d_box);
+            if sj * (1.0 - d_box) < TOL_ZERO_DEV_LAMBDA {
+                // deviatoric matrix has a zero eigenvalue
+                (iso + sqrt_jj2, iso, iso - sqrt_jj2)
+            } else {
+                // deviatoric matrix doesn't have zero eigenvalue
+                let dsj = if sj < 0.0 { 1.0 / d_box } else { d_box };
+                let alpha = 2.0 * f64::atan(dsj) / 3.0;
+                let cd = sj * fac2 * f64::cos(alpha);
+                let sd = sqrt_jj2 * f64::sin(alpha);
+                (iso + 2.0 * cd, iso - cd + sd, iso - cd - sd)
+            }
+        };
+
+        // sort the eigenvalues in descending order
+        sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
+        self.lam[0] = l0;
+        self.lam[1] = l1;
+        self.lam[2] = l2;
+
+        // compute the eigenprojectors
+        self.compute_projectors(aa)
+    }
+
+    /// (internal) Classifies the eigenvalues (which must be sorted in descending order)
+    fn classify(&self) -> EigStatus {
+        let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
+        let tol = TOL_COALESCE * scale;
+        let d01 = f64::abs(self.lam[0] - self.lam[1]);
+        let d12 = f64::abs(self.lam[1] - self.lam[2]);
+        if d01 < tol && d12 < tol {
+            EigStatus::Spherical
+        } else if d01 < tol {
+            EigStatus::Coalesce01
+        } else if d12 < tol {
+            EigStatus::Coalesce12
+        } else {
+            EigStatus::Distinct
+        }
     }
 
     /// (internal) Compute the eigenprojectors given the SORTED eigenvalues
-    fn compute_projectors(&mut self, aa: &Tensor2<6>) {
+    fn compute_projectors(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
         // compute a scale to detect coalescent eigenvalues
         let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
         let tol = TOL_COALESCE * scale;
@@ -330,6 +332,7 @@ impl Spectral2 {
                 self.proj[0].vec[m] = IDENTITY2[m] - self.proj[2].vec[m];
                 self.proj[1].vec[m] = 0.0;
             }
+            Ok(EigStatus::Coalesce01)
         } else if f64::abs(d12) < tol {
             // lam0 > lam1 ≈ lam2
             assert!(f64::abs(d01) > 0.0, "|d01| must be > 0 when lam1 = lam2");
@@ -340,6 +343,7 @@ impl Spectral2 {
                 self.proj[1].vec[m] = IDENTITY2[m] - self.proj[0].vec[m];
                 self.proj[2].vec[m] = 0.0;
             }
+            Ok(EigStatus::Coalesce12)
         } else {
             // all distinct: P[r] = f * (A - λ[s] I) . (A - λ[t] I)
             for i in 0..3 {
@@ -351,6 +355,7 @@ impl Spectral2 {
                 let f = 1.0 / ((self.lam[r] - self.lam[s]) * (self.lam[r] - self.lam[t]));
                 t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
             }
+            Ok(EigStatus::Distinct)
         }
     }
 
@@ -500,7 +505,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 
 #[cfg(test)]
 mod tests {
-    use super::{EigMethod, Spectral2, t2_plus_diag_product};
+    use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul};
 
@@ -717,27 +722,30 @@ mod tests {
         tol_proj: f64,
         tol_compose: f64,
     ) {
-        // extract eigenvalues and projectors
+        // extract eigenvalues
         let correct_lambda = sample.eigenvalues.unwrap();
-        let correct_projectors = sample.eigenprojectors.unwrap();
 
         // perform the spectral decomposition
         let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-        spec.decompose_mx(&aa, method).unwrap();
+        let status = spec.decompose_mx(&aa, method).unwrap();
 
         // compare eigenvalues
         array_approx_eq(&spec.lam, &correct_lambda, tol_lambda);
 
         // compare eigenprojectors
-        let pp0 = spec.proj[0].as_std_matrix();
-        let pp1 = spec.proj[1].as_std_matrix();
-        let pp2 = spec.proj[2].as_std_matrix();
-        let correct0 = Matrix::from(&correct_projectors[0]);
-        let correct1 = Matrix::from(&correct_projectors[1]);
-        let correct2 = Matrix::from(&correct_projectors[2]);
-        mat_approx_eq(&correct0, &pp0, tol_proj);
-        mat_approx_eq(&correct1, &pp1, tol_proj);
-        mat_approx_eq(&correct2, &pp2, tol_proj);
+        // note: for spherical tensors, the eigenprojectors are not unique, so this check is skipped
+        if status != EigStatus::Spherical {
+            let correct_projectors = sample.eigenprojectors.unwrap();
+            let pp0 = spec.proj[0].as_std_matrix();
+            let pp1 = spec.proj[1].as_std_matrix();
+            let pp2 = spec.proj[2].as_std_matrix();
+            let correct0 = Matrix::from(&correct_projectors[0]);
+            let correct1 = Matrix::from(&correct_projectors[1]);
+            let correct2 = Matrix::from(&correct_projectors[2]);
+            mat_approx_eq(&correct0, &pp0, tol_proj);
+            mat_approx_eq(&correct1, &pp1, tol_proj);
+            mat_approx_eq(&correct2, &pp2, tol_proj);
+        }
 
         // further checks
         check_eigen_problem(&aa, spec, tol_proj, tol_compose);

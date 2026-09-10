@@ -3,82 +3,91 @@ use std::mem;
 
 /// Sorts 2 values in ascending order
 ///
+/// **Warning:** This function relies on the `<` operator and does not handle NaN values,
+/// i.e., the result is undefined if any of the values is NaN.
+///
 /// # Examples
 ///
 /// ```
 /// use russell_lab::sort2;
 ///
-/// let mut numbers = (3.0, 2.0);
-/// sort2(&mut numbers);
-/// assert_eq!(numbers, (2.0, 3.0));
+/// let (mut a, mut b) = (3.0, 2.0);
+/// sort2(&mut a, &mut b);
+/// assert_eq!((a, b), (2.0, 3.0));
 /// ```
-pub fn sort2<T>(x: &mut (T, T))
+pub fn sort2<T>(a: &mut T, b: &mut T)
 where
     T: PartialOrd,
 {
-    if x.1 < x.0 {
-        mem::swap(&mut x.1, &mut x.0);
+    if *b < *a {
+        mem::swap(a, b);
     }
 }
 
 /// Sorts 3 values in ascending order
+///
+/// **Warning:** This function relies on the `<` operator and does not handle NaN values,
+/// i.e., the result is undefined if any of the values is NaN.
 ///
 /// # Examples
 ///
 /// ```
 /// use russell_lab::sort3;
 ///
-/// let mut numbers = (1.0, 3.0, 2.0);
-/// sort3(&mut numbers);
-/// assert_eq!(numbers, (1.0, 2.0, 3.0));
+/// let (mut a, mut b, mut c) = (1.0, 3.0, 2.0);
+/// sort3(&mut a, &mut b, &mut c);
+/// assert_eq!((a, b, c), (1.0, 2.0, 3.0));
 /// ```
-pub fn sort3<T>(x: &mut (T, T, T))
+pub fn sort3<T>(a: &mut T, b: &mut T, c: &mut T)
 where
     T: PartialOrd,
 {
-    if x.1 < x.0 {
-        mem::swap(&mut x.1, &mut x.0);
+    if *b < *a {
+        mem::swap(a, b);
     }
-    if x.2 < x.1 {
-        mem::swap(&mut x.2, &mut x.1);
+    if *c < *b {
+        mem::swap(b, c);
     }
-    if x.1 < x.0 {
-        mem::swap(&mut x.1, &mut x.0);
+    if *b < *a {
+        mem::swap(a, b);
     }
 }
 
 /// Sorts 4 values in ascending order
+///
+/// **Warning:** This function relies on the `<` operator and does not handle NaN values,
+/// i.e., the result is undefined if any of the values is NaN.
 ///
 /// # Examples
 ///
 /// ```
 /// use russell_lab::sort4;
 ///
-/// let mut numbers = (1.0, 3.0, 2.0, 0.0);
-/// sort4(&mut numbers);
-/// assert_eq!(numbers, (0.0, 1.0, 2.0, 3.0));
+/// let (mut a, mut b, mut c, mut d) = (1.0, 3.0, 2.0, 0.0);
+/// sort4(&mut a, &mut b, &mut c, &mut d);
+/// assert_eq!((a, b, c, d), (0.0, 1.0, 2.0, 3.0));
 /// ```
-pub fn sort4<T>(x: &mut (T, T, T, T))
+pub fn sort4<T>(a: &mut T, b: &mut T, c: &mut T, d: &mut T)
 where
     T: PartialOrd,
 {
-    if x.1 < x.0 {
-        mem::swap(&mut x.0, &mut x.1);
+    if *b < *a {
+        mem::swap(a, b);
     }
-    if x.2 < x.1 {
-        mem::swap(&mut x.1, &mut x.2);
+    if *c < *b {
+        mem::swap(b, c);
     }
-    if x.3 < x.2 {
-        mem::swap(&mut x.2, &mut x.3);
+    if *d < *c {
+        mem::swap(c, d);
     }
-    if x.1 < x.0 {
-        mem::swap(&mut x.0, &mut x.1);
+    if *b < *a {
+        mem::swap(a, b);
     }
-    if x.2 < x.1 {
-        mem::swap(&mut x.1, &mut x.2);
+    if *c < *b {
+        mem::swap(b, c);
     }
-    if x.1 < x.0 {
-        mem::swap(&mut x.0, &mut x.1);
+    if *b < *a {
+        mem::swap(a, b);
     }
 }
 
@@ -235,79 +244,79 @@ mod tests {
 
     #[test]
     fn sort2_works() {
-        let mut x = (1, 2);
-        sort2(&mut x);
-        assert_eq!(x, (1, 2));
+        let (mut a, mut b) = (1, 2);
+        sort2(&mut a, &mut b);
+        assert_eq!((a, b), (1, 2));
 
-        let mut x = (2, 1);
-        sort2(&mut x);
-        assert_eq!(x, (1, 2));
+        let (mut a, mut b) = (2, 1);
+        sort2(&mut a, &mut b);
+        assert_eq!((a, b), (1, 2));
 
-        let mut x = (1.0, 2.0);
-        sort2(&mut x);
-        assert_eq!(x, (1.0, 2.0));
+        let (mut a, mut b) = (1.0, 2.0);
+        sort2(&mut a, &mut b);
+        assert_eq!((a, b), (1.0, 2.0));
 
-        let mut x = (2.0, 1.0);
-        sort2(&mut x);
-        assert_eq!(x, (1.0, 2.0));
+        let (mut a, mut b) = (2.0, 1.0);
+        sort2(&mut a, &mut b);
+        assert_eq!((a, b), (1.0, 2.0));
     }
 
     #[test]
     fn sort3_works() {
-        let mut x = (1, 2, 3);
-        sort3(&mut x);
-        assert_eq!(x, (1, 2, 3));
+        let (mut a, mut b, mut c) = (1, 2, 3);
+        sort3(&mut a, &mut b, &mut c);
+        assert_eq!((a, b, c), (1, 2, 3));
 
-        let mut x = (1, 3, 2);
-        sort3(&mut x);
-        assert_eq!(x, (1, 2, 3));
+        let (mut a, mut b, mut c) = (1, 3, 2);
+        sort3(&mut a, &mut b, &mut c);
+        assert_eq!((a, b, c), (1, 2, 3));
 
-        let mut x = (3, 2, 1);
-        sort3(&mut x);
-        assert_eq!(x, (1, 2, 3));
+        let (mut a, mut b, mut c) = (3, 2, 1);
+        sort3(&mut a, &mut b, &mut c);
+        assert_eq!((a, b, c), (1, 2, 3));
     }
 
     #[test]
     fn sort4_works() {
-        let mut x = (1, 2, 3, 4);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (1, 2, 3, 4);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (2, 1, 3, 4);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (2, 1, 3, 4);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (2, 3, 1, 4);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (2, 3, 1, 4);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (2, 3, 4, 1);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (2, 3, 4, 1);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (1, 3, 2, 4);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (1, 3, 2, 4);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (1, 3, 4, 2);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (1, 3, 4, 2);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (3, 1, 2, 4);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (3, 1, 2, 4);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (4, 1, 2, 3);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (4, 1, 2, 3);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (1, 4, 2, 3);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (1, 4, 2, 3);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
 
-        let mut x = (4, 3, 2, 1);
-        sort4(&mut x);
-        assert_eq!(x, (1, 2, 3, 4));
+        let (mut a, mut b, mut c, mut d) = (4, 3, 2, 1);
+        sort4(&mut a, &mut b, &mut c, &mut d);
+        assert_eq!((a, b, c, d), (1, 2, 3, 4));
     }
 
     #[test]

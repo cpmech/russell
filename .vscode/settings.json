@@ -175,6 +175,7 @@
     "ipiv",
     "irhs",
     "isogeometric",
+    "Itskov",
     "Jacobians",
     "jobu",
     "jobvl",

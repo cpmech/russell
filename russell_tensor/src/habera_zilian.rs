@@ -50,6 +50,13 @@
 ///
 /// This implementation uses diagonal differences and off-diagonal products to
 /// avoid cancellation.
+///
+/// # References
+///
+/// 1. Habera M. and Zilian A. (2021) Symbolic spectral decomposition of 3x3 matrices.
+///    <https://arxiv.org/abs/2111.02117>
+/// 2. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
 pub fn j2(a: &[[f64; 3]; 3]) -> f64 {
     let d0 = a[0][0] - a[1][1];
     let d1 = a[0][0] - a[2][2];
@@ -63,6 +70,13 @@ pub fn j2(a: &[[f64; 3]; 3]) -> f64 {
 ///
 /// This implementation uses diagonal differences, off-diagonal products, and
 /// mixed products to avoid cancellation.
+///
+/// # References
+///
+/// 1. Habera M. and Zilian A. (2021) Symbolic spectral decomposition of 3x3 matrices.
+///    <https://arxiv.org/abs/2111.02117>
+/// 2. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
 pub fn j3(a: &[[f64; 3]; 3]) -> f64 {
     let d0 = a[0][0] - a[1][1];
     let d1 = a[0][0] - a[2][2];
@@ -145,6 +159,13 @@ pub fn eigvals(a: &[[f64; 3]; 3]) -> [f64; 3] {
 /// Computes the second invariant J2 of a symmetric 3×3 matrix
 ///
 /// This is the optimized version for symmetric matrices.
+///
+/// # References
+///
+/// 1. Habera M. and Zilian A. (2021) Symbolic spectral decomposition of 3x3 matrices.
+///    <https://arxiv.org/abs/2111.02117>
+/// 2. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
 pub fn j2s(a: &[[f64; 3]; 3]) -> f64 {
     let d0 = a[0][0] - a[1][1];
     let d1 = a[0][0] - a[2][2];
@@ -157,6 +178,13 @@ pub fn j2s(a: &[[f64; 3]; 3]) -> f64 {
 /// Computes the third invariant J3 of a symmetric 3×3 matrix
 ///
 /// This is the optimized version for symmetric matrices.
+///
+/// # References
+///
+/// 1. Habera M. and Zilian A. (2021) Symbolic spectral decomposition of 3x3 matrices.
+///    <https://arxiv.org/abs/2111.02117>
+/// 2. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
 pub fn j3s(a: &[[f64; 3]; 3]) -> f64 {
     let d0 = a[0][0] - a[1][1];
     let d1 = a[0][0] - a[2][2];

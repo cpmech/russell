@@ -1631,100 +1631,6 @@ impl<const N: usize> Tensor2<N> {
         f64::sqrt(sq_norm_s)
     }
 
-    /// Calculates the determinant of the deviator tensor
-    ///
-    /// ```text
-    /// J3 = det( σ - ⅓ tr(σ) I )
-    /// ```
-    ///
-    /// The determinant is computed with the diagonal-difference form:
-    ///
-    /// ```text
-    /// J3 = J3d + J3m + J3o
-    ///
-    /// J3d = (d12 − d31) (d23 − d12) (d31 − d23) / 27
-    ///
-    /// J3m = −(d12 − d31)/3 ⋅ σ23⋅σ32 − (d23 − d12)/3 ⋅ σ13⋅σ31 − (d31 − d23)/3 ⋅ σ12⋅σ21
-    ///
-    /// J3o = σ12⋅σ23⋅σ31 + σ13⋅σ32⋅σ21
-    /// ```
-    ///
-    /// where the diagonal differences are `d12 = σ11 − σ22`, `d23 = σ22 − σ33`, and `d31 = σ33 − σ11`.
-    /// For symmetric tensors (`N = 4` or `N = 6`), `σij⋅σji = σij²` and the two off-diagonal loops of
-    /// `J3o` coincide, recovering Equation (16) of Reference 1.
-    ///
-    /// # References
-    ///
-    /// 1. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
-    ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
-    ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [6.0,  1.0,  2.0],
-    ///         [3.0, 12.0,  4.0],
-    ///         [5.0,  6.0, 15.0],
-    ///     ])?;
-    ///
-    ///     let mut dev = Tensor2::<9>::new();
-    ///     a.deviator(&mut dev);
-    ///     approx_eq(dev.trace(), 0.0, 1e-15);
-    ///
-    ///     assert_eq!(
-    ///         format!("{:.1}", dev.as_std_matrix()),
-    ///         "┌                ┐\n\
-    ///          │ -5.0  1.0  2.0 │\n\
-    ///          │  3.0  1.0  4.0 │\n\
-    ///          │  5.0  6.0  4.0 │\n\
-    ///          └                ┘"
-    ///     );
-    ///
-    ///     approx_eq(dev.determinant(), 134.0, 1e-13);
-    ///     approx_eq(a.deviator_determinant(), 134.0, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn deviator_determinant(&self) -> f64 {
-        const O3: f64 = 1.0 / 3.0;
-        const O27: f64 = 1.0 / 27.0;
-        const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
-        let a = &self.vec;
-        let d12 = a[0] - a[1];
-        let d23 = a[1] - a[2];
-        let d31 = a[2] - a[0];
-        let j3d = (d12 - d31) * (d23 - d12) * (d31 - d23) * O27;
-        match N {
-            4 => {
-                let s01 = a[3] * R1_2;
-                j3d - O3 * (d31 - d23) * s01 * s01
-            }
-            6 => {
-                let s01 = a[3] * R1_2;
-                let s12 = a[4] * R1_2;
-                let s02 = a[5] * R1_2;
-                let j3m = -O3 * ((d12 - d31) * s12 * s12 + (d23 - d12) * s02 * s02 + (d31 - d23) * s01 * s01);
-                j3d + j3m + 2.0 * s01 * s12 * s02
-            }
-            _ => {
-                let s01 = (a[3] + a[6]) * R1_2;
-                let s10 = (a[3] - a[6]) * R1_2;
-                let s12 = (a[4] + a[7]) * R1_2;
-                let s21 = (a[4] - a[7]) * R1_2;
-                let s02 = (a[5] + a[8]) * R1_2;
-                let s20 = (a[5] - a[8]) * R1_2;
-                let j3m = -O3 * ((d12 - d31) * s12 * s21 + (d23 - d12) * s02 * s20 + (d31 - d23) * s01 * s10);
-                let j3o = s01 * s12 * s20 + s02 * s21 * s10;
-                j3d + j3m + j3o
-            }
-        }
-    }
-
     /// Decomposes this tensor into symmetric and skew-symmetric parts
     ///
     /// * A symmetric Tensor2 is defined by Sᵀ = S
@@ -1938,13 +1844,54 @@ impl<const N: usize> Tensor2<N> {
         }
     }
 
-    /// Calculates J3, the second invariant of the deviatoric tensor corresponding to this tensor
+    /// Calculates J2, the second invariant of the deviatoric tensor, using the
+    /// Habera-Zilian algorithm
+    ///
+    /// The invariant is computed from diagonal differences and off-diagonal
+    /// products (see the `habera_zilian` module).
+    ///
+    /// # References
+    ///
+    /// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+    ///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
+    pub fn invariant_jj2_hz(&self) -> f64 {
+        let mut m = [[0.0; 3]; 3];
+        self.to_std_matrix_slice(&mut m);
+        match N {
+            9 => crate::habera_zilian::j2(&m),
+            _ => crate::habera_zilian::j2s(&m),
+        }
+    }
+
+    /// Calculates J3, the third invariant of the deviatoric tensor corresponding to this tensor
     ///
     /// ```text
     /// s = deviator(σ)
     ///
     /// J3 = IIIₛ = determinant(s)
     /// ```
+    ///
+    /// The determinant is computed with the diagonal-difference form:
+    ///
+    /// ```text
+    /// J3 = J3d + J3m + J3o
+    ///
+    /// J3d = (d12 − d31) (d23 − d12) (d31 − d23) / 27
+    ///
+    /// J3m = −(d12 − d31)/3 ⋅ σ23⋅σ32 − (d23 − d12)/3 ⋅ σ13⋅σ31 − (d31 − d23)/3 ⋅ σ12⋅σ21
+    ///
+    /// J3o = σ12⋅σ23⋅σ31 + σ13⋅σ32⋅σ21
+    /// ```
+    ///
+    /// where the diagonal differences are `d12 = σ11 − σ22`, `d23 = σ22 − σ33`, and `d31 = σ33 − σ11`.
+    /// For symmetric tensors (`N = 4` or `N = 6`), `σij⋅σji = σij²` and the two off-diagonal loops of
+    /// `J3o` coincide, recovering Equation (16) of Reference 1.
+    ///
+    /// # References
+    ///
+    /// 1. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
+    ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
+    ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
     ///
     /// # Examples
     ///
@@ -1962,8 +1909,90 @@ impl<const N: usize> Tensor2<N> {
     ///     Ok(())
     /// }
     /// ```
+    ///
+    /// The deviator of a general tensor:
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::<9>::from_std_matrix(&[
+    ///         [6.0,  1.0,  2.0],
+    ///         [3.0, 12.0,  4.0],
+    ///         [5.0,  6.0, 15.0],
+    ///     ])?;
+    ///
+    ///     let mut dev = Tensor2::<9>::new();
+    ///     a.deviator(&mut dev);
+    ///     approx_eq(dev.trace(), 0.0, 1e-15);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", dev.as_std_matrix()),
+    ///         "┌                ┐\n\
+    ///          │ -5.0  1.0  2.0 │\n\
+    ///          │  3.0  1.0  4.0 │\n\
+    ///          │  5.0  6.0  4.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///
+    ///     approx_eq(dev.determinant(), 134.0, 1e-13);
+    ///     approx_eq(a.invariant_jj3(), 134.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn invariant_jj3(&self) -> f64 {
-        self.deviator_determinant()
+        const O3: f64 = 1.0 / 3.0;
+        const O27: f64 = 1.0 / 27.0;
+        const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
+        let a = &self.vec;
+        let d12 = a[0] - a[1];
+        let d23 = a[1] - a[2];
+        let d31 = a[2] - a[0];
+        let j3d = (d12 - d31) * (d23 - d12) * (d31 - d23) * O27;
+        match N {
+            4 => {
+                let s01 = a[3] * R1_2;
+                j3d - O3 * (d31 - d23) * s01 * s01
+            }
+            6 => {
+                let s01 = a[3] * R1_2;
+                let s12 = a[4] * R1_2;
+                let s02 = a[5] * R1_2;
+                let j3m = -O3 * ((d12 - d31) * s12 * s12 + (d23 - d12) * s02 * s02 + (d31 - d23) * s01 * s01);
+                j3d + j3m + 2.0 * s01 * s12 * s02
+            }
+            _ => {
+                let s01 = (a[3] + a[6]) * R1_2;
+                let s10 = (a[3] - a[6]) * R1_2;
+                let s12 = (a[4] + a[7]) * R1_2;
+                let s21 = (a[4] - a[7]) * R1_2;
+                let s02 = (a[5] + a[8]) * R1_2;
+                let s20 = (a[5] - a[8]) * R1_2;
+                let j3m = -O3 * ((d12 - d31) * s12 * s21 + (d23 - d12) * s02 * s20 + (d31 - d23) * s01 * s10);
+                let j3o = s01 * s12 * s20 + s02 * s21 * s10;
+                j3d + j3m + j3o
+            }
+        }
+    }
+
+    /// Calculates J3, the third invariant of the deviatoric tensor, using the
+    /// Habera-Zilian algorithm
+    ///
+    /// The invariant is computed from diagonal differences and off-diagonal
+    /// products (see the `habera_zilian` module).
+    ///
+    /// # References
+    ///
+    /// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+    ///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
+    pub fn invariant_jj3_hz(&self) -> f64 {
+        let mut m = [[0.0; 3]; 3];
+        self.to_std_matrix_slice(&mut m);
+        match N {
+            9 => crate::habera_zilian::j3(&m),
+            _ => crate::habera_zilian::j3s(&m),
+        }
     }
 
     // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
@@ -3745,7 +3774,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
+        approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -3767,7 +3796,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
+        approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -3789,11 +3818,11 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
+        approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
     }
 
     #[test]
-    fn deviator_determinant_near_singular_works() {
+    fn invariant_jj3_near_singular_works() {
         // Near-singular example from the reference study (ε = 1e-15). Because the
         // diagonal-difference formula operates on the original tensor entries (the diagonal
         // differences are trace-shift invariant), it avoids the catastrophic cancellation
@@ -3810,12 +3839,12 @@ mod tests {
         tt.deviator(&mut dev);
         // the exact result (to leading order) is d23/3, where d23 = σ22 - σ33
         let d23 = (1.0 + epsilon) - 1.0;
-        approx_eq(tt.deviator_determinant(), d23 / 3.0, 1e-28);
-        approx_eq(tt.deviator_determinant(), dev.determinant(), 1e-15);
+        approx_eq(tt.invariant_jj3(), d23 / 3.0, 1e-28);
+        approx_eq(tt.invariant_jj3(), dev.determinant(), 1e-15);
     }
 
     #[test]
-    fn deviator_determinant_advantage_works() {
+    fn invariant_jj3_advantage_works() {
         // Engineered multi-scale case from the reference study where the standard expansion
         // suffers catastrophic cancellation: the exact determinant is 20.0, but two of the
         // individual terms of the expansion reach ±1e24 and cancel to zero in floating point.
@@ -3829,9 +3858,47 @@ mod tests {
         let mut dev = Tensor2::<6>::new();
         tt.deviator(&mut dev);
         // the diagonal-difference form resolves the exact result
-        approx_eq(tt.deviator_determinant(), 20.0, 1e-12);
+        approx_eq(tt.invariant_jj3(), 20.0, 1e-12);
         // whereas the standard expansion gives 20.0 - 1e24 + 1e24 = 0.0
         assert_eq!(dev.determinant(), 0.0);
+    }
+
+    #[test]
+    fn habera_zilian_invariants_work() {
+        // compare the Habera-Zilian invariants with the reference implementations
+
+        // symmetric 3D (N = 6)
+        #[rustfmt::skip]
+        let comps_std = &[
+            [ 2.0, -3.0, 4.0],
+            [-3.0, -5.0, 1.0],
+            [ 4.0,  1.0, 6.0],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        approx_eq(tt.invariant_jj2_hz(), tt.invariant_jj2(), 1e-12);
+        approx_eq(tt.invariant_jj3_hz(), tt.invariant_jj3(), 1e-12);
+
+        // general 3D (N = 9)
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
+        approx_eq(tt.invariant_jj2_hz(), tt.invariant_jj2(), 1e-12);
+        approx_eq(tt.invariant_jj3_hz(), tt.invariant_jj3(), 1e-12);
+
+        // symmetric 2D (N = 4)
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
+        approx_eq(tt.invariant_jj2_hz(), tt.invariant_jj2(), 1e-12);
+        approx_eq(tt.invariant_jj3_hz(), tt.invariant_jj3(), 1e-12);
     }
 
     #[test]
@@ -3999,7 +4066,7 @@ mod tests {
         approx_eq(tt.trace(), sample.trace, tol_trace);
         approx_eq(tt.determinant(), sample.determinant, tol_det);
         approx_eq(tt.deviator_norm(), sample.deviator_norm, tol_dev_norm);
-        approx_eq(tt.deviator_determinant(), sample.deviator_determinant, tol_dev_det);
+        approx_eq(tt.invariant_jj3(), sample.deviator_determinant, tol_dev_det);
     }
 
     #[test]

@@ -225,7 +225,7 @@ impl Spectral2 {
             let s01 = a[3] * R1_2;
             let s12 = a[4] * R1_2;
             let s02 = a[5] * R1_2;
-            let jj3 = aa.deviator_determinant();
+            let jj3 = aa.invariant_jj3();
             let sd = if jj3 >= 0.0 { 1.0 } else { -1.0 };
             // discriminant as a sum of seven squares (Reference 1, Equation 17)
             let hx = d12 * d23 * d31 + s01 * s01 * d12 + s12 * s12 * d23 + s02 * s02 * d31;

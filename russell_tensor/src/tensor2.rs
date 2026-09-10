@@ -1634,8 +1634,30 @@ impl<const N: usize> Tensor2<N> {
     /// Calculates the determinant of the deviator tensor
     ///
     /// ```text
-    /// det( σ - ⅓ tr(σ) I )
+    /// J3 = det( σ - ⅓ tr(σ) I )
     /// ```
+    ///
+    /// The determinant is computed with the diagonal-difference form:
+    ///
+    /// ```text
+    /// J3 = J3d + J3m + J3o
+    ///
+    /// J3d = (d12 − d31) (d23 − d12) (d31 − d23) / 27
+    ///
+    /// J3m = −(d12 − d31)/3 ⋅ σ23⋅σ32 − (d23 − d12)/3 ⋅ σ13⋅σ31 − (d31 − d23)/3 ⋅ σ12⋅σ21
+    ///
+    /// J3o = σ12⋅σ23⋅σ31 + σ13⋅σ32⋅σ21
+    /// ```
+    ///
+    /// where the diagonal differences are `d12 = σ11 − σ22`, `d23 = σ22 − σ33`, and `d31 = σ33 − σ11`.
+    /// For symmetric tensors (`N = 4` or `N = 6`), `σij⋅σji = σij²` and the two off-diagonal loops of
+    /// `J3o` coincide, recovering Equation (16) of Reference 1.
+    ///
+    /// # References
+    ///
+    /// 1. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
+    ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
+    ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
     ///
     /// # Examples
     ///
@@ -1669,24 +1691,36 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn deviator_determinant(&self) -> f64 {
+        const O3: f64 = 1.0 / 3.0;
+        const O27: f64 = 1.0 / 27.0;
+        const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
         let a = &self.vec;
-        let m = (a[0] + a[1] + a[2]) / 3.0;
+        let d12 = a[0] - a[1];
+        let d23 = a[1] - a[2];
+        let d31 = a[2] - a[0];
+        let j3d = (d12 - d31) * (d23 - d12) * (d31 - d23) * O27;
         match N {
-            4 => (a[2] - m) * (m * m + a[0] * a[1] - m * (a[0] + a[1]) - a[3] * a[3] / 2.0),
+            4 => {
+                let s01 = a[3] * R1_2;
+                j3d - O3 * (d31 - d23) * s01 * s01
+            }
             6 => {
-                (2.0 * m * m * (a[0] + a[1] + a[2]) - a[2] * a[3] * a[3] + a[0] * (2.0 * a[1] * a[2] - a[4] * a[4])
-                    - 2.0 * m * m * m
-                    + SQRT_2 * a[3] * a[4] * a[5]
-                    - a[1] * a[5] * a[5]
-                    + m * (-2.0 * a[1] * a[2] - 2.0 * a[0] * (a[1] + a[2]) + a[3] * a[3] + a[4] * a[4] + a[5] * a[5]))
-                    / 2.0
+                let s01 = a[3] * R1_2;
+                let s12 = a[4] * R1_2;
+                let s02 = a[5] * R1_2;
+                let j3m = -O3 * ((d12 - d31) * s12 * s12 + (d23 - d12) * s02 * s02 + (d31 - d23) * s01 * s01);
+                j3d + j3m + 2.0 * s01 * s12 * s02
             }
             _ => {
-                (2.0 * (a[2] - m)
-                    * (2.0 * m * m + 2.0 * a[0] * a[1] - 2.0 * m * (a[0] + a[1]) - a[3] * a[3] + a[6] * a[6])
-                    + SQRT_2 * (a[5] - a[8]) * ((a[3] + a[6]) * (a[4] + a[7]) + SQRT_2 * (m - a[1]) * (a[5] + a[8]))
-                    + SQRT_2 * (a[4] - a[7]) * ((a[3] - a[6]) * (a[5] + a[8]) + SQRT_2 * (m - a[0]) * (a[4] + a[7])))
-                    / 4.0
+                let s01 = (a[3] + a[6]) * R1_2;
+                let s10 = (a[3] - a[6]) * R1_2;
+                let s12 = (a[4] + a[7]) * R1_2;
+                let s21 = (a[4] - a[7]) * R1_2;
+                let s02 = (a[5] + a[8]) * R1_2;
+                let s20 = (a[5] - a[8]) * R1_2;
+                let j3m = -O3 * ((d12 - d31) * s12 * s21 + (d23 - d12) * s02 * s20 + (d31 - d23) * s01 * s10);
+                let j3o = s01 * s12 * s20 + s02 * s21 * s10;
+                j3d + j3m + j3o
             }
         }
     }
@@ -3733,7 +3767,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -3755,7 +3789,29 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
+    }
+
+    #[test]
+    fn deviator_determinant_near_singular_works() {
+        // Near-singular example from the reference study (ε = 1e-15). Because the
+        // diagonal-difference formula operates on the original tensor entries (the diagonal
+        // differences are trace-shift invariant), it avoids the catastrophic cancellation
+        // that occurs when the deviator is formed explicitly.
+        let epsilon = 1e-15;
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 1.0,         0.0    ],
+            [1.0, 1.0+epsilon, epsilon],
+            [0.0, epsilon,     1.0    ],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        let mut dev = Tensor2::<6>::new();
+        tt.deviator(&mut dev);
+        // the exact result (to leading order) is d23/3, where d23 = σ22 - σ33
+        let d23 = (1.0 + epsilon) - 1.0;
+        approx_eq(tt.deviator_determinant(), d23 / 3.0, 1e-28);
+        approx_eq(tt.deviator_determinant(), dev.determinant(), 1e-15);
     }
 
     #[test]

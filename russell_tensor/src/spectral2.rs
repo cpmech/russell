@@ -30,6 +30,10 @@ pub enum EigMethod {
 }
 
 /// Holds the spectral representation of a symmetric second-order tensor
+///
+/// ```text
+/// A = Σ_{k=1,2,3} λ[k] P[k]
+/// ```
 pub struct Spectral2 {
     /// Holds the eigenvalues
     ///
@@ -138,6 +142,13 @@ impl Spectral2 {
                 t1_dyad_t1(&mut self.proj[2], SET, 1.0, &u2, &u2).unwrap();
             }
             EigMethod::Analytical => {
+                // clear the output projectors
+                for m in 0..6 {
+                    self.proj[0].vec[m] = 0.0;
+                    self.proj[1].vec[m] = 0.0;
+                    self.proj[2].vec[m] = 0.0;
+                }
+                // calculate the eigenvalues
                 let ii1 = aa.invariant_ii1();
                 let jj2 = aa.invariant_jj2();
                 let shift = ii1 / 3.0; // shift
@@ -146,28 +157,9 @@ impl Spectral2 {
                     self.lambda[0] = shift;
                     self.lambda[1] = shift;
                     self.lambda[2] = shift;
-                    // Setting so that A = Σ_{k=1,2,3} λ[k] P[k] still works)
-                    // P0
                     self.proj[0].vec[0] = 1.0;
-                    self.proj[0].vec[1] = 0.0;
-                    self.proj[0].vec[2] = 0.0;
-                    self.proj[0].vec[3] = 0.0;
-                    self.proj[0].vec[4] = 0.0;
-                    self.proj[0].vec[5] = 0.0;
-                    // P1
-                    self.proj[1].vec[0] = 0.0;
                     self.proj[1].vec[1] = 1.0;
-                    self.proj[1].vec[2] = 0.0;
-                    self.proj[1].vec[3] = 0.0;
-                    self.proj[1].vec[4] = 0.0;
-                    self.proj[1].vec[5] = 0.0;
-                    // P2
-                    self.proj[2].vec[0] = 0.0;
-                    self.proj[2].vec[1] = 0.0;
                     self.proj[2].vec[2] = 1.0;
-                    self.proj[2].vec[3] = 0.0;
-                    self.proj[2].vec[4] = 0.0;
-                    self.proj[2].vec[5] = 0.0;
                 } else {
                     let sqrt_jj2 = f64::sqrt(jj2);
                     let fac1 = 2.0 * jj2 / 3.0;
@@ -187,7 +179,7 @@ impl Spectral2 {
                     self.tt[5] = (s[0] + s[2]) * s[5] + s[3] * s[4] / SQRT_2;
                     let num = sq_norm_diff(&self.tt, -fac2, &self.ss);
                     let den = sq_norm_diff(&self.tt, fac2, &self.ss);
-                    let d_box = f64::sqrt(num / den); // this is not d in Eq (70), but the newly defined d in Box 1
+                    let d_box = f64::sqrt(num / den); // this is not d in Eq (70) of Ref #1; it is a newly defined variable d in Box 1 of Ref #1
                     let sj = f64::signum(1.0 - d_box);
                     if sj * (1.0 - d_box) < TOL_ZERO_DEV_LAMBDA {
                         // deviatoric matrix has a zero eigenvalue
@@ -198,7 +190,6 @@ impl Spectral2 {
                         // deviatoric matrix doesn't have zero eigenvalue
                         let dsj = if sj < 0.0 { 1.0 / d_box } else { d_box };
                         let alpha = 2.0 * f64::atan(dsj) / 3.0;
-                        println!("alpha = {}", alpha * 180.0 / PI);
                         let cd = sj * fac2 * f64::cos(alpha);
                         let sd = sqrt_jj2 * f64::sin(alpha);
                         self.lambda[0] = shift + 2.0 * cd;
@@ -208,9 +199,6 @@ impl Spectral2 {
                     let d01 = self.lambda[0] - self.lambda[1];
                     let d12 = self.lambda[1] - self.lambda[2];
                     let d20 = self.lambda[2] - self.lambda[0];
-                    println!("d01 = {}", d01);
-                    println!("d12 = {}", d12);
-                    println!("d20 = {}", d20);
                     if f64::abs(d01) < TOL_COALESCE {
                         // lam0 ≈ lam1 => lam_distinct = lam2
                         assert!(f64::abs(d20) > 0.0, "|d20| must be > 0 when lam0 = lam1");
@@ -242,7 +230,7 @@ impl Spectral2 {
                             self.proj[0].vec[m] = 0.0;
                         }
                     } else {
-                        println!(" !!!!!!!!!!!!!!!!!");
+                        // all distinct: P[r] = f * (A - λ[s] I) . (A - λ[t] I)
                         for i in 0..3 {
                             let r = INDICES[i];
                             let s = INDICES[i + 1];
@@ -250,7 +238,6 @@ impl Spectral2 {
                             let p = -self.lambda[s];
                             let q = -self.lambda[t];
                             let f = 1.0 / ((self.lambda[r] - self.lambda[s]) * (self.lambda[r] - self.lambda[t]));
-                            // Set P[r] = f * (A - λ[s] I) . (A - λ[t] I)
                             t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
                         }
                     }

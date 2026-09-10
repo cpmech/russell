@@ -48,7 +48,7 @@ mod mat_to_static_array;
 mod mat_update;
 mod mat_write_vismatrix;
 mod num_matrix;
-mod testing;
+pub(crate) mod testing;
 
 pub use aliases::*;
 pub use complex_mat_add::*;

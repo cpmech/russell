@@ -20,6 +20,8 @@
 
 mod num_recipes_gaussj;
 mod small_mat_add;
+mod small_mat_approx_eq;
+mod small_mat_eigen_sym_jacobi;
 mod small_mat_inv;
 mod small_mat_mat_mul;
 mod small_mat_update;
@@ -31,6 +33,8 @@ mod small_vector;
 
 pub use num_recipes_gaussj::*;
 pub use small_mat_add::*;
+pub use small_mat_approx_eq::*;
+pub use small_mat_eigen_sym_jacobi::*;
 pub use small_mat_inv::*;
 pub use small_mat_mat_mul::*;
 pub use small_mat_update::*;

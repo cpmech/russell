@@ -1,5 +1,4 @@
-use super::Matrix;
-use crate::{StrError, Vector};
+use crate::StrError;
 
 /// Defines the tolerance to accept a diagonal matrix
 const TOLERANCE: f64 = 1e-15;
@@ -42,73 +41,69 @@ const N_MAX_ITERATIONS: usize = 20;
 ///    by a significant constant factor, than the QR method.
 /// 4. This function is recommended for small matrices only, e.g., dim ≤ 32
 ///
+/// # Compile-time error
+///
+/// A compile-time error will occur if N = 0. For example, the following code fails to compile:
+///
+/// ```compile_fail
+/// use russell_lab::small_mat_eigen_sym_jacobi;
+///
+/// let mut l = [0.0; 0];
+/// let mut v = [[0.0; 0]; 0];
+/// let mut a = [[0.0; 0]; 0];
+/// let _ = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a);
+/// ```
+///
 /// # Examples
 ///
 /// ```
-/// use russell_lab::{mat_eigen_sym_jacobi, Matrix, Vector};
+/// use russell_lab::{array_approx_eq, small_mat_eigen_sym_jacobi};
 /// use russell_lab::StrError;
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // set matrix
-///     let data = [
+///     let mut a = [
 ///         [2.0, 0.0, 0.0],
 ///         [0.0, 3.0, 4.0],
 ///         [0.0, 4.0, 9.0],
 ///     ];
-///     let mut a = Matrix::from(&data);
 ///
 ///     // perform the eigen-decomposition
-///     let mut l = Vector::new(3);
-///     let mut v = Matrix::new(3, 3);
-///     mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
-///     println!("eigenvalues =\n{}", l);
-///     println!("eigenvectors =\n{:.5}", v);
+///     let mut l = [0.0; 3];
+///     let mut v = [[0.0; 3]; 3];
+///     small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a)?;
+///     println!("eigenvalues =\n{:?}", l);
+///     println!("eigenvectors =\n{:?}", v);
 ///
-///     // check results
-///     assert_eq!(
-///         format!("{}", l),
-///         "┌    ┐\n\
-///          │  2 │\n\
-///          │  1 │\n\
-///          │ 11 │\n\
-///          └    ┘"
-///     );
+///     // check the results
+///     array_approx_eq(&l, &[2.0, 1.0, 11.0], 1e-15);
 ///     Ok(())
 /// }
 /// ```
-pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> Result<usize, StrError> {
-    // check
-    let (m, n) = a.dims();
-    if m != n {
-        return Err("matrix must be square");
-    }
-    if m == 0 {
-        return Err("matrix dimension must be ≥ 1");
-    }
-    let (mm, nn) = v.dims();
-    if mm != m || nn != n {
-        return Err("v and a matrices must have the same dimensions");
-    }
-    if l.dim() != n {
-        return Err("l vector has incompatible dimension");
-    }
+pub fn small_mat_eigen_sym_jacobi<const N: usize>(
+    l: &mut [f64; N],
+    v: &mut [[f64; N]; N],
+    a: &mut [[f64; N]; N],
+) -> Result<usize, StrError> {
+    // compile-time check that the matrix dimension is at least 1
+    const { assert!(N > 0, "matrix dimension must be ≥ 1") };
 
     // auxiliary arrays
-    let mut b = vec![0.0; n];
-    let mut z = vec![0.0; n];
+    let mut b = [0.0; N];
+    let mut z = [0.0; N];
 
     // initialize b and l to the diagonal of A
-    for p in 0..n {
-        b[p] = a.get(p, p);
+    for p in 0..N {
+        b[p] = a[p][p];
         l[p] = b[p];
     }
 
     // initialize v to the identity matrix
-    for p in 0..n {
-        for q in 0..n {
-            v.set(p, q, 0.0);
+    for p in 0..N {
+        for q in 0..N {
+            v[p][q] = 0.0;
         }
-        v.set(p, p, 1.0);
+        v[p][p] = 1.0;
     }
 
     // auxiliary variables
@@ -125,9 +120,9 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
     for iteration in 0..N_MAX_ITERATIONS {
         // sum magnitude of upper off-diagonal elements
         sm = 0.0;
-        for p in 0..(n - 1) {
-            for q in (p + 1)..n {
-                sm += f64::abs(a.get(p, q));
+        for p in 0..(N - 1) {
+            for q in (p + 1)..N {
+                sm += f64::abs(a[p][q]);
             }
         }
 
@@ -137,13 +132,13 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
         }
 
         // rotations
-        for p in 0..(n - 1) {
-            for q in (p + 1)..n {
+        for p in 0..(N - 1) {
+            for q in (p + 1)..N {
                 h = l[q] - l[p];
                 if f64::abs(h) <= TOLERANCE {
                     t = 1.0;
                 } else {
-                    theta = 0.5 * h / (a.get(p, q));
+                    theta = 0.5 * h / a[p][q];
                     t = 1.0 / (f64::abs(theta) + f64::sqrt(1.0 + theta * theta));
                     if theta < 0.0 {
                         t = -t;
@@ -152,43 +147,43 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
                 c = 1.0 / f64::sqrt(1.0 + t * t);
                 s = t * c;
                 tau = s / (1.0 + c);
-                h = t * a.get(p, q);
+                h = t * a[p][q];
                 z[p] -= h;
                 z[q] += h;
                 l[p] -= h;
                 l[q] += h;
-                a.set(p, q, 0.0);
+                a[p][q] = 0.0;
                 // case of rotations 0 ≤ j < p
                 for j in 0..p {
-                    g = a.get(j, p);
-                    h = a.get(j, q);
-                    a.set(j, p, g - s * (h + g * tau));
-                    a.set(j, q, h + s * (g - h * tau));
+                    g = a[j][p];
+                    h = a[j][q];
+                    a[j][p] = g - s * (h + g * tau);
+                    a[j][q] = h + s * (g - h * tau);
                 }
                 // case of rotations p < j < q
                 for j in (p + 1)..q {
-                    g = a.get(p, j);
-                    h = a.get(j, q);
-                    a.set(p, j, g - s * (h + g * tau));
-                    a.set(j, q, h + s * (g - h * tau));
+                    g = a[p][j];
+                    h = a[j][q];
+                    a[p][j] = g - s * (h + g * tau);
+                    a[j][q] = h + s * (g - h * tau);
                 }
-                // case of rotations q < j < n
-                for j in (q + 1)..n {
-                    g = a.get(p, j);
-                    h = a.get(q, j);
-                    a.set(p, j, g - s * (h + g * tau));
-                    a.set(q, j, h + s * (g - h * tau));
+                // case of rotations q < j < N
+                for j in (q + 1)..N {
+                    g = a[p][j];
+                    h = a[q][j];
+                    a[p][j] = g - s * (h + g * tau);
+                    a[q][j] = h + s * (g - h * tau);
                 }
                 // Q matrix
-                for j in 0..n {
-                    g = v.get(j, p);
-                    h = v.get(j, q);
-                    v.set(j, p, g - s * (h + g * tau));
-                    v.set(j, q, h + s * (g - h * tau));
+                for j in 0..N {
+                    g = v[j][p];
+                    h = v[j][q];
+                    v[j][p] = g - s * (h + g * tau);
+                    v[j][q] = h + s * (g - h * tau);
                 }
             }
         }
-        for p in 0..n {
+        for p in 0..N {
             b[p] += z[p];
             l[p] = b[p];
             z[p] = 0.0;
@@ -202,72 +197,43 @@ pub fn mat_eigen_sym_jacobi(l: &mut Vector, v: &mut Matrix, a: &mut Matrix) -> R
 
 #[cfg(test)]
 mod tests {
-    use super::{Matrix, mat_eigen_sym_jacobi};
+    use super::small_mat_eigen_sym_jacobi;
     use crate::math::SQRT_2;
-    use crate::matrix::testing::check_eigen_sym;
-    use crate::{AsArray2D, Vector, mat_approx_eq, vec_approx_eq};
+    use crate::matrix::testing::small_check_eigen_sym;
+    use crate::small::small_mat_approx_eq;
+    use crate::array_approx_eq;
 
-    fn calc_eigen<'a, T>(data: &'a T) -> (usize, Vector, Matrix)
-    where
-        T: AsArray2D<'a, f64>,
-    {
-        let mut a = Matrix::from(data);
-        let (m, n) = a.dims();
-        let mut v = Matrix::new(m, n);
-        let mut l = Vector::new(n);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+    fn calc_eigen<const N: usize>(a_in: &[[f64; N]; N]) -> (usize, [f64; N], [[f64; N]; N]) {
+        let mut a = a_in.clone();
+        let mut v = [[0.0; N]; N];
+        let mut l = [0.0; N];
+        let nit = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
         (nit, l, v)
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_handles_errors() {
-        let mut a = Matrix::new(0, 1);
-        let mut v = Matrix::new(1, 1);
-        let mut l = Vector::new(0);
-        assert_eq!(
-            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
-            Some("matrix must be square")
-        );
-        let mut a = Matrix::new(0, 0);
-        assert_eq!(
-            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
-            Some("matrix dimension must be ≥ 1")
-        );
-        let mut a = Matrix::new(2, 2);
-        assert_eq!(
-            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
-            Some("v and a matrices must have the same dimensions")
-        );
-        let mut a = Matrix::new(1, 1);
-        assert_eq!(
-            mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).err(),
-            Some("l vector has incompatible dimension")
-        );
-    }
-
-    #[test]
-    fn mat_eigen_sym_jacobi_works_0() {
+    fn small_mat_eigen_sym_jacobi_works_0() {
         // 1x1 matrix
         let data = &[[2.0]];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
-        mat_approx_eq(&v, &[[1.0]], 1e-15);
-        vec_approx_eq(&l, &[2.0], 1e-15);
+        small_mat_approx_eq(&v, &[[1.0]], 1e-15);
+        array_approx_eq(&l, &[2.0], 1e-15);
 
         // 2x2 matrix
         let data = &[[2.0, 1.0], [1.0, 2.0]];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 2);
-        mat_approx_eq(
+        small_mat_approx_eq(
             &v,
             &[[1.0 / SQRT_2, 1.0 / SQRT_2], [-1.0 / SQRT_2, 1.0 / SQRT_2]],
             1e-15,
         );
-        vec_approx_eq(&l, &[1.0, 3.0], 1e-15);
+        array_approx_eq(&l, &[1.0, 3.0], 1e-15);
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_works_1() {
+    fn small_mat_eigen_sym_jacobi_works_1() {
         #[rustfmt::skip]
         let correct = &[
             [1.0, 0.0, 0.0],
@@ -284,8 +250,8 @@ mod tests {
         ];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
-        mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(&l, &[0.0, 0.0, 0.0], 1e-15);
+        small_mat_approx_eq(&v, correct, 1e-15);
+        array_approx_eq(&l, &[0.0, 0.0, 0.0], 1e-15);
 
         // 2-repeated, with one zero diagonal entry
         #[rustfmt::skip]
@@ -296,9 +262,9 @@ mod tests {
         ];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
-        mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(&l, &[2.0, 2.0, 0.0], 1e-15);
-        check_eigen_sym(data, &v, &l, 1e-15);
+        small_mat_approx_eq(&v, correct, 1e-15);
+        array_approx_eq(&l, &[2.0, 2.0, 0.0], 1e-15);
+        small_check_eigen_sym(data, &v, &l, 1e-15);
 
         // 3-repeated / diagonal
         #[rustfmt::skip]
@@ -309,13 +275,13 @@ mod tests {
         ];
         let (nit, l, v) = calc_eigen(data);
         assert_eq!(nit, 1);
-        mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(&l, &[2.0, 2.0, 2.0], 1e-15);
-        check_eigen_sym(data, &v, &l, 1e-15);
+        small_mat_approx_eq(&v, correct, 1e-15);
+        array_approx_eq(&l, &[2.0, 2.0, 2.0], 1e-15);
+        small_check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_works_2() {
+    fn small_mat_eigen_sym_jacobi_works_2() {
         #[rustfmt::skip]
         let data = &[
 		    [2.0, 0.0, 0.0],
@@ -331,13 +297,13 @@ mod tests {
             [0.0,  2.0*d, 1.0*d],
             [0.0, -1.0*d, 2.0*d],
         ];
-        mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(&l, &[2.0, 1.0, 11.0], 1e-15);
-        check_eigen_sym(data, &v, &l, 1e-15);
+        small_mat_approx_eq(&v, correct, 1e-15);
+        array_approx_eq(&l, &[2.0, 1.0, 11.0], 1e-15);
+        small_check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_works_3() {
+    fn small_mat_eigen_sym_jacobi_works_3() {
         #[rustfmt::skip]
         let data = &[
             [1.0, 2.0, 3.0],
@@ -352,8 +318,8 @@ mod tests {
             [-7.14394870018381645e-02, 6.07084171793832561e-01, -7.91419742017035133e-01],
             [-6.19179178753124115e-01, 5.95068272145819699e-01,  5.12358171676802088e-01],
         ];
-        mat_approx_eq(&v, correct, 1e-15);
-        vec_approx_eq(
+        small_mat_approx_eq(&v, correct, 1e-15);
+        array_approx_eq(
             &l,
             &[
                 -1.55809924785903786e+00,
@@ -362,11 +328,11 @@ mod tests {
             ],
             1e-15,
         );
-        check_eigen_sym(data, &v, &l, 1e-14);
+        small_check_eigen_sym(data, &v, &l, 1e-14);
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_works_4() {
+    fn small_mat_eigen_sym_jacobi_works_4() {
         #[rustfmt::skip]
         let data = &[
             [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -385,8 +351,8 @@ mod tests {
             [-4.133525029362699e-01, 3.807798553184266e-01, -3.950209555261502e-02,  7.608554466087614e-01,  3.220015278111787e-01],
             [ 4.921517823299884e-01, 5.330851261396132e-01, -1.789590676939640e-02, -2.684204380363021e-01,  6.334327718104180e-01],
         ];
-        mat_approx_eq(&v, correct, 1e-13);
-        vec_approx_eq(
+        small_mat_approx_eq(&v, correct, 1e-13);
+        array_approx_eq(
             &l,
             &[
                 -2.485704750172629e+00,
@@ -397,11 +363,11 @@ mod tests {
             ],
             1e-12,
         );
-        check_eigen_sym(data, &v, &l, 1e-14);
+        small_check_eigen_sym(data, &v, &l, 1e-14);
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_works_5() {
+    fn small_mat_eigen_sym_jacobi_works_5() {
         let samples = &[
             (
                 // 0
@@ -469,43 +435,37 @@ mod tests {
             println!("test = {}", test_id);
             let (nit, l, v) = calc_eigen(data);
             assert_eq!(nit, *nit_correct);
-            check_eigen_sym(data, &v, &l, *tol);
+            small_check_eigen_sym(data, &v, &l, *tol);
             test_id += 1;
         }
     }
 
     #[test]
-    fn mat_eigen_sym_jacobi_works_6() {
-        let size = 8;
+    fn small_mat_eigen_sym_jacobi_works_6() {
+        const N: usize = 8;
 
-        let mut a = Matrix::filled(size, size, 2.0);
-        let a_copy = a.clone();
-        let mut v = Matrix::new(size, size);
-        let mut l = Vector::new(size);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        // all entries equal to 2
+        let mut a = [[2.0; N]; N];
+        let a_copy = a;
+        let mut v = [[0.0; N]; N];
+        let mut l = [0.0; N];
+        let nit = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
         assert_eq!(nit, 4);
-        // println!("a =\n{}", a);
-        // println!("nit = {}", nit);
-        // println!("l =\n{}", l);
-        // println!("v =\n{}", v);
-        check_eigen_sym(&a_copy, &v, &l, 1e-14);
+        small_check_eigen_sym(&a_copy, &v, &l, 1e-14);
 
-        let mut a = Matrix::filled(size, size, (size + 1) as f64);
-        for i in 0..(size - 1) {
-            for j in (i + 1)..size {
-                a.set(i, j, (i + j) as f64);
-                a.set(j, i, (i + j) as f64);
+        // diagonal equal to (N+1) and off-diagonal equal to (i+j)
+        let mut a = [[(N + 1) as f64; N]; N];
+        for i in 0..(N - 1) {
+            for j in (i + 1)..N {
+                a[i][j] = (i + j) as f64;
+                a[j][i] = (i + j) as f64;
             }
         }
-        let a_copy = a.clone();
-        let mut v = Matrix::new(size, size);
-        let mut l = Vector::new(size);
-        let nit = mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
+        let a_copy = a;
+        let mut v = [[0.0; N]; N];
+        let mut l = [0.0; N];
+        let nit = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
         assert_eq!(nit, 7);
-        // println!("a =\n{}", a);
-        // println!("nit = {}", nit);
-        // println!("l =\n{}", l);
-        // println!("v =\n{}", v);
-        check_eigen_sym(&a_copy, &v, &l, 1e-12);
+        small_check_eigen_sym(&a_copy, &v, &l, 1e-12);
     }
 }

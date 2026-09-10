@@ -1,7 +1,7 @@
 use crate::{
     AsArray2D, Complex64, ComplexMatrix, ComplexVector, Matrix, Norm, Vector, approx_eq, complex_mat_add,
     complex_mat_approx_eq, complex_mat_mat_mul, complex_mat_norm, complex_mat_zip, complex_vec_zip, cpx, mat_add,
-    mat_mat_mul, mat_norm,
+    mat_mat_mul, mat_norm, small::small_mat_add, small::small_mat_mat_mul,
 };
 
 /// Checks Hermitian matrix given by the lower and upper parts
@@ -53,6 +53,56 @@ where
     mat_mat_mul(&mut v_l, 1.0, &v, &lam, 0.0).unwrap();
     mat_add(&mut err, 1.0, &a_v, -1.0, &v_l).unwrap();
     approx_eq(mat_norm(&err, Norm::Max), 0.0, tolerance);
+}
+
+/// Checks the eigen-decomposition of a symmetric matrix (small matrix version)
+///
+/// ```text
+/// a⋅v = v⋅λ
+/// err := a⋅v - v⋅λ
+/// ```
+#[allow(dead_code)]
+pub(crate) fn small_check_eigen_sym<'a, const N: usize, T>(data: &'a T, v: &[[f64; N]; N], l: &[f64; N], tolerance: f64)
+where
+    T: AsArray2D<'a, f64>,
+{
+    let mut a = [[0.0; N]; N];
+    let mut lam = [[0.0; N]; N];
+    let mut a_v = [[0.0; N]; N];
+    let mut v_l = [[0.0; N]; N];
+    let mut err = [[0.0; N]; N];
+    for i in 0..N {
+        for j in 0..N {
+            a[i][j] = data.at(i, j);
+            err[i][j] = f64::MAX;
+        }
+        lam[i][i] = l[i];
+    }
+    small_mat_mat_mul(&mut a_v, 1.0, &a, &v, 0.0, N);
+    let mut norm_a_v = f64::NEG_INFINITY;
+    for i in 0..N {
+        for j in 0..N {
+            let abs = f64::abs(a_v[i][j]);
+            if abs > norm_a_v {
+                norm_a_v = abs
+            }
+        }
+    }
+    if norm_a_v <= f64::EPSILON {
+        panic!("norm(a⋅v) cannot be zero");
+    }
+    small_mat_mat_mul(&mut v_l, 1.0, &v, &lam, 0.0, N);
+    small_mat_add(&mut err, 1.0, &a_v, -1.0, &v_l, N);
+    let mut norm_err = f64::NEG_INFINITY;
+    for i in 0..N {
+        for j in 0..N {
+            let abs = f64::abs(err[i][j]);
+            if abs > norm_err {
+                norm_err = abs
+            }
+        }
+    }
+    approx_eq(norm_err, 0.0, tolerance);
 }
 
 /// Checks the eigen-decomposition of a general matrix
@@ -216,7 +266,7 @@ pub(crate) fn complex_check_gen_eigen<'a, T>(
 
 #[cfg(test)]
 mod tests {
-    use super::{check_eigen, check_eigen_sym, complex_check_eigen};
+    use super::{check_eigen, check_eigen_sym, complex_check_eigen, small_check_eigen_sym};
     use crate::{ComplexMatrix, ComplexVector, Matrix, Vector, cpx};
 
     #[test]
@@ -244,6 +294,14 @@ mod tests {
         let v = Matrix::from(&[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
         let l = Vector::from(&[2.0, 2.0, 2.0]);
         check_eigen_sym(data, &v, &l, 1e-15);
+    }
+
+    #[test]
+    fn small_check_eigen_sym_works() {
+        let data = &[[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]];
+        let v = &[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+        let l = &[2.0, 2.0, 2.0];
+        small_check_eigen_sym(data, &v, &l, 1e-15);
     }
 
     #[test]

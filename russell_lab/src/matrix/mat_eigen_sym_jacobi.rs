@@ -24,14 +24,21 @@ const N_MAX_ITERATIONS: usize = 20;
 ///
 /// # Input
 ///
-/// * `a` -- Symmetric N×N (with N ≥ 1) matrix. **Important:** Symmetry is not checked here.
+/// * `a` -- the symmetric matrix to be decomposed. Must be square with dimension N ≥ 1. It is
+///   overwritten on output. **Important:** Symmetry is not checked here.
+/// * `l` -- vector with dimension N; overwritten with the eigenvalues.
+/// * `v` -- matrix with dimensions N×N; overwritten with the eigenvectors (one per column).
 ///
 /// # Output
 ///
 /// * `l` -- the eigenvalues (unsorted)
-/// * `v` -- matrix which columns are the eigenvectors (unsorted)
-/// * `a` -- will be modified
-/// * Returns the number of iterations
+/// * `v` -- the eigenvectors, where the i-th column corresponds to the eigenvalue `l[i]` (unsorted)
+/// * `a` -- overwritten with the diagonalized matrix (eigenvalues on the diagonal)
+/// * Returns the number of Jacobi iterations performed
+///
+/// The decomposition satisfies `A = V ⋅ L ⋅ Vᵀ`, where `L` is the diagonal matrix with the
+/// eigenvalues on its diagonal and the columns of `V` are the corresponding (unit) eigenvectors.
+/// Both the eigenvalues and the eigenvectors are returned in an arbitrary (unsorted) order.
 ///
 /// # Notes
 ///

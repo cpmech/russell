@@ -3815,6 +3815,26 @@ mod tests {
     }
 
     #[test]
+    fn deviator_determinant_advantage_works() {
+        // Engineered multi-scale case from the reference study where the standard expansion
+        // suffers catastrophic cancellation: the exact determinant is 20.0, but two of the
+        // individual terms of the expansion reach ±1e24 and cancel to zero in floating point.
+        #[rustfmt::skip]
+        let comps_std = &[
+            [0.0, 1e8,   1e8  ],
+            [1e8, 1e8,   1e-15],
+            [1e8, 1e-15, -1e8 ],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        let mut dev = Tensor2::<6>::new();
+        tt.deviator(&mut dev);
+        // the diagonal-difference form resolves the exact result
+        approx_eq(tt.deviator_determinant(), 20.0, 1e-12);
+        // whereas the standard expansion gives 20.0 - 1e24 + 1e24 = 0.0
+        assert_eq!(dev.determinant(), 0.0);
+    }
+
+    #[test]
     fn decompose_works() {
         // General -- Example 1
         #[rustfmt::skip]

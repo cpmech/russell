@@ -115,6 +115,7 @@
     "Eigen",
     "eigenproj",
     "eigenprojectors",
+    "eigenvec",
     "Eᵢⱼₖₗ",
     "elastoplastic",
     "engfracmech",

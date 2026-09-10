@@ -198,10 +198,10 @@ pub fn small_mat_eigen_sym_jacobi<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::small_mat_eigen_sym_jacobi;
+    use crate::array_approx_eq;
     use crate::math::SQRT_2;
     use crate::matrix::testing::small_check_eigen_sym;
     use crate::small::small_mat_approx_eq;
-    use crate::array_approx_eq;
 
     fn calc_eigen<const N: usize>(a_in: &[[f64; N]; N]) -> (usize, [f64; N], [[f64; N]; N]) {
         let mut a = a_in.clone();
@@ -209,6 +209,38 @@ mod tests {
         let mut l = [0.0; N];
         let nit = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
         (nit, l, v)
+    }
+
+    /// Sorts the eigenvalues in ascending order, reordering the eigenvector columns to match
+    fn sort_eigen<const N: usize>(l: &[f64; N], v: &[[f64; N]; N]) -> ([f64; N], [[f64; N]; N]) {
+        let mut idx: Vec<usize> = (0..N).collect();
+        idx.sort_by(|&i, &j| l[i].total_cmp(&l[j]));
+        let mut ls = [0.0; N];
+        let mut vs = [[0.0; N]; N];
+        for (k, &i) in idx.iter().enumerate() {
+            ls[k] = l[i];
+            for r in 0..N {
+                vs[r][k] = v[r][i];
+            }
+        }
+        (ls, vs)
+    }
+
+    /// Checks each eigenvector column against the reference (up to sign) via |v·v_ref| ≈ 1
+    fn check_eigenvec_sign<const N: usize>(v: &[[f64; N]; N], v_ref: &[[f64; N]; N], tol: f64) {
+        for k in 0..N {
+            let mut dot = 0.0;
+            for r in 0..N {
+                dot += v[r][k] * v_ref[r][k];
+            }
+            let err = (dot.abs() - 1.0).abs();
+            assert!(
+                err < tol,
+                "eigenvector {} not aligned with reference: |v·v_ref|-1 = {:e}",
+                k,
+                err
+            );
+        }
     }
 
     #[test]
@@ -467,5 +499,129 @@ mod tests {
         let nit = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
         assert_eq!(nit, 7);
         small_check_eigen_sym(&a_copy, &v, &l, 1e-12);
+    }
+
+    #[test]
+    fn small_mat_eigen_sym_jacobi_works_7() {
+        // Reference values generated with Python/NumPy:
+        //
+        //     import numpy as np
+        //
+        //     def gen(a):
+        //         a = np.array(a, dtype=float)
+        //         w, v = np.linalg.eigh(a)   # ascending eigenvalues; orthonormal eigenvectors in columns
+        //         for j in range(3):          # normalize each eigenvector so its largest component is positive
+        //             i = np.argmax(np.abs(v[:, j]))
+        //             if v[i, j] < 0:
+        //                 v[:, j] *= -1.0
+        //         print(w)
+        //         print(v)                    # v[component, eigenvector]
+        //
+        //     # singular (det = 0)
+        //     gen([[1, 2, 3], [2, 5, 7], [3, 7, 10]])
+        //     gen([[2, 3, 0], [3, 6, 0], [0, 0, 0]])
+        //     gen([[1, 2, 3], [2, 4, 6], [3, 6, 9]])
+        //     # ill-posed
+        //     gen([[1, 1e-6, 2e-6], [1e-6, 1, 3e-6], [2e-6, 3e-6, 1]])
+        //     gen([[1e6, 200, 0], [200, 1, 50], [0, 50, 1e-6]])
+        //     # well-posed
+        //     gen([[4, 1, 2], [1, 5, 3], [2, 3, 6]])
+        //     gen([[5, 2, 1], [2, 4, 0], [1, 0, 3]])
+        //
+        // The computed eigenvalues are sorted in ascending order and compared directly. The
+        // eigenvectors are unique only up to sign, so they are compared via |v·v_ref| ≈ 1. For
+        // repeated or nearly-repeated eigenvalues the eigenvectors are also free to rotate within
+        // the invariant subspace, so in those cases only the eigenvalues and the residual (a·v = v·λ)
+        // are checked.
+
+        // ----------------------------- singular matrices (det = 0) -----------------------------
+
+        // rank 2, distinct nonzero eigenvalues
+        let a = &[[1.0, 2.0, 3.0], [2.0, 5.0, 7.0], [3.0, 7.0, 10.0]];
+        let l_ref = &[0.0, 0.18975032409334291, 15.810249675906647];
+        let v_ref = &[
+            [0.5773502691896242, 0.7815027659502837, 0.23647429771272274],
+            [0.5773502691896271, -0.5955441321364421, 0.5585640995843871],
+            [-0.5773502691896262, 0.18595863381383737, 0.7950383972971101],
+        ];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, vs) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-13);
+        small_check_eigen_sym(a, &v, &l, 1e-13);
+        check_eigenvec_sign(&vs, v_ref, 1e-12);
+
+        // rank 2, block-diagonal
+        let a = &[[2.0, 3.0, 0.0], [3.0, 6.0, 0.0], [0.0, 0.0, 0.0]];
+        let l_ref = &[0.0, 0.39444872453601065, 7.60555127546399];
+        let v_ref = &[
+            [0.0, 0.8816745987679436, 0.47185792553202427],
+            [0.0, -0.47185792553202427, 0.8816745987679436],
+            [1.0, 0.0, 0.0],
+        ];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, vs) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-13);
+        small_check_eigen_sym(a, &v, &l, 1e-13);
+        check_eigenvec_sign(&vs, v_ref, 1e-12);
+
+        // rank 1 (two repeated zero eigenvalues; eigenvectors are not unique -> residual only)
+        let a = &[[1.0, 2.0, 3.0], [2.0, 4.0, 6.0], [3.0, 6.0, 9.0]];
+        let l_ref = &[0.0, 0.0, 14.0];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, _) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-13);
+        small_check_eigen_sym(a, &v, &l, 1e-13);
+
+        // ----------------------------- ill-posed matrices -----------------------------
+
+        // nearly-degenerate eigenvalues (eigenvectors are ill-determined -> residual only)
+        let a = &[[1.0, 1e-6, 2e-6], [1e-6, 1.0, 3e-6], [2e-6, 3e-6, 1.0]];
+        let l_ref = &[0.9999967980882232, 0.9999990888211926, 1.0000041130905848];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, _) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-12);
+        small_check_eigen_sym(a, &v, &l, 1e-12);
+
+        // large condition number (widely spread eigenvalues)
+        let a = &[[1e6, 200.0, 0.0], [200.0, 1.0, 50.0], [0.0, 50.0, 1e-6]];
+        let l_ref = &[-49.52230246122888, 50.48230342272884, 1000000.0400000386];
+        let v_ref = &[
+            [0.0001407339565551668, -0.00014210569648128322, 0.999999979999962],
+            [-0.7037046301236495, 0.7104926132919764, 0.0002000001885001661],
+            [0.7104926275032636, 0.703704644196348, 1.000000902501756e-8],
+        ];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, vs) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-7);
+        small_check_eigen_sym(a, &v, &l, 1e-7);
+        check_eigenvec_sign(&vs, v_ref, 1e-12);
+
+        // ----------------------------- well-posed matrices -----------------------------
+
+        let a = &[[4.0, 1.0, 2.0], [1.0, 5.0, 3.0], [2.0, 3.0, 6.0]];
+        let l_ref = &[2.1943971674224088, 3.386770156607549, 9.418832675970037];
+        let v_ref = &[
+            [-0.4412246968734644, 0.8155834192895004, 0.37435872241603624],
+            [-0.5773502691896257, -0.5773502691896258, 0.5773502691896254],
+            [0.6870134158337713, 0.03860508835262272, 0.7256185041863941],
+        ];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, vs) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-13);
+        small_check_eigen_sym(a, &v, &l, 1e-13);
+        check_eigenvec_sign(&vs, v_ref, 1e-12);
+
+        let a = &[[5.0, 2.0, 1.0], [2.0, 4.0, 0.0], [1.0, 0.0, 3.0]];
+        let l_ref = &[1.9999999999999993, 3.267949192431123, 6.732050807568877];
+        let v_ref = &[
+            [-0.5773502691896257, 0.21132486540518677, 0.7886751345948129],
+            [0.577350269189626, -0.5773502691896256, 0.5773502691896256],
+            [0.5773502691896254, 0.7886751345948131, 0.21132486540518713],
+        ];
+        let (_, l, v) = calc_eigen(a);
+        let (ls, vs) = sort_eigen(&l, &v);
+        array_approx_eq(&ls, l_ref, 1e-13);
+        small_check_eigen_sym(a, &v, &l, 1e-13);
+        check_eigenvec_sign(&vs, v_ref, 1e-12);
     }
 }

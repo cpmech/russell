@@ -106,18 +106,6 @@ pub struct Spectral2 {
     tt: [f64; 6],
 }
 
-/// Holds status about coalescent eigenvalues
-pub struct CoalescentStatus {
-    /// Holds the index of the first coalescent eigenvalue
-    pub index_repeated_first: usize,
-
-    /// Holds the index of the second coalescent eigenvalue
-    pub index_repeated_second: usize,
-
-    /// Holds the index of the distinct eigenvalue
-    pub index_distinct: usize,
-}
-
 impl Spectral2 {
     /// Returns a new instance
     ///
@@ -291,41 +279,13 @@ impl Spectral2 {
         Ok(())
     }
 
-    /// Returns the status about coalescent eigenvalues
-    ///
-    /// None means that all eigenvalues are distinct
-    pub fn coalescent_status(&self) -> Option<CoalescentStatus> {
-        // compute a scale to detect coalescent eigenvalues
-        let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
-        let tol = TOL_COALESCE * scale;
-        let d01 = self.lam[0] - self.lam[1];
-        let d12 = self.lam[1] - self.lam[2];
-        let d20 = self.lam[2] - self.lam[0];
-        if f64::abs(d01) < tol {
-            // lam0 ≈ lam1 => lam_distinct = lam2
-            Some(CoalescentStatus {
-                index_repeated_first: 0,
-                index_repeated_second: 1,
-                index_distinct: 2,
-            })
-        } else if f64::abs(d12) < tol {
-            // lam1 ≈ lam2 => lam_distinct = lam0
-            Some(CoalescentStatus {
-                index_repeated_first: 1,
-                index_repeated_second: 2,
-                index_distinct: 0,
-            })
-        } else if f64::abs(d20) < tol {
-            // lam2 ≈ lam0 => lam_distinct = lam1
-            Some(CoalescentStatus {
-                index_repeated_first: 2,
-                index_repeated_second: 0,
-                index_distinct: 1,
-            })
-        } else {
-            // all distinct
-            None
-        }
+    /// Indicates whether all eigenvalues are distinct
+    #[inline]
+    pub fn all_distinct(&self) -> bool {
+        let d01 = f64::abs(self.lam[0] - self.lam[1]);
+        let d12 = f64::abs(self.lam[1] - self.lam[2]);
+        let d20 = f64::abs(self.lam[2] - self.lam[0]);
+        !(d01 < TOL_COALESCE || d12 < TOL_COALESCE || d20 < TOL_COALESCE)
     }
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
@@ -363,7 +323,7 @@ impl Spectral2 {
         self.decompose(tt, method)?;
 
         // Check for distinct eigenvalues
-        if self.coalescent_status().is_some() {
+        if !self.all_distinct() {
             return Err("derivative of eigenprojectors is only available for distinct eigenvalues");
         }
 
@@ -737,6 +697,42 @@ mod tests {
     }
 
     #[test]
+    fn decompose_analytical_works() {
+        // generate eigen-problem
+        let l1 = 1.0;
+        let l2 = 1.0;
+        let l3 = 1.0;
+        let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
+
+        // perform spectral decomposition
+        let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+        println!("A =\n{}", aa.as_std_matrix());
+        let mut spec = Spectral2::new();
+        spec.decompose(&mut aa, EigMethod::Analytical).unwrap();
+
+        // output
+        let pp0_mat = spec.proj[0].as_std_matrix();
+        let pp1_mat = spec.proj[1].as_std_matrix();
+        let pp2_mat = spec.proj[2].as_std_matrix();
+        println!("lambda = {:?}", spec.lam);
+        println!("expected P0 =\n{}", Matrix::from(&expected_proj[0]));
+        println!("P0 = \n{:.20}", pp0_mat);
+        println!("expected P1 =\n{}", Matrix::from(&expected_proj[1]));
+        println!("P1 = \n{:.20}", pp1_mat);
+        println!("expected P2 =\n{}", Matrix::from(&expected_proj[2]));
+        println!("P2 = \n{:.20}", pp2_mat);
+
+        // check
+        array_approx_eq(&spec.lam, &expected_lambda, 1e-15);
+        check_eigenprojectors(&spec.proj, 1e-15);
+        if spec.all_distinct() {
+            mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15);
+            mat_approx_eq(&pp1_mat, &expected_proj[1], 1e-15);
+            mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15);
+        }
+    }
+
+    #[test]
     fn octahedral_basis_using_jacobi_method_works() {
         // the following data corresponds to p = 1 and q = 3
         #[rustfmt::skip]
@@ -800,41 +796,6 @@ mod tests {
         }
         let expected = Tensor2::<6>::from_std_matrix(&expected_mat).unwrap();
         array_approx_eq(expected.as_data(), &res, 1e-14);
-    }
-
-    #[test]
-    fn decompose_analytical_works() {
-        // generate eigen-problem
-        let l1 = 1.0;
-        let l2 = 1.0;
-        let l3 = 3.0;
-        let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
-
-        // setup symmetric tensor
-        let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-        println!("A =\n{}", aa.as_std_matrix());
-
-        // perform spectral decomposition
-        let mut spec = Spectral2::new();
-        spec.decompose(&mut aa, EigMethod::Analytical).unwrap();
-
-        let pp0_mat = spec.proj[0].as_std_matrix();
-        let pp1_mat = spec.proj[1].as_std_matrix();
-        let pp2_mat = spec.proj[2].as_std_matrix();
-
-        println!("L = \n{:?}", spec.lam);
-        println!("expected P0 =\n{}", Matrix::from(&expected_proj[0]));
-        println!("P0 = \n{:.20}", pp0_mat);
-        println!("expected P1 =\n{}", Matrix::from(&expected_proj[1]));
-        println!("P1 = \n{:.20}", pp1_mat);
-        println!("expected P2 =\n{}", Matrix::from(&expected_proj[2]));
-        println!("P2 = \n{:.20}", pp2_mat);
-
-        check_eigenprojectors(&spec.proj, 1e-15);
-        let coalescent = spec.coalescent_status();
-        mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15);
-        // mat_approx_eq(&pp1_mat, &expected_proj[1], 1e-15);
-        // mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15);
     }
 }
 

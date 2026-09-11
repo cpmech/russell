@@ -37,3 +37,6 @@ path = "benchmarks/polar_decomp_benchmark.rs"
 name = "spectral2_benchmark"
 harness = false
 path = "benchmarks/spectral2_benchmark.rs"
+
+[lints]
+workspace = true

@@ -3426,7 +3426,7 @@ mod tests {
         let tt = Tensor2::<9>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<9>::new();
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
-        assert_eq!(det, s.determinant);
+        assert_eq!(det, s.ii3);
         check_inverse(&tt, &tti, 1e-15);
 
         // symmetric 3D with zero determinant
@@ -3441,7 +3441,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<6>::new();
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
-        approx_eq(det, s.determinant, 1e-14);
+        approx_eq(det, s.ii3, 1e-14);
         check_inverse(&tt, &tti, 1e-13);
 
         // symmetric 2D with zero determinant
@@ -3456,7 +3456,7 @@ mod tests {
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<4>::new();
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
-        assert_eq!(det, s.determinant);
+        assert_eq!(det, s.ii3);
         check_inverse(&tt, &tti, 1e-15);
     }
 
@@ -3986,11 +3986,11 @@ mod tests {
         tol_dev_det: f64,
     ) {
         let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
-        approx_eq(tt.norm(), sample.norm, tol_norm);
-        approx_eq(tt.trace(), sample.trace, tol_trace);
-        approx_eq(tt.determinant(), sample.determinant, tol_det);
-        approx_eq(tt.deviator_norm(), sample.deviator_norm, tol_dev_norm);
-        approx_eq(tt.invariant_jj3(), sample.deviator_determinant, tol_dev_det);
+        approx_eq(tt.norm(), sample.norm_a, tol_norm);
+        approx_eq(tt.trace(), sample.ii1, tol_trace);
+        approx_eq(tt.determinant(), sample.ii3, tol_det);
+        approx_eq(tt.deviator_norm(), sample.norm_s, tol_dev_norm);
+        approx_eq(tt.invariant_jj3(), sample.jj3, tol_dev_det);
     }
 
     #[test]
@@ -4029,16 +4029,14 @@ mod tests {
 
     fn check_iis<const N: usize>(sample: &SampleTensor2, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
         let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
-        let jj2 = -sample.deviator_second_invariant;
-        let jj3 = sample.deviator_determinant;
-        approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
-        approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
-        approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
-        approx_eq(tt.invariant_jj2(), jj2, tol_c);
-        approx_eq(tt.invariant_jj3(), jj3, tol_c);
+        approx_eq(tt.invariant_ii1(), sample.ii1, tol_a);
+        approx_eq(tt.invariant_ii2(), sample.ii2, tol_b);
+        approx_eq(tt.invariant_ii3(), sample.ii3, tol_b);
+        approx_eq(tt.invariant_jj2(), sample.jj2, tol_c);
+        approx_eq(tt.invariant_jj3(), sample.jj3, tol_c);
         if N == 4 || N == 6 {
             let norm_s = tt.deviator_norm();
-            approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
+            approx_eq(sample.jj2, norm_s * norm_s / 2.0, tol_d);
         }
     }
 
@@ -4063,6 +4061,8 @@ mod tests {
         check_iis::<6>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-14, 1e-14, 1e-15);
         check_iis::<6>(&SamplesTensor2::TENSOR_U, 1e-15, 1e-14, 1e-13, 1e-13);
         check_iis::<6>(&SamplesTensor2::TENSOR_S, 1e-15, 1e-14, 1e-13, 1e-14);
+        check_iis::<6>(&SamplesTensor2::COAL_01, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<6>(&SamplesTensor2::COAL_12, 1e-15, 1e-15, 1e-15, 1e-15);
         // Symmetric 2D
         check_iis::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);

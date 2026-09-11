@@ -79,14 +79,14 @@ pub enum EigDerivStatus {
     /// Derivative of eigenprojectors completed successfully
     Success,
 
-    /// Failed due to non-invertible input tensor
-    FailNonInvertible,
-
     /// Failed due to coalescent eigenvalues
-    FailNonDistinct,
+    FailDueToCoalescent,
 
     /// Failed due to (near) zero eigenvalue
-    FailNearZero,
+    FailDueToNonZero,
+
+    /// Failed due to non-invertible input tensor
+    FailDueToNonInvertible,
 }
 
 /// Holds the spectral representation of a symmetric second-order tensor
@@ -481,14 +481,14 @@ impl Spectral2 {
         // check for distinct eigenvalues (the status is up to date because the projectors are available)
         if self.status != EigStatus::Distinct {
             // the derivative of eigenprojectors is only available for distinct eigenvalues
-            return Ok(EigDerivStatus::FailNonDistinct);
+            return Ok(EigDerivStatus::FailDueToCoalescent);
         }
 
         // check for null eigenvalues
         for i in 0..3 {
             if f64::abs(self.lam[i]) < TOL_LAMBDA {
                 // cannot compute the derivatives because an eigenvalue is nearly zero
-                return Ok(EigDerivStatus::FailNearZero);
+                return Ok(EigDerivStatus::FailDueToNonZero);
             }
         }
 
@@ -496,7 +496,7 @@ impl Spectral2 {
         let det = aa.inverse(&mut self.aa_inv, TOL_LAMBDA);
         if det.is_none() {
             // cannot compute the derivatives because the tensor is not invertible
-            return Ok(EigDerivStatus::FailNonInvertible);
+            return Ok(EigDerivStatus::FailDueToNonInvertible);
         }
         let ii3 = det.unwrap();
 
@@ -670,7 +670,8 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
-    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
+    use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
+    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
 
     #[cfg(feature = "heap")]
@@ -1338,6 +1339,9 @@ mod tests {
         let mut spec = Spectral2::new();
         let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
         println!("Status = {:?}", status);
+        if status != EigDerivStatus::Success {
+            panic!("failed to compute analytical derivative");
+        }
         // println!("dP0/dA =\n{}", spec.dpp[0].as_std_matrix());
         // println!("dP1/dA =\n{}", spec.dpp[1].as_std_matrix());
         // println!("dP2/dA =\n{}", spec.dpp[2].as_std_matrix());
@@ -1373,5 +1377,23 @@ mod tests {
     fn deriv_eigenproj_works() {
         check_ddp(&SamplesTensor2::TENSOR_U, 1e-9);
         check_ddp(&SamplesTensor2::TENSOR_S, 1e-10);
+    }
+
+    #[test]
+    fn deriv_eigenproj_captures_problems() {
+        // near zero eigenvalues
+        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
+        let mut spec = Spectral2::new();
+        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        println!("Status = {:?}", status);
+        assert_eq!(status, EigDerivStatus::FailDueToNonZero);
+
+        // coalescent eigenvalues
+        let (aa_3x3, _, _) = generate_eigen_problem(1.0, 2.0, 2.0);
+        let aa = Tensor2::from_std_matrix(&aa_3x3).unwrap();
+        let mut spec = Spectral2::new();
+        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        println!("Status = {:?}", status);
+        assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
     }
 }

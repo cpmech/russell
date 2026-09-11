@@ -151,3 +151,44 @@ python3 run_all.py
 cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark
 ```
 
+---
+
+## Eigenvalues benchmark
+
+`spectral2_benchmark` compares the speed of the four eigenvalue methods available in
+`Spectral2::calc_eigenvalues_mx` (eigenvalues only, without the eigenprojectors):
+
+| method              | description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `habera_zilian`     | stable closed-form, Habera & Zilian (2025)           |
+| `harari_albocher22` | Box-1 discriminant, Harari & Albocher (2022)         |
+| `harari_albocher23` | seven-square discriminant, Harari & Albocher (2023)  |
+| `jacobi`            | iterative Jacobi rotations                           |
+
+Two symmetric input tensors are used: `distinct` (well-separated eigenvalues) and
+`coalescent` (two nearly equal eigenvalues).
+
+### Results
+
+Median times (single machine, Intel MKL):
+
+| case         | `habera_zilian` | `harari_albocher22` | `harari_albocher23` | `jacobi`  |
+| ------------ | --------------- | ------------------- | ------------------- | --------- |
+| `distinct`   | 52.68 ns        | 43.00 ns            | 44.30 ns            | 205.14 ns |
+| `coalescent` | 54.16 ns        | 41.64 ns            | 43.27 ns            | 205.01 ns |
+
+### Observations
+
+- The three closed-form methods take ~42–54 ns, roughly **4–5× faster** than the
+  iterative `jacobi` (~206 ns).
+- Among the closed-form methods, `harari_albocher22` is the fastest (~42 ns),
+  followed by `harari_albocher23` (~44 ns) and `habera_zilian` (~53 ns).
+- The coalescent case costs about the same as the distinct case for every method:
+  the analytic formulas branch on the discriminant but never iterate.
+
+### How to run
+
+```bash
+cargo bench -p russell_tensor --features intel_mkl --bench spectral2_benchmark
+```
+

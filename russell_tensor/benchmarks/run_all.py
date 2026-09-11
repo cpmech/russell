@@ -6,6 +6,7 @@ The script runs:
 1. `tensor_benchmark` with the stack layout (`--features intel_mkl`)
 2. `tensor_benchmark` with the heap layout (`--features intel_mkl,heap`)
 3. `polar_decomp_benchmark` with the stack layout (`--features intel_mkl`)
+4. `spectral2_benchmark` with the stack layout (`--features intel_mkl`)
 
 and produces `RESULTS.md` (next to this file) with the same tables as the ones
 in `README.md`.
@@ -42,6 +43,10 @@ POLAR_CASES = [
 ]
 
 POLAR_ALGORITHMS = ["brannon", "higham", "eigen", "svd"]
+
+# Eigenvalue input cases and the four `EigMethod` variants.
+SPECTRAL2_CASES = ["distinct", "coalescent"]
+SPECTRAL2_METHODS = ["habera_zilian", "harari_albocher22", "harari_albocher23", "jacobi"]
 
 TIME_RE = re.compile(r"time:\s*\[([^\]]+)\]")
 
@@ -141,6 +146,9 @@ def main():
     polar = parse_results(
         run("cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark")
     )
+    spectral2 = parse_results(
+        run("cargo bench -p russell_tensor --features intel_mkl --bench spectral2_benchmark")
+    )
 
     lines = []
     add = lines.append
@@ -191,6 +199,17 @@ def main():
     add("| --- | --- |")
     for algorithm in POLAR_ALGORITHMS:
         add(f"| `{algorithm}` | {cell(polar, 'polar_rotation_in_plane/' + algorithm)} |")
+    add("")
+
+    add("## Eigenvalues")
+    add("")
+    add("Median times (Intel MKL):")
+    add("")
+    add("| case | " + " | ".join(f"`{m}`" for m in SPECTRAL2_METHODS) + " |")
+    add("| --- | " + " | ".join("---" for _ in SPECTRAL2_METHODS) + " |")
+    for case in SPECTRAL2_CASES:
+        cells = [cell(spectral2, f"calc_eigenvalues_mx_{case}/{m}") for m in SPECTRAL2_METHODS]
+        add(f"| `{case}` | " + " | ".join(cells) + " |")
     add("")
 
     output = "\n".join(lines).rstrip() + "\n"

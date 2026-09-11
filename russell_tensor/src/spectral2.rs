@@ -659,6 +659,38 @@ mod tests {
     use russell_lab::vec_approx_eq;
 
     //
+    // --- test essential method --------------
+    //
+
+    #[test]
+    fn t2_plus_diag_product_works() {
+        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
+        let mut res = [0.0; 6];
+        let (alpha, p, q) = (0.5, -1.5, 2.0);
+        t2_plus_diag_product(&mut res, alpha, aa.as_data(), p, q);
+        let mut aa_plus_p_times_ii = [[0.0; 3]; 3];
+        let mut aa_plus_q_times_ii = [[0.0; 3]; 3];
+        let mut expected_mat = [[0.0; 3]; 3];
+        let ii_mat = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+        let aa_mat = aa.as_std_matrix();
+        for i in 0..3 {
+            for j in 0..3 {
+                aa_plus_p_times_ii[i][j] = aa_mat[(i, j)] + p * ii_mat[i][j];
+                aa_plus_q_times_ii[i][j] = aa_mat[(i, j)] + q * ii_mat[i][j];
+            }
+        }
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    expected_mat[i][j] += alpha * aa_plus_p_times_ii[i][k] * aa_plus_q_times_ii[k][j];
+                }
+            }
+        }
+        let expected = Tensor2::<6>::from_std_matrix(&expected_mat).unwrap();
+        array_approx_eq(expected.as_data(), &res, 1e-14);
+    }
+
+    //
     // --- auxiliary --------------------------
     //
 
@@ -1075,104 +1107,120 @@ mod tests {
             diagonals.push([1.0, -0.5 + eps / 2.0, -0.5 - eps / 2.0]);
         }
         diagonals.push([1.0, 1.0, 1.0]);
-        // loop
-        for d in &diagonals {
-            for r in &rotations {
-                // A = R ⋅ diag(d) ⋅ Rᵀ
-                let mut a = [[0.0; 3]; 3];
-                for i in 0..3 {
-                    for j in 0..3 {
-                        for k in 0..3 {
-                            a[i][j] += r[i][k] * d[k] * r[j][k];
+        // run the test
+        for method in [
+            EigMethod::HaberaZilian,
+            EigMethod::HarariAlbocher22,
+            EigMethod::HarariAlbocher23,
+            EigMethod::Jacobi,
+        ] {
+            for d in &diagonals {
+                for r in &rotations {
+                    // A = R ⋅ diag(d) ⋅ Rᵀ
+                    let mut a = [[0.0; 3]; 3];
+                    for i in 0..3 {
+                        for j in 0..3 {
+                            for k in 0..3 {
+                                a[i][j] += r[i][k] * d[k] * r[j][k];
+                            }
                         }
                     }
-                }
-                // symmetrize (to remove the tiny rounding asymmetries)
-                for i in 0..3 {
-                    for j in (i + 1)..3 {
-                        let m = 0.5 * (a[i][j] + a[j][i]);
-                        a[i][j] = m;
-                        a[j][i] = m;
+                    // symmetrize (to remove the tiny rounding asymmetries)
+                    for i in 0..3 {
+                        for j in (i + 1)..3 {
+                            let m = 0.5 * (a[i][j] + a[j][i]);
+                            a[i][j] = m;
+                            a[j][i] = m;
+                        }
                     }
+                    let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
+                    let mut spec = Spectral2::new();
+                    spec.decompose_mx(&tt, method).unwrap();
+                    // check the eigenvalues
+                    let mut w = spec.lam;
+                    w.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                    let mut d_sorted = *d;
+                    d_sorted.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                    for i in 0..3 {
+                        approx_eq(w[i], d_sorted[i], 1e-12);
+                    }
+                    // check the reconstruction A = Σ λᵢ Pᵢ
+                    let mut bb = Tensor2::<6>::new();
+                    spec.compose(&mut bb, &spec.lam).unwrap();
+                    mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-10);
                 }
-                let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
-                let mut spec = Spectral2::new();
-                spec.decompose_mx(&tt, EigMethod::HaberaZilian).unwrap();
-                // check the eigenvalues
-                let mut w = spec.lam;
-                w.sort_by(|x, y| x.partial_cmp(y).unwrap());
-                let mut d_sorted = *d;
-                d_sorted.sort_by(|x, y| x.partial_cmp(y).unwrap());
-                for i in 0..3 {
-                    approx_eq(w[i], d_sorted[i], 1e-12);
-                }
-                // check the reconstruction A = Σ λᵢ Pᵢ
-                let mut bb = Tensor2::<6>::new();
-                spec.compose(&mut bb, &spec.lam).unwrap();
-                mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-12);
             }
         }
     }
 
     #[test]
     fn decompose_coalesce_works() {
-        for (l1, l2, l3) in [
-            // d01
-            (1.0, 2.0, 2.0),
-            (2.0, 1.0, 2.0),
-            (2.0, 2.0, 1.0),
-            // d12
-            (2.0, 1.0, 1.0),
-            (1.0, 2.0, 1.0),
-            (1.0, 1.0, 2.0),
-            // d01
-            (-2.0, -1.0, -1.0),
-            (-1.0, -2.0, -1.0),
-            (-1.0, -1.0, -2.0),
-            // d12
-            (-1.0, -2.0, -2.0),
-            (-2.0, -1.0, -2.0),
-            (-2.0, -2.0, -1.0),
-            // d01
-            (0.0, 1.0, 1.0),
-            (1.0, 0.0, 1.0),
-            (1.0, 1.0, 0.0),
-            // d12
-            (1.0, 0.0, 0.0),
-            (0.0, 1.0, 0.0),
-            (0.0, 0.0, 1.0),
-            // d01
-            (-1.0, 0.0, 0.0),
-            (0.0, -1.0, 0.0),
-            (0.0, 0.0, -1.0),
-            // d12
-            (0.0, -1.0, -1.0),
-            (-1.0, 0.0, -1.0),
-            (-1.0, -1.0, 0.0),
+        for method in [
+            EigMethod::HaberaZilian,
+            EigMethod::HarariAlbocher22,
+            EigMethod::HarariAlbocher23,
+            EigMethod::Jacobi,
         ] {
-            // generate matrix
-            let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
+            for (l1, l2, l3) in [
+                // d01
+                (1.0, 2.0, 2.0),
+                (2.0, 1.0, 2.0),
+                (2.0, 2.0, 1.0),
+                // d12
+                (2.0, 1.0, 1.0),
+                (1.0, 2.0, 1.0),
+                (1.0, 1.0, 2.0),
+                // d01
+                (-2.0, -1.0, -1.0),
+                (-1.0, -2.0, -1.0),
+                (-1.0, -1.0, -2.0),
+                // d12
+                (-1.0, -2.0, -2.0),
+                (-2.0, -1.0, -2.0),
+                (-2.0, -2.0, -1.0),
+                // d01
+                (0.0, 1.0, 1.0),
+                (1.0, 0.0, 1.0),
+                (1.0, 1.0, 0.0),
+                // d12
+                (1.0, 0.0, 0.0),
+                (0.0, 1.0, 0.0),
+                (0.0, 0.0, 1.0),
+                // d01
+                (-1.0, 0.0, 0.0),
+                (0.0, -1.0, 0.0),
+                (0.0, 0.0, -1.0),
+                // d12
+                (0.0, -1.0, -1.0),
+                (-1.0, 0.0, -1.0),
+                (-1.0, -1.0, 0.0),
+            ] {
+                // generate matrix
+                let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
 
-            // perform spectral decomposition
-            let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-            let mut spec = Spectral2::new();
-            spec.decompose_mx(&aa, EigMethod::HarariAlbocher22).unwrap();
-            // println!("A =\n{}", aa.as_std_matrix());
-            // println!("lambda = {:?}", spec.lam);
+                // allocate matrix A and Spectral2
+                let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+                let mut spec = Spectral2::new();
 
-            // check
-            array_approx_eq(&spec.lam, &expected_lambda, 1e-15);
-            check_eigenprojectors(&spec.proj, 1e-15);
-            assert_ne!(spec.status, EigStatus::Distinct);
-            let is_d01_case = f64::abs(spec.lam[0] - spec.lam[1]) < 1e-8;
-            if is_d01_case {
-                // println!("d01");
-                let pp2_mat = spec.proj[2].as_std_matrix();
-                mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15); // d01
-            } else {
-                // println!("d12");
-                let pp0_mat = spec.proj[0].as_std_matrix();
-                mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15); // d12
+                // perform spectral decomposition
+                spec.decompose_mx(&aa, method).unwrap();
+                // println!("A =\n{}", aa.as_std_matrix());
+                // println!("lambda = {:?}", spec.lam);
+
+                // check
+                array_approx_eq(&spec.lam, &expected_lambda, 1e-15);
+                check_eigenprojectors(&spec.proj, 1e-15);
+                assert_ne!(spec.status, EigStatus::Distinct);
+                let is_d01_case = f64::abs(spec.lam[0] - spec.lam[1]) < 1e-8;
+                if is_d01_case {
+                    // println!("d01");
+                    let pp2_mat = spec.proj[2].as_std_matrix();
+                    mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15); // d01
+                } else {
+                    // println!("d12");
+                    let pp0_mat = spec.proj[0].as_std_matrix();
+                    mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15); // d12
+                }
             }
         }
     }
@@ -1235,29 +1283,39 @@ mod tests {
     }
 
     #[test]
-    fn decompose_harari_albocher23_with_scales_and_coalescence_works() {
-        // Test the Harari-Albocher (2023) TgHSC eigenvalue solver across scales and coalescence
-        // levels. Only the eigenvalues are checked here, with a tolerance relative to the tensor
+    fn decompose_with_scales_and_coalescence_works() {
+        // Test the solvers across scales and coalescence levels.
+        // Only the eigenvalues are checked here, with a tolerance relative to the tensor
         // scale, because the eigenprojectors (computed by the Sylvester formula) are
         // ill-conditioned for coalescing eigenvalues.
         let alpha = [1.0, 100.0, 1e6];
         let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
-        for r in 0..alpha.len() {
-            for s in 0..kappa.len() {
-                for t in 0..kappa.len() {
-                    // generate eigen-problem
-                    let l1 = alpha[r];
-                    let l2 = alpha[r] + kappa[s];
-                    let l3 = alpha[r] + kappa[t];
-                    let (aa_3x3, expected_lambda, _) = generate_eigen_problem(l1, l2, l3);
+        for method in [
+            EigMethod::HaberaZilian,
+            EigMethod::HarariAlbocher22,
+            EigMethod::HarariAlbocher23,
+            EigMethod::Jacobi,
+        ] {
+            for r in 0..alpha.len() {
+                for s in 0..kappa.len() {
+                    for t in 0..kappa.len() {
+                        // generate eigen-problem
+                        let l1 = alpha[r];
+                        let l2 = alpha[r] + kappa[s];
+                        let l3 = alpha[r] + kappa[t];
+                        let (aa_3x3, expected_lambda, _) = generate_eigen_problem(l1, l2, l3);
 
-                    // perform spectral decomposition
-                    let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-                    let mut spec = Spectral2::new();
-                    spec.decompose_mx(&aa, EigMethod::HarariAlbocher23).unwrap();
+                        // perform spectral decomposition
+                        let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+                        let mut spec = Spectral2::new();
+                        spec.decompose_mx(&aa, method).unwrap();
 
-                    // check the eigenvalues (tolerance relative to the tensor scale)
-                    array_approx_eq(&spec.lam, &expected_lambda, 1e-13 * alpha[r]);
+                        // check the eigenvalues (tolerance relative to the tensor scale)
+                        array_approx_eq(&spec.lam, &expected_lambda, 1e-13 * alpha[r]);
+
+                        // check the eigenprojectors and the reconstruction
+                        check_eigen_problem(&aa, &spec, 1e-9, 1e-8);
+                    }
                 }
             }
         }
@@ -1299,33 +1357,5 @@ mod tests {
                 approx_eq(lode, *lode_correct, 1e-15);
             }
         }
-    }
-
-    #[test]
-    fn t2_plus_diag_product_works() {
-        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
-        let mut res = [0.0; 6];
-        let (alpha, p, q) = (0.5, -1.5, 2.0);
-        t2_plus_diag_product(&mut res, alpha, aa.as_data(), p, q);
-        let mut aa_plus_p_times_ii = [[0.0; 3]; 3];
-        let mut aa_plus_q_times_ii = [[0.0; 3]; 3];
-        let mut expected_mat = [[0.0; 3]; 3];
-        let ii_mat = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-        let aa_mat = aa.as_std_matrix();
-        for i in 0..3 {
-            for j in 0..3 {
-                aa_plus_p_times_ii[i][j] = aa_mat[(i, j)] + p * ii_mat[i][j];
-                aa_plus_q_times_ii[i][j] = aa_mat[(i, j)] + q * ii_mat[i][j];
-            }
-        }
-        for i in 0..3 {
-            for j in 0..3 {
-                for k in 0..3 {
-                    expected_mat[i][j] += alpha * aa_plus_p_times_ii[i][k] * aa_plus_q_times_ii[k][j];
-                }
-            }
-        }
-        let expected = Tensor2::<6>::from_std_matrix(&expected_mat).unwrap();
-        array_approx_eq(expected.as_data(), &res, 1e-14);
     }
 }

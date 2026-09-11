@@ -101,6 +101,9 @@ pub struct Spectral2 {
     /// ```
     pub aa_inv: Tensor2<6>,
 
+    /// Indicates whether the eigenprojectors were computed alongside the eigenvalues
+    done_projectors: bool,
+
     //
     // --- internal data
     //
@@ -139,14 +142,13 @@ pub struct Spectral2 {
 
 impl Spectral2 {
     /// Returns a new instance
-    ///
-    /// **Note:** Must call [Spectral2::compose] to calculate `lambda` and `projectors`.
     pub fn new() -> Self {
         Spectral2 {
             lam: [0.0; 3],
             proj: [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
             dpp: Vec::new(),
             aa_inv: Tensor2::<6>::new(),
+            done_projectors: false,
             aa_3x3: [[0.0; 3]; 3],
             vv_3x3: [[0.0; 3]; 3],
             yy: None,
@@ -157,47 +159,44 @@ impl Spectral2 {
         }
     }
 
-    /// Performs the spectral decomposition of a symmetric second-order tensor (using the default method)
+    /// Computes the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor (using the default method)
     ///
-    /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
-    #[inline]
-    pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
-        self.decompose_mx(aa, EigMethod::HaberaZilian)
+    /// The output is saved in this struct with the eigenvalues being sorted in descending order.
+    ///
+    /// Default method: [EigMethod::HaberaZilian]
+    pub fn eigenvalues(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
+        self.eigenvalues_mx(aa, EigMethod::HaberaZilian)
     }
 
-    /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
+    /// Computes the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor
     ///
-    /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
-    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigStatus, StrError> {
-        // clear previous eigenprojectors data
-        for m in 0..6 {
-            self.proj[0].vec[m] = 0.0;
-            self.proj[1].vec[m] = 0.0;
-            self.proj[2].vec[m] = 0.0;
-        }
+    /// The output is saved in this struct with the eigenvalues being sorted in descending order.
+    pub fn eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigStatus, StrError> {
+        // indicate that projectors are not available
+        self.done_projectors = false;
 
         // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
         let ii1 = aa.invariant_ii1();
         let iso = ii1 / 3.0;
-        let scale = aa.norm();
         let jj2 = aa.invariant_jj2();
-        if jj2 <= 1e3 * f64::EPSILON * f64::EPSILON * scale * scale {
+        if Self::is_spherical(aa) {
             self.lam[0] = iso;
             self.lam[1] = iso;
             self.lam[2] = iso;
-            self.proj[0].vec[0] = 1.0;
-            self.proj[1].vec[1] = 1.0;
-            self.proj[2].vec[2] = 1.0;
             return Ok(EigStatus::Spherical);
         }
 
-        // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
+        // Jacobi iterative method: calculate the eigenvalues (ignores eigenvectors)
         if method == EigMethod::Jacobi {
-            return self.decompose_jacobi(aa);
+            // eigenvalues and eigenvectors (ignored)
+            aa.to_std_matrix_slice(&mut self.aa_3x3);
+            small_mat_eigen_sym_jacobi(&mut self.lam, &mut self.vv_3x3, &mut self.aa_3x3)?;
+            self.sort_eigenvalues();
+            return Ok(self.classify());
         }
 
         // Analytical methods: calculate the eigenvalues for non-spherical cases
-        let (mut l0, mut l1, mut l2) = match method {
+        match method {
             //
             // Habera M. and Zilian A. (2025)
             //
@@ -235,11 +234,9 @@ impl Spectral2 {
                 let angle0 = (phi + two_pi * 1.0) / 3.0;
                 let angle1 = (phi + two_pi * 2.0) / 3.0;
                 let angle2 = (phi + two_pi * 3.0) / 3.0;
-                (
-                    amplitude.mul_add(f64::cos(angle0), ii1) / 3.0,
-                    amplitude.mul_add(f64::cos(angle1), ii1) / 3.0,
-                    amplitude.mul_add(f64::cos(angle2), ii1) / 3.0,
-                )
+                self.lam[0] = amplitude.mul_add(f64::cos(angle0), ii1) / 3.0;
+                self.lam[1] = amplitude.mul_add(f64::cos(angle1), ii1) / 3.0;
+                self.lam[2] = amplitude.mul_add(f64::cos(angle2), ii1) / 3.0;
             }
             //
             // Harari I. and Albocher U. (2022)
@@ -268,14 +265,18 @@ impl Spectral2 {
                 let sj = f64::signum(1.0 - d_box);
                 if sj * (1.0 - d_box) < TOL_ZERO_DEV_LAMBDA {
                     // deviatoric matrix has a zero eigenvalue
-                    (iso + sqrt_jj2, iso, iso - sqrt_jj2)
+                    self.lam[0] = iso + sqrt_jj2;
+                    self.lam[1] = iso;
+                    self.lam[2] = iso - sqrt_jj2;
                 } else {
                     // deviatoric matrix doesn't have zero eigenvalue
                     let dsj = if sj < 0.0 { 1.0 / d_box } else { d_box };
                     let alpha = 2.0 * f64::atan(dsj) / 3.0;
                     let cd = sj * fac2 * f64::cos(alpha);
                     let sd = sqrt_jj2 * f64::sin(alpha);
-                    (iso + 2.0 * cd, iso - cd + sd, iso - cd - sd)
+                    self.lam[0] = iso + 2.0 * cd;
+                    self.lam[1] = iso - cd + sd;
+                    self.lam[2] = iso - cd - sd;
                 }
             }
             //
@@ -311,135 +312,100 @@ impl Spectral2 {
                 let lambda1 = 2.0 * sd * f64::sqrt(jj2 / 3.0) * f64::cos(alpha);
                 let lambda2 = sd * sqrt_jj2 * f64::sin(alpha) - lambda1 / 2.0;
                 let lambda3 = -sd * sqrt_jj2 * f64::sin(alpha) - lambda1 / 2.0;
-                (iso + lambda1, iso + lambda2, iso + lambda3)
+                self.lam[0] = iso + lambda1;
+                self.lam[1] = iso + lambda2;
+                self.lam[2] = iso + lambda3;
             }
             EigMethod::Jacobi => unreachable!("handled above"),
         };
 
         // sort the eigenvalues in descending order
-        sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
-        self.lam[0] = l0;
-        self.lam[1] = l1;
-        self.lam[2] = l2;
+        self.sort_eigenvalues();
 
-        // compute the eigenprojectors
-        self.compute_projectors(aa)
-    }
-
-    /// (internal) Performs the spectral decomposition using the Jacobi method
-    fn decompose_jacobi(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
-        // eigenvalues and eigenvectors
-        aa.to_std_matrix_slice(&mut self.aa_3x3);
-        let mut lambda = [0.0; 3];
-        small_mat_eigen_sym_jacobi(&mut lambda, &mut self.vv_3x3, &mut self.aa_3x3)?;
-        // get indices to sort eigenvalues in descending order
-        let mut indices = [0, 1, 2];
-        indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
-        // store sorted eigenvalues and eigenprojectors
-        for i in 0..3 {
-            let j = indices[i];
-            self.lam[i] = lambda[j];
-            self.set_projector_from_vector(i, j);
-        }
+        // done
         Ok(self.classify())
     }
 
-    /// (internal) Sets proj[i] = v ⊗ v where v is the j-th column of vv_3x3
-    #[inline]
-    fn set_projector_from_vector(&mut self, i: usize, j: usize) {
-        let pp = &mut self.proj[i].vec;
-        let qq = &self.vv_3x3;
-        pp[0] = qq[0][j] * qq[0][j];
-        pp[1] = qq[1][j] * qq[1][j];
-        pp[2] = qq[2][j] * qq[2][j];
-        pp[3] = (qq[0][j] * qq[1][j] + qq[1][j] * qq[0][j]) / SQRT_2;
-        pp[4] = (qq[1][j] * qq[2][j] + qq[2][j] * qq[1][j]) / SQRT_2;
-        pp[5] = (qq[0][j] * qq[2][j] + qq[2][j] * qq[0][j]) / SQRT_2;
-    }
-
-    /// (internal) Returns the scaled tolerance used to detect coalescent (or nearly coalescent)
-    /// eigenvalues
+    /// Performs the spectral decomposition of a symmetric second-order tensor (using the default method)
     ///
-    /// The tolerance is `TOL_COALESCE * max(|λ|, 1)`.
+    /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
+    ///
+    /// Default method: [EigMethod::HaberaZilian]
     #[inline]
-    fn tol_coalesce(&self) -> f64 {
-        let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
-        TOL_COALESCE * scale
+    pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
+        self.decompose_mx(aa, EigMethod::HaberaZilian)
     }
 
-    /// (internal) Classifies the eigenvalues (which must be sorted in descending order)
-    fn classify(&self) -> EigStatus {
-        let tol = self.tol_coalesce();
-        let d01 = f64::abs(self.lam[0] - self.lam[1]);
-        let d12 = f64::abs(self.lam[1] - self.lam[2]);
-        if d01 < tol && d12 < tol {
-            EigStatus::Spherical
-        } else if d01 < tol {
-            EigStatus::Coalesce01
-        } else if d12 < tol {
-            EigStatus::Coalesce12
-        } else {
-            EigStatus::Distinct
+    /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
+    ///
+    /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
+    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigStatus, StrError> {
+        // handle a (numerically) spherical tensor: the eigenvalues are all equal (at the
+        // rounding level) and the eigenprojectors are not unique, so use the identity split
+        if Self::is_spherical(aa) {
+            let iso = aa.invariant_ii1() / 3.0;
+            self.lam[0] = iso;
+            self.lam[1] = iso;
+            self.lam[2] = iso;
+            for m in 0..6 {
+                self.proj[0].vec[m] = 0.0;
+                self.proj[1].vec[m] = 0.0;
+                self.proj[2].vec[m] = 0.0;
+            }
+            self.proj[0].vec[0] = 1.0;
+            self.proj[1].vec[1] = 1.0;
+            self.proj[2].vec[2] = 1.0;
+            self.done_projectors = true;
+            return Ok(EigStatus::Spherical);
         }
-    }
 
-    /// (internal) Compute the eigenvalues and eigenprojectors for the given tensor
-    ///
-    /// * Well-separated eigenvalues: the Sylvester formula is used to compute the eigenprojectors
-    /// * Nearly coalescent eigenvalues: the Sylvester formula is ill-conditioned, so the Jacobi
-    ///   method is used to compute both the eigenvalues and the eigenprojectors so that they are
-    ///   consistent.
-    fn compute_projectors(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
+        // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
+        if method == EigMethod::Jacobi {
+            let status = self.decompose_jacobi(aa)?;
+            self.done_projectors = true;
+            return Ok(status);
+        }
+
+        // compute the eigenvalues
+        self.eigenvalues_mx(aa, method)?;
+
+        // compute the eigenprojectors
         if self.all_distinct() {
             // well-separated eigenvalues: use the Sylvester formula
-            self.compute_projectors_sylvester(aa)
+            // P[r] = f * (A - λ[s] I) . (A - λ[t] I)
+            for i in 0..3 {
+                let r = INDICES[i];
+                let s = INDICES[i + 1];
+                let t = INDICES[i + 2];
+                let p = -self.lam[s];
+                let q = -self.lam[t];
+                let f = 1.0 / ((self.lam[r] - self.lam[s]) * (self.lam[r] - self.lam[t]));
+                t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
+            }
         } else {
             // nearly coalescent eigenvalues: fall back to Jacobi
-            self.decompose_jacobi(aa)
+            self.decompose_jacobi(aa)?;
         }
-    }
 
-    /// (internal) Compute the eigenprojectors using the Sylvester formula
-    ///
-    /// The eigenvalues must be sorted in descending order and well-separated.
-    fn compute_projectors_sylvester(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
-        // P[r] = f * (A - λ[s] I) . (A - λ[t] I)
-        for i in 0..3 {
-            let r = INDICES[i];
-            let s = INDICES[i + 1];
-            let t = INDICES[i + 2];
-            let p = -self.lam[s];
-            let q = -self.lam[t];
-            let f = 1.0 / ((self.lam[r] - self.lam[s]) * (self.lam[r] - self.lam[t]));
-            t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
-        }
-        Ok(EigStatus::Distinct)
-    }
-
-    /// Indicates whether all eigenvalues are distinct
-    ///
-    /// The tolerance used to decide whether two eigenvalues are equal is scaled:
-    /// `TOL_COALESCE * max(|λ|, 1)`.
-    #[inline]
-    pub fn all_distinct(&self) -> bool {
-        let tol = self.tol_coalesce();
-        let d01 = f64::abs(self.lam[0] - self.lam[1]);
-        let d12 = f64::abs(self.lam[1] - self.lam[2]);
-        !(d01 < tol || d12 < tol)
+        // done
+        self.done_projectors = true;
+        Ok(self.classify())
     }
 
     /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
     ///
-    /// ```text
-    /// ```
-    #[rustfmt::skip]
-    pub fn compose(&self, bb: &mut Tensor2<6>, d: &[f64; 3]) {
+    /// Returns an error if the eigenprojectors have not been computed (see [Spectral2::decompose]).
+    pub fn compose(&self, bb: &mut Tensor2<6>, d: &[f64; 3]) -> Result<(), StrError> {
+        if !self.done_projectors {
+            return Err("eigenprojectors have not been computed");
+        }
         bb.vec[0] = d[0] * self.proj[0].vec[0] + d[1] * self.proj[1].vec[0] + d[2] * self.proj[2].vec[0];
         bb.vec[1] = d[0] * self.proj[0].vec[1] + d[1] * self.proj[1].vec[1] + d[2] * self.proj[2].vec[1];
         bb.vec[2] = d[0] * self.proj[0].vec[2] + d[1] * self.proj[1].vec[2] + d[2] * self.proj[2].vec[2];
         bb.vec[3] = d[0] * self.proj[0].vec[3] + d[1] * self.proj[1].vec[3] + d[2] * self.proj[2].vec[3];
         bb.vec[4] = d[0] * self.proj[0].vec[4] + d[1] * self.proj[1].vec[4] + d[2] * self.proj[2].vec[4];
         bb.vec[5] = d[0] * self.proj[0].vec[5] + d[1] * self.proj[1].vec[5] + d[2] * self.proj[2].vec[5];
+        Ok(())
     }
 
     /// Calculates the octahedral basis on the principal values space
@@ -455,12 +421,16 @@ impl Spectral2 {
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor
     ///
-    /// Note: this function will call [Spectral2::decompose()] to compute the eigenvalues and eigenprojectors.
+    /// **Note:** This function requires that the spectral decomposition has been performed
+    /// beforehand (see [Spectral2::decompose()]). It returns an error if the eigenvalues and
+    /// eigenprojectors have not been computed.
     ///
     /// The results are available in [Spectral2], including the inverse of T.
-    pub fn deriv_eigenproj(&mut self, tt: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
-        // Perform the spectral decomposition
-        self.decompose_mx(tt, method)?;
+    pub fn deriv_eigenproj(&mut self, tt: &Tensor2<6>) -> Result<(), StrError> {
+        // Check that the eigenprojectors are available
+        if !self.done_projectors {
+            return Err("eigenprojectors have not been computed");
+        }
 
         // Check for distinct eigenvalues
         if !self.all_distinct() {
@@ -535,6 +505,103 @@ impl Spectral2 {
             }
         }
         Ok(())
+    }
+
+    //
+    // --- internal functions ---
+    //
+
+    /// (internal) Indicates whether the tensor is spherical at the rounding level
+    ///
+    /// The `J2` invariant is compared against `1000 * eps² * scale²`.
+    #[inline]
+    fn is_spherical(aa: &Tensor2<6>) -> bool {
+        let scale = aa.norm();
+        aa.invariant_jj2() <= 1e3 * f64::EPSILON * f64::EPSILON * scale * scale
+    }
+
+    /// (internal) Returns the scaled tolerance used to detect coalescent (or nearly coalescent)
+    /// eigenvalues
+    ///
+    /// The tolerance is `TOL_COALESCE * max(|λ|, 1)`.
+    #[inline]
+    fn tol_coalesce(&self) -> f64 {
+        let scale = self.lam[0].abs().max(self.lam[1].abs()).max(self.lam[2].abs()).max(1.0);
+        TOL_COALESCE * scale
+    }
+
+    /// (internal) Classifies the eigenvalues (which must be sorted in descending order)
+    #[inline]
+    fn classify(&self) -> EigStatus {
+        let tol = self.tol_coalesce();
+        let d01 = f64::abs(self.lam[0] - self.lam[1]);
+        let d12 = f64::abs(self.lam[1] - self.lam[2]);
+        if d01 < tol && d12 < tol {
+            EigStatus::Spherical
+        } else if d01 < tol {
+            EigStatus::Coalesce01
+        } else if d12 < tol {
+            EigStatus::Coalesce12
+        } else {
+            EigStatus::Distinct
+        }
+    }
+
+    /// Indicates whether all eigenvalues are distinct
+    ///
+    /// The tolerance used to decide whether two eigenvalues are equal is scaled:
+    /// `TOL_COALESCE * max(|λ|, 1)`.
+    #[inline]
+    pub fn all_distinct(&self) -> bool {
+        let tol = self.tol_coalesce();
+        let d01 = f64::abs(self.lam[0] - self.lam[1]);
+        let d12 = f64::abs(self.lam[1] - self.lam[2]);
+        !(d01 < tol || d12 < tol)
+    }
+
+    /// Sorts the eigenvalues in descending order
+    #[inline]
+    fn sort_eigenvalues(&mut self) {
+        let mut l0 = self.lam[0];
+        let mut l1 = self.lam[1];
+        let mut l2 = self.lam[2];
+        sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
+        self.lam[0] = l0;
+        self.lam[1] = l1;
+        self.lam[2] = l2;
+    }
+
+    /// (internal) Performs the spectral decomposition using the Jacobi method
+    fn decompose_jacobi(&mut self, aa: &Tensor2<6>) -> Result<EigStatus, StrError> {
+        // eigenvalues and eigenvectors
+        aa.to_std_matrix_slice(&mut self.aa_3x3);
+        let mut lambda = [0.0; 3];
+        small_mat_eigen_sym_jacobi(&mut lambda, &mut self.vv_3x3, &mut self.aa_3x3)?;
+
+        // get indices to sort eigenvalues in descending order
+        let mut indices = [0, 1, 2];
+        indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
+
+        // store sorted eigenvalues and eigenprojectors
+        for i in 0..3 {
+            let j = indices[i];
+            self.lam[i] = lambda[j];
+            self.set_projector_from_vector(i, j);
+        }
+        Ok(self.classify())
+    }
+
+    /// (internal) Sets proj[i] = v ⊗ v where v is the j-th column of vv_3x3
+    #[inline]
+    fn set_projector_from_vector(&mut self, i: usize, j: usize) {
+        let pp = &mut self.proj[i].vec;
+        let qq = &self.vv_3x3;
+        pp[0] = qq[0][j] * qq[0][j];
+        pp[1] = qq[1][j] * qq[1][j];
+        pp[2] = qq[2][j] * qq[2][j];
+        pp[3] = (qq[0][j] * qq[1][j] + qq[1][j] * qq[0][j]) / SQRT_2;
+        pp[4] = (qq[1][j] * qq[2][j] + qq[2][j] * qq[1][j]) / SQRT_2;
+        pp[5] = (qq[0][j] * qq[2][j] + qq[2][j] * qq[0][j]) / SQRT_2;
     }
 }
 
@@ -821,7 +888,7 @@ mod tests {
         // check compose
         let mut bb = Tensor2::<6>::new();
         let d = &[spec.lam[0], spec.lam[1], spec.lam[2]];
-        spec.compose(&mut bb, &d);
+        spec.compose(&mut bb, &d).unwrap();
         #[cfg(feature = "heap")]
         vec_approx_eq(&aa.vec, &bb.vec, tol_compose);
         #[cfg(not(feature = "heap"))]
@@ -923,6 +990,34 @@ mod tests {
     }
 
     #[test]
+    fn eigenvalues_do_not_compute_eigenprojectors() {
+        #[rustfmt::skip]
+        let aa = Tensor2::<6>::from_std_matrix(&[
+            [1.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ]).unwrap();
+        let mut spec = Spectral2::new();
+        let mut bb = Tensor2::<6>::new();
+
+        // eigenvalues only: the eigenprojectors are not available
+        let status = spec.eigenvalues(&aa).unwrap();
+        assert_eq!(status, EigStatus::Distinct);
+        let d = [spec.lam[0], spec.lam[1], spec.lam[2]];
+        assert!(spec.compose(&mut bb, &d).is_err());
+        assert!(spec.deriv_eigenproj(&aa).is_err());
+
+        // full decomposition: compose and deriv_eigenproj are now available
+        spec.decompose(&aa).unwrap();
+        assert!(spec.deriv_eigenproj(&aa).is_ok());
+        spec.compose(&mut bb, &d).unwrap();
+        #[cfg(feature = "heap")]
+        vec_approx_eq(&aa.vec, &bb.vec, 1e-14);
+        #[cfg(not(feature = "heap"))]
+        array_approx_eq(&aa.vec, &bb.vec, 1e-14);
+    }
+
+    #[test]
     fn decompose_reconstruction_works() {
         // Checks the eigen-decomposition reconstruction `A = Σ λᵢ Pᵢ` for random-like,
         // two-nearly-equal, and triple-equal eigenvalues.
@@ -987,7 +1082,7 @@ mod tests {
                 }
                 // check the reconstruction A = Σ λᵢ Pᵢ
                 let mut bb = Tensor2::<6>::new();
-                spec.compose(&mut bb, &spec.lam);
+                spec.compose(&mut bb, &spec.lam).unwrap();
                 mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-12);
             }
         }

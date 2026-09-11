@@ -9,14 +9,14 @@
 //!   while `J2` and `J3` stay finite)
 //!
 //! The matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal
-//! transformation `U_symm` used in the papers. The prescribed eigenvalues
+//! transformation `U_sym` used in the papers. The prescribed eigenvalues
 //! `d` are used as the reference.
 
 use russell_tensor::{EigMethod, Spectral2, StrError, Tensor2};
 use std::f64::consts::PI;
 
 fn main() -> Result<(), StrError> {
-    let u = u_symm();
+    let u = u_sym();
     let deltas = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10, 1e-12, 1e-14];
 
     for (label, is_d1) in [
@@ -26,7 +26,7 @@ fn main() -> Result<(), StrError> {
         println!("\n{}", label);
         println!(
             "{:>8}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}",
-            "δ", "HZ", "HA22", "HA23", "Jacobi", "naive"
+            "δ", "AnaHZ", "AnaHA22", "AnaHA23", "Jacobi", "Naive"
         );
         for &delta in &deltas {
             let d = if is_d1 {
@@ -48,10 +48,10 @@ fn main() -> Result<(), StrError> {
             ];
             for (i, method) in methods.iter().enumerate() {
                 let mut spec = Spectral2::new();
-                spec.decompose_mx(&tt, *method)?;
+                spec.calc_eigenvalues_mx(&tt, *method)?;
                 errs[i] = max_error(&spec.lam, &exact);
             }
-            errs[4] = max_error(&naive_eigvals(&a), &exact);
+            errs[4] = max_error(&naive_eig_vals(&a), &exact);
 
             println!(
                 "{:>8.0e}  {:>10.2e}  {:>10.2e}  {:>10.2e}  {:>10.2e}  {:>10.2e}",
@@ -63,7 +63,7 @@ fn main() -> Result<(), StrError> {
 }
 
 /// Orthogonal transformation matrix from the papers
-fn u_symm() -> [[f64; 3]; 3] {
+fn u_sym() -> [[f64; 3]; 3] {
     let r2 = f64::sqrt(2.0);
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
@@ -107,7 +107,7 @@ fn max_error(w: &[f64; 3], exact: &[f64; 3]) -> f64 {
 /// This is the unstable baseline analogous to `impl_naive.py` from the `eig3x3`
 /// library: the deviatoric invariants and the discriminant are computed with the
 /// naive monomial expressions, which suffer from catastrophic cancellation.
-fn naive_eigvals(a: &[[f64; 3]; 3]) -> [f64; 3] {
+fn naive_eig_vals(a: &[[f64; 3]; 3]) -> [f64; 3] {
     let i1 = a[0][0] + a[1][1] + a[2][2];
     let m = i1 / 3.0;
     let s = [

@@ -112,7 +112,7 @@ pub struct Spectral2 {
     pub aa_inv: Tensor2<6>,
 
     /// Indicates whether the eigenprojectors have been computed alongside the eigenvalues
-    pub done_projectors: bool,
+    done_projectors: bool,
 
     //
     // --- internal data
@@ -174,21 +174,21 @@ impl Spectral2 {
         }
     }
 
-    /// Computes the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor (using the default method)
+    /// Calculates the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor (using the default method)
     ///
     /// The output is saved in this struct with the eigenvalues being sorted in descending order.
     /// The status is saved in `status`.
     ///
     /// Default method: [EigMethod::HaberaZilian]
-    pub fn eigenvalues(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.eigenvalues_mx(aa, EigMethod::HaberaZilian)
+    pub fn calc_eigenvalues(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
+        self.calc_eigenvalues_mx(aa, EigMethod::HaberaZilian)
     }
 
-    /// Computes the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor
+    /// Calculates the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor
     ///
     /// The output is saved in this struct with the eigenvalues being sorted in descending order.
     /// The status is saved in `status`.
-    pub fn eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
+    pub fn calc_eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
         self.done_projectors = false;
@@ -375,7 +375,7 @@ impl Spectral2 {
         }
 
         // compute the eigenvalues (this sets `status`)
-        self.eigenvalues_mx(aa, method)?;
+        self.calc_eigenvalues_mx(aa, method)?;
 
         // handle a (numerically) spherical tensor: the eigenvalues are all equal (at the
         // rounding level) and the eigenprojectors are not unique, so use the identity split
@@ -1025,7 +1025,7 @@ mod tests {
         assert!(spec.octahedral_basis().is_err());
 
         // eigenvalues only: the eigenprojectors are not available
-        spec.eigenvalues(&aa).unwrap();
+        spec.calc_eigenvalues(&aa).unwrap();
         assert_eq!(spec.status, EigStatus::Distinct);
         assert!(!spec.done_projectors);
         let d = [spec.lam[0], spec.lam[1], spec.lam[2]];

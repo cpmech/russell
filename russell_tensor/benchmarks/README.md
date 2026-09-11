@@ -104,7 +104,7 @@ python3 run_all.py
 | --------- | -------------------------------------------------------------- |
 | `brannon` | `polar_rotation_brannon` — iterative fixed-point (3×3)         |
 | `higham`  | `polar_quaternion_higham` — quaternion-based, direct (3×3)     |
-| `eigen`   | `PolarAlgo::Eigen` — classic: eigenvalues of `C = Fᵀ F` (3×3)  |
+| `eigen`   | `PolarAlgo::Eigen` — eigen-decomposition of `C = Fᵀ F` via `Spectral2` (3×3) |
 | `svd`     | `PolarAlgo::SVD` — classic: singular value decomposition (3×3) |
 
 > **Note:** all algorithms are benchmarked through the unified `polar_decomp`
@@ -115,32 +115,32 @@ python3 run_all.py
 
 | case                   | κ       | `brannon` | `higham`  | `eigen`   | `svd`     |
 | ---------------------- | ------- | --------- | --------- | --------- | --------- |
-| `well_conditioned`     | ≈ 4     | 208.47 ns | 117.88 ns | 746.44 ns | 753.34 ns |
-| `moderate_conditioned` | ≈ 6·10² | 733.29 ns | 156.50 ns | 669.60 ns | 628.87 ns |
-| `ill_conditioned`      | ≈ 6·10⁷ | 1.91 µs   | 195.06 ns | —         | 572.46 ns |
+| `well_conditioned`     | ≈ 4     | 208.50 ns | 115.86 ns | 94.25 ns  | 716.10 ns |
+| `moderate_conditioned` | ≈ 6·10² | 729.33 ns | 157.19 ns | 144.48 ns | 611.59 ns |
+| `ill_conditioned`      | ≈ 6·10⁷ | 1.92 µs   | 195.06 ns | —         | 557.94 ns |
 
 ### In-plane: all algorithms
 
 | algorithm | time      |
 | --------- | --------- |
-| `brannon` | 263.35 ns |
-| `higham`  | 122.34 ns |
-| `eigen`   | 420.95 ns |
-| `svd`     | 307.65 ns |
+| `brannon` | 263.52 ns |
+| `higham`  | 120.87 ns |
+| `eigen`   | 93.70 ns  |
+| `svd`     | 295.43 ns |
 
 ### Observations
 
-- **Higham is the fastest in every case**, and its cost is nearly constant
-  (~118–195 ns). The iterative `brannon` is competitive only for well-conditioned
-  `F` and degrades sharply as κ grows (208 ns → 1.91 µs).
-- **The classic `eigen`/`svd` algorithms are the slowest** (~308–753 ns) because
-  they call general LAPACK routines (`dsyev`/`dgesvd`) instead of a
-  3×3-specialized method. `svd` is faster than `eigen` for moderately-conditioned
-  and in-plane `F`, but the two are roughly tied for the well-conditioned case.
+- **`eigen` is the fastest in every case** (~94–144 ns), after switching from the
+  LAPACK `dsyev` path to the 3×3-specialized stack operations (`small_mat_*`) and
+  `Spectral2` for the eigen-decomposition of `C = Fᵀ F`.
+- **`higham` is a close second** (~116–195 ns), with a nearly constant cost. The
+  iterative `brannon` is competitive only for well-conditioned `F` and degrades
+  sharply as κ grows (208 ns → 1.92 µs).
+- **`svd` is the slowest** (~295–716 ns) because it calls the general LAPACK
+  `dgesvd` routine instead of a 3×3-specialized method.
 - **`eigen` squares the condition number** (via `C = Fᵀ F`), so it fails for very
   ill-conditioned `F` (`det(F) < 1e-15`); it is not benchmarked for the
-  ill-conditioned case. This makes the SVD-based classic algorithm the more
-  robust of the two, and the only classic choice for ill-conditioned `F`.
+  ill-conditioned case, where `svd` is the robust classic choice.
 - Accuracy-wise, `higham`, `eigen`, and `svd` all match the published reference
   values for well-conditioned `F`; for ill-conditioned `F`, `higham` and `svd`
   stay accurate while the iterative `brannon` degrades.
@@ -174,8 +174,8 @@ Median times (single machine, Intel MKL):
 
 | case         | `habera_zilian` | `harari_albocher22` | `harari_albocher23` | `jacobi`  |
 | ------------ | --------------- | ------------------- | ------------------- | --------- |
-| `distinct`   | 52.68 ns        | 43.00 ns            | 44.30 ns            | 205.14 ns |
-| `coalescent` | 54.16 ns        | 41.64 ns            | 43.27 ns            | 205.01 ns |
+| `distinct`   | 52.63 ns        | 42.84 ns            | 44.23 ns            | 205.83 ns |
+| `coalescent` | 53.96 ns        | 41.50 ns            | 42.92 ns            | 205.42 ns |
 
 ### Observations
 

@@ -457,7 +457,7 @@ impl Spectral2 {
     ///
     /// 1. The eigenvalues are distinct
     /// 2. All eigenvalues are non-zero
-    /// 3. The tensor is invertible
+    /// 3. The tensor is invertible (determinant above a scale-relative tolerance)
     ///
     /// Otherwise, returns [EigDerivStatus::FailDueToCoalescent],
     /// [EigDerivStatus::FailDueToZeroEigenvalue], or [EigDerivStatus::FailDueToNonInvertible].
@@ -497,8 +497,13 @@ impl Spectral2 {
             }
         }
 
+        // use a determinant tolerance relative to the magnitude of the tensor so that a
+        // uniform scaling of A does not change whether it is deemed invertible
+        let norm = aa.norm();
+        let det_tol = TOL_LAMBDA * norm * norm * norm;
+
         // calculate A⁻¹, the inverse of A, and I3 = det(A)
-        let det = aa.inverse(&mut self.aa_inv, TOL_LAMBDA);
+        let det = aa.inverse(&mut self.aa_inv, det_tol);
         if det.is_none() {
             // cannot compute the derivatives because the tensor is not invertible
             return Ok(EigDerivStatus::FailDueToNonInvertible);
@@ -1434,5 +1439,21 @@ mod tests {
         let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
         assert_eq!(spec.status, EigStatus::Coalesce12);
         assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
+    }
+
+    #[test]
+    fn deriv_eigenproj_scale_invariant() {
+        // a uniformly scaled tensor with distinct, non-zero eigenvalues is still
+        // invertible (the determinant tolerance must be relative to the magnitude)
+        let scale = 1e-4;
+        let aa = Tensor2::<6>::from_std_matrix(&[
+            [4.0 * scale, 0.0, 0.0],
+            [0.0, 2.0 * scale, 0.0],
+            [0.0, 0.0, 1.0 * scale],
+        ])
+        .unwrap();
+        let mut spec = Spectral2::new();
+        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        assert_eq!(status, EigDerivStatus::Success);
     }
 }

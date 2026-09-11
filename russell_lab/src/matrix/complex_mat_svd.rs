@@ -96,6 +96,9 @@ pub fn complex_mat_svd(
     a: &mut ComplexMatrix,
 ) -> Result<(), StrError> {
     let (m, n) = a.dims();
+    if m == 0 || n == 0 {
+        return Err("matrix dimensions must be greater than zero");
+    }
     let min_mn = usize::min(m, n);
     let max_mn = usize::max(m, n);
     if s.dim() != min_mn {
@@ -186,6 +189,27 @@ mod tests {
         assert_eq!(
             complex_mat_svd(&mut s, &mut u, &mut vt_2x3, &mut a),
             Err("[vh] must be an n-by-n square matrix")
+        );
+    }
+
+    #[test]
+    fn complex_mat_svd_fails_on_zero_dims() {
+        let mut a = ComplexMatrix::new(0, 3);
+        let mut s = Vector::new(0);
+        let mut u = ComplexMatrix::new(0, 0);
+        let mut vh = ComplexMatrix::new(3, 3);
+        assert_eq!(
+            complex_mat_svd(&mut s, &mut u, &mut vh, &mut a),
+            Err("matrix dimensions must be greater than zero")
+        );
+
+        let mut a = ComplexMatrix::new(3, 0);
+        let mut s = Vector::new(0);
+        let mut u = ComplexMatrix::new(3, 3);
+        let mut vh = ComplexMatrix::new(0, 0);
+        assert_eq!(
+            complex_mat_svd(&mut s, &mut u, &mut vh, &mut a),
+            Err("matrix dimensions must be greater than zero")
         );
     }
 

@@ -149,6 +149,9 @@ unsafe extern "C" {
 /// ```
 pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) -> Result<(), StrError> {
     let (m, n) = a.dims();
+    if m == 0 || n == 0 {
+        return Err("matrix dimensions must be greater than zero");
+    }
     let min_mn = if m < n { m } else { n };
     if s.dim() != min_mn {
         return Err("[s] must be a min(m,n) vector");
@@ -256,6 +259,36 @@ mod tests {
         assert_eq!(
             mat_svd(&mut s, &mut u, &mut vt_2x3, &mut a),
             Err("[vt] must be an n-by-n square matrix")
+        );
+    }
+
+    #[test]
+    fn mat_svd_fails_on_zero_dims() {
+        let mut a = Matrix::new(0, 0);
+        let mut s = Vector::new(0);
+        let mut u = Matrix::new(0, 0);
+        let mut vt = Matrix::new(0, 0);
+        assert_eq!(
+            mat_svd(&mut s, &mut u, &mut vt, &mut a),
+            Err("matrix dimensions must be greater than zero")
+        );
+
+        let mut a = Matrix::new(0, 3);
+        let mut s = Vector::new(0);
+        let mut u = Matrix::new(0, 0);
+        let mut vt = Matrix::new(3, 3);
+        assert_eq!(
+            mat_svd(&mut s, &mut u, &mut vt, &mut a),
+            Err("matrix dimensions must be greater than zero")
+        );
+
+        let mut a = Matrix::new(3, 0);
+        let mut s = Vector::new(0);
+        let mut u = Matrix::new(3, 3);
+        let mut vt = Matrix::new(0, 0);
+        assert_eq!(
+            mat_svd(&mut s, &mut u, &mut vt, &mut a),
+            Err("matrix dimensions must be greater than zero")
         );
     }
 

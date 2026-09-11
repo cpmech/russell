@@ -51,7 +51,7 @@ unsafe extern "C" {
 ///
 /// # Errors
 ///
-/// Returns an error if `s.len() != min(M,N)` or if LAPACK fails.
+/// Returns an error if `M` or `N` is zero, if `s.len() != min(M,N)`, or if LAPACK fails.
 ///
 /// # Examples
 ///
@@ -89,12 +89,12 @@ pub fn small_mat_svd<const M: usize, const N: usize>(
     vt: &mut [[f64; N]; N],
     a: &[[f64; N]; M],
 ) -> Result<(), StrError> {
+    if M == 0 || N == 0 {
+        return Err("matrix dimensions must be greater than zero");
+    }
     let min_mn = if M < N { M } else { N };
     if s.len() != min_mn {
         return Err("[s] must be a min(m,n) vector");
-    }
-    if min_mn == 0 {
-        return Ok(());
     }
     let m_i32: i32 = to_i32(M);
     let n_i32: i32 = to_i32(N);
@@ -294,11 +294,35 @@ mod tests {
     }
 
     #[test]
-    fn small_mat_svd_works_0() {
+    fn small_mat_svd_fails_on_zero_dim() {
+        // 0x0
         let a: [[f64; 0]; 0] = [];
         let mut s: [f64; 0] = [];
         let mut u: [[f64; 0]; 0] = [];
         let mut vt: [[f64; 0]; 0] = [];
-        small_mat_svd(&mut s, &mut u, &mut vt, &a).unwrap();
+        assert_eq!(
+            small_mat_svd(&mut s, &mut u, &mut vt, &a),
+            Err("matrix dimensions must be greater than zero")
+        );
+
+        // 0x3
+        let a: [[f64; 3]; 0] = [];
+        let mut s: [f64; 0] = [];
+        let mut u: [[f64; 0]; 0] = [];
+        let mut vt = [[0.0; 3]; 3];
+        assert_eq!(
+            small_mat_svd(&mut s, &mut u, &mut vt, &a),
+            Err("matrix dimensions must be greater than zero")
+        );
+
+        // 3x0
+        let a: [[f64; 0]; 3] = [[], [], []];
+        let mut s: [f64; 0] = [];
+        let mut u = [[0.0; 3]; 3];
+        let mut vt: [[f64; 0]; 0] = [];
+        assert_eq!(
+            small_mat_svd(&mut s, &mut u, &mut vt, &a),
+            Err("matrix dimensions must be greater than zero")
+        );
     }
 }

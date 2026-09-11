@@ -8,8 +8,7 @@ The script runs:
 3. `polar_decomp_benchmark` with the stack layout (`--features intel_mkl`)
 4. `spectral2_benchmark` with the stack layout (`--features intel_mkl`)
 
-and produces `RESULTS.md` (next to this file) with the same tables as the ones
-in `README.md`.
+and produces `RESULTS.md` (next to this file) with the tables of results.
 
 Usage (from anywhere):
 
@@ -39,8 +38,8 @@ TENSOR_FUNCTIONS = [
 POLAR_CASES = [
     ("mild", "≈ 1.1"),
     ("well_conditioned", "≈ 4"),
-    ("moderate_conditioned", "≈ 6·10²"),
-    ("ill_conditioned", "≈ 6·10⁷"),
+    ("moderate_conditioned", "≈ 10³"),
+    ("ill_conditioned", "≈ 10⁸"),
 ]
 
 POLAR_ALGORITHMS = ["iterative", "quaternion", "eigen", "svd"]

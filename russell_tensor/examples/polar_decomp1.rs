@@ -1,10 +1,11 @@
 //! Example: polar decomposition of the deformation gradient
 //!
 //! This example computes the polar decomposition `F = R U` of the
-//! deformation gradient `F`, where `R` is a proper orthogonal tensor (a
-//! rotation) and `U` is a symmetric positive-definite tensor (the right
-//! stretch). The unified `polar_decomp` dispatcher is used, selecting the
-//! quaternion-based algorithm of Higham & Noferini (2016).
+//! deformation gradient `F`, where `R` is an orthogonal tensor (a rotation when
+//! `det(F) > 0`, or a reflection when `det(F) < 0`) and `U` is a symmetric
+//! positive-definite tensor (the right stretch). The unified `polar_decomp_mx`
+//! dispatcher is used, selecting the quaternion-based algorithm of
+//! Higham & Noferini (2016).
 //!
 //! Reference: N. J. Higham and V. Noferini, "An algorithm to compute the polar
 //! decomposition of a 3*3 matrix", Num. Algorithms, 73(2):349–369, 2016.

@@ -23,10 +23,10 @@ const N_MAX_ITERATIONS: usize = 20;
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric matrix to be decomposed. It is overwritten on output.
-///   **Important:** Symmetry is not checked here.
 /// * `l` -- array of length N; overwritten with the eigenvalues.
 /// * `v` -- matrix of dimensions N×N; overwritten with the eigenvectors (one per column).
+/// * `a` -- the symmetric matrix to be decomposed. It is overwritten on output.
+///   **Important:** Symmetry is not checked here.
 ///
 /// # Output
 ///

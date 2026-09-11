@@ -13,7 +13,7 @@ use crate::AsArray2D;
 /// ## Accepts small error
 ///
 /// ```
-/// use russell_lab::{small_mat_approx_eq, Matrix};
+/// use russell_lab::small_mat_approx_eq;
 ///
 /// fn main() {
 ///     let a = [
@@ -31,7 +31,7 @@ use crate::AsArray2D;
 /// ## Panics on different values
 ///
 /// ```should_panic
-/// use russell_lab::{small_mat_approx_eq, Matrix};
+/// use russell_lab::small_mat_approx_eq;
 ///
 /// fn main() {
 ///     let a = [

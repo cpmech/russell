@@ -136,13 +136,33 @@ mod tests {
     fn small_mat_t_mat_mul_sub_block_works() {
         // only the top-left 2x2 block of the 4x4 matrices is operated on
         const NOISE: f64 = 1234.567;
-        let a = [[NOISE; 4]; 4];
-        let b = [[NOISE; 4]; 4];
+        #[rustfmt::skip]
+        let a = [
+            [ 1.0,  3.0, NOISE, NOISE],
+            [ 2.0,  4.0, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE],
+        ];
+        #[rustfmt::skip]
+        let b = [
+            [-1.0, -2.0, NOISE, NOISE],
+            [-4.0, -5.0, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE],
+            [NOISE, NOISE, NOISE, NOISE],
+        ];
         let mut c = [[NOISE; 4]; 4];
-        small_mat_t_mat_mul(&mut c, 0.0, &a, &b, 1.0, 0); // n = 0 (no-op)
+        small_mat_t_mat_mul(&mut c, 1.0, &a, &b, 0.0, 2); // n = 2
+        // the top-left 2x2 block is aᵀ⋅b
+        assert_eq!(c[0][0], -9.0);
+        assert_eq!(c[0][1], -12.0);
+        assert_eq!(c[1][0], -19.0);
+        assert_eq!(c[1][1], -26.0);
+        // the rest is untouched
         for i in 0..4 {
             for j in 0..4 {
-                assert_eq!(c[i][j], NOISE);
+                if i >= 2 || j >= 2 {
+                    assert_eq!(c[i][j], NOISE);
+                }
             }
         }
     }

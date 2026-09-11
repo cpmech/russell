@@ -83,7 +83,7 @@ pub enum EigDerivStatus {
     FailDueToCoalescent,
 
     /// Failed due to (near) zero eigenvalue
-    FailDueToNonZero,
+    FailDueToZeroEigenvalue,
 
     /// Failed due to non-invertible input tensor
     FailDueToNonInvertible,
@@ -139,7 +139,7 @@ pub struct Spectral2 {
     /// Matrix whose columns are the eigenvectors (for Jacobi method)
     vv_3x3: [[f64; 3]; 3],
 
-    /// Auxiliary tensor: ssd(inverse(T))
+    /// Auxiliary tensor: ssd(A⁻¹)
     ///
     /// ```text
     ///             _
@@ -366,7 +366,7 @@ impl Spectral2 {
     /// Performs the spectral decomposition of a symmetric second-order tensor (using the default method)
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
-    /// The status is saved in `status` and `done_projectors` is set to `true`.
+    /// The status is saved in `status`.
     ///
     /// Default method: [EigMethod::AnalyticalHZ]
     #[inline]
@@ -377,7 +377,7 @@ impl Spectral2 {
     /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
-    /// The status is saved in `status` and `done_projectors` is set to `true`.
+    /// The status is saved in `status`.
     pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
@@ -430,7 +430,7 @@ impl Spectral2 {
     /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor
     ///
     /// Note: This function is only available for *invertible* tensor A with *distinct*
-    /// and *non-zero* eigenvalues. Otherwise, it returns *false*.
+    /// and *non-zero* eigenvalues.
     ///
     /// ```text
     /// dP[i]                         3
@@ -442,8 +442,8 @@ impl Spectral2 {
     ///
     /// The spectral decomposition is performed internally using the given [EigMethod].
     ///
-    /// If the eigenvalues are distinct and non-zero, this function returns *true* and
-    /// the results will be available in [Spectral2], including the inverse of T and the
+    /// If the eigenvalues are distinct and non-zero, the results will be available in
+    /// [Spectral2], including the inverse `A⁻¹` (in [Spectral2::aa_inv]) and the
     /// derivatives of the eigenprojectors in [Spectral2::dpp].
     ///
     /// # Input
@@ -453,13 +453,18 @@ impl Spectral2 {
     ///
     /// # Output
     ///
-    /// Returns `true` if:
+    /// Returns [EigDerivStatus::Success] if:
     ///
     /// 1. The eigenvalues are distinct
     /// 2. All eigenvalues are non-zero
     /// 3. The tensor is invertible
     ///
-    /// Otherwise, returns `false`.
+    /// Otherwise, returns [EigDerivStatus::FailDueToCoalescent],
+    /// [EigDerivStatus::FailDueToZeroEigenvalue], or [EigDerivStatus::FailDueToNonInvertible].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a coefficient `d[i]` is (nearly) zero.
     ///
     /// # Notes
     ///
@@ -488,11 +493,11 @@ impl Spectral2 {
         for i in 0..3 {
             if f64::abs(self.lam[i]) < TOL_LAMBDA {
                 // cannot compute the derivatives because an eigenvalue is nearly zero
-                return Ok(EigDerivStatus::FailDueToNonZero);
+                return Ok(EigDerivStatus::FailDueToZeroEigenvalue);
             }
         }
 
-        // calculate T⁻¹, the inverse of T, and I3 = det(T)
+        // calculate A⁻¹, the inverse of A, and I3 = det(A)
         let det = aa.inverse(&mut self.aa_inv, TOL_LAMBDA);
         if det.is_none() {
             // cannot compute the derivatives because the tensor is not invertible
@@ -500,7 +505,7 @@ impl Spectral2 {
         }
         let ii3 = det.unwrap();
 
-        // calculate the auxiliary tensor Y = ssd(T⁻¹) / 2
+        // calculate the auxiliary tensor Y = ssd(A⁻¹) / 2
         if self.yy.is_none() {
             self.yy = Some(Tensor4::<6>::new());
         }
@@ -642,7 +647,7 @@ impl Spectral2 {
     }
 }
 
-/// Calculates ||a - alpha * b||^2
+/// Calculates ||a + alpha * b||^2
 #[rustfmt::skip]
 #[inline]
 fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
@@ -1414,7 +1419,7 @@ mod tests {
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         let mut spec = Spectral2::new();
         let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
-        assert_eq!(status, EigDerivStatus::FailDueToNonZero);
+        assert_eq!(status, EigDerivStatus::FailDueToZeroEigenvalue);
 
         // coalescent 01 eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_01.matrix).unwrap();

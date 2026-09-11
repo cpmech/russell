@@ -30,8 +30,8 @@ Median times (Intel MKL):
 | --- | --- | --- | --- | --- | --- |
 | `mild` | ≈ 1.1 | 63.33 ns | 112.83 ns | 83.61 ns | 181.84 ns |
 | `well_conditioned` | ≈ 4 | 98.15 ns | 112.95 ns | 89.40 ns | 586.53 ns |
-| `moderate_conditioned` | ≈ 6·10² | 349.66 ns | 150.57 ns | 136.96 ns | 496.86 ns |
-| `ill_conditioned` | ≈ 6·10⁷ | 843.77 ns | 186.43 ns | — | 437.23 ns |
+| `moderate_conditioned` | ≈ 10³ | 349.66 ns | 150.57 ns | 136.96 ns | 496.86 ns |
+| `ill_conditioned` | ≈ 10⁸ | 843.77 ns | 186.43 ns | — | 437.23 ns |
 
 ### In-plane: all algorithms
 

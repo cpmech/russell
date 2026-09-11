@@ -14,7 +14,7 @@ use russell_lab::StrError;
 ///    3×3 matrix. Numerical Algorithms, 73:349-369. <https://doi.org/10.1007/s11075-016-0098-7>
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PolarAlgo {
-    /// Classic: Using eigenvalues/eigenvectors
+    /// Classic: Using eigenvalues/eigenprojectors
     ///
     /// Uses [crate::Spectral2] analytical method.
     Eigen,
@@ -50,7 +50,8 @@ pub enum PolarAlgo {
 /// # Returns
 ///
 /// Returns the number of iterations taken for the rotation tensor to converge.
-/// This is always zero for the non-iterative algorithm ([PolarAlgo::Quaternion]).
+/// This is always zero for the non-iterative algorithms ([PolarAlgo::Eigen],
+/// [PolarAlgo::SVD], and [PolarAlgo::Quaternion]).
 ///
 /// Default method: [PolarAlgo::Quaternion]
 #[inline]
@@ -79,7 +80,8 @@ pub fn polar_decomp(
 /// # Returns
 ///
 /// Returns the number of iterations taken for the rotation tensor to converge.
-/// This is always zero for the non-iterative algorithm ([PolarAlgo::Quaternion]).
+/// This is always zero for the non-iterative algorithms ([PolarAlgo::Eigen],
+/// [PolarAlgo::SVD], and [PolarAlgo::Quaternion]).
 pub fn polar_decomp_mx(
     rr: &mut Tensor2<9>,
     uu: &mut Tensor2<6>,

@@ -1,5 +1,5 @@
 //! Benchmarks comparing the speed of the polar-decomposition algorithms,
-//! all invoked through the unified `polar_decomp` dispatcher:
+//! all invoked through the unified `polar_decomp_mx` dispatcher:
 //!
 //! * `PolarAlgo::Iterative` — Brannon's iterative fixed-point (3×3)
 //! * `PolarAlgo::Quaternion` — Higham & Noferini quaternion-based, direct (3×3)
@@ -17,8 +17,8 @@
 //! * Every algorithm is benchmarked through `polar_decomp_mx`, which computes
 //!   the rotation `R` and the right stretch `U` together.
 //! * `PolarAlgo::Eigen` squares the condition number (via `C = Fᵀ F`), so it
-//!   fails for very ill-conditioned `F` (when `det(F) < 1e-15`); it is not
-//!   benchmarked for the ill-conditioned case.
+//!   fails for very ill-conditioned `F` (`cond(F) ≳ 1e8`); it is not benchmarked
+//!   for the ill-conditioned case.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use russell_tensor::{PolarAlgo, Tensor2, polar_decomp_mx};
@@ -37,7 +37,7 @@ const IN_PLANE: [[f64; 3]; 3] = [
     [0.0, 0.0, 3.0],                                  // 3
 ];
 
-/// Higham & Noferini test (5.2) for a given scale factor y; κ ≈ 1/(√3 y).
+/// Higham & Noferini test (5.2) for a given scale factor y; κ ≈ 1/y.
 fn case52(y: f64) -> [[f64; 3]; 3] {
     [
         [
@@ -72,7 +72,7 @@ fn mild() -> [[f64; 3]; 3] {
 /// Benchmarks all algorithms for a given input matrix
 ///
 /// The `with_eigen` flag controls whether the Eigen algorithm is benchmarked;
-/// it fails for very ill-conditioned matrices (`det(F) < 1e-15`).
+/// it fails for very ill-conditioned matrices (`cond(F) ≳ 1e8`).
 fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eigen: bool) {
     let mut group = crit.benchmark_group(format!("polar_rotation_general_{}", name));
 

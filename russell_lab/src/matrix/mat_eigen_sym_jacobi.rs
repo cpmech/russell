@@ -24,10 +24,10 @@ const N_MAX_ITERATIONS: usize = 20;
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric matrix to be decomposed. Must be square with dimension N ≥ 1. It is
-///   overwritten on output. **Important:** Symmetry is not checked here.
 /// * `l` -- vector with dimension N; overwritten with the eigenvalues.
 /// * `v` -- matrix with dimensions N×N; overwritten with the eigenvectors (one per column).
+/// * `a` -- the symmetric matrix to be decomposed. Must be square with dimension N ≥ 1. It is
+///   overwritten on output. **Important:** Symmetry is not checked here.
 ///
 /// # Output
 ///

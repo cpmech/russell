@@ -114,7 +114,7 @@ pub fn check_polar(a: &Tensor2<9>, q: &Tensor2<9>, h: &Tensor2<6>, tol: f64) {
 
 /// Runs both algorithms on `a` and checks that each satisfies `A = Q · H`
 /// (with `Q` orthogonal) and that the two agree (the polar decomposition is
-/// unique when `det(A) > 0`).
+/// unique for any non-singular `A`).
 pub fn check_agree(a: &Tensor2<9>) {
     // Brannon (iterative)
     let mut rb = Tensor2::<9>::new();

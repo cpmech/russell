@@ -73,6 +73,22 @@ pub enum EigStatus {
     Spherical,
 }
 
+/// Specifies the status of the computation of derivative of eigenprojectors
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EigDerivStatus {
+    /// Derivative of eigenprojectors completed successfully
+    Success,
+
+    /// Failed due to non-invertible input tensor
+    FailNonInvertible,
+
+    /// Failed due to coalescent eigenvalues
+    FailNonDistinct,
+
+    /// Failed due to (near) zero eigenvalue
+    FailNearZero,
+}
+
 /// Holds the spectral representation of a symmetric second-order tensor
 ///
 /// **Warning:** The user must take care of the consistency of the data in this struct.
@@ -413,30 +429,74 @@ impl Spectral2 {
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor
     ///
+    /// Note: This function is only available for *invertible* tensor A with *distinct*
+    /// and *non-zero* eigenvalues. Otherwise, it returns *false*.
+    ///
+    /// ```text
+    /// dP[i]                         3
+    /// ───── = a[i] Psym - b[i] Y +  Σ (c[i][j] - a[i]) P[j] ⊗ P[j]
+    ///  dA                          j=1
+    ///
+    /// where Y = ½ ssd(A⁻¹) and the coefficients are listed below.
+    /// ```
+    ///
     /// The spectral decomposition is performed internally using the given [EigMethod].
     ///
-    /// The results are available in [Spectral2], including the inverse of T and the derivatives of
-    /// the eigenprojectors in [Spectral2::dpp].
-    pub fn deriv_eigenproj(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
+    /// If the eigenvalues are distinct and non-zero, this function returns *true* and
+    /// the results will be available in [Spectral2], including the inverse of T and the
+    /// derivatives of the eigenprojectors in [Spectral2::dpp].
+    ///
+    /// # Input
+    ///
+    /// `aa` -- The symmetric tensor A
+    /// `method` -- The method to calculate the eigenvalues
+    ///
+    /// # Output
+    ///
+    /// Returns `true` if:
+    ///
+    /// 1. The eigenvalues are distinct
+    /// 2. All eigenvalues are non-zero
+    /// 3. The tensor is invertible
+    ///
+    /// Otherwise, returns `false`.
+    ///
+    /// # Notes
+    ///
+    /// The coefficients are:
+    ///
+    /// ```text
+    ///        λ[i]          I3a                  I3a
+    /// a[i] = ────,  b[i] = ────,  c[i][j] = ────────────
+    ///        d[i]          d[i]             d[i] (λ[j])²
+    ///
+    ///                               I3a
+    /// d[i] = 2 (λ[i])² - I1a λ[i] + ────
+    ///                               λ[i]
+    /// ```
+    pub fn deriv_eigenproj(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigDerivStatus, StrError> {
         // compute the eigenvalues and eigenprojectors
         self.decompose_mx(aa, method)?;
 
         // check for distinct eigenvalues (the status is up to date because the projectors are available)
         if self.status != EigStatus::Distinct {
-            return Err("the derivative of eigenprojectors is only available for distinct eigenvalues");
+            // the derivative of eigenprojectors is only available for distinct eigenvalues
+            return Ok(EigDerivStatus::FailNonDistinct);
         }
 
         // check for null eigenvalues
         for i in 0..3 {
             if f64::abs(self.lam[i]) < TOL_LAMBDA {
-                return Err("cannot compute the derivatives because an eigenvalue is nearly zero");
+                // cannot compute the derivatives because an eigenvalue is nearly zero
+                return Ok(EigDerivStatus::FailNearZero);
             }
         }
 
         // calculate T⁻¹, the inverse of T, and I3 = det(T)
         let det = aa.inverse(&mut self.aa_inv, TOL_LAMBDA);
         if det.is_none() {
-            return Err("cannot compute the derivatives because the tensor is not invertible");
+            // cannot compute the derivatives because the tensor is not invertible
+            return Ok(EigDerivStatus::FailNonInvertible);
         }
         let ii3 = det.unwrap();
 
@@ -490,7 +550,7 @@ impl Spectral2 {
                 }
             }
         }
-        Ok(())
+        Ok(EigDerivStatus::Success)
     }
 
     //
@@ -610,8 +670,8 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
-    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
-    use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul};
+    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
+    use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
 
     #[cfg(feature = "heap")]
     use russell_lab::vec_approx_eq;
@@ -1253,10 +1313,65 @@ mod tests {
         }
     }
 
+    /// Holds arguments for numerical differentiation corresponding to [dP[i]/dA]ₘₙ
+    struct ArgsNumDerivProj {
+        spec: Spectral2, // spectral decomposition struct
+        i: usize,        // projector index
+        a: Tensor2<6>,   // temporary  tensor
+        m: usize,        // index of ∂P[i]ₘ/∂aₙ (matrix representation)
+        n: usize,        // index of ∂P[i]ₘ/∂aₙ (matrix representation)
+    }
+
+    /// Returns a component (m) of the i-th eigenprojector for a variation of a component (n) of tensor A
+    fn component_of_projector_kelvin(x: f64, args: &mut ArgsNumDerivProj) -> Result<f64, StrError> {
+        let original = args.a.get(args.n);
+        args.a.set(args.n, x);
+        args.spec.decompose(&args.a).unwrap();
+        args.a.set(args.n, original);
+        Ok(args.spec.proj[args.i].get(args.m))
+    }
+
+    /// Check the derivative of eigenprojectors using numerical differentiation
+    fn check_ddp(sample: &SampleTensor2, tol: f64) {
+        // analytical derivative
+        let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+        let mut spec = Spectral2::new();
+        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        println!("Status = {:?}", status);
+        // println!("dP0/dA =\n{}", spec.dpp[0].as_std_matrix());
+        // println!("dP1/dA =\n{}", spec.dpp[1].as_std_matrix());
+        // println!("dP2/dA =\n{}", spec.dpp[2].as_std_matrix());
+
+        // allocate arguments for numerical differentiation
+        let mut args = ArgsNumDerivProj {
+            spec: Spectral2::new(),
+            i: 0,
+            a: aa.clone(),
+            m: 0,
+            n: 0,
+        };
+
+        // check using numerical derivatives
+        for i in 0..3 {
+            let mut num_deriv = Tensor4::<6>::new();
+            args.i = i;
+            for m in 0..6 {
+                args.m = m;
+                for n in 0..6 {
+                    args.n = n;
+                    let x = args.a.get(args.n);
+                    let res = deriv1_central5(x, &mut args, component_of_projector_kelvin).unwrap();
+                    num_deriv.set(m, n, res);
+                }
+            }
+            // println!("num_deriv = \n{}", num_deriv.as_std_matrix());
+            mat_approx_eq(&spec.dpp[i].as_std_matrix(), &num_deriv.as_std_matrix(), tol);
+        }
+    }
+
     #[test]
     fn deriv_eigenproj_works() {
-        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
-        let mut spec = Spectral2::new();
-        spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        check_ddp(&SamplesTensor2::TENSOR_U, 1e-9);
+        check_ddp(&SamplesTensor2::TENSOR_S, 1e-10);
     }
 }

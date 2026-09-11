@@ -1,4 +1,4 @@
-use crate::{SQRT_2_BY_3, SQRT_3};
+use crate::{ONE_BY_3, SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_6};
 
 /// Collects values related to a sample Tensor2
 pub struct SampleTensor2 {
@@ -262,6 +262,100 @@ impl SamplesTensor2 {
         eigenvalues: None,
         eigenprojectors: None,
     };
+
+    // Symmetric tensor with coalescent eigenvalues λ0 ≈ λ1 > λ2
+    pub const COAL_01: SampleTensor2 = SampleTensor2 {
+        desc: "Symmetric tensor with coalescent eigenvalues λ0 ≈ λ1 > λ2",
+        matrix: [
+            [11.0 / 6.0, 1.0 / (3.0 * SQRT_2), 1.0 / (2.0 * SQRT_3)],
+            [1.0 / (3.0 * SQRT_2), 5.0 / 3.0, -(1.0 / SQRT_6)],
+            [1.0 / (2.0 * SQRT_3), -(1.0 / SQRT_6), 3.0 / 2.0],
+        ],
+        deviator: [
+            [1.0 / 6.0, 1.0 / (3.0 * SQRT_2), 1.0 / (2.0 * SQRT_3)],
+            [1.0 / (3.0 * SQRT_2), 0.0, -(1.0 / SQRT_6)],
+            [1.0 / (2.0 * SQRT_3), -(1.0 / SQRT_6), -1.0 / 6.0],
+        ],
+        norm: 3.0,
+        trace: 5.0,
+        second_invariant: 8.0,
+        determinant: 4.0,
+        deviator_norm: SQRT_2_BY_3,
+        deviator_second_invariant: ONE_BY_3,
+        deviator_determinant: -2.0 / 27.0,
+        eigenvalues: Some([2.0, 2.0, 1.0]),
+        eigenprojectors: Some([
+            [
+                [3.0 / 4.0, 0.0, SQRT_3 / 4.0],
+                [0.0, 0.0, 0.0],
+                [SQRT_3 / 4.0, 0.0, 1.0 / 4.0],
+            ],
+            [
+                [1.0 / 12.0, 1.0 / (3.0 * SQRT_2), -1.0 / 4.0 * 1.0 / SQRT_3],
+                [1.0 / (3.0 * SQRT_2), 2.0 / 3.0, -(1.0 / SQRT_6)],
+                [-1.0 / 4.0 * 1.0 / SQRT_3, -(1.0 / SQRT_6), 1.0 / 4.0],
+            ],
+            [
+                [1.0 / 6.0, -1.0 / 3.0 * 1.0 / SQRT_2, -1.0 / 2.0 * 1.0 / SQRT_3],
+                [-1.0 / 3.0 * 1.0 / SQRT_2, 1.0 / 3.0, 1.0 / SQRT_6],
+                [-1.0 / 2.0 * 1.0 / SQRT_3, 1.0 / SQRT_6, 1.0 / 2.0],
+            ],
+        ]),
+    };
+
+    // Symmetric tensor with coalescent eigenvalues λ0 > λ1 ≈ λ2
+    pub const COAL_12: SampleTensor2 = SampleTensor2 {
+        desc: "Symmetric tensor with coalescent eigenvalues λ0 > λ1 ≈ λ2",
+        matrix: [
+            [5.0 / 3.0, SQRT_2 / 3.0, 0.0],
+            [SQRT_2 / 3.0, 4.0 / 3.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        deviator: [
+            [1.0 / 3.0, SQRT_2 / 3.0, 0.0],
+            [SQRT_2 / 3.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0 / 3.0],
+        ],
+        norm: SQRT_6,
+        trace: 4.0,
+        second_invariant: 5.0,
+        determinant: 2.0,
+        deviator_norm: SQRT_2_BY_3,
+        deviator_second_invariant: ONE_BY_3,
+        deviator_determinant: 2.0 / 27.0,
+        eigenvalues: Some([2.0, 1.0, 1.0]),
+        eigenprojectors: Some([
+            [
+                [2.0 / 3.0, SQRT_2 / 3.0, 0.0],
+                [SQRT_2 / 3.0, 1.0 / 3.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            [
+                [1.0 / 3.0, -1.0 / 3.0 * SQRT_2, 0.0],
+                [-1.0 / 3.0 * SQRT_2, 2.0 / 3.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+        ]),
+    };
+
+    /*
+    // Template: do not delete
+    pub const NAME: SampleTensor2 = SampleTensor2 {
+        desc:
+        matrix:
+        deviator:
+        norm:
+        trace:
+        second_invariant:
+        determinant:
+        deviator_norm:
+        deviator_second_invariant:
+        deviator_determinant:
+        eigenvalues:
+        eigenprojectors:
+    };
+    */
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,5 +386,7 @@ mod tests {
         check_spectral(&SamplesTensor2::TENSOR_X, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_Y, 1e-13);
         check_spectral(&SamplesTensor2::TENSOR_Z, 1e-14);
+        check_spectral(&SamplesTensor2::COAL_01, 1e-15);
+        check_spectral(&SamplesTensor2::COAL_12, 1e-15);
     }
 }

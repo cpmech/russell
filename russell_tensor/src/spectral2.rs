@@ -990,6 +990,12 @@ mod tests {
         let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
         spec.decompose_mx(&aa, method).unwrap();
 
+        // output (for debugging)
+        // println!("eigenvalues = {:?}", spec.lam);
+        // println!("P0 =\n{:.15}", spec.proj[0].as_std_matrix());
+        // println!("P1 =\n{:.15}", spec.proj[1].as_std_matrix());
+        // println!("P2 =\n{:.15}", spec.proj[2].as_std_matrix());
+
         // compare eigenvalues
         array_approx_eq(&spec.lam, &correct_lambda, tol_lambda);
 
@@ -1142,6 +1148,29 @@ mod tests {
                     compose(&mut bb, &spec);
                     mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-10);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn decompose_coalesce_with_samples_works() {
+        for method in [
+            EigMethod::AnalyticalHZ,
+            EigMethod::AnalyticalHA22,
+            EigMethod::AnalyticalHA23,
+            EigMethod::Iterative,
+        ] {
+            for sample in [&SamplesTensor2::COAL_01, &SamplesTensor2::COAL_12] {
+                // perform the spectral decomposition
+                let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+                let mut spec = Spectral2::new();
+                spec.decompose_mx(&aa, method).unwrap();
+
+                // check
+                let correct_lambda = sample.eigenvalues.unwrap();
+                array_approx_eq(&spec.lam, &correct_lambda, 1e-15);
+                check_eigenprojectors(&spec.proj, 1e-15);
+                assert_ne!(spec.status, EigStatus::Distinct);
             }
         }
     }
@@ -1385,15 +1414,20 @@ mod tests {
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         let mut spec = Spectral2::new();
         let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
-        println!("Status = {:?}", status);
         assert_eq!(status, EigDerivStatus::FailDueToNonZero);
 
-        // coalescent eigenvalues
-        let (aa_3x3, _, _) = generate_eigen_problem(1.0, 2.0, 2.0);
-        let aa = Tensor2::from_std_matrix(&aa_3x3).unwrap();
+        // coalescent 01 eigenvalues
+        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_01.matrix).unwrap();
         let mut spec = Spectral2::new();
         let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
-        println!("Status = {:?}", status);
+        assert_eq!(spec.status, EigStatus::Coalesce01);
+        assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
+
+        // coalescent 12 eigenvalues
+        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_12.matrix).unwrap();
+        let mut spec = Spectral2::new();
+        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        assert_eq!(spec.status, EigStatus::Coalesce12);
         assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
     }
 }

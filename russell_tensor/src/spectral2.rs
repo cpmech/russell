@@ -467,8 +467,8 @@ impl Spectral2 {
             return Err("eigenprojectors have not been computed");
         }
 
-        // Check for distinct eigenvalues
-        if self.classify() != EigStatus::Distinct {
+        // Check for distinct eigenvalues (the status is up to date because the projectors are available)
+        if self.status != EigStatus::Distinct {
             return Err("derivative of eigenprojectors is only available for distinct eigenvalues");
         }
 

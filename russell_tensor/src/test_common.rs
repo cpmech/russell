@@ -120,13 +120,13 @@ pub fn check_agree(a: &Tensor2<9>) {
     let mut rb = Tensor2::<9>::new();
     let mut ub = Tensor2::<6>::new();
     let mut vb = Tensor2::<6>::new();
-    polar_decomp_mx(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Brannon, a).unwrap();
+    polar_decomp_mx(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Iterative, a).unwrap();
     check_polar(a, &rb, &ub, 1e-13);
 
     // Higham & Noferini (quaternion)
     let mut qh = Tensor2::<9>::new();
     let mut hh = Tensor2::<6>::new();
-    polar_decomp_mx(&mut qh, &mut hh, None, PolarAlgo::Higham, a).unwrap();
+    polar_decomp_mx(&mut qh, &mut hh, None, PolarAlgo::Quaternion, a).unwrap();
     check_polar(a, &qh, &hh, 1e-13);
 
     // The two implementations must agree

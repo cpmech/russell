@@ -123,44 +123,6 @@ pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Re
     Ok(knt)
 }
 
-/// Computes the polar rotation tensor R of an in-plane (2D) deformation F
-///
-/// Uses the closed-form formula of Brannon (Eqs. 12.60a, 12.62):
-/// `cos = (F11+F22)/D` and `sin = (F21-F12)/D`, with
-/// `D = sqrt((F11+F22)² + (F21-F12)²)`.
-///
-/// # Output
-///
-/// * `rr` -- (out) R: the rotation tensor
-///
-/// # Input
-///
-/// * `ff` -- (in) F: the deformation gradient
-///
-/// # Note
-///
-/// `F` is assumed to be an in-plane (planar) deformation: the third axis is
-/// decoupled (`R(3,3) = 1`, and `F(3,3)` is carried through to `U = Rᵀ F`).
-pub(crate) fn polar_rotation_brannon2d(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Result<(), StrError> {
-    // F must be an in-plane (planar) deformation: the out-of-plane shear
-    // components F13, F23, F31, F32 must be zero.
-    if ff.get_std(0, 2) != 0.0 || ff.get_std(1, 2) != 0.0 || ff.get_std(2, 0) != 0.0 || ff.get_std(2, 1) != 0.0 {
-        return Err("ff must be an in-plane deformation (F13 = F23 = F31 = F32 = 0)");
-    }
-
-    // Closed-form in-plane rotation
-    let mut c = ff.get_std(0, 0) + ff.get_std(1, 1);
-    let mut s = ff.get_std(1, 0) - ff.get_std(0, 1);
-    let d = (c * c + s * s).sqrt();
-    if d == 0.0 {
-        return Err("ff has no unique in-plane rotation (singular)");
-    }
-    c /= d;
-    s /= d;
-    let r = [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]];
-    rr.set_std_matrix(&r)
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]

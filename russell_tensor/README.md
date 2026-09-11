@@ -37,7 +37,7 @@ This library implements structures and functions for tensor analysis and calculu
 * `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
 * `PiezoDatabase` — a database of piezoelectric materials (permittivity, piezoelectric, and stiffness tensors) loaded from JSON
 * Constants — identity, transposition, and projector tensors, as well as the `ADD`/`SET` operation selectors
-* Polar decomposition — `F = R U = V R` via the classic Eigen/SVD algorithms, the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini (2016) algorithm (`PolarAlgo`, `polar_decomp`)
+* Polar decomposition — `F = R U = V R` via the classic Eigen/SVD algorithms, Brannon's iterative algorithm, or the quaternion-based Higham & Noferini (2016) algorithm (`PolarAlgo`, `polar_decomp_mx`)
 
 ### Kelvin-Mandel notation
 

@@ -58,18 +58,18 @@ cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark
 
 `polar_decomp_benchmark` compares the speed of the polar-decomposition algorithms:
 
-| algorithm | description                                                    |
-| --------- | -------------------------------------------------------------- |
-| `brannon` | `polar_rotation_brannon` — iterative fixed-point (3×3)         |
-| `higham`  | `polar_quaternion_higham` — quaternion-based, direct (3×3)     |
-| `eigen`   | `PolarAlgo::Eigen` — eigen-decomposition of `C = Fᵀ F` via `Spectral2` (3×3) |
-| `svd`     | `PolarAlgo::SVD` — classic: singular value decomposition (3×3) |
+| algorithm    | description                                                                  |
+| ------------ | ---------------------------------------------------------------------------- |
+| `iterative`  | `PolarAlgo::Iterative` — Brannon's iterative fixed-point (3×3)               |
+| `quaternion` | `PolarAlgo::Quaternion` — Higham & Noferini quaternion-based, direct (3×3)   |
+| `eigen`      | `PolarAlgo::Eigen` — eigen-decomposition of `C = Fᵀ F` via `Spectral2` (3×3) |
+| `svd`        | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)               |
 
-> **Note:** all algorithms are benchmarked through the unified `polar_decomp`
+> **Note:** all algorithms are benchmarked through the unified `polar_decomp_mx`
 > dispatcher, which computes the rotation `R` and the right stretch `U` together
 > for every algorithm.
 
-Well-, moderately-, and ill-conditioned `F` are benchmarked, plus an in-plane `F`.
+Mildly-, well-, moderately-, and ill-conditioned `F` are benchmarked, plus an in-plane `F`.
 The `eigen` algorithm squares the condition number (via `C = Fᵀ F`), so it is not
 benchmarked for the ill-conditioned case.
 
@@ -86,12 +86,12 @@ cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmar
 `spectral2_benchmark` compares the speed of the four eigenvalue methods available in
 `Spectral2::calc_eigenvalues_mx` (eigenvalues only, without the eigenprojectors):
 
-| method              | description                                          |
-| ------------------- | ---------------------------------------------------- |
-| `habera_zilian`     | stable closed-form, Habera & Zilian (2025)           |
-| `harari_albocher22` | Box-1 discriminant, Harari & Albocher (2022)         |
-| `harari_albocher23` | seven-square discriminant, Harari & Albocher (2023)  |
-| `jacobi`            | iterative Jacobi rotations                           |
+| method              | description                                         |
+| ------------------- | --------------------------------------------------- |
+| `habera_zilian`     | stable closed-form, Habera & Zilian (2025)          |
+| `harari_albocher22` | Box-1 discriminant, Harari & Albocher (2022)        |
+| `harari_albocher23` | seven-square discriminant, Harari & Albocher (2023) |
+| `jacobi`            | iterative Jacobi rotations                          |
 
 Two symmetric input tensors are used: `distinct` (well-separated eigenvalues) and
 `coalescent` (two nearly equal eigenvalues).

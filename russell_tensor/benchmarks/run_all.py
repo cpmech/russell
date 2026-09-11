@@ -43,7 +43,7 @@ POLAR_CASES = [
     ("ill_conditioned", "≈ 6·10⁷"),
 ]
 
-POLAR_ALGORITHMS = ["brannon", "higham", "eigen", "svd"]
+POLAR_ALGORITHMS = ["iterative", "quaternion", "eigen", "svd"]
 
 # Eigenvalue input cases and the four `EigMethod` variants.
 SPECTRAL2_CASES = ["distinct", "coalescent"]

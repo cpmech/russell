@@ -75,6 +75,10 @@ pub enum EigStatus {
 
 /// Holds the spectral representation of a symmetric second-order tensor
 ///
+/// **WARNING:** The public data members in this struct must be treated as **READ-ONLY**.
+/// Otherwise, subsequent calculations with the member functions may fail due to stale values.
+/// Therefore, DO NOT CHANGE their values directly.
+///
 /// Given the tensor `A`, the spectral representation with eigenvalues `λ[k]` and eigenprojectors `P[k]`
 /// is given by the following formula:
 ///
@@ -83,6 +87,7 @@ pub enum EigStatus {
 /// A =  Σ  λ[k] * P[k]
 ///     k=1
 /// ```
+///
 pub struct Spectral2 {
     /// Holds the eigenvalues (sorted in descending order)
     pub lam: [f64; 3],
@@ -158,17 +163,19 @@ impl Spectral2 {
     /// Returns a new instance
     pub fn new() -> Self {
         Spectral2 {
+            // public
             lam: [0.0; 3],
             proj: [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
             status: EigStatus::NotComputed,
             dpp: Vec::new(),
             aa_inv: Tensor2::<6>::new(),
+            // private
             done_projectors: false,
             aa_3x3: [[0.0; 3]; 3],
             vv_3x3: [[0.0; 3]; 3],
             yy: None,
             p_dy_p: Vec::new(),
-            // auxiliary tensors
+            // private: auxiliary tensors
             ss: [0.0; 6],
             tt: [0.0; 6],
         }

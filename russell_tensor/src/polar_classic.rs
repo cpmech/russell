@@ -1,11 +1,14 @@
-use super::Tensor2;
-use russell_lab::{Matrix, StrError, Vector, mat_eigen_sym, mat_inverse, mat_mat_mul, mat_svd, mat_t_mat_mul};
+use super::{Spectral2, Tensor2};
+use russell_lab::{
+    Matrix, StrError, Vector, mat_mat_mul, mat_svd, small_mat_inv, small_mat_mat_mul, small_mat_t_mat_mul,
+};
 
 /// Calculates the polar decomposition F = R U using the eigenvalues of C = Fᵀ · F
 ///
 /// ```text
 /// C = Fᵀ · F
-/// U = V · √Λ · Vᵀ     (V and Λ are the eigenvectors and eigenvalues of C)
+/// C = Σ λₖ Pₖ          (λ and P are the eigenvalues and eigenprojectors of C)
+/// U = Σ √λₖ Pₖ
 /// R = F · U⁻¹
 /// ```
 ///
@@ -31,39 +34,37 @@ pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &
        rr = ff . Inverse[uu];
        {rr, uu}];
     */
-    // check
+    // F as a 3x3 matrix (stack)
+    let mut f = [[0.0; 3]; 3];
+    ff.to_std_matrix_slice(&mut f);
 
-    // C = Fᵀ · F
-    let a = ff.as_std_matrix();
-    let mut cc = Matrix::new(3, 3);
-    mat_t_mat_mul(&mut cc, 1.0, &a, &a, 0.0)?;
+    // C = Fᵀ · F (stack)
+    let mut cc = [[0.0; 3]; 3];
+    small_mat_t_mat_mul(&mut cc, 1.0, &f, &f, 0.0, 3);
 
-    // eigen-decomposition of C: C = V · Λ · Vᵀ (cc is overwritten with V, the eigenvectors as columns)
-    let mut l = Vector::new(3);
-    mat_eigen_sym(&mut l, &mut cc, false)?;
+    // eigen-decomposition of C: C = Σ λₖ Pₖ
+    let c = Tensor2::<6>::from_std_matrix(&cc)?;
+    let mut spec = Spectral2::new();
+    spec.decompose(&c)?;
 
-    // U = V · √Λ · Vᵀ (compute the upper triangle and mirror to guarantee symmetry)
-    let mut u = Matrix::new(3, 3);
-    for i in 0..3 {
-        for j in i..3 {
-            let mut sum = 0.0;
-            for k in 0..3 {
-                sum += cc.get(i, k) * l[k].sqrt() * cc.get(j, k);
-            }
-            u.set(i, j, sum);
-            u.set(j, i, sum);
-        }
+    // U = Σ √λₖ Pₖ
+    let sqrt_l0 = spec.lam[0].sqrt();
+    let sqrt_l1 = spec.lam[1].sqrt();
+    let sqrt_l2 = spec.lam[2].sqrt();
+    for m in 0..6 {
+        uu.vec[m] = sqrt_l0 * spec.proj[0].vec[m] + sqrt_l1 * spec.proj[1].vec[m] + sqrt_l2 * spec.proj[2].vec[m];
     }
 
-    // R = F · U⁻¹
-    let mut ui = Matrix::new(3, 3);
-    mat_inverse(&mut ui, &u)?;
-    let mut r = Matrix::new(3, 3);
-    mat_mat_mul(&mut r, 1.0, &a, &ui, 0.0)?;
+    // R = F · U⁻¹ (stack)
+    let mut u3 = [[0.0; 3]; 3];
+    uu.to_std_matrix_slice(&mut u3);
+    let mut ui = [[0.0; 3]; 3];
+    small_mat_inv(&mut ui, &u3, 3)?;
+    let mut r = [[0.0; 3]; 3];
+    small_mat_mat_mul(&mut r, 1.0, &f, &ui, 0.0, 3);
 
-    // set the output tensors
+    // set the rotation output tensor
     rr.set_std_matrix(&r)?;
-    uu.set_std_matrix(&u)?;
     Ok(())
 }
 

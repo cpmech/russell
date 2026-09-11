@@ -23,7 +23,35 @@ pub enum PolarAlgo {
     Higham,
 }
 
-/// Performs the polar decomposition F = R U = V R
+/// Performs the polar decomposition F = R U = V R (using the default method)
+///
+/// # Output
+///
+/// * `rr` -- (out) R: the rotation tensor
+/// * `uu` -- (out) U: the right stretch tensor
+/// * `vv` -- (out) V: the left stretch tensor
+///
+/// # Input
+///
+/// * `ff` -- (in) F: the deformation gradient
+///
+/// # Returns
+///
+/// Returns the number of iterations taken for the rotation tensor to converge.
+/// This is always zero for the non-iterative algorithms (`Higham`, `Brannon2d`).
+///
+/// Default method: [PolarAlgo::Higham]
+#[inline]
+pub fn polar_decomp(
+    rr: &mut Tensor2<9>,
+    uu: &mut Tensor2<6>,
+    vv: Option<&mut Tensor2<6>>,
+    ff: &Tensor2<9>,
+) -> Result<usize, StrError> {
+    polar_decomp_mx(rr, uu, vv, PolarAlgo::Higham, ff)
+}
+
+/// Performs the polar decomposition F = R U = V R (selectable method version)
 ///
 /// # Output
 ///
@@ -40,7 +68,7 @@ pub enum PolarAlgo {
 ///
 /// Returns the number of iterations taken for the rotation tensor to converge.
 /// This is always zero for the non-iterative algorithms (`Higham`, `Brannon2d`).
-pub fn polar_decomp(
+pub fn polar_decomp_mx(
     rr: &mut Tensor2<9>,
     uu: &mut Tensor2<6>,
     vv: Option<&mut Tensor2<6>>,
@@ -85,7 +113,7 @@ pub fn polar_decomp(
 
 #[cfg(test)]
 mod tests {
-    use super::{PolarAlgo, polar_decomp};
+    use super::{PolarAlgo, polar_decomp, polar_decomp_mx};
     use crate::Tensor2;
     use crate::test_common::{
         case51, case52, check_agree, check_polar, example01, example01_rotation, example01_stretch, example03,
@@ -94,13 +122,23 @@ mod tests {
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul};
 
     #[test]
+    fn polar_decomp_default_works() {
+        let ff = example03();
+        let mut rr = Tensor2::<9>::new();
+        let mut uu = Tensor2::<6>::new();
+        let mut vv = Tensor2::<6>::new();
+        let _ = polar_decomp(&mut rr, &mut uu, Some(&mut vv), &ff).unwrap();
+        check_polar(&ff, &rr, &uu, 1e-13);
+    }
+
+    #[test]
     fn polar_decomp_brannon_works() {
         // Example 03: fully 3-D deformation gradient (McGinty)
         let ff = example03();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
-        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon, &ff).unwrap();
+        let nit = polar_decomp_mx(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon, &ff).unwrap();
         assert!(nit > 0);
 
         // F = R U and Q orthogonal
@@ -130,7 +168,7 @@ mod tests {
             let mut rr = Tensor2::<9>::new();
             let mut uu = Tensor2::<6>::new();
             let mut vv = Tensor2::<6>::new();
-            polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon, &a).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon, &a).unwrap();
             // Brannon's algorithm is only accurate to ~1e-8 for very
             // ill-conditioned F (kappa ~ 1/y), so loosen the tolerance there.
             let tol = if y == 1.0 { 1e-13 } else { 1e-8 };
@@ -147,7 +185,7 @@ mod tests {
         let a = case51();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
-        let nit = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &a).unwrap();
+        let nit = polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Higham, &a).unwrap();
         assert_eq!(nit, 0); // Higham is non-iterative
         check_polar(&a, &rr, &uu, 1e-13);
     }
@@ -159,7 +197,7 @@ mod tests {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
-        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon2d, &ff).unwrap();
+        let nit = polar_decomp_mx(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Brannon2d, &ff).unwrap();
         assert_eq!(nit, 0); // Brannon2d is non-iterative
         check_polar(&ff, &rr, &uu, 1e-13);
         mat_approx_eq(&rr.as_std_matrix(), &example01_rotation(), 1e-13);
@@ -172,7 +210,7 @@ mod tests {
         let ff = example03();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
-        let res = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
+        let res = polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
         assert!(res.is_err());
     }
 
@@ -183,7 +221,7 @@ mod tests {
         let ff = Tensor2::<9>::from_std_matrix(&[[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]]).unwrap();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
-        let res = polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
+        let res = polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Brannon2d, &ff);
         assert!(res.is_err());
     }
 
@@ -194,7 +232,7 @@ mod tests {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
-        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Eigen, &ff).unwrap();
+        let nit = polar_decomp_mx(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::Eigen, &ff).unwrap();
         assert_eq!(nit, 0); // Eigen is non-iterative
 
         // F = R U and R orthogonal
@@ -220,7 +258,7 @@ mod tests {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
-        let nit = polar_decomp(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::SVD, &ff).unwrap();
+        let nit = polar_decomp_mx(&mut rr, &mut uu, Some(&mut vv), PolarAlgo::SVD, &ff).unwrap();
         assert_eq!(nit, 0); // SVD is non-iterative
 
         // F = R U and R orthogonal
@@ -245,11 +283,11 @@ mod tests {
         let a = case51();
         let mut r_e = Tensor2::<9>::new();
         let mut u_e = Tensor2::<6>::new();
-        polar_decomp(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
+        polar_decomp_mx(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
         check_polar(&a, &r_e, &u_e, 1e-13);
         let mut r_h = Tensor2::<9>::new();
         let mut u_h = Tensor2::<6>::new();
-        polar_decomp(&mut r_h, &mut u_h, None, PolarAlgo::Higham, &a).unwrap();
+        polar_decomp_mx(&mut r_h, &mut u_h, None, PolarAlgo::Higham, &a).unwrap();
         mat_approx_eq(&r_e.as_std_matrix(), &r_h.as_std_matrix(), 1e-13);
         mat_approx_eq(&u_e.as_std_matrix(), &u_h.as_std_matrix(), 1e-13);
 
@@ -259,7 +297,7 @@ mod tests {
         let a = case52(1.0);
         let mut r_e = Tensor2::<9>::new();
         let mut u_e = Tensor2::<6>::new();
-        polar_decomp(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
+        polar_decomp_mx(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
         check_polar(&a, &r_e, &u_e, 1e-13);
     }
 
@@ -269,11 +307,11 @@ mod tests {
         let a = case51();
         let mut r_s = Tensor2::<9>::new();
         let mut u_s = Tensor2::<6>::new();
-        polar_decomp(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
+        polar_decomp_mx(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
         check_polar(&a, &r_s, &u_s, 1e-13);
         let mut r_h = Tensor2::<9>::new();
         let mut u_h = Tensor2::<6>::new();
-        polar_decomp(&mut r_h, &mut u_h, None, PolarAlgo::Higham, &a).unwrap();
+        polar_decomp_mx(&mut r_h, &mut u_h, None, PolarAlgo::Higham, &a).unwrap();
         mat_approx_eq(&r_s.as_std_matrix(), &r_h.as_std_matrix(), 1e-13);
         mat_approx_eq(&u_s.as_std_matrix(), &u_h.as_std_matrix(), 1e-13);
 
@@ -283,7 +321,7 @@ mod tests {
             let tol = if y == 1.0 { 1e-13 } else { 1e-8 };
             let mut r_s = Tensor2::<9>::new();
             let mut u_s = Tensor2::<6>::new();
-            polar_decomp(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
+            polar_decomp_mx(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
             check_polar(&a, &r_s, &u_s, tol);
         }
     }

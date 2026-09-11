@@ -10,7 +10,7 @@
 //! decomposition of a 3*3 matrix", Num. Algorithms, 73(2):349–369, 2016.
 
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
-use russell_tensor::{PolarAlgo, StrError, Tensor2, polar_decomp};
+use russell_tensor::{PolarAlgo, StrError, Tensor2, polar_decomp_mx};
 
 fn main() -> Result<(), StrError> {
     // Deformation gradient (Higham & Noferini, test 5.1)
@@ -26,7 +26,7 @@ fn main() -> Result<(), StrError> {
     let mut uu = Tensor2::<6>::new();
 
     // Compute the polar decomposition F = R U (using the Higham algorithm)
-    polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;
+    polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;
 
     // Print the results
     println!("R =\n{:.6}", rr.as_std_matrix());

@@ -6,7 +6,7 @@
 //! cross-checked against the other implementation.
 
 use crate::Tensor2;
-use crate::polar_decomp::{PolarAlgo, polar_decomp};
+use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
@@ -120,13 +120,13 @@ pub fn check_agree(a: &Tensor2<9>) {
     let mut rb = Tensor2::<9>::new();
     let mut ub = Tensor2::<6>::new();
     let mut vb = Tensor2::<6>::new();
-    polar_decomp(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Brannon, a).unwrap();
+    polar_decomp_mx(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Brannon, a).unwrap();
     check_polar(a, &rb, &ub, 1e-13);
 
     // Higham & Noferini (quaternion)
     let mut qh = Tensor2::<9>::new();
     let mut hh = Tensor2::<6>::new();
-    polar_decomp(&mut qh, &mut hh, None, PolarAlgo::Higham, a).unwrap();
+    polar_decomp_mx(&mut qh, &mut hh, None, PolarAlgo::Higham, a).unwrap();
     check_polar(a, &qh, &hh, 1e-13);
 
     // The two implementations must agree

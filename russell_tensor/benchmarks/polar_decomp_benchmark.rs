@@ -21,7 +21,7 @@
 //!   benchmarked for the ill-conditioned case.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{PolarAlgo, Tensor2, polar_decomp};
+use russell_tensor::{PolarAlgo, Tensor2, polar_decomp_mx};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
 const WELL_CONDITIONED: [[f64; 3]; 3] = [
@@ -82,7 +82,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -93,7 +93,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -105,7 +105,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
             let mut rr = Tensor2::<9>::new();
             let mut uu = Tensor2::<6>::new();
             b.iter(|| {
-                polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
+                polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
                 std::hint::black_box((&rr, &uu));
             });
         });
@@ -117,7 +117,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -135,7 +135,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -146,7 +146,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -157,7 +157,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -168,7 +168,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });

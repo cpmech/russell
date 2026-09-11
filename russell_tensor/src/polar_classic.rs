@@ -1,7 +1,5 @@
 use super::{Spectral2, Tensor2};
-use russell_lab::{
-    Matrix, StrError, Vector, mat_mat_mul, mat_svd, small_mat_inv, small_mat_mat_mul, small_mat_t_mat_mul,
-};
+use russell_lab::{StrError, small_mat_inv, small_mat_mat_mul, small_mat_svd, small_mat_t_mat_mul};
 
 /// Calculates the polar decomposition F = R U using the eigenvalues of C = Fᵀ · F
 ///
@@ -92,31 +90,32 @@ pub(crate) fn polar_decomp_svd(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &Te
        rr = pp . Transpose[qq];
        {rr, uu}];
     */
-    // check
+    // F as a 3x3 matrix (stack)
+    let mut f = [[0.0; 3]; 3];
+    ff.to_std_matrix_slice(&mut f);
 
-    // SVD: F = P · D · Qᵀ (a is overwritten by dgesvd)
-    let mut a = ff.as_std_matrix();
-    let mut s = Vector::new(3);
-    let mut p = Matrix::new(3, 3);
-    let mut qt = Matrix::new(3, 3); // Qᵀ (i.e., Vᵀ)
-    mat_svd(&mut s, &mut p, &mut qt, &mut a)?;
+    // SVD: F = P · D · Qᵀ (stack)
+    let mut s = [0.0; 3];
+    let mut p = [[0.0; 3]; 3];
+    let mut qt = [[0.0; 3]; 3]; // Qᵀ (i.e., Vᵀ)
+    small_mat_svd(&mut s, &mut p, &mut qt, &f)?;
 
     // U = Q · D · Qᵀ = V · D · Vᵀ (compute the upper triangle and mirror to guarantee symmetry)
-    let mut u = Matrix::new(3, 3);
+    let mut u = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in i..3 {
             let mut sum = 0.0;
             for k in 0..3 {
-                sum += qt.get(k, i) * s[k] * qt.get(k, j);
+                sum += qt[k][i] * s[k] * qt[k][j];
             }
-            u.set(i, j, sum);
-            u.set(j, i, sum);
+            u[i][j] = sum;
+            u[j][i] = sum;
         }
     }
 
-    // R = P · Qᵀ
-    let mut r = Matrix::new(3, 3);
-    mat_mat_mul(&mut r, 1.0, &p, &qt, 0.0)?;
+    // R = P · Qᵀ (stack)
+    let mut r = [[0.0; 3]; 3];
+    small_mat_mat_mul(&mut r, 1.0, &p, &qt, 0.0, 3);
 
     // set the output tensors
     rr.set_std_matrix(&r)?;

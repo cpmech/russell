@@ -17,6 +17,8 @@
 //!   [`num_recipes_gaussj_inv`], [`num_recipes_gaussj_sol`],
 //!   [`small_solve_lin_sys`]) are generic over `T: Float` and return a `Result`
 //!   because they can fail on a singular matrix.
+//! * The singular value decomposition ([`small_mat_svd`]) wraps the LAPACK
+//!   `dgesvd` routine and operates on `f64` data (rectangular `M×N` matrices).
 
 mod num_recipes_gaussj;
 mod small_mat_add;
@@ -24,6 +26,7 @@ mod small_mat_approx_eq;
 mod small_mat_eigen_sym_jacobi;
 mod small_mat_inv;
 mod small_mat_mat_mul;
+mod small_mat_svd;
 mod small_mat_t_mat_mul;
 mod small_mat_update;
 mod small_matrix;
@@ -38,6 +41,7 @@ pub use small_mat_approx_eq::*;
 pub use small_mat_eigen_sym_jacobi::*;
 pub use small_mat_inv::*;
 pub use small_mat_mat_mul::*;
+pub use small_mat_svd::*;
 pub use small_mat_t_mat_mul::*;
 pub use small_mat_update::*;
 pub use small_matrix::*;

@@ -26,14 +26,12 @@ pub enum PolarAlgo {
 
     /// Brannon's iterative fixed-point algorithm (3×3)
     ///
-    /// * Brannon R. M. (2018) Rotation, Reflection, and Frame Changes. IOP Publishing.
-    ///   <https://doi.org/10.1088/978-0-7503-1454-1>
+    /// * See Brannon (2018) Reference # 1
     Iterative,
 
     /// Higham & Noferini (2016) quaternion-based direct algorithm (3×3)
     ///
-    /// * Higham N. J. and Noferini V. (2016) An algorithm to compute the polar decomposition of a
-    ///   3×3 matrix. Numerical Algorithms, 73:349-369. <https://doi.org/10.1007/s11075-016-0098-7>
+    /// * See Higham-Noferini (2016) Reference # 2
     Quaternion,
 }
 

@@ -37,6 +37,7 @@ TENSOR_FUNCTIONS = [
 
 # Polar-decomposition general cases and their condition numbers.
 POLAR_CASES = [
+    ("mild", "≈ 1.1"),
     ("well_conditioned", "≈ 4"),
     ("moderate_conditioned", "≈ 6·10²"),
     ("ill_conditioned", "≈ 6·10⁷"),

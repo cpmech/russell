@@ -8,7 +8,7 @@
 //!
 //! Two benchmark groups:
 //!
-//! 1. `polar_rotation_general_{case}` — all algorithms for well-,
+//! 1. `polar_rotation_general_{case}` — all algorithms for mildly-, well-,
 //!    moderately-, and ill-conditioned 3×3 matrices.
 //! 2. `polar_rotation_in_plane` — all algorithms for an in-plane matrix.
 //!
@@ -55,6 +55,17 @@ fn case52(y: f64) -> [[f64; 3]; 3] {
             (610.0 * y + 120.0) / 1275.0,
             (-529.0 * y + 120.0) / 1275.0,
         ],
+    ]
+}
+
+/// Mildly distorted (solid-mechanics-like) matrix: a 0.5 rad rotation times a stretch
+/// with principal stretches `{1.0, 1.05, 1.1}` (distortion `x = 1.1`)
+fn mild() -> [[f64; 3]; 3] {
+    let (s, c) = 0.5f64.sin_cos();
+    [
+        [c, -s * 1.05, 0.0], // 1
+        [s, c * 1.05, 0.0],  // 2
+        [0.0, 0.0, 1.1],     // 3
     ]
 }
 
@@ -165,6 +176,10 @@ fn bench_in_plane(crit: &mut Criterion) {
     group.finish();
 }
 
+fn bench_mild(crit: &mut Criterion) {
+    bench_general(crit, "mild", &mild(), true);
+}
+
 fn bench_well_conditioned(crit: &mut Criterion) {
     bench_general(crit, "well_conditioned", &WELL_CONDITIONED, true);
 }
@@ -179,6 +194,7 @@ fn bench_ill_conditioned(crit: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_mild,
     bench_well_conditioned,
     bench_moderate_conditioned,
     bench_ill_conditioned,

@@ -1,4 +1,4 @@
-use super::{P_SYM, SET, SQRT_2, SQRT_3, SQRT_6};
+use super::{P_SYM, SET, SQRT_2, SQRT_3};
 use crate::{StrError, Tensor2, Tensor4, ssd_fn, t2_dyad_t2};
 use russell_lab::{small_mat_eigen_sym_jacobi, sort3};
 
@@ -75,9 +75,7 @@ pub enum EigStatus {
 
 /// Holds the spectral representation of a symmetric second-order tensor
 ///
-/// **WARNING:** The public data members in this struct must be treated as **READ-ONLY**.
-/// Otherwise, subsequent calculations with the member functions may fail due to stale values.
-/// Therefore, DO NOT CHANGE their values directly.
+/// **Warning:** The user must take care of the consistency of the data in this struct.
 ///
 /// Given the tensor `A`, the spectral representation with eigenvalues `λ[k]` and eigenprojectors `P[k]`
 /// is given by the following formula:
@@ -115,9 +113,6 @@ pub struct Spectral2 {
     /// aa_inv = A⁻¹
     /// ```
     pub aa_inv: Tensor2<6>,
-
-    /// Indicates whether the eigenprojectors have been computed alongside the eigenvalues
-    done_projectors: bool,
 
     //
     // --- internal data
@@ -170,7 +165,6 @@ impl Spectral2 {
             dpp: Vec::new(),
             aa_inv: Tensor2::<6>::new(),
             // private
-            done_projectors: false,
             aa_3x3: [[0.0; 3]; 3],
             vv_3x3: [[0.0; 3]; 3],
             yy: None,
@@ -198,7 +192,6 @@ impl Spectral2 {
     pub fn calc_eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
-        self.done_projectors = false;
 
         // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
         let ii1 = aa.invariant_ii1();
@@ -372,12 +365,10 @@ impl Spectral2 {
     pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
-        self.done_projectors = false;
 
         // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
         if method == EigMethod::Jacobi {
             self.decompose_jacobi(aa)?;
-            self.done_projectors = true;
             return Ok(());
         }
 
@@ -395,7 +386,6 @@ impl Spectral2 {
             self.proj[0].vec[0] = 1.0;
             self.proj[1].vec[1] = 1.0;
             self.proj[2].vec[2] = 1.0;
-            self.done_projectors = true;
             return Ok(());
         }
 
@@ -418,85 +408,46 @@ impl Spectral2 {
         }
 
         // done
-        self.done_projectors = true;
         Ok(())
-    }
-
-    /// Composes a new tensor from the eigenprojectors and diagonal values (lambda)
-    ///
-    /// Returns an error if the eigenprojectors have not been computed (see [Spectral2::decompose]).
-    pub fn compose(&self, bb: &mut Tensor2<6>, d: &[f64; 3]) -> Result<(), StrError> {
-        if !self.done_projectors {
-            return Err("eigenprojectors have not been computed");
-        }
-        bb.vec[0] = d[0] * self.proj[0].vec[0] + d[1] * self.proj[1].vec[0] + d[2] * self.proj[2].vec[0];
-        bb.vec[1] = d[0] * self.proj[0].vec[1] + d[1] * self.proj[1].vec[1] + d[2] * self.proj[2].vec[1];
-        bb.vec[2] = d[0] * self.proj[0].vec[2] + d[1] * self.proj[1].vec[2] + d[2] * self.proj[2].vec[2];
-        bb.vec[3] = d[0] * self.proj[0].vec[3] + d[1] * self.proj[1].vec[3] + d[2] * self.proj[2].vec[3];
-        bb.vec[4] = d[0] * self.proj[0].vec[4] + d[1] * self.proj[1].vec[4] + d[2] * self.proj[2].vec[4];
-        bb.vec[5] = d[0] * self.proj[0].vec[5] + d[1] * self.proj[1].vec[5] + d[2] * self.proj[2].vec[5];
-        Ok(())
-    }
-
-    /// Calculates the octahedral basis on the principal values space
-    ///
-    /// Returns `(λ_star_1, λ_star_2, λ_star_3)`
-    ///
-    /// Returns an error if the eigenvalues have not been computed (see [Spectral2::eigenvalues]).
-    pub fn octahedral_basis(&self) -> Result<(f64, f64, f64), StrError> {
-        if self.status == EigStatus::NotComputed {
-            return Err("eigenvalues have not been computed");
-        }
-        let (s1, s2, s3) = (self.lam[0], self.lam[1], self.lam[2]);
-        let ls1 = (2.0 * s1 - s2 - s3) / SQRT_6;
-        let ls2 = (s1 + s2 + s3) / SQRT_3;
-        let ls3 = (s3 - s2) / SQRT_2;
-        Ok((ls1, ls2, ls3))
     }
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor
     ///
-    /// **Note:** This function requires that the spectral decomposition has been performed
-    /// beforehand (see [Spectral2::decompose()]). It returns an error if the eigenvalues and
-    /// eigenprojectors have not been computed.
+    /// The spectral decomposition is performed internally using the given [EigMethod].
     ///
-    /// The results are available in [Spectral2], including the inverse of T.
-    pub fn deriv_eigenproj(&mut self, tt: &Tensor2<6>) -> Result<(), StrError> {
-        // Check that the eigenprojectors are available
-        if !self.done_projectors {
-            return Err("eigenprojectors have not been computed");
-        }
+    /// The results are available in [Spectral2], including the inverse of T and the derivatives of
+    /// the eigenprojectors in [Spectral2::dpp].
+    pub fn deriv_eigenproj(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
+        // compute the eigenvalues and eigenprojectors
+        self.decompose_mx(aa, method)?;
 
-        // Check for distinct eigenvalues (the status is up to date because the projectors are available)
+        // check for distinct eigenvalues (the status is up to date because the projectors are available)
         if self.status != EigStatus::Distinct {
-            return Err("derivative of eigenprojectors is only available for distinct eigenvalues");
+            return Err("the derivative of eigenprojectors is only available for distinct eigenvalues");
         }
 
-        // Check for null eigenvalues
+        // check for null eigenvalues
         for i in 0..3 {
             if f64::abs(self.lam[i]) < TOL_LAMBDA {
-                return Err("|lambda| is nearly zero");
-            }
-            if f64::abs(self.lam[i] * self.lam[i]) < TOL_LAMBDA {
-                return Err("|lambda*lambda| is nearly zero");
+                return Err("cannot compute the derivatives because an eigenvalue is nearly zero");
             }
         }
 
-        // Calculate T⁻¹, the inverse of T, and I3 = det(T)
-        let det = tt.inverse(&mut self.aa_inv, TOL_LAMBDA);
+        // calculate T⁻¹, the inverse of T, and I3 = det(T)
+        let det = aa.inverse(&mut self.aa_inv, TOL_LAMBDA);
         if det.is_none() {
-            return Err("|I3| is nearly zero");
+            return Err("cannot compute the derivatives because the tensor is not invertible");
         }
         let ii3 = det.unwrap();
 
-        // Calculate the auxiliary tensor Y = ssd(T⁻¹) / 2
+        // calculate the auxiliary tensor Y = ssd(T⁻¹) / 2
         if self.yy.is_none() {
             self.yy = Some(Tensor4::<6>::new());
         }
         let mut yy = self.yy.as_mut().unwrap();
         ssd_fn(&mut yy, SET, 0.5, &self.aa_inv);
 
-        // Allocate and calculate auxiliary tensors P[j] ⊗ P[j]
+        // allocate and calculate auxiliary tensors P[j] ⊗ P[j]
         if self.p_dy_p.len() != 3 {
             self.p_dy_p = vec![Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
         }
@@ -504,12 +455,12 @@ impl Spectral2 {
         t2_dyad_t2(&mut self.p_dy_p[1], SET, 1.0, &self.proj[1], &self.proj[1]);
         t2_dyad_t2(&mut self.p_dy_p[2], SET, 1.0, &self.proj[2], &self.proj[2]);
 
-        // Calculate auxiliary coefficients
+        // calculate auxiliary coefficients
         let mut d = [0.0; 3];
         let mut a = [0.0; 3];
         let mut b = [0.0; 3];
         let mut c = [[0.0; 3]; 3];
-        let ii1 = tt.invariant_ii1();
+        let ii1 = aa.invariant_ii1();
         for i in 0..3 {
             d[i] = 2.0 * self.lam[i] * self.lam[i] - ii1 * self.lam[i] + ii3 / self.lam[i];
             if f64::abs(d[i]) < TOL_LAMBDA {
@@ -659,7 +610,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
-    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
+    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul};
 
     #[cfg(feature = "heap")]
@@ -938,15 +889,24 @@ mod tests {
         (aa, expected_lambda, expected_proj)
     }
 
+    /// Calculates A = Σ λ[k] * P[k]
+    fn compose(aa: &mut Tensor2<6>, spc: &Spectral2) {
+        aa.vec[0] = spc.lam[0] * spc.proj[0].vec[0] + spc.lam[1] * spc.proj[1].vec[0] + spc.lam[2] * spc.proj[2].vec[0];
+        aa.vec[1] = spc.lam[0] * spc.proj[0].vec[1] + spc.lam[1] * spc.proj[1].vec[1] + spc.lam[2] * spc.proj[2].vec[1];
+        aa.vec[2] = spc.lam[0] * spc.proj[0].vec[2] + spc.lam[1] * spc.proj[1].vec[2] + spc.lam[2] * spc.proj[2].vec[2];
+        aa.vec[3] = spc.lam[0] * spc.proj[0].vec[3] + spc.lam[1] * spc.proj[1].vec[3] + spc.lam[2] * spc.proj[2].vec[3];
+        aa.vec[4] = spc.lam[0] * spc.proj[0].vec[4] + spc.lam[1] * spc.proj[1].vec[4] + spc.lam[2] * spc.proj[2].vec[4];
+        aa.vec[5] = spc.lam[0] * spc.proj[0].vec[5] + spc.lam[1] * spc.proj[1].vec[5] + spc.lam[2] * spc.proj[2].vec[5];
+    }
+
     /// Check the solution to the eigen-problem on tensor A
     fn check_eigen_problem(aa: &Tensor2<6>, spec: &Spectral2, tol_proj: f64, tol_compose: f64) {
         // check eigenprojectors
         check_eigenprojectors(&spec.proj, tol_proj);
 
-        // check compose
+        // check composed matrix
         let mut bb = Tensor2::<6>::new();
-        let d = &[spec.lam[0], spec.lam[1], spec.lam[2]];
-        spec.compose(&mut bb, &d).unwrap();
+        compose(&mut bb, spec);
         #[cfg(feature = "heap")]
         vec_approx_eq(&aa.vec, &bb.vec, tol_compose);
         #[cfg(not(feature = "heap"))]
@@ -1048,41 +1008,6 @@ mod tests {
     }
 
     #[test]
-    fn eigenvalues_do_not_compute_eigenprojectors() {
-        #[rustfmt::skip]
-        let aa = Tensor2::<6>::from_std_matrix(&[
-            [1.0, 1.0, 0.0],
-            [1.0, 2.0, 0.0],
-            [0.0, 0.0, 3.0],
-        ]).unwrap();
-        let mut spec = Spectral2::new();
-        let mut bb = Tensor2::<6>::new();
-
-        // before any computation
-        assert_eq!(spec.status, EigStatus::NotComputed);
-        assert!(!spec.done_projectors);
-        assert!(spec.octahedral_basis().is_err());
-
-        // eigenvalues only: the eigenprojectors are not available
-        spec.calc_eigenvalues(&aa).unwrap();
-        assert_eq!(spec.status, EigStatus::Distinct);
-        assert!(!spec.done_projectors);
-        let d = [spec.lam[0], spec.lam[1], spec.lam[2]];
-        assert!(spec.compose(&mut bb, &d).is_err());
-        assert!(spec.deriv_eigenproj(&aa).is_err());
-
-        // full decomposition: compose and deriv_eigenproj are now available
-        spec.decompose(&aa).unwrap();
-        assert!(spec.done_projectors);
-        assert!(spec.deriv_eigenproj(&aa).is_ok());
-        spec.compose(&mut bb, &d).unwrap();
-        #[cfg(feature = "heap")]
-        vec_approx_eq(&aa.vec, &bb.vec, 1e-14);
-        #[cfg(not(feature = "heap"))]
-        array_approx_eq(&aa.vec, &bb.vec, 1e-14);
-    }
-
-    #[test]
     fn decompose_reconstruction_works() {
         // Checks the eigen-decomposition reconstruction `A = Σ λᵢ Pᵢ` for random-like,
         // two-nearly-equal, and triple-equal eigenvalues.
@@ -1153,7 +1078,7 @@ mod tests {
                     }
                     // check the reconstruction A = Σ λᵢ Pᵢ
                     let mut bb = Tensor2::<6>::new();
-                    spec.compose(&mut bb, &spec.lam).unwrap();
+                    compose(&mut bb, &spec);
                     mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-10);
                 }
             }
@@ -1329,40 +1254,9 @@ mod tests {
     }
 
     #[test]
-    fn octahedral_basis_using_jacobi_method_works() {
-        // the following data corresponds to p = 1 and q = 3
-        #[rustfmt::skip]
-        let principal_stresses_and_lode = [
-            ( 3.0          ,  0.0          ,  0.0          ,  1.0 ),
-            ( 0.0          ,  3.0          ,  0.0          ,  1.0 ),
-            ( 0.0          ,  0.0          ,  3.0          ,  1.0 ),
-            ( 1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  1.0          ,  0.0 ),
-            ( 1.0 + SQRT_3 ,  1.0          ,  1.0 - SQRT_3 ,  0.0 ),
-            ( 1.0          ,  1.0 + SQRT_3 ,  1.0 - SQRT_3 ,  0.0 ),
-            ( 1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  1.0          ,  0.0 ),
-            ( 1.0          ,  1.0 - SQRT_3 ,  1.0 + SQRT_3 ,  0.0 ),
-            ( 1.0 - SQRT_3 ,  1.0          ,  1.0 + SQRT_3 ,  0.0 ),
-            ( 2.0          , -1.0          ,  2.0          , -1.0 ),
-            ( 2.0          ,  2.0          , -1.0          , -1.0 ),
-            (-1.0          ,  2.0          ,  2.0          , -1.0 ),
-        ];
+    fn deriv_eigenproj_works() {
+        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let mut tt = Tensor2::<6>::new();
-        for (sigma_1, sigma_2, sigma_3, lode_correct) in &principal_stresses_and_lode {
-            tt.set(0, *sigma_1);
-            tt.set(1, *sigma_2);
-            tt.set(2, *sigma_3);
-            spec.decompose_mx(&tt, EigMethod::Jacobi).unwrap();
-            let (ls1, ls2, ls3) = spec.octahedral_basis().unwrap();
-            let radius = f64::sqrt(ls3 * ls3 + ls1 * ls1);
-            let distance = ls2;
-            approx_eq(distance / SQRT_3, 1.0, 1e-15);
-            approx_eq(radius * SQRT_3_BY_2, 3.0, 1e-15);
-            if radius > 0.0 {
-                let cos_theta = ls1 / radius;
-                let lode = 4.0 * f64::powf(cos_theta, 3.0) - 3.0 * cos_theta;
-                approx_eq(lode, *lode_correct, 1e-15);
-            }
-        }
+        spec.deriv_eigenproj(&aa, EigMethod::HaberaZilian).unwrap();
     }
 }

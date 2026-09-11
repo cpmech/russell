@@ -47,7 +47,7 @@ POLAR_ALGORITHMS = ["iterative", "quaternion", "eigen", "svd"]
 
 # Eigenvalue input cases and the four `EigMethod` variants.
 SPECTRAL2_CASES = ["distinct", "coalescent"]
-SPECTRAL2_METHODS = ["habera_zilian", "harari_albocher22", "harari_albocher23", "jacobi"]
+SPECTRAL2_METHODS = ["analytical_hz", "analytical_ha22", "analytical_ha23", "iterative"]
 
 TIME_RE = re.compile(r"time:\s*\[([^\]]+)\]")
 

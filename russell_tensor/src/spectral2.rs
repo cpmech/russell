@@ -36,22 +36,22 @@ pub enum EigMethod {
     ///
     /// * Uses Habera-Zilian (2025) to compute the eigenvalues
     /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
-    HaberaZilian,
+    AnalyticalHZ,
 
     /// Analytical eigenvalues using Harari-Albocher method (2022)
     ///
     /// * Uses Harari-Albocher (2022) to compute the eigenvalues
     /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
-    HarariAlbocher22,
+    AnalyticalHA22,
 
     /// Analytical eigenvalues using Harari-Albocher method (2023)
     ///
     /// * Uses Harari-Albocher (2023) to compute the eigenvalues
     /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
-    HarariAlbocher23,
+    AnalyticalHA23,
 
     /// Jacobi iterations for eigenvalues and eigenprojectors (via eigenvectors)
-    Jacobi,
+    Iterative,
 }
 
 /// Specifies the current status of the eigenvalues
@@ -180,9 +180,9 @@ impl Spectral2 {
     /// The output is saved in this struct with the eigenvalues being sorted in descending order.
     /// The status is saved in `status`.
     ///
-    /// Default method: [EigMethod::HaberaZilian]
+    /// Default method: [EigMethod::AnalyticalHZ]
     pub fn calc_eigenvalues(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.calc_eigenvalues_mx(aa, EigMethod::HaberaZilian)
+        self.calc_eigenvalues_mx(aa, EigMethod::AnalyticalHZ)
     }
 
     /// Calculates the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor
@@ -206,7 +206,7 @@ impl Spectral2 {
         }
 
         // Jacobi iterative method: calculate the eigenvalues (ignores eigenvectors)
-        if method == EigMethod::Jacobi {
+        if method == EigMethod::Iterative {
             // eigenvalues and eigenvectors (ignored)
             aa.to_std_matrix_slice(&mut self.aa_3x3);
             small_mat_eigen_sym_jacobi(&mut self.lam, &mut self.vv_3x3, &mut self.aa_3x3)?;
@@ -220,7 +220,7 @@ impl Spectral2 {
             //
             // Habera M. and Zilian A. (2025)
             //
-            EigMethod::HaberaZilian => {
+            EigMethod::AnalyticalHZ => {
                 // auxiliary variables
                 let d0 = aa.vec[0] - aa.vec[1];
                 let d1 = aa.vec[0] - aa.vec[2];
@@ -261,7 +261,7 @@ impl Spectral2 {
             //
             // Harari I. and Albocher U. (2022)
             //
-            EigMethod::HarariAlbocher22 => {
+            EigMethod::AnalyticalHA22 => {
                 let sqrt_jj2 = f64::sqrt(jj2);
                 let fac1 = 2.0 * jj2 / 3.0;
                 let fac2 = sqrt_jj2 / SQRT_3;
@@ -302,7 +302,7 @@ impl Spectral2 {
             //
             // Harari I. and Albocher U. (2023)
             //
-            EigMethod::HarariAlbocher23 => {
+            EigMethod::AnalyticalHA23 => {
                 const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
                 let a = &aa.vec;
                 let d12 = a[0] - a[1];
@@ -336,7 +336,7 @@ impl Spectral2 {
                 self.lam[1] = iso + lambda2;
                 self.lam[2] = iso + lambda3;
             }
-            EigMethod::Jacobi => unreachable!("handled above"),
+            EigMethod::Iterative => unreachable!("handled above"),
         };
 
         // sort the eigenvalues in descending order
@@ -352,10 +352,10 @@ impl Spectral2 {
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
     /// The status is saved in `status` and `done_projectors` is set to `true`.
     ///
-    /// Default method: [EigMethod::HaberaZilian]
+    /// Default method: [EigMethod::AnalyticalHZ]
     #[inline]
     pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.decompose_mx(aa, EigMethod::HaberaZilian)
+        self.decompose_mx(aa, EigMethod::AnalyticalHZ)
     }
 
     /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
@@ -367,7 +367,7 @@ impl Spectral2 {
         self.status = EigStatus::NotComputed;
 
         // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
-        if method == EigMethod::Jacobi {
+        if method == EigMethod::Iterative {
             self.decompose_jacobi(aa)?;
             return Ok(());
         }
@@ -958,7 +958,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_jacobi_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::Jacobi;
+        let m = EigMethod::Iterative;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
@@ -971,7 +971,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_harari_albocher22_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::HarariAlbocher22;
+        let m = EigMethod::AnalyticalHA22;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
@@ -984,7 +984,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_harari_albocher23_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::HarariAlbocher23;
+        let m = EigMethod::AnalyticalHA23;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
@@ -997,7 +997,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_habera_zilian_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::HaberaZilian;
+        let m = EigMethod::AnalyticalHZ;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-14, 1e-15, 1e-15);
@@ -1041,10 +1041,10 @@ mod tests {
         diagonals.push([1.0, 1.0, 1.0]);
         // run the test
         for method in [
-            EigMethod::HaberaZilian,
-            EigMethod::HarariAlbocher22,
-            EigMethod::HarariAlbocher23,
-            EigMethod::Jacobi,
+            EigMethod::AnalyticalHZ,
+            EigMethod::AnalyticalHA22,
+            EigMethod::AnalyticalHA23,
+            EigMethod::Iterative,
         ] {
             for d in &diagonals {
                 for r in &rotations {
@@ -1088,10 +1088,10 @@ mod tests {
     #[test]
     fn decompose_coalesce_works() {
         for method in [
-            EigMethod::HaberaZilian,
-            EigMethod::HarariAlbocher22,
-            EigMethod::HarariAlbocher23,
-            EigMethod::Jacobi,
+            EigMethod::AnalyticalHZ,
+            EigMethod::AnalyticalHA22,
+            EigMethod::AnalyticalHA23,
+            EigMethod::Iterative,
         ] {
             for (l1, l2, l3) in [
                 // d01
@@ -1161,10 +1161,10 @@ mod tests {
     fn hz_cases_work() {
         let mut spec = Spectral2::new();
         for method in [
-            EigMethod::HaberaZilian,
-            EigMethod::HarariAlbocher22,
-            EigMethod::HarariAlbocher23,
-            EigMethod::Jacobi,
+            EigMethod::AnalyticalHZ,
+            EigMethod::AnalyticalHA22,
+            EigMethod::AnalyticalHA23,
+            EigMethod::Iterative,
         ] {
             for name in hz_cases() {
                 let (mut tol_proj, mut tol_compose) = (1e-13, 1e-13);
@@ -1223,10 +1223,10 @@ mod tests {
         let alpha = [1.0, 100.0, 1e6];
         let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
         for method in [
-            EigMethod::HaberaZilian,
-            EigMethod::HarariAlbocher22,
-            EigMethod::HarariAlbocher23,
-            EigMethod::Jacobi,
+            EigMethod::AnalyticalHZ,
+            EigMethod::AnalyticalHA22,
+            EigMethod::AnalyticalHA23,
+            EigMethod::Iterative,
         ] {
             for r in 0..alpha.len() {
                 for s in 0..kappa.len() {
@@ -1257,6 +1257,6 @@ mod tests {
     fn deriv_eigenproj_works() {
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
         let mut spec = Spectral2::new();
-        spec.deriv_eigenproj(&aa, EigMethod::HaberaZilian).unwrap();
+        spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
     }
 }

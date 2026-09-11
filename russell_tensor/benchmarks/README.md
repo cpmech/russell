@@ -86,12 +86,12 @@ cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmar
 `spectral2_benchmark` compares the speed of the four eigenvalue methods available in
 `Spectral2::calc_eigenvalues_mx` (eigenvalues only, without the eigenprojectors):
 
-| method              | description                                         |
-| ------------------- | --------------------------------------------------- |
-| `habera_zilian`     | stable closed-form, Habera & Zilian (2025)          |
-| `harari_albocher22` | Box-1 discriminant, Harari & Albocher (2022)        |
-| `harari_albocher23` | seven-square discriminant, Harari & Albocher (2023) |
-| `jacobi`            | iterative Jacobi rotations                          |
+| method            | description                                                                      |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `analytical_hz`   | `EigMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)            |
+| `analytical_ha22` | `EigMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)        |
+| `analytical_ha23` | `EigMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023) |
+| `iterative`       | `EigMethod::Iterative` — iterative Jacobi rotations                              |
 
 Two symmetric input tensors are used: `distinct` (well-separated eigenvalues) and
 `coalescent` (two nearly equal eigenvalues).

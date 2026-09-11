@@ -41,10 +41,10 @@ fn main() -> Result<(), StrError> {
 
             let mut errs = [0.0; 5];
             let methods = [
-                EigMethod::HaberaZilian,
-                EigMethod::HarariAlbocher22,
-                EigMethod::HarariAlbocher23,
-                EigMethod::Jacobi,
+                EigMethod::AnalyticalHZ,
+                EigMethod::AnalyticalHA22,
+                EigMethod::AnalyticalHA23,
+                EigMethod::Iterative,
             ];
             for (i, method) in methods.iter().enumerate() {
                 let mut spec = Spectral2::new();

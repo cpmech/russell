@@ -1,10 +1,10 @@
 //! Benchmarks comparing the speed of the four eigenvalue methods available in
 //! `Spectral2::calc_eigenvalues_mx`:
 //!
-//! * `EigMethod::HaberaZilian` — stable closed-form (Habera & Zilian 2025)
-//! * `EigMethod::HarariAlbocher22` — Box-1 discriminant (Harari & Albocher 2022)
-//! * `EigMethod::HarariAlbocher23` — seven-square discriminant (Harari & Albocher 2023)
-//! * `EigMethod::Jacobi` — iterative Jacobi rotations
+//! * `EigMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)
+//! * `EigMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)
+//! * `EigMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023)
+//! * `EigMethod::Iterative` — iterative Jacobi rotations
 //!
 //! Two symmetric input tensors are used:
 //!
@@ -34,10 +34,10 @@ const COALESCENT: [[f64; 3]; 3] = [
 
 /// Eigenvalue methods, in benchmark order
 const METHODS: [(&str, EigMethod); 4] = [
-    ("habera_zilian", EigMethod::HaberaZilian),
-    ("harari_albocher22", EigMethod::HarariAlbocher22),
-    ("harari_albocher23", EigMethod::HarariAlbocher23),
-    ("jacobi", EigMethod::Jacobi),
+    ("analytical_hz", EigMethod::AnalyticalHZ),
+    ("analytical_ha22", EigMethod::AnalyticalHA22),
+    ("analytical_ha23", EigMethod::AnalyticalHA23),
+    ("iterative", EigMethod::Iterative),
 ];
 
 /// Benchmarks the four eigenvalue methods for a given input tensor

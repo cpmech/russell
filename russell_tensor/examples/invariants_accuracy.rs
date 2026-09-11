@@ -5,10 +5,9 @@
 //! matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal transformation
 //! `U_symm` and the diagonal cases `d(δ)` from the Habera-Zilian test suite.
 //!
-//! Four variants are compared:
+//! Three variants are compared:
 //!
-//! * `HZ_api` — [Tensor2::invariant_jj2_hz] / [Tensor2::invariant_jj3_hz]
-//! * `HZ_raw` — the Habera-Zilian formulas applied directly to the 3×3 matrix
+//! * `HZ` — the Habera-Zilian formulas applied directly to the 3×3 matrix
 //! * `HA` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3]
 //! * `naive` — the monomial deviatoric formulas
 //!
@@ -17,21 +16,17 @@
 //! arithmetic). For each method the maximum absolute and relative errors over the
 //! cases are reported as a function of `δ`.
 //!
-//! Notes:
-//!
-//! * The `HZ_api` path converts the tensor to standard components and back, which
-//!   costs a few extra ulp; the `HZ_raw` column isolates the formula itself.
-//! * As `δ → 0` the reference `J3` approaches rounding noise, so its relative error
-//!   is limited by the conditioning of the problem (as in the `eig3x3` benchmark);
-//!   the absolute error is the more meaningful metric there.
+//! Note: as `δ → 0` the reference `J3` approaches rounding noise, so its relative
+//! error is limited by the conditioning of the problem (as in the `eig3x3`
+//! benchmark); the absolute error is the more meaningful metric there.
 
 use russell_tensor::Tensor2;
 
 /// Number of variants compared
-const NV: usize = 4;
+const NV: usize = 3;
 
 /// Variant labels
-const LABELS: [&str; NV] = ["HZ_api", "HZ_raw", "HA", "naive"];
+const LABELS: [&str; NV] = ["HZ", "HA", "naive"];
 
 fn main() {
     let u = u_symm();
@@ -54,7 +49,7 @@ fn main() {
             let a = build_a(&u, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
             let (r2, r3) = ref_invariants(&a);
-            let variants = [hz_api(&tt), hz_raw(&a), ha(&tt), naive(&a)];
+            let variants = [hz(&a), ha(&tt), naive(&a)];
             for (m, (w2, w3)) in variants.iter().enumerate() {
                 let e2 = f64::abs(w2 - r2);
                 let e3 = f64::abs(w3 - r3);
@@ -169,14 +164,8 @@ fn build_a(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     a
 }
 
-/// Habera-Zilian symmetric invariants using the `Tensor2` wrappers (round-trips
-/// through standard components)
-fn hz_api(aa: &Tensor2<6>) -> (f64, f64) {
-    (aa.invariant_jj2_hz(), aa.invariant_jj3_hz())
-}
-
 /// Habera-Zilian symmetric invariants applied directly to the 3×3 matrix
-fn hz_raw(a: &[[f64; 3]; 3]) -> (f64, f64) {
+fn hz(a: &[[f64; 3]; 3]) -> (f64, f64) {
     let (a00, a01, a02) = (a[0][0], a[0][1], a[0][2]);
     let (a11, a12, a22) = (a[1][1], a[1][2], a[2][2]);
     let d0 = a00 - a11;

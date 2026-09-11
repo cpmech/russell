@@ -204,8 +204,8 @@ impl Spectral2 {
             EigMethod::HaberaZilian => {
                 let mut mat = [[0.0; 3]; 3];
                 aa.to_std_matrix_slice(&mut mat);
-                let w = crate::habera_zilian::eigvalss(&mat);
-                (w[0], w[1], w[2])
+                let lam = eigvals_habera_zilian(&mat);
+                (lam[0], lam[1], lam[2])
             }
             //
             // Harari I. and Albocher U. (2022)
@@ -504,6 +504,58 @@ impl Spectral2 {
     }
 }
 
+/// Computes the eigenvalues of a symmetric 3×3 matrix using the numerically stable
+/// closed-form Habera-Zilian method
+///
+/// The eigenvalues are returned in the order produced by the cubic formula (i.e., not
+/// sorted).
+///
+/// # References
+///
+/// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
+/// 2. <https://github.com/michalhabera/eig3x3>
+fn eigvals_habera_zilian(a: &[[f64; 3]; 3]) -> [f64; 3] {
+    let i1 = a[0][0] + a[1][1] + a[2][2];
+    let d0 = a[0][0] - a[1][1];
+    let d1 = a[0][0] - a[2][2];
+    let d2 = a[1][1] - a[2][2];
+    let w = a[0][1];
+    let v = a[0][2];
+    let u = a[1][2];
+    // J2 and J3 (deviatoric invariants)
+    let j2 = w * w + v * v + u * u + (d0 * d0 + d1 * d1 + d2 * d2) / 6.0;
+    let t1 = d1 + d2;
+    let t2 = d0 - d2;
+    let t3 = -d0 - d1;
+    let j3 = 2.0 * w * u * v + (w * w * t1 + v * v * t2 + u * u * t3) / 3.0 - t1 * t2 * t3 / 27.0;
+    // Discriminant as a sum of squares of five terms
+    let alpha = d2;
+    let beta = -d1;
+    let gamma = d0;
+    let terms = [
+        3.0 * f64::sqrt(3.0) * (v * w * alpha + u * (v * v - w * w)),
+        alpha * beta * gamma + alpha * u * u + beta * v * v + gamma * w * w,
+        2.0 * u * beta * gamma - v * w * (beta - gamma) + u * (2.0 * u * u - v * v - w * w),
+        2.0 * (v * alpha * gamma + u * w * (beta - gamma) + v * (v * v + w * w - 2.0 * u * u)),
+        2.0 * (w * alpha * beta + u * v * (beta - gamma) + w * (v * v + w * w - 2.0 * u * u)),
+    ];
+    let mut disc = 0.0;
+    for term in terms {
+        disc = term.mul_add(term, disc);
+    }
+    // Closed-form eigenvalues
+    let phi = f64::atan2(f64::sqrt(27.0 * disc), 27.0 * j3);
+    let amplitude = 2.0 * f64::sqrt(3.0 * j2);
+    let two_pi = 2.0 * std::f64::consts::PI;
+    let mut lam = [0.0; 3];
+    for k in 0..3 {
+        let angle = (phi + two_pi * ((k + 1) as f64)) / 3.0;
+        lam[k] = amplitude.mul_add(f64::cos(angle), i1) / 3.0;
+    }
+    lam
+}
+
 /// Calculates ||a - alpha * b||^2
 #[rustfmt::skip]
 #[inline]
@@ -531,7 +583,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 
 #[cfg(test)]
 mod tests {
-    use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
+    use super::{EigMethod, EigStatus, Spectral2, eigvals_habera_zilian, t2_plus_diag_product};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6, SampleTensor2, SamplesTensor2, Tensor2};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, mat_mat_mul};
 
@@ -563,6 +615,138 @@ mod tests {
                 aa[i][j] = aa[j][i]; // symmetrize
             }
         }
+    }
+
+    //
+    // --- Habera-Zilian tough cases --------
+    //
+
+    /// Reference test cases ported from the `eig3x3` library
+    ///
+    /// See `benchmarks/examples.py` and `benchmarks/test_eigvals.py` of
+    /// <https://github.com/michalhabera/eig3x3>.
+    ///
+    /// The test matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal matrix
+    /// `U`. The computed eigenvalues are compared against the prescribed diagonal
+    /// entries.
+    #[test]
+    fn eig3x3_reference_cases_symmetric() {
+        // orthogonal transformation (cond = 1)
+        let r2 = SQRT_2;
+        #[rustfmt::skip]
+        let u = [
+            [1.0 / r2, -0.5,       0.5      ],
+            [1.0 / r2,  0.5,      -0.5      ],
+            [0.0,       1.0 / r2,  1.0 / r2 ],
+        ];
+        for name in eig3x3_cases() {
+            for &delta in &eig3x3_deltas() {
+                let d = eig3x3_diagonal(name, delta);
+                let a = u_d_ut(&u, &d);
+                let mut exact = d;
+                exact.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let mut w = eigvals_habera_zilian(&a);
+                w.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                let tol = frobenius(&a) * 10.0 * f64::EPSILON;
+                for i in 0..3 {
+                    let diff = (w[i] - exact[i]).abs();
+                    assert!(
+                        diff < tol,
+                        "case = {}, delta = {}, i = {}: w = {:?}, exact = {:?}, diff = {:e}, tol = {:e}",
+                        name,
+                        delta,
+                        i,
+                        w,
+                        exact,
+                        diff,
+                        tol
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn eigvals_habera_zilian_are_correct() {
+        // matrix with known eigenvalues (the TFEL test tensor)
+        let r2 = SQRT_2;
+        #[rustfmt::skip]
+        let a = [
+            [1.232,        1.5634 / r2, 3.3425 / r2],
+            [1.5634 / r2,  2.5198,      0.9765 / r2],
+            [3.3425 / r2,  0.9765 / r2, 0.234      ],
+        ];
+        let mut w = eigvals_habera_zilian(&a);
+        w.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let correct = [-1.68923153093191, 1.50793773158270, 4.16709379934921];
+        for i in 0..3 {
+            approx_eq(w[i], correct[i], 1e-12);
+        }
+    }
+
+    /// Diagonal matrices from the `eig3x3` test suite (real cases only)
+    fn eig3x3_diagonal(name: &str, delta: f64) -> [f64; 3] {
+        let a = 1.0;
+        match name {
+            "single" => [(-1.0 * a) / 4.0, (1.0 * a) / 4.0, (2.0 + 2.0 * delta) * a / 4.0],
+            "single_lim_J3" => [(-1.0 - delta) * a / 4.0, 0.0, (1.0 + 2.0 * delta) * a / 4.0],
+            "single_lim_disc_t" => [-1.0 * a, 1.0 * a, (1.0 + delta) * a],
+            "single_lim_disc_n" => [0.0, (2.0 - delta) * a / 2.0, (2.0 + delta) * a / 2.0],
+            "single_lim_J3J2" => [(1.0 - delta) * a, 1.0 * a, (1.0 + 2.0 * delta) * a],
+            "single_J3" => [(-1.0 - delta) * a / 2.0, 0.0, (1.0 + delta) * a / 2.0],
+            "single_J3_lim_J2" => [(1.0 - delta) * a, 1.0 * a, (1.0 + delta) * a],
+            "double" => [(-1.0 - delta) * a, 1.0 * a, 1.0 * a],
+            "double_lim_J3J2" => [1.0 * a, 1.0 * a, (1.0 + delta) * a],
+            "triple_J3" => [-delta, 0.0, delta],
+            "d3" => [0.0, 1.0 * a, (2.0 + delta) * a],
+            _ => panic!("unknown eig3x3 case: {}", name),
+        }
+    }
+
+    /// Test case names from the `eig3x3` test suite (real cases only)
+    fn eig3x3_cases() -> [&'static str; 11] {
+        [
+            "single",
+            "single_lim_J3",
+            "single_lim_disc_t",
+            "single_lim_disc_n",
+            "single_lim_J3J2",
+            "single_J3",
+            "single_J3_lim_J2",
+            "double",
+            "double_lim_J3J2",
+            "triple_J3",
+            "d3",
+        ]
+    }
+
+    /// Test deltas from the `eig3x3` test suite
+    fn eig3x3_deltas() -> [f64; 10] {
+        [1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0]
+    }
+
+    /// Computes A = U ⋅ diag(d) ⋅ Uᵀ
+    fn u_d_ut(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+        let mut a = [[0.0; 3]; 3];
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    a[i][j] += u[i][k] * d[k] * u[j][k];
+                }
+            }
+        }
+        a
+    }
+
+    /// Frobenius norm of a 3×3 matrix
+    fn frobenius(a: &[[f64; 3]; 3]) -> f64 {
+        let mut s = 0.0;
+        for i in 0..3 {
+            for j in 0..3 {
+                s += a[i][j] * a[i][j];
+            }
+        }
+        f64::sqrt(s)
     }
 
     #[test]

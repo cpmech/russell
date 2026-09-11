@@ -1844,25 +1844,6 @@ impl<const N: usize> Tensor2<N> {
         }
     }
 
-    /// Calculates J2, the second invariant of the deviatoric tensor, using the
-    /// Habera-Zilian algorithm
-    ///
-    /// The invariant is computed from diagonal differences and off-diagonal
-    /// products (see the `habera_zilian` module).
-    ///
-    /// # References
-    ///
-    /// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
-    ///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
-    pub fn invariant_jj2_hz(&self) -> f64 {
-        let mut m = [[0.0; 3]; 3];
-        self.to_std_matrix_slice(&mut m);
-        match N {
-            9 => crate::habera_zilian::j2(&m),
-            _ => crate::habera_zilian::j2s(&m),
-        }
-    }
-
     /// Calculates J3, the third invariant of the deviatoric tensor corresponding to this tensor
     ///
     /// ```text
@@ -1973,25 +1954,6 @@ impl<const N: usize> Tensor2<N> {
                 let j3o = s01 * s12 * s20 + s02 * s21 * s10;
                 j3d + j3m + j3o
             }
-        }
-    }
-
-    /// Calculates J3, the third invariant of the deviatoric tensor, using the
-    /// Habera-Zilian algorithm
-    ///
-    /// The invariant is computed from diagonal differences and off-diagonal
-    /// products (see the `habera_zilian` module).
-    ///
-    /// # References
-    ///
-    /// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
-    ///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
-    pub fn invariant_jj3_hz(&self) -> f64 {
-        let mut m = [[0.0; 3]; 3];
-        self.to_std_matrix_slice(&mut m);
-        match N {
-            9 => crate::habera_zilian::j3(&m),
-            _ => crate::habera_zilian::j3s(&m),
         }
     }
 
@@ -3861,44 +3823,6 @@ mod tests {
         approx_eq(tt.invariant_jj3(), 20.0, 1e-12);
         // whereas the standard expansion gives 20.0 - 1e24 + 1e24 = 0.0
         assert_eq!(dev.determinant(), 0.0);
-    }
-
-    #[test]
-    fn habera_zilian_invariants_work() {
-        // compare the Habera-Zilian invariants with the reference implementations
-
-        // symmetric 3D (N = 6)
-        #[rustfmt::skip]
-        let comps_std = &[
-            [ 2.0, -3.0, 4.0],
-            [-3.0, -5.0, 1.0],
-            [ 4.0,  1.0, 6.0],
-        ];
-        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
-        approx_eq(tt.invariant_jj2_hz(), tt.invariant_jj2(), 1e-12);
-        approx_eq(tt.invariant_jj3_hz(), tt.invariant_jj3(), 1e-12);
-
-        // general 3D (N = 9)
-        #[rustfmt::skip]
-        let comps_std = &[
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ];
-        let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
-        approx_eq(tt.invariant_jj2_hz(), tt.invariant_jj2(), 1e-12);
-        approx_eq(tt.invariant_jj3_hz(), tt.invariant_jj3(), 1e-12);
-
-        // symmetric 2D (N = 4)
-        #[rustfmt::skip]
-        let comps_std = &[
-            [1.0, 4.0, 0.0],
-            [4.0, 2.0, 0.0],
-            [0.0, 0.0, 3.0],
-        ];
-        let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
-        approx_eq(tt.invariant_jj2_hz(), tt.invariant_jj2(), 1e-12);
-        approx_eq(tt.invariant_jj3_hz(), tt.invariant_jj3(), 1e-12);
     }
 
     #[test]

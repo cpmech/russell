@@ -110,7 +110,6 @@ pub mod analysis;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
-mod habera_zilian;
 mod lin_elasticity;
 mod operations_mix1;
 mod operations_mix2;

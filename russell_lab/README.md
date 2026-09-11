@@ -17,7 +17,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
   - [Optional features](#optional-features)
 - [🌟 Examples](#-examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
-  - [Sorting small tuples](#sorting-small-tuples)
+  - [Sorting a few values in place](#sorting-a-few-values-in-place)
   - [Check first and second derivatives](#check-first-and-second-derivatives)
   - [Bessel functions](#bessel-functions)
   - [Linear fitting](#linear-fitting)
@@ -168,9 +168,9 @@ BLAS num threads = 2
 
 
 
-### Sorting small tuples
+### Sorting a few values in place
 
-[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/base_sort_small_tuples.rs)
+[See the code](https://github.com/cpmech/russell/tree/main/russell_lab/examples/base_sort_small.rs)
 
 ```rust
 use russell_lab::base::{sort2, sort3, sort4};
@@ -191,22 +191,23 @@ fn main() -> Result<(), StrError> {
     assert_eq!(&u3, &[1.0, 2.0, 3.0]);
     assert_eq!(&u4, &[1.0, 2.0, 3.0, 4.0]);
 
-    // sorting small tuples
-    let mut v2 = (2.0, 1.0);
-    let mut v3 = (3.0, 1.0, 2.0);
-    let mut v4 = (3.0, 1.0, 4.0, 2.0);
-    sort2(&mut v2);
-    sort3(&mut v3);
-    sort4(&mut v4);
-    println!("v2 = {:?}", v2);
-    println!("v3 = {:?}", v3);
-    println!("v4 = {:?}", v4);
-    assert_eq!(v2, (1.0, 2.0));
-    assert_eq!(v3, (1.0, 2.0, 3.0));
-    assert_eq!(v4, (1.0, 2.0, 3.0, 4.0));
+    // sorting a small number of values
+    let (mut a2, mut b2) = (2.0, 1.0);
+    sort2(&mut a2, &mut b2);
+    println!("a2, b2 = {:?}, {:?}", a2, b2);
+    assert_eq!((a2, b2), (1.0, 2.0));
+
+    let (mut a3, mut b3, mut c3) = (3.0, 1.0, 2.0);
+    sort3(&mut a3, &mut b3, &mut c3);
+    println!("a3, b3, c3 = {:?}, {:?}, {:?}", a3, b3, c3);
+    assert_eq!((a3, b3, c3), (1.0, 2.0, 3.0));
+
+    let (mut a4, mut b4, mut c4, mut d4) = (3.0, 1.0, 4.0, 2.0);
+    sort4(&mut a4, &mut b4, &mut c4, &mut d4);
+    println!("a4, b4, c4, d4 = {:?}, {:?}, {:?}, {:?}", a4, b4, c4, d4);
+    assert_eq!((a4, b4, c4, d4), (1.0, 2.0, 3.0, 4.0));
     Ok(())
 }
-
 ```
 
 

@@ -6,7 +6,7 @@
 //! cross-checked against the other implementation.
 
 use crate::Tensor2;
-use crate::polar_decomp::{PolarAlgo, polar_decomp};
+use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
@@ -114,19 +114,19 @@ pub fn check_polar(a: &Tensor2<9>, q: &Tensor2<9>, h: &Tensor2<6>, tol: f64) {
 
 /// Runs both algorithms on `a` and checks that each satisfies `A = Q · H`
 /// (with `Q` orthogonal) and that the two agree (the polar decomposition is
-/// unique when `det(A) > 0`).
+/// unique for any non-singular `A`).
 pub fn check_agree(a: &Tensor2<9>) {
     // Brannon (iterative)
     let mut rb = Tensor2::<9>::new();
     let mut ub = Tensor2::<6>::new();
     let mut vb = Tensor2::<6>::new();
-    polar_decomp(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Brannon, a).unwrap();
+    polar_decomp_mx(&mut rb, &mut ub, Some(&mut vb), PolarAlgo::Iterative, a).unwrap();
     check_polar(a, &rb, &ub, 1e-13);
 
     // Higham & Noferini (quaternion)
     let mut qh = Tensor2::<9>::new();
     let mut hh = Tensor2::<6>::new();
-    polar_decomp(&mut qh, &mut hh, None, PolarAlgo::Higham, a).unwrap();
+    polar_decomp_mx(&mut qh, &mut hh, None, PolarAlgo::Quaternion, a).unwrap();
     check_polar(a, &qh, &hh, 1e-13);
 
     // The two implementations must agree

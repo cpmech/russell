@@ -6,9 +6,9 @@ The script runs:
 1. `tensor_benchmark` with the stack layout (`--features intel_mkl`)
 2. `tensor_benchmark` with the heap layout (`--features intel_mkl,heap`)
 3. `polar_decomp_benchmark` with the stack layout (`--features intel_mkl`)
+4. `spectral2_benchmark` with the stack layout (`--features intel_mkl`)
 
-and produces `RESULTS.md` (next to this file) with the same tables as the ones
-in `README.md`.
+and produces `RESULTS.md` (next to this file) with the tables of results.
 
 Usage (from anywhere):
 
@@ -36,12 +36,17 @@ TENSOR_FUNCTIONS = [
 
 # Polar-decomposition general cases and their condition numbers.
 POLAR_CASES = [
+    ("mild", "≈ 1.1"),
     ("well_conditioned", "≈ 4"),
-    ("moderate_conditioned", "≈ 6·10²"),
-    ("ill_conditioned", "≈ 6·10⁷"),
+    ("moderate_conditioned", "≈ 10³"),
+    ("ill_conditioned", "≈ 10⁸"),
 ]
 
-POLAR_ALGORITHMS = ["brannon", "higham", "eigen", "svd"]
+POLAR_ALGORITHMS = ["iterative", "quaternion", "eigen", "svd"]
+
+# Eigenvalue input cases and the four `EigMethod` variants.
+SPECTRAL2_CASES = ["distinct", "coalescent"]
+SPECTRAL2_METHODS = ["analytical_hz", "analytical_ha22", "analytical_ha23", "iterative"]
 
 TIME_RE = re.compile(r"time:\s*\[([^\]]+)\]")
 
@@ -141,6 +146,9 @@ def main():
     polar = parse_results(
         run("cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark")
     )
+    spectral2 = parse_results(
+        run("cargo bench -p russell_tensor --features intel_mkl --bench spectral2_benchmark")
+    )
 
     lines = []
     add = lines.append
@@ -191,6 +199,17 @@ def main():
     add("| --- | --- |")
     for algorithm in POLAR_ALGORITHMS:
         add(f"| `{algorithm}` | {cell(polar, 'polar_rotation_in_plane/' + algorithm)} |")
+    add("")
+
+    add("## Eigenvalues")
+    add("")
+    add("Median times (Intel MKL):")
+    add("")
+    add("| case | " + " | ".join(f"`{m}`" for m in SPECTRAL2_METHODS) + " |")
+    add("| --- | " + " | ".join("---" for _ in SPECTRAL2_METHODS) + " |")
+    for case in SPECTRAL2_CASES:
+        cells = [cell(spectral2, f"calc_eigenvalues_mx_{case}/{m}") for m in SPECTRAL2_METHODS]
+        add(f"| `{case}` | " + " | ".join(cells) + " |")
     add("")
 
     output = "\n".join(lines).rstrip() + "\n"

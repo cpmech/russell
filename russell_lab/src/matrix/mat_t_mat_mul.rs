@@ -32,6 +32,8 @@ unsafe extern "C" {
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
 ///
+/// See also: [`crate::small_mat_t_mat_mul`] (the stack-allocated counterpart).
+///
 /// # Examples
 ///
 /// ```

@@ -661,19 +661,18 @@ impl<const N: usize> Tensor2<N> {
     /// ```
     pub fn to_std_matrix(&self, mat: &mut Matrix) {
         assert_eq!(mat.dims(), (3, 3));
-        if N < 9 {
-            for m in 0..N {
-                let (i, j) = M_TO_IJ[m];
+        for i in 0..3 {
+            for j in 0..3 {
                 mat.set(i, j, self.get_std(i, j));
-                if i != j {
-                    mat.set(j, i, mat.get(i, j));
-                }
             }
-        } else {
-            for i in 0..3 {
-                for j in 0..3 {
-                    mat.set(i, j, self.get_std(i, j));
-                }
+        }
+    }
+
+    /// Converts this tensor to a 3x3 matrix with the standard components (internal slice version)
+    pub(crate) fn to_std_matrix_slice(&self, mat: &mut [[f64; 3]; 3]) {
+        for i in 0..3 {
+            for j in 0..3 {
+                mat[i][j] = self.get_std(i, j);
             }
         }
     }
@@ -1561,9 +1560,9 @@ impl<const N: usize> Tensor2<N> {
         let new_trace_s = dev[0] + dev[1] + dev[2];
         if f64::abs(new_trace_s) > 1e-10 {
             // fix error due to large magnitudes
-            let mut v = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
-            sort3(&mut v);
-            let d = f64::max(1.0, v.2);
+            let (mut v0, mut v1, mut v2) = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
+            sort3(&mut v0, &mut v1, &mut v2);
+            let d = f64::max(1.0, v2);
             let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
             dev[0] = (self.vec[0] / d - m) * d;
             dev[1] = (self.vec[1] / d - m) * d;
@@ -1630,66 +1629,6 @@ impl<const N: usize> Tensor2<N> {
             sq_norm_s += a[6] * a[6] + a[7] * a[7] + a[8] * a[8];
         }
         f64::sqrt(sq_norm_s)
-    }
-
-    /// Calculates the determinant of the deviator tensor
-    ///
-    /// ```text
-    /// det( σ - ⅓ tr(σ) I )
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [6.0,  1.0,  2.0],
-    ///         [3.0, 12.0,  4.0],
-    ///         [5.0,  6.0, 15.0],
-    ///     ])?;
-    ///
-    ///     let mut dev = Tensor2::<9>::new();
-    ///     a.deviator(&mut dev);
-    ///     approx_eq(dev.trace(), 0.0, 1e-15);
-    ///
-    ///     assert_eq!(
-    ///         format!("{:.1}", dev.as_std_matrix()),
-    ///         "┌                ┐\n\
-    ///          │ -5.0  1.0  2.0 │\n\
-    ///          │  3.0  1.0  4.0 │\n\
-    ///          │  5.0  6.0  4.0 │\n\
-    ///          └                ┘"
-    ///     );
-    ///
-    ///     approx_eq(dev.determinant(), 134.0, 1e-13);
-    ///     approx_eq(a.deviator_determinant(), 134.0, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn deviator_determinant(&self) -> f64 {
-        let a = &self.vec;
-        let m = (a[0] + a[1] + a[2]) / 3.0;
-        match N {
-            4 => (a[2] - m) * (m * m + a[0] * a[1] - m * (a[0] + a[1]) - a[3] * a[3] / 2.0),
-            6 => {
-                (2.0 * m * m * (a[0] + a[1] + a[2]) - a[2] * a[3] * a[3] + a[0] * (2.0 * a[1] * a[2] - a[4] * a[4])
-                    - 2.0 * m * m * m
-                    + SQRT_2 * a[3] * a[4] * a[5]
-                    - a[1] * a[5] * a[5]
-                    + m * (-2.0 * a[1] * a[2] - 2.0 * a[0] * (a[1] + a[2]) + a[3] * a[3] + a[4] * a[4] + a[5] * a[5]))
-                    / 2.0
-            }
-            _ => {
-                (2.0 * (a[2] - m)
-                    * (2.0 * m * m + 2.0 * a[0] * a[1] - 2.0 * m * (a[0] + a[1]) - a[3] * a[3] + a[6] * a[6])
-                    + SQRT_2 * (a[5] - a[8]) * ((a[3] + a[6]) * (a[4] + a[7]) + SQRT_2 * (m - a[1]) * (a[5] + a[8]))
-                    + SQRT_2 * (a[4] - a[7]) * ((a[3] - a[6]) * (a[5] + a[8]) + SQRT_2 * (m - a[0]) * (a[4] + a[7])))
-                    / 4.0
-            }
-        }
     }
 
     /// Decomposes this tensor into symmetric and skew-symmetric parts
@@ -1890,33 +1829,50 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn invariant_jj2(&self) -> f64 {
+        const O6: f64 = 1.0 / 6.0;
         let a = &self.vec;
+        let d01 = a[0] - a[1];
+        let d12 = a[1] - a[2];
+        let d20 = a[2] - a[0];
         match N {
-            4 => {
-                (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
-                    + 3.0 * a[3] * a[3])
-                    / 6.0
-            }
-            6 => {
-                (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
-                    + 3.0 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5]))
-                    / 6.0
-            }
+            4 => O6 * (d01 * d01 + d12 * d12 + d20 * d20) + 0.5 * (a[3] * a[3]),
+            6 => O6 * (d01 * d01 + d12 * d12 + d20 * d20) + 0.5 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5]),
             _ => {
-                (2.0 * (a[0] * a[0] + a[1] * a[1] - a[1] * a[2] + a[2] * a[2] - a[0] * (a[1] + a[2]))
-                    + 3.0 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5] - a[6] * a[6] - a[7] * a[7] - a[8] * a[8]))
-                    / 6.0
+                O6 * (d01 * d01 + d12 * d12 + d20 * d20)
+                    + 0.5 * (a[3] * a[3] + a[4] * a[4] + a[5] * a[5] - a[6] * a[6] - a[7] * a[7] - a[8] * a[8])
             }
         }
     }
 
-    /// Calculates J3, the second invariant of the deviatoric tensor corresponding to this tensor
+    /// Calculates J3, the third invariant of the deviatoric tensor corresponding to this tensor
     ///
     /// ```text
     /// s = deviator(σ)
     ///
     /// J3 = IIIₛ = determinant(s)
     /// ```
+    ///
+    /// The determinant is computed with the diagonal-difference form:
+    ///
+    /// ```text
+    /// J3 = J3d + J3m + J3o
+    ///
+    /// J3d = (d12 − d31) (d23 − d12) (d31 − d23) / 27
+    ///
+    /// J3m = −(d12 − d31)/3 ⋅ σ23⋅σ32 − (d23 − d12)/3 ⋅ σ13⋅σ31 − (d31 − d23)/3 ⋅ σ12⋅σ21
+    ///
+    /// J3o = σ12⋅σ23⋅σ31 + σ13⋅σ32⋅σ21
+    /// ```
+    ///
+    /// where the diagonal differences are `d12 = σ11 − σ22`, `d23 = σ22 − σ33`, and `d31 = σ33 − σ11`.
+    /// For symmetric tensors (`N = 4` or `N = 6`), `σij⋅σji = σij²` and the two off-diagonal loops of
+    /// `J3o` coincide, recovering Equation (16) of Reference 1.
+    ///
+    /// # References
+    ///
+    /// 1. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
+    ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
+    ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
     ///
     /// # Examples
     ///
@@ -1934,8 +1890,71 @@ impl<const N: usize> Tensor2<N> {
     ///     Ok(())
     /// }
     /// ```
+    ///
+    /// The deviator of a general tensor:
+    ///
+    /// ```
+    /// use russell_lab::approx_eq;
+    /// use russell_tensor::{Tensor2, StrError};
+    ///
+    /// fn main() -> Result<(), StrError> {
+    ///     let a = Tensor2::<9>::from_std_matrix(&[
+    ///         [6.0,  1.0,  2.0],
+    ///         [3.0, 12.0,  4.0],
+    ///         [5.0,  6.0, 15.0],
+    ///     ])?;
+    ///
+    ///     let mut dev = Tensor2::<9>::new();
+    ///     a.deviator(&mut dev);
+    ///     approx_eq(dev.trace(), 0.0, 1e-15);
+    ///
+    ///     assert_eq!(
+    ///         format!("{:.1}", dev.as_std_matrix()),
+    ///         "┌                ┐\n\
+    ///          │ -5.0  1.0  2.0 │\n\
+    ///          │  3.0  1.0  4.0 │\n\
+    ///          │  5.0  6.0  4.0 │\n\
+    ///          └                ┘"
+    ///     );
+    ///
+    ///     approx_eq(dev.determinant(), 134.0, 1e-13);
+    ///     approx_eq(a.invariant_jj3(), 134.0, 1e-15);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn invariant_jj3(&self) -> f64 {
-        self.deviator_determinant()
+        const O3: f64 = 1.0 / 3.0;
+        const O27: f64 = 1.0 / 27.0;
+        const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
+        let a = &self.vec;
+        let d12 = a[0] - a[1];
+        let d23 = a[1] - a[2];
+        let d31 = a[2] - a[0];
+        let j3d = (d12 - d31) * (d23 - d12) * (d31 - d23) * O27;
+        match N {
+            4 => {
+                let s01 = a[3] * R1_2;
+                j3d - O3 * (d31 - d23) * s01 * s01
+            }
+            6 => {
+                let s01 = a[3] * R1_2;
+                let s12 = a[4] * R1_2;
+                let s02 = a[5] * R1_2;
+                let j3m = -O3 * ((d12 - d31) * s12 * s12 + (d23 - d12) * s02 * s02 + (d31 - d23) * s01 * s01);
+                j3d + j3m + 2.0 * s01 * s12 * s02
+            }
+            _ => {
+                let s01 = (a[3] + a[6]) * R1_2;
+                let s10 = (a[3] - a[6]) * R1_2;
+                let s12 = (a[4] + a[7]) * R1_2;
+                let s21 = (a[4] - a[7]) * R1_2;
+                let s02 = (a[5] + a[8]) * R1_2;
+                let s20 = (a[5] - a[8]) * R1_2;
+                let j3m = -O3 * ((d12 - d31) * s12 * s21 + (d23 - d12) * s02 * s20 + (d31 - d23) * s01 * s10);
+                let j3o = s01 * s12 * s20 + s02 * s21 * s10;
+                j3d + j3m + j3o
+            }
+        }
     }
 
     // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
@@ -2191,7 +2210,7 @@ impl<const N: usize> Tensor2<N> {
         let jj2 = self.invariant_jj2();
         if jj2 > TOL_J2 {
             let jj3 = self.invariant_jj3();
-            Some(1.5 * SQRT_3 * jj3 / f64::powf(jj2, 1.5))
+            Some(1.5 * SQRT_3 * jj3 / (jj2 * f64::sqrt(jj2)))
         } else {
             None
         }
@@ -2753,7 +2772,10 @@ mod tests {
     }
 
     #[test]
-    fn as_std_matrix_and_to_std_matrix_work() {
+    fn to_std_matrix_works() {
+        // will be overwritten, so the test will check it clean up
+        let mut res = Matrix::new(3, 3);
+
         // general
         #[rustfmt::skip]
         let comps_std = &[
@@ -2762,7 +2784,7 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
-        let res = tt.as_std_matrix();
+        tt.to_std_matrix(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2777,7 +2799,7 @@ mod tests {
             [6.0, 5.0, 3.0],
         ];
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
-        let res = tt.as_std_matrix();
+        tt.to_std_matrix(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
@@ -2792,10 +2814,79 @@ mod tests {
             [0.0, 0.0, 3.0],
         ];
         let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn as_std_matrix_works() {
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         let res = tt.as_std_matrix();
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res.get(i, j), comps_std[i][j], 1e-14);
+            }
+        }
+    }
+
+    #[test]
+    fn to_std_matrix_slice_works() {
+        // will be overwritten, so the test will check it clean up
+        let mut res = [[0.0; 3]; 3];
+
+        // general
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ];
+        let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix_slice(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 3D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 6.0],
+            [4.0, 2.0, 5.0],
+            [6.0, 5.0, 3.0],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix_slice(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
+            }
+        }
+
+        // symmetric 2D
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 4.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [0.0, 0.0, 3.0],
+        ];
+        let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
+        tt.to_std_matrix_slice(&mut res);
+        for i in 0..3 {
+            for j in 0..3 {
+                approx_eq(res[i][j], comps_std[i][j], 1e-14);
             }
         }
     }
@@ -3335,7 +3426,7 @@ mod tests {
         let tt = Tensor2::<9>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<9>::new();
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
-        assert_eq!(det, s.determinant);
+        assert_eq!(det, s.ii3);
         check_inverse(&tt, &tti, 1e-15);
 
         // symmetric 3D with zero determinant
@@ -3350,7 +3441,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<6>::new();
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
-        approx_eq(det, s.determinant, 1e-14);
+        approx_eq(det, s.ii3, 1e-14);
         check_inverse(&tt, &tti, 1e-13);
 
         // symmetric 2D with zero determinant
@@ -3365,7 +3456,7 @@ mod tests {
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<4>::new();
         let det = tt.inverse(&mut tti, 1e-10).unwrap();
-        assert_eq!(det, s.determinant);
+        assert_eq!(det, s.ii3);
         check_inverse(&tt, &tti, 1e-15);
     }
 
@@ -3645,7 +3736,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-12);
+        approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
         // symmetric 3D
         #[rustfmt::skip]
@@ -3667,7 +3758,7 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+        approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
         // symmetric 2D
         #[rustfmt::skip]
@@ -3689,7 +3780,49 @@ mod tests {
              └                ┘"
         );
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
-        approx_eq(dev.determinant(), tt.deviator_determinant(), 1e-15);
+        approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
+    }
+
+    #[test]
+    fn invariant_jj3_near_singular_works() {
+        // Near-singular example from the reference study (ε = 1e-15). Because the
+        // diagonal-difference formula operates on the original tensor entries (the diagonal
+        // differences are trace-shift invariant), it avoids the catastrophic cancellation
+        // that occurs when the deviator is formed explicitly.
+        let epsilon = 1e-15;
+        #[rustfmt::skip]
+        let comps_std = &[
+            [1.0, 1.0,         0.0    ],
+            [1.0, 1.0+epsilon, epsilon],
+            [0.0, epsilon,     1.0    ],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        let mut dev = Tensor2::<6>::new();
+        tt.deviator(&mut dev);
+        // the exact result (to leading order) is d23/3, where d23 = σ22 - σ33
+        let d23 = (1.0 + epsilon) - 1.0;
+        approx_eq(tt.invariant_jj3(), d23 / 3.0, 1e-28);
+        approx_eq(tt.invariant_jj3(), dev.determinant(), 1e-15);
+    }
+
+    #[test]
+    fn invariant_jj3_advantage_works() {
+        // Engineered multi-scale case from the reference study where the standard expansion
+        // suffers catastrophic cancellation: the exact determinant is 20.0, but two of the
+        // individual terms of the expansion reach ±1e24 and cancel to zero in floating point.
+        #[rustfmt::skip]
+        let comps_std = &[
+            [0.0, 1e8,   1e8  ],
+            [1e8, 1e8,   1e-15],
+            [1e8, 1e-15, -1e8 ],
+        ];
+        let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
+        let mut dev = Tensor2::<6>::new();
+        tt.deviator(&mut dev);
+        // the diagonal-difference form resolves the exact result
+        approx_eq(tt.invariant_jj3(), 20.0, 1e-12);
+        // whereas the standard expansion gives 20.0 - 1e24 + 1e24 = 0.0
+        assert_eq!(dev.determinant(), 0.0);
     }
 
     #[test]
@@ -3853,11 +3986,11 @@ mod tests {
         tol_dev_det: f64,
     ) {
         let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
-        approx_eq(tt.norm(), sample.norm, tol_norm);
-        approx_eq(tt.trace(), sample.trace, tol_trace);
-        approx_eq(tt.determinant(), sample.determinant, tol_det);
-        approx_eq(tt.deviator_norm(), sample.deviator_norm, tol_dev_norm);
-        approx_eq(tt.deviator_determinant(), sample.deviator_determinant, tol_dev_det);
+        approx_eq(tt.norm(), sample.norm_a, tol_norm);
+        approx_eq(tt.trace(), sample.ii1, tol_trace);
+        approx_eq(tt.determinant(), sample.ii3, tol_det);
+        approx_eq(tt.deviator_norm(), sample.norm_s, tol_dev_norm);
+        approx_eq(tt.invariant_jj3(), sample.jj3, tol_dev_det);
     }
 
     #[test]
@@ -3896,16 +4029,14 @@ mod tests {
 
     fn check_iis<const N: usize>(sample: &SampleTensor2, tol_a: f64, tol_b: f64, tol_c: f64, tol_d: f64) {
         let tt = Tensor2::<N>::from_std_matrix(&sample.matrix).unwrap();
-        let jj2 = -sample.deviator_second_invariant;
-        let jj3 = sample.deviator_determinant;
-        approx_eq(tt.invariant_ii1(), sample.trace, tol_a);
-        approx_eq(tt.invariant_ii2(), sample.second_invariant, tol_b);
-        approx_eq(tt.invariant_ii3(), sample.determinant, tol_b);
-        approx_eq(tt.invariant_jj2(), jj2, tol_c);
-        approx_eq(tt.invariant_jj3(), jj3, tol_c);
+        approx_eq(tt.invariant_ii1(), sample.ii1, tol_a);
+        approx_eq(tt.invariant_ii2(), sample.ii2, tol_b);
+        approx_eq(tt.invariant_ii3(), sample.ii3, tol_b);
+        approx_eq(tt.invariant_jj2(), sample.jj2, tol_c);
+        approx_eq(tt.invariant_jj3(), sample.jj3, tol_c);
         if N == 4 || N == 6 {
             let norm_s = tt.deviator_norm();
-            approx_eq(jj2, norm_s * norm_s / 2.0, tol_d);
+            approx_eq(sample.jj2, norm_s * norm_s / 2.0, tol_d);
         }
     }
 
@@ -3930,6 +4061,8 @@ mod tests {
         check_iis::<6>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-14, 1e-14, 1e-15);
         check_iis::<6>(&SamplesTensor2::TENSOR_U, 1e-15, 1e-14, 1e-13, 1e-13);
         check_iis::<6>(&SamplesTensor2::TENSOR_S, 1e-15, 1e-14, 1e-13, 1e-14);
+        check_iis::<6>(&SamplesTensor2::COAL_01, 1e-15, 1e-15, 1e-15, 1e-15);
+        check_iis::<6>(&SamplesTensor2::COAL_12, 1e-15, 1e-15, 1e-15, 1e-15);
         // Symmetric 2D
         check_iis::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);

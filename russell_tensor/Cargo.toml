@@ -32,3 +32,11 @@ path = "benchmarks/tensor_benchmark.rs"
 name = "polar_decomp_benchmark"
 harness = false
 path = "benchmarks/polar_decomp_benchmark.rs"
+
+[[bench]]
+name = "spectral2_benchmark"
+harness = false
+path = "benchmarks/spectral2_benchmark.rs"
+
+[lints]
+workspace = true

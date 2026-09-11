@@ -17,7 +17,7 @@
 //! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
 //! * [analysis::PiezoDatabase] — A database of piezoelectric materials (dielectric permittivity, piezoelectric, and stiffness tensors) loaded from JSON.
-//! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the classic Eigen/SVD algorithms, the iterative Brannon algorithm, the closed-form in-plane Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp]).
+//! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the classic Eigen/SVD algorithms, the iterative Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp_mx]).
 //! * Constants — Includes identity, transposition, and projector tensors, as well as the [ADD]/[SET] operation selectors.
 //! * Operations between tensors — Includes addition, single and double contractions (dot and ddot), and dyadic products. Most operations support both overwriting ([SET]) and accumulation ([ADD]) semantics.
 //! * Derivatives — Implements first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors)
@@ -125,6 +125,7 @@ mod samples_tensor2;
 mod samples_tensor3;
 mod samples_tensor4;
 mod spectral2;
+mod spectral2_aux;
 mod tensor1;
 mod tensor2;
 mod tensor3;
@@ -150,6 +151,7 @@ pub use samples_tensor2::*;
 pub use samples_tensor3::*;
 pub use samples_tensor4::*;
 pub use spectral2::*;
+pub use spectral2_aux::*;
 pub use tensor1::*;
 pub use tensor2::*;
 pub use tensor3::*;

@@ -1,5 +1,5 @@
 use russell_lab::mat_approx_eq;
-use russell_tensor::{PolarAlgo, SQRT_2, StrError, Tensor2, polar_decomp};
+use russell_tensor::{PolarAlgo, SQRT_2, StrError, Tensor2, polar_decomp_mx};
 
 fn main() -> Result<(), StrError> {
     #[rustfmt::skip]
@@ -14,8 +14,8 @@ fn main() -> Result<(), StrError> {
     let mut rr = Tensor2::<9>::new();
     let mut uu = Tensor2::<6>::new();
 
-    // Compute the polar decomposition F = R · U (using the Higham algorithm)
-    polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff)?;
+    // Compute the polar decomposition F = R · U (using the quaternion algorithm)
+    polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Quaternion, &ff)?;
 
     // Print the factors
     println!("R =\n{:.6}", rr.as_std_matrix());

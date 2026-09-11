@@ -48,3 +48,6 @@ path = "benchmarks/small_mat_inv_benchmark.rs"
 name = "small_ops_benchmark"
 harness = false
 path = "benchmarks/small_ops_benchmark.rs"
+
+[lints]
+workspace = true

@@ -1,27 +1,27 @@
 //! Benchmarks comparing the speed of the polar-decomposition algorithms,
-//! all invoked through the unified `polar_decomp` dispatcher:
+//! all invoked through the unified `polar_decomp_mx` dispatcher:
 //!
-//! * `PolarAlgo::Brannon` — iterative fixed-point (3×3)
-//! * `PolarAlgo::Higham` — quaternion-based, direct (3×3)
+//! * `PolarAlgo::Iterative` — Brannon's iterative fixed-point (3×3)
+//! * `PolarAlgo::Quaternion` — Higham & Noferini quaternion-based, direct (3×3)
 //! * `PolarAlgo::Eigen` — classic: eigenvalues of C = Fᵀ F (3×3)
 //! * `PolarAlgo::SVD` — classic: singular value decomposition (3×3)
 //!
 //! Two benchmark groups:
 //!
-//! 1. `polar_rotation_general_{case}` — all algorithms for well-,
+//! 1. `polar_rotation_general_{case}` — all algorithms for mildly-, well-,
 //!    moderately-, and ill-conditioned 3×3 matrices.
 //! 2. `polar_rotation_in_plane` — all algorithms for an in-plane matrix.
 //!
 //! Notes:
 //!
-//! * Every algorithm is benchmarked through `polar_decomp`, which computes
+//! * Every algorithm is benchmarked through `polar_decomp_mx`, which computes
 //!   the rotation `R` and the right stretch `U` together.
 //! * `PolarAlgo::Eigen` squares the condition number (via `C = Fᵀ F`), so it
-//!   fails for very ill-conditioned `F` (when `det(F) < 1e-15`); it is not
-//!   benchmarked for the ill-conditioned case.
+//!   fails for very ill-conditioned `F` (`cond(F) ≳ 1e8`); it is not benchmarked
+//!   for the ill-conditioned case.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{PolarAlgo, Tensor2, polar_decomp};
+use russell_tensor::{PolarAlgo, Tensor2, polar_decomp_mx};
 
 /// Well-conditioned matrix (example 03, McGinty; κ ≈ 4)
 const WELL_CONDITIONED: [[f64; 3]; 3] = [
@@ -37,7 +37,7 @@ const IN_PLANE: [[f64; 3]; 3] = [
     [0.0, 0.0, 3.0],                                  // 3
 ];
 
-/// Higham & Noferini test (5.2) for a given scale factor y; κ ≈ 1/(√3 y).
+/// Higham & Noferini test (5.2) for a given scale factor y; κ ≈ 1/y.
 fn case52(y: f64) -> [[f64; 3]; 3] {
     [
         [
@@ -58,31 +58,42 @@ fn case52(y: f64) -> [[f64; 3]; 3] {
     ]
 }
 
+/// Mildly distorted (solid-mechanics-like) matrix: a 0.5 rad rotation times a stretch
+/// with principal stretches `{1.0, 1.05, 1.1}` (distortion `x = 1.1`)
+fn mild() -> [[f64; 3]; 3] {
+    let (s, c) = 0.5f64.sin_cos();
+    [
+        [c, -s * 1.05, 0.0], // 1
+        [s, c * 1.05, 0.0],  // 2
+        [0.0, 0.0, 1.1],     // 3
+    ]
+}
+
 /// Benchmarks all algorithms for a given input matrix
 ///
 /// The `with_eigen` flag controls whether the Eigen algorithm is benchmarked;
-/// it fails for very ill-conditioned matrices (`det(F) < 1e-15`).
+/// it fails for very ill-conditioned matrices (`cond(F) ≳ 1e8`).
 fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eigen: bool) {
     let mut group = crit.benchmark_group(format!("polar_rotation_general_{}", name));
 
-    // Brannon (iterative fixed-point)
-    group.bench_with_input(BenchmarkId::new("brannon", ""), &(), |b, _| {
+    // Iterative: Brannon
+    group.bench_with_input(BenchmarkId::new("iterative", ""), &(), |b, _| {
         let ff = Tensor2::<9>::from_std_matrix(aa).unwrap();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Iterative, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
 
-    // Higham & Noferini (quaternion, direct)
-    group.bench_with_input(BenchmarkId::new("higham", ""), &(), |b, _| {
+    // Quaternion: Higham & Noferini
+    group.bench_with_input(BenchmarkId::new("quaternion", ""), &(), |b, _| {
         let ff = Tensor2::<9>::from_std_matrix(aa).unwrap();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Quaternion, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -94,7 +105,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
             let mut rr = Tensor2::<9>::new();
             let mut uu = Tensor2::<6>::new();
             b.iter(|| {
-                polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
+                polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
                 std::hint::black_box((&rr, &uu));
             });
         });
@@ -106,7 +117,7 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -118,24 +129,24 @@ fn bench_general(crit: &mut Criterion, name: &str, aa: &[[f64; 3]; 3], with_eige
 fn bench_in_plane(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("polar_rotation_in_plane");
 
-    // Brannon (iterative, 3×3)
-    group.bench_with_input(BenchmarkId::new("brannon", ""), &(), |b, _| {
+    // Iterative: Brannon (3×3)
+    group.bench_with_input(BenchmarkId::new("iterative", ""), &(), |b, _| {
         let ff = Tensor2::<9>::from_std_matrix(&IN_PLANE).unwrap();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Brannon, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Iterative, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
 
-    // Higham & Noferini (quaternion, direct)
-    group.bench_with_input(BenchmarkId::new("higham", ""), &(), |b, _| {
+    // Quaternion: Higham & Noferini
+    group.bench_with_input(BenchmarkId::new("quaternion", ""), &(), |b, _| {
         let ff = Tensor2::<9>::from_std_matrix(&IN_PLANE).unwrap();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Higham, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Quaternion, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -146,7 +157,7 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Eigen, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
@@ -157,12 +168,16 @@ fn bench_in_plane(crit: &mut Criterion) {
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         b.iter(|| {
-            polar_decomp(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
+            polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::SVD, &ff).unwrap();
             std::hint::black_box((&rr, &uu));
         });
     });
 
     group.finish();
+}
+
+fn bench_mild(crit: &mut Criterion) {
+    bench_general(crit, "mild", &mild(), true);
 }
 
 fn bench_well_conditioned(crit: &mut Criterion) {
@@ -179,6 +194,7 @@ fn bench_ill_conditioned(crit: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_mild,
     bench_well_conditioned,
     bench_moderate_conditioned,
     bench_ill_conditioned,

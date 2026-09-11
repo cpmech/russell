@@ -12,6 +12,10 @@ members = [
 
 resolver = "2"
 
+[workspace.lints.clippy]
+approx_constant = "allow"
+excessive_precision = "allow"
+
 [profile.release]
 lto = true
 codegen-units = 1

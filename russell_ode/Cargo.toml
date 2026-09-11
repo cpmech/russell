@@ -28,3 +28,6 @@ structopt = "0.3"
 plotpy = "1.23"
 rayon = "1.10"
 serial_test = "3.5"
+
+[lints]
+workspace = true

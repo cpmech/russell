@@ -272,8 +272,9 @@ pub fn deriv1_invariant_lode<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor
     if jj2 > TOL_J2 {
         deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, sigma); // d1 := dJ3/dσ
         let jj3 = sigma.invariant_jj3();
-        let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
-        let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
+        let sqrt_j2 = f64::sqrt(jj2);
+        let a = 1.5 * SQRT_3 / (jj2 * sqrt_j2);
+        let b = 2.25 * SQRT_3 / (jj2 * jj2 * sqrt_j2);
         for m in 0..N {
             d1.vec[m] = a * d1.vec[m] - b * jj3 * s[m];
         }

@@ -270,8 +270,9 @@ pub fn deriv2_invariant_sigma_t<const N: usize>(d2: &mut Tensor4<6>, sigma: &Ten
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
-        let a = 0.5 * SQRT_2 / f64::powf(jj2, 0.5);
-        let b = 0.25 * SQRT_2 / f64::powf(jj2, 1.5);
+        let sqrt_j2 = f64::sqrt(jj2);
+        let a = 0.5 * SQRT_2 / sqrt_j2;
+        let b = 0.25 * SQRT_2 / (jj2 * sqrt_j2);
         let mut d1_jj2 = [0.0; 6];
         sigma.deviator_slice(&mut d1_jj2);
         let d2_jj2 = &P_SYMDEV;
@@ -317,8 +318,9 @@ pub fn deriv2_invariant_q<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
-        let a = 0.5 * SQRT_3 / f64::powf(jj2, 0.5);
-        let b = 0.25 * SQRT_3 / f64::powf(jj2, 1.5);
+        let sqrt_j2 = f64::sqrt(jj2);
+        let a = 0.5 * SQRT_3 / sqrt_j2;
+        let b = 0.25 * SQRT_3 / (jj2 * sqrt_j2);
         let mut d1_jj2 = [0.0; 6];
         sigma.deviator_slice(&mut d1_jj2);
         let d2_jj2 = &P_SYMDEV;
@@ -385,9 +387,10 @@ pub fn deriv2_invariant_lode<const N: usize>(
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
         let jj3 = sigma.invariant_jj3();
-        let a = 1.5 * SQRT_3 / f64::powf(jj2, 1.5);
-        let b = 2.25 * SQRT_3 / f64::powf(jj2, 2.5);
-        let c = 5.625 * SQRT_3 / f64::powf(jj2, 3.5);
+        let sqrt_j2 = f64::sqrt(jj2);
+        let a = 1.5 * SQRT_3 / (jj2 * sqrt_j2);
+        let b = 2.25 * SQRT_3 / (jj2 * jj2 * sqrt_j2);
+        let c = 5.625 * SQRT_3 / (jj2 * jj2 * jj2 * sqrt_j2);
         let mut s = [0.0; 6];
         deriv1_invariant_jj3_slice(&mut work.d1_jj3.as_mut_data(), &mut s, sigma);
         deriv2_invariant_jj3(&mut work.d2_jj3, sigma);

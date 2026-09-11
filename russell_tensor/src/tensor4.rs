@@ -1082,26 +1082,11 @@ impl<const N: usize> Tensor4<N> {
     /// }
     /// ```
     pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<Vec<f64>>>>) {
-        let dim = N;
-        if dim < 9 {
-            for m in 0..dim {
-                for n in 0..dim {
-                    let (i, j, k, l) = MN_TO_IJKL[m][n];
-                    dd[i][j][k][l] = self.get_std(i, j, k, l);
-                    if i != j || k != l {
-                        dd[j][i][k][l] = dd[i][j][k][l];
-                        dd[i][j][l][k] = dd[i][j][k][l];
-                        dd[j][i][l][k] = dd[i][j][k][l];
-                    }
-                }
-            }
-        } else {
-            for i in 0..3 {
-                for j in 0..3 {
-                    for k in 0..3 {
-                        for l in 0..3 {
-                            dd[i][j][k][l] = self.get_std(i, j, k, l);
-                        }
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    for l in 0..3 {
+                        dd[i][j][k][l] = self.get_std(i, j, k, l);
                     }
                 }
             }

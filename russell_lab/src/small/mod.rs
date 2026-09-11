@@ -10,7 +10,7 @@
 //!   *active* dimension (the top-left `n×n` block) such that `n ≤ N`. Passing
 //!   `n > N` causes a panic.
 //! * The basic arithmetic operations ([`small_mat_add`], [`small_mat_update`],
-//!   [`small_mat_mat_mul`], [`small_vec_add`], [`small_vec_update`]) are generic
+//!   [`small_mat_mat_mul`], [`small_mat_t_mat_mul`], [`small_vec_add`], [`small_vec_update`]) are generic
 //!   over the element type `T`, which must implement `Num` (from `num_traits`)
 //!   and `Copy`.
 //! * The Gauss-Jordan inversion and solver routines ([`small_mat_inv`],
@@ -24,6 +24,7 @@ mod small_mat_approx_eq;
 mod small_mat_eigen_sym_jacobi;
 mod small_mat_inv;
 mod small_mat_mat_mul;
+mod small_mat_t_mat_mul;
 mod small_mat_update;
 mod small_matrix;
 mod small_solve_lin_sys;
@@ -37,6 +38,7 @@ pub use small_mat_approx_eq::*;
 pub use small_mat_eigen_sym_jacobi::*;
 pub use small_mat_inv::*;
 pub use small_mat_mat_mul::*;
+pub use small_mat_t_mat_mul::*;
 pub use small_mat_update::*;
 pub use small_matrix::*;
 pub use small_solve_lin_sys::*;

@@ -101,12 +101,12 @@ pub struct Spectral2 {
     /// ```
     pub aa_inv: Tensor2<6>,
 
-    /// Indicates whether the eigenprojectors were computed alongside the eigenvalues
-    done_projectors: bool,
-
     //
     // --- internal data
     //
+    /// Indicates whether the eigenprojectors were computed alongside the eigenvalues
+    done_projectors: bool,
+
     /// Input tensor as a 3x3 matrix (for Jacobi method)
     aa_3x3: [[f64; 3]; 3],
 
@@ -131,16 +131,20 @@ pub struct Spectral2 {
 
     /// Auxiliary deviatoric tensor: S = A - (I1/3) I
     ///
-    /// Used in the Analytical method
+    /// Used in the Harari-Albocher (2022) method
     ss: [f64; 6],
 
     /// Auxiliary tensor: T = S^2 - (2J2/3) I
     ///
-    /// Used in the Analytical method
+    /// Used in the Harari-Albocher (2022) method
     tt: [f64; 6],
 }
 
 impl Spectral2 {
+    //
+    // --- public functions ---
+    //
+
     /// Returns a new instance
     pub fn new() -> Self {
         Spectral2 {
@@ -340,13 +344,19 @@ impl Spectral2 {
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
     pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigStatus, StrError> {
+        // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
+        if method == EigMethod::Jacobi {
+            let status = self.decompose_jacobi(aa)?;
+            self.done_projectors = true;
+            return Ok(status);
+        }
+
+        // compute the eigenvalues
+        let status = self.eigenvalues_mx(aa, method)?;
+
         // handle a (numerically) spherical tensor: the eigenvalues are all equal (at the
         // rounding level) and the eigenprojectors are not unique, so use the identity split
-        if Self::is_spherical(aa) {
-            let iso = aa.invariant_ii1() / 3.0;
-            self.lam[0] = iso;
-            self.lam[1] = iso;
-            self.lam[2] = iso;
+        if status == EigStatus::Spherical && Self::is_spherical(aa) {
             for m in 0..6 {
                 self.proj[0].vec[m] = 0.0;
                 self.proj[1].vec[m] = 0.0;
@@ -359,18 +369,8 @@ impl Spectral2 {
             return Ok(EigStatus::Spherical);
         }
 
-        // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
-        if method == EigMethod::Jacobi {
-            let status = self.decompose_jacobi(aa)?;
-            self.done_projectors = true;
-            return Ok(status);
-        }
-
-        // compute the eigenvalues
-        self.eigenvalues_mx(aa, method)?;
-
         // compute the eigenprojectors
-        if self.all_distinct() {
+        if status == EigStatus::Distinct {
             // well-separated eigenvalues: use the Sylvester formula
             // P[r] = f * (A - λ[s] I) . (A - λ[t] I)
             for i in 0..3 {
@@ -433,7 +433,7 @@ impl Spectral2 {
         }
 
         // Check for distinct eigenvalues
-        if !self.all_distinct() {
+        if self.classify() != EigStatus::Distinct {
             return Err("derivative of eigenprojectors is only available for distinct eigenvalues");
         }
 
@@ -547,19 +547,7 @@ impl Spectral2 {
         }
     }
 
-    /// Indicates whether all eigenvalues are distinct
-    ///
-    /// The tolerance used to decide whether two eigenvalues are equal is scaled:
-    /// `TOL_COALESCE * max(|λ|, 1)`.
-    #[inline]
-    pub fn all_distinct(&self) -> bool {
-        let tol = self.tol_coalesce();
-        let d01 = f64::abs(self.lam[0] - self.lam[1]);
-        let d12 = f64::abs(self.lam[1] - self.lam[2]);
-        !(d01 < tol || d12 < tol)
-    }
-
-    /// Sorts the eigenvalues in descending order
+    /// (internal) Sorts the eigenvalues in descending order
     #[inline]
     fn sort_eigenvalues(&mut self) {
         let mut l0 = self.lam[0];
@@ -880,7 +868,7 @@ mod tests {
         (aa, expected_lambda, expected_proj)
     }
 
-    /// Check the the solution to the eigen-problem on tensor A
+    /// Check the solution to the eigen-problem on tensor A
     fn check_eigen_problem(aa: &Tensor2<6>, spec: &Spectral2, tol_proj: f64, tol_compose: f64) {
         // check eigenprojectors
         check_eigenprojectors(&spec.proj, tol_proj);
@@ -951,7 +939,7 @@ mod tests {
     }
 
     #[test]
-    fn decompose_and_compose_using_analytical_work_with_samples() {
+    fn decompose_and_compose_using_harari_albocher22_work_with_samples() {
         let mut spec = Spectral2::new();
         let m = EigMethod::HarariAlbocher22;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
@@ -1128,16 +1116,16 @@ mod tests {
             let (aa_3x3, expected_lambda, expected_proj) = generate_eigen_problem(l1, l2, l3);
 
             // perform spectral decomposition
-            let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+            let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
             let mut spec = Spectral2::new();
-            spec.decompose_mx(&mut aa, EigMethod::HarariAlbocher22).unwrap();
+            spec.decompose_mx(&aa, EigMethod::HarariAlbocher22).unwrap();
             // println!("A =\n{}", aa.as_std_matrix());
             // println!("lambda = {:?}", spec.lam);
 
             // check
             array_approx_eq(&spec.lam, &expected_lambda, 1e-15);
             check_eigenprojectors(&spec.proj, 1e-15);
-            assert_eq!(spec.all_distinct(), false);
+            assert_ne!(spec.classify(), EigStatus::Distinct);
             let is_d01_case = f64::abs(spec.lam[0] - spec.lam[1]) < 1e-8;
             if is_d01_case {
                 // println!("d01");
@@ -1209,7 +1197,7 @@ mod tests {
     }
 
     #[test]
-    fn decompose_analytical1_with_scales_and_coalescence_works() {
+    fn decompose_harari_albocher23_with_scales_and_coalescence_works() {
         // Test the Harari-Albocher (2023) TgHSC eigenvalue solver across scales and coalescence
         // levels. Only the eigenvalues are checked here, with a tolerance relative to the tensor
         // scale, because the eigenprojectors (computed by the Sylvester formula) are
@@ -1226,20 +1214,12 @@ mod tests {
                     let (aa_3x3, expected_lambda, _) = generate_eigen_problem(l1, l2, l3);
 
                     // perform spectral decomposition
-                    let mut aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+                    let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
                     let mut spec = Spectral2::new();
-                    spec.decompose_mx(&mut aa, EigMethod::HarariAlbocher23).unwrap();
+                    spec.decompose_mx(&aa, EigMethod::HarariAlbocher23).unwrap();
 
                     // check the eigenvalues (tolerance relative to the tensor scale)
                     array_approx_eq(&spec.lam, &expected_lambda, 1e-13 * alpha[r]);
-
-                    // check the eigenprojectors
-                    // check_eigenprojectors(&spec.proj, 1e-15);
-                    // if spec.all_distinct() {
-                    //     mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15);
-                    //     mat_approx_eq(&pp1_mat, &expected_proj[1], 1e-15);
-                    //     mat_approx_eq(&pp2_mat, &expected_proj[2], 1e-15);
-                    // }
                 }
             }
         }

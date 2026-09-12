@@ -745,7 +745,7 @@ mod tests {
         let default = "Error: unknown error returned by c-code (UMFPACK)";
         for c in &[1, 2, 3, -1, -3, -4, -5, -6, -8, -11, -13, -15, -17, -18, -911] {
             let res = handle_umfpack_error_code(*c);
-            assert!(res.len() > 0);
+            assert!(!res.is_empty());
             assert_ne!(res, default);
         }
         assert_eq!(

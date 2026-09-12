@@ -342,15 +342,6 @@ impl Genie {
         }
     }
 
-    /// Returns the string representation
-    pub fn to_string(&self) -> String {
-        match self {
-            Genie::Cudss => "cudss".to_string(),
-            Genie::Mumps => "mumps".to_string(),
-            Genie::Umfpack => "umfpack".to_string(),
-        }
-    }
-
     /// Returns the solver's required Sym type
     pub fn get_sym(&self, symmetric: bool) -> Sym {
         if symmetric {
@@ -365,14 +356,20 @@ impl Genie {
     }
 }
 
+impl std::fmt::Display for Genie {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Genie::Cudss => write!(f, "cudss"),
+            Genie::Mumps => write!(f, "mumps"),
+            Genie::Umfpack => write!(f, "umfpack"),
+        }
+    }
+}
+
 impl Sym {
     /// Returns true if the representation is Lower or Upper
     pub fn triangular(&self) -> bool {
-        match self {
-            Sym::YesLower => true,
-            Sym::YesUpper => true,
-            _ => false,
-        }
+        matches!(self, Sym::YesLower | Sym::YesUpper)
     }
 
     /// Returns true if symmetric
@@ -463,6 +460,7 @@ mod tests {
     use std::collections::HashMap;
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn derive_methods_work() {
         let genie = Genie::Mumps;
         let copy = genie;

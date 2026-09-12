@@ -390,7 +390,7 @@ where
         let bx = &mut self.values;
 
         // allocate workspaces and get an access to them
-        if self.temp_w.len() == 0 {
+        if self.temp_w.is_empty() {
             self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
             self.temp_rjx = vec![(0_i32, T::zero()); nnz]; // temporary row form
             self.temp_rc = vec![0_usize; nrow]; // temporary row count
@@ -492,8 +492,8 @@ where
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check and read in the dimensions
-        let ncol = csc.ncol as usize;
-        let nrow = csc.nrow as usize;
+        let ncol = csc.ncol;
+        let nrow = csc.nrow;
         let nnz = csc.col_pointers[ncol] as usize;
 
         // access the CSC data
@@ -548,9 +548,7 @@ where
         // fix bp
         let mut last = 0;
         for i in 0..(nrow + 1) {
-            let temp = bp[i];
-            bp[i] = last;
-            last = temp;
+            std::mem::swap(&mut bp[i], &mut last);
         }
 
         // results
@@ -1280,7 +1278,7 @@ mod tests {
         clone.values[0] *= 2.0;
         assert_eq!(csr.values[0], 2.0);
         assert_eq!(clone.values[0], 4.0);
-        assert!(format!("{:?}", csr).len() > 0);
+        assert!(!format!("{:?}", csr).is_empty());
         let json = serde_json::to_string(&csr).unwrap();
         assert_eq!(
             json,

@@ -354,7 +354,7 @@ mod tests {
         // ```
         let jacobian = |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _a: &mut Args| {
             jj.reset();
-            jj.put(0, 0, alpha * (-1.0)).unwrap();
+            jj.put(0, 0, -alpha).unwrap();
             jj.put(1, 1, alpha * (1.0)).unwrap();
             if jj.symmetric == Sym::YesLower {
                 jj.put(1, 0, alpha * (1.0)).unwrap();

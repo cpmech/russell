@@ -105,7 +105,7 @@ impl MatrixMarketData {
     #[inline]
     fn parse_dimensions(&mut self, line: &str) -> Result<bool, StrError> {
         let maybe_data = line.trim_start().trim_end_matches("\n");
-        if maybe_data.starts_with("%") || maybe_data == "" {
+        if maybe_data.starts_with("%") || maybe_data.is_empty() {
             return Ok(false); // ignore comments or empty lines; returns false == not parsed
         }
 
@@ -137,7 +137,7 @@ impl MatrixMarketData {
     #[inline]
     fn parse_values(&mut self, line: &str) -> Result<bool, StrError> {
         let maybe_data = line.trim_start().trim_end_matches("\n");
-        if maybe_data.starts_with("%") || maybe_data == "" {
+        if maybe_data.starts_with("%") || maybe_data.is_empty() {
             return Ok(false); // ignore comments or empty lines
         }
 
@@ -400,37 +400,32 @@ where
     // read and parse values
     if data.complex {
         let mut coo = ComplexCooMatrix::new(data.m as usize, data.n as usize, max as usize, sym).unwrap();
-        loop {
-            match lines_iter.next() {
-                Some(v) => {
-                    let line = v.unwrap(); // must panic because no error expected here
-                    if data.parse_values(&line)? {
-                        if data.symmetric {
-                            match symmetric_handling {
-                                MMsym::LeaveAsLower => {
-                                    coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
-                                        .unwrap();
-                                }
-                                MMsym::SwapToUpper => {
-                                    coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij))
-                                        .unwrap();
-                                }
-                                MMsym::MakeItFull => {
-                                    coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
-                                        .unwrap();
-                                    if data.i != data.j {
-                                        coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij))
-                                            .unwrap();
-                                    }
-                                }
-                            }
-                        } else {
+        for v in lines_iter {
+            let line = v.unwrap(); // must panic because no error expected here
+            if data.parse_values(&line)? {
+                if data.symmetric {
+                    match symmetric_handling {
+                        MMsym::LeaveAsLower => {
                             coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
                                 .unwrap();
-                        };
+                        }
+                        MMsym::SwapToUpper => {
+                            coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij))
+                                .unwrap();
+                        }
+                        MMsym::MakeItFull => {
+                            coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
+                                .unwrap();
+                            if data.i != data.j {
+                                coo.put(data.j as usize, data.i as usize, cpx!(data.aij, data.bij))
+                                    .unwrap();
+                            }
+                        }
                     }
-                }
-                None => break,
+                } else {
+                    coo.put(data.i as usize, data.j as usize, cpx!(data.aij, data.bij))
+                        .unwrap();
+                };
             }
         }
         if data.pos != data.nnz {
@@ -439,32 +434,27 @@ where
         Ok((None, Some(coo)))
     } else {
         let mut coo = CooMatrix::new(data.m as usize, data.n as usize, max as usize, sym).unwrap();
-        loop {
-            match lines_iter.next() {
-                Some(v) => {
-                    let line = v.unwrap(); // must panic because no error expected here
-                    if data.parse_values(&line)? {
-                        if data.symmetric {
-                            match symmetric_handling {
-                                MMsym::LeaveAsLower => {
-                                    coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
-                                }
-                                MMsym::SwapToUpper => {
-                                    coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
-                                }
-                                MMsym::MakeItFull => {
-                                    coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
-                                    if data.i != data.j {
-                                        coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
-                                    }
-                                }
-                            }
-                        } else {
+        for v in lines_iter {
+            let line = v.unwrap(); // must panic because no error expected here
+            if data.parse_values(&line)? {
+                if data.symmetric {
+                    match symmetric_handling {
+                        MMsym::LeaveAsLower => {
                             coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
-                        };
+                        }
+                        MMsym::SwapToUpper => {
+                            coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
+                        }
+                        MMsym::MakeItFull => {
+                            coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
+                            if data.i != data.j {
+                                coo.put(data.j as usize, data.i as usize, data.aij).unwrap();
+                            }
+                        }
                     }
-                }
-                None => break,
+                } else {
+                    coo.put(data.i as usize, data.j as usize, data.aij).unwrap();
+                };
             }
         }
         if data.pos != data.nnz {

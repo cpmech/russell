@@ -38,9 +38,9 @@ impl CscMatrix {
         // write header
         if !vismatrix {
             if self.symmetric == Sym::No {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real general\n").unwrap();
+                writeln!(&mut buffer, "%%MatrixMarket matrix coordinate real general").unwrap();
             } else {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric\n").unwrap();
+                writeln!(&mut buffer, "%%MatrixMarket matrix coordinate real symmetric").unwrap();
             }
         }
 
@@ -91,7 +91,7 @@ impl CscMatrix {
         };
 
         // write dimensions
-        write!(&mut buffer, "{} {} {}\n", self.nrow, self.ncol, nnz).unwrap();
+        writeln!(&mut buffer, "{} {} {}", self.nrow, self.ncol, nnz).unwrap();
 
         // write data
         if vismatrix {
@@ -100,11 +100,11 @@ impl CscMatrix {
                     let i = self.row_indices[p as usize] as usize;
                     let aij = self.values[p as usize];
                     if f64::abs(aij) > tol {
-                        write!(&mut buffer, "{} {} {:?}\n", i, j, aij).unwrap();
+                        writeln!(&mut buffer, "{} {} {:?}", i, j, aij).unwrap();
                         if self.symmetric == Sym::YesLower || self.symmetric == Sym::YesUpper {
                             if i != j {
                                 // mirror off-diagonal elements
-                                write!(&mut buffer, "{} {} {:?}\n", j, i, aij).unwrap();
+                                writeln!(&mut buffer, "{} {} {:?}", j, i, aij).unwrap();
                             }
                         }
                     }
@@ -117,13 +117,13 @@ impl CscMatrix {
                     let aij = self.values[p as usize];
                     if f64::abs(aij) > tol {
                         match self.symmetric {
-                            Sym::No => write!(&mut buffer, "{} {} {:?}\n", i + 1, j + 1, aij).unwrap(),
-                            Sym::YesLower => write!(&mut buffer, "{} {} {:?}\n", i + 1, j + 1, aij).unwrap(),
-                            Sym::YesUpper => write!(&mut buffer, "{} {} {:?}\n", j + 1, i + 1, aij).unwrap(),
+                            Sym::No => writeln!(&mut buffer, "{} {} {:?}", i + 1, j + 1, aij).unwrap(),
+                            Sym::YesLower => writeln!(&mut buffer, "{} {} {:?}", i + 1, j + 1, aij).unwrap(),
+                            Sym::YesUpper => writeln!(&mut buffer, "{} {} {:?}", j + 1, i + 1, aij).unwrap(),
                             Sym::YesFull => {
                                 if i >= j {
                                     // consider the lower-triangle only
-                                    write!(&mut buffer, "{} {} {:?}\n", i + 1, j + 1, aij).unwrap()
+                                    writeln!(&mut buffer, "{} {} {:?}", i + 1, j + 1, aij).unwrap()
                                 }
                             }
                         }
@@ -181,9 +181,9 @@ impl ComplexCscMatrix {
         // write header
         if !vismatrix {
             if self.symmetric == Sym::No {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate complex general\n").unwrap();
+                writeln!(&mut buffer, "%%MatrixMarket matrix coordinate complex general").unwrap();
             } else {
-                write!(&mut buffer, "%%MatrixMarket matrix coordinate complex symmetric\n").unwrap();
+                writeln!(&mut buffer, "%%MatrixMarket matrix coordinate complex symmetric").unwrap();
             }
         }
 
@@ -234,7 +234,7 @@ impl ComplexCscMatrix {
         };
 
         // write dimensions
-        write!(&mut buffer, "{} {} {}\n", self.nrow, self.ncol, nnz).unwrap();
+        writeln!(&mut buffer, "{} {} {}", self.nrow, self.ncol, nnz).unwrap();
 
         // write data
         if vismatrix {
@@ -243,11 +243,11 @@ impl ComplexCscMatrix {
                     let i = self.row_indices[p as usize] as usize;
                     let aij = self.values[p as usize];
                     if f64::abs(aij.re) > tol || f64::abs(aij.im) > tol {
-                        write!(&mut buffer, "{} {} {:?}\n", i, j, aij.norm()).unwrap();
+                        writeln!(&mut buffer, "{} {} {:?}", i, j, aij.norm()).unwrap();
                         if self.symmetric == Sym::YesLower || self.symmetric == Sym::YesUpper {
                             if i != j {
                                 // mirror off-diagonal elements
-                                write!(&mut buffer, "{} {} {:?}\n", j, i, aij.norm()).unwrap();
+                                writeln!(&mut buffer, "{} {} {:?}", j, i, aij.norm()).unwrap();
                             }
                         }
                     }
@@ -260,17 +260,17 @@ impl ComplexCscMatrix {
                     let aij = self.values[p as usize];
                     if f64::abs(aij.re) > tol || f64::abs(aij.im) < tol {
                         match self.symmetric {
-                            Sym::No => write!(&mut buffer, "{} {} {:?} {:?}\n", i + 1, j + 1, aij.re, aij.im).unwrap(),
+                            Sym::No => writeln!(&mut buffer, "{} {} {:?} {:?}", i + 1, j + 1, aij.re, aij.im).unwrap(),
                             Sym::YesLower => {
-                                write!(&mut buffer, "{} {} {:?} {:?}\n", i + 1, j + 1, aij.re, aij.im).unwrap()
+                                writeln!(&mut buffer, "{} {} {:?} {:?}", i + 1, j + 1, aij.re, aij.im).unwrap()
                             }
                             Sym::YesUpper => {
-                                write!(&mut buffer, "{} {} {:?} {:?}\n", j + 1, i + 1, aij.re, aij.im).unwrap()
+                                writeln!(&mut buffer, "{} {} {:?} {:?}", j + 1, i + 1, aij.re, aij.im).unwrap()
                             }
                             Sym::YesFull => {
                                 if i >= j {
                                     // consider the lower-triangle only
-                                    write!(&mut buffer, "{} {} {:?} {:?}\n", i + 1, j + 1, aij.re, aij.im).unwrap()
+                                    writeln!(&mut buffer, "{} {} {:?} {:?}", i + 1, j + 1, aij.re, aij.im).unwrap()
                                 }
                             }
                         }

@@ -127,7 +127,7 @@ impl StatsLinSol {
                     "OpenBLAS".to_string()
                 },
                 solver: unknown.clone(),
-                local_sparse: if cfg!(feature = "local_sparse") { true } else { false },
+                local_sparse: cfg!(feature = "local_sparse"),
                 out_of_memory: false,
             },
             matrix: StatsLinSolMatrix {
@@ -350,7 +350,7 @@ mod tests {
     fn derive_works() {
         let stats = StatsLinSol::new();
         let clone = stats.clone();
-        assert!(format!("{:?}", stats).len() > 0);
+        assert!(!format!("{:?}", stats).is_empty());
         assert_eq!(clone.main.platform, stats.main.platform);
         // serialize
         let json_out = serde_json::to_string(&stats).unwrap();
@@ -412,7 +412,7 @@ mod tests {
         let mut stats = generate_data();
 
         let json = stats.get_json();
-        assert!(json.len() > 0);
+        assert!(!json.is_empty());
         assert!(stats.output.openmp_num_threads > 0);
 
         assert_eq!(stats.time_nanoseconds.initialize, 3 * ONE_SEC); // 9/3
@@ -472,7 +472,7 @@ mod tests {
     fn derive_with_no_runs_works() {
         let mut stats = StatsLinSol::new();
         let json = stats.get_json();
-        assert!(json.len() > 0);
+        assert!(!json.is_empty());
 
         assert_eq!(stats.time_nanoseconds.initialize, 0);
         assert_eq!(stats.time_nanoseconds.factorize, 0);

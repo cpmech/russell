@@ -68,7 +68,7 @@ impl VerifyLinSys {
 
         // compute max_abs_a
         let values = mat.get_values();
-        if values.len() < 1 {
+        if values.is_empty() {
             return Err("matrix is empty");
         }
         let idx = find_index_abs_max(values);
@@ -76,11 +76,11 @@ impl VerifyLinSys {
 
         // compute max_abs_ax
         let mut ax = Vector::new(nrow);
-        mat.mat_vec_mul(&mut ax, 1.0, &x).unwrap(); // unwrap bc already checked dims
+        mat.mat_vec_mul(&mut ax, 1.0, x).unwrap(); // unwrap bc already checked dims
         let max_abs_ax = vec_norm(&ax, Norm::Max);
 
         // compute max_abs_diff
-        vec_update(&mut ax, -1.0, &rhs).unwrap(); // ax := ax - rhs
+        vec_update(&mut ax, -1.0, rhs).unwrap(); // ax := ax - rhs
         let max_abs_diff = vec_norm(&ax, Norm::Max);
 
         // compute relative_error
@@ -112,7 +112,7 @@ impl VerifyLinSys {
 
         // compute max_abs_a
         let values = mat.get_values();
-        if values.len() < 1 {
+        if values.is_empty() {
             return Err("matrix is empty");
         }
         let nnz = values.len();
@@ -126,11 +126,11 @@ impl VerifyLinSys {
 
         // compute max_abs_ax
         let mut ax = ComplexVector::new(nrow);
-        mat.mat_vec_mul(&mut ax, cpx!(1.0, 0.0), &x).unwrap(); // unwrap bc already checked dims
+        mat.mat_vec_mul(&mut ax, cpx!(1.0, 0.0), x).unwrap(); // unwrap bc already checked dims
         let max_abs_ax = complex_vec_norm(&ax, Norm::Max);
 
         // compute max_abs_diff
-        complex_vec_update(&mut ax, cpx!(-1.0, 0.0), &rhs).unwrap(); // ax := ax - rhs
+        complex_vec_update(&mut ax, cpx!(-1.0, 0.0), rhs).unwrap(); // ax := ax - rhs
         let max_abs_diff = complex_vec_norm(&ax, Norm::Max);
 
         // compute relative_error

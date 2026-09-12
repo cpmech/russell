@@ -47,7 +47,7 @@ pub fn mat_to_mathematica(name: &str, a: &Matrix) -> String {
             write!(&mut buf, "{}", val).unwrap();
         }
     }
-    write!(&mut buf, "}}}};\n").unwrap();
+    writeln!(&mut buf, "}}}};").unwrap();
     buf
 }
 

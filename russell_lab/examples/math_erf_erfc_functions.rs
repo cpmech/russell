@@ -10,10 +10,10 @@ fn main() -> Result<(), StrError> {
     let xa = Vector::linspace(-5.0, 5.0, np)?;
     let xb = Vector::linspace(-1.0, 1.0, np)?;
     let xc = Vector::linspace(0.0, 2.0, np)?;
-    let y_erf = xa.get_mapped(|x| math::erf(x));
-    let y_erfc = xa.get_mapped(|x| math::erfc(x));
-    let mut y_erf_inv = xb.get_mapped(|x| math::erf_inv(x));
-    let mut y_erfc_inv = xc.get_mapped(|x| math::erfc_inv(x));
+    let y_erf = xa.get_mapped(math::erf);
+    let y_erfc = xa.get_mapped(math::erfc);
+    let mut y_erf_inv = xb.get_mapped(math::erf_inv);
+    let mut y_erfc_inv = xc.get_mapped(math::erfc_inv);
 
     // replace ±Inf with NaN (ok in Matplotlib)
     y_erf_inv.as_mut_data().iter_mut().for_each(|y| {

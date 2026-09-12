@@ -29,7 +29,7 @@ unsafe extern "C" {
 ///   with either the lower or upper triangular part given, according to the `upper` flag.
 ///   On output, `A = L` or `A = U` with the other side of the triangle unmodified.
 /// * `upper` -- Whether the upper triangle of `A` must be considered instead
-///    of the lower triangle. This will cause the computation of either `L` or `U`.
+///   of the lower triangle. This will cause the computation of either `L` or `U`.
 ///
 /// # Notes
 ///
@@ -253,9 +253,9 @@ mod tests {
         // define matrix
         let nil = 0.0;
         let (a01, a02, a03, a04) = (1.0, 1.0, 3.0, 2.0);
-        let (___, a12, a13, a14) = (nil, 2.0, 1.0, 1.0);
-        let (___, __p, a23, a24) = (nil, nil, 1.0, 5.0);
-        let (___, __p, __q, a34) = (nil, nil, nil, 1.0);
+        let (_, a12, a13, a14) = (nil, 2.0, 1.0, 1.0);
+        let (_, _, a23, a24) = (nil, nil, 1.0, 5.0);
+        let (_, _, _, a34) = (nil, nil, nil, 1.0);
         #[rustfmt::skip]
         let a_full = Matrix::from(&[
             [2.0, a01, a02, a03, a04],
@@ -301,9 +301,9 @@ mod tests {
         // define matrix
         let nil = 0.0;
         let (a01, a02, a03, a04) = (1.0, 1.0, 3.0, 2.0);
-        let (___, a12, a13, a14) = (nil, 2.0, 1.0, 1.0);
-        let (___, __p, a23, a24) = (nil, nil, 1.0, 5.0);
-        let (___, __p, __q, a34) = (nil, nil, nil, 1.0);
+        let (_, a12, a13, a14) = (nil, 2.0, 1.0, 1.0);
+        let (_, _, a23, a24) = (nil, nil, 1.0, 5.0);
+        let (_, _, _, a34) = (nil, nil, nil, 1.0);
         #[rustfmt::skip]
         let a_full = Matrix::from(&[
             [2.0, a01, a02, a03, a04],

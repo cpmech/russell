@@ -39,12 +39,12 @@ use std::fmt::Write;
 pub fn mat_to_static_array(name: &str, a: &Matrix) -> String {
     let (nrow, ncol) = a.dims();
     let mut buf = String::new();
-    write!(&mut buf, "// {}: nrow = {}, ncol = {}\n", name, nrow, ncol).unwrap();
-    write!(&mut buf, "#[rustfmt::skip]\n").unwrap();
-    write!(&mut buf, "const {}: [[f64; {}]; {}] = [\n", name, ncol, nrow).unwrap();
+    writeln!(&mut buf, "// {}: nrow = {}, ncol = {}", name, nrow, ncol).unwrap();
+    writeln!(&mut buf, "#[rustfmt::skip]").unwrap();
+    writeln!(&mut buf, "const {}: [[f64; {}]; {}] = [", name, ncol, nrow).unwrap();
     for i in 0..nrow {
         if i > 0 {
-            write!(&mut buf, " ],\n").unwrap();
+            writeln!(&mut buf, " ],").unwrap();
         }
         for j in 0..ncol {
             if j == 0 {
@@ -56,8 +56,8 @@ pub fn mat_to_static_array(name: &str, a: &Matrix) -> String {
             write!(&mut buf, "{}", format_scientific(val, 23, 15)).unwrap();
         }
     }
-    write!(&mut buf, " ],\n").unwrap();
-    write!(&mut buf, "];\n").unwrap();
+    writeln!(&mut buf, " ],").unwrap();
+    writeln!(&mut buf, "];").unwrap();
     buf
 }
 

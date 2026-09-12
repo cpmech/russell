@@ -480,7 +480,7 @@ impl InterpChebyshev {
         if self.nn == 0 {
             return Ok(self.constant_fx);
         }
-        let z = f64::max(-1.0, f64::min(1.0, (2.0 * x - self.xb - self.xa) / self.dx));
+        let z = ((2.0 * x - self.xb - self.xa) / self.dx).clamp(-1.0, 1.0);
         let z2 = z * 2.0;
         let mut b_k = 0.0;
         let mut b_k_plus_1 = 0.0;
@@ -503,7 +503,7 @@ impl InterpChebyshev {
         if self.nn == 0 {
             return Ok(self.constant_fx);
         }
-        let z = f64::max(-1.0, f64::min(1.0, (2.0 * x - self.xb - self.xa) / self.dx));
+        let z = ((2.0 * x - self.xb - self.xa) / self.dx).clamp(-1.0, 1.0);
         let mut sum = 0.0;
         let np = self.nn + 1;
         for k in 0..np {
@@ -1429,7 +1429,7 @@ mod tests {
         let (xa, xb) = (0.0, PI);
         let np_gen = 20;
         let xx = Vector::linspace(xa, xb, np_gen).unwrap();
-        let yy = xx.get_mapped(|x| f64::cos(x));
+        let yy = xx.get_mapped(f64::cos);
         let mut interp = InterpChebyshev::new(np_gen + 5, xa, xb).unwrap();
         interp.set_gen_data(xx.as_data(), yy.as_data()).unwrap();
         assert_eq!(interp.get_degree(), np_gen - 1);

@@ -22,7 +22,7 @@ use crate::deriv2_approx_eq;
 /// * `args` - Additional arguments passed to the function
 /// * `tol` - The tolerance for the approximate equality check
 /// * `f` - The function to calculate `v(s)` for which the second derivative is evaluated.
-///    It must have the signature `f(v: &mut Vector, s: f64, args: &mut A) -> Result<(), StrError>`
+///   It must have the signature `f(v: &mut Vector, s: f64, args: &mut A) -> Result<(), StrError>`
 ///
 /// # Panics
 ///

@@ -458,7 +458,7 @@ mod tests {
         // NaN behavior in sort is implementation-dependent
         // We just verify that we get all 5 indices and they're unique
         assert_eq!(indices.len(), 5);
-        let mut seen = vec![false; 5];
+        let mut seen = [false; 5];
         for &idx in &indices {
             assert!(!seen[idx], "Duplicate index found");
             seen[idx] = true;
@@ -514,7 +514,7 @@ mod tests {
         // This should still produce a valid ordering
         assert_eq!(indices.len(), 5);
         // Verify all indices are unique
-        let mut seen = vec![false; 5];
+        let mut seen = [false; 5];
         for &idx in &indices {
             assert!(!seen[idx], "Duplicate index found");
             seen[idx] = true;
@@ -664,7 +664,7 @@ mod tests {
         let indices = argsort3_f64(&z, &y, &x);
         // Verify we get all 5 indices and they're unique
         assert_eq!(indices.len(), 5);
-        let mut seen = vec![false; 5];
+        let mut seen = [false; 5];
         for &idx in &indices {
             assert!(!seen[idx], "Duplicate index found");
             seen[idx] = true;

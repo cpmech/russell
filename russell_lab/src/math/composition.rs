@@ -137,9 +137,9 @@ pub fn float_is_integer(x: f64) -> bool {
 ///
 /// # Special cases
 ///
-///	* `float_decompose(±0.0) = (±0.0, 0)`
-///	* `float_decompose(±Inf) = (±Inf, 0)`
-///	* `float_decompose(NaN)  = (NaN,  0)`
+/// * `float_decompose(±0.0) = (±0.0, 0)`
+/// * `float_decompose(±Inf) = (±Inf, 0)`
+/// * `float_decompose(NaN)  = (NaN,  0)`
 ///
 /// # Examples
 ///

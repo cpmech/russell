@@ -30,9 +30,9 @@ use std::fmt::Write;
 pub fn vec_to_static_array(name: &str, v: &Vector) -> String {
     let dim = v.dim();
     let mut buf = String::new();
-    write!(&mut buf, "// {}: dim = {}\n", name, dim).unwrap();
-    write!(&mut buf, "#[rustfmt::skip]\n").unwrap();
-    write!(&mut buf, "const {}: [f64; {}] = [\n", name, dim).unwrap();
+    writeln!(&mut buf, "// {}: dim = {}", name, dim).unwrap();
+    writeln!(&mut buf, "#[rustfmt::skip]").unwrap();
+    writeln!(&mut buf, "const {}: [f64; {}] = [", name, dim).unwrap();
     write!(&mut buf, "\x20\x20\x20\x20").unwrap();
     for i in 0..dim {
         if i > 0 {

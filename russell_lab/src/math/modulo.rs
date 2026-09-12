@@ -43,9 +43,9 @@ pub fn modulo(x: f64, y: f64) -> f64 {
     while r >= y {
         let (r_frac, mut r_exp) = float_decompose(r);
         if r_frac < y_frac {
-            r_exp = r_exp - 1;
+            r_exp -= 1;
         }
-        r = r - float_compose(y, r_exp - y_exp);
+        r -= float_compose(y, r_exp - y_exp);
     }
 
     if x < 0.0 {

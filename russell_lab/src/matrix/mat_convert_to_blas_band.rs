@@ -94,7 +94,7 @@ pub fn mat_convert_to_blas_band(band: &mut Matrix, dense: &Matrix, ml: usize, mu
         return Err("the resulting matrix must be ml + mu + 1 by n");
     }
     for j in 0..n {
-        let a = if j > mu { j - mu } else { 0 };
+        let a = j.saturating_sub(mu);
         let b = if j + ml + 1 < m { j + ml + 1 } else { m };
         for i in a..b {
             band.set(i + mu - j, j, dense.get(i, j));

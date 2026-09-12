@@ -1308,10 +1308,10 @@ impl<const M: usize, const N: usize> fmt::Display for Tensor3<M, N> {
         }
         // draw matrix
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width * N + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width * N + 1).unwrap();
         for i in 0..M {
             if i > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             for j in 0..N {
                 if j == 0 {
@@ -1324,7 +1324,7 @@ impl<const M: usize, const N: usize> fmt::Display for Tensor3<M, N> {
                 }
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width * N + 1).unwrap();
         Ok(())
     }

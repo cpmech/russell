@@ -80,6 +80,7 @@ mod tests {
     use super::Norm;
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn clone_copy_and_debug_work() {
         let norm = Norm::Inf;
         let copy = norm;

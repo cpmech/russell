@@ -85,7 +85,7 @@ fn main() -> Result<(), StrError> {
 
     // 1. Function curve
     let xx = Vector::linspace(-0.15, 1.65, 300)?;
-    let yy = xx.get_mapped(|x| f(x));
+    let yy = xx.get_mapped(&f);
     let mut curve_f = Curve::new();
     curve_f
         .set_label("$f(x)=(x-1)^4+(x-1)^2$")

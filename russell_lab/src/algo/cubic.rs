@@ -263,7 +263,7 @@ mod tests {
         );
 
         // Test that error messages can be formatted
-        let err_msg = format!("{}", err);
+        let err_msg = err.to_string();
         assert!(err_msg.contains("leading coefficient 'a' must be nonzero"));
     }
 

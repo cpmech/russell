@@ -121,7 +121,7 @@ where
     let path = Path::new(full_path).to_path_buf();
     let input = File::open(path).map_err(|_| "cannot open file")?;
     let buffered = BufReader::new(input);
-    let mut lines_iter = buffered.lines();
+    let lines_iter = buffered.lines();
 
     // results
     let mut header_labels = Vec::new();
@@ -130,80 +130,70 @@ where
     // parse rows, ignoring comments and empty lines
     let mut first_row = true;
     let mut number_of_columns = 0;
-    loop {
-        match lines_iter.next() {
-            Some(v) => {
-                // extract line
-                let line = v.unwrap(); // must panic because no error expected here
+    for v in lines_iter {
+        // extract line
+        let line = v.unwrap(); // must panic because no error expected here
 
-                // ignore comments or empty lines
-                let maybe_data = line.trim_start().trim_end_matches("\n");
-                if maybe_data.starts_with("#") || maybe_data == "" {
-                    continue; // nothing to parse
-                }
+        // ignore comments or empty lines
+        let maybe_data = line.trim_start().trim_end_matches("\n");
+        if maybe_data.starts_with("#") || maybe_data.is_empty() {
+            continue; // nothing to parse
+        }
 
-                // remove whitespace
-                let mut row_values = maybe_data.split_whitespace();
+        // remove whitespace
+        let row_values = maybe_data.split_whitespace();
 
-                // loop over columns
-                let mut column_index = 0;
-                loop {
-                    match row_values.next() {
-                        Some(s) => {
-                            if s.starts_with("#") {
-                                break; // ignore comments at the end of the row
-                            }
-                            if first_row {
-                                // check header labels or create new labels
-                                let label = match &labels {
-                                    Some(ls) => {
-                                        if column_index >= ls.len() {
-                                            return Err("there are more columns than labels");
-                                        }
-                                        if s != ls[column_index] {
-                                            return Err("column data is missing");
-                                        }
-                                        ls[column_index].to_string()
-                                    }
-                                    None => {
-                                        if header_labels.contains(&s.to_string()) {
-                                            return Err("found duplicate column label");
-                                        }
-                                        s.to_string()
-                                    }
-                                };
-                                header_labels.push(label);
-                            } else {
-                                // parse value
-                                if column_index >= header_labels.len() {
-                                    return Err("there are more columns than labels");
-                                }
-                                let value = s.parse::<T>().map_err(|_| "cannot parse value")?;
-                                let label = &header_labels[column_index];
-                                match table.get_mut(label) {
-                                    Some(column) => column.push(value),
-                                    None => {
-                                        table.insert(label.clone(), vec![value]);
-                                    }
-                                }
-                            };
-                            column_index += 1;
-                        }
-                        None => break,
-                    }
-                }
-
-                // set or check the number of columns
-                if first_row {
-                    number_of_columns = column_index; // the first row determines the number of columns
-                    first_row = false;
-                } else {
-                    if column_index != number_of_columns {
-                        return Err("column data is missing");
-                    }
-                }
+        // loop over columns
+        let mut column_index = 0;
+        for s in row_values {
+            if s.starts_with("#") {
+                break; // ignore comments at the end of the row
             }
-            None => break,
+            if first_row {
+                // check header labels or create new labels
+                let label = match &labels {
+                    Some(ls) => {
+                        if column_index >= ls.len() {
+                            return Err("there are more columns than labels");
+                        }
+                        if s != ls[column_index] {
+                            return Err("column data is missing");
+                        }
+                        ls[column_index].to_string()
+                    }
+                    None => {
+                        if header_labels.contains(&s.to_string()) {
+                            return Err("found duplicate column label");
+                        }
+                        s.to_string()
+                    }
+                };
+                header_labels.push(label);
+            } else {
+                // parse value
+                if column_index >= header_labels.len() {
+                    return Err("there are more columns than labels");
+                }
+                let value = s.parse::<T>().map_err(|_| "cannot parse value")?;
+                let label = &header_labels[column_index];
+                match table.get_mut(label) {
+                    Some(column) => column.push(value),
+                    None => {
+                        table.insert(label.clone(), vec![value]);
+                    }
+                }
+            };
+            column_index += 1;
+        }
+
+        // set or check the number of columns
+        if first_row {
+            number_of_columns = column_index; // the first row determines the number of columns
+            first_row = false;
+        } else {
+            if column_index != number_of_columns {
+                return Err("column data is missing");
+            }
         }
     }
 

@@ -2351,10 +2351,10 @@ impl<const N: usize> fmt::Display for Tensor2<N> {
         }
         // draw vector
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width + 1).unwrap();
         for m in 0..N {
             if m > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             write!(f, "│").unwrap();
             let val = self.get(m);
@@ -2363,7 +2363,7 @@ impl<const N: usize> fmt::Display for Tensor2<N> {
                 None => write!(f, "{:>1$}", val, width).unwrap(),
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width + 1).unwrap();
         Ok(())
     }

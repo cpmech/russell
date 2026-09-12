@@ -100,7 +100,7 @@ impl RootFinder {
     /// # Input
     ///
     /// * `interp` -- The Chebyshev-Gauss-Lobatto interpolant with the data vector U
-    ///    already computed. The interpolant must have the same degree N as this struct.
+    ///   already computed. The interpolant must have the same degree N as this struct.
     ///
     /// # Output
     ///
@@ -208,7 +208,7 @@ impl RootFinder {
         }
 
         // sort roots
-        if roots.len() > 0 {
+        if !roots.is_empty() {
             roots.sort_by(|a, b| a.partial_cmp(b).unwrap());
         }
         Ok(roots)
@@ -614,7 +614,7 @@ mod tests {
             let solver = RootFinder::new();
             let roots = solver.chebyshev(&interp).unwrap();
             let mut roots_refined = roots.clone();
-            if roots.len() > 0 {
+            if !roots.is_empty() {
                 solver.refine(&mut roots_refined, xa, xb, args, test.f).unwrap();
             }
             for xr in &roots_refined {

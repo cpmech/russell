@@ -550,54 +550,44 @@ where
         let path = Path::new(full_path).to_path_buf();
         let input = File::open(path).map_err(|_| "cannot open file")?;
         let buffered = BufReader::new(input);
-        let mut lines_iter = buffered.lines();
+        let lines_iter = buffered.lines();
 
         // parse rows, ignoring comments and empty lines
         let mut current_row_index = 0;
         let mut number_of_columns = 0;
         let mut data_row_major = Vec::<T>::new();
-        loop {
-            match lines_iter.next() {
-                Some(v) => {
-                    // extract line
-                    let line = v.unwrap(); // must panic because no error expected here
+        for v in lines_iter {
+            // extract line
+            let line = v.unwrap(); // must panic because no error expected here
 
-                    // ignore comments or empty lines
-                    let maybe_data = line.trim_start().trim_end_matches("\n");
-                    if maybe_data.starts_with("#") || maybe_data == "" {
-                        continue; // nothing to parse
-                    }
-
-                    // remove whitespace
-                    let mut row_values = maybe_data.split_whitespace();
-
-                    // loop over columns
-                    let mut column_index = 0;
-                    loop {
-                        match row_values.next() {
-                            Some(s) => {
-                                if s.starts_with("#") {
-                                    break; // ignore comments at the end of the row
-                                }
-                                data_row_major.push(T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?);
-                                column_index += 1;
-                            }
-                            None => break,
-                        }
-                    }
-
-                    // set or check the number of columns
-                    if current_row_index == 0 {
-                        number_of_columns = column_index; // the first row determines the number of columns
-                    } else {
-                        if column_index != number_of_columns {
-                            return Err("column data is missing");
-                        }
-                    }
-                    current_row_index += 1;
-                }
-                None => break,
+            // ignore comments or empty lines
+            let maybe_data = line.trim_start().trim_end_matches("\n");
+            if maybe_data.starts_with("#") || maybe_data.is_empty() {
+                continue; // nothing to parse
             }
+
+            // remove whitespace
+            let row_values = maybe_data.split_whitespace();
+
+            // loop over columns
+            let mut column_index = 0;
+            for s in row_values {
+                if s.starts_with("#") {
+                    break; // ignore comments at the end of the row
+                }
+                data_row_major.push(T::from_str_radix(s, 10).map_err(|_| "cannot parse value")?);
+                column_index += 1;
+            }
+
+            // set or check the number of columns
+            if current_row_index == 0 {
+                number_of_columns = column_index; // the first row determines the number of columns
+            } else {
+                if column_index != number_of_columns {
+                    return Err("column data is missing");
+                }
+            }
+            current_row_index += 1;
         }
         let (nrow, ncol) = (current_row_index, number_of_columns);
         let mut data = vec![T::zero(); nrow * ncol];
@@ -980,10 +970,10 @@ where
         }
         // draw matrix
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width * self.ncol + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width * self.ncol + 1).unwrap();
         for i in 0..self.nrow {
             if i > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             for j in 0..self.ncol {
                 if j == 0 {
@@ -996,7 +986,7 @@ where
                 }
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width * self.ncol + 1).unwrap();
         Ok(())
     }

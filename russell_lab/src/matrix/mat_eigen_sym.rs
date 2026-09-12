@@ -36,7 +36,7 @@ unsafe extern "C" {
 ///
 /// * `A` -- (modified on exit) matrix to compute eigenvalues (SYMMETRIC and SQUARE)
 /// * `upper` -- Whether the upper triangle of `A` must be considered instead
-///    of the lower triangle.
+///   of the lower triangle.
 ///
 /// # Output
 ///

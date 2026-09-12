@@ -187,9 +187,7 @@ impl MinBracketing {
 /// Swaps two numbers
 #[inline]
 pub(super) fn swap(a: &mut f64, b: &mut f64) {
-    let a_copy = a.clone();
-    *a = *b;
-    *b = a_copy;
+    std::mem::swap(a, b);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

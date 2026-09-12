@@ -17,7 +17,7 @@ fn test_bessel_functions_sml() {
     let y1 = dat.get("Y1").unwrap();
     let y2 = dat.get("Y2").unwrap();
 
-    for (i, x) in xx.into_iter().enumerate() {
+    for (i, x) in xx.iter().enumerate() {
         approx_eq(math::bessel_j0(*x), j0[i], 1e-15);
         approx_eq(math::bessel_j1(*x), j1[i], 1e-15);
         approx_eq(math::bessel_jn(2, *x), j2[i], 1e-15);
@@ -49,7 +49,7 @@ fn test_bessel_functions_big() {
     let y1 = dat.get("Y1").unwrap();
     let y2 = dat.get("Y2").unwrap();
 
-    for (i, x) in xx.into_iter().enumerate() {
+    for (i, x) in xx.iter().enumerate() {
         approx_eq(math::bessel_j0(*x), j0[i], 1e-15);
         approx_eq(math::bessel_j1(*x), j1[i], 1e-15);
         approx_eq(math::bessel_jn(2, *x), j2[i], 1e-14);
@@ -83,7 +83,7 @@ fn test_modified_bessel_functions_sml() {
     let k2 = dat.get("K2").unwrap();
     let k3 = dat.get("K3").unwrap();
 
-    for (i, x) in xx.into_iter().enumerate() {
+    for (i, x) in xx.iter().enumerate() {
         approx_eq(math::bessel_i0(*x), i0[i], 1e-8);
         approx_eq(math::bessel_i1(*x), i1[i], 1e-7);
         approx_eq(math::bessel_in(2, *x), i2[i], 1e-7);
@@ -120,7 +120,7 @@ fn test_modified_bessel_functions_big() {
     let k2 = dat.get("K2").unwrap();
     let k3 = dat.get("K3").unwrap();
 
-    for (i, x) in xx.into_iter().enumerate() {
+    for (i, x) in xx.iter().enumerate() {
         approx_eq(math::bessel_i0(*x), i0[i], 1e-6);
         approx_eq(math::bessel_i1(*x), i1[i], 1e-6);
         approx_eq(math::bessel_in(2, *x), i2[i], 1e-6);
@@ -153,7 +153,7 @@ fn test_modified_bessel_functions_neg() {
     let i2 = dat.get("I2").unwrap();
     let i3 = dat.get("I3").unwrap();
 
-    for (i, x) in xx.into_iter().enumerate() {
+    for (i, x) in xx.iter().enumerate() {
         approx_eq(math::bessel_i0(*x), i0[i], 1e-12);
         approx_eq(math::bessel_i1(*x), i1[i], 1e-12);
         approx_eq(math::bessel_in(2, *x), i2[i], 1e-11);

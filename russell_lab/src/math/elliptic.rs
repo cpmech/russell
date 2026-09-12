@@ -30,8 +30,8 @@ use crate::StrError;
 /// # Special cases
 ///
 /// * `F(φ, m) = Inf` if `m·sin²(φ) == 1`
-///	* `F(0.0, m) = 0.0`
-///	* `F(φ, 0.0) = φ`
+/// * `F(0.0, m) = 0.0`
+/// * `F(φ, 0.0) = φ`
 ///
 /// # References
 ///
@@ -104,8 +104,8 @@ pub fn elliptic_f(phi: f64, m: f64) -> Result<f64, StrError> {
 ///
 /// # Special cases
 ///
-///	* `E(0.0, m) = 0.0`
-///	* `E(φ, 0.0) = φ`
+/// * `E(0.0, m) = 0.0`
+/// * `E(φ, 0.0) = φ`
 ///
 /// # References
 ///
@@ -182,7 +182,7 @@ pub fn elliptic_e(phi: f64, m: f64) -> Result<f64, StrError> {
 ///
 /// * `Π(n, φ, m) = Inf` if `m·sin²(φ) == 1`
 /// * `Π(n, φ, m) = Inf` if `n·sin²(φ) == 1`
-///	* `Π(n, 0.0, m) = 0.0`
+/// * `Π(n, 0.0, m) = 0.0`
 ///
 /// # References:
 ///
@@ -319,7 +319,7 @@ fn rd(x: f64, y: f64, z: f64) -> Result<f64, StrError> {
         let sqz = f64::sqrt(zt);
         let lam = sqx * (sqy + sqz) + sqy * sqz;
         sum += fac / (sqz * (zt + lam));
-        fac = 0.25 * fac;
+        fac *= 0.25;
         xt = 0.25 * (xt + lam);
         yt = 0.25 * (yt + lam);
         zt = 0.25 * (zt + lam);
@@ -408,7 +408,7 @@ fn rj(x: f64, y: f64, z: f64, p: f64) -> Result<f64, StrError> {
         let alpha = f64::powf(pt * (sqx + sqy + sqz) + sqx * sqy * sqz, 2.0);
         let beta = pt * f64::powf(pt + lam, 2.0);
         sum += fac * rc(alpha, beta)?;
-        fac = 0.25 * fac;
+        fac *= 0.25;
         xt = 0.25 * (xt + lam);
         yt = 0.25 * (yt + lam);
         zt = 0.25 * (zt + lam);

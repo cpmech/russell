@@ -11,7 +11,7 @@ fn main() -> Result<(), StrError> {
     let xc = Vector::linspace(-4.0, 4.0, 202)?;
 
     // sign(x)
-    let y_sign = xa.get_mapped(|x| math::sign(x));
+    let y_sign = xa.get_mapped(math::sign);
     let mut curve = Curve::new();
     curve.set_marker_style("o").draw(xa.as_data(), y_sign.as_data());
     let mut plot = Plot::new();
@@ -22,7 +22,7 @@ fn main() -> Result<(), StrError> {
         .save(&path)?;
 
     // ramp(x)
-    let y_ramp = xa.get_mapped(|x| math::ramp(x));
+    let y_ramp = xa.get_mapped(math::ramp);
     let mut curve = Curve::new();
     curve.set_line_width(2.5).draw(xa.as_data(), y_ramp.as_data());
     let mut plot = Plot::new();
@@ -33,7 +33,7 @@ fn main() -> Result<(), StrError> {
         .save(&path)?;
 
     // heaviside(x)
-    let y_heaviside = xa.get_mapped(|x| math::heaviside(x));
+    let y_heaviside = xa.get_mapped(math::heaviside);
     let mut curve = Curve::new();
     curve.set_marker_style("o").draw(xa.as_data(), y_heaviside.as_data());
     let mut plot = Plot::new();
@@ -56,7 +56,7 @@ fn main() -> Result<(), StrError> {
         .save(&path)?;
 
     // logistic(x)
-    let y_logistic = xc.get_mapped(|x| math::logistic(x));
+    let y_logistic = xc.get_mapped(math::logistic);
     let mut curve = Curve::new();
     curve.set_line_width(2.5).draw(xc.as_data(), y_logistic.as_data());
     let mut plot = Plot::new();
@@ -67,7 +67,7 @@ fn main() -> Result<(), StrError> {
         .save(&path)?;
 
     // logistic_deriv1(x)
-    let y_logistic_deriv1 = xc.get_mapped(|x| math::logistic_deriv1(x));
+    let y_logistic_deriv1 = xc.get_mapped(math::logistic_deriv1);
     let mut curve = Curve::new();
     curve
         .set_line_width(2.5)

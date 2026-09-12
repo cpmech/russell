@@ -10,7 +10,7 @@ fn main() -> Result<(), StrError> {
     let xx = Vector::linspace(-2.0, 3.0, np)?;
     let mut bb = xx.get_mapped(|x| math::beta(0.5, x));
     let mut lb = xx.get_mapped(|x| math::ln_beta(0.5, x));
-    let mut gg = xx.get_mapped(|x| math::gamma(x));
+    let mut gg = xx.get_mapped(math::gamma);
     let mut lg = xx.get_mapped(|x| math::ln_gamma(x).0);
 
     // replace ±Inf with NaN (ok in Matplotlib)

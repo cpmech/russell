@@ -13,8 +13,10 @@ members = [
 resolver = "2"
 
 [workspace.lints.clippy]
-approx_constant = "allow"
-excessive_precision = "allow"
+approx_constant = "allow"       # allow large constants; e.g. for OEIS reference
+excessive_precision = "allow"   # allow large constants; e.g. for OEIS reference
+manual_range_contains = "allow" # allow if "a < b && c < d" constructions
+needless_range_loop = "allow"   # allow "for i in a..b" instead of range
 
 [profile.release]
 lto = true

@@ -416,7 +416,7 @@ impl Spectral2 {
                 let p = -self.lam[s];
                 let q = -self.lam[t];
                 let f = 1.0 / ((self.lam[r] - self.lam[s]) * (self.lam[r] - self.lam[t]));
-                t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
+                t2_plus_diag_product(self.proj[r].as_mut_data(), f, aa.as_data(), p, q);
             }
         } else {
             // nearly coalescent eigenvalues: fall back to Jacobi
@@ -514,8 +514,8 @@ impl Spectral2 {
         if self.yy.is_none() {
             self.yy = Some(Tensor4::<6>::new());
         }
-        let mut yy = self.yy.as_mut().unwrap();
-        ssd_fn(&mut yy, SET, 0.5, &self.aa_inv);
+        let yy = self.yy.as_mut().unwrap();
+        ssd_fn(yy, SET, 0.5, &self.aa_inv);
 
         // allocate and calculate auxiliary tensors P[j] ⊗ P[j]
         if self.p_dy_p.len() != 3 {

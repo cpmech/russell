@@ -281,16 +281,16 @@ mod tests {
         let mut a_2x2 = Matrix::new(2, 2);
         let mut ai_1x2 = Matrix::new(1, 2);
         let mut ai_2x1 = Matrix::new(2, 1);
-        assert_eq!(mat_inverse(&mut ai_1x2, &mut a_2x3), Err("matrix must be square"));
-        assert_eq!(mat_inverse(&mut ai_1x2, &mut a_2x2), Err("matrices are incompatible"));
-        assert_eq!(mat_inverse(&mut ai_2x1, &mut a_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_inverse(&mut ai_1x2, &a_2x3), Err("matrix must be square"));
+        assert_eq!(mat_inverse(&mut ai_1x2, &a_2x2), Err("matrices are incompatible"));
+        assert_eq!(mat_inverse(&mut ai_2x1, &a_2x2), Err("matrices are incompatible"));
     }
 
     #[test]
     fn inverse_0x0_works() {
         let mut a = Matrix::new(0, 0);
         let mut ai = Matrix::new(0, 0);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, 0.0);
         assert_eq!(ai.as_data().len(), 0);
     }
@@ -300,7 +300,7 @@ mod tests {
         let data = [[2.0]];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(1, 1);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, 2.0);
         mat_approx_eq(&ai, &[[0.5]], 1e-15);
         let a_copy = Matrix::from(&data);
@@ -312,7 +312,7 @@ mod tests {
     fn inverse_1x1_fails_on_zero_det() {
         let mut a = Matrix::from(&[[ZERO_DETERMINANT / 10.0]]);
         let mut ai = Matrix::new(1, 1);
-        let res = mat_inverse(&mut ai, &mut a);
+        let res = mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
     }
 
@@ -325,7 +325,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(2, 2);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, -4.0);
         mat_approx_eq(&ai, &[[-0.5, 0.5], [0.75, -0.25]], 1e-15);
         let a_copy = Matrix::from(&data);
@@ -341,7 +341,7 @@ mod tests {
             [2.0/3.0,    -1.0],
         ]);
         let mut ai = Matrix::new(2, 2);
-        let res = mat_inverse(&mut ai, &mut a);
+        let res = mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
     }
 
@@ -355,7 +355,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(3, 3);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, 22.0);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -379,7 +379,7 @@ mod tests {
             [1.0, 0.0, 6.0],
         ]);
         let mut ai = Matrix::new(3, 3);
-        let res = mat_inverse(&mut ai, &mut a);
+        let res = mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
     }
 
@@ -394,7 +394,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(4, 4);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         approx_eq(det, 20.0, 1e-14);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -422,7 +422,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(5, 5);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         approx_eq(det, -167402.0, 1e-8);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -453,7 +453,7 @@ mod tests {
         ];
         let mut a = Matrix::from(&data);
         let mut ai = Matrix::new(6, 6);
-        let det = mat_inverse(&mut ai, &mut a).unwrap();
+        let det = mat_inverse(&mut ai, &a).unwrap();
         approx_eq(det, 7.778940633136385e-19, 1e-15);
         #[rustfmt::skip]
         let ai_correct = &[

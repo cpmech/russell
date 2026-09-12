@@ -86,7 +86,7 @@ fn main() -> Result<(), StrError> {
 
     // error at nodes
     let uu_ana = xx.get_mapped(analytical);
-    let max_diff = vec_max_abs_diff(&uu, &uu_ana)?;
+    let max_diff = vec_max_abs_diff(uu, &uu_ana)?;
     println!("U (numerical) =\n{}", uu);
     println!("U (analytical) =\n{}", uu);
     println!("error = {}", format_scientific(max_diff.1, 10, 2));

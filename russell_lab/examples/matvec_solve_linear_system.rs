@@ -22,6 +22,6 @@ fn main() -> Result<(), StrError> {
 
     // check
     let correct = [1.0, 2.0, 3.0, 4.0, 5.0];
-    vec_approx_eq(&x, &correct, 1e-14);
+    vec_approx_eq(x, &correct, 1e-14);
     Ok(())
 }

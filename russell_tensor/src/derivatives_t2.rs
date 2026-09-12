@@ -83,7 +83,7 @@ pub fn deriv1_invariant_jj2<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2
 pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2<N>) {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     let mut s = [0.0; 6];
-    deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, &sigma);
+    deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, sigma);
 }
 
 /// Calculates the first derivative of the J3 invariant (crate-internal)

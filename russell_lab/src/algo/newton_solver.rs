@@ -254,7 +254,7 @@ impl NewtonSolver {
         self.stats.reset();
 
         // Calculate the first residual vector r = f(x)
-        calc_f(&mut self.r, &x, args)?;
+        calc_f(&mut self.r, x, args)?;
         self.stats.inc_n_function(1);
 
         // Calculate the first residual norm
@@ -278,7 +278,7 @@ impl NewtonSolver {
             }
 
             // Compute Jacobian at x and solve J*p = -r(x) for p
-            calc_jj(&mut self.jj, &x, args)?;
+            calc_jj(&mut self.jj, x, args)?;
             self.stats.inc_n_jacobian(1);
             for i in 0..self.ndim {
                 self.p[i] = -self.r[i];
@@ -300,7 +300,7 @@ impl NewtonSolver {
                     for i in 0..self.ndim {
                         x[i] = x_base[i] + alpha * self.p[i];
                     }
-                    calc_f(&mut self.r, &x, args)?;
+                    calc_f(&mut self.r, x, args)?;
                     self.stats.inc_n_function(1);
                     let phi_new = 0.5 * vec_inner(&self.r, &self.r);
                     // Armijo condition: phi(alpha) <= phi(0) + c1 * alpha * phi'(0)
@@ -314,7 +314,7 @@ impl NewtonSolver {
                 for i in 0..self.ndim {
                     x[i] += self.p[i];
                 }
-                calc_f(&mut self.r, &x, args)?;
+                calc_f(&mut self.r, x, args)?;
                 self.stats.inc_n_function(1);
             }
 

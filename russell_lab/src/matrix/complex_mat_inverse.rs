@@ -236,15 +236,15 @@ mod tests {
         let mut ai_1x2 = ComplexMatrix::new(1, 2);
         let mut ai_2x1 = ComplexMatrix::new(2, 1);
         assert_eq!(
-            complex_mat_inverse(&mut ai_1x2, &mut a_2x3),
+            complex_mat_inverse(&mut ai_1x2, &a_2x3),
             Err("matrix must be square")
         );
         assert_eq!(
-            complex_mat_inverse(&mut ai_1x2, &mut a_2x2),
+            complex_mat_inverse(&mut ai_1x2, &a_2x2),
             Err("matrices are incompatible")
         );
         assert_eq!(
-            complex_mat_inverse(&mut ai_2x1, &mut a_2x2),
+            complex_mat_inverse(&mut ai_2x1, &a_2x2),
             Err("matrices are incompatible")
         );
     }
@@ -253,7 +253,7 @@ mod tests {
     fn complex_inverse_0x0_works() {
         let mut a = ComplexMatrix::new(0, 0);
         let mut ai = ComplexMatrix::new(0, 0);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, cpx!(0.0, 0.0));
         assert_eq!(ai.as_data().len(), 0);
     }
@@ -263,7 +263,7 @@ mod tests {
         let data = [[2.0]];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(1, 1);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, cpx!(2.0, 0.0));
         complex_mat_approx_eq(&ai, &[[cpx!(0.5, 0.0)]], 1e-15);
         let a_copy = ComplexMatrix::from(&data);
@@ -275,7 +275,7 @@ mod tests {
     fn complex_inverse_1x1_fails_on_zero_det() {
         let mut a = ComplexMatrix::from(&[[ZERO_DETERMINANT_NORM / 10.0]]);
         let mut ai = ComplexMatrix::new(1, 1);
-        let res = complex_mat_inverse(&mut ai, &mut a);
+        let res = complex_mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
     }
 
@@ -288,7 +288,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(2, 2);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, cpx!(-4.0, 0.0));
         complex_mat_approx_eq(
             &ai,
@@ -312,7 +312,7 @@ mod tests {
             [2.0/3.0,    -1.0],
         ]);
         let mut ai = ComplexMatrix::new(2, 2);
-        let res = complex_mat_inverse(&mut ai, &mut a);
+        let res = complex_mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
     }
 
@@ -326,7 +326,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(3, 3);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, cpx!(22.0, 0.0));
         #[rustfmt::skip]
         let ai_correct = &[
@@ -351,7 +351,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(3, 3);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         assert_eq!(det, cpx!(6.0, 10.0));
         #[rustfmt::skip]
         let ai_correct = &[
@@ -375,7 +375,7 @@ mod tests {
             [1.0, 0.0, 6.0],
         ]);
         let mut ai = ComplexMatrix::new(3, 3);
-        let res = complex_mat_inverse(&mut ai, &mut a);
+        let res = complex_mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));
     }
 
@@ -390,7 +390,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(4, 4);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         complex_approx_eq(det, cpx!(20.0, 0.0), 1e-14);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -417,7 +417,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(4, 4);
-        complex_mat_inverse(&mut ai, &mut a).unwrap();
+        complex_mat_inverse(&mut ai, &a).unwrap();
         #[rustfmt::skip]
         let ai_correct = &[
 		    [cpx!(-8.442622950819669e-01, -4.644808743169393e-02), cpx!( 5.409836065573769e-01,  4.918032786885240e-02), cpx!( 3.278688524590156e-02, -2.732240437158467e-02), cpx!( 1.803278688524591e-01,  1.639344262295081e-02)],
@@ -444,7 +444,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(5, 5);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         complex_approx_eq(det, cpx!(-167402.0, 0.0), 1e-8);
         #[rustfmt::skip]
         let ai_correct = &[
@@ -475,7 +475,7 @@ mod tests {
         ];
         let mut a = ComplexMatrix::from(&data);
         let mut ai = ComplexMatrix::new(6, 6);
-        let det = complex_mat_inverse(&mut ai, &mut a).unwrap();
+        let det = complex_mat_inverse(&mut ai, &a).unwrap();
         complex_approx_eq(det, cpx!(7.778940633136385e-19, 0.0), 1e-15);
         #[rustfmt::skip]
         let ai_correct = &[

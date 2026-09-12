@@ -392,7 +392,7 @@ pub fn deriv2_invariant_lode<const N: usize>(
         let b = 2.25 * SQRT_3 / (jj2 * jj2 * sqrt_j2);
         let c = 5.625 * SQRT_3 / (jj2 * jj2 * jj2 * sqrt_j2);
         let mut s = [0.0; 6];
-        deriv1_invariant_jj3_slice(&mut work.d1_jj3.as_mut_data(), &mut s, sigma);
+        deriv1_invariant_jj3_slice(work.d1_jj3.as_mut_data(), &mut s, sigma);
         deriv2_invariant_jj3(&mut work.d2_jj3, sigma);
         let d1_jj2 = &s;
         let d2_jj2 = &P_SYMDEV;
@@ -571,8 +571,8 @@ mod tests {
 
         // check using numerical derivative
         let ana = dd_ana.as_std_matrix();
-        let num = numerical_deriv_inverse(&a);
-        let num_kel = numerical_deriv_inverse_kelvin(&a);
+        let num = numerical_deriv_inverse(a);
+        let num_kel = numerical_deriv_inverse_kelvin(a);
         mat_approx_eq(&ana, &num, tol);
         mat_approx_eq(&ana, &num_kel, tol);
     }
@@ -605,7 +605,7 @@ mod tests {
 
         // check using numerical derivative
         let ana = dd_ana.as_std_matrix();
-        let num = numerical_deriv_inverse_sym_kelvin(&a);
+        let num = numerical_deriv_inverse_sym_kelvin(a);
         mat_approx_eq(&ana, &num, tol);
     }
 
@@ -744,7 +744,7 @@ mod tests {
     fn check_deriv_squared<const N: usize>(a: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::<9>::new();
-        deriv_squared_tensor(&mut dd_ana, &a);
+        deriv_squared_tensor(&mut dd_ana, a);
 
         // check using index expression
         let arr = dd_ana.as_std_array();
@@ -766,8 +766,8 @@ mod tests {
 
         // check using numerical derivative
         let ana = dd_ana.as_std_matrix();
-        let num = numerical_deriv_squared(&a);
-        let num_kel = numerical_deriv_squared_kelvin(&a);
+        let num = numerical_deriv_squared(a);
+        let num_kel = numerical_deriv_squared_kelvin(a);
         mat_approx_eq(&ana, &num, tol);
         mat_approx_eq(&ana, &num_kel, tol);
     }
@@ -775,7 +775,7 @@ mod tests {
     fn check_deriv_squared_sym<const N: usize>(a: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd_ana = Tensor4::<6>::new();
-        deriv_squared_tensor_sym(&mut dd_ana, &a);
+        deriv_squared_tensor_sym(&mut dd_ana, a);
 
         // check using index expression
         let arr = dd_ana.as_std_array();
@@ -800,7 +800,7 @@ mod tests {
 
         // check using numerical derivative
         let ana = dd_ana.as_std_matrix();
-        let num = numerical_deriv_squared_sym_kelvin(&a);
+        let num = numerical_deriv_squared_sym_kelvin(a);
         mat_approx_eq(&ana, &num, tol);
     }
 
@@ -903,7 +903,7 @@ mod tests {
     fn check_deriv2_jj2<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<6>::new();
-        deriv2_invariant_jj2(&mut dd2_ana, &sigma);
+        deriv2_invariant_jj2(&mut dd2_ana, sigma);
 
         // compare with Psymdev
         let pp_symdev = Tensor4::<6>::constant_pp_symdev();
@@ -911,7 +911,7 @@ mod tests {
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(&sigma, Invariant::J2);
+        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::J2);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -920,11 +920,11 @@ mod tests {
     fn check_deriv2_jj3<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<6>::new();
-        deriv2_invariant_jj3(&mut dd2_ana, &sigma);
+        deriv2_invariant_jj3(&mut dd2_ana, sigma);
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(&sigma, Invariant::J3);
+        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::J3);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -933,11 +933,11 @@ mod tests {
     fn check_deriv2_sigma_t<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<6>::new();
-        deriv2_invariant_sigma_t(&mut dd2_ana, &sigma).unwrap();
+        deriv2_invariant_sigma_t(&mut dd2_ana, sigma).unwrap();
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(&sigma, Invariant::SigmaT);
+        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::SigmaT);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -946,11 +946,11 @@ mod tests {
     fn check_deriv2_q<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<6>::new();
-        deriv2_invariant_q(&mut dd2_ana, &sigma).unwrap();
+        deriv2_invariant_q(&mut dd2_ana, sigma).unwrap();
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(&sigma, Invariant::Q);
+        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::Q);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -960,11 +960,11 @@ mod tests {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<6>::new();
         let mut work = WorkspaceDeriv2Lode::new();
-        deriv2_invariant_lode(&mut dd2_ana, &mut work, &sigma).unwrap();
+        deriv2_invariant_lode(&mut dd2_ana, &mut work, sigma).unwrap();
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(&sigma, Invariant::Lode);
+        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::Lode);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);

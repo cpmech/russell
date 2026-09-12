@@ -502,8 +502,8 @@ where
     /// ```
     pub fn join2(&mut self, u: &[T], v: &[T]) {
         assert_eq!(u.len() + v.len(), self.data.len());
-        (&mut self.data[..u.len()]).copy_from_slice(u);
-        (&mut self.data[u.len()..]).copy_from_slice(v);
+        self.data[..u.len()].copy_from_slice(u);
+        self.data[u.len()..].copy_from_slice(v);
     }
 
     /// Scales this vector

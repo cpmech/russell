@@ -23,6 +23,7 @@ manual_is_multiple_of = "allow"  # allow "n % k == 0" instead of is_multiple_of(
 manual_range_contains = "allow"  # allow if "a < b && c < d" constructions
 needless_range_loop = "allow"    # allow "for i in a..b" instead of range
 new_without_default = "allow"    # The user is encouraged to call new()
+too_many_arguments = "allow"     # allow functions with many parameters
 type_complexity = "allow"        # allow deeply nested array types (index maps)
 
 [profile.release]

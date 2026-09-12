@@ -220,8 +220,8 @@ mod tests {
             [ 0.01, -0.01, -0.19,  0.19,  0.00],
             [ 0.34, -0.34,  0.22, -0.22,  0.00],
         ]);
-        array_approx_eq(&v_real, &correct_v_real.as_data(), 1e-15);
-        array_approx_eq(&v_imag, &correct_v_imag.as_data(), 1e-15);
+        array_approx_eq(&v_real, correct_v_real.as_data(), 1e-15);
+        array_approx_eq(&v_imag, correct_v_imag.as_data(), 1e-15);
     }
 
     #[test]
@@ -411,9 +411,9 @@ mod tests {
             [-0.09,  0.09, -0.08,  0.08,  0.00],
             [ 0.00, -0.00, -0.49,  0.49,  0.00],
         ]);
-        array_approx_eq(&vl_real, &correct_vl_real.as_data(), 1e-15);
-        array_approx_eq(&vl_imag, &correct_vl_imag.as_data(), 1e-15);
-        array_approx_eq(&vr_real, &correct_vr_real.as_data(), 1e-15);
-        array_approx_eq(&vr_imag, &correct_vr_imag.as_data(), 1e-15);
+        array_approx_eq(&vl_real, correct_vl_real.as_data(), 1e-15);
+        array_approx_eq(&vl_imag, correct_vl_imag.as_data(), 1e-15);
+        array_approx_eq(&vr_real, correct_vr_real.as_data(), 1e-15);
+        array_approx_eq(&vr_imag, correct_vr_imag.as_data(), 1e-15);
     }
 }

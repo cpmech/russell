@@ -357,7 +357,7 @@ impl Samples {
             nnz,
             sym,
             |gg: &mut Vector, l: f64, u: &Vector, args: &mut SampleBsplineArgs| {
-                let t = f64::min(1.0, f64::max(0.0, l));
+                let t = l.clamp(0.0, 1.0);
                 args.bspline.calc_point(&mut args.coords, t, false)?;
                 gg[0] = u[0] - args.coords[0];
                 gg[1] = u[1] - args.coords[1];
@@ -368,7 +368,7 @@ impl Samples {
                 ggu.put(0, 0, 1.0).unwrap();
                 ggu.put(1, 1, 1.0).unwrap();
                 // Gl = ∂G/∂λ
-                let t = f64::min(1.0, f64::max(0.0, l));
+                let t = l.clamp(0.0, 1.0);
                 args.bspline.calc_curve_derivs(t, 1, false);
                 args.bspline.get_curve_deriv(&mut args.coords, 1);
                 ggl[0] = -args.coords[0];

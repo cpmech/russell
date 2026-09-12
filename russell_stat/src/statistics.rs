@@ -43,7 +43,7 @@ impl Statistics {
         T: Into<f64> + Copy,
     {
         // handle small slices
-        if x.len() == 0 {
+        if x.is_empty() {
             return Statistics {
                 min: 0.0,
                 max: 0.0,

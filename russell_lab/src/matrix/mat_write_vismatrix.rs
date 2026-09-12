@@ -14,7 +14,7 @@ use std::path::Path;
 ///
 /// * `full_path` -- may be a String, &str, or Path. Note: VisMatrix uses the `.smat` extension.
 /// * `tol` is a small positive constant to ignore nearly zero numbers.
-/// Only values satisfying the condition `f64::abs(value) > tol` are written.
+///   Only values satisfying the condition `f64::abs(value) > tol` are written.
 ///
 /// # Examples
 ///
@@ -59,7 +59,7 @@ where
         for j in 0..ncol {
             let value = a.get(i, j);
             if f64::abs(value) > tol {
-                write!(&mut buffer, "{} {} {:?}\n", i, j, value).unwrap();
+                writeln!(&mut buffer, "{} {} {:?}", i, j, value).unwrap();
                 nnz += 1;
             }
         }
@@ -67,7 +67,7 @@ where
 
     // prepare header
     let mut header = String::new();
-    write!(&mut header, "{} {} {}\n", nrow, ncol, nnz).unwrap();
+    writeln!(&mut header, "{} {} {}", nrow, ncol, nnz).unwrap();
 
     // create directory
     let path = Path::new(full_path);

@@ -66,7 +66,7 @@ pub fn num_recipes_gaussj_inv<T, const N: usize>(a: &mut SmallMatrix<T, N>) -> R
 where
     T: Float,
 {
-    let mut b = [[T::zero(); 0]; N];
+    let mut b: [[T; 0]; N] = [[]; N];
     num_recipes_gaussj_sol(a, &mut b)
 }
 

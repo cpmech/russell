@@ -9,11 +9,11 @@ fn main() -> Result<(), StrError> {
     let xi = Vector::linspace(-3.0, 3.0, 101)?;
     let xk = Vector::linspace(0.5, 3.0, 101)?;
     let data = &[
-        ("I", &xi, xi.get_mapped(|x| math::bessel_i0(x))),
-        ("I", &xi, xi.get_mapped(|x| math::bessel_i1(x))),
+        ("I", &xi, xi.get_mapped(math::bessel_i0)),
+        ("I", &xi, xi.get_mapped(math::bessel_i1)),
         ("I", &xi, xi.get_mapped(|x| math::bessel_in(2, x))),
-        ("K", &xk, xk.get_mapped(|x| math::bessel_k0(x))),
-        ("K", &xk, xk.get_mapped(|x| math::bessel_k1(x))),
+        ("K", &xk, xk.get_mapped(math::bessel_k0)),
+        ("K", &xk, xk.get_mapped(math::bessel_k1)),
         ("K", &xk, xk.get_mapped(|x| math::bessel_kn(2, x))),
     ];
     // plots

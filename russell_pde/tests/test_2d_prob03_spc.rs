@@ -11,7 +11,7 @@ fn test_2d_prob03_spc() -> Result<(), StrError> {
             for lmm in &[true, false] {
                 for nn_tol in &[
                     (8, 4.2e-2), //
-                                 // (12, 1.0e-5), //
+                    (12, 1.0e-5), //
                                  // (15, 1e-8),   //
                                  // (20, 1e-12),  //
                 ] {
@@ -30,8 +30,9 @@ fn test_2d_prob03_spc_map() -> Result<(), StrError> {
         for helmholtz in &[true, false] {
             for lmm in &[true, false] {
                 for nn_tol in &[
-                    (8, 4.2e-2), //
-                                 // (12, 1.0e-5), //
+                    (8, 0.042),  //
+                    (9, 0.0028), //
+                    (12, 1.0e-5), //
                                  // (15, 1e-8),   //
                                  // (20, 1e-12),  //
                 ] {

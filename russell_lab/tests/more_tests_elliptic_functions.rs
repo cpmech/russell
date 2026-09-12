@@ -14,7 +14,7 @@ fn test_elliptic_f() {
         let k = dat.get("k").unwrap();
         let ff = dat.get("F").unwrap();
 
-        for (i, phi) in all_phi.into_iter().enumerate() {
+        for (i, phi) in all_phi.iter().enumerate() {
             // println!("phi = {:?}, k = {:?}", phi, k[i],);
             let p = if f64::abs(phi - PI / 2.0) < 1e-15 {
                 // handle small noise on PI/2
@@ -45,7 +45,7 @@ fn test_elliptic_e() {
         let k = dat.get("k").unwrap();
         let ff = dat.get("E").unwrap();
 
-        for (i, phi) in all_phi.into_iter().enumerate() {
+        for (i, phi) in all_phi.iter().enumerate() {
             // println!("phi = {:?}, k = {:?}", phi, k[i],);
             let p = if f64::abs(phi - PI / 2.0) < 1e-15 {
                 // handle small noise on PI/2
@@ -71,7 +71,7 @@ fn test_elliptic_pi() {
         let k = dat.get("k").unwrap();
         let ff = dat.get("PI").unwrap();
 
-        for (i, phi) in all_phi.into_iter().enumerate() {
+        for (i, phi) in all_phi.iter().enumerate() {
             // println!("n = {:?}, phi = {:?}, k = {:?}", n[i], phi, k[i],);
             let p = if f64::abs(phi - PI / 2.0) < 1e-15 {
                 // handle small noise on PI/2

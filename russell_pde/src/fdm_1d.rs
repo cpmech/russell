@@ -912,8 +912,6 @@ mod tests {
         fdm.loop_over_molecule(0, |n, val_mn| {
             if n == 0 {
                 assert_eq!(val_mn, 200.0);
-            } else if n == 1 {
-                assert_eq!(val_mn, -100.0);
             } else {
                 assert_eq!(val_mn, -100.0);
             }

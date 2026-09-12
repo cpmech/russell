@@ -314,7 +314,7 @@ pub fn smooth_ramp_deriv1(x: f64, beta: f64) -> f64 {
     if -beta * x > 500.0 {
         return 0.0;
     }
-    return 1.0 / (1.0 + f64::exp(-beta * x));
+    1.0 / (1.0 + f64::exp(-beta * x))
 }
 
 /// Returns the second derivative of smooth_ramp
@@ -576,6 +576,6 @@ mod tests {
         assert_eq!(factorial_lookup_22(3), 6.0);
         assert_eq!(factorial_lookup_22(4), 24.0);
         assert_eq!(factorial_lookup_22(10), 3628800.0,);
-        assert_eq!(factorial_lookup_22(22), 1124000727_7776076800_00.0);
+        assert_eq!(factorial_lookup_22(22), 1_124_000_727_777_607_680_000.0);
     }
 }

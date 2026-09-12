@@ -52,7 +52,7 @@ where
 {
     let n = x.len();
     match n {
-        0 | 1 | 2 => {
+        0..=2 => {
             let (i_min, i_max) = find_min_max(x);
             (Vec::new(), Vec::new(), i_min, i_max)
         }

@@ -105,5 +105,10 @@ fn bench_num_recipes_gaussj_inv(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_mat_inverse, bench_small_mat_inv, bench_num_recipes_gaussj_inv);
+criterion_group!(
+    benches,
+    bench_mat_inverse,
+    bench_small_mat_inv,
+    bench_num_recipes_gaussj_inv
+);
 criterion_main!(benches);

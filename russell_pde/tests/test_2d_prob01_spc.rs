@@ -11,6 +11,7 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_2d_prob01_spc() -> Result<(), StrError> {
     for nn_tol in &[
+        (7, 1e-6), //
         (8, 1e-8), //
     ] {
         let (nn, tol) = *nn_tol;
@@ -27,6 +28,7 @@ fn test_2d_prob01_spc() -> Result<(), StrError> {
 #[test]
 fn test_2d_prob01_spc_map() -> Result<(), StrError> {
     for nn_tol in &[
+        (7, 1e-6), //
         (8, 1e-8), //
     ] {
         let (nn, tol) = *nn_tol;
@@ -45,6 +47,7 @@ fn test_2d_prob01_spc_map() -> Result<(), StrError> {
 #[serial]
 fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
     for nn_tol in &[
+        (7, 1e-6), //
         (8, 1e-8), //
     ] {
         let (nn, tol) = *nn_tol;
@@ -61,6 +64,7 @@ fn test_2d_prob01_spc_mumps() -> Result<(), StrError> {
 #[serial]
 fn test_2d_prob01_spc_map_mumps() -> Result<(), StrError> {
     for nn_tol in &[
+        (7, 1e-6), //
         (8, 1e-8), //
     ] {
         let (nn, tol) = *nn_tol;

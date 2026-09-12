@@ -169,21 +169,6 @@ impl<'a, A> System<'a, A> {
         }
     }
 
-    /// Returns a copy of this struct
-    pub fn clone(&self) -> Self {
-        System {
-            ndim: self.ndim,
-            function: self.function.clone(),
-            jacobian: self.jacobian.clone(),
-            calc_mass: self.calc_mass.clone(),
-            jac_nnz: self.jac_nnz,
-            mass_nnz: self.mass_nnz,
-            sym_jac: self.sym_jac,
-            sym_mass: self.sym_mass,
-            symmetric: self.symmetric,
-        }
-    }
-
     /// Sets a function to calculate the Jacobian matrix (analytical Jacobian)
     ///
     /// Use `|jj, alpha, x, y, args|` or `|jj: &mut CooMatrix, alpha: f64, x: f64, y: &Vector, args: &mut A|`
@@ -269,6 +254,23 @@ impl<'a, A> System<'a, A> {
     /// Returns the number of non-zero values in the mass matrix
     pub fn get_mass_nnz(&self) -> usize {
         self.mass_nnz
+    }
+}
+
+impl<'a, A> Clone for System<'a, A> {
+    /// Returns a copy of this struct
+    fn clone(&self) -> Self {
+        System {
+            ndim: self.ndim,
+            function: self.function.clone(),
+            jacobian: self.jacobian.clone(),
+            calc_mass: self.calc_mass.clone(),
+            jac_nnz: self.jac_nnz,
+            mass_nnz: self.mass_nnz,
+            sym_jac: self.sym_jac,
+            sym_mass: self.sym_mass,
+            symmetric: self.symmetric,
+        }
     }
 }
 

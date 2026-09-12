@@ -199,7 +199,7 @@ impl Stop {
             Stop::MinCompU(i, u1) => u[*i] < *u1 || f64::abs(u[*i] - *u1) < CONFIG_H_MIN,
             Stop::MaxCompU(i, u1) => u[*i] > *u1 || f64::abs(*u1 - u[*i]) < CONFIG_H_MIN,
             Stop::MaxNormU(norm_u1, norm_type, begin, end) => {
-                let norm_u = vec_norm_chunk(&u, *norm_type, *begin, *end);
+                let norm_u = vec_norm_chunk(u, *norm_type, *begin, *end);
                 norm_u > *norm_u1 || f64::abs(norm_u - *norm_u1) < CONFIG_H_MIN
             }
             Stop::MinLambda(l1) => l < *l1 || f64::abs(*l1 - l) < CONFIG_H_MIN,

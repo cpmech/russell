@@ -258,6 +258,7 @@ mod tests {
     use crate::Method;
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn clone_copy_and_debug_work() {
         let mut stats = Stats::new(Method::Radau5);
         stats.n_accepted += 1;
@@ -265,7 +266,7 @@ mod tests {
         let clone = stats.clone();
         assert_eq!(copy.n_accepted, stats.n_accepted);
         assert_eq!(clone.n_accepted, stats.n_accepted);
-        assert!(format!("{:?}", stats).len() > 0);
+        assert!(!format!("{:?}", stats).is_empty());
     }
 
     #[test]

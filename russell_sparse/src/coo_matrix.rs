@@ -1266,7 +1266,7 @@ mod tests {
         coo.put(4, 4, 1.0).unwrap();
 
         // print matrix
-        let mut a = NumMatrix::<f32>::new(nrow as usize, ncol as usize);
+        let mut a = NumMatrix::<f32>::new(nrow, ncol);
         coo.to_dense(&mut a).unwrap();
         let correct = "┌                ┐\n\
                        │  2  3  0  0  0 │\n\
@@ -1715,7 +1715,7 @@ mod tests {
         clone.values[0] *= 2.0;
         assert_eq!(coo.values[0], 123.0);
         assert_eq!(clone.values[0], 246.0);
-        assert!(format!("{:?}", coo).len() > 0);
+        assert!(!format!("{:?}", coo).is_empty());
         let json = serde_json::to_string(&coo).unwrap();
         assert_eq!(
             json,

@@ -17,7 +17,7 @@ fn test_2d_prob09_spc_map() -> Result<(), StrError> {
     // quarter ring domain
     for nn_tol in &[
         (10, 2.22e-2), //
-                       // (15, 2.62e-3), //
+        (15, 2.62e-3), //
                        // (20, 3.21e-4), //
                        // (25, 3.89e-5), //
                        // (30, 4.64e-6), //

@@ -416,7 +416,7 @@ impl Spectral2 {
                 let p = -self.lam[s];
                 let q = -self.lam[t];
                 let f = 1.0 / ((self.lam[r] - self.lam[s]) * (self.lam[r] - self.lam[t]));
-                t2_plus_diag_product(self.proj[r].as_mut_data(), f, &aa.as_data(), p, q);
+                t2_plus_diag_product(self.proj[r].as_mut_data(), f, aa.as_data(), p, q);
             }
         } else {
             // nearly coalescent eigenvalues: fall back to Jacobi
@@ -514,8 +514,8 @@ impl Spectral2 {
         if self.yy.is_none() {
             self.yy = Some(Tensor4::<6>::new());
         }
-        let mut yy = self.yy.as_mut().unwrap();
-        ssd_fn(&mut yy, SET, 0.5, &self.aa_inv);
+        let yy = self.yy.as_mut().unwrap();
+        ssd_fn(yy, SET, 0.5, &self.aa_inv);
 
         // allocate and calculate auxiliary tensors P[j] ⊗ P[j]
         if self.p_dy_p.len() != 3 {
@@ -805,9 +805,9 @@ mod tests {
     fn hz_diagonal(name: &str, delta: f64) -> [f64; 3] {
         const A: f64 = 1.0;
         match name {
-            "single" => [(-1.0 * A) / 4.0, (1.0 * A) / 4.0, (2.0 + 2.0 * delta) * A / 4.0],
+            "single" => [-A / 4.0, (1.0 * A) / 4.0, (2.0 + 2.0 * delta) * A / 4.0],
             "single_lim_J3" => [(-1.0 - delta) * A / 4.0, 0.0, (1.0 + 2.0 * delta) * A / 4.0],
-            "single_lim_disc_t" => [-1.0 * A, 1.0 * A, (1.0 + delta) * A],
+            "single_lim_disc_t" => [-A, 1.0 * A, (1.0 + delta) * A],
             "single_lim_disc_n" => [0.0, (2.0 - delta) * A / 2.0, (2.0 + delta) * A / 2.0],
             "single_lim_J3J2" => [(1.0 - delta) * A, 1.0 * A, (1.0 + 2.0 * delta) * A],
             "single_J3" => [(-1.0 - delta) * A / 2.0, 0.0, (1.0 + delta) * A / 2.0],
@@ -839,11 +839,7 @@ mod tests {
         let mut indices = [0, 1, 2];
         indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
         let sorted_lambda = [lambda[indices[0]], lambda[indices[1]], lambda[indices[2]]];
-        let sorted_projectors = [
-            projectors[indices[0]].clone(),
-            projectors[indices[1]].clone(),
-            projectors[indices[2]].clone(),
-        ];
+        let sorted_projectors = [projectors[indices[0]], projectors[indices[1]], projectors[indices[2]]];
         *lambda = sorted_lambda;
         *projectors = sorted_projectors;
     }

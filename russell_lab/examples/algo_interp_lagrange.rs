@@ -18,7 +18,7 @@ fn main() -> Result<(), StrError> {
 
     // plot
     let xx = Vector::linspace(-1.0, 1.0, 101).unwrap();
-    let y_original = xx.get_mapped(|x| f(x));
+    let y_original = xx.get_mapped(f);
     let y_approx = xx.get_mapped(|x| interp.eval(x, &uu).unwrap());
     let mut curve1 = Curve::new();
     let mut curve2 = Curve::new();

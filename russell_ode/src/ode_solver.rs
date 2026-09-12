@@ -229,7 +229,7 @@ impl<'a, A> OdeSolver<'a, A> {
             if out.with_dense_output() {
                 self.actual.enable_dense_output()?;
             }
-            let stop_gracefully = out.execute(&self.work, h, x, y, &self.actual, args)?;
+            let stop_gracefully = out.execute(&self.work, h, x, y, &*self.actual, args)?;
             if stop_gracefully {
                 return Ok(());
             }
@@ -243,18 +243,18 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // step
                 self.work.stats.n_steps += 1;
-                self.actual.step(&mut self.work, x, &y, h, args)?;
+                self.actual.step(&mut self.work, x, y, h, args)?;
 
                 // update x and y
                 self.work.stats.n_accepted += 1; // this must be after `self.actual.step`
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // check for anomalies
-                vec_all_finite(&y, self.params.debug)?;
+                vec_all_finite(y, self.params.debug)?;
 
                 // output
                 if let Some(out) = output.as_deref_mut() {
-                    let stop_gracefully = out.execute(&self.work, h, x, y, &self.actual, args)?;
+                    let stop_gracefully = out.execute(&self.work, h, x, y, &*self.actual, args)?;
                     if stop_gracefully {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
@@ -294,7 +294,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
             // step
             self.work.stats.n_steps += 1;
-            self.actual.step(&mut self.work, x, &y, h, args)?;
+            self.actual.step(&mut self.work, x, y, h, args)?;
 
             // handle diverging iterations
             if self.work.iterations_diverging {
@@ -312,7 +312,7 @@ impl<'a, A> OdeSolver<'a, A> {
                 self.actual.accept(&mut self.work, &mut x, y, h, args)?;
 
                 // check for anomalies
-                vec_all_finite(&y, self.params.debug)?;
+                vec_all_finite(y, self.params.debug)?;
 
                 // do not allow h to grow if previous step was a reject
                 if self.work.follows_reject_step {
@@ -327,7 +327,7 @@ impl<'a, A> OdeSolver<'a, A> {
 
                 // output
                 if let Some(out) = output.as_deref_mut() {
-                    let stop_gracefully = out.execute(&self.work, h, x, y, &self.actual, args)?;
+                    let stop_gracefully = out.execute(&self.work, h, x, y, &*self.actual, args)?;
                     if stop_gracefully {
                         self.work.stats.stop_sw_step();
                         self.work.stats.stop_sw_total();
@@ -366,7 +366,7 @@ impl<'a, A> OdeSolver<'a, A> {
         }
 
         // last output
-        if let Some(out) = output.as_deref_mut() {
+        if let Some(out) = output {
             out.last(&self.work, h, x, y, args)?;
         }
 
@@ -563,10 +563,10 @@ mod tests {
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
-        array_approx_eq(&out.step_h(), &[0.2, 0.2, 0.2], 1e-15);
-        array_approx_eq(&out.step_x(), &[0.0, 0.2, 0.4], 1e-15);
-        array_approx_eq(&out.step_y(0), &[0.0, 0.2, 0.4], 1e-15);
-        array_approx_eq(&out.step_global_error(), &[0.0, 0.0, 0.0], 1e-15);
+        array_approx_eq(out.step_h(), &[0.2, 0.2, 0.2], 1e-15);
+        array_approx_eq(out.step_x(), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(out.step_y(0), &[0.0, 0.2, 0.4], 1e-15);
+        array_approx_eq(out.step_global_error(), &[0.0, 0.0, 0.0], 1e-15);
 
         // check count file
         let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
@@ -584,7 +584,7 @@ mod tests {
         let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| -> Result<bool, StrError> {
             Err("unreachable")
         };
-        assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
+        assert_eq!(cb(solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again and stop earlier
         out.set_step_callback(|stats, _h, _x, _y, _args| {
@@ -656,8 +656,8 @@ mod tests {
         // check
         vec_approx_eq(&y, &[x1], 1e-15);
         let correct = &[0.0, 0.2, 0.4, 0.6, 0.8, 1.0];
-        array_approx_eq(&out.dense_x(), correct, 1e-15);
-        array_approx_eq(&out.dense_y(0), correct, 1e-15);
+        array_approx_eq(out.dense_x(), correct, 1e-15);
+        array_approx_eq(out.dense_y(0), correct, 1e-15);
     }
 
     #[test]
@@ -692,8 +692,8 @@ mod tests {
 
         // check
         vec_approx_eq(&y, &[0.4], 1e-15);
-        array_approx_eq(&out.dense_x(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
-        array_approx_eq(&out.dense_y(0), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(out.dense_x(), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
+        array_approx_eq(out.dense_y(0), &[0.0, 0.1, 0.2, 0.3, 0.4], 1e-15);
 
         // check count file
         let count = OutCount::read_json(&format!("{}_count.json", path_key)).unwrap();
@@ -711,7 +711,7 @@ mod tests {
         let cb = |_stats: &Stats, _h: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| -> Result<bool, StrError> {
             Err("unreachable")
         };
-        assert_eq!(cb(&solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
+        assert_eq!(cb(solver.stats(), 0.0, 0.0, &y0, &mut args).err(), Some("unreachable"));
 
         // run again but stop at the first output
         out.set_dense_callback(|_stats, _h, _x, _y, _args| {

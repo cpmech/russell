@@ -28,7 +28,7 @@ fn main() -> Result<(), StrError> {
 
     // plot
     let xx = Vector::linspace(xa, xb, 201).unwrap();
-    let yy_ana = xx.get_mapped(|x| generator(x));
+    let yy_ana = xx.get_mapped(generator);
     let yy_int = xx.get_mapped(|x| interp.eval(x).unwrap());
     let mut curve_ana = Curve::new();
     let mut curve_int = Curve::new();

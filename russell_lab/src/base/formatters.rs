@@ -84,7 +84,7 @@ pub fn format_nanoseconds(nanoseconds: u128) -> String {
                 format_nanoseconds_in_seconds(&mut buf, value);
             } else {
                 let seconds = (value as f64) / (NS_PER_SECOND as f64);
-                write!(&mut buf, "{}s", &seconds).unwrap();
+                write!(&mut buf, "{}s", seconds).unwrap();
             }
         }
     }
@@ -133,7 +133,7 @@ pub fn format_nanoseconds_with_digits(nanoseconds: u128, digits: usize) -> Strin
                 format_nanoseconds_in_seconds_with_digits(&mut buf, value, digits);
             } else {
                 let seconds = (value as f64) / (NS_PER_SECOND as f64);
-                write!(&mut buf, "{:.digits$}s", &seconds, digits = digits).unwrap();
+                write!(&mut buf, "{:.digits$}s", seconds, digits = digits).unwrap();
             }
         }
     }
@@ -159,8 +159,8 @@ pub fn format_scientific(num: f64, width: usize, precision: usize) -> String {
     const EXP_PAD: usize = 2;
     let mut result = format!("{:.precision$e}", num, precision = precision);
     let exp = result.split_off(result.find('e').unwrap());
-    let (sign, exp) = if exp.starts_with("e-") {
-        ('-', &exp[2..])
+    let (sign, exp) = if let Some(stripped) = exp.strip_prefix("e-") {
+        ('-', stripped)
     } else {
         ('+', &exp[1..])
     };

@@ -289,7 +289,7 @@ pub fn erf(x: f64) -> f64 {
     if sign {
         return r / x - 1.0;
     }
-    return 1.0 - r / x;
+    1.0 - r / x
 }
 
 /// Evaluates the complementary error function
@@ -393,7 +393,7 @@ pub fn erfc(x: f64) -> f64 {
     if sign {
         return 2.0;
     }
-    return 0.0;
+    0.0
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

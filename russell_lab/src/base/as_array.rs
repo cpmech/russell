@@ -270,7 +270,7 @@ mod tests {
         for i in 0..m {
             write!(&mut buf, "{},", array.at(i)).unwrap();
         }
-        write!(&mut buf, "\n").unwrap();
+        writeln!(&mut buf).unwrap();
         assert_eq!(array.size(), array.as_slice().len());
         buf
     }
@@ -286,7 +286,7 @@ mod tests {
             for j in 0..n {
                 write!(&mut buf, "{},", array.at(i, j)).unwrap();
             }
-            write!(&mut buf, "\n").unwrap();
+            writeln!(&mut buf).unwrap();
         }
         buf
     }

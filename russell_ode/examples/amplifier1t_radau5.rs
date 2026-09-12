@@ -61,16 +61,16 @@ fn main() -> Result<(), StrError> {
     let blue = "#307BC2";
     let red = "#C23048";
 
-    curve1.set_line_color(&blue);
+    curve1.set_line_color(blue);
     curve2
-        .set_marker_color(&blue)
-        .set_marker_line_color(&blue)
+        .set_marker_color(blue)
+        .set_marker_line_color(blue)
         .set_marker_style(".")
         .set_line_style("None");
-    curve3.set_line_color(&red);
+    curve3.set_line_color(red);
     curve4
-        .set_marker_color(&red)
-        .set_marker_line_color(&red)
+        .set_marker_color(red)
+        .set_marker_line_color(red)
         .set_marker_style("+")
         .set_line_style("None");
 

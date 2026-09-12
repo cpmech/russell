@@ -132,7 +132,7 @@ fn main() -> Result<(), StrError> {
     // checks and sets the hybrid memory factor (enables hybrid memory mode)
     if let Some(v) = opt.hybrid_memory_factor {
         if v < 0.01 || v > 0.99 {
-            return Err("hybrid memory factor must be in [0.01, 0.99]".into());
+            return Err("hybrid memory factor must be in [0.01, 0.99]");
         }
     }
     params.hybrid_memory_factor = opt.hybrid_memory_factor;

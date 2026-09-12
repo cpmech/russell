@@ -582,7 +582,7 @@ impl Bspline {
     /// `upto` must be in [0, p]
     fn curve_derivs_alg1(&mut self, u: f64, upto: usize) {
         assert_eq!(self.pp.len(), self.num_basis());
-        assert!(self.pp[0].len() > 0);
+        assert!(!self.pp[0].is_empty());
         assert!(upto <= self.p);
         let ndim = self.pp[0].len();
         if self.cc_ders.len() != self.p + 1 {
@@ -613,7 +613,7 @@ impl Bspline {
     /// `upto` must be in [0, p]
     fn curve_deriv_cpts(&mut self, upto: usize, r1: usize, r2: usize) {
         assert_eq!(self.pp.len(), self.num_basis());
-        assert!(self.pp[0].len() > 0);
+        assert!(!self.pp[0].is_empty());
         assert!(upto <= self.p);
         assert!(r1 <= r2);
         let ndim = self.pp[0].len();
@@ -651,7 +651,7 @@ impl Bspline {
     /// `upto` must be in [0, p]
     fn curve_derivs_alg2(&mut self, u: f64, upto: usize) {
         assert_eq!(self.pp.len(), self.num_basis());
-        assert!(self.pp[0].len() > 0);
+        assert!(!self.pp[0].is_empty());
         assert!(upto <= self.p);
         let ndim = self.pp[0].len();
         if self.cc_ders.len() != self.p + 1 {

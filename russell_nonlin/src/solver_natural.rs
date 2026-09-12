@@ -103,7 +103,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // factorize Gu matrix
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
-        self.ls.actual.factorize(&mut self.ggu, self.config.lin_sol_config)?;
+        self.ls.actual.factorize(&self.ggu, self.config.lin_sol_config)?;
         work.stats.stop_sw_factor();
         Ok(())
     }
@@ -155,7 +155,7 @@ impl<'a, A> SolverNatural<'a, A> {
         // external: update secondary variables
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -170,7 +170,7 @@ impl<'a, A> SolverNatural<'a, A> {
     /// Returns `gamma` where:
     ///
     /// * `gamma` -- is the ratio between the norm of the difference between the secant vectors
-    ///    and the norm of the current secant vector.
+    ///   and the norm of the current secant vector.
     ///
     /// The secant vectors are:
     ///
@@ -273,23 +273,23 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         if self.config.euler_predictor {
             // Euler predictor: u₁ = u₀ + Δλ du/dλ
             if !self.iter_jac_computed {
-                vec_copy(&mut work.u, &u).unwrap();
+                vec_copy(&mut work.u, u).unwrap();
                 self.assemble_and_factorize_jac(work, args)?;
                 self.iter_jac_computed = true;
             }
             // using the last factorized Gu: du/dλ = -Gu⁻¹ Gλ
             let ddl = work.l - l; // Δλ
             self.ls.actual.solve(&mut self.mdu, &self.ggl, false)?; // mdu := Gu⁻¹ Gλ
-            vec_add(&mut work.u, 1.0, &u, -ddl, &self.mdu).unwrap(); // u₁ = u₀ + Δλ (-Gu⁻¹ Gλ)
+            vec_add(&mut work.u, 1.0, u, -ddl, &self.mdu).unwrap(); // u₁ = u₀ + Δλ (-Gu⁻¹ Gλ)
         } else {
             // Simple predictor: u₁ = u₀
-            vec_copy(&mut work.u, &u).unwrap();
+            vec_copy(&mut work.u, u).unwrap();
         }
 
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -353,7 +353,7 @@ impl<'a, A> SolverTrait<A> for SolverNatural<'a, A> {
         let rdiff = self.calculate_rerr(work, u);
 
         // save previous u
-        vec_copy(&mut self.u_prev, &u).unwrap();
+        vec_copy(&mut self.u_prev, u).unwrap();
 
         // update the state
         vec_copy(u, &work.u).unwrap(); // u := u₁

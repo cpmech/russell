@@ -225,10 +225,10 @@ impl fmt::Display for Tensor1 {
         }
         // draw vector
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width + 1).unwrap();
         for m in 0..3 {
             if m > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             write!(f, "│").unwrap();
             let val = self.get(m);
@@ -237,7 +237,7 @@ impl fmt::Display for Tensor1 {
                 None => write!(f, "{:>1$}", val, width).unwrap(),
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width + 1).unwrap();
         Ok(())
     }

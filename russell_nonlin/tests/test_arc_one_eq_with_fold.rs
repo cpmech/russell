@@ -75,10 +75,10 @@ fn test_arc_one_eq_with_fold_1() {
         -0.133735147547983,
         -0.125208269518729,
     ];
-    array_approx_eq(&uu, uu_mathematica, 1e-6);
-    array_approx_eq(&ll, ll_mathematica, 1e-7);
-    array_approx_eq(&duds, duds_mathematica, 1e-5);
-    array_approx_eq(&dlds, dlds_mathematica, 1e-4);
+    array_approx_eq(uu, uu_mathematica, 1e-6);
+    array_approx_eq(ll, ll_mathematica, 1e-7);
+    array_approx_eq(duds, duds_mathematica, 1e-5);
+    array_approx_eq(dlds, dlds_mathematica, 1e-4);
 
     // compare with analytical solution
     for i in 0..uu.len() {

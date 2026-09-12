@@ -41,7 +41,7 @@ unsafe extern "C" {
 ///
 /// * `a` -- (m,m) general matrix (will be modified) (HERMITIAN and SQUARE)
 /// * `upper` -- Whether the upper triangle of `A` must be considered instead
-///    of the lower triangle.
+///   of the lower triangle.
 ///
 /// # Notes
 ///
@@ -55,11 +55,11 @@ unsafe extern "C" {
 ///
 /// fn main() -> Result<(), StrError> {
 ///     // Hermitian matrix (upper-tridiagonal)
-///     let ______________ = cpx!(0.0, 0.0);
+///     let nil = cpx!(0.0, 0.0);
 ///     let mut a_upper = ComplexMatrix::from(&[
 ///         [cpx!(2.0, 0.0), cpx!(0.0, 1.0), cpx!(0.0, 0.0)],
-///         [______________, cpx!(2.0, 0.0), cpx!(0.0, 0.0)],
-///         [______________, ______________, cpx!(3.0, 0.0)],
+///         [nil, cpx!(2.0, 0.0), cpx!(0.0, 0.0)],
+///         [nil, nil, cpx!(3.0, 0.0)],
 ///     ]);
 ///
 ///     // allocate the eigenvector array
@@ -319,18 +319,18 @@ mod tests {
             [cpx!(0.0, -1.0), cpx!(2.0, 0.0), cpx!(0.0, 0.0)],
             [cpx!(0.0,  0.0), cpx!(0.0, 0.0), cpx!(3.0, 0.0)],
         ];
-        let ______________ = cpx!(0.0, 0.0);
+        let nil = cpx!(0.0, 0.0);
         #[rustfmt::skip]
         let mut a_lower = ComplexMatrix::from(&[
-            [cpx!(2.0,  0.0), ______________, ______________],
-            [cpx!(0.0, -1.0), cpx!(2.0, 0.0), ______________],
+            [cpx!(2.0,  0.0), nil, nil],
+            [cpx!(0.0, -1.0), cpx!(2.0, 0.0), nil],
             [cpx!(0.0,  0.0), cpx!(0.0, 0.0), cpx!(3.0, 0.0)],
         ]);
         #[rustfmt::skip]
         let mut a_upper = ComplexMatrix::from(&[
             [cpx!(2.0, 0.0), cpx!(0.0, 1.0), cpx!(0.0, 0.0)],
-            [______________, cpx!(2.0, 0.0), cpx!(0.0, 0.0)],
-            [______________, ______________, cpx!(3.0, 0.0)],
+            [nil, cpx!(2.0, 0.0), cpx!(0.0, 0.0)],
+            [nil, nil, cpx!(3.0, 0.0)],
         ]);
         let l_correct = &[1.0, 3.0, 3.0];
         // lower

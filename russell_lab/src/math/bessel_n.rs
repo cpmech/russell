@@ -62,8 +62,8 @@ const LOWER_X_TO_OVERFLOW_EXP: f64 = 7.09782712893383973096e+02;
 ///
 /// # Special cases
 ///
-///	* `Jn(n, NaN)  = NaN`
-///	* `Jn(n, ±Inf) = 0.0`
+/// * `Jn(n, NaN)  = NaN`
+/// * `Jn(n, ±Inf) = 0.0`
 ///
 /// # Examples
 ///
@@ -248,11 +248,7 @@ pub fn bessel_jn(n: i32, x: f64) -> f64 {
         }
     }
 
-    if negative {
-        return -b;
-    } else {
-        return b;
-    }
+    if negative { -b } else { b }
 }
 
 /// Evaluates the Bessel function Yn(x) for positive real x
@@ -349,11 +345,7 @@ pub fn bessel_yn(n: i32, x: f64) -> f64 {
         }
     }
 
-    if negative {
-        return -b;
-    } else {
-        return b;
-    }
+    if negative { -b } else { b }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

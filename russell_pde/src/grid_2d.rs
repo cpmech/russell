@@ -790,11 +790,11 @@ impl Grid2d {
     ///     Ok(())
     /// }
     /// ```
-    pub fn for_each_node_xmin<F>(&self, mut f: F)
+    pub fn for_each_node_xmin<F>(&self, f: F)
     where
         F: FnMut(&usize),
     {
-        self.nodes_xmin.iter().for_each(|n| f(n));
+        self.nodes_xmin.iter().for_each(f);
     }
 
     /// Iterates over nodes on the right boundary (xmax edge)
@@ -832,11 +832,11 @@ impl Grid2d {
     ///     Ok(())
     /// }
     /// ```
-    pub fn for_each_node_xmax<F>(&self, mut f: F)
+    pub fn for_each_node_xmax<F>(&self, f: F)
     where
         F: FnMut(&usize),
     {
-        self.nodes_xmax.iter().for_each(|n| f(n));
+        self.nodes_xmax.iter().for_each(f);
     }
 
     /// Iterates over nodes on the bottom boundary (ymin edge)
@@ -874,11 +874,11 @@ impl Grid2d {
     ///     Ok(())
     /// }
     /// ```
-    pub fn for_each_node_ymin<F>(&self, mut f: F)
+    pub fn for_each_node_ymin<F>(&self, f: F)
     where
         F: FnMut(&usize),
     {
-        self.nodes_ymin.iter().for_each(|n| f(n));
+        self.nodes_ymin.iter().for_each(f);
     }
 
     /// Iterates over nodes on the top boundary (ymax edge)
@@ -916,11 +916,11 @@ impl Grid2d {
     ///     Ok(())
     /// }
     /// ```
-    pub fn for_each_node_ymax<F>(&self, mut f: F)
+    pub fn for_each_node_ymax<F>(&self, f: F)
     where
         F: FnMut(&usize),
     {
-        self.nodes_ymax.iter().for_each(|n| f(n));
+        self.nodes_ymax.iter().for_each(f);
     }
 }
 

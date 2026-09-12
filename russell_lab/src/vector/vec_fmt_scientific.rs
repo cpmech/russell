@@ -23,15 +23,15 @@ pub fn vec_fmt_scientific(u: &Vector, precision: usize) -> String {
     width += 4;
     // draw vector
     width += 1;
-    write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+    writeln!(f, "┌{:1$}┐", " ", width + 1).unwrap();
     for i in 0..u.dim() {
         if i > 0 {
-            write!(f, " │\n").unwrap();
+            writeln!(f, " │").unwrap();
         }
         write!(f, "│").unwrap();
         write!(f, "{}", format_scientific(u[i], width, precision)).unwrap();
     }
-    write!(f, " │\n").unwrap();
+    writeln!(f, " │").unwrap();
     write!(f, "└{:1$}┘", " ", width + 1).unwrap();
     result
 }

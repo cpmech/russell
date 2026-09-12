@@ -455,7 +455,7 @@ fn run_hs_model(
     if SAVE_FIGURE {
         let hh = out.get_h_values();
         do_plot(name, uu, ll, fig_width)?;
-        do_plot_stepsizes(name, &hh);
+        do_plot_stepsizes(name, hh);
     }
 
     // check the results against reference values

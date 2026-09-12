@@ -351,7 +351,7 @@ mod tests {
         let even = l % 2 == 0;
         let mut i_max = l / 2 + 1;
         if !even {
-            i_max = (l + 1) / 2;
+            i_max = l.div_ceil(2);
         }
         for i in 1..i_max {
             let dxa = xx[i] - xx[i - 1];

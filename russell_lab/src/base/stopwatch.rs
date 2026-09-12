@@ -185,13 +185,14 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn clone_copy_and_debug_work() {
         let sw = Stopwatch::new();
         let copy = sw;
         let clone = sw.clone();
         assert_eq!(copy.initial_time, sw.initial_time);
         assert_eq!(clone.initial_time, sw.initial_time);
-        assert!(format!("{:?}", sw).len() > 0);
+        assert!(!format!("{:?}", sw).is_empty());
     }
 
     #[test]

@@ -110,9 +110,9 @@ impl ReferenceData {
         let path = Path::new(&full_path).to_path_buf();
         let input = File::open(path).map_err(|_| "cannot open file").unwrap();
         let buffered = BufReader::new(input);
-        let data = serde_json::from_reader(buffered)
+
+        serde_json::from_reader(buffered)
             .map_err(|_| "cannot parse JSON file")
-            .unwrap();
-        data
+            .unwrap()
     }
 }

@@ -114,6 +114,7 @@ mod tests {
     use crate::{Ordering, Scaling};
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn clone_copy_and_debug_work() {
         let params = LinSolParams::new();
         let copy = params;

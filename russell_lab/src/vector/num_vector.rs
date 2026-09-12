@@ -502,8 +502,8 @@ where
     /// ```
     pub fn join2(&mut self, u: &[T], v: &[T]) {
         assert_eq!(u.len() + v.len(), self.data.len());
-        (&mut self.data[..u.len()]).copy_from_slice(u);
-        (&mut self.data[u.len()..]).copy_from_slice(v);
+        self.data[..u.len()].copy_from_slice(u);
+        self.data[u.len()..].copy_from_slice(v);
     }
 
     /// Scales this vector
@@ -742,10 +742,10 @@ where
         }
         // draw vector
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width + 1).unwrap();
         for i in 0..self.data.len() {
             if i > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             write!(f, "│").unwrap();
             let val = self.data[i];
@@ -754,7 +754,7 @@ where
                 None => write!(f, "{:>1$}", val, width).unwrap(),
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width + 1).unwrap();
         Ok(())
     }
@@ -1218,10 +1218,8 @@ mod tests {
         x.data[1] = 2.0;
         x.data[2] = 3.0;
         // borrow x
-        let mut i = 0_usize;
-        for val in &x {
+        for (i, val) in (&x).into_iter().enumerate() {
             assert_eq!(*val, (i + 1) as f64);
-            i += 1;
         }
         // mut borrow x
         for val in &mut x {

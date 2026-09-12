@@ -212,7 +212,7 @@ mod tests {
     use crate::small::small_mat_approx_eq;
 
     fn calc_eigen<const N: usize>(a_in: &[[f64; N]; N]) -> (usize, [f64; N], [[f64; N]; N]) {
-        let mut a = a_in.clone();
+        let mut a = *a_in;
         let mut v = [[0.0; N]; N];
         let mut l = [0.0; N];
         let nit = small_mat_eigen_sym_jacobi(&mut l, &mut v, &mut a).unwrap();
@@ -335,7 +335,7 @@ mod tests {
         let correct = &[
             [1.0,  0.0,   0.0  ],
             [0.0,  2.0*d, 1.0*d],
-            [0.0, -1.0*d, 2.0*d],
+            [0.0, -d, 2.0*d],
         ];
         small_mat_approx_eq(&v, correct, 1e-15);
         array_approx_eq(&l, &[2.0, 1.0, 11.0], 1e-15);
@@ -470,13 +470,11 @@ mod tests {
                 1e-15,
             ),
         ];
-        let mut test_id = 0;
-        for (nit_correct, data, tol) in samples {
+        for (test_id, (nit_correct, data, tol)) in samples.iter().enumerate() {
             println!("test = {}", test_id);
             let (nit, l, v) = calc_eigen(data);
             assert_eq!(nit, *nit_correct);
             small_check_eigen_sym(data, &v, &l, *tol);
-            test_id += 1;
         }
     }
 

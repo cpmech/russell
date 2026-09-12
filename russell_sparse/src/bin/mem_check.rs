@@ -25,31 +25,22 @@ fn test_solver(genie: Genie) {
         params.matching = Matching::Auto;
     }
 
-    match solver.actual.factorize(&coo, Some(params)) {
-        Err(e) => {
-            println!("FAIL(factorize): {}", e);
-            return;
-        }
-        _ => (),
+    if let Err(e) = solver.actual.factorize(&coo, Some(params)) {
+        println!("FAIL(factorize): {}", e);
+        return;
     };
 
     let mut x = Vector::new(5);
     let rhs = Vector::from(&[8.0, 45.0, -3.0, 3.0, 19.0]);
 
-    match solver.actual.solve(&mut x, &rhs, false) {
-        Err(e) => {
-            println!("FAIL(solve): {}", e);
-            return;
-        }
-        _ => (),
+    if let Err(e) = solver.actual.solve(&mut x, &rhs, false) {
+        println!("FAIL(solve): {}", e);
+        return;
     }
 
-    match solver.actual.solve(&mut x, &rhs, false) {
-        Err(e) => {
-            println!("FAIL(solve again): {}", e);
-            return;
-        }
-        _ => (),
+    if let Err(e) = solver.actual.solve(&mut x, &rhs, false) {
+        println!("FAIL(solve again): {}", e);
+        return;
     }
 
     println!("x =\n{}", x);
@@ -79,31 +70,22 @@ fn test_complex_solver(genie: Genie) {
         Genie::Umfpack => Samples::complex_symmetric_3x3_full().0,
     };
 
-    match solver.actual.factorize(&coo, None) {
-        Err(e) => {
-            println!("FAIL(factorize): {}", e);
-            return;
-        }
-        _ => (),
+    if let Err(e) = solver.actual.factorize(&coo, None) {
+        println!("FAIL(factorize): {}", e);
+        return;
     };
 
     let mut x = ComplexVector::new(3);
     let rhs = ComplexVector::from(&[cpx!(-3.0, 3.0), cpx!(2.0, -2.0), cpx!(9.0, 7.0)]);
 
-    match solver.actual.solve(&mut x, &rhs, false) {
-        Err(e) => {
-            println!("FAIL(solve): {}", e);
-            return;
-        }
-        _ => (),
+    if let Err(e) = solver.actual.solve(&mut x, &rhs, false) {
+        println!("FAIL(solve): {}", e);
+        return;
     }
 
-    match solver.actual.solve(&mut x, &rhs, false) {
-        Err(e) => {
-            println!("FAIL(solve again): {}", e);
-            return;
-        }
-        _ => (),
+    if let Err(e) = solver.actual.solve(&mut x, &rhs, false) {
+        println!("FAIL(solve again): {}", e);
+        return;
     }
 
     println!("x =\n{}", x);
@@ -139,9 +121,8 @@ fn test_solver_singular(genie: Genie) {
     coo_singular.put(0, 0, 1.0).unwrap();
     coo_singular.put(1, 0, 1.0).unwrap();
 
-    match solver.actual.factorize(&coo_singular, None) {
-        Err(e) => println!("Ok(factorize singular matrix): {}\n", e),
-        _ => (),
+    if let Err(e) = solver.actual.factorize(&coo_singular, None) {
+        println!("Ok(factorize singular matrix): {}\n", e)
     };
 }
 

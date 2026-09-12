@@ -2351,10 +2351,10 @@ impl<const N: usize> fmt::Display for Tensor2<N> {
         }
         // draw vector
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width + 1).unwrap();
         for m in 0..N {
             if m > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             write!(f, "│").unwrap();
             let val = self.get(m);
@@ -2363,7 +2363,7 @@ impl<const N: usize> fmt::Display for Tensor2<N> {
                 None => write!(f, "{:>1$}", val, width).unwrap(),
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width + 1).unwrap();
         Ok(())
     }
@@ -3295,7 +3295,7 @@ mod tests {
         );
         // serialize
         let json = serde_json::to_string(&tt).unwrap();
-        assert!(json.len() > 0);
+        assert!(!json.is_empty());
         // deserialize
         let from_json: Tensor2<9> = serde_json::from_str(&json).unwrap();
         assert_eq!(
@@ -3311,7 +3311,7 @@ mod tests {
     #[test]
     fn debug_works() {
         let tt = Tensor2::<9>::new();
-        assert!(format!("{:?}", tt).len() > 0);
+        assert!(!format!("{:?}", tt).is_empty());
     }
 
     #[test]
@@ -4071,7 +4071,7 @@ mod tests {
         check_iis::<4>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-14, 1e-15, 1e-15);
     }
 
-    /// --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
+    // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
 
     fn alpha_deg(l1: f64, l2: f64, l3: f64) -> f64 {
         f64::atan2(2.0 * l1 - l2 - l3, (l3 - l2) * SQRT_3) * 180.0 / PI

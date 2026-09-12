@@ -212,8 +212,8 @@ impl<'a, A> Radau5<'a, A> {
                 vec_copy(y_mut, y).unwrap();
                 let ndim = self.system.ndim;
                 numerical_jacobian(jj, ndim, 1.0, x, y_mut, w1, w2, args, self.system.function.as_ref())?;
-            } else {
-                (self.system.jacobian.as_ref().unwrap())(jj, 1.0, x, y, args)?;
+            } else if let Some(jac) = self.system.jacobian.as_ref() {
+                (jac)(jj, 1.0, x, y, args)?;
             }
             self.jacobian_computed = true;
             work.stats.stop_sw_jacobian();
@@ -242,8 +242,8 @@ impl<'a, A> Radau5<'a, A> {
         if let Some(nstep) = self.params.newton.write_matrix_after_nstep_and_stop {
             if work.stats.n_accepted > nstep {
                 let csc_jacobian = CscMatrix::from_coo(jj).unwrap();
-                let csc_kk_real = CscMatrix::from_coo(&kk_real).unwrap();
-                let csc_kk_comp = ComplexCscMatrix::from_coo(&kk_comp).unwrap();
+                let csc_kk_real = CscMatrix::from_coo(kk_real).unwrap();
+                let csc_kk_comp = ComplexCscMatrix::from_coo(kk_comp).unwrap();
                 csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.smat", true, 1e-14)?;
                 csc_jacobian.write_matrix_market("/tmp/russell_ode/jacobian.mtx", false, 1e-14)?;
                 csc_kk_real.write_matrix_market("/tmp/russell_ode/kk_real.smat", true, 1e-14)?;
@@ -500,7 +500,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
                     let rel_err = self.eta * ldw * f64::powf(self.theta, exp) / self.params.tol.newton;
                     if rel_err >= 1.0 {
                         // diverging
-                        let q_newt = f64::max(1.0e-4, f64::min(20.0, rel_err));
+                        let q_newt = rel_err.clamp(1.0e-4, 20.0);
                         let den = (4 + nit - 1 - newt) as f64;
                         work.h_multiplier_diverging = 0.8 * f64::powf(q_newt, -1.0 / den);
                         work.iterations_diverging = true;
@@ -575,7 +575,7 @@ impl<'a, A> OdeSolverTrait<A> for Radau5<'a, A> {
                 ype[m] = y[m] + err[m];
             }
             work.stats.n_function += 1;
-            (self.system.function)(fpe, x, &ype, args)?;
+            (self.system.function)(fpe, x, ype, args)?;
             for m in 0..ndim {
                 rhs[m] = mez[m] + fpe[m];
             }

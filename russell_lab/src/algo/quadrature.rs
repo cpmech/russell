@@ -130,10 +130,7 @@ impl Quadrature {
         if self.tolerance < 10.0 * f64::EPSILON {
             return Err("the tolerance must be ≥ 10.0 * f64::EPSILON");
         }
-        let ok = match self.n_gauss {
-            6 | 8 | 10 | 12 | 14 => true,
-            _ => false,
-        };
+        let ok = matches!(self.n_gauss, 6 | 8 | 10 | 12 | 14);
         if !ok {
             return Err("n_gauss must be 6, 8, 10, 12, or 14");
         }
@@ -329,7 +326,7 @@ impl Quadrature {
                         self.vl[l] = self.vl[l + 1] + ans;
                         est = self.gr[l - 1];
                         self.lr[l] = 1;
-                        self.aa[l] = self.aa[l] + 4.0 * self.hh[l];
+                        self.aa[l] += 4.0 * self.hh[l];
                         break;
                     }
                     ans += self.vl[l + 1];

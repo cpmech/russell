@@ -67,8 +67,8 @@ fn run_test(genie: Genie, symmetric: bool, bordering: bool) {
     // check
     let dds = ddl * SQRT_2;
     assert_eq!(hh, &vec![dds; nstep + 1]);
-    array_approx_eq(&ll, &[0.0, ddl, 2.0 * ddl, 3.0 * ddl, 4.0 * ddl, 5.0 * ddl], 1e-15);
-    array_approx_eq(&uu, &ll, 1e-15);
+    array_approx_eq(ll, &[0.0, ddl, 2.0 * ddl, 3.0 * ddl, 4.0 * ddl, 5.0 * ddl], 1e-15);
+    array_approx_eq(uu, ll, 1e-15);
 
     // check stats
     let niter = nstep; // 1 iteration per step because the Euler predictor gives the exact answer
@@ -142,8 +142,8 @@ fn test_arc_linear_problem_backward() {
     // check
     let dds = ddl * SQRT_2;
     assert_eq!(hh, &vec![dds; nstep + 1]);
-    array_approx_eq(&ll, &[5.0 * ddl, 4.0 * ddl, 3.0 * ddl, 2.0 * ddl, ddl, 0.0], 1e-15);
-    array_approx_eq(&uu, &ll, 1e-15);
+    array_approx_eq(ll, &[5.0 * ddl, 4.0 * ddl, 3.0 * ddl, 2.0 * ddl, ddl, 0.0], 1e-15);
+    array_approx_eq(uu, ll, 1e-15);
 
     // check stats
     let niter = nstep; // 1 iteration per step because the Euler predictor gives the exact answer
@@ -330,7 +330,7 @@ fn do_plot(name: &str, uu: &[f64], ll: &[f64], duds: &[f64], dlds: &[f64], steps
     let mut curve_ana = Curve::new();
     curve_ana.set_label("analytical");
     let uu_ana = linspace(0.0, 3.0, 101);
-    let ll_ana = uu_ana.iter().map(|&u| u).collect();
+    let ll_ana = uu_ana.to_vec();
     curve_ana.draw(&uu_ana, &ll_ana);
 
     let mut curve_num = Curve::new();

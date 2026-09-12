@@ -137,7 +137,7 @@ mod tests {
         let y = Vector::from(&[1.0, 2.0, 3.0]);
         let alpha = 2.0;
         let jj_ana = Matrix::from(&[
-            [alpha * (1.0), alpha * (-1.0), alpha * (1.0)],
+            [alpha * (1.0), -alpha, alpha * (1.0)],
             [0.0, alpha * (x * y[2] * y[2]), alpha * (2.0 * x * y[1] * y[2])],
             [alpha * (-y[1] * y[2]), alpha * (-y[0] * y[2]), alpha * (-y[0] * y[1])],
         ]);

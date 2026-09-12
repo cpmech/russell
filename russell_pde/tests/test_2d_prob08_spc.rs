@@ -21,7 +21,8 @@ fn test_2d_prob08_spc_map() -> Result<(), StrError> {
     // quarter ring domain
     for nn_tol in &[
         (8, 1.03e-4), //
-                      // (12, 3.05e-8),  //
+        (9, 1e-5),    //
+        (12, 3.05e-8), //
                       // (16, 1.02e-11), //
                       // (20, 3.47e-14), //
     ] {
@@ -35,7 +36,8 @@ fn test_2d_prob08_spc_map() -> Result<(), StrError> {
     // quarter perforated lozenge domain
     for nn_tol in &[
         (8, 2.24e-3), //
-                      // (12, 4.77e-5),  //
+        (9, 0.0017),  //
+        (12, 4.77e-5), //
                       // (16, 8.90e-7),  //
                       // (20, 2.10e-8),  //
                       // (24, 9.90e-10), //

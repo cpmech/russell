@@ -104,7 +104,7 @@ mod tests {
     fn small_mat_approx_eq_works_1() {
         let a = &[[0.0, 0.0], [0.0, 0.0]];
         let b = &[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]];
-        small_mat_approx_eq(&a, b, 1e-15);
+        small_mat_approx_eq(a, b, 1e-15);
     }
 
     #[test]
@@ -112,7 +112,7 @@ mod tests {
     fn small_mat_approx_eq_works_2() {
         let a = &[[0.0, 0.0], [0.0, 0.0]];
         let b = &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]];
-        small_mat_approx_eq(&a, b, 1e-15);
+        small_mat_approx_eq(a, b, 1e-15);
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod tests {
     fn small_mat_approx_eq_works_3() {
         let a = &[[1.0, 2.0], [3.0, 4.0]];
         let b = &[[2.5, 1.0], [1.5, 2.0]];
-        small_mat_approx_eq(&a, b, 1e-15);
+        small_mat_approx_eq(a, b, 1e-15);
     }
 
     #[test]
@@ -128,13 +128,13 @@ mod tests {
     fn small_mat_approx_eq_works_4() {
         let a = &[[0.0], [0.0]];
         let b = &[[0.0], [1e-14]];
-        small_mat_approx_eq(&a, b, 1e-15);
+        small_mat_approx_eq(a, b, 1e-15);
     }
 
     #[test]
     fn small_mat_approx_eq_works_5() {
         let a = &[[0.0], [0.0]];
         let b = &[[0.0], [1e-15]];
-        small_mat_approx_eq(&a, b, 1e-15);
+        small_mat_approx_eq(a, b, 1e-15);
     }
 }

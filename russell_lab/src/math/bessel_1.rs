@@ -87,9 +87,7 @@ pub fn bessel_j1(x: f64) -> f64 {
 
     if f64::is_nan(x) {
         return f64::NAN;
-    } else if f64::is_infinite(x) {
-        return 0.0;
-    } else if x == 0.0 {
+    } else if f64::is_infinite(x) || x == 0.0 {
         return 0.0;
     }
 
@@ -135,11 +133,7 @@ pub fn bessel_j1(x: f64) -> f64 {
     r *= xx;
     z = 0.5 * xx + r / s;
 
-    if negative {
-        return -z;
-    } else {
-        return z;
-    }
+    if negative { -z } else { z }
 }
 
 // constant computed with Mathematica

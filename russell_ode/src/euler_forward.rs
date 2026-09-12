@@ -41,7 +41,7 @@ impl<'a, A> OdeSolverTrait<A> for EulerForward<'a, A> {
     fn step(&mut self, work: &mut Workspace, x: f64, y: &Vector, h: f64, args: &mut A) -> Result<(), StrError> {
         work.stats.n_function += 1;
         (self.system.function)(&mut self.k, x, y, args)?; // k := f(x, y)
-        vec_add(&mut self.w, 1.0, &y, h, &self.k).unwrap(); // w := y + h * f(x, y)
+        vec_add(&mut self.w, 1.0, y, h, &self.k).unwrap(); // w := y + h * f(x, y)
         Ok(())
     }
 

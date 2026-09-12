@@ -8,8 +8,8 @@ use super::{float_compose, float_decompose};
 ///
 /// # Special cases
 ///
-///	* `I0(NaN) = NaN`
-///	* `I0(0.0) = 1.0`
+/// * `I0(NaN) = NaN`
+/// * `I0(0.0) = 1.0`
 ///
 /// # Examples
 ///
@@ -57,8 +57,8 @@ fn bessel_i1_scaled(x: f64) -> f64 {
 ///
 /// # Special cases
 ///
-///	* `I1(NaN) = NaN`
-///	* `I1(0.0) = 0.0`
+/// * `I1(NaN) = NaN`
+/// * `I1(0.0) = 0.0`
 ///
 /// # Examples
 ///
@@ -104,7 +104,7 @@ const HALF_MAX_EXP: i32 = f64::MAX_EXP / 2;
 ///
 /// # Special cases
 ///
-///	* `In(NaN)       = NaN`
+/// * `In(NaN)       = NaN`
 /// * `In(small(x²)) = 0.0`
 ///
 /// # Examples
@@ -174,7 +174,7 @@ pub fn bessel_in(n: usize, x: f64) -> f64 {
 ///
 /// # Special cases
 ///
-///	* `K0(NaN)     = NaN`
+/// * `K0(NaN)     = NaN`
 /// * `K0(x < 0.0) = NaN`
 /// * `K0(0.0)     = Inf`
 ///
@@ -212,7 +212,7 @@ pub fn bessel_k0(x: f64) -> f64 {
 ///
 /// # Special cases
 ///
-///	* `K1(NaN)     = NaN`
+/// * `K1(NaN)     = NaN`
 /// * `K1(x < 0.0) = NaN`
 /// * `K1(0.0)     = Inf`
 ///
@@ -250,7 +250,7 @@ pub fn bessel_k1(x: f64) -> f64 {
 ///
 /// # Special cases
 ///
-///	* `Kn(NaN)     = NaN`
+/// * `Kn(NaN)     = NaN`
 /// * `Kn(x < 0.0) = NaN`
 /// * `Kn(0.0)     = Inf`
 ///
@@ -283,7 +283,7 @@ pub fn bessel_kn(n: i32, x: f64) -> f64 {
         bkm = bk;
         bk = bkp;
     }
-    return bk;
+    bk
 }
 
 /// evaluates a polynomial for the modified Bessel functions

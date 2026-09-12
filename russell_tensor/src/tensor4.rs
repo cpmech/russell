@@ -1081,7 +1081,7 @@ impl<const N: usize> Tensor4<N> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<Vec<f64>>>>) {
+    pub fn to_std_array(&self, dd: &mut [Vec<Vec<Vec<f64>>>]) {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -1758,10 +1758,10 @@ impl<const N: usize> fmt::Display for Tensor4<N> {
         }
         // draw matrix
         width += 1;
-        write!(f, "┌{:1$}┐\n", " ", width * N + 1).unwrap();
+        writeln!(f, "┌{:1$}┐", " ", width * N + 1).unwrap();
         for i in 0..N {
             if i > 0 {
-                write!(f, " │\n").unwrap();
+                writeln!(f, " │").unwrap();
             }
             for j in 0..N {
                 if j == 0 {
@@ -1774,7 +1774,7 @@ impl<const N: usize> fmt::Display for Tensor4<N> {
                 }
             }
         }
-        write!(f, " │\n").unwrap();
+        writeln!(f, " │").unwrap();
         write!(f, "└{:1$}┘", " ", width * N + 1).unwrap();
         Ok(())
     }
@@ -2635,7 +2635,7 @@ mod tests {
         );
         // serialize
         let json = serde_json::to_string(&dd).unwrap();
-        assert!(json.len() > 0);
+        assert!(!json.is_empty());
         // deserialize
         let from_json: Tensor4<6> = serde_json::from_str(&json).unwrap();
         assert_eq!(
@@ -2657,7 +2657,7 @@ mod tests {
     #[test]
     fn debug_works() {
         let dd = Tensor4::<9>::new();
-        assert!(format!("{:?}", dd).len() > 0);
+        assert!(!format!("{:?}", dd).is_empty());
     }
 
     #[test]

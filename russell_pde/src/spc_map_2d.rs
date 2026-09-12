@@ -948,7 +948,7 @@ impl<'a> SpcMap2d<'a> {
             Side::Ymin => vec_copy_scaled(&mut self.un, -1.0, &self.metrics.g_ctr[1]).unwrap(),
             Side::Ymax => vec_copy_scaled(&mut self.un, 1.0, &self.metrics.g_ctr[1]).unwrap(),
         }
-        let norm_u = vec_norm(&mut self.un, Norm::Euc);
+        let norm_u = vec_norm(&self.un, Norm::Euc);
         self.un[0] /= norm_u;
         self.un[1] /= norm_u;
     }
@@ -1104,18 +1104,18 @@ mod tests {
         assert_eq!(spc.get_equations().nu(), nu);
         assert_eq!(spc.get_equations().np(), np);
 
-        let ___ = 0.0;
+        let nil = 0.0;
         #[rustfmt::skip]
         let correct_kk_bar = &[
-            [ 28.0, -6.0,  2.0, -6.0,  ___,  ___,  2.0,  ___,  ___],
-            [ -4.0, 20.0, -4.0,  ___, -6.0,  ___,  ___,  2.0,  ___],
-            [  2.0, -6.0, 28.0,  ___,  ___, -6.0,  ___,  ___,  2.0],
-            [ -4.0, ___,   ___, 20.0, -6.0,  2.0, -4.0,  ___,  ___],
-            [  ___, -4.0,  ___, -4.0, 12.0, -4.0,  ___, -4.0,  ___],
-            [  ___, ___,  -4.0,  2.0, -6.0, 20.0,  ___,  ___, -4.0],
-            [  2.0, ___,   ___, -6.0,  ___,  ___, 28.0, -6.0,  2.0],
-            [  ___, 2.0,   ___,  ___, -6.0,  ___, -4.0, 20.0, -4.0],
-            [  ___, ___,   2.0,  ___,  ___, -6.0,  2.0, -6.0, 28.0],
+            [ 28.0, -6.0,  2.0, -6.0,  nil,  nil,  2.0,  nil,  nil],
+            [ -4.0, 20.0, -4.0,  nil, -6.0,  nil,  nil,  2.0,  nil],
+            [  2.0, -6.0, 28.0,  nil,  nil, -6.0,  nil,  nil,  2.0],
+            [ -4.0, nil,   nil, 20.0, -6.0,  2.0, -4.0,  nil,  nil],
+            [  nil, -4.0,  nil, -4.0, 12.0, -4.0,  nil, -4.0,  nil],
+            [  nil, nil,  -4.0,  2.0, -6.0, 20.0,  nil,  nil, -4.0],
+            [  2.0, nil,   nil, -6.0,  nil,  nil, 28.0, -6.0,  2.0],
+            [  nil, 2.0,   nil,  nil, -6.0,  nil, -4.0, 20.0, -4.0],
+            [  nil, nil,   2.0,  nil,  nil, -6.0,  2.0, -6.0, 28.0],
         ];
         mat_approx_eq(&kk_bar_dense, correct_kk_bar, 1e-13);
 

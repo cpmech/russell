@@ -145,7 +145,7 @@ mod tests {
     /// Computes a⋅ai⋅a that should equal a
     fn get_a_times_ai_times_a(a: &Matrix, ai: &Matrix) -> Matrix {
         // compute a⋅ai
-        let a_ai = get_a_times_ai(&a, &ai);
+        let a_ai = get_a_times_ai(a, ai);
         // compute a⋅ai⋅a == a
         let (m, n) = a.dims();
         let mut a_ai_a = Matrix::new(m, n);

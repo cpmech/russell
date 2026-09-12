@@ -396,7 +396,7 @@ where
         let bx = &mut self.values;
 
         // allocate workspaces and get an access to them
-        if self.temp_w.len() == 0 {
+        if self.temp_w.is_empty() {
             self.temp_rp = vec![0_i32; nrow + 1]; // temporary row form
             self.temp_rj = vec![0_i32; nnz]; // temporary row form
             self.temp_rx = vec![T::zero(); nnz]; // temporary row form
@@ -485,9 +485,7 @@ where
         for j in 0..ncol {
             bp[j + 1] = bp[j] + w[j];
         }
-        for j in 0..ncol {
-            w[j] = bp[j];
-        }
+        w[..ncol].copy_from_slice(&bp[..ncol]);
 
         // construct the column form
         for i in 0..nrow {
@@ -516,8 +514,8 @@ where
         // * Upgrading i32 to usize is OK (the opposite is not OK => use to_i32)
 
         // check and read in the dimensions
-        let nrow = csr.nrow as usize;
-        let ncol = csr.ncol as usize;
+        let nrow = csr.nrow;
+        let ncol = csr.ncol;
         let nnz = csr.row_pointers[nrow] as usize;
 
         // access the CSR data
@@ -574,9 +572,7 @@ where
         // fix bp
         let mut last = 0;
         for j in 0..(ncol + 1) {
-            let temp = bp[j];
-            bp[j] = last;
-            last = temp;
+            std::mem::swap(&mut bp[j], &mut last);
         }
 
         // results
@@ -1294,7 +1290,7 @@ mod tests {
         clone.values[0] *= 2.0;
         assert_eq!(csc.values[0], 2.0);
         assert_eq!(clone.values[0], 4.0);
-        assert!(format!("{:?}", csc).len() > 0);
+        assert!(!format!("{:?}", csc).is_empty());
         let json = serde_json::to_string(&csc).unwrap();
         assert_eq!(
             json,

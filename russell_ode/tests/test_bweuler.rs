@@ -15,15 +15,15 @@ fn test_bweuler_hairer_wanner_eq1() {
     let mut solver = OdeSolver::new(params, system).unwrap();
 
     // solve the ODE system
-    let h_equal = Some(1.875 / 50.0);
-    solver.solve(&mut y0, x0, x1, h_equal, &mut args, None).unwrap();
+    let h_equal = 1.875 / 50.0;
+    solver.solve(&mut y0, x0, x1, Some(h_equal), &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(y0[0], 0.09060476604187756, 1e-15);
-    assert_eq!(stat.h_accepted, h_equal.unwrap());
+    assert_eq!(stat.h_accepted, h_equal);
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);
@@ -58,15 +58,15 @@ fn test_bweuler_hairer_wanner_eq1_num_jac() {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();
-    let h_equal = Some(1.875 / 50.0);
-    solver.solve(&mut y0, x0, x1, h_equal, &mut args, None).unwrap();
+    let h_equal = 1.875 / 50.0;
+    solver.solve(&mut y0, x0, x1, Some(h_equal), &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(y0[0], 0.09060476598021044, 1e-11);
-    assert_eq!(stat.h_accepted, h_equal.unwrap());
+    assert_eq!(stat.h_accepted, h_equal);
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);
@@ -101,15 +101,15 @@ fn test_bweuler_hairer_wanner_eq1_modified_newton() {
 
     // solve the ODE system
     let mut solver = OdeSolver::new(params, system).unwrap();
-    let h_equal = Some(1.875 / 50.0);
-    solver.solve(&mut y0, x0, x1, h_equal, &mut args, None).unwrap();
+    let h_equal = 1.875 / 50.0;
+    solver.solve(&mut y0, x0, x1, Some(h_equal), &mut args, None).unwrap();
 
     // get statistics
     let stat = solver.stats();
 
     // compare with a previous implementation
     approx_eq(y0[0], 0.09060476604187756, 1e-15);
-    assert_eq!(stat.h_accepted, h_equal.unwrap());
+    assert_eq!(stat.h_accepted, h_equal);
 
     // compare with the analytical solution
     let mut y1_correct = Vector::new(ndim);

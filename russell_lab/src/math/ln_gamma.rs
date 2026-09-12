@@ -222,9 +222,7 @@ const TT: f64 = -3.63867699703950536541e-18; // 0xBC50C7CAA48A971F
 /// ```
 pub fn ln_gamma(x: f64) -> (f64, i32) {
     // special cases
-    if f64::is_nan(x) {
-        return (x, 1);
-    } else if f64::is_infinite(x) {
+    if f64::is_nan(x) || f64::is_infinite(x) {
         return (x, 1);
     } else if x == 0.0 {
         return (f64::INFINITY, 1);

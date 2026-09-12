@@ -3295,7 +3295,7 @@ mod tests {
         );
         // serialize
         let json = serde_json::to_string(&tt).unwrap();
-        assert!(json.len() > 0);
+        assert!(!json.is_empty());
         // deserialize
         let from_json: Tensor2<9> = serde_json::from_str(&json).unwrap();
         assert_eq!(
@@ -3311,7 +3311,7 @@ mod tests {
     #[test]
     fn debug_works() {
         let tt = Tensor2::<9>::new();
-        assert!(format!("{:?}", tt).len() > 0);
+        assert!(!format!("{:?}", tt).is_empty());
     }
 
     #[test]

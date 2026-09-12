@@ -247,7 +247,7 @@ fn polar_quaternion_raw(aa_in: &[[f64; 3]; 3]) -> ([[f64; 3]; 3], [[f64; 3]; 3])
     if d == 0.0 {
         d = 1.0;
     }
-    dd = 8.0 * d * dd;
+    dd *= 8.0 * d;
     let t = a[0][0] + a[1][1] + a[2][2];
 
     // Build the symmetric 4x4 quaternion matrix B
@@ -290,7 +290,7 @@ fn polar_quaternion_raw(aa_in: &[[f64; 3]; 3]) -> ([[f64; 3]; 3], [[f64; 3]; 3])
             xold = xx;
             let px = xx * (xx * (xx * xx - 2.0) - dd) + b;
             let dpx = xx * (4.0 * xx * xx - 4.0) - dd;
-            xx = xx - px / dpx;
+            xx -= px / dpx;
         }
         x = xx;
     }
@@ -711,7 +711,7 @@ fn polar_quaternion_raw(aa_in: &[[f64; 3]; 3]) -> ([[f64; 3]; 3], [[f64; 3]; 3])
     }
     for i in 0..3 {
         for j in 0..3 {
-            hh[i][j] = n * hh[i][j];
+            hh[i][j] *= n;
         }
     }
     // Symmetrize H (the MATLAB code has this as an optional step)

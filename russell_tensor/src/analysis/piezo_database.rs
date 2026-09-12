@@ -10,7 +10,7 @@ use std::path::Path;
 /// ε₀ Units: F/m
 ///
 /// See: <https://physics.nist.gov/cgi-bin/cuu/Value?ep0>
-const VACUUM_ELECTRIC_PERMITTIVITY: f64 = 8.854_187_8188e-12;
+const VACUUM_ELECTRIC_PERMITTIVITY: f64 = 8.854_187_818_8e-12;
 
 /// Represents the entire database deserialized from the JSON file.
 ///

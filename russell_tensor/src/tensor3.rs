@@ -1042,7 +1042,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     ///     Ok(())
     /// }
     /// ```
-    pub fn to_std_array(&self, dd: &mut Vec<Vec<Vec<f64>>>) {
+    pub fn to_std_array(&self, dd: &mut [Vec<Vec<f64>>]) {
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
@@ -2231,7 +2231,7 @@ mod tests {
         );
         // serialize
         let json = serde_json::to_string(&dd).unwrap();
-        assert!(json.len() > 0);
+        assert!(!json.is_empty());
         // deserialize
         let from_json: Tensor3<6, 3> = serde_json::from_str(&json).unwrap();
         assert_eq!(
@@ -2253,7 +2253,7 @@ mod tests {
     #[test]
     fn debug_works() {
         let dd = Tensor3::<4, 3>::new();
-        assert!(format!("{:?}", dd).len() > 0);
+        assert!(!format!("{:?}", dd).is_empty());
     }
 
     #[test]

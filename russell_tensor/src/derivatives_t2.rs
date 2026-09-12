@@ -91,7 +91,7 @@ pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, sigma: &Tensor2
 pub(crate) fn deriv1_invariant_jj3_slice<const N: usize>(d1: &mut [f64], s: &mut [f64], sigma: &Tensor2<N>) {
     let jj2 = sigma.invariant_jj2();
     sigma.deviator_slice(s);
-    squared_tensor_slice::<N>(d1.as_mut(), s);
+    squared_tensor_slice::<N>(d1, s);
     d1[0] -= TWO_BY_3 * jj2;
     d1[1] -= TWO_BY_3 * jj2;
     d1[2] -= TWO_BY_3 * jj2;
@@ -305,6 +305,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn f_enum_clone_works() {
         let a = F::Norm;
         let _ = a.clone();

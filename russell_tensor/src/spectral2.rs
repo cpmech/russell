@@ -805,9 +805,9 @@ mod tests {
     fn hz_diagonal(name: &str, delta: f64) -> [f64; 3] {
         const A: f64 = 1.0;
         match name {
-            "single" => [(-1.0 * A) / 4.0, (1.0 * A) / 4.0, (2.0 + 2.0 * delta) * A / 4.0],
+            "single" => [-A / 4.0, (1.0 * A) / 4.0, (2.0 + 2.0 * delta) * A / 4.0],
             "single_lim_J3" => [(-1.0 - delta) * A / 4.0, 0.0, (1.0 + 2.0 * delta) * A / 4.0],
-            "single_lim_disc_t" => [-1.0 * A, 1.0 * A, (1.0 + delta) * A],
+            "single_lim_disc_t" => [-A, 1.0 * A, (1.0 + delta) * A],
             "single_lim_disc_n" => [0.0, (2.0 - delta) * A / 2.0, (2.0 + delta) * A / 2.0],
             "single_lim_J3J2" => [(1.0 - delta) * A, 1.0 * A, (1.0 + 2.0 * delta) * A],
             "single_J3" => [(-1.0 - delta) * A / 2.0, 0.0, (1.0 + delta) * A / 2.0],
@@ -839,11 +839,7 @@ mod tests {
         let mut indices = [0, 1, 2];
         indices.sort_by(|&i, &j| lambda[j].partial_cmp(&lambda[i]).unwrap());
         let sorted_lambda = [lambda[indices[0]], lambda[indices[1]], lambda[indices[2]]];
-        let sorted_projectors = [
-            projectors[indices[0]].clone(),
-            projectors[indices[1]].clone(),
-            projectors[indices[2]].clone(),
-        ];
+        let sorted_projectors = [projectors[indices[0]], projectors[indices[1]], projectors[indices[2]]];
         *lambda = sorted_lambda;
         *projectors = sorted_projectors;
     }

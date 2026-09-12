@@ -7,8 +7,9 @@ const SAVE_FIGURE: bool = false;
 #[test]
 fn test_2d_prob01_fdm() -> Result<(), StrError> {
     for nx_tol in &[
+        (8, 0.0032), //
         (9, 2.45e-3), //
-                      // (101, 1.59e-5), //
+                     // (101, 1.59e-5), //
     ] {
         let (nx, tol) = *nx_tol;
         // SPS

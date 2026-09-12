@@ -16,6 +16,7 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
                 for sym in &[true, false] {
                     for nd_tol in &[
                         (11, 1.0055e-1), //
+                        (12, 0.029),     //
                                          // (101, 1.043e-3), //
                     ] {
                         let (nd, tol) = *nd_tol;
@@ -37,8 +38,9 @@ fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {
             for lmm in &[true, false] {
                 for sym in &[true, false] {
                     for nd_tol in &[
-                        (11, 1.0055e-1), //
-                                         // (101, 1.043e-3), //
+                        (11, 0.035), //
+                        (12, 0.029), //
+                                     // (101, 1.043e-3), //
                     ] {
                         let (nd, tol) = *nd_tol;
                         run(bc_case, *helmholtz, *lmm, nd, tol, Genie::Mumps, *sym)?;

@@ -183,26 +183,6 @@ impl<'a, A> System<'a, A> {
         })
     }
 
-    /// Returns a copy of this struct
-    ///
-    /// Note: `Clone` cannot be derived here because the closure fields are stored as
-    /// `Arc<dyn Fn(...)>`, which are not `Clone` in the trait-object sense. This manual
-    /// implementation clones the underlying `Arc` pointers (cheap reference-count bump),
-    /// so the returned copy shares the same closures as the original.
-    pub fn clone(&self) -> Self {
-        System {
-            ndim: self.ndim,
-            nnz_ggu: self.nnz_ggu,
-            sym_ggu: self.sym_ggu,
-            calc_gg: self.calc_gg.clone(),
-            calc_jac: self.calc_jac.clone(),
-            backup_secondary_state: self.backup_secondary_state.clone(),
-            restore_secondary_state: self.restore_secondary_state.clone(),
-            prepare_to_iterate: self.prepare_to_iterate.clone(),
-            update_secondary_state: self.update_secondary_state.clone(),
-        }
-    }
-
     /// Sets a function to create a copy of external state variables at the beginning of a step
     ///
     /// The function is `fn (args)`
@@ -259,15 +239,37 @@ impl<'a, A> System<'a, A> {
         // analytical Gu
         let mut ggu = CooMatrix::new(self.ndim, self.ndim, self.nnz_ggu, self.sym_ggu).unwrap();
         let mut ggl = Vector::new(self.ndim);
-        (self.calc_jac)(&mut ggu, &mut ggl, l_at, &u_at, args).unwrap();
+        (self.calc_jac)(&mut ggu, &mut ggl, l_at, u_at, args).unwrap();
 
         // numerical Jacobian
-        let num = num_jacobian(self.ndim, 0.0, &u_at, 1.0, args, self.calc_gg.as_ref()).unwrap();
+        let num = num_jacobian(self.ndim, 0.0, u_at, 1.0, args, self.calc_gg.as_ref()).unwrap();
         let ana = ggu.as_dense();
 
         // check
         mat_approx_eq(&ana, &num, tol);
         Ok(())
+    }
+}
+
+impl<'a, A> Clone for System<'a, A> {
+    /// Returns a copy of this struct
+    ///
+    /// Note: `Clone` cannot be derived here because the closure fields are stored as
+    /// `Arc<dyn Fn(...)>`, which are not `Clone` in the trait-object sense. This manual
+    /// implementation clones the underlying `Arc` pointers (cheap reference-count bump),
+    /// so the returned copy shares the same closures as the original.
+    fn clone(&self) -> Self {
+        System {
+            ndim: self.ndim,
+            nnz_ggu: self.nnz_ggu,
+            sym_ggu: self.sym_ggu,
+            calc_gg: self.calc_gg.clone(),
+            calc_jac: self.calc_jac.clone(),
+            backup_secondary_state: self.backup_secondary_state.clone(),
+            restore_secondary_state: self.restore_secondary_state.clone(),
+            prepare_to_iterate: self.prepare_to_iterate.clone(),
+            update_secondary_state: self.update_secondary_state.clone(),
+        }
     }
 }
 

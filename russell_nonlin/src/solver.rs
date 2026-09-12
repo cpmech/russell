@@ -50,10 +50,10 @@ impl<'a, A> Solver<'a, A> {
     {
         config.validate()?;
         let ndim = system.ndim;
-        let work = Workspace::new(&config, &system);
+        let work = Workspace::new(config, &system);
         let actual: Box<dyn SolverTrait<A>> = match config.method {
-            Method::Arclength => Box::new(SolverArclength::new(&config, system.clone())?),
-            Method::Natural => Box::new(SolverNatural::new(&config, system.clone())?),
+            Method::Arclength => Box::new(SolverArclength::new(config, system.clone())?),
+            Method::Natural => Box::new(SolverNatural::new(config, system.clone())?),
         };
         Ok(Solver {
             config,
@@ -96,7 +96,7 @@ impl<'a, A> Solver<'a, A> {
     ///
     /// * `args` -- extra arguments to be passed to the system functions
     /// * `(u, l)` -- the initial state `(u₀, λ₀)` with a non-singular `Gu₀ = ∂G/∂u|₀` (Jacobian) matrix.
-    ///    The state will be updated with the new solution (u, λ) until a stop criterion is reached.
+    ///   The state will be updated with the new solution (u, λ) until a stop criterion is reached.
     /// * `dir` -- the direction to follow on the solution branch (pseudo-arclength method).
     /// * `stop` -- stop criterion (e.g, either a final λ value or a number of steps)
     /// * `ddl` -- specifies how Δλ is adjusted
@@ -149,7 +149,7 @@ impl<'a, A> Solver<'a, A> {
         // perform continuation
         if !ddl.auto {
             // constant or list-based stepsize
-            let n_step_max = if ddl.list.len() > 0 {
+            let n_step_max = if !ddl.list.is_empty() {
                 ddl.list.len()
             } else {
                 self.config.n_step_max
@@ -192,7 +192,7 @@ impl<'a, A> Solver<'a, A> {
                 self.work.stats.h_accepted = self.work.h;
 
                 // check for anomalies
-                vec_all_finite(&u, self.config.verbose)?;
+                vec_all_finite(u, self.config.verbose)?;
 
                 // output
                 if let Some(out) = output.as_deref_mut() {
@@ -270,7 +270,7 @@ impl<'a, A> Solver<'a, A> {
                     let rdiff = self.actual.accept(&mut self.work, u, l, args)?;
 
                     // check for anomalies
-                    vec_all_finite(&u, self.config.verbose)?;
+                    vec_all_finite(u, self.config.verbose)?;
 
                     // exit point: target u or λ reached
                     if self.work.target_reached {

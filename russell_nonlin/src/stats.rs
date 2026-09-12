@@ -389,7 +389,7 @@ mod tests {
         stats.n_accepted += 1;
         let clone = stats.clone();
         assert_eq!(clone.n_accepted, stats.n_accepted);
-        assert!(format!("{:?}", stats).len() > 0);
+        assert!(!format!("{:?}", stats).is_empty());
     }
 
     #[test]

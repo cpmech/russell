@@ -191,7 +191,7 @@ impl<'a, A> Output<'a, A> {
     pub(crate) fn execute(&mut self, work: &Workspace, u: &Vector, l: f64, args: &mut A) -> Result<bool, StrError> {
         // callback
         if let Some(cb) = self.callback.as_ref() {
-            let stop_gracefully = cb(&work.stats, &u, l, work.h, args)?;
+            let stop_gracefully = cb(&work.stats, u, l, work.h, args)?;
             if stop_gracefully {
                 return Ok(stop_gracefully);
             }
@@ -200,7 +200,7 @@ impl<'a, A> Output<'a, A> {
         // record results
         if self.recording {
             if let Some((norm_type, start, stop)) = self.record_norm_u {
-                let norm = vec_norm_chunk(&u, norm_type, start, stop);
+                let norm = vec_norm_chunk(u, norm_type, start, stop);
                 self.norm_u.push(norm);
             }
             for (m, um) in self.u.iter_mut() {

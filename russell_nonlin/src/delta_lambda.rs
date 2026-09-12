@@ -61,7 +61,7 @@ impl DeltaLambda {
     ///
     /// Panics if the list is empty.
     pub fn list(list: &[f64]) -> Self {
-        assert!(list.len() > 0);
+        assert!(!list.is_empty());
         Self {
             auto: false,
             ddl_ini: list[0],

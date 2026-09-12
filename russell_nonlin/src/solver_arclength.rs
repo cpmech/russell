@@ -302,7 +302,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // factorize Gu matrix
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
-        self.ls.actual.factorize(&mut self.ggu, self.config.lin_sol_config)?;
+        self.ls.actual.factorize(&self.ggu, self.config.lin_sol_config)?;
         work.stats.stop_sw_factor();
         Ok(())
     }
@@ -383,7 +383,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // factorize matrix A
         work.stats.sw_factor.reset();
         work.stats.n_factor += 1;
-        self.ls.actual.factorize(&mut self.aa, self.config.lin_sol_config)?;
+        self.ls.actual.factorize(&self.aa, self.config.lin_sol_config)?;
         work.stats.stop_sw_factor();
         Ok(())
     }
@@ -573,13 +573,13 @@ impl<'a, A> SolverArclength<'a, A> {
             // calculate: den = Nu₀ᵀ δua - Nλ₀
             // where Nu₀ = θ du/ds|₀  and  Nλ₀ = (2 - θ) dλ/ds|₀
             let nnl = (2.0 - self.theta) * work.dlds;
-            let den = self.theta * vec_inner(&work.duds, &dua) - nnl;
+            let den = self.theta * vec_inner(&work.duds, dua) - nnl;
             if f64::abs(den) < CONFIG_H_MIN {
                 return Ok(Status::BorderingSmallDenominator);
             }
 
             // calculate: δλ = (N - Nu₀ᵀ δub) / den
-            let dl = (nn - self.theta * vec_inner(&work.duds, &dub)) / den;
+            let dl = (nn - self.theta * vec_inner(&work.duds, dub)) / den;
 
             // calculate: δu = -δλ δua - δub  and set  x = (δu, δλ)
             for i in 0..ndim {
@@ -629,7 +629,7 @@ impl<'a, A> SolverArclength<'a, A> {
         // external: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = false; // already done by the predictor
-            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }
@@ -661,7 +661,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         self.iter_jac_computed = false;
 
         // set initial values
-        vec_copy(&mut work.u, &u).unwrap(); // u₀ = u
+        vec_copy(&mut work.u, u).unwrap(); // u₀ = u
         work.l = l; // λ₀ = λ
 
         // set the initial direction vector (calculates Gu = ∂G/∂u and Gλ = ∂G/∂λ)
@@ -713,10 +713,10 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: u₁ = u₀ + θ σ · du/ds₀
         if self.theta > 0.0 {
             // u₁ = u₀ + θ σ · duds₀
-            vec_add(&mut work.u, 1.0, &u, self.theta * work.h, &work.duds).unwrap();
+            vec_add(&mut work.u, 1.0, u, self.theta * work.h, &work.duds).unwrap();
         } else {
             // u₁ = u₀
-            vec_copy(&mut work.u, &u).unwrap();
+            vec_copy(&mut work.u, u).unwrap();
         }
 
         // recalculate the predictor by truncating the stepsize if required and possible
@@ -725,7 +725,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
                 if f64::abs(work.duds[i]) > CONFIG_H_MIN {
                     work.h = (u1 - u[i]) / work.duds[i];
                     work.l = l + (2.0 - self.theta) * work.h * work.dlds;
-                    vec_add(&mut work.u, 1.0, &u, self.theta * work.h, &work.duds).unwrap();
+                    vec_add(&mut work.u, 1.0, u, self.theta * work.h, &work.duds).unwrap();
                 } else {
                     return Err("INTERNAL ERROR: duds[i] is too small");
                 }
@@ -735,7 +735,7 @@ impl<'a, A> SolverTrait<A> for SolverArclength<'a, A> {
         // predictor: update secondary variables (e.g., local state)
         if let Some(f) = self.system.update_secondary_state.as_ref() {
             let do_backup = true;
-            let status = Status::from_sup(f(do_backup, &u, &work.u, l, work.l, args));
+            let status = Status::from_sup(f(do_backup, u, &work.u, l, work.l, args));
             if status.failure() {
                 return Ok(status);
             }

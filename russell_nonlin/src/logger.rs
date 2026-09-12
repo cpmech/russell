@@ -188,16 +188,12 @@ impl Logger {
             writeln!(&mut output, "{}\n", "═".repeat(NCHAR)).unwrap();
         }
 
-        if self.full_path.is_none() {
-            // Write directly to stdout
-            print!("{}", output);
-            std::io::stdout().flush().map_err(|_| "cannot flush stdout")?;
-        } else {
+        if let Some(full_path) = self.full_path.as_ref() {
             // Add to buffer for file output
             write!(&mut self.buffer, "{}", output).unwrap();
 
             // Write buffer to file
-            let path = Path::new(self.full_path.as_ref().unwrap()).to_path_buf();
+            let path = Path::new(full_path).to_path_buf();
             if let Some(p) = path.parent() {
                 fs::create_dir_all(p).map_err(|_| "cannot create directory")?;
             }
@@ -205,6 +201,10 @@ impl Logger {
             file.write_all(self.buffer.as_bytes())
                 .map_err(|_| "cannot write file")?;
             file.sync_all().map_err(|_| "cannot sync file")?;
+        } else {
+            // Write directly to stdout
+            print!("{}", output);
+            std::io::stdout().flush().map_err(|_| "cannot flush stdout")?;
         }
 
         Ok(())

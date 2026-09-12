@@ -209,7 +209,7 @@ impl Combo {
             key1,
             key2,
             key3,
-            self.genie.to_string(),
+            self.genie,
             key4
         )
     }
@@ -393,7 +393,8 @@ fn test_bratu_2d_fdm_fix_step() -> Result<(), StrError> {
     let genie = Genie::Umfpack;
     let symmetric = false;
     for alpha in [0.0] {
-        for (npt, tol1, tol2, tol3) in [(8, 0.23, 0.0, 0.0)] {
+        {
+            let (npt, tol1, tol2, tol3) = (8, 0.23, 0.0, 0.0);
             let combo = Combo {
                 spc,
                 one_dim,
@@ -576,18 +577,18 @@ fn run_test(
     let last_u_max = nrm_vals[npoint - 1];
     let degree_max = npoint - 1;
     let mut interp = InterpChebyshev::new(degree_max, 0.0, last_u_max).unwrap();
-    interp.set_gen_data(&nrm_vals, &lam_vals)?; // (U, L) data
+    interp.set_gen_data(nrm_vals, lam_vals)?; // (U, L) data
 
     // Find the critical points with higher accuracy
     let ((nrm_crit_1, lam_crit_1), (nrm_crit_2, lam_crit_2)) = if combo.alpha == 0.0 {
         // For α = 0.0, we have a single critical point (peak)
-        let (u_crit, l_crit) = find_critical_point(&nrm_vals, &lam_vals, ii_peaks[0], &interp, true)?;
+        let (u_crit, l_crit) = find_critical_point(nrm_vals, lam_vals, ii_peaks[0], &interp, true)?;
         println!("Critical point: ‖u‖∞ = {}, λ = {}", u_crit, l_crit);
         ((u_crit, l_crit), (0.0, 0.0)) // dummy values for the second critical point
     } else {
         // For α = 0.2, we have two critical points (one peak and one valley)
-        let (u_crit1, l_crit1) = find_critical_point(&nrm_vals, &lam_vals, ii_peaks[0], &interp, true)?;
-        let (u_crit2, l_crit2) = find_critical_point(&nrm_vals, &lam_vals, ii_valleys[0], &interp, false)?;
+        let (u_crit1, l_crit1) = find_critical_point(nrm_vals, lam_vals, ii_peaks[0], &interp, true)?;
+        let (u_crit2, l_crit2) = find_critical_point(nrm_vals, lam_vals, ii_valleys[0], &interp, false)?;
         println!("1st critical point: ‖u‖∞ = {}, λ = {}", u_crit1, l_crit1);
         println!("2nd critical point: ‖u‖∞ = {}, λ = {}", u_crit2, l_crit2);
         ((u_crit1, l_crit1), (u_crit2, l_crit2)) // dummy values for the critical points; we won't use them in the checks below
@@ -626,7 +627,7 @@ fn run_test(
     // -------------------- plot the results --------------------
     if SAVE_FIGURE {
         do_plot(
-            &combo, &lam_vals, &nrm_vals, lam_crit_1, nrm_crit_1, lam_crit_2, nrm_crit_2, &output, &interp,
+            &combo, lam_vals, nrm_vals, lam_crit_1, nrm_crit_1, lam_crit_2, nrm_crit_2, output, &interp,
         )?;
     }
     Ok(())
@@ -652,7 +653,7 @@ fn do_plot<'a>(
     let title = combo.title(true);
 
     // maximum ‖ϕ‖∞ value
-    let max_nrm_max = nrm_vals[find_index_abs_max(&nrm_vals)];
+    let max_nrm_max = nrm_vals[find_index_abs_max(nrm_vals)];
 
     // reference results
     if combo.alpha == 0.0 {

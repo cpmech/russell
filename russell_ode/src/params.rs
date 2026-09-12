@@ -517,6 +517,7 @@ mod tests {
     use russell_lab::approx_eq;
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn derive_methods_work() {
         let tol = ParamsTol::new(Method::Radau5);
         let newton = ParamsNewton::new();

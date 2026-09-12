@@ -429,7 +429,7 @@ impl<'a, A> Output<'a, A> {
                 self.step_h.clear();
                 self.step_x.clear();
                 self.step_global_error.clear();
-                for (_, ym) in self.step_y.iter_mut() {
+                for ym in self.step_y.values_mut() {
                     ym.clear();
                 }
             }
@@ -454,7 +454,7 @@ impl<'a, A> Output<'a, A> {
                 }
             } else {
                 // user-defined spacing
-                if self.dense_x.len() == 0 {
+                if self.dense_x.is_empty() {
                     self.dense_x = vec![0.0; 2]; // just x0 and x1
                 }
                 let n = self.dense_x.len();
@@ -471,7 +471,7 @@ impl<'a, A> Output<'a, A> {
             }
             // allocate vectors in dense_y
             let n = self.dense_x.len();
-            for (_, ym) in self.dense_y.iter_mut() {
+            for ym in self.dense_y.values_mut() {
                 if ym.len() != n {
                     ym.resize(n, 0.0);
                 }
@@ -496,7 +496,7 @@ impl<'a, A> Output<'a, A> {
         h: f64,
         x: f64,
         y: &Vector,
-        solver: &Box<dyn OdeSolverTrait<A> + 'a>,
+        solver: &(dyn OdeSolverTrait<A> + 'a),
         args: &mut A,
     ) -> Result<bool, StrError> {
         assert!(self.initialized);
@@ -707,7 +707,7 @@ mod tests {
             "OutData { h: 0.1, x: 1.0, y: NumVector { data: [0.0] } }"
         );
         let json = "{\"h\":0.2,\"x\":2.0,\"y\":{ \"data\":[3.0]}}";
-        let from_json: OutData = serde_json::from_str(&json).unwrap();
+        let from_json: OutData = serde_json::from_str(json).unwrap();
         assert_eq!(from_json.h, 0.2);
         assert_eq!(from_json.x, 2.0);
         assert_eq!(from_json.y.as_data(), &[3.0]);

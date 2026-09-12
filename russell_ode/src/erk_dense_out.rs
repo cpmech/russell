@@ -57,14 +57,14 @@ impl ErkDenseOut {
     }
 
     /// Updates the data and returns the number of function evaluations
-    pub(crate) fn update<'a, A>(
+    pub(crate) fn update<A>(
         &mut self,
         system: &System<A>,
         x: f64,
         y: &Vector,
         h: f64,
         w: &Vector,
-        k: &Vec<Vector>,
+        k: &[Vector],
         args: &mut A,
     ) -> Result<usize, StrError> {
         let mut n_function_eval = 0;
@@ -304,7 +304,7 @@ mod tests {
             count: usize,
             fail: usize,
         }
-        let mut system = System::new(1, |_f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
+        let system = System::new(1, |_f: &mut Vector, _x: f64, _y: &Vector, args: &mut Args| {
             args.count += 1;
             if args.count == args.fail { Err("STOP") } else { Ok(()) }
         });
@@ -315,21 +315,12 @@ mod tests {
         let w = Vector::new(system.ndim);
         let nstage = 12;
         let k = vec![Vector::new(system.ndim); nstage];
-        assert_eq!(
-            out.update(&mut system, 0.0, &y, h, &w, &k, &mut args).err(),
-            Some("STOP")
-        );
+        assert_eq!(out.update(&system, 0.0, &y, h, &w, &k, &mut args).err(), Some("STOP"));
         args.count = 0;
         args.fail = 2;
-        assert_eq!(
-            out.update(&mut system, 0.0, &y, h, &w, &k, &mut args).err(),
-            Some("STOP")
-        );
+        assert_eq!(out.update(&system, 0.0, &y, h, &w, &k, &mut args).err(), Some("STOP"));
         args.count = 0;
         args.fail = 3;
-        assert_eq!(
-            out.update(&mut system, 0.0, &y, h, &w, &k, &mut args).err(),
-            Some("STOP")
-        );
+        assert_eq!(out.update(&system, 0.0, &y, h, &w, &k, &mut args).err(), Some("STOP"));
     }
 }

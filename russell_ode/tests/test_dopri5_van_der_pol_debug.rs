@@ -50,7 +50,7 @@ fn test_dopri5_van_der_pol_debug() {
     // check stiffness results
     assert_eq!(out.stiff_step_index(), &[32, 189, 357]);
     array_approx_eq(
-        &out.stiff_x(),
+        out.stiff_x(),
         &[1.216973774601867E-02, 8.717646581250652E-01, 1.744401291692531E+00],
         1e-12,
     );

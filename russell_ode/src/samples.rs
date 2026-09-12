@@ -148,7 +148,7 @@ impl Samples {
     /// # Reference
     ///
     /// * Mathematica, Numerical Solution of Differential-Algebraic Equations: Solving Systems with a Mass Matrix
-    /// <https://reference.wolfram.com/language/tutorial/NDSolveDAE.html>
+    ///   <https://reference.wolfram.com/language/tutorial/NDSolveDAE.html>
     pub fn simple_system_with_mass_matrix<'a>(
         symmetric: bool,
         genie: Genie,
@@ -180,7 +180,7 @@ impl Samples {
                 sym,
                 move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
                     jj.reset();
-                    jj.put(0, 0, alpha * (-1.0)).unwrap();
+                    jj.put(0, 0, -alpha).unwrap();
                     if !triangular {
                         jj.put(0, 1, alpha * (1.0)).unwrap();
                     }
@@ -1147,7 +1147,7 @@ impl Samples {
     /// # Reference
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
-    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    ///   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
     pub fn kreyszig_eq6_page902<'a>() -> (
         System<'a, NoArgs>,
         f64,
@@ -1223,7 +1223,7 @@ impl Samples {
     /// # Reference
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
-    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    ///   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
     pub fn kreyszig_ex4_page920<'a>() -> (
         System<'a, NoArgs>,
         f64,

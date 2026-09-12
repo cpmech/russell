@@ -201,6 +201,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn information_clone_copy_and_debug_work() {
         let info = Information {
             order: 2,
@@ -229,6 +230,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // test the derived Clone implementation
     fn method_clone_copy_and_debug_work() {
         let method = Method::BwEuler;
         let copy = method;
@@ -285,10 +287,10 @@ mod tests {
     #[test]
     fn description_works() {
         for m in [Method::Radau5, Method::BwEuler, Method::FwEuler] {
-            assert!(m.description().len() > 0);
+            assert!(!m.description().is_empty());
         }
         for m in Method::erk_methods() {
-            assert!(m.description().len() > 0);
+            assert!(!m.description().is_empty());
         }
     }
 }

@@ -169,7 +169,7 @@ impl<'a, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, A> {
         // compute ki
         for i in 1..self.nstage {
             let ui = x + h * self.cc[i];
-            vec_copy(&mut v[i], &y).unwrap(); // vi := ya
+            vec_copy(&mut v[i], y).unwrap(); // vi := ya
             for j in 0..i {
                 vec_update(&mut v[i], h * self.aa.get(i, j), &k[j]).unwrap(); // vi += h ⋅ aij ⋅ kj
             }
@@ -248,7 +248,7 @@ impl<'a, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, A> {
     ) -> Result<(), StrError> {
         // save data for dense output
         if let Some(out) = self.dense_out.as_mut() {
-            work.stats.n_function += out.update(&mut self.system, *x, y, h, &self.w, &self.k, args)?;
+            work.stats.n_function += out.update(&self.system, *x, y, h, &self.w, &self.k, args)?;
         }
 
         // update x and y
@@ -271,7 +271,7 @@ impl<'a, A> OdeSolverTrait<A> for ExplicitRungeKutta<'a, A> {
         let mut fac = f64::powf(work.rel_error, self.lund_factor); // line 463 of dopri5.f
         if self.params.erk.lund_beta > 0.0 && work.rel_error_prev > 0.0 {
             // lund-stabilization (line 465 of dopri5.f)
-            fac = fac / f64::powf(work.rel_error_prev, self.params.erk.lund_beta);
+            fac /= f64::powf(work.rel_error_prev, self.params.erk.lund_beta);
         }
         fac = f64::max(self.d_max, f64::min(self.d_min, fac / self.params.step.m_safety)); // line 467 of dopri5.f
         work.h_new = h / fac;

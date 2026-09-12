@@ -20,7 +20,7 @@ fn main() -> Result<(), StrError> {
         symmetric,
         move |jj: &mut CooMatrix, alpha: f64, _x: f64, _y: &Vector, _args: &mut NoArgs| {
             jj.reset();
-            jj.put(0, 0, alpha * (-1.0))?;
+            jj.put(0, 0, -alpha)?;
             jj.put(0, 1, alpha * (1.0))?;
             jj.put(1, 0, alpha * (1.0))?;
             jj.put(1, 1, alpha * (1.0))?;

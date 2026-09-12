@@ -74,6 +74,10 @@
 - [For developers](#for-developers)
   - [russell\_lab — BLAS/LAPACK](#russell_lab--blaslapack)
   - [russell\_sparse — sparse solvers](#russell_sparse--sparse-solvers)
+- [Bertrand Russell: 1972 Commemorative Stamp](#bertrand-russell-1972-commemorative-stamp)
+  - [Official Reference Details](#official-reference-details)
+  - [Philatelic Catalog Classifications](#philatelic-catalog-classifications)
+  - [References and Resources](#references-and-resources)
 
 
 
@@ -722,3 +726,32 @@ Build-dependencies: `cc`, `pkg-config`.
   - The default path (no `cudss`, no `local_sparse`) probes `pkg-config` for UMFPACK (trying both `UMFPACK` and `umfpack` spellings) before falling back.
 
 Build-dependencies: `cc`, `pkg-config`.
+
+
+
+## Bertrand Russell: 1972 Commemorative Stamp
+
+In 1972, India Post issued a commemorative postage stamp to honor the birth centenary of the renowned British mathematician, logician, and philosopher, Bertrand Russell. This visual asset can be seen in [@fig:russell-stamp].
+
+![1972 Indian commemorative postage stamp honoring the birth centenary of Bertrand Russell.](assets/india_russell_stamp_1972.jpg){#fig:russell-stamp}
+
+### Official Reference Details
+
+* **Issuer:** India Post (Department of Posts, Government of India)
+* **Release Date:** October 16, 1972
+* **Occasion:** Birth Centenary of Bertrand Russell
+* **Denomination:** Rs. 1.45
+* **Design Source:** Portrait reproduced using a photograph courtesy of the Keystone Press Agency Ltd., London.
+
+### Philatelic Catalog Classifications
+
+For strict archival or historical referencing, the stamp is classified under the following standard philatelic catalog numbers:
+
+* **Scott Catalog Number:** 561
+* **Stanley Gibbons (SG) Number:** 667
+
+### References and Resources
+
+* **India Post Archives:** Official records of commemorative stamps from 1972 can be found via the [India Post Official Website](https://www.indiapost.gov.in/).
+* **Global Philatelic Database (Colnect):** [Bertrand Russell 1972 Commemorative Issue](https://colnect.com/en/stamps/stamp/21997-Bertrand_Russell_1872-1970_British_philosopher-India) *(Placeholder link to the specific catalog entry)*.
+* **Bibliography Placeholder:** [@indiapost1972russell] <!-- Replace with your actual BibTeX or Citeproc citation key if using Pandoc citeproc -->

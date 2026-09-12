@@ -41,7 +41,7 @@ fn test_1d_prob03_fdm_sps() -> Result<(), StrError> {
         });
         let uu_num = a.as_data();
         curve_ana.draw(&xx_ana, &uu_ana);
-        curve_num.draw(&xx_num, &uu_num);
+        curve_num.draw(&xx_num, uu_num);
         let mut plot = Plot::new();
         plot.add(&curve_ana)
             .add(&curve_num)

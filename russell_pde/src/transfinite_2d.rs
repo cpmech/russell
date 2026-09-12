@@ -445,10 +445,10 @@ mod tests {
 
         // check corners
         let (p0, p1, p2, p3) = map.get_corners();
-        vec_approx_eq(&p0, xa, 1e-15);
-        vec_approx_eq(&p1, xb, 1e-15);
-        vec_approx_eq(&p2, xc, 1e-15);
-        vec_approx_eq(&p3, xd, 1e-15);
+        vec_approx_eq(p0, xa, 1e-15);
+        vec_approx_eq(p1, xb, 1e-15);
+        vec_approx_eq(p2, xc, 1e-15);
+        vec_approx_eq(p3, xd, 1e-15);
 
         // check derivatives
         check_derivs(&mut map, 1e-10, 1e-8);
@@ -463,10 +463,10 @@ mod tests {
 
         // check corners
         let (p0, p1, p2, p3) = map.get_corners();
-        vec_approx_eq(&p0, &[r_in, 0.0], 1e-15);
-        vec_approx_eq(&p1, &[r_out, 0.0], 1e-15);
-        vec_approx_eq(&p2, &[0.0, r_out], 1e-15);
-        vec_approx_eq(&p3, &[0.0, r_in], 1e-15);
+        vec_approx_eq(p0, &[r_in, 0.0], 1e-15);
+        vec_approx_eq(p1, &[r_out, 0.0], 1e-15);
+        vec_approx_eq(p2, &[0.0, r_out], 1e-15);
+        vec_approx_eq(p3, &[0.0, r_in], 1e-15);
 
         // check some points
         let mut x = Vector::new(2);
@@ -498,10 +498,10 @@ mod tests {
 
         // check corners
         let (p0, p1, p2, p3) = map.get_corners();
-        vec_approx_eq(&p0, &[r_in, 0.0], 1e-15);
-        vec_approx_eq(&p1, &[r_out, 0.0], 1e-15);
-        vec_approx_eq(&p2, &[-r_out, 0.0], 1e-15);
-        vec_approx_eq(&p3, &[-r_in, 0.0], 1e-15);
+        vec_approx_eq(p0, &[r_in, 0.0], 1e-15);
+        vec_approx_eq(p1, &[r_out, 0.0], 1e-15);
+        vec_approx_eq(p2, &[-r_out, 0.0], 1e-15);
+        vec_approx_eq(p3, &[-r_in, 0.0], 1e-15);
 
         // check some points
         let mut x = Vector::new(2);
@@ -529,10 +529,10 @@ mod tests {
 
         // check corners
         let (p0, p1, p2, p3) = map.get_corners();
-        vec_approx_eq(&p0, &[radius, 0.0], 1e-15);
-        vec_approx_eq(&p1, &[diagonal, 0.0], 1e-15);
-        vec_approx_eq(&p2, &[0.0, diagonal], 1e-15);
-        vec_approx_eq(&p3, &[0.0, radius], 1e-15);
+        vec_approx_eq(p0, &[radius, 0.0], 1e-15);
+        vec_approx_eq(p1, &[diagonal, 0.0], 1e-15);
+        vec_approx_eq(p2, &[0.0, diagonal], 1e-15);
+        vec_approx_eq(p3, &[0.0, radius], 1e-15);
 
         // check some points
         let mut x = Vector::new(2);

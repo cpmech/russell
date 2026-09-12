@@ -847,7 +847,7 @@ mod tests {
         let spc = Spc1d::new(0.0, 1.0, 2, ebcs, nbcs, 1.0).unwrap();
         let a = Vector::from(&[0.0]); // wrong size
         assert_eq!(
-            spc.calculate_flow_vectors(&a.into()).err(),
+            spc.calculate_flow_vectors(&a).err(),
             Some("a.dim() must equal the number of equations")
         );
     }

@@ -678,7 +678,7 @@ impl ProblemSamples {
         let ana_flow = Box::new(move |x, y| {
             (
                 (-k) * 2.0 * PI * f64::cos(2.0 * PI * x) * f64::cos(2.0 * PI * y),
-                (-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y) * (-1.0),
+                -((-k) * 2.0 * PI * f64::sin(2.0 * PI * x) * f64::sin(2.0 * PI * y)),
             )
         });
         (xmin, xmax, ymin, ymax, kx, ky, ebcs, nbcs, source, analytical, ana_flow)
@@ -698,7 +698,7 @@ impl ProblemSamples {
     /// # Input
     ///
     /// * `ana_nsum` -- number of summation terms in the analytical solution.
-    ///  **Warning:** For `ana_nsum > 227`, infinite values appear in the sum.
+    ///   **Warning:** For `ana_nsum > 227`, infinite values appear in the sum.
     ///
     /// # Problem
     ///

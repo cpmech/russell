@@ -866,14 +866,14 @@ mod tests {
 
         // check corners
         let (p0, p1, p2, p3, p4, p5, p6, p7) = map.get_corners();
-        vec_approx_eq(&p0, &[0.0, 0.0, 0.0], 1e-15);
-        vec_approx_eq(&p1, &[lx, 0.0, 0.0], 1e-15);
-        vec_approx_eq(&p2, &[lx, ly, 0.0], 1e-15);
-        vec_approx_eq(&p3, &[0.0, ly, 0.0], 1e-15);
-        vec_approx_eq(&p4, &[0.0, 0.0, lz], 1e-15);
-        vec_approx_eq(&p5, &[lx, 0.0, lz], 1e-15);
-        vec_approx_eq(&p6, &[lx, ly, lz], 1e-15);
-        vec_approx_eq(&p7, &[0.0, ly, lz], 1e-15);
+        vec_approx_eq(p0, &[0.0, 0.0, 0.0], 1e-15);
+        vec_approx_eq(p1, &[lx, 0.0, 0.0], 1e-15);
+        vec_approx_eq(p2, &[lx, ly, 0.0], 1e-15);
+        vec_approx_eq(p3, &[0.0, ly, 0.0], 1e-15);
+        vec_approx_eq(p4, &[0.0, 0.0, lz], 1e-15);
+        vec_approx_eq(p5, &[lx, 0.0, lz], 1e-15);
+        vec_approx_eq(p6, &[lx, ly, lz], 1e-15);
+        vec_approx_eq(p7, &[0.0, ly, lz], 1e-15);
 
         // check derivatives
         check_derivs(&mut map, 1e-11, 1e-8);
@@ -889,14 +889,14 @@ mod tests {
 
         // check corners
         let (p0, p1, p2, p3, p4, p5, p6, p7) = map.get_corners();
-        vec_approx_eq(&p0, &[0.0, r_in, 0.0], 1e-15);
-        vec_approx_eq(&p1, &[thickness, r_in, 0.0], 1e-15);
-        vec_approx_eq(&p2, &[thickness, r_out, 0.0], 1e-15);
-        vec_approx_eq(&p3, &[0.0, r_out, 0.0], 1e-15);
-        vec_approx_eq(&p4, &[0.0, 0.0, r_in], 1e-15);
-        vec_approx_eq(&p5, &[thickness, 0.0, r_in], 1e-15);
-        vec_approx_eq(&p6, &[thickness, 0.0, r_out], 1e-15);
-        vec_approx_eq(&p7, &[0.0, 0.0, r_out], 1e-15);
+        vec_approx_eq(p0, &[0.0, r_in, 0.0], 1e-15);
+        vec_approx_eq(p1, &[thickness, r_in, 0.0], 1e-15);
+        vec_approx_eq(p2, &[thickness, r_out, 0.0], 1e-15);
+        vec_approx_eq(p3, &[0.0, r_out, 0.0], 1e-15);
+        vec_approx_eq(p4, &[0.0, 0.0, r_in], 1e-15);
+        vec_approx_eq(p5, &[thickness, 0.0, r_in], 1e-15);
+        vec_approx_eq(p6, &[thickness, 0.0, r_out], 1e-15);
+        vec_approx_eq(p7, &[0.0, 0.0, r_out], 1e-15);
 
         // check derivatives
         check_derivs(&mut map, 1e-9, 1e-7);

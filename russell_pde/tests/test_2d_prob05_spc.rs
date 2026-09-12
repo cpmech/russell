@@ -32,8 +32,8 @@ fn test_2d_prob05_spc() -> Result<(), StrError> {
 
     // plot results
     if SAVE_FIGURE {
-        let fn_a = format!("/tmp/russell_pde/test_2d_prob05_spc_a.svg");
-        let fn_b = format!("/tmp/russell_pde/test_2d_prob05_spc_b.svg");
+        let fn_a = "/tmp/russell_pde/test_2d_prob05_spc_a.svg".to_string();
+        let fn_b = "/tmp/russell_pde/test_2d_prob05_spc_b.svg".to_string();
         let mut points = Curve::new();
         let mut surf_num = Surface::new();
         let mut surf_ana = Surface::new();

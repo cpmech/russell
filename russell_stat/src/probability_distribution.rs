@@ -33,7 +33,7 @@ pub trait ProbabilityDistribution {
     /// # References
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
-    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    ///   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
     fn pdf(&self, x: f64) -> f64;
 
     /// Evaluates the Cumulative Distribution Function (CDF)
@@ -55,7 +55,7 @@ pub trait ProbabilityDistribution {
     /// # References
     ///
     /// * Kreyszig, E (2011) Advanced engineering mathematics; in collaboration with Kreyszig H,
-    ///    Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
+    ///   Edward JN 10th ed 2011, Hoboken, New Jersey, Wiley
     fn cdf(&self, x: f64) -> f64;
 
     /// Returns the Mean

@@ -182,7 +182,7 @@ where
 
         // check count_max
         if c_max < 1 {
-            write!(f, "zero data\n").unwrap();
+            writeln!(f, "zero data").unwrap();
             return Ok(());
         }
 
@@ -211,10 +211,10 @@ where
             bl.clear();
             br.clear();
             let n = scale * (count as f64);
-            let bar = std::iter::repeat(self.bar_char).take(n as usize).collect::<String>();
-            write!(f, " {}\n", bar).unwrap();
+            let bar = std::iter::repeat_n(self.bar_char, n as usize).collect::<String>();
+            writeln!(f, " {}", bar).unwrap();
         }
-        write!(f, "{:>1$}\n", format!("sum = {}", total), 2 * l_s_max + l_c_max + 7).unwrap();
+        writeln!(f, "{:>1$}", format!("sum = {}", total), 2 * l_s_max + l_c_max + 7).unwrap();
         Ok(())
     }
 }

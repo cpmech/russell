@@ -1959,10 +1959,12 @@ impl<const N: usize> Tensor2<N> {
 
     // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
 
-    /// Returns the isomorphic mean pressure invariant (distance to octahedral plane)
+    /// Returns the isomorphic distance invariant
+    ///
+    /// `d` is the distance from the origin of the Haigh-Westergaard space to the octahedral plane.
     ///
     /// ```text
-    /// σs = d = trace(σ) / √3
+    /// d = trace(σ) / √3
     /// ```
     ///
     /// # Examples
@@ -1977,18 +1979,20 @@ impl<const N: usize> Tensor2<N> {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ])?;
-    ///     approx_eq(a.invariant_sigma_s(), 2.0 / SQRT_3, 1e-15);
+    ///     approx_eq(a.invariant_d(), 2.0 / SQRT_3, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn invariant_sigma_s(&self) -> f64 {
+    pub fn invariant_d(&self) -> f64 {
         self.trace() / SQRT_3
     }
 
     /// Returns the isomorphic deviatoric invariant (radius on octahedral plane)
     ///
+    /// `r` is the radius of a circle passing to the point in the Haigh-Westergaard space
+    ///
     /// ```text
-    /// σt = r = ‖s‖ = √(2 J2)
+    /// r = ‖s‖ = √(2 J2)
     /// ```
     ///
     /// # Examples
@@ -2003,11 +2007,11 @@ impl<const N: usize> Tensor2<N> {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ])?;
-    ///     approx_eq(a.invariant_sigma_t(), SQRT_2_BY_3, 1e-15);
+    ///     approx_eq(a.invariant_r(), SQRT_2_BY_3, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn invariant_sigma_t(&self) -> f64 {
+    pub fn invariant_r(&self) -> f64 {
         self.deviator_norm()
     }
 
@@ -2229,8 +2233,8 @@ impl<const N: usize> Tensor2<N> {
     /// # Definitions
     ///
     /// ```text
-    /// d = trace(T) / √3 = σs
-    /// r = ‖dev(T)‖ = σt
+    /// d = trace(T) / √3
+    /// r = ‖dev(T)‖
     /// l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))
     /// ```
     pub fn invariants_octahedral(&self) -> (f64, f64, Option<f64>) {
@@ -4099,8 +4103,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
@@ -4111,8 +4115,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4125,8 +4129,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4139,8 +4143,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4153,8 +4157,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4167,8 +4171,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4181,8 +4185,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4195,8 +4199,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4209,8 +4213,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4223,8 +4227,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4237,8 +4241,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4251,8 +4255,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
         approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
         approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
@@ -4334,10 +4338,10 @@ mod tests {
         for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
-        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
-        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t1.invariant_d(), distance, 1e-15);
+        approx_eq(t1.invariant_r(), radius, 1e-15);
+        approx_eq(t2.invariant_d(), distance, 1e-15);
+        approx_eq(t2.invariant_r(), radius, 1e-15);
 
         let t1 = Tensor2::<4>::new_from_octahedral(distance, radius, 0.0).unwrap();
         let t2 = Tensor2::<4>::new_from_octahedral_alpha(distance, radius, PI / 3.0).unwrap();
@@ -4348,10 +4352,10 @@ mod tests {
         for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
-        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
-        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t1.invariant_d(), distance, 1e-15);
+        approx_eq(t1.invariant_r(), radius, 1e-15);
+        approx_eq(t2.invariant_d(), distance, 1e-15);
+        approx_eq(t2.invariant_r(), radius, 1e-15);
 
         let t1 = Tensor2::<4>::new_from_octahedral(distance, radius, -1.0).unwrap();
         let t2 = Tensor2::<4>::new_from_octahedral_alpha(distance, radius, PI / 6.0).unwrap();
@@ -4362,10 +4366,10 @@ mod tests {
         for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
-        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
-        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t1.invariant_d(), distance, 1e-15);
+        approx_eq(t1.invariant_r(), radius, 1e-15);
+        approx_eq(t2.invariant_d(), distance, 1e-15);
+        approx_eq(t2.invariant_r(), radius, 1e-15);
     }
 
     #[test]

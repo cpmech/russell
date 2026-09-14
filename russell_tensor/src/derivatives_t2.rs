@@ -174,12 +174,12 @@ pub(crate) fn deriv1_invariant_jj3_slice<const N: usize>(d1: &mut [f64], s: &mut
     d1[2] -= TWO_BY_3 * jj2;
 }
 
-/// Calculates the first derivative of σs w.r.t. the symmetric tensor
+/// Calculates the first derivative of d w.r.t. the symmetric tensor
 ///
 /// ```text
-/// dσs   1
-/// ─── = ── I
-/// da    √3
+/// dd   1
+/// ── = ── I
+/// da   √3
 ///
 /// (a is symmetric)
 /// ```
@@ -196,7 +196,7 @@ pub(crate) fn deriv1_invariant_jj3_slice<const N: usize>(d1: &mut [f64], s: &mut
 /// # Panics
 ///
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
-pub fn deriv1_invariant_sigma_s<const N: usize>(d1: &mut Tensor2<N>, _a: &Tensor2<N>) {
+pub fn deriv1_invariant_d<const N: usize>(d1: &mut Tensor2<N>, _a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     d1.vec[0] = 1.0 / SQRT_3;
     d1.vec[1] = 1.0 / SQRT_3;
@@ -206,13 +206,13 @@ pub fn deriv1_invariant_sigma_s<const N: usize>(d1: &mut Tensor2<N>, _a: &Tensor
     }
 }
 
-/// Calculates the first derivative of σt w.r.t. the symmetric tensor
+/// Calculates the first derivative of r w.r.t. the symmetric tensor
 ///
 /// ```text
 /// s = deviator(a)
 ///
-/// dσt     dJ2
-/// ─── = A ───
+/// dr     dJ2
+/// ── = A ───
 /// da      da
 ///
 /// (a is symmetric)
@@ -236,7 +236,7 @@ pub fn deriv1_invariant_sigma_s<const N: usize>(d1: &mut Tensor2<N>, _a: &Tensor
 /// # Panics
 ///
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
-pub fn deriv1_invariant_sigma_t<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) -> Option<f64> {
+pub fn deriv1_invariant_r<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) -> Option<f64> {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     let jj2 = a.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -388,8 +388,8 @@ mod tests {
         I3,
         J2,
         J3,
-        SigmaS, // σs
-        SigmaT, // σt
+        D, // distance invariant
+        R, // radius invariant
         P,
         Q,
         Lode,
@@ -412,9 +412,9 @@ mod tests {
             F::I3 => deriv1_invariant_ii3(d1, a),
             F::J2 => deriv1_invariant_jj2(d1, a),
             F::J3 => deriv1_invariant_jj3(d1, a),
-            F::SigmaS => deriv1_invariant_sigma_s(d1, a),
-            F::SigmaT => {
-                deriv1_invariant_sigma_t(d1, a).unwrap();
+            F::D => deriv1_invariant_d(d1, a),
+            F::R => {
+                deriv1_invariant_r(d1, a).unwrap();
             }
             F::P => deriv1_invariant_p(d1, a),
             F::Q => {
@@ -453,8 +453,8 @@ mod tests {
             F::I3 => args.a.invariant_ii3(),
             F::J2 => args.a.invariant_jj2(),
             F::J3 => args.a.invariant_jj3(),
-            F::SigmaS => args.a.invariant_sigma_s(),
-            F::SigmaT => args.a.invariant_sigma_t(),
+            F::D => args.a.invariant_d(),
+            F::R => args.a.invariant_r(),
             F::P => args.a.invariant_p(),
             F::Q => args.a.invariant_q(),
             F::Lode => args.a.invariant_lode().unwrap(),
@@ -473,8 +473,8 @@ mod tests {
             F::I3 => args.a.invariant_ii3(),
             F::J2 => args.a.invariant_jj2(),
             F::J3 => args.a.invariant_jj3(),
-            F::SigmaS => args.a.invariant_sigma_s(),
-            F::SigmaT => args.a.invariant_sigma_t(),
+            F::D => args.a.invariant_d(),
+            F::R => args.a.invariant_r(),
             F::P => args.a.invariant_p(),
             F::Q => args.a.invariant_q(),
             F::Lode => args.a.invariant_lode().unwrap(),
@@ -582,20 +582,20 @@ mod tests {
     }
 
     #[test]
-    fn deriv_sigma_s_works() {
+    fn deriv_d_works() {
         let v = false;
-        check_deriv::<6>(F::SigmaS, &SamplesTensor2::TENSOR_S, 1e-11, v);
-        check_deriv::<4>(F::SigmaS, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv::<6>(F::D, &SamplesTensor2::TENSOR_S, 1e-11, v);
+        check_deriv::<4>(F::D, &SamplesTensor2::TENSOR_Z, 1e-11, v);
     }
 
     #[test]
-    fn deriv_sigma_t_works() {
+    fn deriv_r_works() {
         let v = false;
-        check_deriv::<6>(F::SigmaT, &SamplesTensor2::TENSOR_U, 1e-10, v);
-        check_deriv::<6>(F::SigmaT, &SamplesTensor2::TENSOR_S, 1e-10, v);
-        check_deriv::<4>(F::SigmaT, &SamplesTensor2::TENSOR_X, 1e-11, v);
-        check_deriv::<4>(F::SigmaT, &SamplesTensor2::TENSOR_Y, 1e-10, v);
-        check_deriv::<4>(F::SigmaT, &SamplesTensor2::TENSOR_Z, 1e-10, v);
+        check_deriv::<6>(F::R, &SamplesTensor2::TENSOR_U, 1e-10, v);
+        check_deriv::<6>(F::R, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv::<4>(F::R, &SamplesTensor2::TENSOR_X, 1e-11, v);
+        check_deriv::<4>(F::R, &SamplesTensor2::TENSOR_Y, 1e-10, v);
+        check_deriv::<4>(F::R, &SamplesTensor2::TENSOR_Z, 1e-10, v);
     }
 
     #[test]

@@ -264,10 +264,10 @@ pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>)
     }
 }
 
-/// Calculates the second derivative of the σt w.r.t. the symmetric tensor
+/// Calculates the second derivative of r w.r.t. the symmetric tensor
 ///
 /// ```text
-/// d²σt      d²J2      dJ2   dJ2
+///  d²r      d²J2      dJ2   dJ2
 /// ───── = A ───── - B ─── ⊗ ───
 /// da⊗da     da⊗da      da    da
 ///
@@ -283,7 +283,7 @@ pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>)
 /// # Output
 ///
 /// * If `J2 > TOL_J2`, returns `J2`; otherwise, returns None.
-/// * `d2` -- the second derivative of `σt`
+/// * `d2` -- the second derivative of `r`
 ///
 /// # Input
 ///
@@ -292,7 +292,7 @@ pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>)
 /// # Panics
 ///
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
-pub fn deriv2_invariant_sigma_t<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>) -> Option<f64> {
+pub fn deriv2_invariant_r<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>) -> Option<f64> {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     let jj2 = a.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -459,7 +459,7 @@ mod tests {
     use super::*;
     use crate::{IJ_TO_M_SYM, MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
     use crate::{
-        deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t,
+        deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_r,
     };
     use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
@@ -872,7 +872,7 @@ mod tests {
     enum Invariant {
         J2,
         J3,
-        SigmaT,
+        R, // radius invariant
         Q,
         Lode,
     }
@@ -896,8 +896,8 @@ mod tests {
             Invariant::J3 => {
                 deriv1_invariant_jj3(&mut args.d1, &args.a);
             }
-            Invariant::SigmaT => {
-                deriv1_invariant_sigma_t(&mut args.d1, &args.a).unwrap();
+            Invariant::R => {
+                deriv1_invariant_r(&mut args.d1, &args.a).unwrap();
             }
             Invariant::Q => {
                 deriv1_invariant_q(&mut args.d1, &args.a).unwrap();
@@ -962,14 +962,14 @@ mod tests {
         mat_approx_eq(&ana, &num, tol);
     }
 
-    fn check_deriv2_sigma_t<const N: usize>(a: &Tensor2<N>, tol: f64) {
+    fn check_deriv2_r<const N: usize>(a: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<N>::new();
-        deriv2_invariant_sigma_t(&mut dd2_ana, a).unwrap();
+        deriv2_invariant_r(&mut dd2_ana, a).unwrap();
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(a, Invariant::SigmaT);
+        let num = numerical_deriv2_inv_sym_kelvin(a, Invariant::R);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -1057,30 +1057,30 @@ mod tests {
     }
 
     #[test]
-    fn deriv2_invariant_sigma_t_returns_none() {
+    fn deriv2_invariant_r_returns_none() {
         // identity
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();
         let mut d2 = Tensor4::<4>::new();
-        assert_eq!(deriv2_invariant_sigma_t(&mut d2, &a), None);
+        assert_eq!(deriv2_invariant_r(&mut d2, &a), None);
     }
 
     #[test]
-    fn deriv2_invariant_sigma_t_works() {
+    fn deriv2_invariant_r_works() {
         // symmetric
         let a = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
-        check_deriv2_sigma_t(&a, 1e-11);
+        check_deriv2_r(&a, 1e-11);
 
         // symmetric
         let a = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
-        check_deriv2_sigma_t(&a, 1e-11);
+        check_deriv2_r(&a, 1e-11);
 
         // symmetric generalized plane
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
-        check_deriv2_sigma_t(&a, 1e-11);
+        check_deriv2_r(&a, 1e-11);
 
         // symmetric generalized plane
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
-        check_deriv2_sigma_t(&a, 1e-11);
+        check_deriv2_r(&a, 1e-11);
     }
 
     #[test]

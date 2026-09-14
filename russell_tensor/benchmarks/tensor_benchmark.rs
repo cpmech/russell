@@ -92,19 +92,19 @@ fn bench_deriv2_invariant_jj3(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("deriv2_invariant_jj3");
 
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
-        let sigma = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
         let mut d2 = Tensor4::<6>::new();
         b.iter(|| {
-            deriv2_invariant_jj3(&mut d2, &sigma);
+            deriv2_invariant_jj3(&mut d2, &a);
             std::hint::black_box(&d2);
         });
     });
 
     group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
-        let sigma = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
         let mut d2 = Tensor4::<6>::new();
         b.iter(|| {
-            deriv2_invariant_jj3_loops(&mut d2, &sigma);
+            deriv2_invariant_jj3_loops(&mut d2, &a);
             std::hint::black_box(&d2);
         });
     });
@@ -117,20 +117,20 @@ fn bench_deriv2_invariant_lode(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("deriv2_invariant_lode");
 
     group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
-        let sigma = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
         let mut d2 = Tensor4::<6>::new();
         let mut work = WorkspaceDeriv2Lode::new();
         b.iter(|| {
-            deriv2_invariant_lode(&mut d2, &mut work, &sigma);
+            deriv2_invariant_lode(&mut d2, &mut work, &a);
             std::hint::black_box(&d2);
         });
     });
 
     group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
-        let sigma = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
         let mut d2 = Tensor4::<6>::new();
         b.iter(|| {
-            deriv2_invariant_lode_loops(&mut d2, &sigma);
+            deriv2_invariant_lode_loops(&mut d2, &a);
             std::hint::black_box(&d2);
         });
     });

@@ -2,6 +2,10 @@
 
 Notes for automated agents and contributors working in this repository.
 
+> **Work in progress:** also read [`AGENTS-WIP.md`](AGENTS-WIP.md) (a local,
+> gitignored file) for the current in-flight work, design decisions, and next
+> steps. Keep it up to date as you work.
+
 ## Build backend (read this first)
 
 `russell_lab` links BLAS/LAPACK through the C shim in

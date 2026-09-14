@@ -229,18 +229,24 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 /// da ⊗ da
 /// ```
 ///
-/// **Levi-Civita (permutation tensor) form:** for a general (unsymmetric)
-/// tensor `a` and the permutation tensor `ε`, the first and second derivatives
-/// of `I3 = det(a)` are
+/// **Levi-Civita (permutation tensor) form:** with the permutation tensor `ε`,
+/// the first and second derivatives of `I3 = det(a)` are
 ///
 /// ```text
 /// ∂I3/∂a_ij        = ½ ε_ikl ε_jmn a_km a_ln
-/// ∂²I3/∂a_ij∂a_kl  = ε_ikr ε_jls a_rs
+/// ∂²I3/∂a_ij∂a_kl  = ε_ikr ε_jls a_rs            (general Hessian; NOT minor-symmetric)
 /// ```
 ///
-/// Note that the second derivative consists of a single term (with no `½`) and
-/// is symmetric in the pairs `(i,j) ↔ (k,l)`, but not in `i ↔ j`. The
-/// expression implemented here is the equivalent symmetric (KM6/KM4) form.
+/// The second expression is the Hessian with respect to the general
+/// (independent) entries `a_ij` and is not minor-symmetric. Since `Tensor4`
+/// requires minor symmetry, the expression implemented here is its
+/// minor-symmetrization, which for a symmetric tensor `a` reads
+///
+/// ```text
+/// ∂²I3/∂a_ij∂a_kl  = ½ (ε_ikr ε_jls + ε_jkr ε_ils) a_rs
+/// ```
+///
+/// This equals the closed form `I1 I ⊗ I - I ⊗ a - a ⊗ I - I1 Psym + ½ qsd(a, I)`.
 ///
 /// # Output
 ///

@@ -92,8 +92,14 @@ impl fmt::Display for VoigtReussHill {
 /// ```
 ///
 /// where `C` and `S` are the 6×6 stiffness and compliance matrices in Voigt notation.
-/// Internally, the tensors are stored in Kelvin-Mandel notation; the shear-shear
-/// components are twice the Voigt ones (hence the `1.5` and `6.0` factors in the code).
+///
+/// Internally the tensors are stored in Kelvin-Mandel (KM) notation, where the
+/// shear-shear entries carry a Mandel factor of `2` for the stiffness
+/// (`C_km = 2 C_voigt`) and `1/2` for the compliance (`S_km = S_voigt / 2`),
+/// because the Voigt shear components use engineering shear. Consequently,
+/// `3 (C44+C55+C66)` in Voigt equals `1.5` times the corresponding KM shear sum,
+/// while `3 (S44+S55+S66)` in Voigt equals `6` times the corresponding KM shear
+/// sum — the `1.5` and `6.0` factors used in the code below.
 ///
 /// # Errors
 ///

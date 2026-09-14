@@ -1,5 +1,5 @@
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
-use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
+use crate::{SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use crate::{StrError, Tensor1};
 use russell_lab::math::PI;
 use russell_lab::{AsArray2D, Matrix, Vector, format_scientific, mat_eigen_sym, mat_eigenvalues, sort3};
@@ -2074,112 +2074,6 @@ impl<const N: usize> Tensor2<N> {
         self.deviator_norm() * SQRT_3_BY_2
     }
 
-    /// Returns the isomorphic mean strain invariant (distance to octahedral plane)
-    ///
-    /// ```text
-    /// εs = d = trace(ε) / √3
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::{approx_eq, math::SQRT_3};
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_s(), 2.0 / SQRT_3, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_s(&self) -> f64 {
-        self.trace() / SQRT_3
-    }
-
-    /// Returns the isomorphic deviatoric strain invariant (radius on octahedral plane)
-    ///
-    /// ```text
-    /// εt = r = ‖e‖
-    ///
-    /// e = deviator(ε)
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::{approx_eq, math::SQRT_2_BY_3};
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_t(), SQRT_2_BY_3, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_t(&self) -> f64 {
-        self.deviator_norm()
-    }
-
-    /// Returns the volumetric strain invariant
-    ///
-    /// ```text
-    /// εv = trace(ε) = d √3
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_v(), 2.0, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_v(&self) -> f64 {
-        self.trace()
-    }
-
-    /// Returns the deviatoric strain invariant
-    ///
-    /// ```text
-    /// εd = norm(dev(ε)) × √2/√3 = r √2/√3
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_d(), 2.0 / 3.0, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_d(&self) -> f64 {
-        self.deviator_norm() * SQRT_2_BY_3
-    }
-
     /// Returns the Lode invariant
     ///
     /// ```text
@@ -4093,9 +3987,7 @@ mod tests {
     #[test]
     fn octahedral_invariants_are_correct() {
         let q_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
-        let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
         let q_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
-        let eps_d_2 = 2.0 / 3.0; // sqrt((1² + 1²)/3)* sqrt(2/3)
 
         // α = 0
         let (l1, l2, l3) = (0.0, -0.5, 0.5);
@@ -4105,8 +3997,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 30
@@ -4117,10 +4007,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = 60
@@ -4131,10 +4017,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 90
@@ -4145,10 +4027,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
 
         // α = 120
@@ -4159,10 +4037,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 150
@@ -4173,10 +4047,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = 180
@@ -4187,10 +4057,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -150
@@ -4201,10 +4067,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
 
         // α = -120
@@ -4215,10 +4077,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -90
@@ -4229,10 +4087,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = -60
@@ -4243,10 +4097,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_1, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -30
@@ -4257,10 +4107,6 @@ mod tests {
         approx_eq(tt.invariant_q(), q_2, 1e-15);
         approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
         approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
     }
 

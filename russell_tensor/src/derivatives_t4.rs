@@ -221,7 +221,9 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
     }
 }
 
-/// Calculates the second derivative of the I3 invariant w.r.t. the symmetric tensor
+/// Calculates the second derivative of the I3 invariant w.r.t. its defining tensor
+///
+/// If `a` is symmetric:
 ///
 /// ```text
 ///  d²I3
@@ -229,24 +231,11 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 /// da ⊗ da
 /// ```
 ///
-/// **Levi-Civita (permutation tensor) form:** with the permutation tensor `ε`,
-/// the first and second derivatives of `I3 = det(a)` are
+/// Otherwise, for a general tensor `a`, we use the Levi-Civita `ϵ` form:
 ///
 /// ```text
-/// ∂I3/∂a_ij        = ½ ε_ikl ε_jmn a_km a_ln
-/// ∂²I3/∂a_ij∂a_kl  = ε_ikr ε_jls a_rs            (general Hessian; NOT minor-symmetric)
+/// ∂²I3/∂a_ij∂a_kl = ϵ_ikr ϵ_jls a_rs
 /// ```
-///
-/// The second expression is the Hessian with respect to the general
-/// (independent) entries `a_ij` and is not minor-symmetric. Since `Tensor4`
-/// requires minor symmetry, the expression implemented here is its
-/// minor-symmetrization, which for a symmetric tensor `a` reads
-///
-/// ```text
-/// ∂²I3/∂a_ij∂a_kl  = ½ (ε_ikr ε_jls + ε_jkr ε_ils) a_rs
-/// ```
-///
-/// This equals the closed form `I1 I ⊗ I - I ⊗ a - a ⊗ I - I1 Psym + ½ qsd(a, I)`.
 ///
 /// # Output
 ///
@@ -254,13 +243,13 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric tensor, i.e., N = 4 or N = 6.
+/// * `a` -- the tensor
 ///
-/// # Panics
+/// # Notes
 ///
-/// A panic will occur if `a` is not symmetric, i.e., N = 9.
+/// For `N = 9` the result is the general Hessian, which is not minor-symmetric
+/// and is stored in the full 9×9 Kelvin-Mandel matrix.
 pub fn deriv2_invariant_ii3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>) {
-    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     if N == 4 {
         d2.set(0, 0, 0.0);
         d2.set(0, 1, a.vec[2]);
@@ -281,7 +270,7 @@ pub fn deriv2_invariant_ii3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>)
         d2.set(3, 1, 0.0);
         d2.set(3, 2, -a.vec[3]);
         d2.set(3, 3, -a.vec[2]);
-    } else {
+    } else if N == 6 {
         d2.set(0, 0, 0.0);
         d2.set(0, 1, a.vec[2]);
         d2.set(0, 2, a.vec[1]);
@@ -323,6 +312,96 @@ pub fn deriv2_invariant_ii3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>)
         d2.set(5, 3, a.vec[4] / SQRT_2);
         d2.set(5, 4, a.vec[3] / SQRT_2);
         d2.set(5, 5, -a.vec[1]);
+    } else {
+        d2.set(0, 0, 0.0);
+        d2.set(0, 1, a.vec[2]);
+        d2.set(0, 2, a.vec[1]);
+        d2.set(0, 3, 0.0);
+        d2.set(0, 4, -a.vec[4]);
+        d2.set(0, 5, 0.0);
+        d2.set(0, 6, 0.0);
+        d2.set(0, 7, a.vec[7]);
+        d2.set(0, 8, 0.0);
+
+        d2.set(1, 0, a.vec[2]);
+        d2.set(1, 1, 0.0);
+        d2.set(1, 2, a.vec[0]);
+        d2.set(1, 3, 0.0);
+        d2.set(1, 4, 0.0);
+        d2.set(1, 5, -a.vec[5]);
+        d2.set(1, 6, 0.0);
+        d2.set(1, 7, 0.0);
+        d2.set(1, 8, a.vec[8]);
+
+        d2.set(2, 0, a.vec[1]);
+        d2.set(2, 1, a.vec[0]);
+        d2.set(2, 2, 0.0);
+        d2.set(2, 3, -a.vec[3]);
+        d2.set(2, 4, 0.0);
+        d2.set(2, 5, 0.0);
+        d2.set(2, 6, a.vec[6]);
+        d2.set(2, 7, 0.0);
+        d2.set(2, 8, 0.0);
+
+        d2.set(3, 0, 0.0);
+        d2.set(3, 1, 0.0);
+        d2.set(3, 2, -a.vec[3]);
+        d2.set(3, 3, -a.vec[2]);
+        d2.set(3, 4, a.vec[5] / SQRT_2);
+        d2.set(3, 5, a.vec[4] / SQRT_2);
+        d2.set(3, 6, 0.0);
+        d2.set(3, 7, -a.vec[8] / SQRT_2);
+        d2.set(3, 8, -a.vec[7] / SQRT_2);
+
+        d2.set(4, 0, -a.vec[4]);
+        d2.set(4, 1, 0.0);
+        d2.set(4, 2, 0.0);
+        d2.set(4, 3, a.vec[5] / SQRT_2);
+        d2.set(4, 4, -a.vec[0]);
+        d2.set(4, 5, a.vec[3] / SQRT_2);
+        d2.set(4, 6, -a.vec[8] / SQRT_2);
+        d2.set(4, 7, 0.0);
+        d2.set(4, 8, -a.vec[6] / SQRT_2);
+
+        d2.set(5, 0, 0.0);
+        d2.set(5, 1, -a.vec[5]);
+        d2.set(5, 2, 0.0);
+        d2.set(5, 3, a.vec[4] / SQRT_2);
+        d2.set(5, 4, a.vec[3] / SQRT_2);
+        d2.set(5, 5, -a.vec[1]);
+        d2.set(5, 6, a.vec[7] / SQRT_2);
+        d2.set(5, 7, a.vec[6] / SQRT_2);
+        d2.set(5, 8, 0.0);
+
+        d2.set(6, 0, 0.0);
+        d2.set(6, 1, 0.0);
+        d2.set(6, 2, a.vec[6]);
+        d2.set(6, 3, 0.0);
+        d2.set(6, 4, -a.vec[8] / SQRT_2);
+        d2.set(6, 5, a.vec[7] / SQRT_2);
+        d2.set(6, 6, a.vec[2]);
+        d2.set(6, 7, a.vec[5] / SQRT_2);
+        d2.set(6, 8, -a.vec[4] / SQRT_2);
+
+        d2.set(7, 0, a.vec[7]);
+        d2.set(7, 1, 0.0);
+        d2.set(7, 2, 0.0);
+        d2.set(7, 3, -a.vec[8] / SQRT_2);
+        d2.set(7, 4, 0.0);
+        d2.set(7, 5, a.vec[6] / SQRT_2);
+        d2.set(7, 6, a.vec[5] / SQRT_2);
+        d2.set(7, 7, a.vec[0]);
+        d2.set(7, 8, -a.vec[3] / SQRT_2);
+
+        d2.set(8, 0, 0.0);
+        d2.set(8, 1, a.vec[8]);
+        d2.set(8, 2, 0.0);
+        d2.set(8, 3, -a.vec[7] / SQRT_2);
+        d2.set(8, 4, -a.vec[6] / SQRT_2);
+        d2.set(8, 5, 0.0);
+        d2.set(8, 6, -a.vec[4] / SQRT_2);
+        d2.set(8, 7, -a.vec[3] / SQRT_2);
+        d2.set(8, 8, a.vec[1]);
     }
 }
 
@@ -1073,15 +1152,18 @@ mod tests {
     }
 
     // Holds arguments for numerical differentiation corresponding to [dInvariant²/da⊗da]ₘₙ (Kelvin-Mandel representation)
-    struct ArgsNumDeriv2InvariantKelvin {
+    struct ArgsNumDeriv2InvariantKelvin<const N: usize> {
         inv: Invariant, // option
-        a: Tensor2<6>,  // temporary tensor
-        d1: Tensor2<6>, // dInvariant/da (first derivative)
+        a: Tensor2<N>,  // temporary tensor
+        d1: Tensor2<N>, // dInvariant/da (first derivative)
         m: usize,       // index of [dInvariant²/da⊗da]ₘₙ (matrix representation)
         n: usize,       // index of [dInvariant²/da⊗da]ₘₙ (matrix representation)
     }
 
-    fn component_of_deriv1_inv_kelvin(x: f64, args: &mut ArgsNumDeriv2InvariantKelvin) -> Result<f64, StrError> {
+    fn component_of_deriv1_inv_kelvin<const N: usize>(
+        x: f64,
+        args: &mut ArgsNumDeriv2InvariantKelvin<N>,
+    ) -> Result<f64, StrError> {
         let original = args.a.get(args.n);
         args.a.set(args.n, x);
         match args.inv {
@@ -1104,7 +1186,7 @@ mod tests {
     }
 
     fn numerical_deriv2_inv_sym_kelvin<const N: usize>(a: &Tensor2<N>, inv: Invariant) -> Matrix {
-        let mut args = ArgsNumDeriv2InvariantKelvin {
+        let mut args = ArgsNumDeriv2InvariantKelvin::<N> {
             inv,
             a: Tensor2::new(),
             d1: Tensor2::new(),
@@ -1184,6 +1266,10 @@ mod tests {
 
     #[test]
     fn deriv2_invariant_ii3_works() {
+        // general
+        let a = Tensor2::<9>::from_std_matrix(&SamplesTensor2::TENSOR_T.matrix).unwrap();
+        check_deriv2_ii3(&a, 1e-9);
+
         // symmetric
         let a = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
         check_deriv2_ii3(&a, 1e-11);

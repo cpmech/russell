@@ -68,14 +68,20 @@ pub fn deriv1_invariant_ii2<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>)
     }
 }
 
-/// Calculates the first derivative of the I3 invariant w.r.t. a symmetric tensor
+/// Calculates the first derivative of the I3 invariant w.r.t. its defining tensor
+///
+/// If `a` is symmetric:
 ///
 /// ```text
 /// dI3
 /// ─── = a² - I1 a + I2 I
 ///  da
+/// ```
 ///
-/// (a is symmetric)
+/// Otherwise, for a general tensor `a`, we use the Levi-Civita `ϵ` form:
+///
+/// ```text
+/// ∂I3/∂a_ij = ½ ϵ_ikl ϵ_jrs a_kr a_ls = (det(a) a⁻ᵀ)_ij
 /// ```
 ///
 /// # Output
@@ -84,25 +90,35 @@ pub fn deriv1_invariant_ii2<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>)
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric tensor, i.e., N = 4 or N = 6.
+/// * `a` -- the tensor
 ///
-/// # Panics
+/// # Notes
 ///
-/// A panic will occur if `a` is not symmetric, i.e., N = 9.
+/// For `N = 9` the result is the general cofactor, which is not symmetric (its
+/// KM9 vector differs from the KM6 one).
 pub fn deriv1_invariant_ii3<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) {
-    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     if N == 4 {
         d1.vec[0] = a.vec[1] * a.vec[2];
         d1.vec[1] = a.vec[2] * a.vec[0];
         d1.vec[2] = a.vec[0] * a.vec[1] - a.vec[3] * a.vec[3] / 2.0;
         d1.vec[3] = -a.vec[2] * a.vec[3];
-    } else {
+    } else if N == 6 {
         d1.vec[0] = a.vec[1] * a.vec[2] - a.vec[4] * a.vec[4] / 2.0;
         d1.vec[1] = a.vec[2] * a.vec[0] - a.vec[5] * a.vec[5] / 2.0;
         d1.vec[2] = a.vec[0] * a.vec[1] - a.vec[3] * a.vec[3] / 2.0;
         d1.vec[3] = -a.vec[2] * a.vec[3] + a.vec[4] * a.vec[5] / SQRT_2;
         d1.vec[4] = -a.vec[0] * a.vec[4] + a.vec[5] * a.vec[3] / SQRT_2;
         d1.vec[5] = -a.vec[1] * a.vec[5] + a.vec[3] * a.vec[4] / SQRT_2;
+    } else {
+        d1.vec[0] = a.vec[7] * a.vec[7] / 2.0 - a.vec[4] * a.vec[4] / 2.0 + a.vec[1] * a.vec[2];
+        d1.vec[1] = a.vec[8] * a.vec[8] / 2.0 - a.vec[5] * a.vec[5] / 2.0 + a.vec[0] * a.vec[2];
+        d1.vec[2] = a.vec[6] * a.vec[6] / 2.0 - a.vec[3] * a.vec[3] / 2.0 + a.vec[0] * a.vec[1];
+        d1.vec[3] = -a.vec[2] * a.vec[3] + a.vec[4] * a.vec[5] / SQRT_2 - a.vec[7] * a.vec[8] / SQRT_2;
+        d1.vec[4] = -a.vec[0] * a.vec[4] + a.vec[3] * a.vec[5] / SQRT_2 - a.vec[6] * a.vec[8] / SQRT_2;
+        d1.vec[5] = -a.vec[1] * a.vec[5] + a.vec[3] * a.vec[4] / SQRT_2 + a.vec[6] * a.vec[7] / SQRT_2;
+        d1.vec[6] = a.vec[2] * a.vec[6] + a.vec[5] * a.vec[7] / SQRT_2 - a.vec[4] * a.vec[8] / SQRT_2;
+        d1.vec[7] = a.vec[0] * a.vec[7] + a.vec[5] * a.vec[6] / SQRT_2 - a.vec[3] * a.vec[8] / SQRT_2;
+        d1.vec[8] = a.vec[1] * a.vec[8] - a.vec[3] * a.vec[7] / SQRT_2 - a.vec[4] * a.vec[6] / SQRT_2;
     }
 }
 
@@ -378,7 +394,7 @@ pub fn deriv1_invariant_lode<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>
 mod tests {
     use super::*;
     use crate::{SampleTensor2, SamplesTensor2, StrError};
-    use russell_lab::{Matrix, deriv1_central5, mat_approx_eq};
+    use russell_lab::{Matrix, approx_eq, deriv1_central5, mat_approx_eq};
 
     // Defines f(a)
     #[derive(Clone, Copy)]
@@ -557,10 +573,27 @@ mod tests {
     #[test]
     fn deriv_invariant_ii3_works() {
         let v = false;
+        check_deriv::<9>(F::I3, &SamplesTensor2::TENSOR_T, 1e-9, v);
         check_deriv::<6>(F::I3, &SamplesTensor2::TENSOR_S, 1e-10, v);
         check_deriv::<4>(F::I3, &SamplesTensor2::TENSOR_Z, 1e-11, v);
         check_deriv::<4>(F::I3, &SamplesTensor2::TENSOR_O, 1e-15, v);
         check_deriv::<4>(F::I3, &SamplesTensor2::TENSOR_I, 1e-12, v);
+    }
+
+    #[test]
+    fn deriv1_invariant_ii3_cofactor_works() {
+        // general tensor: dI3/da_ij must equal det(a) * (a⁻¹)ᵀ
+        let a = Tensor2::<9>::from_std_matrix(&SamplesTensor2::TENSOR_T.matrix).unwrap();
+        let mut d1 = Tensor2::<9>::new();
+        deriv1_invariant_ii3(&mut d1, &a);
+        let det = a.invariant_ii3();
+        let mut ai = Tensor2::<9>::new();
+        a.inverse(&mut ai, 1e-15).unwrap();
+        let mut ai_t = Tensor2::<9>::new();
+        ai.transpose(&mut ai_t);
+        for m in 0..9 {
+            approx_eq(d1.vec[m], det * ai_t.vec[m], 1e-12);
+        }
     }
 
     #[test]

@@ -65,6 +65,12 @@ warning-free.
   used in doc comments and the mathematical formulas: `aa` ⇔ `A`, `bb` ⇔ `B`,
   `pp` ⇔ `P`, ... For example, the scalar coefficients `A`, `B`, `C` in the
   derivative formulas of the invariants are coded as `aa`, `bb`, `cc`.
+- **Index ranges:** `m`, `n` (and `p`, `q`) are reserved for the Kelvin-Mandel
+  components, ranging over `1..N`. Do **not** use them as dummy Cartesian
+  indices (which range over `1,2,3`); use `r`, `s`, `t`, ... for those instead
+  (e.g. `∂I3/∂a_ij = ½ ϵ_ikl ϵ_jrs a_kr a_ls`).
+- **Permutation (Levi-Civita) tensor:** use the *lunate* epsilon `ϵ` (U+03F5) in
+  formulas, not the curly `ε` (U+03B5), which is reserved for strain.
 
 ## CI
 

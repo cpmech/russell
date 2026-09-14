@@ -2105,7 +2105,7 @@ mod tests {
             }
         }
 
-        // symmetric 3d
+        // symmetric
         let dd = Tensor4::<6>::from_std_array(&SamplesTensor4::SYM_SAMPLE1).unwrap();
         for m in 0..6 {
             for n in 0..6 {
@@ -2160,7 +2160,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor4::<6>::from_std_matrix(&SamplesTensor4::SYM_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..6 {
             for n in 0..6 {
@@ -2191,7 +2191,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor4::<6>::from_std_array(&SamplesTensor4::SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -2353,7 +2353,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor4::<6>::from_std_array(&SamplesTensor4::SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -2391,7 +2391,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor4::<6>::from_std_array(&SamplesTensor4::SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 9));
@@ -2450,7 +2450,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
-        // Symmetric 3D
+        // Symmetric
         let data = &[
             [
                 [[6.0, 10.0, 12.0], [10.0, 4.0, 8.0], [12.0, 8.0, 2.0]],

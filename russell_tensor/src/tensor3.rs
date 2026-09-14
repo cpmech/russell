@@ -1457,7 +1457,7 @@ mod tests {
             }
         }
 
-        // symmetric 3d
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         for m in 0..6 {
             for n in 0..3 {
@@ -1512,7 +1512,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..6 {
             for n in 0..3 {
@@ -1549,7 +1549,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -1605,7 +1605,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -1639,7 +1639,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 3));
@@ -1708,7 +1708,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
-        // Symmetric 3D
+        // Symmetric
         #[rustfmt::skip]
         let data = &[
             [
@@ -1937,7 +1937,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         for m in 0..3 {
             for n in 0..6 {
@@ -1964,7 +1964,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..3 {
             for n in 0..6 {
@@ -2001,7 +2001,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -2057,7 +2057,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -2091,7 +2091,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (3, 9));

@@ -2393,7 +2393,7 @@ mod tests {
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
 
-        // symmetric 3D
+        // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
@@ -2422,7 +2422,7 @@ mod tests {
 
     #[test]
     fn set_std_matrix_captures_errors() {
-        // symmetric 3D
+        // symmetric
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_10 = &[
@@ -2524,7 +2524,7 @@ mod tests {
             approx_eq(tt.get(m), correct[m], 1e-15);
         }
 
-        // symmetric 3D
+        // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.vec.fill(NOISE);
         tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
@@ -2547,7 +2547,7 @@ mod tests {
 
     #[test]
     fn from_std_matrix_captures_errors() {
-        // symmetric 3D
+        // symmetric
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_10 = &[
@@ -2651,7 +2651,7 @@ mod tests {
              └      ┘"
         );
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2728,7 +2728,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2791,7 +2791,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2860,7 +2860,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2907,7 +2907,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, comps_std, 1e-13);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3012,7 +3012,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3123,7 +3123,7 @@ mod tests {
              └                   ┘"
         );
 
-        // // symmetric 3D
+        // // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3179,7 +3179,7 @@ mod tests {
         let correct = &[[2.0, 4.0, 6.0], [8.0, 10.0, 12.0], [14.0, 16.0, 18.0]];
         mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
 
-        // symmetric 3D
+        // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.vec.fill(NOISE);
         tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
@@ -3219,7 +3219,7 @@ mod tests {
              └                      ┘"
         );
 
-        // symmetric 3D
+        // symmetric
         let mut a = Tensor2::<6>::new();
         #[rustfmt::skip]
         let b = Tensor2::<6>::from_std_matrix(&[
@@ -3326,7 +3326,7 @@ mod tests {
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.determinant(), 0.0, 1e-13);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3336,7 +3336,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.determinant(), 101.0, 1e-13);
 
-        // symmetric 3D (another test)
+        // symmetric (another test)
         #[rustfmt::skip]
         let comps_std = &[
             [ 1.0, -3.0, 4.0],
@@ -3376,7 +3376,7 @@ mod tests {
         tt.transpose(&mut tt_tra);
         check_transpose(&tt, &tt_tra);
 
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tt_tra = Tensor2::<6>::new();
@@ -3429,14 +3429,14 @@ mod tests {
         assert_eq!(det, s.ii3);
         check_inverse(&tt, &tti, 1e-15);
 
-        // symmetric 3D with zero determinant
+        // symmetric with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<6>::new();
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<6>::new();
@@ -3477,7 +3477,7 @@ mod tests {
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-13);
 
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tt2 = Tensor2::<6>::new();
@@ -3658,7 +3658,7 @@ mod tests {
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.norm(), f64::sqrt(285.0), 1e-15);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [ 2.0, -3.0, 4.0],
@@ -3738,7 +3738,7 @@ mod tests {
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
         approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [ 2.0, -3.0, 4.0],

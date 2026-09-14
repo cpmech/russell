@@ -648,7 +648,7 @@ mod tests {
             t1_dyad_t1(&mut tt, SET, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
         );
-        // symmetric 3D
+        // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
         let v = Tensor1::from(&[4.0, 3.0, 2.0]);
         let mut tt = Tensor2::<4>::new();
@@ -694,7 +694,7 @@ mod tests {
         ];
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
 
-        // symmetric 3D
+        // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
         let v = Tensor1::from(&[2.0, 3.0, 4.0]);
         let mut tt = Tensor2::<6>::new();
@@ -726,7 +726,7 @@ mod tests {
         ];
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
 
-        // symmetric 3D
+        // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
         let v = Tensor1::from(&[2.0, 3.0, 4.0]);
         let mut tt = Tensor2::<6>::from_std_matrix(&[[100.0, 0.0, 0.0], [0.0, 200.0, 0.0], [0.0, 0.0, 300.0]]).unwrap();

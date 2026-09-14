@@ -1,4 +1,5 @@
-use crate::{ONE_BY_3, SQRT_3, TOL_J2, TWO_BY_3, Tensor2, squared_tensor_slice};
+use crate::{ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
+use crate::{Tensor2, squared_tensor_slice};
 
 /// Calculates the first derivative of the norm w.r.t. the defining Tensor2
 ///
@@ -27,6 +28,82 @@ pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, tt: &Tensor2<N>) -> Opti
         return Some(nrm);
     }
     None
+}
+
+/// Calculates the first derivative of the I2 invariant w.r.t. a symmetric tensor
+///
+/// ```text
+/// dI2
+/// ─── = I1 I - a
+///  da
+///
+/// (a is symmetric)
+/// ```
+///
+/// # Output
+///
+/// * `d1` -- a tensor to hold the resulting derivative
+///
+/// # Input
+///
+/// * `a` -- the stress tensor
+///
+/// # Panics
+///
+/// A panic will occur if `a` is not symmetric, i.e., N = 9.
+pub fn deriv1_invariant_ii2<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) {
+    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
+    if N == 4 {
+        d1.vec[0] = a.vec[1] + a.vec[2];
+        d1.vec[1] = a.vec[2] + a.vec[0];
+        d1.vec[2] = a.vec[0] + a.vec[1];
+        d1.vec[3] = -a.vec[3];
+    } else {
+        d1.vec[0] = a.vec[1] + a.vec[2];
+        d1.vec[1] = a.vec[2] + a.vec[0];
+        d1.vec[2] = a.vec[0] + a.vec[1];
+        d1.vec[3] = -a.vec[3];
+        d1.vec[4] = -a.vec[4];
+        d1.vec[5] = -a.vec[5];
+    }
+}
+
+/// Calculates the first derivative of the I3 invariant w.r.t. a symmetric tensor
+///
+/// ```text
+/// dI3
+/// ─── = a² - I1 a + I2 I
+///  da
+///
+/// (a is symmetric)
+/// ```
+///
+/// # Output
+///
+/// * `d1` -- a tensor to hold the resulting derivative
+///
+/// # Input
+///
+/// * `a` -- the symmetric tensor, i.e., N = 4 or N = 6.
+///
+/// # Panics
+///
+/// A panic will occur if `a` is not symmetric, i.e., N = 9.
+pub fn deriv1_invariant_ii3<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) {
+    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
+    if N == 4 {
+        d1.vec[0] = a.vec[1] * a.vec[2];
+        d1.vec[1] = a.vec[2] * a.vec[0];
+        d1.vec[2] = a.vec[0] * a.vec[1] - a.vec[3] * a.vec[3] / 2.0;
+        d1.vec[3] = -a.vec[2] * a.vec[3];
+    } else {
+        d1.vec[0] = a.vec[1] * a.vec[2] - a.vec[4] * a.vec[4] / 2.0;
+        d1.vec[1] = a.vec[2] * a.vec[0] - a.vec[5] * a.vec[5] / 2.0;
+        d1.vec[2] = a.vec[0] * a.vec[1] - a.vec[3] * a.vec[3] / 2.0;
+        d1.vec[3] = -a.vec[2] * a.vec[3] + a.vec[4] * a.vec[5] / SQRT_2;
+        d1.vec[4] = -a.vec[0] * a.vec[4] + a.vec[5] * a.vec[3] / SQRT_2;
+        d1.vec[5] = -a.vec[1] * a.vec[5] + a.vec[3] * a.vec[4] / SQRT_2;
+    }
 }
 
 /// Calculates the first derivative of the J2 invariant w.r.t. the stress tensor
@@ -295,6 +372,8 @@ mod tests {
     #[derive(Clone, Copy)]
     enum F {
         Norm,
+        I2,
+        I3,
         J2,
         J3,
         SigmaS, // σs
@@ -317,10 +396,10 @@ mod tests {
             F::Norm => {
                 deriv1_norm(d1, sigma).unwrap();
             }
+            F::I2 => deriv1_invariant_ii2(d1, sigma),
+            F::I3 => deriv1_invariant_ii3(d1, sigma),
             F::J2 => deriv1_invariant_jj2(d1, sigma),
-            F::J3 => {
-                deriv1_invariant_jj3(d1, sigma);
-            }
+            F::J3 => deriv1_invariant_jj3(d1, sigma),
             F::SigmaS => deriv1_invariant_sigma_s(d1, sigma),
             F::SigmaT => {
                 deriv1_invariant_sigma_t(d1, sigma).unwrap();
@@ -358,6 +437,8 @@ mod tests {
         args.sigma.set_std_matrix(&args.sigma_mat).unwrap();
         let res = match args.fn_name {
             F::Norm => args.sigma.norm(),
+            F::I2 => args.sigma.invariant_ii2(),
+            F::I3 => args.sigma.invariant_ii3(),
             F::J2 => args.sigma.invariant_jj2(),
             F::J3 => args.sigma.invariant_jj3(),
             F::SigmaS => args.sigma.invariant_sigma_s(),
@@ -376,6 +457,8 @@ mod tests {
         args.sigma.vec[args.m] = x;
         let res = match args.fn_name {
             F::Norm => args.sigma.norm(),
+            F::I2 => args.sigma.invariant_ii2(),
+            F::I3 => args.sigma.invariant_ii3(),
             F::J2 => args.sigma.invariant_jj2(),
             F::J3 => args.sigma.invariant_jj3(),
             F::SigmaS => args.sigma.invariant_sigma_s(),
@@ -435,13 +518,9 @@ mod tests {
         let ana = d1.as_std_matrix();
         let num = numerical_deriv(&sigma, fn_name);
         let num_mat = numerical_deriv_mat(&sigma, fn_name);
-        /*
-        if verbose {
-            println!("analytical derivative:\n{}", ana);
-            println!("numerical derivative:\n{}", num);
-            println!("numerical derivative (matrix):\n{}", num_mat);
-        }
-        */
+        // println!("analytical derivative:\n{}", ana);
+        // println!("numerical derivative:\n{}", num);
+        // println!("numerical derivative (matrix):\n{}", num_mat);
         mat_approx_eq(&ana, &num, tol);
         mat_approx_eq(&ana, &num_mat, tol);
     }
@@ -452,6 +531,24 @@ mod tests {
         check_deriv::<9>(F::Norm, &SamplesTensor2::TENSOR_T, 1e-10, v);
         check_deriv::<6>(F::Norm, &SamplesTensor2::TENSOR_S, 1e-10, v);
         check_deriv::<4>(F::Norm, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+    }
+
+    #[test]
+    fn deriv_invariant_ii2_works() {
+        let v = false;
+        check_deriv::<6>(F::I2, &SamplesTensor2::TENSOR_S, 1e-11, v);
+        check_deriv::<4>(F::I2, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv::<4>(F::I2, &SamplesTensor2::TENSOR_O, 1e-15, v);
+        check_deriv::<4>(F::I2, &SamplesTensor2::TENSOR_I, 1e-12, v);
+    }
+
+    #[test]
+    fn deriv_invariant_ii3_works() {
+        let v = false;
+        check_deriv::<6>(F::I3, &SamplesTensor2::TENSOR_S, 1e-10, v);
+        check_deriv::<4>(F::I3, &SamplesTensor2::TENSOR_Z, 1e-11, v);
+        check_deriv::<4>(F::I3, &SamplesTensor2::TENSOR_O, 1e-15, v);
+        check_deriv::<4>(F::I3, &SamplesTensor2::TENSOR_I, 1e-12, v);
     }
 
     #[test]

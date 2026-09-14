@@ -101,16 +101,16 @@
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // Allocate a symmetric second-order tensor given the standard components
-//!     let sigma = Tensor2::<6>::from_std_matrix(&[
+//!     let a = Tensor2::<6>::from_std_matrix(&[
 //!         [1.0, 2.0, 3.0],
 //!         [2.0, 2.0, 4.0],
 //!         [3.0, 4.0, 3.0],
 //!     ])?;
 //!
 //!     // Compute the principal invariants
-//!     let ii1 = sigma.invariant_ii1();
-//!     let ii2 = sigma.invariant_ii2();
-//!     let ii3 = sigma.invariant_ii3();
+//!     let ii1 = a.invariant_ii1();
+//!     let ii2 = a.invariant_ii2();
+//!     let ii3 = a.invariant_ii3();
 //!
 //!     println!("I1 = {:.6}", ii1);
 //!     println!("I2 = {:.6}", ii2);

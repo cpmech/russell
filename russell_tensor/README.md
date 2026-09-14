@@ -119,16 +119,16 @@ use russell_tensor::{StrError, Tensor2};
 
 fn main() -> Result<(), StrError> {
     // Allocate a symmetric second-order tensor given the standard components
-    let sigma = Tensor2::<6>::from_std_matrix(&[
+    let a = Tensor2::<6>::from_std_matrix(&[
         [1.0, 2.0, 3.0],
         [2.0, 2.0, 4.0],
         [3.0, 4.0, 3.0],
     ])?;
 
     // Compute the principal invariants
-    let ii1 = sigma.invariant_ii1();
-    let ii2 = sigma.invariant_ii2();
-    let ii3 = sigma.invariant_ii3();
+    let ii1 = a.invariant_ii1();
+    let ii2 = a.invariant_ii2();
+    let ii3 = a.invariant_ii3();
 
     println!("I1 = {:.6}", ii1);
     println!("I2 = {:.6}", ii2);
@@ -204,132 +204,3 @@ fn main() -> Result<(), StrError> {
 * This crate depends on `russell_lab`, which requires non-Rust high-performance libraries (see the Installation section)
 * Run the examples with `cargo run --example <name>`
 
-
-
-## Principal invariants (symmetric)
-
-For a symmetric second-order tensor with standard components $\sigma_{11}, \sigma_{22}, \sigma_{33}, \sigma_{12}, \sigma_{23}, \sigma_{13}$:
-
-$$
-I_1 = \sigma_{11} + \sigma_{22} + \sigma_{33}
-$$
-
-$$
-I_2 = \sigma_{11}\sigma_{22} + \sigma_{22}\sigma_{33} + \sigma_{33}\sigma_{11} - \sigma_{12}^2 - \sigma_{23}^2 - \sigma_{13}^2
-$$
-
-$$
-I_3 = \sigma_{11}\sigma_{22}\sigma_{33} + 2\,\sigma_{12}\sigma_{23}\sigma_{13} - \sigma_{33}\sigma_{12}^2 - \sigma_{11}\sigma_{23}^2 - \sigma_{22}\sigma_{13}^2
-$$
-
-In terms of the Kelvin-Mandel components $\underline{\sigma}_1, \underline{\sigma}_2, \underline{\sigma}_3, \underline{\sigma}_4, \underline{\sigma}_5, \underline{\sigma}_6$ (the values actually stored):
-
-$$
-I_1 = \underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3
-$$
-
-$$
-I_2 = \underline{\sigma}_1\underline{\sigma}_2 + \underline{\sigma}_1\underline{\sigma}_3 + \underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_5^2 - \frac{1}{2}\underline{\sigma}_6^2
-$$
-
-$$
-I_3 = \underline{\sigma}_1\underline{\sigma}_2\underline{\sigma}_3 - \frac{1}{2}\underline{\sigma}_3\underline{\sigma}_4^2 - \frac{1}{2}\underline{\sigma}_1\underline{\sigma}_5^2 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5\underline{\sigma}_6 - \frac{1}{2}\underline{\sigma}_2\underline{\sigma}_6^2
-$$
-
-The deviator $\underline{s} = \mathrm{dev}(\underline{\sigma})$, in terms of the Kelvin-Mandel components:
-
-$$
-\underline{s}_1 = \underline{\sigma}_1 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
-$$
-
-$$
-\underline{s}_2 = \underline{\sigma}_2 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
-$$
-
-$$
-\underline{s}_3 = \underline{\sigma}_3 - \frac{1}{3}\left(\underline{\sigma}_1 + \underline{\sigma}_2 + \underline{\sigma}_3\right)
-$$
-
-$$
-\underline{s}_4 = \underline{\sigma}_4, \qquad \underline{s}_5 = \underline{\sigma}_5, \qquad \underline{s}_6 = \underline{\sigma}_6
-$$
-
-The squared tensor $\underline{p} = \underline{\sigma}\cdot\underline{\sigma}$, in terms of the Kelvin-Mandel components:
-
-$$
-\underline{p}_1 = \underline{\sigma}_1^2 + \frac{1}{2}\underline{\sigma}_4^2 + \frac{1}{2}\underline{\sigma}_6^2
-$$
-
-$$
-\underline{p}_2 = \underline{\sigma}_2^2 + \frac{1}{2}\underline{\sigma}_4^2 + \frac{1}{2}\underline{\sigma}_5^2
-$$
-
-$$
-\underline{p}_3 = \underline{\sigma}_3^2 + \frac{1}{2}\underline{\sigma}_5^2 + \frac{1}{2}\underline{\sigma}_6^2
-$$
-
-$$
-\underline{p}_4 = \left(\underline{\sigma}_1 + \underline{\sigma}_2\right)\underline{\sigma}_4 + \frac{1}{\sqrt{2}}\underline{\sigma}_5\underline{\sigma}_6
-$$
-
-$$
-\underline{p}_5 = \left(\underline{\sigma}_2 + \underline{\sigma}_3\right)\underline{\sigma}_5 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_6
-$$
-
-$$
-\underline{p}_6 = \left(\underline{\sigma}_1 + \underline{\sigma}_3\right)\underline{\sigma}_6 + \frac{1}{\sqrt{2}}\underline{\sigma}_4\underline{\sigma}_5
-$$
-
-The deviatoric invariants $J_2 = \mathrm{invariant\\_jj2}$ and $J_3 = \mathrm{invariant\\_jj3}$, in terms of the Kelvin-Mandel components:
-
-$$
-J_2 = \frac{1}{6}\left[(\underline{\sigma}_1-\underline{\sigma}_2)^2 + (\underline{\sigma}_2-\underline{\sigma}_3)^2 + (\underline{\sigma}_3-\underline{\sigma}_1)^2\right] + \frac{1}{2}\left(\underline{\sigma}_4^2+\underline{\sigma}_5^2+\underline{\sigma}_6^2\right)
-$$
-
-$$
-J_3 = \underline{s}_1\underline{s}_2\underline{s}_3 - \frac{1}{2}\underline{s}_3\underline{s}_4^2 - \frac{1}{2}\underline{s}_1\underline{s}_5^2 + \frac{1}{\sqrt{2}}\underline{s}_4\underline{s}_5\underline{s}_6 - \frac{1}{2}\underline{s}_2\underline{s}_6^2
-$$
-
-where $\underline{s}_1, \underline{s}_2, \underline{s}_3$ are the deviator components defined above, and $\underline{s}_4=\underline{\sigma}_4$, $\underline{s}_5=\underline{\sigma}_5$, $\underline{s}_6=\underline{\sigma}_6$.
-
-For a tensor $\underline{a}$ with Kelvin-Mandel components $\underline{a}_1,\ldots,\underline{a}_6$, the inverse $\underline{a}^{-1}$ is given by:
-
-$$
-\det(\underline{a}) = \underline{a}_1\underline{a}_2\underline{a}_3 - \frac{1}{2}\underline{a}_3\underline{a}_4^2 - \frac{1}{2}\underline{a}_1\underline{a}_5^2 + \frac{1}{\sqrt{2}}\underline{a}_4\underline{a}_5\underline{a}_6 - \frac{1}{2}\underline{a}_2\underline{a}_6^2
-$$
-
-$$
-\underline{a}^{-1}_1 = \frac{\underline{a}_2\underline{a}_3 - \frac{1}{2}\underline{a}_5^2}{\det(\underline{a})}, \qquad
-\underline{a}^{-1}_2 = \frac{\underline{a}_1\underline{a}_3 - \frac{1}{2}\underline{a}_6^2}{\det(\underline{a})}, \qquad
-\underline{a}^{-1}_3 = \frac{\underline{a}_1\underline{a}_2 - \frac{1}{2}\underline{a}_4^2}{\det(\underline{a})}
-$$
-
-$$
-\underline{a}^{-1}_4 = \frac{\sqrt{2}\,\underline{a}_5\underline{a}_6 - 2\,\underline{a}_3\underline{a}_4}{2\det(\underline{a})}, \qquad
-\underline{a}^{-1}_5 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_6 - 2\,\underline{a}_1\underline{a}_5}{2\det(\underline{a})}, \qquad
-\underline{a}^{-1}_6 = \frac{\sqrt{2}\,\underline{a}_4\underline{a}_5 - 2\,\underline{a}_2\underline{a}_6}{2\det(\underline{a})}
-$$
-
-For a tensor $\underline{F}$ (general, `N = 9`) with Kelvin-Mandel components $\underline{F}_1,\ldots,\underline{F}_9$, the inverse $\underline{F}^{-1}$ is given by:
-
-$$
-\det(\underline{F}) = \underline{F}_1\underline{F}_2\underline{F}_3 - \frac{1}{2}\underline{F}_3\underline{F}_4^2 - \frac{1}{2}\underline{F}_1\underline{F}_5^2 + \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_5\underline{F}_6 - \frac{1}{2}\underline{F}_2\underline{F}_6^2 + \frac{1}{2}\underline{F}_3\underline{F}_7^2 + \frac{1}{\sqrt{2}}\underline{F}_6\underline{F}_7\underline{F}_8 + \frac{1}{2}\underline{F}_1\underline{F}_8^2 - \frac{1}{\sqrt{2}}\underline{F}_5\underline{F}_7\underline{F}_9 - \frac{1}{\sqrt{2}}\underline{F}_4\underline{F}_8\underline{F}_9 + \frac{1}{2}\underline{F}_2\underline{F}_9^2
-$$
-
-$$
-\underline{F}^{-1}_1 = \frac{2\underline{F}_2\underline{F}_3 - \underline{F}_5^2 + \underline{F}_8^2}{2\det(\underline{F})}, \qquad
-\underline{F}^{-1}_2 = \frac{2\underline{F}_1\underline{F}_3 - \underline{F}_6^2 + \underline{F}_9^2}{2\det(\underline{F})}, \qquad
-\underline{F}^{-1}_3 = \frac{2\underline{F}_1\underline{F}_2 - \underline{F}_4^2 + \underline{F}_7^2}{2\det(\underline{F})}
-$$
-
-$$
-\underline{F}^{-1}_4 = -\frac{\sqrt{2}\,\underline{F}_3\underline{F}_4 - \underline{F}_5\underline{F}_6 + \underline{F}_8\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
-\underline{F}^{-1}_5 = -\frac{\sqrt{2}\,\underline{F}_1\underline{F}_5 - \underline{F}_4\underline{F}_6 + \underline{F}_7\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
-\underline{F}^{-1}_6 = \frac{\underline{F}_4\underline{F}_5 - \sqrt{2}\,\underline{F}_2\underline{F}_6 + \underline{F}_7\underline{F}_8}{\sqrt{2}\det(\underline{F})}
-$$
-
-$$
-\underline{F}^{-1}_7 = -\frac{\sqrt{2}\,\underline{F}_3\underline{F}_7 + \underline{F}_6\underline{F}_8 - \underline{F}_5\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
-\underline{F}^{-1}_8 = -\frac{\underline{F}_6\underline{F}_7 + \sqrt{2}\,\underline{F}_1\underline{F}_8 - \underline{F}_4\underline{F}_9}{\sqrt{2}\det(\underline{F})}, \qquad
-\underline{F}^{-1}_9 = \frac{\underline{F}_5\underline{F}_7 + \underline{F}_4\underline{F}_8 - \sqrt{2}\,\underline{F}_2\underline{F}_9}{\sqrt{2}\det(\underline{F})}
-$$

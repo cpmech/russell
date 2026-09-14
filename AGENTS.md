@@ -59,6 +59,13 @@ cargo llvm-cov --workspace --features local_sparse \
 `cargo test` also runs the doc examples. Always keep the tree rustfmt-clean and
 warning-free.
 
+## Coding conventions
+
+- **Double lower-case names denote a single capital letter**, matching the symbols
+  used in doc comments and the mathematical formulas: `aa` ⇔ `A`, `bb` ⇔ `B`,
+  `pp` ⇔ `P`, ... For example, the scalar coefficients `A`, `B`, `C` in the
+  derivative formulas of the invariants are coded as `aa`, `bb`, `cc`.
+
 ## CI
 
 Workflows live in `.github/workflows/` (`ubuntu.yml`, `macos.yml`, `rocky.yml`,

@@ -1985,7 +1985,7 @@ impl<const N: usize> Tensor2<N> {
         self.trace() / SQRT_3
     }
 
-    /// Returns the isomorphic deviatoric stress invariant (radius on octahedral plane)
+    /// Returns the isomorphic deviatoric invariant (radius on octahedral plane)
     ///
     /// ```text
     /// σt = r = ‖s‖ = √(2 J2)
@@ -2039,10 +2039,10 @@ impl<const N: usize> Tensor2<N> {
         self.trace() / 3.0
     }
 
-    /// Returns the deviatoric stress invariant (von Mises)
+    /// Returns the deviatoric invariant (von Mises)
     ///
     /// This quantity is also known as the **von Mises** effective invariant
-    /// or equivalent stress.
+    /// or equivalent invariant.
     ///
     /// ```text
     /// q = ‖s‖ √3/√2 = r √3/√2 = √3 √J2

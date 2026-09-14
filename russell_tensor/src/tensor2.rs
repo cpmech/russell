@@ -302,9 +302,9 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Notes
     ///
-    /// * In all cases, even in 2D, the input matrix must be 3×3
+    /// * In all cases, even in the generalized plane case, the input matrix must be 3×3
     /// * If symmetric, the off-diagonal components must equal each other
-    /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
+    /// * If generalized plane, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
     ///
     /// # Examples
@@ -355,7 +355,7 @@ impl<const N: usize> Tensor2<N> {
     ///          └     ┘"
     ///     );
     ///
-    ///     // symmetric-2D
+    ///     // symmetric generalized plane
     ///     let mut c = Tensor2::<4>::new();
     ///     c.set_std_matrix(&[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
@@ -384,7 +384,7 @@ impl<const N: usize> Tensor2<N> {
             }
             if N == 4 {
                 if tt.at(1, 2) != 0.0 || tt.at(0, 2) != 0.0 {
-                    return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
+                    return Err("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data");
                 }
             }
         }
@@ -411,9 +411,9 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Notes
     ///
-    /// * In all cases, even in 2D, the input matrix must be 3×3
+    /// * In all cases, even in the generalized plane case, the input matrix must be 3×3
     /// * If symmetric, the off-diagonal components must equal each other
-    /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
+    /// * If generalized plane, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
     /// # Panics
     ///
@@ -469,7 +469,7 @@ impl<const N: usize> Tensor2<N> {
     ///          └     ┘"
     ///     );
     ///
-    ///     // symmetric-2D
+    ///     // symmetric generalized plane
     ///     let c = Tensor2::<4>::from_std_matrix(
     ///         &[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
@@ -686,7 +686,7 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensor is not symmetric in 2D
+    /// A panic will occur if the tensor is not in the generalized plane (i.e., N != 4)
     ///
     /// # Examples
     ///
@@ -712,7 +712,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn as_std_matrix_2d(&self) -> (f64, Matrix) {
-        assert_eq!(N, 4, "the tensor must be symmetric in 2D");
+        assert_eq!(N, 4, "the tensor must be symmetric in the generalized plane (N = 4)");
         let mut tt = Matrix::new(2, 2);
         tt.set(0, 0, self.get_std(0, 0));
         tt.set(0, 1, self.get_std(0, 1));
@@ -2406,7 +2406,7 @@ mod tests {
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
@@ -2456,7 +2456,7 @@ mod tests {
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
-        // symmetric 2D
+        // symmetric generalized plane
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_12 = &[
@@ -2473,11 +2473,11 @@ mod tests {
         let mut tt = Tensor2::<4>::new();
         assert_eq!(
             tt.set_std_matrix(comps_std_12).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
         assert_eq!(
             tt.set_std_matrix(comps_std_02).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
     }
 
@@ -2534,7 +2534,7 @@ mod tests {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.vec.fill(NOISE);
         tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
@@ -2580,7 +2580,7 @@ mod tests {
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
-        // symmetric 2D
+        // symmetric generalized plane
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_12 = &[
@@ -2596,11 +2596,11 @@ mod tests {
         ];
         assert_eq!(
             Tensor2::<4>::from_std_matrix(comps_std_12).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
         assert_eq!(
             Tensor2::<4>::from_std_matrix(comps_std_02).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
     }
 
@@ -2664,7 +2664,7 @@ mod tests {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2692,7 +2692,7 @@ mod tests {
             assert_eq!(ii.get(m), IDENTITY2[m]);
         }
 
-        // symmetric 2d
+        // symmetric generalized plane
         let ii = Tensor2::<4>::identity();
         for m in 0..4 {
             assert_eq!(ii.get(m), IDENTITY2[m]);
@@ -2742,7 +2742,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2806,7 +2806,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2875,7 +2875,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2921,7 +2921,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, comps_std, 1e-13);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3027,7 +3027,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3101,7 +3101,7 @@ mod tests {
 
     #[test]
     fn sym_add_std_works() {
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3186,7 +3186,7 @@ mod tests {
         let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
         mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.vec.fill(NOISE);
         tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
@@ -3242,7 +3242,7 @@ mod tests {
              └                      ┘"
         );
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut a = Tensor2::<4>::new();
         #[rustfmt::skip]
         let b = Tensor2::<4>::from_std_matrix(&[
@@ -3346,7 +3346,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.determinant(), -4.0, 1e-13);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3383,7 +3383,7 @@ mod tests {
         tt.transpose(&mut tt_tra);
         check_transpose(&tt, &tt_tra);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tt_tra = Tensor2::<4>::new();
@@ -3444,14 +3444,14 @@ mod tests {
         approx_eq(det, s.ii3, 1e-14);
         check_inverse(&tt, &tti, 1e-13);
 
-        // symmetric 2D with zero determinant
+        // symmetric generalized plane with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<4>::new();
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<4>::new();
@@ -3484,7 +3484,7 @@ mod tests {
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-14);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tt2 = Tensor2::<4>::new();
@@ -3668,7 +3668,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.norm(), f64::sqrt(117.0), 1e-15);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3760,7 +3760,7 @@ mod tests {
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
         approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -4016,7 +4016,7 @@ mod tests {
         check_sample::<6>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
         check_sample::<6>(&SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
         check_sample::<6>(&SamplesTensor2::TENSOR_S, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
-        // Symmetric 2D
+        // Symmetric generalized plane
         //                                                           norm   trace  det dev_norm dev_det
         check_sample::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
         check_sample::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
@@ -4063,7 +4063,7 @@ mod tests {
         check_iis::<6>(&SamplesTensor2::TENSOR_S, 1e-15, 1e-14, 1e-13, 1e-14);
         check_iis::<6>(&SamplesTensor2::COAL_01, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<6>(&SamplesTensor2::COAL_12, 1e-15, 1e-15, 1e-15, 1e-15);
-        // Symmetric 2D
+        // Symmetric generalized plane
         check_iis::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<4>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-13, 1e-15);

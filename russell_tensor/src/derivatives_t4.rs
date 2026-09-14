@@ -60,7 +60,7 @@ pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor
 /// # Panics
 ///
 /// A panic will occur if `ai` is not symmetric, i.e., N = 9.
-pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<6>, ai: &Tensor2<N>) {
+pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<N>, ai: &Tensor2<N>) {
     assert!(N != 9, "the inverse tensor must be symmetric with N = 4 or N = 6");
     ssd_fn_slice::<N>(dai_da, SET, -0.5, ai.as_data());
 }
@@ -129,7 +129,7 @@ pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2
 /// # Panics
 ///
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
-pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<6>, a: &Tensor2<N>) {
+pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     qsd_fn_slice::<N>(da2_da, SET, 0.5, a.as_data(), &IDENTITY2);
 }
@@ -154,7 +154,7 @@ pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<6>, a: &Ten
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<6>, _sigma: &Tensor2<N>) {
+pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<N>, _sigma: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     d2.set_pp_symdev();
 }
@@ -182,60 +182,86 @@ pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<6>, _sigma: &Tensor
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) {
+pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<N>, sigma: &Tensor2<N>) {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
 
     // deviator: s = dev(σ) (stack array)
     let mut s = [0.0; 6];
     sigma.deviator_slice(&mut s);
 
-    // row 0
-    d2.set(0, 0, 2.0 * s[0] / 3.0);
-    d2.set(0, 1, -2.0 * (s[0] + s[1]) / 3.0);
-    d2.set(0, 2, -2.0 * (s[0] + s[2]) / 3.0);
-    d2.set(0, 3, s[3] / 3.0);
-    d2.set(0, 4, -2.0 * s[4] / 3.0);
-    d2.set(0, 5, s[5] / 3.0);
+    if N == 4 {
+        // row 0
+        d2.set(0, 0, 2.0 * s[0] / 3.0);
+        d2.set(0, 1, -2.0 * (s[0] + s[1]) / 3.0);
+        d2.set(0, 2, -2.0 * (s[0] + s[2]) / 3.0);
+        d2.set(0, 3, s[3] / 3.0);
 
-    // row 1
-    d2.set(1, 0, -2.0 * (s[0] + s[1]) / 3.0);
-    d2.set(1, 1, 2.0 * s[1] / 3.0);
-    d2.set(1, 2, -2.0 * (s[1] + s[2]) / 3.0);
-    d2.set(1, 3, s[3] / 3.0);
-    d2.set(1, 4, s[4] / 3.0);
-    d2.set(1, 5, -2.0 * s[5] / 3.0);
+        // row 1
+        d2.set(1, 0, -2.0 * (s[0] + s[1]) / 3.0);
+        d2.set(1, 1, 2.0 * s[1] / 3.0);
+        d2.set(1, 2, -2.0 * (s[1] + s[2]) / 3.0);
+        d2.set(1, 3, s[3] / 3.0);
 
-    // row 2
-    d2.set(2, 0, -2.0 * (s[0] + s[2]) / 3.0);
-    d2.set(2, 1, -2.0 * (s[1] + s[2]) / 3.0);
-    d2.set(2, 2, 2.0 * s[2] / 3.0);
-    d2.set(2, 3, -2.0 * s[3] / 3.0);
-    d2.set(2, 4, s[4] / 3.0);
-    d2.set(2, 5, s[5] / 3.0);
+        // row 2
+        d2.set(2, 0, -2.0 * (s[0] + s[2]) / 3.0);
+        d2.set(2, 1, -2.0 * (s[1] + s[2]) / 3.0);
+        d2.set(2, 2, 2.0 * s[2] / 3.0);
+        d2.set(2, 3, -2.0 * s[3] / 3.0);
 
-    // row 3
-    d2.set(3, 0, s[3] / 3.0);
-    d2.set(3, 1, s[3] / 3.0);
-    d2.set(3, 2, -2.0 * s[3] / 3.0);
-    d2.set(3, 3, s[0] + s[1]);
-    d2.set(3, 4, s[5] / SQRT_2);
-    d2.set(3, 5, s[4] / SQRT_2);
+        // row 3
+        d2.set(3, 0, s[3] / 3.0);
+        d2.set(3, 1, s[3] / 3.0);
+        d2.set(3, 2, -2.0 * s[3] / 3.0);
+        d2.set(3, 3, s[0] + s[1]);
+    } else {
+        // row 0
+        d2.set(0, 0, 2.0 * s[0] / 3.0);
+        d2.set(0, 1, -2.0 * (s[0] + s[1]) / 3.0);
+        d2.set(0, 2, -2.0 * (s[0] + s[2]) / 3.0);
+        d2.set(0, 3, s[3] / 3.0);
+        d2.set(0, 4, -2.0 * s[4] / 3.0);
+        d2.set(0, 5, s[5] / 3.0);
 
-    // row 4
-    d2.set(4, 0, -2.0 * s[4] / 3.0);
-    d2.set(4, 1, s[4] / 3.0);
-    d2.set(4, 2, s[4] / 3.0);
-    d2.set(4, 3, s[5] / SQRT_2);
-    d2.set(4, 4, s[1] + s[2]);
-    d2.set(4, 5, s[3] / SQRT_2);
+        // row 1
+        d2.set(1, 0, -2.0 * (s[0] + s[1]) / 3.0);
+        d2.set(1, 1, 2.0 * s[1] / 3.0);
+        d2.set(1, 2, -2.0 * (s[1] + s[2]) / 3.0);
+        d2.set(1, 3, s[3] / 3.0);
+        d2.set(1, 4, s[4] / 3.0);
+        d2.set(1, 5, -2.0 * s[5] / 3.0);
 
-    // row 5
-    d2.set(5, 0, s[5] / 3.0);
-    d2.set(5, 1, -2.0 * s[5] / 3.0);
-    d2.set(5, 2, s[5] / 3.0);
-    d2.set(5, 3, s[4] / SQRT_2);
-    d2.set(5, 4, s[3] / SQRT_2);
-    d2.set(5, 5, s[0] + s[2]);
+        // row 2
+        d2.set(2, 0, -2.0 * (s[0] + s[2]) / 3.0);
+        d2.set(2, 1, -2.0 * (s[1] + s[2]) / 3.0);
+        d2.set(2, 2, 2.0 * s[2] / 3.0);
+        d2.set(2, 3, -2.0 * s[3] / 3.0);
+        d2.set(2, 4, s[4] / 3.0);
+        d2.set(2, 5, s[5] / 3.0);
+
+        // row 3
+        d2.set(3, 0, s[3] / 3.0);
+        d2.set(3, 1, s[3] / 3.0);
+        d2.set(3, 2, -2.0 * s[3] / 3.0);
+        d2.set(3, 3, s[0] + s[1]);
+        d2.set(3, 4, s[5] / SQRT_2);
+        d2.set(3, 5, s[4] / SQRT_2);
+
+        // row 4
+        d2.set(4, 0, -2.0 * s[4] / 3.0);
+        d2.set(4, 1, s[4] / 3.0);
+        d2.set(4, 2, s[4] / 3.0);
+        d2.set(4, 3, s[5] / SQRT_2);
+        d2.set(4, 4, s[1] + s[2]);
+        d2.set(4, 5, s[3] / SQRT_2);
+
+        // row 5
+        d2.set(5, 0, s[5] / 3.0);
+        d2.set(5, 1, -2.0 * s[5] / 3.0);
+        d2.set(5, 2, s[5] / 3.0);
+        d2.set(5, 3, s[4] / SQRT_2);
+        d2.set(5, 4, s[3] / SQRT_2);
+        d2.set(5, 5, s[0] + s[2]);
+    }
 }
 
 /// Calculates the second derivative of the σt w.r.t. the stress tensor
@@ -266,7 +292,7 @@ pub fn deriv2_invariant_jj3<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-pub fn deriv2_invariant_sigma_t<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) -> Option<f64> {
+pub fn deriv2_invariant_sigma_t<const N: usize>(d2: &mut Tensor4<N>, sigma: &Tensor2<N>) -> Option<f64> {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -276,8 +302,8 @@ pub fn deriv2_invariant_sigma_t<const N: usize>(d2: &mut Tensor4<6>, sigma: &Ten
         let mut d1_jj2 = [0.0; 6];
         sigma.deviator_slice(&mut d1_jj2);
         let d2_jj2 = &P_SYMDEV;
-        for m in 0..6 {
-            for n in 0..6 {
+        for m in 0..N {
+            for n in 0..N {
                 d2.set(m, n, a * d2_jj2[m][n] - b * d1_jj2[m] * d1_jj2[n]);
             }
         }
@@ -314,7 +340,7 @@ pub fn deriv2_invariant_sigma_t<const N: usize>(d2: &mut Tensor4<6>, sigma: &Ten
 /// # Panics
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
-pub fn deriv2_invariant_q<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N>) -> Option<f64> {
+pub fn deriv2_invariant_q<const N: usize>(d2: &mut Tensor4<N>, sigma: &Tensor2<N>) -> Option<f64> {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
     let jj2 = sigma.invariant_jj2();
     if jj2 > TOL_J2 {
@@ -324,8 +350,8 @@ pub fn deriv2_invariant_q<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N
         let mut d1_jj2 = [0.0; 6];
         sigma.deviator_slice(&mut d1_jj2);
         let d2_jj2 = &P_SYMDEV;
-        for m in 0..6 {
-            for n in 0..6 {
+        for m in 0..N {
+            for n in 0..N {
                 d2.set(m, n, a * d2_jj2[m][n] - b * d1_jj2[m] * d1_jj2[n]);
             }
         }
@@ -335,12 +361,12 @@ pub fn deriv2_invariant_q<const N: usize>(d2: &mut Tensor4<6>, sigma: &Tensor2<N
 }
 
 /// Sets a workspace with temporary variables to calculate the second derivative of the Lode angle
-pub struct WorkspaceDeriv2Lode {
-    pub d1_jj3: Tensor2<6>,
-    pub d2_jj3: Tensor4<6>,
+pub struct WorkspaceDeriv2Lode<const N: usize> {
+    pub d1_jj3: Tensor2<N>,
+    pub d2_jj3: Tensor4<N>,
 }
 
-impl WorkspaceDeriv2Lode {
+impl<const N: usize> WorkspaceDeriv2Lode<N> {
     /// Allocates a new instance
     pub fn new() -> Self {
         WorkspaceDeriv2Lode {
@@ -379,8 +405,8 @@ impl WorkspaceDeriv2Lode {
 ///
 /// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
 pub fn deriv2_invariant_lode<const N: usize>(
-    d2: &mut Tensor4<6>,
-    work: &mut WorkspaceDeriv2Lode,
+    d2: &mut Tensor4<N>,
+    work: &mut WorkspaceDeriv2Lode<N>,
     sigma: &Tensor2<N>,
 ) -> Option<f64> {
     assert!(N != 9, "the stress tensor must be symmetric with N = 4 or N = 6");
@@ -396,8 +422,8 @@ pub fn deriv2_invariant_lode<const N: usize>(
         deriv2_invariant_jj3(&mut work.d2_jj3, sigma);
         let d1_jj2 = &s;
         let d2_jj2 = &P_SYMDEV;
-        for m in 0..6 {
-            for n in 0..6 {
+        for m in 0..N {
+            for n in 0..N {
                 d2.set(
                     m,
                     n,
@@ -431,7 +457,7 @@ pub fn deriv2_invariant_lode<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
+    use crate::{IJ_TO_M_SYM, MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
     use crate::{
         deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode, deriv1_invariant_q, deriv1_invariant_sigma_t,
     };
@@ -534,10 +560,10 @@ mod tests {
             n: 0,
         };
         args.a.set_std_matrix(&a.as_std_matrix()).unwrap();
-        let mut num_deriv = Tensor4::<6>::new();
-        for m in 0..6 {
+        let mut num_deriv = Tensor4::<N>::new();
+        for m in 0..N {
             args.m = m;
-            for n in 0..6 {
+            for n in 0..N {
                 args.n = n;
                 let x = args.a.get(args.n);
                 let res = deriv1_central5(x, &mut args, component_of_inverse_kelvin).unwrap();
@@ -583,7 +609,7 @@ mod tests {
         a.inverse(&mut ai, 1e-10).unwrap();
 
         // compute analytical derivative
-        let mut dd_ana = Tensor4::<6>::new();
+        let mut dd_ana = Tensor4::<N>::new();
         deriv_inverse_tensor_sym(&mut dd_ana, &ai);
 
         // check using index expression
@@ -593,6 +619,9 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
+                        if N == 4 && (IJ_TO_M_SYM[i][j] >= 4 || IJ_TO_M_SYM[k][l] >= 4) {
+                            continue;
+                        }
                         approx_eq(
                             arr[i][j][k][l],
                             -0.5 * (mat.get(i, k) * mat.get(j, l) + mat.get(i, l) * mat.get(j, k)),
@@ -621,7 +650,7 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_inverse(&a, 1e-7);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_inverse(&a, 1e-12);
@@ -634,7 +663,7 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_inverse_sym(&a, 1e-7);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_inverse_sym(&a, 1e-12);
@@ -728,10 +757,10 @@ mod tests {
             n: 0,
         };
         args.a.set_std_matrix(&a.as_std_matrix()).unwrap();
-        let mut num_deriv = Tensor4::<6>::new();
-        for m in 0..6 {
+        let mut num_deriv = Tensor4::<N>::new();
+        for m in 0..N {
             args.m = m;
-            for n in 0..6 {
+            for n in 0..N {
                 args.n = n;
                 let x = args.a.get(args.n);
                 let res = deriv1_central5(x, &mut args, component_of_squared_kelvin).unwrap();
@@ -774,7 +803,7 @@ mod tests {
 
     fn check_deriv_squared_sym<const N: usize>(a: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
-        let mut dd_ana = Tensor4::<6>::new();
+        let mut dd_ana = Tensor4::<N>::new();
         deriv_squared_tensor_sym(&mut dd_ana, a);
 
         // check using index expression
@@ -785,6 +814,9 @@ mod tests {
             for j in 0..3 {
                 for k in 0..3 {
                     for l in 0..3 {
+                        if N == 4 && (IJ_TO_M_SYM[i][j] >= 4 || IJ_TO_M_SYM[k][l] >= 4) {
+                            continue;
+                        }
                         approx_eq(
                             arr[i][j][k][l],
                             0.5 * (mat.get(i, k) * del.get(j, l)
@@ -816,7 +848,7 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_squared(&a, 1e-10);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_squared(&a, 1e-10);
@@ -829,7 +861,7 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_squared_sym(&a, 1e-10);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let a = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         check_deriv_squared_sym(&a, 1e-10);
@@ -887,10 +919,10 @@ mod tests {
             n: 0,
         };
         args.sigma.set_std_matrix(&sigma.as_std_matrix()).unwrap();
-        let mut num_deriv = Tensor4::<6>::new();
-        for m in 0..6 {
+        let mut num_deriv = Tensor4::<N>::new();
+        for m in 0..N {
             args.m = m;
-            for n in 0..6 {
+            for n in 0..N {
                 args.n = n;
                 let x = args.sigma.get(args.n);
                 let res = deriv1_central5(x, &mut args, component_of_deriv1_inv_kelvin).unwrap();
@@ -902,11 +934,11 @@ mod tests {
 
     fn check_deriv2_jj2<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
-        let mut dd2_ana = Tensor4::<6>::new();
+        let mut dd2_ana = Tensor4::<N>::new();
         deriv2_invariant_jj2(&mut dd2_ana, sigma);
 
         // compare with Psymdev
-        let pp_symdev = Tensor4::<6>::constant_pp_symdev();
+        let pp_symdev = Tensor4::<N>::constant_pp_symdev();
         mat_approx_eq(&dd2_ana.as_std_matrix(), &pp_symdev.as_std_matrix(), 1e-15);
 
         // check using numerical derivative
@@ -919,7 +951,7 @@ mod tests {
 
     fn check_deriv2_jj3<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
-        let mut dd2_ana = Tensor4::<6>::new();
+        let mut dd2_ana = Tensor4::<N>::new();
         deriv2_invariant_jj3(&mut dd2_ana, sigma);
 
         // check using numerical derivative
@@ -932,7 +964,7 @@ mod tests {
 
     fn check_deriv2_sigma_t<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
-        let mut dd2_ana = Tensor4::<6>::new();
+        let mut dd2_ana = Tensor4::<N>::new();
         deriv2_invariant_sigma_t(&mut dd2_ana, sigma).unwrap();
 
         // check using numerical derivative
@@ -945,7 +977,7 @@ mod tests {
 
     fn check_deriv2_q<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
-        let mut dd2_ana = Tensor4::<6>::new();
+        let mut dd2_ana = Tensor4::<N>::new();
         deriv2_invariant_q(&mut dd2_ana, sigma).unwrap();
 
         // check using numerical derivative
@@ -958,8 +990,8 @@ mod tests {
 
     fn check_deriv2_lode<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
-        let mut dd2_ana = Tensor4::<6>::new();
-        let mut work = WorkspaceDeriv2Lode::new();
+        let mut dd2_ana = Tensor4::<N>::new();
+        let mut work = WorkspaceDeriv2Lode::<N>::new();
         deriv2_invariant_lode(&mut dd2_ana, &mut work, sigma).unwrap();
 
         // check using numerical derivative
@@ -980,11 +1012,11 @@ mod tests {
         let sigma = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_jj2(&sigma, 1e-11);
 
@@ -1007,11 +1039,11 @@ mod tests {
         let sigma = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_jj3(&sigma, 1e-10);
 
@@ -1028,7 +1060,7 @@ mod tests {
     fn deriv2_invariant_sigma_t_returns_none() {
         // identity
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();
-        let mut d2 = Tensor4::<6>::new();
+        let mut d2 = Tensor4::<4>::new();
         assert_eq!(deriv2_invariant_sigma_t(&mut d2, &sigma), None);
     }
 
@@ -1042,11 +1074,11 @@ mod tests {
         let sigma = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_sigma_t(&sigma, 1e-11);
     }
@@ -1055,7 +1087,7 @@ mod tests {
     fn deriv2_invariant_q_returns_none() {
         // identity
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();
-        let mut d2 = Tensor4::<6>::new();
+        let mut d2 = Tensor4::<4>::new();
         assert_eq!(deriv2_invariant_q(&mut d2, &sigma), None);
     }
 
@@ -1069,11 +1101,11 @@ mod tests {
         let sigma = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_q(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_q(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_q(&sigma, 1e-11);
     }
@@ -1082,8 +1114,8 @@ mod tests {
     fn deriv2_invariant_lode_returns_none() {
         // identity
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_I.matrix).unwrap();
-        let mut d2 = Tensor4::<6>::new();
-        let mut work = WorkspaceDeriv2Lode::new();
+        let mut d2 = Tensor4::<4>::new();
+        let mut work = WorkspaceDeriv2Lode::<4>::new();
         assert_eq!(deriv2_invariant_lode(&mut d2, &mut work, &sigma), None);
     }
 
@@ -1097,11 +1129,11 @@ mod tests {
         let sigma = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_lode(&sigma, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_lode(&sigma, 1e-10);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let sigma = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_lode(&sigma, 1e-9);
     }

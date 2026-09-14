@@ -106,7 +106,9 @@ use russell_lab::small_mat_inv;
 ///
 /// N = 4:
 ///
-/// In 2D, some components are zero, thus we may store only 16 components:
+/// In the generalized plane case, some components are zero or the 6x6 matrix
+/// is block diagonal with respect to the `{0,1,2,3}` and `{4,5}` partitions.
+/// In this case, we may store only 16 components:
 ///
 /// ```text
 ///      0 0       0 1       0 2        0 3    
@@ -382,7 +384,7 @@ impl<const N: usize> Tensor4<N> {
                                 if m > max || n > max {
                                     if inp[i][j][k][l] != 0.0 {
                                         return Err(
-                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
                                         );
                                     }
                                     continue;
@@ -541,7 +543,7 @@ impl<const N: usize> Tensor4<N> {
                                 if m > max || n > max {
                                     if inp.at(m, n) != 0.0 {
                                         return Err(
-                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
                                         );
                                     }
                                     continue;
@@ -1675,7 +1677,6 @@ impl<const N: usize> Tensor4<N> {
     ///             └                        ┘
     /// ```
     pub fn constant_pp_symdev() -> Self {
-        assert_ne!(N, 4, "Psymdev tensor cannot be allocated with N = 4");
         let mut pp_symdev = Tensor4::<N>::new();
         pp_symdev.set(0, 0, TWO_BY_3);
         pp_symdev.set(0, 1, -ONE_BY_3);
@@ -1687,8 +1688,10 @@ impl<const N: usize> Tensor4<N> {
         pp_symdev.set(2, 1, -ONE_BY_3);
         pp_symdev.set(2, 2, TWO_BY_3);
         pp_symdev.set(3, 3, 1.0);
-        pp_symdev.set(4, 4, 1.0);
-        pp_symdev.set(5, 5, 1.0);
+        if N > 4 {
+            pp_symdev.set(4, 4, 1.0);
+            pp_symdev.set(5, 5, 1.0);
+        }
         pp_symdev
     }
 
@@ -1990,7 +1993,7 @@ mod tests {
         dd.set(0, 0, 123.0);
         assert_eq!(dd.get(0, 0), 123.0);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let mut dd = Tensor4::<4>::new();
         dd.set(0, 0, 123.0);
         assert_eq!(dd.get(0, 0), 123.0);
@@ -2088,7 +2091,7 @@ mod tests {
         let res = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_SAMPLE1);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+            Some("the input data does not correspond to a generalized plane minor-symmetric tensor")
         );
     }
 
@@ -2110,7 +2113,7 @@ mod tests {
             }
         }
 
-        // symmetric 2d
+        // symmetric generalized plane
         let dd = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1).unwrap();
         for m in 0..4 {
             for n in 0..4 {
@@ -2135,7 +2138,7 @@ mod tests {
         let res = Tensor4::<4>::from_std_matrix(&inp);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+            Some("the input data does not correspond to a generalized plane minor-symmetric tensor")
         );
     }
 
@@ -2165,7 +2168,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor4::<4>::from_std_matrix(&SamplesTensor4::SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..4 {
             for n in 0..4 {
@@ -2200,7 +2203,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -2363,7 +2366,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -2398,7 +2401,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor4::<4>::from_std_array(&SamplesTensor4::SYM_2D_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 9));
@@ -2483,7 +2486,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
-        // Symmetric 2D
+        // Symmetric generalized plane
         let data = &[
             [
                 [[6.0, 8.0, 0.0], [8.0, 4.0, 0.0], [0.0, 0.0, 2.0]],
@@ -2789,6 +2792,12 @@ mod tests {
                 assert_eq!(pp_symdev.get(m, n), P_SYMDEV[m][n]);
             }
         }
+        let pp_symdev = Tensor4::<4>::constant_pp_symdev();
+        for m in 0..4 {
+            for n in 0..4 {
+                assert_eq!(pp_symdev.get(m, n), P_SYMDEV[m][n]);
+            }
+        }
     }
 
     #[test]
@@ -2804,6 +2813,13 @@ mod tests {
         pp_symdev.set_pp_symdev();
         for m in 0..6 {
             for n in 0..6 {
+                assert_eq!(pp_symdev.get(m, n), P_SYMDEV[m][n]);
+            }
+        }
+        let mut pp_symdev = Tensor4::<4>::new();
+        pp_symdev.set_pp_symdev();
+        for m in 0..4 {
+            for n in 0..4 {
                 assert_eq!(pp_symdev.get(m, n), P_SYMDEV[m][n]);
             }
         }

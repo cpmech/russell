@@ -349,7 +349,7 @@ pub fn t1_dyad_t1<const N: usize>(
             return Err("dyadic product between u and v does not generate a symmetric tensor");
         }
         if u.get(2) != 0.0 || v.get(2) != 0.0 {
-            return Err("dyadic product between u and v does not generate a 2D tensor");
+            return Err("dyadic product between u and v does not generate a generalized plane tensor");
         }
     } else if N == 6 {
         if (u.get(0) * v.get(1)) != (u.get(1) * v.get(0))
@@ -469,7 +469,7 @@ mod tests {
         let s = t2_ddot_t2(&a, &b);
         approx_eq(s, 162.0, 1e-13);
 
-        // sym-2D : sym-2D
+        // sym generalized plane : sym generalized plane
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 4.0, 0.0],
@@ -516,7 +516,7 @@ mod tests {
         approx_eq(v.get(1), -86.0, 1e-13);
         approx_eq(v.get(2), -120.0, 1e-13);
 
-        // sym-2D . vec
+        // sym generalized plane . vec
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 2.0, 0.0],
@@ -578,7 +578,7 @@ mod tests {
         approx_eq(v.get(1), -86.0, 1e-13);
         approx_eq(v.get(2), -120.0, 1e-13);
 
-        // vec . sym-2D
+        // vec . sym generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
@@ -623,7 +623,7 @@ mod tests {
         approx_eq(v.get(1), 114.0, 1e-13);
         approx_eq(v.get(2), 180.0, 1e-13);
 
-        // vec . sym-2D
+        // vec . sym generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
@@ -640,7 +640,7 @@ mod tests {
 
     #[test]
     fn t1_dyad_t1_captures_errors() {
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
         let v = Tensor1::from(&[4.0, 3.0, 0.0]);
@@ -656,13 +656,13 @@ mod tests {
             t1_dyad_t1(&mut tt, SET, 1.0, &u, &v).err(),
             Some("dyadic product between u and v does not generate a symmetric tensor")
         );
-        // symmetric in-plane but with out-of-plane components => not 2D
+        // symmetric in-plane but with out-of-plane components => not generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
         let v = Tensor1::from(&[2.0, 3.0, 4.0]);
         let mut tt = Tensor2::<4>::new();
         assert_eq!(
             t1_dyad_t1(&mut tt, SET, 1.0, &u, &v).err(),
-            Some("dyadic product between u and v does not generate a 2D tensor")
+            Some("dyadic product between u and v does not generate a generalized plane tensor")
         );
     }
 
@@ -702,7 +702,7 @@ mod tests {
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
         let v = Tensor1::from(&[2.0, 3.0, 0.0]);
         let mut tt = Tensor2::<4>::new();
@@ -735,7 +735,7 @@ mod tests {
         let correct = &[92.0, 182.0, 268.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
         array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
         let v = Tensor1::from(&[2.0, 3.0, 0.0]);
         let mut tt = Tensor2::<4>::from_std_matrix(&[[100.0, 0.0, 0.0], [0.0, 200.0, 0.0], [0.0, 0.0, 300.0]]).unwrap();

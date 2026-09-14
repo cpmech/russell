@@ -33,10 +33,26 @@
 //! [Tensor3] — selects the representation:
 //!
 //! * `9` — all components (general): 9×1 / 9×3 / 3×9 / 9×9
-//! * `6` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (3D): 6×1 / 6×3 / 3×6 / 6×6
-//! * `4` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (2D): 4×1 / 4×3 / 3×4 / 4×4
+//! * `6` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4]: 6×1 / 6×3 / 3×6 / 6×6
+//! * `4` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (generalized plane): 4×1 / 4×3 / 3×4 / 4×4
 //!
 //! The dimensions above correspond to [Tensor2] (vector), [Tensor3] (Case A / Case B rectangular matrix), and [Tensor4] (square matrix), respectively.
+//!
+//! # Reduced dimension and truncation (chop) strategy
+//!
+//! The `N = 4` case is the four-dimensional subspace `{00, 11, 22, 01}` of
+//! symmetric tensors---the out-of-plane **normal** component `T₂₂` is kept,
+//! while only the out-of-plane **shears** are set to zero
+//! (`T₁₂ = T₀₂ = 0`, Kelvin-Mandel components 4 and 5).
+//!
+//! The tensor operators considered here (e.g., [ssd_fn], [qsd_fn], and the second
+//! derivatives of the invariants) are polynomial in the components, and for an
+//! input in this subspace they are *block diagonal* with respect to the
+//! `{0,1,2,3}` and `{4,5}` partitions: every off-diagonal block is proportional
+//! to the (zero) out-of-plane shears. Consequently, restricting both the input and
+//! the output to `N` components is **exact — not an approximation**: the reduced
+//! `N × N` operator is precisely the corresponding block of the full `6 × 6`
+//! operator.
 //!
 //! A [Tensor3] is stored as a rectangular Kelvin-Mandel matrix with dimensions `(M, N)`
 //! set by const generics. Two cases are considered, where `DIM` (the leading dimension)

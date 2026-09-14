@@ -153,7 +153,7 @@ pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Ten
 ///
 /// # Panics
 ///
-/// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
+/// A panic will occur if `a` is not symmetric, i.e., N = 9.
 pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     if N == 4 {
@@ -231,15 +231,15 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 ///
 /// # Output
 ///
-/// * `d2` -- the second derivative of I2
+/// * `d2` -- the second derivative of I3
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric stress tensor, i.e., N = 4 or N = 6.
+/// * `a` -- the symmetric tensor, i.e., N = 4 or N = 6.
 ///
 /// # Panics
 ///
-/// A panic will occur if `sigma` is not symmetric, i.e., N = 9.
+/// A panic will occur if `a` is not symmetric, i.e., N = 9.
 pub fn deriv2_invariant_ii3<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     if N == 4 {
@@ -1110,27 +1110,27 @@ mod tests {
     // --- principal invariants ---
     //
 
-    fn check_deriv2_ii2<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
+    fn check_deriv2_ii2<const N: usize>(a: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<N>::new();
-        deriv2_invariant_ii2(&mut dd2_ana, sigma);
+        deriv2_invariant_ii2(&mut dd2_ana, a);
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::I2);
+        let num = numerical_deriv2_inv_sym_kelvin(a, Invariant::I2);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
     }
 
-    fn check_deriv2_ii3<const N: usize>(sigma: &Tensor2<N>, tol: f64) {
+    fn check_deriv2_ii3<const N: usize>(a: &Tensor2<N>, tol: f64) {
         // compute analytical derivative
         let mut dd2_ana = Tensor4::<N>::new();
-        deriv2_invariant_ii3(&mut dd2_ana, sigma);
+        deriv2_invariant_ii3(&mut dd2_ana, a);
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();
-        let num = numerical_deriv2_inv_sym_kelvin(sigma, Invariant::I3);
+        let num = numerical_deriv2_inv_sym_kelvin(a, Invariant::I3);
         // println!("{}", ana);
         // println!("{}", num);
         mat_approx_eq(&ana, &num, tol);
@@ -1146,11 +1146,11 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_ii2(&a, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_ii2(&a, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_ii2(&a, 1e-11);
 
@@ -1173,11 +1173,11 @@ mod tests {
         let a = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_S.matrix).unwrap();
         check_deriv2_ii3(&a, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         check_deriv2_ii3(&a, 1e-11);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let a = Tensor2::<4>::from_std_matrix(&SamplesTensor2::TENSOR_Y.matrix).unwrap();
         check_deriv2_ii3(&a, 1e-10);
 

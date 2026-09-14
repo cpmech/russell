@@ -229,6 +229,19 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 /// da ⊗ da
 /// ```
 ///
+/// **Levi-Civita (permutation tensor) form:** for a general (unsymmetric)
+/// tensor `a` and the permutation tensor `ε`, the first and second derivatives
+/// of `I3 = det(a)` are
+///
+/// ```text
+/// ∂I3/∂a_ij        = ½ ε_ikl ε_jmn a_km a_ln
+/// ∂²I3/∂a_ij∂a_kl  = ε_ikr ε_jls a_rs
+/// ```
+///
+/// Note that the second derivative consists of a single term (with no `½`) and
+/// is symmetric in the pairs `(i,j) ↔ (k,l)`, but not in `i ↔ j`. The
+/// expression implemented here is the equivalent symmetric (KM6/KM4) form.
+///
 /// # Output
 ///
 /// * `d2` -- the second derivative of I3

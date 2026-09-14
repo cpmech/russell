@@ -1694,8 +1694,6 @@ impl<const N: usize> Tensor4<N> {
 
     /// Sets this tensor equal the symmetric-deviatoric making projector (Psymdev)
     ///
-    /// Note: this tensor can be represented in reduced-dimension, but not with N = 4.
-    ///
     /// ```text
     /// Definition:
     ///                _
@@ -1718,7 +1716,6 @@ impl<const N: usize> Tensor4<N> {
     ///             └                        ┘
     /// ```
     pub fn set_pp_symdev(&mut self) {
-        assert_ne!(N, 4, "Psymdev tensor cannot be allocated with N = 4");
         for m in 0..N {
             for n in 0..N {
                 self.set(m, n, 0.0);
@@ -1734,8 +1731,10 @@ impl<const N: usize> Tensor4<N> {
         self.set(2, 1, -ONE_BY_3);
         self.set(2, 2, TWO_BY_3);
         self.set(3, 3, 1.0);
-        self.set(4, 4, 1.0);
-        self.set(5, 5, 1.0);
+        if N > 4 {
+            self.set(4, 4, 1.0);
+            self.set(5, 5, 1.0);
+        }
     }
 }
 

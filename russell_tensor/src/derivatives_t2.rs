@@ -30,14 +30,12 @@ pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, tt: &Tensor2<N>) -> Opti
     None
 }
 
-/// Calculates the first derivative of the I2 invariant w.r.t. a symmetric tensor
+/// Calculates the first derivative of the I2 invariant w.r.t. its defining tensor
 ///
 /// ```text
 /// dI2
-/// ─── = I1 I - a
+/// ─── = I1 I - aᵀ
 ///  da
-///
-/// (a is symmetric)
 /// ```
 ///
 /// # Output
@@ -46,18 +44,24 @@ pub fn deriv1_norm<const N: usize>(d1: &mut Tensor2<N>, tt: &Tensor2<N>) -> Opti
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric tensor
+/// * `a` -- the tensor
 ///
-/// # Panics
+/// # Notes
 ///
-/// A panic will occur if `a` is not symmetric, i.e., N = 9.
+/// For `N = 9` the result is general (its KM9 vector differs from the KM6 one).
 pub fn deriv1_invariant_ii2<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) {
-    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     if N == 4 {
         d1.vec[0] = a.vec[1] + a.vec[2];
         d1.vec[1] = a.vec[2] + a.vec[0];
         d1.vec[2] = a.vec[0] + a.vec[1];
         d1.vec[3] = -a.vec[3];
+    } else if N == 6 {
+        d1.vec[0] = a.vec[1] + a.vec[2];
+        d1.vec[1] = a.vec[2] + a.vec[0];
+        d1.vec[2] = a.vec[0] + a.vec[1];
+        d1.vec[3] = -a.vec[3];
+        d1.vec[4] = -a.vec[4];
+        d1.vec[5] = -a.vec[5];
     } else {
         d1.vec[0] = a.vec[1] + a.vec[2];
         d1.vec[1] = a.vec[2] + a.vec[0];
@@ -65,6 +69,9 @@ pub fn deriv1_invariant_ii2<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>)
         d1.vec[3] = -a.vec[3];
         d1.vec[4] = -a.vec[4];
         d1.vec[5] = -a.vec[5];
+        d1.vec[6] = a.vec[6];
+        d1.vec[7] = a.vec[7];
+        d1.vec[8] = a.vec[8];
     }
 }
 
@@ -564,6 +571,7 @@ mod tests {
     #[test]
     fn deriv_invariant_ii2_works() {
         let v = false;
+        check_deriv::<9>(F::I2, &SamplesTensor2::TENSOR_T, 1e-9, v);
         check_deriv::<6>(F::I2, &SamplesTensor2::TENSOR_S, 1e-11, v);
         check_deriv::<4>(F::I2, &SamplesTensor2::TENSOR_Z, 1e-11, v);
         check_deriv::<4>(F::I2, &SamplesTensor2::TENSOR_O, 1e-15, v);

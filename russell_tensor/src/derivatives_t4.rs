@@ -134,7 +134,9 @@ pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Ten
     qsd_fn_slice::<N>(da2_da, SET, 0.5, a.as_data(), &IDENTITY2);
 }
 
-/// Calculates the second derivative of the I2 invariant w.r.t. the symmetric tensor
+/// Calculates the second derivative of the I2 invariant w.r.t. its defining tensor
+///
+/// If `a` is symmetric:
 ///
 /// ```text
 ///  d²I2
@@ -142,20 +144,30 @@ pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Ten
 /// da ⊗ da
 /// ```
 ///
+/// Otherwise, for a general tensor `a`:
+///
+/// ```text
+///  d²I2
+/// ─────── = I ⊗ I - I ⊗ I
+/// da ⊗ da             ‾
+/// ```
+///
+/// where `I ⊗̲ I` is the underbar dyad, with `(I ⊗̲ I)ᵢⱼₖₗ = δᵢₗ δⱼₖ`.
+///
 /// # Output
 ///
 /// * `d2` -- the second derivative of I2
 ///
 /// # Input
 ///
-/// * `a` -- the symmetric tensor, i.e., N = 4 or N = 6.
+/// * `a` -- the tensor.
 ///   (it's not actually used here, but kept for consistency).
 ///
-/// # Panics
+/// # Notes
 ///
-/// A panic will occur if `a` is not symmetric, i.e., N = 9.
+/// For `N = 9` the result is the general (constant) Hessian, which is not
+/// minor-symmetric and is stored in the full 9×9 Kelvin-Mandel matrix.
 pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>) {
-    assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     if N == 4 {
         d2.set(0, 0, 0.0);
         d2.set(0, 1, 1.0);
@@ -176,7 +188,7 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
         d2.set(3, 1, 0.0);
         d2.set(3, 2, 0.0);
         d2.set(3, 3, -1.0);
-    } else {
+    } else if N == 6 {
         d2.set(0, 0, 0.0);
         d2.set(0, 1, 1.0);
         d2.set(0, 2, 1.0);
@@ -218,6 +230,96 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
         d2.set(5, 3, 0.0);
         d2.set(5, 4, 0.0);
         d2.set(5, 5, -1.0);
+    } else {
+        d2.set(0, 0, 0.0);
+        d2.set(0, 1, 1.0);
+        d2.set(0, 2, 1.0);
+        d2.set(0, 3, 0.0);
+        d2.set(0, 4, 0.0);
+        d2.set(0, 5, 0.0);
+        d2.set(0, 6, 0.0);
+        d2.set(0, 7, 0.0);
+        d2.set(0, 8, 0.0);
+
+        d2.set(1, 0, 1.0);
+        d2.set(1, 1, 0.0);
+        d2.set(1, 2, 1.0);
+        d2.set(1, 3, 0.0);
+        d2.set(1, 4, 0.0);
+        d2.set(1, 5, 0.0);
+        d2.set(1, 6, 0.0);
+        d2.set(1, 7, 0.0);
+        d2.set(1, 8, 0.0);
+
+        d2.set(2, 0, 1.0);
+        d2.set(2, 1, 1.0);
+        d2.set(2, 2, 0.0);
+        d2.set(2, 3, 0.0);
+        d2.set(2, 4, 0.0);
+        d2.set(2, 5, 0.0);
+        d2.set(2, 6, 0.0);
+        d2.set(2, 7, 0.0);
+        d2.set(2, 8, 0.0);
+
+        d2.set(3, 0, 0.0);
+        d2.set(3, 1, 0.0);
+        d2.set(3, 2, 0.0);
+        d2.set(3, 3, -1.0);
+        d2.set(3, 4, 0.0);
+        d2.set(3, 5, 0.0);
+        d2.set(3, 6, 0.0);
+        d2.set(3, 7, 0.0);
+        d2.set(3, 8, 0.0);
+
+        d2.set(4, 0, 0.0);
+        d2.set(4, 1, 0.0);
+        d2.set(4, 2, 0.0);
+        d2.set(4, 3, 0.0);
+        d2.set(4, 4, -1.0);
+        d2.set(4, 5, 0.0);
+        d2.set(4, 6, 0.0);
+        d2.set(4, 7, 0.0);
+        d2.set(4, 8, 0.0);
+
+        d2.set(5, 0, 0.0);
+        d2.set(5, 1, 0.0);
+        d2.set(5, 2, 0.0);
+        d2.set(5, 3, 0.0);
+        d2.set(5, 4, 0.0);
+        d2.set(5, 5, -1.0);
+        d2.set(5, 6, 0.0);
+        d2.set(5, 7, 0.0);
+        d2.set(5, 8, 0.0);
+
+        d2.set(6, 0, 0.0);
+        d2.set(6, 1, 0.0);
+        d2.set(6, 2, 0.0);
+        d2.set(6, 3, 0.0);
+        d2.set(6, 4, 0.0);
+        d2.set(6, 5, 0.0);
+        d2.set(6, 6, 1.0);
+        d2.set(6, 7, 0.0);
+        d2.set(6, 8, 0.0);
+
+        d2.set(7, 0, 0.0);
+        d2.set(7, 1, 0.0);
+        d2.set(7, 2, 0.0);
+        d2.set(7, 3, 0.0);
+        d2.set(7, 4, 0.0);
+        d2.set(7, 5, 0.0);
+        d2.set(7, 6, 0.0);
+        d2.set(7, 7, 1.0);
+        d2.set(7, 8, 0.0);
+
+        d2.set(8, 0, 0.0);
+        d2.set(8, 1, 0.0);
+        d2.set(8, 2, 0.0);
+        d2.set(8, 3, 0.0);
+        d2.set(8, 4, 0.0);
+        d2.set(8, 5, 0.0);
+        d2.set(8, 6, 0.0);
+        d2.set(8, 7, 0.0);
+        d2.set(8, 8, 1.0);
     }
 }
 
@@ -1239,6 +1341,10 @@ mod tests {
 
     #[test]
     fn deriv2_invariant_ii2_works() {
+        // general
+        let a = Tensor2::<9>::from_std_matrix(&SamplesTensor2::TENSOR_T.matrix).unwrap();
+        check_deriv2_ii2(&a, 1e-9);
+
         // symmetric
         let a = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
         check_deriv2_ii2(&a, 1e-11);

@@ -167,7 +167,6 @@ pub use polar_decomp::*;
 pub use samples_tensor2::*;
 pub use samples_tensor3::*;
 pub use samples_tensor4::*;
-pub use spectral_eigenvals::*;
 pub use spectral2::*;
 pub use spectral2_aux::*;
 pub use tensor1::*;

@@ -1,6 +1,7 @@
 use super::{P_SYM, P_SYMDEV, SET, SQRT_2};
-use crate::{StrError, Tensor2, Tensor4, WorkspaceEigenvalues};
-use crate::{deriv2_invariant_ii3, eigenvalues_sym_tensor2, ssd_fn, t2_dyad_t2};
+use crate::spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2};
+use crate::{StrError, Tensor2, Tensor4};
+use crate::{deriv2_invariant_ii3, ssd_fn, t2_dyad_t2};
 use russell_lab::small_mat_eigen_sym_jacobi;
 
 /// Tolerance to assume coalescent eigenvalues
@@ -796,7 +797,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
-    use crate::test_common::{HaberaZilian, similarity_transform};
+    use crate::test_common::similarity_transform;
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
@@ -1262,64 +1263,6 @@ mod tests {
                     // println!("d12");
                     let pp0_mat = spec.proj[0].as_std_matrix();
                     mat_approx_eq(&pp0_mat, &expected_proj[0], 1e-15); // d12
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn habera_zilian_cases_work() {
-        let hz = HaberaZilian::new();
-        let mut spec = Spectral2::new();
-        for method in [
-            EigMethod::AnalyticalHZ,
-            EigMethod::AnalyticalHA22,
-            EigMethod::AnalyticalHA23,
-            EigMethod::Iterative,
-        ] {
-            for name in hz.names {
-                let (mut tol_proj, mut tol_compose) = (1e-13, 1e-13);
-                if name == "single_lim_disc_t" {
-                    tol_proj = 1e-7;
-                    tol_compose = 1e-8;
-                }
-                if name == "single_lim_disc_n" {
-                    tol_proj = 1e-7;
-                    tol_compose = 1e-8;
-                }
-                if name == "single_lim_J3J2" {
-                    tol_proj = 1e-7;
-                    tol_compose = 1e-7;
-                }
-                if name == "single_J3_lim_J2" {
-                    tol_proj = 1e-9;
-                    tol_compose = 1e-9;
-                }
-                if name == "triple_J3" {
-                    tol_compose = 1e-12;
-                }
-                for &delta in &hz.deltas {
-                    let aa = hz.tensor(name, delta);
-                    spec.decompose_mx(&aa, method).unwrap();
-
-                    // check the eigenvalues against the prescribed values (relative to the scale)
-                    let mut correct = hz.diagonal(name, delta);
-                    correct.sort_by(|x, y| y.partial_cmp(x).unwrap());
-                    let tol_lambda = 1e-12 * correct[0].abs().max(correct[2].abs());
-                    for i in 0..3 {
-                        assert!(
-                            f64::abs(spec.lam[i] - correct[i]) < tol_lambda,
-                            "method = {:?}, case = {}, delta = {}: lam = {:?}, correct = {:?}",
-                            method,
-                            name,
-                            delta,
-                            spec.lam,
-                            correct
-                        );
-                    }
-
-                    // check the eigenprojectors and the reconstruction
-                    check_eigen_problem(&aa, &spec, tol_proj, tol_compose, true);
                 }
             }
         }

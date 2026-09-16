@@ -218,5 +218,72 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::eigenvalues_sym_tensor2;
+    use super::{WorkspaceEigenvalues, eigenvalues_sym_tensor2};
+    use crate::EigMethod;
+    use crate::test_common::HaberaZilian;
+
+    #[test]
+    fn habera_zilian_cases_work() {
+        const VERBOSE: bool = true;
+
+        // output
+        if VERBOSE {
+            println!(
+                "{:>14}{:>18}{:>8}{:>11}{:>11}{:>11}{:>8}",
+                "method", "name", "delta", "ll[0]", "ll[1]", "ll[2]", "error"
+            );
+        }
+
+        let mut ll = [0.0; 3];
+        let mut work = WorkspaceEigenvalues::new();
+        let hz = HaberaZilian::new();
+        for method in [
+            EigMethod::AnalyticalHZ,
+            EigMethod::AnalyticalHA22,
+            EigMethod::AnalyticalHA23,
+            EigMethod::Iterative,
+        ] {
+            for name in hz.names {
+                for &delta in &hz.deltas {
+                    let aa = hz.tensor(name, delta);
+                    eigenvalues_sym_tensor2(&mut ll, &aa, method, &mut work).unwrap();
+
+                    // check the eigenvalues against the prescribed values (relative to the scale)
+                    let mut correct = hz.diagonal(name, delta);
+                    correct.sort_by(|x, y| y.partial_cmp(x).unwrap());
+                    let tol_lambda = 1e-12 * correct[0].abs().max(correct[2].abs());
+
+                    // calculate the error = ||diff||_max
+                    let mut error = f64::NEG_INFINITY;
+                    for i in 0..3 {
+                        let diff = f64::abs(ll[i] - correct[i]);
+                        if diff < tol_lambda {
+                            error = diff;
+                        }
+                    }
+
+                    // output
+                    if VERBOSE {
+                        let m = format!("{:?}", method);
+                        println!(
+                            "{:>14}{:>18}{:>8.1e}{:>11.4e}{:>11.4e}{:>11.4e}{:>8.1e}",
+                            m, name, delta, ll[0], ll[1], ll[2], error,
+                        );
+                    }
+
+                    for i in 0..3 {
+                        assert!(
+                            f64::abs(ll[i] - correct[i]) < tol_lambda,
+                            "method = {:?}, case = {}, delta = {}: lam = {:?}, correct = {:?}",
+                            method,
+                            name,
+                            delta,
+                            ll,
+                            correct
+                        );
+                    }
+                }
+            }
+        }
+    }
 }

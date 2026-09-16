@@ -796,7 +796,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
-    use crate::test_common::similarity_transform;
+    use crate::test_common::{HaberaZilian, similarity_transform};
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
@@ -839,61 +839,6 @@ mod tests {
     //
     // --- auxiliary --------------------------
     //
-
-    /// Returns the Habera-Zilian test names
-    fn hz_cases() -> [&'static str; 11] {
-        [
-            "single",
-            "single_lim_J3",
-            "single_lim_disc_t",
-            "single_lim_disc_n",
-            "single_lim_J3J2",
-            "single_J3",
-            "single_J3_lim_J2",
-            "double",
-            "double_lim_J3J2",
-            "triple_J3",
-            "d3",
-        ]
-    }
-
-    /// Returns the Habera-Zilian deltas to generate the test matrix
-    fn hz_deltas() -> [f64; 10] {
-        [1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0]
-    }
-
-    /// Returns the prescribed diagonal of the Habera-Zilian test tensor
-    fn hz_diagonal(name: &str, delta: f64) -> [f64; 3] {
-        const A: f64 = 1.0;
-        match name {
-            "single" => [-A / 4.0, (1.0 * A) / 4.0, (2.0 + 2.0 * delta) * A / 4.0],
-            "single_lim_J3" => [(-1.0 - delta) * A / 4.0, 0.0, (1.0 + 2.0 * delta) * A / 4.0],
-            "single_lim_disc_t" => [-A, 1.0 * A, (1.0 + delta) * A],
-            "single_lim_disc_n" => [0.0, (2.0 - delta) * A / 2.0, (2.0 + delta) * A / 2.0],
-            "single_lim_J3J2" => [(1.0 - delta) * A, 1.0 * A, (1.0 + 2.0 * delta) * A],
-            "single_J3" => [(-1.0 - delta) * A / 2.0, 0.0, (1.0 + delta) * A / 2.0],
-            "single_J3_lim_J2" => [(1.0 - delta) * A, 1.0 * A, (1.0 + delta) * A],
-            "double" => [(-1.0 - delta) * A, 1.0 * A, 1.0 * A],
-            "double_lim_J3J2" => [1.0 * A, 1.0 * A, (1.0 + delta) * A],
-            "triple_J3" => [-delta, 0.0, delta],
-            "d3" => [0.0, 1.0 * A, (2.0 + delta) * A],
-            _ => panic!("unknown HZ test case: {}", name),
-        }
-    }
-
-    /// Generates the Habera-Zilian test tensor
-    fn hz_tensor(name: &str, delta: f64) -> Tensor2<6> {
-        let d = hz_diagonal(name, delta);
-        let qq_3x3 = [
-            [1.0 / SQRT_2, -0.5, 0.5],
-            [1.0 / SQRT_2, 0.5, -0.5],
-            [0.0, 1.0 / SQRT_2, 1.0 / SQRT_2],
-        ];
-        let mut aa_3x3 = [[0.0; 3]; 3];
-        let ll = [[d[0], 0.0, 0.0], [0.0, d[1], 0.0], [0.0, 0.0, d[2]]];
-        similarity_transform(&mut aa_3x3, &ll, &qq_3x3);
-        Tensor2::from_std_matrix(&aa_3x3).unwrap()
-    }
 
     /// Sort eigenvalues and projectors in descending order
     fn sort_projectors(lambda: &mut [f64; 3], projectors: &mut [[[f64; 3]; 3]; 3]) {
@@ -1323,7 +1268,8 @@ mod tests {
     }
 
     #[test]
-    fn hz_cases_work() {
+    fn habera_zilian_cases_work() {
+        let hz = HaberaZilian::new();
         let mut spec = Spectral2::new();
         for method in [
             EigMethod::AnalyticalHZ,
@@ -1331,7 +1277,7 @@ mod tests {
             EigMethod::AnalyticalHA23,
             EigMethod::Iterative,
         ] {
-            for name in hz_cases() {
+            for name in hz.names {
                 let (mut tol_proj, mut tol_compose) = (1e-13, 1e-13);
                 if name == "single_lim_disc_t" {
                     tol_proj = 1e-7;
@@ -1352,12 +1298,12 @@ mod tests {
                 if name == "triple_J3" {
                     tol_compose = 1e-12;
                 }
-                for &delta in &hz_deltas() {
-                    let aa = hz_tensor(name, delta);
+                for &delta in &hz.deltas {
+                    let aa = hz.tensor(name, delta);
                     spec.decompose_mx(&aa, method).unwrap();
 
                     // check the eigenvalues against the prescribed values (relative to the scale)
-                    let mut correct = hz_diagonal(name, delta);
+                    let mut correct = hz.diagonal(name, delta);
                     correct.sort_by(|x, y| y.partial_cmp(x).unwrap());
                     let tol_lambda = 1e-12 * correct[0].abs().max(correct[2].abs());
                     for i in 0..3 {

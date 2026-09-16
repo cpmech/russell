@@ -5,12 +5,12 @@
 //! Each implementation is validated against all of these test cases and
 //! cross-checked against the other implementation.
 
-use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
+use crate::{SQRT_2, Tensor2};
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
-// Test matrices
+// Similarity transformation
 // -----------------------------------------------------------------------------------
 
 /// Performs similarity transformation (make sure to return a symmetric matrix)
@@ -33,6 +33,71 @@ pub fn similarity_transform(aa: &mut [[f64; 3]; 3], ll: &[[f64; 3]; 3], qq: &[[f
         for j in i..3 {
             aa[i][j] = aa[j][i]; // symmetrize
         }
+    }
+}
+
+// -----------------------------------------------------------------------------------
+// Habera-Zilian test cases
+// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
+//    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
+// -----------------------------------------------------------------------------------
+
+pub struct HaberaZilian {
+    pub names: [&'static str; 11],
+    pub deltas: [f64; 10],
+}
+
+impl HaberaZilian {
+    pub fn new() -> Self {
+        HaberaZilian {
+            names: [
+                "single",
+                "single_lim_J3",
+                "single_lim_disc_t",
+                "single_lim_disc_n",
+                "single_lim_J3J2",
+                "single_J3",
+                "single_J3_lim_J2",
+                "double",
+                "double_lim_J3J2",
+                "triple_J3",
+                "d3",
+            ],
+            deltas: [1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0],
+        }
+    }
+
+    /// Returns the prescribed diagonal of the Habera-Zilian test tensor
+    pub fn diagonal(&self, name: &str, delta: f64) -> [f64; 3] {
+        const A: f64 = 1.0;
+        match name {
+            "single" => [-A / 4.0, (1.0 * A) / 4.0, (2.0 + 2.0 * delta) * A / 4.0],
+            "single_lim_J3" => [(-1.0 - delta) * A / 4.0, 0.0, (1.0 + 2.0 * delta) * A / 4.0],
+            "single_lim_disc_t" => [-A, 1.0 * A, (1.0 + delta) * A],
+            "single_lim_disc_n" => [0.0, (2.0 - delta) * A / 2.0, (2.0 + delta) * A / 2.0],
+            "single_lim_J3J2" => [(1.0 - delta) * A, 1.0 * A, (1.0 + 2.0 * delta) * A],
+            "single_J3" => [(-1.0 - delta) * A / 2.0, 0.0, (1.0 + delta) * A / 2.0],
+            "single_J3_lim_J2" => [(1.0 - delta) * A, 1.0 * A, (1.0 + delta) * A],
+            "double" => [(-1.0 - delta) * A, 1.0 * A, 1.0 * A],
+            "double_lim_J3J2" => [1.0 * A, 1.0 * A, (1.0 + delta) * A],
+            "triple_J3" => [-delta, 0.0, delta],
+            "d3" => [0.0, 1.0 * A, (2.0 + delta) * A],
+            _ => panic!("unknown HZ test case: {}", name),
+        }
+    }
+
+    /// Generates the Habera-Zilian test tensor
+    pub fn tensor(&self, name: &str, delta: f64) -> Tensor2<6> {
+        let d = self.diagonal(name, delta);
+        let qq_3x3 = [
+            [1.0 / SQRT_2, -0.5, 0.5],
+            [1.0 / SQRT_2, 0.5, -0.5],
+            [0.0, 1.0 / SQRT_2, 1.0 / SQRT_2],
+        ];
+        let mut aa_3x3 = [[0.0; 3]; 3];
+        let ll = [[d[0], 0.0, 0.0], [0.0, d[1], 0.0], [0.0, 0.0, d[2]]];
+        similarity_transform(&mut aa_3x3, &ll, &qq_3x3);
+        Tensor2::from_std_matrix(&aa_3x3).unwrap()
     }
 }
 

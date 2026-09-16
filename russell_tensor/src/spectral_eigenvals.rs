@@ -6,7 +6,7 @@ use russell_lab::{small_mat_eigen_sym_jacobi, sort3};
 /// Tolerance to assume zero eigenvalue of the deviatoric matrix
 const TOL_ZERO_DEV_LAMBDA: f64 = 1e-15;
 
-pub struct WorkspaceEigenvalues {
+pub(crate) struct WorkspaceEigenvalues {
     /// Auxiliary deviatoric tensor: S = A - (I1/3) I
     ///
     /// Used in the Harari-Albocher (2022) method
@@ -38,7 +38,7 @@ impl WorkspaceEigenvalues {
 /// Calculates the eigenvalues of a symmetric second order tensor
 ///
 /// Returns `true` if spherical, `false` otherwise.
-pub fn eigenvalues_sym_tensor2(
+pub(crate) fn eigenvalues_sym_tensor2(
     ll: &mut [f64; 3],
     aa: &Tensor2<6>,
     method: EigMethod,

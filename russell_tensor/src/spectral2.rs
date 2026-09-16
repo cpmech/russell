@@ -1,5 +1,5 @@
-use super::{P_SYM, SET, SQRT_2, SQRT_3};
-use crate::{StrError, Tensor2, Tensor4, ssd_fn, t2_dyad_t2};
+use super::{P_SYM, P_SYMDEV, SET, SQRT_2, SQRT_3};
+use crate::{StrError, Tensor2, Tensor4, deriv2_invariant_ii3, ssd_fn, t2_dyad_t2};
 use russell_lab::{small_mat_eigen_sym_jacobi, sort3};
 
 /// Tolerance to assume zero eigenvalue of the deviatoric matrix
@@ -13,8 +13,29 @@ const TOL_COALESCE: f64 = 1e-8;
 /// It must be ~ sqrt(EPSILON) because the code performs division by lambda^2
 const TOL_LAMBDA: f64 = 1e-8;
 
+/// Tolerance to assume (nearly) coalescent eigenvalues during the computation of derivatives
+/// of eigenprojectors
+///
+/// It is compared against |γ|, where γ = 3 λ² - 2 I1 λ + I2 = (λ - λj)(λ - λk)
+const TOL_GAMMA: f64 = 1e-8;
+
 /// Holds indices for permutation by looping in 0..3
 const INDICES: [usize; 5] = [0, 1, 2, 0, 1];
+
+/// Auxiliary fourth-order tensor Q := Psym − I⊗I in Kelvin-Mandel components
+///
+/// Used in the computation of the derivatives of the eigenprojectors
+///
+/// Note that, in Kelvin-Mandel components, I⊗I is the trace projection (the identity
+/// tensor has no shear components), hence Q = P_SYM − TRACE_PROJECTION.
+const Q4: [[f64; 6]; 6] = [
+    [0.0, -1.0, -1.0, 0.0, 0.0, 0.0],
+    [-1.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+    [-1.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+];
 
 /// Defines the method to calculate the eigenvalues
 ///
@@ -155,6 +176,11 @@ pub struct Spectral2 {
     /// ```
     p_dy_p: Vec<Tensor4<6>>,
 
+    /// Auxiliary tensor: M := ∂²I3/∂a² (second derivative of the third invariant)
+    ///
+    /// Used in the computation of the derivatives of the eigenprojectors
+    d2_ii3: Option<Tensor4<6>>,
+
     /// Auxiliary deviatoric tensor: S = A - (I1/3) I
     ///
     /// Used in the Harari-Albocher (2022) method
@@ -185,6 +211,7 @@ impl Spectral2 {
             vv_3x3: [[0.0; 3]; 3],
             yy: None,
             p_dy_p: Vec::new(),
+            d2_ii3: None,
             // private: auxiliary tensors
             ss: [0.0; 6],
             tt: [0.0; 6],
@@ -427,10 +454,11 @@ impl Spectral2 {
         Ok(())
     }
 
-    /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor
+    /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor (Miehe form)
     ///
     /// Note: This function is only available for *invertible* tensor A with *distinct*
-    /// and *non-zero* eigenvalues.
+    /// and *non-zero* eigenvalues. See [Spectral2::deriv_eigenproj] for the alternative
+    /// Panteghini (2024) form, which also handles coalescent eigenvalues.
     ///
     /// ```text
     /// dP[i]                         3
@@ -479,7 +507,15 @@ impl Spectral2 {
     /// d[i] = 2 (λ[i])² - I1a λ[i] + ────
     ///                               λ[i]
     /// ```
-    pub fn deriv_eigenproj(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigDerivStatus, StrError> {
+    ///
+    /// # References
+    ///
+    /// 1. Miehe C. (1993) Computation of isotropic tensor functions. Communications in
+    ///    Numerical Methods in Engineering, 9(11):889-896. <https://doi.org/10.1002/cnm.1640091105>
+    /// 2. Miehe C. (1998) Comparison of two algorithms for the computation of fourth-order
+    ///    isotropic tensor functions. Computers & Structures, 66(1):37-43.
+    ///    <https://doi.org/10.1016/S0045-7949(97)00073-4>
+    pub fn deriv_eigenproj_miehe(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigDerivStatus, StrError> {
         // compute the eigenvalues and eigenprojectors
         self.decompose_mx(aa, method)?;
 
@@ -561,6 +597,248 @@ impl Spectral2 {
             }
         }
         Ok(EigDerivStatus::Success)
+    }
+
+    /// Calculates the derivatives of the eigenprojectors w.r.t. the defining tensor (Panteghini form)
+    ///
+    /// This function handles both the *distinct* and the *coalescent* (two equal) eigenvalue
+    /// cases. It uses the implicit approach of Panteghini (2024), which does not require the
+    /// inverse of the tensor, nor non-zero eigenvalues.
+    ///
+    /// For distinct eigenvalues:
+    ///
+    /// ```text
+    /// dP[i]   A[i]               B[i]                      
+    /// ───── = ──── P[i] ⊗ P[i] + ──── (P[i] ⊗ I + I ⊗ P[i])
+    ///  dA     γ[i]               γ[i]                      
+    ///
+    ///          1                           λ[i]      1
+    ///       + ──── (P[i] ⊗ A + A ⊗ P[i]) + ──── Q + ──── M
+    ///         γ[i]                         γ[i]     γ[i]
+    /// ```
+    ///
+    /// where
+    ///
+    /// ```text
+    /// γ[i] = 3 (λ[i])² - 2 I1a λ[i] + I2a
+    /// A[i] = 2 I1a - 6 λ[i]
+    /// B[i] = 2 λ[i] - I1a
+    /// Q := Psym - I ⊗ I
+    /// M := ∂²I3a/∂A²
+    /// ```
+    ///
+    /// For coalescent eigenvalues (with κ = λ_dist - λ_coal, where λ_dist is the distinct eigenvalue and
+    /// `S = A - (I1a/3) I`):
+    ///
+    /// ```text
+    /// dP_dist   1        3
+    /// ─────── = ─ Psd - ──── S ⊗ S
+    ///    da     κ       2 κ³
+    ///
+    /// dP_coal     dP_dist
+    /// ─────── = - ───────
+    ///    da          da
+    /// ```
+    ///
+    /// where `P_dist` is the eigenprojector of the distinct eigenvalue and `P_coal = I - P_dist` is the
+    /// eigenprojector of the (double) coalescent eigenvalue; `Psd` is the symmetric-deviatoric
+    /// making projector. These projectors are non-unique (Panteghini's choice).
+    ///
+    /// The spectral decomposition is performed internally using the given [EigMethod].
+    ///
+    /// # Input
+    ///
+    /// `a` -- The symmetric tensor
+    /// `method` -- The method to calculate the eigenvalues
+    ///
+    /// # Output
+    ///
+    /// Returns [EigDerivStatus::Success] if the eigenvalues are distinct or coalescent.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `γ[i]` is (nearly) zero (nearly coalescent eigenvalues) or if the
+    /// tensor is spherical (the derivative of the eigenprojectors is not defined).
+    ///
+    /// # References
+    ///
+    /// 1. Panteghini A. (2024) A simple spectral representation of a second-order symmetric
+    ///    tensor and its variation. European Journal of Mechanics - A/Solids, 104:105208.
+    ///    <https://doi.org/10.1016/j.euromechsol.2023.105208>
+    pub fn deriv_eigenproj(&mut self, a: &Tensor2<6>, method: EigMethod) -> Result<EigDerivStatus, StrError> {
+        // compute the eigenvalues and eigenprojectors
+        self.decompose_mx(a, method)?;
+
+        // dispatch on the eigenvalue multiplicity
+        match self.status {
+            EigStatus::Distinct => {
+                self.deriv_eigenproj_distinct(a)?;
+                Ok(EigDerivStatus::Success)
+            }
+            EigStatus::Coalesce01 | EigStatus::Coalesce12 => {
+                self.deriv_eigenproj_coalescent(a)?;
+                Ok(EigDerivStatus::Success)
+            }
+            _ => Err("the derivative of the eigenprojectors is not defined for spherical tensors"),
+        }
+    }
+
+    /// (internal) Calculates the derivatives of the eigenprojectors for distinct eigenvalues
+    fn deriv_eigenproj_distinct(&mut self, a: &Tensor2<6>) -> Result<(), StrError> {
+        // M = ∂²I3a/∂A² (the second derivative of the third invariant)
+        if self.d2_ii3.is_none() {
+            self.d2_ii3 = Some(Tensor4::<6>::new());
+        }
+        deriv2_invariant_ii3(self.d2_ii3.as_mut().unwrap(), a);
+        let m4 = self.d2_ii3.as_ref().unwrap().clone();
+
+        // identity tensor
+        let ii = Tensor2::<6>::identity();
+
+        // auxiliary tensors P[j] ⊗ P[j]
+        if self.p_dy_p.len() != 3 {
+            self.p_dy_p = vec![Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
+        }
+
+        // allocate the output tensors
+        if self.dpp.len() != 3 {
+            self.dpp = vec![Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
+        }
+
+        // scratch tensor for the mixed dyadic products
+        let mut scratch = Tensor4::<6>::new();
+
+        // compute the derivatives
+        let ii1 = a.invariant_ii1();
+        let ii2 = a.invariant_ii2();
+        for i in 0..3 {
+            let lam = self.lam[i];
+            let gam = 3.0 * lam * lam - 2.0 * ii1 * lam + ii2;
+            if f64::abs(gam) < TOL_GAMMA {
+                return Err("|γ[i]| is nearly zero (nearly coalescent eigenvalues)");
+            }
+            let aa = 2.0 * ii1 - 6.0 * lam;
+            let bb = 2.0 * lam - ii1;
+            let p = self.proj[i].clone();
+
+            // P[i] ⊗ P[i]
+            t2_dyad_t2(&mut self.p_dy_p[i], SET, 1.0, &p, &p);
+
+            // start with (λ Q + M) / γ
+            let mut res = Tensor4::<6>::new();
+            for m in 0..6 {
+                for n in 0..6 {
+                    res.set(m, n, (lam * Q4[m][n] + m4.get(m, n)) / gam);
+                }
+            }
+
+            // (A[i]/γ) P ⊗ P
+            for m in 0..6 {
+                for n in 0..6 {
+                    res.add(m, n, (aa / gam) * self.p_dy_p[i].get(m, n));
+                }
+            }
+
+            // (B[i]/γ) (P ⊗ I + I ⊗ P)
+            t2_dyad_t2(&mut scratch, SET, 1.0, &p, &ii);
+            for m in 0..6 {
+                for n in 0..6 {
+                    res.add(m, n, (bb / gam) * scratch.get(m, n));
+                }
+            }
+            t2_dyad_t2(&mut scratch, SET, 1.0, &ii, &p);
+            for m in 0..6 {
+                for n in 0..6 {
+                    res.add(m, n, (bb / gam) * scratch.get(m, n));
+                }
+            }
+
+            // (1/γ) (P ⊗ A + A ⊗ P)
+            t2_dyad_t2(&mut scratch, SET, 1.0, &p, a);
+            for m in 0..6 {
+                for n in 0..6 {
+                    res.add(m, n, scratch.get(m, n) / gam);
+                }
+            }
+            t2_dyad_t2(&mut scratch, SET, 1.0, a, &p);
+            for m in 0..6 {
+                for n in 0..6 {
+                    res.add(m, n, scratch.get(m, n) / gam);
+                }
+            }
+
+            self.dpp[i] = res;
+        }
+        Ok(())
+    }
+
+    /// (internal) Calculates the derivatives of the eigenprojectors for coalescent eigenvalues
+    fn deriv_eigenproj_coalescent(&mut self, a: &Tensor2<6>) -> Result<(), StrError> {
+        // identify the distinct eigenvalue index
+        let i_dist = match self.status {
+            EigStatus::Coalesce01 => 2, // λ0 ≈ λ1 > λ2
+            EigStatus::Coalesce12 => 0, // λ0 > λ1 ≈ λ2
+            _ => return Err("invalid status for the coalescent case"),
+        };
+        let lam_dist = self.lam[i_dist];
+        let lam_coal = self.lam[(i_dist + 1) % 3];
+
+        // κ = λ_dist - λ_coal
+        let kappa = lam_dist - lam_coal;
+        if f64::abs(kappa) < TOL_GAMMA {
+            return Err("|κ| is nearly zero (coalescent eigenvalues)");
+        }
+        let inv_kappa = 1.0 / kappa;
+
+        // S = a - (I1a/3) I
+        let mut ss = Tensor2::<6>::new();
+        a.deviator(&mut ss);
+
+        // P_dist = (1/3) I + (1/κ) S  (eigenprojector of the distinct eigenvalue; rank 1)
+        let mut p_dist = Tensor2::<6>::new();
+        for m in 0..6 {
+            p_dist.vec[m] = ss.vec[m] * inv_kappa;
+        }
+        for m in 0..3 {
+            p_dist.vec[m] += 1.0 / 3.0;
+        }
+
+        // P_coal = I - P_dist  (eigenprojector of the coalescent (double) eigenvalue; rank 2)
+        let mut p_coal = Tensor2::<6>::new();
+        for m in 0..3 {
+            p_coal.vec[m] = 1.0 - p_dist.vec[m];
+        }
+        for m in 3..6 {
+            p_coal.vec[m] = -p_dist.vec[m];
+        }
+
+        // save the projectors, so that Σ λ[i] P[i] = a (P_dist in the first slot, P_coal in the
+        // second, and zeros in the third)
+        self.proj[0] = p_dist;
+        self.proj[1] = p_coal;
+        for m in 0..6 {
+            self.proj[2].vec[m] = 0.0;
+        }
+        self.lam[0] = lam_dist;
+        self.lam[1] = lam_coal;
+        self.lam[2] = lam_coal;
+
+        // allocate the output tensors
+        if self.dpp.len() != 3 {
+            self.dpp = vec![Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
+        }
+
+        // dP_dist/dA = (1/κ) Psd - (3/(2κ³)) S ⊗ S  and  dP_coal/dA = -dP_dist/dA
+        let f = 3.0 / (2.0 * kappa * kappa * kappa);
+        for m in 0..6 {
+            for n in 0..6 {
+                let dd = inv_kappa * P_SYMDEV[m][n] - f * ss.vec[m] * ss.vec[n];
+                self.dpp[0].set(m, n, dd);
+                self.dpp[1].set(m, n, -dd);
+                self.dpp[2].set(m, n, 0.0);
+            }
+        }
+        Ok(())
     }
 
     //
@@ -1369,17 +1647,25 @@ mod tests {
 
     /// Check the derivative of eigenprojectors using numerical differentiation
     fn check_ddp(sample: &SampleTensor2, tol: f64) {
-        // analytical derivative
+        // analytical derivative (Panteghini form)
         let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
         let mut spec = Spectral2::new();
         let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
-        println!("Status = {:?}", status);
         if status != EigDerivStatus::Success {
             panic!("failed to compute analytical derivative");
         }
-        // println!("dP0/dA =\n{}", spec.dpp[0].as_std_matrix());
-        // println!("dP1/dA =\n{}", spec.dpp[1].as_std_matrix());
-        // println!("dP2/dA =\n{}", spec.dpp[2].as_std_matrix());
+
+        // analytical derivative (Miehe form)
+        let mut spec_miehe = Spectral2::new();
+        let status = spec_miehe.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
+        if status != EigDerivStatus::Success {
+            panic!("failed to compute the Miehe derivative");
+        }
+
+        // the two analytical forms must agree
+        for i in 0..3 {
+            mat_approx_eq(&spec.dpp[i].as_std_matrix(), &spec_miehe.dpp[i].as_std_matrix(), tol);
+        }
 
         // allocate arguments for numerical differentiation
         let mut args = ArgsNumDerivProj {
@@ -1403,7 +1689,6 @@ mod tests {
                     num_deriv.set(m, n, res);
                 }
             }
-            // println!("num_deriv = \n{}", num_deriv.as_std_matrix());
             mat_approx_eq(&spec.dpp[i].as_std_matrix(), &num_deriv.as_std_matrix(), tol);
         }
     }
@@ -1415,26 +1700,53 @@ mod tests {
     }
 
     #[test]
-    fn deriv_eigenproj_captures_problems() {
+    fn deriv_eigenproj_miehe_captures_problems() {
         // near zero eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
         assert_eq!(status, EigDerivStatus::FailDueToZeroEigenvalue);
 
         // coalescent 01 eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_01.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
         assert_eq!(spec.status, EigStatus::Coalesce01);
         assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
 
         // coalescent 12 eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_12.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
         assert_eq!(spec.status, EigStatus::Coalesce12);
         assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
+    }
+
+    #[test]
+    fn deriv_eigenproj_coalescent_works() {
+        // the Panteghini form also handles the coalescent cases
+        for sample in [&SamplesTensor2::COAL_01, &SamplesTensor2::COAL_12] {
+            let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+            let mut spec = Spectral2::new();
+            let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+            assert_eq!(status, EigDerivStatus::Success);
+
+            // check the reconstruction (multiplicity-aware)
+            let mut bb = Tensor2::<6>::new();
+            crate::spectral2_aux::spectral2_compose(&mut bb, &spec, &spec.lam);
+            #[cfg(feature = "heap")]
+            vec_approx_eq(&aa.vec, &bb.vec, 1e-12);
+            #[cfg(not(feature = "heap"))]
+            array_approx_eq(&aa.vec, &bb.vec, 1e-12);
+        }
+    }
+
+    #[test]
+    fn deriv_eigenproj_spherical_fails() {
+        let aa = Tensor2::<6>::identity();
+        let mut spec = Spectral2::new();
+        let res = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ);
+        assert!(res.is_err());
     }
 
     #[test]

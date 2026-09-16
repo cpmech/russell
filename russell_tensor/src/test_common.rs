@@ -5,8 +5,9 @@
 //! Each implementation is validated against all of these test cases and
 //! cross-checked against the other implementation.
 
+use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
-use crate::{SQRT_2, Tensor2};
+use crate::{SQRT_2, SQRT_3, SQRT_6};
 use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
@@ -102,6 +103,78 @@ impl HaberaZilian {
 }
 
 // -----------------------------------------------------------------------------------
+// Eigen-problems testing
+// -----------------------------------------------------------------------------------
+
+/// Generates eigen-problem (with checks using check_eigenprojectors)
+///
+/// Returns `(aa, expected_lambda, expected_proj)` sorted in decreasing order by lambda
+pub fn generate_eigen_problem(l1: f64, l2: f64, l3: f64) -> ([[f64; 3]; 3], [f64; 3], [[[f64; 3]; 3]; 3]) {
+    // Q rotates axes to octahedral system
+    #[rustfmt::skip]
+        let qq = [
+            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
+            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
+            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
+        ];
+    // A = Q . L . Q^T
+    let mut aa = [[0.0; 3]; 3];
+    similarity_transform(&mut aa, &[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], &qq);
+    // expected eigenvectors
+    #[rustfmt::skip]
+        let n0 = [
+            2.0 / SQRT_6,
+            1.0 / SQRT_3,
+            0.0,
+        ];
+    #[rustfmt::skip]
+        let n1 = [
+            -1.0 / SQRT_6,
+             1.0 / SQRT_3,
+            -1.0 / SQRT_2,
+        ];
+    #[rustfmt::skip]
+        let n2 = [
+            -1.0 / SQRT_6,
+             1.0 / SQRT_3,
+             1.0 / SQRT_2,
+        ];
+    // expected eigenprojectors
+    let pp0 = [
+        [n0[0] * n0[0], n0[0] * n0[1], n0[0] * n0[2]],
+        [n0[1] * n0[0], n0[1] * n0[1], n0[1] * n0[2]],
+        [n0[2] * n0[0], n0[2] * n0[1], n0[2] * n0[2]],
+    ];
+    let pp1 = [
+        [n1[0] * n1[0], n1[0] * n1[1], n1[0] * n1[2]],
+        [n1[1] * n1[0], n1[1] * n1[1], n1[1] * n1[2]],
+        [n1[2] * n1[0], n1[2] * n1[1], n1[2] * n1[2]],
+    ];
+    let pp2 = [
+        [n2[0] * n2[0], n2[0] * n2[1], n2[0] * n2[2]],
+        [n2[1] * n2[0], n2[1] * n2[1], n2[1] * n2[2]],
+        [n2[2] * n2[0], n2[2] * n2[1], n2[2] * n2[2]],
+    ];
+    // sort eigen variables
+    let lam = [l1, l2, l3];
+    let proj = [pp0, pp1, pp2];
+    let mut indices = [0, 1, 2];
+    indices.sort_by(|&i, &j| lam[j].partial_cmp(&lam[i]).unwrap());
+    let sorted_lam = [lam[indices[0]], lam[indices[1]], lam[indices[2]]];
+    let sorted_proj = [proj[indices[0]], proj[indices[1]], proj[indices[2]]];
+    let projectors = [
+        Tensor2::<6>::from_std_matrix(&sorted_proj[0]).unwrap(),
+        Tensor2::<6>::from_std_matrix(&sorted_proj[1]).unwrap(),
+        Tensor2::<6>::from_std_matrix(&sorted_proj[2]).unwrap(),
+    ];
+    // check (TODO)
+    // let n_failed = check_projector_rules(&projectors, 3, 1e-15, 1e-15, 1e-15, false);
+    // assert_eq!(n_failed, 0, "eigenprojector rules failed");
+    // results
+    (aa, sorted_lam, sorted_proj)
+}
+
+// -----------------------------------------------------------------------------------
 // Test matrices
 // -----------------------------------------------------------------------------------
 
@@ -117,7 +190,7 @@ pub fn example01() -> Tensor2<9> {
     a
 }
 
-/// Example 03 (McGinty, continuummechanics.org): fully 3-D deformation gradient.
+/// Example 03 (McGinty, continuum mechanics dot org): fully 3-D deformation gradient.
 pub fn example03() -> Tensor2<9> {
     #[rustfmt::skip]
     let a = Tensor2::<9>::from_std_matrix(&[

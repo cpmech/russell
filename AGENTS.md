@@ -71,6 +71,12 @@ warning-free.
   (e.g. `∂I3/∂a_ij = ½ ϵ_ikl ϵ_jrs a_kr a_ls`).
 - **Permutation (Levi-Civita) tensor:** use the *lunate* epsilon `ϵ` (U+03F5) in
   formulas, not the curly `ε` (U+03B5), which is reserved for strain.
+- **Prefer the `small_*` helpers** from `russell_lab` over the generic `mat_*` / `Matrix`
+  versions whenever the size is known at compile time — e.g. for 3×3 (second-order tensor)
+  and 2×2 operations. Use `small_mat_mat_mul`, `small_mat_t_mat_mul`, `small_mat_inv`,
+  `small_mat_eigen_sym_jacobi`, etc., which operate on stack `[[f64; N]; N]` / `[f64; N]`
+  arrays and avoid heap allocation; get the stack matrix from a tensor with
+  `Tensor2::to_std_matrix_slice` (or `to_std_matrix_slice`-style helpers).
 
 ## Code intelligence (CodeGraph)
 

@@ -13,6 +13,33 @@ use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 // Test matrices
 // -----------------------------------------------------------------------------------
 
+/// Performs similarity transformation (make sure to return a symmetric matrix)
+///
+/// ```text
+/// A = Q . L . Q^T
+/// ```
+pub fn similarity_transform(aa: &mut [[f64; 3]; 3], ll: &[[f64; 3]; 3], qq: &[[f64; 3]; 3]) {
+    for i in 0..3 {
+        for j in 0..3 {
+            aa[i][j] = 0.0;
+            for k in 0..3 {
+                for l in 0..3 {
+                    aa[i][j] += qq[i][k] * ll[k][l] * qq[j][l];
+                }
+            }
+        }
+    }
+    for i in 0..3 {
+        for j in i..3 {
+            aa[i][j] = aa[j][i]; // symmetrize
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------
+// Test matrices
+// -----------------------------------------------------------------------------------
+
 /// Example 01 (Brannon, Eq. 12.39): in-plane deformation gradient;
 /// the polar rotation is a 60° rotation about the E3 axis.
 pub fn example01() -> Tensor2<9> {
@@ -132,4 +159,47 @@ pub fn check_agree(a: &Tensor2<9>) {
     // The two implementations must agree
     mat_approx_eq(&rb.as_std_matrix(), &qh.as_std_matrix(), 1e-13);
     mat_approx_eq(&ub.as_std_matrix(), &hh.as_std_matrix(), 1e-13);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::similarity_transform;
+    use crate::Tensor2;
+    use crate::{SQRT_2, SQRT_3, SQRT_6};
+    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
+
+    #[test]
+    fn check_similarity_transform() {
+        // Q rotates axes to octahedral system
+        #[rustfmt::skip]
+        let qq_3x3 = [
+            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
+            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
+            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
+        ];
+        let l1 = 1.0;
+        let l2 = 2.0;
+        let l3 = 3.0;
+        let ll = [[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]];
+        let mut aa_3x3 = [[0.0; 3]; 3];
+        // transform and check invariants
+        similarity_transform(&mut aa_3x3, &ll, &qq_3x3);
+        let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+        approx_eq(aa.invariant_ii1(), l1 + l2 + l3, 1e-15);
+        approx_eq(aa.invariant_ii2(), l1 * l2 + l2 * l3 + l3 * l1, 1e-14);
+        approx_eq(aa.invariant_ii3(), l1 * l2 * l3, 1e-14);
+        approx_eq(aa.norm(), f64::sqrt(l1 * l1 + l2 * l2 + l3 * l3), 1e-15);
+        #[rustfmt::skip]
+        let qqt_3x3 = [
+            [ 2.0 / SQRT_6, 1.0 / SQRT_3,  0.0         ],
+            [-1.0 / SQRT_6, 1.0 / SQRT_3, -1.0 / SQRT_2],
+            [-1.0 / SQRT_6, 1.0 / SQRT_3,  1.0 / SQRT_2],
+        ];
+        // transform back and compare matrices
+        let mut ll_3x3 = [[0.0; 3]; 3];
+        similarity_transform(&mut ll_3x3, &aa_3x3, &qqt_3x3);
+        mat_approx_eq(&Matrix::from(&ll_3x3), &ll, 1e-14);
+    }
 }

@@ -796,6 +796,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
+    use crate::test_common::similarity_transform;
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
@@ -838,62 +839,6 @@ mod tests {
     //
     // --- auxiliary --------------------------
     //
-
-    /// Performs similarity transformation (make sure to return a symmetric matrix)
-    ///
-    /// ```text
-    /// A = Q . L . Q^T
-    /// ```
-    fn transform(aa: &mut [[f64; 3]; 3], ll: &[[f64; 3]; 3], qq: &[[f64; 3]; 3]) {
-        for i in 0..3 {
-            for j in 0..3 {
-                aa[i][j] = 0.0;
-                for k in 0..3 {
-                    for l in 0..3 {
-                        aa[i][j] += qq[i][k] * ll[k][l] * qq[j][l];
-                    }
-                }
-            }
-        }
-        for i in 0..3 {
-            for j in i..3 {
-                aa[i][j] = aa[j][i]; // symmetrize
-            }
-        }
-    }
-
-    #[test]
-    fn check_transform() {
-        // Q rotates axes to octahedral system
-        #[rustfmt::skip]
-        let qq_3x3 = [
-            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
-            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
-            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
-        ];
-        let l1 = 1.0;
-        let l2 = 2.0;
-        let l3 = 3.0;
-        let ll = [[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]];
-        let mut aa_3x3 = [[0.0; 3]; 3];
-        // transform and check invariants
-        transform(&mut aa_3x3, &ll, &qq_3x3);
-        let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-        approx_eq(aa.invariant_ii1(), l1 + l2 + l3, 1e-15);
-        approx_eq(aa.invariant_ii2(), l1 * l2 + l2 * l3 + l3 * l1, 1e-14);
-        approx_eq(aa.invariant_ii3(), l1 * l2 * l3, 1e-14);
-        approx_eq(aa.norm(), f64::sqrt(l1 * l1 + l2 * l2 + l3 * l3), 1e-15);
-        #[rustfmt::skip]
-        let qqt_3x3 = [
-            [ 2.0 / SQRT_6, 1.0 / SQRT_3,  0.0         ],
-            [-1.0 / SQRT_6, 1.0 / SQRT_3, -1.0 / SQRT_2],
-            [-1.0 / SQRT_6, 1.0 / SQRT_3,  1.0 / SQRT_2],
-        ];
-        // transform back and compare matrices
-        let mut ll_3x3 = [[0.0; 3]; 3];
-        transform(&mut ll_3x3, &aa_3x3, &qqt_3x3);
-        mat_approx_eq(&Matrix::from(&ll_3x3), &ll, 1e-14);
-    }
 
     /// Returns the Habera-Zilian test names
     fn hz_cases() -> [&'static str; 11] {
@@ -946,7 +891,7 @@ mod tests {
         ];
         let mut aa_3x3 = [[0.0; 3]; 3];
         let ll = [[d[0], 0.0, 0.0], [0.0, d[1], 0.0], [0.0, 0.0, d[2]]];
-        transform(&mut aa_3x3, &ll, &qq_3x3);
+        similarity_transform(&mut aa_3x3, &ll, &qq_3x3);
         Tensor2::from_std_matrix(&aa_3x3).unwrap()
     }
 
@@ -1023,7 +968,7 @@ mod tests {
         ];
         // A = Q . L . Q^T
         let mut aa = [[0.0; 3]; 3];
-        transform(&mut aa, &[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], &qq);
+        similarity_transform(&mut aa, &[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]], &qq);
         // expected eigenvectors
         #[rustfmt::skip]
         let n0 = [

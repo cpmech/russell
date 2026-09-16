@@ -225,14 +225,7 @@ mod tests {
     #[test]
     fn habera_zilian_cases_work() {
         const VERBOSE: bool = true;
-
-        // output
-        if VERBOSE {
-            println!(
-                "{:>14}{:>18}{:>8}{:>11}{:>11}{:>11}{:>8}",
-                "method", "name", "delta", "ll[0]", "ll[1]", "ll[2]", "error"
-            );
-        }
+        const THRESHOLD: f64 = 1e-14;
 
         let mut ll = [0.0; 3];
         let mut work = WorkspaceEigenvalues::new();
@@ -245,42 +238,44 @@ mod tests {
         ] {
             for name in hz.names {
                 for &delta in &hz.deltas {
+                    // generate tensor A and calculate the eigenvalues
                     let aa = hz.tensor(name, delta);
                     eigenvalues_sym_tensor2(&mut ll, &aa, method, &mut work).unwrap();
 
-                    // check the eigenvalues against the prescribed values (relative to the scale)
+                    // get the correct answer and calculate the relative tolerance
                     let mut correct = hz.diagonal(name, delta);
                     correct.sort_by(|x, y| y.partial_cmp(x).unwrap());
-                    let tol_lambda = 1e-12 * correct[0].abs().max(correct[2].abs());
-
-                    // calculate the error = ||diff||_max
-                    let mut error = f64::NEG_INFINITY;
-                    for i in 0..3 {
-                        let diff = f64::abs(ll[i] - correct[i]);
-                        if diff < tol_lambda {
-                            error = diff;
-                        }
-                    }
+                    let rel_tol = 1e-12 * correct[0].abs().max(correct[2].abs());
 
                     // output
                     if VERBOSE {
+                        // calculate the error = ||diff||_max
+                        let mut error = f64::NEG_INFINITY;
+                        for i in 0..3 {
+                            let diff = f64::abs(ll[i] - correct[i]);
+                            if diff < rel_tol {
+                                error = diff;
+                            }
+                        }
+
+                        // format the error in red if it exceeds the threshold
                         let m = format!("{:?}", method);
+                        let error_str = if error > THRESHOLD {
+                            format!("\u{1b}[31m{:>8.1e}\u{1b}[0m", error)
+                        } else {
+                            format!("{:>8.1e}", error)
+                        };
+
+                        // print the debugging message
                         println!(
-                            "{:>14}{:>18}{:>8.1e}{:>11.4e}{:>11.4e}{:>11.4e}{:>8.1e}",
-                            m, name, delta, ll[0], ll[1], ll[2], error,
+                            "{:>14}{:>18}{:>8.1e}{:>11.4e}{:>11.4e}{:>11.4e}{:>8.1e}{}",
+                            m, name, delta, ll[0], ll[1], ll[2], rel_tol, error_str,
                         );
                     }
 
+                    // check the error using relative tolerance
                     for i in 0..3 {
-                        assert!(
-                            f64::abs(ll[i] - correct[i]) < tol_lambda,
-                            "method = {:?}, case = {}, delta = {}: lam = {:?}, correct = {:?}",
-                            method,
-                            name,
-                            delta,
-                            ll,
-                            correct
-                        );
+                        assert!(f64::abs(ll[i] - correct[i]) < rel_tol);
                     }
                 }
             }

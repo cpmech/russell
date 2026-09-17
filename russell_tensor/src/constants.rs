@@ -49,6 +49,14 @@ pub const SET: u8 = 0;
 /// Note: pow(1e-9,1.5) = 3.16e-14
 pub const TOL_J2: f64 = 1e-9;
 
+/// Indicates that a set of three Tensor2 corresponds to a set of eigenprojectors
+///
+/// The set must satisfy idempotency (x), orthogonality (y), and completeness (z).
+/// Each satisfied rule is assigned the number `1`. Thus, `xyz` must be `111`. This
+/// constant is padded with an extra number such as `7` to facilitate automation.
+/// Therefore the value `7111` means that all eigenprojector rules are satisfied.
+pub const OK_EIGENPROJ: usize = 7111;
+
 /// Holds the value 1.0 (f64); used to give the following constants the f64 type
 const ONE: f64 = 1.0;
 

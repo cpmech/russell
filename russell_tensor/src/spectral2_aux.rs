@@ -52,7 +52,8 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 ///
 /// # Results
 ///
-/// Returns `status` where 7111 means success. See description of codes below.
+/// Returns `status` where 7111 means success [crate::OK_EIGENPROJ].
+/// See description of the codes below.
 ///
 /// This function returns a number such as `7xyz` where `xyz` holds three
 /// boolean flags with `1` indicating success. Thus, the set of satisfied
@@ -144,7 +145,8 @@ pub fn check_projector_rules(
 mod tests {
     use super::{check_projector_rules, spectral2_octahedral};
     use crate::testing::{generate_eigen_problem, reference_eigendyads};
-    use crate::{SQRT_3, SQRT_3_BY_2, Spectral2, Tensor2};
+    use crate::{OK_EIGENPROJ, SQRT_3, SQRT_3_BY_2};
+    use crate::{Spectral2, Tensor2};
     use russell_lab::approx_eq;
 
     #[test]
@@ -203,7 +205,7 @@ mod tests {
             if VERBOSE {
                 println!("n_failed = {}", status)
             }
-            assert_eq!(status, 7111);
+            assert_eq!(status, OK_EIGENPROJ);
         }
     }
 
@@ -246,7 +248,7 @@ mod tests {
         let proj = [p0.clone(), p1.clone(), p2.clone()];
         let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 111: {}\n", status);
-        assert_eq!(status, 7111);
+        assert_eq!(status, OK_EIGENPROJ);
 
         let proj = [p0.clone(), p0.clone(), p2.clone()];
         let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);

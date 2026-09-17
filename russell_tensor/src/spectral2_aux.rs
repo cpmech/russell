@@ -185,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn check_projector_rules_zero_failed_works() {
+    fn check_projector_rules_with_reference_dyads_works() {
         const VERBOSE: bool = false;
         let tol_idem = 1e-15;
         let tol_orth = 1e-15;
@@ -207,7 +207,7 @@ mod tests {
     }
 
     #[test]
-    fn check_projector_rules_failed_works() {
+    fn check_projector_rules_works() {
         const VERBOSE: bool = true;
         let tol_idem = 1e-15;
         let tol_orth = 1e-15;
@@ -275,5 +275,48 @@ mod tests {
         let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 001: {}\n", status);
         assert_eq!(status, 7001);
+    }
+
+    #[test]
+    fn check_projector_rules_with_loose_tol_behaves_as_expected() {
+        const VERBOSE: bool = true;
+        const TOO_BIG: f64 = 10.0;
+        let tol_idem = 1e-15;
+        let tol_orth = 1e-15;
+
+        // correct projectors
+        let dyad0 = [
+            [4.0 / 9.0, -4.0 / 9.0, 2.0 / 9.0],
+            [-4.0 / 9.0, 4.0 / 9.0, -2.0 / 9.0],
+            [2.0 / 9.0, -2.0 / 9.0, 1.0 / 9.0],
+        ];
+        // n1 ⊗ n1 associated with λ1 = 4
+        let dyad1 = [
+            [4.0 / 9.0, 2.0 / 9.0, -4.0 / 9.0],
+            [2.0 / 9.0, 1.0 / 9.0, -2.0 / 9.0],
+            [-4.0 / 9.0, -2.0 / 9.0, 4.0 / 9.0],
+        ];
+        // n2 ⊗ n2 associated with λ2 = 2
+        let dyad2 = [
+            [1.0 / 9.0, 2.0 / 9.0, 2.0 / 9.0],
+            [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
+            [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
+        ];
+        let p0 = Tensor2::<6>::from_std_matrix(&dyad0).unwrap();
+        let p1 = Tensor2::<6>::from_std_matrix(&dyad1).unwrap();
+        let p2 = Tensor2::<6>::from_std_matrix(&dyad2).unwrap();
+        let zero = Tensor2::<6>::new();
+
+        let proj = [p0.clone(), p0.clone(), p2.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, TOO_BIG, VERBOSE);
+        println!("Case 101: {}\n", status);
+        assert_eq!(status, 7101);
+
+        let mut q0 = p0.clone();
+        q0.scale(2.0);
+        let proj = [q0.clone(), p1.clone(), zero.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, TOO_BIG, VERBOSE);
+        println!("Case 011: {}\n", status);
+        assert_eq!(status, 7011);
     }
 }

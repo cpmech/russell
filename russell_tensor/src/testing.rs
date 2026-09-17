@@ -1,7 +1,7 @@
 use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
 use crate::{SQRT_2, SQRT_3, SQRT_6};
-use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
+use russell_lab::{mat_approx_eq, small_mat_approx_eq, small_mat_mat_mul, small_mat_t_mat_mul};
 
 // -----------------------------------------------------------------------------------
 // Similarity transformation
@@ -547,15 +547,24 @@ pub fn case52_rotation() -> [[f64; 3]; 3] {
 
 /// Checks that `A = Q · H` with `Q` orthogonal, within the given tolerance.
 pub fn check_polar(a: &Tensor2<9>, q: &Tensor2<9>, h: &Tensor2<6>, tol: f64) {
-    let am = a.as_std_matrix();
-    let qm = q.as_std_matrix();
-    let hm = h.as_std_matrix();
-    let mut qh = Matrix::new(3, 3);
-    mat_mat_mul(&mut qh, 1.0, &qm, &hm, 0.0).unwrap();
-    mat_approx_eq(&qh, &am, tol);
-    let mut qtq = Matrix::new(3, 3);
-    mat_t_mat_mul(&mut qtq, 1.0, &qm, &qm, 0.0).unwrap();
-    mat_approx_eq(&qtq, &Matrix::diagonal(&[1.0, 1.0, 1.0]), tol);
+    let mut am = [[0.0; 3]; 3];
+    let mut qm = [[0.0; 3]; 3];
+    let mut hm = [[0.0; 3]; 3];
+    a.to_std_matrix_slice(&mut am);
+    q.to_std_matrix_slice(&mut qm);
+    h.to_std_matrix_slice(&mut hm);
+    let mut qh = [[0.0; 3]; 3];
+    small_mat_mat_mul(&mut qh, 1.0, &qm, &hm, 0.0, 3);
+    small_mat_approx_eq(&qh, &am, tol);
+    let mut qtq = [[0.0; 3]; 3];
+    small_mat_t_mat_mul(&mut qtq, 1.0, &qm, &qm, 0.0, 3);
+    #[rustfmt::skip]
+    let ii = [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ];
+    small_mat_approx_eq(&qtq, &ii, tol);
 }
 
 /// Runs both algorithms on `a` and checks that each satisfies `A = Q · H`

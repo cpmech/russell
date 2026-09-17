@@ -235,7 +235,12 @@ mod tests {
         let p1 = Tensor2::<6>::from_std_matrix(&dyad1).unwrap();
         let p2 = Tensor2::<6>::from_std_matrix(&dyad2).unwrap();
         let zero = Tensor2::<6>::new();
-        let wrong = Tensor2::<6>::from_std_matrix(&[[123.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]).unwrap();
+        let wrong = Tensor2::<6>::from_std_matrix(&[
+            [1.0, 1.0, 0.0], // 1
+            [1.0, 1.0, 0.0], // 2
+            [0.0, 0.0, 0.0], // 3
+        ])
+        .unwrap();
 
         let proj = [p0.clone(), p1.clone(), p2.clone()];
         let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);

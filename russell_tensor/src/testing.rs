@@ -161,7 +161,6 @@ pub fn generate_eigen_problem(l0: f64, l1: f64, l2: f64) -> (Tensor2<6>, [f64; 3
     let mut aux = [[0.0; 3]; 3];
     let proj = if d01 < 1e-14 {
         // λ0 = λ1 > λ2
-        println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 01 ");
         for i in 0..3 {
             for j in 0..3 {
                 aux[i][j] = sorted_dyad[0][i][j] + sorted_dyad[1][i][j];
@@ -173,7 +172,6 @@ pub fn generate_eigen_problem(l0: f64, l1: f64, l2: f64) -> (Tensor2<6>, [f64; 3
             Tensor2::<6>::from_std_matrix(&sorted_dyad[2]).unwrap(),
         ]
     } else if d12 < 1e-14 {
-        println!(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 12 ");
         // λ0 > λ1 = λ2
         for i in 0..3 {
             for j in 0..3 {
@@ -203,9 +201,6 @@ pub fn generate_eigen_problem(l0: f64, l1: f64, l2: f64) -> (Tensor2<6>, [f64; 3
 // -----------------------------------------------------------------------------------
 
 /// Holds a reference matrix, eigenvalues, and eigendyads constructed from eigenvectors
-///
-/// Note: The eigendyads are not unique for coalescent eigenvalues, but adding the
-/// eigendyads associated with the repeated eigenvalues yield one unique eigenprojector.
 pub struct ReferenceEigenDyads {
     /// input matrix
     pub aa_3x3: [[f64; 3]; 3],
@@ -233,9 +228,6 @@ pub struct ReferenceEigenDyads {
 }
 
 /// Returns reference eigen-dyads for testing
-///
-/// Note: The eigendyads are not unique for coalescent eigenvalues, but adding the
-/// eigendyads associated with the repeated eigenvalues yield one unique eigenprojector.
 pub fn reference_eigendyads() -> (Vec<&'static str>, Vec<ReferenceEigenDyads>) {
     let mut names = Vec::new();
     let mut data = Vec::new();
@@ -633,6 +625,8 @@ mod tests {
 
     #[test]
     fn generate_eigen_problem_works() {
+        const VERBOSE: bool = true;
+
         let (names, data) = reference_eigendyads();
         let mut aa_rec_3x3 = [[0.0; 3]; 3];
         let mut dyad0 = [[0.0; 3]; 3];
@@ -640,8 +634,10 @@ mod tests {
         let mut dyad2 = [[0.0; 3]; 3];
         for i in 0..names.len() {
             let dat = &data[i];
-            println!("\n{}", "=".repeat(80));
-            println!("{}", names[i]);
+            if VERBOSE {
+                println!("\n{}", "=".repeat(80));
+                println!("{}", names[i]);
+            }
 
             // check eigendyads
             for i in 0..3 {
@@ -673,8 +669,10 @@ mod tests {
             let tr_a = aa.vec[0] + aa.vec[1] + aa.vec[2];
 
             // check the expected eigenvalues
-            println!("A =\n{}", aa_std);
-            println!("e_ll = {:?}", e_ll);
+            if VERBOSE {
+                println!("A =\n{}", aa_std);
+                println!("e_ll = {:?}", e_ll);
+            }
             array_approx_eq(&e_ll, &dat.ll, 1e-15);
             let tol = if names[i] == "all-distinct" { 1e-14 } else { 1e-15 };
             approx_eq(tr_a, dat.aa_3x3[0][0] + dat.aa_3x3[1][1] + dat.aa_3x3[2][2], tol);
@@ -685,10 +683,11 @@ mod tests {
                 aa_rec.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m] + e_ll[2] * e_proj[2].vec[m];
             }
             let aa_rec_std = aa_rec.as_std_matrix();
-            println!("p0 =\n{}", e_proj[0].as_std_matrix());
-            println!("p1 =\n{}", e_proj[1].as_std_matrix());
-            println!("p2 =\n{}", e_proj[2].as_std_matrix());
-            println!("A (rec) =\n{}", aa_rec_std);
+            if VERBOSE {
+                println!("p0 =\n{}", e_proj[0].as_std_matrix());
+                println!("p1 =\n{}", e_proj[1].as_std_matrix());
+                println!("p2 =\n{}", e_proj[2].as_std_matrix());
+            }
             mat_approx_eq(&aa_std, &aa_rec_std, 1e-15);
         }
     }

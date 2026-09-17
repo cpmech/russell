@@ -63,13 +63,16 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 /// ----------  ----------  --------
 ///    1           1          1        
 ///    1           1          0
-///    1           0          1
+///    1           0          1  << impossible
 ///    1           0          0
-///    0           1          1
+///    0           1          1  << impossible
 ///    0           1          0
 ///    0           0          1
 ///    0           0          0
 /// ```
+///
+/// Note that the case 011 is mathematically impossible for a finite family of operators.
+/// The code should never reports this combination, unless the tolerances are too loose.
 pub fn check_projector_rules(
     proj: &[Tensor2<6>],
     tol_idempotent: f64,
@@ -253,5 +256,19 @@ mod tests {
         let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 000: {}\n", status);
         assert_eq!(status, 7000);
+
+        let mut q0 = p0.clone();
+        q0.scale(2.0);
+        let proj = [q0.clone(), p1.clone(), zero.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        println!("Case 010: {}\n", status);
+        assert_eq!(status, 7010);
+
+        let mut q1 = p1.clone();
+        q1.update(-1.0, &p0); // q1 -= p0
+        let proj = [q0.clone(), q1.clone(), p2.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        println!("Case 001: {}\n", status);
+        assert_eq!(status, 7001);
     }
 }

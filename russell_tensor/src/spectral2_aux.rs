@@ -51,7 +51,7 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 /// # Panics
 ///
 /// Any projector beyond `kk` must be exactly zero, otherwise a panic will occur.
-fn check_projector_rules(
+pub fn check_projector_rules(
     proj: &[Tensor2<6>],
     kk: usize,
     tol_idempotent: f64,
@@ -119,7 +119,7 @@ mod tests {
         spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2},
         test_common::generate_eigen_problem,
     };
-    use russell_lab::{Matrix, approx_eq};
+    use russell_lab::approx_eq;
 
     #[test]
     fn spectral_octahedral_works() {

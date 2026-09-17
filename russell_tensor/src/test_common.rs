@@ -1,10 +1,3 @@
-//! Test cases and check helpers shared by the two polar-decomposition
-//! implementations: Brannon's `polar_rotation_brannon` (iterative) and
-//! Higham & Noferini's `polar_quaternion_higham` (quaternion).
-//!
-//! Each implementation is validated against all of these test cases and
-//! cross-checked against the other implementation.
-
 use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
 use crate::{SQRT_2, SQRT_3, SQRT_6};
@@ -206,6 +199,271 @@ pub fn generate_eigen_problem(l0: f64, l1: f64, l2: f64) -> (Tensor2<6>, [f64; 3
 }
 
 // -----------------------------------------------------------------------------------
+// Reference eigenprojector results
+// -----------------------------------------------------------------------------------
+
+/// Holds a reference matrix, eigenvalues, and eigendyads constructed from eigenvectors
+///
+/// Note: The eigendyads are not unique for coalescent eigenvalues, but adding the
+/// eigendyads associated with the repeated eigenvalues yield one unique eigenprojector.
+pub struct ReferenceEigenDyads {
+    /// input matrix
+    pub aa_3x3: [[f64; 3]; 3],
+
+    /// sorted eigenvalues
+    pub ll: [f64; 3],
+
+    /// first eigenvector
+    pub n0: [f64; 3],
+
+    /// second eigenvector
+    pub n1: [f64; 3],
+
+    /// third eigenvector
+    pub n2: [f64; 3],
+
+    /// n0 ⊗ n0 associated with λ0
+    pub dyad0: [[f64; 3]; 3],
+
+    /// n0 ⊗ n0 associated with λ1
+    pub dyad1: [[f64; 3]; 3],
+
+    /// n2 ⊗ n2 associated with λ2
+    pub dyad2: [[f64; 3]; 3],
+}
+
+/// Returns reference eigen-dyads for testing
+///
+/// Note: The eigendyads are not unique for coalescent eigenvalues, but adding the
+/// eigendyads associated with the repeated eigenvalues yield one unique eigenprojector.
+pub fn reference_eigendyads() -> (Vec<&'static str>, Vec<ReferenceEigenDyads>) {
+    let mut names = Vec::new();
+    let mut data = Vec::new();
+
+    //
+    // repeat 01
+    //
+
+    // input matrix
+    //     ┌       ┐
+    //     │ 2 1 0 │
+    // A = │ 1 2 0 │
+    //     │ 0 0 3 │
+    //     └       ┘
+    let aa_3x3 = [
+        [2.0, 1.0, 0.0], // 0
+        [1.0, 2.0, 0.0], // 1
+        [0.0, 0.0, 3.0], // 2
+    ];
+
+    // sorted eigenvalues = {3, 3, 1} => λ0 = λ1 repeated
+    let ll = [3.0, 3.0, 1.0];
+
+    // analytical orthonormal eigenvectors
+    let n0 = [0.0, 0.0, 1.0];
+    let n1 = [1.0 / SQRT_2, 1.0 / SQRT_2, 0.0];
+    let n2 = [-1.0 / SQRT_2, 1.0 / SQRT_2, 0.0];
+
+    // n0 ⊗ n0 associated with λ0 = 3
+    let dyad0 = [
+        [0.0, 0.0, 0.0], // 0
+        [0.0, 0.0, 0.0], // 1
+        [0.0, 0.0, 1.0], // 2
+    ];
+    // n0 ⊗ n0 associated with λ1 = 3
+    let dyad1 = [
+        [0.5, 0.5, 0.0], // 0
+        [0.5, 0.5, 0.0], // 1
+        [0.0, 0.0, 0.0], // 2
+    ];
+    // n2 ⊗ n2 associated with λ1 = 1
+    let dyad2 = [
+        [0.5, -0.5, 0.0], // 0
+        [-0.5, 0.5, 0.0], // 1
+        [0.0, 0.0, 0.0],  // 2
+    ];
+
+    names.push("repeat-01");
+    data.push(ReferenceEigenDyads {
+        aa_3x3,
+        ll,
+        n0,
+        n1,
+        n2,
+        dyad0,
+        dyad1,
+        dyad2,
+    });
+
+    //
+    // repeat 12
+    //
+
+    // input matrix
+    //     ┌       ┐
+    //     │ 3 1 0 │
+    // A = │ 1 3 0 │
+    //     │ 0 0 2 │
+    //     └       ┘
+    let aa_3x3 = [
+        [3.0, 1.0, 0.0], // 0
+        [1.0, 3.0, 0.0], // 1
+        [0.0, 0.0, 2.0], // 2
+    ];
+
+    // sorted eigenvalues = {4, 2, 2} => λ1 = λ2 repeated
+    let ll = [4.0, 2.0, 2.0];
+
+    // analytical orthonormal eigenvectors
+    let n0 = [1.0 / SQRT_2, 1.0 / SQRT_2, 0.0];
+    let n1 = [-1.0 / SQRT_2, 1.0 / SQRT_2, 0.0];
+    let n2 = [0.0, 0.0, 1.0];
+
+    // n0 ⊗ n0 associated with λ0 = 4
+    let dyad0 = [
+        [0.5, 0.5, 0.0], // 0
+        [0.5, 0.5, 0.0], // 1
+        [0.0, 0.0, 0.0], // 2
+    ];
+    // n1 ⊗ n1 associated with λ1 = 2
+    let dyad1 = [
+        [0.5, -0.5, 0.0], // 0
+        [-0.5, 0.5, 0.0], // 1
+        [0.0, 0.0, 0.0],  // 2
+    ];
+    // n2 ⊗ n2 associated with λ2 = 2
+    let dyad2 = [
+        [0.0, 0.0, 0.0], // 0
+        [0.0, 0.0, 0.0], // 1
+        [0.0, 0.0, 1.0], // 2
+    ];
+
+    names.push("repeat-12");
+    data.push(ReferenceEigenDyads {
+        aa_3x3,
+        ll,
+        n0,
+        n1,
+        n2,
+        dyad0,
+        dyad1,
+        dyad2,
+    });
+
+    //
+    // all distinct planar
+    //
+
+    // input matrix
+    //     ┌          ┐
+    //     │  3 -1  0 │
+    // A = │ -1  3  0 │
+    //     │  0  0  5 │
+    //     └          ┘
+    let aa_3x3 = [
+        [3.0, -1.0, 0.0], // 0
+        [-1.0, 3.0, 0.0], // 1
+        [0.0, 0.0, 5.0],  // 2
+    ];
+
+    // sorted eigenvalues = {5, 4, 2} => all distinct
+    let ll = [5.0, 4.0, 2.0];
+
+    // analytical orthonormal eigenvectors
+    let n0 = [0.0, 0.0, 1.0];
+    let n1 = [-1.0 / SQRT_2, 1.0 / SQRT_2, 0.0];
+    let n2 = [1.0 / SQRT_2, 1.0 / SQRT_2, 0.0];
+
+    // n0 ⊗ n0 associated with λ0 = 5
+    let dyad0 = [
+        [0.0, 0.0, 0.0], // 0
+        [0.0, 0.0, 0.0], // 1
+        [0.0, 0.0, 1.0], // 2
+    ];
+    // n1 ⊗ n1 associated with λ1 = 4
+    let dyad1 = [
+        [0.5, -0.5, 0.0], // 0
+        [-0.5, 0.5, 0.0], // 1
+        [0.0, 0.0, 0.0],  // 2
+    ];
+    // n2 ⊗ n2 associated with λ2 = 2
+    let dyad2 = [
+        [0.5, 0.5, 0.0], // 0
+        [0.5, 0.5, 0.0], // 1
+        [0.0, 0.0, 0.0], // 2
+    ];
+
+    names.push("all-distinct-planar");
+    data.push(ReferenceEigenDyads {
+        aa_3x3,
+        ll,
+        n0,
+        n1,
+        n2,
+        dyad0,
+        dyad1,
+        dyad2,
+    });
+
+    //
+    // all distinct
+    //
+
+    // input matrix
+    //     ┌             ┐
+    //     │  25 -10   2 │
+    // A = │ -10  22  -8 │
+    //     │   2  -8  16 │
+    //     └             ┘
+    let aa_3x3 = [
+        [25.0, -10.0, 2.0],  // 1
+        [-10.0, 22.0, -8.0], // 2
+        [2.0, -8.0, 16.0],   // 3
+    ];
+
+    // sorted eigenvalues = {36, 18, 9} => all distinct
+    let ll = [36.0, 18.0, 9.0];
+
+    // analytical orthonormal eigenvectors
+    let n0 = [2.0 / 3.0, -2.0 / 3.0, 1.0 / 3.0];
+    let n1 = [-2.0 / 3.0, -1.0 / 3.0, 2.0 / 3.0];
+    let n2 = [1.0 / 3.0, 2.0 / 3.0, 2.0 / 3.0];
+
+    // n0 ⊗ n0 associated with λ0 = 5
+    let dyad0 = [
+        [4.0 / 9.0, -4.0 / 9.0, 2.0 / 9.0],
+        [-4.0 / 9.0, 4.0 / 9.0, -2.0 / 9.0],
+        [2.0 / 9.0, -2.0 / 9.0, 1.0 / 9.0],
+    ];
+    // n1 ⊗ n1 associated with λ1 = 4
+    let dyad1 = [
+        [4.0 / 9.0, 2.0 / 9.0, -4.0 / 9.0],
+        [2.0 / 9.0, 1.0 / 9.0, -2.0 / 9.0],
+        [-4.0 / 9.0, -2.0 / 9.0, 4.0 / 9.0],
+    ];
+    // n2 ⊗ n2 associated with λ2 = 2
+    let dyad2 = [
+        [1.0 / 9.0, 2.0 / 9.0, 2.0 / 9.0],
+        [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
+        [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
+    ];
+
+    names.push("all-distinct");
+    data.push(ReferenceEigenDyads {
+        aa_3x3,
+        ll,
+        n0,
+        n1,
+        n2,
+        dyad0,
+        dyad1,
+        dyad2,
+    });
+
+    (names, data)
+}
+
+// -----------------------------------------------------------------------------------
 // Test matrices
 // -----------------------------------------------------------------------------------
 
@@ -255,7 +513,7 @@ pub fn case52(y: f64) -> Tensor2<9> {
 }
 
 // -----------------------------------------------------------------------------------
-// Reference results
+// Reference results polar decomposition results
 // -----------------------------------------------------------------------------------
 
 /// Reference rotation for example 01 (60° about E3).
@@ -336,6 +594,7 @@ pub fn check_agree(a: &Tensor2<9>) {
 mod tests {
     use super::{generate_eigen_problem, similarity_transform};
     use crate::Tensor2;
+    use crate::test_common::reference_eigendyads;
     use crate::{SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, small_mat_approx_eq};
 
@@ -373,310 +632,64 @@ mod tests {
     }
 
     #[test]
-    fn generate_eigen_problem_repeat01_works() {
-        // input matrix
-        //     ┌       ┐
-        //     │ 2 1 0 │
-        // A = │ 1 2 0 │
-        //     │ 0 0 3 │
-        //     └       ┘
-        let aa_3x3 = [
-            [2.0, 1.0, 0.0], // 0
-            [1.0, 2.0, 0.0], // 1
-            [0.0, 0.0, 3.0], // 2
-        ];
-
-        // sorted eigenvalues = {3, 3, 1} => λ0 = λ1 repeated
-        let ll = [3.0, 3.0, 1.0];
-
-        // analytical orthonormal eigenvectors
-        // n0 = [0,     0,    1]
-        // n1 = [1/√2,  1/√2, 0]
-        // n2 = [-1/√2, 1/√2, 0]
-
-        // n0 ⊗ n0 associated with λ0 = 3
-        let dyad0 = [
-            [0.0, 0.0, 0.0], // 0
-            [0.0, 0.0, 0.0], // 1
-            [0.0, 0.0, 1.0], // 2
-        ];
-        // n0 ⊗ n0 associated with λ1 = 3
-        let dyad1 = [
-            [0.5, 0.5, 0.0], // 0
-            [0.5, 0.5, 0.0], // 1
-            [0.0, 0.0, 0.0], // 2
-        ];
-        // n2 ⊗ n2 associated with λ1 = 1
-        let dyad2 = [
-            [0.5, -0.5, 0.0], // 0
-            [-0.5, 0.5, 0.0], // 1
-            [0.0, 0.0, 0.0],  // 2
-        ];
-
-        // reconstruct A using analytical eigen-dyads
+    fn generate_eigen_problem_works() {
+        let (names, data) = reference_eigendyads();
         let mut aa_rec_3x3 = [[0.0; 3]; 3];
-        for i in 0..3 {
-            for j in 0..3 {
-                aa_rec_3x3[i][j] = ll[0] * dyad0[i][j] + ll[1] * dyad1[i][j] + ll[2] * dyad2[i][j];
+        let mut dyad0 = [[0.0; 3]; 3];
+        let mut dyad1 = [[0.0; 3]; 3];
+        let mut dyad2 = [[0.0; 3]; 3];
+        for i in 0..names.len() {
+            let dat = &data[i];
+            println!("\n{}", "=".repeat(80));
+            println!("{}", names[i]);
+
+            // check eigendyads
+            for i in 0..3 {
+                for j in 0..3 {
+                    dyad0[i][j] = dat.n0[i] * dat.n0[j];
+                    dyad1[i][j] = dat.n1[i] * dat.n1[j];
+                    dyad2[i][j] = dat.n2[i] * dat.n2[j];
+                }
             }
-        }
-        let aa_rec_3x3_mat = Matrix::from(&aa_rec_3x3);
-        small_mat_approx_eq(&aa_3x3, &aa_rec_3x3_mat, 1e-15);
+            small_mat_approx_eq(&dyad0, &dat.dyad0, 1e-15);
+            small_mat_approx_eq(&dyad1, &dat.dyad1, 1e-15);
+            small_mat_approx_eq(&dyad2, &dat.dyad2, 1e-15);
 
-        // generate eigen problem
-        let (aa, e_ll, e_proj) = generate_eigen_problem(ll[2], ll[1], ll[0]);
-        let aa_std = aa.as_std_matrix();
-
-        // check the trace of A
-        let tr_a = aa.vec[0] + aa.vec[1] + aa.vec[2];
-
-        // check the expected eigenvalues
-        println!("A =\n{}", aa_std);
-        println!("e_ll = {:?}", e_ll);
-        array_approx_eq(&e_ll, &ll, 1e-15);
-        approx_eq(tr_a, aa_3x3[0][0] + aa_3x3[1][1] + aa_3x3[2][2], 1e-15);
-
-        // check the reconstruction
-        let mut aa_rec = Tensor2::<6>::new();
-        for m in 0..6 {
-            aa_rec.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m] + e_ll[2] * e_proj[2].vec[m];
-        }
-        let aa_rec_std = aa_rec.as_std_matrix();
-        println!("p0 =\n{}", e_proj[0].as_std_matrix());
-        println!("p1 =\n{}", e_proj[1].as_std_matrix());
-        println!("p2 =\n{}", e_proj[2].as_std_matrix());
-        println!("A (rec) =\n{}", aa_rec_std);
-        mat_approx_eq(&aa_std, &aa_rec_std, 1e-15);
-    }
-
-    #[test]
-    fn generate_eigen_problem_repeat12_works() {
-        // input matrix
-        //     ┌       ┐
-        //     │ 3 1 0 │
-        // A = │ 1 3 0 │
-        //     │ 0 0 2 │
-        //     └       ┘
-        let aa_3x3 = [
-            [3.0, 1.0, 0.0], // 0
-            [1.0, 3.0, 0.0], // 1
-            [0.0, 0.0, 2.0], // 2
-        ];
-
-        // sorted eigenvalues = {4, 2, 2} => λ1 = λ2 repeated
-        let ll = [4.0, 2.0, 2.0];
-
-        // analytical orthonormal eigenvectors
-        // n0 = [1/√2,  1/√2, 0]
-        // n1 = [-1/√2, 1/√2, 0]
-        // n2 = [0,     0,    1]
-
-        // n0 ⊗ n0 associated with λ0 = 4
-        let dyad0 = [
-            [0.5, 0.5, 0.0], // 0
-            [0.5, 0.5, 0.0], // 1
-            [0.0, 0.0, 0.0], // 2
-        ];
-        // n1 ⊗ n1 associated with λ1 = 2
-        let dyad1 = [
-            [0.5, -0.5, 0.0], // 0
-            [-0.5, 0.5, 0.0], // 1
-            [0.0, 0.0, 0.0],  // 2
-        ];
-        // n2 ⊗ n2 associated with λ2 = 2
-        let dyad2 = [
-            [0.0, 0.0, 0.0], // 0
-            [0.0, 0.0, 0.0], // 1
-            [0.0, 0.0, 1.0], // 2
-        ];
-
-        // reconstruct A using analytical eigen-dyads
-        let mut aa_rec_3x3 = [[0.0; 3]; 3];
-        for i in 0..3 {
-            for j in 0..3 {
-                aa_rec_3x3[i][j] = ll[0] * dyad0[i][j] + ll[1] * dyad1[i][j] + ll[2] * dyad2[i][j];
+            // reconstruct A using analytical eigendyads
+            for i in 0..3 {
+                for j in 0..3 {
+                    aa_rec_3x3[i][j] =
+                        dat.ll[0] * dat.dyad0[i][j] + dat.ll[1] * dat.dyad1[i][j] + dat.ll[2] * dat.dyad2[i][j];
+                }
             }
-        }
-        let aa_rec_3x3_mat = Matrix::from(&aa_rec_3x3);
-        small_mat_approx_eq(&aa_3x3, &aa_rec_3x3_mat, 1e-15);
+            let aa_rec_3x3_mat = Matrix::from(&aa_rec_3x3);
+            small_mat_approx_eq(&dat.aa_3x3, &aa_rec_3x3_mat, 1e-15);
 
-        // generate eigen problem
-        let (aa, e_ll, e_proj) = generate_eigen_problem(ll[2], ll[1], ll[0]);
-        let aa_std = aa.as_std_matrix();
+            // generate eigen problem
+            let (aa, e_ll, e_proj) = generate_eigen_problem(dat.ll[2], dat.ll[1], dat.ll[0]);
+            let aa_std = aa.as_std_matrix();
 
-        // check the trace of A
-        let tr_a = aa.vec[0] + aa.vec[1] + aa.vec[2];
+            // check the trace of A
+            let tr_a = aa.vec[0] + aa.vec[1] + aa.vec[2];
 
-        // check the expected eigenvalues
-        println!("A =\n{}", aa_std);
-        println!("e_ll = {:?}", e_ll);
-        array_approx_eq(&e_ll, &ll, 1e-15);
-        approx_eq(tr_a, aa_3x3[0][0] + aa_3x3[1][1] + aa_3x3[2][2], 1e-15);
+            // check the expected eigenvalues
+            println!("A =\n{}", aa_std);
+            println!("e_ll = {:?}", e_ll);
+            array_approx_eq(&e_ll, &dat.ll, 1e-15);
+            let tol = if names[i] == "all-distinct" { 1e-14 } else { 1e-15 };
+            approx_eq(tr_a, dat.aa_3x3[0][0] + dat.aa_3x3[1][1] + dat.aa_3x3[2][2], tol);
 
-        // check the reconstruction
-        let mut aa_rec = Tensor2::<6>::new();
-        for m in 0..6 {
-            aa_rec.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m] + e_ll[2] * e_proj[2].vec[m];
-        }
-        let aa_rec_std = aa_rec.as_std_matrix();
-        println!("p0 =\n{}", e_proj[0].as_std_matrix());
-        println!("p1 =\n{}", e_proj[1].as_std_matrix());
-        println!("p2 =\n{}", e_proj[2].as_std_matrix());
-        println!("A (rec) =\n{}", aa_rec_std);
-        mat_approx_eq(&aa_std, &aa_rec_std, 1e-15);
-    }
-
-    #[test]
-    fn generate_eigen_problem_all_distinct_planar_works() {
-        // input matrix
-        //     ┌          ┐
-        //     │  3 -1  0 │
-        // A = │ -1  3  0 │
-        //     │  0  0  5 │
-        //     └          ┘
-        let aa_3x3 = [
-            [3.0, -1.0, 0.0], // 0
-            [-1.0, 3.0, 0.0], // 1
-            [0.0, 0.0, 5.0],  // 2
-        ];
-
-        // sorted eigenvalues = {5, 4, 2} => all distinct
-        let ll = [5.0, 4.0, 2.0];
-
-        // analytical orthonormal eigenvectors
-        // n0 = [0,     0,    1]
-        // n1 = [-1/√2, 1/√2, 0]
-        // n2 = [1/√2,  1/√2, 0]
-
-        // n0 ⊗ n0 associated with λ0 = 5
-        let dyad0 = [
-            [0.0, 0.0, 0.0], // 0
-            [0.0, 0.0, 0.0], // 1
-            [0.0, 0.0, 1.0], // 2
-        ];
-        // n1 ⊗ n1 associated with λ1 = 4
-        let dyad1 = [
-            [0.5, -0.5, 0.0], // 0
-            [-0.5, 0.5, 0.0], // 1
-            [0.0, 0.0, 0.0],  // 2
-        ];
-        // n2 ⊗ n2 associated with λ2 = 2
-        let dyad2 = [
-            [0.5, 0.5, 0.0], // 0
-            [0.5, 0.5, 0.0], // 1
-            [0.0, 0.0, 0.0], // 2
-        ];
-
-        // reconstruct A using analytical eigen-dyads
-        let mut aa_rec_3x3 = [[0.0; 3]; 3];
-        for i in 0..3 {
-            for j in 0..3 {
-                aa_rec_3x3[i][j] = ll[0] * dyad0[i][j] + ll[1] * dyad1[i][j] + ll[2] * dyad2[i][j];
+            // check the reconstruction
+            let mut aa_rec = Tensor2::<6>::new();
+            for m in 0..6 {
+                aa_rec.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m] + e_ll[2] * e_proj[2].vec[m];
             }
+            let aa_rec_std = aa_rec.as_std_matrix();
+            println!("p0 =\n{}", e_proj[0].as_std_matrix());
+            println!("p1 =\n{}", e_proj[1].as_std_matrix());
+            println!("p2 =\n{}", e_proj[2].as_std_matrix());
+            println!("A (rec) =\n{}", aa_rec_std);
+            mat_approx_eq(&aa_std, &aa_rec_std, 1e-15);
         }
-        let aa_rec_3x3_mat = Matrix::from(&aa_rec_3x3);
-        small_mat_approx_eq(&aa_3x3, &aa_rec_3x3_mat, 1e-15);
-
-        // generate eigen problem
-        let (aa, e_ll, e_proj) = generate_eigen_problem(ll[2], ll[1], ll[0]);
-        let aa_std = aa.as_std_matrix();
-
-        // check the trace of A
-        let tr_a = aa.vec[0] + aa.vec[1] + aa.vec[2];
-
-        // check the expected eigenvalues
-        println!("A =\n{}", aa_std);
-        println!("e_ll = {:?}", e_ll);
-        array_approx_eq(&e_ll, &ll, 1e-15);
-        approx_eq(tr_a, aa_3x3[0][0] + aa_3x3[1][1] + aa_3x3[2][2], 1e-15);
-
-        // check the reconstruction
-        let mut aa_rec = Tensor2::<6>::new();
-        for m in 0..6 {
-            aa_rec.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m] + e_ll[2] * e_proj[2].vec[m];
-        }
-        let aa_rec_std = aa_rec.as_std_matrix();
-        println!("p0 =\n{}", e_proj[0].as_std_matrix());
-        println!("p1 =\n{}", e_proj[1].as_std_matrix());
-        println!("p2 =\n{}", e_proj[2].as_std_matrix());
-        println!("A (rec) =\n{}", aa_rec_std);
-        mat_approx_eq(&aa_std, &aa_rec_std, 1e-15);
-    }
-
-    #[test]
-    fn generate_eigen_problem_all_distinct_works() {
-        // input matrix
-        //     ┌             ┐
-        //     │  25 -10   2 │
-        // A = │ -10  22  -8 │
-        //     │   2  -8  16 │
-        //     └             ┘
-        let aa_3x3 = [
-            [25.0, -10.0, 2.0],  // 1
-            [-10.0, 22.0, -8.0], // 2
-            [2.0, -8.0, 16.0],   // 3
-        ];
-
-        // sorted eigenvalues = {36, 18, 9} => all distinct
-        let ll = [36.0, 18.0, 9.0];
-
-        // analytical orthonormal eigenvectors
-        // n0 = [2/3, -2/3, 1/3]
-        // n1 = [-2/3, -1/3, 2/3]
-        // n2 = [1/3, 2/3, 2/3]
-
-        // n0 ⊗ n0 associated with λ0 = 5
-        let dyad0 = [
-            [4.0 / 9.0, -4.0 / 9.0, 2.0 / 9.0],
-            [-4.0 / 9.0, 4.0 / 9.0, -2.0 / 9.0],
-            [2.0 / 9.0, -2.0 / 9.0, 1.0 / 9.0],
-        ];
-        // n1 ⊗ n1 associated with λ1 = 4
-        let dyad1 = [
-            [4.0 / 9.0, 2.0 / 9.0, -4.0 / 9.0],
-            [2.0 / 9.0, 1.0 / 9.0, -2.0 / 9.0],
-            [-4.0 / 9.0, -2.0 / 9.0, 4.0 / 9.0],
-        ];
-        // n2 ⊗ n2 associated with λ2 = 2
-        let dyad2 = [
-            [1.0 / 9.0, 2.0 / 9.0, 2.0 / 9.0],
-            [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
-            [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
-        ];
-
-        // reconstruct A using analytical eigen-dyads
-        let mut aa_rec_3x3 = [[0.0; 3]; 3];
-        for i in 0..3 {
-            for j in 0..3 {
-                aa_rec_3x3[i][j] = ll[0] * dyad0[i][j] + ll[1] * dyad1[i][j] + ll[2] * dyad2[i][j];
-            }
-        }
-        let aa_rec_3x3_mat = Matrix::from(&aa_rec_3x3);
-        small_mat_approx_eq(&aa_3x3, &aa_rec_3x3_mat, 1e-15);
-
-        // generate eigen problem
-        let (aa, e_ll, e_proj) = generate_eigen_problem(ll[2], ll[1], ll[0]);
-        let aa_std = aa.as_std_matrix();
-
-        // check the trace of A
-        let tr_a = aa.vec[0] + aa.vec[1] + aa.vec[2];
-
-        // check the expected eigenvalues
-        println!("A =\n{}", aa_std);
-        println!("e_ll = {:?}", e_ll);
-        array_approx_eq(&e_ll, &ll, 1e-15);
-        approx_eq(tr_a, aa_3x3[0][0] + aa_3x3[1][1] + aa_3x3[2][2], 1e-14);
-
-        // check the reconstruction
-        let mut aa_rec = Tensor2::<6>::new();
-        for m in 0..6 {
-            aa_rec.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m] + e_ll[2] * e_proj[2].vec[m];
-        }
-        let aa_rec_std = aa_rec.as_std_matrix();
-        println!("p0 =\n{}", e_proj[0].as_std_matrix());
-        println!("p1 =\n{}", e_proj[1].as_std_matrix());
-        println!("p2 =\n{}", e_proj[2].as_std_matrix());
-        println!("A (rec) =\n{}", aa_rec_std);
-        mat_approx_eq(&aa_std, &aa_rec_std, 1e-15);
     }
 }

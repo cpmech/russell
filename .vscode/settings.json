@@ -115,6 +115,7 @@
     "dλds",
     "ebcs",
     "Eigen",
+    "eigendyads",
     "eigenproj",
     "eigenprojector",
     "eigenprojectors",

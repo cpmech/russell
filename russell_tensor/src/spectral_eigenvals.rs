@@ -46,10 +46,10 @@ pub struct EigenValuesT2 {
     tt: [f64; 6],
 
     /// Input tensor as a 3x3 matrix (for Jacobi method)
-    aa: [[f64; 3]; 3],
+    pub(crate) aa: [[f64; 3]; 3],
 
     /// Matrix whose columns are the eigenvectors (for Jacobi method)
-    vv: [[f64; 3]; 3],
+    pub(crate) vv: [[f64; 3]; 3],
 }
 
 impl EigenValuesT2 {
@@ -65,7 +65,11 @@ impl EigenValuesT2 {
 
     /// Calculates the eigenvalues of a symmetric second order tensor
     ///
+    /// The results are stored in `ll` in descending order.
+    ///
     /// Returns `true` if spherical, `false` otherwise.
+    ///
+    /// In the spherical case, `ll := [λ, λ, λ]` where `λ = λ1 = λ2 = λ3 = trace(A)`.
     ///
     /// Uses the default method: [EigenMethod::AnalyticalHZ]
     #[inline]
@@ -75,22 +79,26 @@ impl EigenValuesT2 {
 
     /// Calculates the eigenvalues of a symmetric second order tensor (with method selection)
     ///
+    /// The results are stored in `ll` in descending order.
+    ///
     /// Returns `true` if spherical, `false` otherwise.
+    ///
+    /// In the spherical case, `ll := [λ, λ, λ]` where `λ = λ1 = λ2 = λ3 = trace(A)`.
     pub fn calculate_mx(&mut self, ll: &mut [f64; 3], aa: &Tensor2<6>, method: EigenMethod) -> Result<bool, StrError> {
         // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
         let ii1 = aa.invariant_ii1();
-        let iso = ii1 / 3.0;
         let jj2 = aa.invariant_jj2();
         let scale = aa.norm();
         let spherical = jj2 <= 1e3 * f64::EPSILON * f64::EPSILON * scale * scale;
         if spherical {
-            ll[0] = iso;
-            ll[1] = iso;
-            ll[2] = iso;
+            ll[0] = ii1;
+            ll[1] = ii1;
+            ll[2] = ii1;
             return Ok(true); // true => spherical
         }
 
         // calculate the eigenvalues for non-spherical cases
+        let iso = ii1 / 3.0;
         match method {
             //
             // Habera M. and Zilian A. (2025)

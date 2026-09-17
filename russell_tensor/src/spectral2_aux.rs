@@ -36,24 +36,42 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
     }
 }
 
-/// Checks the properties (rules) of the eigenprojectors and optionally prints the results
+/// Checks the properties (rules) of a set of candidate eigenprojectors
 ///
-/// The rules are (with `i,j ∈ {1,...,K}`):
+/// The rules are (with `i,j ∈ {1,2,3}`):
 ///
 /// 1. **Idempotent**: `P[i] · P[i] = P[i]`
 /// 2. **Orthogonal**: `P[i] · P[j] = 0` for `i ≠ j`
-/// 3. **Complete**: `Σ_{i=0}^{K-1} P[i] = I`
+/// 3. **Complete**: `Σ_i P[i] = I`
 ///
-/// where `K = kk` is the number of distinct eigenvalues.
+/// Note: All three projector slots are included in the summation.
+/// Therefore, for repeated eigenvalues, one projector may be set to
+/// zero or an eigenspace projector may be distributed among multiple
+/// slots. This function is indifferent to the particular representation
+/// adopted, provided the rules above are satisfied.
 ///
-/// Returns the number of failed rules.
+/// # Results
 ///
-/// # Panics
+/// Returns `status` where 7111 means success. See description of codes below.
 ///
-/// Any projector beyond `kk` must be exactly zero, otherwise a panic will occur.
+/// This function returns a number such as `9xyz` where `xyz` holds three
+/// boolean flags with `1` indicating success. Thus, the set of satisfied
+/// rules combinations are:
+///
+/// ```text
+/// Idempotent  Orthogonal  Complete
+/// ----------  ----------  --------
+///    1           1          1        
+///    1           1          0
+///    1           0          1
+///    1           0          0
+///    0           1          1
+///    0           1          0
+///    0           0          1
+///    0           0          0
+/// ```
 pub fn check_projector_rules(
     proj: &[Tensor2<6>],
-    kk: usize,
     tol_idempotent: f64,
     tol_orthogonal: f64,
     tol_complete: f64,
@@ -69,9 +87,9 @@ pub fn check_projector_rules(
     // check rules #1 and #2
     let mut max_idem = 0.0;
     let mut max_orth = 0.0;
-    for i in 0..kk {
+    for i in 0..3 {
         proj[i].to_std_matrix_slice(&mut ppi); // P[i] <- 3x3 matrix from KM vector
-        for j in 0..kk {
+        for j in 0..3 {
             if i == j {
                 // 1. Idempotent rule: P[i] . P[i] = P[i]
                 small_mat_mat_mul(&mut aux, 1.0, &ppi, &ppi, 0.0, 3);
@@ -84,11 +102,11 @@ pub fn check_projector_rules(
             }
         }
     }
-    let ok_idem = max_idem < tol_idempotent;
-    let ok_orth = max_orth < tol_orthogonal;
+    let idem = if max_idem < tol_idempotent { 1 } else { 0 };
+    let orth = if max_orth < tol_orthogonal { 1 } else { 0 };
 
     // 3. Complete rule: Σ_{i=0}^{K-1} P[i] = I-matrix
-    for i in 0..kk {
+    for i in 0..3 {
         for m in 0..6 {
             sum[m] += proj[i].get(m);
         }
@@ -97,16 +115,16 @@ pub fn check_projector_rules(
     for m in 0..6 {
         max_comp = f64::max(max_comp, f64::abs(sum[m] - IDENTITY2[m]));
     }
-    let ok_comp = max_comp < tol_complete;
+    let comp = if max_comp < tol_complete { 1 } else { 0 };
 
     // results
     if verbose {
-        print_rule("1. Idempotent", ok_idem, max_idem, tol_idempotent);
-        print_rule("2. Orthogonal", ok_orth, max_orth, tol_orthogonal);
-        print_rule("3. Complete", ok_comp, max_comp, tol_complete);
+        print_rule("1. Idempotent", idem == 1, max_idem, tol_idempotent);
+        print_rule("2. Orthogonal", orth == 1, max_orth, tol_orthogonal);
+        print_rule("3. Complete", comp == 1, max_comp, tol_complete);
     }
 
-    [ok_idem, ok_orth, ok_comp].iter().filter(|ok| !**ok).count()
+    7000 + idem * 100 + orth * 10 + comp
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,11 +132,8 @@ pub fn check_projector_rules(
 #[cfg(test)]
 mod tests {
     use super::{check_projector_rules, spectral2_octahedral};
-    use crate::{
-        EigMethod, SQRT_3, SQRT_3_BY_2, Spectral2, Tensor2,
-        spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2},
-        testing::generate_eigen_problem,
-    };
+    use crate::testing::{generate_eigen_problem, reference_eigendyads};
+    use crate::{SQRT_3, SQRT_3_BY_2, Spectral2, Tensor2};
     use russell_lab::approx_eq;
 
     #[test]
@@ -159,67 +174,84 @@ mod tests {
         }
     }
 
-    const VERBOSE: bool = true;
-
     #[test]
-    fn check_projector_rules_works() {
-        // eigenvalues = {4.0, 2.0, 2.0}
-        //
-        // orthonormal eigenvectors
-        // e1 = [1/√2,  1/√2, 0]
-        // e2 = [-1/√2, 1/√2, 0]
-        // e3 = [0,     0,    1]
-        //
-        // P1 (associated with λ1 = 4.0):
-        #[rustfmt::skip]
-        let p0 = Tensor2::<6>::from_std_matrix(&[
-            [0.5, 0.5, 0.0],
-            [0.5, 0.5, 0.0],
-            [0.0, 0.0, 0.0],
-        ]).unwrap();
-        // P2 (associated with λ = 2.0) = e2 ⊗ e2 + e3 ⊗ e3
-        #[rustfmt::skip]
-        let p1 = Tensor2::<6>::from_std_matrix(&[
-            [0.5, -0.5, 0.0],
-            [-0.5, 0.5, 0.0],
-            [0.0, 0.0, 1.0],
-        ]).unwrap();
-        // P3 = 0 (must be zero)
-        #[rustfmt::skip]
-        let p2 = Tensor2::<6>::from_std_matrix(&[
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-        ]).unwrap();
-
-        let proj = &[p0, p1, p2];
-        let kk = 2; // number of distinct eigenprojectors
+    fn check_projector_rules_zero_failed_works() {
+        const VERBOSE: bool = false;
         let tol_idem = 1e-15;
         let tol_orth = 1e-15;
         let tol_comp = 1e-15;
-        let n_failed = check_projector_rules(proj, kk, tol_idem, tol_orth, tol_comp, VERBOSE);
-        if VERBOSE {
-            println!("n_failed = {}", n_failed)
+        let (names, data) = reference_eigendyads();
+        for i in 0..names.len() {
+            let dat = &data[i];
+            if VERBOSE {
+                println!("\n{}", "=".repeat(80));
+                println!("{}", names[i]);
+            }
+            let (_, _, proj) = generate_eigen_problem(dat.ll[2], dat.ll[1], dat.ll[0]);
+            let n_failed = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+            if VERBOSE {
+                println!("n_failed = {}", n_failed)
+            }
+            assert_eq!(n_failed, 0);
         }
 
-        let mut ll = [0.0; 3];
-        let (aa, e_ll, e_proj) = generate_eigen_problem(4.0, 2.0, 2.0);
-        let mut work = WorkspaceEigenvalues::new();
-        eigenvalues_sym_tensor2(&mut ll, &aa, EigMethod::AnalyticalHZ, &mut work).unwrap();
-        println!("ll = {:?}", ll);
-        println!("e_ll = {:?}", e_ll);
-        println!("p0 =\n{}", e_proj[0].as_std_matrix());
-        println!("p1 =\n{}", e_proj[1].as_std_matrix());
-        println!("p2 =\n{}", e_proj[2].as_std_matrix());
-        let n_failed = check_projector_rules(&e_proj, kk, tol_idem, tol_orth, tol_comp, VERBOSE);
-        if VERBOSE {
-            println!("n_failed = {}", n_failed)
-        }
-        let mut aa_reconstruct = Tensor2::<6>::new();
-        for m in 0..6 {
-            aa_reconstruct.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m];
-        }
-        println!("A = \n{}", aa.as_std_matrix());
-        println!("A = \n{}", aa_reconstruct.as_std_matrix());
+        // let mut aa_reconstruct = Tensor2::<6>::new();
+        // for m in 0..6 {
+        //     aa_reconstruct.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m];
+        // }
+        // println!("A = \n{}", aa.as_std_matrix());
+        // println!("A = \n{}", aa_reconstruct.as_std_matrix());
+    }
+
+    #[test]
+    fn check_projector_rules_failed_works() {
+        const VERBOSE: bool = true;
+        let tol_idem = 1e-15;
+        let tol_orth = 1e-15;
+        let tol_comp = 1e-15;
+
+        // correct projectors
+        let dyad0 = [
+            [4.0 / 9.0, -4.0 / 9.0, 2.0 / 9.0],
+            [-4.0 / 9.0, 4.0 / 9.0, -2.0 / 9.0],
+            [2.0 / 9.0, -2.0 / 9.0, 1.0 / 9.0],
+        ];
+        // n1 ⊗ n1 associated with λ1 = 4
+        let dyad1 = [
+            [4.0 / 9.0, 2.0 / 9.0, -4.0 / 9.0],
+            [2.0 / 9.0, 1.0 / 9.0, -2.0 / 9.0],
+            [-4.0 / 9.0, -2.0 / 9.0, 4.0 / 9.0],
+        ];
+        // n2 ⊗ n2 associated with λ2 = 2
+        let dyad2 = [
+            [1.0 / 9.0, 2.0 / 9.0, 2.0 / 9.0],
+            [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
+            [2.0 / 9.0, 4.0 / 9.0, 4.0 / 9.0],
+        ];
+        let p0 = Tensor2::<6>::from_std_matrix(&dyad0).unwrap();
+        let p1 = Tensor2::<6>::from_std_matrix(&dyad1).unwrap();
+        let p2 = Tensor2::<6>::from_std_matrix(&dyad2).unwrap();
+        let zero = Tensor2::<6>::new();
+        let wrong = Tensor2::<6>::from_std_matrix(&[[123.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]).unwrap();
+
+        let proj = [p0.clone(), p1.clone(), p2.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        println!("Case 111: {}\n", status);
+        assert_eq!(status, 7111);
+
+        let proj = [p0.clone(), p0.clone(), p2.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        println!("Case 100: {}\n", status);
+        assert_eq!(status, 7100);
+
+        let proj = [p0.clone(), p1.clone(), zero.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        println!("Case 110: {}\n", status);
+        assert_eq!(status, 7110);
+
+        let proj = [p0.clone(), p1.clone(), wrong.clone()];
+        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        println!("Case 000: {}\n", status);
+        assert_eq!(status, 7000);
     }
 }

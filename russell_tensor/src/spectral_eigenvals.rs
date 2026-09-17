@@ -220,7 +220,7 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 mod tests {
     use super::{WorkspaceEigenvalues, eigenvalues_sym_tensor2};
     use crate::EigMethod;
-    use crate::test_common::HaberaZilian;
+    use crate::testing::HaberaZilian;
 
     #[test]
     fn habera_zilian_cases_work() {

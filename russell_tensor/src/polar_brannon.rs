@@ -129,7 +129,7 @@ pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Re
 mod tests {
     use super::polar_rotation_brannon;
     use crate::Tensor2;
-    use crate::test_common::{example01, example01_rotation};
+    use crate::testing::{example01, example01_rotation};
     use russell_lab::mat_approx_eq;
 
     #[test]

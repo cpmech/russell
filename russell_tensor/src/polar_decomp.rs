@@ -124,9 +124,7 @@ pub fn polar_decomp_mx(
 mod tests {
     use super::{PolarAlgo, polar_decomp, polar_decomp_mx};
     use crate::Tensor2;
-    use crate::test_common::{
-        case51, case52, check_agree, check_polar, example03, example03_rotation, example03_stretch,
-    };
+    use crate::testing::{case51, case52, check_agree, check_polar, example03, example03_rotation, example03_stretch};
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul};
 
     #[test]

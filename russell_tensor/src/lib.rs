@@ -150,7 +150,7 @@ mod tensor3;
 mod tensor4;
 
 #[cfg(test)]
-mod test_common;
+mod testing;
 
 pub mod z_reference_loop_fns;
 

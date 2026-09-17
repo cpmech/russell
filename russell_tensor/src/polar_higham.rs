@@ -805,7 +805,7 @@ fn mat4t_times_4x2(il: &[[f64; 4]; 4], m: &[[f64; 2]; 4]) -> [[f64; 2]; 4] {
 mod tests {
     use super::polar_quaternion_higham;
     use crate::Tensor2;
-    use crate::test_common::{
+    use crate::testing::{
         case51, case52, case52_rotation, check_agree, check_polar, example01, example01_rotation, example01_stretch,
         example03, example03_rotation, example03_stretch,
     };

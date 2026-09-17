@@ -594,7 +594,7 @@ pub fn check_agree(a: &Tensor2<9>) {
 mod tests {
     use super::{generate_eigen_problem, similarity_transform};
     use crate::Tensor2;
-    use crate::test_common::reference_eigendyads;
+    use crate::testing::reference_eigendyads;
     use crate::{SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, mat_approx_eq, small_mat_approx_eq};
 

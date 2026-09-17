@@ -117,7 +117,7 @@ mod tests {
     use crate::{
         EigMethod, SQRT_3, SQRT_3_BY_2, Spectral2, Tensor2,
         spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2},
-        test_common::generate_eigen_problem,
+        testing::generate_eigen_problem,
     };
     use russell_lab::approx_eq;
 

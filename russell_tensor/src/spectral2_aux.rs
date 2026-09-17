@@ -79,7 +79,8 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 /// ```
 ///
 /// are mathematically impossible for a finite family of operators.
-/// If either combination is reported, the tolerances may be too loose.
+/// If either combination is reported, the tolerances may be too loose
+/// or the input tensors may only approximately satisfy the projector properties.
 pub fn check_projector_rules(
     proj: &[Tensor2<6>],
     tol_idempotent: f64,

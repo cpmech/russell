@@ -12,7 +12,7 @@
 //! transformation `U_sym` used in the papers. The prescribed eigenvalues
 //! `d` are used as the reference.
 
-use russell_tensor::{EigMethod, Spectral2, StrError, Tensor2};
+use russell_tensor::{EigenMethod, Spectral2, StrError, Tensor2};
 use std::f64::consts::PI;
 
 fn main() -> Result<(), StrError> {
@@ -41,10 +41,10 @@ fn main() -> Result<(), StrError> {
 
             let mut errs = [0.0; 5];
             let methods = [
-                EigMethod::AnalyticalHZ,
-                EigMethod::AnalyticalHA22,
-                EigMethod::AnalyticalHA23,
-                EigMethod::Iterative,
+                EigenMethod::AnalyticalHZ,
+                EigenMethod::AnalyticalHA22,
+                EigenMethod::AnalyticalHA23,
+                EigenMethod::Iterative,
             ];
             for (i, method) in methods.iter().enumerate() {
                 let mut spec = Spectral2::new();

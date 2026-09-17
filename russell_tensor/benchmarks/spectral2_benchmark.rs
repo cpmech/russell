@@ -16,7 +16,7 @@
 //! are not, since that is the common factor across the four methods.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{EigMethod, Spectral2, Tensor2};
+use russell_tensor::{EigenMethod, Spectral2, Tensor2};
 
 /// Symmetric tensor with well-separated eigenvalues
 const DISTINCT: [[f64; 3]; 3] = [
@@ -33,11 +33,11 @@ const COALESCENT: [[f64; 3]; 3] = [
 ];
 
 /// Eigenvalue methods, in benchmark order
-const METHODS: [(&str, EigMethod); 4] = [
-    ("analytical_hz", EigMethod::AnalyticalHZ),
-    ("analytical_ha22", EigMethod::AnalyticalHA22),
-    ("analytical_ha23", EigMethod::AnalyticalHA23),
-    ("iterative", EigMethod::Iterative),
+const METHODS: [(&str, EigenMethod); 4] = [
+    ("analytical_hz", EigenMethod::AnalyticalHZ),
+    ("analytical_ha22", EigenMethod::AnalyticalHA22),
+    ("analytical_ha23", EigenMethod::AnalyticalHA23),
+    ("iterative", EigenMethod::Iterative),
 ];
 
 /// Benchmarks the four eigenvalue methods for a given input tensor

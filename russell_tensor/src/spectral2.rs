@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use super::{P_SYM, P_SYMDEV, SET, SQRT_2};
-use crate::spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2};
+use crate::{EigenMethod, EigenvaluesT2};
 use crate::{StrError, Tensor2, Tensor4};
 use crate::{deriv2_invariant_ii3, ssd_fn, t2_dyad_t2};
 use russell_lab::small_mat_eigen_sym_jacobi;
@@ -32,44 +32,6 @@ const Q4: [[f64; 6]; 6] = [
     [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
     [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
 ];
-
-/// Defines the method to calculate the eigenvalues
-///
-/// # References
-///
-/// 1. Habera M. and Zilian A. (2025) Numerically stable evaluation of closed-form
-///    expressions for eigenvalues of 3×3 matrices. <https://arxiv.org/abs/2511.00292>
-/// 2. Harari I. and Albocher U. (2022) Computation of eigenvalues of a real, symmetric 3x3 matrix
-///    with particular reference to the pernicious case of two nearly equal eigenvalues. International
-///    Journal for Numerical Methods in Engineering, 124:1089-1110. <https://doi.org/10.1002/nme.7153>
-/// 3. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
-///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
-///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
-/// 4. Itskov M. (2019) Tensor Algebra and Tensor Analysis for Engineers With Applications to Continuum
-///    Mechanics, Fifth Edition, Springer.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum EigMethod {
-    /// Analytical eigenvalues using Habera-Zilian method
-    ///
-    /// * Uses Habera-Zilian (2025) to compute the eigenvalues
-    /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
-    AnalyticalHZ,
-
-    /// Analytical eigenvalues using Harari-Albocher method (2022)
-    ///
-    /// * Uses Harari-Albocher (2022) to compute the eigenvalues
-    /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
-    AnalyticalHA22,
-
-    /// Analytical eigenvalues using Harari-Albocher method (2023)
-    ///
-    /// * Uses Harari-Albocher (2023) to compute the eigenvalues
-    /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
-    AnalyticalHA23,
-
-    /// Jacobi iterations for eigenvalues and eigenprojectors (via eigenvectors)
-    Iterative,
-}
 
 /// Specifies the current status of the eigenvalues
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -151,7 +113,7 @@ pub struct Spectral2 {
     // --- internal data
     //
     /// Workspace for the calculation of eigenvalues
-    work: WorkspaceEigenvalues,
+    eig: EigenvaluesT2,
 
     /// Input tensor as a 3x3 matrix (for Jacobi method)
     aa_3x3: [[f64; 3]; 3],
@@ -196,7 +158,7 @@ impl Spectral2 {
             dpp: Vec::new(),
             aa_inv: Tensor2::<6>::new(),
             // private
-            work: WorkspaceEigenvalues::new(),
+            eig: EigenvaluesT2::new(),
             aa_3x3: [[0.0; 3]; 3],
             vv_3x3: [[0.0; 3]; 3],
             yy: None,
@@ -212,19 +174,19 @@ impl Spectral2 {
     ///
     /// Default method: [EigMethod::AnalyticalHZ]
     pub fn calc_eigenvalues(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.calc_eigenvalues_mx(aa, EigMethod::AnalyticalHZ)
+        self.calc_eigenvalues_mx(aa, EigenMethod::AnalyticalHZ)
     }
 
     /// Calculates the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor
     ///
     /// The output is saved in this struct with the eigenvalues being sorted in descending order.
     /// The status is saved in `status`.
-    pub fn calc_eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
+    pub fn calc_eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigenMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
 
         // calculate the eigenvalues
-        let spherical = eigenvalues_sym_tensor2(&mut self.lam, aa, method, &mut self.work)?;
+        let spherical = self.eig.calculate_mx(&mut self.lam, aa, method)?;
 
         // save the status
         if spherical {
@@ -243,19 +205,19 @@ impl Spectral2 {
     /// Default method: [EigMethod::AnalyticalHZ]
     #[inline]
     pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.decompose_mx(aa, EigMethod::AnalyticalHZ)
+        self.decompose_mx(aa, EigenMethod::AnalyticalHZ)
     }
 
     /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
     /// The status is saved in `status`.
-    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<(), StrError> {
+    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigenMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
 
         // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
-        if method == EigMethod::Iterative {
+        if method == EigenMethod::Iterative {
             self.decompose_jacobi(aa)?;
             return Ok(());
         }
@@ -360,7 +322,7 @@ impl Spectral2 {
     /// 2. Miehe C. (1998) Comparison of two algorithms for the computation of fourth-order
     ///    isotropic tensor functions. Computers & Structures, 66(1):37-43.
     ///    <https://doi.org/10.1016/S0045-7949(97)00073-4>
-    pub fn deriv_eigenproj_miehe(&mut self, aa: &Tensor2<6>, method: EigMethod) -> Result<EigDerivStatus, StrError> {
+    pub fn deriv_eigenproj_miehe(&mut self, aa: &Tensor2<6>, method: EigenMethod) -> Result<EigDerivStatus, StrError> {
         // compute the eigenvalues and eigenprojectors
         self.decompose_mx(aa, method)?;
 
@@ -510,7 +472,7 @@ impl Spectral2 {
     /// 1. Panteghini A. (2024) A simple spectral representation of a second-order symmetric
     ///    tensor and its variation. European Journal of Mechanics - A/Solids, 104:105208.
     ///    <https://doi.org/10.1016/j.euromechsol.2023.105208>
-    pub fn deriv_eigenproj(&mut self, a: &Tensor2<6>, method: EigMethod) -> Result<EigDerivStatus, StrError> {
+    pub fn deriv_eigenproj(&mut self, a: &Tensor2<6>, method: EigenMethod) -> Result<EigDerivStatus, StrError> {
         // compute the eigenvalues and eigenprojectors
         self.decompose_mx(a, method)?;
 
@@ -798,7 +760,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 
 #[cfg(test)]
 mod tests {
-    use super::{EigMethod, EigStatus, Spectral2, t2_plus_diag_product};
+    use super::{EigStatus, EigenMethod, Spectral2, t2_plus_diag_product};
     use crate::testing::similarity_transform;
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
@@ -905,7 +867,7 @@ mod tests {
 
     /// Checks the eigen-problem by comparing with known values
     fn check(
-        method: EigMethod,
+        method: EigenMethod,
         spec: &mut Spectral2,
         sample: &SampleTensor2,
         tol_lambda: f64,
@@ -954,7 +916,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_jacobi_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::Iterative;
+        let m = EigenMethod::Iterative;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
@@ -967,7 +929,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_harari_albocher22_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::AnalyticalHA22;
+        let m = EigenMethod::AnalyticalHA22;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
@@ -980,7 +942,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_harari_albocher23_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::AnalyticalHA23;
+        let m = EigenMethod::AnalyticalHA23;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
@@ -993,7 +955,7 @@ mod tests {
     #[test]
     fn decompose_and_compose_using_habera_zilian_work_with_samples() {
         let mut spec = Spectral2::new();
-        let m = EigMethod::AnalyticalHZ;
+        let m = EigenMethod::AnalyticalHZ;
         check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
         check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-14, 1e-15, 1e-15);
@@ -1037,10 +999,10 @@ mod tests {
         diagonals.push([1.0, 1.0, 1.0]);
         // run the test
         for method in [
-            EigMethod::AnalyticalHZ,
-            EigMethod::AnalyticalHA22,
-            EigMethod::AnalyticalHA23,
-            EigMethod::Iterative,
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
         ] {
             for d in &diagonals {
                 for r in &rotations {
@@ -1084,10 +1046,10 @@ mod tests {
     #[test]
     fn decompose_coalesce_with_samples_works() {
         for method in [
-            EigMethod::AnalyticalHZ,
-            EigMethod::AnalyticalHA22,
-            EigMethod::AnalyticalHA23,
-            EigMethod::Iterative,
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
         ] {
             for sample in [&SamplesTensor2::COAL_01, &SamplesTensor2::COAL_12] {
                 // perform the spectral decomposition
@@ -1107,10 +1069,10 @@ mod tests {
     #[test]
     fn decompose_coalesce_works() {
         for method in [
-            EigMethod::AnalyticalHZ,
-            EigMethod::AnalyticalHA22,
-            EigMethod::AnalyticalHA23,
-            EigMethod::Iterative,
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
         ] {
             for (l1, l2, l3) in [
                 // d01
@@ -1187,10 +1149,10 @@ mod tests {
         let alpha = [1.0, 100.0, 1e6];
         let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
         for method in [
-            EigMethod::AnalyticalHZ,
-            EigMethod::AnalyticalHA22,
-            EigMethod::AnalyticalHA23,
-            EigMethod::Iterative,
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
         ] {
             /* // TODO
             for r in 0..alpha.len() {
@@ -1242,14 +1204,16 @@ mod tests {
         // analytical derivative (Panteghini form)
         let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ).unwrap();
         if status != EigDerivStatus::Success {
             panic!("failed to compute analytical derivative");
         }
 
         // analytical derivative (Miehe form)
         let mut spec_miehe = Spectral2::new();
-        let status = spec_miehe.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec_miehe
+            .deriv_eigenproj_miehe(&aa, EigenMethod::AnalyticalHZ)
+            .unwrap();
         if status != EigDerivStatus::Success {
             panic!("failed to compute the Miehe derivative");
         }
@@ -1296,20 +1260,20 @@ mod tests {
         // near zero eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_X.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj_miehe(&aa, EigenMethod::AnalyticalHZ).unwrap();
         assert_eq!(status, EigDerivStatus::FailDueToZeroEigenvalue);
 
         // coalescent 01 eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_01.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj_miehe(&aa, EigenMethod::AnalyticalHZ).unwrap();
         assert_eq!(spec.status, EigStatus::Coalesce01);
         assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
 
         // coalescent 12 eigenvalues
         let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::COAL_12.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj_miehe(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj_miehe(&aa, EigenMethod::AnalyticalHZ).unwrap();
         assert_eq!(spec.status, EigStatus::Coalesce12);
         assert_eq!(status, EigDerivStatus::FailDueToCoalescent);
     }
@@ -1320,7 +1284,7 @@ mod tests {
         for sample in [&SamplesTensor2::COAL_01, &SamplesTensor2::COAL_12] {
             let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
             let mut spec = Spectral2::new();
-            let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+            let status = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ).unwrap();
             assert_eq!(status, EigDerivStatus::Success);
         }
     }
@@ -1329,7 +1293,7 @@ mod tests {
     fn deriv_eigenproj_spherical_fails() {
         let aa = Tensor2::<6>::identity();
         let mut spec = Spectral2::new();
-        let res = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ);
+        let res = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ);
         assert!(res.is_err());
     }
 
@@ -1345,7 +1309,7 @@ mod tests {
         ])
         .unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ).unwrap();
         assert_eq!(status, EigDerivStatus::Success);
     }
 }

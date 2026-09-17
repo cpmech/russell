@@ -54,7 +54,7 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 ///
 /// Returns `status` where 7111 means success. See description of codes below.
 ///
-/// This function returns a number such as `9xyz` where `xyz` holds three
+/// This function returns a number such as `7xyz` where `xyz` holds three
 /// boolean flags with `1` indicating success. Thus, the set of satisfied
 /// rules combinations are:
 ///
@@ -71,8 +71,15 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 ///    0           0          0
 /// ```
 ///
-/// Note that the case 011 is mathematically impossible for a finite family of operators.
-/// The code should never reports this combination, unless the tolerances are too loose.
+/// For exact arithmetic, the combinations
+///
+/// ```text
+/// 101 (idempotent + complete, but not orthogonal)
+/// 011 (orthogonal + complete, but not idempotent)
+/// ```
+///
+/// are mathematically impossible for a finite family of operators.
+/// If either combination is reported, the tolerances may be too loose.
 pub fn check_projector_rules(
     proj: &[Tensor2<6>],
     tol_idempotent: f64,
@@ -191,19 +198,12 @@ mod tests {
                 println!("{}", names[i]);
             }
             let (_, _, proj) = generate_eigen_problem(dat.ll[2], dat.ll[1], dat.ll[0]);
-            let n_failed = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+            let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
             if VERBOSE {
-                println!("n_failed = {}", n_failed)
+                println!("n_failed = {}", status)
             }
-            assert_eq!(n_failed, 0);
+            assert_eq!(status, 7111);
         }
-
-        // let mut aa_reconstruct = Tensor2::<6>::new();
-        // for m in 0..6 {
-        //     aa_reconstruct.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m];
-        // }
-        // println!("A = \n{}", aa.as_std_matrix());
-        // println!("A = \n{}", aa_reconstruct.as_std_matrix());
     }
 
     #[test]

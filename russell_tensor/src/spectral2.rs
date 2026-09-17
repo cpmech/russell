@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use super::{P_SYM, P_SYMDEV, SET, SQRT_2};
-use crate::{EigenMethod, EigenvaluesT2};
+use crate::{EigenMethod, EigenValuesT2};
 use crate::{StrError, Tensor2, Tensor4};
 use crate::{deriv2_invariant_ii3, ssd_fn, t2_dyad_t2};
 use russell_lab::small_mat_eigen_sym_jacobi;
@@ -113,7 +113,7 @@ pub struct Spectral2 {
     // --- internal data
     //
     /// Workspace for the calculation of eigenvalues
-    eig: EigenvaluesT2,
+    eig: EigenValuesT2,
 
     /// Input tensor as a 3x3 matrix (for Jacobi method)
     aa_3x3: [[f64; 3]; 3],
@@ -158,7 +158,7 @@ impl Spectral2 {
             dpp: Vec::new(),
             aa_inv: Tensor2::<6>::new(),
             // private
-            eig: EigenvaluesT2::new(),
+            eig: EigenValuesT2::new(),
             aa_3x3: [[0.0; 3]; 3],
             vv_3x3: [[0.0; 3]; 3],
             yy: None,

@@ -18,34 +18,23 @@ const TOL_ZERO_DEV_LAMBDA: f64 = 1e-15;
 /// 3. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
 ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
 ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
-/// 4. Itskov M. (2019) Tensor Algebra and Tensor Analysis for Engineers With Applications to Continuum
-///    Mechanics, Fifth Edition, Springer.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EigenMethod {
     /// Analytical eigenvalues using Habera-Zilian method
-    ///
-    /// * Uses Habera-Zilian (2025) to compute the eigenvalues
-    /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
     AnalyticalHZ,
 
     /// Analytical eigenvalues using Harari-Albocher method (2022)
-    ///
-    /// * Uses Harari-Albocher (2022) to compute the eigenvalues
-    /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
     AnalyticalHA22,
 
     /// Analytical eigenvalues using Harari-Albocher method (2023)
-    ///
-    /// * Uses Harari-Albocher (2023) to compute the eigenvalues
-    /// * Then, uses either Sylvester formula (Itskov 2019) or Jacobi iterations to compute the eigenprojectors
     AnalyticalHA23,
 
-    /// Jacobi iterations for eigenvalues and eigenprojectors (via eigenvectors)
+    /// Jacobi iterations for eigenvalues (ignore eigenvectors)
     Iterative,
 }
 
 /// Holds the eigenvalues of a symmetric second-order tensor
-pub struct EigenvaluesT2 {
+pub struct EigenValuesT2 {
     /// Auxiliary deviatoric tensor: S = A - (I1/3) I
     ///
     /// Used in the Harari-Albocher (2022) method
@@ -63,15 +52,25 @@ pub struct EigenvaluesT2 {
     vv: [[f64; 3]; 3],
 }
 
-impl EigenvaluesT2 {
+impl EigenValuesT2 {
     /// Allocates a new instance
     pub fn new() -> Self {
-        EigenvaluesT2 {
+        EigenValuesT2 {
             ss: [0.0; 6],
             tt: [0.0; 6],
             aa: [[0.0; 3]; 3],
             vv: [[0.0; 3]; 3],
         }
+    }
+
+    /// Calculates the eigenvalues of a symmetric second order tensor
+    ///
+    /// Returns `true` if spherical, `false` otherwise.
+    ///
+    /// Uses the default method: [EigenMethod::AnalyticalHZ]
+    #[inline]
+    pub fn calculate(&mut self, ll: &mut [f64; 3], aa: &Tensor2<6>) -> Result<bool, StrError> {
+        self.calculate_mx(ll, aa, EigenMethod::AnalyticalHZ)
     }
 
     /// Calculates the eigenvalues of a symmetric second order tensor (with method selection)
@@ -253,7 +252,7 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::EigenvaluesT2;
+    use super::EigenValuesT2;
     use crate::EigenMethod;
     use crate::testing::HaberaZilian;
 
@@ -263,7 +262,7 @@ mod tests {
         const THRESHOLD: f64 = 1e-14;
 
         let mut ll = [0.0; 3];
-        let mut eig = EigenvaluesT2::new();
+        let mut eig = EigenValuesT2::new();
         let hz = HaberaZilian::new();
         for method in [
             EigenMethod::AnalyticalHZ,

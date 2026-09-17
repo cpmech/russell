@@ -113,9 +113,13 @@ fn check_projector_rules(
 
 #[cfg(test)]
 mod tests {
-    use super::spectral2_octahedral;
-    use crate::{SQRT_3, SQRT_3_BY_2, Spectral2, Tensor2};
-    use russell_lab::approx_eq;
+    use super::{check_projector_rules, spectral2_octahedral};
+    use crate::{
+        EigMethod, SQRT_3, SQRT_3_BY_2, Spectral2, Tensor2,
+        spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2},
+        test_common::generate_eigen_problem,
+    };
+    use russell_lab::{Matrix, approx_eq};
 
     #[test]
     fn spectral_octahedral_works() {
@@ -153,5 +157,69 @@ mod tests {
                 approx_eq(lode, *lode_correct, 1e-15);
             }
         }
+    }
+
+    const VERBOSE: bool = true;
+
+    #[test]
+    fn check_projector_rules_works() {
+        // eigenvalues = {4.0, 2.0, 2.0}
+        //
+        // orthonormal eigenvectors
+        // e1 = [1/√2,  1/√2, 0]
+        // e2 = [-1/√2, 1/√2, 0]
+        // e3 = [0,     0,    1]
+        //
+        // P1 (associated with λ1 = 4.0):
+        #[rustfmt::skip]
+        let p0 = Tensor2::<6>::from_std_matrix(&[
+            [0.5, 0.5, 0.0],
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, 0.0],
+        ]).unwrap();
+        // P2 (associated with λ = 2.0) = e2 ⊗ e2 + e3 ⊗ e3
+        #[rustfmt::skip]
+        let p1 = Tensor2::<6>::from_std_matrix(&[
+            [0.5, -0.5, 0.0],
+            [-0.5, 0.5, 0.0],
+            [0.0, 0.0, 1.0],
+        ]).unwrap();
+        // P3 = 0 (must be zero)
+        #[rustfmt::skip]
+        let p2 = Tensor2::<6>::from_std_matrix(&[
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ]).unwrap();
+
+        let proj = &[p0, p1, p2];
+        let kk = 2; // number of distinct eigenprojectors
+        let tol_idem = 1e-15;
+        let tol_orth = 1e-15;
+        let tol_comp = 1e-15;
+        let n_failed = check_projector_rules(proj, kk, tol_idem, tol_orth, tol_comp, VERBOSE);
+        if VERBOSE {
+            println!("n_failed = {}", n_failed)
+        }
+
+        let mut ll = [0.0; 3];
+        let (aa, e_ll, e_proj) = generate_eigen_problem(4.0, 2.0, 2.0);
+        let mut work = WorkspaceEigenvalues::new();
+        eigenvalues_sym_tensor2(&mut ll, &aa, EigMethod::AnalyticalHZ, &mut work).unwrap();
+        println!("ll = {:?}", ll);
+        println!("e_ll = {:?}", e_ll);
+        println!("p0 =\n{}", e_proj[0].as_std_matrix());
+        println!("p1 =\n{}", e_proj[1].as_std_matrix());
+        println!("p2 =\n{}", e_proj[2].as_std_matrix());
+        let n_failed = check_projector_rules(&e_proj, kk, tol_idem, tol_orth, tol_comp, VERBOSE);
+        if VERBOSE {
+            println!("n_failed = {}", n_failed)
+        }
+        let mut aa_reconstruct = Tensor2::<6>::new();
+        for m in 0..6 {
+            aa_reconstruct.vec[m] = e_ll[0] * e_proj[0].vec[m] + e_ll[1] * e_proj[1].vec[m];
+        }
+        println!("A = \n{}", aa.as_std_matrix());
+        println!("A = \n{}", aa_reconstruct.as_std_matrix());
     }
 }

@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::{P_SYM, P_SYMDEV, SET, SQRT_2};
 use crate::spectral_eigenvals::{WorkspaceEigenvalues, eigenvalues_sym_tensor2};
 use crate::{StrError, Tensor2, Tensor4};

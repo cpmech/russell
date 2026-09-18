@@ -12,9 +12,6 @@ const INDICES: [usize; 5] = [0, 1, 2, 0, 1];
 pub struct EigenProjsT2 {
     /// Eigenvalues struct
     eig: EigenValuesT2,
-
-    /// Deviatoric tensor in Kelvin-Mandel components
-    ss: [f64; 6],
 }
 
 impl EigenProjsT2 {
@@ -22,7 +19,6 @@ impl EigenProjsT2 {
     pub fn new() -> Self {
         EigenProjsT2 {
             eig: EigenValuesT2::new(),
-            ss: [0.0; 6],
         }
     }
 
@@ -60,18 +56,16 @@ impl EigenProjsT2 {
             return Ok(());
         }
 
-        // clear the eigenprojectors
-        for m in 0..6 {
-            projs[0].vec[m] = 0.0;
-            projs[1].vec[m] = 0.0;
-            projs[2].vec[m] = 0.0;
-        }
-
         // calculate the eigenvalues (sorted in descending order)
         let spherical = self.eig.calculate_mx(ll, aa, method)?;
 
         // handle spherical case → P0=I, P1=0, P2=0
         if spherical {
+            for m in 0..6 {
+                projs[0].vec[m] = 0.0;
+                projs[1].vec[m] = 0.0;
+                projs[2].vec[m] = 0.0;
+            }
             projs[0].vec[0] = 1.0;
             projs[0].vec[1] = 1.0;
             projs[0].vec[2] = 1.0;
@@ -137,10 +131,38 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 
 #[cfg(test)]
 mod tests {
-    use super::EigenProjsT2;
+    use super::{EigenProjsT2, t2_plus_diag_product};
     use crate::OK_EIGENPROJ_RULES;
     use crate::{EigenMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
-    use russell_lab::{approx_eq, sort3};
+    use russell_lab::{approx_eq, array_approx_eq, sort3};
+
+    #[test]
+    fn t2_plus_diag_product_works() {
+        let aa = Tensor2::<6>::from_std_matrix(&SamplesTensor2::TENSOR_U.matrix).unwrap();
+        let mut res = [0.0; 6];
+        let (alpha, p, q) = (0.5, -1.5, 2.0);
+        t2_plus_diag_product(&mut res, alpha, aa.as_data(), p, q);
+        let mut aa_plus_p_times_ii = [[0.0; 3]; 3];
+        let mut aa_plus_q_times_ii = [[0.0; 3]; 3];
+        let mut expected_mat = [[0.0; 3]; 3];
+        let ii_mat = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+        let aa_mat = aa.as_std_matrix();
+        for i in 0..3 {
+            for j in 0..3 {
+                aa_plus_p_times_ii[i][j] = aa_mat[(i, j)] + p * ii_mat[i][j];
+                aa_plus_q_times_ii[i][j] = aa_mat[(i, j)] + q * ii_mat[i][j];
+            }
+        }
+        for i in 0..3 {
+            for j in 0..3 {
+                for k in 0..3 {
+                    expected_mat[i][j] += alpha * aa_plus_p_times_ii[i][k] * aa_plus_q_times_ii[k][j];
+                }
+            }
+        }
+        let expected = Tensor2::<6>::from_std_matrix(&expected_mat).unwrap();
+        array_approx_eq(expected.as_data(), &res, 1e-14);
+    }
 
     fn check_compose(aa: &Tensor2<6>, ll: &[f64; 3], projs: &[Tensor2<6>], tol: f64) {
         // let mut aa_rec = Tensor2::<6>::new();

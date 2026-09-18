@@ -1,7 +1,7 @@
 use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
 use crate::{SQRT_2, SQRT_3, SQRT_6};
-use russell_lab::{mat_approx_eq, small_mat_approx_eq, small_mat_mat_mul, small_mat_t_mat_mul};
+use russell_lab::{mat_approx_eq, small_mat_approx_eq, small_mat_mat_mul, small_mat_t_mat_mul, sort3};
 
 // -----------------------------------------------------------------------------------
 // Similarity transformation
@@ -24,10 +24,67 @@ pub fn similarity_transform(aa: &mut [[f64; 3]; 3], ll: &[[f64; 3]; 3], qq: &[[f
         }
     }
     for i in 0..3 {
-        for j in i..3 {
-            aa[i][j] = aa[j][i]; // symmetrize
+        for j in (i + 1)..3 {
+            let m = 0.5 * (aa[i][j] + aa[j][i]);
+            aa[i][j] = m;
+            aa[j][i] = m;
         }
     }
+}
+
+// -----------------------------------------------------------------------------------
+// Data generators
+// -----------------------------------------------------------------------------------
+
+/// Generates a set of tensors including all distinct, two repeated, and three repeated eigenvalues
+///
+/// Returns `(tensors, eigenvalues)`
+pub fn generate_tensors2() -> (Vec<Tensor2<6>>, Vec<[f64; 3]>) {
+    // orthogonal matrices
+    #[rustfmt::skip]
+    const ROTATIONS: [[[f64; 3]; 3]; 3] = [
+        [ // identity
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        [ // skew
+            [0.0, 1.0, 0.0], // skew
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0],
+        ],
+        [ // Q rotates axes to octahedral system
+            [2.0 / SQRT_6, -1.0 / SQRT_6, -1.0 / SQRT_6],
+            [1.0 / SQRT_3,  1.0 / SQRT_3,  1.0 / SQRT_3],
+            [0.0,          -1.0 / SQRT_2,  1.0 / SQRT_2],
+        ],
+    ];
+    // diagonals: general, two-nearly-equal, and triple-equal
+    let mut diagonals: Vec<_> = vec![[1.0, 1.0, 1.0], [3.0, 1.0, 2.0]];
+    for eps in [1e-3, 1e-6, 1e-9, 1e-12, 1e-15] {
+        diagonals.push([1.0, -0.5 + eps / 2.0, -0.5 - eps / 2.0]);
+    }
+    // generate matrices
+    let mut aa_3x3 = [[0.0; 3]; 3];
+    let mut ll_3x3 = [[0.0; 3]; 3];
+    let mut tensors = Vec::new();
+    let mut eigenvals = Vec::new();
+    for ll in &diagonals {
+        for qq in &ROTATIONS {
+            ll_3x3[0][0] = ll[0];
+            ll_3x3[1][1] = ll[1];
+            ll_3x3[2][2] = ll[2];
+            similarity_transform(&mut aa_3x3, &ll_3x3, qq);
+            let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
+            tensors.push(aa);
+            let mut l0 = ll[0];
+            let mut l1 = ll[1];
+            let mut l2 = ll[2];
+            sort3(&mut l2, &mut l1, &mut l0); // will sort: l2 < l1 < l0
+            eigenvals.push([l0, l1, l2]);
+        }
+    }
+    (tensors, eigenvals)
 }
 
 // -----------------------------------------------------------------------------------

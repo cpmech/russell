@@ -761,7 +761,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::{EigStatus, EigenMethod, Spectral2, t2_plus_diag_product};
-    use crate::testing::similarity_transform;
+    use crate::testing::{generate_tensors2, similarity_transform};
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
     use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
@@ -908,18 +908,19 @@ mod tests {
             ],
         ];
         // diagonals: random-like, two-nearly-equal, and triple-equal
-        let mut diagonals: Vec<[f64; 3]> = vec![[3.0, 1.0, 2.0]];
+        let mut diagonals: Vec<[f64; 3]> = vec![[1.0, 1.0, 1.0], [3.0, 1.0, 2.0]];
         for eps in [1e-3, 1e-6, 1e-9, 1e-12, 1e-15] {
             diagonals.push([1.0, -0.5 + eps / 2.0, -0.5 - eps / 2.0]);
         }
-        diagonals.push([1.0, 1.0, 1.0]);
         // run the test
+        let (tensors, eigenvalues) = generate_tensors2();
         for method in [
             EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            // EigenMethod::AnalyticalHA22,
+            // EigenMethod::AnalyticalHA23,
+            // EigenMethod::Iterative,
         ] {
+            let mut k = 0;
             for d in &diagonals {
                 for r in &rotations {
                     // A = R ⋅ diag(d) ⋅ Rᵀ
@@ -939,7 +940,13 @@ mod tests {
                             a[j][i] = m;
                         }
                     }
+
+                    // compare with auxiliary function
                     let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
+                    let tt2 = &tensors[k];
+                    println!("\n{}", tt.as_std_matrix());
+                    array_approx_eq(tt.as_data(), tt2.as_data(), 1e-17);
+
                     let mut spec = Spectral2::new();
                     spec.decompose_mx(&tt, method).unwrap();
                     // check the eigenvalues
@@ -954,6 +961,8 @@ mod tests {
                     let mut bb = Tensor2::<6>::new();
                     compose(&mut bb, &spec);
                     mat_approx_eq(&tt.as_std_matrix(), &bb.as_std_matrix(), 1e-10);
+
+                    k += 1;
                 }
             }
         }

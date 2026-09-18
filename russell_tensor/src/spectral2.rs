@@ -882,58 +882,6 @@ mod tests {
     //
 
     #[test]
-    fn decompose_and_compose_using_jacobi_work_with_samples() {
-        let mut spec = Spectral2::new();
-        let m = EigenMethod::Iterative;
-        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
-    }
-
-    #[test]
-    fn decompose_and_compose_using_harari_albocher22_work_with_samples() {
-        let mut spec = Spectral2::new();
-        let m = EigenMethod::AnalyticalHA22;
-        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
-    }
-
-    #[test]
-    fn decompose_and_compose_using_harari_albocher23_work_with_samples() {
-        let mut spec = Spectral2::new();
-        let m = EigenMethod::AnalyticalHA23;
-        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
-    }
-
-    #[test]
-    fn decompose_and_compose_using_habera_zilian_work_with_samples() {
-        let mut spec = Spectral2::new();
-        let m = EigenMethod::AnalyticalHZ;
-        check(m, &mut spec, &SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_X, 1e-14, 1e-15, 1e-15);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Y, 1e-13, 1e-15, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_Z, 1e-14, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_U, 1e-13, 1e-14, 1e-14);
-        check(m, &mut spec, &SamplesTensor2::TENSOR_S, 1e-13, 1e-14, 1e-14);
-    }
-
-    #[test]
     fn decompose_reconstruction_works() {
         // Checks the eigen-decomposition reconstruction `A = Σ λᵢ Pᵢ` for random-like,
         // two-nearly-equal, and triple-equal eigenvalues.

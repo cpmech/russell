@@ -1,8 +1,6 @@
-#![allow(unused)]
-
 use crate::StrError;
 use crate::{EigenMethod, EigenValuesT2, Tensor2};
-use crate::{IDENTITY2, ONE_BY_3, SQRT_2};
+use crate::{IDENTITY2, SQRT_2};
 use russell_lab::small_mat_eigen_sym_jacobi;
 
 /// Tolerance to assume repeated eigenvalues
@@ -101,18 +99,24 @@ impl EigenProjsT2 {
             return Ok(());
         }
 
-        // handle two-repeated eigenvalues using Panteghini's method
-        let l_ii = ll[1]; // λ_II
-        let l_hat = if d01 < tol {
-            ll[2] // λ_III
+        // handle two-repeated eigenvalues
+        // P_hat=(A-λ1*I)/κ, P1=I-P_hat, P_other=0 with κ=λ_hat-λ1
+        if d01 < tol {
+            // λ0 ≈ λ1 > (λ2) → λ_hat = λ2
+            let kappa = ll[2] - ll[1];
+            for m in 0..6 {
+                projs[2].vec[m] = (aa.vec[m] - ll[1] * IDENTITY2[m]) / kappa;
+                projs[1].vec[m] = IDENTITY2[m] - projs[2].vec[m];
+                projs[0].vec[m] = 0.0;
+            }
         } else {
-            ll[0] // λ_I
-        };
-        aa.deviator_slice(&mut self.ss);
-        let kappa = l_hat - l_ii;
-        for m in 0..6 {
-            projs[0].vec[m] = ONE_BY_3 * IDENTITY2[m] + (1.0 / kappa) * self.ss[m];
-            projs[1].vec[m] = IDENTITY2[m] - projs[0].vec[m];
+            // (λ0) > λ1 ≈ λ2 → λ_hat = λ0
+            let kappa = ll[0] - ll[1];
+            for m in 0..6 {
+                projs[0].vec[m] = (aa.vec[m] - ll[1] * IDENTITY2[m]) / kappa;
+                projs[1].vec[m] = IDENTITY2[m] - projs[0].vec[m];
+                projs[2].vec[m] = 0.0;
+            }
         }
         Ok(())
     }
@@ -134,16 +138,29 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 #[cfg(test)]
 mod tests {
     use super::EigenProjsT2;
+    use crate::OK_EIGENPROJ_RULES;
     use crate::{EigenMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
     use russell_lab::{approx_eq, sort3};
 
+    fn check_compose(aa: &Tensor2<6>, ll: &[f64; 3], projs: &[Tensor2<6>], tol: f64) {
+        // let mut aa_rec = Tensor2::<6>::new();
+        for m in 0..6 {
+            let aa_m = ll[0] * projs[0].vec[m] + ll[1] * projs[1].vec[m] + ll[2] * projs[2].vec[m];
+            approx_eq(aa.vec[m], aa_m, tol);
+            println!("diff = {}", aa.vec[m] - aa_m);
+            // aa_rec.vec[m] = aa_m;
+        }
+        // println!("A (rec) =\n{}", aa_rec.as_std_matrix());
+    }
+
     #[test]
     fn calculate_mx_works_with_samples() {
-        const VERBOSE: bool = false;
+        const VERBOSE: bool = true;
         const TOL_VALS: f64 = 1e-13;
-        const TOL_IDEM: f64 = 1e-15;
-        const TOL_ORTH: f64 = 1e-15;
-        const TOL_COMP: f64 = 1e-15;
+        const TOL_IDEM: f64 = 1e-14;
+        const TOL_ORTH: f64 = 1e-14;
+        const TOL_COMP: f64 = 1e-14;
+        const TOL_SPECTRAL: f64 = 1e-14;
         let mut ll = [0.0; 3];
         let mut eig = EigenProjsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
@@ -153,10 +170,22 @@ mod tests {
             EigenMethod::AnalyticalHA23,
             EigenMethod::Iterative,
         ] {
+            if VERBOSE {
+                println!("\n{}", "=".repeat(80));
+                println!("{:?}", method);
+            }
+
             for sample in SamplesTensor2::all_symmetric() {
+                // for sample in [SamplesTensor2::COAL_01] {
+                if VERBOSE {
+                    println!("\n{}", "-".repeat(80));
+                    println!("{}", sample.desc);
+                }
+
                 // calculate the eigenvalues and eigenprojectors
                 let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
                 eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
+                // println!("ll = {:?}", ll);
 
                 // check the eigenvalues
                 let sample_ll = sample.eigenvalues.unwrap();
@@ -169,7 +198,12 @@ mod tests {
                 approx_eq(ll[2], expected_l2, TOL_VALS);
 
                 // check whether the eigenprojectors satisfy the eigenprojector rules
-                eigenprojector_rules(&projs, TOL_IDEM, TOL_ORTH, TOL_COMP, VERBOSE);
+                let status = eigenprojector_rules(&projs, TOL_IDEM, TOL_ORTH, TOL_COMP, VERBOSE);
+                assert_eq!(status, OK_EIGENPROJ_RULES);
+
+                // check the spectral composition
+                println!("A = \n{}", aa.as_std_matrix());
+                check_compose(&aa, &ll, &projs, TOL_SPECTRAL);
             }
         }
     }

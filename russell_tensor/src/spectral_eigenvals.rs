@@ -261,9 +261,9 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::EigenValuesT2;
-    use crate::testing::HaberaZilian;
+    use crate::testing::{HaberaZilian, generate_tensors2};
     use crate::{EigenMethod, SamplesTensor2, Tensor2};
-    use russell_lab::{approx_eq, sort3};
+    use russell_lab::{approx_eq, array_approx_eq, sort3};
 
     #[test]
     fn calculate_mx_works_with_samples() {
@@ -287,6 +287,26 @@ mod tests {
                 approx_eq(ll[0], expected_l0, TOLERANCE);
                 approx_eq(ll[1], expected_l1, TOLERANCE);
                 approx_eq(ll[2], expected_l2, TOLERANCE);
+            }
+        }
+    }
+
+    #[test]
+    fn general_tensors2_works() {
+        let mut ll = [0.0; 3];
+        let mut eig = EigenValuesT2::new();
+        let (tensors, eigenvalues) = generate_tensors2();
+        for method in [
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
+        ] {
+            for k in 0..tensors.len() {
+                let aa = &tensors[k];
+                let ll_ref = &eigenvalues[k];
+                eig.calculate_mx(&mut ll, aa, method).unwrap();
+                array_approx_eq(&ll, ll_ref, 1e-15);
             }
         }
     }

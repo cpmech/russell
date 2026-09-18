@@ -234,8 +234,8 @@ impl Spectral2 {
                 self.proj[2].vec[m] = 0.0;
             }
             self.proj[0].vec[0] = 1.0;
-            self.proj[1].vec[1] = 1.0;
-            self.proj[2].vec[2] = 1.0;
+            self.proj[0].vec[1] = 1.0;
+            self.proj[0].vec[2] = 1.0;
             return Ok(());
         }
 

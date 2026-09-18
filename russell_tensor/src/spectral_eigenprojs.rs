@@ -1,21 +1,22 @@
 #![allow(unused)]
 
-use crate::SQRT_2;
 use crate::StrError;
 use crate::{EigenMethod, EigenValuesT2, Tensor2};
+use crate::{IDENTITY2, ONE_BY_3, SQRT_2};
 use russell_lab::small_mat_eigen_sym_jacobi;
 
 /// Tolerance to assume repeated eigenvalues
 const TOL_REPEATED: f64 = 1e-8;
 
-// enum EigenStatusT2 {
-// Repeat01,
-// Repeat12,
-// }
+/// Holds indices for permutation by looping in 0..3
+const INDICES: [usize; 5] = [0, 1, 2, 0, 1];
 
 pub struct EigenProjsT2 {
     /// Eigenvalues struct
     eig: EigenValuesT2,
+
+    /// Deviatoric tensor in Kelvin-Mandel components
+    ss: [f64; 6],
 }
 
 impl EigenProjsT2 {
@@ -23,6 +24,7 @@ impl EigenProjsT2 {
     pub fn new() -> Self {
         EigenProjsT2 {
             eig: EigenValuesT2::new(),
+            ss: [0.0; 6],
         }
     }
 
@@ -78,24 +80,51 @@ impl EigenProjsT2 {
             return Ok(());
         }
 
-        // handle two-repeated eigenvalues using Panteghini's method
-        let maybe_index = sorted_eigenvalues_non_repeated_index(ll);
+        // calculate differences between the SORTED eigenvalues
+        let scale = ll[0].abs().max(ll[1].abs()).max(ll[2].abs()).max(1.0);
+        let tol = TOL_REPEATED * scale;
+        let d01 = f64::abs(ll[0] - ll[1]);
+        let d12 = f64::abs(ll[1] - ll[2]);
 
+        // handle all-distinct case. Use Sylvester's equation
+        if d01 >= tol && d12 >= tol {
+            // P[r] = f * (A - λ[s] I) . (A - λ[t] I)
+            for i in 0..3 {
+                let r = INDICES[i];
+                let s = INDICES[i + 1];
+                let t = INDICES[i + 2];
+                let p = -ll[s];
+                let q = -ll[t];
+                let f = 1.0 / ((ll[r] - ll[s]) * (ll[r] - ll[t]));
+                t2_plus_diag_product(projs[r].as_mut_data(), f, aa.as_data(), p, q);
+            }
+            return Ok(());
+        }
+
+        // handle two-repeated eigenvalues using Panteghini's method
+        let l_ii = ll[1]; // λ_II
+        let l_hat = if d01 < tol {
+            ll[2] // λ_III
+        } else {
+            ll[0] // λ_I
+        };
+        aa.deviator_slice(&mut self.ss);
+        let kappa = l_hat - l_ii;
+        for m in 0..6 {
+            projs[0].vec[m] = ONE_BY_3 * IDENTITY2[m] + (1.0 / kappa) * self.ss[m];
+            projs[1].vec[m] = IDENTITY2[m] - projs[0].vec[m];
+        }
         Ok(())
     }
 }
 
-/// Returns the index of the non-repeated eigenvalue if there are TWO repeated eigenvalues (spherical case is ignored)
-fn sorted_eigenvalues_non_repeated_index(ll: &[f64; 3]) -> Option<usize> {
-    let scale = ll[0].abs().max(ll[1].abs()).max(ll[2].abs()).max(1.0);
-    let tol = TOL_REPEATED * scale;
-    let d01 = f64::abs(ll[0] - ll[1]);
-    let d12 = f64::abs(ll[1] - ll[2]);
-    if d01 < tol {
-        Some(2) // λ[2] = λ_III is non-repeated
-    } else if d12 < tol {
-        Some(0) // λ[0] = λ_I is non-repeated
-    } else {
-        None // no repeated found; so the result is irrelevant
-    }
+/// Calculates alpha * (A + p I) . (A + q I)
+#[inline]
+pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f64, q: f64) {
+    res[0] = alpha * (2.0 * (p + a[0]) * (q + a[0]) + a[3] * a[3] + a[5] * a[5]) / 2.0;
+    res[1] = alpha * (2.0 * (p + a[1]) * (q + a[1]) + a[3] * a[3] + a[4] * a[4]) / 2.0;
+    res[2] = alpha * (2.0 * (p + a[2]) * (q + a[2]) + a[4] * a[4] + a[5] * a[5]) / 2.0;
+    res[3] = alpha * ((p + q + a[0] + a[1]) * a[3] + a[4] * a[5] / SQRT_2);
+    res[4] = alpha * ((p + q + a[1] + a[2]) * a[4] + a[3] * a[5] / SQRT_2);
+    res[5] = alpha * ((p + q + a[0] + a[2]) * a[5] + a[3] * a[4] / SQRT_2);
 }

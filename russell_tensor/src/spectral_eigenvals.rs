@@ -90,15 +90,15 @@ impl EigenValuesT2 {
         let jj2 = aa.invariant_jj2();
         let scale = aa.norm();
         let spherical = jj2 <= 1e3 * f64::EPSILON * f64::EPSILON * scale * scale;
+        let iso = ii1 / 3.0;
         if spherical {
-            ll[0] = ii1;
-            ll[1] = ii1;
-            ll[2] = ii1;
+            ll[0] = iso;
+            ll[1] = iso;
+            ll[2] = iso;
             return Ok(true); // true => spherical
         }
 
         // calculate the eigenvalues for non-spherical cases
-        let iso = ii1 / 3.0;
         match method {
             //
             // Habera M. and Zilian A. (2025)
@@ -261,8 +261,35 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::EigenValuesT2;
-    use crate::EigenMethod;
     use crate::testing::HaberaZilian;
+    use crate::{EigenMethod, SamplesTensor2, Tensor2};
+    use russell_lab::{approx_eq, sort3};
+
+    #[test]
+    fn calculate_mx_works_with_samples() {
+        const TOLERANCE: f64 = 1e-13;
+        let mut ll = [0.0; 3];
+        let mut eig = EigenValuesT2::new();
+        for method in [
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
+        ] {
+            for sample in SamplesTensor2::all_symmetric() {
+                let sample_ll = sample.eigenvalues.unwrap();
+                let mut expected_l0 = sample_ll[0];
+                let mut expected_l1 = sample_ll[1];
+                let mut expected_l2 = sample_ll[2];
+                sort3(&mut expected_l2, &mut expected_l1, &mut expected_l0); // will sort: l2 < l1 < l0
+                let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+                eig.calculate_mx(&mut ll, &aa, method).unwrap();
+                approx_eq(ll[0], expected_l0, TOLERANCE);
+                approx_eq(ll[1], expected_l1, TOLERANCE);
+                approx_eq(ll[2], expected_l2, TOLERANCE);
+            }
+        }
+    }
 
     #[test]
     fn habera_zilian_cases_work() {

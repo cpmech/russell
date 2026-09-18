@@ -43,6 +43,21 @@ pub struct SampleTensor2 {
 pub struct SamplesTensor2 {}
 
 impl SamplesTensor2 {
+    // Returns an array with references to all symmetric samples
+    pub fn all_symmetric<'a>() -> Vec<&'a SampleTensor2> {
+        vec![
+            &SamplesTensor2::TENSOR_O,
+            &SamplesTensor2::TENSOR_I,
+            &SamplesTensor2::TENSOR_X,
+            &SamplesTensor2::TENSOR_Y,
+            &SamplesTensor2::TENSOR_Z,
+            &SamplesTensor2::TENSOR_U,
+            &SamplesTensor2::TENSOR_S,
+            &SamplesTensor2::COAL_01,
+            &SamplesTensor2::COAL_12,
+        ]
+    }
+
     /// Collects data for a symmetric tensor with all zero components (Tensor O)
     pub const TENSOR_O: SampleTensor2 = SampleTensor2 {
         desc: "Tensor O: symmetric tensor with all zero components",
@@ -57,9 +72,9 @@ impl SamplesTensor2 {
         jj3: 0.0,
         eigenvalues: Some([0.0, 0.0, 0.0]),
         eigenprojectors: Some([
-            [[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         ]),
     };
 
@@ -77,9 +92,9 @@ impl SamplesTensor2 {
         jj3: 0.0,
         eigenvalues: Some([1.0, 1.0, 1.0]),
         eigenprojectors: Some([
-            [[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]],
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
         ]),
     };
 
@@ -365,6 +380,14 @@ mod tests {
     use super::{SampleTensor2, SamplesTensor2};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq};
 
+    fn check_symmetric(sample: &SampleTensor2) {
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_eq!(sample.matrix[j][i], sample.matrix[i][j])
+            }
+        }
+    }
+
     fn check_spectral(sample: &SampleTensor2, tolerance: f64) {
         let l = sample.eigenvalues.unwrap();
         let pps = sample.eigenprojectors.unwrap();
@@ -387,6 +410,10 @@ mod tests {
 
     #[test]
     fn samples_are_ok() {
+        for sample in SamplesTensor2::all_symmetric() {
+            check_symmetric(sample);
+        }
+
         check_spectral(&SamplesTensor2::TENSOR_O, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_I, 1e-15);
         check_spectral(&SamplesTensor2::TENSOR_U, 1e-13);

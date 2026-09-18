@@ -82,7 +82,7 @@ fn print_rule(name: &str, ok: bool, error: f64, tol: f64) {
 /// are mathematically impossible for a finite family of operators.
 /// If either combination is reported, the tolerances may be too loose
 /// or the input tensors may only approximately satisfy the projector properties.
-pub fn check_projector_rules(
+pub fn eigenprojector_rules(
     proj: &[Tensor2<6>],
     tol_idempotent: f64,
     tol_orthogonal: f64,
@@ -143,7 +143,7 @@ pub fn check_projector_rules(
 
 #[cfg(test)]
 mod tests {
-    use super::{check_projector_rules, spectral2_octahedral};
+    use super::{eigenprojector_rules, spectral2_octahedral};
     use crate::testing::{generate_eigen_problem, reference_eigendyads};
     use crate::{OK_EIGENPROJ_RULES, SQRT_3, SQRT_3_BY_2};
     use crate::{Spectral2, Tensor2};
@@ -188,11 +188,11 @@ mod tests {
     }
 
     #[test]
-    fn check_projector_rules_with_reference_dyads_works() {
+    fn eigenprojector_rules_with_reference_dyads_works() {
         const VERBOSE: bool = false;
-        let tol_idem = 1e-15;
-        let tol_orth = 1e-15;
-        let tol_comp = 1e-15;
+        const TOL_IDEM: f64 = 1e-15;
+        const TOL_ORTH: f64 = 1e-15;
+        const TOL_COMP: f64 = 1e-15;
         let (names, data) = reference_eigendyads();
         for i in 0..names.len() {
             let dat = &data[i];
@@ -201,7 +201,7 @@ mod tests {
                 println!("{}", names[i]);
             }
             let (_, _, proj) = generate_eigen_problem(dat.ll[2], dat.ll[1], dat.ll[0]);
-            let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+            let status = eigenprojector_rules(&proj, TOL_IDEM, TOL_ORTH, TOL_COMP, VERBOSE);
             if VERBOSE {
                 println!("n_failed = {}", status)
             }
@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn check_projector_rules_works() {
+    fn eigenprojector_rules_works() {
         const VERBOSE: bool = true;
         let tol_idem = 1e-15;
         let tol_orth = 1e-15;
@@ -246,42 +246,42 @@ mod tests {
         .unwrap();
 
         let proj = [p0.clone(), p1.clone(), p2.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 111: {}\n", status);
         assert_eq!(status, OK_EIGENPROJ_RULES);
 
         let proj = [p0.clone(), p0.clone(), p2.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 100: {}\n", status);
         assert_eq!(status, 7100);
 
         let proj = [p0.clone(), p1.clone(), zero.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 110: {}\n", status);
         assert_eq!(status, 7110);
 
         let proj = [p0.clone(), p1.clone(), wrong.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 000: {}\n", status);
         assert_eq!(status, 7000);
 
         let mut q0 = p0.clone();
         q0.scale(2.0);
         let proj = [q0.clone(), p1.clone(), zero.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 010: {}\n", status);
         assert_eq!(status, 7010);
 
         let mut q1 = p1.clone();
         q1.update(-1.0, &p0); // q1 -= p0
         let proj = [q0.clone(), q1.clone(), p2.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, tol_comp, VERBOSE);
         println!("Case 001: {}\n", status);
         assert_eq!(status, 7001);
     }
 
     #[test]
-    fn check_projector_rules_with_loose_tol_behaves_as_expected() {
+    fn eigenprojector_rules_with_loose_tol_behaves_as_expected() {
         const VERBOSE: bool = true;
         const TOO_BIG: f64 = 10.0;
         let tol_idem = 1e-15;
@@ -311,14 +311,14 @@ mod tests {
         let zero = Tensor2::<6>::new();
 
         let proj = [p0.clone(), p0.clone(), p2.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, TOO_BIG, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, TOO_BIG, VERBOSE);
         println!("Case 101: {}\n", status);
         assert_eq!(status, 7101);
 
         let mut q0 = p0.clone();
         q0.scale(2.0);
         let proj = [q0.clone(), p1.clone(), zero.clone()];
-        let status = check_projector_rules(&proj, tol_idem, tol_orth, TOO_BIG, VERBOSE);
+        let status = eigenprojector_rules(&proj, tol_idem, tol_orth, TOO_BIG, VERBOSE);
         println!("Case 011: {}\n", status);
         assert_eq!(status, 7011);
     }

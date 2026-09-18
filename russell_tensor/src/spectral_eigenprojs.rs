@@ -128,3 +128,49 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
     res[4] = alpha * ((p + q + a[1] + a[2]) * a[4] + a[3] * a[5] / SQRT_2);
     res[5] = alpha * ((p + q + a[0] + a[2]) * a[5] + a[3] * a[4] / SQRT_2);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::EigenProjsT2;
+    use crate::{EigenMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
+    use russell_lab::{approx_eq, sort3};
+
+    #[test]
+    fn calculate_mx_works_with_samples() {
+        const VERBOSE: bool = false;
+        const TOL_VALS: f64 = 1e-13;
+        const TOL_IDEM: f64 = 1e-15;
+        const TOL_ORTH: f64 = 1e-15;
+        const TOL_COMP: f64 = 1e-15;
+        let mut ll = [0.0; 3];
+        let mut eig = EigenProjsT2::new();
+        let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
+        for method in [
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
+        ] {
+            for sample in SamplesTensor2::all_symmetric() {
+                // calculate the eigenvalues and eigenprojectors
+                let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+                eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
+
+                // check the eigenvalues
+                let sample_ll = sample.eigenvalues.unwrap();
+                let mut expected_l0 = sample_ll[0];
+                let mut expected_l1 = sample_ll[1];
+                let mut expected_l2 = sample_ll[2];
+                sort3(&mut expected_l2, &mut expected_l1, &mut expected_l0); // will sort: l2 < l1 < l0
+                approx_eq(ll[0], expected_l0, TOL_VALS);
+                approx_eq(ll[1], expected_l1, TOL_VALS);
+                approx_eq(ll[2], expected_l2, TOL_VALS);
+
+                // check whether the eigenprojectors satisfy the eigenprojector rules
+                eigenprojector_rules(&projs, TOL_IDEM, TOL_ORTH, TOL_COMP, VERBOSE);
+            }
+        }
+    }
+}

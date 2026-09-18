@@ -133,6 +133,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 mod tests {
     use super::{EigenProjsT2, t2_plus_diag_product};
     use crate::OK_EIGENPROJ_RULES;
+    use crate::testing::generate_tensors2;
     use crate::{EigenMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
     use russell_lab::{approx_eq, array_approx_eq, sort3};
 
@@ -165,14 +166,10 @@ mod tests {
     }
 
     fn check_compose(aa: &Tensor2<6>, ll: &[f64; 3], projs: &[Tensor2<6>], tol: f64) {
-        // let mut aa_rec = Tensor2::<6>::new();
         for m in 0..6 {
             let aa_m = ll[0] * projs[0].vec[m] + ll[1] * projs[1].vec[m] + ll[2] * projs[2].vec[m];
             approx_eq(aa.vec[m], aa_m, tol);
-            println!("diff = {}", aa.vec[m] - aa_m);
-            // aa_rec.vec[m] = aa_m;
         }
-        // println!("A (rec) =\n{}", aa_rec.as_std_matrix());
     }
 
     #[test]
@@ -196,7 +193,6 @@ mod tests {
                 println!("\n{}", "=".repeat(80));
                 println!("{:?}", method);
             }
-
             for sample in SamplesTensor2::all_symmetric() {
                 // for sample in [SamplesTensor2::COAL_01] {
                 if VERBOSE {
@@ -206,8 +202,10 @@ mod tests {
 
                 // calculate the eigenvalues and eigenprojectors
                 let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+                if VERBOSE {
+                    println!("A = \n{}", aa.as_std_matrix());
+                }
                 eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
-                // println!("ll = {:?}", ll);
 
                 // check the eigenvalues
                 let sample_ll = sample.eigenvalues.unwrap();
@@ -224,8 +222,72 @@ mod tests {
                 assert_eq!(status, OK_EIGENPROJ_RULES);
 
                 // check the spectral composition
-                println!("A = \n{}", aa.as_std_matrix());
                 check_compose(&aa, &ll, &projs, TOL_SPECTRAL);
+            }
+        }
+    }
+
+    #[test]
+    fn general_tensors2_works() {
+        const VERBOSE: bool = true;
+        const TOL_IDEM: f64 = 1e-15;
+        const TOL_ORTH: f64 = 1e-15;
+        const TOL_COMP: f64 = 1e-15;
+        const TOL_SPEC: f64 = 1e-15;
+        let mut ll = [0.0; 3];
+        let mut eig = EigenProjsT2::new();
+        let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
+        let (tensors, _) = generate_tensors2();
+        for method in [
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
+        ] {
+            if VERBOSE {
+                println!("\n{}", "=".repeat(80));
+                println!("{:?}", method);
+            }
+            for k in 0..tensors.len() {
+                // calculate the eigenvalues and eigenprojectors
+                let aa = &tensors[k];
+                if VERBOSE {
+                    println!("Test # {}: A = \n{}", k, aa.as_std_matrix());
+                }
+                eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
+
+                // check whether the eigenprojectors satisfy the eigenprojector rules
+                let (mut tol_idem, mut tol_orth, mut tol_comp, mut tol_spec) = (TOL_IDEM, TOL_ORTH, TOL_COMP, TOL_SPEC);
+                if method == EigenMethod::AnalyticalHA22 {
+                    tol_spec = 1e-14
+                }
+                if k == 78 || k == 79 {
+                    tol_idem = 1e-12;
+                    tol_orth = 1e-12;
+                }
+                if k == 80 {
+                    tol_idem = 1e-13;
+                    tol_orth = 1e-13;
+                    tol_comp = 1e-13;
+                    tol_spec = 1e-13;
+                }
+                if k == 81 || k == 82 || k == 83 || k == 84 || k == 85 || k == 86 {
+                    tol_idem = 1e-9;
+                    tol_orth = 1e-9;
+                }
+                if k == 87 || k == 88 || k == 89 {
+                    tol_idem = 1e-12;
+                    tol_orth = 1e-12;
+                }
+                if k == 83 && (method == EigenMethod::AnalyticalHA22 || method == EigenMethod::AnalyticalHA23) {
+                    tol_comp = 1e-10;
+                    tol_spec = 1e-10;
+                }
+                let status = eigenprojector_rules(&projs, tol_idem, tol_orth, tol_comp, VERBOSE);
+                assert_eq!(status, OK_EIGENPROJ_RULES);
+
+                // check the spectral composition
+                check_compose(&aa, &ll, &projs, tol_spec);
             }
         }
     }

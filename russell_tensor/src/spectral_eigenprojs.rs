@@ -68,9 +68,9 @@ impl EigenProjsT2 {
         let jj2 = aa.invariant_jj2();
         // let dev_projs = compute_eigenprojectors_choice_a(&dev_mat, jj2, &dev_lambda);
         // Use the square root of f64::EPSILON (~1.49e-8)
-        let den_tol = f64::EPSILON.sqrt() * jj2;
-        println!("J2 = {}, den_tol = {}", jj2, den_tol);
-        let dev_projs = compute_eigenprojectors_choice_b(&dev_mat, jj2, &dev_lambda, den_tol);
+        println!("J2 = {:.5e}", jj2);
+        let scale = aa.norm();
+        let dev_projs = compute_eigenprojectors_choice_b(&dev_mat, scale, jj2, &dev_lambda);
         projs[0].set_std_matrix(&dev_projs[0])?;
         projs[1].set_std_matrix(&dev_projs[1])?;
         projs[2].set_std_matrix(&dev_projs[2])?;
@@ -329,9 +329,9 @@ mod tests {
         const VERBOSE: bool = true;
         const VERBOSE_PROJ: bool = false;
         const VERB_RECONSTRUCT: bool = true;
-        const TOL_IDEM: f64 = 1e-7;
-        const TOL_ORTH: f64 = 1e-7;
-        const TOL_COMP: f64 = 1e-7;
+        const TOL_IDEM: f64 = 1e-9;
+        const TOL_ORTH: f64 = 1e-9;
+        const TOL_COMP: f64 = 1e-15;
         const TOL_SPEC: f64 = 1e-7;
         let mut ll = [0.0; 3];
         let mut eig = EigenProjsT2::new();
@@ -347,7 +347,11 @@ mod tests {
                 for &delta in &hz.deltas {
                     // tricky problem // if !(name == "single_lim_J3J2" && delta == 1e-12) { continue; }
                     // if !(name == "single_lim_disc_t" && delta == 1e-12) { continue; }
+                    // if !(name == "single_lim_disc_t" && delta == 1e-10) { continue; }
+                    // if !(name == "single_lim_disc_t" && delta == 1e-6) { continue; }
                     // if !(name == "single_J3_lim_J2" && delta == 1e-4) { continue; }
+                    // if !(name == "double_lim_J3J2" && delta == 1e-12) { continue; }
+                    // if !(name == "double_lim_J3J2" && delta == 1e-4) { continue; }
                     if VERBOSE {
                         println!("\n{}", "=".repeat(80));
                         println!("{:?}", method);
@@ -362,6 +366,7 @@ mod tests {
                     // check whether the eigenprojectors satisfy the eigenprojector rules
                     let (mut tol_idem, mut tol_orth, mut tol_comp, mut tol_spec) =
                         (TOL_IDEM, TOL_ORTH, TOL_COMP, TOL_SPEC);
+                    // if name == "single_lim_disc_t" && delta == 1e-10 { tol_idem = 1e-5; tol_orth = 1e-5; }
                     /*
                     if name == "single_lim_disc_t" && delta == 1e-12 {
                         // tol_idem = 1e-2;

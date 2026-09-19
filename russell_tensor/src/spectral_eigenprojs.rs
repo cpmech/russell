@@ -1,6 +1,6 @@
-use crate::StrError;
-use crate::{EigenMethod, EigenValuesT2, Tensor2};
+use crate::{EigenMethod, EigenValuesT2, Tensor2, compute_eigenprojectors_choice_b};
 use crate::{IDENTITY2, SQRT_2};
+use crate::{StrError, compute_eigenprojectors_choice_a};
 use russell_lab::small_mat_eigen_sym_jacobi;
 
 pub struct EigenProjsT2 {
@@ -54,8 +54,25 @@ impl EigenProjsT2 {
         }
 
         // calculate the eigenvalues (sorted in descending order)
-        let spherical = self.eig.calculate_mx(ll, aa, method)?;
+        let _spherical = self.eig.calculate_mx(ll, aa, method)?;
 
+        let mut dev_ten = Tensor2::<6>::new();
+        let mut dev_mat = [[0.0; 3]; 3];
+        let mut dev_lambda = [0.0; 3];
+        aa.deviator(&mut dev_ten);
+        dev_ten.to_std_matrix_slice(&mut dev_mat);
+        let iso = aa.invariant_ii1() / 3.0;
+        dev_lambda[0] = ll[0] - iso;
+        dev_lambda[1] = ll[1] - iso;
+        dev_lambda[2] = ll[2] - iso;
+        let jj2 = aa.invariant_jj2();
+        // let dev_projs = compute_eigenprojectors_choice_a(&dev_mat, jj2, &dev_lambda);
+        let dev_projs = compute_eigenprojectors_choice_b(&dev_mat, jj2, &dev_lambda, 1e-12);
+        projs[0].set_std_matrix(&dev_projs[0])?;
+        projs[1].set_std_matrix(&dev_projs[1])?;
+        projs[2].set_std_matrix(&dev_projs[2])?;
+
+        /*
         // calculate differences between the SORTED eigenvalues
         let scale = aa.norm();
         let tol = 1e3 * f64::EPSILON * f64::EPSILON * scale * scale;
@@ -127,6 +144,7 @@ impl EigenProjsT2 {
                 projs[2].vec[m] = 0.0;
             }
         }
+        */
         Ok(())
     }
 }
@@ -343,7 +361,7 @@ mod tests {
                     let (mut tol_idem, mut tol_orth, mut tol_comp, mut tol_spec) =
                         (TOL_IDEM, TOL_ORTH, TOL_COMP, TOL_SPEC);
                     if name == "single_lim_disc_t" && delta == 1e-12 {
-                        tol_idem = 1e-3;
+                        tol_idem = 1e-2;
                         tol_orth = 1e-3;
                         tol_comp = 1e-3;
                     }

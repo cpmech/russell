@@ -1543,10 +1543,10 @@ impl<const N: usize> Tensor2<N> {
     /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
     #[inline]
     pub(crate) fn deviator_slice(&self, dev: &mut [f64]) {
-        let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
-        dev[0] = self.vec[0] - m;
-        dev[1] = self.vec[1] - m;
-        dev[2] = self.vec[2] - m;
+        let iso = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
+        dev[0] = self.vec[0] - iso;
+        dev[1] = self.vec[1] - iso;
+        dev[2] = self.vec[2] - iso;
         dev[3] = self.vec[3];
         if N > 4 {
             dev[4] = self.vec[4];
@@ -1557,17 +1557,18 @@ impl<const N: usize> Tensor2<N> {
             dev[7] = self.vec[7];
             dev[8] = self.vec[8];
         }
-        let new_trace_s = dev[0] + dev[1] + dev[2];
-        if f64::abs(new_trace_s) > 1e-10 {
-            // fix error due to large magnitudes
+        // make sure that the trace of the deviator is exactly zero
+        let temp_trace = dev[0] + dev[1] + dev[2];
+        if f64::abs(temp_trace) != 0.0 {
             let (mut v0, mut v1, mut v2) = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
             sort3(&mut v0, &mut v1, &mut v2);
             let d = f64::max(1.0, v2);
-            let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
-            dev[0] = (self.vec[0] / d - m) * d;
-            dev[1] = (self.vec[1] / d - m) * d;
-            dev[2] = (self.vec[2] / d - m) * d;
+            let c = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
+            dev[0] = (self.vec[0] / d - c) * d;
+            dev[1] = (self.vec[1] / d - c) * d;
+            dev[2] = -dev[0] - dev[1];
         }
+        debug_assert_eq!(dev[0] + dev[1] + dev[2], 0.0);
     }
 
     /// Calculates the norm of the deviator tensor
@@ -4329,6 +4330,6 @@ mod tests {
         .unwrap();
         let mut ss = Tensor2::<4>::new();
         tt.deviator(&mut ss);
-        approx_eq(ss.trace(), 0.0, 1e-14);
+        assert_eq!(ss.trace(), 0.0, "the trace of the deviator must be exactly zero");
     }
 }

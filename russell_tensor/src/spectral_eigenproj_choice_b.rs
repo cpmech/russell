@@ -37,10 +37,12 @@ pub fn compute_eigenprojectors_choice_b(
     let diff23 = (lambda_s[1] - lambda_s[2]).abs();
 
     if j2 < tol {
+        println!("Case 1");
         // Case 1: Purely spherical (J2 approaches 0).
         // Entire space is the eigenspace. E1 gets the Identity; E2 and E3 are empty.
         [i_mat, zero_mat, zero_mat]
     } else if diff12 < tol {
+        println!("Case 2");
         // Case 2: lambda_1 ≈ lambda_2 != lambda_3
         // Compute projector for the distinct eigenvalue (s3)
         let e3 = eval_projector(lambda_s[2]);
@@ -55,6 +57,7 @@ pub fn compute_eigenprojectors_choice_b(
         // Assign the shared plane's projector to E1, zero to E2
         [e12, zero_mat, e3]
     } else if diff23 < tol {
+        println!("Case 3");
         // Case 3: lambda_1 != lambda_2 ≈ lambda_3
         // Compute projector for the distinct eigenvalue (s1)
         let e1 = eval_projector(lambda_s[0]);
@@ -68,6 +71,7 @@ pub fn compute_eigenprojectors_choice_b(
         // Assign the shared plane's projector to E2, zero to E3
         [e1, e23, zero_mat]
     } else {
+        println!("Case 4");
         // Case 4: Three distinct eigenvalues
         let e1 = eval_projector(lambda_s[0]);
         let e2 = eval_projector(lambda_s[1]);

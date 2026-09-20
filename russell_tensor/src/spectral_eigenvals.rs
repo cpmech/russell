@@ -261,7 +261,7 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::EigenValuesT2;
-    use crate::testing::{HaberaZilian, generate_tensors2};
+    use crate::testing::{HaberaZilian, generate_eigen_problem, generate_tensors2};
     use crate::{EigenMethod, SamplesTensor2, Tensor2};
     use russell_lab::{approx_eq, array_approx_eq, sort3};
 
@@ -366,6 +366,51 @@ mod tests {
                         abs_tol *= 10.0;
                     }
                     array_approx_eq(&ll, &correct, abs_tol);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn calculate_mx_works_with_wide_range_of_values() {
+        const VERBOSE: bool = false;
+        const TOL_LAMBDA: f64 = 1e-13;
+        let mut ll = [0.0; 3];
+        let mut eig = EigenValuesT2::new();
+        let alpha = [1.0, 100.0, 1e6];
+        let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
+        for method in [
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
+        ] {
+            if VERBOSE {
+                println!("\n{}", "=".repeat(80));
+                println!("{:?}", method);
+            }
+            for r in 0..alpha.len() {
+                for s in 0..kappa.len() {
+                    for t in 0..kappa.len() {
+                        if VERBOSE {
+                            println!("r = {}, s = {}, t = {}", r, s, t);
+                        }
+                        // generate eigen-problem
+                        let l1 = alpha[r];
+                        let l2 = alpha[r] + kappa[s];
+                        let l3 = alpha[r] + kappa[t];
+                        let (aa, correct, _) = generate_eigen_problem(l1, l2, l3);
+
+                        // perform spectral decomposition
+                        eig.calculate_mx(&mut ll, &aa, method).unwrap();
+
+                        // check the eigenvalues
+                        let mut tol = TOL_LAMBDA;
+                        if r == 2 {
+                            tol = 1e-8;
+                        }
+                        array_approx_eq(&ll, &correct, tol);
+                    }
                 }
             }
         }

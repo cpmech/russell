@@ -544,6 +544,103 @@ impl HaberaZilian {
         similarity_transform(&mut aa_3x3, &ll, &qq_3x3);
         Tensor2::from_std_matrix(&aa_3x3).unwrap()
     }
+
+    /// Returns ABSOLUTE tolerances to check eigenprojectors
+    ///
+    /// Returns `(tol_idempotent, tol_reconstruction)`
+    pub fn tolerances_projectors(&self, name: &str, delta: f64) -> (f64, f64) {
+        const TOL_IDEM: f64 = 1e-13;
+        const TOL_RECON: f64 = 1e-12;
+        let default = (TOL_IDEM, TOL_RECON);
+        match name {
+            "single" => default,
+            "single_lim_J3" => default,
+            "single_lim_disc_t" => {
+                if delta == 1e-10 {
+                    (TOL_IDEM, 1e-10)
+                } else if delta == 1e-8 {
+                    (TOL_IDEM, 1e-8)
+                } else if delta == 1e-6 {
+                    (1e-9, 1e-9)
+                } else if delta == 1e-4 {
+                    (1e-11, 1e-11)
+                } else {
+                    default
+                }
+            }
+            "single_lim_disc_n" => {
+                if delta == 1e-10 {
+                    (TOL_IDEM, 1e-10)
+                } else if delta == 1e-8 {
+                    (TOL_IDEM, 1e-8)
+                } else if delta == 1e-6 {
+                    (1e-9, 1e-9)
+                } else if delta == 1e-4 {
+                    (1e-11, 1e-11)
+                } else {
+                    default
+                }
+            }
+            "single_lim_J3J2" => {
+                if delta == 1e-12 {
+                    (TOL_IDEM, 1e-11)
+                } else if delta == 1e-10 {
+                    (TOL_IDEM, 1e-9)
+                } else if delta == 1e-8 {
+                    (TOL_IDEM, 1e-7)
+                } else if delta == 1e-6 {
+                    (1e-9, TOL_RECON)
+                } else if delta == 1e-4 {
+                    (1e-12, TOL_RECON)
+                } else {
+                    default
+                }
+            }
+            "single_J3" => default,
+            "single_J3_lim_J2" => {
+                if delta == 1e-12 {
+                    (TOL_IDEM, 1e-11)
+                } else if delta == 1e-10 {
+                    (TOL_IDEM, 1e-9)
+                } else if delta == 1e-8 {
+                    (TOL_IDEM, 1e-7)
+                } else if delta == 1e-6 {
+                    (1e-10, TOL_RECON)
+                } else if delta == 1e-4 {
+                    (1e-12, TOL_RECON)
+                } else {
+                    default
+                }
+            }
+            "double" => default,
+            "double_lim_J3J2" => {
+                if delta == 1e-10 {
+                    (TOL_IDEM, 1e-10)
+                } else if delta == 1e-8 {
+                    (TOL_IDEM, 1e-8)
+                } else if delta == 1e-6 {
+                    (1e-9, TOL_RECON)
+                } else if delta == 1e-4 {
+                    (1e-11, TOL_RECON)
+                } else {
+                    default
+                }
+            }
+            "triple_J3" => {
+                if delta == 1e-12 {
+                    (TOL_IDEM, 1e-11)
+                } else if delta == 1e-10 {
+                    (TOL_IDEM, 1e-9)
+                } else if delta == 1e-8 {
+                    (TOL_IDEM, 1e-7)
+                } else {
+                    default
+                }
+            }
+            "d3" => default,
+            _ => panic!("unknown HZ test case: {}", name),
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------------

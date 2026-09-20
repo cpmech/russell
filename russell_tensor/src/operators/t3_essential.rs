@@ -1,5 +1,5 @@
-use super::{Tensor1, Tensor2, Tensor3};
 use crate::{ADD, SET};
+use crate::{Tensor1, Tensor2, Tensor3};
 
 /// Adds two third-order tensors
 ///

@@ -1,4 +1,4 @@
-use super::Tensor2;
+use crate::Tensor2;
 use crate::{SQRT_2, StrError};
 
 /// Performs the matrix multiplication between two Tensor2

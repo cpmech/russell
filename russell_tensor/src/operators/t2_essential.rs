@@ -1,5 +1,5 @@
-use super::{Tensor1, Tensor2};
 use crate::{ADD, SQRT_2};
+use crate::{Tensor1, Tensor2};
 use russell_lab::StrError;
 
 /// Adds two second-order tensors

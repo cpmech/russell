@@ -1,5 +1,5 @@
-use super::{Tensor2, Tensor4};
 use crate::{ADD, SQRT_2};
+use crate::{Tensor2, Tensor4};
 
 /// Performs the overbar dyadic product between two Tensor2 resulting in a (general) Tensor4
 ///

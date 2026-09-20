@@ -1,5 +1,5 @@
-use super::{Tensor2, Tensor4};
 use crate::ADD;
+use crate::{Tensor2, Tensor4};
 
 /// Performs the dyadic product between two Tensor2 resulting a Tensor4
 ///

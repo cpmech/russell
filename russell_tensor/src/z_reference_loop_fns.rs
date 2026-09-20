@@ -3,9 +3,31 @@
 //! `M_TO_IJ` / `MN_TO_IJKL` index mappings) that are used in tests to
 //! cross-check the optimized (unrolled) production implementations.
 
-use crate::{M_TO_IJ, MN_TO_IJKL, ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
+use crate::{IJ_TO_M_SYM, IJKL_TO_MN, M_TO_IJ, MN_TO_IJKL, ONE_BY_3, SQRT_2, SQRT_3, TOL_J2, TWO_BY_3};
 use crate::{Tensor2, Tensor4};
 use russell_lab::Matrix;
+
+/// Zeroes the entries of a 9x9 standard matrix that are not represented by a Tensor4<4>
+fn zero_unrepresented_shears(mat: &mut Matrix) {
+    for m in 0..9 {
+        for n in 0..9 {
+            let (i, j, k, l) = MN_TO_IJKL[m][n];
+            if IJ_TO_M_SYM[i][j] >= 4 || IJ_TO_M_SYM[k][l] >= 4 {
+                mat.set(m, n, 0.0);
+            }
+        }
+    }
+}
+
+/// Transfers a 9x9 standard matrix into a Tensor4
+///
+/// For N == 4 (generalized plane), the unrepresented shears are zeroed first.
+fn set_std<const N: usize>(dd: &mut Tensor4<N>, mut mat: Matrix) {
+    if N == 4 {
+        zero_unrepresented_shears(&mut mat);
+    }
+    dd.set_std_matrix(&mat).unwrap();
+}
 
 /// Computes the self-sum-dyadic (ssd) operation using loops
 ///
@@ -13,22 +35,15 @@ use russell_lab::Matrix;
 ///
 /// Reference implementation of [`crate::ssd_fn`].
 pub fn ssd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>) {
-    for m in 0..N {
-        for n in 0..N {
-            dd.set(m, n, 0.0);
+    let a = aa.as_std_matrix();
+    let mut mat = Matrix::new(9, 9);
+    for m in 0..9 {
+        for n in 0..9 {
+            let (i, j, k, l) = MN_TO_IJKL[m][n];
+            mat.set(m, n, s * (a.get(i, k) * a.get(j, l) + a.get(i, l) * a.get(j, k)));
         }
     }
-    let n_sym = if N > 6 { 6 } else { N };
-    for m in 0..n_sym {
-        let (i, j) = M_TO_IJ[m];
-        let cm = if i == j { 1.0 } else { SQRT_2 };
-        for n in 0..n_sym {
-            let (k, l) = M_TO_IJ[n];
-            let cn = if k == l { 1.0 } else { SQRT_2 };
-            let dijkl = aa.get_std(i, k) * aa.get_std(j, l) + aa.get_std(i, l) * aa.get_std(j, k);
-            dd.set(m, n, s * cm * cn * dijkl);
-        }
-    }
+    set_std(dd, mat);
 }
 
 /// Computes the quad-sum-dyadic (qsd) operation using loops
@@ -37,25 +52,30 @@ pub fn ssd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>
 ///
 /// Reference implementation of [`crate::qsd_fn`].
 pub fn qsd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
-    for m in 0..N {
-        for n in 0..N {
-            dd.set(m, n, 0.0);
+    let a = aa.as_std_matrix();
+    let b = bb.as_std_matrix();
+    let mut mat = Matrix::new(9, 9);
+    for i in 0..3 {
+        for j in 0..3 {
+            for k in 0..3 {
+                for l in 0..3 {
+                    // the result is minor-symmetric: use the canonical (i<=j, k<=l) pair
+                    let (ii, jj) = if i <= j { (i, j) } else { (j, i) };
+                    let (kk, ll) = if k <= l { (k, l) } else { (l, k) };
+                    let (m, n) = IJKL_TO_MN[i][j][k][l];
+                    mat.set(
+                        m,
+                        n,
+                        s * (a.get(ii, kk) * b.get(jj, ll)
+                            + a.get(ii, ll) * b.get(jj, kk)
+                            + b.get(ii, kk) * a.get(jj, ll)
+                            + b.get(ii, ll) * a.get(jj, kk)),
+                    );
+                }
+            }
         }
     }
-    let n_sym = if N > 6 { 6 } else { N };
-    for m in 0..n_sym {
-        let (i, j) = M_TO_IJ[m];
-        let cm = if i == j { 1.0 } else { SQRT_2 };
-        for n in 0..n_sym {
-            let (k, l) = M_TO_IJ[n];
-            let cn = if k == l { 1.0 } else { SQRT_2 };
-            let dijkl = aa.get_std(i, k) * bb.get_std(j, l)
-                + aa.get_std(i, l) * bb.get_std(j, k)
-                + bb.get_std(i, k) * aa.get_std(j, l)
-                + bb.get_std(i, l) * aa.get_std(j, k);
-            dd.set(m, n, s * cm * cn * dijkl);
-        }
-    }
+    set_std(dd, mat);
 }
 
 /// Computes the derivative of the squared tensor using loops
@@ -180,15 +200,34 @@ pub fn deriv2_invariant_lode_loops<const N: usize>(d2: &mut Tensor4<N>, a: &Tens
     Some(jj2)
 }
 
+/// Computes the duo-sum-dyadic (dsd) operation using loops
+///
+/// `Dᵢⱼₖₗ = s (Aᵢⱼ Bₖₗ + Bᵢⱼ Aₖₗ)`
+///
+/// Reference implementation of [`crate::dsd_fn`].
+pub fn dsd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
+    let a = aa.as_std_matrix();
+    let b = bb.as_std_matrix();
+    let mut mat = Matrix::new(9, 9);
+    for m in 0..9 {
+        for n in 0..9 {
+            let (i, j, k, l) = MN_TO_IJKL[m][n];
+            mat.set(m, n, s * (a.get(i, j) * b.get(k, l) + b.get(i, j) * a.get(k, l)));
+        }
+    }
+    set_std(dd, mat);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::{
-        deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, qsd_fn_loops, ssd_fn_loops,
+        deriv_squared_tensor_loops, deriv2_invariant_jj3_loops, deriv2_invariant_lode_loops, dsd_fn_loops,
+        qsd_fn_loops, ssd_fn_loops,
     };
     use crate::{SET, Tensor2, Tensor4, WorkspaceDeriv2Lode};
-    use crate::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, qsd_fn, ssd_fn};
+    use crate::{deriv_squared_tensor, deriv2_invariant_jj3, deriv2_invariant_lode, dsd_fn, qsd_fn, ssd_fn};
     use russell_lab::mat_approx_eq;
 
     const GENERAL_A: [[f64; 3]; 3] = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]];
@@ -256,6 +295,36 @@ mod tests {
         let mut dd_ref = Tensor4::<4>::new();
         qsd_fn(&mut dd, SET, 2.0, &a, &b);
         qsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+    }
+
+    #[test]
+    fn dsd_fn_loops_matches() {
+        // general
+        let a = Tensor2::<9>::from_std_matrix(&GENERAL_A).unwrap();
+        let b = Tensor2::<9>::from_std_matrix(&GENERAL_B).unwrap();
+        let mut dd = Tensor4::<9>::new();
+        let mut dd_ref = Tensor4::<9>::new();
+        dsd_fn(&mut dd, SET, 2.0, &a, &b);
+        dsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+
+        // symmetric
+        let a = Tensor2::<6>::from_std_matrix(&SYMMETRIC_A).unwrap();
+        let b = Tensor2::<6>::from_std_matrix(&SYMMETRIC_B).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        let mut dd_ref = Tensor4::<6>::new();
+        dsd_fn(&mut dd, SET, 2.0, &a, &b);
+        dsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
+        assert_same_t4(&dd, &dd_ref, 1e-12);
+
+        // symmetric generalized plane
+        let a = Tensor2::<4>::from_std_matrix(&SYM2D_A).unwrap();
+        let b = Tensor2::<4>::from_std_matrix(&SYM2D_B).unwrap();
+        let mut dd = Tensor4::<4>::new();
+        let mut dd_ref = Tensor4::<4>::new();
+        dsd_fn(&mut dd, SET, 2.0, &a, &b);
+        dsd_fn_loops(&mut dd_ref, 2.0, &a, &b);
         assert_same_t4(&dd, &dd_ref, 1e-12);
     }
 

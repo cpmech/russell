@@ -15,6 +15,9 @@ use crate::{Tensor2, Tensor4};
 /// Dᵢⱼₖₗ = s (Aᵢⱼ Bₖₗ + Bᵢⱼ Aₖₗ)
 /// ```
 ///
+/// **Note:** For `N = 4` (symmetric generalized plane), the `{00,11,22,01}` block
+/// is analytically zero.
+///
 /// # Output
 ///
 /// * `dd` -- The resulting tensor (minor-symmetric)
@@ -351,21 +354,9 @@ pub(crate) fn dsd_fn_slice<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, 
 #[cfg(test)]
 mod tests {
     use super::dsd_fn;
-    use crate::{ADD, IJ_TO_M_SYM, MN_TO_IJKL, SET};
+    use crate::{ADD, MN_TO_IJKL, SET};
     use crate::{Tensor2, Tensor4};
     use russell_lab::{Matrix, mat_approx_eq};
-
-    // Zeroes the entries of a 9x9 standard matrix that are not represented by a Tensor4<4>
-    fn zero_unrepresented_shears(mat: &mut Matrix) {
-        for m in 0..9 {
-            for n in 0..9 {
-                let (i, j, k, l) = MN_TO_IJKL[m][n];
-                if IJ_TO_M_SYM[i][j] >= 4 || IJ_TO_M_SYM[k][l] >= 4 {
-                    mat.set(m, n, 0.0);
-                }
-            }
-        }
-    }
 
     fn check_dsd<const N: usize>(s: f64, a_ten: &Tensor2<N>, b_ten: &Tensor2<N>, dd_ten: &Tensor4<N>, tol: f64) {
         let a = a_ten.as_std_matrix();
@@ -377,9 +368,6 @@ mod tests {
                 let (i, j, k, l) = MN_TO_IJKL[m][n];
                 correct.set(m, n, s * (a.get(i, j) * b.get(k, l) + b.get(i, j) * a.get(k, l)));
             }
-        }
-        if N == 4 {
-            zero_unrepresented_shears(&mut correct);
         }
         mat_approx_eq(&dd, &correct, tol);
     }

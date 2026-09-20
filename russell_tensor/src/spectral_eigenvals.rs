@@ -33,7 +33,7 @@ pub enum EigenMethod {
     Iterative,
 }
 
-/// Holds the eigenvalues of a symmetric second-order tensor
+/// Assists in calculating the eigenvalues of a symmetric second-order tensor
 pub struct EigenValuesT2 {
     /// Auxiliary deviatoric tensor: S = A - (I1/3) I
     ///

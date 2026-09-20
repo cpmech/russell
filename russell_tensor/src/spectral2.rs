@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::{P_SYM, P_SYMDEV, SET, SQRT_2};
 use crate::{EigenMethod, EigenValuesT2};
 use crate::{StrError, Tensor2, Tensor4};
@@ -760,126 +758,9 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 
 #[cfg(test)]
 mod tests {
-    use super::{EigStatus, EigenMethod, Spectral2, t2_plus_diag_product};
-    use crate::testing::{generate_tensors2, similarity_transform};
+    use super::{EigStatus, EigenMethod, Spectral2};
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
-    use crate::{IDENTITY2, SQRT_2, SQRT_3, SQRT_6};
-    use russell_lab::{Matrix, approx_eq, array_approx_eq, deriv1_central5, mat_approx_eq, mat_mat_mul};
-
-    #[cfg(feature = "heap")]
-    use russell_lab::vec_approx_eq;
-
-    //
-    // --- auxiliary --------------------------
-    //
-
-    /// Check the properties of eigenprojectors
-    fn check_eigenprojectors(pp_all: &[Tensor2<6>], tol: f64, skip_orthogonality_check: bool) {
-        // sum check: P0 + P1 + P2 = I
-        let mut sum = [0.0; 6];
-        for i in 0..3 {
-            for m in 0..6 {
-                sum[m] += pp_all[i].get(m);
-            }
-        }
-        array_approx_eq(&sum, &IDENTITY2[..6], tol);
-
-        // orthogonality check: P[i] . P[j] = δ[i,j] P[i]
-        if !skip_orthogonality_check {
-            let zero = [[0.0; 3]; 3];
-            let mut ppi_times_ppj = Matrix::new(3, 3);
-            for i in 0..3 {
-                let ppi = pp_all[i].as_std_matrix();
-                for j in 0..3 {
-                    let ppj = pp_all[j].as_std_matrix();
-                    mat_mat_mul(&mut ppi_times_ppj, 1.0, &ppi, &ppj, 0.0).unwrap();
-                    if i == j {
-                        mat_approx_eq(&ppi_times_ppj, &ppi, tol);
-                    } else {
-                        mat_approx_eq(&ppi_times_ppj, &zero, tol);
-                    }
-                }
-            }
-        }
-    }
-
-    /// Calculates A = Σ λ[k] * P[k]
-    fn compose(aa: &mut Tensor2<6>, spc: &Spectral2) {
-        aa.vec[0] = spc.lam[0] * spc.proj[0].vec[0] + spc.lam[1] * spc.proj[1].vec[0] + spc.lam[2] * spc.proj[2].vec[0];
-        aa.vec[1] = spc.lam[0] * spc.proj[0].vec[1] + spc.lam[1] * spc.proj[1].vec[1] + spc.lam[2] * spc.proj[2].vec[1];
-        aa.vec[2] = spc.lam[0] * spc.proj[0].vec[2] + spc.lam[1] * spc.proj[1].vec[2] + spc.lam[2] * spc.proj[2].vec[2];
-        aa.vec[3] = spc.lam[0] * spc.proj[0].vec[3] + spc.lam[1] * spc.proj[1].vec[3] + spc.lam[2] * spc.proj[2].vec[3];
-        aa.vec[4] = spc.lam[0] * spc.proj[0].vec[4] + spc.lam[1] * spc.proj[1].vec[4] + spc.lam[2] * spc.proj[2].vec[4];
-        aa.vec[5] = spc.lam[0] * spc.proj[0].vec[5] + spc.lam[1] * spc.proj[1].vec[5] + spc.lam[2] * spc.proj[2].vec[5];
-    }
-
-    /// Check the solution to the eigen-problem on tensor A
-    fn check_eigen_problem(
-        aa: &Tensor2<6>,
-        spec: &Spectral2,
-        tol_proj: f64,
-        tol_compose: f64,
-        skip_orthogonality_check: bool,
-    ) {
-        // check eigenprojectors
-        check_eigenprojectors(&spec.proj, tol_proj, skip_orthogonality_check);
-
-        // check composed matrix
-        let mut bb = Tensor2::<6>::new();
-        compose(&mut bb, spec);
-        #[cfg(feature = "heap")]
-        vec_approx_eq(&aa.vec, &bb.vec, tol_compose);
-        #[cfg(not(feature = "heap"))]
-        array_approx_eq(&aa.vec, &bb.vec, tol_compose);
-    }
-
-    /// Checks the eigen-problem by comparing with known values
-    fn check(
-        method: EigenMethod,
-        spec: &mut Spectral2,
-        sample: &SampleTensor2,
-        tol_lambda: f64,
-        tol_proj: f64,
-        tol_compose: f64,
-    ) {
-        // extract eigenvalues
-        let correct_lambda = sample.eigenvalues.unwrap();
-
-        // perform the spectral decomposition
-        let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-        spec.decompose_mx(&aa, method).unwrap();
-
-        // output (for debugging)
-        // println!("eigenvalues = {:?}", spec.lam);
-        // println!("P0 =\n{:.15}", spec.proj[0].as_std_matrix());
-        // println!("P1 =\n{:.15}", spec.proj[1].as_std_matrix());
-        // println!("P2 =\n{:.15}", spec.proj[2].as_std_matrix());
-
-        // compare eigenvalues
-        array_approx_eq(&spec.lam, &correct_lambda, tol_lambda);
-
-        // compare eigenprojectors
-        // note: for spherical tensors, the eigenprojectors are not unique, so this check is skipped
-        if spec.status != EigStatus::Spherical {
-            let correct_projectors = sample.eigenprojectors.unwrap();
-            let pp0 = spec.proj[0].as_std_matrix();
-            let pp1 = spec.proj[1].as_std_matrix();
-            let pp2 = spec.proj[2].as_std_matrix();
-            let correct0 = Matrix::from(&correct_projectors[0]);
-            let correct1 = Matrix::from(&correct_projectors[1]);
-            let correct2 = Matrix::from(&correct_projectors[2]);
-            mat_approx_eq(&correct0, &pp0, tol_proj);
-            mat_approx_eq(&correct1, &pp1, tol_proj);
-            mat_approx_eq(&correct2, &pp2, tol_proj);
-        }
-
-        // further checks
-        check_eigen_problem(&aa, spec, tol_proj, tol_compose, false);
-    }
-
-    //
-    // --- tests -------------------------------
-    //
+    use russell_lab::{deriv1_central5, mat_approx_eq};
 
     /// Holds arguments for numerical differentiation corresponding to [dP[i]/dA]ₘₙ
     struct ArgsNumDerivProj {

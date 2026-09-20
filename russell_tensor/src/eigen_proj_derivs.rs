@@ -1,16 +1,26 @@
 #![allow(unused)]
 
-use crate::StrError;
-use crate::{EigenProjsT2, EigenValMethod, Tensor2, Tensor4};
-use crate::{P_SYM, SET};
+use crate::{ADD, P_SYM, SET};
+use crate::{EigenProjsT2, EigenValMethod, Tensor2, Tensor4, dsd_fn};
+use crate::{StrError, deriv2_invariant_ii3};
 use crate::{ssd_fn, t2_dyad_t2};
+
+/// Auxiliary fourth-order tensor Q := Psym − I⊗I in Kelvin-Mandel components
+const Q4: [[f64; 6]; 6] = [
+    [0.0, -1.0, -1.0, 0.0, 0.0, 0.0],
+    [-1.0, 0.0, -1.0, 0.0, 0.0, 0.0],
+    [-1.0, -1.0, 0.0, 0.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+];
 
 /// Assists in calculating the derivatives of the eigenprojectors
 pub struct EigenProjDerivsT2 {
     /// Structure to assist in calculating the eigenvalues and eigenprojectors
     eig: EigenProjsT2,
 
-    /// Inverse of the input matrix A
+    /// Inverse Tensor2 of the input matrix A
     ///
     ///
     /// ```text
@@ -18,7 +28,7 @@ pub struct EigenProjDerivsT2 {
     /// ```
     aa_inv: Tensor2<6>,
 
-    /// Auxiliary tensor: ssd(A⁻¹)
+    /// Auxiliary Tensor4: ssd(A⁻¹)
     ///
     /// ```text
     ///             _
@@ -27,17 +37,14 @@ pub struct EigenProjDerivsT2 {
     /// ```
     yy: Tensor4<6>,
 
-    /// Auxiliary set of tensors (empty by default)
-    ///
-    /// ```text
-    /// P[j] ⊗ P[j]  (no sum on j)
-    /// ```
-    p_dy_p: [Tensor4<6>; 3],
+    /// Workspace: auxiliary set of Tensor4
+    work: [Tensor4<6>; 3],
 
-    /// Auxiliary tensor: M := ∂²I3/∂a² (second derivative of the third invariant)
-    ///
-    /// Used in the computation of the derivatives of the eigenprojectors
+    /// Auxiliary Tensor4 `∂²I3/∂a²` (second derivative of the third invariant)
     d2_ii3: Tensor4<6>,
+
+    /// Identity Tensor2
+    ii_ten: Tensor2<6>,
 }
 
 impl EigenProjDerivsT2 {
@@ -47,8 +54,9 @@ impl EigenProjDerivsT2 {
             eig: EigenProjsT2::new(),
             aa_inv: Tensor2::new(),
             yy: Tensor4::new(),
-            p_dy_p: [Tensor4::new(), Tensor4::new(), Tensor4::new()],
+            work: [Tensor4::new(), Tensor4::new(), Tensor4::new()],
             d2_ii3: Tensor4::new(),
+            ii_ten: Tensor2::identity(),
         }
     }
 
@@ -172,9 +180,9 @@ impl EigenProjDerivsT2 {
         ssd_fn(&mut self.yy, SET, 0.5, &self.aa_inv);
 
         // allocate and calculate auxiliary tensors P[j] ⊗ P[j]
-        t2_dyad_t2(&mut self.p_dy_p[0], SET, 1.0, &projs[0], &projs[0]);
-        t2_dyad_t2(&mut self.p_dy_p[1], SET, 1.0, &projs[1], &projs[1]);
-        t2_dyad_t2(&mut self.p_dy_p[2], SET, 1.0, &projs[2], &projs[2]);
+        t2_dyad_t2(&mut self.work[0], SET, 1.0, &projs[0], &projs[0]);
+        t2_dyad_t2(&mut self.work[1], SET, 1.0, &projs[1], &projs[1]);
+        t2_dyad_t2(&mut self.work[2], SET, 1.0, &projs[2], &projs[2]);
 
         // calculate auxiliary coefficients
         let mut d = [0.0; 3];
@@ -199,9 +207,9 @@ impl EigenProjDerivsT2 {
             for m in 0..6 {
                 for n in 0..6 {
                     let p = a[i] * P_SYM[m][n] - b[i] * self.yy.get(m, n);
-                    let q0 = (c[i][0] - a[i]) * self.p_dy_p[0].get(m, n);
-                    let q1 = (c[i][1] - a[i]) * self.p_dy_p[1].get(m, n);
-                    let q2 = (c[i][2] - a[i]) * self.p_dy_p[2].get(m, n);
+                    let q0 = (c[i][0] - a[i]) * self.work[0].get(m, n);
+                    let q1 = (c[i][1] - a[i]) * self.work[1].get(m, n);
+                    let q2 = (c[i][2] - a[i]) * self.work[2].get(m, n);
                     dpp[i].set(m, n, p + q0 + q1 + q2);
                 }
             }
@@ -218,6 +226,77 @@ impl EigenProjDerivsT2 {
         aa: &Tensor2<6>,
         method: EigenValMethod,
     ) -> Result<(), StrError> {
+        // compute the eigenvalues and eigenprojectors
+        self.eig.calculate_mx(ll, projs, aa, method)?;
+
+        // calculate differences between the SORTED eigenvalues
+        let d01 = f64::abs(ll[0] - ll[1]);
+        let d12 = f64::abs(ll[1] - ll[2]);
+
+        // calculate a tolerance to detect coalescence
+        let tol_diff = 10.0 * f64::EPSILON.sqrt();
+
+        // spherical case
+        if d01 <= tol_diff && d12 <= tol_diff {
+            return Err("Failed due to spherical state (all equal eigenvalues)");
+        }
+
+        // compute the invariants
+        let ii1 = aa.invariant_ii1();
+        let ii2 = aa.invariant_ii2();
+
+        // compute ∂²I3a/∂A² (the second derivative of the third invariant)
+        deriv2_invariant_ii3(&mut self.d2_ii3, aa);
+
+        // calculate the derivatives of eigenprojectors
+        if d01 <= tol_diff {
+            // coalescent eigenvalues κ0 ≈ κ1 > κ2
+            panic!("TODO: d01");
+        } else if d12 <= tol_diff {
+            // coalescent eigenvalues κ0 > κ1 ≈ κ2
+            panic!("TODO: d12");
+        } else {
+            // all distinct eigenvalues
+            for k in 0..3 {
+                self.calc_deriv_non_rep(&mut dpp[k], ll[k], &projs[k], ii1, ii2, aa)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Calculates the derivative of the eigenprojector for the non-repeated eigenvalue (k)
+    fn calc_deriv_non_rep(
+        &mut self,
+        dpp_k: &mut Tensor4<6>,
+        lam_k: f64,
+        pp_k: &Tensor2<6>,
+        ii1: f64,
+        ii2: f64,
+        aa: &Tensor2<6>,
+    ) -> Result<(), StrError> {
+        // calculate gamma[k]
+        let g = 3.0 * lam_k * lam_k - 2.0 * ii1 * lam_k + ii2;
+
+        // calculate auxiliary coefficients
+        let ag = (2.0 * ii1 - 6.0 * lam_k) / g;
+        let bg = (2.0 * lam_k - ii1) / g;
+        let og = 1.0 / g;
+
+        // work[0] := (l Q + M) / g
+        for m in 0..6 {
+            for n in 0..6 {
+                dpp_k.set(m, n, (lam_k * Q4[m][n] + self.d2_ii3.get(m, n)) / g);
+            }
+        }
+
+        // work[0] += (a/g) * P[k] ⊗ P[k]
+        t2_dyad_t2(dpp_k, ADD, ag, pp_k, pp_k);
+
+        // work[0] += (b/g) * (P[k] ⊗ I + I ⊗ P[k])
+        dsd_fn(dpp_k, ADD, bg, pp_k, &self.ii_ten);
+
+        // work[0] += (1/g) * (P[k] ⊗ A + A ⊗ P[k])
+        dsd_fn(dpp_k, ADD, og, pp_k, aa);
         Ok(())
     }
 }
@@ -289,32 +368,50 @@ mod tests {
         let mut calc = EigenProjDerivsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
-        for method in [
-            EigenValMethod::AnalyticalHZ,
-            // EigenMethod::AnalyticalHA22,
-            // EigenMethod::AnalyticalHA23,
-            // EigenMethod::Iterative,
-        ] {
+        let method = EigenValMethod::AnalyticalHZ;
+        for sample in [SamplesTensor2::TENSOR_U] {
             if VERBOSE {
-                println!("\n{}", "=".repeat(80));
-                println!("{:?}", method);
+                println!("\n{}", "-".repeat(80));
+                println!("{}", sample.desc);
             }
-            for sample in [SamplesTensor2::TENSOR_U] {
-                if VERBOSE {
-                    println!("\n{}", "-".repeat(80));
-                    println!("{}", sample.desc);
-                }
 
-                // calculate the eigenvalues, eigenprojectors, and derivatives of eigenprojectors
-                let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
-                if VERBOSE {
-                    println!("A = \n{}", aa.as_std_matrix());
-                }
-                calc.calc_with_inv(&mut ll, &mut projs, &mut ddp, &aa, method).unwrap();
-
-                // check the derivatives using numerical differentiation
-                compare_with_numerical(method, aa, &ddp, TOL_DDP);
+            // calculate the eigenvalues, eigenprojectors, and derivatives of eigenprojectors
+            let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+            if VERBOSE {
+                println!("A = \n{}", aa.as_std_matrix());
             }
+            calc.calc_with_inv(&mut ll, &mut projs, &mut ddp, &aa, method).unwrap();
+
+            // check the derivatives using numerical differentiation
+            compare_with_numerical(method, aa, &ddp, TOL_DDP);
+        }
+    }
+
+    #[test]
+    fn calc_with_char_poly_works_with_samples() {
+        const VERBOSE: bool = false;
+        const TOL_DDP: f64 = 1e-9;
+        let mut ll = [0.0; 3];
+        let mut calc = EigenProjDerivsT2::new();
+        let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
+        let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
+        let method = EigenValMethod::AnalyticalHZ;
+        for sample in [SamplesTensor2::TENSOR_U] {
+            if VERBOSE {
+                println!("\n{}", "-".repeat(80));
+                println!("{}", sample.desc);
+            }
+
+            // calculate the eigenvalues, eigenprojectors, and derivatives of eigenprojectors
+            let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+            if VERBOSE {
+                println!("A = \n{}", aa.as_std_matrix());
+            }
+            calc.calc_with_char_poly(&mut ll, &mut projs, &mut ddp, &aa, method)
+                .unwrap();
+
+            // check the derivatives using numerical differentiation
+            compare_with_numerical(method, aa, &ddp, TOL_DDP);
         }
     }
 }

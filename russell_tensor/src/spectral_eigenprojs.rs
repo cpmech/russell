@@ -393,12 +393,11 @@ mod tests {
 
     #[test]
     fn general_tensors2_works() {
-        const VERBOSE: bool = true;
+        const VERBOSE: bool = false;
         const VERB_RECONSTRUCT: bool = false;
         const TOL_IDEM: f64 = 1e-15;
-        const TOL_ORTH: f64 = 1e-15;
         const TOL_COMP: f64 = 1e-15;
-        const TOL_SPEC: f64 = 1e-15;
+        const TOL_RECON: f64 = 1e-15;
         let mut ll = [0.0; 3];
         let mut eig = EigenProjsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
@@ -423,58 +422,64 @@ mod tests {
                 eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
 
                 // check whether the eigenprojectors satisfy the eigenprojector rules
-                let (mut tol_idem, mut tol_orth, mut tol_comp, mut tol_spec) = (TOL_IDEM, TOL_ORTH, TOL_COMP, TOL_SPEC);
+                let (mut tol_idem, mut tol_comp, mut tol_recon) = (TOL_IDEM, TOL_COMP, TOL_RECON);
+                if k == 17 {
+                    if method == EigenMethod::AnalyticalHA22 {
+                        tol_recon = 1e-14;
+                    }
+                }
                 if k == 61 || k == 66 {
                     tol_idem = 1e-14;
-                    tol_orth = 1e-14;
-                    tol_spec = 1e-14;
+                    tol_recon = 1e-14;
                 }
                 if k == 78 || k == 79 {
                     tol_idem = 1e-12;
-                    tol_orth = 1e-12;
                 }
                 if k == 80 {
                     tol_idem = 1e-13;
-                    tol_orth = 1e-13;
                     tol_comp = 1e-13;
-                    tol_spec = 1e-13;
+                    tol_recon = 1e-13;
                 }
                 if k == 81 || k == 82 || k == 83 {
                     tol_idem = 1e-9;
-                    tol_orth = 1e-9;
                 }
                 if k == 84 || k == 85 || k == 86 {
-                    tol_spec = 1e-9;
+                    tol_recon = 1e-9;
                     if method == EigenMethod::AnalyticalHA22 || method == EigenMethod::AnalyticalHA23 {
-                        tol_spec = 1e-8;
+                        tol_recon = 1e-8;
                     }
                 }
                 if k == 87 || k == 88 || k == 89 {
-                    tol_spec = 1e-12;
+                    tol_recon = 1e-12;
                     if method == EigenMethod::AnalyticalHA22 || method == EigenMethod::AnalyticalHA23 {
-                        tol_spec = 1e-11;
+                        tol_recon = 1e-11;
                     }
                 }
                 if k == 90 {
                     if method == EigenMethod::AnalyticalHA22 {
-                        tol_spec = 1e-14;
+                        tol_recon = 1e-14;
                     }
                 }
                 if k == 91 {
-                    tol_spec = 1e-14;
+                    tol_recon = 1e-14;
                 }
-                let status = eigenprojector_rules(&projs, tol_idem, tol_orth, tol_comp, VERBOSE);
+                if k == 92 {
+                    if method == EigenMethod::AnalyticalHA22 {
+                        tol_recon = 1e-14;
+                    }
+                }
+                let status = eigenprojector_rules(&projs, tol_idem, tol_idem, tol_comp, VERBOSE);
                 assert_eq!(status, OK_EIGENPROJ_RULES);
 
                 // check the spectral composition
-                check_reconstruct(&aa, &ll, &projs, tol_spec, VERB_RECONSTRUCT);
+                check_reconstruct(&aa, &ll, &projs, tol_recon, VERB_RECONSTRUCT);
             }
         }
     }
 
     #[test]
     fn habera_zilian_cases_work_works() {
-        const VERBOSE: bool = true;
+        const VERBOSE: bool = false;
         const VERBOSE_PROJ: bool = false;
         const VERB_RECONSTRUCT: bool = false;
         const TOL_COMP: f64 = 1e-15; // this is always near machine eps

@@ -52,6 +52,17 @@ impl EigenProjDerivsT2 {
         }
     }
 
+    /// Calculates the derivatives of the eigenprojectors w.r.t. the A
+    pub fn calculate(
+        &mut self,
+        ll: &mut [f64; 3],
+        projs: &mut [Tensor2<6>; 3],
+        dpp: &mut [Tensor4<6>; 3],
+        aa: &Tensor2<6>,
+    ) -> Result<(), StrError> {
+        self.calculate_mx(ll, projs, dpp, aa, EigenValMethod::AnalyticalHZ, false)
+    }
+
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A (method selection)
     pub fn calculate_mx(
         &mut self,
@@ -60,11 +71,16 @@ impl EigenProjDerivsT2 {
         dpp: &mut [Tensor4<6>; 3],
         aa: &Tensor2<6>,
         method: EigenValMethod,
+        use_inverse: bool,
     ) -> Result<(), StrError> {
-        Ok(())
+        if use_inverse {
+            self.calc_with_inv(ll, projs, dpp, aa, method)
+        } else {
+            self.calc_with_char_poly(ll, projs, dpp, aa, method)
+        }
     }
 
-    /// Calculates the derivatives of the eigenprojectors w.r.t. the A (using the inverse)
+    /// Calculates the derivatives of the eigenprojectors w.r.t. the A using the inverse of A
     ///
     /// Note: This function is only available for *invertible* tensor A with *distinct* and *non-zero* eigenvalues.
     ///
@@ -105,7 +121,7 @@ impl EigenProjDerivsT2 {
     /// 2. Miehe C. (1998) Comparison of two algorithms for the computation of fourth-order
     ///    isotropic tensor functions. Computers & Structures, 66(1):37-43.
     ///    <https://doi.org/10.1016/S0045-7949(97)00073-4>
-    pub fn calculate_with_inv(
+    pub fn calc_with_inv(
         &mut self,
         ll: &mut [f64; 3],
         projs: &mut [Tensor2<6>; 3],
@@ -192,6 +208,18 @@ impl EigenProjDerivsT2 {
         }
         Ok(())
     }
+
+    /// Calculates the derivatives of the eigenprojectors w.r.t. the A using the characteristic polynomial
+    pub fn calc_with_char_poly(
+        &mut self,
+        ll: &mut [f64; 3],
+        projs: &mut [Tensor2<6>; 3],
+        dpp: &mut [Tensor4<6>; 3],
+        aa: &Tensor2<6>,
+        method: EigenValMethod,
+    ) -> Result<(), StrError> {
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +282,7 @@ mod tests {
     }
 
     #[test]
-    fn calculate_with_inv_works_with_samples() {
+    fn calc_with_inv_works_with_samples() {
         const VERBOSE: bool = false;
         const TOL_DDP: f64 = 1e-9;
         let mut ll = [0.0; 3];
@@ -282,8 +310,7 @@ mod tests {
                 if VERBOSE {
                     println!("A = \n{}", aa.as_std_matrix());
                 }
-                calc.calculate_with_inv(&mut ll, &mut projs, &mut ddp, &aa, method)
-                    .unwrap();
+                calc.calc_with_inv(&mut ll, &mut projs, &mut ddp, &aa, method).unwrap();
 
                 // check the derivatives using numerical differentiation
                 compare_with_numerical(method, aa, &ddp, TOL_DDP);

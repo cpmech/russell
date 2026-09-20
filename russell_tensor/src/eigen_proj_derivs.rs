@@ -124,9 +124,7 @@ impl EigenProjDerivsT2 {
     ///
     /// # References
     ///
-    /// 1. Miehe C. (1993) Computation of isotropic tensor functions. Communications in
-    ///    Numerical Methods in Engineering, 9(11):889-896. <https://doi.org/10.1002/cnm.1640091105>
-    /// 2. Miehe C. (1998) Comparison of two algorithms for the computation of fourth-order
+    /// 1. Miehe C. (1998) Comparison of two algorithms for the computation of fourth-order
     ///    isotropic tensor functions. Computers & Structures, 66(1):37-43.
     ///    <https://doi.org/10.1016/S0045-7949(97)00073-4>
     pub fn calc_with_inv(
@@ -218,6 +216,12 @@ impl EigenProjDerivsT2 {
     }
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A using the characteristic polynomial
+    ///
+    /// # References
+    ///
+    /// 1. Panteghini A. (2024) A simple spectral representation of a second-order symmetric
+    ///    tensor and its variation. European Journal of Mechanics - A/Solids, 104:105208.
+    ///    <https://doi.org/10.1016/j.euromechsol.2023.105208>
     pub fn calc_with_char_poly(
         &mut self,
         ll: &mut [f64; 3],
@@ -363,13 +367,18 @@ mod tests {
     #[test]
     fn calc_with_inv_works_with_samples() {
         const VERBOSE: bool = false;
-        const TOL_DDP: f64 = 1e-9;
+        const TOL_DPP: f64 = 1e-10;
         let mut ll = [0.0; 3];
         let mut calc = EigenProjDerivsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
         let method = EigenValMethod::AnalyticalHZ;
-        for sample in [SamplesTensor2::TENSOR_U] {
+        for sample in [
+            SamplesTensor2::TENSOR_Y,
+            SamplesTensor2::TENSOR_Z,
+            SamplesTensor2::TENSOR_U,
+            SamplesTensor2::TENSOR_S,
+        ] {
             if VERBOSE {
                 println!("\n{}", "-".repeat(80));
                 println!("{}", sample.desc);
@@ -383,20 +392,30 @@ mod tests {
             calc.calc_with_inv(&mut ll, &mut projs, &mut ddp, &aa, method).unwrap();
 
             // check the derivatives using numerical differentiation
-            compare_with_numerical(method, aa, &ddp, TOL_DDP);
+            let mut tol_dpp = TOL_DPP;
+            if sample.desc.contains("Tensor U") {
+                tol_dpp = 1e-9;
+            }
+            compare_with_numerical(method, aa, &ddp, tol_dpp);
         }
     }
 
     #[test]
     fn calc_with_char_poly_works_with_samples() {
         const VERBOSE: bool = false;
-        const TOL_DDP: f64 = 1e-9;
+        const TOL_DPP: f64 = 1e-10;
         let mut ll = [0.0; 3];
         let mut calc = EigenProjDerivsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
         let method = EigenValMethod::AnalyticalHZ;
-        for sample in [SamplesTensor2::TENSOR_U] {
+        for sample in [
+            SamplesTensor2::TENSOR_X,
+            SamplesTensor2::TENSOR_Y,
+            SamplesTensor2::TENSOR_Z,
+            SamplesTensor2::TENSOR_U,
+            SamplesTensor2::TENSOR_S,
+        ] {
             if VERBOSE {
                 println!("\n{}", "-".repeat(80));
                 println!("{}", sample.desc);
@@ -411,7 +430,11 @@ mod tests {
                 .unwrap();
 
             // check the derivatives using numerical differentiation
-            compare_with_numerical(method, aa, &ddp, TOL_DDP);
+            let mut tol_dpp = TOL_DPP;
+            if sample.desc.contains("Tensor U") {
+                tol_dpp = 1e-9;
+            }
+            compare_with_numerical(method, aa, &ddp, tol_dpp);
         }
     }
 }

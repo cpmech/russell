@@ -1,27 +1,9 @@
 #![allow(unused)]
 
 use crate::StrError;
-use crate::{EigenValMethod, EigenProjsT2, Tensor2, Tensor4};
+use crate::{EigenProjsT2, EigenValMethod, Tensor2, Tensor4};
 use crate::{P_SYM, SET};
 use crate::{ssd_fn, t2_dyad_t2};
-
-/// Indicates the status of the eigenprojector derivative calculation
-pub enum StatusDerivProj {
-    /// Success
-    Success,
-
-    /// Failed due to spherical state (all equal eigenvalues)
-    Spherical,
-
-    /// Failed due to two repeated eigenvalues
-    Repeated,
-
-    /// Failed due to a zero valued eigenvalue
-    ZeroLambda,
-
-    /// Failed due to non-invertible tensor
-    NonInvertible,
-}
 
 /// Assists in calculating the derivatives of the eigenprojectors
 pub struct EigenProjDerivsT2 {
@@ -130,7 +112,7 @@ impl EigenProjDerivsT2 {
         dpp: &mut [Tensor4<6>; 3],
         aa: &Tensor2<6>,
         method: EigenValMethod,
-    ) -> Result<StatusDerivProj, StrError> {
+    ) -> Result<(), StrError> {
         // compute the eigenvalues and eigenprojectors
         self.eig.calculate_mx(ll, projs, aa, method)?;
 
@@ -143,18 +125,18 @@ impl EigenProjDerivsT2 {
 
         // spherical case
         if d01 <= tol_diff && d12 <= tol_diff {
-            return Ok(StatusDerivProj::Spherical);
+            return Err("Failed due to spherical state (all equal eigenvalues)");
         }
 
         // check for distinct eigenvalues (the status is up to date because the projectors are available)
         if d01 <= tol_diff || d12 <= tol_diff {
-            return Ok(StatusDerivProj::Repeated);
+            return Err("Failed due to two repeated eigenvalues");
         }
 
         // check for zero valued eigenvalues
         for i in 0..3 {
             if f64::abs(ll[i]) < tol_diff {
-                return Ok(StatusDerivProj::ZeroLambda);
+                return Err("Failed due to a zero valued eigenvalue");
             }
         }
 
@@ -166,7 +148,7 @@ impl EigenProjDerivsT2 {
         // calculate A⁻¹, the inverse of A, and I3 = det(A)
         let det = aa.inverse(&mut self.aa_inv, det_tol);
         if det.is_none() {
-            return Ok(StatusDerivProj::NonInvertible);
+            return Err("Failed due to non-invertible tensor");
         }
         let ii3 = det.unwrap();
 
@@ -208,7 +190,7 @@ impl EigenProjDerivsT2 {
                 }
             }
         }
-        Ok(StatusDerivProj::Success)
+        Ok(())
     }
 }
 
@@ -217,12 +199,12 @@ impl EigenProjDerivsT2 {
 #[cfg(test)]
 mod tests {
     use super::EigenProjDerivsT2;
-    use crate::{EigDerivStatus, EigenValMethod, EigenProjsT2, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
+    use crate::{EigenProjsT2, EigenValMethod, SamplesTensor2, StrError, Tensor2, Tensor4};
     use russell_lab::{deriv1_central5, mat_approx_eq};
 
     /// Holds arguments for numerical differentiation corresponding to [dP[i]/dA]ₘₙ
     struct ArgsNumDerivProj {
-        method: EigenValMethod,    // method to calculate the eigenvalues
+        method: EigenValMethod, // method to calculate the eigenvalues
         calc: EigenProjsT2,     // eigenprojectors calculator
         ll: [f64; 3],           // eigenvalues
         projs: [Tensor2<6>; 3], // eigenprojectors

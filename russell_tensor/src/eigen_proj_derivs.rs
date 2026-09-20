@@ -90,37 +90,32 @@ impl EigenProjDerivsT2 {
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A using the inverse of A
     ///
-    /// Note: This function is only available for *invertible* tensor A with *distinct* and *non-zero* eigenvalues.
+    /// Note: This function is only available for *invertible* tensor A with *all-distinct* and *non-zero* eigenvalues.
+    ///
+    /// For all-distinct eigenvalues, this function calculates:
     ///
     /// ```text
-    /// dP[i]                         3
-    /// ───── = a[i] Psym - b[i] Y +  Σ (c[i][j] - a[i]) P[j] ⊗ P[j]
-    ///  dA                          j=1
+    /// dPi                      3
+    /// ─── = ai Psym - bi Y4 +  Σ (cij - ai) Pj ⊗ Pj
+    /// dA                      j=1
     ///
-    /// where Y = ½ ssd(A⁻¹) and the coefficients are listed below.
     /// ```
     ///
-    /// # Input
-    ///
-    /// TODO
-    ///
-    /// # Output
-    ///
-    /// TODO
-    ///
-    /// # Notes
-    ///
-    /// The coefficients are:
+    /// where:
     ///
     /// ```text
-    ///        λ[i]          I3a                  I3a
-    /// a[i] = ────,  b[i] = ────,  c[i][j] = ────────────
-    ///        d[i]          d[i]             d[i] (λ[j])²
+    /// Y4 = ½ ssd(A⁻¹)
     ///
-    ///                               I3a
-    /// d[i] = 2 (λ[i])² - I1a λ[i] + ────
-    ///                               λ[i]
+    ///      li        I3           I3
+    /// ai = ──,  bi = ──,  cij = ──────
+    ///      di        di         di lj²
+    ///
+    ///                      I3
+    /// di = 2 li² - I1 li + ──
+    ///                      li
     /// ```
+    ///
+    /// where `li` is the i-th eigenvalue.
     ///
     /// # References
     ///
@@ -217,6 +212,23 @@ impl EigenProjDerivsT2 {
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A using the characteristic polynomial
     ///
+    /// Note: This function is only available for for tensor A with *all-distinct* eigenvalues.
+    ///
+    /// For all-distinct eigenvalues, this function calculates:
+    ///
+    /// ```text
+    /// dPk   ak           bk             1              lk     1
+    /// ─── = ── Pk ⊗ Pk + ── dsd(Pk,I) + ── dsd(Pk,A) + ── Q + ── M
+    ///  dA   gk           gk             gk             gk     gk
+    /// ```
+    ///
+    /// where
+    ///
+    /// ```text
+    /// dsd(Pk,I) = Pk ⊗ I + I ⊗ Pk
+    /// dsd(Pk,A) = Pk ⊗ A + A ⊗ Pk
+    /// ```
+    ///
     /// # References
     ///
     /// 1. Panteghini A. (2024) A simple spectral representation of a second-order symmetric
@@ -245,6 +257,11 @@ impl EigenProjDerivsT2 {
             return Err("Failed due to spherical state (all equal eigenvalues)");
         }
 
+        // check for distinct eigenvalues (the status is up to date because the projectors are available)
+        if d01 <= tol_diff || d12 <= tol_diff {
+            return Err("Failed due to two repeated eigenvalues");
+        }
+
         // compute the invariants
         let ii1 = aa.invariant_ii1();
         let ii2 = aa.invariant_ii2();
@@ -252,18 +269,9 @@ impl EigenProjDerivsT2 {
         // compute ∂²I3a/∂A² (the second derivative of the third invariant)
         deriv2_invariant_ii3(&mut self.d2_ii3, aa);
 
-        // calculate the derivatives of eigenprojectors
-        if d01 <= tol_diff {
-            // coalescent eigenvalues κ0 ≈ κ1 > κ2
-            panic!("TODO: d01");
-        } else if d12 <= tol_diff {
-            // coalescent eigenvalues κ0 > κ1 ≈ κ2
-            panic!("TODO: d12");
-        } else {
-            // all distinct eigenvalues
-            for k in 0..3 {
-                self.calc_deriv_non_rep(&mut dpp[k], ll[k], &projs[k], ii1, ii2, aa)?;
-            }
+        // calculate the derivatives of eigenprojectors (for all-distinct eigenvalues)
+        for k in 0..3 {
+            self.calc_deriv_non_rep(&mut dpp[k], ll[k], &projs[k], ii1, ii2, aa)?;
         }
         Ok(())
     }

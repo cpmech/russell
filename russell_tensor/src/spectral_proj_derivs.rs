@@ -24,7 +24,7 @@ pub enum StatusDerivProj {
 }
 
 /// Assists in calculating the derivatives of the eigenprojectors
-pub struct EigenDerivsT2 {
+pub struct EigenProjDerivsT2 {
     /// Structure to assist in calculating the eigenvalues and eigenprojectors
     eig: EigenProjsT2,
 
@@ -58,10 +58,10 @@ pub struct EigenDerivsT2 {
     d2_ii3: Tensor4<6>,
 }
 
-impl EigenDerivsT2 {
+impl EigenProjDerivsT2 {
     /// Allocates a new instance
     pub fn new() -> Self {
-        EigenDerivsT2 {
+        EigenProjDerivsT2 {
             eig: EigenProjsT2::new(),
             aa_inv: Tensor2::new(),
             yy: Tensor4::new(),
@@ -216,7 +216,7 @@ impl EigenDerivsT2 {
 
 #[cfg(test)]
 mod tests {
-    use super::EigenDerivsT2;
+    use super::EigenProjDerivsT2;
     use crate::{EigDerivStatus, EigenMethod, EigenProjsT2, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use russell_lab::{deriv1_central5, mat_approx_eq};
 
@@ -276,7 +276,7 @@ mod tests {
         const VERBOSE: bool = false;
         const TOL_DDP: f64 = 1e-9;
         let mut ll = [0.0; 3];
-        let mut calc = EigenDerivsT2::new();
+        let mut calc = EigenProjDerivsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
         for method in [

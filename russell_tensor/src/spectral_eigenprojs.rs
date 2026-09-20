@@ -66,11 +66,16 @@ impl EigenProjsT2 {
         // too tight and cannot be used to calculate the eigenprojectors. Therefore, a
         // new check for the spherical case is made here.
 
+        // calculate differences between the SORTED eigenvalues
+        let d01 = f64::abs(ll[0] - ll[1]); // = |(κ0+iso) - (κ1+iso)| = |κ0 - κ1|
+        let d12 = f64::abs(ll[1] - ll[2]); // = |(κ1+iso) - (κ2+iso)| = |κ1 - κ2|
+
+        // calculate a relative tolerance to detect coalescence
+        let scale = aa.norm();
+        let tol_diff = 10.0 * f64::EPSILON.sqrt() * scale;
+
         // handle the spherical case → P0=I, P1=0, P2=0
-        let jj2 = aa.invariant_jj2();
-        let tol_jj2 = 10.0 * f64::EPSILON.sqrt() * jj2;
-        let spherical = jj2 < tol_jj2 || jj2 <= f64::EPSILON;
-        if spherical {
+        if d01 <= tol_diff && d12 <= tol_diff {
             // all eigenvalues are equal λ0 ≈ λ1 ≈ λ2
             for m in 0..6 {
                 projs[0].vec[m] = 0.0;
@@ -89,26 +94,19 @@ impl EigenProjsT2 {
         self.kappa[1] = ll[1] - iso;
         self.kappa[2] = ll[2] - iso;
 
-        // calculate differences between the SORTED eigenvalues
-        let d01 = f64::abs(ll[0] - ll[1]); // = |(κ0+iso) - (κ1+iso)| = |κ0 - κ1|
-        let d12 = f64::abs(ll[1] - ll[2]); // = |(κ1+iso) - (κ2+iso)| = |κ1 - κ2|
-
         // calculate the deviatoric tensor
         aa.deviator_slice(&mut self.ss);
 
-        // calculate a relative tolerance to detect coalescence
-        let scale = aa.norm();
-        let tol_diff = 10.0 * f64::EPSILON.sqrt() * scale;
-
         // calculate the eigenprojectors
-        if d01 < tol_diff {
+        let jj2 = aa.invariant_jj2();
+        if d01 <= tol_diff {
             // coalescent eigenvalues κ0 ≈ κ1 > κ2
             self.eval_projector(&mut projs[2], self.kappa[2], jj2);
             for m in 0..6 {
                 projs[0].vec[m] = 0.0;
                 projs[1].vec[m] = IDENTITY2[m] - projs[2].vec[m];
             }
-        } else if d12 < tol_diff {
+        } else if d12 <= tol_diff {
             // coalescent eigenvalues κ0 > κ1 ≈ κ2
             self.eval_projector(&mut projs[0], self.kappa[0], jj2);
             for m in 0..6 {
@@ -179,7 +177,7 @@ mod tests {
 
     #[test]
     fn calculate_mx_works_with_samples() {
-        const VERBOSE: bool = true;
+        const VERBOSE: bool = false;
         const VERB_RECONSTRUCT: bool = false;
         const TOL_VALS: f64 = 1e-13;
         const TOL_IDEM: f64 = 1e-13;
@@ -191,15 +189,16 @@ mod tests {
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         for method in [
             EigenMethod::AnalyticalHZ,
-            // EigenMethod::AnalyticalHA22,
-            // EigenMethod::AnalyticalHA23,
-            // EigenMethod::Iterative,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
         ] {
             if VERBOSE {
                 println!("\n{}", "=".repeat(80));
                 println!("{:?}", method);
             }
             for sample in SamplesTensor2::all_symmetric() {
+                // for sample in [SamplesTensor2::TENSOR_O] {
                 // for sample in [SamplesTensor2::TENSOR_X] {
                 // for sample in [SamplesTensor2::COAL_01] {
                 if VERBOSE {

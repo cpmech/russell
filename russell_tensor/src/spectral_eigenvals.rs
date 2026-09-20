@@ -314,7 +314,7 @@ mod tests {
     #[test]
     fn habera_zilian_cases_work() {
         const VERBOSE: bool = true;
-        const THRESHOLD: f64 = 1e-14;
+        const VERB_THRESHOLD: f64 = 1e-14;
 
         let mut ll = [0.0; 3];
         let mut eig = EigenValuesT2::new();
@@ -338,21 +338,19 @@ mod tests {
 
                     // output
                     if VERBOSE {
-                        // calculate the error = ||diff||_max
-                        let mut error = f64::NEG_INFINITY;
+                        // format the error in red if it exceeds the threshold
+                        let mut max_diff = 0.0;
                         for i in 0..3 {
                             let diff = f64::abs(ll[i] - correct[i]);
-                            if diff < rel_tol {
-                                error = diff;
+                            if diff > max_diff {
+                                max_diff = diff;
                             }
                         }
-
-                        // format the error in red if it exceeds the threshold
                         let m = format!("{:?}", method);
-                        let error_str = if error > THRESHOLD {
-                            format!("\u{1b}[31m{:>8.1e}\u{1b}[0m", error)
+                        let error_str = if max_diff > VERB_THRESHOLD {
+                            format!("\u{1b}[31m{:>8.1e}\u{1b}[0m", max_diff)
                         } else {
-                            format!("{:>8.1e}", error)
+                            format!("{:>8.1e}", max_diff)
                         };
 
                         // print the debugging message
@@ -363,9 +361,11 @@ mod tests {
                     }
 
                     // check the error using relative tolerance
-                    for i in 0..3 {
-                        assert!(f64::abs(ll[i] - correct[i]) < rel_tol);
+                    let mut abs_tol = hz.tolerances_eigenvalues(name, delta);
+                    if method != EigenMethod::AnalyticalHZ {
+                        abs_tol *= 10.0;
                     }
+                    array_approx_eq(&ll, &correct, abs_tol);
                 }
             }
         }

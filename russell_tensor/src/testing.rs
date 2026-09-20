@@ -545,6 +545,109 @@ impl HaberaZilian {
         Tensor2::from_std_matrix(&aa_3x3).unwrap()
     }
 
+    /// Returns ABSOLUTE tolerances to check eigenvalues
+    ///
+    /// Returns `(tol_idempotent, tol_reconstruction)`
+    pub fn tolerances_eigenvalues(&self, name: &str, delta: f64) -> f64 {
+        let default = 1e-15;
+        match name {
+            "single" => {
+                if delta == 5e2 {
+                    1e-13
+                } else {
+                    default
+                }
+            }
+            "single_lim_J3" => {
+                if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-13
+                } else {
+                    default
+                }
+            }
+            "single_lim_disc_t" => {
+                if delta == 1e-12 {
+                    1e-14
+                } else if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-13
+                } else {
+                    default
+                }
+            }
+            "single_lim_disc_n" => {
+                if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-12
+                } else {
+                    default
+                }
+            }
+            "single_lim_J3J2" => {
+                if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-12
+                } else {
+                    default
+                }
+            }
+            "single_J3" => {
+                if delta == 5e2 {
+                    1e-13
+                } else {
+                    default
+                }
+            }
+            "single_J3_lim_J2" => {
+                if delta == 5e2 {
+                    1e-12
+                } else {
+                    default
+                }
+            }
+            "double" => {
+                if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-12
+                } else {
+                    default
+                }
+            }
+            "double_lim_J3J2" => {
+                if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-12
+                } else {
+                    default
+                }
+            }
+            "triple_J3" => {
+                if delta == 5e2 {
+                    1e-12
+                } else {
+                    default
+                }
+            }
+            "d3" => {
+                if delta == 5e0 {
+                    1e-14
+                } else if delta == 5e2 {
+                    1e-13
+                } else {
+                    default
+                }
+            }
+            _ => panic!("unknown HZ test case: {}", name),
+        }
+    }
+
     /// Returns ABSOLUTE tolerances to check eigenprojectors
     ///
     /// Returns `(tol_idempotent, tol_reconstruction)`

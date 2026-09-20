@@ -1,5 +1,5 @@
 use super::{P_SYMDEV, SET, SQRT_2};
-use crate::{EigenMethod, EigenValuesT2};
+use crate::{EigenValMethod, EigenValuesT2};
 use crate::{StrError, Tensor2, Tensor4};
 use crate::{deriv2_invariant_ii3, t2_dyad_t2};
 use russell_lab::small_mat_eigen_sym_jacobi;
@@ -157,14 +157,14 @@ impl Spectral2 {
     ///
     /// Default method: [EigMethod::AnalyticalHZ]
     pub fn calc_eigenvalues(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.calc_eigenvalues_mx(aa, EigenMethod::AnalyticalHZ)
+        self.calc_eigenvalues_mx(aa, EigenValMethod::AnalyticalHZ)
     }
 
     /// Calculates the eigenvalues (but not the eigenprojectors) of a symmetric second-order tensor
     ///
     /// The output is saved in this struct with the eigenvalues being sorted in descending order.
     /// The status is saved in `status`.
-    pub fn calc_eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigenMethod) -> Result<(), StrError> {
+    pub fn calc_eigenvalues_mx(&mut self, aa: &Tensor2<6>, method: EigenValMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
 
@@ -188,19 +188,19 @@ impl Spectral2 {
     /// Default method: [EigMethod::AnalyticalHZ]
     #[inline]
     pub fn decompose(&mut self, aa: &Tensor2<6>) -> Result<(), StrError> {
-        self.decompose_mx(aa, EigenMethod::AnalyticalHZ)
+        self.decompose_mx(aa, EigenValMethod::AnalyticalHZ)
     }
 
     /// Performs the spectral decomposition of a symmetric second-order tensor (specifying the method)
     ///
     /// The output is saved in this struct with the eigenvalues/projectors being sorted in descending order.
     /// The status is saved in `status`.
-    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigenMethod) -> Result<(), StrError> {
+    pub fn decompose_mx(&mut self, aa: &Tensor2<6>, method: EigenValMethod) -> Result<(), StrError> {
         // indicate that the eigenvalues and projectors are not available
         self.status = EigStatus::NotComputed;
 
         // Jacobi iterative method: calculate the eigenvalues and eigenprojectors
-        if method == EigenMethod::Iterative {
+        if method == EigenValMethod::Iterative {
             self.decompose_jacobi(aa)?;
             return Ok(());
         }
@@ -310,7 +310,7 @@ impl Spectral2 {
     /// 1. Panteghini A. (2024) A simple spectral representation of a second-order symmetric
     ///    tensor and its variation. European Journal of Mechanics - A/Solids, 104:105208.
     ///    <https://doi.org/10.1016/j.euromechsol.2023.105208>
-    pub fn deriv_eigenproj(&mut self, a: &Tensor2<6>, method: EigenMethod) -> Result<EigDerivStatus, StrError> {
+    pub fn deriv_eigenproj(&mut self, a: &Tensor2<6>, method: EigenValMethod) -> Result<EigDerivStatus, StrError> {
         // compute the eigenvalues and eigenprojectors
         self.decompose_mx(a, method)?;
 
@@ -598,7 +598,7 @@ pub(crate) fn t2_plus_diag_product(res: &mut [f64], alpha: f64, a: &[f64], p: f6
 
 #[cfg(test)]
 mod tests {
-    use super::{EigenMethod, Spectral2};
+    use super::{EigenValMethod, Spectral2};
     use crate::{EigDerivStatus, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use russell_lab::{deriv1_central5, mat_approx_eq};
 
@@ -625,7 +625,7 @@ mod tests {
         // analytical derivative (Panteghini form)
         let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj(&aa, EigenValMethod::AnalyticalHZ).unwrap();
         if status != EigDerivStatus::Success {
             panic!("failed to compute analytical derivative");
         }
@@ -680,7 +680,7 @@ mod tests {
         for sample in [&SamplesTensor2::COAL_01, &SamplesTensor2::COAL_12] {
             let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
             let mut spec = Spectral2::new();
-            let status = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ).unwrap();
+            let status = spec.deriv_eigenproj(&aa, EigenValMethod::AnalyticalHZ).unwrap();
             assert_eq!(status, EigDerivStatus::Success);
         }
     }
@@ -689,7 +689,7 @@ mod tests {
     fn deriv_eigenproj_spherical_fails() {
         let aa = Tensor2::<6>::identity();
         let mut spec = Spectral2::new();
-        let res = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ);
+        let res = spec.deriv_eigenproj(&aa, EigenValMethod::AnalyticalHZ);
         assert!(res.is_err());
     }
 
@@ -705,7 +705,7 @@ mod tests {
         ])
         .unwrap();
         let mut spec = Spectral2::new();
-        let status = spec.deriv_eigenproj(&aa, EigenMethod::AnalyticalHZ).unwrap();
+        let status = spec.deriv_eigenproj(&aa, EigenValMethod::AnalyticalHZ).unwrap();
         assert_eq!(status, EigDerivStatus::Success);
     }
 }

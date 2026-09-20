@@ -19,7 +19,7 @@ const TOL_ZERO_DEV_LAMBDA: f64 = 1e-15;
 ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
 ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum EigenMethod {
+pub enum EigenValMethod {
     /// Analytical eigenvalues using Habera-Zilian method
     AnalyticalHZ,
 
@@ -74,7 +74,7 @@ impl EigenValuesT2 {
     /// Uses the default method: [EigenMethod::AnalyticalHZ]
     #[inline]
     pub fn calculate(&mut self, ll: &mut [f64; 3], aa: &Tensor2<6>) -> Result<bool, StrError> {
-        self.calculate_mx(ll, aa, EigenMethod::AnalyticalHZ)
+        self.calculate_mx(ll, aa, EigenValMethod::AnalyticalHZ)
     }
 
     /// Calculates the eigenvalues of a symmetric second order tensor (with method selection)
@@ -84,7 +84,12 @@ impl EigenValuesT2 {
     /// Returns `true` if spherical, `false` otherwise.
     ///
     /// In the spherical case, `ll := [λ, λ, λ]` where `λ = λ1 = λ2 = λ3 = trace(A)`.
-    pub fn calculate_mx(&mut self, ll: &mut [f64; 3], aa: &Tensor2<6>, method: EigenMethod) -> Result<bool, StrError> {
+    pub fn calculate_mx(
+        &mut self,
+        ll: &mut [f64; 3],
+        aa: &Tensor2<6>,
+        method: EigenValMethod,
+    ) -> Result<bool, StrError> {
         // detect a (numerically) spherical tensor, i.e., J2 at the rounding level
         let ii1 = aa.invariant_ii1();
         let jj2 = aa.invariant_jj2();
@@ -103,7 +108,7 @@ impl EigenValuesT2 {
             //
             // Habera M. and Zilian A. (2025)
             //
-            EigenMethod::AnalyticalHZ => {
+            EigenValMethod::AnalyticalHZ => {
                 // auxiliary variables
                 let d0 = aa.vec[0] - aa.vec[1];
                 let d1 = aa.vec[0] - aa.vec[2];
@@ -144,7 +149,7 @@ impl EigenValuesT2 {
             //
             // Harari I. and Albocher U. (2022)
             //
-            EigenMethod::AnalyticalHA22 => {
+            EigenValMethod::AnalyticalHA22 => {
                 let sqrt_jj2 = f64::sqrt(jj2);
                 let fac1 = 2.0 * jj2 / 3.0;
                 let fac2 = sqrt_jj2 / SQRT_3;
@@ -186,7 +191,7 @@ impl EigenValuesT2 {
             //
             // Harari I. and Albocher U. (2023)
             //
-            EigenMethod::AnalyticalHA23 => {
+            EigenValMethod::AnalyticalHA23 => {
                 const R1_2: f64 = SQRT_2 / 2.0; // 1/√2
                 let a = &aa.vec;
                 let d12 = a[0] - a[1];
@@ -223,7 +228,7 @@ impl EigenValuesT2 {
             //
             // Jacobi iterative method: calculate the eigenvalues (ignores eigenvectors)
             //
-            EigenMethod::Iterative => {
+            EigenValMethod::Iterative => {
                 // eigenvalues and eigenvectors (ignored)
                 aa.to_std_matrix_slice(&mut self.aa);
                 small_mat_eigen_sym_jacobi(ll, &mut self.vv, &mut self.aa)?;
@@ -262,7 +267,7 @@ fn sq_norm_diff(a: &[f64], alpha: f64, b: &[f64]) -> f64 {
 mod tests {
     use super::EigenValuesT2;
     use crate::testing::{HaberaZilian, generate_eigen_problem, generate_tensors2};
-    use crate::{EigenMethod, SamplesTensor2, Tensor2};
+    use crate::{EigenValMethod, SamplesTensor2, Tensor2};
     use russell_lab::{approx_eq, array_approx_eq, sort3};
 
     #[test]
@@ -271,10 +276,10 @@ mod tests {
         let mut ll = [0.0; 3];
         let mut eig = EigenValuesT2::new();
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             for sample in SamplesTensor2::all_symmetric() {
                 let sample_ll = sample.eigenvalues.unwrap();
@@ -297,10 +302,10 @@ mod tests {
         let mut eig = EigenValuesT2::new();
         let (tensors, eigenvalues) = generate_tensors2();
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             for k in 0..tensors.len() {
                 let aa = &tensors[k];
@@ -320,10 +325,10 @@ mod tests {
         let mut eig = EigenValuesT2::new();
         let hz = HaberaZilian::new();
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             for name in hz.names {
                 for &delta in &hz.deltas {
@@ -362,7 +367,7 @@ mod tests {
 
                     // check the error using relative tolerance
                     let mut abs_tol = hz.tolerances_eigenvalues(name, delta);
-                    if method != EigenMethod::AnalyticalHZ {
+                    if method != EigenValMethod::AnalyticalHZ {
                         abs_tol *= 10.0;
                     }
                     array_approx_eq(&ll, &correct, abs_tol);
@@ -380,10 +385,10 @@ mod tests {
         let alpha = [1.0, 100.0, 1e6];
         let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             if VERBOSE {
                 println!("\n{}", "=".repeat(80));

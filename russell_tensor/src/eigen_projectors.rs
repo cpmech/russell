@@ -1,5 +1,5 @@
 use crate::StrError;
-use crate::{EigenMethod, EigenValuesT2, Tensor2};
+use crate::{EigenValMethod, EigenValuesT2, Tensor2};
 use crate::{IDENTITY2, SQRT_2};
 use russell_lab::small_mat_eigen_sym_jacobi;
 
@@ -31,10 +31,10 @@ impl EigenProjsT2 {
         ll: &mut [f64; 3],
         projs: &mut [Tensor2<6>; 3],
         aa: &Tensor2<6>,
-        method: EigenMethod,
+        method: EigenValMethod,
     ) -> Result<(), StrError> {
         // calculate eigenvalues and eigenprojectors using Jacobi Iterative method
-        if method == EigenMethod::Iterative {
+        if method == EigenValMethod::Iterative {
             // eigenvalues and eigenvectors
             let mut lam = [0.0, 0.0, 0.0];
             aa.to_std_matrix_slice(&mut self.eig.aa);
@@ -158,7 +158,7 @@ mod tests {
     use super::EigenProjsT2;
     use crate::OK_EIGENPROJ_RULES;
     use crate::testing::{HaberaZilian, generate_eigen_problem, generate_tensors2};
-    use crate::{EigenMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
+    use crate::{EigenValMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
     use russell_lab::{approx_eq, sort3};
 
     fn check_reconstruct(aa: &Tensor2<6>, ll: &[f64; 3], projs: &[Tensor2<6>], tol: f64, verbose: bool) {
@@ -194,10 +194,10 @@ mod tests {
         let mut eig = EigenProjsT2::new();
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             if VERBOSE {
                 println!("\n{}", "=".repeat(80));
@@ -251,10 +251,10 @@ mod tests {
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let (tensors, _) = generate_tensors2();
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             if VERBOSE {
                 println!("\n{}", "=".repeat(80));
@@ -271,7 +271,7 @@ mod tests {
                 // check whether the eigenprojectors satisfy the eigenprojector rules
                 let (mut tol_idem, mut tol_recon) = (TOL_IDEM, TOL_RECON);
                 if k == 17 {
-                    if method == EigenMethod::AnalyticalHA22 {
+                    if method == EigenValMethod::AnalyticalHA22 {
                         tol_recon = 1e-14;
                     }
                 }
@@ -290,18 +290,18 @@ mod tests {
                 }
                 if k == 84 || k == 85 || k == 86 {
                     tol_recon = 1e-9;
-                    if method == EigenMethod::AnalyticalHA22 || method == EigenMethod::AnalyticalHA23 {
+                    if method == EigenValMethod::AnalyticalHA22 || method == EigenValMethod::AnalyticalHA23 {
                         tol_recon = 1e-8;
                     }
                 }
                 if k == 87 || k == 88 || k == 89 {
                     tol_recon = 1e-12;
-                    if method == EigenMethod::AnalyticalHA22 || method == EigenMethod::AnalyticalHA23 {
+                    if method == EigenValMethod::AnalyticalHA22 || method == EigenValMethod::AnalyticalHA23 {
                         tol_recon = 1e-11;
                     }
                 }
                 if k == 90 {
-                    if method == EigenMethod::AnalyticalHA22 {
+                    if method == EigenValMethod::AnalyticalHA22 {
                         tol_recon = 1e-14;
                     }
                 }
@@ -309,7 +309,7 @@ mod tests {
                     tol_recon = 1e-14;
                 }
                 if k == 92 {
-                    if method == EigenMethod::AnalyticalHA22 {
+                    if method == EigenValMethod::AnalyticalHA22 {
                         tol_recon = 1e-14;
                     }
                 }
@@ -333,10 +333,10 @@ mod tests {
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let hz = HaberaZilian::new();
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             for name in hz.names {
                 for &delta in &hz.deltas {
@@ -360,7 +360,7 @@ mod tests {
                         println!("P1 =\n{}", projs[1].as_std_matrix());
                         println!("P2 =\n{}", projs[2].as_std_matrix());
                     }
-                    if method == EigenMethod::AnalyticalHA22 {
+                    if method == EigenValMethod::AnalyticalHA22 {
                         tol_idem *= 10.0;
                     }
                     let status = eigenprojector_rules(&projs, tol_idem, tol_idem, TOL_COMP, VERBOSE);
@@ -386,10 +386,10 @@ mod tests {
         let alpha = [1.0, 100.0, 1e6];
         let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
         for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
+            EigenValMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHA22,
+            EigenValMethod::AnalyticalHA23,
+            EigenValMethod::Iterative,
         ] {
             if VERBOSE {
                 println!("\n{}", "=".repeat(80));

@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use crate::StrError;
-use crate::{EigenMethod, EigenProjsT2, Tensor2, Tensor4};
+use crate::{EigenValMethod, EigenProjsT2, Tensor2, Tensor4};
 use crate::{P_SYM, SET};
 use crate::{ssd_fn, t2_dyad_t2};
 
@@ -77,7 +77,7 @@ impl EigenProjDerivsT2 {
         projs: &mut [Tensor2<6>; 3],
         dpp: &mut [Tensor4<6>; 3],
         aa: &Tensor2<6>,
-        method: EigenMethod,
+        method: EigenValMethod,
     ) -> Result<(), StrError> {
         Ok(())
     }
@@ -129,7 +129,7 @@ impl EigenProjDerivsT2 {
         projs: &mut [Tensor2<6>; 3],
         dpp: &mut [Tensor4<6>; 3],
         aa: &Tensor2<6>,
-        method: EigenMethod,
+        method: EigenValMethod,
     ) -> Result<StatusDerivProj, StrError> {
         // compute the eigenvalues and eigenprojectors
         self.eig.calculate_mx(ll, projs, aa, method)?;
@@ -217,12 +217,12 @@ impl EigenProjDerivsT2 {
 #[cfg(test)]
 mod tests {
     use super::EigenProjDerivsT2;
-    use crate::{EigDerivStatus, EigenMethod, EigenProjsT2, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
+    use crate::{EigDerivStatus, EigenValMethod, EigenProjsT2, SampleTensor2, SamplesTensor2, StrError, Tensor2, Tensor4};
     use russell_lab::{deriv1_central5, mat_approx_eq};
 
     /// Holds arguments for numerical differentiation corresponding to [dP[i]/dA]ₘₙ
     struct ArgsNumDerivProj {
-        method: EigenMethod,    // method to calculate the eigenvalues
+        method: EigenValMethod,    // method to calculate the eigenvalues
         calc: EigenProjsT2,     // eigenprojectors calculator
         ll: [f64; 3],           // eigenvalues
         projs: [Tensor2<6>; 3], // eigenprojectors
@@ -244,7 +244,7 @@ mod tests {
     }
 
     // compare analytical derivatives with numerical derivatives
-    fn compare_with_numerical(method: EigenMethod, aa: Tensor2<6>, ana_deriv: &[Tensor4<6>; 3], tol: f64) {
+    fn compare_with_numerical(method: EigenValMethod, aa: Tensor2<6>, ana_deriv: &[Tensor4<6>; 3], tol: f64) {
         let mut args = ArgsNumDerivProj {
             method,
             calc: EigenProjsT2::new(),
@@ -280,7 +280,7 @@ mod tests {
         let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
         let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
         for method in [
-            EigenMethod::AnalyticalHZ,
+            EigenValMethod::AnalyticalHZ,
             // EigenMethod::AnalyticalHA22,
             // EigenMethod::AnalyticalHA23,
             // EigenMethod::Iterative,

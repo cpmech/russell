@@ -70,9 +70,8 @@ impl EigenProjsT2 {
         let d01 = f64::abs(ll[0] - ll[1]); // = |(κ0+iso) - (κ1+iso)| = |κ0 - κ1|
         let d12 = f64::abs(ll[1] - ll[2]); // = |(κ1+iso) - (κ2+iso)| = |κ1 - κ2|
 
-        // calculate a relative tolerance to detect coalescence
-        let scale = aa.norm();
-        let tol_diff = 10.0 * f64::EPSILON.sqrt() * scale;
+        // calculate a tolerance to detect coalescence
+        let tol_diff = 10.0 * f64::EPSILON.sqrt();
 
         // handle the spherical case → P0=I, P1=0, P2=0
         if d01 <= tol_diff && d12 <= tol_diff {
@@ -158,7 +157,7 @@ impl EigenProjsT2 {
 mod tests {
     use super::EigenProjsT2;
     use crate::OK_EIGENPROJ_RULES;
-    use crate::testing::{HaberaZilian, generate_tensors2};
+    use crate::testing::{HaberaZilian, generate_eigen_problem, generate_tensors2};
     use crate::{EigenMethod, SamplesTensor2, Tensor2, eigenprojector_rules};
     use russell_lab::{approx_eq, sort3};
 
@@ -369,6 +368,62 @@ mod tests {
 
                     // check the reconstructed matrix
                     check_reconstruct(&aa, &ll, &projs, tol_recon, VERB_RECONSTRUCT);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn calculate_mx_works_with_wide_range_of_values() {
+        const VERBOSE: bool = false;
+        const VERB_RECONSTRUCT: bool = false;
+        const TOL_IDEM: f64 = 1e-8;
+        const TOL_COMP: f64 = 1e-15;
+        const TOL_RECON: f64 = 1e-8;
+        let mut ll = [0.0; 3];
+        let mut eig = EigenProjsT2::new();
+        let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
+        let alpha = [1.0, 100.0, 1e6];
+        let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
+        for method in [
+            EigenMethod::AnalyticalHZ,
+            EigenMethod::AnalyticalHA22,
+            EigenMethod::AnalyticalHA23,
+            EigenMethod::Iterative,
+        ] {
+            if VERBOSE {
+                println!("\n{}", "=".repeat(80));
+                println!("{:?}", method);
+            }
+            for r in 0..alpha.len() {
+                for s in 0..kappa.len() {
+                    for t in 0..kappa.len() {
+                        if VERBOSE {
+                            println!("r = {}, s = {}, t = {}", r, s, t);
+                        }
+                        // generate eigen-problem
+                        let l1 = alpha[r];
+                        let l2 = alpha[r] + kappa[s];
+                        let l3 = alpha[r] + kappa[t];
+                        let (aa, _, _) = generate_eigen_problem(l1, l2, l3);
+
+                        // perform spectral decomposition
+                        eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
+
+                        // check whether the eigenprojectors satisfy the eigenprojector rules
+                        let mut tol_idem = TOL_IDEM;
+                        if r == 1 {
+                            tol_idem = 1e-7;
+                        }
+                        if r == 2 {
+                            tol_idem = 1e-3;
+                        }
+                        let status = eigenprojector_rules(&projs, tol_idem, tol_idem, TOL_COMP, VERBOSE);
+                        assert_eq!(status, OK_EIGENPROJ_RULES);
+
+                        // check the reconstructed matrix
+                        check_reconstruct(&aa, &ll, &projs, TOL_RECON, VERB_RECONSTRUCT);
+                    }
                 }
             }
         }

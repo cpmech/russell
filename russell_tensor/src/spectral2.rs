@@ -881,47 +881,6 @@ mod tests {
     // --- tests -------------------------------
     //
 
-    #[test]
-    fn decompose_with_scales_and_coalescence_works() {
-        // Test the solvers across scales and coalescence levels.
-        // Only the eigenvalues are checked here, with a tolerance relative to the tensor
-        // scale, because the eigenprojectors (computed by the Sylvester formula) are
-        // ill-conditioned for coalescing eigenvalues.
-        let alpha = [1.0, 100.0, 1e6];
-        let kappa = [0.0, 1e-10, 1e-8, 1e-6, 1e-3, 0.5];
-        for method in [
-            EigenMethod::AnalyticalHZ,
-            EigenMethod::AnalyticalHA22,
-            EigenMethod::AnalyticalHA23,
-            EigenMethod::Iterative,
-        ] {
-            /* // TODO
-            for r in 0..alpha.len() {
-                for s in 0..kappa.len() {
-                    for t in 0..kappa.len() {
-                        // generate eigen-problem
-                        let l1 = alpha[r];
-                        let l2 = alpha[r] + kappa[s];
-                        let l3 = alpha[r] + kappa[t];
-                        let (aa_3x3, expected_lambda, _) = generate_eigen_problem(l1, l2, l3);
-
-                        // perform spectral decomposition
-                        let aa = Tensor2::<6>::from_std_matrix(&aa_3x3).unwrap();
-                        let mut spec = Spectral2::new();
-                        spec.decompose_mx(&aa, method).unwrap();
-
-                        // check the eigenvalues (tolerance relative to the tensor scale)
-                        array_approx_eq(&spec.lam, &expected_lambda, 1e-13 * alpha[r]);
-
-                        // check the eigenprojectors and the reconstruction
-                        check_eigen_problem(&aa, &spec, 1e-9, 1e-6, true);
-                    }
-                }
-            }
-            */
-        }
-    }
-
     /// Holds arguments for numerical differentiation corresponding to [dP[i]/dA]ₘₙ
     struct ArgsNumDerivProj {
         spec: Spectral2, // spectral decomposition struct

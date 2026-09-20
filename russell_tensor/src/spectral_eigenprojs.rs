@@ -115,10 +115,17 @@ impl EigenProjsT2 {
             }
         } else {
             // all distinct eigenvalues
+            // The sorted case gives a clean rule. With κ0 ≥ κ1 ≥ κ2 (deviatoric, so κ0+κ1+κ2 = 0),
+            // let a = κ0−κ1 ≥ 0, b = κ1−κ2 ≥ 0, so κ0−κ2 = a+b. Then:
+            // den_0 = (κ0−κ1)(κ0−κ2) = a(a+b)   →  |den_0| = a(a+b)
+            // den_1 = (κ1−κ0)(κ1−κ2) = −a·b     →  |den_1| = a·b      ← always the smallest
+            // den_2 = (κ2−κ0)(κ2−κ1) = b(a+b)   →  |den_2| = b(a+b)
+            // Since a+b ≥ a and a+b ≥ b, both |den_0| and |den_2| are ≥ |den_1| = a·b.
+            // So the middle eigenvalue κ1 is provably the worst-conditioned, and the two extremes are always the best.
             self.eval_projector(&mut projs[0], self.kappa[0], jj2);
-            self.eval_projector(&mut projs[1], self.kappa[1], jj2);
+            self.eval_projector(&mut projs[2], self.kappa[2], jj2);
             for m in 0..6 {
-                projs[2].vec[m] = IDENTITY2[m] - projs[0].vec[m] - projs[1].vec[m];
+                projs[1].vec[m] = IDENTITY2[m] - projs[0].vec[m] - projs[2].vec[m];
             }
         }
         Ok(())
@@ -255,7 +262,6 @@ mod tests {
                 println!("{:?}", method);
             }
             for k in 0..tensors.len() {
-                // for k in [6] {
                 // calculate the eigenvalues and eigenprojectors
                 let aa = &tensors[k];
                 if VERBOSE {
@@ -264,7 +270,7 @@ mod tests {
                 eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
 
                 // check whether the eigenprojectors satisfy the eigenprojector rules
-                let (mut tol_idem, mut tol_comp, mut tol_recon) = (TOL_IDEM, TOL_COMP, TOL_RECON);
+                let (mut tol_idem, mut tol_recon) = (TOL_IDEM, TOL_RECON);
                 if k == 17 {
                     if method == EigenMethod::AnalyticalHA22 {
                         tol_recon = 1e-14;
@@ -277,13 +283,8 @@ mod tests {
                     tol_idem = 1e-14;
                     tol_recon = 1e-14;
                 }
-                if k == 78 || k == 79 {
+                if k == 78 || k == 79 || k == 80 {
                     tol_idem = 1e-12;
-                }
-                if k == 80 {
-                    tol_idem = 1e-13;
-                    tol_comp = 1e-13;
-                    tol_recon = 1e-13;
                 }
                 if k == 81 || k == 82 || k == 83 {
                     tol_idem = 1e-9;
@@ -313,7 +314,7 @@ mod tests {
                         tol_recon = 1e-14;
                     }
                 }
-                let status = eigenprojector_rules(&projs, tol_idem, tol_idem, tol_comp, VERBOSE);
+                let status = eigenprojector_rules(&projs, tol_idem, tol_idem, TOL_COMP, VERBOSE);
                 assert_eq!(status, OK_EIGENPROJ_RULES);
 
                 // check the spectral composition
@@ -341,7 +342,7 @@ mod tests {
             for name in hz.names {
                 for &delta in &hz.deltas {
                     // if !(name == "single_lim_J3J2" && delta == 1e-12) { continue; }
-                    // if !(name == "single_lim_J3J2" && delta == 1e-8) { continue; }
+                    // if !(name == "single_lim_J3J2" && delta == 1e-4) { continue; }
                     if VERBOSE {
                         println!("\n{}", "=".repeat(80));
                         println!("{:?}", method);

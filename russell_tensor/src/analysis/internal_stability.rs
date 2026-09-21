@@ -5,6 +5,12 @@ use crate::{SQRT_2, StrError, Tensor2, Tensor4};
 /// The output of this function corresponds to equation (27) of Reference 1
 /// and the H tensor in Equation (4.1) of Reference 2.
 ///
+/// ```text
+///     1            1
+/// H = ─ qsd(σ,I) − ─ dsd(σ,I)
+///     2            2
+/// ```
+///
 /// # Output
 ///
 /// * `hh` -- the internal stability tensor; must be symmetric

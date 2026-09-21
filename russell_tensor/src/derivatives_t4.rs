@@ -538,7 +538,7 @@ pub fn deriv2_invariant_jj2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 /// s := deviator(a)
 ///
 ///  d²J3     1            2
-/// ─────── = ─ qsd(s,I) − ─ (s ⊗ I + I ⊗ s)
+/// ─────── = ─ qsd(s,I) − ─ dsd(s,I)
 /// da ⊗ da   2            3
 ///
 /// (a must be symmetric)

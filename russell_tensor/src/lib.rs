@@ -14,7 +14,7 @@
 //! * [Tensor2] — Second-order tensors in R³×R³. Allows symmetric specialization. Includes functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
 //! * [Tensor3] — Third-order tensors R³×R³×R³. Allows minor-symmetric specialization. Includes functions such as permutation (Levi-Civita) tensor
 //! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
-//! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
+//! * [EigenValuesT2], [EigenProjsT2], [EigenProjDerivsT2] — Eigenvalues, eigenprojectors, and the derivatives of the eigenprojectors for symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
 //! * [analysis::PiezoDatabase] — A database of piezoelectric materials (dielectric permittivity, piezoelectric, and stiffness tensors) loaded from JSON.
 //! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the classic Eigen/SVD algorithms, the iterative Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp_mx]).
@@ -139,7 +139,6 @@ mod polar_higham;
 mod samples_tensor2;
 mod samples_tensor3;
 mod samples_tensor4;
-mod spectral2;
 mod tensor1;
 mod tensor2;
 mod tensor3;
@@ -163,7 +162,6 @@ pub use polar_decomp::*;
 pub use samples_tensor2::*;
 pub use samples_tensor3::*;
 pub use samples_tensor4::*;
-pub use spectral2::*;
 pub use tensor1::*;
 pub use tensor2::*;
 pub use tensor3::*;

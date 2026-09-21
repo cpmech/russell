@@ -25,7 +25,31 @@ impl EigenProjsT2 {
         }
     }
 
+    /// Calculates the eigenprojectors of a symmetric second order tensor
+    ///
+    /// # Arguments
+    ///
+    /// `ll` -- (output) the eigenvalues
+    /// `projs` -- (output) the eigenprojectors
+    /// `aa` -- the tensor A
+    ///
+    /// The default method is [EigenValMethod::AnalyticalHZ]
+    pub fn calculate(
+        &mut self,
+        ll: &mut [f64; 3],
+        projs: &mut [Tensor2<6>; 3],
+        aa: &Tensor2<6>,
+    ) -> Result<(), StrError> {
+        self.calculate_mx(ll, projs, aa, EigenValMethod::AnalyticalHZ)
+    }
+
     /// Calculates the eigenprojectors of a symmetric second order tensor (with method selection)
+    ///
+    /// # Arguments
+    ///
+    /// `ll` -- (output) the eigenvalues
+    /// `projs` -- (output) the eigenprojectors
+    /// `aa` -- the tensor A
     pub fn calculate_mx(
         &mut self,
         ll: &mut [f64; 3],

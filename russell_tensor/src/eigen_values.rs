@@ -71,7 +71,7 @@ impl EigenValuesT2 {
     ///
     /// In the spherical case, `ll := [λ, λ, λ]` where `λ = λ1 = λ2 = λ3 = trace(A)`.
     ///
-    /// Uses the default method: [EigenMethod::AnalyticalHZ]
+    /// Uses the default method: [EigenValMethod::AnalyticalHZ]
     #[inline]
     pub fn calculate(&mut self, ll: &mut [f64; 3], aa: &Tensor2<6>) -> Result<bool, StrError> {
         self.calculate_mx(ll, aa, EigenValMethod::AnalyticalHZ)

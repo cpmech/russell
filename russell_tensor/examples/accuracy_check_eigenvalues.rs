@@ -12,12 +12,41 @@
 //! transformation `U_sym` used in the papers. The prescribed eigenvalues
 //! `d` are used as the reference.
 
-use russell_tensor::{EigenValMethod, Spectral2, StrError, Tensor2};
+use russell_tensor::{EigenValMethod, EigenValuesT2, StrError, Tensor2};
 use std::f64::consts::PI;
+
+// Expected output:
+// D1: diag(1, 1, 1 + δ)  (double → triple eigenvalue)
+//        δ       AnaHZ     AnaHA22     AnaHA23      Jacobi       Naive
+//     1e-1    2.22e-16    2.22e-16    2.22e-16    2.22e-16    2.22e-16
+//     1e-2    1.11e-16    3.33e-16    2.22e-16    1.11e-16    4.97e-10
+//     1e-3    2.22e-16    3.33e-16    3.33e-16    2.22e-16    1.57e-10
+//     1e-4    1.11e-16    1.11e-16    1.11e-16    1.11e-16    1.11e-16
+//     1e-5    2.22e-16    3.33e-16    3.33e-16    2.22e-16    1.57e-11
+//     1e-6    3.33e-16    2.22e-16    2.22e-16    4.44e-16    3.33e-16
+//     1e-8    4.44e-16    5.55e-16    4.44e-16    3.33e-16    7.03e-13
+//    1e-10      0.00e0    1.11e-16      0.00e0    2.22e-16      0.00e0
+//    1e-12      0.00e0    1.11e-16    1.11e-16    2.22e-16      0.00e0
+//    1e-14    6.66e-15    6.66e-15    6.66e-15    6.66e-15    1.11e-16
+//
+// D2: diag(-1, 1, 1 + δ) (double eigenvalue)
+//        δ       AnaHZ     AnaHA22     AnaHA23      Jacobi       Naive
+//     1e-1    8.88e-16    2.22e-16    4.44e-16    4.44e-16    1.22e-15
+//     1e-2    4.44e-16    2.22e-16    2.22e-16    4.44e-16    2.89e-15
+//     1e-3    8.88e-16    2.22e-16    2.22e-16    2.22e-16    2.01e-13
+//     1e-4    2.22e-16    2.22e-16    2.22e-16    4.44e-16    1.67e-12
+//     1e-5    6.66e-16    2.22e-16    2.22e-16    4.44e-16    1.65e-11
+//     1e-6    4.44e-16    2.22e-16    4.44e-16    4.44e-16    1.17e-10
+//     1e-8    5.55e-16    2.22e-16    2.22e-16    3.33e-16     2.45e-9
+//    1e-10    6.66e-16    2.22e-16    2.22e-16    3.33e-16    5.00e-11
+//    1e-12    1.11e-15    2.22e-16    2.22e-16    2.22e-16     9.12e-9
+//    1e-14    8.88e-16    2.22e-16    2.22e-16    2.22e-16     5.27e-9
 
 fn main() -> Result<(), StrError> {
     let u = u_sym();
     let deltas = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10, 1e-12, 1e-14];
+
+    let mut calc = EigenValuesT2::new();
 
     for (label, is_d1) in [
         ("D1: diag(1, 1, 1 + δ)  (double → triple eigenvalue)", true),
@@ -47,9 +76,9 @@ fn main() -> Result<(), StrError> {
                 EigenValMethod::Iterative,
             ];
             for (i, method) in methods.iter().enumerate() {
-                let mut spec = Spectral2::new();
-                spec.calc_eigenvalues_mx(&tt, *method)?;
-                errs[i] = max_error(&spec.lam, &exact);
+                let mut ll = [0.0; 3];
+                calc.calculate_mx(&mut ll, &tt, *method)?;
+                errs[i] = max_error(&ll, &exact);
             }
             errs[4] = max_error(&naive_eig_vals(&a), &exact);
 

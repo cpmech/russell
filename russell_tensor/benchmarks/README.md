@@ -62,7 +62,7 @@ cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark
 | ------------ | ---------------------------------------------------------------------------- |
 | `iterative`  | `PolarAlgo::Iterative` — Brannon's iterative fixed-point (3×3)               |
 | `quaternion` | `PolarAlgo::Quaternion` — Higham & Noferini quaternion-based, direct (3×3)   |
-| `eigen`      | `PolarAlgo::Eigen` — eigen-decomposition of `C = Fᵀ F` via `Spectral2` (3×3) |
+| `eigen`      | `PolarAlgo::Eigen` — eigen-decomposition of `C = Fᵀ F` via `EigenProjsT2` (3×3) |
 | `svd`        | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)               |
 
 > **Note:** all algorithms are benchmarked through the unified `polar_decomp_mx`
@@ -83,15 +83,15 @@ cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmar
 
 ## Eigenvalues benchmark
 
-`spectral2_benchmark` compares the speed of the four eigenvalue methods available in
-`Spectral2::calc_eigenvalues_mx` (eigenvalues only, without the eigenprojectors):
+`eigen_values_benchmark` compares the speed of the four eigenvalue methods available in
+`EigenValuesT2::calculate_mx` (eigenvalues only, without the eigenprojectors):
 
 | method            | description                                                                      |
 | ----------------- | -------------------------------------------------------------------------------- |
-| `analytical_hz`   | `EigMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)            |
-| `analytical_ha22` | `EigMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)        |
-| `analytical_ha23` | `EigMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023) |
-| `iterative`       | `EigMethod::Iterative` — iterative Jacobi rotations                              |
+| `analytical_hz`   | `EigenValMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)            |
+| `analytical_ha22` | `EigenValMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)        |
+| `analytical_ha23` | `EigenValMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023) |
+| `iterative`       | `EigenValMethod::Iterative` — iterative Jacobi rotations                              |
 
 Two symmetric input tensors are used: `distinct` (well-separated eigenvalues) and
 `coalescent` (two nearly equal eigenvalues).
@@ -99,7 +99,7 @@ Two symmetric input tensors are used: `distinct` (well-separated eigenvalues) an
 ### How to run
 
 ```bash
-cargo bench -p russell_tensor --features intel_mkl --bench spectral2_benchmark
+cargo bench -p russell_tensor --features intel_mkl --bench eigen_values_benchmark
 ```
 
 ---

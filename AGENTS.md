@@ -89,11 +89,11 @@ paths, which is cheaper and more accurate than a search/read loop.
 The index keeps itself fresh: a file watcher with a debounced auto-sync
 (~2 s, `CODEGRAPH_WATCH_DEBOUNCE_MS`), a per-file staleness banner on tool
 responses, and a connect-time catch-up. A path can therefore look stale for a
-few seconds right after a rename/create — this once surfaced
-`spectral_eigenvalues.rs` moments after it had been renamed to
-`spectral_eigenvals.rs` (the next check already showed the correct name). When
-that happens, or when a tool response carries the staleness banner, verify the
-filename on disk (`ls` / glob) and `Read` the specific file for line-level edits.
+few seconds right after a rename/create — this once surfaced `eigen2_values.rs`
+moments after it had been renamed to `eigen_values.rs` (the next check already
+showed the correct name). When that happens, or when a tool response carries the
+staleness banner, verify the filename on disk (`ls` / glob) and `Read` the
+specific file for line-level edits.
 
 If a path is still wrong after the debounce window — or the watcher is disabled
 (e.g. a sandbox, or `CODEGRAPH_NO_DAEMON=1`) — force a refresh:

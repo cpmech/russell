@@ -1,10 +1,10 @@
 //! Benchmarks comparing the speed of the four eigenvalue methods available in
-//! `Spectral2::calc_eigenvalues_mx`:
+//! `EigenValuesT2::calculate_mx`:
 //!
-//! * `EigMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)
-//! * `EigMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)
-//! * `EigMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023)
-//! * `EigMethod::Iterative` — iterative Jacobi rotations
+//! * `EigenValMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)
+//! * `EigenValMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)
+//! * `EigenValMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023)
+//! * `EigenValMethod::Iterative` — iterative Jacobi rotations
 //!
 //! Two symmetric input tensors are used:
 //!
@@ -12,11 +12,11 @@
 //! 2. `coalescent` — two nearly equal eigenvalues (the tough case for the
 //!    discriminant-based methods)
 //!
-//! Only the eigenvalues are computed (via `calc_eigenvalues_mx`); the eigenprojectors
+//! Only the eigenvalues are computed (via `calculate_mx`); the eigenprojectors
 //! are not, since that is the common factor across the four methods.
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use russell_tensor::{EigenValMethod, Spectral2, Tensor2};
+use russell_tensor::{EigenValMethod, EigenValuesT2, Tensor2};
 
 /// Symmetric tensor with well-separated eigenvalues
 const DISTINCT: [[f64; 3]; 3] = [
@@ -42,15 +42,16 @@ const METHODS: [(&str, EigenValMethod); 4] = [
 
 /// Benchmarks the four eigenvalue methods for a given input tensor
 fn bench_eigenvalues(crit: &mut Criterion, name: &str, matrix: &[[f64; 3]; 3]) {
-    let mut group = crit.benchmark_group(format!("calc_eigenvalues_mx_{}", name));
+    let mut group = crit.benchmark_group(format!("eigenvalues_{}", name));
 
     for (label, method) in METHODS {
         group.bench_with_input(BenchmarkId::new(label, ""), &(), |b, _| {
             let aa = Tensor2::<6>::from_std_matrix(matrix).unwrap();
-            let mut spec = Spectral2::new();
+            let mut calc = EigenValuesT2::new();
+            let mut ll = [0.0; 3];
             b.iter(|| {
-                spec.calc_eigenvalues_mx(&aa, method).unwrap();
-                std::hint::black_box(&spec.lam);
+                calc.calculate_mx(&mut ll, &aa, method).unwrap();
+                std::hint::black_box(&ll);
             });
         });
     }

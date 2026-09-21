@@ -33,7 +33,7 @@ This library implements structures and functions for tensor analysis and calculu
 * `Tensor4` — fourth-order tensors (minor-symmetric or not)
 * Operations between tensors — addition, single and double contractions (dot and ddot), and dyadic products; most operations support both overwriting (`SET`) and accumulation (`ADD`)
 * Analytical derivatives — first and second derivatives of invariants and tensor functions (e.g., the inverse and squared tensors) with respect to tensors
-* `Spectral2` — the spectral (eigen) representation of symmetric second-order tensors
+* `EigenValuesT2`, `EigenProjsT2`, `EigenProjDerivsT2` — eigenvalues, eigenprojectors, and the derivatives of the eigenprojectors of symmetric second-order tensors
 * `LinElasticity` — the linear elasticity equations for small-strain problems (Hooke's law)
 * `PiezoDatabase` — a database of piezoelectric materials (permittivity, piezoelectric, and stiffness tensors) loaded from JSON
 * Constants — identity, transposition, and projector tensors, as well as the `ADD`/`SET` operation selectors

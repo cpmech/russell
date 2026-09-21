@@ -68,6 +68,10 @@ impl EigenProjDerivsT2 {
     /// `projs` -- (output) the eigenprojectors
     /// `dpp` -- (output) the derivatives of the eigenprojectors w.r.t. A
     /// `aa` -- the tensor A
+    ///
+    /// The default method is [EigenValMethod::AnalyticalHZ]
+    ///
+    /// The default derivative method is `characteristic polynomial` (i.e., no inverse needed).
     pub fn calculate(
         &mut self,
         ll: &mut [f64; 3],

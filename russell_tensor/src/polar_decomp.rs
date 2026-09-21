@@ -16,7 +16,7 @@ use russell_lab::StrError;
 pub enum PolarAlgo {
     /// Classic: Using eigenvalues/eigenprojectors
     ///
-    /// Uses [crate::Spectral2] analytical method.
+    /// Uses [crate::EigenProjsT2] analytical method.
     Eigen,
 
     /// Classic: Using singular-value-decomposition (SVD)

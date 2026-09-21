@@ -10,51 +10,27 @@
 //! * `D1 = diag(1, 1 + δ, 1 + 2δ)` — approaching a triple eigenvalue
 //! * `D2 = diag(-1, 1, 1 + δ)` — approaching a double eigenvalue (the pair `1`, `1 + δ`)
 //!
-//! The two functions are mathematically equivalent; for each δ the example reports
-//! the maximum absolute difference between the two derivative tensors and that
-//! difference relative to the largest derivative component. Cases where a method
-//! rejects the tensor (coalescent, non-invertible, small `d[i]`, ...) are reported
-//! per method.
+//! For each δ, a numerical derivative `d_num` is computed with `deriv1_central5` and
+//! the following relative differences are reported (all normalized by the largest
+//! component magnitude of the two operands):
+//!
+//! * `rel(inv,cp)` — between the two analytical methods
+//! * `rel(inv,num)`, `rel(cp,num)` — of each analytical method with respect to the
+//!   numerical derivative
+//!
+//! Cases where a method rejects the tensor (coalescent, non-invertible, ...) are
+//! reported per method.
 
-use russell_tensor::{EigenProjDerivsT2, EigenValMethod, StrError, Tensor2, Tensor4};
+use russell_lab::deriv1_central5;
+use russell_tensor::{EigenProjDerivsT2, EigenProjsT2, EigenValMethod, StrError, Tensor2, Tensor4};
 
-// Expected output
-// D1: diag(1, 1 + δ, 1 + 2δ)  (approaching a triple eigenvalue)
-//        δ      max|ΔdP|           rel  status
-//     1e-1      2.08e-13      4.16e-14  ok
-//     1e-2      5.73e-11      1.15e-12  ok
-//     1e-3       7.78e-7       1.56e-9  ok
-//     1e-4             -             -  calc_with_inv failed: |d[i]| is nearly zero
-//     1e-5             -             -  calc_with_inv failed: |d[i]| is nearly zero
-//     1e-6             -             -  calc_with_inv failed: |d[i]| is nearly zero
-//     1e-8             -             -  both failed: Failed due to spherical state (all equal eigenvalues)
-//    1e-10             -             -  both failed: Failed due to spherical state (all equal eigenvalues)
-//    1e-12             -             -  both failed: Failed due to spherical state (all equal eigenvalues)
-//    1e-14             -             -  both failed: Failed due to spherical state (all equal eigenvalues)
-//
-// D2: diag(-1, 1, 1 + δ)      (approaching a double eigenvalue)
-//        δ      max|ΔdP|           rel  status
-//     1e-1      1.42e-14      2.84e-15  ok
-//     1e-2      3.06e-13      6.11e-15  ok
-//     1e-3      8.35e-11      1.67e-13  ok
-//     1e-4       2.77e-9      5.55e-13  ok
-//     1e-5       8.33e-7      1.67e-11  ok
-//     1e-6       5.55e-5      1.11e-10  ok
-//     1e-8             -             -  both failed: Failed due to two repeated eigenvalues
-//    1e-10             -             -  both failed: Failed due to two repeated eigenvalues
-//    1e-12             -             -  both failed: Failed due to two repeated eigenvalues
-//    1e-14             -             -  both failed: Failed due to two repeated eigenvalues
-
-/// Outcome of running both derivative methods on one tensor
-enum Outcome {
-    /// Both methods succeeded: (max absolute diff, max diff / max|dP|)
-    Both(f64, f64),
-    /// Only `calc_with_char_poly` succeeded
-    OnlyCharPoly(StrError),
-    /// Only `calc_with_inv` succeeded
-    OnlyInv(StrError),
-    /// Both methods rejected the tensor (message from `calc_with_inv`)
-    None(StrError),
+/// Per-row results of the comparison
+struct Row {
+    max_abs_inv_cp: Option<f64>,
+    rel_inv_cp: Option<f64>,
+    rel_inv_num: Option<f64>,
+    rel_cp_num: Option<f64>,
+    status: String,
 }
 
 fn main() -> Result<(), StrError> {
@@ -67,7 +43,10 @@ fn main() -> Result<(), StrError> {
         ("D2: diag(-1, 1, 1 + δ)      (approaching a double eigenvalue)", false),
     ] {
         println!("\n{}", label);
-        println!("{:>8}  {:>12}  {:>12}  status", "δ", "max|ΔdP|", "rel");
+        println!(
+            "{:>8}  {:>10}  {:>12}  {:>12}  {:>12}  status",
+            "δ", "max|ΔdP|", "rel(inv,cp)", "rel(inv,num)", "rel(cp,num)"
+        );
         for &delta in &deltas {
             let d = if is_d1 {
                 [1.0, 1.0 + delta, 1.0 + 2.0 * delta]
@@ -76,29 +55,31 @@ fn main() -> Result<(), StrError> {
             };
             let a = build_a(&u, &d);
             let aa = Tensor2::<6>::from_std_matrix(&a)?;
-            match compare(&aa, method) {
-                Outcome::Both(abs, rel) => println!("{:>8.0e}  {:>12.2e}  {:>12.2e}  ok", delta, abs, rel),
-                Outcome::OnlyCharPoly(msg) => {
-                    println!(
-                        "{:>8.0e}  {:>12}  {:>12}  calc_with_inv failed: {}",
-                        delta, "-", "-", msg
-                    )
-                }
-                Outcome::OnlyInv(msg) => {
-                    println!(
-                        "{:>8.0e}  {:>12}  {:>12}  calc_with_char_poly failed: {}",
-                        delta, "-", "-", msg
-                    )
-                }
-                Outcome::None(msg) => println!("{:>8.0e}  {:>12}  {:>12}  both failed: {}", delta, "-", "-", msg),
-            }
+            let row = compare(&aa, method);
+            println!(
+                "{:>8.0e}  {:>10}  {:>12}  {:>12}  {:>12}  {}",
+                delta,
+                fmt(row.max_abs_inv_cp),
+                fmt(row.rel_inv_cp),
+                fmt(row.rel_inv_num),
+                fmt(row.rel_cp_num),
+                row.status
+            );
         }
     }
     Ok(())
 }
 
-/// Runs both derivative methods and compares the results
-fn compare(aa: &Tensor2<6>, method: EigenValMethod) -> Outcome {
+/// Formats an optional error value
+fn fmt(value: Option<f64>) -> String {
+    match value {
+        Some(x) => format!("{:.2e}", x),
+        None => "-".to_string(),
+    }
+}
+
+/// Runs both analytical methods and the numerical derivative, and computes the differences
+fn compare(aa: &Tensor2<6>, method: EigenValMethod) -> Row {
     let mut calc = EigenProjDerivsT2::new();
     let mut ll = [0.0; 3];
     let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
@@ -107,35 +88,106 @@ fn compare(aa: &Tensor2<6>, method: EigenValMethod) -> Outcome {
 
     let r_inv = calc.calc_with_inv(&mut ll, &mut projs, &mut d_inv, aa, method);
     let r_cp = calc.calc_with_char_poly(&mut ll, &mut projs, &mut d_cp, aa, method);
+    let d_num = numerical_deriv(aa, method);
 
-    match (r_inv, r_cp) {
-        (Ok(()), Ok(())) => {
-            let (abs, rel) = differences(&d_inv, &d_cp);
-            Outcome::Both(abs, rel)
-        }
-        (Err(_), Ok(())) => Outcome::OnlyCharPoly(r_inv.unwrap_err()),
-        (Ok(()), Err(_)) => Outcome::OnlyInv(r_cp.unwrap_err()),
-        (Err(e), Err(_)) => Outcome::None(e),
+    let (max_abs_inv_cp, rel_inv_cp) = if r_inv.is_ok() && r_cp.is_ok() {
+        (Some(max_abs(&d_inv, &d_cp)), Some(rel(&d_inv, &d_cp)))
+    } else {
+        (None, None)
+    };
+    let rel_inv_num = if r_inv.is_ok() { Some(rel(&d_inv, &d_num)) } else { None };
+    let rel_cp_num = if r_cp.is_ok() { Some(rel(&d_cp, &d_num)) } else { None };
+
+    let status = match (&r_inv, &r_cp) {
+        (Ok(()), Ok(())) => "ok".to_string(),
+        (Err(e), Ok(())) => format!("calc_with_inv failed: {}", e),
+        (Ok(()), Err(e)) => format!("calc_with_char_poly failed: {}", e),
+        (Err(e), Err(_)) => format!("both failed: {}", e),
+    };
+
+    Row {
+        max_abs_inv_cp,
+        rel_inv_cp,
+        rel_inv_num,
+        rel_cp_num,
+        status,
     }
 }
 
-/// Returns the maximum absolute difference and the same difference relative to the
-/// largest component of the two derivative tensors
-fn differences(d_inv: &[Tensor4<6>; 3], d_cp: &[Tensor4<6>; 3]) -> (f64, f64) {
-    let mut max_abs = 0.0;
+/// Returns the maximum absolute difference between two derivative sets
+fn max_abs(a: &[Tensor4<6>; 3], b: &[Tensor4<6>; 3]) -> f64 {
+    let mut max = 0.0;
+    for k in 0..3 {
+        for m in 0..6 {
+            for n in 0..6 {
+                max = f64::max(max, f64::abs(a[k].get(m, n) - b[k].get(m, n)));
+            }
+        }
+    }
+    max
+}
+
+/// Returns `max|a - b| / max(max|a|, max|b|)` (0 if both operands vanish)
+fn rel(a: &[Tensor4<6>; 3], b: &[Tensor4<6>; 3]) -> f64 {
     let mut scale = 0.0;
     for k in 0..3 {
         for m in 0..6 {
             for n in 0..6 {
-                let a = d_inv[k].get(m, n);
-                let b = d_cp[k].get(m, n);
-                max_abs = f64::max(max_abs, f64::abs(a - b));
-                scale = f64::max(scale, f64::max(f64::abs(a), f64::abs(b)));
+                scale = f64::max(scale, f64::abs(a[k].get(m, n)));
+                scale = f64::max(scale, f64::abs(b[k].get(m, n)));
             }
         }
     }
-    let rel = if scale > 0.0 { max_abs / scale } else { 0.0 };
-    (max_abs, rel)
+    if scale > 0.0 { max_abs(a, b) / scale } else { 0.0 }
+}
+
+/// Arguments for the numerical differentiation of the eigenprojectors
+struct NumArgs {
+    method: EigenValMethod,
+    calc: EigenProjsT2,
+    ll: [f64; 3],
+    projs: [Tensor2<6>; 3],
+    aa: Tensor2<6>,
+    k: usize,
+    m: usize,
+    n: usize,
+}
+
+/// Computes the derivatives of the eigenprojectors by numerical differentiation
+fn numerical_deriv(aa: &Tensor2<6>, method: EigenValMethod) -> [Tensor4<6>; 3] {
+    let mut args = NumArgs {
+        method,
+        calc: EigenProjsT2::new(),
+        ll: [0.0; 3],
+        projs: [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()],
+        aa: aa.clone(),
+        k: 0,
+        m: 0,
+        n: 0,
+    };
+    let mut d_num = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
+    for k in 0..3 {
+        args.k = k;
+        for m in 0..6 {
+            args.m = m;
+            for n in 0..6 {
+                args.n = n;
+                let x = args.aa.get(n);
+                let res = deriv1_central5(x, &mut args, |x, args| {
+                    let original = args.aa.get(args.n);
+                    args.aa.set(args.n, x);
+                    args.calc
+                        .calculate_mx(&mut args.ll, &mut args.projs, &args.aa, args.method)
+                        .unwrap();
+                    args.aa.set(args.n, original);
+                    Ok(args.projs[args.k].get(args.m))
+                })
+                .unwrap();
+                d_num[k].set(m, n, res);
+            }
+        }
+    }
+    d_num
 }
 
 /// Orthogonal transformation matrix from the papers

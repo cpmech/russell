@@ -2,12 +2,13 @@
 //! the Habera-Zilian and Harari-Albocher (2023) methods.
 //!
 //! The benchmark follows the `eig3x3` library's invariants benchmark: symmetric
-//! matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal transformation
+//! matrices are built as `A = Q ⋅ diag(d) ⋅ Qᵀ` with the orthogonal transformation
 //! `Q_sym` and the diagonal cases `d(δ)` from the Habera-Zilian test suite.
 //!
 //! Three variants are compared:
 //!
-//! * `HZ` — the Habera-Zilian formulas applied directly to the 3×3 matrix
+//! * `HZ` — the numerically stable formulas of Habera & Zilian (2026) (Algorithms 2 and 5)
+//!   applied directly to the 3×3 matrix
 //! * `HA23` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3] (Harari & Albocher 2023)
 //! * `naive` — the monomial deviatoric formulas
 //!
@@ -144,7 +145,7 @@ fn q_sym() -> [[f64; 3]; 3] {
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
-/// Builds the symmetric matrix `A = U ⋅ diag(d) ⋅ Uᵀ` (and symmetrizes it)
+/// Builds the symmetric matrix `A = Q ⋅ diag(d) ⋅ Qᵀ` (and symmetrizes it)
 fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {
@@ -164,7 +165,7 @@ fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     a
 }
 
-/// Habera-Zilian symmetric invariants applied directly to the 3×3 matrix
+/// Habera & Zilian (2026) symmetric invariants (Algorithms 2 and 5) applied directly to the 3×3 matrix
 fn hz(a: &[[f64; 3]; 3]) -> (f64, f64) {
     let (a00, a01, a02) = (a[0][0], a[0][1], a[0][2]);
     let (a11, a12, a22) = (a[1][1], a[1][2], a[2][2]);

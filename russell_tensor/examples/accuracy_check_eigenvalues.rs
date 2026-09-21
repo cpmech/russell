@@ -8,8 +8,12 @@
 //! * `D2 = diag(-1, 1, 1 + δ)` — a double eigenvalue (the discriminant `Δ → 0`
 //!   while `J2` and `J3` stay finite)
 //!
-//! The matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal
-//! transformation `U_sym` used in the papers. The prescribed eigenvalues
+//! The methods are `HZ` (the closed-form expressions of Habera & Zilian 2026,
+//! Equations (2) and (4)), `HA22` (Harari & Albocher 2022), `HA23` (Harari &
+//! Albocher 2023), the `Jacobi` iteration, and a `Naive` monomial cubic formula.
+//!
+//! The matrices are built as `A = Q ⋅ diag(d) ⋅ Qᵀ` with the orthogonal
+//! transformation `Q_sym` used in the papers. The prescribed eigenvalues
 //! `d` are used as the reference.
 
 use russell_tensor::{EigenValMethod, EigenValuesT2, StrError, Tensor2};
@@ -97,7 +101,7 @@ fn q_sym() -> [[f64; 3]; 3] {
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
-/// Builds the symmetric matrix A = U ⋅ diag(d) ⋅ Uᵀ (and symmetrizes it)
+/// Builds the symmetric matrix A = Q ⋅ diag(d) ⋅ Qᵀ (and symmetrizes it)
 fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {

@@ -1,12 +1,16 @@
 //! Compares the reconstruction error of the eigenprojectors returned by the four
 //! eigenvalue methods available in `EigenProjsT2::calculate_mx`.
 //!
-//! The symmetric tensors are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal
-//! transformation `U_sym` used in `accuracy_check_eigenvalues`, for diagonal cases
+//! The symmetric tensors are built as `A = Q ⋅ diag(d) ⋅ Qᵀ` with the orthogonal
+//! transformation `Q_sym` used in `accuracy_check_eigenvalues`, for diagonal cases
 //! that approach the coalescent (two nearly equal eigenvalues) limit:
 //!
 //! * `D1 = diag(1, 1 + δ, 1 + 2δ)` — approaching a triple eigenvalue
 //! * `D2 = diag(-1, 1, 1 + δ)` — approaching a double eigenvalue (the pair `1`, `1 + δ`)
+//!
+//! The eigenvalue methods are the same as in `accuracy_check_eigenvalues`; in
+//! particular, `HZ` denotes the closed-form expressions of Habera & Zilian (2026),
+//! Equations (2) and (4).
 //!
 //! For each δ and method, the spectral reconstruction `A_rec = Σ_k λ_k P_k` is formed
 //! and the maximum absolute error `max_m |A_m − A_rec,m|` is reported, with all values
@@ -74,7 +78,7 @@ fn q_sym() -> [[f64; 3]; 3] {
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
-/// Builds the symmetric matrix A = U ⋅ diag(d) ⋅ Uᵀ (and symmetrizes it)
+/// Builds the symmetric matrix A = Q ⋅ diag(d) ⋅ Qᵀ (and symmetrizes it)
 fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {

@@ -43,7 +43,7 @@ struct Row {
 fn main() -> Result<(), StrError> {
     let method = EigenValMethod::AnalyticalHZ;
     let u = u_sym();
-    let deltas = [0.5, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8];
+    let deltas = [1.0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8];
 
     for (label, is_d1) in [
         ("D1: diag(1, 1 + δ, 1 + 2δ)  (approaching a triple eigenvalue)", true),

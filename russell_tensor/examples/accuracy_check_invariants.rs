@@ -3,7 +3,7 @@
 //!
 //! The benchmark follows the `eig3x3` library's invariants benchmark: symmetric
 //! matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal transformation
-//! `U_symm` and the diagonal cases `d(δ)` from the Habera-Zilian test suite.
+//! `Q_sym` and the diagonal cases `d(δ)` from the Habera-Zilian test suite.
 //!
 //! Three variants are compared:
 //!
@@ -29,12 +29,12 @@ const NV: usize = 3;
 const LABELS: [&str; NV] = ["HZ", "HA23", "naive"];
 
 fn main() {
-    let u = u_symm();
+    let q = q_sym();
     let deltas = [
         1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0,
     ];
 
-    println!("Symmetric tensors, A = U_symm ⋅ diag(d) ⋅ U_symmᵀ");
+    println!("Symmetric tensors, A = Q_sym ⋅ diag(d) ⋅ Q_symᵀ");
     println!("(reference: double-double, ~30 digits)");
 
     // Accumulate the errors: rows = deltas, columns = variants
@@ -46,7 +46,7 @@ fn main() {
     for (k, &delta) in deltas.iter().enumerate() {
         for name in CASES {
             let d = case_diagonal(name, delta);
-            let a = build_a(&u, &d);
+            let a = build_a(&q, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
             let (r2, r3) = ref_invariants(&a);
             let variants = [hz(&a), ha23(&tt), naive(&a)];
@@ -139,18 +139,18 @@ fn case_diagonal(name: &str, delta: f64) -> [f64; 3] {
 }
 
 /// Orthogonal transformation matrix from the Habera-Zilian test suite
-fn u_symm() -> [[f64; 3]; 3] {
+fn q_sym() -> [[f64; 3]; 3] {
     let r2 = f64::sqrt(2.0);
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
 /// Builds the symmetric matrix `A = U ⋅ diag(d) ⋅ Uᵀ` (and symmetrizes it)
-fn build_a(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in 0..3 {
             for k in 0..3 {
-                a[i][j] += u[i][k] * d[k] * u[j][k];
+                a[i][j] += q[i][k] * d[k] * q[j][k];
             }
         }
     }

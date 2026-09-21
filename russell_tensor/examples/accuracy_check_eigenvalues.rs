@@ -43,7 +43,7 @@ use std::f64::consts::PI;
 //    1e-14    8.88e-16    2.22e-16    2.22e-16    2.22e-16     5.27e-9
 
 fn main() -> Result<(), StrError> {
-    let u = u_sym();
+    let q = q_sym();
     let deltas = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10, 1e-12, 1e-14];
 
     let mut calc = EigenValuesT2::new();
@@ -63,7 +63,7 @@ fn main() -> Result<(), StrError> {
             } else {
                 [-1.0, 1.0, 1.0 + delta]
             };
-            let a = build_a(&u, &d);
+            let a = build_a(&q, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a)?;
             let mut exact = d;
             exact.sort_by(|x, y| x.partial_cmp(y).unwrap());
@@ -92,18 +92,18 @@ fn main() -> Result<(), StrError> {
 }
 
 /// Orthogonal transformation matrix from the papers
-fn u_sym() -> [[f64; 3]; 3] {
+fn q_sym() -> [[f64; 3]; 3] {
     let r2 = f64::sqrt(2.0);
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
 /// Builds the symmetric matrix A = U ⋅ diag(d) ⋅ Uᵀ (and symmetrizes it)
-fn build_a(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in 0..3 {
             for k in 0..3 {
-                a[i][j] += u[i][k] * d[k] * u[j][k];
+                a[i][j] += q[i][k] * d[k] * q[j][k];
             }
         }
     }

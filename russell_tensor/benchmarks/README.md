@@ -25,6 +25,7 @@ Each function is benchmarked in two variants:
 | ----------------------- | -------------------------------------------------- |
 | `ssd_fn`                | self-sum-dyadic operation                          |
 | `qsd_fn`                | quad-sum-dyadic operation                          |
+| `dsd_fn`                | duo-sum-dyadic operation                           |
 | `deriv2_invariant_jj3`  | second derivative of the J3 invariant              |
 | `deriv2_invariant_lode` | second derivative of the Lode invariant            |
 | `deriv_squared_tensor`  | derivative of the squared tensor (general Tensor2) |
@@ -58,12 +59,12 @@ cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark
 
 `polar_decomp_benchmark` compares the speed of the polar-decomposition algorithms:
 
-| algorithm    | description                                                                  |
-| ------------ | ---------------------------------------------------------------------------- |
-| `iterative`  | `PolarAlgo::Iterative` — Brannon's iterative fixed-point (3×3)               |
-| `quaternion` | `PolarAlgo::Quaternion` — Higham & Noferini quaternion-based, direct (3×3)   |
+| algorithm    | description                                                                     |
+| ------------ | ------------------------------------------------------------------------------- |
+| `iterative`  | `PolarAlgo::Iterative` — Brannon's iterative fixed-point (3×3)                  |
+| `quaternion` | `PolarAlgo::Quaternion` — Higham & Noferini quaternion-based, direct (3×3)      |
 | `eigen`      | `PolarAlgo::Eigen` — eigen-decomposition of `C = Fᵀ F` via `EigenProjsT2` (3×3) |
-| `svd`        | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)               |
+| `svd`        | `PolarAlgo::SVD` — classic: singular value decomposition (3×3)                  |
 
 > **Note:** all algorithms are benchmarked through the unified `polar_decomp_mx`
 > dispatcher, which computes the rotation `R` and the right stretch `U` together
@@ -81,13 +82,18 @@ cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmar
 
 ---
 
-## Eigenvalues benchmark
+## Eigen benchmark
 
-`eigen_values_benchmark` compares the speed of the four eigenvalue methods available in
-`EigenValuesT2::calculate_mx` (eigenvalues only, without the eigenprojectors):
+`eigen_values_benchmark` benchmarks the three eigen-evaluation stages of the crate:
 
-| method            | description                                                                      |
-| ----------------- | -------------------------------------------------------------------------------- |
+1. `eigenvalues_{case}` — `EigenValuesT2::calculate_mx` (values only)
+2. `eigen_projectors_{case}` — `EigenProjsT2::calculate_mx` (values + Sylvester projectors)
+3. `eigen_proj_derivs_distinct` — the `EigenProjDerivsT2` derivative algorithms
+
+The four eigenvalue methods are:
+
+| method            | description                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------- |
 | `analytical_hz`   | `EigenValMethod::AnalyticalHZ` — stable closed-form (Habera & Zilian 2025)            |
 | `analytical_ha22` | `EigenValMethod::AnalyticalHA22` — Box-1 discriminant (Harari & Albocher 2022)        |
 | `analytical_ha23` | `EigenValMethod::AnalyticalHA23` — seven-square discriminant (Harari & Albocher 2023) |
@@ -95,6 +101,14 @@ cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmar
 
 Two symmetric input tensors are used: `distinct` (well-separated eigenvalues) and
 `coalescent` (two nearly equal eigenvalues).
+
+The eigenprojector derivatives are only defined for distinct eigenvalues, so they use the
+`distinct` input and compare the two algorithms (both with Habera-Zilian eigenvalues):
+
+| algorithm   | description                                                             |
+| ----------- | ----------------------------------------------------------------------- |
+| `char_poly` | `calc_with_char_poly` — Panteghini's characteristic-polynomial approach |
+| `with_inv`  | `calc_with_inv` — Miehe's inverse-based approach                        |
 
 ### How to run
 

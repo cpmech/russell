@@ -29,6 +29,7 @@ WORKSPACE = BENCH_DIR.parent.parent  # repository root
 TENSOR_FUNCTIONS = [
     "ssd_fn",
     "qsd_fn",
+    "dsd_fn",
     "deriv2_invariant_jj3",
     "deriv2_invariant_lode",
     "deriv_squared_tensor",
@@ -44,9 +45,10 @@ POLAR_CASES = [
 
 POLAR_ALGORITHMS = ["iterative", "quaternion", "eigen", "svd"]
 
-# Eigenvalue input cases and the four `EigenValMethod` variants.
+# Eigenvalue input cases, the four `EigenValMethod` variants, and the derivative algos.
 EIGEN_CASES = ["distinct", "coalescent"]
 EIGEN_METHODS = ["analytical_hz", "analytical_ha22", "analytical_ha23", "iterative"]
+EIGEN_DERIV_ALGOS = ["char_poly", "with_inv"]
 
 TIME_RE = re.compile(r"time:\s*\[([^\]]+)\]")
 
@@ -201,15 +203,35 @@ def main():
         add(f"| `{algorithm}` | {cell(polar, 'polar_rotation_in_plane/' + algorithm)} |")
     add("")
 
-    add("## Eigenvalues")
+    add("## Eigen")
     add("")
-    add("Median times (Intel MKL):")
+    add("Median times (Intel MKL).")
+    add("")
+
+    add("### Eigenvalues — `EigenValuesT2::calculate_mx`")
     add("")
     add("| case | " + " | ".join(f"`{m}`" for m in EIGEN_METHODS) + " |")
     add("| --- | " + " | ".join("---" for _ in EIGEN_METHODS) + " |")
     for case in EIGEN_CASES:
         cells = [cell(eigen, f"eigenvalues_{case}/{m}") for m in EIGEN_METHODS]
         add(f"| `{case}` | " + " | ".join(cells) + " |")
+    add("")
+
+    add("### Eigenprojectors — `EigenProjsT2::calculate_mx`")
+    add("")
+    add("| case | " + " | ".join(f"`{m}`" for m in EIGEN_METHODS) + " |")
+    add("| --- | " + " | ".join("---" for _ in EIGEN_METHODS) + " |")
+    for case in EIGEN_CASES:
+        cells = [cell(eigen, f"eigen_projectors_{case}/{m}") for m in EIGEN_METHODS]
+        add(f"| `{case}` | " + " | ".join(cells) + " |")
+    add("")
+
+    add("### Eigenprojector derivatives (distinct) — `EigenProjDerivsT2`")
+    add("")
+    add("| algorithm | time |")
+    add("| --- | --- |")
+    for algo in EIGEN_DERIV_ALGOS:
+        add(f"| `{algo}` | {cell(eigen, 'eigen_proj_derivs_distinct/' + algo)} |")
     add("")
 
     output = "\n".join(lines).rstrip() + "\n"

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::{ADD, P_SYM, SET};
 use crate::{EigenProjsT2, EigenValMethod, Tensor2, Tensor4, dsd_fn};
 use crate::{StrError, deriv2_invariant_ii3};
@@ -61,6 +59,15 @@ impl EigenProjDerivsT2 {
     }
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A
+    ///
+    /// Note: This function is only available for tensor A with *all-distinct* eigenvalues.
+    ///
+    /// # Arguments
+    ///
+    /// `ll` -- (output) the eigenvalues
+    /// `projs` -- (output) the eigenprojectors
+    /// `dpp` -- (output) the derivatives of the eigenprojectors w.r.t. A
+    /// `aa` -- the tensor A
     pub fn calculate(
         &mut self,
         ll: &mut [f64; 3],
@@ -72,6 +79,19 @@ impl EigenProjDerivsT2 {
     }
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A (method selection)
+    ///
+    /// Note: This function is only available for tensor A with *all-distinct* eigenvalues.
+    ///
+    /// If `use_inverse = true`, the tensor must be also invertible and all eigenvalues must not be zero.
+    ///
+    /// # Arguments
+    ///
+    /// `ll` -- (output) the eigenvalues
+    /// `projs` -- (output) the eigenprojectors
+    /// `dpp` -- (output) the derivatives of the eigenprojectors w.r.t. A
+    /// `aa` -- the tensor A
+    /// `method` -- the method to calculate the eigenvalues
+    /// `use_inverse` -- whether to use the inverse method or the characteristic polynomial method
     pub fn calculate_mx(
         &mut self,
         ll: &mut [f64; 3],
@@ -212,7 +232,7 @@ impl EigenProjDerivsT2 {
 
     /// Calculates the derivatives of the eigenprojectors w.r.t. the A using the characteristic polynomial
     ///
-    /// Note: This function is only available for for tensor A with *all-distinct* eigenvalues.
+    /// Note: This function is only available for tensor A with *all-distinct* eigenvalues.
     ///
     /// For all-distinct eigenvalues, this function calculates:
     ///

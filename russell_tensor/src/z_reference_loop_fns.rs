@@ -8,12 +8,12 @@ use crate::{Tensor2, Tensor4};
 use russell_lab::Matrix;
 
 /// Zeroes the entries of a 9x9 standard matrix that are not represented by a Tensor4<4>
-fn zero_unrepresented_shears(mat: &mut Matrix) {
+fn zero_unrepresented_shears(mat: &mut [[f64; 9]; 9]) {
     for m in 0..9 {
         for n in 0..9 {
             let (i, j, k, l) = MN_TO_IJKL[m][n];
             if IJ_TO_M_SYM[i][j] >= 4 || IJ_TO_M_SYM[k][l] >= 4 {
-                mat.set(m, n, 0.0);
+                mat[m][n] = 0.0;
             }
         }
     }
@@ -22,7 +22,7 @@ fn zero_unrepresented_shears(mat: &mut Matrix) {
 /// Transfers a 9x9 standard matrix into a Tensor4
 ///
 /// For N == 4 (generalized plane), the unrepresented shears are zeroed first.
-fn set_std<const N: usize>(dd: &mut Tensor4<N>, mut mat: Matrix) {
+fn set_std<const N: usize>(dd: &mut Tensor4<N>, mut mat: [[f64; 9]; 9]) {
     if N == 4 {
         zero_unrepresented_shears(&mut mat);
     }
@@ -36,11 +36,11 @@ fn set_std<const N: usize>(dd: &mut Tensor4<N>, mut mat: Matrix) {
 /// Reference implementation of [`crate::ssd_fn`].
 pub fn ssd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>) {
     let a = aa.as_std_matrix();
-    let mut mat = Matrix::new(9, 9);
+    let mut mat = [[0.0; 9]; 9];
     for m in 0..9 {
         for n in 0..9 {
             let (i, j, k, l) = MN_TO_IJKL[m][n];
-            mat.set(m, n, s * (a.get(i, k) * a.get(j, l) + a.get(i, l) * a.get(j, k)));
+            mat[m][n] = s * (a.get(i, k) * a.get(j, l) + a.get(i, l) * a.get(j, k));
         }
     }
     set_std(dd, mat);
@@ -54,7 +54,7 @@ pub fn ssd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>
 pub fn qsd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
     let a = aa.as_std_matrix();
     let b = bb.as_std_matrix();
-    let mut mat = Matrix::new(9, 9);
+    let mut mat = [[0.0; 9]; 9];
     for i in 0..3 {
         for j in 0..3 {
             for k in 0..3 {
@@ -63,14 +63,11 @@ pub fn qsd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>
                     let (ii, jj) = if i <= j { (i, j) } else { (j, i) };
                     let (kk, ll) = if k <= l { (k, l) } else { (l, k) };
                     let (m, n) = IJKL_TO_MN[i][j][k][l];
-                    mat.set(
-                        m,
-                        n,
-                        s * (a.get(ii, kk) * b.get(jj, ll)
+                    mat[m][n] = s
+                        * (a.get(ii, kk) * b.get(jj, ll)
                             + a.get(ii, ll) * b.get(jj, kk)
                             + b.get(ii, kk) * a.get(jj, ll)
-                            + b.get(ii, ll) * a.get(jj, kk)),
-                    );
+                            + b.get(ii, ll) * a.get(jj, kk));
                 }
             }
         }
@@ -208,11 +205,11 @@ pub fn deriv2_invariant_lode_loops<const N: usize>(d2: &mut Tensor4<N>, a: &Tens
 pub fn dsd_fn_loops<const N: usize>(dd: &mut Tensor4<N>, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
     let a = aa.as_std_matrix();
     let b = bb.as_std_matrix();
-    let mut mat = Matrix::new(9, 9);
+    let mut mat = [[0.0; 9]; 9];
     for m in 0..9 {
         for n in 0..9 {
             let (i, j, k, l) = MN_TO_IJKL[m][n];
-            mat.set(m, n, s * (a.get(i, j) * b.get(k, l) + b.get(i, j) * a.get(k, l)));
+            mat[m][n] = s * (a.get(i, j) * b.get(k, l) + b.get(i, j) * a.get(k, l));
         }
     }
     set_std(dd, mat);

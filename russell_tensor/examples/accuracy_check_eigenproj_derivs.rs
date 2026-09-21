@@ -11,18 +11,25 @@
 //! * `D2 = diag(-1, 1, 1 + δ)` — approaching a double eigenvalue (the pair `1`, `1 + δ`)
 //!
 //! For each δ, a numerical derivative `d_num` is computed with `deriv1_central5` and
-//! the following relative differences are reported (all normalized by the largest
-//! component magnitude of the two operands):
+//! the following differences are reported (the relative ones are normalized by the
+//! largest component magnitude of the two operands):
 //!
-//! * `rel(inv,cp)` — between the two analytical methods
-//! * `rel(inv,num)`, `rel(cp,num)` — of each analytical method with respect to the
-//!   numerical derivative
+//! * `max|ΔdP|` — maximum absolute difference between the two analytical methods
+//! * `rel(inv,cp)` — relative difference between the two analytical methods
+//! * `rel(inv,num)`, `rel(cp,num)` — relative difference of each analytical method
+//!   with respect to the numerical derivative
 //!
-//! Cases where a method rejects the tensor (coalescent, non-invertible, ...) are
-//! reported per method.
+//! The coalescent cases rejected by both methods are labelled `failed1` (spherical
+//! state) and `failed2` (two repeated eigenvalues); any other error aborts the example.
 
 use russell_lab::deriv1_central5;
 use russell_tensor::{EigenProjDerivsT2, EigenProjsT2, EigenValMethod, StrError, Tensor2, Tensor4};
+
+/// Message returned when all eigenvalues are (numerically) equal
+const ERR_SPHERICAL: &str = "Failed due to spherical state (all equal eigenvalues)";
+
+/// Message returned when two eigenvalues are (numerically) equal
+const ERR_REPEATED: &str = "Failed due to two repeated eigenvalues";
 
 /// Per-row results of the comparison
 struct Row {
@@ -30,13 +37,13 @@ struct Row {
     rel_inv_cp: Option<f64>,
     rel_inv_num: Option<f64>,
     rel_cp_num: Option<f64>,
-    status: String,
+    status: &'static str,
 }
 
 fn main() -> Result<(), StrError> {
     let method = EigenValMethod::AnalyticalHZ;
     let u = u_sym();
-    let deltas = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10, 1e-12, 1e-14];
+    let deltas = [0.5, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8];
 
     for (label, is_d1) in [
         ("D1: diag(1, 1 + δ, 1 + 2δ)  (approaching a triple eigenvalue)", true),
@@ -55,7 +62,7 @@ fn main() -> Result<(), StrError> {
             };
             let a = build_a(&u, &d);
             let aa = Tensor2::<6>::from_std_matrix(&a)?;
-            let row = compare(&aa, method);
+            let row = compare(&aa, method)?;
             println!(
                 "{:>8.0e}  {:>10}  {:>12}  {:>12}  {:>12}  {}",
                 delta,
@@ -67,6 +74,9 @@ fn main() -> Result<(), StrError> {
             );
         }
     }
+
+    println!("\nfailed1 = {}", ERR_SPHERICAL);
+    println!("failed2 = {}", ERR_REPEATED);
     Ok(())
 }
 
@@ -79,7 +89,7 @@ fn fmt(value: Option<f64>) -> String {
 }
 
 /// Runs both analytical methods and the numerical derivative, and computes the differences
-fn compare(aa: &Tensor2<6>, method: EigenValMethod) -> Row {
+fn compare(aa: &Tensor2<6>, method: EigenValMethod) -> Result<Row, StrError> {
     let mut calc = EigenProjDerivsT2::new();
     let mut ll = [0.0; 3];
     let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
@@ -88,30 +98,43 @@ fn compare(aa: &Tensor2<6>, method: EigenValMethod) -> Row {
 
     let r_inv = calc.calc_with_inv(&mut ll, &mut projs, &mut d_inv, aa, method);
     let r_cp = calc.calc_with_char_poly(&mut ll, &mut projs, &mut d_cp, aa, method);
-    let d_num = numerical_deriv(aa, method);
 
-    let (max_abs_inv_cp, rel_inv_cp) = if r_inv.is_ok() && r_cp.is_ok() {
-        (Some(max_abs(&d_inv, &d_cp)), Some(rel(&d_inv, &d_cp)))
-    } else {
-        (None, None)
+    // classify the outcome; the two expected coalescent errors are labelled, while
+    // any other error is propagated so that the example stops
+    let status = match (r_inv, r_cp) {
+        (Ok(()), Ok(())) => "ok",
+        (Err(e1), Err(e2)) => {
+            if e1 == ERR_SPHERICAL && e2 == ERR_SPHERICAL {
+                "failed1"
+            } else if e1 == ERR_REPEATED && e2 == ERR_REPEATED {
+                "failed2"
+            } else {
+                return Err(e1);
+            }
+        }
+        (Err(e), Ok(())) => return Err(e),
+        (Ok(()), Err(e)) => return Err(e),
     };
-    let rel_inv_num = if r_inv.is_ok() { Some(rel(&d_inv, &d_num)) } else { None };
-    let rel_cp_num = if r_cp.is_ok() { Some(rel(&d_cp, &d_num)) } else { None };
 
-    let status = match (&r_inv, &r_cp) {
-        (Ok(()), Ok(())) => "ok".to_string(),
-        (Err(e), Ok(())) => format!("calc_with_inv failed: {}", e),
-        (Ok(()), Err(e)) => format!("calc_with_char_poly failed: {}", e),
-        (Err(e), Err(_)) => format!("both failed: {}", e),
-    };
-
-    Row {
-        max_abs_inv_cp,
-        rel_inv_cp,
-        rel_inv_num,
-        rel_cp_num,
-        status,
+    // nothing else to compute for the rejected cases
+    if status != "ok" {
+        return Ok(Row {
+            max_abs_inv_cp: None,
+            rel_inv_cp: None,
+            rel_inv_num: None,
+            rel_cp_num: None,
+            status,
+        });
     }
+
+    let d_num = numerical_deriv(aa, method);
+    Ok(Row {
+        max_abs_inv_cp: Some(max_abs(&d_inv, &d_cp)),
+        rel_inv_cp: Some(rel(&d_inv, &d_cp)),
+        rel_inv_num: Some(rel(&d_inv, &d_num)),
+        rel_cp_num: Some(rel(&d_cp, &d_num)),
+        status,
+    })
 }
 
 /// Returns the maximum absolute difference between two derivative sets

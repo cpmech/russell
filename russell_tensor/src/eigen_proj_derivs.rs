@@ -209,9 +209,6 @@ impl EigenProjDerivsT2 {
         let ii1 = aa.invariant_ii1();
         for i in 0..3 {
             d[i] = 2.0 * ll[i] * ll[i] - ii1 * ll[i] + ii3 / ll[i];
-            if f64::abs(d[i]) < tol_diff {
-                return Err("|d[i]| is nearly zero");
-            }
             a[i] = ll[i] / d[i];
             b[i] = ii3 / d[i];
             for j in 0..3 {

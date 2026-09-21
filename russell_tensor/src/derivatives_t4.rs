@@ -329,7 +329,7 @@ pub fn deriv2_invariant_ii2<const N: usize>(d2: &mut Tensor4<N>, _a: &Tensor2<N>
 ///
 /// ```text
 ///  d²I3
-/// ─────── = I1 I ⊗ I - I ⊗ a - a ⊗ I - I1 Psym + ½ qsd(a, I)
+/// ─────── = I1 I ⊗ I - dsd(a, I) - I1 Psym + ½ qsd(a, I)
 /// da ⊗ da
 /// ```
 ///

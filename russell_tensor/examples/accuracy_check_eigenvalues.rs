@@ -17,7 +17,7 @@ use std::f64::consts::PI;
 
 // Expected output:
 // D1: diag(1, 1, 1 + δ)  (double → triple eigenvalue)
-//        δ       AnaHZ     AnaHA22     AnaHA23      Jacobi       Naive
+//        δ       HZ     HA22     HA23      Jacobi       Naive
 //     1e-1    2.22e-16    2.22e-16    2.22e-16    2.22e-16    2.22e-16
 //     1e-2    1.11e-16    3.33e-16    2.22e-16    1.11e-16    4.97e-10
 //     1e-3    2.22e-16    3.33e-16    3.33e-16    2.22e-16    1.57e-10
@@ -30,7 +30,7 @@ use std::f64::consts::PI;
 //    1e-14    6.66e-15    6.66e-15    6.66e-15    6.66e-15    1.11e-16
 //
 // D2: diag(-1, 1, 1 + δ) (double eigenvalue)
-//        δ       AnaHZ     AnaHA22     AnaHA23      Jacobi       Naive
+//        δ       HZ     HA22     HA23      Jacobi       Naive
 //     1e-1    8.88e-16    2.22e-16    4.44e-16    4.44e-16    1.22e-15
 //     1e-2    4.44e-16    2.22e-16    2.22e-16    4.44e-16    2.89e-15
 //     1e-3    8.88e-16    2.22e-16    2.22e-16    2.22e-16    2.01e-13
@@ -55,7 +55,7 @@ fn main() -> Result<(), StrError> {
         println!("\n{}", label);
         println!(
             "{:>8}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}",
-            "δ", "AnaHZ", "AnaHA22", "AnaHA23", "Jacobi", "Naive"
+            "δ", "HZ", "HA22", "HA23", "Jacobi", "Naive"
         );
         for &delta in &deltas {
             let d = if is_d1 {

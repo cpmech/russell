@@ -16,9 +16,9 @@ use russell_tensor::{EigenProjsT2, EigenValMethod, StrError, Tensor2};
 
 /// Eigenvalue methods, in benchmark order
 const METHODS: [(&str, EigenValMethod); 4] = [
-    ("AnaHZ", EigenValMethod::AnalyticalHZ),
-    ("AnaHA22", EigenValMethod::AnalyticalHA22),
-    ("AnaHA23", EigenValMethod::AnalyticalHA23),
+    ("HZ", EigenValMethod::AnalyticalHZ),
+    ("HA22", EigenValMethod::AnalyticalHA22),
+    ("HA23", EigenValMethod::AnalyticalHA23),
     ("Jacobi", EigenValMethod::Iterative),
 ];
 

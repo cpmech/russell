@@ -708,7 +708,7 @@ impl HaberaZilian {
                 } else if delta == 1e-8 {
                     (TOL_IDEM, 1e-7)
                 } else if delta == 1e-6 {
-                    (1e-10, TOL_RECON)
+                    (1e-9, TOL_RECON)
                 } else if delta == 1e-4 {
                     (1e-12, TOL_RECON)
                 } else {

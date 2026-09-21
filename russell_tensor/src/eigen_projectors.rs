@@ -7,12 +7,6 @@ use russell_lab::small_mat_eigen_sym_jacobi;
 pub struct EigenProjsT2 {
     /// Structure to calculate the eigenvalues
     eig: EigenValuesT2,
-
-    /// Eigenvalues of the deviatoric tensor
-    kappa: [f64; 3],
-
-    /// Deviatoric tensor
-    ss: [f64; 6],
 }
 
 impl EigenProjsT2 {
@@ -20,8 +14,6 @@ impl EigenProjsT2 {
     pub fn new() -> Self {
         EigenProjsT2 {
             eig: EigenValuesT2::new(),
-            kappa: [0.0; 3],
-            ss: [0.0; 6],
         }
     }
 
@@ -97,9 +89,9 @@ impl EigenProjsT2 {
         // calculate a tolerance to detect coalescence
         let tol_diff = 10.0 * f64::EPSILON.sqrt();
 
-        // handle the spherical case → P0=I, P1=0, P2=0
+        // calculate the eigenprojectors using Sylvester's formula (non spherical)
         if d01 <= tol_diff && d12 <= tol_diff {
-            // all eigenvalues are equal λ0 ≈ λ1 ≈ λ2
+            // all eigenvalues are equal λ0 ≈ λ1 ≈ λ2 → P0=I, P1=0, P2=0
             for m in 0..6 {
                 projs[0].vec[m] = 0.0;
                 projs[1].vec[m] = 0.0;
@@ -108,45 +100,24 @@ impl EigenProjsT2 {
             projs[0].vec[0] = 1.0;
             projs[0].vec[1] = 1.0;
             projs[0].vec[2] = 1.0;
-            return Ok(());
-        }
-
-        // calculate the SORTED eigenvalues of the deviatoric tensor
-        let iso = aa.invariant_ii1() / 3.0;
-        self.kappa[0] = ll[0] - iso;
-        self.kappa[1] = ll[1] - iso;
-        self.kappa[2] = ll[2] - iso;
-
-        // calculate the deviatoric tensor
-        aa.deviator_slice(&mut self.ss);
-
-        // calculate the eigenprojectors
-        let jj2 = aa.invariant_jj2();
-        if d01 <= tol_diff {
-            // coalescent eigenvalues κ0 ≈ κ1 > κ2
-            self.eval_projector(&mut projs[2], self.kappa[2], jj2);
+        } else if d01 <= tol_diff {
+            // coalescent eigenvalues λ0 ≈ λ1 > λ2
+            self.eval_proj(&mut projs[2], ll[2], ll[0], ll[1], aa);
             for m in 0..6 {
                 projs[0].vec[m] = 0.0;
                 projs[1].vec[m] = IDENTITY2[m] - projs[2].vec[m];
             }
         } else if d12 <= tol_diff {
-            // coalescent eigenvalues κ0 > κ1 ≈ κ2
-            self.eval_projector(&mut projs[0], self.kappa[0], jj2);
+            // coalescent eigenvalues λ0 > λ1 ≈ λ2
+            self.eval_proj(&mut projs[0], ll[0], ll[1], ll[2], aa);
             for m in 0..6 {
                 projs[1].vec[m] = IDENTITY2[m] - projs[0].vec[m];
                 projs[2].vec[m] = 0.0;
             }
         } else {
             // all distinct eigenvalues
-            // The sorted case gives a clean rule. With κ0 ≥ κ1 ≥ κ2 (deviatoric, so κ0+κ1+κ2 = 0),
-            // let a = κ0−κ1 ≥ 0, b = κ1−κ2 ≥ 0, so κ0−κ2 = a+b. Then:
-            // den_0 = (κ0−κ1)(κ0−κ2) = a(a+b)   →  |den_0| = a(a+b)
-            // den_1 = (κ1−κ0)(κ1−κ2) = −a·b     →  |den_1| = a·b      ← always the smallest
-            // den_2 = (κ2−κ0)(κ2−κ1) = b(a+b)   →  |den_2| = b(a+b)
-            // Since a+b ≥ a and a+b ≥ b, both |den_0| and |den_2| are ≥ |den_1| = a·b.
-            // So the middle eigenvalue κ1 is provably the worst-conditioned, and the two extremes are always the best.
-            self.eval_projector(&mut projs[0], self.kappa[0], jj2);
-            self.eval_projector(&mut projs[2], self.kappa[2], jj2);
+            self.eval_proj(&mut projs[0], ll[0], ll[1], ll[2], aa);
+            self.eval_proj(&mut projs[2], ll[2], ll[0], ll[1], aa);
             for m in 0..6 {
                 projs[1].vec[m] = IDENTITY2[m] - projs[0].vec[m] - projs[2].vec[m];
             }
@@ -154,24 +125,16 @@ impl EigenProjsT2 {
         Ok(())
     }
 
-    /// Calculates projector P_k from the deviatoric tensor, kappa_k and J2
+    /// Evaluates projector P_i corresponding to a non-repeated eigenvalue l_i
     #[inline]
-    fn eval_projector(&mut self, pp_k: &mut Tensor2<6>, kappa_k: f64, jj2: f64) {
-        let s_1 = self.ss[0];
-        let s_2 = self.ss[1];
-        let s_3 = self.ss[2];
-        let s_4 = self.ss[3];
-        let s_5 = self.ss[4];
-        let s_6 = self.ss[5];
-        let alpha_k = kappa_k * kappa_k - jj2;
-        let den_k = 3.0 * kappa_k * kappa_k - jj2;
-        let f = 1.0 / den_k;
-        pp_k.vec[0] = f * (alpha_k + s_1 * s_1 + s_1 * kappa_k + (s_4 * s_4 + s_6 * s_6) / 2.0);
-        pp_k.vec[1] = f * (alpha_k + s_2 * s_2 + s_2 * kappa_k + (s_5 * s_5 + s_4 * s_4) / 2.0);
-        pp_k.vec[2] = f * (alpha_k + s_3 * s_3 + s_3 * kappa_k + (s_6 * s_6 + s_5 * s_5) / 2.0);
-        pp_k.vec[3] = f * ((kappa_k + s_1 + s_2) * s_4 + s_5 * s_6 / SQRT_2);
-        pp_k.vec[4] = f * ((kappa_k + s_2 + s_3) * s_5 + s_6 * s_4 / SQRT_2);
-        pp_k.vec[5] = f * ((kappa_k + s_3 + s_1) * s_6 + s_4 * s_5 / SQRT_2);
+    fn eval_proj(&mut self, pp_i: &mut Tensor2<6>, li: f64, lj: f64, lk: f64, aa: &Tensor2<6>) {
+        let f = 1.0 / ((li - lj) * (li - lk));
+        pp_i.vec[0] = f * ((aa.vec[0] - lj) * (aa.vec[0] - lk) + (aa.vec[3] * aa.vec[3] + aa.vec[5] * aa.vec[5]) / 2.0);
+        pp_i.vec[1] = f * ((aa.vec[1] - lj) * (aa.vec[1] - lk) + (aa.vec[3] * aa.vec[3] + aa.vec[4] * aa.vec[4]) / 2.0);
+        pp_i.vec[2] = f * ((aa.vec[2] - lj) * (aa.vec[2] - lk) + (aa.vec[4] * aa.vec[4] + aa.vec[5] * aa.vec[5]) / 2.0);
+        pp_i.vec[3] = f * ((aa.vec[0] + aa.vec[1] - lj - lk) * aa.vec[3] + aa.vec[4] * aa.vec[5] / SQRT_2);
+        pp_i.vec[4] = f * ((aa.vec[1] + aa.vec[2] - lj - lk) * aa.vec[4] + aa.vec[5] * aa.vec[3] / SQRT_2);
+        pp_i.vec[5] = f * ((aa.vec[2] + aa.vec[0] - lj - lk) * aa.vec[5] + aa.vec[3] * aa.vec[4] / SQRT_2);
     }
 }
 

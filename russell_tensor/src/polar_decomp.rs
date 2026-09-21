@@ -124,12 +124,12 @@ pub fn polar_decomp_mx(
 mod tests {
     use super::{PolarAlgo, polar_decomp, polar_decomp_mx};
     use crate::Tensor2;
-    use crate::testing::{case51, case52, check_agree, check_polar, example03, example03_rotation, example03_stretch};
+    use crate::testing::{ReferencePolarDecomp, check_agree, check_polar};
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul};
 
     #[test]
     fn polar_decomp_default_works() {
-        let ff = example03();
+        let ff = ReferencePolarDecomp::example03();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn polar_decomp_brannon_works() {
         // Example 03: fully 3-D deformation gradient (McGinty)
-        let ff = example03();
+        let ff = ReferencePolarDecomp::example03();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
@@ -159,18 +159,18 @@ mod tests {
         mat_approx_eq(&vr, &f, 1e-13);
 
         // Reference values (3-decimal published)
-        mat_approx_eq(&r, &example03_rotation(), 1e-3);
-        mat_approx_eq(&uu.as_std_matrix(), &example03_stretch(), 1e-3);
+        mat_approx_eq(&r, &ReferencePolarDecomp::example03_rotation(), 1e-3);
+        mat_approx_eq(&uu.as_std_matrix(), &ReferencePolarDecomp::example03_stretch(), 1e-3);
     }
 
     #[test]
     fn polar_decomp_brannon_on_higham_cases() {
         // Higham & Noferini test (5.1), cross-checked against their algorithm
-        check_agree(&case51());
+        check_agree(&ReferencePolarDecomp::case51());
 
         // Higham & Noferini test (5.2) over a range of condition numbers
         for y in [1.0f64, 1e-2, 1e-4, 1e-6, 1e-8] {
-            let a = case52(y);
+            let a = ReferencePolarDecomp::case52(y);
             let mut rr = Tensor2::<9>::new();
             let mut uu = Tensor2::<6>::new();
             let mut vv = Tensor2::<6>::new();
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn polar_decomp_higham_algo_works() {
         // Higham & Noferini test (5.1), via the dispatcher
-        let a = case51();
+        let a = ReferencePolarDecomp::case51();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let nit = polar_decomp_mx(&mut rr, &mut uu, None, PolarAlgo::Quaternion, &a).unwrap();
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn polar_decomp_eigen_works() {
         // Example 03: fully 3-D deformation gradient (McGinty)
-        let ff = example03();
+        let ff = ReferencePolarDecomp::example03();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
@@ -218,14 +218,14 @@ mod tests {
         mat_approx_eq(&vr, &f, 1e-13);
 
         // Reference values (3-decimal published)
-        mat_approx_eq(&r, &example03_rotation(), 1e-3);
-        mat_approx_eq(&uu.as_std_matrix(), &example03_stretch(), 1e-3);
+        mat_approx_eq(&r, &ReferencePolarDecomp::example03_rotation(), 1e-3);
+        mat_approx_eq(&uu.as_std_matrix(), &ReferencePolarDecomp::example03_stretch(), 1e-3);
     }
 
     #[test]
     fn polar_decomp_svd_works() {
         // Example 03: fully 3-D deformation gradient (McGinty)
-        let ff = example03();
+        let ff = ReferencePolarDecomp::example03();
         let mut rr = Tensor2::<9>::new();
         let mut uu = Tensor2::<6>::new();
         let mut vv = Tensor2::<6>::new();
@@ -244,14 +244,14 @@ mod tests {
         mat_approx_eq(&vr, &f, 1e-13);
 
         // Reference values (3-decimal published)
-        mat_approx_eq(&r, &example03_rotation(), 1e-3);
-        mat_approx_eq(&uu.as_std_matrix(), &example03_stretch(), 1e-3);
+        mat_approx_eq(&r, &ReferencePolarDecomp::example03_rotation(), 1e-3);
+        mat_approx_eq(&uu.as_std_matrix(), &ReferencePolarDecomp::example03_stretch(), 1e-3);
     }
 
     #[test]
     fn polar_decomp_eigen_on_higham_cases() {
         // Higham & Noferini test (5.1), cross-checked against Higham's algorithm
-        let a = case51();
+        let a = ReferencePolarDecomp::case51();
         let mut r_e = Tensor2::<9>::new();
         let mut u_e = Tensor2::<6>::new();
         polar_decomp_mx(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
@@ -265,7 +265,7 @@ mod tests {
         // Higham & Noferini test (5.2), well-conditioned case. Note: the eigen
         // approach squares the condition number of F (via C = Fᵀ F), so it is
         // only reliable for well-conditioned F.
-        let a = case52(1.0);
+        let a = ReferencePolarDecomp::case52(1.0);
         let mut r_e = Tensor2::<9>::new();
         let mut u_e = Tensor2::<6>::new();
         polar_decomp_mx(&mut r_e, &mut u_e, None, PolarAlgo::Eigen, &a).unwrap();
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn polar_decomp_svd_on_higham_cases() {
         // Higham & Noferini test (5.1), cross-checked against Higham's algorithm
-        let a = case51();
+        let a = ReferencePolarDecomp::case51();
         let mut r_s = Tensor2::<9>::new();
         let mut u_s = Tensor2::<6>::new();
         polar_decomp_mx(&mut r_s, &mut u_s, None, PolarAlgo::SVD, &a).unwrap();
@@ -288,7 +288,7 @@ mod tests {
 
         // Higham & Noferini test (5.2) over a range of condition numbers
         for y in [1.0f64, 1e-2, 1e-4, 1e-6, 1e-8] {
-            let a = case52(y);
+            let a = ReferencePolarDecomp::case52(y);
             let tol = if y == 1.0 { 1e-13 } else { 1e-8 };
             let mut r_s = Tensor2::<9>::new();
             let mut u_s = Tensor2::<6>::new();

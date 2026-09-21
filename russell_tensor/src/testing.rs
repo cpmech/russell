@@ -750,86 +750,82 @@ impl HaberaZilian {
 // Polar decomposition testing
 // -----------------------------------------------------------------------------------
 
-/// Example 01 (Brannon, Eq. 12.39): in-plane deformation gradient;
-/// the polar rotation is a 60° rotation about the E3 axis.
-pub fn example01() -> Tensor2<9> {
+pub struct ReferencePolarDecomp {}
+
+impl ReferencePolarDecomp {
+    /// Example 01 (Brannon, Eq. 12.39): in-plane deformation gradient;
+    /// the polar rotation is a 60° rotation about the E3 axis.
     #[rustfmt::skip]
-    let a = Tensor2::<9>::from_std_matrix(&[
-        [ 0.61784609690826542, -0.70889727457341833, 0.0],
-        [ 0.59014083110323967,  0.13215390309173483, 0.0],
-        [ 0.0,                  0.0,                 3.0],
-    ]).unwrap();
-    a
-}
+    pub fn example01() -> Tensor2<9> {
+        Tensor2::<9>::from_std_matrix(&[
+            [ 0.61784609690826542, -0.70889727457341833, 0.0],
+            [ 0.59014083110323967,  0.13215390309173483, 0.0],
+            [ 0.0,                  0.0,                 3.0],
+        ]).unwrap()
+    }
 
-/// Example 03 (McGinty, continuum mechanics dot org): fully 3-D deformation gradient.
-pub fn example03() -> Tensor2<9> {
+    /// Example 03 (McGinty, continuum mechanics dot org): fully 3-D deformation gradient.
     #[rustfmt::skip]
-    let a = Tensor2::<9>::from_std_matrix(&[
-        [ 1.000,  0.495,  0.500],
-        [-0.333,  1.000, -0.247],
-        [ 0.959,  0.000,  1.500],
-    ]).unwrap();
-    a
-}
+    pub fn example03() -> Tensor2<9> {
+        Tensor2::<9>::from_std_matrix(&[
+            [ 1.000,  0.495,  0.500],
+            [-0.333,  1.000, -0.247],
+            [ 0.959,  0.000,  1.500],
+        ]).unwrap()
+    }
 
-/// Higham & Noferini test (5.1).
-pub fn case51() -> Tensor2<9> {
+    /// Higham & Noferini test (5.1).
     #[rustfmt::skip]
-    let a = Tensor2::<9>::from_std_matrix(&[
-        [0.1, 0.2, 0.3],
-        [0.1, 0.1, 0.0],
-        [0.3, 0.2, 0.1],
-    ]).unwrap();
-    a
-}
+    pub fn case51() -> Tensor2<9> {
+        Tensor2::<9>::from_std_matrix(&[
+            [0.1, 0.2, 0.3],
+            [0.1, 0.1, 0.0],
+            [0.3, 0.2, 0.1],
+        ]).unwrap()
+    }
 
-/// Higham & Noferini test (5.2), for a given scale factor `y`.
-pub fn case52(y: f64) -> Tensor2<9> {
+    /// Higham & Noferini test (5.2), for a given scale factor `y`.
     #[rustfmt::skip]
-    let a = Tensor2::<9>::from_std_matrix(&[
-        [(720.0 * y - 25.0) / 1275.0, (-650.0 * y + 300.0) / 1275.0, (710.0 * y + 300.0) / 1275.0],
-        [(396.0 * y + 70.0) / 1275.0, (-145.0 * y - 840.0) / 1275.0, (178.0 * y - 840.0) / 1275.0],
-        [(972.0 * y - 10.0) / 1275.0, (610.0 * y + 120.0) / 1275.0, (-529.0 * y + 120.0) / 1275.0],
-    ]).unwrap();
-    a
-}
+    pub fn case52(y: f64) -> Tensor2<9> {
+        Tensor2::<9>::from_std_matrix(&[
+            [(720.0 * y - 25.0) / 1275.0, (-650.0 * y + 300.0) / 1275.0, (710.0 * y + 300.0) / 1275.0],
+            [(396.0 * y + 70.0) / 1275.0, (-145.0 * y - 840.0) / 1275.0, (178.0 * y - 840.0) / 1275.0],
+            [(972.0 * y - 10.0) / 1275.0, (610.0 * y + 120.0) / 1275.0, (-529.0 * y + 120.0) / 1275.0],
+        ]).unwrap()
+    }
 
-// -----------------------------------------------------------------------------------
-// Reference results polar decomposition results
-// -----------------------------------------------------------------------------------
+    /// Reference rotation for example 01 (60° about E3).
+    pub fn example01_rotation() -> [[f64; 3]; 3] {
+        [
+            [0.5, -0.8660254037844386, 0.0],
+            [0.8660254037844386, 0.5, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    }
 
-/// Reference rotation for example 01 (60° about E3).
-pub fn example01_rotation() -> [[f64; 3]; 3] {
-    [
-        [0.5, -0.8660254037844386, 0.0],
-        [0.8660254037844386, 0.5, 0.0],
-        [0.0, 0.0, 1.0],
-    ]
-}
+    /// Reference right stretch for example 01.
+    pub fn example01_stretch() -> [[f64; 3]; 3] {
+        [[0.82, -0.24, 0.0], [-0.24, 0.68, 0.0], [0.0, 0.0, 3.0]]
+    }
 
-/// Reference right stretch for example 01.
-pub fn example01_stretch() -> [[f64; 3]; 3] {
-    [[0.82, -0.24, 0.0], [-0.24, 0.68, 0.0], [0.0, 0.0, 3.0]]
-}
+    /// Reference rotation for example 03 (3-decimal published values).
+    pub fn example03_rotation() -> [[f64; 3]; 3] {
+        [[0.914, 0.377, -0.148], [-0.374, 0.926, 0.049], [0.156, 0.011, 0.988]]
+    }
 
-/// Reference rotation for example 03 (3-decimal published values).
-pub fn example03_rotation() -> [[f64; 3]; 3] {
-    [[0.914, 0.377, -0.148], [-0.374, 0.926, 0.049], [0.156, 0.011, 0.988]]
-}
+    /// Reference right stretch for example 03 (3-decimal published values).
+    pub fn example03_stretch() -> [[f64; 3]; 3] {
+        [[1.188, 0.079, 0.783], [0.079, 1.113, -0.024], [0.783, -0.024, 1.396]]
+    }
 
-/// Reference right stretch for example 03 (3-decimal published values).
-pub fn example03_stretch() -> [[f64; 3]; 3] {
-    [[1.188, 0.079, 0.783], [0.079, 1.113, -0.024], [0.783, -0.024, 1.396]]
-}
-
-/// Exact polar factor for test 5.2 (well-conditioned case).
-pub fn case52_rotation() -> [[f64; 3]; 3] {
-    [
-        [139.0 / 255.0, -14.0 / 51.0, 202.0 / 255.0],
-        [466.0 / 1275.0, -197.0 / 255.0, -662.0 / 1275.0],
-        [962.0 / 1275.0, 146.0 / 255.0, -409.0 / 1275.0],
-    ]
+    /// Exact polar factor for test 5.2 (well-conditioned case).
+    pub fn case52_rotation() -> [[f64; 3]; 3] {
+        [
+            [139.0 / 255.0, -14.0 / 51.0, 202.0 / 255.0],
+            [466.0 / 1275.0, -197.0 / 255.0, -662.0 / 1275.0],
+            [962.0 / 1275.0, 146.0 / 255.0, -409.0 / 1275.0],
+        ]
+    }
 }
 
 // -----------------------------------------------------------------------------------

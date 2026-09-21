@@ -129,16 +129,16 @@ pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Re
 mod tests {
     use super::polar_rotation_brannon;
     use crate::Tensor2;
-    use crate::testing::{example01, example01_rotation};
+    use crate::testing::ReferencePolarDecomp;
     use russell_lab::mat_approx_eq;
 
     #[test]
     fn polar_rotation_brannon_works() {
         // Example 01: the polar rotation is 60° about E3 (Brannon, Eq. 12.38)
-        let ff = example01();
+        let ff = ReferencePolarDecomp::example01();
         let mut rr = Tensor2::<9>::new();
         let nit = polar_rotation_brannon(&mut rr, &ff).unwrap();
         assert!(nit > 0);
-        mat_approx_eq(&rr.as_std_matrix(), &example01_rotation(), 1e-13);
+        mat_approx_eq(&rr.as_std_matrix(), &ReferencePolarDecomp::example01_rotation(), 1e-13);
     }
 }

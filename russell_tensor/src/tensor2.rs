@@ -1813,6 +1813,12 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// where `r = ‖s‖` is the radius on the octahedral plane.
     ///
+    /// # References
+    ///
+    /// 1. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
+    ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
+    ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
+    ///
     /// # Examples
     ///
     /// ```

@@ -1,5 +1,5 @@
 //! Compares the accuracy of the deviatoric invariants `J2` and `J3` computed with
-//! the Habera-Zilian and Harari-Albocher methods.
+//! the Habera-Zilian and Harari-Albocher (2023) methods.
 //!
 //! The benchmark follows the `eig3x3` library's invariants benchmark: symmetric
 //! matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal transformation
@@ -8,7 +8,7 @@
 //! Three variants are compared:
 //!
 //! * `HZ` — the Habera-Zilian formulas applied directly to the 3×3 matrix
-//! * `HA` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3]
+//! * `HA23` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3] (Harari & Albocher 2023)
 //! * `naive` — the monomial deviatoric formulas
 //!
 //! The reference values are computed with double-double (f64×2) arithmetic and are
@@ -26,7 +26,7 @@ use russell_tensor::Tensor2;
 const NV: usize = 3;
 
 /// Variant labels
-const LABELS: [&str; NV] = ["HZ", "HA", "naive"];
+const LABELS: [&str; NV] = ["HZ", "HA23", "naive"];
 
 fn main() {
     let u = u_symm();
@@ -49,7 +49,7 @@ fn main() {
             let a = build_a(&u, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
             let (r2, r3) = ref_invariants(&a);
-            let variants = [hz(&a), ha(&tt), naive(&a)];
+            let variants = [hz(&a), ha23(&tt), naive(&a)];
             for (m, (w2, w3)) in variants.iter().enumerate() {
                 let e2 = f64::abs(w2 - r2);
                 let e3 = f64::abs(w3 - r3);
@@ -183,8 +183,8 @@ fn hz(a: &[[f64; 3]; 3]) -> (f64, f64) {
     (j2, off + mixed - dg)
 }
 
-/// Harari-Albocher symmetric invariants
-fn ha(aa: &Tensor2<6>) -> (f64, f64) {
+/// Harari-Albocher (2023) symmetric invariants
+fn ha23(aa: &Tensor2<6>) -> (f64, f64) {
     (aa.invariant_jj2(), aa.invariant_jj3())
 }
 

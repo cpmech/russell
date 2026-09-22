@@ -63,7 +63,7 @@ use std::fmt::{self, Write};
 /// └             ┘    01 │ T01 * √2 │ 3
 ///                       └          ┘
 /// ```
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 #[serde(bound(serialize = "[f64; N]: Serialize", deserialize = "[f64; N]: Deserialize<'de>"))]
 pub struct Tensor2<const N: usize> {

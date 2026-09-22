@@ -117,7 +117,7 @@ use russell_lab::small_mat_inv;
 ///    ----------------------------------------
 ///      3 0       3 1       3 2        3 3    
 /// ```
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 #[serde(bound(
     serialize = "[[f64; N]; N]: Serialize",

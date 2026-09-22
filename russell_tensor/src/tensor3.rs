@@ -194,7 +194,7 @@ use std::fmt::{self, Write};
 ///    -----------------------
 ///      2 0  2 1  2 2  2 3
 /// ```
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 #[serde(bound(
     serialize = "[[f64; N]; M]: Serialize",

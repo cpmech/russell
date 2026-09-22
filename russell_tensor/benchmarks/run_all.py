@@ -3,9 +3,8 @@
 
 The script runs:
 
-1. `tensor_benchmark`
-2. `polar_decomp_benchmark`
-3. `eigen_values_benchmark`
+1. `polar_decomp_benchmark`
+2. `eigen_values_benchmark`
 
 and produces `RESULTS.md` (next to this file) with the tables of results.
 
@@ -23,16 +22,6 @@ from pathlib import Path
 
 BENCH_DIR = Path(__file__).resolve().parent
 WORKSPACE = BENCH_DIR.parent.parent  # repository root
-
-# The tensor functions, in table order, as they appear in the benchmark.
-TENSOR_FUNCTIONS = [
-    "dsd_fn",
-    "ssd_fn",
-    "qsd_fn",
-    "deriv2_invariant_jj3",
-    "deriv2_invariant_lode",
-    "deriv_squared_tensor",
-]
 
 # Polar-decomposition general cases and their condition numbers.
 POLAR_CASES = [
@@ -79,7 +68,7 @@ def parse_results(text):
 
     Criterion prints either::
 
-        ssd_fn/unrolled/        time:   [182.50 ps 182.56 ps 182.60 ps]
+        polar_rotation_in_plane/iterative/  time:   [121.00 ns 121.23 ns 121.50 ns]
 
     or, when the name is long, the name and ``time:`` on separate lines.
     """
@@ -138,9 +127,6 @@ def fetch_os():
 
 
 def main():
-    stack = parse_results(
-        run("cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark")
-    )
     polar = parse_results(
         run("cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark")
     )
@@ -162,20 +148,6 @@ def main():
     add(f"| OS        | {fetch_os()} (kernel {platform.release()}) |")
     add(f"| CPU       | {fetch_cpu_model()} |")
     add("| BLAS      | Intel MKL |")
-    add("")
-
-    add("## Tensor functions")
-    add("")
-    add("Median times (Intel MKL):")
-    add("")
-    add("| function | unrolled | loops |")
-    add("| --- | --- | --- |")
-    for function in TENSOR_FUNCTIONS:
-        add(
-            f"| `{function}` "
-            f"| {cell(stack, function + '/unrolled')} "
-            f"| {cell(stack, function + '/loops')} |"
-        )
     add("")
 
     add("## Polar decomposition")

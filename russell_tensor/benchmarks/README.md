@@ -3,40 +3,6 @@
 This directory contains [Criterion](https://github.com/bheisler/criterion.rs) benchmarks for the
 `russell_tensor` crate.
 
-## Benchmarked functions
-
-Each function is benchmarked in two variants:
-
-- `unrolled` — the production implementation (manually unrolled, direct component access)
-- `loops` — the loop-based reference implementation from `z_reference_loop_fns`
-
-| function                | description                                        |
-| ----------------------- | -------------------------------------------------- |
-| `dsd_fn`                | duo-sum-dyadic operation                           |
-| `ssd_fn`                | self-sum-dyadic operation                          |
-| `qsd_fn`                | quad-sum-dyadic operation                          |
-| `deriv2_invariant_jj3`  | second derivative of the J3 invariant              |
-| `deriv2_invariant_lode` | second derivative of the Lode invariant            |
-| `deriv_squared_tensor`  | derivative of the squared tensor (general Tensor2) |
-
-All benchmarks use fixed 3×3 input tensors.
-
-## How to run
-
-Run the benchmark (from the workspace root):
-
-```bash
-cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark
-```
-
-Filter to a single function, e.g. `ssd_fn`:
-
-```bash
-cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark -- ssd_fn
-```
-
----
-
 ## Polar decomposition benchmark
 
 `polar_decomp_benchmark` compares the speed of the polar-decomposition algorithms:

@@ -10,7 +10,7 @@
 //!
 //! The methods are `HZ` (the closed-form expressions of Habera & Zilian 2026,
 //! Equations (2) and (4)), `HA22` (Harari & Albocher 2022), `HA23` (Harari &
-//! Albocher 2023), the `Jacobi` iteration, and a `Naive` monomial cubic formula.
+//! Albocher 2023), the `Jacobi` iteration, and a `Naive` cubic formula.
 //!
 //! The matrices are built as `A = Q ⋅ diag(d) ⋅ Qᵀ` with the orthogonal
 //! transformation `Q_sym` used in the papers. The prescribed eigenvalues
@@ -135,11 +135,11 @@ fn max_error(w: &[f64; 3], exact: &[f64; 3]) -> f64 {
     e
 }
 
-/// Naive eigenvalue computation based on the (monomial) cubic formula
+/// Naive eigenvalue computation based on the cubic formula
 ///
 /// This is the unstable baseline analogous to `impl_naive.py` from the `eig3x3`
 /// library: the deviatoric invariants and the discriminant are computed with the
-/// naive monomial expressions, which suffer from catastrophic cancellation.
+/// naive expressions, which suffer from catastrophic cancellation.
 fn naive_eig_vals(a: &[[f64; 3]; 3]) -> [f64; 3] {
     let i1 = a[0][0] + a[1][1] + a[2][2];
     let m = i1 / 3.0;

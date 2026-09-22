@@ -10,7 +10,7 @@
 //! * `HZ` — the numerically stable formulas of Habera & Zilian (2026) (Algorithms 2 and 5)
 //!   applied directly to the 3×3 matrix
 //! * `HA23` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3] (Harari & Albocher 2023)
-//! * `naive` — the monomial deviatoric formulas
+//! * `naive` — the naive deviatoric formulas
 //!
 //! The reference values are computed with double-double (f64×2) arithmetic and are
 //! therefore accurate to about 30 digits (validated against exact rational
@@ -189,7 +189,7 @@ fn ha23(aa: &Tensor2<6>) -> (f64, f64) {
     (aa.invariant_jj2(), aa.invariant_jj3())
 }
 
-/// Naive invariants `(J2, J3)` based on the monomial formulas
+/// Naive invariants `(J2, J3)` based on the naive formulas
 fn naive(a: &[[f64; 3]; 3]) -> (f64, f64) {
     let m = (a[0][0] + a[1][1] + a[2][2]) / 3.0;
     let s = [

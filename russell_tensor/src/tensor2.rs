@@ -954,69 +954,6 @@ impl<const N: usize> Tensor2<N> {
         }
     }
 
-    /// Sets the Kelvin-Mandel vector of this tensor as a scalar multiple of another Kelvin-Mandel vector
-    ///
-    /// ```text
-    /// self := α other
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// A panic will occur if the other tensor has an incorrect dimension.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::Vector;
-    /// use russell_tensor::{Tensor2, StrError, SQRT_2};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let mut a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 2.0, 3.0],
-    ///         [4.0, 5.0, 6.0],
-    ///         [7.0, 8.0, 9.0],
-    ///     ])?;
-    ///     let v_kelvin = &Vector::from(&[
-    ///         1.0,
-    ///         5.0,
-    ///         9.0,
-    ///         6.0 / SQRT_2,
-    ///         14.0 / SQRT_2,
-    ///         10.0 / SQRT_2,
-    ///         -2.0 / SQRT_2,
-    ///         -2.0 / SQRT_2,
-    ///         -4.0 / SQRT_2,
-    ///     ]);
-    ///
-    ///     a.set_vector(2.0, v_kelvin.as_data());
-    ///
-    ///     assert_eq!(
-    ///         format!("{:.1}", a.as_std_matrix()),
-    ///         "┌                ┐\n\
-    ///          │  2.0  4.0  6.0 │\n\
-    ///          │  8.0 10.0 12.0 │\n\
-    ///          │ 14.0 16.0 18.0 │\n\
-    ///          └                ┘"
-    ///     );
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn set_vector(&mut self, alpha: f64, other: &[f64]) {
-        self.vec[0] = alpha * other[0];
-        self.vec[1] = alpha * other[1];
-        self.vec[2] = alpha * other[2];
-        self.vec[3] = alpha * other[3];
-        if N > 4 {
-            self.vec[4] = alpha * other[4];
-            self.vec[5] = alpha * other[5];
-        }
-        if N > 6 {
-            self.vec[6] = alpha * other[6];
-            self.vec[7] = alpha * other[7];
-            self.vec[8] = alpha * other[8];
-        }
-    }
-
     /// Makes this tensor equal to another tensor
     ///
     /// ```text
@@ -3022,52 +2959,6 @@ mod tests {
              │ 106.0 105.0 103.0 │\n\
              └                   ┘"
         );
-    }
-
-    #[test]
-    #[should_panic]
-    fn set_vector_panics_on_incorrect_input() {
-        let mut a = Tensor2::<4>::new();
-        let b = [1.0];
-        a.set_vector(2.0, &b);
-    }
-
-    #[test]
-    fn set_vector_works() {
-        // general
-        let mut tt = Tensor2::<9>::new();
-        const NOISE: f64 = 1234.568;
-        tt.vec.fill(NOISE);
-        tt.set_vector(
-            2.0,
-            &[
-                1.0,
-                5.0,
-                9.0,
-                6.0 / SQRT_2,
-                14.0 / SQRT_2,
-                10.0 / SQRT_2,
-                -2.0 / SQRT_2,
-                -2.0 / SQRT_2,
-                -4.0 / SQRT_2,
-            ],
-        );
-        let correct = &[[2.0, 4.0, 6.0], [8.0, 10.0, 12.0], [14.0, 16.0, 18.0]];
-        mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
-
-        // symmetric
-        let mut tt = Tensor2::<6>::new();
-        tt.vec.fill(NOISE);
-        tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
-        let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
-        mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
-
-        // symmetric generalized plane
-        let mut tt = Tensor2::<4>::new();
-        tt.vec.fill(NOISE);
-        tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
-        let correct = &[[2.0, 8.0, 0.0], [8.0, 4.0, 0.0], [0.0, 0.0, 6.0]];
-        mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
     }
 
     #[test]

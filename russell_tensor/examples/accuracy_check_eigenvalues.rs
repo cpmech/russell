@@ -8,16 +8,49 @@
 //! * `D2 = diag(-1, 1, 1 + δ)` — a double eigenvalue (the discriminant `Δ → 0`
 //!   while `J2` and `J3` stay finite)
 //!
-//! The matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal
-//! transformation `U_sym` used in the papers. The prescribed eigenvalues
+//! The methods are `HZ` (the closed-form expressions of Habera & Zilian 2026,
+//! Equations (2) and (4)), `HA22` (Harari & Albocher 2022), `HA23` (Harari &
+//! Albocher 2023), the `Jacobi` iteration, and a `Naive` cubic formula.
+//!
+//! The matrices are built as `A = Q ⋅ diag(d) ⋅ Qᵀ` with the orthogonal
+//! transformation `Q_sym` used in the papers. The prescribed eigenvalues
 //! `d` are used as the reference.
 
-use russell_tensor::{EigMethod, Spectral2, StrError, Tensor2};
+use russell_tensor::{EigenValMethod, EigenValuesT2, StrError, Tensor2};
 use std::f64::consts::PI;
 
+// Expected output:
+// D1: diag(1, 1, 1 + δ)  (double → triple eigenvalue)
+//        δ       HZ     HA22     HA23      Jacobi       Naive
+//     1e-1    2.22e-16    2.22e-16    2.22e-16    2.22e-16    2.22e-16
+//     1e-2    1.11e-16    3.33e-16    2.22e-16    1.11e-16    4.97e-10
+//     1e-3    2.22e-16    3.33e-16    3.33e-16    2.22e-16    1.57e-10
+//     1e-4    1.11e-16    1.11e-16    1.11e-16    1.11e-16    1.11e-16
+//     1e-5    2.22e-16    3.33e-16    3.33e-16    2.22e-16    1.57e-11
+//     1e-6    3.33e-16    2.22e-16    2.22e-16    4.44e-16    3.33e-16
+//     1e-8    4.44e-16    5.55e-16    4.44e-16    3.33e-16    7.03e-13
+//    1e-10      0.00e0    1.11e-16      0.00e0    2.22e-16      0.00e0
+//    1e-12      0.00e0    1.11e-16    1.11e-16    2.22e-16      0.00e0
+//    1e-14    6.66e-15    6.66e-15    6.66e-15    6.66e-15    1.11e-16
+//
+// D2: diag(-1, 1, 1 + δ) (double eigenvalue)
+//        δ       HZ     HA22     HA23      Jacobi       Naive
+//     1e-1    8.88e-16    2.22e-16    4.44e-16    4.44e-16    1.22e-15
+//     1e-2    4.44e-16    2.22e-16    2.22e-16    4.44e-16    2.89e-15
+//     1e-3    8.88e-16    2.22e-16    2.22e-16    2.22e-16    2.01e-13
+//     1e-4    2.22e-16    2.22e-16    2.22e-16    4.44e-16    1.67e-12
+//     1e-5    6.66e-16    2.22e-16    2.22e-16    4.44e-16    1.65e-11
+//     1e-6    4.44e-16    2.22e-16    4.44e-16    4.44e-16    1.17e-10
+//     1e-8    5.55e-16    2.22e-16    2.22e-16    3.33e-16     2.45e-9
+//    1e-10    6.66e-16    2.22e-16    2.22e-16    3.33e-16    5.00e-11
+//    1e-12    1.11e-15    2.22e-16    2.22e-16    2.22e-16     9.12e-9
+//    1e-14    8.88e-16    2.22e-16    2.22e-16    2.22e-16     5.27e-9
+
 fn main() -> Result<(), StrError> {
-    let u = u_sym();
+    let q = q_sym();
     let deltas = [1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10, 1e-12, 1e-14];
+
+    let mut calc = EigenValuesT2::new();
 
     for (label, is_d1) in [
         ("D1: diag(1, 1, 1 + δ)  (double → triple eigenvalue)", true),
@@ -26,7 +59,7 @@ fn main() -> Result<(), StrError> {
         println!("\n{}", label);
         println!(
             "{:>8}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}",
-            "δ", "AnaHZ", "AnaHA22", "AnaHA23", "Jacobi", "Naive"
+            "δ", "HZ", "HA22", "HA23", "Jacobi", "Naive"
         );
         for &delta in &deltas {
             let d = if is_d1 {
@@ -34,22 +67,22 @@ fn main() -> Result<(), StrError> {
             } else {
                 [-1.0, 1.0, 1.0 + delta]
             };
-            let a = build_a(&u, &d);
+            let a = build_a(&q, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a)?;
             let mut exact = d;
             exact.sort_by(|x, y| x.partial_cmp(y).unwrap());
 
             let mut errs = [0.0; 5];
             let methods = [
-                EigMethod::AnalyticalHZ,
-                EigMethod::AnalyticalHA22,
-                EigMethod::AnalyticalHA23,
-                EigMethod::Iterative,
+                EigenValMethod::AnalyticalHZ,
+                EigenValMethod::AnalyticalHA22,
+                EigenValMethod::AnalyticalHA23,
+                EigenValMethod::Iterative,
             ];
             for (i, method) in methods.iter().enumerate() {
-                let mut spec = Spectral2::new();
-                spec.calc_eigenvalues_mx(&tt, *method)?;
-                errs[i] = max_error(&spec.lam, &exact);
+                let mut ll = [0.0; 3];
+                calc.calculate_mx(&mut ll, &tt, *method)?;
+                errs[i] = max_error(&ll, &exact);
             }
             errs[4] = max_error(&naive_eig_vals(&a), &exact);
 
@@ -63,18 +96,18 @@ fn main() -> Result<(), StrError> {
 }
 
 /// Orthogonal transformation matrix from the papers
-fn u_sym() -> [[f64; 3]; 3] {
+fn q_sym() -> [[f64; 3]; 3] {
     let r2 = f64::sqrt(2.0);
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
-/// Builds the symmetric matrix A = U ⋅ diag(d) ⋅ Uᵀ (and symmetrizes it)
-fn build_a(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+/// Builds the symmetric matrix A = Q ⋅ diag(d) ⋅ Qᵀ (and symmetrizes it)
+fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in 0..3 {
             for k in 0..3 {
-                a[i][j] += u[i][k] * d[k] * u[j][k];
+                a[i][j] += q[i][k] * d[k] * q[j][k];
             }
         }
     }
@@ -102,11 +135,11 @@ fn max_error(w: &[f64; 3], exact: &[f64; 3]) -> f64 {
     e
 }
 
-/// Naive eigenvalue computation based on the (monomial) cubic formula
+/// Naive eigenvalue computation based on the cubic formula
 ///
 /// This is the unstable baseline analogous to `impl_naive.py` from the `eig3x3`
 /// library: the deviatoric invariants and the discriminant are computed with the
-/// naive monomial expressions, which suffer from catastrophic cancellation.
+/// naive expressions, which suffer from catastrophic cancellation.
 fn naive_eig_vals(a: &[[f64; 3]; 3]) -> [f64; 3] {
     let i1 = a[0][0] + a[1][1] + a[2][2];
     let m = i1 / 3.0;

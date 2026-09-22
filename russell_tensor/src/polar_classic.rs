@@ -1,4 +1,6 @@
-use super::{Spectral2, Tensor2};
+use crate::EigenProjsT2;
+
+use super::Tensor2;
 use russell_lab::{StrError, small_mat_inv, small_mat_mat_mul, small_mat_svd, small_mat_t_mat_mul};
 
 /// Calculates the polar decomposition F = R U using the eigenvalues of C = Fᵀ · F
@@ -42,15 +44,17 @@ pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &
 
     // eigen-decomposition of C: C = Σ λₖ Pₖ
     let c = Tensor2::<6>::from_std_matrix(&cc)?;
-    let mut spec = Spectral2::new();
-    spec.decompose(&c)?;
+    let mut eig = EigenProjsT2::new();
+    let mut ll = [0.0; 3];
+    let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
+    eig.calculate(&mut ll, &mut projs, &c)?;
 
     // U = Σ √λₖ Pₖ
-    let sqrt_l0 = spec.lam[0].sqrt();
-    let sqrt_l1 = spec.lam[1].sqrt();
-    let sqrt_l2 = spec.lam[2].sqrt();
+    let sqrt_l0 = ll[0].sqrt();
+    let sqrt_l1 = ll[1].sqrt();
+    let sqrt_l2 = ll[2].sqrt();
     for m in 0..6 {
-        uu.vec[m] = sqrt_l0 * spec.proj[0].vec[m] + sqrt_l1 * spec.proj[1].vec[m] + sqrt_l2 * spec.proj[2].vec[m];
+        uu.vec[m] = sqrt_l0 * projs[0].vec[m] + sqrt_l1 * projs[1].vec[m] + sqrt_l2 * projs[2].vec[m];
     }
 
     // R = F · U⁻¹ (stack)

@@ -1,15 +1,16 @@
 //! Compares the accuracy of the deviatoric invariants `J2` and `J3` computed with
-//! the Habera-Zilian and Harari-Albocher methods.
+//! the Habera-Zilian and Harari-Albocher (2023) methods.
 //!
 //! The benchmark follows the `eig3x3` library's invariants benchmark: symmetric
-//! matrices are built as `A = U ⋅ diag(d) ⋅ Uᵀ` with the orthogonal transformation
-//! `U_symm` and the diagonal cases `d(δ)` from the Habera-Zilian test suite.
+//! matrices are built as `A = Q ⋅ diag(d) ⋅ Qᵀ` with the orthogonal transformation
+//! `Q_sym` and the diagonal cases `d(δ)` from the Habera-Zilian test suite.
 //!
 //! Three variants are compared:
 //!
-//! * `HZ` — the Habera-Zilian formulas applied directly to the 3×3 matrix
-//! * `HA` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3]
-//! * `naive` — the monomial deviatoric formulas
+//! * `HZ` — the numerically stable formulas of Habera & Zilian (2026) (Algorithms 2 and 5)
+//!   applied directly to the 3×3 matrix
+//! * `HA23` — [Tensor2::invariant_jj2] / [Tensor2::invariant_jj3] (Harari & Albocher 2023)
+//! * `naive` — the naive deviatoric formulas
 //!
 //! The reference values are computed with double-double (f64×2) arithmetic and are
 //! therefore accurate to about 30 digits (validated against exact rational
@@ -26,15 +27,15 @@ use russell_tensor::Tensor2;
 const NV: usize = 3;
 
 /// Variant labels
-const LABELS: [&str; NV] = ["HZ", "HA", "naive"];
+const LABELS: [&str; NV] = ["HZ", "HA23", "naive"];
 
 fn main() {
-    let u = u_symm();
+    let q = q_sym();
     let deltas = [
         1e-16, 1e-14, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0, 5.0, 500.0,
     ];
 
-    println!("Symmetric tensors, A = U_symm ⋅ diag(d) ⋅ U_symmᵀ");
+    println!("Symmetric tensors, A = Q_sym ⋅ diag(d) ⋅ Q_symᵀ");
     println!("(reference: double-double, ~30 digits)");
 
     // Accumulate the errors: rows = deltas, columns = variants
@@ -46,10 +47,10 @@ fn main() {
     for (k, &delta) in deltas.iter().enumerate() {
         for name in CASES {
             let d = case_diagonal(name, delta);
-            let a = build_a(&u, &d);
+            let a = build_a(&q, &d);
             let tt = Tensor2::<6>::from_std_matrix(&a).unwrap();
             let (r2, r3) = ref_invariants(&a);
-            let variants = [hz(&a), ha(&tt), naive(&a)];
+            let variants = [hz(&a), ha23(&tt), naive(&a)];
             for (m, (w2, w3)) in variants.iter().enumerate() {
                 let e2 = f64::abs(w2 - r2);
                 let e3 = f64::abs(w3 - r3);
@@ -139,18 +140,18 @@ fn case_diagonal(name: &str, delta: f64) -> [f64; 3] {
 }
 
 /// Orthogonal transformation matrix from the Habera-Zilian test suite
-fn u_symm() -> [[f64; 3]; 3] {
+fn q_sym() -> [[f64; 3]; 3] {
     let r2 = f64::sqrt(2.0);
     [[1.0 / r2, -0.5, 0.5], [1.0 / r2, 0.5, -0.5], [0.0, 1.0 / r2, 1.0 / r2]]
 }
 
-/// Builds the symmetric matrix `A = U ⋅ diag(d) ⋅ Uᵀ` (and symmetrizes it)
-fn build_a(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
+/// Builds the symmetric matrix `A = Q ⋅ diag(d) ⋅ Qᵀ` (and symmetrizes it)
+fn build_a(q: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     let mut a = [[0.0; 3]; 3];
     for i in 0..3 {
         for j in 0..3 {
             for k in 0..3 {
-                a[i][j] += u[i][k] * d[k] * u[j][k];
+                a[i][j] += q[i][k] * d[k] * q[j][k];
             }
         }
     }
@@ -164,7 +165,7 @@ fn build_a(u: &[[f64; 3]; 3], d: &[f64; 3]) -> [[f64; 3]; 3] {
     a
 }
 
-/// Habera-Zilian symmetric invariants applied directly to the 3×3 matrix
+/// Habera & Zilian (2026) symmetric invariants (Algorithms 2 and 5) applied directly to the 3×3 matrix
 fn hz(a: &[[f64; 3]; 3]) -> (f64, f64) {
     let (a00, a01, a02) = (a[0][0], a[0][1], a[0][2]);
     let (a11, a12, a22) = (a[1][1], a[1][2], a[2][2]);
@@ -183,12 +184,12 @@ fn hz(a: &[[f64; 3]; 3]) -> (f64, f64) {
     (j2, off + mixed - dg)
 }
 
-/// Harari-Albocher symmetric invariants
-fn ha(aa: &Tensor2<6>) -> (f64, f64) {
+/// Harari-Albocher (2023) symmetric invariants
+fn ha23(aa: &Tensor2<6>) -> (f64, f64) {
     (aa.invariant_jj2(), aa.invariant_jj3())
 }
 
-/// Naive invariants `(J2, J3)` based on the monomial formulas
+/// Naive invariants `(J2, J3)` based on the naive formulas
 fn naive(a: &[[f64; 3]; 3]) -> (f64, f64) {
     let m = (a[0][0] + a[1][1] + a[2][2]) / 3.0;
     let s = [

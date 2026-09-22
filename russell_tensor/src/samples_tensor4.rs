@@ -321,7 +321,7 @@ impl SamplesTensor4 {
         ],
     ];
 
-    /// Sample matrix representation for 2D spaces with standard components
+    /// Sample matrix representation for generalized plane spaces with standard components
     #[rustfmt::skip]
     pub const SYM_2D_SAMPLE1_STD_MATRIX: [[f64; 9]; 9] = [
         [ 1.0,  2.0,  3.0,  10.0, 0.0, 0.0,  10.0, 0.0, 0.0], // [0][0]...
@@ -335,7 +335,7 @@ impl SamplesTensor4 {
         [ 0.0,  0.0,  0.0,   0.0, 0.0, 0.0,   0.0, 0.0, 0.0], // [2][0]...
     ];
 
-    /// Sample matrix representation for 2D spaces with Kelvin-Mandel components
+    /// Sample matrix representation for generalized plane spaces with Kelvin-Mandel components
     #[rustfmt::skip]
     pub const SYM_2D_SAMPLE1_KELVIN_MATRIX:[[f64; 4]; 4] = [
         [ 1.0       ,  2.0       ,  3.0       , 10.0*SQRT_2],

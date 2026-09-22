@@ -34,9 +34,9 @@ harness = false
 path = "benchmarks/polar_decomp_benchmark.rs"
 
 [[bench]]
-name = "spectral2_benchmark"
+name = "eigen_values_benchmark"
 harness = false
-path = "benchmarks/spectral2_benchmark.rs"
+path = "benchmarks/eigen_values_benchmark.rs"
 
 [lints]
 workspace = true

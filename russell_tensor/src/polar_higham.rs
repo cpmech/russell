@@ -805,16 +805,13 @@ fn mat4t_times_4x2(il: &[[f64; 4]; 4], m: &[[f64; 2]; 4]) -> [[f64; 2]; 4] {
 mod tests {
     use super::polar_quaternion_higham;
     use crate::Tensor2;
-    use crate::test_common::{
-        case51, case52, case52_rotation, check_agree, check_polar, example01, example01_rotation, example01_stretch,
-        example03, example03_rotation, example03_stretch,
-    };
+    use crate::testing::{ReferencePolarDecomp, check_agree, check_polar};
     use russell_lab::mat_approx_eq;
 
     #[test]
     fn polar_quaternion_higham_works_case51() {
         // Higham & Noferini test (5.1)
-        let a = case51();
+        let a = ReferencePolarDecomp::case51();
         let mut q = Tensor2::<9>::new();
         let mut h = Tensor2::<6>::new();
         polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
@@ -826,38 +823,38 @@ mod tests {
         // Higham & Noferini test (5.2) over a range of condition numbers
         // (y = sqrt([1, 1e-4, 1e-8, 1e-12, 1e-16]))
         for y in [1.0f64, 1e-2, 1e-4, 1e-6, 1e-8] {
-            let a = case52(y);
+            let a = ReferencePolarDecomp::case52(y);
             let mut q = Tensor2::<9>::new();
             let mut h = Tensor2::<6>::new();
             polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
             check_polar(&a, &q, &h, 1e-13);
         }
         // Compare Q with the exact Q1 from the paper (well-conditioned case y = 1)
-        let a = case52(1.0);
+        let a = ReferencePolarDecomp::case52(1.0);
         let mut q = Tensor2::<9>::new();
         let mut h = Tensor2::<6>::new();
         polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
-        mat_approx_eq(&q.as_std_matrix(), &case52_rotation(), 1e-13);
+        mat_approx_eq(&q.as_std_matrix(), &ReferencePolarDecomp::case52_rotation(), 1e-13);
     }
 
     #[test]
     fn polar_quaternion_higham_on_brannon_cases() {
         // Brannon's example 01 (in-plane), cross-checked against her algorithm
-        let a = example01();
+        let a = ReferencePolarDecomp::example01();
         let mut q = Tensor2::<9>::new();
         let mut h = Tensor2::<6>::new();
         polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
         check_agree(&a);
-        mat_approx_eq(&q.as_std_matrix(), &example01_rotation(), 1e-13);
-        mat_approx_eq(&h.as_std_matrix(), &example01_stretch(), 1e-13);
+        mat_approx_eq(&q.as_std_matrix(), &ReferencePolarDecomp::example01_rotation(), 1e-13);
+        mat_approx_eq(&h.as_std_matrix(), &ReferencePolarDecomp::example01_stretch(), 1e-13);
 
         // Brannon's example 03 (fully 3-D), cross-checked against her algorithm
-        let a = example03();
+        let a = ReferencePolarDecomp::example03();
         let mut q = Tensor2::<9>::new();
         let mut h = Tensor2::<6>::new();
         polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
         check_agree(&a);
-        mat_approx_eq(&q.as_std_matrix(), &example03_rotation(), 1e-3);
-        mat_approx_eq(&h.as_std_matrix(), &example03_stretch(), 1e-3);
+        mat_approx_eq(&q.as_std_matrix(), &ReferencePolarDecomp::example03_rotation(), 1e-3);
+        mat_approx_eq(&h.as_std_matrix(), &ReferencePolarDecomp::example03_stretch(), 1e-3);
     }
 }

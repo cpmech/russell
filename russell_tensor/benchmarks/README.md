@@ -3,17 +3,6 @@
 This directory contains [Criterion](https://github.com/bheisler/criterion.rs) benchmarks for the
 `russell_tensor` crate.
 
-The crate has a `heap` cargo feature that selects between two internal storage layouts at compile
-time:
-
-| `Tensor2` storage | `Tensor4` storage         | selected by         |
-| ----------------- | ------------------------- | ------------------- |
-| `vec: [f64; 9]`   | `mat: [[f64; 9]; 9]`      | (no `heap` feature) |
-| `vec: Vector`     | `mat: Matrix` (col-major) | `--features heap`   |
-
-To compare the **stack** and **heap** layouts, run the benchmark twice (once with and once without
-`--features heap`) and compare the results.
-
 ## Benchmarked functions
 
 Each function is benchmarked in two variants:
@@ -37,21 +26,14 @@ All benchmarks use fixed 3×3 input tensors.
 Run the benchmark (from the workspace root):
 
 ```bash
-# stack (MKL, no heap feature)
 cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark
-
-# heap
-cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark
 ```
 
 Filter to a single function, e.g. `ssd_fn`:
 
 ```bash
-cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark -- ssd_fn
+cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark -- ssd_fn
 ```
-
-> **Note:** the `heap` feature selects the heap-allocated storage layout. To
-> benchmark the stack layout, use `--features intel_mkl` instead.
 
 ---
 

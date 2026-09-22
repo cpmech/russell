@@ -6,30 +6,16 @@ use std::fmt::{self, Write};
 ///
 /// The "standard" components are recorded here where "standard" means with respect to a Cartesian system.
 pub struct Tensor1 {
-    /// Holds the 3 standard components (heap)
-    ///
-    /// Heap version => dynamically allocated memory
-    #[cfg(feature = "heap")]
-    pub(crate) vec: Vector,
-
     /// Holds the 3 standard components (stack)
     ///
     /// Stack version => fixed size memory
-    #[cfg(not(feature = "heap"))]
     pub(crate) vec: [f64; 3],
 }
 
 impl Tensor1 {
     /// Allocates a new instance
     pub fn new() -> Self {
-        #[cfg(feature = "heap")]
-        {
-            Tensor1 { vec: Vector::new(3) }
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            Tensor1 { vec: [0.0, 0.0, 0.0] }
-        }
+        Tensor1 { vec: [0.0, 0.0, 0.0] }
     }
 
     /// Allocates a new instance from a standard (dense) array

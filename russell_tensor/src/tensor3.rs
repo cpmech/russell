@@ -8,9 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
 
-#[cfg(feature = "heap")]
-use russell_lab::mat_scale;
-
 /// Defines a third-order tensor in R³×R³×R³
 ///
 /// The matrix representation of Tensor3 results in a rectangular matrix.
@@ -199,18 +196,9 @@ use russell_lab::mat_scale;
 /// ```
 #[derive(Clone, Debug)]
 pub struct Tensor3<const M: usize, const N: usize> {
-    /// Holds the components in Kelvin-Mandel basis as matrix (heap).
-    ///
-    /// Heap version => dynamically allocated memory
-    #[cfg(feature = "heap")]
-    pub(crate) mat: Matrix,
-
     /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     ///
-    /// Stack version => fixed size memory
-    ///
     /// This array may use more data than necessary in symmetric cases
-    #[cfg(not(feature = "heap"))]
     pub(crate) mat: [[f64; N]; M],
 }
 
@@ -271,14 +259,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     pub fn new() -> Self {
         let _ = Self::VALIDATE_DIM;
 
-        #[cfg(feature = "heap")]
-        {
-            Tensor3 { mat: Matrix::new(M, N) }
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            Tensor3 { mat: [[0.0; N]; M] }
-        }
+        Tensor3 { mat: [[0.0; N]; M] }
     }
 
     /// Returns the (m,n) component of the Kelvin-Mandel matrix
@@ -303,14 +284,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// ```
     #[inline]
     pub fn get(&self, m: usize, n: usize) -> f64 {
-        #[cfg(feature = "heap")]
-        {
-            self.mat.get(m, n)
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            self.mat[m][n]
-        }
+        self.mat[m][n]
     }
 
     /// Sets the (m,n) component of the Kelvin-Mandel matrix
@@ -336,14 +310,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// ```
     #[inline]
     pub fn set(&mut self, m: usize, n: usize, value: f64) {
-        #[cfg(feature = "heap")]
-        {
-            self.mat.set(m, n, value);
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            self.mat[m][n] = value;
-        }
+        self.mat[m][n] = value;
     }
 
     /// Adds a value to the (m,n) component of the Kelvin-Mandel matrix
@@ -370,14 +337,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// ```
     #[inline]
     pub fn add(&mut self, m: usize, n: usize, value: f64) {
-        #[cfg(feature = "heap")]
-        {
-            self.mat.add(m, n, value);
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            self.mat[m][n] += value;
-        }
+        self.mat[m][n] += value;
     }
 
     /// Sets this tensor from a nested array containing the standard components
@@ -875,16 +835,9 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     /// ```
     #[inline]
     pub fn scale(&mut self, alpha: f64) {
-        #[cfg(feature = "heap")]
-        {
-            mat_scale(&mut self.mat, alpha);
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            for m in 0..M {
-                for n in 0..N {
-                    self.mat[m][n] *= alpha;
-                }
+        for m in 0..M {
+            for n in 0..N {
+                self.mat[m][n] *= alpha;
             }
         }
     }

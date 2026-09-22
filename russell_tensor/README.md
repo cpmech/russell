@@ -99,7 +99,6 @@ russell_tensor = "*"
 The following (Rust) features are available:
 
 * `intel_mkl`: Use Intel MKL instead of OpenBLAS
-* `heap`: Use heap-allocated (dynamically allocated) storage for the tensor components instead of the default stack-allocated (fixed-size) storage
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

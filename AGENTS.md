@@ -22,8 +22,6 @@ The `intel_mkl` feature is forwarded from every dependent crate
 
 Extra features:
 
-- `russell_tensor/heap` — enables heap-backed tensor test cases. Run the tests
-  both with and without it.
 - `local_sparse` (and `cudss`) on `russell_sparse`, `russell_ode`,
   `russell_pde`, `russell_nonlin` — require locally compiled MUMPS/SuiteSparse
   (see `zscripts/*-compile-mumps.bash` and `zscripts/*-compile-suitesparse.bash`).
@@ -33,8 +31,7 @@ Extra features:
 ```bash
 # Tests (per crate; add intel_mkl when the OpenBLAS headers are unavailable)
 cargo test -p russell_lab --features intel_mkl
-cargo test -p russell_tensor --features intel_mkl          # stack
-cargo test -p russell_tensor --features intel_mkl,heap     # stack + heap
+cargo test -p russell_tensor --features intel_mkl
 
 # Whole workspace (sparse crates need the locally compiled libraries)
 cargo test --workspace --features local_sparse

@@ -5,10 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt::{self, Write};
 
-#[cfg(feature = "heap")]
-use russell_lab::{mat_inverse, mat_scale};
-
-#[cfg(not(feature = "heap"))]
 use russell_lab::small_mat_inv;
 
 /// Defines a fourth-order tensor in R³×R³×R³×R³
@@ -123,14 +119,7 @@ use russell_lab::small_mat_inv;
 /// ```
 #[derive(Clone, Debug)]
 pub struct Tensor4<const N: usize> {
-    /// Holds the components in Kelvin-Mandel basis as matrix (heap).
-    ///
-    /// Heap version => dynamically allocated memory
-    #[cfg(feature = "heap")]
-    pub(crate) mat: Matrix,
-
     /// Holds the components in Kelvin-Mandel basis as matrix (stack).
-    #[cfg(not(feature = "heap"))]
     pub(crate) mat: [[f64; N]; N],
 }
 
@@ -185,14 +174,7 @@ impl<const N: usize> Tensor4<N> {
     pub fn new() -> Self {
         let _ = Self::VALIDATE_DIM;
 
-        #[cfg(feature = "heap")]
-        {
-            Tensor4 { mat: Matrix::new(N, N) }
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            Tensor4 { mat: [[0.0; N]; N] }
-        }
+        Tensor4 { mat: [[0.0; N]; N] }
     }
 
     /// Returns the (m,n) component of the Kelvin-Mandel matrix
@@ -217,14 +199,7 @@ impl<const N: usize> Tensor4<N> {
     /// ```
     #[inline]
     pub fn get(&self, m: usize, n: usize) -> f64 {
-        #[cfg(feature = "heap")]
-        {
-            self.mat.get(m, n)
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            self.mat[m][n]
-        }
+        self.mat[m][n]
     }
 
     /// Sets the (m,n) component of the Kelvin-Mandel matrix
@@ -250,14 +225,7 @@ impl<const N: usize> Tensor4<N> {
     /// ```
     #[inline]
     pub fn set(&mut self, m: usize, n: usize, value: f64) {
-        #[cfg(feature = "heap")]
-        {
-            self.mat.set(m, n, value);
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            self.mat[m][n] = value;
-        }
+        self.mat[m][n] = value;
     }
 
     /// Adds a value to the (m,n) component of the Kelvin-Mandel matrix
@@ -284,14 +252,7 @@ impl<const N: usize> Tensor4<N> {
     /// ```
     #[inline]
     pub fn add(&mut self, m: usize, n: usize, value: f64) {
-        #[cfg(feature = "heap")]
-        {
-            self.mat.add(m, n, value);
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            self.mat[m][n] += value;
-        }
+        self.mat[m][n] += value;
     }
 
     /// Sets the Kelvin-Mandel matrix directly
@@ -900,16 +861,9 @@ impl<const N: usize> Tensor4<N> {
     /// ```
     #[inline]
     pub fn scale(&mut self, alpha: f64) {
-        #[cfg(feature = "heap")]
-        {
-            mat_scale(&mut self.mat, alpha);
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            for m in 0..N {
-                for n in 0..N {
-                    self.mat[m][n] *= alpha;
-                }
+        for m in 0..N {
+            for n in 0..N {
+                self.mat[m][n] *= alpha;
             }
         }
     }
@@ -1002,14 +956,7 @@ impl<const N: usize> Tensor4<N> {
     ///
     /// Returns the determinant of the Kelvin-Mandel matrix and the inverse matrix/tensor in `inv`.
     pub fn inverse(&self, inv: &mut Tensor4<N>) -> Result<f64, StrError> {
-        #[cfg(feature = "heap")]
-        {
-            mat_inverse(&mut inv.mat, &self.mat)
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            small_mat_inv(&mut inv.mat, &self.mat, N)
-        }
+        small_mat_inv(&mut inv.mat, &self.mat, N)
     }
 
     /// Returns a 3x3x3x3 array with the standard components

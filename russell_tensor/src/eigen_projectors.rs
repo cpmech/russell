@@ -253,7 +253,7 @@ mod tests {
                 if VERBOSE {
                     println!("Test # {}: A = \n{}", k, aa.as_std_matrix());
                 }
-                eig.calculate_mx(&mut ll, &mut projs, &aa, method).unwrap();
+                eig.calculate_mx(&mut ll, &mut projs, aa, method).unwrap();
 
                 // check whether the eigenprojectors satisfy the eigenprojector rules
                 let (mut tol_idem, mut tol_recon) = (TOL_IDEM, TOL_RECON);
@@ -304,7 +304,7 @@ mod tests {
                 assert_eq!(status, OK_EIGENPROJ_RULES);
 
                 // check the spectral composition
-                check_reconstruct(&aa, &ll, &projs, tol_recon, VERB_RECONSTRUCT);
+                check_reconstruct(aa, &ll, &projs, tol_recon, VERB_RECONSTRUCT);
             }
         }
     }

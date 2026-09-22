@@ -17,9 +17,9 @@ local_sparse = ["russell_sparse/local_sparse"]
 cudss = ["russell_sparse/cudss"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "2" }
-russell_pde = { path = "../russell_pde", version = "2" }
-russell_sparse = { path = "../russell_sparse", version = "2" }
+russell_lab = { path = "../russell_lab", version = "3" }
+russell_pde = { path = "../russell_pde", version = "3" }
+russell_sparse = { path = "../russell_sparse", version = "3" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"

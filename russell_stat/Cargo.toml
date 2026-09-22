@@ -15,7 +15,7 @@ keywords = ["statistics", "probability", "random", "numerical"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "2" }
+russell_lab = { path = "../russell_lab", version = "3" }
 num-traits = "0.2"
 rand = "0.10"
 rand_distr = "0.6"

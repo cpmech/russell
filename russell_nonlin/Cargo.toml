@@ -21,16 +21,16 @@ local_sparse = ["russell_sparse/local_sparse", "russell_ode/local_sparse"]
 cudss = ["russell_sparse/cudss"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "2" }
-russell_sparse = { path = "../russell_sparse", version = "2" }
-russell_stat = { path = "../russell_stat", version = "2" }
+russell_lab = { path = "../russell_lab", version = "3" }
+russell_sparse = { path = "../russell_sparse", version = "3" }
+russell_stat = { path = "../russell_stat", version = "3" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"
 
 [dev-dependencies]
-russell_pde = { path = "../russell_pde", version = "2" }
-russell_ode = { path = "../russell_ode", version = "2" }
+russell_pde = { path = "../russell_pde", version = "3" }
+russell_ode = { path = "../russell_ode", version = "3" }
 plotpy = "1.23"
 rayon = "1.10"
 serial_test = "3.5"

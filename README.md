@@ -1,17 +1,16 @@
 # Russell - Rust Scientific Library <!-- omit from toc --> 
 
-<h1 align="center">
-  <a href="https://github.com/cpmech/russell"><img src="logo.svg" alt="Russell" width="368px"></a>
-<br>
-</h1>
+<p align="center">
+<a href="https://github.com/cpmech/russell"><img src="bertrand-russell.jpeg" alt="Bertrand Russell"></a>*
+</p>
 
 <p align="center">
-  <b>Numerical mathematics, numerical continuation, differential equations, special math functions, high-performance (sparse) linear algebra, statistics.</b><br />
+<a href="https://github.com/cpmech/russell"><img src="logo.svg" alt="Russell"></a>
 </p>
 
 ---
 
-[![Track Awesome List](https://www.trackawesomelist.com/badge.svg)](https://www.trackawesomelist.com/rust-unofficial/awesome-rust/)
+`*` This project honors the British philosopher and mathematician [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell).
 
 ---
 
@@ -72,6 +71,7 @@
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
 - [For developers](#for-developers)
+  - [Naming conventions](#naming-conventions)
   - [russell\_lab — BLAS/LAPACK](#russell_lab--blaslapack)
   - [russell\_sparse — sparse solvers](#russell_sparse--sparse-solvers)
 
@@ -734,3 +734,7 @@ Build-dependencies: `cc`, `pkg-config`.
   - The default path (no `cudss`, no `local_sparse`) probes `pkg-config` for UMFPACK (trying both `UMFPACK` and `umfpack` spellings) before falling back.
 
 Build-dependencies: `cc`, `pkg-config`.
+
+---
+
+[![Track Awesome List](https://www.trackawesomelist.com/badge.svg)](https://www.trackawesomelist.com/rust-unofficial/awesome-rust/)

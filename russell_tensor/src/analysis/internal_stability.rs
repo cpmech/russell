@@ -26,7 +26,7 @@ use crate::{SQRT_2, StrError, Tensor2, Tensor4};
 /// 2. M. Maździarz (2025) Mechanical stability conditions for 3D and 2D crystals under arbitrary load,
 ///    Archives of Mechanics, 77(4), 379–399, 2025, <https://doi.org/10.24423/aom.4679>
 pub fn internal_stability_tensor(hh: &mut Tensor4<6>, sigma: &Tensor2<6>) -> Result<(), StrError> {
-    let sig = sigma.as_data();
+    let sig = sigma.as_vec();
 
     // row 0
     hh.set(0, 0, sig[0]);

@@ -29,7 +29,7 @@ use crate::{Tensor2, Tensor4};
 /// * `aa` -- first tensor
 /// * `bb` -- second tensor
 pub fn t2_odyad_t2<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
-    t2_odyad_t2_slice::<N>(dd, op, s, aa.as_data(), bb.as_data());
+    t2_odyad_t2_slice::<N>(dd, op, s, aa.as_vec(), bb.as_vec());
 }
 
 /// Internal (unrolled) overbar dyadic product on raw Kelvin-Mandel vectors.

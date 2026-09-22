@@ -29,13 +29,13 @@ use crate::{Tensor2, Tensor4};
 /// * `aa` -- first tensor
 /// * `bb` -- second tensor
 pub fn t2_udyad_t2<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
-    t2_udyad_t2_slice::<N>(dd, op, s, aa.as_data(), bb.as_data());
+    t2_udyad_t2_vec::<N>(dd, op, s, aa.as_vec(), bb.as_vec());
 }
 
 /// Internal (unrolled) underbar dyadic product on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_udyad_t2_slice<const N:usize>(dd: &mut Tensor4<9>, op: u8, s: f64, a: &[f64; N], b: &[f64; N]) {
+pub(crate) fn t2_udyad_t2_vec<const N:usize>(dd: &mut Tensor4<9>, op: u8, s: f64, a: &[f64; N], b: &[f64; N]) {
     let tsq2 = 2.0 * SQRT_2;
     if op == ADD {
         if N == 4 {

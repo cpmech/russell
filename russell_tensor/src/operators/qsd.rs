@@ -31,7 +31,7 @@ use crate::{Tensor2, Tensor4};
 /// * `aa` -- Second-order tensor, symmetric or not
 /// * `bb` -- Second-order tensor, symmetric or not
 pub fn qsd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
-    qsd_fn_slice::<N>(dd, op, s, aa.as_data(), bb.as_data());
+    qsd_fn_slice::<N>(dd, op, s, aa.as_vec(), bb.as_vec());
 }
 
 /// Internal (unrolled) quad-sum-dyadic operation on raw Kelvin-Mandel vectors.

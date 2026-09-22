@@ -27,13 +27,13 @@ use crate::{Tensor2, Tensor4};
 /// * `op` -- operation: ADD or SET
 /// * `aa` -- Second-order tensor, symmetric or not.
 pub fn dsd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
-    dsd_fn_slice::<N>(dd, op, s, aa.as_data(), bb.as_data());
+    dsd_fn_vec::<N>(dd, op, s, aa.as_vec(), bb.as_vec());
 }
 
 /// Internal (unrolled) duo-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn dsd_fn_slice<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64; N], b: &[f64; N]) {
+pub(crate) fn dsd_fn_vec<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64; N], b: &[f64; N]) {
     if op == ADD {
         if N == 4 {
             dd.add(0, 0, s*(2.0*a[0]*b[0]));

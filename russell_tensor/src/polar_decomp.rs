@@ -101,7 +101,7 @@ pub fn polar_decomp_mx(
         }
         PolarAlgo::Iterative => {
             let nit = polar_rotation_brannon(rr, ff)?;
-            t2_gen_tra_dot_gen_chop(uu.as_mut_data(), 1.0, rr.as_data(), ff.as_data()); // U = Rᵀ F
+            t2_gen_tra_dot_gen_chop(uu.as_mut_vec(), 1.0, rr.as_vec(), ff.as_vec()); // U = Rᵀ F
             nit
         }
         PolarAlgo::Quaternion => {
@@ -112,7 +112,7 @@ pub fn polar_decomp_mx(
 
     // Left stretch V = F Rᵀ (common to all algorithms)
     if let Some(v) = vv {
-        t2_gen_dot_gen_tra_chop(v.as_mut_data(), 1.0, ff.as_data(), rr.as_data());
+        t2_gen_dot_gen_tra_chop(v.as_mut_vec(), 1.0, ff.as_vec(), rr.as_vec());
     }
 
     Ok(nit)

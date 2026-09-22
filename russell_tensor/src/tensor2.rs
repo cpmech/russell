@@ -79,7 +79,7 @@ impl<const N: usize> Serialize for Tensor2<N> {
     where
         S: serde::Serializer,
     {
-        self.as_data().serialize(serializer)
+        self.as_vec().serialize(serializer)
     }
 }
 
@@ -255,13 +255,13 @@ impl<const N: usize> Tensor2<N> {
 
     /// Returns a reference to the Kelvin-Mandel vector data (crate-internal)
     #[inline]
-    pub(crate) fn as_data(&self) -> &[f64; N] {
+    pub(crate) fn as_vec(&self) -> &[f64; N] {
         &self.vec
     }
 
     /// Returns a mutable reference to the Kelvin-Mandel vector data (crate-internal)
     #[inline]
-    pub(crate) fn as_mut_data(&mut self) -> &mut [f64; N] {
+    pub(crate) fn as_mut_vec(&mut self) -> &mut [f64; N] {
         &mut self.vec
     }
 
@@ -1205,7 +1205,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn transpose(&self, at: &mut Tensor2<N>) {
-        self.transpose_slice(at.as_mut_data());
+        self.transpose_slice(at.as_mut_vec());
     }
 
     /// Returns the transpose tensor components in a caller-provided array (crate-internal)
@@ -1371,7 +1371,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn squared(&self, a2: &mut Tensor2<N>) {
-        squared_tensor_slice::<N>(a2.as_mut_data(), self.as_data());
+        squared_tensor_slice::<N>(a2.as_mut_vec(), self.as_vec());
     }
 
     /// Calculates the trace
@@ -1508,7 +1508,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn deviator(&self, dev: &mut Tensor2<N>) {
-        self.deviator_slice(dev.as_mut_data());
+        self.deviator_slice(dev.as_mut_vec());
     }
 
     /// Returns the deviator tensor components in a stack-allocated array (crate-internal)

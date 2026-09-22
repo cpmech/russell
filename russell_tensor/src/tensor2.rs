@@ -63,45 +63,14 @@ use std::fmt::{self, Write};
 /// └             ┘    01 │ T01 * √2 │ 3
 ///                       └          ┘
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+#[serde(bound(serialize = "[f64; N]: Serialize", deserialize = "[f64; N]: Deserialize<'de>"))]
 pub struct Tensor2<const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as a vector (stack).
     ///
     /// Stack version => fixed size memory
     pub(crate) vec: [f64; N],
-}
-
-// Manual Serialize/Deserialize implementations: serde only implements the traits
-// for concrete array sizes, so the derive fails for the generic `[f64; N]`.
-// Since N is known to be 4, 6, or 9 only, we serialize the components as a sequence.
-impl<const N: usize> Serialize for Tensor2<N> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.as_vec().serialize(serializer)
-    }
-}
-
-impl<'de, const N: usize> Deserialize<'de> for Tensor2<N> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let vec = Vec::<f64>::deserialize(deserializer)?;
-        if vec.len() != N {
-            return Err(serde::de::Error::custom(format!(
-                "Tensor2 dimension mismatch: expected {}, got {}",
-                N,
-                vec.len()
-            )));
-        }
-        let mut tt = Tensor2::new();
-        for (i, value) in vec.iter().enumerate() {
-            tt.vec[i] = *value;
-        }
-        Ok(tt)
-    }
 }
 
 impl<const N: usize> Tensor2<N> {

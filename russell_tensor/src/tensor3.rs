@@ -403,7 +403,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
                                 if m > max {
                                     if inp[i][j][k] != 0.0 {
                                         return Err(
-                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
                                         );
                                     }
                                     continue;
@@ -452,7 +452,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
                                 if n > max {
                                     if inp[i][j][k] != 0.0 {
                                         return Err(
-                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
                                         );
                                     }
                                     continue;
@@ -567,7 +567,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
                                 if m > max {
                                     if inp.at(m, n) != 0.0 {
                                         return Err(
-                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
                                         );
                                     }
                                     continue;
@@ -619,7 +619,7 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
                                 if n > max {
                                     if inp.at(m, n) != 0.0 {
                                         return Err(
-                                            "the input data does not correspond to a 2D minor-symmetric tensor",
+                                            "the input data does not correspond to a generalized plane minor-symmetric tensor",
                                         );
                                     }
                                     continue;
@@ -1426,7 +1426,7 @@ mod tests {
         dd.set(0, 0, 123.0);
         assert_eq!(dd.get(0, 0), 123.0);
 
-        // symmetric 2d
+        // symmetric generalized plane
         let mut dd = Tensor3::<4, 3>::new();
         dd.set(0, 0, 123.0);
         assert_eq!(dd.get(0, 0), 123.0);
@@ -1443,7 +1443,7 @@ mod tests {
         let res = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+            Some("the input data does not correspond to a generalized plane minor-symmetric tensor")
         );
     }
 
@@ -1457,7 +1457,7 @@ mod tests {
             }
         }
 
-        // symmetric 3d
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         for m in 0..6 {
             for n in 0..3 {
@@ -1465,7 +1465,7 @@ mod tests {
             }
         }
 
-        // symmetric 2d
+        // symmetric generalized plane
         let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         for m in 0..4 {
             for n in 0..3 {
@@ -1490,7 +1490,7 @@ mod tests {
         let res = Tensor3::<4, 3>::from_std_matrix(&inp);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+            Some("the input data does not correspond to a generalized plane minor-symmetric tensor")
         );
     }
 
@@ -1512,7 +1512,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..6 {
             for n in 0..3 {
@@ -1524,7 +1524,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<4, 3>::from_std_matrix(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..4 {
             for n in 0..3 {
@@ -1549,7 +1549,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -1559,7 +1559,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -1605,7 +1605,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -1616,7 +1616,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -1639,7 +1639,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 3));
@@ -1653,7 +1653,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (9, 3));
@@ -1708,7 +1708,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
-        // Symmetric 3D
+        // Symmetric
         #[rustfmt::skip]
         let data = &[
             [
@@ -1746,7 +1746,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, correct, 1e-13);
 
-        // Symmetric 2D
+        // Symmetric generalized plane
         #[rustfmt::skip]
         let data = &[
             [
@@ -1888,7 +1888,7 @@ mod tests {
         inp
     }
 
-    /// Generates a standard 3x3x3 tensor that is minor-symmetric in (j,k) and 2D (zero out-of-plane shears)
+    /// Generates a standard 3x3x3 tensor that is minor-symmetric in (j,k) and generalized plane (zero out-of-plane shears)
     fn generate_std_sym_case_b_2d() -> [[[f64; 3]; 3]; 3] {
         let mut inp = [[[0.0; 3]; 3]; 3];
         for i in 0..3 {
@@ -1923,7 +1923,7 @@ mod tests {
         let res = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+            Some("the input data does not correspond to a generalized plane minor-symmetric tensor")
         );
     }
 
@@ -1937,7 +1937,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         for m in 0..3 {
             for n in 0..6 {
@@ -1945,7 +1945,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         for m in 0..3 {
             for n in 0..4 {
@@ -1964,7 +1964,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..3 {
             for n in 0..6 {
@@ -1976,7 +1976,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<3, 4>::from_std_matrix(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1_STD_MATRIX).unwrap();
         for m in 0..3 {
             for n in 0..4 {
@@ -2001,7 +2001,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -2011,7 +2011,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         for i in 0..3 {
             for j in 0..3 {
@@ -2057,7 +2057,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -2068,7 +2068,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         let res = dd.as_std_array();
         for i in 0..3 {
@@ -2091,7 +2091,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         let dd = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (3, 9));
@@ -2105,7 +2105,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let dd = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
         let mat = dd.as_std_matrix();
         assert_eq!(mat.dims(), (3, 9));
@@ -2152,7 +2152,7 @@ mod tests {
         let res = Tensor3::<3, 4>::from_std_matrix(&mat);
         assert_eq!(
             res.err(),
-            Some("the input data does not correspond to a 2D minor-symmetric tensor")
+            Some("the input data does not correspond to a generalized plane minor-symmetric tensor")
         );
     }
 

@@ -1,4 +1,4 @@
-use super::Tensor2;
+use crate::Tensor2;
 use crate::{SQRT_2, StrError};
 
 /// Performs the matrix multiplication between two Tensor2
@@ -38,7 +38,7 @@ use crate::{SQRT_2, StrError};
 /// **Note:** The use of `chop` is decided by the dimension `L` of the output tensor `c`.
 /// Also, `chop` doesn't actually check for symmetry; it just ignores (chops) the last 3 components of the Kelvin-Mandel vector.
 ///
-/// **Note:** the dimension `4` (symmetric 2D) is not supported (use `6` instead).
+/// **Note:** the dimension `4` (generalized plane) is not supported (use `6` instead).
 ///
 /// # Output
 ///
@@ -153,7 +153,7 @@ pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
             t2_gen_tra_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
         }
         (4, _, _, _) | (_, 4, _, _) => {
-            return Err("t2_matmul: Symmetric2D is not supported; use Symmetric instead");
+            return Err("t2_matmul: generalized plane (N = 4) is not supported; use Symmetric instead");
         }
         _ => return Err("t2_matmul: unsupported combination"),
     }

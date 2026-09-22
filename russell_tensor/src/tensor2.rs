@@ -1,5 +1,5 @@
 use crate::{IJ_TO_M, IJ_TO_M_SYM, M_TO_IJ, TOL_J2};
-use crate::{SQRT_2, SQRT_2_BY_3, SQRT_3, SQRT_3_BY_2, SQRT_6};
+use crate::{SQRT_2, SQRT_3, SQRT_3_BY_2, SQRT_6};
 use crate::{StrError, Tensor1};
 use russell_lab::math::PI;
 use russell_lab::{AsArray2D, Matrix, Vector, format_scientific, mat_eigen_sym, mat_eigenvalues, sort3};
@@ -302,9 +302,9 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Notes
     ///
-    /// * In all cases, even in 2D, the input matrix must be 3×3
+    /// * In all cases, even in the generalized plane case, the input matrix must be 3×3
     /// * If symmetric, the off-diagonal components must equal each other
-    /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
+    /// * If generalized plane, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
     ///
     /// # Examples
@@ -355,7 +355,7 @@ impl<const N: usize> Tensor2<N> {
     ///          └     ┘"
     ///     );
     ///
-    ///     // symmetric-2D
+    ///     // symmetric generalized plane
     ///     let mut c = Tensor2::<4>::new();
     ///     c.set_std_matrix(&[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
@@ -384,7 +384,7 @@ impl<const N: usize> Tensor2<N> {
             }
             if N == 4 {
                 if tt.at(1, 2) != 0.0 || tt.at(0, 2) != 0.0 {
-                    return Err("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data");
+                    return Err("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data");
                 }
             }
         }
@@ -411,9 +411,9 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Notes
     ///
-    /// * In all cases, even in 2D, the input matrix must be 3×3
+    /// * In all cases, even in the generalized plane case, the input matrix must be 3×3
     /// * If symmetric, the off-diagonal components must equal each other
-    /// * If 2D, `data[1][2]` and `data[0][2]` must be equal to zero
+    /// * If generalized plane, `data[1][2]` and `data[0][2]` must be equal to zero
     ///
     /// # Panics
     ///
@@ -469,7 +469,7 @@ impl<const N: usize> Tensor2<N> {
     ///          └     ┘"
     ///     );
     ///
-    ///     // symmetric-2D
+    ///     // symmetric generalized plane
     ///     let c = Tensor2::<4>::from_std_matrix(
     ///         &[
     ///             [       1.0, 4.0/SQRT_2, 0.0],
@@ -686,7 +686,7 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// # Panics
     ///
-    /// A panic will occur if the tensor is not symmetric in 2D
+    /// A panic will occur if the tensor is not in the generalized plane (i.e., N != 4)
     ///
     /// # Examples
     ///
@@ -712,7 +712,7 @@ impl<const N: usize> Tensor2<N> {
     /// }
     /// ```
     pub fn as_std_matrix_2d(&self) -> (f64, Matrix) {
-        assert_eq!(N, 4, "the tensor must be symmetric in 2D");
+        assert_eq!(N, 4, "the tensor must be symmetric in the generalized plane (N = 4)");
         let mut tt = Matrix::new(2, 2);
         tt.set(0, 0, self.get_std(0, 0));
         tt.set(0, 1, self.get_std(0, 1));
@@ -1543,10 +1543,10 @@ impl<const N: usize> Tensor2<N> {
     /// Returns the deviator tensor components in a stack-allocated array (crate-internal)
     #[inline]
     pub(crate) fn deviator_slice(&self, dev: &mut [f64]) {
-        let m = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
-        dev[0] = self.vec[0] - m;
-        dev[1] = self.vec[1] - m;
-        dev[2] = self.vec[2] - m;
+        let iso = (self.vec[0] + self.vec[1] + self.vec[2]) / 3.0;
+        dev[0] = self.vec[0] - iso;
+        dev[1] = self.vec[1] - iso;
+        dev[2] = self.vec[2] - iso;
         dev[3] = self.vec[3];
         if N > 4 {
             dev[4] = self.vec[4];
@@ -1557,17 +1557,18 @@ impl<const N: usize> Tensor2<N> {
             dev[7] = self.vec[7];
             dev[8] = self.vec[8];
         }
-        let new_trace_s = dev[0] + dev[1] + dev[2];
-        if f64::abs(new_trace_s) > 1e-10 {
-            // fix error due to large magnitudes
+        // make sure that the trace of the deviator is exactly zero
+        let temp_trace = dev[0] + dev[1] + dev[2];
+        if f64::abs(temp_trace) != 0.0 {
             let (mut v0, mut v1, mut v2) = (f64::abs(self.vec[0]), f64::abs(self.vec[1]), f64::abs(self.vec[2]));
             sort3(&mut v0, &mut v1, &mut v2);
             let d = f64::max(1.0, v2);
-            let m = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
-            dev[0] = (self.vec[0] / d - m) * d;
-            dev[1] = (self.vec[1] / d - m) * d;
-            dev[2] = (self.vec[2] / d - m) * d;
+            let c = (self.vec[0] / d + self.vec[1] / d + self.vec[2] / d) / 3.0;
+            dev[0] = (self.vec[0] / d - c) * d;
+            dev[1] = (self.vec[1] / d - c) * d;
+            dev[2] = -dev[0] - dev[1];
         }
+        debug_assert_eq!(dev[0] + dev[1] + dev[2], 0.0);
     }
 
     /// Calculates the norm of the deviator tensor
@@ -1812,6 +1813,12 @@ impl<const N: usize> Tensor2<N> {
     ///
     /// where `r = ‖s‖` is the radius on the octahedral plane.
     ///
+    /// # References
+    ///
+    /// 1. Harari I. and Albocher U. (2023) Using the discriminant in a numerically stable symmetric
+    ///    3×3 direct eigenvalue solver. International Journal for Numerical Methods in Engineering,
+    ///    124:4473-4489. <https://doi.org/10.1002/nme.7311>
+    ///
     /// # Examples
     ///
     /// ```
@@ -1959,10 +1966,12 @@ impl<const N: usize> Tensor2<N> {
 
     // --- OCTAHEDRAL INVARIANTS ------------------------------------------------------------------------------------------
 
-    /// Returns the isomorphic mean pressure invariant (distance to octahedral plane)
+    /// Returns the isomorphic distance invariant
+    ///
+    /// `d` is the distance from the origin of the Haigh-Westergaard space to the octahedral plane.
     ///
     /// ```text
-    /// σs = d = trace(σ) / √3
+    /// d = trace(σ) / √3
     /// ```
     ///
     /// # Examples
@@ -1977,18 +1986,20 @@ impl<const N: usize> Tensor2<N> {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ])?;
-    ///     approx_eq(a.invariant_sigma_s(), 2.0 / SQRT_3, 1e-15);
+    ///     approx_eq(a.invariant_d(), 2.0 / SQRT_3, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn invariant_sigma_s(&self) -> f64 {
+    pub fn invariant_d(&self) -> f64 {
         self.trace() / SQRT_3
     }
 
-    /// Returns the isomorphic deviatoric stress invariant (radius on octahedral plane)
+    /// Returns the isomorphic deviatoric invariant (radius on octahedral plane)
+    ///
+    /// `r` is the radius of a circle passing to the point in the Haigh-Westergaard space
     ///
     /// ```text
-    /// σt = r = ‖s‖ = √(2 J2)
+    /// r = ‖s‖ = √(2 J2)
     /// ```
     ///
     /// # Examples
@@ -2003,11 +2014,11 @@ impl<const N: usize> Tensor2<N> {
     ///         [0.0, 0.0, 0.0],
     ///         [0.0, 0.0, 1.0],
     ///     ])?;
-    ///     approx_eq(a.invariant_sigma_t(), SQRT_2_BY_3, 1e-15);
+    ///     approx_eq(a.invariant_r(), SQRT_2_BY_3, 1e-15);
     ///     Ok(())
     /// }
     /// ```
-    pub fn invariant_sigma_t(&self) -> f64 {
+    pub fn invariant_r(&self) -> f64 {
         self.deviator_norm()
     }
 
@@ -2039,10 +2050,10 @@ impl<const N: usize> Tensor2<N> {
         self.trace() / 3.0
     }
 
-    /// Returns the deviatoric stress invariant (von Mises)
+    /// Returns the deviatoric invariant (von Mises)
     ///
     /// This quantity is also known as the **von Mises** effective invariant
-    /// or equivalent stress.
+    /// or equivalent invariant.
     ///
     /// ```text
     /// q = ‖s‖ √3/√2 = r √3/√2 = √3 √J2
@@ -2068,112 +2079,6 @@ impl<const N: usize> Tensor2<N> {
     /// ```
     pub fn invariant_q(&self) -> f64 {
         self.deviator_norm() * SQRT_3_BY_2
-    }
-
-    /// Returns the isomorphic mean strain invariant (distance to octahedral plane)
-    ///
-    /// ```text
-    /// εs = d = trace(ε) / √3
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::{approx_eq, math::SQRT_3};
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_s(), 2.0 / SQRT_3, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_s(&self) -> f64 {
-        self.trace() / SQRT_3
-    }
-
-    /// Returns the isomorphic deviatoric strain invariant (radius on octahedral plane)
-    ///
-    /// ```text
-    /// εt = r = ‖e‖
-    ///
-    /// e = deviator(ε)
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::{approx_eq, math::SQRT_2_BY_3};
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_t(), SQRT_2_BY_3, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_t(&self) -> f64 {
-        self.deviator_norm()
-    }
-
-    /// Returns the volumetric strain invariant
-    ///
-    /// ```text
-    /// εv = trace(ε) = d √3
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_v(), 2.0, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_v(&self) -> f64 {
-        self.trace()
-    }
-
-    /// Returns the deviatoric strain invariant
-    ///
-    /// ```text
-    /// εd = norm(dev(ε)) × √2/√3 = r √2/√3
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use russell_lab::approx_eq;
-    /// use russell_tensor::{Tensor2, StrError};
-    ///
-    /// fn main() -> Result<(), StrError> {
-    ///     let a = Tensor2::<9>::from_std_matrix(&[
-    ///         [1.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 0.0],
-    ///         [0.0, 0.0, 1.0],
-    ///     ])?;
-    ///     approx_eq(a.invariant_eps_d(), 2.0 / 3.0, 1e-15);
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn invariant_eps_d(&self) -> f64 {
-        self.deviator_norm() * SQRT_2_BY_3
     }
 
     /// Returns the Lode invariant
@@ -2229,8 +2134,8 @@ impl<const N: usize> Tensor2<N> {
     /// # Definitions
     ///
     /// ```text
-    /// d = trace(T) / √3 = σs
-    /// r = ‖dev(T)‖ = σt
+    /// d = trace(T) / √3
+    /// r = ‖dev(T)‖
     /// l = cos(3θ) = (3 √3 J3)/(2 pow(J2,1.5))
     /// ```
     pub fn invariants_octahedral(&self) -> (f64, f64, Option<f64>) {
@@ -2393,7 +2298,7 @@ mod tests {
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
 
-        // symmetric 3D
+        // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
@@ -2406,7 +2311,7 @@ mod tests {
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.set(0, 123.0);
         assert_eq!(tt.get(0), 123.0);
@@ -2422,7 +2327,7 @@ mod tests {
 
     #[test]
     fn set_std_matrix_captures_errors() {
-        // symmetric 3D
+        // symmetric
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_10 = &[
@@ -2456,7 +2361,7 @@ mod tests {
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
-        // symmetric 2D
+        // symmetric generalized plane
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_12 = &[
@@ -2473,11 +2378,11 @@ mod tests {
         let mut tt = Tensor2::<4>::new();
         assert_eq!(
             tt.set_std_matrix(comps_std_12).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
         assert_eq!(
             tt.set_std_matrix(comps_std_02).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
     }
 
@@ -2524,7 +2429,7 @@ mod tests {
             approx_eq(tt.get(m), correct[m], 1e-15);
         }
 
-        // symmetric 3D
+        // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.vec.fill(NOISE);
         tt.set_std_matrix(&[[1.0, 4.0, 6.0], [4.0, 2.0, 5.0], [6.0, 5.0, 3.0]])
@@ -2534,7 +2439,7 @@ mod tests {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.vec.fill(NOISE);
         tt.set_std_matrix(&[[1.0, 4.0, 0.0], [4.0, 2.0, 0.0], [0.0, 0.0, 3.0]])
@@ -2547,7 +2452,7 @@ mod tests {
 
     #[test]
     fn from_std_matrix_captures_errors() {
-        // symmetric 3D
+        // symmetric
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_10 = &[
@@ -2580,7 +2485,7 @@ mod tests {
             Some("cannot set symmetric Tensor2 with non-symmetric data")
         );
 
-        // symmetric 2D
+        // symmetric generalized plane
         let eps = 1e-15;
         #[rustfmt::skip]
         let comps_std_12 = &[
@@ -2596,11 +2501,11 @@ mod tests {
         ];
         assert_eq!(
             Tensor2::<4>::from_std_matrix(comps_std_12).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
         assert_eq!(
             Tensor2::<4>::from_std_matrix(comps_std_02).err(),
-            Some("cannot set Symmetric2D Tensor2 with non-zero off-diagonal data")
+            Some("cannot set generalized plane Tensor2 with non-zero out-of-plane shear data")
         );
     }
 
@@ -2651,7 +2556,7 @@ mod tests {
              └      ┘"
         );
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2664,7 +2569,7 @@ mod tests {
             approx_eq(tt.get(m), correct[m], 1e-14);
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2692,7 +2597,7 @@ mod tests {
             assert_eq!(ii.get(m), IDENTITY2[m]);
         }
 
-        // symmetric 2d
+        // symmetric generalized plane
         let ii = Tensor2::<4>::identity();
         for m in 0..4 {
             assert_eq!(ii.get(m), IDENTITY2[m]);
@@ -2728,7 +2633,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2742,7 +2647,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2791,7 +2696,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2806,7 +2711,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2860,7 +2765,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2875,7 +2780,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -2907,7 +2812,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, comps_std, 1e-13);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -2921,7 +2826,7 @@ mod tests {
         let m2 = ee.as_std_matrix();
         mat_approx_eq(&m2, comps_std, 1e-13);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3012,7 +2917,7 @@ mod tests {
             }
         }
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3027,7 +2932,7 @@ mod tests {
             }
         }
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3101,7 +3006,7 @@ mod tests {
 
     #[test]
     fn sym_add_std_works() {
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3123,7 +3028,7 @@ mod tests {
              └                   ┘"
         );
 
-        // // symmetric 3D
+        // // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3179,14 +3084,14 @@ mod tests {
         let correct = &[[2.0, 4.0, 6.0], [8.0, 10.0, 12.0], [14.0, 16.0, 18.0]];
         mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
 
-        // symmetric 3D
+        // symmetric
         let mut tt = Tensor2::<6>::new();
         tt.vec.fill(NOISE);
         tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2, 5.0 * SQRT_2, 6.0 * SQRT_2]);
         let correct = &[[2.0, 8.0, 12.0], [8.0, 4.0, 10.0], [12.0, 10.0, 6.0]];
         mat_approx_eq(&tt.as_std_matrix(), correct, 1e-14);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut tt = Tensor2::<4>::new();
         tt.vec.fill(NOISE);
         tt.set_vector(2.0, &[1.0, 2.0, 3.0, 4.0 * SQRT_2]);
@@ -3219,7 +3124,7 @@ mod tests {
              └                      ┘"
         );
 
-        // symmetric 3D
+        // symmetric
         let mut a = Tensor2::<6>::new();
         #[rustfmt::skip]
         let b = Tensor2::<6>::from_std_matrix(&[
@@ -3242,7 +3147,7 @@ mod tests {
              └                      ┘"
         );
 
-        // symmetric 2D
+        // symmetric generalized plane
         let mut a = Tensor2::<4>::new();
         #[rustfmt::skip]
         let b = Tensor2::<4>::from_std_matrix(&[
@@ -3326,7 +3231,7 @@ mod tests {
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.determinant(), 0.0, 1e-13);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 6.0],
@@ -3336,7 +3241,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.determinant(), 101.0, 1e-13);
 
-        // symmetric 3D (another test)
+        // symmetric (another test)
         #[rustfmt::skip]
         let comps_std = &[
             [ 1.0, -3.0, 4.0],
@@ -3346,7 +3251,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.determinant(), -4.0, 1e-13);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3376,14 +3281,14 @@ mod tests {
         tt.transpose(&mut tt_tra);
         check_transpose(&tt, &tt_tra);
 
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tt_tra = Tensor2::<6>::new();
         tt.transpose(&mut tt_tra);
         check_transpose(&tt, &tt_tra);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tt_tra = Tensor2::<4>::new();
@@ -3429,14 +3334,14 @@ mod tests {
         assert_eq!(det, s.ii3);
         check_inverse(&tt, &tti, 1e-15);
 
-        // symmetric 3D with zero determinant
+        // symmetric with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<6>::new();
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<6>::new();
@@ -3444,14 +3349,14 @@ mod tests {
         approx_eq(det, s.ii3, 1e-14);
         check_inverse(&tt, &tti, 1e-13);
 
-        // symmetric 2D with zero determinant
+        // symmetric generalized plane with zero determinant
         let s = &SamplesTensor2::TENSOR_X;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<4>::new();
         let res = tt.inverse(&mut tti, 1e-10);
         assert_eq!(res, None);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tti = Tensor2::<4>::new();
@@ -3477,14 +3382,14 @@ mod tests {
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-13);
 
-        // symmetric 3D
+        // symmetric
         let s = &SamplesTensor2::TENSOR_U;
         let tt = Tensor2::<6>::from_std_matrix(&s.matrix).unwrap();
         let mut tt2 = Tensor2::<6>::new();
         tt.squared(&mut tt2);
         check_squared(&tt, &tt2, 1e-14);
 
-        // symmetric 2D
+        // symmetric generalized plane
         let s = &SamplesTensor2::TENSOR_Y;
         let tt = Tensor2::<4>::from_std_matrix(&s.matrix).unwrap();
         let mut tt2 = Tensor2::<4>::new();
@@ -3658,7 +3563,7 @@ mod tests {
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.norm(), f64::sqrt(285.0), 1e-15);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [ 2.0, -3.0, 4.0],
@@ -3668,7 +3573,7 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
         approx_eq(tt.norm(), f64::sqrt(117.0), 1e-15);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -3738,7 +3643,7 @@ mod tests {
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-15);
         approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
-        // symmetric 3D
+        // symmetric
         #[rustfmt::skip]
         let comps_std = &[
             [ 2.0, -3.0, 4.0],
@@ -3760,7 +3665,7 @@ mod tests {
         approx_eq(dev.norm(), tt.deviator_norm(), 1e-14);
         approx_eq(dev.determinant(), tt.invariant_jj3(), 1e-12);
 
-        // symmetric 2D
+        // symmetric generalized plane
         #[rustfmt::skip]
         let comps_std = &[
             [1.0, 4.0, 0.0],
@@ -4016,7 +3921,7 @@ mod tests {
         check_sample::<6>(&SamplesTensor2::TENSOR_Z, 1e-15, 1e-15, 1e-14, 1e-14, 1e-14);
         check_sample::<6>(&SamplesTensor2::TENSOR_U, 1e-13, 1e-15, 1e-14, 1e-14, 1e-13);
         check_sample::<6>(&SamplesTensor2::TENSOR_S, 1e-13, 1e-15, 1e-14, 1e-15, 1e-13);
-        // Symmetric 2D
+        // Symmetric generalized plane
         //                                                           norm   trace  det dev_norm dev_det
         check_sample::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
         check_sample::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15, 1e-15);
@@ -4063,7 +3968,7 @@ mod tests {
         check_iis::<6>(&SamplesTensor2::TENSOR_S, 1e-15, 1e-14, 1e-13, 1e-14);
         check_iis::<6>(&SamplesTensor2::COAL_01, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<6>(&SamplesTensor2::COAL_12, 1e-15, 1e-15, 1e-15, 1e-15);
-        // Symmetric 2D
+        // Symmetric generalized plane
         check_iis::<4>(&SamplesTensor2::TENSOR_O, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<4>(&SamplesTensor2::TENSOR_I, 1e-15, 1e-15, 1e-15, 1e-15);
         check_iis::<4>(&SamplesTensor2::TENSOR_X, 1e-15, 1e-15, 1e-13, 1e-15);
@@ -4089,9 +3994,7 @@ mod tests {
     #[test]
     fn octahedral_invariants_are_correct() {
         let q_1 = SQRT_3 / 2.0; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(3/2)
-        let eps_d_1 = 1.0 / SQRT_3; // sqrt(((0.5+0.5)² + (0.5)² + (-0.5)²)/3) * sqrt(2/3)
         let q_2 = 1.0; // sqrt((1² + 1²)/3)* sqrt(3/2)
-        let eps_d_2 = 2.0 / 3.0; // sqrt((1² + 1²)/3)* sqrt(2/3)
 
         // α = 0
         let (l1, l2, l3) = (0.0, -0.5, 0.5);
@@ -4099,10 +4002,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 30
@@ -4111,12 +4012,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = 60
@@ -4125,12 +4022,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 90
@@ -4139,12 +4032,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
 
         // α = 120
@@ -4153,12 +4042,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = 150
@@ -4167,12 +4052,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = 180
@@ -4181,12 +4062,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -150
@@ -4195,12 +4072,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
 
         // α = -120
@@ -4209,12 +4082,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -90
@@ -4223,12 +4092,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 2.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 2.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), -1.0, 1e-15, false);
 
         // α = -60
@@ -4237,12 +4102,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 0.0, 1e-15);
         approx_eq(tt.invariant_q(), q_1, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 0.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_1, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 0.0, 1e-15, false);
 
         // α = -30
@@ -4251,12 +4112,8 @@ mod tests {
         let tt = Tensor2::<6>::from_std_matrix(&[[l1, 0.0, 0.0], [0.0, l2, 0.0], [0.0, 0.0, l3]]).unwrap();
         approx_eq(tt.invariant_p(), 1.0 / 3.0, 1e-15);
         approx_eq(tt.invariant_q(), q_2, 1e-15);
-        approx_eq(tt.invariant_p(), tt.invariant_sigma_s() / SQRT_3, 1e-15);
-        approx_eq(tt.invariant_q(), tt.invariant_sigma_t() * SQRT_3_BY_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), 1.0, 1e-15);
-        approx_eq(tt.invariant_eps_d(), eps_d_2, 1e-15);
-        approx_eq(tt.invariant_eps_v(), tt.invariant_eps_s() * SQRT_3, 1e-15);
-        approx_eq(tt.invariant_eps_d(), tt.invariant_eps_t() * SQRT_2_BY_3, 1e-15);
+        approx_eq(tt.invariant_p(), tt.invariant_d() / SQRT_3, 1e-15);
+        approx_eq(tt.invariant_q(), tt.invariant_r() * SQRT_3_BY_2, 1e-15);
         check_lode(tt.invariant_lode(), 1.0, 1e-15, false);
     }
 
@@ -4334,10 +4191,10 @@ mod tests {
         for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
-        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
-        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t1.invariant_d(), distance, 1e-15);
+        approx_eq(t1.invariant_r(), radius, 1e-15);
+        approx_eq(t2.invariant_d(), distance, 1e-15);
+        approx_eq(t2.invariant_r(), radius, 1e-15);
 
         let t1 = Tensor2::<4>::new_from_octahedral(distance, radius, 0.0).unwrap();
         let t2 = Tensor2::<4>::new_from_octahedral_alpha(distance, radius, PI / 3.0).unwrap();
@@ -4348,10 +4205,10 @@ mod tests {
         for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
-        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
-        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t1.invariant_d(), distance, 1e-15);
+        approx_eq(t1.invariant_r(), radius, 1e-15);
+        approx_eq(t2.invariant_d(), distance, 1e-15);
+        approx_eq(t2.invariant_r(), radius, 1e-15);
 
         let t1 = Tensor2::<4>::new_from_octahedral(distance, radius, -1.0).unwrap();
         let t2 = Tensor2::<4>::new_from_octahedral_alpha(distance, radius, PI / 6.0).unwrap();
@@ -4362,10 +4219,10 @@ mod tests {
         for m in 0..4 {
             approx_eq(t1.get(m), t2.get(m), 1e-15);
         }
-        approx_eq(t1.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t1.invariant_sigma_t(), radius, 1e-15);
-        approx_eq(t2.invariant_sigma_s(), distance, 1e-15);
-        approx_eq(t2.invariant_sigma_t(), radius, 1e-15);
+        approx_eq(t1.invariant_d(), distance, 1e-15);
+        approx_eq(t1.invariant_r(), radius, 1e-15);
+        approx_eq(t2.invariant_d(), distance, 1e-15);
+        approx_eq(t2.invariant_r(), radius, 1e-15);
     }
 
     #[test]
@@ -4479,6 +4336,6 @@ mod tests {
         .unwrap();
         let mut ss = Tensor2::<4>::new();
         tt.deviator(&mut ss);
-        approx_eq(ss.trace(), 0.0, 1e-14);
+        assert_eq!(ss.trace(), 0.0, "the trace of the deviator must be exactly zero");
     }
 }

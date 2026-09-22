@@ -6,7 +6,7 @@ The script runs:
 1. `tensor_benchmark` with the stack layout (`--features intel_mkl`)
 2. `tensor_benchmark` with the heap layout (`--features intel_mkl,heap`)
 3. `polar_decomp_benchmark` with the stack layout (`--features intel_mkl`)
-4. `spectral2_benchmark` with the stack layout (`--features intel_mkl`)
+4. `eigen_values_benchmark` with the stack layout (`--features intel_mkl`)
 
 and produces `RESULTS.md` (next to this file) with the tables of results.
 
@@ -27,6 +27,7 @@ WORKSPACE = BENCH_DIR.parent.parent  # repository root
 
 # The tensor functions, in table order, as they appear in the benchmark.
 TENSOR_FUNCTIONS = [
+    "dsd_fn",
     "ssd_fn",
     "qsd_fn",
     "deriv2_invariant_jj3",
@@ -44,9 +45,10 @@ POLAR_CASES = [
 
 POLAR_ALGORITHMS = ["iterative", "quaternion", "eigen", "svd"]
 
-# Eigenvalue input cases and the four `EigMethod` variants.
-SPECTRAL2_CASES = ["distinct", "coalescent"]
-SPECTRAL2_METHODS = ["analytical_hz", "analytical_ha22", "analytical_ha23", "iterative"]
+# Eigenvalue input cases, the four `EigenValMethod` variants, and the derivative algos.
+EIGEN_CASES = ["distinct", "coalescent"]
+EIGEN_METHODS = ["analytical_hz", "analytical_ha22", "analytical_ha23", "iterative"]
+EIGEN_DERIV_ALGOS = ["char_poly", "with_inv"]
 
 TIME_RE = re.compile(r"time:\s*\[([^\]]+)\]")
 
@@ -146,8 +148,8 @@ def main():
     polar = parse_results(
         run("cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark")
     )
-    spectral2 = parse_results(
-        run("cargo bench -p russell_tensor --features intel_mkl --bench spectral2_benchmark")
+    eigen = parse_results(
+        run("cargo bench -p russell_tensor --features intel_mkl --bench eigen_values_benchmark")
     )
 
     lines = []
@@ -201,15 +203,35 @@ def main():
         add(f"| `{algorithm}` | {cell(polar, 'polar_rotation_in_plane/' + algorithm)} |")
     add("")
 
-    add("## Eigenvalues")
+    add("## Eigen")
     add("")
-    add("Median times (Intel MKL):")
+    add("Median times (Intel MKL).")
     add("")
-    add("| case | " + " | ".join(f"`{m}`" for m in SPECTRAL2_METHODS) + " |")
-    add("| --- | " + " | ".join("---" for _ in SPECTRAL2_METHODS) + " |")
-    for case in SPECTRAL2_CASES:
-        cells = [cell(spectral2, f"calc_eigenvalues_mx_{case}/{m}") for m in SPECTRAL2_METHODS]
+
+    add("### Eigenvalues — `EigenValuesT2::calculate_mx`")
+    add("")
+    add("| case | " + " | ".join(f"`{m}`" for m in EIGEN_METHODS) + " |")
+    add("| --- | " + " | ".join("---" for _ in EIGEN_METHODS) + " |")
+    for case in EIGEN_CASES:
+        cells = [cell(eigen, f"eigenvalues_{case}/{m}") for m in EIGEN_METHODS]
         add(f"| `{case}` | " + " | ".join(cells) + " |")
+    add("")
+
+    add("### Eigenprojectors — `EigenProjsT2::calculate_mx`")
+    add("")
+    add("| case | " + " | ".join(f"`{m}`" for m in EIGEN_METHODS) + " |")
+    add("| --- | " + " | ".join("---" for _ in EIGEN_METHODS) + " |")
+    for case in EIGEN_CASES:
+        cells = [cell(eigen, f"eigen_projectors_{case}/{m}") for m in EIGEN_METHODS]
+        add(f"| `{case}` | " + " | ".join(cells) + " |")
+    add("")
+
+    add("### Eigenprojector derivatives (distinct) — `EigenProjDerivsT2`")
+    add("")
+    add("| algorithm | time |")
+    add("| --- | --- |")
+    for algo in EIGEN_DERIV_ALGOS:
+        add(f"| `{algo}` | {cell(eigen, 'eigen_proj_derivs_distinct/' + algo)} |")
     add("")
 
     output = "\n".join(lines).rstrip() + "\n"

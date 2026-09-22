@@ -14,7 +14,7 @@
 //! * [Tensor2] — Second-order tensors in R³×R³. Allows symmetric specialization. Includes functions such as the determinant, inverse, norm, and invariants (principal, deviatoric, Lode, octahedral, ...)
 //! * [Tensor3] — Third-order tensors R³×R³×R³. Allows minor-symmetric specialization. Includes functions such as permutation (Levi-Civita) tensor
 //! * [Tensor4] — Fourth-order tensors R³×R³×R³×R³. Allows minor-symmetric specialization. Includes functions to generate isotropic tensors.
-//! * [Spectral2] — The spectral (eigen) representation of symmetric second-order tensors.
+//! * [EigenValuesT2], [EigenProjsT2], [EigenProjDerivsT2] — Eigenvalues, eigenprojectors, and the derivatives of the eigenprojectors for symmetric second-order tensors.
 //! * [LinElasticity] — The linear elasticity equations for small-strain problems (Generalized Hooke's law)
 //! * [analysis::PiezoDatabase] — A database of piezoelectric materials (dielectric permittivity, piezoelectric, and stiffness tensors) loaded from JSON.
 //! * Polar decomposition — Computes the polar decomposition `F = R U = V R` of a general [Tensor2] using the classic Eigen/SVD algorithms, the iterative Brannon algorithm, or the quaternion-based Higham & Noferini algorithm (see [PolarAlgo] and [polar_decomp_mx]).
@@ -33,10 +33,26 @@
 //! [Tensor3] — selects the representation:
 //!
 //! * `9` — all components (general): 9×1 / 9×3 / 3×9 / 9×9
-//! * `6` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (3D): 6×1 / 6×3 / 3×6 / 6×6
-//! * `4` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (2D): 4×1 / 4×3 / 3×4 / 4×4
+//! * `6` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4]: 6×1 / 6×3 / 3×6 / 6×6
+//! * `4` — symmetric [Tensor2] / minor-symmetric [Tensor3]/[Tensor4] (generalized plane): 4×1 / 4×3 / 3×4 / 4×4
 //!
 //! The dimensions above correspond to [Tensor2] (vector), [Tensor3] (Case A / Case B rectangular matrix), and [Tensor4] (square matrix), respectively.
+//!
+//! # Reduced dimension and truncation (chop) strategy
+//!
+//! The `N = 4` case is the four-dimensional subspace `{00, 11, 22, 01}` of
+//! symmetric tensors---the out-of-plane **normal** component `T₂₂` is kept,
+//! while only the out-of-plane **shears** are set to zero
+//! (`T₁₂ = T₀₂ = 0`, Kelvin-Mandel components 4 and 5).
+//!
+//! The tensor operators considered here (e.g., [ssd_fn], [qsd_fn], and the second
+//! derivatives of the invariants) are polynomial in the components, and for an
+//! input in this subspace they are *block diagonal* with respect to the
+//! `{0,1,2,3}` and `{4,5}` partitions: every off-diagonal block is proportional
+//! to the (zero) out-of-plane shears. Consequently, restricting both the input and
+//! the output to `N` components is **exact — not an approximation**: the reduced
+//! `N × N` operator is precisely the corresponding block of the full `6 × 6`
+//! operator.
 //!
 //! A [Tensor3] is stored as a rectangular Kelvin-Mandel matrix with dimensions `(M, N)`
 //! set by const generics. Two cases are considered, where `DIM` (the leading dimension)
@@ -85,16 +101,16 @@
 //!
 //! fn main() -> Result<(), StrError> {
 //!     // Allocate a symmetric second-order tensor given the standard components
-//!     let sigma = Tensor2::<6>::from_std_matrix(&[
+//!     let a = Tensor2::<6>::from_std_matrix(&[
 //!         [1.0, 2.0, 3.0],
 //!         [2.0, 2.0, 4.0],
 //!         [3.0, 4.0, 3.0],
 //!     ])?;
 //!
 //!     // Compute the principal invariants
-//!     let ii1 = sigma.invariant_ii1();
-//!     let ii2 = sigma.invariant_ii2();
-//!     let ii3 = sigma.invariant_ii3();
+//!     let ii1 = a.invariant_ii1();
+//!     let ii2 = a.invariant_ii2();
+//!     let ii3 = a.invariant_ii3();
 //!
 //!     println!("I1 = {:.6}", ii1);
 //!     println!("I2 = {:.6}", ii2);
@@ -110,13 +126,12 @@ pub mod analysis;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
+mod eigen_auxiliary;
+mod eigen_proj_derivs;
+mod eigen_projectors;
+mod eigen_values;
 mod lin_elasticity;
-mod operations_mix1;
-mod operations_mix2;
-mod operations_t2;
-mod operations_t2x;
-mod operations_t3;
-mod operations_t4;
+mod operators;
 mod polar_brannon;
 mod polar_classic;
 mod polar_decomp;
@@ -124,34 +139,29 @@ mod polar_higham;
 mod samples_tensor2;
 mod samples_tensor3;
 mod samples_tensor4;
-mod spectral2;
-mod spectral2_aux;
 mod tensor1;
 mod tensor2;
 mod tensor3;
 mod tensor4;
 
 #[cfg(test)]
-mod test_common;
+mod testing;
 
 pub mod z_reference_loop_fns;
 
 pub use constants::*;
 pub use derivatives_t2::*;
 pub use derivatives_t4::*;
+pub use eigen_auxiliary::*;
+pub use eigen_proj_derivs::*;
+pub use eigen_projectors::*;
+pub use eigen_values::*;
 pub use lin_elasticity::*;
-pub use operations_mix1::*;
-pub use operations_mix2::*;
-pub use operations_t2::*;
-pub use operations_t2x::*;
-pub use operations_t3::*;
-pub use operations_t4::*;
+pub use operators::*;
 pub use polar_decomp::*;
 pub use samples_tensor2::*;
 pub use samples_tensor3::*;
 pub use samples_tensor4::*;
-pub use spectral2::*;
-pub use spectral2_aux::*;
 pub use tensor1::*;
 pub use tensor2::*;
 pub use tensor3::*;

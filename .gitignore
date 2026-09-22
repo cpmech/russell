@@ -20,3 +20,6 @@ rustc-ice-*.txt
 *.pyc
 __pycache__/
 session*.json
+AGENTS-WIP.md
+commands.tex
+paper.md

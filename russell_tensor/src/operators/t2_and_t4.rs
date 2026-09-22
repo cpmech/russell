@@ -1,5 +1,5 @@
-use super::{Tensor2, Tensor4};
 use crate::ADD;
+use crate::{Tensor2, Tensor4};
 
 /// Performs the dyadic product between two Tensor2 resulting a Tensor4
 ///
@@ -524,7 +524,7 @@ mod tests {
              └                                     ┘"
         );
 
-        // sym-2D dyad sym-2D
+        // sym generalized plane dyad sym generalized plane
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 2.0, 0.0],
@@ -667,7 +667,7 @@ mod tests {
         mat_approx_eq(&mat, &correct, 1e-13);
         check_dyad(2.0, &a, &b, &dd, 1e-13);
 
-        // symmetric 2D dyad symmetric 2D
+        // symmetric generalized plane dyad symmetric generalized plane
         #[rustfmt::skip]
         let a = Tensor2::<4>::from_std_matrix(&[
             [1.0, 4.0, 0.0],

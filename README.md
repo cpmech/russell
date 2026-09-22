@@ -705,6 +705,18 @@ std_dev = 312.7131690782321
 
 This section summarizes the `build.rs` files, which compile and link the non-Rust C (and CUDA) dependencies at build time.
 
+### Naming conventions
+
+The code adopts the convention that **double lower-case letters denote a single capital letter**, matching the symbols used in the documentation and the mathematical formulas:
+
+- `aa` ⇔ `A`
+- `bb` ⇔ `B`
+- `pp` ⇔ `P`
+- `ii` ⇔ `I`
+- `jj` ⇔ `J`
+
+For example, the scalar coefficients `A`, `B`, and `C` in the second-derivative formulas of the invariants are coded as `aa`, `bb`, and `cc`.
+
 ### russell_lab — BLAS/LAPACK
 
 `russell_lab/build.rs` compiles a single C shim (`c_code/interface_blas.c`) that wraps BLAS/LAPACK, selecting one of two paths via feature flags:

@@ -1,5 +1,5 @@
-use super::Tensor4;
 use crate::ADD;
+use crate::Tensor4;
 
 #[cfg(feature = "heap")]
 use russell_lab::{mat_add, mat_mat_mul};

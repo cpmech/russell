@@ -1,17 +1,16 @@
 # Russell - Rust Scientific Library <!-- omit from toc --> 
 
-<h1 align="center">
-  <a href="https://github.com/cpmech/russell"><img src="logo.svg" alt="Russell" width="368px"></a>
-<br>
-</h1>
+<p align="center">
+<a href="https://github.com/cpmech/russell"><img src="bertrand-russell.jpeg" alt="Bertrand Russell"></a>*
+</p>
 
 <p align="center">
-  <b>Numerical mathematics, numerical continuation, differential equations, special math functions, high-performance (sparse) linear algebra, statistics.</b><br />
+<a href="https://github.com/cpmech/russell"><img src="logo.svg" alt="Russell"></a>
 </p>
 
 ---
 
-[![Track Awesome List](https://www.trackawesomelist.com/badge.svg)](https://www.trackawesomelist.com/rust-unofficial/awesome-rust/)
+`*` This project honors the British philosopher and mathematician [Bertrand Russell](https://en.wikipedia.org/wiki/Bertrand_Russell).
 
 ---
 
@@ -72,13 +71,9 @@
   - [(tensor) Allocate second-order tensors](#tensor-allocate-second-order-tensors)
 - [Roadmap](#roadmap)
 - [For developers](#for-developers)
+  - [Naming conventions](#naming-conventions)
   - [russell\_lab — BLAS/LAPACK](#russell_lab--blaslapack)
   - [russell\_sparse — sparse solvers](#russell_sparse--sparse-solvers)
-- [Bertrand Russell: 1972 Commemorative Stamp](#bertrand-russell-1972-commemorative-stamp)
-  - [Official Reference Details](#official-reference-details)
-  - [Philatelic Catalog Classifications](#philatelic-catalog-classifications)
-  - [References and Resources](#references-and-resources)
-  - [TODO](#todo)
 
 
 
@@ -740,39 +735,6 @@ Build-dependencies: `cc`, `pkg-config`.
 
 Build-dependencies: `cc`, `pkg-config`.
 
+---
 
-
-## Bertrand Russell: 1972 Commemorative Stamp
-
-In 1972, India Post issued a commemorative postage stamp to honor the birth centenary of the renowned British mathematician, logician, and philosopher, Bertrand Russell. This visual asset can be seen in [@fig:russell-stamp].
-
-![TODO: 1972 Indian commemorative postage stamp of Bertrand Russell. Photograph by [Your Name], licensed under CC BY 4.0.](assets/india_russell_stamp_1972.jpg){#fig:russell-stamp}
-
-### Official Reference Details
-
-* **Issuer:** India Post (Department of Posts, Government of India)
-* **Release Date:** October 16, 1972
-* **Occasion:** Birth Centenary of Bertrand Russell
-* **Denomination:** Rs. 1.45
-* **Design Source:** Portrait reproduced using a photograph courtesy of the Keystone Press Agency Ltd., London.
-
-### Philatelic Catalog Classifications
-
-For strict archival or historical referencing, the stamp is classified under the following standard philatelic catalog numbers:
-
-* **Scott Catalog Number:** 561
-* **Stanley Gibbons (SG) Number:** 667
-
-### References and Resources
-
-* **India Post Archives:** Official records of commemorative stamps from 1972 can be found via the [India Post Official Website](https://www.indiapost.gov.in/).
-* **Global Philatelic Database (Colnect):** [Bertrand Russell 1972 Commemorative Issue](https://colnect.com/en/stamps/stamp/21997-Bertrand_Russell_1872-1970_British_philosopher-India) *(Placeholder link to the specific catalog entry)*.
-* **Bibliography Placeholder:** [@indiapost1972russell] <!-- Replace with your actual BibTeX or Citeproc citation key if using Pandoc citeproc -->
-
-### TODO
-
-```bash
-exiftool -Creator="[Your Name]" -UsageTerms="Licensed under CC BY 4.0" -WebStatement="https://creativecommons.org/licenses/by/4.0/" stamp_photo.jpg
-```
-
-Asset License: The source code in this repository is licensed under [Your Code License]. The photograph of the Bertrand Russell stamp (assets/india_russell_stamp_1972.jpg) is an original photograph by [Your Name] and is provided under the Creative Commons Attribution 4.0 International (CC BY 4.0) License.
+[![Track Awesome List](https://www.trackawesomelist.com/badge.svg)](https://www.trackawesomelist.com/rust-unofficial/awesome-rust/)

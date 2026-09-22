@@ -35,7 +35,7 @@ pub fn t2_udyad_t2<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: f64, aa: &Ten
 /// Internal (unrolled) underbar dyadic product on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn t2_udyad_t2_slice<const N:usize>(dd: &mut Tensor4<9>, op: u8, s: f64, a: &[f64], b: &[f64]) {
+pub(crate) fn t2_udyad_t2_slice<const N:usize>(dd: &mut Tensor4<9>, op: u8, s: f64, a: &[f64; N], b: &[f64; N]) {
     let tsq2 = 2.0 * SQRT_2;
     if op == ADD {
         if N == 4 {

@@ -36,7 +36,7 @@ pub fn ssd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<
 /// Internal (unrolled) self-sum-dyadic operation on raw Kelvin-Mandel vectors.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn ssd_fn_slice<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64]) {
+pub(crate) fn ssd_fn_slice<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64; N]) {
     if op == ADD {
         if N == 4 {
             dd.add(0, 0, s*(2.0*a[0]*a[0]));

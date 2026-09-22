@@ -253,20 +253,16 @@ impl<const N: usize> Tensor2<N> {
         self.vec[m] += value;
     }
 
-    /// Returns a slice to the Kelvin-Mandel vector data (crate-internal)
-    ///
-    /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
+    /// Returns a reference to the Kelvin-Mandel vector data (crate-internal)
     #[inline]
-    pub(crate) fn as_data(&self) -> &[f64] {
-        &self.vec[..]
+    pub(crate) fn as_data(&self) -> &[f64; N] {
+        &self.vec
     }
 
-    /// Returns a mutable slice to the Kelvin-Mandel vector data (crate-internal)
-    ///
-    /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
+    /// Returns a mutable reference to the Kelvin-Mandel vector data (crate-internal)
     #[inline]
-    pub(crate) fn as_mut_data(&mut self) -> &mut [f64] {
-        &mut self.vec[..]
+    pub(crate) fn as_mut_data(&mut self) -> &mut [f64; N] {
+        &mut self.vec
     }
 
     /// Sets the Tensor2 with standard components given in matrix form

@@ -36,6 +36,33 @@ const GENERAL: [[f64; 3]; 3] = [
     [7.0, 8.0, 9.0], // 3
 ];
 
+/// Benchmarks `dsd_fn` (duo-sum-dyadic)
+fn bench_dsd_fn(crit: &mut Criterion) {
+    let mut group = crit.benchmark_group("dsd_fn");
+
+    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
+        let aa = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let bb = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        b.iter(|| {
+            dsd_fn(&mut dd, SET, 1.0, &aa, &bb);
+            std::hint::black_box(&dd);
+        });
+    });
+
+    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
+        let aa = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let bb = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
+        let mut dd = Tensor4::<6>::new();
+        b.iter(|| {
+            dsd_fn_loops(&mut dd, 1.0, &aa, &bb);
+            std::hint::black_box(&dd);
+        });
+    });
+
+    group.finish();
+}
+
 /// Benchmarks `ssd_fn` (self-sum-dyadic)
 fn bench_ssd_fn(crit: &mut Criterion) {
     let mut group = crit.benchmark_group("ssd_fn");
@@ -81,33 +108,6 @@ fn bench_qsd_fn(crit: &mut Criterion) {
         let mut dd = Tensor4::<6>::new();
         b.iter(|| {
             qsd_fn_loops(&mut dd, 1.0, &aa, &bb);
-            std::hint::black_box(&dd);
-        });
-    });
-
-    group.finish();
-}
-
-/// Benchmarks `dsd_fn` (duo-sum-dyadic)
-fn bench_dsd_fn(crit: &mut Criterion) {
-    let mut group = crit.benchmark_group("dsd_fn");
-
-    group.bench_with_input(BenchmarkId::new("unrolled", ""), &(), |b, _| {
-        let aa = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
-        let bb = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
-        let mut dd = Tensor4::<6>::new();
-        b.iter(|| {
-            dsd_fn(&mut dd, SET, 1.0, &aa, &bb);
-            std::hint::black_box(&dd);
-        });
-    });
-
-    group.bench_with_input(BenchmarkId::new("loops", ""), &(), |b, _| {
-        let aa = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
-        let bb = Tensor2::<6>::from_std_matrix(&SYMMETRIC).unwrap();
-        let mut dd = Tensor4::<6>::new();
-        b.iter(|| {
-            dsd_fn_loops(&mut dd, 1.0, &aa, &bb);
             std::hint::black_box(&dd);
         });
     });
@@ -193,9 +193,9 @@ fn bench_deriv_squared_tensor(crit: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_dsd_fn,
     bench_ssd_fn,
     bench_qsd_fn,
-    bench_dsd_fn,
     bench_deriv2_invariant_jj3,
     bench_deriv2_invariant_lode,
     bench_deriv_squared_tensor

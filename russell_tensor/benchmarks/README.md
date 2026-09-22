@@ -23,9 +23,9 @@ Each function is benchmarked in two variants:
 
 | function                | description                                        |
 | ----------------------- | -------------------------------------------------- |
+| `dsd_fn`                | duo-sum-dyadic operation                           |
 | `ssd_fn`                | self-sum-dyadic operation                          |
 | `qsd_fn`                | quad-sum-dyadic operation                          |
-| `dsd_fn`                | duo-sum-dyadic operation                           |
 | `deriv2_invariant_jj3`  | second derivative of the J3 invariant              |
 | `deriv2_invariant_lode` | second derivative of the Lode invariant            |
 | `deriv_squared_tensor`  | derivative of the squared tensor (general Tensor2) |

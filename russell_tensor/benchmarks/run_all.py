@@ -27,9 +27,9 @@ WORKSPACE = BENCH_DIR.parent.parent  # repository root
 
 # The tensor functions, in table order, as they appear in the benchmark.
 TENSOR_FUNCTIONS = [
+    "dsd_fn",
     "ssd_fn",
     "qsd_fn",
-    "dsd_fn",
     "deriv2_invariant_jj3",
     "deriv2_invariant_lode",
     "deriv_squared_tensor",

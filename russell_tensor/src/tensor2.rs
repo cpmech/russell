@@ -640,7 +640,7 @@ impl<const N: usize> Tensor2<N> {
     }
 
     /// Converts this tensor to a 3x3 matrix with the standard components (internal slice version)
-    pub(crate) fn to_std_matrix_slice(&self, mat: &mut [[f64; 3]; 3]) {
+    pub(crate) fn to_std_matrix_array(&self, mat: &mut [[f64; 3]; 3]) {
         for i in 0..3 {
             for j in 0..3 {
                 mat[i][j] = self.get_std(i, j);
@@ -2717,7 +2717,7 @@ mod tests {
     }
 
     #[test]
-    fn to_std_matrix_slice_works() {
+    fn to_std_matrix_array_works() {
         // will be overwritten, so the test will check it clean up
         let mut res = [[0.0; 3]; 3];
 
@@ -2729,7 +2729,7 @@ mod tests {
             [7.0, 8.0, 9.0],
         ];
         let tt = Tensor2::<9>::from_std_matrix(comps_std).unwrap();
-        tt.to_std_matrix_slice(&mut res);
+        tt.to_std_matrix_array(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res[i][j], comps_std[i][j], 1e-14);
@@ -2744,7 +2744,7 @@ mod tests {
             [6.0, 5.0, 3.0],
         ];
         let tt = Tensor2::<6>::from_std_matrix(comps_std).unwrap();
-        tt.to_std_matrix_slice(&mut res);
+        tt.to_std_matrix_array(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res[i][j], comps_std[i][j], 1e-14);
@@ -2759,7 +2759,7 @@ mod tests {
             [0.0, 0.0, 3.0],
         ];
         let tt = Tensor2::<4>::from_std_matrix(comps_std).unwrap();
-        tt.to_std_matrix_slice(&mut res);
+        tt.to_std_matrix_array(&mut res);
         for i in 0..3 {
             for j in 0..3 {
                 approx_eq(res[i][j], comps_std[i][j], 1e-14);

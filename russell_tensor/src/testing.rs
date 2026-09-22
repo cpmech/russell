@@ -835,9 +835,9 @@ pub fn check_polar(a: &Tensor2<9>, q: &Tensor2<9>, h: &Tensor2<6>, tol: f64) {
     let mut am = [[0.0; 3]; 3];
     let mut qm = [[0.0; 3]; 3];
     let mut hm = [[0.0; 3]; 3];
-    a.to_std_matrix_slice(&mut am);
-    q.to_std_matrix_slice(&mut qm);
-    h.to_std_matrix_slice(&mut hm);
+    a.to_std_matrix_array(&mut am);
+    q.to_std_matrix_array(&mut qm);
+    h.to_std_matrix_array(&mut hm);
     let mut qh = [[0.0; 3]; 3];
     small_mat_mat_mul(&mut qh, 1.0, &qm, &hm, 0.0, 3);
     small_mat_approx_eq(&qh, &am, tol);

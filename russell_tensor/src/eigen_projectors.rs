@@ -53,7 +53,7 @@ impl EigenProjsT2 {
         if method == EigenValMethod::Iterative {
             // eigenvalues and eigenvectors
             let mut lam = [0.0, 0.0, 0.0];
-            aa.to_std_matrix_slice(&mut self.eig.aa);
+            aa.to_std_matrix_array(&mut self.eig.aa);
             small_mat_eigen_sym_jacobi(&mut lam, &mut self.eig.vv, &mut self.eig.aa)?;
 
             // get indices to sort eigenvalues in descending order

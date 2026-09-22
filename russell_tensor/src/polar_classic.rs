@@ -36,7 +36,7 @@ pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &
     */
     // F as a 3x3 matrix (stack)
     let mut f = [[0.0; 3]; 3];
-    ff.to_std_matrix_slice(&mut f);
+    ff.to_std_matrix_array(&mut f);
 
     // C = Fᵀ · F (stack)
     let mut cc = [[0.0; 3]; 3];
@@ -59,7 +59,7 @@ pub(crate) fn polar_decomp_eigen(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &
 
     // R = F · U⁻¹ (stack)
     let mut u3 = [[0.0; 3]; 3];
-    uu.to_std_matrix_slice(&mut u3);
+    uu.to_std_matrix_array(&mut u3);
     let mut ui = [[0.0; 3]; 3];
     small_mat_inv(&mut ui, &u3, 3)?;
     let mut r = [[0.0; 3]; 3];
@@ -96,7 +96,7 @@ pub(crate) fn polar_decomp_svd(rr: &mut Tensor2<9>, uu: &mut Tensor2<6>, ff: &Te
     */
     // F as a 3x3 matrix (stack)
     let mut f = [[0.0; 3]; 3];
-    ff.to_std_matrix_slice(&mut f);
+    ff.to_std_matrix_array(&mut f);
 
     // SVD: F = P · D · Qᵀ (stack)
     let mut s = [0.0; 3];

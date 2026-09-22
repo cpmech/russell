@@ -100,7 +100,7 @@ pub fn eigenprojector_rules(
     let mut max_idem = 0.0;
     let mut max_orth = 0.0;
     for i in 0..3 {
-        proj[i].to_std_matrix_slice(&mut ppi); // P[i] <- 3x3 matrix from KM vector
+        proj[i].to_std_matrix_array(&mut ppi); // P[i] <- 3x3 matrix from KM vector
         for j in 0..3 {
             if i == j {
                 // 1. Idempotent rule: P[i] . P[i] = P[i]
@@ -108,7 +108,7 @@ pub fn eigenprojector_rules(
                 max_idem = f64::max(max_idem, max_diff(&aux, &ppi));
             } else {
                 // 2. Orthogonal rule: P[i] . P[j] = 0-matrix
-                proj[j].to_std_matrix_slice(&mut ppj); // P[j] <- 3x3 matrix from KM vector
+                proj[j].to_std_matrix_array(&mut ppj); // P[j] <- 3x3 matrix from KM vector
                 small_mat_mat_mul(&mut aux, 1.0, &ppi, &ppj, 0.0, 3);
                 max_orth = f64::max(max_orth, max_diff(&aux, &ZERO_3X3_MAT));
             }

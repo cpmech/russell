@@ -65,16 +65,9 @@ use std::fmt::{self, Write};
 /// ```
 #[derive(Clone, Debug)]
 pub struct Tensor2<const N: usize> {
-    /// Holds the components in Kelvin-Mandel basis as a vector (heap).
-    ///
-    /// Heap version => dynamically allocated memory
-    #[cfg(feature = "heap")]
-    pub(crate) vec: Vector,
-
     /// Holds the components in Kelvin-Mandel basis as a vector (stack).
     ///
     /// Stack version => fixed size memory
-    #[cfg(not(feature = "heap"))]
     pub(crate) vec: [f64; N],
 }
 
@@ -141,10 +134,6 @@ impl<const N: usize> Tensor2<N> {
     pub fn new() -> Self {
         let _ = Self::VALIDATE_DIM;
 
-        #[cfg(feature = "heap")]
-        let vec = Vector::new(N);
-
-        #[cfg(not(feature = "heap"))]
         let vec = [0.0; N];
 
         Tensor2 { vec }
@@ -269,14 +258,7 @@ impl<const N: usize> Tensor2<N> {
     /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
     #[inline]
     pub(crate) fn as_data(&self) -> &[f64] {
-        #[cfg(feature = "heap")]
-        {
-            self.vec.as_data().as_slice()
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            &self.vec[..]
-        }
+        &self.vec[..]
     }
 
     /// Returns a mutable slice to the Kelvin-Mandel vector data (crate-internal)
@@ -284,14 +266,7 @@ impl<const N: usize> Tensor2<N> {
     /// Note: the slice length equals the Kelvin-Mandel vector dimension (4, 6, or 9).
     #[inline]
     pub(crate) fn as_mut_data(&mut self) -> &mut [f64] {
-        #[cfg(feature = "heap")]
-        {
-            self.vec.as_mut_data().as_mut_slice()
-        }
-        #[cfg(not(feature = "heap"))]
-        {
-            &mut self.vec[..]
-        }
+        &mut self.vec[..]
     }
 
     /// Sets the Tensor2 with standard components given in matrix form

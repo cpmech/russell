@@ -568,9 +568,7 @@ impl HaberaZilian {
                 }
             }
             "single_lim_disc_t" => {
-                if delta == 1e-12 {
-                    1e-14
-                } else if delta == 5e0 {
+                if delta == 1e-12 || delta == 5e0 {
                     1e-14
                 } else if delta == 5e2 {
                     1e-13

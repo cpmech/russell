@@ -91,8 +91,6 @@
 //! The following (Rust) features are available:
 //!
 //! * `intel_mkl` — use Intel MKL instead of OpenBLAS
-//! * `heap` — use heap-allocated (dynamically allocated) storage for the tensor
-//!   components instead of the default stack-allocated (fixed-size) storage
 //!
 //! # Examples
 //!

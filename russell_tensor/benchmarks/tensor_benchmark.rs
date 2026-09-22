@@ -1,15 +1,6 @@
 //! Benchmarks for the `russell_tensor` crate.
 //!
-//! The `heap` cargo feature selects between the stack-allocated and
-//! heap-allocated internal storage at compile time:
-//!
-//! * without `--features heap` — `Tensor2.vec: [f64; 9]`, `Tensor4.mat: [[f64; 9]; 9]` (stack)
-//! * with `--features heap` — `Tensor2.vec: Vector`, `Tensor4.mat: Matrix` (heap)
-//!
-//! Run the benchmark twice (with and without `--features heap`) to compare the
-//! two storage layouts.
-//!
-//! Each function is also benchmarked in two variants:
+//! Each function is benchmarked in two variants:
 //!
 //! * `unrolled` — the production (manually-unrolled) implementation
 //! * `loops` — the loop-based reference implementation from `russell_tensor::z_reference_loop_fns`

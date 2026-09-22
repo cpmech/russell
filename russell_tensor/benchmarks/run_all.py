@@ -3,10 +3,9 @@
 
 The script runs:
 
-1. `tensor_benchmark` with the stack layout (`--features intel_mkl`)
-2. `tensor_benchmark` with the heap layout (`--features intel_mkl,heap`)
-3. `polar_decomp_benchmark` with the stack layout (`--features intel_mkl`)
-4. `eigen_values_benchmark` with the stack layout (`--features intel_mkl`)
+1. `tensor_benchmark`
+2. `polar_decomp_benchmark`
+3. `eigen_values_benchmark`
 
 and produces `RESULTS.md` (next to this file) with the tables of results.
 
@@ -142,9 +141,6 @@ def main():
     stack = parse_results(
         run("cargo bench -p russell_tensor --features intel_mkl --bench tensor_benchmark")
     )
-    heap = parse_results(
-        run("cargo bench -p russell_tensor --features intel_mkl,heap --bench tensor_benchmark")
-    )
     polar = parse_results(
         run("cargo bench -p russell_tensor --features intel_mkl --bench polar_decomp_benchmark")
     )
@@ -172,15 +168,13 @@ def main():
     add("")
     add("Median times (Intel MKL):")
     add("")
-    add("| function | stack/unrolled | heap/unrolled | stack/loops | heap/loops |")
-    add("| --- | --- | --- | --- | --- |")
+    add("| function | unrolled | loops |")
+    add("| --- | --- | --- |")
     for function in TENSOR_FUNCTIONS:
         add(
             f"| `{function}` "
             f"| {cell(stack, function + '/unrolled')} "
-            f"| {cell(heap, function + '/unrolled')} "
-            f"| {cell(stack, function + '/loops')} "
-            f"| {cell(heap, function + '/loops')} |"
+            f"| {cell(stack, function + '/loops')} |"
         )
     add("")
 

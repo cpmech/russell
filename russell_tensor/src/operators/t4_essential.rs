@@ -1,10 +1,6 @@
 use crate::ADD;
 use crate::Tensor4;
 
-#[cfg(feature = "heap")]
-use russell_lab::{mat_add, mat_mat_mul};
-
-#[cfg(not(feature = "heap"))]
 use russell_lab::{small_mat_add, small_mat_mat_mul};
 
 /// Adds two fourth-order tensors
@@ -13,14 +9,7 @@ use russell_lab::{small_mat_add, small_mat_mat_mul};
 /// c := α⋅a + β⋅b
 /// ```
 pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, beta: f64, b: &Tensor4<N>) {
-    #[cfg(feature = "heap")]
-    {
-        mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat).unwrap();
-    }
-    #[cfg(not(feature = "heap"))]
-    {
-        small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, N);
-    }
+    small_mat_add(&mut c.mat, alpha, &a.mat, beta, &b.mat, N);
 }
 
 /// Performs the double-dot (ddot) operation between two Tensor4
@@ -105,14 +94,7 @@ pub fn t4_add<const N: usize>(c: &mut Tensor4<N>, alpha: f64, a: &Tensor4<N>, be
 /// ```
 pub fn t4_ddot_t4<const N: usize>(ee: &mut Tensor4<N>, op: u8, alpha: f64, cc: &Tensor4<N>, dd: &Tensor4<N>) {
     let beta = if op == ADD { 1.0 } else { 0.0 };
-    #[cfg(feature = "heap")]
-    {
-        mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta).unwrap();
-    }
-    #[cfg(not(feature = "heap"))]
-    {
-        small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, N);
-    }
+    small_mat_mat_mul(&mut ee.mat, alpha, &cc.mat, &dd.mat, beta, N);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

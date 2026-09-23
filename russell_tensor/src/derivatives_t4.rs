@@ -735,7 +735,10 @@ pub fn deriv2_invariant_q<const N: usize>(d2: &mut Tensor4<N>, a: &Tensor2<N>) -
 
 /// Sets a workspace with temporary variables to calculate the second derivative of the Lode angle
 pub struct WorkspaceDeriv2Lode<const N: usize> {
+    /// Holds the first derivative of J3
     pub d1_jj3: Tensor2<N>,
+
+    /// Holds the second derivative of J3
     pub d2_jj3: Tensor4<N>,
 }
 

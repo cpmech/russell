@@ -26,7 +26,7 @@ structopt = "0.3"
 [dev-dependencies]
 plotpy = "1.23"
 rayon = "1.10"
-serial_test = "3.5"
+serial_test = "4.0"
 
 [lints]
 workspace = true

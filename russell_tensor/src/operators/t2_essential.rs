@@ -666,6 +666,15 @@ mod tests {
         );
     }
 
+    /// Builds a Tensor2 from its Kelvin-Mandel components
+    fn tensor2_from_kelvin<const N: usize>(data: &[f64; N]) -> Tensor2<N> {
+        let mut tt = Tensor2::<N>::new();
+        for m in 0..N {
+            tt.set(m, data[m]);
+        }
+        tt
+    }
+
     #[test]
     fn t1_dyad_t1_works() {
         // general
@@ -684,7 +693,7 @@ mod tests {
             6.0 * SQRT_2,
             12.0 * SQRT_2,
         ];
-        t2_approx_eq(&tt, correct, 1e-14);
+        t2_approx_eq(&tt, &tensor2_from_kelvin(correct), 1e-14);
 
         // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
@@ -692,7 +701,7 @@ mod tests {
         let mut tt = Tensor2::<6>::new();
         t1_dyad_t1(&mut tt, SET, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
-        t2_approx_eq(&tt, correct, 1e-14);
+        t2_approx_eq(&tt, &tensor2_from_kelvin(correct), 1e-14);
 
         // symmetric generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
@@ -700,7 +709,7 @@ mod tests {
         let mut tt = Tensor2::<4>::new();
         t1_dyad_t1(&mut tt, SET, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
-        t2_approx_eq(&tt, correct, 1e-14);
+        t2_approx_eq(&tt, &tensor2_from_kelvin(correct), 1e-14);
     }
 
     #[test]
@@ -716,7 +725,7 @@ mod tests {
             -18.0 * SQRT_2, -18.0 * SQRT_2, -20.0 * SQRT_2,
             6.0 * SQRT_2, 6.0 * SQRT_2, 12.0 * SQRT_2,
         ];
-        t2_approx_eq(&tt, correct, 1e-14);
+        t2_approx_eq(&tt, &tensor2_from_kelvin(correct), 1e-14);
 
         // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
@@ -725,7 +734,7 @@ mod tests {
         t1_dyad_t1(&mut tt, ADD, 2.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[92.0, 182.0, 268.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
-        t2_approx_eq(&tt, correct, 1e-14);
+        t2_approx_eq(&tt, &tensor2_from_kelvin(correct), 1e-14);
 
         // symmetric generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
@@ -734,6 +743,6 @@ mod tests {
         t1_dyad_t1(&mut tt, ADD, 2.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[92.0, 182.0, 300.0, -12.0 * SQRT_2];
-        t2_approx_eq(&tt, correct, 1e-14);
+        t2_approx_eq(&tt, &tensor2_from_kelvin(correct), 1e-14);
     }
 }

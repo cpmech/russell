@@ -24,7 +24,7 @@ pub(crate) fn polar_rotation_brannon(rr: &mut Tensor2<9>, ff: &Tensor2<9>) -> Re
     // tensor operations are written long-hand (as in the original) so that the
     // iteration path, iteration count, and result match it exactly.
     let mut f = [[0.0; 3]; 3];
-    ff.to_std_matrix_slice(&mut f);
+    ff.to_std_matrix_array(&mut f);
 
     // Step 1: E = F^T F
     let mut e11 = f[0][0] * f[0][0] + f[1][0] * f[1][0] + f[2][0] * f[2][0];

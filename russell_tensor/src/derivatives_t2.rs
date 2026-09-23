@@ -183,7 +183,7 @@ pub fn deriv1_invariant_jj2<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>)
 pub fn deriv1_invariant_jj3<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     let mut s = [0.0; 6];
-    deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, a);
+    deriv1_invariant_jj3_slice(d1.as_mut_vec(), &mut s, a);
 }
 
 /// Calculates the first derivative of the J3 invariant (crate-internal)
@@ -382,7 +382,7 @@ pub fn deriv1_invariant_lode<const N: usize>(d1: &mut Tensor2<N>, a: &Tensor2<N>
     let jj2 = a.invariant_jj2();
     let mut s = [0.0; 6];
     if jj2 > TOL_J2 {
-        deriv1_invariant_jj3_slice(d1.as_mut_data(), &mut s, a); // d1 := dJ3/da
+        deriv1_invariant_jj3_slice(d1.as_mut_vec(), &mut s, a); // d1 := dJ3/da
         let jj3 = a.invariant_jj3();
         let sqrt_j2 = f64::sqrt(jj2);
         let aa = 1.5 * SQRT_3 / (jj2 * sqrt_j2);

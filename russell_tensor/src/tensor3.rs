@@ -194,57 +194,17 @@ use std::fmt::{self, Write};
 ///    -----------------------
 ///      2 0  2 1  2 2  2 3
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(transparent)]
+#[serde(bound(
+    serialize = "[[f64; N]; M]: Serialize",
+    deserialize = "[[f64; N]; M]: Deserialize<'de>"
+))]
 pub struct Tensor3<const M: usize, const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     ///
     /// This array may use more data than necessary in symmetric cases
     pub(crate) mat: [[f64; N]; M],
-}
-
-// Manual Serialize/Deserialize implementations: serde only implements the traits
-// for concrete array sizes, so the derive fails for the generic `[[f64; N]; M]`.
-// Since M and N are known to be 4, 6, or 9 (with the other being 3), we serialize
-// the components as a flat sequence of M*N values (row-major).
-impl<const M: usize, const N: usize> Serialize for Tensor3<M, N> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut data = Vec::with_capacity(M * N);
-        for m in 0..M {
-            for n in 0..N {
-                data.push(self.get(m, n));
-            }
-        }
-        data.serialize(serializer)
-    }
-}
-
-impl<'de, const M: usize, const N: usize> Deserialize<'de> for Tensor3<M, N> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let data = Vec::<f64>::deserialize(deserializer)?;
-        let expected = M * N;
-        if data.len() != expected {
-            return Err(serde::de::Error::custom(format!(
-                "Tensor3 dimension mismatch: expected {} components, got {}",
-                expected,
-                data.len()
-            )));
-        }
-        let mut dd = Tensor3::new();
-        let mut k = 0;
-        for m in 0..M {
-            for n in 0..N {
-                dd.set(m, n, data[k]);
-                k += 1;
-            }
-        }
-        Ok(dd)
-    }
 }
 
 impl<const M: usize, const N: usize> Tensor3<M, N> {

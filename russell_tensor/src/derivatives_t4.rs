@@ -1,6 +1,6 @@
 use crate::{ADD, IDENTITY2, P_SYMDEV, SET, SQRT_2, SQRT_3, TOL_J2, deriv1_invariant_jj3_slice};
 use crate::{Tensor2, Tensor4};
-use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice};
+use crate::{qsd_fn_slice, ssd_fn_vec, t2_odyad_t2_slice};
 
 /// Calculates the derivative of the inverse tensor w.r.t. the defining Tensor2
 ///
@@ -28,7 +28,7 @@ use crate::{qsd_fn_slice, ssd_fn_slice, t2_odyad_t2_slice};
 pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor2<N>) {
     let mut at = [0.0; 9];
     ai.transpose_slice(&mut at);
-    t2_odyad_t2_slice::<N>(dai_da, SET, -1.0, ai.as_data(), &at);
+    t2_odyad_t2_slice::<N>(dai_da, SET, -1.0, ai.as_vec(), &at);
 }
 
 /// Calculates the derivative of the inverse tensor w.r.t. a symmetric Tensor2
@@ -62,7 +62,7 @@ pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor
 /// A panic will occur if `ai` is not symmetric, i.e., N = 9.
 pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<N>, ai: &Tensor2<N>) {
     assert!(N != 9, "the inverse tensor must be symmetric with N = 4 or N = 6");
-    ssd_fn_slice::<N>(dai_da, SET, -0.5, ai.as_data());
+    ssd_fn_vec::<N>(dai_da, SET, -0.5, ai.as_vec());
 }
 
 /// Calculates the derivative of the squared tensor w.r.t. a Tensor2
@@ -91,7 +91,7 @@ pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<N>, ai: &Te
 ///
 /// * `a` -- the second-order tensor
 pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2<N>) {
-    let a_data = a.as_data();
+    let a_data = a.as_vec();
     let mut at = [0.0; 9];
     a.transpose_slice(&mut at);
 
@@ -131,7 +131,7 @@ pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
 pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Tensor2<N>) {
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
-    qsd_fn_slice::<N>(da2_da, SET, 0.5, a.as_data(), &IDENTITY2);
+    qsd_fn_slice::<N>(da2_da, SET, 0.5, a.as_vec(), &IDENTITY2);
 }
 
 /// Calculates the second derivative of the I2 invariant w.r.t. its defining tensor
@@ -791,7 +791,7 @@ pub fn deriv2_invariant_lode<const N: usize>(
         let bb = 2.25 * SQRT_3 / (jj2 * jj2 * sqrt_j2);
         let cc = 5.625 * SQRT_3 / (jj2 * jj2 * jj2 * sqrt_j2);
         let mut s = [0.0; 6];
-        deriv1_invariant_jj3_slice(work.d1_jj3.as_mut_data(), &mut s, a);
+        deriv1_invariant_jj3_slice(work.d1_jj3.as_mut_vec(), &mut s, a);
         deriv2_invariant_jj3(&mut work.d2_jj3, a);
         let d1_jj2 = &s;
         let d2_jj2 = &P_SYMDEV;

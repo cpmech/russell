@@ -117,54 +117,15 @@ use russell_lab::small_mat_inv;
 ///    ----------------------------------------
 ///      3 0       3 1       3 2        3 3    
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(transparent)]
+#[serde(bound(
+    serialize = "[[f64; N]; N]: Serialize",
+    deserialize = "[[f64; N]; N]: Deserialize<'de>"
+))]
 pub struct Tensor4<const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     pub(crate) mat: [[f64; N]; N],
-}
-
-// Manual Serialize/Deserialize implementations: serde only implements the traits
-// for concrete array sizes, so the derive fails for the generic `[[f64; N]; N]`.
-// Since N is known to be 4, 6, or 9 only, we serialize the components as a sequence.
-impl<const N: usize> Serialize for Tensor4<N> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut data = Vec::with_capacity(N * N);
-        for m in 0..N {
-            for n in 0..N {
-                data.push(self.get(m, n));
-            }
-        }
-        data.serialize(serializer)
-    }
-}
-
-impl<'de, const N: usize> Deserialize<'de> for Tensor4<N> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let data = Vec::<f64>::deserialize(deserializer)?;
-        let expected = N * N;
-        if data.len() != expected {
-            return Err(serde::de::Error::custom(format!(
-                "Tensor4 dimension mismatch: expected {} components, got {}",
-                expected,
-                data.len()
-            )));
-        }
-        let mut dd = Tensor4::new();
-        let mut k = 0;
-        for m in 0..N {
-            for n in 0..N {
-                dd.set(m, n, data[k]);
-                k += 1;
-            }
-        }
-        Ok(dd)
-    }
 }
 
 impl<const N: usize> Tensor4<N> {

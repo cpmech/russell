@@ -69,37 +69,37 @@ pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
                 if L != 9 {
                     return Err("c must be General for this combination");
                 }
-                t2_gen_dot_self(c.as_mut_data(), alpha, a.as_data());
+                t2_gen_dot_self(c.as_mut_vec(), alpha, a.as_vec());
             } else {
                 if L != 9 {
                     return Err("c must be General for this combination");
                 }
-                t2_gen_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+                t2_gen_dot_gen(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
             }
         }
         (9, 6, false, true) | (9, 6, false, false) => {
             if L != 9 {
                 return Err("c must be General for this combination");
             }
-            t2_gen_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_gen_dot_sym(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         (6, 9, true, false) | (6, 9, false, false) => {
             if L != 9 {
                 return Err("c must be General for this combination");
             }
-            t2_sym_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_sym_dot_gen(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         (6, 6, true, true) | (6, 6, true, false) | (6, 6, false, true) | (6, 6, false, false) => {
             if a as *const _ as *const () == b as *const _ as *const () {
                 if L != 6 {
                     return Err("c must be Symmetric for this combination");
                 }
-                t2_sym_dot_self(c.as_mut_data(), alpha, a.as_data());
+                t2_sym_dot_self(c.as_mut_vec(), alpha, a.as_vec());
             } else {
                 if L != 9 {
                     return Err("c must be General for this combination");
                 }
-                t2_sym_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+                t2_sym_dot_sym(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
             }
         }
         (9, 9, true, false) => {
@@ -107,12 +107,12 @@ pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
                 if L != 6 {
                     return Err("c must be Symmetric for this combination");
                 }
-                t2_gen_tra_dot_self(c.as_mut_data(), alpha, a.as_data());
+                t2_gen_tra_dot_self(c.as_mut_vec(), alpha, a.as_vec());
             } else {
                 if L == 6 {
-                    t2_gen_tra_dot_gen_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+                    t2_gen_tra_dot_gen_chop(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
                 } else if L == 9 {
-                    t2_gen_tra_dot_gen(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+                    t2_gen_tra_dot_gen(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
                 } else {
                     return Err("c must be Symmetric or General for this combination");
                 }
@@ -123,12 +123,12 @@ pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
                 if L != 6 {
                     return Err("c must be Symmetric for this combination");
                 }
-                t2_gen_dot_self_tra(c.as_mut_data(), alpha, a.as_data());
+                t2_gen_dot_self_tra(c.as_mut_vec(), alpha, a.as_vec());
             } else {
                 if L == 6 {
-                    t2_gen_dot_gen_tra_chop(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+                    t2_gen_dot_gen_tra_chop(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
                 } else if L == 9 {
-                    t2_gen_dot_gen_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+                    t2_gen_dot_gen_tra(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
                 } else {
                     return Err("c must be Symmetric or General for this combination");
                 }
@@ -138,19 +138,19 @@ pub fn t2_matmul<const L: usize, const M: usize, const N: usize>(
             if L != 9 {
                 return Err("c must be General for this combination");
             }
-            t2_gen_tra_dot_gen_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_gen_tra_dot_gen_tra(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         (6, 9, true, true) | (6, 9, false, true) => {
             if L != 9 {
                 return Err("c must be General for this combination");
             }
-            t2_sym_dot_gen_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_sym_dot_gen_tra(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         (9, 6, true, true) | (9, 6, true, false) => {
             if L != 9 {
                 return Err("c must be General for this combination");
             }
-            t2_gen_tra_dot_sym(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_gen_tra_dot_sym(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         (4, _, _, _) | (_, 4, _, _) => {
             return Err("t2_matmul: generalized plane (N = 4) is not supported; use Symmetric instead");
@@ -197,13 +197,13 @@ pub fn t2_matmulx<const L: usize, const M: usize, const N: usize>(
             if L != 6 {
                 return Err("c must be symmetric for this combination");
             }
-            t2_gen_dot_sym_dot_self_tra(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_gen_dot_sym_dot_self_tra(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         (9, 6, false) => {
             if L != 6 {
                 return Err("c must be symmetric for this combination");
             }
-            t2_gen_tra_dot_sym_dot_self(c.as_mut_data(), alpha, a.as_data(), b.as_data());
+            t2_gen_tra_dot_sym_dot_self(c.as_mut_vec(), alpha, a.as_vec(), b.as_vec());
         }
         _ => return Err("t2_matmulx: unsupported combination"),
     }

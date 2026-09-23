@@ -230,7 +230,7 @@ impl EigenValuesT2 {
             //
             EigenValMethod::Iterative => {
                 // eigenvalues and eigenvectors (ignored)
-                aa.to_std_matrix_slice(&mut self.aa);
+                aa.to_std_matrix_array(&mut self.aa);
                 small_mat_eigen_sym_jacobi(ll, &mut self.vv, &mut self.aa)?;
             }
         };

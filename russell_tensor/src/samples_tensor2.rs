@@ -43,7 +43,7 @@ pub struct SampleTensor2 {
 pub struct SamplesTensor2 {}
 
 impl SamplesTensor2 {
-    // Returns an array with references to all symmetric samples
+    /// Returns an array with references to all symmetric samples
     pub fn all_symmetric<'a>() -> Vec<&'a SampleTensor2> {
         vec![
             &SamplesTensor2::TENSOR_O,
@@ -278,7 +278,7 @@ impl SamplesTensor2 {
         eigenprojectors: None,
     };
 
-    // Symmetric tensor with coalescent eigenvalues λ0 ≈ λ1 > λ2
+    /// Symmetric tensor with coalescent eigenvalues λ0 ≈ λ1 > λ2
     pub const COAL_01: SampleTensor2 = SampleTensor2 {
         desc: "Symmetric tensor with coalescent eigenvalues λ0 ≈ λ1 > λ2",
         matrix: [
@@ -318,7 +318,7 @@ impl SamplesTensor2 {
         ]),
     };
 
-    // Symmetric tensor with coalescent eigenvalues λ0 > λ1 ≈ λ2
+    /// Symmetric tensor with coalescent eigenvalues λ0 > λ1 ≈ λ2
     pub const COAL_12: SampleTensor2 = SampleTensor2 {
         desc: "Symmetric tensor with coalescent eigenvalues λ0 > λ1 ≈ λ2",
         matrix: [

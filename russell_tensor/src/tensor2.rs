@@ -19,7 +19,7 @@ use std::fmt::{self, Write};
 ///   their names (e.g., [Tensor2::set_std_matrix], [Tensor2::get_std],
 ///   [Tensor2::as_std_matrix], [Tensor2::sym_set_std]).
 /// * Methods dealing directly with the **Kelvin-Mandel components** carry no qualifier
-///   (e.g., [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
+///   (e.g., [Tensor2::get], [Tensor2::set],
 ///   [Tensor2::set_tensor], [Tensor2::update]).
 ///
 /// Internally, the components are converted to the Kelvin-Mandel basis as follows.

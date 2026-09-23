@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Russell - Rust Scientific Library
 //!
 //! `russell_tensor`: Tensor analysis, calculus, and functions for continuum mechanics
@@ -79,7 +81,7 @@
 //!     [Tensor4::get_std], [Tensor4::as_std_array], [Tensor4::to_std_array],
 //!     [Tensor4::as_std_matrix], [Tensor4::to_std_matrix], [Tensor4::sym_set_std]
 //! * Accessors dealing directly with the **Kelvin-Mandel components** carry no qualifier:
-//!   * [Tensor2] — [Tensor2::get], [Tensor2::set], [Tensor2::set_vector],
+//!   * [Tensor2] — [Tensor2::get], [Tensor2::set],
 //!     [Tensor2::set_tensor], [Tensor2::update], [Tensor2::clear]
 //!   * [Tensor3] — [Tensor3::get], [Tensor3::set], [Tensor3::set_tensor], [Tensor3::update]
 //!   * [Tensor4] — [Tensor4::get], [Tensor4::set], [Tensor4::set_tensor], [Tensor4::update]

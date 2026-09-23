@@ -4,6 +4,7 @@ use super::SQRT_2;
 pub struct SamplesTensor4;
 
 impl SamplesTensor4 {
+    /// Sample fourth-order tensor # 1
     pub const SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
@@ -98,6 +99,7 @@ impl SamplesTensor4 {
         [-27.0/SQRT_2 , -27.0/SQRT_2 , -27.0/SQRT_2 ,       -27.0 ,       -27.0 ,       -27.0 ,         0.0 ,         0.0 ,         0.0 ],
     ];
 
+    /// Sample fourth-order tensor # 2
     pub const SAMPLE2: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
@@ -164,6 +166,7 @@ impl SamplesTensor4 {
         ],
     ];
 
+    /// Symmetric sample fourth-order tensor # 1
     pub const SYM_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [
@@ -255,6 +258,7 @@ impl SamplesTensor4 {
         [25.0*SQRT_2, 26.0*SQRT_2, 27.0*SQRT_2, 68.0       , 70.0       , 72.0       ],
     ];
 
+    /// Symmetric generalized-plane sample fourth-order tensor # 1
     pub const SYM_2D_SAMPLE1: [[[[f64; 3]; 3]; 3]; 3] = [
         // [0]
         [

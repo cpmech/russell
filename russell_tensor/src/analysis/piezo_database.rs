@@ -55,10 +55,19 @@ impl PiezoDatabase {
 /// Physical units mapping for the exported tensors and moduli.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Units {
+    /// The units of the `e_tensor` tensor
     pub e_tensor: String,
+
+    /// The units of the `e_voigt` matrix
     pub e_voigt: String,
+
+    /// The units of the `cc_tensor` tensor
     pub cc_tensor: String,
+
+    /// The units of the `cc_voigt` matrix
     pub cc_voigt: String,
+
+    /// The units of the `relative_permittivity_tensor` tensor
     pub relative_permittivity_tensor: String,
 }
 

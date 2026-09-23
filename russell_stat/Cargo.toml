@@ -21,7 +21,7 @@ rand = "0.10"
 rand_distr = "0.6"
 
 [dev-dependencies]
-plotpy = "1.23"
+plotpy = "1.24"
 
 [lints]
 workspace = true

@@ -1,6 +1,6 @@
 [package]
 name = "russell_pde"
-version = "3.0.1"
+version = "3.0.2"
 edition = "2024"
 license = "MIT"
 description = "Essential tools to solve partial differential equations; not a full-fledged PDE solver"

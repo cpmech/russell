@@ -121,6 +121,7 @@
 pub type StrError = &'static str;
 
 pub mod analysis;
+mod check;
 mod constants;
 mod derivatives_t2;
 mod derivatives_t4;
@@ -145,6 +146,7 @@ mod tensor4;
 #[cfg(test)]
 mod testing;
 
+pub use check::*;
 pub use constants::*;
 pub use derivatives_t2::*;
 pub use derivatives_t4::*;

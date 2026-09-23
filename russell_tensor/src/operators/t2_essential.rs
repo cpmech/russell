@@ -407,8 +407,8 @@ pub fn t1_dyad_t1<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{SET, Tensor1};
-    use russell_lab::{approx_eq, array_approx_eq, mat_approx_eq};
+    use crate::{SET, Tensor1, t2_approx_eq};
+    use russell_lab::{approx_eq, mat_approx_eq};
 
     #[test]
     fn t2_add_works() {
@@ -666,14 +666,6 @@ mod tests {
         );
     }
 
-    fn kelvin_vector<const N: usize>(tt: &Tensor2<N>) -> Vec<f64> {
-        let mut v = vec![0.0; N];
-        for m in 0..N {
-            v[m] = tt.get(m);
-        }
-        v
-    }
-
     #[test]
     fn t1_dyad_t1_works() {
         // general
@@ -692,7 +684,7 @@ mod tests {
             6.0 * SQRT_2,
             12.0 * SQRT_2,
         ];
-        array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
+        t2_approx_eq(&tt, correct, 1e-14);
 
         // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
@@ -700,7 +692,7 @@ mod tests {
         let mut tt = Tensor2::<6>::new();
         t1_dyad_t1(&mut tt, SET, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, -32.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
-        array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
+        t2_approx_eq(&tt, correct, 1e-14);
 
         // symmetric generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
@@ -708,7 +700,7 @@ mod tests {
         let mut tt = Tensor2::<4>::new();
         t1_dyad_t1(&mut tt, SET, 2.0, &u, &v).unwrap();
         let correct = &[-8.0, -18.0, 0.0, -12.0 * SQRT_2];
-        array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
+        t2_approx_eq(&tt, correct, 1e-14);
     }
 
     #[test]
@@ -724,7 +716,7 @@ mod tests {
             -18.0 * SQRT_2, -18.0 * SQRT_2, -20.0 * SQRT_2,
             6.0 * SQRT_2, 6.0 * SQRT_2, 12.0 * SQRT_2,
         ];
-        array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
+        t2_approx_eq(&tt, correct, 1e-14);
 
         // symmetric
         let u = Tensor1::from(&[-2.0, -3.0, -4.0]);
@@ -733,7 +725,7 @@ mod tests {
         t1_dyad_t1(&mut tt, ADD, 2.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[92.0, 182.0, 268.0, -12.0 * SQRT_2, -24.0 * SQRT_2, -16.0 * SQRT_2];
-        array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
+        t2_approx_eq(&tt, correct, 1e-14);
 
         // symmetric generalized plane
         let u = Tensor1::from(&[-2.0, -3.0, 0.0]);
@@ -742,6 +734,6 @@ mod tests {
         t1_dyad_t1(&mut tt, ADD, 2.0, &u, &v).unwrap();
         #[rustfmt::skip]
         let correct = &[92.0, 182.0, 300.0, -12.0 * SQRT_2];
-        array_approx_eq(&kelvin_vector(&tt), correct, 1e-14);
+        t2_approx_eq(&tt, correct, 1e-14);
     }
 }

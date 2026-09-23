@@ -1,7 +1,7 @@
-use crate::Tensor2;
 use crate::polar_decomp::{PolarAlgo, polar_decomp_mx};
 use crate::{SQRT_2, SQRT_3, SQRT_6};
-use russell_lab::{mat_approx_eq, small_mat_approx_eq, small_mat_mat_mul, small_mat_t_mat_mul, sort3};
+use crate::{Tensor2, t2_approx_eq};
+use russell_lab::{small_mat_approx_eq, small_mat_mat_mul, small_mat_t_mat_mul, sort3};
 
 // -----------------------------------------------------------------------------------
 // Auxiliary functions
@@ -870,8 +870,8 @@ pub fn check_agree(a: &Tensor2<9>) {
     check_polar(a, &qh, &hh, 1e-13);
 
     // The two implementations must agree
-    mat_approx_eq(&rb.as_std_matrix(), &qh.as_std_matrix(), 1e-13);
-    mat_approx_eq(&ub.as_std_matrix(), &hh.as_std_matrix(), 1e-13);
+    t2_approx_eq(&rb, &qh, 1e-13);
+    t2_approx_eq(&ub, &hh, 1e-13);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

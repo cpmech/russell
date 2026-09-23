@@ -123,8 +123,8 @@ pub fn polar_decomp_mx(
 #[cfg(test)]
 mod tests {
     use super::{PolarAlgo, polar_decomp, polar_decomp_mx};
-    use crate::Tensor2;
     use crate::testing::{ReferencePolarDecomp, check_agree, check_polar};
+    use crate::{Tensor2, t2_approx_eq};
     use russell_lab::{Matrix, mat_approx_eq, mat_mat_mul};
 
     #[test]
@@ -259,8 +259,8 @@ mod tests {
         let mut r_h = Tensor2::<9>::new();
         let mut u_h = Tensor2::<6>::new();
         polar_decomp_mx(&mut r_h, &mut u_h, None, PolarAlgo::Quaternion, &a).unwrap();
-        mat_approx_eq(&r_e.as_std_matrix(), &r_h.as_std_matrix(), 1e-13);
-        mat_approx_eq(&u_e.as_std_matrix(), &u_h.as_std_matrix(), 1e-13);
+        t2_approx_eq(&r_e, &r_h, 1e-13);
+        t2_approx_eq(&u_e, &u_h, 1e-13);
 
         // Higham & Noferini test (5.2), well-conditioned case. Note: the eigen
         // approach squares the condition number of F (via C = Fᵀ F), so it is
@@ -283,8 +283,8 @@ mod tests {
         let mut r_h = Tensor2::<9>::new();
         let mut u_h = Tensor2::<6>::new();
         polar_decomp_mx(&mut r_h, &mut u_h, None, PolarAlgo::Quaternion, &a).unwrap();
-        mat_approx_eq(&r_s.as_std_matrix(), &r_h.as_std_matrix(), 1e-13);
-        mat_approx_eq(&u_s.as_std_matrix(), &u_h.as_std_matrix(), 1e-13);
+        t2_approx_eq(&r_s, &r_h, 1e-13);
+        t2_approx_eq(&u_s, &u_h, 1e-13);
 
         // Higham & Noferini test (5.2) over a range of condition numbers
         for y in [1.0f64, 1e-2, 1e-4, 1e-6, 1e-8] {

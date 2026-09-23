@@ -359,7 +359,6 @@ impl<const N: usize> LinElasticity<N> {
     /// # Examples
     ///
     /// ```
-    /// use russell_lab::mat_approx_eq;
     /// use russell_tensor::*;
     ///
     /// fn main() -> Result<(), StrError> {
@@ -374,7 +373,7 @@ impl<const N: usize> LinElasticity<N> {
     ///     let piso = Tensor4::<6>::constant_pp_iso();
     ///     let mut correct = Tensor4::<6>::new();
     ///     t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
-    ///     mat_approx_eq(&cc.as_std_matrix(), &correct.as_std_matrix(), 1e-15);
+    ///     t4_approx_eq(&cc, &correct, 1e-15);
     ///     Ok(())
     /// }
     /// ```
@@ -424,8 +423,8 @@ impl<const N: usize> LinElasticity<N> {
 mod tests {
     use super::LinElasticity;
     use crate::StrError;
-    use crate::{Tensor2, Tensor4, t4_add};
-    use russell_lab::{Matrix, approx_eq, mat_approx_eq};
+    use crate::{Tensor2, Tensor4, t4_add, t4_approx_eq};
+    use russell_lab::{Matrix, approx_eq};
 
     // Checks the symmetry of a square matrix
     fn check_symmetry(mat: &Matrix) -> Result<(), StrError> {
@@ -650,7 +649,7 @@ mod tests {
         let piso = Tensor4::<6>::constant_pp_iso();
         let mut correct = Tensor4::<6>::new();
         t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
-        mat_approx_eq(&cc.as_std_matrix(), &correct.as_std_matrix(), 1e-15);
+        t4_approx_eq(&cc, &correct, 1e-15);
 
         // change parameters
         let (kk, gg) = (1.0 / 6.0, 1.0 / 4.0);
@@ -660,6 +659,6 @@ mod tests {
         // check again
         t4_add(&mut correct, 1.0 / (3.0 * kk), &piso, 1.0 / (2.0 * gg), &psd);
         // println!("{}", cc.as_std_matrix());
-        mat_approx_eq(&cc.as_std_matrix(), &correct.as_std_matrix(), 1e-15);
+        t4_approx_eq(&cc, &correct, 1e-15);
     }
 }

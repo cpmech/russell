@@ -594,7 +594,7 @@ pub(crate) fn t2_odyad_t2_slice<const N: usize>(dd: &mut Tensor4<9>, op: u8, s: 
 mod tests {
     use super::t2_odyad_t2;
     use crate::{ADD, MN_TO_IJKL, SET};
-    use crate::{Tensor2, Tensor4};
+    use crate::{Tensor2, Tensor4, t4_approx_eq};
     use russell_lab::{Matrix, mat_approx_eq};
 
     fn check_odyad<const N: usize>(s: f64, a_ten: &Tensor2<N>, b_ten: &Tensor2<N>, dd_ten: &Tensor4<9>, tol: f64) {
@@ -722,7 +722,7 @@ mod tests {
         // reference
         let mut dd_ref = Tensor4::<9>::new();
         t2_odyad_t2(&mut dd_ref, SET, 5.0, &a, &b);
-        mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
+        t4_approx_eq(&dd, &dd_ref, 1e-13);
 
         //
         // --- Symmetric ---
@@ -739,7 +739,7 @@ mod tests {
         // reference
         let mut dd_ref = Tensor4::<9>::new();
         t2_odyad_t2(&mut dd_ref, SET, 5.0, &a, &b);
-        mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
+        t4_approx_eq(&dd, &dd_ref, 1e-13);
 
         //
         // --- Symmetric generalized plane ---
@@ -756,6 +756,6 @@ mod tests {
         // reference
         let mut dd_ref = Tensor4::<9>::new();
         t2_odyad_t2(&mut dd_ref, SET, 5.0, &a, &b);
-        mat_approx_eq(&dd.as_std_matrix(), &dd_ref.as_std_matrix(), 1e-13);
+        t4_approx_eq(&dd, &dd_ref, 1e-13);
     }
 }

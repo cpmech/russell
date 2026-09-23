@@ -830,7 +830,7 @@ pub fn deriv2_invariant_lode<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{IJ_TO_M_SYM, MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError};
+    use crate::{IJ_TO_M_SYM, MN_TO_IJKL, SQRT_2, SamplesTensor2, StrError, t4_approx_eq};
     use crate::{
         deriv1_invariant_ii2, deriv1_invariant_ii3, deriv1_invariant_jj2, deriv1_invariant_jj3, deriv1_invariant_lode,
         deriv1_invariant_q, deriv1_invariant_r,
@@ -1412,7 +1412,7 @@ mod tests {
 
         // compare with Psymdev
         let pp_symdev = Tensor4::<N>::constant_pp_symdev();
-        mat_approx_eq(&dd2_ana.as_std_matrix(), &pp_symdev.as_std_matrix(), 1e-15);
+        t4_approx_eq(&dd2_ana, &pp_symdev, 1e-15);
 
         // check using numerical derivative
         let ana = dd2_ana.as_std_matrix();

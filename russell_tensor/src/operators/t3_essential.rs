@@ -263,7 +263,7 @@ pub fn t1_dot_t3<const M: usize, const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::{t1_dot_t3, t2_ddot_t3, t3_add, t3_ddot_t2, t3_dot_t1};
-    use crate::{ADD, SET, SamplesTensor3, Tensor1, Tensor2, Tensor3};
+    use crate::{ADD, SET, SamplesTensor3, Tensor1, Tensor2, Tensor3, t3_approx_eq};
     use russell_lab::{Matrix, approx_eq, mat_approx_eq, mat_mat_mul, mat_t_mat_mul};
 
     #[test]
@@ -278,7 +278,7 @@ mod tests {
             [[62.5, 65.0, 67.5], [55.0, 57.5, 60.0], [17.5, 20.0, 22.5]],
         ])
         .unwrap();
-        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+        t3_approx_eq(&mm, &mm_expected, 1e-13);
 
         // Symmetric
         let hh = Tensor3::<6, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_SAMPLE1).unwrap();
@@ -290,7 +290,7 @@ mod tests {
             [[40.0, 42.5, 45.0], [32.5, 35.0, 37.5], [17.5, 20.0, 22.5]],
         ])
         .unwrap();
-        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+        t3_approx_eq(&mm, &mm_expected, 1e-13);
 
         // Symmetric2D
         let hh = Tensor3::<4, 3>::from_std_array(&SamplesTensor3::CASE_A_SYM_2D_SAMPLE1).unwrap();
@@ -302,7 +302,7 @@ mod tests {
             [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [17.5, 20.0, 22.5]],
         ])
         .unwrap();
-        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+        t3_approx_eq(&mm, &mm_expected, 1e-13);
     }
 
     #[test]
@@ -317,7 +317,7 @@ mod tests {
             [[7.5, 30.0, 45.0], [52.5, 15.0, 37.5], [67.5, 60.0, 22.5]],
         ])
         .unwrap();
-        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+        t3_approx_eq(&mm, &mm_expected, 1e-13);
 
         // Symmetric
         let hh = Tensor3::<3, 6>::from_std_array(&SamplesTensor3::CASE_B_SYM_SAMPLE1).unwrap();
@@ -329,7 +329,7 @@ mod tests {
             [[7.5, 30.0, 45.0], [30.0, 15.0, 37.5], [45.0, 37.5, 22.5]],
         ])
         .unwrap();
-        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+        t3_approx_eq(&mm, &mm_expected, 1e-13);
 
         // Symmetric2D
         let hh = Tensor3::<3, 4>::from_std_array(&SamplesTensor3::CASE_B_SYM_2D_SAMPLE1).unwrap();
@@ -341,7 +341,7 @@ mod tests {
             [[7.5, 30.0, 0.0], [30.0, 15.0, 0.0], [0.0, 0.0, 22.5]],
         ])
         .unwrap();
-        mat_approx_eq(&mm.as_std_matrix(), &mm_expected.as_std_matrix(), 1e-13);
+        t3_approx_eq(&mm, &mm_expected, 1e-13);
     }
 
     #[test]

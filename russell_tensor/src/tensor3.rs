@@ -337,6 +337,16 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
         self.mat[m][n] += value;
     }
 
+    /// Set all values to zero
+    #[inline]
+    pub fn clear(&mut self) {
+        for m in 0..M {
+            for n in 0..N {
+                self.mat[m][n] = 0.0;
+            }
+        }
+    }
+
     /// Sets this tensor from a nested array containing the standard components
     ///
     /// # Input
@@ -2214,6 +2224,19 @@ mod tests {
         let json = serde_json::to_string(&w).unwrap();
         let back: Wrapper<6, 3> = serde_json::from_str(&json).unwrap();
         assert_eq!(back.dd.get(0, 0), 0.0);
+    }
+
+    #[test]
+    fn clear_works() {
+        let mut dd = Tensor3::<4, 3>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(3, 2, 9.0);
+        dd.clear();
+        for m in 0..4 {
+            for n in 0..3 {
+                assert_eq!(dd.get(m, n), 0.0);
+            }
+        }
     }
 
     #[test]

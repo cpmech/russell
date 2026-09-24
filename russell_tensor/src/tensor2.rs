@@ -3046,8 +3046,11 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let tt = Tensor2::<9>::new();
-        assert!(!format!("{:?}", tt).is_empty());
+        let mut tt = Tensor2::<9>::new();
+        tt.set(0, 1.0);
+        tt.set(8, 9.0);
+        let dbg = format!("{:?}", tt);
+        assert!(dbg.contains("1.0") && dbg.contains("9.0"));
     }
 
     #[test]

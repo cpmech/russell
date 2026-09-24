@@ -2165,8 +2165,11 @@ mod tests {
 
     #[test]
     fn debug_works() {
-        let dd = Tensor3::<4, 3>::new();
-        assert!(!format!("{:?}", dd).is_empty());
+        let mut dd = Tensor3::<4, 3>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(3, 2, 9.0);
+        let dbg = format!("{:?}", dd);
+        assert!(dbg.contains("1.0") && dbg.contains("9.0"));
     }
 
     #[test]

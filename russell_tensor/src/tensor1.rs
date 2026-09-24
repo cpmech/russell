@@ -84,6 +84,12 @@ impl Tensor1 {
         self.vec[i] += value;
     }
 
+    /// Set all values to zero
+    #[inline]
+    pub fn clear(&mut self) {
+        self.vec.fill(0.0);
+    }
+
     /// Scales this tensor in-place
     ///
     /// ```text
@@ -267,6 +273,15 @@ mod tests {
         assert_eq!(back.get(0), 1.0);
         assert_eq!(back.get(1), -2.0);
         assert_eq!(back.get(2), 3.0);
+    }
+
+    #[test]
+    fn clear_works() {
+        let mut u = Tensor1::from(&[1.0, -2.0, 3.0]);
+        u.clear();
+        for i in 0..3 {
+            assert_eq!(u.get(i), 0.0);
+        }
     }
 
     #[test]

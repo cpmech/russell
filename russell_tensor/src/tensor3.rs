@@ -194,17 +194,54 @@ use std::fmt::{self, Write};
 ///    -----------------------
 ///      2 0  2 1  2 2  2 3
 /// ```
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(transparent)]
-#[serde(bound(
-    serialize = "[[f64; N]; M]: Serialize",
-    deserialize = "[[f64; N]; M]: Deserialize<'de>"
-))]
+#[derive(Clone, Debug)]
 pub struct Tensor3<const M: usize, const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     ///
     /// This array may use more data than necessary in symmetric cases
     pub(crate) mat: [[f64; N]; M],
+}
+
+impl<const M: usize, const N: usize> Serialize for Tensor3<M, N> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(Some(M))?;
+        for m in 0..M {
+            seq.serialize_element(&self.mat[m][..])?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de, const M: usize, const N: usize> Deserialize<'de> for Tensor3<M, N> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data = Vec::<Vec<f64>>::deserialize(deserializer)?;
+        if data.len() != M {
+            return Err(serde::de::Error::invalid_length(
+                data.len(),
+                &"Tensor3 must have M rows",
+            ));
+        }
+        let mut mat = [[0.0; N]; M];
+        for m in 0..M {
+            if data[m].len() != N {
+                return Err(serde::de::Error::invalid_length(
+                    data[m].len(),
+                    &"Tensor3 must have N columns",
+                ));
+            }
+            for n in 0..N {
+                mat[m][n] = data[m][n];
+            }
+        }
+        Ok(Tensor3 { mat })
+    }
 }
 
 impl<const M: usize, const N: usize> Tensor3<M, N> {
@@ -298,6 +335,16 @@ impl<const M: usize, const N: usize> Tensor3<M, N> {
     #[inline]
     pub fn add(&mut self, m: usize, n: usize, value: f64) {
         self.mat[m][n] += value;
+    }
+
+    /// Set all values to zero
+    #[inline]
+    pub fn clear(&mut self) {
+        for m in 0..M {
+            for n in 0..N {
+                self.mat[m][n] = 0.0;
+            }
+        }
     }
 
     /// Sets this tensor from a nested array containing the standard components
@@ -2161,6 +2208,35 @@ mod tests {
              │ 131 132 133 │\n\
              └             ┘"
         );
+    }
+
+    #[test]
+    fn generic_derive_works() {
+        // a generic wrapper must be able to derive Serialize/Deserialize,
+        // i.e. Tensor3<M, N> must implement Deserialize for arbitrary M and N
+        #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+        struct Wrapper<const M: usize, const N: usize> {
+            dd: Tensor3<M, N>,
+        }
+        let w = Wrapper::<6, 3> {
+            dd: Tensor3::<6, 3>::new(),
+        };
+        let json = serde_json::to_string(&w).unwrap();
+        let back: Wrapper<6, 3> = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.dd.get(0, 0), 0.0);
+    }
+
+    #[test]
+    fn clear_works() {
+        let mut dd = Tensor3::<4, 3>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(3, 2, 9.0);
+        dd.clear();
+        for m in 0..4 {
+            for n in 0..3 {
+                assert_eq!(dd.get(m, n), 0.0);
+            }
+        }
     }
 
     #[test]

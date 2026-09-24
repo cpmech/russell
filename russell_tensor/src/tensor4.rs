@@ -117,15 +117,52 @@ use russell_lab::small_mat_inv;
 ///    ----------------------------------------
 ///      3 0       3 1       3 2        3 3    
 /// ```
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(transparent)]
-#[serde(bound(
-    serialize = "[[f64; N]; N]: Serialize",
-    deserialize = "[[f64; N]; N]: Deserialize<'de>"
-))]
+#[derive(Clone, Debug)]
 pub struct Tensor4<const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as matrix (stack).
     pub(crate) mat: [[f64; N]; N],
+}
+
+impl<const N: usize> Serialize for Tensor4<N> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(Some(N))?;
+        for m in 0..N {
+            seq.serialize_element(&self.mat[m][..])?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de, const N: usize> Deserialize<'de> for Tensor4<N> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data = Vec::<Vec<f64>>::deserialize(deserializer)?;
+        if data.len() != N {
+            return Err(serde::de::Error::invalid_length(
+                data.len(),
+                &"Tensor4 must have N rows",
+            ));
+        }
+        let mut mat = [[0.0; N]; N];
+        for m in 0..N {
+            if data[m].len() != N {
+                return Err(serde::de::Error::invalid_length(
+                    data[m].len(),
+                    &"Tensor4 must have N columns",
+                ));
+            }
+            for n in 0..N {
+                mat[m][n] = data[m][n];
+            }
+        }
+        Ok(Tensor4 { mat })
+    }
 }
 
 impl<const N: usize> Tensor4<N> {
@@ -214,6 +251,16 @@ impl<const N: usize> Tensor4<N> {
     #[inline]
     pub fn add(&mut self, m: usize, n: usize, value: f64) {
         self.mat[m][n] += value;
+    }
+
+    /// Set all values to zero
+    #[inline]
+    pub fn clear(&mut self) {
+        for m in 0..N {
+            for n in 0..N {
+                self.mat[m][n] = 0.0;
+            }
+        }
     }
 
     /// Sets the Kelvin-Mandel matrix directly
@@ -2562,6 +2609,35 @@ mod tests {
              │ 1311 1322 1333 1312 1323 1313 1312 1323 1313 │\n\
              └                                              ┘"
         );
+    }
+
+    #[test]
+    fn generic_derive_works() {
+        // a generic wrapper must be able to derive Serialize/Deserialize,
+        // i.e. Tensor4<N> must implement Deserialize for an arbitrary N
+        #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+        struct Wrapper<const N: usize> {
+            dd: Tensor4<N>,
+        }
+        let w = Wrapper::<9> {
+            dd: Tensor4::<9>::new(),
+        };
+        let json = serde_json::to_string(&w).unwrap();
+        let back: Wrapper<9> = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.dd.get(0, 0), 0.0);
+    }
+
+    #[test]
+    fn clear_works() {
+        let mut dd = Tensor4::<9>::new();
+        dd.set(0, 0, 1.0);
+        dd.set(8, 8, 9.0);
+        dd.clear();
+        for m in 0..9 {
+            for n in 0..9 {
+                assert_eq!(dd.get(m, n), 0.0);
+            }
+        }
     }
 
     #[test]

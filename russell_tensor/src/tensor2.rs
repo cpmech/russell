@@ -63,14 +63,34 @@ use std::fmt::{self, Write};
 /// └             ┘    01 │ T01 * √2 │ 3
 ///                       └          ┘
 /// ```
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(transparent)]
-#[serde(bound(serialize = "[f64; N]: Serialize", deserialize = "[f64; N]: Deserialize<'de>"))]
+#[derive(Clone, Debug)]
 pub struct Tensor2<const N: usize> {
     /// Holds the components in Kelvin-Mandel basis as a vector (stack).
     ///
     /// Stack version => fixed size memory
     pub(crate) vec: [f64; N],
+}
+
+impl<const N: usize> Serialize for Tensor2<N> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.vec[..].serialize(serializer)
+    }
+}
+
+impl<'de, const N: usize> Deserialize<'de> for Tensor2<N> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data = Vec::<f64>::deserialize(deserializer)?;
+        let vec = <[f64; N]>::try_from(data).map_err(|data: Vec<f64>| {
+            serde::de::Error::invalid_length(data.len(), &"Tensor2 must have N components")
+        })?;
+        Ok(Tensor2 { vec })
+    }
 }
 
 impl<const N: usize> Tensor2<N> {
@@ -3042,6 +3062,22 @@ mod tests {
              │ 7.0 8.0 9.0 │\n\
              └             ┘"
         );
+    }
+
+    #[test]
+    fn generic_derive_works() {
+        // a generic wrapper must be able to derive Serialize/Deserialize,
+        // i.e. Tensor2<N> must implement Deserialize for an arbitrary N
+        #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+        struct Wrapper<const N: usize> {
+            tt: Tensor2<N>,
+        }
+        let w = Wrapper::<9> {
+            tt: Tensor2::<9>::identity(),
+        };
+        let json = serde_json::to_string(&w).unwrap();
+        let back: Wrapper<9> = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.tt.get(0), 1.0);
     }
 
     #[test]

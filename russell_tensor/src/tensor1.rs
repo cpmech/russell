@@ -6,7 +6,7 @@ use std::fmt::{self, Write};
 /// Defines a first-order tensor (vector) in R³
 ///
 /// The "standard" components are recorded here where "standard" means with respect to a Cartesian system.
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Tensor1 {
     /// Holds the 3 standard components (stack)
@@ -253,15 +253,27 @@ mod tests {
     }
 
     #[test]
-    fn serialize_deserialize_works() {
-        // transparent: the tensor is serialized as a bare [f64; 3] array
+    fn clone_and_serialize_work() {
         let u = Tensor1::from(&[1.0, -2.0, 3.0]);
+        // clone
+        let mut cloned = u.clone();
+        cloned.set(0, -1.0);
+        assert_eq!(u.get(0), 1.0);
+        assert_eq!(cloned.get(0), -1.0);
+        // transparent: the tensor is serialized as a bare [f64; 3] array
         let json = serde_json::to_string(&u).unwrap();
         assert_eq!(json, "[1.0,-2.0,3.0]");
         let back: Tensor1 = serde_json::from_str(&json).unwrap();
         assert_eq!(back.get(0), 1.0);
         assert_eq!(back.get(1), -2.0);
         assert_eq!(back.get(2), 3.0);
+    }
+
+    #[test]
+    fn debug_works() {
+        let u = Tensor1::from(&[1.0, -2.0, 3.0]);
+        let dbg = format!("{:?}", u);
+        assert!(dbg.contains("1.0") && dbg.contains("-2.0") && dbg.contains("3.0"));
     }
 
     #[test]

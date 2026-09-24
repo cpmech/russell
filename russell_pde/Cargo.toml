@@ -1,6 +1,6 @@
 [package]
 name = "russell_pde"
-version = "3.0.2"
+version = "3.3.0"
 edition = "2024"
 license = "MIT"
 description = "Essential tools to solve partial differential equations; not a full-fledged PDE solver"
@@ -25,7 +25,7 @@ structopt = "0.3"
 
 [dev-dependencies]
 plotpy = "1.24"
-rayon = "1.10"
+rayon = "1.12"
 serial_test = "4.0"
 
 [lints]

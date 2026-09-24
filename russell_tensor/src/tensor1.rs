@@ -6,7 +6,7 @@ use std::fmt::{self, Write};
 /// Defines a first-order tensor (vector) in R³
 ///
 /// The "standard" components are recorded here where "standard" means with respect to a Cartesian system.
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Tensor1 {
     /// Holds the 3 standard components (stack)

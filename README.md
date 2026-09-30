@@ -2,7 +2,7 @@
 
 <p align="center">
 <a href="https://github.com/cpmech/russell"><img src="assets/bertrand-russell.jpeg" alt="Bertrand Russell"></a>*
-<a href="https://github.com/cpmech/russell"><img src="assets/bertrand-russell-stamp-400.jpg" alt="Bertrand Russell (Stamp)"></a>*
+<a href="https://github.com/cpmech/russell"><img src="assets/bertrand-russell-stamp-200.jpg" alt="Bertrand Russell (Stamp)"></a>*
 </p>
 
 <p align="center">

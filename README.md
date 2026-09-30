@@ -1,11 +1,12 @@
 # Russell - Rust Scientific Library <!-- omit from toc --> 
 
 <p align="center">
-<a href="https://github.com/cpmech/russell"><img src="bertrand-russell.jpeg" alt="Bertrand Russell"></a>*
+<a href="https://github.com/cpmech/russell/assets"><img src="bertrand-russell.jpeg" alt="Bertrand Russell"></a>*
+<a href="https://github.com/cpmech/russell/assets"><img src="bertrand-russell-stamp-400.jpeg" alt="Bertrand Russell (Stamp)"></a>*
 </p>
 
 <p align="center">
-<a href="https://github.com/cpmech/russell"><img src="logo.svg" alt="Russell"></a>
+<a href="https://github.com/cpmech/russell/assets"><img src="logo.svg" alt="Russell"></a>
 </p>
 
 ---

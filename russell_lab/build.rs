@@ -269,8 +269,11 @@ fn compile_oracle() {
         );
     }
 
+    // The prefixed copy defines `oracle_c_*` rather than `c_*`, so it can be
+    // linked alongside the normal shim. Without that, `--features oracle` would
+    // also need `oblas`, and the parity tests could not run without OpenBLAS.
     cc::Build::new()
-        .file("c_code/interface_blas.c")
+        .file("c_code/interface_blas_oracle.c")
         .include(&include)
         .compile("oracle_interface_blas");
 
@@ -284,5 +287,6 @@ fn compile_oracle() {
     // The reference is Fortran, so its runtime is needed.
     println!("cargo:rustc-link-lib=dylib=gfortran");
     println!("cargo:rerun-if-env-changed=RUSSELL_ORACLE_ROOT");
+    println!("cargo:rerun-if-changed=c_code/interface_blas.c");
     println!("cargo:warning=russell_lab: `oracle` feature ON -- tests compare against {root}");
 }

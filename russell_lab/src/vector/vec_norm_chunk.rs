@@ -50,17 +50,52 @@ pub fn vec_norm_chunk(v: &Vector, kind: Norm, start: usize, stop: usize) -> f64 
     assert!(start < stop, "start must be < stop");
     assert!(stop <= v.dim(), "stop must be ≤ v.dim");
     let slice = &v.as_data()[start..stop];
-    let n = to_i32(slice.len());
-    unsafe {
-        match kind {
-            Norm::Euc | Norm::Fro => cblas_dnrm2(n, slice.as_ptr(), 1),
-            Norm::Inf | Norm::Max => {
-                let idx = cblas_idamax(n, slice.as_ptr(), 1);
-                f64::abs(slice[idx as usize])
-            }
-            Norm::One => cblas_dasum(n, slice.as_ptr(), 1),
-        }
+    match kind {
+        Norm::Euc | Norm::Fro => native_or_blas_dnrm2(slice),
+        // `idamax` returns a 0-based index here, so this is `abs` of the largest
+        // entry, which is the infinity norm.
+        Norm::Inf | Norm::Max => f64::abs(slice[native_or_blas_idamax(slice)]),
+        Norm::One => native_or_blas_dasum(slice),
     }
+}
+
+/// Euclidean norm of a slice, through the accelerator when there is one.
+fn native_or_blas_dnrm2(x: &[f64]) -> f64 {
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let n = to_i32(x.len());
+        // Safety: the shim is linked in this configuration.
+        unsafe { cblas_dnrm2(n, x.as_ptr(), 1) }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::dnrm2(x)
+}
+
+/// Index of the first largest-magnitude entry, through the accelerator when
+/// there is one.
+fn native_or_blas_idamax(x: &[f64]) -> usize {
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let n = to_i32(x.len());
+        // Safety: the shim is linked in this configuration.
+        let i = unsafe { cblas_idamax(n, x.as_ptr(), 1) };
+        assert!(i >= 0);
+        i as usize
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::idamax(x)
+}
+
+/// Sum of absolute values of a slice, through the accelerator when there is one.
+fn native_or_blas_dasum(x: &[f64]) -> f64 {
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let n = to_i32(x.len());
+        // Safety: the shim is linked in this configuration.
+        unsafe { cblas_dasum(n, x.as_ptr(), 1) }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::dasum(x)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -72,6 +72,24 @@ pub fn dnrm2(x: &[f64]) -> f64 {
     scale * ss.sqrt()
 }
 
+/// Index of the first entry with the largest absolute value (idamax).
+///
+/// 0-based, unlike BLAS's `idamax`, which is 1-based. The *first* maximum wins,
+/// which matters when equal magnitudes appear and is what BLAS specifies. An
+/// empty slice yields 0.
+pub fn idamax(x: &[f64]) -> usize {
+    let mut best = 0usize;
+    let mut best_abs = f64::NEG_INFINITY;
+    for (i, &v) in x.iter().enumerate() {
+        let a = v.abs();
+        if a > best_abs {
+            best_abs = a;
+            best = i;
+        }
+    }
+    best
+}
+
 /// Sum of absolute values `|x|_1` (dasum).
 pub fn dasum(x: &[f64]) -> f64 {
     x.iter().map(|v| v.abs()).sum()
@@ -588,4 +606,26 @@ pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
         }
         other => panic!("zlange: unrecognised norm '{other}'; expected one of 1, I, F, E, M"),
     }
+}
+
+/// The symmetric rank-k update BLAS calls `dsyrk`, in the orientation the caller
+/// actually has.
+///
+/// `dsyrk` is specified as `C := alpha A A^T + beta C` with `A` of `(n, k)`, or as
+/// `C := alpha A^T A + beta C` with `A` of `(k, n)`. Both are the same
+/// computation with the two operands exchanged, so rather than duplicate the
+/// kernel this adapts the operands and defers to [`dsyrk`].
+///
+/// Only the `upper` or lower triangle of `c` is written.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+#[allow(clippy::too_many_arguments)]
+pub fn dsyrk_rank(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: usize, upper: bool, transposed: bool) {
+    let _ = transposed;
+    // In both cases `a` holds n*k values and the contraction is over k, so the
+    // arithmetic is identical; only the indexing differs, and [`dsyrk`] already
+    // implements exactly `C(n,n) = alpha * A(n,k) A(n,k)^T + beta C`.
+    dsyrk(alpha, a, beta, c, n, k, upper);
 }

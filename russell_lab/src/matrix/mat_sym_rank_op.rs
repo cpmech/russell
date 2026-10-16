@@ -116,24 +116,57 @@ pub fn mat_sym_rank_op(
         }
         (row, row, CBLAS_TRANS)
     };
-    let uplo = if upper { CBLAS_UPPER } else { CBLAS_LOWER };
-    let n_i32 = to_i32(n);
-    let k_i32 = to_i32(k);
-    let ldc = n_i32;
-    unsafe {
-        cblas_dsyrk(
-            CBLAS_COL_MAJOR,
-            uplo,
-            trans,
-            n_i32,
-            k_i32,
-            alpha,
-            a.as_data().as_ptr(),
-            to_i32(lda),
-            beta,
-            c.as_mut_data().as_mut_ptr(),
-            ldc,
-        );
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let uplo = if upper { CBLAS_UPPER } else { CBLAS_LOWER };
+        let n_i32 = to_i32(n);
+        let k_i32 = to_i32(k);
+        let ldc = n_i32;
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_dsyrk(
+                CBLAS_COL_MAJOR,
+                uplo,
+                trans,
+                n_i32,
+                k_i32,
+                alpha,
+                a.as_data().as_ptr(),
+                to_i32(lda),
+                beta,
+                c.as_mut_data().as_mut_ptr(),
+                ldc,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // The two cases contract over *different* lengths, so they are not the
+        // same call with a flag:
+        //
+        //   case 1, `trans` = 'N': c := a aᵀ, a is (n, k), contraction over k
+        //   case 2, `trans` = 'T': c := aᵀ a, a is (k, n), contraction over k
+        //
+        // `k` is bound to `col` in case 1 and to `row` in case 2 above, so the
+        // same expression is right in both -- but `a` has to be handed to the
+        // kernel in the orientation that matches. `dgemm` computes
+        // C := alpha A B + beta C, so case 1 is A = a, B = aᵀ and case 2 is
+        // A = aᵀ, B = a, and the second operand is the same matrix either way.
+        //
+        // Only the requested triangle is written, which `dgemm` does not do, so
+        // the unrequested triangle is saved and restored around the call.
+        let saved = c.as_data().clone();
+        crate::native::blas::dsyrk_rank(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper, trans == CBLAS_TRANS);
+        // Entries outside the requested triangle keep whatever they held before
+        // the call, which is what BLAS leaves there.
+        for j in 0..n {
+            for i in 0..n {
+                let in_triangle = if upper { i <= j } else { i >= j };
+                if !in_triangle {
+                    c.set(i, j, saved[i + j * n]);
+                }
+            }
+        }
     }
     Ok(())
 }

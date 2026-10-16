@@ -74,26 +74,32 @@ pub fn mat_vec_mul_update(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector, be
         v.fill(0.0);
         return Ok(());
     }
-    let m_i32: i32 = to_i32(m);
-    let n_i32: i32 = to_i32(n);
-    let incx = 1;
-    let incy = 1;
-    unsafe {
-        cblas_dgemv(
-            CBLAS_COL_MAJOR,
-            CBLAS_NO_TRANS,
-            m_i32,
-            n_i32,
-            alpha,
-            a.as_data().as_ptr(),
-            m_i32,
-            u.as_data().as_ptr(),
-            incx,
-            beta,
-            v.as_mut_data().as_mut_ptr(),
-            incy,
-        );
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let m_i32: i32 = to_i32(m);
+        let n_i32: i32 = to_i32(n);
+        let incx = 1;
+        let incy = 1;
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_dgemv(
+                CBLAS_COL_MAJOR,
+                CBLAS_NO_TRANS,
+                m_i32,
+                n_i32,
+                alpha,
+                a.as_data().as_ptr(),
+                m_i32,
+                u.as_data().as_ptr(),
+                incx,
+                beta,
+                v.as_mut_data().as_mut_ptr(),
+                incy,
+            );
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::dgemv(alpha, a.as_data(), u.as_data(), beta, v.as_mut_data(), m, n);
     Ok(())
 }
 

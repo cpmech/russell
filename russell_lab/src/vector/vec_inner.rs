@@ -60,8 +60,14 @@ pub fn vec_inner(u: &Vector, v: &Vector) -> f64 {
             + u[7] * v[7]
             + u[8] * v[8]
     } else {
-        let n_i32 = to_i32(n);
-        unsafe { cblas_ddot(n_i32, u.as_data().as_ptr(), 1, v.as_data().as_ptr(), 1) }
+        #[cfg(any(feature = "oblas", feature = "mkl"))]
+        {
+            let n_i32 = to_i32(n);
+            // Safety: the shim is linked in this configuration.
+            unsafe { cblas_ddot(n_i32, u.as_data().as_ptr(), 1, v.as_data().as_ptr(), 1) }
+        }
+        #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+        crate::native::blas::ddot(&u.as_data()[..n], &v.as_data()[..n])
     }
 }
 

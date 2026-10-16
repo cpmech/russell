@@ -31,7 +31,7 @@ use crate::internal::{C_TRUE, CcBool};
 unsafe extern "C" {
     /// `dgesv`: solve `A X = B`. Takes `nrhs` right-hand sides; the shim's
     /// signature is the general one even though `russell_lab` only uses one.
-    pub fn c_dgesv(
+    pub fn oracle_c_dgesv(
         n: *const i32,
         nrhs: *const i32,
         a: *mut f64,
@@ -43,7 +43,7 @@ unsafe extern "C" {
     );
 
     /// `dgetrf`: LU factorisation with partial pivoting, `m x n`.
-    pub fn c_dgetrf(
+    pub fn oracle_c_dgetrf(
         m: *const i32,
         n: *const i32,
         a: *mut f64,
@@ -53,7 +53,7 @@ unsafe extern "C" {
     );
 
     /// `dgetri`: inverse from a `dgetrf` factorisation.
-    pub fn c_dgetri(
+    pub fn oracle_c_dgetri(
         n: *const i32,
         a: *mut f64,
         lda: *const i32,
@@ -64,10 +64,10 @@ unsafe extern "C" {
     );
 
     /// `dpotrf`: Cholesky factorisation. `upper` selects the triangle to write.
-    pub fn c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
+    pub fn oracle_c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
 
     /// `dsyev`: eigenvalues (and optionally eigenvectors) of a symmetric matrix.
-    pub fn c_dsyev(
+    pub fn oracle_c_dsyev(
         calc_v: CcBool,
         upper: CcBool,
         n: *const i32,
@@ -84,7 +84,7 @@ unsafe extern "C" {
     /// Eigenvalues come back as a real/imaginary pair because a real matrix can
     /// have complex conjugate pairs. Real eigenvectors are not returned for a
     /// complex pair, and `wi` must be inspected to know which case applies.
-    pub fn c_dgeev(
+    pub fn oracle_c_dgeev(
         calc_vl: CcBool,
         calc_vr: CcBool,
         n: *const i32,
@@ -102,7 +102,7 @@ unsafe extern "C" {
     );
 
     /// `dgesvd`: singular value decomposition, `m x n`.
-    pub fn c_dgesvd(
+    pub fn oracle_c_dgesvd(
         jobu_code: i32,
         jobvt_code: i32,
         m: *const i32,
@@ -163,7 +163,7 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            c_dgeev(
+            oracle_c_dgeev(
                 C_FALSE,
                 want_vr,
                 &n_i32,
@@ -187,7 +187,7 @@ pub mod query {
         let mut work = vec![0.0f64; need];
         lwork = need as i32;
         unsafe {
-            c_dgeev(
+            oracle_c_dgeev(
                 C_FALSE,
                 want_vr,
                 &n_i32,
@@ -217,7 +217,7 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            c_dsyev(jobz, C_FALSE, &n_i32, a.as_mut_ptr(), &ld, w.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
+            oracle_c_dsyev(jobz, C_FALSE, &n_i32, a.as_mut_ptr(), &ld, w.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
         }
         if info != 0 {
             return info;
@@ -226,7 +226,7 @@ pub mod query {
         let mut work = vec![0.0f64; need];
         lwork = need as i32;
         unsafe {
-            c_dsyev(jobz, C_FALSE, &n_i32, a.as_mut_ptr(), &ld, w.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
+            oracle_c_dsyev(jobz, C_FALSE, &n_i32, a.as_mut_ptr(), &ld, w.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
         }
         info
     }
@@ -241,7 +241,7 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            c_dgesvd(
+            oracle_c_dgesvd(
                 svd_code::ALL,
                 svd_code::ALL,
                 &m_i32,
@@ -266,7 +266,7 @@ pub mod query {
         lwork = need as i32;
         let _ = min_mn;
         unsafe {
-            c_dgesvd(
+            oracle_c_dgesvd(
                 svd_code::ALL,
                 svd_code::ALL,
                 &m_i32,

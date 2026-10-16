@@ -13,11 +13,10 @@
 //! | 4 | `dtrevc` | eigenvectors of `T` by back-substitution |
 //! | 5 | `dgebak` | undoes the balancing |
 //!
-//! Steps 2-4 are here, plus the `dgeev` driver; step 1 (`dgebal`) and step 5
-//! (`dgebak`) are deliberately *not* called, so eigenvector accuracy on badly
-//! scaled input is the reference's only, but the eigenvalue ordering is the one
-//! the un-balanced reduction produces. Everything is column-major, so element
-//! `(i, j)` of an `n x n` matrix lives at `data[i + j * n]`.
+//! All five steps are here, plus the `dgeev` driver, in the reference's order:
+//! balancing, Hessenberg reduction, Schur reduction, eigenvectors, and undoing
+//! the balancing. Everything is column-major, so element `(i, j)` of an `n x n`
+//! matrix lives at `data[i + j * n]`.
 //!
 //! # The Schur form is a *real* one
 //!
@@ -1644,6 +1643,243 @@ fn column_norm2(v: &[f64], n: usize, j0: usize) -> f64 {
     crate::native::blas::dnrm2(&v[j0 * n..(j0 + 1) * n])
 }
 
+/// `dgebal` with `JOB = 'B'` (LAPACK 3.12.1, `SRC/dgebal.f`): permute and scale a
+/// general real matrix to improve the conditioning of its eigenvalues.
+///
+/// The permutation pushes rows (then columns) that isolate an eigenvalue to the
+/// bottom (top), so that the matrix takes the block form
+///
+/// ```text
+///       ( T1  X  Y )
+/// P A P ( 0   B  Z )
+///       ( 0   0  T2 )
+/// ```
+///
+/// with `T1` and `T2` upper triangular and `B` the active block `ilo..=ihi`
+/// (0-based). Scaling then makes the 1-norms of each row of `B` and its
+/// corresponding column nearly equal by a diagonal similarity.
+///
+/// The returned `scale` vector follows LAPACK: entries inside `ilo..=ihi` hold
+/// the scaling factors, entries outside hold the 1-based source index of the
+/// permutation (used by [`dgebak_right`] to undo it).
+fn dgebal(a: &mut [f64], n: usize) -> (usize, usize, Vec<f64>) {
+    // PARAMETER ( SCLFAC = 2.0 ) and PARAMETER ( FACTOR = 0.95D+0 ).
+    const SCLFAC: f64 = 2.0;
+    const FACTOR: f64 = 0.95;
+
+    let mut scale = vec![1.0f64; n];
+    if n == 0 {
+        return (0, 0, scale);
+    }
+
+    // K and L are LAPACK's ILO and IHI, 0-based here.
+    let mut k = 0usize;
+    let mut l = n - 1;
+
+    // ==== Permutation to isolate eigenvalues if possible. ====
+    //
+    // Search for rows isolating an eigenvalue and push them down.
+    let mut noconv = true;
+    while noconv {
+        noconv = false;
+        // Fortran fixes the DO bound when the loop is entered; L is decremented
+        // inside the body, so capture the bound first.
+        let mut i = l as isize;
+        while i >= 0 {
+            let iu = i as usize;
+            let mut canswap = true;
+            for j in 0..=l {
+                if iu != j && a[iu + j * n] != 0.0 {
+                    canswap = false;
+                    break;
+                }
+            }
+            if canswap {
+                scale[l] = (iu + 1) as f64;
+                if iu != l {
+                    // Swap rows (DSWAP(L, A(1,I), 1, A(1,L), 1)) and columns
+                    // (DSWAP(N-K+1, A(I,K), LDA, A(L,K), LDA)).
+                    for r in 0..=l {
+                        a.swap(r + iu * n, r + l * n);
+                    }
+                    for c in k..n {
+                        a.swap(iu + c * n, l + c * n);
+                    }
+                }
+                noconv = true;
+                if l == 0 {
+                    return (0, 0, scale);
+                }
+                l -= 1;
+            }
+            i -= 1;
+        }
+    }
+
+    // Search for columns isolating an eigenvalue and push them left.
+    noconv = true;
+    while noconv {
+        noconv = false;
+        let mut j = k;
+        while j <= l {
+            let mut canswap = true;
+            for i in k..=l {
+                if i != j && a[i + j * n] != 0.0 {
+                    canswap = false;
+                    break;
+                }
+            }
+            if canswap {
+                scale[k] = (j + 1) as f64;
+                if j != k {
+                    for r in 0..=l {
+                        a.swap(r + j * n, r + k * n);
+                    }
+                    for c in k..n {
+                        a.swap(j + c * n, k + c * n);
+                    }
+                }
+                noconv = true;
+                k += 1;
+            }
+            j += 1;
+        }
+    }
+
+    // Initialize SCALE for the non-permuted submatrix.
+    for i in k..=l {
+        scale[i] = 1.0;
+    }
+
+    // ==== Balance the submatrix in rows K to L. ====
+    //
+    // SFMIN1 = DLAMCH('S') / DLAMCH('P').
+    let sfmin1 = f64::MIN_POSITIVE / f64::EPSILON;
+    let sfmax1 = 1.0 / sfmin1;
+    let sfmin2 = sfmin1 * SCLFAC;
+    let sfmax2 = 1.0 / sfmin2;
+
+    let mut noconv = true;
+    while noconv {
+        noconv = false;
+        for i in k..=l {
+            let col: Vec<f64> = (k..=l).map(|r| a[r + i * n]).collect();
+            let row: Vec<f64> = (k..=l).map(|c| a[i + c * n]).collect();
+            let mut c = crate::native::blas::dnrm2(&col);
+            let mut r = crate::native::blas::dnrm2(&row);
+
+            // ICA = IDAMAX(L, A(1,I), 1); IRA = IDAMAX(N-K+1, A(I,K), LDA).
+            let col_full: Vec<f64> = (0..=l).map(|rr| a[rr + i * n]).collect();
+            let ica = crate::native::blas::idamax(&col_full);
+            let mut ca = a[ica + i * n].abs();
+            let row_full: Vec<f64> = (k..n).map(|cc| a[i + cc * n]).collect();
+            let ira = crate::native::blas::idamax(&row_full) + k;
+            let mut ra = a[i + ira * n].abs();
+
+            // Guard against zero C or R due to underflow.
+            if c == 0.0 || r == 0.0 {
+                continue;
+            }
+            if (c + ca + r + ra).is_nan() {
+                // DISNAN(C+CA+R+RA): the reference reports an error here. The
+                // inputs to dgeev are finite, so this is unreachable in practice;
+                // leaving the row unbalanced is the graceful fallback.
+                continue;
+            }
+
+            let mut g = r / SCLFAC;
+            let mut f = 1.0f64;
+            let s = c + r;
+
+            while c < g && f.max(c).max(ca) < sfmax2 && r.min(g).min(ra) > sfmin2 {
+                f *= SCLFAC;
+                c *= SCLFAC;
+                ca *= SCLFAC;
+                r /= SCLFAC;
+                g /= SCLFAC;
+                ra /= SCLFAC;
+            }
+
+            g = c / SCLFAC;
+
+            while g >= r && r.max(ra) < sfmax2 && f.min(c).min(g).min(ca) > sfmin2 {
+                f /= SCLFAC;
+                c /= SCLFAC;
+                g /= SCLFAC;
+                ca /= SCLFAC;
+                r *= SCLFAC;
+                ra *= SCLFAC;
+            }
+
+            // Now balance.
+            if c + r >= FACTOR * s {
+                continue;
+            }
+            if f < 1.0 && scale[i] < 1.0 {
+                if f * scale[i] <= sfmin1 {
+                    continue;
+                }
+            }
+            if f > 1.0 && scale[i] > 1.0 {
+                if scale[i] >= sfmax1 / f {
+                    continue;
+                }
+            }
+            let g2 = 1.0 / f;
+            scale[i] *= f;
+            noconv = true;
+
+            // DSCAL(N-K+1, G, A(I,K), LDA) then DSCAL(L, F, A(1,I), 1): scale
+            // row I across columns K..N and column I across rows 1..L.
+            for cc in k..n {
+                a[i + cc * n] *= g2;
+            }
+            for rr in 0..=l {
+                a[rr + i * n] *= f;
+            }
+        }
+    }
+
+    (k, l, scale)
+}
+
+/// `dgebak` with `JOB = 'B'`, `SIDE = 'R'` (LAPACK 3.12.1, `SRC/dgebak.f`):
+/// undo the balancing that [`dgebal`] recorded in `scale`.
+///
+/// The right eigenvectors of the balanced matrix are those of the original
+/// matrix with row `i` multiplied by `scale(i)` (for `i` in `ilo..=ihi`) and the
+/// isolated rows permuted back.
+fn dgebak_right(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) {
+    if n == 0 {
+        return;
+    }
+
+    // Backward balance.
+    if ilo != ihi {
+        for i in ilo..=ihi {
+            let s = scale[i];
+            for j in 0..n {
+                v[i + j * n] *= s;
+            }
+        }
+    }
+
+    // Backward permutation: I = ILO-1 step -1 until 1, then IHI+1 step 1 until N.
+    for ii in 0..n {
+        let i = if ii < ilo { ilo - ii - 1 } else { ii };
+        if i >= ilo && i <= ihi {
+            continue;
+        }
+        let k = scale[i] as usize - 1;
+        if k == i {
+            continue;
+        }
+        for j in 0..n {
+            v.swap(i + j * n, k + j * n);
+        }
+    }
+}
+
 /// `dgeev` (right eigenvectors only): the eigenvalues and right eigenvectors of
 /// a general real square matrix.
 ///
@@ -1670,20 +1906,19 @@ fn column_norm2(v: &[f64], n: usize, j0: usize) -> f64 {
 /// `lwork = 4n + 1` selects):
 ///
 /// 1. scale `A` if its largest element is outside `[SMLNUM, BIGNUM]`;
-/// 2. [`dgehrd`]: `A = Q H Q^T`, with `Q` accumulated;
-/// 3. [`dhseqr_with_schur_vectors`] (`COMPZ = 'V'`): `A = Z T Z^T`, accumulating
+/// 2. [`dgebal`] (`JOB = 'B'`): permute and scale to improve conditioning;
+/// 3. [`dgehrd`]: `A = Q H Q^T`, with `Q` accumulated;
+/// 4. [`dhseqr_with_schur_vectors`] (`COMPZ = 'V'`): `A = Z T Z^T`, accumulating
 ///    the Schur vectors into `Q`, so that afterwards `Z` holds them;
-/// 4. `dtrevc_right` (`DTREVC3` with `SIDE = 'R'`, `HOWMNY = 'B'`):
+/// 5. `dtrevc_right` (`DTREVC3` with `SIDE = 'R'`, `HOWMNY = 'B'`):
 ///    eigenvectors of `T`, back-transformed by `Z`;
-/// 5. unscale, then normalise the eigenvectors.
+/// 6. [`dgebak_right`] (`JOB = 'B'`, `SIDE = 'R'`): undo the balancing of the
+///    eigenvectors;
+/// 7. normalise the eigenvectors, then unscale the eigenvalues.
 ///
-/// **`dgebal` is not called** (there is no balancing, so no `dgebak` either).
-/// The reference balances first, which permutes and scales to improve
-/// conditioning; skipping it leaves the eigenvectors correct, just possibly less
-/// accurate on badly scaled input. It is skipped deliberately: the acceptance
-/// test forms its eigenvalues with an independent `dgehrd` + `dhseqr` on the same
-/// matrix and pairs them with these eigenvectors by index, so `dgeev` must deflate
-/// in exactly that order, and balancing changes it.
+/// Balancing is what makes the eigenvalues of a defectively repeated eigenvalue
+/// come out exact: the permutation in step 2 isolates such an eigenvalue, so the
+/// QR iteration never has to separate it from its neighbours.
 pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) -> (Vec<f64>, Vec<f64>) {
     assert_eq!(a.len(), n * n, "dgeev: a must be n*n");
     assert_eq!(v_real.len(), n * n, "dgeev: v_real must be n*n");
@@ -1723,6 +1958,9 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
         }
     }
 
+    // ---- DGEBAL('B'): permute and scale to improve conditioning ----
+    let (ilo, ihi, bal_scale) = dgebal(a, n);
+
     // ---- DGEHRD: A = Q H Q^T ----
     let mut q = vec![0.0; n * n];
     dgehrd(a, n, Some(&mut q));
@@ -1733,6 +1971,9 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
     // ---- DTREVC3('R','B'): eigenvectors of T, back-transformed by Z ----
     let mut vr = q;
     dtrevc_right(a, &mut vr, n);
+
+    // ---- DGEBAK('B','R'): undo the balancing of the eigenvectors ----
+    dgebak_right(&mut vr, n, ilo, ihi, &bal_scale);
 
     // ---- normalise: unit Euclidean norm, largest component real ----
     // (dgeev.f, the WANTVR branch; `i0` is LAPACK's 1-based I minus one)
@@ -2106,8 +2347,10 @@ mod tests {
     ///
     /// The eigenvalues are deliberately recomputed here with an independent
     /// `dgehrd` + `dhseqr` rather than taken from `dgeev`, so the pairing of
-    /// vectors to eigenvalues is not assumed. `dgeev` does not balance, so its
-    /// deflation order is exactly this one's.
+    /// vectors to eigenvalues is not assumed. `dgebal` leaves the `sample`
+    /// family untouched (its dominant diagonal already isolates nothing and
+    /// needs no scaling), so the two deflation orders coincide and index `j` of
+    /// the returned vectors is still the one paired with index `j` here.
     #[test]
     fn dgeev_eigenvectors_satisfy_their_defining_equation() {
         for n in [1usize, 2, 3, 5, 8, 12] {

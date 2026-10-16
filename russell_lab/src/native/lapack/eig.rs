@@ -851,6 +851,35 @@ pub fn dhseqr(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], n: usize) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// `dgeev` (right eigenvectors only): the eigenvalues and right eigenvectors of a
+/// general real square matrix.
+///
+/// `a` is `n x n` column-major and is destroyed. `v_real` and `v_imag` receive
+/// the eigenvectors in LAPACK's compact storage convention, which
+/// `crate::internal::dgeev_data` unpacks: for a complex conjugate pair, column
+/// `j` holds the real part and column `j+1` the imaginary part, and
+/// `v(j) = col_j + i col_{j+1}`; a real eigenvalue's column has zero imaginary
+/// part. Conjugate pairs are stored adjacently with `wi > 0` first.
+///
+/// **Not implemented yet.** The acceptance test is
+/// `parity::dgeev_eigenvectors_satisfy_their_defining_equation`, which checks
+/// `A v = lambda v` directly -- eigenvectors have no unique value to compare
+/// against, so the defining equation is the criterion.
+///
+/// The plan, following `dgeev.f`: `dgebal` (optional; the reduction alone is
+/// enough for a first version), then `dgehrd` (done), then `dhseqr` with
+/// `COMPZ='V'` to accumulate the Schur vectors into `Q`, then `dtrevc` for the
+/// eigenvectors of the quasi-triangular form, then transform back by `Q`.
+pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) {
+    assert_eq!(a.len(), n * n, "dgeev: a must be n*n");
+    assert_eq!(v_real.len(), n * n, "dgeev: v_real must be n*n");
+    assert_eq!(v_imag.len(), n * n, "dgeev: v_imag must be n*n");
+    let _ = (v_real, v_imag, a, n);
+    unimplemented!("dgeev: the eigenvector back-substitution is not written yet")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use super::*;

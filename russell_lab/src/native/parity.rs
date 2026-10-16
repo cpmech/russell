@@ -343,3 +343,80 @@ fn dhseqr_eigenvalues_agree_with_the_reference() {
         }
     }
 }
+
+/// Right eigenvectors of a general real matrix, by residual.
+///
+/// An eigenvector has no unique value -- it is defined up to scaling, and its
+/// sign and phase are arbitrary -- so comparing against the reference's vectors
+/// would be meaningless. What *is* well defined is the defining equation, so
+/// this checks `A v = lambda v` for each pair, at the tolerance the reduction and
+/// the back-substitution accumulate.
+///
+/// This uses the compact storage convention the rest of the crate unpacks with
+/// `dgeev_data`: for a complex conjugate pair, column `j` holds the real part and
+/// column `j+1` the imaginary part, and `v(j) = col_j + i col_{j+1}`.
+#[test]
+fn dgeev_eigenvectors_satisfy_their_defining_equation() {
+    for n in [1usize, 2, 3, 5, 8, 12] {
+        let a = sample(n);
+
+        let mut av = Matrix::new(n, n); // working copy, destroyed
+        let mut v_real = Matrix::new(n, n);
+        let mut v_imag = Matrix::new(n, n);
+        lapack::eig::dgeev(av.as_mut_data(), v_real.as_mut_data(), v_imag.as_mut_data(), n);
+
+        // Recover the eigenvalues from the Schur form so the residual can be
+        // formed; the driver returns them in (wr, wi) form for reuse.
+        let mut t = a.clone();
+        lapack::eig::dgehrd(t.as_mut_data(), n, None);
+        let mut wr = vec![0.0; n];
+        let mut wi = vec![0.0; n];
+        lapack::eig::dhseqr(t.as_mut_data(), &mut wr, &mut wi, n);
+
+        let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+        let mut j = 0usize;
+        while j < n {
+            if wi[j] != 0.0 {
+                // Complex pair: v = (v_real[:,j] + i v_imag[:,j]), lambda = wr + i wi.
+                let (lr, li) = (wr[j], wi[j]);
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    // (A v)_i for the complex vector v.
+                    let mut sr = 0.0;
+                    let mut si = 0.0;
+                    for k in 0..n {
+                        let ar = a.get(i, k);
+                        let vr = v_real.get(k, j);
+                        let vi = v_imag.get(k, j);
+                        sr += ar * vr;
+                        si += ar * vi;
+                    }
+                    // A v - lambda v
+                    let dr = sr - (lr * v_real.get(i, j) - li * v_imag.get(i, j));
+                    let di = si - (lr * v_imag.get(i, j) + li * v_real.get(i, j));
+                    worst = worst.max(dr.abs().max(di.abs()));
+                }
+                assert!(
+                    worst / scale < 1e-10,
+                    "n={n}: the complex eigenvector for lambda = {lr}+{li}i has residual {worst} (scale {scale})"
+                );
+                j += 2;
+            } else {
+                let l = wr[j];
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut s = 0.0;
+                    for k in 0..n {
+                        s += a.get(i, k) * v_real.get(k, j);
+                    }
+                    worst = worst.max((s - l * v_real.get(i, j)).abs());
+                }
+                assert!(
+                    worst / scale < 1e-10,
+                    "n={n}: the real eigenvector for lambda = {l} has residual {worst} (scale {scale})"
+                );
+                j += 1;
+            }
+        }
+    }
+}

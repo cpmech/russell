@@ -74,10 +74,10 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1055 pass, 61 fail, 1 ignored
+cargo test -p russell_lab --lib                     # 1057 pass, 61 fail, 0 ignored
 cargo test -p russell_lab --lib --features oracle   # same, plus the four parity tests
 
-Both configurations are known-good as of commit `750f3b8f`. The oracle adds the
+Both configurations are known-good as of commit `e52ed45d`. The oracle adds the
 four parity tests but is otherwise the same native path, so the failure count is
 identical.
 

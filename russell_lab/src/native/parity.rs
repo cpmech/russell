@@ -531,3 +531,111 @@ fn complex_solve_agrees_with_the_reference() {
         }
     }
 }
+
+/// A deterministic symmetric matrix, built from `sample`'s upper triangle.
+fn symmetric_sample(n: usize) -> Matrix {
+    let raw = sample(n);
+    let mut a = Matrix::new(n, n);
+    for i in 0..n {
+        for j in 0..n {
+            let (x, y) = if i <= j { (i, j) } else { (j, i) };
+            a.set(i, j, raw.get(x, y));
+        }
+    }
+    a
+}
+
+/// Symmetric eigen-decomposition against the reference.
+///
+/// Four things are checked, deliberately different in kind:
+///
+/// 1. **The eigenvalues are the reference's, in order.** Unlike the general
+///    eigenproblem, the symmetric one *has* a canonical order -- ascending -- so
+///    this compares in order rather than on a sorted multiset, and a wrong
+///    ordering is a failure rather than a nuisance.
+/// 2. **The vectors are orthonormal.** This is what a mis-accumulated
+///    Householder or a missed rotation breaks.
+/// 3. **`A v = lambda v` for each pair.** (1) and (2) together are still
+///    satisfiable by the eigenvectors of a different matrix.
+/// 4. **Both triangles agree.** LAPACK's `uplo` selects which triangle is *read*;
+///    feeding the same symmetric matrix with `upper` false and true must give the
+///    same answer, which catches a routine that reads the wrong half.
+///
+/// Nothing is compared against the reference's eigen*vectors*: their sign is
+/// arbitrary. The exact sign convention is pinned by the `mat_eigen_sym` unit
+/// tests at the sizes where it is well defined.
+#[test]
+fn dsyev_agrees_with_the_reference() {
+    for n in [1usize, 2, 3, 5, 8, 12] {
+        let a = symmetric_sample(n);
+        let mut results = Vec::new();
+
+        for upper in [false, true] {
+            // `mat_eigen_sym` is the public entry point, so this checks the
+            // observable result rather than an internal factorisation.
+            let mut work = a.clone();
+            let mut l = Vector::new(n);
+            crate::mat_eigen_sym(&mut l, &mut work, upper).expect("native dsyev");
+
+            // --- 1. eigenvalues in order against the reference.
+            let mut t_ref = a.clone();
+            let mut l_ref = vec![0.0; n];
+            let info = oracle::query::dsyev(t_ref.as_mut_data(), n, &mut l_ref, true);
+            assert_eq!(info, 0, "reference dsyev failed for n={n} upper={upper}");
+            let scale = l_ref.iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+            for i in 0..n {
+                assert!(
+                    (l[i] - l_ref[i]).abs() / scale < TOL,
+                    "n={n} upper={upper}: eigenvalue {i} is {} but the reference says {}",
+                    l[i],
+                    l_ref[i]
+                );
+            }
+
+            // --- 2. orthonormal columns.
+            for i in 0..n {
+                for j in 0..n {
+                    let mut dot = 0.0;
+                    for k in 0..n {
+                        dot += work.get(k, i) * work.get(k, j);
+                    }
+                    let want = if i == j { 1.0 } else { 0.0 };
+                    assert!(
+                        (dot - want).abs() < 1e-10,
+                        "n={n} upper={upper}: columns {i},{j} are not orthonormal (dot = {dot})"
+                    );
+                }
+            }
+
+            // --- 3. the defining equation.
+            for j in 0..n {
+                for i in 0..n {
+                    let mut av = 0.0;
+                    for k in 0..n {
+                        av += a.get(i, k) * work.get(k, j);
+                    }
+                    let resid = (av - l[j] * work.get(i, j)).abs();
+                    assert!(
+                        resid / scale < 1e-10,
+                        "n={n} upper={upper}: (A v - lambda v)[{i}] = {resid} for eigenvalue {j}"
+                    );
+                }
+            }
+
+            results.push((l, work));
+        }
+
+        // --- 4. the two triangles give the same spectrum and the same residuals,
+        //     not necessarily the same vectors (the sign may differ).
+        let (l_lo, _) = &results[0];
+        let (l_up, _) = &results[1];
+        for i in 0..n {
+            assert!(
+                (l_lo[i] - l_up[i]).abs() < 1e-12,
+                "n={n}: reading the lower triangle gives {} but the upper gives {}",
+                l_lo[i],
+                l_up[i]
+            );
+        }
+    }
+}

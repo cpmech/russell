@@ -300,20 +300,23 @@ pub fn dlanv2(a: &mut f64, b: &mut f64, c: &mut f64, d: &mut f64, cs: &mut f64, 
 /// they are kept in a separate `Vec` here because this caller wants both `H` and
 /// `Q`, and the packing buys nothing outside the blocked algorithm.
 ///
-/// # Every application must read the same matrix
+/// # The update is the literal `dgehd2` sequence
 ///
-/// A step is `A := H A H` with `H = I - tau v v^T`, applied to the trailing
-/// block. Expanding it gives
+/// A step is `A := H A H` with `H = I - tau v v^T`, where `H` has order
+/// `m = n - i - 1` and acts on rows/columns `i+1 .. n-1` (`v[0] == 1` sits at
+/// row `i+1`). LAPACK forms this as two in-place applications against the same
+/// array, in this order:
 ///
 /// ```text
-/// H A H = A - tau v (A^T v)^T - tau (A v) v^T + tau^2 v (v^T A v) v^T
+/// A(0:n, i+1:n)   := A(0:n, i+1:n) * H      (all rows, columns i+1..)
+/// A(i+1:n, i+1:n) := H * A(i+1:n, i+1:n)
 /// ```
 ///
-/// so `A v` and `A^T v` must both be formed against the *same* `A`. Updating the
-/// block in place between the two products makes the second read values the first
-/// has already changed, which is not `H A H`. That was this function's bug, and
-/// it is easy to miss because `H` is orthogonal either way, so the result still
-/// "looks like" a reduction while being neither Hessenberg nor similar to `A`.
+/// The left application deliberately reads the values the right one just wrote,
+/// because the target is `H * (A * H)`. Row `i` and column `i` are never touched.
+/// Building `H` on rows `i .. n-1` (one row too early) or as a square reflector
+/// on the wrong number of columns both break the similarity while still leaving
+/// an orthogonal `Q`, so the mistake is easy to miss.
 ///
 /// # Panics
 ///
@@ -352,84 +355,37 @@ pub fn dgehrd(a: &mut [f64], n: usize, q: Option<&mut [f64]>) {
         }
         vs[i] = Some((v.clone(), tau));
 
-        // Apply H(i) from both sides to the trailing block a[i..n, i+1..n].
-        //
-        // The block is `B = a[i..n, i+1..n]`; the new one is `H_r B H_c`, where
-        //
-        //   H_r = I - tau v v^T   on rows i..n,
-        //   H_c = I - tau u u^T   on columns i+1..n,
-        //
-        // and `u` is the reflection of v onto the first column of the block.
-        // Because v is zero in every component beyond row n, `u` is the first
-        // `ncols` components of v: the reduction only ever touches columns
-        // i+1..n, so the parts of v that would act on columns at or before i
-        // have nothing to act on.
-        //
-        // Both products are formed against a copy of the block. Expanding
-        // `H B H` into correction terms and updating between them makes the
-        // later terms read data the earlier ones changed, which yields a matrix
-        // that is neither H B nor H B H.
-        let mrows = n - i;
-        let ncols = n - (i + 1);
-        let mut vr = vec![0.0; mrows];
-        vr[0] = 1.0;
-        for (k, val) in v.iter().enumerate().skip(1) {
-            if k < mrows {
-                vr[k] = *val;
+        // Apply H(i) from both sides, exactly as dgehd2 does. The reflector has
+        // order m = n-i-1 and acts on rows/columns i+1..n-1; v[0] == 1 sits at
+        // row i+1. Row i and column i are never touched.
+        let m = n - i - 1;
+
+        // Right: A(0:n, i+1:n) := A(0:n, i+1:n) * H, with
+        // (A H)(r, j) = A(r, j) - tau * (sum_l A(r, i+1+l) v[l]) * v[j-(i+1)].
+        // Every dot product is formed from the block before anything is written.
+        let mut w = vec![0.0; n];
+        for r in 0..n {
+            let mut acc = 0.0;
+            for l in 0..m {
+                acc += a[r + (i + 1 + l) * n] * v[l];
             }
+            w[r] = acc;
         }
-        // The two restrictions of H that the block needs:
-        //
-        //   H_r = H              (mrows x mrows), acting on the block's rows
-        //   H_c = H[:, 1..]      (mrows x ncols), acting on the block's columns
-        //
-        // H_c is *not* a square reflector: it is the full H with its first
-        // column dropped, because block column j is full column i+1+j. Building
-        // it as a square reflector from the first few components of v -- which
-        // this function did at first -- gives the wrong matrix and silently
-        // produces something that is orthogonal but not similar to A.
-        let mut block = vec![0.0; mrows * ncols];
-        for j in 0..ncols {
-            for r in 0..mrows {
-                block[r + j * mrows] = a[(i + r) + (i + 1 + j) * n];
+        for r in 0..n {
+            for l in 0..m {
+                a[r + (i + 1 + l) * n] -= tau * w[r] * v[l];
             }
         }
 
-        // H_r as an mrows-square matrix, and H_c = H[:, 1..] with ncols columns.
-        let mut hh = vec![0.0; mrows * mrows];
-        for r in 0..mrows {
-            for c in 0..mrows {
-                hh[r + c * mrows] = (if r == c { 1.0 } else { 0.0 }) - tau * vr[r] * vr[c];
+        // Left: A(i+1:n, i+1:n) := H * A(i+1:n, i+1:n). This reads the values
+        // the right application just wrote, giving H * (A * H) = H A H.
+        for j in (i + 1)..n {
+            let mut acc = 0.0;
+            for l in 0..m {
+                acc += v[l] * a[(i + 1 + l) + j * n];
             }
-        }
-        let mut hc = vec![0.0; mrows * ncols];
-        for r in 0..mrows {
-            for c in 0..ncols {
-                hc[r + c * mrows] = hh[r + (c + 1) * mrows];
-            }
-        }
-
-        // block := block * H_c.
-        let mut tmp = vec![0.0; mrows * ncols];
-        for j in 0..ncols {
-            for r in 0..mrows {
-                let mut s = 0.0;
-                for c in 0..ncols {
-                    s += block[r + c * mrows] * hc[c + j * ncols];
-                }
-                tmp[r + j * mrows] = s;
-            }
-        }
-
-        eprintln!("DBG tmp={tmp:?}");
-        // block := H_r * tmp.
-        for j in 0..ncols {
-            for r in 0..mrows {
-                let mut s = 0.0;
-                for k in 0..mrows {
-                    s += hh[r + k * mrows] * tmp[k + j * mrows];
-                }
-                a[(i + r) + (i + 1 + j) * n] = s;
+            for l in 0..m {
+                a[(i + 1 + l) + j * n] -= tau * v[l] * acc;
             }
         }
     }
@@ -439,39 +395,33 @@ pub fn dgehrd(a: &mut [f64], n: usize, q: Option<&mut [f64]>) {
         //
         // Applying the reflectors in reverse and multiplying on the left builds
         // the product: after processing i, `qq` holds H(i) H(i+1) ... H(n-3).
-        // The reflector acts on rows i..n as [1; v_tail] followed by zeros, so
-        // the dot product for a left multiplication runs over rows i..n and the
-        // column is read into a scratch buffer first: forming it from `qq` in
-        // place would read rows the same update had already changed.
+        // The reflector has order m = n-i-1, acts on rows i+1..n-1, and its
+        // vector is `v` with v[0] == 1 at row i+1. Each column is read into a
+        // scratch buffer first: forming the dot product from `qq` in place would
+        // read rows the same update had already changed.
         qq.fill(0.0);
         for i in 0..n {
             qq[i + i * n] = 1.0;
         }
         for i in (0..(n - 2)).rev() {
             let (v, tau) = match &vs[i] {
-                Some((v, tau)) => (v.clone(), *tau),
+                Some((v, tau)) => (v.as_slice(), *tau),
                 None => continue,
             };
-            let mrows = n - i;
-            let mut vr = vec![0.0; mrows];
-            vr[0] = 1.0;
-            for (k, val) in v.iter().enumerate().skip(1) {
-                if k < mrows {
-                    vr[k] = *val;
-                }
-            }
-            let mut col = vec![0.0; mrows];
+            let m = v.len();
+            let base = i + 1;
+            let mut col = vec![0.0; m];
             for j in 0..n {
-                for r in 0..mrows {
-                    col[r] = qq[(i + r) + j * n];
+                for r in 0..m {
+                    col[r] = qq[(base + r) + j * n];
                 }
                 let mut acc = 0.0;
-                for r in 0..mrows {
-                    acc += vr[r] * col[r];
+                for r in 0..m {
+                    acc += v[r] * col[r];
                 }
                 let w = tau * acc;
-                for r in 0..mrows {
-                    qq[(i + r) + j * n] = col[r] - w * vr[r];
+                for r in 0..m {
+                    qq[(base + r) + j * n] = col[r] - w * v[r];
                 }
             }
         }
@@ -569,9 +519,8 @@ mod tests {
     /// internal factorisation: `H` upper Hessenberg, `Q` orthogonal, and
     /// `A = Q H Q^T`.
     #[test]
-    #[ignore = "dgehrd block update is not yet H_r B H_c; see the module docs"]
     fn dgehrd_produces_hessenberg_and_an_orthogonal_q() {
-        for n in [1usize, 2, 3, 5, 8] {
+        for n in [1usize, 2, 3, 5, 8, 20] {
             let orig = sample(n);
             let mut h = orig.clone();
             let mut q = vec![0.0; n * n];
@@ -646,5 +595,67 @@ mod tests {
         // The standard form requires equal diagonal entries and B*C < 0.
         assert!((a - d).abs() < 1e-14, "the diagonal must be equal: {a} vs {d}");
         assert!(b * c < 0.0, "B*C must be negative, got {} * {}", b, c);
+    }
+
+    /// The 3x3 case against an independently built `Hr A Hr`.
+    ///
+    /// For `n = 3` there is exactly one step, so `H` must equal `Hr * A * Hr`
+    /// where `Hr` is the 3x3 reflector that is the identity on row/column 0 and
+    /// `I - tau v v^T` on rows/columns 1..2. This pins the exact numbers rather
+    /// than only the invariants, so a "reduction" that is similar to `A` but not
+    /// the reduction LAPACK performs cannot pass.
+    #[test]
+    fn dgehrd_matches_the_3x3_reference() {
+        // Column-major.
+        let a0 = [4.0, 2.0, -2.0, -3.0, 4.5, 0.0, -1.0, -5.0, 5.0];
+        let n = 3usize;
+
+        // Hr, built directly from dlarfg on the column below the first row.
+        let (beta, tau, v) = dlarfg(a0[1], &[a0[2]]);
+        assert!((beta + 2.8284271247461903).abs() < 1e-14, "beta = {beta}");
+        let mut hr = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                hr[i + j * n] = if i == 0 && j == 0 {
+                    1.0
+                } else if i > 0 && j > 0 {
+                    (if i == j { 1.0 } else { 0.0 }) - tau * v[i - 1] * v[j - 1]
+                } else {
+                    0.0
+                };
+            }
+        }
+
+        let mul = |x: &[f64], y: &[f64]| {
+            let mut c = vec![0.0; n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    let mut s = 0.0;
+                    for l in 0..n {
+                        s += x[i + l * n] * y[l + j * n];
+                    }
+                    c[i + j * n] = s;
+                }
+            }
+            c
+        };
+        let want = mul(&hr, &mul(&a0, &hr));
+
+        let mut h = a0;
+        dgehrd(&mut h, n, None);
+        for idx in 0..n * n {
+            assert!(
+                (h[idx] - want[idx]).abs() < 1e-13,
+                "H[{idx}] = {} but Hr A Hr gives {}",
+                h[idx],
+                want[idx]
+            );
+        }
+        // The published result for this matrix, as a regression pin. Note that
+        // H(2,1) -- index 5 -- is the subdiagonal and is legitimately nonzero;
+        // only entries *below* the subdiagonal must vanish.
+        assert!((h[1] - -2.8284271247461903).abs() < 1e-13, "H(1,0) = {}", h[1]);
+        assert_eq!(h[2], 0.0, "H(2,0) must be exactly zero");
+        assert!((h[5] - -2.25).abs() < 1e-13, "H(2,1) = {}", h[5]);
     }
 }

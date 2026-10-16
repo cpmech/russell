@@ -11,15 +11,16 @@
 //! | `dgetri` inverse from LU | done |
 //! | `dgesv` solve `A X = B` | done |
 //! | `dpotrf` Cholesky | done |
+//! | `zgetrf`, `zgetri`, `zgesv`, `zpotrf` | done, in [`complex`] |
 //! | `dlange` matrix norms | in [`super::blas::dlange`] |
 //! | `dsyev`, `dgeev`, `dggev`, `dgesvd` | **not implemented** |
-//! | the complex (`z*`) routines | **not implemented** |
+//! | the complex eigen/SVD drivers | **not implemented** |
 //!
-//! The unimplemented ones are the eigenvalues, the SVD and everything complex.
+//! The unimplemented ones are the eigenvalues and the SVD, real and complex.
 //! They are named here rather than silently absent so that a caller who needs one
 //! gets an honest answer. Until they exist, build with `--features oblas` (or
-//! `mkl`) for those routines; the geometric and linear-solver paths work
-//! natively.
+//! `mkl`) for those routines; the geometric, linear-solver and complex
+//! Cholesky/inverse/solve paths work natively.
 //!
 //! # Conventions
 //!
@@ -29,6 +30,7 @@
 //!   they do not appear here; the leading dimension of an `n x n` matrix is `n`.
 //! * Workspace is allocated inside each routine.
 
+pub mod complex;
 pub mod eig;
 
 use super::blas;
@@ -484,7 +486,7 @@ mod tests {
 /// a link error names a mangled symbol and says nothing about what to do.
 ///
 /// Routines currently in this state: the eigenvalues (`dsyev`, `dgeev`,
-/// `dggev`), the SVD (`dgesvd`), and everything complex.
+/// `dggev`), the SVD (`dgesvd`), and the complex eigen/SVD drivers.
 pub fn not_implemented(routine: &str) -> &'static str {
     // The message must be a `&'static str` to fit `StrError`, so the routine
     // names are listed literally rather than interpolated.

@@ -106,7 +106,13 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("zpotrf"));
+        // The native kernel handles both triangles itself: it reads only the one
+        // the flag selects and writes only that same triangle. No mirroring (as
+        // mat_cholesky does for the real dpotrf, which is lower-only) is needed,
+        // and none is wanted: for `upper` the strict lower triangle must survive
+        // untouched.
+        crate::native::lapack::complex::zpotrf(a.as_mut_data(), m, upper)
+            .map_err(|_| "LAPACK ERROR (zpotrf): Positive definite check failed")?;
     }
     if info < 0 {
         println!("LAPACK ERROR (zpotrf): Argument #{} had an illegal value", -info);

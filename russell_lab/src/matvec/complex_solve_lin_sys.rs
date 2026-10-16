@@ -120,7 +120,15 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("zgesv"));
+        // The singular message is the one the shim path produces below (its
+        // info > 0 branch), so both backends are indistinguishable to a caller.
+        crate::native::lapack::complex::zgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
     }
     if info < 0 {
         println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);

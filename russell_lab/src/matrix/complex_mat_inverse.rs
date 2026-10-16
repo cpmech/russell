@@ -174,7 +174,19 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("zgetrf"));
+        // The native kernel reports 0-based pivots; the determinant loop below
+        // and the shim's own convention are 1-based, so convert here. This keeps
+        // the two paths' outputs in exactly the same representation.
+        let pivots = crate::native::lapack::complex::zgetrf(ai.as_mut_data(), m).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgetrf): An argument had an illegal value",
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
+        for (slot, p) in ipiv.iter_mut().zip(pivots) {
+            *slot = p as i32 + 1;
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
@@ -216,7 +228,15 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("zgetri"));
+        // Back to 0-based for the native kernel.
+        let pivots: Vec<usize> = ipiv.iter().map(|&p| (p - 1) as usize).collect();
+        crate::native::lapack::complex::zgetri(ai.as_mut_data(), m, &pivots).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (zgetri): U is exactly singular and the inverse could not be computed"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (zgetri): An argument had an illegal value",
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
     }
 
     // done

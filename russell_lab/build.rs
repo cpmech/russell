@@ -188,6 +188,12 @@ fn headers_available(include_paths: &[std::path::PathBuf]) -> bool {
 }
 
 fn main() {
+    // The oracle is independent of the accelerators: it exists so the *native*
+    // routines can be tested against the reference implementation, so it is
+    // handled before the early return below.
+    #[cfg(feature = "oracle")]
+    compile_oracle();
+
     // Native Rust BLAS/LAPACK is the default: nothing to build, nothing to link,
     // and the crate compiles for any target.
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
@@ -209,4 +215,69 @@ fn main() {
 
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     compile_blas();
+}
+
+/// Compiles the C shim against a locally built LAPACK and links it, so the tests
+/// have a reference to compare the native routines against.
+///
+/// Reuses `c_code/interface_blas.c` deliberately. That file is already known to
+/// drive the **column-major** `LAPACK_*` interface correctly -- `lapack.h` binds
+/// straight to the Fortran routines, unlike `LAPACKE_*`, which is row-major and
+/// would silently transpose every matrix. Writing a second shim would risk
+/// introducing exactly that mistake in the code whose whole purpose is to be
+/// trusted as the reference.
+///
+/// # Layout expected
+///
+/// A CMake build directory of LAPACK 3.12.1, with `include/` and `lib/`, such as
+/// the one at `/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
+/// Override with `RUSSELL_ORACLE_ROOT`.
+#[cfg(feature = "oracle")]
+fn compile_oracle() {
+    let root = std::env::var("RUSSELL_ORACLE_ROOT")
+        .unwrap_or_else(|_| "/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran".to_string());
+
+    let include = std::path::Path::new(&root).join("include");
+    let lib = std::path::Path::new(&root).join("lib");
+
+    if !include.join("lapack.h").is_file() || !include.join("cblas.h").is_file() {
+        panic!(
+            "russell_lab: the `oracle` feature needs a LAPACK build for its headers, \
+             looked for {}/lapack.h and {}/cblas.h. \
+             Set RUSSELL_ORACLE_ROOT to the CMake build directory of a LAPACK 3.12.1 build.",
+            include.display(),
+            include.display()
+        );
+    }
+    if !lib.join("libcblas.so").is_file() {
+        panic!(
+            "russell_lab: the `oracle` feature needs {}/libcblas.so for the `cblas_*` symbols; \
+             set RUSSELL_ORACLE_ROOT to the CMake build directory of a LAPACK 3.12.1 build",
+            lib.display()
+        );
+    }
+    if !lib.join("liblapack.so").is_file() {
+        panic!(
+            "russell_lab: the `oracle` feature needs {}/liblapack.so; \
+             set RUSSELL_ORACLE_ROOT to the CMake build directory of a LAPACK 3.12.1 build",
+            lib.display()
+        );
+    }
+
+    cc::Build::new()
+        .file("c_code/interface_blas.c")
+        .include(&include)
+        .compile("oracle_interface_blas");
+
+    println!("cargo:rustc-link-search=native={}", lib.display());
+    // Order matters for a static link and does no harm for a shared one: the
+    // shim needs LAPACK, which needs BLAS. CBLAS is separate: `interface_blas.c`
+    // wraps only LAPACK, so the `cblas_*` symbols it calls come from here.
+    println!("cargo:rustc-link-lib=dylib=lapack");
+    println!("cargo:rustc-link-lib=dylib=cblas");
+    println!("cargo:rustc-link-lib=dylib=blas");
+    // The reference is Fortran, so its runtime is needed.
+    println!("cargo:rustc-link-lib=dylib=gfortran");
+    println!("cargo:rerun-if-env-changed=RUSSELL_ORACLE_ROOT");
+    println!("cargo:warning=russell_lab: `oracle` feature ON -- tests compare against {root}");
 }

@@ -24,3 +24,5 @@
 
 pub mod blas;
 pub mod lapack;
+#[cfg(all(test, feature = "oracle"))]
+mod parity;

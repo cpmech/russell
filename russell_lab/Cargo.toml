@@ -31,6 +31,19 @@ default = []
 oblas = []
 # Link the C shim against Intel oneAPI MKL.
 mkl = []
+# DEVELOPMENT ONLY -- a numerical oracle for the native routines' tests.
+#
+# Compiles the same C shim against a locally built LAPACK 3.12.1 and links it, so
+# the tests can assert that the native Rust routines agree with the reference
+# implementation to a tight tolerance. That is the difference between "the answer
+# looks plausible" and "the answer is right", and it is the only practicable way
+# to check the eigenvalue and SVD routines.
+#
+# Not for release: it needs a LAPACK build on the machine. See `build.rs` for the
+# location, which `RUSSELL_ORACLE_ROOT` overrides.
+#
+# `cargo test -p russell_lab --features oracle`
+oracle = []
 
 [dependencies]
 num-complex = { version = "0.4", features = ["serde"] }

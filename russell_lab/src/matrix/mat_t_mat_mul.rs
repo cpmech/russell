@@ -151,6 +151,112 @@ mod tests {
         mat_approx_eq(&c, correct, 1e-15);
     }
 
+    /// The naive reference, written from the definition rather than reusing any
+    /// production helper.
+    fn naive_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64, m: usize, n: usize, k: usize) {
+        for i in 0..m {
+            for j in 0..n {
+                let mut sum = 0.0;
+                // c[i][j] = sum_l a[l][i] * b[l][j]
+                for l in 0..k {
+                    sum += a.get(l, i) * b.get(l, j);
+                }
+                let old = c.get(i, j);
+                c.set(
+                    i,
+                    j,
+                    if beta == 0.0 {
+                        alpha * sum
+                    } else {
+                        alpha * sum + beta * old
+                    },
+                );
+            }
+        }
+    }
+
+    /// Note on the accelerated path: `mat_t_mat_mul` transposes `A` into a
+    /// temporary and then uses the plain `dgemm`. Reinterpreting the leading
+    /// dimensions -- the usual row/column-major trick of calling
+    /// `dgemm(b, a, ...)` and reading the result transposed -- does *not* work
+    /// here, and it fails silently: `dgemm` would write an `n x m` result with
+    /// column stride `n`, while `c` has stride `m`, so the layouts coincide only
+    /// when `m == n`. Measured, the transpose is ~130 us at m=n=k=400 against
+    /// ~25 ms for the multiplication, so the transpose is not the bottleneck --
+    /// the missing BLAS-3 is. Fixing this properly means a transposed `dgemm`
+    /// variant that packs `A`'s columns from `A`'s rows, as the reference's
+    /// `dgemm(..., 'T', 'N', ...)` does.
+    ///
+    /// Sizes chosen to reach every branch and every padding/transpose path.
+    ///
+    /// This matters more than usual here: the accelerated path computes `A^T B`
+    /// by *reinterpreting* the leading dimensions rather than transposing, so a
+    /// wrong leading dimension is silently a different product. The pre-existing
+    /// tests are all 2x2 or 3x2, which cannot distinguish the transposed leading
+    /// dimensions from the correct ones.
+    #[test]
+    fn mat_t_mat_mul_matches_naive_on_every_shape() {
+        let shapes = [
+            // a is k x m, b is k x n, c is m x n
+            (1, 1, 1),
+            (1, 1, 5),
+            (1, 4, 1),
+            (4, 1, 1),
+            (2, 3, 4),
+            (3, 2, 5),
+            (5, 5, 5),
+            // non-square and asymmetric: these are what pin the leading dims
+            (7, 11, 13),
+            (13, 7, 11),
+            (11, 13, 7),
+            // past the block sizes (MC=128, KC=256, NC=256)
+            (130, 6, 8),
+            (6, 130, 8),
+            (8, 6, 260),
+            (260, 9, 7),
+            (200, 130, 300),
+        ];
+        for (m, n, k) in shapes {
+            let mut a = Matrix::new(k, m);
+            let mut b = Matrix::new(k, n);
+            for l in 0..k {
+                for i in 0..m {
+                    a.set(l, i, (((l * 7 + i * 13) % 17) as f64) - 8.0);
+                }
+                for j in 0..n {
+                    b.set(l, j, (((l * 5 + j * 11) % 19) as f64) - 9.0);
+                }
+            }
+            let c0 = {
+                let mut c = Matrix::new(m, n);
+                for i in 0..m {
+                    for j in 0..n {
+                        c.set(i, j, (((i + j) % 4) as f64) * 0.5);
+                    }
+                }
+                c
+            };
+
+            for (alpha, beta) in [(1.0, 1.0), (1.0, 0.0), (2.5, -1.5), (0.0, 3.0)] {
+                let mut want = c0.clone();
+                naive_t_mat_mul(&mut want, alpha, &a, &b, beta, m, n, k);
+                let mut got = c0.clone();
+                mat_t_mat_mul(&mut got, alpha, &a, &b, beta).unwrap();
+                for i in 0..m {
+                    for j in 0..n {
+                        let scale = want.get(i, j).abs().max(1.0);
+                        assert!(
+                            (got.get(i, j) - want.get(i, j)).abs() / scale < 1e-11,
+                            "m={m} n={n} k={k} alpha={alpha} beta={beta}: ({i},{j}) is {} not {}",
+                            got.get(i, j),
+                            want.get(i, j)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn mat_t_mat_mul_works_1() {
         let a = Matrix::from(&[

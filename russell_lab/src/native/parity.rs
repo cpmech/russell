@@ -90,7 +90,7 @@ fn dgesv_agrees_with_the_reference() {
         let mut info = 0i32;
         let n_i32 = n as i32;
         unsafe {
-            oracle::c_dgesv(
+            oracle::oracle_c_dgesv(
                 &n_i32,
                 &1i32,
                 a_ref.as_mut_data().as_mut_ptr(),
@@ -127,7 +127,7 @@ fn dgetrf_and_dgetri_agree_with_the_reference() {
         let mut work = vec![0.0f64; n.max(1)];
         let lwork = n_i32;
         unsafe {
-            oracle::c_dgetrf(
+            oracle::oracle_c_dgetrf(
                 &n_i32,
                 &n_i32,
                 lu_ref.as_mut_data().as_mut_ptr(),
@@ -136,7 +136,7 @@ fn dgetrf_and_dgetri_agree_with_the_reference() {
                 &mut info,
             );
             assert_eq!(info, 0, "reference dgetrf failed for n={n}");
-            oracle::c_dgetri(
+            oracle::oracle_c_dgetri(
                 &n_i32,
                 lu_ref.as_mut_data().as_mut_ptr(),
                 &n_i32,
@@ -182,7 +182,7 @@ fn dpotrf_agrees_with_the_reference() {
         let mut info = 0i32;
         let n_i32 = n as i32;
         unsafe {
-            oracle::c_dpotrf(C_FALSE, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
+            oracle::oracle_c_dpotrf(C_FALSE, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
         }
         assert_eq!(info, 0, "reference dpotrf failed for n={n}");
 
@@ -222,7 +222,7 @@ fn singular_detection_agrees_with_the_reference() {
         let mut info = 0i32;
         let n_i32 = n as i32;
         unsafe {
-            oracle::c_dgetrf(
+            oracle::oracle_c_dgetrf(
                 &n_i32,
                 &n_i32,
                 a_ref.as_mut_data().as_mut_ptr(),

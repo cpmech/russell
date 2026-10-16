@@ -123,7 +123,7 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zheev(
                 C_TRUE,
                 c_upper,

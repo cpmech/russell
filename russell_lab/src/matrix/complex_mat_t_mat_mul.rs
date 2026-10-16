@@ -91,7 +91,7 @@ pub fn complex_mat_t_mat_mul(
     let ldb = k_i32;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             cblas_zgemm(
                 CBLAS_COL_MAJOR,
                 CBLAS_TRANS,

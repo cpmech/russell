@@ -94,7 +94,7 @@ pub fn complex_mat_mat_mul(
         // Safety: the shim is linked in this configuration.
         #[cfg(any(feature = "oblas", feature = "mkl"))]
         {
-    unsafe {
+            unsafe {
                 cblas_zgemm(
                     CBLAS_COL_MAJOR,
                     CBLAS_NO_TRANS,

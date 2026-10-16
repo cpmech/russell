@@ -1,6 +1,6 @@
+use crate::StrError;
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::StrError;
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, to_i32};
 

@@ -132,7 +132,7 @@ pub fn complex_mat_gen_eigen(
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zggev(
                 C_FALSE,
                 C_TRUE,
@@ -288,7 +288,7 @@ pub fn complex_mat_gen_eigen_lr(
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zggev(
                 C_FALSE,
                 C_TRUE,

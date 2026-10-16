@@ -103,9 +103,19 @@ fn dgesv_agrees_with_the_reference() {
         }
         assert_eq!(info, 0, "reference dgesv failed for n={n}");
 
-        compare_vectors(&format!("dgesv solution (n={n})"), b_native.as_data(), b_ref.as_data(), TOL);
+        compare_vectors(
+            &format!("dgesv solution (n={n})"),
+            b_native.as_data(),
+            b_ref.as_data(),
+            TOL,
+        );
         // ...and both must recover the solution we started from.
-        compare_vectors(&format!("dgesv vs known x (n={n})"), b_native.as_data(), x_true.as_data(), TOL);
+        compare_vectors(
+            &format!("dgesv vs known x (n={n})"),
+            b_native.as_data(),
+            x_true.as_data(),
+            TOL,
+        );
     }
 }
 
@@ -240,4 +250,3 @@ fn singular_detection_agrees_with_the_reference() {
         assert!(info > 0, "the reference dgetrf must report a singular matrix (n={n})");
     }
 }
-

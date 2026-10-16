@@ -169,9 +169,13 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     let ldu = m_i32;
     let ldvt = n_i32;
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("dgesvd"));
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             // first: perform workspace query
             let lwork = -1; // to perform workspace query
             let mut work = vec![0.0]; // will contain lwork on exit

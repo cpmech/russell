@@ -156,7 +156,11 @@ pub fn dgemv_trans(alpha: f64, a: &[f64], x: &[f64], beta: f64, y: &mut [f64], m
         for i in 0..m {
             sum += col[i] * x[i];
         }
-        y[j] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * y[j] };
+        y[j] = if beta == 0.0 {
+            alpha * sum
+        } else {
+            alpha * sum + beta * y[j]
+        };
     }
 }
 
@@ -202,7 +206,11 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
             for l in 0..k {
                 sum += a[i + l * m] * b[l + j * k];
             }
-            c_col[i] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * c_col[i] };
+            c_col[i] = if beta == 0.0 {
+                alpha * sum
+            } else {
+                alpha * sum + beta * c_col[i]
+            };
         }
     }
 }
@@ -230,7 +238,11 @@ pub fn dsyrk(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: usize
                 sum += a[i + l * n] * a[j + l * n];
             }
             let idx = i + j * n;
-            c[idx] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * c[idx] };
+            c[idx] = if beta == 0.0 {
+                alpha * sum
+            } else {
+                alpha * sum + beta * c[idx]
+            };
         }
     }
 }
@@ -476,7 +488,15 @@ pub fn dznrm2(x: &[Complex64]) -> f64 {
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemv(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64, y: &mut [Complex64], m: usize, n: usize) {
+pub fn zgemv(
+    alpha: Complex64,
+    a: &[Complex64],
+    x: &[Complex64],
+    beta: Complex64,
+    y: &mut [Complex64],
+    m: usize,
+    n: usize,
+) {
     assert_eq!(a.len(), m * n, "zgemv: a must be m*n");
     assert_eq!(x.len(), n, "zgemv: x must have n entries");
     assert_eq!(y.len(), m, "zgemv: y must have m entries");
@@ -503,7 +523,16 @@ pub fn zgemv(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemm(alpha: Complex64, a: &[Complex64], b: &[Complex64], beta: Complex64, c: &mut [Complex64], m: usize, n: usize, k: usize) {
+pub fn zgemm(
+    alpha: Complex64,
+    a: &[Complex64],
+    b: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    m: usize,
+    n: usize,
+    k: usize,
+) {
     assert_eq!(a.len(), m * k, "zgemm: a must be m*k");
     assert_eq!(b.len(), k * n, "zgemm: b must be k*n");
     assert_eq!(c.len(), m * n, "zgemm: c must be m*n");
@@ -542,7 +571,8 @@ pub fn zherk(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n: usi
                 sum += a[i + l * n] * a[j + l * n].conj();
             }
             let idx = i + j * n;
-            let mut v = Complex64::new(alpha * sum.re, alpha * sum.im) + Complex64::new(beta * c[idx].re, beta * c[idx].im);
+            let mut v =
+                Complex64::new(alpha * sum.re, alpha * sum.im) + Complex64::new(beta * c[idx].re, beta * c[idx].im);
             if i == j {
                 // Hermitian diagonal must be exactly real.
                 v.im = 0.0;
@@ -649,7 +679,11 @@ pub fn dsyrk_rank(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: 
                 sum += a[l + i * k] * a[l + j * k];
             }
             let idx = i + j * n;
-            c[idx] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * c[idx] };
+            c[idx] = if beta == 0.0 {
+                alpha * sum
+            } else {
+                alpha * sum + beta * c[idx]
+            };
         }
     }
 }
@@ -663,7 +697,15 @@ pub fn dsyrk_rank(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: 
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zgemv_trans(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64, y: &mut [Complex64], m: usize, n: usize) {
+pub fn zgemv_trans(
+    alpha: Complex64,
+    a: &[Complex64],
+    x: &[Complex64],
+    beta: Complex64,
+    y: &mut [Complex64],
+    m: usize,
+    n: usize,
+) {
     assert_eq!(a.len(), m * n, "zgemv_trans: a must be m*n");
     assert_eq!(x.len(), m, "zgemv_trans: x must have m entries");
     assert_eq!(y.len(), n, "zgemv_trans: y must have n entries");
@@ -687,7 +729,15 @@ pub fn zgemv_trans(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Com
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
-pub fn zsyrk_rank(alpha: Complex64, a: &[Complex64], beta: Complex64, c: &mut [Complex64], n: usize, k: usize, upper: bool) {
+pub fn zsyrk_rank(
+    alpha: Complex64,
+    a: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    n: usize,
+    k: usize,
+    upper: bool,
+) {
     assert_eq!(a.len(), k * n, "zsyrk_rank: a must be k*n");
     assert_eq!(c.len(), n * n, "zsyrk_rank: c must be n*n");
 
@@ -732,7 +782,8 @@ pub fn zherk_rank(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n
                 sum += a[l + i * k] * a[l + j * k].conj();
             }
             let idx = i + j * n;
-            let mut v = Complex64::new(alpha * sum.re, alpha * sum.im) + Complex64::new(beta * c[idx].re, beta * c[idx].im);
+            let mut v =
+                Complex64::new(alpha * sum.re, alpha * sum.im) + Complex64::new(beta * c[idx].re, beta * c[idx].im);
             if i == j {
                 // A Hermitian diagonal is real by definition.
                 v.im = 0.0;

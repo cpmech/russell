@@ -114,7 +114,7 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zgeev(
                 C_FALSE,
                 C_TRUE,
@@ -260,7 +260,7 @@ pub fn complex_mat_eigen_lr(
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zgeev(
                 C_TRUE,
                 C_TRUE,

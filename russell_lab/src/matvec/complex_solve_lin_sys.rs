@@ -105,7 +105,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zgesv(
                 &m_i32,
                 &nrhs,

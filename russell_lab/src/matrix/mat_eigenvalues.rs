@@ -104,9 +104,13 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
     let mut v = vec![0.0; ldv as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("dgeev"));
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_dgeev(
                 C_FALSE,
                 C_FALSE,

@@ -126,7 +126,7 @@ pub fn complex_mat_sym_rank_op(
     let ldc = n_i32;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             cblas_zsyrk(
                 CBLAS_COL_MAJOR,
                 uplo,

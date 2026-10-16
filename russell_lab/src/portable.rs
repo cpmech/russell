@@ -122,7 +122,11 @@ pub fn mat_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta: f
                 sum += a[l * m + i] * b[j * k + l];
             }
             let i_c = i + j * m;
-            c[i_c] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * c[i_c] };
+            c[i_c] = if beta == 0.0 {
+                alpha * sum
+            } else {
+                alpha * sum + beta * c[i_c]
+            };
         }
     }
 }
@@ -149,7 +153,6 @@ pub fn mat_t_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta:
     }
     mat_mat_mul_data(c, alpha, &at, b, beta, m, n, k);
 }
-
 
 /// In-place LU decomposition with partial pivoting, replacing `dgetrf`.
 ///
@@ -294,12 +297,7 @@ mod tests {
     #[test]
     fn mat_vec_mul_matches_expected() {
         // Same example as the `mat_vec_mul` doc test: a is 4x3, column-major.
-        let a = Matrix::from(&[
-            [5.0, -2.0, 1.0],
-            [-4.0, 0.0, 2.0],
-            [15.0, -6.0, 0.0],
-            [3.0, 5.0, 1.0],
-        ]);
+        let a = Matrix::from(&[[5.0, -2.0, 1.0], [-4.0, 0.0, 2.0], [15.0, -6.0, 0.0], [3.0, 5.0, 1.0]]);
         let u = Vector::from(&[1.0, 2.0, 3.0]);
         let mut v = Vector::new(4);
         mat_vec_mul_data(v.as_mut_data(), 0.5, a.as_data(), 4, 3, u.as_data());
@@ -395,8 +393,6 @@ mod tests {
         assert_eq!(c.get(1, 0), 116.0);
         assert_eq!(c.get(1, 1), 128.0);
     }
-
-
 
     /// The portable SVD must agree with LAPACK's on the singular values, which
     /// are unique. (The singular *vectors* are not unique, so they are checked

@@ -161,7 +161,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zgetrf(
                 &m_i32,
                 &m_i32,
@@ -202,7 +202,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zgetri(
                 &m_i32,
                 ai.as_mut_data().as_mut_ptr(),

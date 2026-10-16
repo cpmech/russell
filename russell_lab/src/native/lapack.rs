@@ -341,7 +341,8 @@ mod tests {
         assert_eq!(ipiv.len(), 4);
         // The determinant of the sample matrix, computed independently by
         // cofactor expansion over the first row.
-        let expect = 4.0 * (3.0 * (5.0 * 6.0 - 2.0 * 2.0) - 0.0 * (0.0 * 6.0 - 2.0 * 1.0) + 1.0 * (0.0 * 2.0 - 5.0 * 1.0))
+        let expect = 4.0
+            * (3.0 * (5.0 * 6.0 - 2.0 * 2.0) - 0.0 * (0.0 * 6.0 - 2.0 * 1.0) + 1.0 * (0.0 * 2.0 - 5.0 * 1.0))
             - 1.0 * (1.0 * (5.0 * 6.0 - 2.0 * 2.0) - 0.0 * (2.0 * 6.0 - 2.0 * 1.0) + 1.0 * (2.0 * 2.0 - 5.0 * 1.0))
             + 2.0 * (1.0 * (0.0 * 6.0 - 2.0 * 1.0) - 3.0 * (2.0 * 6.0 - 2.0 * 1.0) + 1.0 * (2.0 * 1.0 - 0.0 * 1.0))
             - 1.0 * (1.0 * (0.0 * 2.0 - 5.0 * 1.0) - 3.0 * (2.0 * 2.0 - 5.0 * 1.0) + 0.0 * (2.0 * 1.0 - 0.0 * 1.0));
@@ -383,7 +384,11 @@ mod tests {
             blas::dgemv(1.0, &lu, &got, 0.0, &mut back, 4, 4);
             for i in 0..4 {
                 let want = if i == j { 1.0 } else { 0.0 };
-                assert!((back[i] - want).abs() < 1e-12, "A*A^-1 e_{j} component {i} = {}", back[i]);
+                assert!(
+                    (back[i] - want).abs() < 1e-12,
+                    "A*A^-1 e_{j} component {i} = {}",
+                    back[i]
+                );
             }
         }
     }

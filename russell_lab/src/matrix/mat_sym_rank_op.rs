@@ -156,7 +156,16 @@ pub fn mat_sym_rank_op(
         // Only the requested triangle is written, which `dgemm` does not do, so
         // the unrequested triangle is saved and restored around the call.
         let saved = c.as_data().clone();
-        crate::native::blas::dsyrk_rank(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper, trans == CBLAS_TRANS);
+        crate::native::blas::dsyrk_rank(
+            alpha,
+            a.as_data(),
+            beta,
+            c.as_mut_data(),
+            n,
+            k,
+            upper,
+            trans == CBLAS_TRANS,
+        );
         // Entries outside the requested triangle keep whatever they held before
         // the call, which is what BLAS leaves there.
         for j in 0..n {

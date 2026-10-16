@@ -43,14 +43,7 @@ unsafe extern "C" {
     );
 
     /// `dgetrf`: LU factorisation with partial pivoting, `m x n`.
-    pub fn oracle_c_dgetrf(
-        m: *const i32,
-        n: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        ipiv: *mut i32,
-        info: *mut i32,
-    );
+    pub fn oracle_c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
 
     /// `dgetri`: inverse from a `dgetrf` factorisation.
     pub fn oracle_c_dgetri(
@@ -217,7 +210,17 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            oracle_c_dsyev(jobz, C_FALSE, &n_i32, a.as_mut_ptr(), &ld, w.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
+            oracle_c_dsyev(
+                jobz,
+                C_FALSE,
+                &n_i32,
+                a.as_mut_ptr(),
+                &ld,
+                w.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
         }
         if info != 0 {
             return info;
@@ -226,7 +229,17 @@ pub mod query {
         let mut work = vec![0.0f64; need];
         lwork = need as i32;
         unsafe {
-            oracle_c_dsyev(jobz, C_FALSE, &n_i32, a.as_mut_ptr(), &ld, w.as_mut_ptr(), work.as_mut_ptr(), &lwork, &mut info);
+            oracle_c_dsyev(
+                jobz,
+                C_FALSE,
+                &n_i32,
+                a.as_mut_ptr(),
+                &ld,
+                w.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
         }
         info
     }

@@ -3,8 +3,8 @@
 //! Split from [`crate::portable`] so that the BLAS-free kernels and this extra
 //! algorithm can be reviewed and tested independently.
 
-use crate::small::small_mat_eigen_sym_jacobi;
 use crate::StrError;
+use crate::small::small_mat_eigen_sym_jacobi;
 
 /// Portable singular value decomposition, replacing the LAPACK `dgesvd` wrapper.
 ///
@@ -148,98 +148,98 @@ mod tests {
     use super::small_mat_svd_portable;
     use crate::approx_eq;
 
-        #[test]
-        fn small_mat_svd_portable_reconstructs_the_matrix() {
-            // Rectangular and non-symmetric, so no accidental symmetry can hide a bug.
-            let a = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]; // M=2, N=3
-            let mut s = [0.0; 2];
-            let mut u = [[0.0; 2]; 2];
-            let mut vt = [[0.0; 3]; 3];
-            small_mat_svd_portable(&mut s, &mut u, &mut vt, &a).unwrap();
+    #[test]
+    fn small_mat_svd_portable_reconstructs_the_matrix() {
+        // Rectangular and non-symmetric, so no accidental symmetry can hide a bug.
+        let a = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]; // M=2, N=3
+        let mut s = [0.0; 2];
+        let mut u = [[0.0; 2]; 2];
+        let mut vt = [[0.0; 3]; 3];
+        small_mat_svd_portable(&mut s, &mut u, &mut vt, &a).unwrap();
 
-            // Singular values must be non-negative and descending.
-            assert!(s[0] >= s[1]);
-            assert!(s[1] >= 0.0);
-            approx_eq(s[0], 9.508032000695723, 1e-9);
-            approx_eq(s[1], 0.7728696357127786, 1e-9);
+        // Singular values must be non-negative and descending.
+        assert!(s[0] >= s[1]);
+        assert!(s[1] >= 0.0);
+        approx_eq(s[0], 9.508032000695723, 1e-9);
+        approx_eq(s[1], 0.7728696357127786, 1e-9);
 
-            // A == U · diag(s) · Vᵀ
-            for i in 0..2 {
-                for j in 0..3 {
-                    let mut sum = 0.0;
-                    for k in 0..2 {
-                        sum += u[i][k] * s[k] * vt[k][j];
-                    }
-                    approx_eq(sum, a[i][j], 1e-12);
+        // A == U · diag(s) · Vᵀ
+        for i in 0..2 {
+            for j in 0..3 {
+                let mut sum = 0.0;
+                for k in 0..2 {
+                    sum += u[i][k] * s[k] * vt[k][j];
                 }
-            }
-
-            // U must be orthonormal.
-            for p in 0..2 {
-                for q in 0..2 {
-                    let mut dot = 0.0;
-                    for i in 0..2 {
-                        dot += u[i][p] * u[i][q];
-                    }
-                    let expected = if p == q { 1.0 } else { 0.0 };
-                    approx_eq(dot, expected, 1e-12);
-                }
+                approx_eq(sum, a[i][j], 1e-12);
             }
         }
-        #[test]
-        fn small_mat_svd_portable_handles_square_and_zero() {
-            // Square symmetric: singular values are |eigenvalues| = 3, 1.
-            let a = [[2.0, 1.0], [1.0, 2.0]];
-            let mut s = [0.0; 2];
-            let mut u = [[0.0; 2]; 2];
-            let mut vt = [[0.0; 2]; 2];
-            small_mat_svd_portable(&mut s, &mut u, &mut vt, &a).unwrap();
-            approx_eq(s[0], 3.0, 1e-12);
-            approx_eq(s[1], 1.0, 1e-12);
-            for i in 0..2 {
-                for j in 0..2 {
-                    let mut sum = 0.0;
-                    for k in 0..2 {
-                        sum += u[i][k] * s[k] * vt[k][j];
-                    }
-                    approx_eq(sum, a[i][j], 1e-12);
+
+        // U must be orthonormal.
+        for p in 0..2 {
+            for q in 0..2 {
+                let mut dot = 0.0;
+                for i in 0..2 {
+                    dot += u[i][p] * u[i][q];
                 }
-            }
-
-            // The zero matrix must not divide by zero.
-            let z = [[0.0, 0.0], [0.0, 0.0]];
-            let mut sz = [0.0; 2];
-            let mut uz = [[0.0; 2]; 2];
-            let mut vtz = [[0.0; 2]; 2];
-            small_mat_svd_portable(&mut sz, &mut uz, &mut vtz, &z).unwrap();
-            approx_eq(sz[0], 0.0, 1e-15);
-            approx_eq(sz[1], 0.0, 1e-15);
-
-            // A wrong-sized `s` is still rejected.
-            let mut bad = [0.0; 3];
-            assert!(small_mat_svd_portable(&mut bad, &mut uz, &mut vtz, &z).is_err());
-        }
-        #[test]
-        fn small_mat_svd_portable_agrees_with_lapack() {
-            let cases: [([[f64; 3]; 3], usize); 3] = [
-                ([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]], 3),
-                ([[2.0, 1.0, 0.0], [1.0, 2.0, 1.0], [0.0, 1.0, 2.0]], 3),
-                ([[3.0, 0.0, 0.0], [0.0, -2.0, 0.0], [0.0, 0.0, 1.0]], 3),
-            ];
-            for (a, _) in cases.iter() {
-                let mut s_portable = [0.0; 3];
-                let mut u_p = [[0.0; 3]; 3];
-                let mut vt_p = [[0.0; 3]; 3];
-                small_mat_svd_portable(&mut s_portable, &mut u_p, &mut vt_p, a).unwrap();
-
-                let mut s_lapack = [0.0; 3];
-                let mut u_l = [[0.0; 3]; 3];
-                let mut vt_l = [[0.0; 3]; 3];
-                crate::small::small_mat_svd(&mut s_lapack, &mut u_l, &mut vt_l, a).unwrap();
-
-                for k in 0..3 {
-                    approx_eq(s_portable[k], s_lapack[k], 1e-9);
-                }
+                let expected = if p == q { 1.0 } else { 0.0 };
+                approx_eq(dot, expected, 1e-12);
             }
         }
+    }
+    #[test]
+    fn small_mat_svd_portable_handles_square_and_zero() {
+        // Square symmetric: singular values are |eigenvalues| = 3, 1.
+        let a = [[2.0, 1.0], [1.0, 2.0]];
+        let mut s = [0.0; 2];
+        let mut u = [[0.0; 2]; 2];
+        let mut vt = [[0.0; 2]; 2];
+        small_mat_svd_portable(&mut s, &mut u, &mut vt, &a).unwrap();
+        approx_eq(s[0], 3.0, 1e-12);
+        approx_eq(s[1], 1.0, 1e-12);
+        for i in 0..2 {
+            for j in 0..2 {
+                let mut sum = 0.0;
+                for k in 0..2 {
+                    sum += u[i][k] * s[k] * vt[k][j];
+                }
+                approx_eq(sum, a[i][j], 1e-12);
+            }
+        }
+
+        // The zero matrix must not divide by zero.
+        let z = [[0.0, 0.0], [0.0, 0.0]];
+        let mut sz = [0.0; 2];
+        let mut uz = [[0.0; 2]; 2];
+        let mut vtz = [[0.0; 2]; 2];
+        small_mat_svd_portable(&mut sz, &mut uz, &mut vtz, &z).unwrap();
+        approx_eq(sz[0], 0.0, 1e-15);
+        approx_eq(sz[1], 0.0, 1e-15);
+
+        // A wrong-sized `s` is still rejected.
+        let mut bad = [0.0; 3];
+        assert!(small_mat_svd_portable(&mut bad, &mut uz, &mut vtz, &z).is_err());
+    }
+    #[test]
+    fn small_mat_svd_portable_agrees_with_lapack() {
+        let cases: [([[f64; 3]; 3], usize); 3] = [
+            ([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]], 3),
+            ([[2.0, 1.0, 0.0], [1.0, 2.0, 1.0], [0.0, 1.0, 2.0]], 3),
+            ([[3.0, 0.0, 0.0], [0.0, -2.0, 0.0], [0.0, 0.0, 1.0]], 3),
+        ];
+        for (a, _) in cases.iter() {
+            let mut s_portable = [0.0; 3];
+            let mut u_p = [[0.0; 3]; 3];
+            let mut vt_p = [[0.0; 3]; 3];
+            small_mat_svd_portable(&mut s_portable, &mut u_p, &mut vt_p, a).unwrap();
+
+            let mut s_lapack = [0.0; 3];
+            let mut u_l = [[0.0; 3]; 3];
+            let mut vt_l = [[0.0; 3]; 3];
+            crate::small::small_mat_svd(&mut s_lapack, &mut u_l, &mut vt_l, a).unwrap();
+
+            for k in 0..3 {
+                approx_eq(s_portable[k], s_lapack[k], 1e-9);
+            }
+        }
+    }
 }

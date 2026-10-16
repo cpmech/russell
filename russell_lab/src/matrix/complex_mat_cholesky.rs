@@ -102,7 +102,7 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe { c_zpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
+        unsafe { c_zpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {

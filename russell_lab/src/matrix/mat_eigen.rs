@@ -150,9 +150,13 @@ pub fn mat_eigen(
     let mut v = vec![0.0; m * m];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("dgeev"));
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_dgeev(
                 C_FALSE,
                 C_TRUE,
@@ -333,9 +337,13 @@ pub fn mat_eigen_lr(
     let mut v = vec![0.0; m * m];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("dgeev"));
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_dgeev(
                 C_TRUE,
                 C_TRUE,

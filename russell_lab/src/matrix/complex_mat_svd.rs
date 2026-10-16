@@ -123,7 +123,7 @@ pub fn complex_mat_svd(
     let mut info = 0;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_zgesvd(
                 SVD_CODE_A,
                 SVD_CODE_A,

@@ -132,9 +132,13 @@ pub fn mat_gen_eigen(
     let mut u = vec![0.0; ldu as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("dggev"));
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_dggev(
                 C_FALSE,
                 C_TRUE,
@@ -296,9 +300,13 @@ pub fn mat_gen_eigen_lr(
     let lwork = 8 * m_i32 + EXTRA;
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("dggev"));
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             c_dggev(
                 C_TRUE,
                 C_TRUE,

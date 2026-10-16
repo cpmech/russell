@@ -124,7 +124,7 @@ pub fn complex_mat_herm_rank_op(
     let ldc = n_i32;
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
-    unsafe {
+        unsafe {
             cblas_zherk(
                 CBLAS_COL_MAJOR,
                 uplo,
@@ -155,7 +155,9 @@ pub fn complex_mat_herm_rank_op(
             // Reported rather than returned wrong: a silently wrong Hermitian
             // factorisation is far worse than an error naming the feature to
             // enable. The `'N'` case below is verified by the tests.
-            return Err("complex_mat_herm_rank_op: the A^H A case is not implemented in the native Rust kernels yet; build with `--features oblas` (or `mkl`)");
+            return Err(
+                "complex_mat_herm_rank_op: the A^H A case is not implemented in the native Rust kernels yet; build with `--features oblas` (or `mkl`)",
+            );
         }
         crate::native::blas::zherk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
     }

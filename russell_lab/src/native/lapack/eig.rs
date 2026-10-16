@@ -430,6 +430,29 @@ pub fn dgehrd(a: &mut [f64], n: usize, q: Option<&mut [f64]>) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// `dhseqr` with `JOB = 'S'`, `COMPZ = 'N'`: reduce an upper Hessenberg matrix to
+/// real Schur form and return its eigenvalues.
+///
+/// On entry `t` is `n x n` and upper Hessenberg; on exit it is quasi-upper
+/// triangular (zero below the first subdiagonal) and `(wr, wi)` holds the
+/// eigenvalues in deflation order. A complex conjugate pair occupies two
+/// adjacent positions with `wi > 0` for the first, matching the 2x2 block.
+///
+/// **Not implemented yet.** The acceptance test is
+/// `parity::dhseqr_eigenvalues_agree_with_the_reference`, which checks the
+/// quasi-triangular structure, the standard form of each 2x2 block, and the
+/// eigenvalue multiset against the reference `dgeev`. The QR iteration itself is
+/// `dlahqr`; see `AGENTS-WIP.md` for the findings from a previous attempt.
+pub fn dhseqr(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], n: usize) {
+    assert_eq!(t.len(), n * n, "dhseqr: t must be n*n");
+    assert_eq!(wr.len(), n, "dhseqr: wr must have n entries");
+    assert_eq!(wi.len(), n, "dhseqr: wi must have n entries");
+    let _ = (t, wr, wi, n);
+    unimplemented!("dhseqr: the QR iteration is not written yet")
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use super::*;

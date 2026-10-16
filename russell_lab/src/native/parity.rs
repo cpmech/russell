@@ -250,3 +250,89 @@ fn singular_detection_agrees_with_the_reference() {
         assert!(info > 0, "the reference dgetrf must report a singular matrix (n={n})");
     }
 }
+
+/// The real Schur form and its eigenvalues against the reference.
+///
+/// This is the acceptance test for `dhseqr`: `dgehrd` produces the Hessenberg
+/// form, `dhseqr` reduces it to quasi-triangular Schur form and returns the
+/// eigenvalues. Three things are checked, in increasing strength:
+///
+/// 1. `t` is quasi-upper-triangular -- zero below the first subdiagonal.
+/// 2. The 2x2 blocks are in standard form (`t(i,i) == t(i+1,i+1)` and
+///    `t(i+1,i) * t(i,i+1) < 0`), which is what makes the `wi` signs meaningful.
+/// 3. The eigenvalue multiset agrees with the reference `dgeev`.
+///
+/// The multiset is compared *sorted*, not in order: the Schur form is not unique
+/// and the two implementations deflate in a different sequence, so an in-order
+/// comparison would be testing the ordering rather than the values. `wi` is
+/// signed on both sides -- LAPACK returns the positive imaginary part first --
+/// so conjugation pairs have to be sorted deterministically.
+#[test]
+fn dhseqr_eigenvalues_agree_with_the_reference() {
+    for n in [1usize, 2, 3, 5, 8, 15] {
+        let a = sample(n);
+
+        // Native: Hessenberg, then real Schur form.
+        let mut t = a.clone();
+        lapack::eig::dgehrd(t.as_mut_data(), n, None);
+        let mut wr = vec![0.0; n];
+        let mut wi = vec![0.0; n];
+        lapack::eig::dhseqr(t.as_mut_data(), &mut wr, &mut wi, n);
+
+        // (1) quasi-upper-triangular
+        for j in 0..n {
+            for i in (j + 2)..n {
+                assert!(
+                    t.get(i, j).abs() < 1e-12,
+                    "n={n}: T({i},{j}) = {} is below the first subdiagonal",
+                    t.get(i, j)
+                );
+            }
+        }
+
+        // (2) each 2x2 block standardised, and the two columns of a pair
+        //     conjugate. A real eigenvalue has wi == 0.
+        let mut i = 0;
+        while i < n {
+            if i + 1 < n && t.get(i + 1, i) != 0.0 {
+                assert!(
+                    (t.get(i, i) - t.get(i + 1, i + 1)).abs() < 1e-10,
+                    "n={n}: the 2x2 block at {i} has unequal diagonal entries"
+                );
+                assert!(
+                    t.get(i + 1, i) * t.get(i, i + 1) < 0.0,
+                    "n={n}: the 2x2 block at {i} is not in standard form"
+                );
+                assert!(wi[i] > 0.0, "n={n}: the first of a pair must have wi > 0, got {}", wi[i]);
+                assert!((wi[i] + wi[i + 1]).abs() < 1e-10, "n={n}: the pair at {i} is not conjugate");
+                i += 2;
+            } else {
+                assert_eq!(wi[i], 0.0, "n={n}: a real eigenvalue must have wi == 0");
+                i += 1;
+            }
+        }
+
+        // (3) the eigenvalue multiset against the reference.
+        let mut a_ref = a.clone();
+        let mut wr_ref = vec![0.0; n];
+        let mut wi_ref = vec![0.0; n];
+        let info = oracle::query::dgeev(a_ref.as_mut_data(), n, &mut wr_ref, &mut wi_ref, None);
+        assert_eq!(info, 0, "reference dgeev failed for n={n}");
+
+        let mut got: Vec<(f64, f64)> = (0..n).map(|i| (wr[i], wi[i])).collect();
+        let mut want: Vec<(f64, f64)> = (0..n).map(|i| (wr_ref[i], wi_ref[i])).collect();
+        got.sort_by(|x, y| x.partial_cmp(y).unwrap());
+        want.sort_by(|x, y| x.partial_cmp(y).unwrap());
+        for i in 0..n {
+            let scale = want[i].0.abs().max(want[i].1.abs()).max(1.0);
+            assert!(
+                (got[i].0 - want[i].0).abs() / scale < TOL && (got[i].1 - want[i].1).abs() / scale < TOL,
+                "n={n}: eigenvalue {i} is {}+{}i but the reference says {}+{}i",
+                got[i].0,
+                got[i].1,
+                want[i].0,
+                want[i].1
+            );
+        }
+    }
+}

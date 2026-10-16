@@ -2936,18 +2936,22 @@ mod tests {
             let mut a = Matrix::new(n, n);
             a.as_mut_data().copy_from_slice(&data);
 
-            let mut av = Matrix::new(n, n); // working copy, destroyed
+            let mut av = Matrix::new(n, n);
+            // The working copy must actually hold the matrix. An earlier version
+            // left it zeroed, so `dgeev` decomposed the zero matrix, every
+            // eigenvalue was zero, and the residual was trivially satisfied --
+            // the test passed while testing nothing.
+            av.as_mut_data().copy_from_slice(&data);
             let mut v_real = Matrix::new(n, n);
             let mut v_imag = Matrix::new(n, n);
-            let _ = dgeev(av.as_mut_data(), v_real.as_mut_data(), v_imag.as_mut_data(), n);
+            let (wr_vec, wi_vec) = dgeev(v_real.as_mut_data(), v_imag.as_mut_data(), av.as_mut_data(), n);
 
-            // Recover the eigenvalues from the Schur form so the residual can be
-            // formed independently of what the driver returned.
-            let mut t = a.clone();
-            dgehrd(t.as_mut_data(), n, None);
-            let mut wr = vec![0.0; n];
-            let mut wi = vec![0.0; n];
-            dhseqr(t.as_mut_data(), &mut wr, &mut wi, n);
+            // Use the eigenvalues `dgeev` itself returns, and its own eigenvector
+            // layout. Recovering them from an independent `dgehrd` + `dhseqr`
+            // would give a different *order*, because `dgeev` balances first --
+            // pairing an independent ordering against these vectors would
+            // mismatch columns and fail for the wrong reason.
+            let (wr, wi) = (&wr_vec, &wi_vec);
 
             let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
             let mut j = 0usize;

@@ -130,26 +130,29 @@ pub fn complex_mat_gen_eigen(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zggev(
-            C_FALSE,
-            C_TRUE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            alpha.as_mut_data().as_mut_ptr(),
-            beta.as_mut_data().as_mut_ptr(),
-            u.as_mut_ptr(),
-            &ldu,
-            v.as_mut_data().as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            rwork.as_mut_ptr(),
-            &mut info,
-        );
+            c_zggev(
+                C_FALSE,
+                C_TRUE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                alpha.as_mut_data().as_mut_ptr(),
+                beta.as_mut_data().as_mut_ptr(),
+                u.as_mut_ptr(),
+                &ldu,
+                v.as_mut_data().as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (zggev): Argument #{} had an illegal value", -info);
@@ -283,26 +286,29 @@ pub fn complex_mat_gen_eigen_lr(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zggev(
-            C_FALSE,
-            C_TRUE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            alpha.as_mut_data().as_mut_ptr(),
-            beta.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            v.as_mut_data().as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            rwork.as_mut_ptr(),
-            &mut info,
-        );
+            c_zggev(
+                C_FALSE,
+                C_TRUE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                alpha.as_mut_data().as_mut_ptr(),
+                beta.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                v.as_mut_data().as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (zggev): Argument #{} had an illegal value", -info);

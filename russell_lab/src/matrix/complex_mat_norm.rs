@@ -54,11 +54,18 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
     }
 
     let m_i32 = to_i32(m);
-    let n_i32 = to_i32(n);
-    let lda = m_i32;
-    let mut work = if kind == Norm::Inf { vec![0.0; m] } else { Vec::new() };
     let norm_code = kind as i32;
-    unsafe { c_zlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
+
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        let lda = m_i32;
+        let mut work = if kind == Norm::Inf { vec![0.0; m] } else { Vec::new() };
+        // Safety: the shim is linked in this configuration.
+        unsafe { c_zlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::zlange(crate::native::lapack::norm_char(norm_code), a.as_data(), m, n)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

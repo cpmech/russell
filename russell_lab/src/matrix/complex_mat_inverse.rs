@@ -159,15 +159,22 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     let lda = m_i32;
     let mut ipiv = vec![0; m];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zgetrf(
-            &m_i32,
-            &m_i32,
-            ai.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            &mut info,
-        );
+            c_zgetrf(
+                &m_i32,
+                &m_i32,
+                ai.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                &mut info,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("zgetrf"));
     }
     if info < 0 {
         println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
@@ -193,16 +200,23 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     // second, perform the inversion
     let lwork = m_i32;
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zgetri(
-            &m_i32,
-            ai.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            c_zgetri(
+                &m_i32,
+                ai.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("zgetri"));
     }
 
     // done

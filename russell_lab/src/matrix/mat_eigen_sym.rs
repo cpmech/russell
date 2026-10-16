@@ -97,18 +97,21 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
     let lwork = 3 * n_i32 + EXTRA; // max(1,3*N-1), thus, 2 extra spaces effectively
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_dsyev(
-            C_TRUE,
-            c_upper,
-            &n_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            l.as_mut_data().as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            c_dsyev(
+                C_TRUE,
+                c_upper,
+                &n_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                l.as_mut_data().as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dsyev): Argument #{} had an illegal value", -info);

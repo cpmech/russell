@@ -83,30 +83,42 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     if m == 0 {
         return Ok(());
     }
-    let mut ipiv = vec![0; m];
-    let m_i32 = to_i32(m);
-    let nrhs = 1;
-    let lda = to_i32(m);
-    let ldb = lda;
-    let mut info = 0;
-    unsafe {
-        c_dgesv(
-            &m_i32,
-            &nrhs,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            &mut info,
-        )
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let mut ipiv = vec![0; m];
+        let m_i32 = to_i32(m);
+        let nrhs = 1;
+        let lda = to_i32(m);
+        let ldb = lda;
+        let mut info = 0;
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            c_dgesv(
+                &m_i32,
+                &nrhs,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                &mut info,
+            );
+        }
+        if info < 0 {
+            println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);
+            return Err("LAPACK ERROR (dgesv): An argument had an illegal value");
+        } else if info > 0 {
+            println!("LAPACK ERROR (dgesv): U({},{}) is exactly zero", info - 1, info - 1);
+            return Err("LAPACK ERROR (dgesv): The factor U is singular");
+        }
     }
-    if info < 0 {
-        println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dgesv): An argument had an illegal value");
-    } else if info > 0 {
-        println!("LAPACK ERROR (dgesv): U({},{}) is exactly zero", info - 1, info - 1);
-        return Err("LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular");
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        crate::native::lapack::dgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => "LAPACK ERROR (dgesv): The factor U is singular",
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
     }
     Ok(())
 }

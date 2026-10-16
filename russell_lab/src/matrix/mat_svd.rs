@@ -169,46 +169,49 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     let ldu = m_i32;
     let ldvt = n_i32;
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        // first: perform workspace query
-        let lwork = -1; // to perform workspace query
-        let mut work = vec![0.0]; // will contain lwork on exit
-        c_dgesvd(
-            SVD_CODE_A,
-            SVD_CODE_A,
-            &m_i32,
-            &n_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            s.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            vt.as_mut_data().as_mut_ptr(),
-            &ldvt,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            // first: perform workspace query
+            let lwork = -1; // to perform workspace query
+            let mut work = vec![0.0]; // will contain lwork on exit
+            c_dgesvd(
+                SVD_CODE_A,
+                SVD_CODE_A,
+                &m_i32,
+                &n_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                s.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                vt.as_mut_data().as_mut_ptr(),
+                &ldvt,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
 
-        // second: perform the SVG decomposition
-        let lwork = work[0] as i32;
-        let mut work = vec![0.0; lwork as usize];
-        c_dgesvd(
-            SVD_CODE_A,
-            SVD_CODE_A,
-            &m_i32,
-            &n_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            s.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            vt.as_mut_data().as_mut_ptr(),
-            &ldvt,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            // second: perform the SVG decomposition
+            let lwork = work[0] as i32;
+            let mut work = vec![0.0; lwork as usize];
+            c_dgesvd(
+                SVD_CODE_A,
+                SVD_CODE_A,
+                &m_i32,
+                &n_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                s.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                vt.as_mut_data().as_mut_ptr(),
+                &ldvt,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dgesvd): Argument #{} had an illegal value", -info);

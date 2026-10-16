@@ -132,26 +132,29 @@ pub fn mat_gen_eigen(
     let mut u = vec![0.0; ldu as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_dggev(
-            C_FALSE,
-            C_TRUE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            alpha_real.as_mut_data().as_mut_ptr(),
-            alpha_imag.as_mut_data().as_mut_ptr(),
-            beta.as_mut_data().as_mut_ptr(),
-            u.as_mut_ptr(),
-            &ldu,
-            v.as_mut_data().as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            c_dggev(
+                C_FALSE,
+                C_TRUE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                alpha_real.as_mut_data().as_mut_ptr(),
+                alpha_imag.as_mut_data().as_mut_ptr(),
+                beta.as_mut_data().as_mut_ptr(),
+                u.as_mut_ptr(),
+                &ldu,
+                v.as_mut_data().as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dggev): Argument #{} had an illegal value", -info);
@@ -293,26 +296,29 @@ pub fn mat_gen_eigen_lr(
     let lwork = 8 * m_i32 + EXTRA;
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_dggev(
-            C_TRUE,
-            C_TRUE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            alpha_real.as_mut_data().as_mut_ptr(),
-            alpha_imag.as_mut_data().as_mut_ptr(),
-            beta.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            v.as_mut_data().as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            c_dggev(
+                C_TRUE,
+                C_TRUE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                alpha_real.as_mut_data().as_mut_ptr(),
+                alpha_imag.as_mut_data().as_mut_ptr(),
+                beta.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                v.as_mut_data().as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dggev): Argument #{} had an illegal value", -info);

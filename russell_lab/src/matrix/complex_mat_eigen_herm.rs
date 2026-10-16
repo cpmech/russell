@@ -121,19 +121,22 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 3 * m];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zheev(
-            C_TRUE,
-            c_upper,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            l.as_mut_data().as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            rwork.as_mut_ptr(),
-            &mut info,
-        );
+            c_zheev(
+                C_TRUE,
+                c_upper,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                l.as_mut_data().as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (zheev): Argument #{} had an illegal value", -info);

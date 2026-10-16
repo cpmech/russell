@@ -124,20 +124,27 @@ pub fn complex_mat_sym_rank_op(
     let n_i32 = to_i32(n);
     let k_i32 = to_i32(k);
     let ldc = n_i32;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        cblas_zsyrk(
-            CBLAS_COL_MAJOR,
-            uplo,
-            trans,
-            n_i32,
-            k_i32,
-            &alpha,
-            a.as_data().as_ptr(),
-            to_i32(lda),
-            &beta,
-            c.as_mut_data().as_mut_ptr(),
-            ldc,
-        );
+            cblas_zsyrk(
+                CBLAS_COL_MAJOR,
+                uplo,
+                trans,
+                n_i32,
+                k_i32,
+                &alpha,
+                a.as_data().as_ptr(),
+                to_i32(lda),
+                &beta,
+                c.as_mut_data().as_mut_ptr(),
+                ldc,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        crate::native::blas::zsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
     }
     Ok(())
 }

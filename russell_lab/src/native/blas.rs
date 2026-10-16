@@ -629,3 +629,27 @@ pub fn dsyrk_rank(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: 
     // implements exactly `C(n,n) = alpha * A(n,k) A(n,k)^T + beta C`.
     dsyrk(alpha, a, beta, c, n, k, upper);
 }
+
+/// `y := alpha * A^T * x + beta * y` for complex data (zgemv, trans = 'T').
+///
+/// `a` is `m x n` column-major, so `A^T` is `n x m`: `x` has `m` entries and `y`
+/// has `n`. Not conjugated; BLAS spells that `CblasConjTrans` and it is a
+/// different operation.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemv_trans(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64, y: &mut [Complex64], m: usize, n: usize) {
+    assert_eq!(a.len(), m * n, "zgemv_trans: a must be m*n");
+    assert_eq!(x.len(), m, "zgemv_trans: x must have m entries");
+    assert_eq!(y.len(), n, "zgemv_trans: y must have n entries");
+
+    for j in 0..n {
+        let col = &a[j * m..(j + 1) * m];
+        let mut sum = Complex64::new(0.0, 0.0);
+        for i in 0..m {
+            sum += col[i] * x[i];
+        }
+        y[j] = alpha * sum + beta * y[j];
+    }
+}

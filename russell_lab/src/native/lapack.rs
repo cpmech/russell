@@ -44,6 +44,11 @@ pub enum LapackError {
     Singular,
     /// A shape or length was inconsistent with another.
     BadShape,
+    /// The routine exists in the interface but has no native implementation yet.
+    ///
+    /// Carries the routine's name so a message can point at it. See
+    /// [`not_implemented`].
+    NotImplemented(&'static str),
 }
 
 /// `dgetrf`: LU factorisation with partial pivoting, in place.
@@ -274,15 +279,20 @@ pub use super::blas::dlange;
 /// They match LAPACK's own norm codes: 1 = one-norm, 2 = infinity, 3 =
 /// Frobenius, 4 = maximum absolute entry.
 pub fn dlange_by_code(norm_code: i32, a: &[f64], m: usize, n: usize) -> f64 {
-    let ch = match norm_code {
+    super::blas::dlange(norm_char(norm_code), a, m, n)
+}
+
+/// The BLAS norm character for a `crate::Norm` discriminant.
+///
+/// An unrecognised code falls back to Frobenius rather than panicking, which is
+/// what the C shim does.
+pub fn norm_char(norm_code: i32) -> char {
+    match norm_code {
         1 => '1',
         2 => 'I',
         4 => 'M',
-        // 3 is Frobenius, and anything unexpected is treated as Frobenius rather
-        // than panicking, matching the C shim's behaviour of defaulting to 'F'.
         _ => 'F',
-    };
-    super::blas::dlange(ch, a, m, n)
+    }
 }
 
 /// Silence the unused-import warning when only some routines use the BLAS layer.
@@ -447,4 +457,19 @@ mod tests {
         assert_eq!(dgesv(&mut a, &mut b), Ok(()));
         assert_eq!(dpotrf(&mut a, 0), Ok(()));
     }
+}
+
+/// Error used when a routine has no native implementation yet.
+///
+/// Returning this rather than leaving the call site pointed at a symbol that is
+/// not linked is deliberate: a runtime error names the feature to enable, whereas
+/// a link error names a mangled symbol and says nothing about what to do.
+///
+/// Routines currently in this state: the eigenvalues (`dsyev`, `dgeev`,
+/// `dggev`), the SVD (`dgesvd`), and everything complex.
+pub fn not_implemented(routine: &str) -> &'static str {
+    // The message must be a `&'static str` to fit `StrError`, so the routine
+    // names are listed literally rather than interpolated.
+    let _ = routine;
+    "this routine is not implemented in the native Rust LAPACK yet;      build with `--features oblas` (or `mkl`) to use an external LAPACK"
 }

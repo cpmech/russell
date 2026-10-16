@@ -96,20 +96,60 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
     if m != n {
         return Err("the matrix must be square");
     }
-    let c_upper = if upper { C_TRUE } else { C_FALSE };
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let mut info = 0;
-    unsafe { c_dpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
-    if info < 0 {
-        println!("LAPACK ERROR (dpotrf): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dpotrf): An argument had an illegal value");
-    } else if info > 0 {
-        println!(
-            "LAPACK ERROR (dpotrf): The leading minor of order {} is not positive definite",
-            info
-        );
-        return Err("LAPACK ERROR (dpotrf): Positive definite check failed");
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let c_upper = if upper { C_TRUE } else { C_FALSE };
+        let m_i32 = to_i32(m);
+        let lda = m_i32;
+        let mut info = 0;
+        // Safety: the shim is linked in this configuration.
+        unsafe { c_dpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
+        if info < 0 {
+            println!("LAPACK ERROR (dpotrf): Argument #{} had an illegal value", -info);
+            return Err("LAPACK ERROR (dpotrf): An argument had an illegal value");
+        } else if info > 0 {
+            println!(
+                "LAPACK ERROR (dpotrf): The leading minor of order {} is not positive definite",
+                info
+            );
+            return Err("LAPACK ERROR (dpotrf): Positive definite check failed");
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // The native kernel writes the lower triangle. For the upper factor the
+        // result is the transpose of the lower one, computed on a mirrored copy
+        // rather than by a second algorithm.
+        if upper {
+            // Compute L on a copy, then write L^T into the upper triangle only.
+            //
+            // LAPACK's `'U'` writes the upper triangle and leaves the lower one
+            // exactly as it found it, which the tests rely on: they pass a full
+            // symmetric matrix and expect the original values to survive below the
+            // diagonal. Writing the whole matrix here would be wrong, and zeroing
+            // the lower triangle is a related mistake.
+            // Mirror the upper triangle into the lower one first. LAPACK's `'U'`
+            // reads the upper triangle alone, so the lower half of the incoming
+            // matrix may legitimately be zeros -- the tests pass exactly that --
+            // and the native kernel needs the full symmetric matrix.
+            let mut lower = a.clone();
+            for j in 0..m {
+                for i in (j + 1)..m {
+                    lower.set(i, j, lower.get(j, i));
+                }
+            }
+            crate::native::lapack::dpotrf(lower.as_mut_data(), m)
+                .map_err(|_| "LAPACK ERROR (dpotrf): Positive definite check failed")?;
+            for j in 0..m {
+                // i <= j, so this touches the upper triangle only.
+                for i in 0..=j {
+                    a.set(i, j, lower.get(j, i));
+                }
+            }
+        } else {
+            crate::native::lapack::dpotrf(a.as_mut_data(), m)
+                .map_err(|_| "LAPACK ERROR (dpotrf): Positive definite check failed")?;
+        }
     }
     Ok(())
 }

@@ -103,17 +103,24 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
     let lda = to_i32(m);
     let ldb = lda;
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zgesv(
-            &m_i32,
-            &nrhs,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            &mut info,
-        )
+            c_zgesv(
+                &m_i32,
+                &nrhs,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                &mut info,
+            )
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        return Err(crate::native::lapack::not_implemented("zgesv"));
     }
     if info < 0 {
         println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);

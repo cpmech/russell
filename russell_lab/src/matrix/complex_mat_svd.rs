@@ -121,24 +121,27 @@ pub fn complex_mat_svd(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 5 * min_mn];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_zgesvd(
-            SVD_CODE_A,
-            SVD_CODE_A,
-            &m_i32,
-            &n_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            s.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            vh.as_mut_data().as_mut_ptr(),
-            &ldvt,
-            work.as_mut_ptr(),
-            &lwork,
-            rwork.as_mut_ptr(),
-            &mut info,
-        );
+            c_zgesvd(
+                SVD_CODE_A,
+                SVD_CODE_A,
+                &m_i32,
+                &n_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                s.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                vh.as_mut_data().as_mut_ptr(),
+                &ldvt,
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (zgesvd): Argument #{} had an illegal value", -info);

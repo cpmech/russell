@@ -104,23 +104,26 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
     let mut v = vec![0.0; ldv as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        c_dgeev(
-            C_FALSE,
-            C_FALSE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            l_real.as_mut_data().as_mut_ptr(),
-            l_imag.as_mut_data().as_mut_ptr(),
-            u.as_mut_ptr(),
-            &ldu,
-            v.as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+            c_dgeev(
+                C_FALSE,
+                C_FALSE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                l_real.as_mut_data().as_mut_ptr(),
+                l_imag.as_mut_data().as_mut_ptr(),
+                u.as_mut_ptr(),
+                &ldu,
+                v.as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);

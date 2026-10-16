@@ -89,23 +89,38 @@ pub fn complex_mat_t_mat_mul(
     let k_i32: i32 = to_i32(k);
     let lda = k_i32;
     let ldb = k_i32;
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
     unsafe {
-        cblas_zgemm(
-            CBLAS_COL_MAJOR,
-            CBLAS_TRANS,
-            CBLAS_NO_TRANS,
-            m_i32,
-            n_i32,
-            k_i32,
-            &alpha,
-            a.as_data().as_ptr(),
-            lda,
-            b.as_data().as_ptr(),
-            ldb,
-            &beta,
-            c.as_mut_data().as_mut_ptr(),
-            m_i32,
-        );
+            cblas_zgemm(
+                CBLAS_COL_MAJOR,
+                CBLAS_TRANS,
+                CBLAS_NO_TRANS,
+                m_i32,
+                n_i32,
+                k_i32,
+                &alpha,
+                a.as_data().as_ptr(),
+                lda,
+                b.as_data().as_ptr(),
+                ldb,
+                &beta,
+                c.as_mut_data().as_mut_ptr(),
+                m_i32,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // C := alpha A^H B + beta C: conjugate and transpose A into a scratch buffer.
+        let kk = a.ncol();
+        let mut ah = vec![num_complex::Complex64::new(0.0, 0.0); m * kk];
+        for i in 0..m {
+            for l in 0..kk {
+                ah[i + l * m] = a.get(l, i).conj();
+            }
+        }
+        crate::native::blas::zgemm(alpha, &ah, b.as_data(), beta, c.as_mut_data(), m, n, kk);
     }
     Ok(())
 }

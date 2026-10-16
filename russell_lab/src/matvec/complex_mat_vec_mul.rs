@@ -85,22 +85,29 @@ pub fn complex_mat_vec_mul(
     let n_i32: i32 = to_i32(n);
     let incx = 1;
     let incy = 1;
-    unsafe {
-        cblas_zgemv(
-            CBLAS_COL_MAJOR,
-            CBLAS_NO_TRANS,
-            m_i32,
-            n_i32,
-            &alpha,
-            a.as_data().as_ptr(),
-            m_i32,
-            u.as_data().as_ptr(),
-            incx,
-            &zero,
-            v.as_mut_data().as_mut_ptr(),
-            incy,
-        );
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_zgemv(
+                CBLAS_COL_MAJOR,
+                CBLAS_NO_TRANS,
+                m_i32,
+                n_i32,
+                &alpha,
+                a.as_data().as_ptr(),
+                m_i32,
+                u.as_data().as_ptr(),
+                incx,
+                &zero,
+                v.as_mut_data().as_mut_ptr(),
+                incy,
+            );
+        }
+        let _ = (incx, incy, m_i32, n_i32);
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::zgemv(alpha, a.as_data(), u.as_data(), zero, v.as_mut_data(), m, n);
     Ok(())
 }
 

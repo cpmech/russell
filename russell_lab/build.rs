@@ -287,6 +287,10 @@ fn compile_oracle() {
     // The reference is Fortran, so its runtime is needed.
     println!("cargo:rustc-link-lib=dylib=gfortran");
     println!("cargo:rerun-if-env-changed=RUSSELL_ORACLE_ROOT");
+    // Both shims, so that editing the oracle wrapper re-runs the build. Watching
+    // only `interface_blas.c` meant a change to the oracle copy was silently
+    // ignored and surfaced later as an undefined `oracle_c_*` symbol.
     println!("cargo:rerun-if-changed=c_code/interface_blas.c");
+    println!("cargo:rerun-if-changed=c_code/interface_blas_oracle.c");
     println!("cargo:warning=russell_lab: `oracle` feature ON -- tests compare against {root}");
 }

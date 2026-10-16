@@ -112,6 +112,15 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 2 * m];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // The native routine has the same contract as `zgeev(JOBVL='N',
+        // JOBVR='V', ...)`: `a` is destroyed, `l` receives the eigenvalues and
+        // `v` the right eigenvectors as columns. No left eigenvectors are asked
+        // for, so no buffer is supplied for them.
+        info =
+            crate::native::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data())) as i32;
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         unsafe {
@@ -258,6 +267,18 @@ pub fn complex_mat_eigen_lr(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 2 * m];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // `zgeev(JOBVL='V', JOBVR='V', ...)`: `u` and `v` receive the left and
+        // right eigenvectors, computed from the one Schur factorisation.
+        info = crate::native::lapack::zeig::zgeev(
+            l.as_mut_data(),
+            a.as_mut_data(),
+            m,
+            Some(u.as_mut_data()),
+            Some(v.as_mut_data()),
+        ) as i32;
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         unsafe {

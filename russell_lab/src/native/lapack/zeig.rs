@@ -39,6 +39,7 @@
 use super::LapackError;
 use super::eig::dlartg;
 use crate::Complex64;
+use num_complex::ComplexFloat;
 
 /// The zero element, named so the arithmetic reads like the Fortran `ZERO`.
 fn zero() -> Complex64 {
@@ -1293,4 +1294,1447 @@ fn dlaev2(a: f64, b: f64, c: f64) -> (f64, f64, f64, f64) {
         sn1 = tn;
     }
     (rt1, rt2, cs1, sn1)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// zgeev: eigenvalues and eigenvectors of a complex general matrix
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// `|Re(z)| + |Im(z)|`, the reference's `CABS1`.
+fn cabs1(z: Complex64) -> f64 {
+    z.re.abs() + z.im.abs()
+}
+
+/// `DZNRM2` over a strided slice: the Euclidean norm of `count` elements
+/// starting at `start` with the given stride, scaled so nothing overflows.
+fn dznrm2_strided(a: &[Complex64], start: usize, stride: usize, count: usize) -> f64 {
+    let mut scale = 0.0f64;
+    let mut ssq = 1.0f64;
+    for t in 0..count {
+        let ax = a[start + t * stride].norm();
+        if ax != 0.0 {
+            if scale < ax {
+                let r = scale / ax;
+                ssq = 1.0 + ssq * r * r;
+                scale = ax;
+            } else {
+                let r = ax / scale;
+                ssq += r * r;
+            }
+        }
+    }
+    scale * ssq.sqrt()
+}
+
+/// `zlascl` with `TYPE = 'G'`: multiply a whole `m x n` matrix by `cto / cfrom`,
+/// in stages so that a single factor which would overflow never appears.
+fn zlascl_g(cfrom: f64, cto: f64, a: &mut [Complex64], lda: usize, m: usize, n: usize) {
+    if m == 0 || n == 0 {
+        return;
+    }
+    let smlnum = f64::MIN_POSITIVE;
+    let bignum = 1.0 / smlnum;
+    let mut cfromc = cfrom;
+    let mut ctoc = cto;
+    loop {
+        let mul;
+        let done;
+        let cfrom1 = cfromc * smlnum;
+        if cfrom1 == cfromc {
+            mul = ctoc / cfromc;
+            done = true;
+        } else {
+            let cto1 = ctoc / bignum;
+            if cto1 == ctoc {
+                mul = ctoc;
+                done = true;
+                cfromc = 1.0;
+            } else if cfrom1.abs() > ctoc.abs() && ctoc != 0.0 {
+                mul = smlnum;
+                done = false;
+                cfromc = cfrom1;
+            } else if cto1.abs() > cfromc.abs() {
+                mul = bignum;
+                done = false;
+                ctoc = cto1;
+            } else {
+                mul = ctoc / cfromc;
+                done = true;
+                if mul == 1.0 {
+                    return;
+                }
+            }
+        }
+        for j in 0..n {
+            for i in 0..m {
+                a[i + j * lda] *= mul;
+            }
+        }
+        if done {
+            return;
+        }
+    }
+}
+
+/// `ZLACPY` with `UPLO = 'L'`: copy the lower triangle (diagonal included).
+fn zlacpy_lower(a: &[Complex64], n: usize, b: &mut [Complex64]) {
+    for j in 0..n {
+        for i in j..n {
+            b[i + j * n] = a[i + j * n];
+        }
+    }
+}
+
+/// `ZLARF` with `SIDE = 'R'`: `C := C - tau * (C v) * v^H`.
+///
+/// `c` holds the `m x ncols` block whose `(r0, c0)` entry is its top-left corner.
+/// `v` has length `ncols`.
+fn zlarf_right(
+    a: &mut [Complex64],
+    lda: usize,
+    r0: usize,
+    m: usize,
+    c0: usize,
+    ncols: usize,
+    v: &[Complex64],
+    tau: Complex64,
+) {
+    if tau == zero() || m == 0 || ncols == 0 {
+        return;
+    }
+    let mut w = vec![zero(); m];
+    for (i, wi) in w.iter_mut().enumerate() {
+        let mut s = zero();
+        for j in 0..ncols {
+            s += a[(r0 + i) + (c0 + j) * lda] * v[j];
+        }
+        *wi = s;
+    }
+    for (i, &wi) in w.iter().enumerate() {
+        for j in 0..ncols {
+            a[(r0 + i) + (c0 + j) * lda] -= tau * wi * v[j].conj();
+        }
+    }
+}
+
+/// Normalize each column to Euclidean norm one with the largest component real,
+/// exactly as `zgeev` does with `DZNRM2`, `IDAMAX` and `ZSCAL`.
+fn znormalize_columns(v: &mut [Complex64], n: usize) {
+    for i in 0..n {
+        let scl = 1.0 / dznrm2(&v[i * n..(i + 1) * n]);
+        for k in 0..n {
+            v[k + i * n] *= scl;
+        }
+        let mut kbest = 0usize;
+        let mut best = -1.0f64;
+        for k in 0..n {
+            let z = v[k + i * n];
+            let t = z.re * z.re + z.im * z.im;
+            if t > best {
+                best = t;
+                kbest = k;
+            }
+        }
+        let tmp = v[kbest + i * n].conj() / best.sqrt();
+        for k in 0..n {
+            v[k + i * n] *= tmp;
+        }
+        v[kbest + i * n] = cpx(v[kbest + i * n].re, 0.0);
+    }
+}
+
+/// `zgeev`: the eigenvalues and, optionally, the left and right eigenvectors of a
+/// complex general square matrix.
+///
+/// This is `zgeev.f`'s unblocked route, transcribed literally:
+///
+/// 1. scale `a` when its largest entry lies outside `[SMLNUM, BIGNUM]`;
+/// 2. [`zgebal`] (`JOB = 'B'`): permute and scale to improve conditioning;
+/// 3. [`zgehrd`] (the unblocked `zgehd2`): reduce to upper Hessenberg form,
+///    `a = Q H Q^H`, keeping the reflectors;
+/// 4. [`zunghr`] forms `Q`, then [`zhseqr`] (`JOB = 'S'`, `COMPZ = 'V'`) reduces
+///    `H` to the complex Schur form with the unblocked [`zlahqr`], accumulating
+///    the Schur vectors;
+/// 5. [`ztrevc3`] with `HOWMNY = 'B'`: the eigenvectors of the triangular `T`,
+///    back-transformed by the Schur vectors;
+/// 6. [`zgebak`]: undo the balancing;
+/// 7. normalize the eigenvectors and unscale the eigenvalues.
+///
+/// `a` is `n x n` column-major and is destroyed. `w` receives the eigenvalues.
+/// `vl` and `vr`, when given, are `n x n` and receive the left and right
+/// eigenvectors as columns; the left eigenvector `u(j)` satisfies
+/// `u(j)^H a = lambda(j) u(j)^H`.
+///
+/// The return value is LAPACK's `INFO`: `0` on success, or the (1-based) index at
+/// which the QR iteration failed. The blocked `zlaqr0` fallback that `zhseqr`
+/// selects for large `n` is not implemented; every matrix goes through the
+/// single-shift [`zlahqr`], which is what the reference itself does for `n <= 15`.
+pub fn zgeev(
+    w: &mut [Complex64],
+    a: &mut [Complex64],
+    n: usize,
+    mut vl: Option<&mut [Complex64]>,
+    mut vr: Option<&mut [Complex64]>,
+) -> usize {
+    if n == 0 {
+        return 0;
+    }
+    let wantvl = vl.is_some();
+    let wantvr = vr.is_some();
+
+    // Machine constants, named as `zgeev` names them.
+    let eps = f64::EPSILON; // DLAMCH('P')
+    let smlnum0 = f64::MIN_POSITIVE; // DLAMCH('S')
+    let smlnum = smlnum0.sqrt() / eps;
+    let bignum = 1.0 / smlnum;
+
+    // Scale `a` if its largest element lies outside `[SMLNUM, BIGNUM]`.
+    let anrm = super::super::blas::zlange('M', a, n, n);
+    let mut scalea = false;
+    let mut cscale = 1.0;
+    if anrm > 0.0 && anrm < smlnum {
+        scalea = true;
+        cscale = smlnum;
+    } else if anrm > bignum {
+        scalea = true;
+        cscale = bignum;
+    }
+    if scalea {
+        zlascl_g(anrm, cscale, a, n, n, n);
+    }
+
+    // Balance the matrix.
+    let (ilo, ihi, bal_scale) = zgebal(a, n);
+
+    // Reduce to upper Hessenberg form, keeping the reflectors in `a` and `tau`.
+    let mut tau = vec![zero(); n - 1];
+    zgehrd(a, n, ilo, ihi, &mut tau);
+
+    // QR iteration, accumulating the Schur vectors in `vl` (or `vr`).
+    let info = if wantvl {
+        let z = vl.as_deref_mut().unwrap();
+        zlacpy_lower(a, n, z);
+        zunghr(n, ilo, ihi, z, &tau);
+        let info = zhseqr(a, w, n, ilo, ihi, true, Some(z));
+        if wantvr {
+            let zr = vr.as_deref_mut().unwrap();
+            zr.copy_from_slice(z);
+        }
+        info
+    } else if wantvr {
+        let z = vr.as_deref_mut().unwrap();
+        zlacpy_lower(a, n, z);
+        zunghr(n, ilo, ihi, z, &tau);
+        zhseqr(a, w, n, ilo, ihi, true, Some(z))
+    } else {
+        zhseqr(a, w, n, ilo, ihi, false, None)
+    };
+
+    if info == 0 {
+        if wantvl || wantvr {
+            let side = if wantvl && wantvr {
+                b'B'
+            } else if wantvl {
+                b'L'
+            } else {
+                b'R'
+            };
+            ztrevc3(side, n, a, vl.as_deref_mut(), vr.as_deref_mut());
+        }
+        if wantvl {
+            let z = vl.as_deref_mut().unwrap();
+            zgebak(z, n, ilo, ihi, &bal_scale, true);
+            znormalize_columns(z, n);
+        }
+        if wantvr {
+            let z = vr.as_deref_mut().unwrap();
+            zgebak(z, n, ilo, ihi, &bal_scale, false);
+            znormalize_columns(z, n);
+        }
+    }
+
+    // Undo the scaling of the eigenvalues.
+    if scalea {
+        let m = n - info.min(n);
+        if m > 0 {
+            zlascl_g(cscale, anrm, &mut w[info..], m, m, 1);
+        }
+        if info > 0 && ilo > 0 {
+            zlascl_g(cscale, anrm, &mut w[..ilo], ilo, ilo, 1);
+        }
+    }
+    info
+}
+
+/// `zhseqr` with `JOB = 'S'` and `COMPZ = 'N'` or `'V'`, restricted to the
+/// unblocked path.
+///
+/// `h` is `n x n` and upper Hessenberg on entry; on exit it is the complex Schur
+/// form `T` (upper triangular). `w` receives the eigenvalues. `ilo`/`ihi` are
+/// 0-based. The entries outside the active block are already triangular, so their
+/// eigenvalues are copied straight through, as the reference does.
+///
+/// The reference falls back to the blocked `zlaqr0` either for large `n` or when
+/// the unblocked iteration fails; that path is not implemented here, so a
+/// failure is returned as-is.
+fn zhseqr(
+    h: &mut [Complex64],
+    w: &mut [Complex64],
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    wantz: bool,
+    z: Option<&mut [Complex64]>,
+) -> usize {
+    if n == 0 {
+        return 0;
+    }
+    for i in 0..ilo {
+        w[i] = h[i + i * n];
+    }
+    for i in (ihi + 1)..n {
+        w[i] = h[i + i * n];
+    }
+    if ilo >= ihi {
+        if ilo < n {
+            w[ilo] = h[ilo + ilo * n];
+        }
+        return 0;
+    }
+    zlahqr(wantz, n, ilo, ihi, h, w, z)
+}
+
+/// `zlahqr` (`zlahqr.f`, LAPACK 3.12.1) with `WANTT = .TRUE.`: the complex Schur
+/// form and Schur vectors of an upper Hessenberg matrix by the single-shift
+/// implicit QR iteration.
+///
+/// `ilo`/`ihi` are 0-based and delimit the active block. `z`, when given, enters
+/// holding the unitary matrix from [`zgehrd`] and leaves holding the Schur
+/// vectors. The return value is LAPACK's `INFO`: `0`, or the (1-based) index that
+/// failed to converge.
+fn zlahqr(
+    wantz: bool,
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    h: &mut [Complex64],
+    w: &mut [Complex64],
+    mut z: Option<&mut [Complex64]>,
+) -> usize {
+    // ==== clear out the trash ====
+    if ihi >= 3 {
+        for j in ilo..=(ihi - 3) {
+            h[(j + 2) + j * n] = zero();
+            h[(j + 3) + j * n] = zero();
+        }
+    }
+    if ilo + 2 <= ihi {
+        h[ihi + (ihi - 2) * n] = zero();
+    }
+    // ==== ensure that subdiagonal entries are real ====
+    for i in (ilo + 1)..=ihi {
+        let t = h[i + (i - 1) * n];
+        if t.im != 0.0 {
+            let mut sc = t / cabs1(t);
+            sc = sc.conj() / sc.norm();
+            h[i + (i - 1) * n] = cpx(t.norm(), 0.0);
+            for j in i..n {
+                h[i + j * n] *= sc;
+            }
+            let m = (n - 1).min(i + 1);
+            for j in 0..=m {
+                h[j + i * n] *= sc.conj();
+            }
+            if wantz {
+                if let Some(zz) = z.as_deref_mut() {
+                    for j in 0..n {
+                        zz[j + i * n] *= sc.conj();
+                    }
+                }
+            }
+        }
+    }
+
+    let nh = ihi - ilo + 1;
+    let safmin = f64::MIN_POSITIVE;
+    let ulp = f64::EPSILON;
+    let smlnum = safmin * (nh as f64 / ulp);
+    let itmax = 30 * nh.max(10);
+    let i1 = 0usize;
+    let i2 = n - 1;
+    let mut kdefl = 0usize;
+    let mut i = ihi as isize;
+    while i >= ilo as isize {
+        let i0 = i as usize;
+        let mut l = ilo;
+        let mut converged_at = None;
+        for _its in 0..=itmax {
+            // Look for a single small subdiagonal element.
+            let mut k0 = l;
+            if i0 > l {
+                for k in ((l + 1)..=i0).rev() {
+                    let mut hit = cabs1(h[k + (k - 1) * n]) <= smlnum;
+                    if !hit {
+                        let mut tst = cabs1(h[(k - 1) + (k - 1) * n]) + cabs1(h[k + k * n]);
+                        if tst == 0.0 {
+                            if k >= ilo + 2 {
+                                tst += h[(k - 1) + (k - 2) * n].re.abs();
+                            }
+                            if k + 1 <= ihi {
+                                tst += h[(k + 1) + k * n].re.abs();
+                            }
+                        }
+                        if h[k + (k - 1) * n].re.abs() <= ulp * tst {
+                            let hk1 = h[k + (k - 1) * n];
+                            let hk2 = h[(k - 1) + k * n];
+                            let hkk = h[k + k * n];
+                            let diff = h[(k - 1) + (k - 1) * n] - hkk;
+                            let ab = cabs1(hk1).max(cabs1(hk2));
+                            let ba = cabs1(hk1).min(cabs1(hk2));
+                            let aa = cabs1(hkk).max(cabs1(diff));
+                            let bb = cabs1(hkk).min(cabs1(diff));
+                            let s = aa + ab;
+                            if ba * (ab / s) <= smlnum.max(ulp * (bb * (aa / s))) {
+                                hit = true;
+                            }
+                        }
+                    }
+                    if hit {
+                        k0 = k;
+                        break;
+                    }
+                }
+            }
+            l = k0;
+            if l > ilo {
+                h[l + (l - 1) * n] = zero();
+            }
+            if l >= i0 {
+                converged_at = Some(l);
+                break;
+            }
+            kdefl += 1;
+
+            // Shift: every tenth iteration an exceptional shift, otherwise
+            // Wilkinson's.
+            let t: Complex64;
+            if kdefl % 20 == 0 {
+                let s = 0.75 * h[i0 + (i0 - 1) * n].re.abs();
+                t = cpx(s, 0.0) + h[i0 + i0 * n];
+            } else if kdefl % 10 == 0 {
+                let s = 0.75 * h[(l + 1) + l * n].re.abs();
+                t = cpx(s, 0.0) + h[l + l * n];
+            } else {
+                let mut tt = h[i0 + i0 * n];
+                let u = h[(i0 - 1) + i0 * n].sqrt() * h[i0 + (i0 - 1) * n].sqrt();
+                let s0 = cabs1(u);
+                if s0 != 0.0 {
+                    let x = 0.5 * (h[(i0 - 1) + (i0 - 1) * n] - tt);
+                    let sx = cabs1(x);
+                    let s = s0.max(cabs1(x));
+                    let mut y = s * ((x / s) * (x / s) + (u / s) * (u / s)).sqrt();
+                    if sx > 0.0 && (x / sx).re * y.re + (x / sx).im * y.im < 0.0 {
+                        y = -y;
+                    }
+                    tt = tt - u * zladiv(u, x + y);
+                }
+                t = tt;
+            }
+
+            // Look for two consecutive small subdiagonal elements.
+            let mut m0 = l;
+            let mut v = [zero(); 2];
+            let mut found_m = false;
+            if i0 >= l + 2 {
+                for m in ((l + 1)..=(i0 - 1)).rev() {
+                    let h11 = h[m + m * n];
+                    let h22 = h[(m + 1) + (m + 1) * n];
+                    let mut h11s = h11 - t;
+                    let mut h21 = h[(m + 1) + m * n].re;
+                    let s = cabs1(h11s) + h21.abs();
+                    h11s /= s;
+                    h21 /= s;
+                    v[0] = h11s;
+                    v[1] = cpx(h21, 0.0);
+                    let h10 = h[m + (m - 1) * n].re;
+                    if h10.abs() * h21.abs() <= ulp * (cabs1(h11s) * (cabs1(h11) + cabs1(h22))) {
+                        m0 = m;
+                        found_m = true;
+                        break;
+                    }
+                }
+            }
+            if !found_m {
+                // The fallthrough block uses only the (1,1) entry; the reference
+                // also reads H(L+1,L+1) here but never uses it.
+                let h11 = h[l + l * n];
+                let mut h11s = h11 - t;
+                let mut h21 = h[(l + 1) + l * n].re;
+                let s = cabs1(h11s) + h21.abs();
+                h11s /= s;
+                h21 /= s;
+                v[0] = h11s;
+                v[1] = cpx(h21, 0.0);
+            }
+
+            // Single-shift QR step.
+            for k in m0..=(i0 - 1) {
+                if k > m0 {
+                    v[0] = h[k + (k - 1) * n];
+                    v[1] = h[(k + 1) + (k - 1) * n];
+                }
+                let mut alpha = v[0];
+                let mut xtail = [v[1]];
+                let t1 = zlarfg(&mut alpha, &mut xtail);
+                let v2 = xtail[0];
+                if k > m0 {
+                    h[k + (k - 1) * n] = alpha;
+                    h[(k + 1) + (k - 1) * n] = zero();
+                }
+                let t2 = (t1 * v2).re;
+
+                // Apply G from the left to columns K..I2.
+                for j in k..=i2 {
+                    let sum = t1.conj() * h[k + j * n] + cpx(t2, 0.0) * h[(k + 1) + j * n];
+                    h[k + j * n] -= sum;
+                    h[(k + 1) + j * n] -= sum * v2;
+                }
+                // Apply G from the right to rows I1..min(K+2,I).
+                let jmax = (k + 2).min(i0);
+                for j in i1..=jmax {
+                    let sum = t1 * h[j + k * n] + cpx(t2, 0.0) * h[j + (k + 1) * n];
+                    h[j + k * n] -= sum;
+                    h[j + (k + 1) * n] -= sum * v2.conj();
+                }
+                if wantz {
+                    if let Some(zz) = z.as_deref_mut() {
+                        for j in 0..n {
+                            let sum = t1 * zz[j + k * n] + cpx(t2, 0.0) * zz[j + (k + 1) * n];
+                            zz[j + k * n] -= sum;
+                            zz[j + (k + 1) * n] -= sum * v2.conj();
+                        }
+                    }
+                }
+
+                if k == m0 && m0 > l {
+                    // The iteration started at M > L: extra scaling keeps
+                    // H(M,M-1) real.
+                    let mut temp = one() - t1;
+                    temp = temp / temp.norm();
+                    h[(m0 + 1) + m0 * n] *= temp.conj();
+                    if m0 + 2 <= i0 {
+                        h[(m0 + 2) + (m0 + 1) * n] *= temp;
+                    }
+                    for j in m0..=i0 {
+                        if j != m0 + 1 {
+                            if i2 > j {
+                                for jj in (j + 1)..=i2 {
+                                    h[j + jj * n] *= temp;
+                                }
+                            }
+                            for jj in i1..j {
+                                h[jj + j * n] *= temp.conj();
+                            }
+                            if wantz {
+                                if let Some(zz) = z.as_deref_mut() {
+                                    for jj in 0..n {
+                                        zz[jj + j * n] *= temp.conj();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ensure that H(I,I-1) is real.
+            let temp = h[i0 + (i0 - 1) * n];
+            if temp.im != 0.0 {
+                let rtemp = temp.norm();
+                h[i0 + (i0 - 1) * n] = cpx(rtemp, 0.0);
+                let temp = temp / rtemp;
+                if i2 > i0 {
+                    for j in (i0 + 1)..=i2 {
+                        h[i0 + j * n] *= temp.conj();
+                    }
+                }
+                for j in i1..i0 {
+                    h[j + i0 * n] *= temp;
+                }
+                if wantz {
+                    if let Some(zz) = z.as_deref_mut() {
+                        for j in 0..n {
+                            zz[j + i0 * n] *= temp;
+                        }
+                    }
+                }
+            }
+        }
+
+        match converged_at {
+            Some(l) => {
+                w[i0] = h[i0 + i0 * n];
+                kdefl = 0;
+                i = l as isize - 1;
+            }
+            None => return i0 + 1,
+        }
+    }
+    0
+}
+
+/// `ztrevc3` (`ztrevc3.f`, LAPACK 3.12.1) with `HOWMNY = 'B'` and the unblocked
+/// `NB = 1` back-transformation.
+///
+/// On entry `t` is the complex Schur form (upper triangular) and `vl`/`vr` hold
+/// the unitary Schur vectors `Q`. On exit the requested matrices hold the left
+/// and/or right eigenvectors of the original matrix.
+///
+/// `side` is `b'B'`, `b'L'` or `b'R'`.
+fn ztrevc3(side: u8, n: usize, t: &mut [Complex64], vl: Option<&mut [Complex64]>, vr: Option<&mut [Complex64]>) {
+    if n == 0 {
+        return;
+    }
+    let bothv = side == b'B';
+    let rightv = side == b'R' || bothv;
+    let leftv = side == b'L' || bothv;
+
+    let unfl = f64::MIN_POSITIVE;
+    let ulp = f64::EPSILON;
+    let smlnum = unfl * (n as f64 / ulp);
+
+    // Store the diagonal of T and the 1-norms of the strictly upper triangular
+    // part of each column.
+    let mut diag = vec![zero(); n];
+    for i in 0..n {
+        diag[i] = t[i + i * n];
+    }
+    let mut rwork = vec![0.0f64; n];
+    for j in 1..n {
+        let mut s = 0.0;
+        for i in 0..j {
+            s += cabs1(t[i + j * n]);
+        }
+        rwork[j] = s;
+    }
+
+    let mut work = vec![zero(); n];
+    let mut xbuf = vec![zero(); n];
+
+    if rightv {
+        let vr = vr.unwrap();
+        for ki in (0..n).rev() {
+            let smin = (ulp * cabs1(t[ki + ki * n])).max(smlnum);
+            work[ki] = one();
+            for k in 0..ki {
+                work[k] = -t[k + ki * n];
+            }
+            for k in 0..ki {
+                t[k + k * n] -= t[ki + ki * n];
+                if cabs1(t[k + k * n]) < smin {
+                    t[k + k * n] = cpx(smin, 0.0);
+                }
+            }
+            let mut scale = 1.0;
+            if ki > 0 {
+                zlatrs_upper(ki, false, t, n, 0, 0, &mut work[..ki], &mut scale, &rwork);
+                work[ki] = cpx(scale, 0.0);
+                for i in 0..n {
+                    let mut s = cpx(scale, 0.0) * vr[i + ki * n];
+                    for j in 0..ki {
+                        s += vr[i + j * n] * work[j];
+                    }
+                    xbuf[i] = s;
+                }
+                for i in 0..n {
+                    vr[i + ki * n] = xbuf[i];
+                }
+            }
+            let mut ii = 0usize;
+            let mut best = cabs1(vr[ki * n]);
+            for i in 1..n {
+                let c = cabs1(vr[i + ki * n]);
+                if c > best {
+                    best = c;
+                    ii = i;
+                }
+            }
+            let remax = 1.0 / cabs1(vr[ii + ki * n]);
+            for i in 0..n {
+                vr[i + ki * n] *= remax;
+            }
+            for k in 0..ki {
+                t[k + k * n] = diag[k];
+            }
+        }
+    }
+
+    if leftv {
+        let vl = vl.unwrap();
+        for ki in 0..n {
+            let smin = (ulp * cabs1(t[ki + ki * n])).max(smlnum);
+            work[ki] = one();
+            for k in (ki + 1)..n {
+                work[k] = -t[ki + k * n].conj();
+            }
+            for k in (ki + 1)..n {
+                t[k + k * n] -= t[ki + ki * n];
+                if cabs1(t[k + k * n]) < smin {
+                    t[k + k * n] = cpx(smin, 0.0);
+                }
+            }
+            let mut scale = 1.0;
+            if ki + 1 < n {
+                zlatrs_upper(
+                    n - ki - 1,
+                    true,
+                    t,
+                    n,
+                    ki + 1,
+                    ki + 1,
+                    &mut work[(ki + 1)..],
+                    &mut scale,
+                    &rwork,
+                );
+                work[ki] = cpx(scale, 0.0);
+                for i in 0..n {
+                    let mut s = cpx(scale, 0.0) * vl[i + ki * n];
+                    for j in (ki + 1)..n {
+                        s += vl[i + j * n] * work[j];
+                    }
+                    xbuf[i] = s;
+                }
+                for i in 0..n {
+                    vl[i + ki * n] = xbuf[i];
+                }
+            }
+            let mut ii = 0usize;
+            let mut best = cabs1(vl[ki * n]);
+            for i in 1..n {
+                let c = cabs1(vl[i + ki * n]);
+                if c > best {
+                    best = c;
+                    ii = i;
+                }
+            }
+            let remax = 1.0 / cabs1(vl[ii + ki * n]);
+            for i in 0..n {
+                vl[i + ki * n] *= remax;
+            }
+            for k in (ki + 1)..n {
+                t[k + k * n] = diag[k];
+            }
+        }
+    }
+}
+
+/// `zlatrs` restricted to `UPLO = 'U'`, `DIAG = 'N'` and `NORMIN = 'Y'`: solve
+/// `A x = scale * b` (or `A^H x = scale * b`) with scaling to avoid overflow.
+///
+/// `a` holds the leading `n x n` upper triangular block whose `(r0, c0)` entry is
+/// its top-left corner; `lda` is its leading dimension. `cnorm` holds the
+/// reference's `CNORM` array (1-norms of the strictly upper part of the columns
+/// of the Schur form), read from index zero.
+///
+/// The reference chooses between a plain `zt rsv` and the scaled loop based on a
+/// growth estimate; when no scaling triggers the two are the same arithmetic, so
+/// only the scaled loop is implemented here. `scale` is always meaningful, and
+/// `x` is overwritten with `scale * A^-1 b`.
+fn zlatrs_upper(
+    n: usize,
+    conj_trans: bool,
+    a: &[Complex64],
+    lda: usize,
+    r0: usize,
+    c0: usize,
+    x: &mut [Complex64],
+    scale: &mut f64,
+    cnorm_in: &[f64],
+) {
+    *scale = 1.0;
+    if n == 0 {
+        return;
+    }
+    let smlnum = f64::MIN_POSITIVE / f64::EPSILON;
+    let bignum = 1.0 / smlnum;
+    let half = 0.5;
+    let one_r = 1.0;
+    let two = 2.0;
+
+    // NORMIN = 'Y': CNORM is given. TSCAL rescales it when it is huge.
+    let mut cnorm = cnorm_in[..n].to_vec();
+    let mut tmax = cnorm[0];
+    for c in cnorm.iter().skip(1) {
+        if *c > tmax {
+            tmax = *c;
+        }
+    }
+    let tscal = if tmax <= bignum * half {
+        one_r
+    } else if tmax <= f64::MAX {
+        let t = half / (smlnum * tmax);
+        for c in cnorm.iter_mut() {
+            *c *= t;
+        }
+        t
+    } else {
+        // CNORM has overflowed. The reference recomputes it from A, which cannot
+        // matter for finite input; leaving it unscaled is the safe choice.
+        one_r
+    };
+
+    let mut xmax = 0.0f64;
+    for v in x.iter() {
+        xmax = xmax.max(cabs1(*v));
+    }
+    if xmax > bignum * half {
+        *scale = (bignum * half) / xmax;
+        for v in x.iter_mut() {
+            *v *= *scale;
+        }
+        xmax = bignum;
+    } else {
+        xmax *= two;
+    }
+
+    if !conj_trans {
+        // Solve A x = scale b, from the bottom up.
+        for jj in (0..n).rev() {
+            let mut xj = cabs1(x[jj]);
+            let tjjs = a[(r0 + jj) + (c0 + jj) * lda] * tscal;
+            let tjj = cabs1(tjjs);
+            if tjj > smlnum {
+                if tjj < one_r && xj > tjj * bignum {
+                    let rec = one_r / xj;
+                    for v in x.iter_mut() {
+                        *v *= rec;
+                    }
+                    *scale *= rec;
+                    xmax *= rec;
+                }
+                x[jj] = zladiv(x[jj], tjjs);
+                xj = cabs1(x[jj]);
+            } else if tjj > 0.0 {
+                if xj > tjj * bignum {
+                    let mut rec = (tjj * bignum) / xj;
+                    if cnorm[jj] > one_r {
+                        rec /= cnorm[jj];
+                    }
+                    for v in x.iter_mut() {
+                        *v *= rec;
+                    }
+                    *scale *= rec;
+                    xmax *= rec;
+                }
+                x[jj] = zladiv(x[jj], tjjs);
+                xj = cabs1(x[jj]);
+            } else {
+                for v in x.iter_mut() {
+                    *v = zero();
+                }
+                x[jj] = one();
+                xj = one_r;
+                *scale = 0.0;
+                xmax = 0.0;
+            }
+            if xj > one_r {
+                let mut rec = one_r / xj;
+                if cnorm[jj] > (bignum - xmax) * rec {
+                    rec *= half;
+                    for v in x.iter_mut() {
+                        *v *= rec;
+                    }
+                    *scale *= rec;
+                }
+            } else if xj * cnorm[jj] > (bignum - xmax) {
+                for v in x.iter_mut() {
+                    *v *= half;
+                }
+                *scale *= half;
+            }
+            if jj > 0 {
+                let alpha = -x[jj] * tscal;
+                for i in 0..jj {
+                    x[i] += alpha * a[(r0 + i) + (c0 + jj) * lda];
+                }
+                let mut im = 0usize;
+                let mut best = cabs1(x[0]);
+                for i in 1..jj {
+                    let c = cabs1(x[i]);
+                    if c > best {
+                        best = c;
+                        im = i;
+                    }
+                }
+                xmax = cabs1(x[im]);
+            }
+        }
+    } else {
+        // Solve A^H x = scale b, from the top down.
+        for jj in 0..n {
+            let mut xj = cabs1(x[jj]);
+            let mut uscal = cpx(tscal, 0.0);
+            let rec0 = one_r / xmax.max(one_r);
+            if cnorm[jj] > (bignum - xj) * rec0 {
+                let mut rec = rec0 * half;
+                let tjjs = a[(r0 + jj) + (c0 + jj) * lda].conj() * tscal;
+                let tjj = cabs1(tjjs);
+                if tjj > one_r {
+                    rec = one_r.min(rec * tjj);
+                    uscal = zladiv(uscal, tjjs);
+                }
+                if rec < one_r {
+                    for v in x.iter_mut() {
+                        *v *= rec;
+                    }
+                    *scale *= rec;
+                    xmax *= rec;
+                }
+            }
+            let tjjs_here = a[(r0 + jj) + (c0 + jj) * lda].conj() * tscal;
+            let mut csumj = zero();
+            if uscal == one() {
+                for i in 0..jj {
+                    csumj += a[(r0 + i) + (c0 + jj) * lda].conj() * x[i];
+                }
+            } else {
+                for i in 0..jj {
+                    csumj += (a[(r0 + i) + (c0 + jj) * lda].conj() * uscal) * x[i];
+                }
+            }
+            if uscal == cpx(tscal, 0.0) {
+                x[jj] = x[jj] - csumj;
+                xj = cabs1(x[jj]);
+                let tjjs = tjjs_here;
+                let tjj = cabs1(tjjs);
+                if tjj > smlnum {
+                    if tjj < one_r && xj > tjj * bignum {
+                        let rec = one_r / xj;
+                        for v in x.iter_mut() {
+                            *v *= rec;
+                        }
+                        *scale *= rec;
+                        xmax *= rec;
+                    }
+                    x[jj] = zladiv(x[jj], tjjs);
+                } else if tjj > 0.0 {
+                    if xj > tjj * bignum {
+                        let rec = (tjj * bignum) / xj;
+                        for v in x.iter_mut() {
+                            *v *= rec;
+                        }
+                        *scale *= rec;
+                        xmax *= rec;
+                    }
+                    x[jj] = zladiv(x[jj], tjjs);
+                } else {
+                    for v in x.iter_mut() {
+                        *v = zero();
+                    }
+                    x[jj] = one();
+                    *scale = 0.0;
+                    xmax = 0.0;
+                }
+            } else {
+                x[jj] = zladiv(x[jj], tjjs_here) - csumj;
+            }
+            xmax = xmax.max(cabs1(x[jj]));
+        }
+    }
+    *scale /= tscal;
+}
+
+/// `zgebal` with `JOB = 'B'` (`zgebal.f`, LAPACK 3.12.1): permute and scale a
+/// complex general matrix to improve the conditioning of its eigenvalues.
+///
+/// Returns the 0-based `ilo`/`ihi` bounding the active block and the `scale`
+/// vector, whose entries inside `ilo..=ihi` are the scaling factors and whose
+/// entries outside hold the 1-based source index of the permutation (as
+/// [`zgebak`] expects).
+fn zgebal(a: &mut [Complex64], n: usize) -> (usize, usize, Vec<f64>) {
+    let mut scale = vec![1.0f64; n];
+    if n == 0 {
+        return (0, 0, scale);
+    }
+    let mut k = 0usize;
+    let mut l = n - 1;
+
+    // Row and column exchange.
+    let mut noconv = true;
+    while noconv {
+        noconv = false;
+        // Search for rows isolating an eigenvalue and push them down.
+        let i_start = l;
+        let mut i = i_start as isize;
+        while i >= 0 {
+            let iu = i as usize;
+            let mut canswap = true;
+            for j in 0..=l {
+                if iu != j && a[iu + j * n] != zero() {
+                    canswap = false;
+                    break;
+                }
+            }
+            if canswap {
+                scale[l] = (iu + 1) as f64;
+                if iu != l {
+                    for r in 0..=l {
+                        a.swap(r + iu * n, r + l * n);
+                    }
+                    for c in k..n {
+                        a.swap(iu + c * n, l + c * n);
+                    }
+                }
+                noconv = true;
+                if l == 0 {
+                    return (0, 0, scale);
+                }
+                l -= 1;
+            }
+            i -= 1;
+        }
+    }
+
+    // Search for columns isolating an eigenvalue and push them left.
+    noconv = true;
+    while noconv {
+        noconv = false;
+        let j_start = k;
+        let mut j = j_start;
+        while j <= l {
+            let mut canswap = true;
+            for i in k..=l {
+                if i != j && a[i + j * n] != zero() {
+                    canswap = false;
+                    break;
+                }
+            }
+            if canswap {
+                scale[k] = (j + 1) as f64;
+                if j != k {
+                    for r in 0..=l {
+                        a.swap(r + j * n, r + k * n);
+                    }
+                    for c in k..n {
+                        a.swap(j + c * n, k + c * n);
+                    }
+                }
+                noconv = true;
+                k += 1;
+            }
+            j += 1;
+        }
+    }
+
+    for i in k..=l {
+        scale[i] = 1.0;
+    }
+
+    // Iterative loop for norm reduction.
+    let sfmin1 = f64::MIN_POSITIVE / f64::EPSILON;
+    let sfmax1 = 1.0 / sfmin1;
+    let sfmin2 = sfmin1 * 2.0;
+    let sfmax2 = 1.0 / sfmin2;
+    let mut noconv = true;
+    while noconv {
+        noconv = false;
+        for i in k..=l {
+            let c = dznrm2_strided(a, k + i * n, 1, l - k + 1);
+            let r = dznrm2_strided(a, i + k * n, n, l - k + 1);
+            let mut ica = 0usize;
+            let mut best_ca = cabs1(a[i * n]);
+            for t in 1..=l {
+                let cc = cabs1(a[t + i * n]);
+                if cc > best_ca {
+                    best_ca = cc;
+                    ica = t;
+                }
+            }
+            let ca = a[ica + i * n].norm();
+            let mut ira = 0usize;
+            let mut best_ra = cabs1(a[i + k * n]);
+            for t in 1..(n - k) {
+                let cc = cabs1(a[i + (k + t) * n]);
+                if cc > best_ra {
+                    best_ra = cc;
+                    ira = t;
+                }
+            }
+            let ra = a[i + (ira + k) * n].norm();
+
+            // Guard against zero C or R due to underflow.
+            if c == 0.0 || r == 0.0 || (c + ca + r + ra).is_nan() {
+                continue;
+            }
+
+            let mut cc = c;
+            let mut ca2 = ca;
+            let mut rr = r;
+            let mut ra2 = ra;
+            let mut f: f64 = 1.0;
+            let mut g = rr / 2.0;
+            let s = cc + rr;
+            while cc < g && f.max(cc).max(ca2) < sfmax2 && rr.min(g).min(ra2) > sfmin2 {
+                f *= 2.0;
+                cc *= 2.0;
+                ca2 *= 2.0;
+                rr /= 2.0;
+                g /= 2.0;
+                ra2 /= 2.0;
+            }
+            g = cc / 2.0;
+            while g >= rr && rr.max(ra2) < sfmax2 && f.min(cc).min(g).min(ca2) > sfmin2 {
+                f /= 2.0;
+                cc /= 2.0;
+                g /= 2.0;
+                ca2 /= 2.0;
+                rr *= 2.0;
+                ra2 *= 2.0;
+            }
+
+            // Now balance.
+            if cc + rr >= 0.95 * s {
+                continue;
+            }
+            if f < 1.0 && scale[i] < 1.0 && f * scale[i] <= sfmin1 {
+                continue;
+            }
+            if f > 1.0 && scale[i] > 1.0 && scale[i] >= sfmax1 / f {
+                continue;
+            }
+            let ginv = 1.0 / f;
+            scale[i] *= f;
+            noconv = true;
+            for t in i..n {
+                a[t + k * n] *= ginv;
+            }
+            for t in 0..=l {
+                a[t + i * n] *= f;
+            }
+        }
+    }
+
+    (k, l, scale)
+}
+
+/// `zgebak` with `JOB = 'B'`: undo the balancing that [`zgebal`] recorded.
+///
+/// `left` selects `SIDE = 'L'` (which divides each row by its scaling factor)
+/// instead of `SIDE = 'R'` (which multiplies). `ilo`/`ihi` are 0-based.
+fn zgebak(v: &mut [Complex64], n: usize, ilo: usize, ihi: usize, scale: &[f64], left: bool) {
+    if n == 0 {
+        return;
+    }
+    if ilo != ihi {
+        if !left {
+            for i in ilo..=ihi {
+                let s = scale[i];
+                for j in 0..n {
+                    v[i + j * n] *= s;
+                }
+            }
+        } else {
+            for i in ilo..=ihi {
+                let s = 1.0 / scale[i];
+                for j in 0..n {
+                    v[i + j * n] *= s;
+                }
+            }
+        }
+    }
+    // Backward permutation: I walks down from ILO-1 to 1, then up from IHI+1 to N.
+    for ii in 1..=n {
+        let i1 = ii;
+        if i1 >= ilo + 1 && i1 <= ihi + 1 {
+            continue;
+        }
+        let i1 = if i1 < ilo + 1 { ilo + 1 - ii } else { i1 };
+        let k1 = scale[i1 - 1] as usize;
+        if k1 == i1 {
+            continue;
+        }
+        for j in 0..n {
+            v.swap((i1 - 1) + j * n, (k1 - 1) + j * n);
+        }
+    }
+}
+
+/// `zgehrd` (the unblocked `zgehd2` path): reduce a complex general matrix to
+/// upper Hessenberg form, `a = Q H Q^H`.
+///
+/// `ilo`/`ihi` are 0-based and delimit the active block; `tau[i]` receives the
+/// reflector of step `i` for `i` in `ilo..ihi`. The reflectors are stored in the
+/// zeroed part of `a`, as LAPACK packs them.
+fn zgehrd(a: &mut [Complex64], n: usize, ilo: usize, ihi: usize, tau: &mut [Complex64]) {
+    if n == 0 || ihi <= ilo {
+        return;
+    }
+    for i in ilo..ihi {
+        // Reflector H(i) annihilates A(i+2:ihi, i).
+        let mut alpha = a[(i + 1) + i * n];
+        let taui = {
+            let tail = &mut a[(i + 2) + i * n..=ihi + i * n];
+            zlarfg(&mut alpha, tail)
+        };
+        a[(i + 1) + i * n] = alpha;
+        tau[i] = taui;
+
+        // The explicit reflector is [1, tail] with the 1 at row i+1.
+        let len = ihi - i;
+        let mut v = vec![zero(); len];
+        v[0] = one();
+        for t in 1..len {
+            v[t] = a[(i + 1 + t) + i * n];
+        }
+
+        // Apply H(i) to A(0:ihi, i+1:ihi) from the right.
+        zlarf_right(a, n, 0, ihi + 1, i + 1, ihi - i, &v, taui);
+        // Apply H(i)^H to A(i+1:ihi, i+1:n) from the left.
+        zlarf_left(a, n, i + 1, ihi - i, i + 1, n - 1 - i, &v, taui.conj());
+    }
+}
+
+/// `zunghr`: form the unitary matrix `Q` from the reflectors [`zgehrd`] stored.
+///
+/// The reflectors are shifted one column to the right and the first `ilo` and
+/// last `n-ihi-1` rows and columns are set to those of the identity, then the
+/// unblocked `zungqr` ([`zung2r`]) generates the active block. `ilo`/`ihi` are
+/// 0-based.
+fn zunghr(n: usize, ilo: usize, ihi: usize, a: &mut [Complex64], tau: &[Complex64]) {
+    if n == 0 {
+        return;
+    }
+    let nh = ihi - ilo;
+    // Shift the reflectors one column to the right.
+    if ihi >= ilo + 1 {
+        for j in ((ilo + 1)..=ihi).rev() {
+            for i in 0..j {
+                a[i + j * n] = zero();
+            }
+            for i in (j + 1)..=ihi {
+                a[i + j * n] = a[i + (j - 1) * n];
+            }
+            for i in (ihi + 1)..n {
+                a[i + j * n] = zero();
+            }
+        }
+    }
+    // Columns 0..=ilo and ihi+1..n become unit vectors.
+    for j in 0..=ilo {
+        for i in 0..n {
+            a[i + j * n] = zero();
+        }
+        a[j + j * n] = one();
+    }
+    for j in (ihi + 1)..n {
+        for i in 0..n {
+            a[i + j * n] = zero();
+        }
+        a[j + j * n] = one();
+    }
+    if nh > 0 {
+        zung2r(nh, nh, nh, a, n, &tau[ilo..ilo + nh], ilo + 1, ilo + 1);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mat_vec(a: &[Complex64], x: &[Complex64], n: usize) -> Vec<Complex64> {
+        let mut y = vec![zero(); n];
+        for i in 0..n {
+            let mut s = zero();
+            for j in 0..n {
+                s += a[i + j * n] * x[j];
+            }
+            y[i] = s;
+        }
+        y
+    }
+
+    fn check_right(a: &[Complex64], vr: &[Complex64], w: &[Complex64], n: usize, tol: f64) {
+        for j in 0..n {
+            let v: Vec<Complex64> = (0..n).map(|i| vr[i + j * n]).collect();
+            let av = mat_vec(a, &v, n);
+            for i in 0..n {
+                let d = (av[i] - w[j] * v[i]).norm();
+                assert!(d <= tol, "right residual {d} at ({i},{j})");
+            }
+        }
+    }
+
+    fn check_left(a: &[Complex64], vl: &[Complex64], w: &[Complex64], n: usize, tol: f64) {
+        for j in 0..n {
+            let u: Vec<Complex64> = (0..n).map(|i| vl[i + j * n]).collect();
+            let mut y = vec![zero(); n];
+            for i in 0..n {
+                let mut s = zero();
+                for k in 0..n {
+                    s += a[k + i * n].conj() * u[k];
+                }
+                y[i] = s;
+            }
+            for i in 0..n {
+                let d = (y[i] - w[j].conj() * u[i]).norm();
+                assert!(d <= tol, "left residual {d} at ({i},{j})");
+            }
+        }
+    }
+
+    /// The 3x3 real companion matrix used by `complex_mat_eigen`'s own test.
+    fn companion3() -> Vec<Complex64> {
+        vec![
+            cpx(0.0, 0.0),
+            cpx(0.0, 0.0),
+            cpx(1.0, 0.0),
+            cpx(1.0, 0.0),
+            cpx(0.0, 0.0),
+            cpx(0.0, 0.0),
+            cpx(0.0, 0.0),
+            cpx(1.0, 0.0),
+            cpx(0.0, 0.0),
+        ]
+    }
+
+    /// The genuinely complex 4x4 matrix of the `complex_mat_eigen` test.
+    fn complex4() -> Vec<Complex64> {
+        #[rustfmt::skip]
+        let rows = [
+            [cpx(5.0, 9.0), cpx(5.0,  5.0), cpx(-6.0, -6.0), cpx(-7.0, -7.0)],
+            [cpx(3.0, 3.0), cpx(6.0, 10.0), cpx(-5.0, -5.0), cpx(-6.0, -6.0)],
+            [cpx(2.0, 2.0), cpx(3.0,  3.0), cpx(-1.0,  3.0), cpx(-5.0, -5.0)],
+            [cpx(1.0, 1.0), cpx(2.0,  2.0), cpx(-3.0, -3.0), cpx( 0.0,  4.0)],
+        ];
+        let mut a = vec![zero(); 16];
+        for i in 0..4 {
+            for j in 0..4 {
+                a[i + j * 4] = rows[i][j];
+            }
+        }
+        a
+    }
+
+    #[test]
+    fn zgeev_right_eigenvectors_of_the_companion_matrix() {
+        let a_orig = companion3();
+        let mut a = a_orig.clone();
+        let n = 3;
+        let mut w = vec![zero(); n];
+        let mut vr = vec![zero(); n * n];
+        let info = zgeev(&mut w, &mut a, n, None, Some(&mut vr));
+        assert_eq!(info, 0);
+        let s3 = 3.0f64.sqrt();
+        let expected = [cpx(-0.5, s3 / 2.0), cpx(-0.5, -s3 / 2.0), cpx(1.0, 0.0)];
+        for j in 0..n {
+            assert!((w[j] - expected[j]).norm() < 1e-14, "w[{j}] = {:?}", w[j]);
+        }
+        check_right(&a_orig, &vr, &w, n, 1e-14);
+    }
+
+    #[test]
+    fn zgeev_left_and_right_eigenvectors_of_a_complex_matrix() {
+        let a_orig = complex4();
+        let mut a = a_orig.clone();
+        let n = 4;
+        let mut w = vec![zero(); n];
+        let mut vl = vec![zero(); n * n];
+        let mut vr = vec![zero(); n * n];
+        let info = zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr));
+        assert_eq!(info, 0);
+        check_right(&a_orig, &vr, &w, n, 1e-13);
+        check_left(&a_orig, &vl, &w, n, 1e-13);
+    }
+
+    #[test]
+    fn zgeev_repeated_eigenvalues() {
+        #[rustfmt::skip]
+        let rows = [
+            [cpx(2.0, 0.0), cpx(0.0, 0.0), cpx(0.0, 0.0), cpx(0.0, 0.0)],
+            [cpx(1.0, 0.0), cpx(2.0, 0.0), cpx(0.0, 0.0), cpx(0.0, 0.0)],
+            [cpx(0.0, 0.0), cpx(1.0, 0.0), cpx(3.0, 0.0), cpx(0.0, 0.0)],
+            [cpx(0.0, 0.0), cpx(0.0, 0.0), cpx(1.0, 0.0), cpx(3.0, 0.0)],
+        ];
+        let n = 4;
+        let mut a_orig = vec![zero(); n * n];
+        for i in 0..n {
+            for j in 0..n {
+                a_orig[i + j * n] = rows[i][j];
+            }
+        }
+        let mut a = a_orig.clone();
+        let mut w = vec![zero(); n];
+        let mut vr = vec![zero(); n * n];
+        let info = zgeev(&mut w, &mut a, n, None, Some(&mut vr));
+        assert_eq!(info, 0);
+        check_right(&a_orig, &vr, &w, n, 1e-14);
+    }
+
+    #[test]
+    fn zgeev_small_sizes() {
+        // 1x1.
+        let mut a = vec![cpx(3.0, -2.0)];
+        let mut w = vec![zero(); 1];
+        let mut vr = vec![zero(); 1];
+        let mut vl = vec![zero(); 1];
+        assert_eq!(zgeev(&mut w, &mut a, 1, Some(&mut vl), Some(&mut vr)), 0);
+        assert!((w[0] - cpx(3.0, -2.0)).norm() < 1e-15);
+        assert!((vr[0] - one()).norm() < 1e-15);
+        assert!((vl[0] - one()).norm() < 1e-15);
+
+        // 2x2 with a complex conjugate pair.
+        let a_orig = vec![cpx(1.0, 1.0), cpx(2.0, 0.0), cpx(0.0, -1.0), cpx(3.0, 0.0)];
+        let n = 2;
+        let mut a = a_orig.clone();
+        let mut w = vec![zero(); n];
+        let mut vr = vec![zero(); n * n];
+        let mut vl = vec![zero(); n * n];
+        assert_eq!(zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)), 0);
+        check_right(&a_orig, &vr, &w, n, 1e-14);
+        check_left(&a_orig, &vl, &w, n, 1e-14);
+    }
+
+    /// Larger, pseudo-random complex matrices, so the QR iteration has to take
+    /// several steps and the exceptional shifts are reached, plus a matrix whose
+    /// norm forces `zgeev`'s scaling branch.
+    #[test]
+    fn zgeev_random_sizes_and_scaled_matrices() {
+        let mut state: u64 = 0x0123_4567_89ab_cdef;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((state >> 11) as f64) / ((1u64 << 53) as f64) - 0.5
+        };
+
+        for n in [6usize, 9, 12] {
+            let mut a_orig = vec![zero(); n * n];
+            for z in a_orig.iter_mut() {
+                *z = cpx(next() * 10.0, next() * 10.0);
+            }
+            let mut a = a_orig.clone();
+            let mut w = vec![zero(); n];
+            let mut vr = vec![zero(); n * n];
+            let mut vl = vec![zero(); n * n];
+            assert_eq!(zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)), 0);
+            let scale = a_orig.iter().fold(0.0f64, |m, z| m.max(z.norm())).max(1.0);
+            check_right(&a_orig, &vr, &w, n, 1e-12 * scale);
+            check_left(&a_orig, &vl, &w, n, 1e-12 * scale);
+        }
+
+        // An entry far below SMLNUM triggers `ANRM < SMLNUM` and the scaling of
+        // `a`; the unscaled eigenvalues must still satisfy the defining equation.
+        for factor in [1e-150, 1e150] {
+            let n = 3;
+            let base = companion3();
+            let a_orig: Vec<Complex64> = base.iter().map(|z| *z * factor).collect();
+            let mut a = a_orig.clone();
+            let mut w = vec![zero(); n];
+            let mut vr = vec![zero(); n * n];
+            assert_eq!(zgeev(&mut w, &mut a, n, None, Some(&mut vr)), 0);
+            check_right(&a_orig, &vr, &w, n, 1e-13 * factor);
+        }
+    }
 }

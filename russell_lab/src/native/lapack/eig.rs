@@ -2049,6 +2049,582 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
     (wr, wi)
 }
 
+/// `dtrevc3` (`dtrevc3.f`, LAPACK 3.12.1) with `SIDE = 'L'`, `HOWMNY = 'B'` and
+/// the unblocked `NB = 1` back-transformation.
+///
+/// On entry `t` is the real Schur form (quasi-upper-triangular) and `vl` holds
+/// the orthogonal Schur vectors `Z`; on exit `vl` holds the left eigenvectors in
+/// LAPACK's compact storage: for a conjugate pair at `(j, j+1)`, columns `j` and
+/// `j + 1` are the real and imaginary parts of `u(j)`, with `u(j+1) = conj(u(j))`.
+/// The defining equation is `u(j)^T A = lambda(j) u(j)^T`.
+///
+/// The only `dlaln2` call with `LTRANS = .TRUE.` is the 2x2 block, and `dlaln2`
+/// uses `LTRANS` for nothing but the off-diagonal swap in `CR`; passing the two
+/// off-diagonals in the opposite argument slots is therefore exactly the
+/// transposed system, and no second `dlaln2` is needed.
+fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
+    let unfl = f64::MIN_POSITIVE;
+    let ulp = f64::EPSILON;
+    let smlnum = unfl * (n as f64 / ulp);
+    let bignum = (1.0 - ulp) / smlnum;
+
+    // 1-norm of the strictly upper triangular part of each column of T.
+    let mut colnorm = vec![0.0; n];
+    for j in 2..=n {
+        let mut s = 0.0;
+        for i in 1..j {
+            s += tget(t, n, i, j).abs();
+        }
+        colnorm[j - 1] = s;
+    }
+
+    // The two columns of `WORK` the reference keeps for the current eigenvector:
+    // `w1` is the real part and `w2` the imaginary part.
+    let mut w1 = vec![0.0; n];
+    let mut w2 = vec![0.0; n];
+    let mut y1 = vec![0.0; n];
+    let mut y2 = vec![0.0; n];
+
+    // IP = 0: real eigenvalue; 1: the pair starting here was just processed;
+    // -1: the second member of a pair, to be skipped.
+    let mut ip = 0i32;
+    let mut ki = 1usize;
+    while ki <= n {
+        if ip == 1 {
+            ip = -1;
+            ki += 1;
+            continue;
+        }
+        if ki == n || tget(t, n, ki + 1, ki) == 0.0 {
+            ip = 0;
+        } else {
+            ip = 1;
+        }
+        let wr = tget(t, n, ki, ki);
+        let wi = if ip != 0 {
+            tget(t, n, ki, ki + 1).abs().sqrt() * tget(t, n, ki + 1, ki).abs().sqrt()
+        } else {
+            0.0
+        };
+        let smin = (ulp * (wr.abs() + wi.abs())).max(smlnum);
+
+        if ip == 0 {
+            // ================== real left eigenvector ==================
+            w1.fill(0.0);
+            w1[ki - 1] = 1.0;
+            for k in (ki + 1)..=n {
+                w1[k - 1] = -tget(t, n, ki, k);
+            }
+
+            // Solve (T(KI+1:N,KI+1:N) - WR)^T x = scale * work by forward
+            // substitution over the quasi-triangular blocks.
+            let mut vmax = 1.0;
+            let mut vcrit = bignum;
+            let mut jnxt = ki + 1;
+            let mut j = ki + 1;
+            while j <= n {
+                if j >= jnxt {
+                    let j1 = j;
+                    let mut j2 = j;
+                    jnxt = j + 1;
+                    if j < n && tget(t, n, j + 1, j) != 0.0 {
+                        j2 = j + 1;
+                        jnxt = j + 2;
+                    }
+                    if j1 == j2 {
+                        if colnorm[j - 1] > vcrit {
+                            let rec = 1.0 / vmax;
+                            for l in (ki - 1)..n {
+                                w1[l] *= rec;
+                            }
+                            vmax = 1.0;
+                            vcrit = bignum;
+                        }
+                        let mut s = 0.0;
+                        for l in (ki + 1)..j {
+                            s += tget(t, n, l, j) * w1[l - 1];
+                        }
+                        w1[j - 1] -= s;
+                        let r = dlaln2(
+                            1,
+                            1,
+                            smin,
+                            tget(t, n, j, j),
+                            0.0,
+                            0.0,
+                            0.0,
+                            w1[j - 1],
+                            0.0,
+                            0.0,
+                            0.0,
+                            wr,
+                            0.0,
+                        );
+                        if r.scale != 1.0 {
+                            for l in (ki - 1)..n {
+                                w1[l] *= r.scale;
+                            }
+                        }
+                        w1[j - 1] = r.x11;
+                        vmax = w1[j - 1].abs().max(vmax);
+                        vcrit = bignum / vmax;
+                    } else {
+                        let beta = colnorm[j - 1].max(colnorm[j]);
+                        if beta > vcrit {
+                            let rec = 1.0 / vmax;
+                            for l in (ki - 1)..n {
+                                w1[l] *= rec;
+                            }
+                            vmax = 1.0;
+                            vcrit = bignum;
+                        }
+                        let mut s = 0.0;
+                        for l in (ki + 1)..j {
+                            s += tget(t, n, l, j) * w1[l - 1];
+                        }
+                        w1[j - 1] -= s;
+                        let mut s2 = 0.0;
+                        for l in (ki + 1)..j {
+                            s2 += tget(t, n, l, j + 1) * w1[l - 1];
+                        }
+                        w1[j] -= s2;
+                        // LTRANS = .TRUE.: the off-diagonals are swapped.
+                        let r = dlaln2(
+                            2,
+                            1,
+                            smin,
+                            tget(t, n, j, j),
+                            tget(t, n, j, j + 1),
+                            tget(t, n, j + 1, j),
+                            tget(t, n, j + 1, j + 1),
+                            w1[j - 1],
+                            w1[j],
+                            0.0,
+                            0.0,
+                            wr,
+                            0.0,
+                        );
+                        if r.scale != 1.0 {
+                            for l in (ki - 1)..n {
+                                w1[l] *= r.scale;
+                            }
+                        }
+                        w1[j - 1] = r.x11;
+                        w1[j] = r.x21;
+                        vmax = w1[j - 1].abs().max(w1[j].abs()).max(vmax);
+                        vcrit = bignum / vmax;
+                    }
+                }
+                j += 1;
+            }
+
+            // Back-transform with the Schur vectors: VL(:,KI) := Z * x.
+            if ki < n {
+                for i in 1..=n {
+                    let mut s = w1[ki - 1] * vget(vl, n, i, ki);
+                    for l in (ki + 1)..=n {
+                        s += w1[l - 1] * vget(vl, n, i, l);
+                    }
+                    y1[i - 1] = s;
+                }
+                for i in 1..=n {
+                    vset(vl, n, i, ki, y1[i - 1]);
+                }
+            }
+            let ii = crate::native::blas::idamax(&vl[(ki - 1) * n..ki * n]);
+            let remax = 1.0 / vl[ii + (ki - 1) * n].abs();
+            for i in 0..n {
+                vl[i + (ki - 1) * n] *= remax;
+            }
+        } else {
+            // =============== complex left eigenvector pair ===============
+            // The first column of the pair is the real part, the second the
+            // imaginary part, with the "seam" component of each set to zero.
+            if tget(t, n, ki, ki + 1).abs() >= tget(t, n, ki + 1, ki).abs() {
+                w1[ki - 1] = wi / tget(t, n, ki, ki + 1);
+                w2[ki] = 1.0;
+            } else {
+                w1[ki - 1] = 1.0;
+                w2[ki] = -wi / tget(t, n, ki + 1, ki);
+            }
+            w1[ki] = 0.0;
+            w2[ki - 1] = 0.0;
+            for k in (ki + 2)..=n {
+                w1[k - 1] = -w1[ki - 1] * tget(t, n, ki, k);
+                w2[k - 1] = -w2[ki] * tget(t, n, ki + 1, k);
+            }
+
+            let mut vmax = 1.0;
+            let mut vcrit = bignum;
+            let mut jnxt = ki + 2;
+            let mut j = ki + 2;
+            while j <= n {
+                if j >= jnxt {
+                    let j1 = j;
+                    let mut j2 = j;
+                    jnxt = j + 1;
+                    if j < n && tget(t, n, j + 1, j) != 0.0 {
+                        j2 = j + 1;
+                        jnxt = j + 2;
+                    }
+                    if j1 == j2 {
+                        if colnorm[j - 1] > vcrit {
+                            let rec = 1.0 / vmax;
+                            for l in (ki - 1)..n {
+                                w1[l] *= rec;
+                                w2[l] *= rec;
+                            }
+                            vmax = 1.0;
+                            vcrit = bignum;
+                        }
+                        let mut s1 = 0.0;
+                        for l in (ki + 2)..j {
+                            s1 += tget(t, n, l, j) * w1[l - 1];
+                        }
+                        w1[j - 1] -= s1;
+                        let mut s2 = 0.0;
+                        for l in (ki + 2)..j {
+                            s2 += tget(t, n, l, j) * w2[l - 1];
+                        }
+                        w2[j - 1] -= s2;
+                        let r = dlaln2(
+                            1,
+                            2,
+                            smin,
+                            tget(t, n, j, j),
+                            0.0,
+                            0.0,
+                            0.0,
+                            w1[j - 1],
+                            0.0,
+                            w2[j - 1],
+                            0.0,
+                            wr,
+                            -wi,
+                        );
+                        if r.scale != 1.0 {
+                            for l in (ki - 1)..n {
+                                w1[l] *= r.scale;
+                                w2[l] *= r.scale;
+                            }
+                        }
+                        w1[j - 1] = r.x11;
+                        w2[j - 1] = r.x12;
+                        vmax = w1[j - 1].abs().max(w2[j - 1].abs()).max(vmax);
+                        vcrit = bignum / vmax;
+                    } else {
+                        let beta = colnorm[j - 1].max(colnorm[j]);
+                        if beta > vcrit {
+                            let rec = 1.0 / vmax;
+                            for l in (ki - 1)..n {
+                                w1[l] *= rec;
+                                w2[l] *= rec;
+                            }
+                            vmax = 1.0;
+                            vcrit = bignum;
+                        }
+                        let mut s1 = 0.0;
+                        for l in (ki + 2)..j {
+                            s1 += tget(t, n, l, j) * w1[l - 1];
+                        }
+                        w1[j - 1] -= s1;
+                        let mut s2 = 0.0;
+                        for l in (ki + 2)..j {
+                            s2 += tget(t, n, l, j) * w2[l - 1];
+                        }
+                        w2[j - 1] -= s2;
+                        let mut s3 = 0.0;
+                        for l in (ki + 2)..j {
+                            s3 += tget(t, n, l, j + 1) * w1[l - 1];
+                        }
+                        w1[j] -= s3;
+                        let mut s4 = 0.0;
+                        for l in (ki + 2)..j {
+                            s4 += tget(t, n, l, j + 1) * w2[l - 1];
+                        }
+                        w2[j] -= s4;
+                        // LTRANS = .TRUE.: the off-diagonals are swapped.
+                        let r = dlaln2(
+                            2,
+                            2,
+                            smin,
+                            tget(t, n, j, j),
+                            tget(t, n, j, j + 1),
+                            tget(t, n, j + 1, j),
+                            tget(t, n, j + 1, j + 1),
+                            w1[j - 1],
+                            w1[j],
+                            w2[j - 1],
+                            w2[j],
+                            wr,
+                            -wi,
+                        );
+                        if r.scale != 1.0 {
+                            for l in (ki - 1)..n {
+                                w1[l] *= r.scale;
+                                w2[l] *= r.scale;
+                            }
+                        }
+                        w1[j - 1] = r.x11;
+                        w2[j - 1] = r.x12;
+                        w1[j] = r.x21;
+                        w2[j] = r.x22;
+                        vmax = w1[j - 1]
+                            .abs()
+                            .max(w2[j - 1].abs())
+                            .max(w1[j].abs())
+                            .max(w2[j].abs())
+                            .max(vmax);
+                        vcrit = bignum / vmax;
+                    }
+                }
+                j += 1;
+            }
+
+            // Back-transform: the two columns are Q*w1 and Q*w2.
+            if ki < n - 1 {
+                for i in 1..=n {
+                    let mut s1 = w1[ki - 1] * vget(vl, n, i, ki);
+                    let mut s2 = w2[ki] * vget(vl, n, i, ki + 1);
+                    for l in (ki + 2)..=n {
+                        s1 += w1[l - 1] * vget(vl, n, i, l);
+                        s2 += w2[l - 1] * vget(vl, n, i, l);
+                    }
+                    y1[i - 1] = s1;
+                    y2[i - 1] = s2;
+                }
+                for i in 0..n {
+                    vl[i + (ki - 1) * n] = y1[i];
+                    vl[i + ki * n] = y2[i];
+                }
+            } else {
+                for i in 0..n {
+                    vl[i + (ki - 1) * n] *= w1[ki - 1];
+                    vl[i + ki * n] *= w2[ki];
+                }
+            }
+            let mut emax = 0.0f64;
+            for i in 0..n {
+                emax = emax.max(vl[i + (ki - 1) * n].abs() + vl[i + ki * n].abs());
+            }
+            let remax = 1.0 / emax;
+            for i in 0..n {
+                vl[i + (ki - 1) * n] *= remax;
+                vl[i + ki * n] *= remax;
+            }
+        }
+        ki += 1;
+    }
+}
+
+/// `dgebak` with `JOB = 'B'`, `SIDE = 'L'`: undo the balancing that [`dgebal`]
+/// recorded in `scale`.
+///
+/// The left eigenvectors of the balanced matrix are those of the original matrix
+/// with row `i` divided by `scale(i)` (for `i` in `ilo..=ihi`), and the isolated
+/// rows permuted back.
+fn dgebak_left(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) {
+    if n == 0 {
+        return;
+    }
+
+    // Backward balance: the division is the only difference from SIDE='R'.
+    if ilo != ihi {
+        for i in ilo..=ihi {
+            let s = 1.0 / scale[i];
+            for j in 0..n {
+                v[i + j * n] *= s;
+            }
+        }
+    }
+
+    // Backward permutation, identical to SIDE='R'.
+    for ii in 0..n {
+        let i = if ii < ilo { ilo - ii - 1 } else { ii };
+        if i >= ilo && i <= ihi {
+            continue;
+        }
+        let k = scale[i] as usize - 1;
+        if k == i {
+            continue;
+        }
+        for j in 0..n {
+            v.swap(i + j * n, k + j * n);
+        }
+    }
+}
+
+/// Normalise a set of eigenvector columns the way `dgeev` does: unit Euclidean
+/// norm, and for a conjugate pair the largest component is rotated onto the real
+/// axis with [`dlartg`].
+fn dgeev_normalize_columns(v: &mut [f64], n: usize, wi: &[f64]) {
+    let mut k = 0usize;
+    while k < n {
+        if wi[k] == 0.0 {
+            let scl = 1.0 / column_norm2(v, n, k);
+            for r in 0..n {
+                v[r + k * n] *= scl;
+            }
+            k += 1;
+        } else if wi[k] > 0.0 {
+            let scl = 1.0 / f64::hypot(column_norm2(v, n, k), column_norm2(v, n, k + 1));
+            for r in 0..n {
+                v[r + k * n] *= scl;
+                v[r + (k + 1) * n] *= scl;
+            }
+            let mut kk = 0usize;
+            let mut best = -1.0f64;
+            for r in 0..n {
+                let mag = v[r + k * n] * v[r + k * n] + v[r + (k + 1) * n] * v[r + (k + 1) * n];
+                if mag > best {
+                    best = mag;
+                    kk = r;
+                }
+            }
+            let (cs, sn, _r) = dlartg(v[kk + k * n], v[kk + (k + 1) * n]);
+            for r in 0..n {
+                let x = v[r + k * n];
+                let y = v[r + (k + 1) * n];
+                v[r + k * n] = cs * x + sn * y;
+                v[r + (k + 1) * n] = cs * y - sn * x;
+            }
+            v[kk + (k + 1) * n] = 0.0;
+            k += 2;
+        } else {
+            k += 1;
+        }
+    }
+}
+
+/// Unpack LAPACK's compact eigenvector storage into real and imaginary parts.
+///
+/// For a real eigenvalue the column is real; for a pair at `(k, k + 1)`, `u(k)`
+/// has the two columns as its real and imaginary parts and `u(k + 1)` is its
+/// conjugate, matching `dgeev`'s documented layout for both `VL` and `VR`.
+fn dgeev_unpack(raw: &[f64], wi: &[f64], re: &mut [f64], im: &mut [f64], n: usize) {
+    for i in 0..n {
+        if wi[i] == 0.0 {
+            for r in 0..n {
+                re[r + i * n] = raw[r + i * n];
+                im[r + i * n] = 0.0;
+            }
+        } else if wi[i] > 0.0 {
+            for r in 0..n {
+                let a = raw[r + i * n];
+                let b = raw[r + (i + 1) * n];
+                re[r + i * n] = a;
+                im[r + i * n] = b;
+                re[r + (i + 1) * n] = a;
+                im[r + (i + 1) * n] = -b;
+            }
+        }
+    }
+}
+
+/// `dgeev` with `JOBVL = 'V'` and `JOBVR = 'V'`: the eigenvalues and the left and
+/// right eigenvectors of a general real square matrix.
+///
+/// This is the same pipeline as [`dgeev`] -- scale, [`dgebal`], [`dgehrd`],
+/// [`dhseqr_with_schur_vectors`], the `dtrevc3` back-substitutions,
+/// [`dgebak_right`]/[`dgebak_left`], normalisation -- with the left eigenvectors
+/// taken from the *same* Schur factorisation by [`dtrevc_left`] rather than from
+/// a second decomposition of `A^T`.
+///
+/// `a` is `n x n` column-major and is destroyed. On exit the return value is
+/// `(wr, wi)`; `u_real`/`u_imag` and `v_real`/`v_imag` hold the left and right
+/// eigenvectors, with `u(j) = u_real[:, j] + i u_imag[:, j]` (and likewise for
+/// `v`), and the second member of a pair the conjugate of the first.
+#[allow(clippy::too_many_arguments)]
+pub fn dgeev_lr(
+    u_real: &mut [f64],
+    u_imag: &mut [f64],
+    v_real: &mut [f64],
+    v_imag: &mut [f64],
+    a: &mut [f64],
+    n: usize,
+) -> (Vec<f64>, Vec<f64>) {
+    assert_eq!(a.len(), n * n, "dgeev_lr: a must be n*n");
+    assert_eq!(u_real.len(), n * n, "dgeev_lr: u_real must be n*n");
+    assert_eq!(u_imag.len(), n * n, "dgeev_lr: u_imag must be n*n");
+    assert_eq!(v_real.len(), n * n, "dgeev_lr: v_real must be n*n");
+    assert_eq!(v_imag.len(), n * n, "dgeev_lr: v_imag must be n*n");
+
+    let mut wr = vec![0.0; n];
+    let mut wi = vec![0.0; n];
+    if n == 0 {
+        return (wr, wi);
+    }
+
+    // ---- machine constants (dgeev.f) ----
+    let eps = f64::EPSILON;
+    let smlnum0 = f64::MIN_POSITIVE;
+    let smlnum = smlnum0.sqrt() / eps;
+    let bignum = 1.0 / smlnum;
+
+    // ---- scale A if its largest element is outside [SMLNUM, BIGNUM] ----
+    let mut anrm = 0.0f64;
+    for x in a.iter() {
+        anrm = anrm.max(x.abs());
+    }
+    let mut cscale = 0.0f64;
+    let scalea = if anrm > 0.0 && anrm < smlnum {
+        cscale = smlnum;
+        true
+    } else if anrm > bignum {
+        cscale = bignum;
+        true
+    } else {
+        false
+    };
+    if scalea {
+        let f = cscale / anrm;
+        for x in a.iter_mut() {
+            *x *= f;
+        }
+    }
+
+    // ---- DGEBAL('B'): permute and scale to improve conditioning ----
+    let (ilo, ihi, bal_scale) = dgebal(a, n);
+
+    // ---- DGEHRD: A = Q H Q^T ----
+    let mut q = vec![0.0; n * n];
+    dgehrd(a, n, Some(&mut q));
+
+    // ---- DHSEQR with COMPZ = 'V': A = Z T Z^T ----
+    dhseqr_with_schur_vectors(a, &mut wr, &mut wi, &mut q, n);
+
+    // ---- DTREVC3('B','B'): eigenvectors of T, back-transformed by Z ----
+    let mut vl = q.clone();
+    let mut vr = q;
+    dtrevc_left(a, &mut vl, n);
+    dtrevc_right(a, &mut vr, n);
+
+    // ---- DGEBAK('B','L') and DGEBAK('B','R') ----
+    dgebak_left(&mut vl, n, ilo, ihi, &bal_scale);
+    dgebak_right(&mut vr, n, ilo, ihi, &bal_scale);
+
+    // ---- normalise: unit Euclidean norm, largest component real ----
+    dgeev_normalize_columns(&mut vl, n, &wi);
+    dgeev_normalize_columns(&mut vr, n, &wi);
+
+    // ---- undo the scaling of A on the eigenvalues ----
+    if scalea {
+        let f = anrm / cscale;
+        for x in wr.iter_mut() {
+            *x *= f;
+        }
+        for x in wi.iter_mut() {
+            *x *= f;
+        }
+    }
+
+    // ---- unpack the compact storages ----
+    dgeev_unpack(&vl, &wi, u_real, u_imag, n);
+    dgeev_unpack(&vr, &wi, v_real, v_imag, n);
+
+    (wr, wi)
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2505,6 +3081,117 @@ mod tests {
                     "n={n}: residual {worst} (scale {scale}) for lambda = {lr}{li:+}i"
                 );
                 j += if complex { 2 } else { 1 };
+            }
+        }
+    }
+
+    /// The left eigenvectors must satisfy `u^T A = lambda u^T`, i.e. for the
+    /// complex vector `u = u_real + i u_imag`,
+    /// `A^H u = conj(lambda) u`. Nothing in the existing tests checks this, so it
+    /// is the acceptance test for [`dgeev_lr`]'s `SIDE = 'L'` branch.
+    #[test]
+    fn dgeev_lr_left_eigenvectors_satisfy_their_defining_equation() {
+        // A deterministic generator, as in the battery test below.
+        let mut state: u64 = 0x9e37_79b9_7f4a_7c15;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((state >> 11) as f64) / ((1u64 << 53) as f64) - 0.5
+        };
+
+        let mut cases: Vec<(usize, Vec<f64>)> = Vec::new();
+        for n in [1usize, 2, 3, 5, 8] {
+            cases.push((n, sample(n)));
+        }
+        // A pure rotation: the eigenvalues are 1 +- 2i, so the complex-pair
+        // branch of the left back-substitution is exercised.
+        cases.push((2, vec![1.0, -2.0, 2.0, 1.0]));
+        // Three decoupled rotations: three conjugate pairs.
+        let mut blockrot = vec![0.0; 36];
+        for b in 0..3usize {
+            let o = 2 * b;
+            blockrot[o + o * 6] = 1.0 + b as f64;
+            blockrot[(o + 1) + o * 6] = -2.0;
+            blockrot[o + (o + 1) * 6] = 2.0;
+            blockrot[(o + 1) + (o + 1) * 6] = 1.0 + b as f64;
+        }
+        cases.push((6, blockrot));
+        for n in [3usize, 7] {
+            for _ in 0..4 {
+                let mut a = vec![0.0; n * n];
+                for x in a.iter_mut() {
+                    *x = next() * 20.0;
+                }
+                cases.push((n, a));
+            }
+        }
+
+        for (n, data) in cases {
+            let mut a = Matrix::new(n, n);
+            a.as_mut_data().copy_from_slice(&data);
+
+            // The working copy must hold the same matrix; `a` is kept intact so
+            // the residual can be formed against the original.
+            let mut av = Matrix::new(n, n);
+            av.as_mut_data().copy_from_slice(&data);
+            let mut u_real = Matrix::new(n, n);
+            let mut u_imag = Matrix::new(n, n);
+            let mut v_real = Matrix::new(n, n);
+            let mut v_imag = Matrix::new(n, n);
+            let (wr, wi) = dgeev_lr(
+                u_real.as_mut_data(),
+                u_imag.as_mut_data(),
+                v_real.as_mut_data(),
+                v_imag.as_mut_data(),
+                av.as_mut_data(),
+                n,
+            );
+
+            let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+            let mut j = 0usize;
+            while j < n {
+                let (lr, li) = (wr[j], wi[j]);
+                let complex = li != 0.0;
+                // u^H A = lambda u^H  <=>  A^H u = conj(lambda) u.
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut sr = 0.0;
+                    let mut si = 0.0;
+                    for k in 0..n {
+                        // A^H u, i.e. sum_k conj(A(k,i)) u(k).
+                        sr += a.get(k, i) * u_real.get(k, j);
+                        si += a.get(k, i) * u_imag.get(k, j);
+                    }
+                    // conj(lambda) * u(i) = (lr - i*li)(ur + i*ui)
+                    let ur = u_real.get(i, j);
+                    let ui = u_imag.get(i, j);
+                    let dr = sr - (lr * ur + li * ui);
+                    let di = si - (lr * ui - li * ur);
+                    worst = worst.max(dr.abs().max(di.abs()));
+                }
+                assert!(
+                    worst / scale < 1e-12,
+                    "n={n}: left residual {worst} (scale {scale}) for lambda = {lr}{li:+}i"
+                );
+                j += if complex { 2 } else { 1 };
+            }
+
+            // The right eigenvectors must be unchanged by the extra left work.
+            let mut vr = Matrix::new(n, n);
+            let mut vi = Matrix::new(n, n);
+            let mut aw = Matrix::new(n, n);
+            aw.as_mut_data().copy_from_slice(&data);
+            let (wr2, wi2) = dgeev(vr.as_mut_data(), vi.as_mut_data(), aw.as_mut_data(), n);
+            for i in 0..n {
+                assert!(wr[i] == wr2[i] && wi[i] == wi2[i], "n={n}: eigenvalue {i} differs");
+                for r in 0..n {
+                    assert!(
+                        (v_real.get(r, i) - vr.get(r, i)).abs() < 1e-13
+                            && (v_imag.get(r, i) - vi.get(r, i)).abs() < 1e-13,
+                        "n={n}: right eigenvector ({r},{i}) differs"
+                    );
+                }
             }
         }
     }

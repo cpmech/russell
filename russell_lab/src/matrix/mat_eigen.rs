@@ -353,11 +353,21 @@ pub fn mat_eigen_lr(
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        // The native dgeev computes right eigenvectors only. Left eigenvectors
-        // are the right eigenvectors of A^T, but wiring that up needs its own
-        // verification, so this reports honestly instead of returning the wrong
-        // matrix.
-        return Err(crate::native::lapack::not_implemented("dgeev (left eigenvectors)"));
+        // The native routine computes the left eigenvectors from the *same*
+        // Schur factorisation as the right ones (the `ztrevc`-style
+        // back-substitution on `T`), not from a second decomposition of `A^T`.
+        // It returns them already in real and imaginary parts.
+        let (wr, wi) = crate::native::lapack::eig::dgeev_lr(
+            u_real.as_mut_data(),
+            u_imag.as_mut_data(),
+            v_real.as_mut_data(),
+            v_imag.as_mut_data(),
+            a.as_mut_data(),
+            m,
+        );
+        l_real.as_mut_data().copy_from_slice(&wr);
+        l_imag.as_mut_data().copy_from_slice(&wi);
+        return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

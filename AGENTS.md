@@ -67,6 +67,75 @@ Extra features:
   `russell_pde`, `russell_nonlin` — require locally compiled MUMPS/SuiteSparse
   (see `zscripts/*-compile-mumps.bash` and `zscripts/*-compile-suitesparse.bash`).
 
+## Current state of the native backend
+
+Work in progress on the `native-lapack` branch. Read this before adding to it.
+
+### Measured state
+
+```bash
+cargo test -p russell_lab --lib     # 1047 pass, 61 fail
+```
+
+The failures are **not** all the same kind, and sorting them out is the first job:
+
+| Group | Count | Why |
+|---|---|---|
+| decompositions not implemented | ~24 | `dsyev`, `dgeev`, `dggev`, `dgesvd` report a `NotImplemented` error |
+| complex LAPACK not implemented | ~22 | `zpotrf`, `zgetrf`, `zgetri`, `zgesv`, `zheev`, `zgeev`, `zggev`, `zgesvd` likewise |
+| depends on the above | ~13 | `mat_pseudo_inverse` needs the SVD |
+| `algo::root_finder` | 4 | **unexplained**, and not obviously BLAS-related |
+| `complex_mat_herm_rank_op` | 1 | known wrong, see below |
+
+Some tests assert on an exact error *string*, so a native path that reports the
+same condition in different words still fails. Keep the wording identical to the
+shim's; `solve_lin_sys` was caught by this.
+
+### Known incorrect
+
+`complex_mat_herm_rank_op(.., second_case = true)`, the `C := alpha A^H A` case.
+Conjugating the first index instead of the second gives `15+5j` where the
+reference says `15-1j`; the two are complex conjugates, so the shape and the real
+parts are right and **only the imaginary parts are wrong**, which is why it
+survived inspection. It currently returns an error rather than a wrong
+factorisation. `zherk_rank` in `native/blas.rs` is the function to fix.
+
+### Bugs already found and fixed in the dispatch
+
+Worth knowing the shape of what went wrong, because most of it was the same
+mistake in different clothes — **an index or a length taken from the wrong axis**:
+
+- `norm_char` mapped the `Norm` discriminants *by position* rather than by
+  constant, so every norm was wrong and `Norm::Max` returned the Frobenius norm.
+  `c_code/interface_blas.c` is the source of truth for that mapping.
+- `dsyrk_rank` contracted over `A`'s columns for both orientations, so
+  `C := A^T A` was wrong for non-square `A`.
+- `complex_mat_t_mat_mul` transposed `A` as if it were `(m, k)` when it is
+  `(k, m)`.
+- `solve_lin_sys` reported a different singular error string from the shim's.
+- `mat_cholesky` with `upper = true` needed care twice: LAPACK's `'U'` *reads*
+  only the upper triangle (so the other half may be zeros and must be mirrored),
+  and *writes* only the upper triangle (so the rest must be left alone).
+- `dlange`/`zlange` rejected `'O'`, which is LAPACK's other spelling of the
+  one-norm and what the shim actually sends — a panic, not a wrong number.
+
+### What is verified
+
+`native::blas` and `native::lapack` are tested for parity against the reference
+LAPACK through the `oracle` feature (see above) for `dgesv`, `dgetrf`+`dgetri`,
+`dpotrf`, and singular-matrix detection, at 1e-10 relative. Extend those parity
+tests as routines are added — they are what caught the `dpotrf` triangle
+misunderstanding.
+
+### Loose ends
+
+- ~190 compiler warnings, mostly unused imports and variables where the `oblas`
+  branches are compiled out. Cosmetic, but the project is meant to be
+  warning-free.
+- The web/WASM consumer of this crate has not been re-checked since the native
+  backend landed.
+
+
 ## Test / lint commands
 
 ```bash

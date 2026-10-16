@@ -136,6 +136,21 @@ pub fn dsyev(a: &mut [f64], w: &mut [f64], n: usize, upper: bool) -> Result<(), 
 /// `T` is in `d`, its off-diagonal in `e`, and the reflectors that build `Q` are
 /// stored in the matrix: for `'U'` the vector of `H(i)` fills `a(0:i-1, i+1)`,
 /// for `'L'` it fills `a(i+2:n, i)`.
+/// `dsytrd`: reduce a real symmetric matrix to tridiagonal form, blocked.
+///
+/// Same contract as [`dsytd2`] -- `a` holds the tridiagonal form in the triangle
+/// named by `upper` and the reflector tails in the rest, `d` the diagonal, `e`
+/// the sub/super-diagonal, `tau` the reflector scalars -- but the reflectors are
+/// accumulated into a block reflector and applied with `dgemm`, so the panel
+/// updates are BLAS-3 rather than a `dgemv` per column. Returns the reference's
+/// `INFO`.
+pub fn dsytrd(upper: bool, n: usize, a: &mut [f64], d: &mut [f64], e: &mut [f64], tau: &mut [f64]) -> usize {
+    // Placeholder: delegates to the unblocked form so the interface is fixed and
+    // the acceptance test can be written first. The blocked body replaces this.
+    dsytd2(upper, n, a, d, e, tau);
+    0
+}
+
 fn dsytd2(upper: bool, n: usize, a: &mut [f64], d: &mut [f64], e: &mut [f64], tau: &mut [f64]) {
     if n == 0 {
         return;
@@ -1030,6 +1045,109 @@ fn dlascl(cfrom: f64, cto: f64, a: &mut [f64], m: usize, ncols: usize, lda: usiz
         }
         if done {
             return;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A symmetric matrix as column-major data, full storage.
+    fn symmetric_data(n: usize) -> Vec<f64> {
+        let mut a = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                // Symmetric by construction, and full rank: a smooth function,
+                // not a modulo pattern, which would repeat rows.
+                let v = ((i as f64) * 0.7 + (j as f64) * 1.3).sin() + 0.3 * ((i * j) as f64).cos();
+                a[i + j * n] = v;
+                a[j + i * n] = v;
+            }
+        }
+        a
+    }
+
+    /// The blocked reduction must produce the same tridiagonal form and the same
+    /// reflectors as the unblocked one it replaces.
+    ///
+    /// This is the acceptance test for `dsytrd`: the eigen-decomposition it feeds
+    /// is checked elsewhere, but a reduction can be *almost* right -- same
+    /// eigenvalues, slightly wrong `Q` -- and only this comparison catches that.
+    ///
+    /// Sizes deliberately straddle the block size and its remainder, because the
+    /// blocked path only differs from the unblocked one when a block boundary
+    /// falls inside the matrix.
+    #[test]
+    fn dsytrd_matches_the_unblocked_reduction() {
+        for n in [1usize, 2, 3, 5, 8, 16, 17, 32, 33, 64, 65, 100] {
+            for upper in [false, true] {
+                let a0 = symmetric_data(n);
+
+                let mut a_unb = a0.clone();
+                let mut d_unb = vec![0.0; n];
+                let mut e_unb = vec![0.0; n];
+                let mut tau_unb = vec![0.0; n];
+                dsytd2(upper, n, &mut a_unb, &mut d_unb, &mut e_unb, &mut tau_unb);
+
+                let mut a_blk = a0.clone();
+                let mut d_blk = vec![0.0; n];
+                let mut e_blk = vec![0.0; n];
+                let mut tau_blk = vec![0.0; n];
+                let info = dsytrd(upper, n, &mut a_blk, &mut d_blk, &mut e_blk, &mut tau_blk);
+                assert_eq!(info, 0, "n={n} upper={upper}: dsytrd reported info={info}");
+
+                // The diagonal and off-diagonal of the reduced form.
+                for i in 0..n {
+                    assert!(
+                        (d_blk[i] - d_unb[i]).abs() < 1e-12,
+                        "n={n} upper={upper}: d[{i}] is {} but the unblocked reduction gives {}",
+                        d_blk[i],
+                        d_unb[i]
+                    );
+                    assert!(
+                        (e_blk[i] - e_unb[i]).abs() < 1e-12,
+                        "n={n} upper={upper}: e[{i}] is {} but the unblocked reduction gives {}",
+                        e_blk[i],
+                        e_unb[i]
+                    );
+                    assert!(
+                        (tau_blk[i] - tau_unb[i]).abs() < 1e-12,
+                        "n={n} upper={upper}: tau[{i}] is {} but the unblocked reduction gives {}",
+                        tau_blk[i],
+                        tau_unb[i]
+                    );
+                }
+
+                // The off-diagonal of the stored triangle is exactly the
+                // sub/super-diagonal; the rest of the triangle must hold the
+                // reflector tails. Compare the whole stored triangle: the blocked
+                // form applies the reflectors in a different order, but the
+                // entries DLARFG writes must land in the same places.
+                for j in 0..n {
+                    for i in 0..n {
+                        let stored = if upper { i <= j } else { i >= j };
+                        if !stored {
+                            continue;
+                        }
+                        // Skip the tridiagonal itself, compared above; every
+                        // other entry is a reflector tail.
+                        if i == j || i + 1 == j || j + 1 == i {
+                            continue;
+                        }
+                        let want = a_unb[i + j * n];
+                        let got = a_blk[i + j * n];
+                        // A zero tail in one and a stale value in the other is
+                        // the failure mode worth catching, so compare both.
+                        assert!(
+                            (got - want).abs() < 1e-12,
+                            "n={n} upper={upper}: reflector tail ({i},{j}) is {got} but the unblocked reduction leaves {want}"
+                        );
+                    }
+                }
+            }
         }
     }
 }

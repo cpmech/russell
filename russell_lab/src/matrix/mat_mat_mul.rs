@@ -102,7 +102,18 @@ pub fn mat_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f64
         }
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
-    crate::portable::mat_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
+    {
+        // The blocked, AVX2-accelerated `dgemm`, not `portable`'s plain triple
+        // loop: `portable` exists for targets with no libc and no BLAS (wasm),
+        // where the matrices are small and a tuned kernel would not pay. On a
+        // native target it left the default build four to seven times slower
+        // than it needed to be, which is what a benchmark showed. `portable`
+        // remains for the wasm target below.
+        #[cfg(target_arch = "wasm32")]
+        crate::portable::mat_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::native::blas::dgemm(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
+    }
     Ok(())
 }
 

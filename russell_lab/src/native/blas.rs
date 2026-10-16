@@ -198,21 +198,221 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
     assert_eq!(b.len(), k * n, "dgemm: b must be k*n");
     assert_eq!(c.len(), m * n, "dgemm: c must be m*n");
 
-    for j in 0..n {
-        let c_col = &mut c[j * m..(j + 1) * m];
-        // b[l + j*k] is b[l][j]; a[i + l*m] is a[i][l].
-        for i in 0..m {
-            let mut sum = 0.0;
-            for l in 0..k {
-                sum += a[i + l * m] * b[l + j * k];
+    if m == 0 || n == 0 {
+        return;
+    }
+
+    // Scale C once, up front. The micro-kernel then only accumulates, so `beta`
+    // does not have to reach inside the hot loop.
+    match beta {
+        0.0 => c.fill(0.0),
+        1.0 => {}
+        _ => {
+            for x in c.iter_mut() {
+                *x *= beta;
             }
-            c_col[i] = if beta == 0.0 {
-                alpha * sum
-            } else {
-                alpha * sum + beta * c_col[i]
-            };
         }
     }
+    if k == 0 || alpha == 0.0 {
+        return;
+    }
+
+    // Block sizes. The packed panels are the only large allocation; everything
+    // inside them is reused across the whole inner loop, which is the point --
+    // the naive kernel re-reads `a` and `b` from memory for every element of
+    // `c`, so it is bound by cache misses rather than by arithmetic.
+    const MC: usize = 128;
+    const KC: usize = 256;
+    const NC: usize = 256;
+
+    let mut ap = vec![0.0f64; MC * KC];
+    let mut bp = vec![0.0f64; KC * NC];
+
+    #[cfg(all(target_arch = "x86_64", not(target_arch = "wasm32")))]
+    let use_avx = has_avx2_fma();
+    #[cfg(not(all(target_arch = "x86_64", not(target_arch = "wasm32"))))]
+    let use_avx = false;
+
+    for jc in (0..n).step_by(NC) {
+        let nc = NC.min(n - jc);
+        for pc in (0..k).step_by(KC) {
+            let kc = KC.min(k - pc);
+
+            // Pack B's panel column-major: bp[p + j*kc] = b[pc+p][jc+j].
+            // Contiguous in p, which is the inner-loop direction.
+            for j in 0..nc {
+                let b_col = &b[(pc) + (jc + j) * k..(pc + kc) + (jc + j) * k];
+                let dst = &mut bp[j * kc..j * kc + kc];
+                dst.copy_from_slice(b_col);
+            }
+
+            for ic in (0..m).step_by(MC) {
+                let mc = MC.min(m - ic);
+                // Pack A's panel: ap[i + p*MC] = a[ic+i][pc+p], contiguous in i
+                // so the micro-kernel's vector load is a straight 32-byte read.
+                // `alpha` is folded in here rather than in the kernels: the
+                // micro-kernel keeps C in registers and accumulates, so applying
+                // a scale per element there would defeat the point. Scaling the
+                // packed panel costs one multiply per element of A per block and
+                // leaves both kernels as pure accumulators.
+                for p in 0..kc {
+                    let a_col = &a[(ic) + (pc + p) * m..(ic + mc) + (pc + p) * m];
+                    let dst = &mut ap[p * MC..p * MC + mc];
+                    if alpha == 1.0 {
+                        dst.copy_from_slice(a_col);
+                    } else {
+                        for (d, s) in dst.iter_mut().zip(a_col) {
+                            *d = alpha * s;
+                        }
+                    }
+                }
+                gemm_panel(&ap, &bp, &mut c[ic + jc * m..], m, mc, nc, kc, MC, kc, use_avx);
+            }
+        }
+    }
+}
+
+/// Whether this CPU has AVX2 and FMA, checked once.
+///
+/// The micro-kernel is compiled with `#[target_feature(enable = "avx2,fma")]`,
+/// so calling it on a CPU without them is undefined behaviour. A build with
+/// `-C target-feature=+avx2` would make this redundant, but the crate cannot
+/// assume that -- it is built for whatever target the consumer chooses, and
+/// x86-64 baseline does not include AVX2.
+#[cfg(all(target_arch = "x86_64", not(target_arch = "wasm32")))]
+fn has_avx2_fma() -> bool {
+    use std::sync::OnceLock;
+    static CACHED: OnceLock<bool> = OnceLock::new();
+    *CACHED.get_or_init(|| std::arch::is_x86_feature_detected!("avx2") && std::arch::is_x86_feature_detected!("fma"))
+}
+
+/// Accumulates one packed panel product into `c`, whose element `(i, j)` is at
+/// `c[i + j * ldc]` with the panel starting at row `ic` and column `jc`.
+///
+/// Split out so the safe wrapper above stays readable and the `unsafe` block is
+/// confined to one place.
+#[allow(clippy::too_many_arguments)]
+fn gemm_panel(
+    ap: &[f64],
+    bp: &[f64],
+    c: &mut [f64],
+    ldc: usize,
+    mc: usize,
+    nc: usize,
+    kc: usize,
+    lda: usize,
+    ldb: usize,
+    use_avx: bool,
+) {
+    // The panel's leading dimensions are the packed strides, so the micro-kernel
+    // reads `ap[i + p*lda]` and `bp[p + j*ldb]`.
+    let mut j = 0;
+    while j < nc {
+        let mut i = 0;
+        if j + 4 <= nc && use_avx {
+            #[cfg(all(target_arch = "x86_64", not(target_arch = "wasm32")))]
+            {
+                while i + 4 <= mc {
+                    // Safety: interior indices are in bounds by construction
+                    // (i + 4 <= mc <= lda rows, j + 4 <= nc). The loads are
+                    // unaligned: `ap` starts at i, which is a multiple of 4 but
+                    // not necessarily 32-byte aligned.
+                    unsafe {
+                        gemm_micro_4x4(
+                            ap.as_ptr().add(i),
+                            lda,
+                            bp.as_ptr().add(j * ldb),
+                            ldb,
+                            c.as_mut_ptr().add(i + j * ldc),
+                            ldc,
+                            kc,
+                        );
+                    }
+                    i += 4;
+                }
+            }
+            // Remainder rows of this 4-wide column strip.
+            while i < mc {
+                for jj in j..j + 4 {
+                    let mut sum = 0.0;
+                    for p in 0..kc {
+                        sum += ap[i + p * lda] * bp[p + jj * ldb];
+                    }
+                    c[i + jj * ldc] += sum;
+                }
+                i += 1;
+            }
+            j += 4;
+        } else {
+            // Fewer than four columns left: no 4x4 block fits.
+            for jj in j..nc {
+                for ii in 0..mc {
+                    let mut sum = 0.0;
+                    for p in 0..kc {
+                        sum += ap[ii + p * lda] * bp[p + jj * ldb];
+                    }
+                    c[ii + jj * ldc] += sum;
+                }
+            }
+            j = nc;
+        }
+    }
+}
+
+/// The 4x4 AVX2+FMA micro-kernel: four rows by four columns of the packed
+/// panels, accumulated in four vector registers.
+///
+/// Register pressure is the reason for 4x4. Four `c` accumulators plus one `a`
+/// vector is five of the sixteen YMM registers, so the loop does not spill; the
+/// `b` scalars are folded in as memory operands. Each iteration of `p` performs
+/// one 32-byte load of `a` and four broadcasts, against 32 flops -- so this is
+/// arithmetic-bound, unlike the naive kernel.
+///
+/// # Safety
+///
+/// Requires AVX2 and FMA. `ap` must have `4 + (kc-1)*lda` elements in reach,
+/// `bp` must have `4 + (kc-1)*ldb`, and `c` must have `4 + 3*ldc` from the
+/// pointer, with `kc >= 1`.
+#[cfg(all(target_arch = "x86_64", not(target_arch = "wasm32")))]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn gemm_micro_4x4(ap: *const f64, lda: usize, bp: *const f64, ldb: usize, c: *mut f64, ldc: usize, kc: usize) {
+    use core::arch::x86_64::{
+        _mm256_add_pd, _mm256_broadcast_sd, _mm256_fmadd_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd,
+    };
+
+    let mut c0 = _mm256_setzero_pd();
+    let mut c1 = _mm256_setzero_pd();
+    let mut c2 = _mm256_setzero_pd();
+    let mut c3 = _mm256_setzero_pd();
+
+    // The four columns of B this block advances. `ldb` is the packed column
+    // stride, so column `j` occupies `bp[j*ldb .. j*ldb + kc]` and its p-th
+    // element is `bp[j*ldb + p]`. Getting this the wrong way round -- reading
+    // `bp[p*ldb + j]`, i.e. B's row p -- silently computes a different product,
+    // which is the same wrong-axis mistake this port has produced before.
+    let b0 = bp;
+    let b1 = bp.add(ldb);
+    let b2 = bp.add(2 * ldb);
+    let b3 = bp.add(3 * ldb);
+    for p in 0..kc {
+        let av = _mm256_loadu_pd(ap.add(p * lda));
+        c0 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b0.add(p)), c0);
+        c1 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b1.add(p)), c1);
+        c2 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b2.add(p)), c2);
+        c3 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b3.add(p)), c3);
+    }
+
+    // Fold the four accumulators into C. Read-modify-write, so that this kernel
+    // composes over splits of `k` without needing beta applied per panel.
+    let mut t = [0.0f64; 4];
+    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c), c0));
+    core::ptr::copy_nonoverlapping(t.as_ptr(), c, 4);
+    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(ldc)), c1));
+    core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(ldc), 4);
+    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(2 * ldc)), c2));
+    core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(2 * ldc), 4);
+    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(3 * ldc)), c3));
+    core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(3 * ldc), 4);
 }
 
 /// `C := alpha * A * A^T + beta * C` (dsyrk, uplo = 'L' or 'U').
@@ -344,6 +544,81 @@ mod tests {
         let mut y2 = vec![1.0, 1.0];
         dgemv(2.0, &a, &x, 3.0, &mut y2, 2, 3);
         assert_eq!(y2, vec![2.0 * 6.0 + 3.0, 2.0 * 15.0 + 3.0]);
+    }
+
+    /// The naive triple loop, used as the reference for the blocked kernel.
+    fn naive_dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usize, n: usize, k: usize) {
+        for j in 0..n {
+            for i in 0..m {
+                let mut sum = 0.0;
+                for l in 0..k {
+                    sum += a[i + l * m] * b[l + j * k];
+                }
+                let idx = i + j * m;
+                c[idx] = if beta == 0.0 {
+                    alpha * sum
+                } else {
+                    alpha * sum + beta * c[idx]
+                };
+            }
+        }
+    }
+
+    /// The blocked kernel must agree with the naive one on every shape.
+    ///
+    /// The sizes are chosen to land on each branch the kernel has, because the
+    /// small hand-written cases above never reach any of them: the 4x4
+    /// micro-kernel needs `mc, nc >= 4`; the scalar row and column remainders
+    /// need `mc % 4 != 0` and `nc % 4 != 0`; and the packing blocks are MC=128,
+    /// KC=256, NC=256, so `m > 128`, `k > 256` or `n > 256` are needed before
+    /// the block loop iterates more than once.
+    #[test]
+    fn dgemm_blocked_matches_naive_on_every_branch() {
+        let shapes = [
+            // tiny / degenerate
+            (1, 1, 1),
+            (1, 5, 1),
+            (5, 1, 1),
+            (1, 1, 5),
+            (2, 3, 4),
+            // micro-kernel boundaries and remainders
+            (3, 3, 3),
+            (4, 4, 4),
+            (5, 5, 5),
+            (7, 9, 11),
+            (8, 8, 8),
+            (13, 6, 17),
+            // block boundaries: MC=128, KC=256, NC=256
+            (128, 8, 8),
+            (129, 8, 8),
+            (8, 128, 8),
+            (8, 129, 8),
+            (8, 8, 256),
+            (8, 8, 257),
+            (200, 300, 260),
+            (260, 130, 300),
+        ];
+        for (m, n, k) in shapes {
+            let a: Vec<f64> = (0..m * k).map(|i| ((i * 7 % 19) as f64) - 9.0).collect();
+            let b: Vec<f64> = (0..k * n).map(|i| ((i * 11 % 23) as f64) - 11.0).collect();
+            let c0: Vec<f64> = (0..m * n).map(|i| ((i % 5) as f64) * 0.25).collect();
+
+            for (alpha, beta) in [(1.0, 1.0), (1.0, 0.0), (2.5, -1.5), (0.0, 3.0)] {
+                let mut want = c0.clone();
+                naive_dgemm(alpha, &a, &b, beta, &mut want, m, n, k);
+                let mut got = c0.clone();
+                dgemm(alpha, &a, &b, beta, &mut got, m, n, k);
+                for idx in 0..m * n {
+                    let scale = want[idx].abs().max(1.0);
+                    assert!(
+                        (got[idx] - want[idx]).abs() / scale < 1e-11,
+                        "m={m} n={n} k={k} alpha={alpha} beta={beta}: element {idx} is {} not {}",
+                        got[idx],
+                        want[idx]
+                    );
+                }
+            }
+        }
     }
 
     #[test]

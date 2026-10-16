@@ -66,6 +66,11 @@ harness = false
 path = "benchmarks/algo_chebyshev.rs"
 
 [[bench]]
+name = "decomp_benchmark"
+harness = false
+path = "benchmarks/decomp_benchmark.rs"
+
+[[bench]]
 name = "matmul_benchmark"
 harness = false
 path = "benchmarks/matmul_benchmark.rs"

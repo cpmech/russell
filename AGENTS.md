@@ -30,33 +30,6 @@ force an external library, and Cargo cannot disable a dependency's default
 features from the outside, so a crate that wants one has to say so in the
 dependency declaration.
 
-### What the native backend does not implement yet
-
-The general eigen-decomposition (`dgeev`) is implemented -- the full five-step
-pipeline including balancing -- with eigenvalues and right eigenvectors, verified
-against reference LAPACK's eigenvalues and by the eigenvector residual. The
-complex LU/inverse/solve/Cholesky (`zgetrf`, `zgetri`, `zgesv`, `zpotrf`) are
-also done, verified element-wise against the reference.
-
-The symmetric eigen-decomposition (`dsyev`) and the SVD (`dgesvd`) are done, as
-is the complex Hermitian one (`zheev`); the complex LU/inverse/solve/Cholesky are
-done too. Left eigenvectors (`mat_eigen_lr`) are **not**: it reports
-`NotImplemented` rather than returning a wrong matrix, because the obvious route
-through `A^T` produced order-1 residuals and the pairing needs care. The
-generalised eigenproblem (`dggev`, `zggev`) and the remaining complex drivers
-(`zgeev`, `zgesvd`) are not written yet.
-
-Twelve tests remain, all blocked on those: `complex_mat_svd` (3), the
-complex eigen-decompositions (6), the generalised ones (4 incl. `mat_gen_eigen`),
-and `mat_eigen_lr_works` (1). `mat_pseudo_inverse`'s 13 tests pass for free
-through `dgesvd`. Calling one returns a runtime error naming
-the feature to enable — deliberately *not* a link error, so the rest of the suite
-still builds and runs. Build with `--features oblas` (or `mkl`) when you need
-them.
-
-Implementing the rest is expected to follow `native/lapack.rs`'s existing shape:
-column-major, 0-based, no workspace arguments.
-
 ### The `oracle` feature (development only)
 
 `--features oracle` compiles the shim against a **locally built** LAPACK and links
@@ -89,55 +62,60 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1115 pass, 12 fail, 0 ignored
-cargo test -p russell_lab --lib --features oracle   # same, plus the four parity tests
+cargo test -p russell_lab --lib                     # 1148 pass, 0 fail, 0 ignored
+RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
+  cargo test -p russell_lab --lib --features oracle # 1161 pass, 0 fail
+```
 
-Both configurations are known-good as of commit `3308ad01`. The oracle adds the
-four parity tests but is otherwise the same native path, so the failure count is
-identical.
+Both configurations are known-good as of commit `08c251f6`, with **zero**
+failures. The oracle run adds the parity tests and is otherwise the same native
+path.
 
 The `oracle` feature needs `RUSSELL_ORACLE_ROOT` set to a valid CMake build
 directory. The LAPACK *source* tree is not one -- it has no `include/` or `lib/`.
 For the tree on this machine that is
 `/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
-```
 
-The failures are **not** all the same kind, and sorting them out is the first job:
+The default cargo target directory is not writable here; prefix commands with
+`CARGO_TARGET_DIR=/home/dorival/Documents/deepseek-harness/default-workspace/dsh-target`.
 
-| Group | Count | Why |
-|---|---|---|
-| decompositions not implemented | ~24 | `dsyev`, `dgeev`, `dggev`, `dgesvd` report a `NotImplemented` error |
-| complex LAPACK not implemented | ~22 | `zpotrf`, `zgetrf`, `zgetri`, `zgesv`, `zheev`, `zgeev`, `zggev`, `zgesvd` likewise |
-| depends on the above | ~13 | `mat_pseudo_inverse` needs the SVD |
-| `algo::root_finder` | 4 | resolved: it was `mat_eigenvalues` leaving its outputs at zero, not the root finder |
-| `complex_mat_herm_rank_op` | 1 | **fixed**; the bug was in `zherk_rank`, not the call site |
+Every LAPACK routine the crate's public API needs is implemented natively:
+`dgeev` (with balancing, and left eigenvectors), `dsyev`, `dgesvd`, `dggev`
+(with left eigenvectors), and the complex `zgetrf`/`zgetri`/`zgesv`/`zpotrf`,
+`zheev`, `zgeev`, `zgesvd`, `zggev`. `mat_pseudo_inverse` works through
+`dgesvd`. There are no `not_implemented` guards left on these paths.
 
-The `algo::root_finder` group was **not** explained by the routing, exactly as
-the handover warned. `mat_eigenvalues` declared its `extern "C"` call behind
-`#[cfg(any(feature = "oblas", feature = "mkl"))]` with no `#[cfg(not(...))]`
-counterpart, so in a native build the body fell through to `Ok(())` with
-`l_real`/`l_imag` still zero. The same pattern affected `mat_eigen`,
-`mat_eigen_sym`, `mat_gen_eigen` and `mat_svd` -- 26 tests in total, all of which
-were returning **silently wrong results** rather than the `NotImplemented` error
-this file promised. Commit `4cc08ae1` added the missing branches.
+Two things that were *not* the whole story, recorded so they are not chased
+again:
 
-Some tests assert on an exact error *string*, so a native path that reports the
-same condition in different words still fails. Keep the wording identical to the
-shim's; `solve_lin_sys` was caught by this.
+* The original 61 failures were not all `NotImplemented`. `mat_eigenvalues`,
+  `mat_eigen`, `mat_eigen_sym`, `mat_gen_eigen` and `mat_svd` declared their
+  `extern "C"` call behind `#[cfg(any(feature = "oblas", feature = "mkl"))]`
+  with no `#[cfg(not(...))]` counterpart, so a native build fell through to
+  `Ok(())` with the outputs still zero -- 26 tests returning **silently wrong
+  results** rather than an error. Commit `4cc08ae1` added the missing branches.
+* Some tests assert on an exact error *string*, so a native path that reports
+  the same condition in different words still fails. Keep the wording identical
+  to the shim's.
 
-### Known incorrect
+### Bugs found and fixed
 
-`complex_mat_herm_rank_op(.., second_case = true)`, the `C := alpha A^H A` case.
-Conjugating the first index instead of the second gives `15+5j` where the
-reference says `15-1j`; the two are complex conjugates, so the shape and the real
-parts are right and **only the imaginary parts are wrong**, which is why it
-survived inspection. It currently returns an error rather than a wrong
-factorisation. `zherk_rank` in `native/blas.rs` is the function to fix.
+Two long-lived bugs produced *silently wrong numbers* rather than errors, and
+both were initially misdiagnosed:
 
-### Bugs already found and fixed in the dispatch
+* `zherk_rank` conjugated the **second** index in the `A^H A` case; BLAS's
+  `zherk('C')` conjugates the **first**. The two give complex conjugates, so the
+  shape and real parts were right and only the imaginary parts were wrong, which
+  is why it survived inspection. Commit `dff1851e`.
+* `dgeev` looked inaccurate on defectively repeated eigenvalues and was
+  diagnosed as a `dlahqr` deflation bug -- wrongly. `dlahqr` is a faithful port;
+  at the entry in question reference `dlahqr` does not deflate it either, and raw
+  reference `dhseqr` on the unbalanced matrix is no more accurate. The cause was
+  the missing `dgebal`. **When `dgeev` looks inaccurate, check `dgebal` before
+  suspecting the QR iteration.**
 
-Worth knowing the shape of what went wrong, because most of it was the same
-mistake in different clothes — **an index or a length taken from the wrong axis**:
+The same mistake recurred in different clothes across the ports — **an index,
+an extent, or a length taken from the wrong axis**:
 
 - `norm_char` mapped the `Norm` discriminants *by position* rather than by
   constant, so every norm was wrong and `Norm::Max` returned the Frobenius norm.
@@ -156,10 +134,17 @@ mistake in different clothes — **an index or a length taken from the wrong axi
 ### What is verified
 
 `native::blas` and `native::lapack` are tested for parity against the reference
-LAPACK through the `oracle` feature (see above) for `dgesv`, `dgetrf`+`dgetri`,
-`dpotrf`, and singular-matrix detection, at 1e-10 relative. Extend those parity
+LAPACK through the `oracle` feature (see above): `dgesv`, `dgetrf`+`dgetri`,
+`dpotrf`, `dhseqr`'s eigenvalues, `dsyev`+`zheev`, `dgesvd`, `dggev`, and the
+complex `zpotrf`/`zgetrf`+`zgetri`/`zgesv`, at 1e-10 relative. Extend those parity
 tests as routines are added — they are what caught the `dpotrf` triangle
 misunderstanding.
+
+Where a result is not unique (eigenvectors, and the *order* of eigenvalues), the
+tests check the defining equation or a canonical order instead of comparing
+against the reference's output directly; where it is unique (singular values, an
+inverse, a Cholesky factor), they compare element-wise, because that is what
+catches a conjugation error, which an invariant-based check would miss.
 
 Run the oracle tests in the same target directory as the default build. Mixing
 `--features oracle` with `--features oblas` will not link: both provide the BLAS

@@ -150,11 +150,62 @@ Run the oracle tests in the same target directory as the default build. Mixing
 `--features oracle` with `--features oblas` will not link: both provide the BLAS
 symbols.
 
+### Hard constraints
+
+- **Everything is column-major**, indexing `data[i + j * n]`, matching `Matrix`.
+  **Never use `LAPACKE_*`** -- it is the row-major API and will silently
+  transpose every matrix. `lapack.h` binds directly to the Fortran routines and
+  is correctly column-major.
+- **No developer paths in source** -- not in code, not in defaults, not in doc
+  comments. Use environment variables, and prefer *requiring* one over supplying
+  a default.
+- **Migrate the dispatch before gating the `extern "C"` declaration**, one file
+  at a time. Gating first turns every unmigrated call site into a compile error
+  and leaves the tree unable to run tests.
+- **Preserve the headline property:** `cargo check --workspace` must pass with no
+  external BLAS present. Verify it after changes.
+- Keep the tree rustfmt-clean.
+- **Do not change the behaviour of the `oblas` / `mkl` accelerated paths.** They
+  must stay consistent with the native ones, including error strings.
+
+### Reporting
+
+Report failures and uncertainty plainly. If you turn out to be wrong about
+something you said earlier, say so. Do not claim a verification you did not run
+-- a previous session claimed the oracle was working when it had not compiled
+since a rename, and that had to be corrected.
+
+Two lessons from this work are worth more than the rest, because both cost hours:
+
+1. **Port the reference literally; do not re-derive an algorithm whose source is
+   available.** The two attempts to hand-derive (`dgehrd`, `dlahqr`) both
+   produced code that compiled, ran, looked orthogonal, and was wrong. Every
+   success came from transcription.
+2. **A test that cannot fail is worse than no test.** Four times in this
+   work a test passed while checking nothing: `mat_eigenvalues` and friends
+   returning zeros, `mat_eigen_lr`'s test never inspecting `u`, my `dggev`
+   acceptance test reading back the matrix `dggev` had overwritten, and
+   `dgeev_eigenvectors_satisfy_their_defining_equation` decomposing a zero
+   matrix. When adding a test, check that a deliberate mistake makes it fail.
+
 ### Loose ends
 
 - ~190 compiler warnings, mostly unused imports and variables where the `oblas`
   branches are compiled out. Cosmetic, but the project is meant to be
   warning-free.
+- `dhseqr`/`zhseqr` implement the unblocked (`dlahqr`/`zlahqr`) path only, which
+  is what the reference uses for n <= 15; the blocked `dlaqr0`/`zlaqr0` fallback
+  for large matrices is not ported. `dsteqr`'s and `zlahqr`'s non-convergence
+  `INFO` is a `debug_assert` rather than an error, because `LapackError` has no
+  convergence variant.
+- `dgesvd`/`zgesvd` use the direct bidiagonalisation path for both shapes, not
+  the QR/LQ pre-reduction the reference uses for very tall or wide inputs.
+  Agreement with the reference is ~1e-15.
+- `cargo check --features oblas` cannot be compiled on this machine at all: it
+  dies in `build.rs` at `c_code/interface_blas.c` with `lapack.h: No such file or
+  directory`, because the development headers are not installed. The `oblas`
+  branches can only be reasoned about, not checked, so keep edits to them
+  minimal.
 - The web/WASM consumer of this crate has not been re-checked since the native
   backend landed.
 

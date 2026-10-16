@@ -29,6 +29,8 @@
 //!   they do not appear here; the leading dimension of an `n x n` matrix is `n`.
 //! * Workspace is allocated inside each routine.
 
+pub mod eig;
+
 use super::blas;
 
 /// Tolerance below which a pivot counts as zero.

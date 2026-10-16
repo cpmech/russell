@@ -186,6 +186,7 @@ mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
+pub mod native;
 mod portable;
 mod portable_svd;
 pub mod small;

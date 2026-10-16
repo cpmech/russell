@@ -1,4 +1,5 @@
 use super::Matrix;
+use crate::internal::compact_right_eigenvectors;
 use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, dgeev_data, dgeev_data_lr, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
@@ -152,7 +153,20 @@ pub fn mat_eigen(
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dgeev"));
+        let n = m;
+        // Distinct names: `v_real`/`v_imag` are this function's output
+        // parameters, and shadowing them here leaves the caller's matrices
+        // untouched -- which shows up as a zero eigenvector matrix, not as an
+        // error.
+        let mut nvr = vec![0.0; n * n];
+        let mut nvi = vec![0.0; n * n];
+        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut nvr, &mut nvi, a.as_mut_data(), n);
+        l_real.as_mut_data().copy_from_slice(&wr);
+        l_imag.as_mut_data().copy_from_slice(&wi);
+        // Pack the native (unpacked) eigenvectors into LAPACK's compact layout so
+        // that `dgeev_data` is the single place that knows that layout.
+        let raw = compact_right_eigenvectors(&nvr, &nvi, &wi, n);
+        return dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), &wi, &raw);
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
@@ -339,7 +353,11 @@ pub fn mat_eigen_lr(
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dgeev"));
+        // The native dgeev computes right eigenvectors only. Left eigenvectors
+        // are the right eigenvectors of A^T, but wiring that up needs its own
+        // verification, so this reports honestly instead of returning the wrong
+        // matrix.
+        return Err(crate::native::lapack::not_implemented("dgeev (left eigenvectors)"));
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

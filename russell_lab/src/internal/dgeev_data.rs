@@ -1,5 +1,42 @@
 use crate::StrError;
 
+/// Packs eigenvectors from the unpacked form into LAPACK's compact form.
+///
+/// The native `dgeev` stores every eigenvector in its own column, with the real
+/// and imaginary parts in separate matrices. LAPACK instead uses two columns for
+/// a complex conjugate pair: column `j` for the real part and column `j+1` for
+/// the imaginary part of `v(j)`, with `v(j+1)` implied as its conjugate. This
+/// converts the former into the latter so [`dgeev_data`] can be the single
+/// place that knows about the compact layout, for both backends.
+///
+/// `wi[j] != 0` marks the first of a pair; `wi[j+1]` is its negative.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub(crate) fn compact_right_eigenvectors(v_real: &[f64], v_imag: &[f64], wi: &[f64], n: usize) -> Vec<f64> {
+    assert_eq!(v_real.len(), n * n, "compact: v_real must be n*n");
+    assert_eq!(v_imag.len(), n * n, "compact: v_imag must be n*n");
+    assert_eq!(wi.len(), n, "compact: wi must have n entries");
+    let mut raw = vec![0.0; n * n];
+    let mut j = 0usize;
+    while j < n {
+        if wi[j] != 0.0 {
+            for i in 0..n {
+                raw[i + j * n] = v_real[i + j * n];
+                raw[i + (j + 1) * n] = v_imag[i + j * n];
+            }
+            j += 2;
+        } else {
+            for i in 0..n {
+                raw[i + j * n] = v_real[i + j * n];
+            }
+            j += 1;
+        }
+    }
+    raw
+}
+
 /// Extracts LAPACK (dgeev) eigenvectors from its compact representation
 ///
 /// Single set: extracts either the left eigenvectors or the right eigenvectors

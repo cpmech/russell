@@ -106,7 +106,14 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dgeev"));
+        // Only the eigenvalues are wanted, so the eigenvectors are discarded.
+        let n = m;
+        let mut v_real = vec![0.0; n * n];
+        let mut v_imag = vec![0.0; n * n];
+        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut v_real, &mut v_imag, a.as_mut_data(), n);
+        l_real.as_mut_data().copy_from_slice(&wr);
+        l_imag.as_mut_data().copy_from_slice(&wi);
+        return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

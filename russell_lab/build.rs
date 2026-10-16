@@ -229,13 +229,18 @@ fn main() {
 ///
 /// # Layout expected
 ///
-/// A CMake build directory of LAPACK 3.12.1, with `include/` and `lib/`, such as
-/// the one at `/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
-/// Override with `RUSSELL_ORACLE_ROOT`.
+/// A CMake build directory of LAPACK 3.12.1 that has `include/` and `lib/`
+/// containing `lapack.h`, `cblas.h`, `liblapack.so` and `libcblas.so`. Point
+/// `RUSSELL_ORACLE_ROOT` at it. There is deliberately no default: recording one
+/// would put a developer's directory layout into released source.
 #[cfg(feature = "oracle")]
 fn compile_oracle() {
-    let root = std::env::var("RUSSELL_ORACLE_ROOT")
-        .unwrap_or_else(|_| "/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran".to_string());
+    let root = std::env::var("RUSSELL_ORACLE_ROOT").unwrap_or_else(|_| {
+        panic!(
+            "russell_lab: the `oracle` feature needs RUSSELL_ORACLE_ROOT set to the CMake \
+             build directory of a LAPACK 3.12.1 build (the one containing include/ and lib/)"
+        )
+    });
 
     let include = std::path::Path::new(&root).join("include");
     let lib = std::path::Path::new(&root).join("lib");

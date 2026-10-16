@@ -44,10 +44,16 @@ pub fn complex_mat_update(b: &mut ComplexMatrix, alpha: Complex64, a: &ComplexMa
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    let mn_i32 = to_i32(m * n);
-    unsafe {
-        cblas_zaxpy(mn_i32, &alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let mn_i32 = to_i32(m * n);
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_zaxpy(mn_i32, &alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::zaxpy(alpha, a.as_data(), b.as_mut_data());
     Ok(())
 }
 

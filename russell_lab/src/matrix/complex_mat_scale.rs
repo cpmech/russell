@@ -42,11 +42,17 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn complex_mat_scale(a: &mut ComplexMatrix, alpha: Complex64) {
-    let (m, n) = a.dims();
-    let mn_i32 = to_i32(m * n);
-    unsafe {
-        cblas_zscal(mn_i32, &alpha, a.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let (m, n) = a.dims();
+        let mn_i32 = to_i32(m * n);
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_zscal(mn_i32, &alpha, a.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::zscal(alpha, a.as_mut_data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

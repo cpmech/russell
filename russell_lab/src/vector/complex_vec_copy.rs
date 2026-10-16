@@ -39,10 +39,16 @@ pub fn complex_vec_copy(v: &mut ComplexVector, u: &ComplexVector) -> Result<(), 
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    let n_i32 = to_i32(n);
-    unsafe {
-        cblas_zcopy(n_i32, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let n_i32 = to_i32(n);
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_zcopy(n_i32, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::zcopy(u.as_data(), v.as_mut_data());
     Ok(())
 }
 

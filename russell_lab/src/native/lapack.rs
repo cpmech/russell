@@ -1,7 +1,7 @@
 //! Native LAPACK: the driver routines `russell_lab` exposes, in Rust.
 //!
-//! Each function names the LAPACK 3.12.1 routine it follows, so it can be checked
-//! against `/home/dorival/01-Code/fortran/lapack-3.12.1/SRC`.
+//! Each function names the LAPACK routine it follows, so it can be checked against
+//! the reference source of the same name (LAPACK 3.12.1's `SRC/` and `BLAS/SRC/`).
 //!
 //! # What is here, and what is not yet
 //!

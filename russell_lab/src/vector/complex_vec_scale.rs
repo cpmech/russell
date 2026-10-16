@@ -34,10 +34,16 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn complex_vec_scale(v: &mut ComplexVector, alpha: Complex64) {
-    let n_i32: i32 = to_i32(v.dim());
-    unsafe {
-        cblas_zscal(n_i32, &alpha, v.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let n_i32: i32 = to_i32(v.dim());
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_zscal(n_i32, &alpha, v.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::zscal(alpha, v.as_mut_data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

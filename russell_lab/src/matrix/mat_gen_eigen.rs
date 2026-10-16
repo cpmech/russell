@@ -134,7 +134,26 @@ pub fn mat_gen_eigen(
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dggev"));
+        // `v` is the compact LAPACK storage: for a conjugate pair, columns `j`
+        // and `j + 1` are the real and imaginary parts of `v(j)`. `a` and `b` are
+        // overwritten, as the reference does.
+        let n = m;
+        let info = crate::native::lapack::qz::dggev(
+            false,
+            true,
+            n,
+            a.as_mut_data(),
+            b.as_mut_data(),
+            alpha_real.as_mut_data(),
+            alpha_imag.as_mut_data(),
+            beta.as_mut_data(),
+            &mut [],
+            v.as_mut_data(),
+        );
+        if info > 0 {
+            return Err("LAPACK ERROR (dggev): Iterations failed ");
+        }
+        return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
@@ -302,7 +321,26 @@ pub fn mat_gen_eigen_lr(
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dggev"));
+        // `u` and `v` are the compact LAPACK storage: for a conjugate pair,
+        // columns `j` and `j + 1` are the real and imaginary parts. `a` and `b`
+        // are overwritten, as the reference does.
+        let n = m;
+        let info = crate::native::lapack::qz::dggev(
+            true,
+            true,
+            n,
+            a.as_mut_data(),
+            b.as_mut_data(),
+            alpha_real.as_mut_data(),
+            alpha_imag.as_mut_data(),
+            beta.as_mut_data(),
+            u.as_mut_data(),
+            v.as_mut_data(),
+        );
+        if info > 0 {
+            return Err("LAPACK ERROR (dggev): Iterations failed ");
+        }
+        return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

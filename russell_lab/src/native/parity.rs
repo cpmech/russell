@@ -1038,6 +1038,12 @@ fn dggev_satisfies_its_defining_equation() {
             }
         }
 
+        // `dggev` overwrites both matrices in place, as LAPACK does, so the
+        // defining equation has to be checked against copies of the original
+        // problem -- an earlier version of this test read the overwritten
+        // matrices back and so compared against the factorisation output.
+        let (a_orig, b_orig) = (ra.clone(), b.clone());
+
         let mut a = ra.clone();
         let mut b_work = b.clone();
         let mut alpha_r = Vector::new(n);
@@ -1046,7 +1052,7 @@ fn dggev_satisfies_its_defining_equation() {
         let mut v = Matrix::new(n, n);
         crate::mat_gen_eigen(&mut alpha_r, &mut alpha_i, &mut beta, &mut v, &mut a, &mut b_work).expect("native dggev");
 
-        let scale_b = b.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+        let scale_b = b_orig.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
 
         let mut j = 0usize;
         while j < n {
@@ -1071,10 +1077,10 @@ fn dggev_satisfies_its_defining_equation() {
                     for k in 0..n {
                         let u_r = v.get(k, j);
                         let u_i = v.get(k, j + 1);
-                        av_r += a.get(i, k) * u_r;
-                        av_i += a.get(i, k) * u_i;
-                        bv_r += b.get(i, k) * u_r;
-                        bv_i += b.get(i, k) * u_i;
+                        av_r += a_orig.get(i, k) * u_r;
+                        av_i += a_orig.get(i, k) * u_i;
+                        bv_r += b_orig.get(i, k) * u_r;
+                        bv_i += b_orig.get(i, k) * u_i;
                     }
                     // right-hand side: lambda * (B u), complex multiply
                     let u_r = v.get(i, j);
@@ -1095,8 +1101,8 @@ fn dggev_satisfies_its_defining_equation() {
                     let mut av = 0.0;
                     let mut bv = 0.0;
                     for k in 0..n {
-                        av += a.get(i, k) * v.get(k, j);
-                        bv += b.get(i, k) * v.get(k, j);
+                        av += a_orig.get(i, k) * v.get(k, j);
+                        bv += b_orig.get(i, k) * v.get(k, j);
                     }
                     worst = worst.max((av - lr * bv).abs());
                 }

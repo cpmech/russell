@@ -760,11 +760,14 @@ pub fn zsyrk_rank(
 /// forced real, as it must be for a Hermitian matrix.
 ///
 /// **Which operand is conjugated matters.** The entry is
-/// `sum_l a[l][i] * conj(a[l][j])`, so the conjugation is on the second index.
-/// Conjugating the first instead gives the complex conjugate of every
-/// off-diagonal entry, which is a different Hermitian matrix and is wrong -- it
-/// produced `15+5j` where `15-1j` was expected. Both look plausible, and only a
-/// test with a genuinely complex matrix distinguishes them.
+/// `sum_l conj(a[l][i]) * a[l][j]`: the conjugation is on the **first** index,
+/// which is the one that is contracted with `A^H`'s row. Conjugating the second
+/// instead gives the complex conjugate of every off-diagonal entry -- a
+/// different Hermitian matrix, and the one this function used to compute. It is
+/// a convincing near-miss: the shape and the real parts are right and only the
+/// imaginary parts differ, so it takes a genuinely complex test matrix to see it.
+/// Verified against `zgemm('C','N')` and `zherk('L','C')` on the test data, where
+/// `C(2,1)` must be `15-1j` and the second-index form gives `15+5j`.
 ///
 /// # Panics
 ///
@@ -778,8 +781,8 @@ pub fn zherk_rank(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n
         for i in i_range {
             let mut sum = Complex64::new(0.0, 0.0);
             for l in 0..k {
-                // a[l][i] * conj(a[l][j]): the conjugation is on `j`, not `i`.
-                sum += a[l + i * k] * a[l + j * k].conj();
+                // conj(a[l][i]) * a[l][j]: the conjugation is on `i`, not `j`.
+                sum += a[l + i * k].conj() * a[l + j * k];
             }
             let idx = i + j * n;
             let mut v =
@@ -790,5 +793,112 @@ pub fn zherk_rank(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n
             }
             c[idx] = v;
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod complex_tests {
+    use super::*;
+
+    /// A `2 x 4` genuinely complex matrix: with real or Hermitian data the
+    /// conjugation order in `zherk_rank` makes no difference, so this has to be
+    /// complex to test anything at all.
+    fn complex_2x4() -> Vec<Complex64> {
+        vec![
+            Complex64::new(1.0, -1.0),
+            Complex64::new(3.0, 1.0), // column 0
+            Complex64::new(2.0, 0.0),
+            Complex64::new(1.0, 0.0), // column 1
+            Complex64::new(1.0, 0.0),
+            Complex64::new(3.0, 0.0), // column 2
+            Complex64::new(1.0, 0.0),
+            Complex64::new(1.0, 2.0), // column 3
+        ]
+    }
+
+    fn assert_close(got: Complex64, want: Complex64, what: &str) {
+        assert!(
+            (got - want).norm() < 1e-13,
+            "{what}: got {got} but the reference says {want}"
+        );
+    }
+
+    /// `C := A^H A` lower triangle, compared entry by entry with reference BLAS.
+    ///
+    /// The expected values are the lower triangle of `zgemm('C','N')` on the same
+    /// data, cross-checked against `zherk('L','C')` with `alpha=1, beta=0`.
+    /// Column-major lower triangle, column by column: (0,0), (1,0), (2,0), (3,0),
+    /// (1,1), (2,1), (3,1), (2,2), (3,2), (3,3).
+    #[test]
+    fn zherk_rank_conjugates_the_first_index() {
+        let a = complex_2x4();
+        let (k, n) = (2usize, 4usize);
+        let mut c = vec![Complex64::new(0.0, 0.0); n * n];
+        zherk_rank(1.0, &a, 0.0, &mut c, n, k, false);
+
+        #[rustfmt::skip]
+        let lower = [
+            (0, 0, 12.0,  0.0),
+            (1, 0,  5.0, -1.0),
+            (2, 0, 10.0,  2.0),
+            (3, 0,  6.0, -6.0),
+            (1, 1,  5.0,  0.0),
+            (2, 1,  5.0,  0.0),
+            (3, 1,  3.0, -2.0),
+            (2, 2, 10.0,  0.0),
+            (3, 2,  4.0, -6.0),
+            (3, 3,  6.0,  0.0),
+        ];
+        for (i, j, re, im) in lower {
+            assert_close(c[i + j * n], Complex64::new(re, im), &format!("({i},{j})"));
+        }
+
+        // The upper triangle must be untouched.
+        for j in 1..n {
+            for i in 0..j {
+                assert_eq!(c[i + j * n], Complex64::new(0.0, 0.0), "({i},{j}) must be left alone");
+            }
+        }
+
+        // Conjugating the second index instead would give the complex conjugate
+        // of every off-diagonal entry; this is the assertion that fails if the
+        // conjugation order is ever "fixed" back.
+        assert_eq!(
+            c[1 + 0 * n].im,
+            -1.0,
+            "the off-diagonal imaginary part must not be negated"
+        );
+    }
+
+    /// The same product in the upper triangle, which writes the mirror image.
+    #[test]
+    fn zherk_rank_upper_triangle() {
+        let a = complex_2x4();
+        let (k, n) = (2usize, 4usize);
+        let mut c = vec![Complex64::new(0.0, 0.0); n * n];
+        zherk_rank(1.0, &a, 0.0, &mut c, n, k, true);
+        assert_close(c[0 + 1 * n], Complex64::new(5.0, 1.0), "(0,1)");
+        assert_close(c[1 + 2 * n], Complex64::new(5.0, 0.0), "(1,2)");
+        // The lower triangle must be untouched.
+        assert_eq!(c[1 + 0 * n], Complex64::new(0.0, 0.0));
+    }
+
+    /// `beta` must scale the existing `c`, and the diagonal must come out exactly
+    /// real even when `beta * c` has an imaginary part there.
+    #[test]
+    fn zherk_rank_applies_beta_and_clears_the_diagonal() {
+        let a = complex_2x4();
+        let (k, n) = (2usize, 4usize);
+        let mut c = vec![Complex64::new(0.0, 0.0); n * n];
+        for v in c.iter_mut() {
+            *v = Complex64::new(1.0, 1.0);
+        }
+        zherk_rank(2.0, &a, 3.0, &mut c, n, k, false);
+        // C(0,0) = 2*12 + 3*(1+1j) -> real 27, imaginary forced to zero.
+        assert_close(c[0], Complex64::new(27.0, 0.0), "(0,0)");
+        // C(1,0) = 2*(5-1j) + 3*(1+1j) = 13 + 1j.
+        assert_close(c[1], Complex64::new(13.0, 1.0), "(1,0)");
     }
 }

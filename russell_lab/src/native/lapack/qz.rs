@@ -1,31 +1,37 @@
-//! The generalised eigenproblem `A v = lambda B v` for real matrices: the QZ
-//! algorithm.
+//! The generalised eigenproblem `A v = lambda B v` for real and complex
+//! matrices: the QZ algorithm.
 //!
-//! This is a transcription of LAPACK 3.12.1's `dggev` driver and the routines it
-//! calls, with 1-based Fortran indices translated mechanically to 0-based Rust.
-//! The point of following the reference literally is that the results agree with
-//! it bit for bit, which the parity tests rely on.
+//! This is a transcription of LAPACK 3.12.1's `dggev`/`zggev` drivers and the
+//! routines they call, with 1-based Fortran indices translated mechanically to
+//! 0-based Rust. The point of following the reference literally is that the
+//! results agree with it bit for bit, which the parity tests rely on.
 //!
 //! | Routine | Role |
 //! |---|---|
-//! | [`dggev`] | the driver: balances, reduces, runs the QZ iteration, back-substitutes |
-//! | `dggbal`, `dggbak` | balancing (permutation and diagonal scaling) and its inverse |
+//! | [`dggev`], [`zggev`] | the drivers: balance, reduce, run the QZ iteration, back-substitute |
+//! | `dggbal`, `zggbal`, `dggbak`, `zggbak` | balancing (permutation and diagonal scaling) and its inverse |
 //! | `dgeqr2`, `dorm2r`, `dorg2r` | the QR of `B` and its application, from `dgeqrf`/`dormqr`/`dorgqr` |
-//! | `dgghrd` | reduction to Hessenberg-triangular form |
-//! | `dhgeqz` | the QZ iteration, producing the generalised Schur form |
-//! | `dtgevc` | left and right eigenvectors by back-substitution |
-//! | `dlag2`, `dlasv2`, `dlaln2`, `dladiv` | the 2x2 eigenproblem and the 1x1/2x2 solves |
+//! | `zgeqr2`, `zunm2r`, `zung2r` | the complex QR of `B` and its application, from `zgeqrf`/`zunmqr`/`zungqr` |
+//! | `dgghrd`, `zgghrd` | reduction to Hessenberg-triangular form |
+//! | `dhgeqz`, `zhgeqz` | the QZ iteration, producing the generalised Schur form |
+//! | `dtgevc`, `ztgevc` | left and right eigenvectors by back-substitution |
+//! | `dlag2`, `dlasv2`, `dlaln2`, `dladiv`, `zlartg` | the 2x2 eigenproblem and the Givens rotations |
 //!
-//! The blocked variants in LAPACK's `dgeqrf`, `dormqr` and `dorgqr` fall through
-//! to the unblocked `dgeqr2`, `dorm2r` and `dorg2r` for blocks no larger than the
-//! tuned block size, which covers every matrix these routines are asked about
-//! here; the unblocked form is what is transcribed.
+//! The blocked variants in LAPACK's `dgeqrf`, `dormqr`, `dorgqr` (and their
+//! complex counterparts) fall through to the unblocked `dgeqr2`, `dorm2r`,
+//! `dorg2r` (`zgeqr2`, `zunm2r`, `zung2r`) for blocks no larger than the tuned
+//! block size, which covers every matrix these routines are asked about here;
+//! the unblocked form is what is transcribed.
+//!
+//! The complex routines live in their own section, "The complex generalised
+//! eigenproblem (ZGGEV)", just above the tests.
 //!
 //! Conventions match the rest of [`super`]: column-major, 0-based indices, and
 //! workspace allocated internally.
 
 use super::blas;
 use super::eig::{dlarfg, dlartg};
+use crate::Complex64;
 
 /// `DLAMCH('S')`: the safe minimum, below which `1/x` overflows.
 const SAFMIN: f64 = f64::MIN_POSITIVE;
@@ -2904,6 +2910,1694 @@ pub fn dggev(
     0
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// The complex generalised eigenproblem (ZGGEV)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// A literal transcription of LAPACK 3.12.1's `zggev` driver and the complex
+// routines it calls: `zggbal`, `zgghrd`, `zhgeqz`, `ztgevc`, `zggbak`, `zgeqr2`
+// (standing in for the unblocked `zgeqrf`), `zunm2r` (for `zunmqr`), `zung2r`
+// (for `zungqr`), `zlartg`, `zlascl`, `zlange` and `zlanhs`. The layout mirrors
+// the real [`dggev`] above; what differs is that every plane rotation carries a
+// conjugate (`zrot`), as does every reflector application (`zlarf`), and that
+// `zhgeqz` needs no double-shift path because the complex Schur form is already
+// triangular. `zggbal`'s complex balancing is not transcribed: `zggev` asks only
+// for `JOB = 'P'`, the permutation.
+//
+// The unblocked `zgeqr2`/`zunm2r`/`zung2r` are what `zgeqrf`/`zunmqr`/`zungqr`
+// fall through to for these block sizes, exactly as in the real port.
+//
+// `zlarfg`, the complex `zlarf` and `zladiv` are duplicated from
+// [`super::zsvd`] (which took `zlarfg` from [`super::zeig`]) rather than made
+// public there, following the precedent that those modules are not to be
+// disturbed.
+
+/// The complex zero, named so the arithmetic reads like the Fortran `CZERO`.
+#[inline]
+fn zzero() -> Complex64 {
+    Complex64::new(0.0, 0.0)
+}
+
+/// The complex one, named so the arithmetic reads like the Fortran `CONE`.
+#[inline]
+fn zone() -> Complex64 {
+    Complex64::new(1.0, 0.0)
+}
+
+/// The reference's `ABS1(z)`: `|Re(z)| + |Im(z)|`.
+#[inline]
+fn zabs1(z: Complex64) -> f64 {
+    z.re.abs() + z.im.abs()
+}
+
+/// `zladiv`: the complex quotient `x / y`, avoiding overflow in `y`'s products.
+fn zladiv(x: Complex64, y: Complex64) -> Complex64 {
+    if y.re.abs() >= y.im.abs() {
+        let r = y.im / y.re;
+        let den = y.re + r * y.im;
+        Complex64::new((x.re + r * x.im) / den, (x.im - r * x.re) / den)
+    } else {
+        let r = y.re / y.im;
+        let den = y.im + r * y.re;
+        Complex64::new((x.re * r + x.im) / den, (x.im * r - x.re) / den)
+    }
+}
+
+/// Fortran's `SIGN(a, b)`: `|a|` with `b`'s sign, where `b == 0` counts as positive.
+#[inline]
+fn zsign_f(a: f64, b: f64) -> f64 {
+    if b < 0.0 { -a.abs() } else { a.abs() }
+}
+
+/// `DZNRM2`: the Euclidean norm of a complex vector, scaled.
+fn dznrm2(x: &[Complex64]) -> f64 {
+    let mut scale = 0.0f64;
+    let mut ssq = 1.0f64;
+    for c in x {
+        let a = c.norm();
+        if a != 0.0 {
+            if scale < a {
+                let r = scale / a;
+                ssq = 1.0 + ssq * r * r;
+                scale = a;
+            } else {
+                let r = a / scale;
+                ssq += r * r;
+            }
+        }
+    }
+    scale * ssq.sqrt()
+}
+
+/// `zlarfg`: an elementary reflector `H = I - tau * v * v^H` with `H x = beta e1`.
+///
+/// Copied from [`super::zsvd`]'s kernel of the same name (itself copied from
+/// [`super::zeig`]'s); they are private there and those modules are not to be
+/// disturbed, so the text is duplicated rather than shared.
+fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
+    let mut xnrm = dznrm2(x);
+    let mut alphr = alpha.re;
+    let mut alphi = alpha.im;
+
+    if xnrm == 0.0 && alphi == 0.0 {
+        return zzero();
+    }
+
+    let safmin = f64::MIN_POSITIVE / (f64::EPSILON / 2.0);
+    let rsafmn = 1.0 / safmin;
+
+    let mut beta = -zsign_f(dlapy3(alphr, alphi, xnrm), alphr);
+    let mut knt = 0usize;
+    if beta.abs() < safmin {
+        loop {
+            knt += 1;
+            for xi in x.iter_mut() {
+                *xi = *xi * rsafmn;
+            }
+            beta *= rsafmn;
+            alphi *= rsafmn;
+            alphr *= rsafmn;
+            if !(beta.abs() < safmin && knt < 20) {
+                break;
+            }
+        }
+        xnrm = dznrm2(x);
+        beta = -zsign_f(dlapy3(alphr, alphi, xnrm), alphr);
+    }
+
+    let tau = Complex64::new((beta - alphr) / beta, -alphi / beta);
+    let al = zladiv(zone(), Complex64::new(alphr - beta, alphi));
+    for xi in x.iter_mut() {
+        *xi = *xi * al;
+    }
+    for _ in 0..knt {
+        beta *= safmin;
+    }
+    *alpha = Complex64::new(beta, 0.0);
+    tau
+}
+
+/// `ZLARF`, left: `C := (I - tau v v^H) C`, with `v[0] == 1` supplied by the caller.
+///
+/// `C` is the `m x ncols` block of `a` at `(r0, c0)` with leading dimension
+/// `lda`; `v` has length `m`. Copied from [`super::zsvd`].
+fn zlarf_left(
+    a: &mut [Complex64],
+    lda: usize,
+    r0: usize,
+    m: usize,
+    c0: usize,
+    ncols: usize,
+    v: &[Complex64],
+    tau: Complex64,
+) {
+    if tau == zzero() || m == 0 || ncols == 0 {
+        return;
+    }
+    let mut w = vec![zzero(); ncols];
+    for (j, wj) in w.iter_mut().enumerate() {
+        let mut s = zzero();
+        for i in 0..m {
+            s += a[(r0 + i) + (c0 + j) * lda] * v[i].conj();
+        }
+        *wj = s;
+    }
+    for (j, &wj) in w.iter().enumerate() {
+        for i in 0..m {
+            a[(r0 + i) + (c0 + j) * lda] -= tau * v[i] * wj;
+        }
+    }
+}
+
+/// `zlartg`: the complex Givens rotation. Returns `(c, s, r)` with `c` real and
+/// `s`/`r` complex such that `[c, s; -conj(s), c] [f; g] = [r; 0]`, scaled so
+/// that no intermediate overflows or underflows.
+fn zlartg(f: Complex64, g: Complex64) -> (f64, Complex64, Complex64) {
+    fn abssq(t: Complex64) -> f64 {
+        t.re * t.re + t.im * t.im
+    }
+    let safmin = SAFMIN;
+    let safmax = 1.0 / SAFMIN;
+    let rtmin = safmin.sqrt();
+
+    let mut c;
+    let s;
+    let mut r;
+    if g == zzero() {
+        c = 1.0;
+        s = zzero();
+        r = f;
+    } else if f == zzero() {
+        c = 0.0;
+        if g.re == 0.0 {
+            r = Complex64::new(g.im.abs(), 0.0);
+            s = g.conj() / r;
+        } else if g.im == 0.0 {
+            r = Complex64::new(g.re.abs(), 0.0);
+            s = g.conj() / r;
+        } else {
+            let g1 = g.re.abs().max(g.im.abs());
+            let rtmax = (safmax / 2.0).sqrt();
+            if g1 > rtmin && g1 < rtmax {
+                // Unscaled.
+                let d = abssq(g).sqrt();
+                s = g.conj() / d;
+                r = Complex64::new(d, 0.0);
+            } else {
+                // Scaled.
+                let u = safmax.min(safmin.max(g1));
+                let gs = g / u;
+                let d = abssq(gs).sqrt();
+                s = gs.conj() / d;
+                r = Complex64::new(d * u, 0.0);
+            }
+        }
+    } else {
+        let f1 = f.re.abs().max(f.im.abs());
+        let g1 = g.re.abs().max(g.im.abs());
+        let mut rtmax = (safmax / 4.0).sqrt();
+        if f1 > rtmin && f1 < rtmax && g1 > rtmin && g1 < rtmax {
+            // Unscaled.
+            let f2 = abssq(f);
+            let g2 = abssq(g);
+            let h2 = f2 + g2;
+            if f2 >= h2 * safmin {
+                c = (f2 / h2).sqrt();
+                r = f / c;
+                rtmax *= 2.0;
+                if f2 > rtmin && h2 < rtmax {
+                    s = g.conj() * (f / (f2 * h2).sqrt());
+                } else {
+                    s = g.conj() * (r / h2);
+                }
+            } else {
+                let d = (f2 * h2).sqrt();
+                c = f2 / d;
+                if c >= safmin {
+                    r = f / c;
+                } else {
+                    r = f * (h2 / d);
+                }
+                s = g.conj() * (f / d);
+            }
+        } else {
+            // Scaled.
+            let u = safmax.min(safmin.max(f1).max(g1));
+            let gs = g / u;
+            let g2 = abssq(gs);
+            let (fs, w, f2, h2);
+            if f1 / u < rtmin {
+                let v = safmax.min(safmin.max(f1));
+                w = v / u;
+                fs = f / v;
+                f2 = abssq(fs);
+                h2 = f2 * w * w + g2;
+            } else {
+                w = 1.0;
+                fs = f / u;
+                f2 = abssq(fs);
+                h2 = f2 + g2;
+            }
+            if f2 >= h2 * safmin {
+                c = (f2 / h2).sqrt();
+                r = fs / c;
+                rtmax *= 2.0;
+                if f2 > rtmin && h2 < rtmax {
+                    s = gs.conj() * (fs / (f2 * h2).sqrt());
+                } else {
+                    s = gs.conj() * (r / h2);
+                }
+            } else {
+                let d = (f2 * h2).sqrt();
+                c = f2 / d;
+                if c >= safmin {
+                    r = fs / c;
+                } else {
+                    r = fs * (h2 / d);
+                }
+                s = gs.conj() * (fs / d);
+            }
+            c *= w;
+            r = r * u;
+        }
+    }
+    (c, s, r)
+}
+
+/// `zlascl` with `TYPE = 'G'`: `a := (cto / cfrom) * a`, staging the factor
+/// through `safmin`/`bignum` so an extreme ratio cannot overflow.
+///
+/// Copied from [`super::zsvd`].
+fn zlascl_g(cfrom: f64, cto: f64, a: &mut [Complex64], lda: usize, m: usize, n: usize) {
+    if m == 0 || n == 0 {
+        return;
+    }
+    let smlnum = SAFMIN;
+    let bignum = 1.0 / smlnum;
+    let mut cfromc = cfrom;
+    let mut ctoc = cto;
+    loop {
+        let cfrom1 = cfromc * smlnum;
+        let mul;
+        let done;
+        if cfrom1 == cfromc {
+            mul = ctoc / cfromc;
+            done = true;
+        } else {
+            let cto1 = ctoc / bignum;
+            if cto1 == ctoc {
+                mul = ctoc;
+                done = true;
+                cfromc = 1.0;
+            } else if cfrom1.abs() > ctoc.abs() && ctoc != 0.0 {
+                mul = smlnum;
+                done = false;
+                cfromc = cfrom1;
+            } else if cto1.abs() > cfromc.abs() {
+                mul = bignum;
+                done = false;
+                ctoc = cto1;
+            } else {
+                mul = ctoc / cfromc;
+                done = true;
+                if mul == 1.0 {
+                    return;
+                }
+            }
+        }
+        for j in 0..n {
+            for i in 0..m {
+                a[i + j * lda] = a[i + j * lda] * mul;
+            }
+        }
+        if done {
+            return;
+        }
+    }
+}
+
+/// `zlange('M')`: the largest complex modulus in the `m x n` matrix.
+fn zlange_m(a: &[Complex64], ld: usize, m: usize, n: usize) -> f64 {
+    let mut value = 0.0f64;
+    for j in 0..n {
+        for i in 0..m {
+            let temp = a[i + j * ld].norm();
+            if value < temp {
+                value = temp;
+            }
+        }
+    }
+    value
+}
+
+/// `zlanhs('F')`: the Frobenius norm of the upper Hessenberg part of an `n x n`
+/// matrix (entries `(i, j)` with `i <= j + 1`), via `zlassq`'s scaled sum of
+/// squares over the real and imaginary parts.
+fn zlanhs_f(a: &[Complex64], ld: usize, n: usize) -> f64 {
+    let mut scale = 0.0f64;
+    let mut sumsq = 1.0f64;
+    for j in 0..n {
+        let count = n.min(j + 2);
+        for i in 0..count {
+            let z = a[i + j * ld];
+            for absxi in [z.re.abs(), z.im.abs()] {
+                if absxi != 0.0 {
+                    if scale < absxi {
+                        let t = scale / absxi;
+                        sumsq = 1.0 + sumsq * t * t;
+                        scale = absxi;
+                    } else {
+                        let t = absxi / scale;
+                        sumsq += t * t;
+                    }
+                }
+            }
+        }
+    }
+    scale * sumsq.sqrt()
+}
+
+/// `zrot` on the rows `i1` and `i2` over `count` columns from `j0`:
+/// `x' = c x + s y`, `y' = c y - conj(s) x`.
+fn zrot_rows(a: &mut [Complex64], ld: usize, i1: usize, i2: usize, j0: usize, count: usize, c: f64, s: Complex64) {
+    for j in j0..(j0 + count) {
+        let x = a[i1 + j * ld];
+        let y = a[i2 + j * ld];
+        a[i1 + j * ld] = c * x + s * y;
+        a[i2 + j * ld] = c * y - s.conj() * x;
+    }
+}
+
+/// `zrot` on the columns `j1` and `j2` over `count` rows from `i0`, with the
+/// same `x' = c x + s y`, `y' = c y - conj(s) x`.
+fn zrot_cols(a: &mut [Complex64], ld: usize, j1: usize, j2: usize, i0: usize, count: usize, c: f64, s: Complex64) {
+    for i in i0..(i0 + count) {
+        let x = a[i + j1 * ld];
+        let y = a[i + j2 * ld];
+        a[i + j1 * ld] = c * x + s * y;
+        a[i + j2 * ld] = c * y - s.conj() * x;
+    }
+}
+
+/// `zgemv('N', m, ncols, 1, a, lda, x, 1, 0, y, 1)`: `y := A x`, where `x`
+/// multiplies the `ncols` columns of `a` starting at column `col0`.
+fn zgemv_n(a: &[Complex64], lda: usize, m: usize, col0: usize, ncols: usize, x: &[Complex64], y: &mut [Complex64]) {
+    for i in 0..m {
+        let mut acc = zzero();
+        for j in 0..ncols {
+            acc += a[i + (col0 + j) * lda] * x[j];
+        }
+        y[i] = acc;
+    }
+}
+
+/// `zgeqr2`: QR of the `m x ncol` block of `a` at `(r0, c0)`, with the
+/// reflectors left in place and `tau` of length `min(m, ncol)`.
+fn zgeqr2(a: &mut [Complex64], lda: usize, r0: usize, c0: usize, m: usize, ncol: usize, tau: &mut [Complex64]) {
+    let k = m.min(ncol);
+    for i in 0..k {
+        let mut alpha = a[(r0 + i) + (c0 + i) * lda];
+        let mut x: Vec<Complex64> = (1..(m - i)).map(|t| a[(r0 + i + t) + (c0 + i) * lda]).collect();
+        let taui = zlarfg(&mut alpha, &mut x);
+        a[(r0 + i) + (c0 + i) * lda] = alpha;
+        for (t, v) in x.iter().enumerate() {
+            a[(r0 + i + 1 + t) + (c0 + i) * lda] = *v;
+        }
+        tau[i] = taui;
+        if i + 1 < ncol {
+            // `zlarf1f('Left', m-i, ncol-i-1, A(i,i), 1, conj(tau[i]), A(i,i+1), lda, work)`:
+            // the reflector's implicit `1` sits at `(i, i)`.
+            let mrows = m - i;
+            let ncols = ncol - i - 1;
+            let mut v = vec![zzero(); mrows];
+            v[0] = zone();
+            for t in 1..mrows {
+                v[t] = a[(r0 + i + t) + (c0 + i) * lda];
+            }
+            zlarf_left(a, lda, r0 + i, mrows, c0 + i + 1, ncols, &v, taui.conj());
+        }
+    }
+}
+
+/// `zunm2r` with `SIDE = 'L'`, `TRANS = 'C'`: apply `Q^H` from the left, where
+/// `Q` is built from the reflectors stored in the block of `bref` at
+/// `(rb, cb)`, to the block of `a` at `(r0, c0)`.
+#[allow(clippy::too_many_arguments)]
+fn zunm2r_left_conj(
+    a: &mut [Complex64],
+    lda: usize,
+    r0: usize,
+    c0: usize,
+    m: usize,
+    ncol: usize,
+    bref: &[Complex64],
+    ldb: usize,
+    rb: usize,
+    cb: usize,
+    k: usize,
+    tau: &[Complex64],
+) {
+    for i in 0..k {
+        let mi = m - i;
+        let mut v = vec![zzero(); mi];
+        v[0] = zone();
+        for t in 1..mi {
+            v[t] = bref[(rb + i + t) + (cb + i) * ldb];
+        }
+        zlarf_left(a, lda, r0 + i, mi, c0, ncol, &v, tau[i].conj());
+    }
+}
+
+/// `zung2r`: generate the first `n` columns of the unitary `Q = H(1)...H(k)`
+/// into the `m x n` block of `a` at `(r0, c0)`, whose reflectors are stored
+/// there in the first `k` columns.
+///
+/// The text follows [`super::zsvd`]'s `zung2r`, with the `(r0, c0)` offset of
+/// the block added.
+#[allow(clippy::too_many_arguments)]
+fn zung2r_sub(a: &mut [Complex64], ld: usize, r0: usize, c0: usize, m: usize, n: usize, k: usize, tau: &[Complex64]) {
+    if n == 0 {
+        return;
+    }
+    // Set the columns after the first k to the identity.
+    for j in k..n {
+        for l in 0..m {
+            a[(r0 + l) + (c0 + j) * ld] = zzero();
+        }
+        a[(r0 + j) + (c0 + j) * ld] = zone();
+    }
+    // Form the first k columns in reverse order.
+    for i in (0..k).rev() {
+        if i < n - 1 {
+            let mrows = m - i;
+            let ncols = n - i - 1;
+            let mut v = vec![zzero(); mrows];
+            v[0] = zone();
+            for t in 1..mrows {
+                v[t] = a[(r0 + i + t) + (c0 + i) * ld];
+            }
+            zlarf_left(a, ld, r0 + i, mrows, c0 + i + 1, ncols, &v, tau[i]);
+        }
+        if i < m - 1 {
+            for t in (i + 1)..m {
+                a[(r0 + t) + (c0 + i) * ld] = a[(r0 + t) + (c0 + i) * ld] * (-tau[i]);
+            }
+        }
+        a[(r0 + i) + (c0 + i) * ld] = zone() - tau[i];
+        for l in 0..i {
+            a[(r0 + l) + (c0 + i) * ld] = zzero();
+        }
+    }
+}
+
+/// `zgghrd`: reduce the pair `(a, b)` to generalised Hessenberg form (`a` upper
+/// Hessenberg, `b` upper triangular) using unitary transformations, accumulating
+/// them into `q` and `z` when asked. `ilo` and `ihi` (0-based, inclusive) bound
+/// the active block.
+#[allow(clippy::too_many_arguments)]
+fn zgghrd(
+    ilq: bool,
+    ilz: bool,
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    a: &mut [Complex64],
+    lda: usize,
+    b: &mut [Complex64],
+    ldb: usize,
+    q: &mut [Complex64],
+    ldq: usize,
+    z: &mut [Complex64],
+    ldz: usize,
+) {
+    if n <= 1 || ihi < ilo + 2 {
+        // The reference zeroes the strict lower triangle of B before its quick
+        // return on the block size.
+        if n > 1 {
+            for jcol in 0..(n - 1) {
+                for jrow in (jcol + 1)..n {
+                    b[jrow + jcol * ldb] = zzero();
+                }
+            }
+        }
+        return;
+    }
+
+    // Zero the lower triangle of B.
+    for jcol in 0..(n - 1) {
+        for jrow in (jcol + 1)..n {
+            b[jrow + jcol * ldb] = zzero();
+        }
+    }
+
+    for jcol in ilo..=(ihi - 2) {
+        let mut jrow = ihi;
+        loop {
+            // Step 1: rotate rows jrow-1, jrow to kill a(jrow, jcol).
+            let ctemp = a[(jrow - 1) + jcol * lda];
+            let (c, s, r) = zlartg(ctemp, a[jrow + jcol * lda]);
+            a[(jrow - 1) + jcol * lda] = r;
+            a[jrow + jcol * lda] = zzero();
+            // zrot(N-JCOL, A(JROW-1,JCOL+1), LDA, A(JROW,JCOL+1), LDA, ...)
+            zrot_rows(a, lda, jrow - 1, jrow, jcol + 1, n - jcol - 1, c, s);
+            // zrot(N+2-JROW, B(JROW-1,JROW-1), LDB, B(JROW,JROW-1), LDB, ...)
+            zrot_rows(b, ldb, jrow - 1, jrow, jrow - 1, n + 1 - jrow, c, s);
+            if ilq {
+                zrot_cols(q, ldq, jrow - 1, jrow, 0, n, c, s.conj());
+            }
+
+            // Step 2: rotate columns jrow, jrow-1 to kill b(jrow, jrow-1).
+            let ctemp = b[jrow + jrow * ldb];
+            let (c, s, r) = zlartg(ctemp, b[jrow + (jrow - 1) * ldb]);
+            b[jrow + jrow * ldb] = r;
+            b[jrow + (jrow - 1) * ldb] = zzero();
+            // zrot(IHI, A(1,JROW), 1, A(1,JROW-1), 1, ...): IHI is 1-based, so
+            // the row count is `ihi + 1` here.
+            zrot_cols(a, lda, jrow, jrow - 1, 0, ihi + 1, c, s);
+            // zrot(JROW-1, B(1,JROW), 1, B(1,JROW-1), 1, ...).
+            zrot_cols(b, ldb, jrow, jrow - 1, 0, jrow, c, s);
+            if ilz {
+                zrot_cols(z, ldz, jrow, jrow - 1, 0, n, c, s);
+            }
+
+            if jrow <= jcol + 2 {
+                break;
+            }
+            jrow -= 1;
+        }
+    }
+}
+
+/// Swap the `count` entries of rows `i` and `m` starting at column `j0`.
+fn zswap_rows(a: &mut [Complex64], ld: usize, i: usize, m: usize, j0: usize, count: usize) {
+    if i == m {
+        return;
+    }
+    for j in j0..(j0 + count) {
+        a.swap(i + j * ld, m + j * ld);
+    }
+}
+
+/// Swap the `count` entries of columns `j` and `m` starting at row `i0`.
+fn zswap_cols(a: &mut [Complex64], ld: usize, j: usize, m: usize, i0: usize, count: usize) {
+    if j == m {
+        return;
+    }
+    for i in i0..(i0 + count) {
+        a.swap(i + j * ld, i + m * ld);
+    }
+}
+
+/// `zggbal` with `JOB = 'P'`: permute the pair `(a, b)` to isolate eigenvalues
+/// and return `(ilo, ihi, lscale, rscale)` (0-based `ilo`, exclusive `ihi`).
+///
+/// The permutation section of `zggbal` is character for character the same as
+/// `dggbal`'s (only the element type differs), so this is the same port as
+/// [`dggbal_p`] with complex elements. The conjugate-gradient balancing that
+/// `JOB = 'B'` adds is not transcribed, as `zggev` does not ask for it.
+fn zggbal_p(
+    n: usize,
+    a: &mut [Complex64],
+    lda: usize,
+    b: &mut [Complex64],
+    ldb: usize,
+) -> (usize, usize, Vec<f64>, Vec<f64>) {
+    let mut lscale = vec![0.0; n];
+    let mut rscale = vec![0.0; n];
+    if n == 0 {
+        return (0, 0, lscale, rscale);
+    }
+    if n == 1 {
+        lscale[0] = 1.0;
+        rscale[0] = 1.0;
+        return (0, 1, lscale, rscale);
+    }
+    // 1-based working values, as in the reference.
+    let mut k = 1usize;
+    let mut l = n;
+    let mut lm1 = 0usize;
+    let mut flow = 0u8; // 0: first entry, 1: from label 20, 2: from label 90
+    'outer: loop {
+        if flow == 1 {
+            l = lm1;
+            if l == 1 {
+                rscale[0] = 1.0;
+                lscale[0] = 1.0;
+                break 'outer;
+            }
+        } else if flow == 2 {
+            k += 1;
+        }
+
+        // label 30: find a row with one nonzero in columns 1..L.
+        lm1 = l - 1;
+        let mut found_flow = 0u8;
+        let mut m = 0usize;
+        let mut ifound = 0usize;
+        let mut jfound = 0usize;
+        let mut row_permuted = false;
+        'row: for i in (1..=l).rev() {
+            let mut j = 0usize;
+            let mut nonz = false;
+            for jj in 1..=lm1 {
+                if a[(i - 1) + (jj - 1) * lda] != zzero() || b[(i - 1) + (jj - 1) * ldb] != zzero() {
+                    j = jj;
+                    nonz = true;
+                    break;
+                }
+            }
+            if !nonz {
+                j = l;
+            } else {
+                // label 50
+                let jp1 = j + 1;
+                let mut found = false;
+                for jj in jp1..=l {
+                    if a[(i - 1) + (jj - 1) * lda] != zzero() || b[(i - 1) + (jj - 1) * ldb] != zzero() {
+                        found = true;
+                        break;
+                    }
+                }
+                if found {
+                    continue 'row;
+                }
+                j = jp1 - 1;
+            }
+            // label 70
+            m = l;
+            ifound = i;
+            jfound = j;
+            found_flow = 1;
+            row_permuted = true;
+            break 'row;
+        }
+        if row_permuted {
+            // label 160
+            lscale[m - 1] = ifound as f64;
+            if ifound != m {
+                // ZSWAP(N-K+1, A(I,K), LDA, A(M,K), LDA)
+                zswap_rows(a, lda, ifound - 1, m - 1, k - 1, n - k + 1);
+                zswap_rows(b, ldb, ifound - 1, m - 1, k - 1, n - k + 1);
+            }
+            // label 170
+            rscale[m - 1] = jfound as f64;
+            if jfound != m {
+                // ZSWAP(L, A(1,J), 1, A(1,M), 1)
+                zswap_cols(a, lda, jfound - 1, m - 1, 0, l);
+                zswap_cols(b, ldb, jfound - 1, m - 1, 0, l);
+            }
+            let _ = found_flow;
+            flow = 1;
+            continue 'outer;
+        }
+
+        // label 100: find a column with one nonzero in rows K..N.
+        let mut col_permuted = false;
+        loop {
+            let mut m2 = 0usize;
+            let mut ifound2 = 0usize;
+            let mut jfound2 = 0usize;
+            'col: for j in k..=l {
+                let mut i = 0usize;
+                let mut nonz = false;
+                for ii in k..=lm1 {
+                    if a[(ii - 1) + (j - 1) * lda] != zzero() || b[(ii - 1) + (j - 1) * ldb] != zzero() {
+                        i = ii;
+                        nonz = true;
+                        break;
+                    }
+                }
+                if !nonz {
+                    i = l;
+                } else {
+                    let ip1 = i + 1;
+                    let mut found = false;
+                    for ii in ip1..=l {
+                        if a[(ii - 1) + (j - 1) * lda] != zzero() || b[(ii - 1) + (j - 1) * ldb] != zzero() {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if found {
+                        continue 'col;
+                    }
+                    i = ip1 - 1;
+                }
+                // label 140
+                m2 = k;
+                ifound2 = i;
+                jfound2 = j;
+                col_permuted = true;
+                break 'col;
+            }
+            if !col_permuted {
+                break 'outer;
+            }
+            // label 160 with IFLOW = 2
+            lscale[m2 - 1] = ifound2 as f64;
+            if ifound2 != m2 {
+                zswap_rows(a, lda, ifound2 - 1, m2 - 1, k - 1, n - k + 1);
+                zswap_rows(b, ldb, ifound2 - 1, m2 - 1, k - 1, n - k + 1);
+            }
+            rscale[m2 - 1] = jfound2 as f64;
+            if jfound2 != m2 {
+                zswap_cols(a, lda, jfound2 - 1, m2 - 1, 0, l);
+                zswap_cols(b, ldb, jfound2 - 1, m2 - 1, 0, l);
+            }
+            // label 180 -> 90 -> 100
+            k += 1;
+        }
+    }
+    // label 190 with JOB = 'P'
+    for i in (k - 1)..l {
+        lscale[i] = 1.0;
+        rscale[i] = 1.0;
+    }
+    (k - 1, l, lscale, rscale)
+}
+
+/// `zggbak` with `JOB = 'P'`: undo the permutation recorded in `lscale`/`rscale`
+/// on `m` eigenvectors stored in the columns of `v`. `right` selects the right
+/// (`rscale`) or left (`lscale`) permutation. Same port as [`dggbak_p`].
+#[allow(clippy::too_many_arguments)]
+fn zggbak_p(
+    right: bool,
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    lscale: &[f64],
+    rscale: &[f64],
+    m: usize,
+    v: &mut [Complex64],
+    ldv: usize,
+) {
+    if n == 0 || m == 0 {
+        return;
+    }
+    let scale = if right { rscale } else { lscale };
+    if ilo > 0 {
+        for i in (0..ilo).rev() {
+            let k = scale[i] as usize;
+            if k == i + 1 {
+                continue;
+            }
+            zswap_rows(v, ldv, i, k - 1, 0, m);
+        }
+    }
+    for i in (ihi + 1)..n {
+        let k = scale[i] as usize;
+        if k == i + 1 {
+            continue;
+        }
+        zswap_rows(v, ldv, i, k - 1, 0, m);
+    }
+}
+
+/// The standardisation of one diagonal element that ends a deflation in
+/// `zhgeqz` (labels 10, 60 and 200 of the reference): make `t(j,j)` real and
+/// non-negative, scale the parts of the columns above it by the conjugate, and
+/// record `alpha`/`beta`.
+#[allow(clippy::too_many_arguments)]
+fn zhgeqz_set_eigenvalue(
+    j: usize,
+    ilschr: bool,
+    ilz: bool,
+    ifrstm: usize,
+    h: &mut [Complex64],
+    ldh: usize,
+    t: &mut [Complex64],
+    ldt: usize,
+    z: &mut [Complex64],
+    ldz: usize,
+    n: usize,
+    alpha: &mut [Complex64],
+    beta: &mut [Complex64],
+) {
+    let absb = t[j + j * ldt].norm();
+    if absb > SAFMIN {
+        let signbc = (t[j + j * ldt] / absb).conj();
+        t[j + j * ldt] = Complex64::new(absb, 0.0);
+        if ilschr {
+            // zscal(j-1, signbc, t(1,j), 1) and zscal(j, signbc, h(1,j), 1).
+            for jr in ifrstm..j {
+                t[jr + j * ldt] *= signbc;
+            }
+            for jr in ifrstm..=j {
+                h[jr + j * ldh] *= signbc;
+            }
+        } else {
+            h[j + j * ldh] *= signbc;
+        }
+        if ilz {
+            for jr in 0..n {
+                z[jr + j * ldz] *= signbc;
+            }
+        }
+    } else {
+        t[j + j * ldt] = zzero();
+    }
+    alpha[j] = h[j + j * ldh];
+    beta[j] = t[j + j * ldt];
+}
+
+/// `zhgeqz` with `JOB = 'S'` or `'E'`: the complex QZ iteration.
+///
+/// On entry `h` and `t` are in generalised Hessenberg form (`h` upper Hessenberg,
+/// `t` upper triangular); on exit they hold the generalised Schur form and the
+/// generalised eigenvalues are in `alpha`/`beta` as `alpha / beta`. The unitary
+/// factors are accumulated into `q` and `z` when `ilq`/`ilz`. Returns the
+/// reference's `INFO`: 0 on success, `1..=n` for non-convergence and `2*n + 1`
+/// for the "impossible" drop-through.
+#[allow(clippy::too_many_arguments)]
+fn zhgeqz(
+    ilschr: bool,
+    ilq: bool,
+    ilz: bool,
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    h: &mut [Complex64],
+    ldh: usize,
+    t: &mut [Complex64],
+    ldt: usize,
+    alpha: &mut [Complex64],
+    beta: &mut [Complex64],
+    q: &mut [Complex64],
+    ldq: usize,
+    z: &mut [Complex64],
+    ldz: usize,
+) -> usize {
+    if n <= 0 {
+        return 0;
+    }
+
+    let in_ = (ihi + 1).saturating_sub(ilo);
+    let safmin = SAFMIN;
+    let ulp = ULP;
+    let anorm = zlanhs_f(&h[(ilo + ilo * ldh)..], ldh, in_);
+    let bnorm = zlanhs_f(&t[(ilo + ilo * ldt)..], ldt, in_);
+    let atol = safmin.max(ulp * anorm);
+    let btol = safmin.max(ulp * bnorm);
+    let ascale = 1.0 / safmin.max(anorm);
+    let bscale = 1.0 / safmin.max(bnorm);
+
+    // Set eigenvalues ihi+1..n.
+    for j in (ihi + 1)..n {
+        zhgeqz_set_eigenvalue(j, ilschr, ilz, 0, h, ldh, t, ldt, z, ldz, n, alpha, beta);
+    }
+
+    // If ihi < ilo, skip the QZ steps.
+    if ihi < ilo {
+        for j in 0..ilo {
+            zhgeqz_set_eigenvalue(j, ilschr, ilz, 0, h, ldh, t, ldt, z, ldz, n, alpha, beta);
+        }
+        return 0;
+    }
+
+    let mut ilast = ihi;
+    let (mut ifrstm, mut ilastm) = if ilschr { (0usize, n - 1) } else { (ilo, ihi) };
+    let mut iiter = 0usize;
+    let mut eshift = zzero();
+    let maxit = 30 * (ihi - ilo + 1);
+
+    /// The destination of one pass of the reference's loop, mirroring its labels.
+    enum Next {
+        /// Label 60 (through label 50 when `via50`).
+        Deflate { via50: bool },
+        /// Label 70, the QZ step, with `ifirst`.
+        QzStep(usize),
+    }
+
+    for _jiter in 0..maxit {
+        let next: Next = if ilast == ilo {
+            Next::Deflate { via50: false }
+        } else if zabs1(h[ilast + (ilast - 1) * ldh])
+            <= safmin.max(ulp * (zabs1(h[ilast + ilast * ldh]) + zabs1(h[(ilast - 1) + (ilast - 1) * ldh])))
+        {
+            h[ilast + (ilast - 1) * ldh] = zzero();
+            Next::Deflate { via50: false }
+        } else if t[ilast + ilast * ldt].norm() <= btol {
+            t[ilast + ilast * ldt] = zzero();
+            Next::Deflate { via50: true }
+        } else {
+            // General case: j < ilast.
+            let mut chosen: Option<Next> = None;
+            let mut j = ilast - 1;
+            while j >= ilo {
+                // Test 1: h(j,j-1) = 0 or j = ilo.
+                let ilazro = if j == ilo {
+                    true
+                } else if zabs1(h[j + (j - 1) * ldh])
+                    <= safmin.max(ulp * (zabs1(h[j + j * ldh]) + zabs1(h[(j - 1) + (j - 1) * ldh])))
+                {
+                    h[j + (j - 1) * ldh] = zzero();
+                    true
+                } else {
+                    false
+                };
+
+                // Test 2: t(j,j) = 0.
+                if t[j + j * ldt].norm() < btol {
+                    t[j + j * ldt] = zzero();
+
+                    // Test 1a: two consecutive small subdiagonals in A.
+                    let mut ilazr2 = false;
+                    if !ilazro
+                        && zabs1(h[j + (j - 1) * ldh]) * (ascale * zabs1(h[(j + 1) + j * ldh]))
+                            <= zabs1(h[j + j * ldh]) * (ascale * atol)
+                    {
+                        ilazr2 = true;
+                    }
+
+                    if ilazro || ilazr2 {
+                        // Split a 1x1 block off at the top; the reference loop
+                        // is JCH = J, ILAST-1.
+                        let mut jch = j;
+                        loop {
+                            let ctemp = h[jch + jch * ldh];
+                            let (c, s, r) = zlartg(ctemp, h[(jch + 1) + jch * ldh]);
+                            h[jch + jch * ldh] = r;
+                            h[(jch + 1) + jch * ldh] = zzero();
+                            zrot_rows(h, ldh, jch, jch + 1, jch + 1, ilastm - jch, c, s);
+                            zrot_rows(t, ldt, jch, jch + 1, jch + 1, ilastm - jch, c, s);
+                            if ilq {
+                                zrot_cols(q, ldq, jch, jch + 1, 0, n, c, s.conj());
+                            }
+                            if ilazr2 {
+                                h[jch + (jch - 1) * ldh] *= c;
+                            }
+                            ilazr2 = false;
+                            if zabs1(t[(jch + 1) + (jch + 1) * ldt]) >= btol {
+                                if jch + 1 >= ilast {
+                                    chosen = Some(Next::Deflate { via50: false });
+                                } else {
+                                    chosen = Some(Next::QzStep(jch + 1));
+                                }
+                                break;
+                            }
+                            t[(jch + 1) + (jch + 1) * ldt] = zzero();
+                            if jch >= ilast - 1 {
+                                chosen = Some(Next::Deflate { via50: true });
+                                break;
+                            }
+                            jch += 1;
+                        }
+                    } else {
+                        // Only test 2 passed: chase the zero to T(ilast, ilast).
+                        // The reference loop is JCH = J, ILAST-1.
+                        for jch in j..ilast {
+                            let ctemp = t[jch + (jch + 1) * ldt];
+                            let (c, s, r) = zlartg(ctemp, t[(jch + 1) + (jch + 1) * ldt]);
+                            t[jch + (jch + 1) * ldt] = r;
+                            t[(jch + 1) + (jch + 1) * ldt] = zzero();
+                            if jch < ilastm - 1 {
+                                zrot_rows(t, ldt, jch, jch + 1, jch + 2, ilastm - jch - 1, c, s);
+                            }
+                            zrot_rows(h, ldh, jch, jch + 1, jch - 1, ilastm - jch + 2, c, s);
+                            if ilq {
+                                zrot_cols(q, ldq, jch, jch + 1, 0, n, c, s.conj());
+                            }
+                            let ctemp = h[(jch + 1) + jch * ldh];
+                            let (c, s, r) = zlartg(ctemp, h[(jch + 1) + (jch - 1) * ldh]);
+                            h[(jch + 1) + jch * ldh] = r;
+                            h[(jch + 1) + (jch - 1) * ldh] = zzero();
+                            zrot_cols(h, ldh, jch, jch - 1, ifrstm, jch + 1 - ifrstm, c, s);
+                            zrot_cols(t, ldt, jch, jch - 1, ifrstm, jch - ifrstm, c, s);
+                            if ilz {
+                                zrot_cols(z, ldz, jch, jch - 1, 0, n, c, s);
+                            }
+                        }
+                        chosen = Some(Next::Deflate { via50: true });
+                    }
+                    break;
+                } else if ilazro {
+                    // Only test 1 passed: work on j:ilast.
+                    chosen = Some(Next::QzStep(j));
+                    break;
+                }
+
+                if j == ilo {
+                    break;
+                }
+                j -= 1;
+            }
+            match chosen {
+                Some(nx) => nx,
+                None => return 2 * n + 1,
+            }
+        };
+
+        match next {
+            Next::Deflate { via50 } => {
+                if via50 {
+                    // Label 50: clear h(ilast, ilast-1) to split off a 1x1 block.
+                    let ctemp = h[ilast + ilast * ldh];
+                    let (c, s, r) = zlartg(ctemp, h[ilast + (ilast - 1) * ldh]);
+                    h[ilast + ilast * ldh] = r;
+                    h[ilast + (ilast - 1) * ldh] = zzero();
+                    zrot_cols(h, ldh, ilast, ilast - 1, ifrstm, ilast - ifrstm, c, s);
+                    zrot_cols(t, ldt, ilast, ilast - 1, ifrstm, ilast - ifrstm, c, s);
+                    if ilz {
+                        zrot_cols(z, ldz, ilast, ilast - 1, 0, n, c, s);
+                    }
+                }
+                // Label 60: standardise B and record alpha/beta.
+                zhgeqz_set_eigenvalue(ilast, ilschr, ilz, ifrstm, h, ldh, t, ldt, z, ldz, n, alpha, beta);
+                if ilast == ilo {
+                    // Label 190: set eigenvalues 1:ilo-1 and finish.
+                    for j in 0..ilo {
+                        zhgeqz_set_eigenvalue(j, ilschr, ilz, 0, h, ldh, t, ldt, z, ldz, n, alpha, beta);
+                    }
+                    return 0;
+                }
+                ilast -= 1;
+                iiter = 0;
+                eshift = zzero();
+                if !ilschr {
+                    ilastm = ilast;
+                    if ifrstm > ilast {
+                        ifrstm = ilo;
+                    }
+                }
+            }
+
+            Next::QzStep(ifirst) => {
+                // Label 70: the QZ step.
+                iiter += 1;
+                if !ilschr {
+                    ifrstm = ifirst;
+                }
+
+                // Compute the shift.
+                let shift: Complex64;
+                if (iiter / 10) * 10 != iiter {
+                    // The Wilkinson shift: the eigenvalue of the bottom-right
+                    // 2x2 block of A inv(B) nearest the (ilast, ilast) element.
+                    let u12 = (bscale * t[(ilast - 1) + ilast * ldt]) / (bscale * t[ilast + ilast * ldt]);
+                    let ad11 =
+                        (ascale * h[(ilast - 1) + (ilast - 1) * ldh]) / (bscale * t[(ilast - 1) + (ilast - 1) * ldt]);
+                    let ad21 = (ascale * h[ilast + (ilast - 1) * ldh]) / (bscale * t[(ilast - 1) + (ilast - 1) * ldt]);
+                    let ad12 = (ascale * h[(ilast - 1) + ilast * ldh]) / (bscale * t[ilast + ilast * ldt]);
+                    let ad22 = (ascale * h[ilast + ilast * ldh]) / (bscale * t[ilast + ilast * ldt]);
+                    let abi22 = ad22 - u12 * ad21;
+                    let abi12 = ad12 - u12 * ad11;
+                    let mut sh = abi22;
+                    let ctemp = abi12.sqrt() * ad21.sqrt();
+                    if ctemp != zzero() {
+                        let x = 0.5 * (ad11 - sh);
+                        let temp2 = zabs1(x);
+                        let temp = zabs1(ctemp).max(zabs1(x));
+                        let mut y = temp * ((x / temp) * (x / temp) + (ctemp / temp) * (ctemp / temp)).sqrt();
+                        if temp2 > 0.0 && (x / temp2).re * y.re + (x / temp2).im * y.im < 0.0 {
+                            y = -y;
+                        }
+                        sh = sh - ctemp * zladiv(ctemp, x + y);
+                    }
+                    shift = sh;
+                } else {
+                    // Exceptional shift.
+                    if (iiter / 20) * 20 == iiter && bscale * zabs1(t[ilast + ilast * ldt]) > safmin {
+                        eshift += (ascale * h[ilast + ilast * ldh]) / (bscale * t[ilast + ilast * ldt]);
+                    } else {
+                        eshift +=
+                            (ascale * h[ilast + (ilast - 1) * ldh]) / (bscale * t[(ilast - 1) + (ilast - 1) * ldt]);
+                    }
+                    shift = eshift;
+                }
+
+                // Check for two consecutive small subdiagonals.
+                let mut istart = ifirst;
+                let mut ctemp = ascale * h[ifirst + ifirst * ldh] - shift * (bscale * t[ifirst + ifirst * ldt]);
+                let mut found = false;
+                let mut j = ilast - 1;
+                while j >= ifirst + 1 {
+                    istart = j;
+                    ctemp = ascale * h[j + j * ldh] - shift * (bscale * t[j + j * ldt]);
+                    let mut temp = zabs1(ctemp);
+                    let mut temp2 = ascale * zabs1(h[(j + 1) + j * ldh]);
+                    let tempr = temp.max(temp2);
+                    if tempr < 1.0 && tempr != 0.0 {
+                        temp /= tempr;
+                        temp2 /= tempr;
+                    }
+                    if zabs1(h[j + (j - 1) * ldh]) * temp2 <= temp * atol {
+                        found = true;
+                        break;
+                    }
+                    if j == ifirst + 1 {
+                        break;
+                    }
+                    j -= 1;
+                }
+                if !found {
+                    istart = ifirst;
+                    ctemp = ascale * h[ifirst + ifirst * ldh] - shift * (bscale * t[ifirst + ifirst * ldt]);
+                }
+
+                // Implicit-shift QZ sweep.
+                let ctemp2 = ascale * h[(istart + 1) + istart * ldh];
+                let (mut c, mut s, _r) = zlartg(ctemp, ctemp2);
+                for j in istart..ilast {
+                    if j > istart {
+                        let ct = h[j + (j - 1) * ldh];
+                        let (c2, s2, r) = zlartg(ct, h[(j + 1) + (j - 1) * ldh]);
+                        h[j + (j - 1) * ldh] = r;
+                        h[(j + 1) + (j - 1) * ldh] = zzero();
+                        c = c2;
+                        s = s2;
+                    }
+                    for jc in j..=ilastm {
+                        let ct = c * h[j + jc * ldh] + s * h[(j + 1) + jc * ldh];
+                        h[(j + 1) + jc * ldh] = -s.conj() * h[j + jc * ldh] + c * h[(j + 1) + jc * ldh];
+                        h[j + jc * ldh] = ct;
+                        let ct2 = c * t[j + jc * ldt] + s * t[(j + 1) + jc * ldt];
+                        t[(j + 1) + jc * ldt] = -s.conj() * t[j + jc * ldt] + c * t[(j + 1) + jc * ldt];
+                        t[j + jc * ldt] = ct2;
+                    }
+                    if ilq {
+                        for jr in 0..n {
+                            let ct = c * q[jr + j * ldq] + s.conj() * q[jr + (j + 1) * ldq];
+                            q[jr + (j + 1) * ldq] = -s * q[jr + j * ldq] + c * q[jr + (j + 1) * ldq];
+                            q[jr + j * ldq] = ct;
+                        }
+                    }
+                    let ct = t[(j + 1) + (j + 1) * ldt];
+                    let (c2, s2, r) = zlartg(ct, t[(j + 1) + j * ldt]);
+                    t[(j + 1) + (j + 1) * ldt] = r;
+                    t[(j + 1) + j * ldt] = zzero();
+                    c = c2;
+                    s = s2;
+                    for jr in ifrstm..=(j + 2).min(ilast) {
+                        let ct = c * h[jr + (j + 1) * ldh] + s * h[jr + j * ldh];
+                        h[jr + j * ldh] = -s.conj() * h[jr + (j + 1) * ldh] + c * h[jr + j * ldh];
+                        h[jr + (j + 1) * ldh] = ct;
+                    }
+                    for jr in ifrstm..=j {
+                        let ct = c * t[jr + (j + 1) * ldt] + s * t[jr + j * ldt];
+                        t[jr + j * ldt] = -s.conj() * t[jr + (j + 1) * ldt] + c * t[jr + j * ldt];
+                        t[jr + (j + 1) * ldt] = ct;
+                    }
+                    if ilz {
+                        for jr in 0..n {
+                            let ct = c * z[jr + (j + 1) * ldz] + s * z[jr + j * ldz];
+                            z[jr + j * ldz] = -s.conj() * z[jr + (j + 1) * ldz] + c * z[jr + j * ldz];
+                            z[jr + (j + 1) * ldz] = ct;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Drop-through: non-convergence.
+    ilast + 1
+}
+
+/// The coefficients `a`, `b` of `(a A - b B) x = 0` and the denominator floor
+/// `dmin` that `ztgevc` computes identically for the left and the right
+/// eigenvectors.
+struct ZtgevcCoeffs {
+    acoeff: f64,
+    bcoeff: Complex64,
+    acoefa: f64,
+    bcoefa: f64,
+    dmin: f64,
+}
+
+/// The shared coefficient block of `ztgevc`'s two eigenvector loops.
+#[allow(clippy::too_many_arguments)]
+fn ztgevc_coeffs(
+    je: usize,
+    s: &[Complex64],
+    lds: usize,
+    p: &[Complex64],
+    ldp: usize,
+    ascale: f64,
+    bscale: f64,
+    anorm: f64,
+    bnorm: f64,
+    safmin: f64,
+    small: f64,
+    big: f64,
+    ulp: f64,
+) -> ZtgevcCoeffs {
+    let temp = 1.0
+        / (zabs1(s[je + je * lds]) * ascale)
+            .max(p[je + je * ldp].re.abs() * bscale)
+            .max(safmin);
+    let salpha = (temp * s[je + je * lds]) * ascale;
+    let sbeta = (temp * p[je + je * ldp].re) * bscale;
+    let mut acoeff = sbeta * ascale;
+    let mut bcoeff = salpha * bscale;
+
+    // Scale to avoid underflow.
+    let lsa = sbeta.abs() >= safmin && acoeff.abs() < small;
+    let lsb = zabs1(salpha) >= safmin && zabs1(bcoeff) < small;
+    let mut scale = 1.0;
+    if lsa {
+        scale = (small / sbeta.abs()) * anorm.min(big);
+    }
+    if lsb {
+        scale = scale.max((small / zabs1(salpha)) * bnorm.min(big));
+    }
+    if lsa || lsb {
+        scale = scale.min(1.0 / (safmin * 1.0f64.max(acoeff.abs()).max(zabs1(bcoeff))));
+        if lsa {
+            acoeff = ascale * (scale * sbeta);
+        } else {
+            acoeff = scale * acoeff;
+        }
+        if lsb {
+            bcoeff = bscale * (scale * salpha);
+        } else {
+            bcoeff = scale * bcoeff;
+        }
+    }
+    let acoefa = acoeff.abs();
+    let bcoefa = zabs1(bcoeff);
+    let dmin = (ulp * acoefa * anorm).max(ulp * bcoefa * bnorm).max(safmin);
+    ZtgevcCoeffs {
+        acoeff,
+        bcoeff,
+        acoefa,
+        bcoefa,
+        dmin,
+    }
+}
+
+/// `ztgevc` with `HOWMNY = 'B'`: all right (and/or left) generalised
+/// eigenvectors of the triangular pair `(s, p)` by back-substitution,
+/// back-transformed with the Schur vectors left in `vl`/`vr`.
+///
+/// `compl`/`compr` select the left and right eigenvectors. `zggev` always asks
+/// for `HOWMNY = 'B'`, so the `SELECT`/`MM` machinery is not transcribed.
+/// Returns `true` when the reference would return a nonzero `INFO`.
+#[allow(clippy::too_many_arguments)]
+fn ztgevc(
+    compl: bool,
+    compr: bool,
+    n: usize,
+    s: &[Complex64],
+    lds: usize,
+    p: &[Complex64],
+    ldp: usize,
+    vl: &mut [Complex64],
+    ldvl: usize,
+    vr: &mut [Complex64],
+    ldvr: usize,
+) -> bool {
+    if n == 0 {
+        return false;
+    }
+
+    // The diagonal of B must be real; `zhgeqz` has already made it so.
+    for j in 0..n {
+        if p[j + j * ldp].im != 0.0 {
+            return true;
+        }
+    }
+
+    let safmin = SAFMIN;
+    let ulp = ULP;
+    let small = safmin * (n as f64) / ulp;
+    let big = 1.0 / small;
+    let bignum = 1.0 / (safmin * (n as f64));
+
+    // The 1-norm of each column of the strictly upper triangular part of A and
+    // B, to check for overflow in the triangular solver.
+    let mut rwork = vec![0.0f64; 2 * n];
+    let mut anorm = zabs1(s[0]);
+    let mut bnorm = zabs1(p[0]);
+    rwork[0] = 0.0;
+    rwork[n] = 0.0;
+    for j in 1..n {
+        rwork[j] = 0.0;
+        rwork[n + j] = 0.0;
+        for i in 0..j {
+            rwork[j] += zabs1(s[i + j * lds]);
+            rwork[n + j] += zabs1(p[i + j * ldp]);
+        }
+        anorm = anorm.max(rwork[j] + zabs1(s[j + j * lds]));
+        bnorm = bnorm.max(rwork[n + j] + zabs1(p[j + j * ldp]));
+    }
+    let ascale = 1.0 / anorm.max(safmin);
+    let bscale = 1.0 / bnorm.max(safmin);
+
+    let mut work = vec![zzero(); 2 * n];
+
+    // Left eigenvectors.
+    if compl {
+        for je in 0..n {
+            if zabs1(s[je + je * lds]) <= safmin && p[je + je * ldp].re.abs() <= safmin {
+                // Singular matrix pencil: return the unit eigenvector.
+                for jr in 0..n {
+                    vl[jr + je * ldvl] = zzero();
+                }
+                vl[je + je * ldvl] = zone();
+                continue;
+            }
+
+            let cf = ztgevc_coeffs(
+                je, s, lds, p, ldp, ascale, bscale, anorm, bnorm, safmin, small, big, ulp,
+            );
+            let acoeff = cf.acoeff;
+            let bcoeff = cf.bcoeff;
+            let acoefa = cf.acoefa;
+            let bcoefa = cf.bcoefa;
+            let dmin = cf.dmin;
+
+            let mut xmax = 1.0f64;
+            for jr in 0..n {
+                work[jr] = zzero();
+            }
+            work[je] = zone();
+
+            // Triangular solve of (a A - b B)^H y = 0, rowwise.
+            for j in (je + 1)..n {
+                let temp = 1.0 / xmax;
+                if acoefa * rwork[j] + bcoefa * rwork[n + j] > bignum * temp {
+                    for jr in je..j {
+                        work[jr] = work[jr] * temp;
+                    }
+                    xmax = 1.0;
+                }
+                let mut suma = zzero();
+                let mut sumb = zzero();
+                for jr in je..j {
+                    suma += s[jr + j * lds].conj() * work[jr];
+                    sumb += p[jr + j * ldp].conj() * work[jr];
+                }
+                let mut sum = acoeff * suma - bcoeff.conj() * sumb;
+                let mut d = (acoeff * s[j + j * lds] - bcoeff * p[j + j * ldp]).conj();
+                if zabs1(d) <= dmin {
+                    d = Complex64::new(dmin, 0.0);
+                }
+                if zabs1(d) < 1.0 && zabs1(sum) >= bignum * zabs1(d) {
+                    let temp = 1.0 / zabs1(sum);
+                    for jr in je..j {
+                        work[jr] = work[jr] * temp;
+                    }
+                    xmax = temp * xmax;
+                    sum = sum * temp;
+                }
+                work[j] = zladiv(-sum, d);
+                xmax = xmax.max(zabs1(work[j]));
+            }
+
+            // Back transform with the Schur vectors in columns je..n of vl:
+            // `zgemv('N', n, n+1-je, 1, VL(1,je), ldvl, WORK(je), 1, 0, ...)`.
+            let (wv, wout) = work.split_at_mut(n);
+            zgemv_n(vl, ldvl, n, je, n - je, &wv[je..n], wout);
+
+            let mut ibeg = 0usize;
+            let mut xmax2 = 0.0f64;
+            for jr in ibeg..n {
+                xmax2 = xmax2.max(zabs1(wout[jr]));
+            }
+            if xmax2 > safmin {
+                let temp = 1.0 / xmax2;
+                for jr in ibeg..n {
+                    vl[jr + je * ldvl] = wout[jr] * temp;
+                }
+            } else {
+                ibeg = n;
+            }
+            for jr in 0..ibeg {
+                vl[jr + je * ldvl] = zzero();
+            }
+        }
+    }
+
+    // Right eigenvectors.
+    if compr {
+        for je in (0..n).rev() {
+            if zabs1(s[je + je * lds]) <= safmin && p[je + je * ldp].re.abs() <= safmin {
+                for jr in 0..n {
+                    vr[jr + je * ldvr] = zzero();
+                }
+                vr[je + je * ldvr] = zone();
+                continue;
+            }
+
+            let cf = ztgevc_coeffs(
+                je, s, lds, p, ldp, ascale, bscale, anorm, bnorm, safmin, small, big, ulp,
+            );
+            let acoeff = cf.acoeff;
+            let bcoeff = cf.bcoeff;
+            let acoefa = cf.acoefa;
+            let bcoefa = cf.bcoefa;
+            let dmin = cf.dmin;
+
+            for jr in 0..n {
+                work[jr] = zzero();
+            }
+            for jr in 0..je {
+                work[jr] = acoeff * s[jr + je * lds] - bcoeff * p[jr + je * ldp];
+            }
+            work[je] = zone();
+
+            // Triangular solve of (a A - b B) x = 0, columnwise.
+            for j in (0..je).rev() {
+                let mut d = acoeff * s[j + j * lds] - bcoeff * p[j + j * ldp];
+                if zabs1(d) <= dmin {
+                    d = Complex64::new(dmin, 0.0);
+                }
+                if zabs1(d) < 1.0 && zabs1(work[j]) >= bignum * zabs1(d) {
+                    let temp = 1.0 / zabs1(work[j]);
+                    for jr in 0..=je {
+                        work[jr] = work[jr] * temp;
+                    }
+                }
+                work[j] = zladiv(-work[j], d);
+                if j > 0 {
+                    if zabs1(work[j]) > 1.0 {
+                        let temp = 1.0 / zabs1(work[j]);
+                        if acoefa * rwork[j] + bcoefa * rwork[n + j] >= bignum * temp {
+                            for jr in 0..=je {
+                                work[jr] = work[jr] * temp;
+                            }
+                        }
+                    }
+                    let ca = acoeff * work[j];
+                    let cb = bcoeff * work[j];
+                    for jr in 0..j {
+                        work[jr] = work[jr] + ca * s[jr + j * lds] - cb * p[jr + j * ldp];
+                    }
+                }
+            }
+
+            // Back transform with the Schur vectors in columns 0..=je of vr:
+            // `zgemv('N', n, je, 1, VR, ldvr, WORK, 1, 0, ...)`.
+            let (wv, wout) = work.split_at_mut(n);
+            zgemv_n(vr, ldvr, n, 0, je + 1, &wv[0..=je], wout);
+
+            let mut iend = n;
+            let mut xmax2 = 0.0f64;
+            for jr in 0..iend {
+                xmax2 = xmax2.max(zabs1(wout[jr]));
+            }
+            if xmax2 > safmin {
+                let temp = 1.0 / xmax2;
+                for jr in 0..iend {
+                    vr[jr + je * ldvr] = wout[jr] * temp;
+                }
+            } else {
+                iend = 0;
+            }
+            for jr in iend..n {
+                vr[jr + je * ldvr] = zzero();
+            }
+        }
+    }
+
+    false
+}
+
+/// `zlaset('Full', n, n, 0, 1, a)`: set `a` to the identity.
+fn zlaset_identity(a: &mut [Complex64], n: usize) {
+    for j in 0..n {
+        for i in 0..n {
+            a[i + j * n] = if i == j { zone() } else { zzero() };
+        }
+    }
+}
+
+/// Normalise the columns of `v` so that the largest `ABS1` entry is 1, as the
+/// reference's `zggev` does after undoing the balancing. Columns whose largest
+/// entry is below `smlnum` are left alone.
+fn zggev_normalize(n: usize, smlnum: f64, v: &mut [Complex64], ldv: usize) {
+    for jc in 0..n {
+        let mut temp = 0.0f64;
+        for jr in 0..n {
+            temp = temp.max(zabs1(v[jr + jc * ldv]));
+        }
+        if temp < smlnum {
+            continue;
+        }
+        let temp = 1.0 / temp;
+        for jr in 0..n {
+            v[jr + jc * ldv] = v[jr + jc * ldv] * temp;
+        }
+    }
+}
+
+/// `zggev`: the generalised eigenvalues of the pair `(a, b)` and, optionally,
+/// the left and/or right generalised eigenvectors.
+///
+/// This follows LAPACK 3.12.1's `zggev` with `JOBVL`/`JOBVR` decoded into
+/// `calc_vl`/`calc_vr`. On exit `a` and `b` are overwritten, `alpha` and `beta`
+/// hold the eigenvalues as `alpha / beta` (`beta` real and non-negative), and
+/// `vl`/`vr` hold the eigenvectors in columns. The return value is the
+/// reference's `INFO`: 0 on success, `1..=n` when the QZ iteration did not
+/// converge, and `n + 2` when `ztgevc` failed.
+#[allow(clippy::too_many_arguments)]
+pub fn zggev(
+    calc_vl: bool,
+    calc_vr: bool,
+    n: usize,
+    a: &mut [Complex64],
+    b: &mut [Complex64],
+    alpha: &mut [Complex64],
+    beta: &mut [Complex64],
+    vl: &mut [Complex64],
+    vr: &mut [Complex64],
+) -> usize {
+    assert_eq!(a.len(), n * n, "zggev: a must be n*n");
+    assert_eq!(b.len(), n * n, "zggev: b must be n*n");
+    assert_eq!(alpha.len(), n, "zggev: alpha must have n entries");
+    assert_eq!(beta.len(), n, "zggev: beta must have n entries");
+    if calc_vl {
+        assert_eq!(vl.len(), n * n, "zggev: vl must be n*n");
+    }
+    if calc_vr {
+        assert_eq!(vr.len(), n * n, "zggev: vr must be n*n");
+    }
+
+    if n == 0 {
+        return 0;
+    }
+    let ilv = calc_vl || calc_vr;
+    let lda = n;
+    let ldb = n;
+
+    // Machine constants.
+    let eps = ULP; // DLAMCH('E') * DLAMCH('B')
+    let smlnum0 = SAFMIN;
+    let smlnum = smlnum0.sqrt() / eps;
+    let bignum = 1.0 / smlnum;
+
+    // Scale A if its norm is outside [smlnum, bignum].
+    let anrm = zlange_m(a, n, n, n);
+    let mut ilascl = false;
+    let mut anrmto = 0.0;
+    if anrm > 0.0 && anrm < smlnum {
+        anrmto = smlnum;
+        ilascl = true;
+    } else if anrm > bignum {
+        anrmto = bignum;
+        ilascl = true;
+    }
+    if ilascl {
+        zlascl_g(anrm, anrmto, a, lda, n, n);
+    }
+
+    // Scale B likewise.
+    let bnrm = zlange_m(b, n, n, n);
+    let mut ilbscl = false;
+    let mut bnrmto = 0.0;
+    if bnrm > 0.0 && bnrm < smlnum {
+        bnrmto = smlnum;
+        ilbscl = true;
+    } else if bnrm > bignum {
+        bnrmto = bignum;
+        ilbscl = true;
+    }
+    if ilbscl {
+        zlascl_g(bnrm, bnrmto, b, ldb, n, n);
+    }
+
+    // Permute the matrices to isolate eigenvalues.
+    let (ilo, ihi, lscale, rscale) = zggbal_p(n, a, lda, b, ldb);
+    let ihi0 = ihi - 1; // 0-based inclusive
+
+    // Reduce B to triangular form (QR of B).
+    let irows = ihi - ilo;
+    let icols = if ilv { n - ilo } else { irows };
+    let mut tau = vec![zzero(); irows.max(1)];
+    zgeqr2(b, ldb, ilo, ilo, irows, icols, &mut tau);
+
+    // Apply the unitary transformation to A.
+    zunm2r_left_conj(a, lda, ilo, ilo, irows, icols, b, ldb, ilo, ilo, irows, &tau);
+
+    // Initialise VL then generate Q in it.
+    if calc_vl {
+        zlaset_identity(vl, n);
+        if irows > 1 {
+            // zlacpy('L', irows-1, irows-1, B(ilo+1,ilo), ldb, VL(ilo+1,ilo), n).
+            for r in 1..irows {
+                for c in 1..=r {
+                    vl[(ilo + r) + (ilo + c - 1) * n] = b[(ilo + r) + (ilo + c - 1) * n];
+                }
+            }
+        }
+        zung2r_sub(vl, n, ilo, ilo, irows, irows, irows, &tau);
+    }
+
+    // Initialise VR.
+    if calc_vr {
+        zlaset_identity(vr, n);
+    }
+
+    // Reduce to generalised Hessenberg form.
+    zgghrd(calc_vl, calc_vr, n, ilo, ihi0, a, lda, b, ldb, vl, n, vr, n);
+
+    // Perform the QZ algorithm.
+    let ierr = zhgeqz(
+        ilv, calc_vl, calc_vr, n, ilo, ihi0, a, lda, b, ldb, alpha, beta, vl, n, vr, n,
+    );
+    if ierr != 0 {
+        if ierr <= n {
+            return ierr;
+        } else if ierr <= 2 * n {
+            return ierr - n;
+        }
+        return n + 1;
+    }
+
+    // Compute the eigenvectors.
+    if ilv {
+        let bad = ztgevc(calc_vl, calc_vr, n, a, lda, b, ldb, vl, n, vr, n);
+        if bad {
+            return n + 2;
+        }
+        // Undo the balancing on VL and VR, and normalise.
+        if calc_vl {
+            zggbak_p(false, n, ilo, ihi0, &lscale, &rscale, n, vl, n);
+            zggev_normalize(n, smlnum, vl, n);
+        }
+        if calc_vr {
+            zggbak_p(true, n, ilo, ihi0, &lscale, &rscale, n, vr, n);
+            zggev_normalize(n, smlnum, vr, n);
+        }
+    }
+
+    // Undo the scaling if necessary.
+    if ilascl {
+        let f = anrm / anrmto;
+        for i in 0..n {
+            alpha[i] = alpha[i] * f;
+        }
+    }
+    if ilbscl {
+        let f = bnrm / bnrmto;
+        for i in 0..n {
+            beta[i] = beta[i] * f;
+        }
+    }
+
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3259,6 +4953,216 @@ mod tests {
             let left = worst_left_residual(&a, &b, n, &ar, &ai, &be, &u);
             assert!(right / scale < 1e-8, "trial {trial} n={n}: right residual = {right}");
             assert!(left / scale < 1e-8, "trial {trial} n={n}: left residual = {left}");
+        }
+    }
+
+    /// Run the native `zggev` on copies of the pair and return
+    /// `(alpha, beta, u, v)`.
+    #[allow(clippy::type_complexity)]
+    fn zggev_solve(
+        a: &[Complex64],
+        b: &[Complex64],
+        n: usize,
+    ) -> (Vec<Complex64>, Vec<Complex64>, Vec<Complex64>, Vec<Complex64>) {
+        let mut aw = a.to_vec();
+        let mut bw = b.to_vec();
+        let mut alpha = vec![zzero(); n];
+        let mut beta = vec![zzero(); n];
+        let mut u = vec![zzero(); n * n];
+        let mut v = vec![zzero(); n * n];
+        let info = zggev(true, true, n, &mut aw, &mut bw, &mut alpha, &mut beta, &mut u, &mut v);
+        assert_eq!(info, 0, "zggev reported info = {info}");
+        (alpha, beta, u, v)
+    }
+
+    #[test]
+    fn zggev_satisfies_the_defining_equation() {
+        // A genuinely complex pair (every entry has a non-zero imaginary part,
+        // so a missing conjugate somewhere cannot cancel out) with a Hermitian
+        // positive definite `B = R^H R + n I`, chosen so that no eigenvalue is
+        // infinite.
+        const N: usize = 4;
+        #[rustfmt::skip]
+        let a = [
+            Complex64::new( 1.0,  2.0), Complex64::new( 0.0, -1.0), Complex64::new( 2.0,  1.0), Complex64::new( 1.0, -1.0),
+            Complex64::new( 3.0, -1.0), Complex64::new( 2.0,  3.0), Complex64::new( 0.0,  2.0), Complex64::new( 2.0,  0.0),
+            Complex64::new( 2.0,  0.0), Complex64::new( 1.0,  1.0), Complex64::new( 3.0, -1.0), Complex64::new( 0.0,  1.0),
+            Complex64::new( 0.0,  1.0), Complex64::new( 4.0, -2.0), Complex64::new( 1.0,  0.0), Complex64::new( 2.0,  2.0),
+        ];
+        #[rustfmt::skip]
+        let r = [
+            Complex64::new( 1.0,  1.0), Complex64::new( 0.0,  0.0), Complex64::new( 1.0,  0.0), Complex64::new( 0.0,  0.0),
+            Complex64::new( 0.0,  0.0), Complex64::new( 2.0, -1.0), Complex64::new( 0.0,  0.0), Complex64::new( 1.0,  0.0),
+            Complex64::new( 1.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 1.0,  2.0), Complex64::new( 0.0,  0.0),
+            Complex64::new( 0.0,  0.0), Complex64::new( 1.0,  0.0), Complex64::new( 0.0,  0.0), Complex64::new( 2.0,  1.0),
+        ];
+        // B = R^H R + n I.
+        let mut b = [zzero(); N * N];
+        for i in 0..N {
+            for j in 0..N {
+                let mut sum = zzero();
+                for k in 0..N {
+                    sum += r[k + i * N].conj() * r[k + j * N];
+                }
+                b[i + j * N] = if i == j {
+                    sum + Complex64::new(N as f64, 0.0)
+                } else {
+                    sum
+                };
+            }
+        }
+
+        let (alpha, beta, u, v) = zggev_solve(&a, &b, N);
+
+        // `B` is definite, so every `beta` is non-zero (and, as the reference
+        // requires, real and non-negative). If this ever stops holding, the
+        // residual below would compare infinities instead of failing honestly.
+        for j in 0..N {
+            assert!(beta[j].im == 0.0, "beta[{j}] should be real: {}", beta[j]);
+            assert!(beta[j].re > 1e-8, "beta[{j}] = {} should be non-zero", beta[j]);
+        }
+
+        // The defining equation, for every right eigenvector:
+        //     A v_j = lambda_j B v_j,   lambda_j = alpha_j / beta_j.
+        for j in 0..N {
+            let lambda = alpha[j] / beta[j];
+            for i in 0..N {
+                let mut av = zzero();
+                let mut bv = zzero();
+                for k in 0..N {
+                    av += a[i + k * N] * v[k + j * N];
+                    bv += b[i + k * N] * v[k + j * N];
+                }
+                let resid = av - lambda * bv;
+                assert!(
+                    resid.norm() < 1e-11,
+                    "right eigenvector {j}, row {i}: residual = {resid}"
+                );
+            }
+        }
+
+        // The left eigenvectors satisfy u_j^H A = lambda_j u_j^H B.
+        for j in 0..N {
+            let lambda = alpha[j] / beta[j];
+            for i in 0..N {
+                let mut au = zzero();
+                let mut bu = zzero();
+                for k in 0..N {
+                    au += u[k + j * N].conj() * a[k + i * N];
+                    bu += u[k + j * N].conj() * b[k + i * N];
+                }
+                let resid = au - lambda * bu;
+                assert!(
+                    resid.norm() < 1e-11,
+                    "left eigenvector {j}, col {i}: residual = {resid}"
+                );
+            }
+        }
+
+        // The values LAPACK 3.12.1's own `zggev` returns for this pair, in the
+        // same order, so the QZ iteration and the balancing are checked against
+        // the reference and not merely self-consistently.
+        let alpha_ref = [
+            Complex64::new(3.920168438253699e-01, 5.255147830858519e+00),
+            Complex64::new(-1.150893246652945e+00, 9.439744406542160e-01),
+            Complex64::new(5.214715653920524e+00, 1.627879167945076e+00),
+            Complex64::new(2.174485077144718e+00, -1.398564397480211e+00),
+        ];
+        let beta_ref = [
+            Complex64::new(6.520111926148862e+00, 0.0),
+            Complex64::new(7.567188908625723e+00, 0.0),
+            Complex64::new(1.057904013366485e+01, 0.0),
+            Complex64::new(9.962479757893947e+00, 0.0),
+        ];
+        for j in 0..N {
+            assert!((alpha[j] - alpha_ref[j]).norm() < 1e-10, "alpha[{j}] = {}", alpha[j]);
+            assert!((beta[j] - beta_ref[j]).norm() < 1e-10, "beta[{j}] = {}", beta[j]);
+        }
+    }
+
+    /// A deterministic pseudo-random sweep of complex pencils, half of them with
+    /// a singular `B`, so the infinite eigenvalues and the `t(j,j) = 0`
+    /// deflation are exercised. Both the right and the left defining equations
+    /// are checked with the backward-error measure appropriate to each
+    /// eigenvalue (a near-zero `beta` makes `lambda = alpha / beta` huge, so its
+    /// residual is judged against `|lambda|` too).
+    #[test]
+    fn zggev_survives_a_pseudo_random_sweep() {
+        fn next(state: &mut u64) -> f64 {
+            *state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((*state >> 11) as f64) / ((1u64 << 53) as f64) * 2.0 - 1.0
+        }
+        let mut state: u64 = 20261016;
+        for trial in 0..160usize {
+            let n = 1 + (trial % 8);
+            // Fill column-major, as the routine and the reference both expect.
+            let mut a = vec![zzero(); n * n];
+            let mut b = vec![zzero(); n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    a[i + j * n] = Complex64::new(next(&mut state) * 3.0, next(&mut state) * 3.0);
+                    b[i + j * n] = Complex64::new(next(&mut state) * 3.0, next(&mut state) * 3.0);
+                }
+            }
+            if trial % 2 == 0 && n > 1 {
+                // Make the last row a combination of the first two, so `B` is
+                // singular and one eigenvalue is infinite.
+                for j in 0..n {
+                    b[(n - 1) + j * n] = b[j * n] + Complex64::new(2.0, 0.0) * b[1 + j * n];
+                }
+            }
+            let (alpha, beta, u, v) = zggev_solve(&a, &b, n);
+            let ascale = 1.0f64.max(a.iter().map(|z| z.norm()).fold(0.0, f64::max));
+            let bscale = 1.0f64.max(b.iter().map(|z| z.norm()).fold(0.0, f64::max));
+            for j in 0..n {
+                assert!(
+                    beta[j].im == 0.0 && beta[j].re >= 0.0,
+                    "trial {trial}: beta[{j}] = {} should be real and non-negative",
+                    beta[j]
+                );
+                // `0 / 0` (a singular pencil) leaves an arbitrary vector, so
+                // only the genuinely infinite eigenvalues carry information.
+                let finite = beta[j].re != 0.0;
+                let infinite = !finite && alpha[j].norm() > 1e-8 * ascale;
+                if !finite && !infinite {
+                    continue;
+                }
+                let lambda = if finite { alpha[j] / beta[j] } else { zzero() };
+                let denom = if finite {
+                    ascale + lambda.norm() * bscale
+                } else {
+                    bscale
+                };
+                for i in 0..n {
+                    let mut av = zzero();
+                    let mut bv = zzero();
+                    let mut au = zzero();
+                    let mut bu = zzero();
+                    for k in 0..n {
+                        av += a[i + k * n] * v[k + j * n];
+                        bv += b[i + k * n] * v[k + j * n];
+                        au += u[k + j * n].conj() * a[k + i * n];
+                        bu += u[k + j * n].conj() * b[k + i * n];
+                    }
+                    let (r, l) = if finite {
+                        ((av - lambda * bv).norm(), (au - lambda * bu).norm())
+                    } else {
+                        (bv.norm(), bu.norm())
+                    };
+                    assert!(
+                        r / denom < 1e-9,
+                        "trial {trial} n={n}: right ({i},{j}) residual {}",
+                        r / denom
+                    );
+                    assert!(
+                        l / denom < 1e-9,
+                        "trial {trial} n={n}: left ({i},{j}) residual {}",
+                        l / denom
+                    );
+                }
+            }
         }
     }
 }

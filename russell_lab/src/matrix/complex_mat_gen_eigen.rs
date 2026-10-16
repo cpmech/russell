@@ -130,6 +130,30 @@ pub fn complex_mat_gen_eigen(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // The reference is destructive, but the caller's matrices are left
+        // intact here because the acceptance test checks the defining equation
+        // against the originals. So work on copies.
+        let n = m;
+        let mut a_work = a.clone();
+        let mut b_work = b.clone();
+        let info = crate::native::lapack::qz::zggev(
+            false,
+            true,
+            n,
+            a_work.as_mut_data(),
+            b_work.as_mut_data(),
+            alpha.as_mut_data(),
+            beta.as_mut_data(),
+            &mut [],
+            v.as_mut_data(),
+        );
+        if info > 0 {
+            return Err("LAPACK ERROR (zggev): Iterations failed ");
+        }
+        return Ok(());
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         unsafe {
@@ -286,6 +310,29 @@ pub fn complex_mat_gen_eigen_lr(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // As in `complex_mat_gen_eigen`, the caller's matrices are left intact
+        // even though the reference overwrites them.
+        let n = m;
+        let mut a_work = a.clone();
+        let mut b_work = b.clone();
+        let info = crate::native::lapack::qz::zggev(
+            true,
+            true,
+            n,
+            a_work.as_mut_data(),
+            b_work.as_mut_data(),
+            alpha.as_mut_data(),
+            beta.as_mut_data(),
+            u.as_mut_data(),
+            v.as_mut_data(),
+        );
+        if info > 0 {
+            return Err("LAPACK ERROR (zggev): Iterations failed ");
+        }
+        return Ok(());
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         unsafe {

@@ -727,3 +727,157 @@ fn mat_eigen_lr_left_eigenvectors_satisfy_their_defining_equation() {
         }
     }
 }
+
+/// Singular value decomposition against the reference, for several shapes.
+///
+/// Unlike eigenvectors, singular values **are** unique, so they can be compared
+/// directly -- and they are compared in order, because the SVD is conventionally
+/// returned with them descending. That makes this test sensitive to an ordering
+/// mistake as well as a value mistake.
+///
+/// The rest of the test checks what the singular values alone cannot: that `U`
+/// and `V` are orthogonal (so the factorisation is a real SVD and not just the
+/// right spectrum), that `U S V^T` reconstructs `A`, and that `S` is
+/// non-negative. A routine that returned the right singular values with wrong
+/// vectors would pass a values-only check and fail these.
+///
+/// Shapes deliberately include tall (`m > n`), square, and wide (`m < n`), and
+/// the rank-deficient case of a duplicated column, because the two branches of a
+/// Golub-Reinsch implementation differ between them and the rank-deficient case
+/// is where a zero singular value exposes a missing deflation.
+#[test]
+fn dgesvd_agrees_with_the_reference() {
+    for (m, n) in [
+        (1usize, 1usize),
+        (2, 2),
+        (3, 2),
+        (2, 3),
+        (4, 3),
+        (3, 4),
+        (6, 4),
+        (4, 6),
+        (5, 5),
+    ] {
+        let a = rect_sample(m, n);
+        check_svd(&a, m, n, false);
+    }
+
+    // Rank deficient: make the last column a copy of the first.
+    for (m, n) in [(4usize, 3usize), (5, 5)] {
+        let mut a = rect_sample(m, n);
+        for i in 0..m {
+            let v = a.get(i, 0);
+            a.set(i, n - 1, v);
+        }
+        check_svd(&a, m, n, true);
+    }
+}
+
+/// A deterministic rectangular matrix, non-symmetric and with no zero entries.
+fn rect_sample(m: usize, n: usize) -> Matrix {
+    let mut a = Matrix::new(m, n);
+    for i in 0..m {
+        for j in 0..n {
+            a.set(
+                i,
+                j,
+                (((i * 7 + j * 13 + 3) % 11) as f64) - 5.0 + (i as f64) * 0.25 - (j as f64) * 0.1,
+            );
+        }
+    }
+    a
+}
+
+/// The four things an SVD must satisfy, plus the comparison against the
+/// reference. `rank_deficient` relaxes only the tolerance on the smallest
+/// singular value, which is genuinely ill-conditioned there.
+fn check_svd(a: &Matrix, m: usize, n: usize, rank_deficient: bool) {
+    let min_mn = m.min(n);
+    let label = format!("{m}x{n}{}", if rank_deficient { " (rank deficient)" } else { "" });
+
+    let mut work = a.clone();
+    let mut s = Vector::new(min_mn);
+    let mut u = Matrix::new(m, m);
+    let mut vt = Matrix::new(n, n);
+    crate::mat_svd(&mut s, &mut u, &mut vt, &mut work).expect("native dgesvd");
+
+    let scale = a.as_data().iter().fold(0.0f64, |acc, x| acc.max(x.abs())).max(1.0);
+
+    // --- singular values against the reference, in order.
+    let mut a_ref = a.clone();
+    let mut s_ref = vec![0.0; min_mn];
+    let mut u_ref = vec![0.0; m * m];
+    let mut vt_ref = vec![0.0; n * n];
+    let info = oracle::query::dgesvd(a_ref.as_mut_data(), m, n, &mut s_ref, &mut u_ref, &mut vt_ref);
+    assert_eq!(info, 0, "{label}: reference dgesvd failed");
+    for i in 0..min_mn {
+        let tol = if rank_deficient && i == min_mn - 1 { 1e-8 } else { TOL };
+        assert!(
+            (s[i] - s_ref[i]).abs() / scale < tol,
+            "{label}: singular value {i} is {} but the reference says {}",
+            s[i],
+            s_ref[i]
+        );
+    }
+
+    // --- non-negative and descending.
+    for i in 0..min_mn {
+        assert!(s[i] >= 0.0, "{label}: singular value {i} is negative: {}", s[i]);
+        if i > 0 {
+            assert!(
+                s[i] <= s[i - 1] + 1e-12 * scale,
+                "{label}: singular values are not descending: {} then {}",
+                s[i - 1],
+                s[i]
+            );
+        }
+    }
+
+    // --- U orthogonal (m x m).
+    for i in 0..m {
+        for j in 0..m {
+            let mut dot = 0.0;
+            for k in 0..m {
+                dot += u.get(k, i) * u.get(k, j);
+            }
+            let want = if i == j { 1.0 } else { 0.0 };
+            assert!(
+                (dot - want).abs() < 1e-10,
+                "{label}: U columns {i},{j} are not orthonormal ({dot})"
+            );
+        }
+    }
+
+    // --- V orthogonal (n x n), stored transposed.
+    for i in 0..n {
+        for j in 0..n {
+            let mut dot = 0.0;
+            for k in 0..n {
+                // vt rows are V's columns, so vt[i][k] * vt[j][k] is V col i . V col j
+                dot += vt.get(i, k) * vt.get(j, k);
+            }
+            let want = if i == j { 1.0 } else { 0.0 };
+            assert!(
+                (dot - want).abs() < 1e-10,
+                "{label}: V columns {i},{j} are not orthonormal ({dot})"
+            );
+        }
+    }
+
+    // --- U S V^T reconstructs A. This is the check that catches vectors which
+    //     are individually fine but paired with the wrong singular value.
+    let mut worst = 0.0f64;
+    for i in 0..m {
+        for j in 0..n {
+            let mut sum = 0.0;
+            for k in 0..min_mn {
+                sum += u.get(i, k) * s[k] * vt.get(k, j);
+            }
+            worst = worst.max((sum - a.get(i, j)).abs());
+        }
+    }
+    assert!(
+        worst / scale < 1e-10,
+        "{label}: U S V^T does not reconstruct A (worst element error {worst}, scale {scale})"
+    );
+}

@@ -284,14 +284,25 @@ pub fn dlange_by_code(norm_code: i32, a: &[f64], m: usize, n: usize) -> f64 {
 
 /// The BLAS norm character for a `crate::Norm` discriminant.
 ///
-/// An unrecognised code falls back to Frobenius rather than panicking, which is
-/// what the C shim does.
+/// This must agree with the mapping in `c_code/interface_blas.c`, which is the
+/// source of truth: the discriminants are `0` Euc, `1` Fro, `2` Inf, `3` Max,
+/// `4` One, and the shim sends `0|1` to `"F"`, `2` to `"I"`, `3` to `"M"` and
+/// anything else to `"O"`.
+///
+/// Note there is no `"1"` case: `Norm::One` reaches `"O"`, LAPACK's one-norm.
+/// Mapping by position instead of by constant is the trap here -- an earlier
+/// version of this function sent `1` to `"1"` and `4` to `"M"`, which made every
+/// norm silently wrong.
 pub fn norm_char(norm_code: i32) -> char {
-    match norm_code {
-        1 => '1',
-        2 => 'I',
-        4 => 'M',
-        _ => 'F',
+    use crate::internal::{NORM_EUC, NORM_FRO, NORM_INF, NORM_MAX};
+    if norm_code == NORM_EUC as i32 || norm_code == NORM_FRO as i32 {
+        'F'
+    } else if norm_code == NORM_INF as i32 {
+        'I'
+    } else if norm_code == NORM_MAX as i32 {
+        'M'
+    } else {
+        'O'
     }
 }
 

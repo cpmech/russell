@@ -249,7 +249,9 @@ pub fn dlange(norm: char, a: &[f64], m: usize, n: usize) -> f64 {
     assert_eq!(a.len(), m * n, "dlange: a must be m*n");
     match norm {
         'M' | 'm' => a.iter().fold(0.0f64, |acc, v| acc.max(v.abs())),
-        '1' => {
+        // 'O' is LAPACK's other spelling of the one-norm, and is what the C shim
+        // sends for `Norm::One`.
+        '1' | 'O' | 'o' => {
             // Maximum column sum.
             (0..n)
                 .map(|j| a[j * m..(j + 1) * m].iter().map(|v| v.abs()).sum::<f64>())
@@ -262,7 +264,7 @@ pub fn dlange(norm: char, a: &[f64], m: usize, n: usize) -> f64 {
                 .fold(0.0f64, f64::max)
         }
         'F' | 'f' | 'E' | 'e' => dnrm2(a),
-        other => panic!("dlange: unrecognised norm '{other}'; expected one of 1, I, F, E, M"),
+        other => panic!("dlange: unrecognised norm '{other}'; expected one of 1, O, I, F, E, M"),
     }
 }
 
@@ -577,7 +579,7 @@ pub fn zsyrk(alpha: Complex64, a: &[Complex64], beta: Complex64, c: &mut [Comple
 
 /// `|A|` for a complex matrix (zlange), returning a real norm.
 ///
-/// `norm` is `'1'`, `'I'`, `'F'`/`'E'` or `'M'`, as in [`dlange`]. The one- and
+/// `norm` is `'1'`/`'O'`, `'I'`, `'F'`/`'E'` or `'M'`, as in [`dlange`]. The one- and
 /// infinity-norms use the modulus of each entry, as LAPACK specifies.
 ///
 /// # Panics
@@ -587,8 +589,9 @@ pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
     assert_eq!(a.len(), m * n, "zlange: a must be m*n");
     match norm {
         'M' | 'm' => a.iter().fold(0.0f64, |acc, v| acc.max(v.norm())),
-        '1' => {
-            // Maximum column sum of moduli.
+        '1' | 'O' | 'o' => {
+            // Maximum column sum of moduli. 'O' is LAPACK's other one-norm
+            // spelling and is what the C shim sends.
             (0..n)
                 .map(|j| a[j * m..(j + 1) * m].iter().map(|v| v.norm()).sum::<f64>())
                 .fold(0.0f64, f64::max)
@@ -604,7 +607,7 @@ pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
             let sum: f64 = a.iter().map(|v| v.norm_sqr()).sum();
             sum.sqrt()
         }
-        other => panic!("zlange: unrecognised norm '{other}'; expected one of 1, I, F, E, M"),
+        other => panic!("zlange: unrecognised norm '{other}'; expected one of 1, O, I, F, E, M"),
     }
 }
 
@@ -623,11 +626,32 @@ pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
 /// Panics if the shapes are inconsistent.
 #[allow(clippy::too_many_arguments)]
 pub fn dsyrk_rank(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: usize, upper: bool, transposed: bool) {
-    let _ = transposed;
-    // In both cases `a` holds n*k values and the contraction is over k, so the
-    // arithmetic is identical; only the indexing differs, and [`dsyrk`] already
-    // implements exactly `C(n,n) = alpha * A(n,k) A(n,k)^T + beta C`.
-    dsyrk(alpha, a, beta, c, n, k, upper);
+    if !transposed {
+        // C := alpha A A^T with A of (n, k): the contraction is over A's columns,
+        // which is exactly what `dsyrk` does.
+        dsyrk(alpha, a, beta, c, n, k, upper);
+        return;
+    }
+
+    // C := alpha A^T A with A of (k, n). The *output* is still (n, n), but the
+    // contraction runs over A's k rows -- so `k` here is the row count, and
+    // delegating to `dsyrk` with the same arguments would contract over the wrong
+    // length. This was wrong once: it produced 39 where 15 was expected.
+    assert_eq!(a.len(), k * n, "dsyrk_rank: a must be k*n");
+    assert_eq!(c.len(), n * n, "dsyrk_rank: c must be n*n");
+
+    for j in 0..n {
+        let i_range = if upper { 0..j + 1 } else { j..n };
+        for i in i_range {
+            let mut sum = 0.0;
+            for l in 0..k {
+                // a[l][i] * a[l][j], with a of (k, n) column-major.
+                sum += a[l + i * k] * a[l + j * k];
+            }
+            let idx = i + j * n;
+            c[idx] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * c[idx] };
+        }
+    }
 }
 
 /// `y := alpha * A^T * x + beta * y` for complex data (zgemv, trans = 'T').
@@ -651,5 +675,69 @@ pub fn zgemv_trans(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Com
             sum += col[i] * x[i];
         }
         y[j] = alpha * sum + beta * y[j];
+    }
+}
+
+/// `C := alpha * A^T * A + beta * C` for complex data (zsyrk, trans = 'T').
+///
+/// `a` is `k x n` column-major and `c` is `n x n`, so the contraction runs over
+/// `a`'s `k` rows. Not the same call as [`zsyrk`], which contracts over `a`'s
+/// columns; passing the same shapes to both is silently wrong.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zsyrk_rank(alpha: Complex64, a: &[Complex64], beta: Complex64, c: &mut [Complex64], n: usize, k: usize, upper: bool) {
+    assert_eq!(a.len(), k * n, "zsyrk_rank: a must be k*n");
+    assert_eq!(c.len(), n * n, "zsyrk_rank: c must be n*n");
+
+    for j in 0..n {
+        let i_range = if upper { 0..j + 1 } else { j..n };
+        for i in i_range {
+            let mut sum = Complex64::new(0.0, 0.0);
+            for l in 0..k {
+                sum += a[l + i * k] * a[l + j * k];
+            }
+            let idx = i + j * n;
+            c[idx] = alpha * sum + beta * c[idx];
+        }
+    }
+}
+
+/// `C := alpha * A^H * A + beta * C` for complex data (zherk, trans = 'C').
+///
+/// `a` is `k x n` column-major, `c` is `n x n` and Hermitian. The diagonal is
+/// forced real, as it must be for a Hermitian matrix.
+///
+/// **Which operand is conjugated matters.** The entry is
+/// `sum_l a[l][i] * conj(a[l][j])`, so the conjugation is on the second index.
+/// Conjugating the first instead gives the complex conjugate of every
+/// off-diagonal entry, which is a different Hermitian matrix and is wrong -- it
+/// produced `15+5j` where `15-1j` was expected. Both look plausible, and only a
+/// test with a genuinely complex matrix distinguishes them.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zherk_rank(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n: usize, k: usize, upper: bool) {
+    assert_eq!(a.len(), k * n, "zherk_rank: a must be k*n");
+    assert_eq!(c.len(), n * n, "zherk_rank: c must be n*n");
+
+    for j in 0..n {
+        let i_range = if upper { 0..j + 1 } else { j..n };
+        for i in i_range {
+            let mut sum = Complex64::new(0.0, 0.0);
+            for l in 0..k {
+                // a[l][i] * conj(a[l][j]): the conjugation is on `j`, not `i`.
+                sum += a[l + i * k] * a[l + j * k].conj();
+            }
+            let idx = i + j * n;
+            let mut v = Complex64::new(alpha * sum.re, alpha * sum.im) + Complex64::new(beta * c[idx].re, beta * c[idx].im);
+            if i == j {
+                // A Hermitian diagonal is real by definition.
+                v.im = 0.0;
+            }
+            c[idx] = v;
+        }
     }
 }

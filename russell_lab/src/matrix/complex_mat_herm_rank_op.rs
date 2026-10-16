@@ -142,6 +142,21 @@ pub fn complex_mat_herm_rank_op(
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
+        if trans == CBLAS_CONJ_TRANS {
+            // C := alpha A^H A, contracting over A's k rows.
+            //
+            // NOT correct yet: the native kernel disagrees with the reference for
+            // a genuinely complex `a`. Conjugating the first index instead of the
+            // second gives 15+5j where the reference says 15-1j, and the two are
+            // each other's complex conjugate, so the shape and the real parts come
+            // out right and only the imaginary parts are wrong -- which is why this
+            // passed casual inspection.
+            //
+            // Reported rather than returned wrong: a silently wrong Hermitian
+            // factorisation is far worse than an error naming the feature to
+            // enable. The `'N'` case below is verified by the tests.
+            return Err("complex_mat_herm_rank_op: the A^H A case is not implemented in the native Rust kernels yet; build with `--features oblas` (or `mkl`)");
+        }
         crate::native::blas::zherk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
     }
     Ok(())

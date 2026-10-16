@@ -144,7 +144,12 @@ pub fn complex_mat_sym_rank_op(
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        crate::native::blas::zsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
+        if trans == CBLAS_TRANS {
+            // C := alpha A^T A, contraction over A's k rows.
+            crate::native::blas::zsyrk_rank(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
+        } else {
+            crate::native::blas::zsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
+        }
     }
     Ok(())
 }

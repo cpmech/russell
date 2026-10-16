@@ -188,6 +188,42 @@ Two lessons from this work are worth more than the rest, because both cost hours
    `dgeev_eigenvectors_satisfy_their_defining_equation` decomposing a zero
    matrix. When adding a test, check that a deliberate mistake makes it fail.
 
+### Performance: the blocking boundary
+
+Worth knowing before optimising, because the obvious move is the wrong one.
+
+`mat_mat_mul`'s native branch routes to `native::blas::dgemm`, a Goto-style
+blocked kernel with a 4x4 AVX2+FMA micro-kernel (MC=128, KC=256, NC=256), and
+`portable::mat_mat_mul_data` is kept only for `wasm32`. Benchmarks:
+`benchmarks/matmul_benchmark.rs` and `benchmarks/decomp_benchmark.rs`.
+
+**The LAPACK layer is BLAS-3-free end to end**, so the blocked `dgemm` does not
+accelerate any decomposition:
+
+| Routine | Kernel used | BLAS-3? |
+|---|---|---|
+| `dsyev` | `dsytd2`, reflectors via a hand-written `dgemv` loop | no |
+| `dgesvd` / `zgesvd` | `dgebd2` / `zgebd2` | no |
+| `dgeev`, `dhseqr` | `dlahqr` (`dlarfg`/`dlanv2`/`dlartg` only) | no |
+| `dggev` / `zggev` | `dhgeqz` | no |
+
+Measured single-core, release: `mat_mat_mul` went 2.2 -> 21 Gelem/s, while `dsyev`
+runs at 0.4 ns/flop (~2.8 GFLOP/s) and `dgesvd` at 0.2 ns/flop, against the
+kernel's 0.05 ns/flop. So the decompositions have roughly 4x-8x of headroom. That
+headroom is real but *much* smaller than the kernel change delivered, and the
+price is high: a blocked `dsytrd`/`dgebrd` is ~400 lines (`dlarft`/`dlarfb`), and
+`dlaqr0`+`dlaqr2`+`dlaqr3`+`dlaqr4`+`dlaqr5` is ~2000. The rules of thumb:
+
+* Port the blocked variant only when the target routine's flop count is dominated
+  by panel updates that can become `dgemm`. `dlahqr` can never benefit -- it has
+  no BLAS-3 to give.
+* The user-facing `mat_mat_mul` is where the kernel change pays, and it is the
+  entry point users actually call, which is why it was worth doing first.
+* `dlaqr0` has one benefit that is *not* about throughput: aggressive early
+  deflation detects converged eigenvalues many sweeps earlier, cutting the
+  iteration count independently of kernel speed. It is the only part with no
+  `dlahqr` analogue.
+
 ### Loose ends
 
 - ~190 compiler warnings, mostly unused imports and variables where the `oblas`

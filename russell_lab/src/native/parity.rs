@@ -17,7 +17,7 @@
 //! them leaves each implementation free to be organised differently.
 
 use super::lapack::{self, LapackError};
-use crate::internal::C_FALSE;
+use crate::internal::{C_FALSE, C_TRUE};
 use crate::oracle;
 use crate::{Matrix, Vector};
 
@@ -339,6 +339,194 @@ fn dhseqr_eigenvalues_agree_with_the_reference() {
                 got[i].1,
                 want[i].0,
                 want[i].1
+            );
+        }
+    }
+}
+
+/// A deterministic, well-conditioned, genuinely complex matrix.
+///
+/// Real or Hermitian data would hide a conjugation mistake, so the imaginary
+/// parts are non-zero everywhere.
+fn complex_sample(n: usize) -> crate::ComplexMatrix {
+    let mut a = crate::ComplexMatrix::new(n, n);
+    for i in 0..n {
+        for j in 0..n {
+            let re = if i == j {
+                (n as f64) + 2.0 + (i as f64) * 0.5
+            } else {
+                (((i * 5 + j * 7) % 9) as f64) - 4.0
+            };
+            let im = (((i * 3 + j * 11) % 7) as f64) - 3.0 + if i == j { 1.0 } else { 0.0 };
+            a.set(i, j, crate::cpx!(re, im));
+        }
+    }
+    a
+}
+
+/// Complex Cholesky against the reference, on both triangles.
+///
+/// Built as `A^H A + n I`, which is Hermitian positive definite by construction.
+/// Only the requested triangle is written by either side, so only that triangle
+/// is compared -- the rest legitimately holds whatever the caller had.
+#[test]
+fn complex_cholesky_agrees_with_the_reference() {
+    for n in [1usize, 2, 3, 6] {
+        let raw = complex_sample(n);
+        let mut t = crate::ComplexMatrix::new(n, n);
+        for i in 0..n {
+            for j in 0..n {
+                let mut s = crate::Complex64::new(0.0, 0.0);
+                for k in 0..n {
+                    s += raw.get(k, i).conj() * raw.get(k, j);
+                }
+                t.set(i, j, s);
+            }
+        }
+        for i in 0..n {
+            let d = t.get(i, i);
+            t.set(i, i, crate::cpx!(d.re + n as f64, 0.0));
+        }
+
+        for upper in [false, true] {
+            let mut l_native = t.clone();
+            let mut l_ref = t.clone();
+            crate::complex_mat_cholesky(&mut l_native, upper).expect("native Cholesky");
+            let mut info = 0i32;
+            let n_i32 = n as i32;
+            let c_upper = if upper { C_TRUE } else { C_FALSE };
+            unsafe {
+                oracle::oracle_c_zpotrf(c_upper, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
+            }
+            assert_eq!(info, 0, "reference zpotrf failed for n={n} upper={upper}");
+            for j in 0..n {
+                for i in 0..n {
+                    if (upper && i <= j) || (!upper && i >= j) {
+                        let got = l_native.get(i, j);
+                        let want = l_ref.get(i, j);
+                        let scale = want.norm().max(1.0);
+                        assert!(
+                            (got - want).norm() / scale < TOL,
+                            "n={n} upper={upper}: Cholesky differs at ({i},{j}): {got} vs {want}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Complex inverse against the reference, element-wise.
+///
+/// The inverse is unique, so this is a fair comparison -- and it is the one that
+/// catches a conjugation error, which any invariant-based check would miss.
+#[test]
+fn complex_inverse_agrees_with_the_reference() {
+    for n in [1usize, 2, 3, 5, 8] {
+        let a = complex_sample(n);
+        let mut inv_native = crate::ComplexMatrix::new(n, n);
+        crate::complex_mat_inverse(&mut inv_native, &a).expect("native inverse");
+
+        // Reference: zgetrf then zgetri, through the shims.
+        let n_i32 = n as i32;
+        let mut lu = a.clone();
+        let mut ipiv = vec![0i32; n];
+        let mut info = 0i32;
+        unsafe {
+            oracle::oracle_c_zgetrf(
+                &n_i32,
+                &n_i32,
+                lu.as_mut_data().as_mut_ptr(),
+                &n_i32,
+                ipiv.as_mut_ptr(),
+                &mut info,
+            );
+        }
+        assert_eq!(info, 0, "reference zgetrf failed for n={n}");
+        let mut work = vec![crate::Complex64::new(0.0, 0.0); n.max(1)];
+        unsafe {
+            oracle::oracle_c_zgetri(
+                &n_i32,
+                lu.as_mut_data().as_mut_ptr(),
+                &n_i32,
+                ipiv.as_ptr(),
+                work.as_mut_ptr(),
+                &(work.len() as i32),
+                &mut info,
+            );
+        }
+        assert_eq!(info, 0, "reference zgetri failed for n={n}");
+
+        for i in 0..n {
+            for j in 0..n {
+                let got = inv_native.get(i, j);
+                let want = lu.get(i, j);
+                let scale = want.norm().max(1.0);
+                assert!(
+                    (got - want).norm() / scale < TOL,
+                    "n={n}: inverse differs at ({i},{j}): {got} vs {want}"
+                );
+            }
+        }
+    }
+}
+
+/// Complex solve against a known solution and against the reference.
+///
+/// The known solution is the stronger check: it does not depend on either
+/// implementation being right.
+#[test]
+fn complex_solve_agrees_with_the_reference() {
+    for n in [1usize, 2, 3, 5, 8] {
+        let a = complex_sample(n);
+
+        let mut x_true = crate::ComplexVector::new(n);
+        for i in 0..n {
+            x_true[i] = crate::cpx!(1.0 + (i as f64) * 0.5, -0.25 * (i as f64));
+        }
+        let mut b = crate::ComplexVector::new(n);
+        crate::complex_mat_vec_mul(&mut b, crate::Complex64::new(1.0, 0.0), &a, &x_true).unwrap();
+
+        // Native.
+        let mut a_work = a.clone();
+        let mut b_native = b.clone();
+        crate::complex_solve_lin_sys(&mut b_native, &mut a_work).expect("native solve");
+        for i in 0..n {
+            let scale = x_true[i].norm().max(1.0);
+            assert!(
+                (b_native[i] - x_true[i]).norm() / scale < TOL,
+                "n={n}: native solve recovered {} but the true x[{i}] is {}",
+                b_native[i],
+                x_true[i]
+            );
+        }
+
+        // Reference.
+        let n_i32 = n as i32;
+        let mut a_ref = a.clone();
+        let mut b_ref = b.clone();
+        let mut ipiv = vec![0i32; n];
+        let mut info = 0i32;
+        unsafe {
+            oracle::oracle_c_zgesv(
+                &n_i32,
+                &1i32,
+                a_ref.as_mut_data().as_mut_ptr(),
+                &n_i32,
+                ipiv.as_mut_ptr(),
+                b_ref.as_mut_data().as_mut_ptr(),
+                &n_i32,
+                &mut info,
+            );
+        }
+        assert_eq!(info, 0, "reference zgesv failed for n={n}");
+        for i in 0..n {
+            let scale = b_ref[i].norm().max(1.0);
+            assert!(
+                (b_native[i] - b_ref[i]).norm() / scale < TOL,
+                "n={n}: solve differs at {i}: {} vs the reference's {}",
+                b_native[i],
+                b_ref[i]
             );
         }
     }

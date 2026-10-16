@@ -26,6 +26,7 @@
 
 #![allow(dead_code)]
 
+use crate::Complex64;
 use crate::internal::{C_TRUE, CcBool};
 
 unsafe extern "C" {
@@ -58,6 +59,46 @@ unsafe extern "C" {
 
     /// `dpotrf`: Cholesky factorisation. `upper` selects the triangle to write.
     pub fn oracle_c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
+
+    /// `zgetrf`: LU factorisation of a complex matrix.
+    ///
+    /// `COMPLEX64` in the C shim is `lapack_complex_double`, which is two
+    /// `double`s in sequence, so `Complex64` (which is `#[repr(C)] { re, im }`)
+    /// is layout-compatible and can be passed directly.
+    pub fn oracle_c_zgetrf(
+        m: *const i32,
+        n: *const i32,
+        a: *mut Complex64,
+        lda: *const i32,
+        ipiv: *mut i32,
+        info: *mut i32,
+    );
+
+    /// `zgetri`: complex inverse from a `zgetrf` factorisation.
+    pub fn oracle_c_zgetri(
+        n: *const i32,
+        a: *mut Complex64,
+        lda: *const i32,
+        ipiv: *const i32,
+        work: *mut Complex64,
+        lwork: *const i32,
+        info: *mut i32,
+    );
+
+    /// `zgesv`: complex solve `A X = B`.
+    pub fn oracle_c_zgesv(
+        n: *const i32,
+        nrhs: *const i32,
+        a: *mut Complex64,
+        lda: *const i32,
+        ipiv: *mut i32,
+        b: *mut Complex64,
+        ldb: *const i32,
+        info: *mut i32,
+    );
+
+    /// `zpotrf`: Hermitian positive-definite Cholesky.
+    pub fn oracle_c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);
 
     /// `dsyev`: eigenvalues (and optionally eigenvectors) of a symmetric matrix.
     pub fn oracle_c_dsyev(

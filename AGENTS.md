@@ -74,7 +74,12 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib     # 1047 pass, 61 fail
+cargo test -p russell_lab --lib                     # 1047 pass, 61 fail
+cargo test -p russell_lab --lib --features oracle   # 1051 pass, 61 fail
+
+Both configurations are known-good as of commit `84c5bbd7`. The oracle adds the
+four parity tests but is otherwise the same native path, so the failure count is
+identical.
 ```
 
 The failures are **not** all the same kind, and sorting them out is the first job:
@@ -126,6 +131,10 @@ LAPACK through the `oracle` feature (see above) for `dgesv`, `dgetrf`+`dgetri`,
 `dpotrf`, and singular-matrix detection, at 1e-10 relative. Extend those parity
 tests as routines are added — they are what caught the `dpotrf` triangle
 misunderstanding.
+
+Run the oracle tests in the same target directory as the default build. Mixing
+`--features oracle` with `--features oblas` will not link: both provide the BLAS
+symbols.
 
 ### Loose ends
 

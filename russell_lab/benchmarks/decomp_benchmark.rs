@@ -37,7 +37,7 @@ fn sym_data(n: usize) -> Vec<f64> {
 
 fn main() {
     // dsyev, called directly so the timing is the routine and nothing else.
-    println!("dsyev (dsytd2 + dsteqr, no BLAS-3):");
+    println!("dsyev (dsytrd/dsytd2 by size + dsteqr):");
     for n in [100usize, 200, 400, 600] {
         let mut a = sym_data(n);
         let mut w = vec![0.0; n];

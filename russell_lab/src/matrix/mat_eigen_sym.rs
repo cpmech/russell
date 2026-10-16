@@ -99,7 +99,12 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dsyev"));
+        // The native routine has the same contract as `dsyev(JOBZ='V', ...)`:
+        // `a` is destroyed and holds the eigenvectors as columns, `l` receives
+        // the eigenvalues in ascending order, and `upper` picks the triangle
+        // that is read.
+        return crate::native::lapack::sym::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper)
+            .map_err(|_| "LAPACK ERROR (dsyev): An argument had an illegal value");
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

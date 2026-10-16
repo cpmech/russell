@@ -32,13 +32,16 @@ dependency declaration.
 
 ### What the native backend does not implement yet
 
-The general eigen-decomposition (`dgeev`) is implemented, with eigenvalues and
-right eigenvectors, verified against reference LAPACK's eigenvalues and by the
-eigenvector residual. Left eigenvectors (`mat_eigen_lr`) are not: it reports
-`NotImplemented` rather than returning a wrong matrix. The symmetric
-eigen-decomposition (`dsyev`), the generalised one (`dggev`), the SVD
-(`dgesvd`), and everything complex (`zpotrf`, `zgetrf`, `zgetri`, `zgesv`,
-`zheev`, `zgeev`, `zggev`, `zgesvd`) are not written yet. Calling one returns a runtime error naming
+The general eigen-decomposition (`dgeev`) is implemented -- the full five-step
+pipeline including balancing -- with eigenvalues and right eigenvectors, verified
+against reference LAPACK's eigenvalues and by the eigenvector residual. The
+complex LU/inverse/solve/Cholesky (`zgetrf`, `zgetri`, `zgesv`, `zpotrf`) are
+also done, verified element-wise against the reference.
+
+Left eigenvectors (`mat_eigen_lr`) are not: it reports `NotImplemented` rather
+than returning a wrong matrix. The symmetric eigen-decomposition (`dsyev`), the
+generalised one (`dggev`), the SVD (`dgesvd`), and the complex
+eigen-decompositions (`zheev`, `zgeev`, `zggev`, `zgesvd`) are not written yet. Calling one returns a runtime error naming
 the feature to enable — deliberately *not* a link error, so the rest of the suite
 still builds and runs. Build with `--features oblas` (or `mkl`) when you need
 them.
@@ -78,10 +81,10 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1067 pass, 54 fail, 0 ignored
+cargo test -p russell_lab --lib                     # 1083 pass, 38 fail, 0 ignored
 cargo test -p russell_lab --lib --features oracle   # same, plus the four parity tests
 
-Both configurations are known-good as of commit `b6dc7447`. The oracle adds the
+Both configurations are known-good as of commit `3cf99933`. The oracle adds the
 four parity tests but is otherwise the same native path, so the failure count is
 identical.
 

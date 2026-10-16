@@ -121,7 +121,7 @@ fn larf_right(tau: f64, v_tail: &[f64], c: &mut [f64], m: usize, n: usize, ldc: 
 /// The loop is the reference's: instead of forming `cto / cfrom` (which can
 /// overflow or underflow when the two are far apart) it multiplies by the largest
 /// safe factor repeatedly, tracking the running "from" value.
-fn dlascl_g(cfrom: f64, cto: f64, a: &mut [f64], lda: usize, m: usize, n: usize) {
+pub(crate) fn dlascl_g(cfrom: f64, cto: f64, a: &mut [f64], lda: usize, m: usize, n: usize) {
     if m == 0 || n == 0 {
         return;
     }
@@ -219,7 +219,7 @@ fn dlasr_v(side_left: bool, forward: bool, m: usize, n: usize, c: &[f64], s: &[f
 ///
 /// No vectors, so no square roots of differences: this is the cheap form used by
 /// `dbdsqr` only to choose a shift.
-fn dlas2(f: f64, g: f64, h: f64) -> (f64, f64) {
+pub(crate) fn dlas2(f: f64, g: f64, h: f64) -> (f64, f64) {
     let fa = f.abs();
     let ga = g.abs();
     let ha = h.abs();
@@ -258,7 +258,7 @@ fn dlas2(f: f64, g: f64, h: f64) -> (f64, f64) {
 /// Returns `(ssmin, ssmax, snr, csr, snl, csl)`, in the reference's argument
 /// order. `(csr, snr)` is the rotation from the right and `(csl, snl)` the one
 /// from the left; `dbdsqr` applies them to `VT` and `U` respectively.
-fn dlasv2(f: f64, g: f64, h: f64) -> (f64, f64, f64, f64, f64, f64) {
+pub(crate) fn dlasv2(f: f64, g: f64, h: f64) -> (f64, f64, f64, f64, f64, f64) {
     let half = 0.5;
     let mut ft = f;
     let mut fa = ft.abs();

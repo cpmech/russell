@@ -1,6 +1,7 @@
 use super::ComplexMatrix;
 use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>

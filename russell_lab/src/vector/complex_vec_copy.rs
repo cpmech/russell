@@ -1,6 +1,7 @@
 use super::ComplexVector;
 use crate::{Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>

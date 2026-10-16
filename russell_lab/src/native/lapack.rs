@@ -267,6 +267,24 @@ pub fn dpotrf(a: &mut [f64], n: usize) -> Result<(), LapackError> {
 /// `dlange` re-exported for symmetry with the C shim's surface.
 pub use super::blas::dlange;
 
+/// `dlange` selected by an integer code rather than a character.
+///
+/// The codes are the ones `crate::Norm`'s discriminants carry, so the dispatch in
+/// `mat_norm` can forward its value unchanged instead of mapping characters.
+/// They match LAPACK's own norm codes: 1 = one-norm, 2 = infinity, 3 =
+/// Frobenius, 4 = maximum absolute entry.
+pub fn dlange_by_code(norm_code: i32, a: &[f64], m: usize, n: usize) -> f64 {
+    let ch = match norm_code {
+        1 => '1',
+        2 => 'I',
+        4 => 'M',
+        // 3 is Frobenius, and anything unexpected is treated as Frobenius rather
+        // than panicking, matching the C shim's behaviour of defaulting to 'F'.
+        _ => 'F',
+    };
+    super::blas::dlange(ch, a, m, n)
+}
+
 /// Silence the unused-import warning when only some routines use the BLAS layer.
 #[allow(unused_imports)]
 use blas as _blas;

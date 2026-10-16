@@ -1,6 +1,7 @@
 use super::Vector;
 use crate::to_i32;
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Calculates the dot product of two vectors
     // <https://www.netlib.org/lapack/explore-html/d5/df6/ddot_8f.html>

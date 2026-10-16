@@ -2,6 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{CBLAS_COL_MAJOR, CBLAS_TRANS, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
     // <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>

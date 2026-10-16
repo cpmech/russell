@@ -1,6 +1,7 @@
 use super::ComplexMatrix;
 use crate::{C_FALSE, C_TRUE, CcBool, Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
     // <https://www.netlib.org/lapack/explore-html/d1/db9/zpotrf_8f.html>

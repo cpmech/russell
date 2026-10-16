@@ -2,6 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>

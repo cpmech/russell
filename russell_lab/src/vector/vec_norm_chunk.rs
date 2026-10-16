@@ -1,6 +1,7 @@
 use super::Vector;
 use crate::{Norm, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
     // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>

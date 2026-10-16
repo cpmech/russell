@@ -1,6 +1,7 @@
 use super::ComplexMatrix;
 use crate::{CBLAS_COL_MAJOR, CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Performs one of the hermitian rank k operations
     // <https://www.netlib.org/lapack/explore-html/d1/db1/zherk_8f.html>

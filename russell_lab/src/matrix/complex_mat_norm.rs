@@ -1,6 +1,7 @@
 use super::ComplexMatrix;
 use crate::{Complex64, Norm, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the matrix norm
     // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>

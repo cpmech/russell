@@ -1,6 +1,7 @@
 use super::ComplexVector;
 use crate::{Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes constant times a vector plus a vector
     // <https://www.netlib.org/lapack/explore-html/d7/db2/zaxpy_8f.html>

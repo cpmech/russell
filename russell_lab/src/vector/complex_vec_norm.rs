@@ -1,6 +1,7 @@
 use super::ComplexVector;
 use crate::{Complex64, Norm, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the Euclidean norm
     // <https://www.netlib.org/lapack/explore-html/d1/d5a/dznrm2_8f90.html>

@@ -2,6 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{SVD_CODE_A, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>

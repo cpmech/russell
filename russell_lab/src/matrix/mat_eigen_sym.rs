@@ -1,6 +1,7 @@
 use super::Matrix;
 use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a symmetric matrix
     // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>

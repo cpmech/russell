@@ -1,6 +1,7 @@
 use super::Matrix;
 use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Performs one of the symmetric rank k operations
     // <https://www.netlib.org/lapack/explore-html/dc/d05/dsyrk_8f.html>

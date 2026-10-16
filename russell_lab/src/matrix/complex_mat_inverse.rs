@@ -1,6 +1,7 @@
 use super::{ComplexMatrix, complex_mat_copy};
 use crate::{Complex64, StrError, cpx, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     // <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>

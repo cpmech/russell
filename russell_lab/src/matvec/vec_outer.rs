@@ -2,6 +2,7 @@ use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::{CBLAS_COL_MAJOR, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Performs the rank 1 operation (tensor product)
     // <https://www.netlib.org/lapack/explore-html/dc/da8/dger_8f.html>
@@ -58,24 +59,30 @@ pub fn vec_outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(
     if a.nrow() != m || a.ncol() != n {
         return Err("matrix and vectors are incompatible");
     }
-    let m_i32: i32 = to_i32(m);
-    let n_i32: i32 = to_i32(n);
-    let lda = m_i32;
     a.fill(0.0);
-    unsafe {
-        cblas_dger(
-            CBLAS_COL_MAJOR,
-            m_i32,
-            n_i32,
-            alpha,
-            u.as_data().as_ptr(),
-            1,
-            v.as_data().as_ptr(),
-            1,
-            a.as_mut_data().as_mut_ptr(),
-            lda,
-        )
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let m_i32: i32 = to_i32(m);
+        let n_i32: i32 = to_i32(n);
+        let lda = m_i32;
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_dger(
+                CBLAS_COL_MAJOR,
+                m_i32,
+                n_i32,
+                alpha,
+                u.as_data().as_ptr(),
+                1,
+                v.as_data().as_ptr(),
+                1,
+                a.as_mut_data().as_mut_ptr(),
+                lda,
+            )
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::dger(alpha, u.as_data(), v.as_data(), a.as_mut_data(), m, n);
     Ok(())
 }
 

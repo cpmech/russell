@@ -1,6 +1,7 @@
 use super::Matrix;
 use crate::{StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes constant times a vector plus a vector.
     // <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
@@ -45,10 +46,16 @@ pub fn mat_update(b: &mut Matrix, alpha: f64, a: &Matrix) -> Result<(), StrError
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    let mn_i32 = to_i32(m * n);
-    unsafe {
-        cblas_daxpy(mn_i32, alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    {
+        let mn_i32 = to_i32(m * n);
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_daxpy(mn_i32, alpha, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    crate::native::blas::daxpy(alpha, a.as_data(), b.as_mut_data());
     Ok(())
 }
 

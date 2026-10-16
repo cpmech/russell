@@ -1,6 +1,7 @@
 use super::Matrix;
 use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
     // <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>

@@ -1,6 +1,7 @@
 use super::Matrix;
 use crate::{C_FALSE, C_TRUE, CcBool, StrError, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the Cholesky factorization of a real symmetric positive definite matrix
     // <https://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>

@@ -1,6 +1,7 @@
 use super::ComplexMatrix;
 use crate::{Complex64, to_i32};
 
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>

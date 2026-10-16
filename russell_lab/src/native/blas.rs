@@ -114,6 +114,34 @@ pub fn dgemv(alpha: f64, a: &[f64], x: &[f64], beta: f64, y: &mut [f64], m: usiz
     }
 }
 
+/// `y := alpha * A^T * x + beta * y` (dgemv, trans = 'T').
+///
+/// `a` is `m x n` column-major with `m` rows, so `A^T` is `n x m`: `x` has `m`
+/// entries and `y` has `n`.
+///
+/// Implemented directly rather than through [`dgemv`], because transposing into a
+/// temporary would cost a full copy of the matrix for what is a change of loop
+/// order.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn dgemv_trans(alpha: f64, a: &[f64], x: &[f64], beta: f64, y: &mut [f64], m: usize, n: usize) {
+    assert_eq!(a.len(), m * n, "dgemv_trans: a must be m*n");
+    assert_eq!(x.len(), m, "dgemv_trans: x must have m entries");
+    assert_eq!(y.len(), n, "dgemv_trans: y must have n entries");
+
+    for j in 0..n {
+        // Row j of A^T is column j of A, so this is a dot product per column.
+        let col = &a[j * m..(j + 1) * m];
+        let mut sum = 0.0;
+        for i in 0..m {
+            sum += col[i] * x[i];
+        }
+        y[j] = if beta == 0.0 { alpha * sum } else { alpha * sum + beta * y[j] };
+    }
+}
+
 /// `A := alpha * x * y^T + A` (dger), with `A` `m x n` column-major.
 ///
 /// # Panics
@@ -350,5 +378,214 @@ mod tests {
     #[should_panic(expected = "unrecognised norm")]
     fn dlange_rejects_an_unknown_norm() {
         dlange('X', &[1.0], 1, 1);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Complex BLAS
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// `Complex64` is `#[repr(C)] { re: f64, im: f64 }`, so a slice of it is a
+// sequence of interleaved real/imaginary pairs and can be driven by the real
+// kernels applied to the two components separately. That is exact rather than an
+// approximation: BLAS's complex operations are defined componentwise in the
+// same way.
+//
+// The alternative -- viewing the buffer as `&[f64]` of twice the length and
+// treating the complex layout as a stride-2 real matrix -- would work too, but it
+// makes the *matrix* stride depend on the complex stride and is much easier to get
+// subtly wrong. Adapting the routines below, which already index a matrix, is
+// clearer and exercises code that is already tested.
+
+use num_complex::Complex64;
+
+/// `x := alpha * x` for a complex vector (zscal).
+///
+/// A complex `alpha` mixes the components, so this cannot decompose into two real
+/// scalings; it is a genuine complex multiply.
+pub fn zscal(alpha: Complex64, x: &mut [Complex64]) {
+    for v in x.iter_mut() {
+        *v = alpha * *v;
+    }
+}
+
+/// `y := alpha * x + y` for complex vectors (zaxpy).
+///
+/// # Panics
+///
+/// Panics if the slices differ in length.
+pub fn zaxpy(alpha: Complex64, x: &[Complex64], y: &mut [Complex64]) {
+    assert_eq!(x.len(), y.len(), "zaxpy: vectors must have the same length");
+    for i in 0..y.len() {
+        y[i] += alpha * x[i];
+    }
+}
+
+/// `y := x` for complex vectors (zcopy).
+///
+/// # Panics
+///
+/// Panics if the slices differ in length.
+pub fn zcopy(x: &[Complex64], y: &mut [Complex64]) {
+    assert_eq!(x.len(), y.len(), "zcopy: vectors must have the same length");
+    y.copy_from_slice(x);
+}
+
+/// Euclidean norm of a complex vector (dznrm2), which is real.
+pub fn dznrm2(x: &[Complex64]) -> f64 {
+    // Sum of squared moduli, scaled to avoid overflow as in dnrm2.
+    let mut scale = 0.0f64;
+    for v in x {
+        let a = v.norm();
+        if a > scale {
+            scale = a;
+        }
+    }
+    if scale == 0.0 || !scale.is_finite() {
+        return x.iter().map(|v| v.norm_sqr()).sum::<f64>().sqrt();
+    }
+    let inv = 1.0 / scale;
+    let ss: f64 = x.iter().map(|v| (v.norm() * inv) * (v.norm() * inv)).sum();
+    scale * ss.sqrt()
+}
+
+/// `y := alpha * A * x + beta * y` for complex data (zgemv, trans = 'N').
+///
+/// `a` is `m x n` column-major.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemv(alpha: Complex64, a: &[Complex64], x: &[Complex64], beta: Complex64, y: &mut [Complex64], m: usize, n: usize) {
+    assert_eq!(a.len(), m * n, "zgemv: a must be m*n");
+    assert_eq!(x.len(), n, "zgemv: x must have n entries");
+    assert_eq!(y.len(), m, "zgemv: y must have m entries");
+
+    for v in y.iter_mut() {
+        *v = beta * *v;
+    }
+    for j in 0..n {
+        let c = alpha * x[j];
+        if c == Complex64::new(0.0, 0.0) {
+            continue;
+        }
+        let col = &a[j * m..(j + 1) * m];
+        for i in 0..m {
+            y[i] += c * col[i];
+        }
+    }
+}
+
+/// `C := alpha * A * B + beta * C` for complex data (zgemm, both 'N').
+///
+/// `a` is `m x k`, `b` is `k x n`, `c` is `m x n`, all column-major.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemm(alpha: Complex64, a: &[Complex64], b: &[Complex64], beta: Complex64, c: &mut [Complex64], m: usize, n: usize, k: usize) {
+    assert_eq!(a.len(), m * k, "zgemm: a must be m*k");
+    assert_eq!(b.len(), k * n, "zgemm: b must be k*n");
+    assert_eq!(c.len(), m * n, "zgemm: c must be m*n");
+
+    for j in 0..n {
+        for i in 0..m {
+            let mut sum = Complex64::new(0.0, 0.0);
+            for l in 0..k {
+                sum += a[i + l * m] * b[l + j * k];
+            }
+            let idx = i + j * m;
+            c[idx] = alpha * sum + beta * c[idx];
+        }
+    }
+}
+
+/// `C := alpha * A * A^H + beta * C` for complex data (zherk).
+///
+/// `a` is `n x k` column-major, `c` is `n x n`. `c` is Hermitian, so only the
+/// requested triangle is written and the diagonal is real by construction; the
+/// imaginary part of a diagonal entry is set to zero rather than left to rounding.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zherk(alpha: f64, a: &[Complex64], beta: f64, c: &mut [Complex64], n: usize, k: usize, upper: bool) {
+    assert_eq!(a.len(), n * k, "zherk: a must be n*k");
+    assert_eq!(c.len(), n * n, "zherk: c must be n*n");
+
+    for j in 0..n {
+        let i_range = if upper { 0..j + 1 } else { j..n };
+        for i in i_range {
+            let mut sum = Complex64::new(0.0, 0.0);
+            for l in 0..k {
+                // a[i][l] * conj(a[j][l])
+                sum += a[i + l * n] * a[j + l * n].conj();
+            }
+            let idx = i + j * n;
+            let mut v = Complex64::new(alpha * sum.re, alpha * sum.im) + Complex64::new(beta * c[idx].re, beta * c[idx].im);
+            if i == j {
+                // Hermitian diagonal must be exactly real.
+                v.im = 0.0;
+            }
+            c[idx] = v;
+        }
+    }
+}
+
+/// `C := alpha * A * A^T + beta * C` for complex data (zsyrk).
+///
+/// Like [`zherk`] but without conjugation, as BLAS defines `zsyrk` for complex
+/// symmetric matrices.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zsyrk(alpha: Complex64, a: &[Complex64], beta: Complex64, c: &mut [Complex64], n: usize, k: usize, upper: bool) {
+    assert_eq!(a.len(), n * k, "zsyrk: a must be n*k");
+    assert_eq!(c.len(), n * n, "zsyrk: c must be n*n");
+
+    for j in 0..n {
+        let i_range = if upper { 0..j + 1 } else { j..n };
+        for i in i_range {
+            let mut sum = Complex64::new(0.0, 0.0);
+            for l in 0..k {
+                sum += a[i + l * n] * a[j + l * n];
+            }
+            let idx = i + j * n;
+            c[idx] = alpha * sum + beta * c[idx];
+        }
+    }
+}
+
+/// `|A|` for a complex matrix (zlange), returning a real norm.
+///
+/// `norm` is `'1'`, `'I'`, `'F'`/`'E'` or `'M'`, as in [`dlange`]. The one- and
+/// infinity-norms use the modulus of each entry, as LAPACK specifies.
+///
+/// # Panics
+///
+/// Panics on an unrecognised norm character.
+pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
+    assert_eq!(a.len(), m * n, "zlange: a must be m*n");
+    match norm {
+        'M' | 'm' => a.iter().fold(0.0f64, |acc, v| acc.max(v.norm())),
+        '1' => {
+            // Maximum column sum of moduli.
+            (0..n)
+                .map(|j| a[j * m..(j + 1) * m].iter().map(|v| v.norm()).sum::<f64>())
+                .fold(0.0f64, f64::max)
+        }
+        'I' | 'i' => {
+            // Maximum row sum of moduli.
+            (0..m)
+                .map(|i| (0..n).map(|j| a[i + j * m].norm()).sum::<f64>())
+                .fold(0.0f64, f64::max)
+        }
+        'F' | 'f' | 'E' | 'e' => {
+            // Frobenius: sqrt of the sum of squared moduli.
+            let sum: f64 = a.iter().map(|v| v.norm_sqr()).sum();
+            sum.sqrt()
+        }
+        other => panic!("zlange: unrecognised norm '{other}'; expected one of 1, I, F, E, M"),
     }
 }

@@ -1,8 +1,8 @@
 use super::Vector;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
@@ -34,14 +34,14 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn vec_scale(v: &mut Vector, alpha: f64) {
-    #[cfg(feature = "lapack")]
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         let n_i32: i32 = to_i32(v.dim());
         unsafe {
             cblas_dscal(n_i32, alpha, v.as_mut_data().as_mut_ptr(), 1);
         }
     }
-    #[cfg(not(feature = "lapack"))]
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     crate::portable::vec_scale_data(v.as_mut_data(), alpha);
 }
 

@@ -1,9 +1,9 @@
 use super::Vector;
 use crate::StrError;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes constant times a vector plus a vector.
     // <https://www.netlib.org/lapack/explore-html/d9/dcd/daxpy_8f.html>
@@ -43,14 +43,14 @@ pub fn vec_update(v: &mut Vector, alpha: f64, u: &Vector) -> Result<(), StrError
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    #[cfg(feature = "lapack")]
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         let n_i32 = to_i32(n);
         unsafe {
             cblas_daxpy(n_i32, alpha, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
         }
     }
-    #[cfg(not(feature = "lapack"))]
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     crate::portable::vec_update_data(v.as_mut_data(), alpha, u.as_data());
     Ok(())
 }

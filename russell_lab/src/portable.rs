@@ -38,7 +38,7 @@
 // called. They are still compiled, so that the feature combinations differ only
 // in which implementation runs, and so that the tests below always exercise the
 // portable code on a native target.
-#![cfg_attr(feature = "lapack", allow(dead_code))]
+#![cfg_attr(any(feature = "oblas", feature = "mkl"), allow(dead_code))]
 
 use crate::{Norm, StrError};
 

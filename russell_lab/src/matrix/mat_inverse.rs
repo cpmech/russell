@@ -1,9 +1,9 @@
 use super::{Matrix, mat_copy};
 use crate::StrError;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     /// <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
@@ -204,7 +204,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 
     // Portable path: LU decomposition with partial pivoting, then one
     // back-substitution per column of the identity. Available without BLAS.
-    #[cfg(not(feature = "lapack"))]
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
         let (det, ipiv) = crate::portable::lu_decompose(ai.as_mut_data(), m)?;
         crate::portable::lu_invert(ai.as_mut_data(), m, &ipiv)?;
@@ -212,7 +212,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     }
 
     // Fast path through LAPACK.
-    #[cfg(feature = "lapack")]
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         // compute LU factorization
         let m_i32 = to_i32(m);

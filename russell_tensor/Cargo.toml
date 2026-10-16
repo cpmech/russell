@@ -12,19 +12,23 @@ categories = ["mathematics", "science"]
 keywords = ["tensor", "continuum", "mechanics"]
 
 [features]
-# `lapack` links an external BLAS, which does not exist on wasm. It is on by
-# default because every native build wants the fast paths; turn it off for a
-# target that has no BLAS:
+# `oblas` links an external OpenBLAS. It is **not** on by default: the native
+# Rust BLAS/LAPACK in `russell_lab` is the default and needs no external library,
+# so the crate builds for any target, including `wasm32-unknown-unknown`.
 #
-# ```text
-# cargo build --target wasm32-unknown-unknown --no-default-features
-# ```
-default = ["lapack"]
-lapack = ["russell_lab/lapack"]
-intel_mkl = ["russell_lab/intel_mkl"]
+# Enable `oblas` (or `mkl`) only to swap the native routines for a tuned library.
+default = []
+oblas = ["russell_lab/oblas"]
+mkl = ["russell_lab/mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "3" }
+# `default-features = false` is required, not merely tidy: `russell_lab`'s
+# `default` is empty, but a consumer that disables this crate's defaults must not
+# have `russell_lab`'s defaults re-enabled underneath it. Cargo offers no way to
+# turn a dependency's default features off from the outside, so the declaration
+# here is the only place it can be done. The `oblas` feature below re-enables
+# what this crate needs.
+russell_lab = { path = "../russell_lab", version = "3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

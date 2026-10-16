@@ -1,9 +1,9 @@
 use super::Vector;
 use crate::Norm;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
     // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
@@ -37,7 +37,7 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
-    #[cfg(feature = "lapack")]
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         let n = to_i32(v.dim());
         if n == 0 {
@@ -54,7 +54,7 @@ pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
             }
         }
     }
-    #[cfg(not(feature = "lapack"))]
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     crate::portable::vec_norm_data(v.as_data(), kind)
 }
 

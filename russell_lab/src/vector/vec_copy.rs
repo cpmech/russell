@@ -1,9 +1,9 @@
 use super::Vector;
 use crate::StrError;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
@@ -41,14 +41,14 @@ pub fn vec_copy(v: &mut Vector, u: &Vector) -> Result<(), StrError> {
     if u.dim() != n {
         return Err("vectors are incompatible");
     }
-    #[cfg(feature = "lapack")]
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         let n_i32 = to_i32(n);
         unsafe {
             cblas_dcopy(n_i32, u.as_data().as_ptr(), 1, v.as_mut_data().as_mut_ptr(), 1);
         }
     }
-    #[cfg(not(feature = "lapack"))]
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     crate::portable::vec_copy_data(v.as_mut_data(), u.as_data());
     Ok(())
 }

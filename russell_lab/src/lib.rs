@@ -175,12 +175,6 @@
 /// Defines the error output as a static string
 pub type StrError = &'static str;
 
-// The MKL backend is one of the two ways of providing the external BLAS/LAPACK
-// that `lapack` links against, so asking for MKL without `lapack` is a
-// configuration mistake rather than a supported combination.
-#[cfg(all(feature = "intel_mkl", not(feature = "lapack")))]
-compile_error!("the `intel_mkl` feature requires the `lapack` feature");
-
 /// Defines complex numbers with f64-real and f64-imaginary parts
 pub use num_complex::Complex64;
 pub use num_complex::ComplexFloat;

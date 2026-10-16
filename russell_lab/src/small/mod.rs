@@ -34,9 +34,9 @@ mod small_mat_inv;
 mod small_mat_mat_mul;
 // With `lapack`, this wraps the LAPACK `dgesvd` routine. Without it, the
 // portable implementation in `crate::portable` provides the same function.
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 mod small_mat_svd;
-#[cfg(not(feature = "lapack"))]
+#[cfg(not(any(feature = "oblas", feature = "mkl")))]
 pub use crate::portable_svd::small_mat_svd_portable as small_mat_svd;
 mod small_mat_t_mat_mul;
 mod small_mat_update;
@@ -52,7 +52,7 @@ pub use small_mat_approx_eq::*;
 pub use small_mat_eigen_sym_jacobi::*;
 pub use small_mat_inv::*;
 pub use small_mat_mat_mul::*;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 pub use small_mat_svd::*;
 pub use small_mat_t_mat_mul::*;
 pub use small_mat_update::*;

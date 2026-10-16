@@ -1,10 +1,10 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
 use crate::StrError;
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, to_i32};
 
-#[cfg(feature = "lapack")]
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
     // <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>
@@ -76,7 +76,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
         v.fill(0.0);
         return Ok(());
     }
-    #[cfg(feature = "lapack")]
+    #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         let m_i32: i32 = to_i32(m);
         let n_i32: i32 = to_i32(n);
@@ -100,7 +100,7 @@ pub fn mat_vec_mul(v: &mut Vector, alpha: f64, a: &Matrix, u: &Vector) -> Result
             );
         }
     }
-    #[cfg(not(feature = "lapack"))]
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     crate::portable::mat_vec_mul_data(v.as_mut_data(), alpha, a.as_data(), m, n, u.as_data());
     Ok(())
 }

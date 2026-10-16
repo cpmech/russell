@@ -74,12 +74,17 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1047 pass, 61 fail
-cargo test -p russell_lab --lib --features oracle   # 1051 pass, 61 fail
+cargo test -p russell_lab --lib                     # 1055 pass, 61 fail, 1 ignored
+cargo test -p russell_lab --lib --features oracle   # same, plus the four parity tests
 
-Both configurations are known-good as of commit `84c5bbd7`. The oracle adds the
+Both configurations are known-good as of commit `750f3b8f`. The oracle adds the
 four parity tests but is otherwise the same native path, so the failure count is
 identical.
+
+The `oracle` feature needs `RUSSELL_ORACLE_ROOT` set to a valid CMake build
+directory. The LAPACK *source* tree is not one -- it has no `include/` or `lib/`.
+For the tree on this machine that is
+`/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
 ```
 
 The failures are **not** all the same kind, and sorting them out is the first job:
@@ -89,8 +94,17 @@ The failures are **not** all the same kind, and sorting them out is the first jo
 | decompositions not implemented | ~24 | `dsyev`, `dgeev`, `dggev`, `dgesvd` report a `NotImplemented` error |
 | complex LAPACK not implemented | ~22 | `zpotrf`, `zgetrf`, `zgetri`, `zgesv`, `zheev`, `zgeev`, `zggev`, `zgesvd` likewise |
 | depends on the above | ~13 | `mat_pseudo_inverse` needs the SVD |
-| `algo::root_finder` | 4 | **unexplained**, and not obviously BLAS-related |
-| `complex_mat_herm_rank_op` | 1 | known wrong, see below |
+| `algo::root_finder` | 4 | resolved: it was `mat_eigenvalues` leaving its outputs at zero, not the root finder |
+| `complex_mat_herm_rank_op` | 1 | **fixed**; the bug was in `zherk_rank`, not the call site |
+
+The `algo::root_finder` group was **not** explained by the routing, exactly as
+the handover warned. `mat_eigenvalues` declared its `extern "C"` call behind
+`#[cfg(any(feature = "oblas", feature = "mkl"))]` with no `#[cfg(not(...))]`
+counterpart, so in a native build the body fell through to `Ok(())` with
+`l_real`/`l_imag` still zero. The same pattern affected `mat_eigen`,
+`mat_eigen_sym`, `mat_gen_eigen` and `mat_svd` -- 26 tests in total, all of which
+were returning **silently wrong results** rather than the `NotImplemented` error
+this file promised. Commit `4cc08ae1` added the missing branches.
 
 Some tests assert on an exact error *string*, so a native path that reports the
 same condition in different words still fails. Keep the wording identical to the

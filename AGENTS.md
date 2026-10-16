@@ -209,14 +209,30 @@ accelerate any decomposition:
 
 Measured single-core, release: `mat_mat_mul` went 2.2 -> 21 Gelem/s, while `dsyev`
 runs at 0.4 ns/flop (~2.8 GFLOP/s) and `dgesvd` at 0.2 ns/flop, against the
-kernel's 0.05 ns/flop. So the decompositions have roughly 4x-8x of headroom. That
-headroom is real but *much* smaller than the kernel change delivered, and the
-price is high: a blocked `dsytrd`/`dgebrd` is ~400 lines (`dlarft`/`dlarfb`), and
-`dlaqr0`+`dlaqr2`+`dlaqr3`+`dlaqr4`+`dlaqr5` is ~2000. The rules of thumb:
+kernel's 0.05 ns/flop.
+
+`dsytrd` was ported anyway and delivered far less than that headroom suggested:
+~8-10% on `dsyev` at n >= 400, because the reduction is only ~29% of `dsyev` and
+the blocked algorithm still performs the same n^3/3 symmetric product -- only the
+rank-2 update becomes BLAS-3. Real headroom for `dsyev` needs the two-stage
+`sy2sb` + `sb2st` reduction, which is a different algorithm, not a blocking of
+this one. `dgesvd` remains unblocked. The rules of thumb:
 
 * Port the blocked variant only when the target routine's flop count is dominated
   by panel updates that can become `dgemm`. `dlahqr` can never benefit -- it has
   no BLAS-3 to give.
+* **A blocked routine can be slower than the unblocked one for small input.**
+  `dsytrd` measured slower below n ~ 300 and faster above, so `dsyev` picks by
+  size (threshold 128) rather than always paying for the blocking. Always
+  blocking would have regressed every small case.
+* **Some quantities are not invariants.** The first `dsytrd` test compared the
+  reduced `d`/`e`/`tau` entries element-wise against the unblocked reduction, to
+  1e-12. That is unsatisfiable and the test was at fault: the two reductions use
+  different Householder sign conventions, so their off-diagonals are not
+  comparable. Against reference LAPACK's own `dsytrd` and `dsytd2` on the same
+  problem, `|e|` differs by 4e-1 at n=128 while the eigenvalues agree to 6e-14,
+  and the reference's blocked-vs-unblocked `|d|` alone reaches 3.2e-12. Check the
+  spectrum, which is invariant, not the intermediate factors.
 * The user-facing `mat_mat_mul` is where the kernel change pays, and it is the
   entry point users actually call, which is why it was worth doing first.
 * `dlaqr0` has one benefit that is *not* about throughput: aggressive early

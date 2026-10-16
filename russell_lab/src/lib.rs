@@ -145,9 +145,41 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! # Building without BLAS/LAPACK
+//!
+//! Native builds use the `lapack` feature (on by default), which compiles the C
+//! shim in `c_code/interface_blas.c` and links it against OpenBLAS or Intel MKL.
+//!
+//! Targets that have no BLAS — `wasm32-unknown-unknown` in particular — must
+//! turn it off:
+//!
+//! ```text
+//! cargo build --target wasm32-unknown-unknown --no-default-features
+//! ```
+//!
+//! With `lapack` off, the shim is neither compiled nor linked (there is no wasm
+//! libc for it to compile against, and no OpenBLAS to link), and the functions
+//! on the paths a browser build needs fall back to the portable Rust kernels in
+//! `portable`: vector copy/scale/update/norm, matrix-vector and matrix-matrix
+//! multiplication, and matrix inversion.
+//!
+//! **This is a reduced configuration, not a full substitute.** Without `lapack`
+//! the eigen-decompositions, SVD, pseudo-inverse, Cholesky, `solve_lin_sys` and
+//! the complex-valued routines still compile, but they have no implementation to
+//! link against, so any binary that actually calls one will fail to link with an
+//! undefined-symbol error. That is fine for a consumer such as a mesh viewer,
+//! which needs geometry and linear algebra only; it is not fine for a consumer
+//! that solves systems or factorises matrices.
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;
+
+// The MKL backend is one of the two ways of providing the external BLAS/LAPACK
+// that `lapack` links against, so asking for MKL without `lapack` is a
+// configuration mistake rather than a supported combination.
+#[cfg(all(feature = "intel_mkl", not(feature = "lapack")))]
+compile_error!("the `intel_mkl` feature requires the `lapack` feature");
 
 /// Defines complex numbers with f64-real and f64-imaginary parts
 pub use num_complex::Complex64;
@@ -160,6 +192,7 @@ mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
+mod portable;
 pub mod small;
 pub mod vector;
 

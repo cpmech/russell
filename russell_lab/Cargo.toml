@@ -12,7 +12,33 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [features]
-intel_mkl = []
+# Deliberately empty: the BLAS/LAPACK integration must be opted into.
+#
+# A default feature that cannot be built on some target is not really a default
+# — Cargo cannot turn a dependency's default features *off* from the outside, so
+# while `lapack` was on by default there was no way for a wasm build to avoid
+# it, even with `russell_lab`'s own defaults disabled, because sibling crates
+# such as `russell_tensor` pulled the defaults in transitively.
+#
+# Native users should ask for it explicitly:
+#
+# ```text
+# russell_lab = { version = "3", features = ["lapack"] }
+# ```
+default = []
+# Links the C shim in `c_code/interface_blas.c` against an external BLAS/LAPACK
+# (OpenBLAS by default, Intel MKL with `intel_mkl`). This is what native builds
+# want, and the other crates in this workspace enable it from their own defaults.
+#
+# Turning it off makes the crate build for targets where no BLAS exists (e.g.
+# `wasm32-unknown-unknown`): the C shim is not compiled and not linked, and the
+# functions that would call into it fall back to portable Rust implementations.
+# See `src/portable.rs` for exactly which functions that covers, and which are
+# unavailable without this feature.
+lapack = []
+# The MKL backend is one of the two ways of supplying the BLAS/LAPACK that
+# `lapack` links against, so it implies `lapack`.
+intel_mkl = ["lapack"]
 
 [dependencies]
 num-complex = { version = "0.4", features = ["serde"] }

@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS, StrError, to_i32};
+use crate::StrError;
+#[cfg(feature = "lapack")]
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS, to_i32};
 
+#[cfg(feature = "lapack")]
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
@@ -72,29 +75,34 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f
         c.fill(0.0);
         return Ok(());
     }
-    let m_i32: i32 = to_i32(m);
-    let n_i32: i32 = to_i32(n);
-    let k_i32: i32 = to_i32(k);
-    let lda = k_i32;
-    let ldb = k_i32;
-    unsafe {
-        cblas_dgemm(
-            CBLAS_COL_MAJOR,
-            CBLAS_TRANS,
-            CBLAS_NO_TRANS,
-            m_i32,
-            n_i32,
-            k_i32,
-            alpha,
-            a.as_data().as_ptr(),
-            lda,
-            b.as_data().as_ptr(),
-            ldb,
-            beta,
-            c.as_mut_data().as_mut_ptr(),
-            m_i32,
-        );
+    #[cfg(feature = "lapack")]
+    {
+        let m_i32: i32 = to_i32(m);
+        let n_i32: i32 = to_i32(n);
+        let k_i32: i32 = to_i32(k);
+        let lda = k_i32;
+        let ldb = k_i32;
+        unsafe {
+            cblas_dgemm(
+                CBLAS_COL_MAJOR,
+                CBLAS_TRANS,
+                CBLAS_NO_TRANS,
+                m_i32,
+                n_i32,
+                k_i32,
+                alpha,
+                a.as_data().as_ptr(),
+                lda,
+                b.as_data().as_ptr(),
+                ldb,
+                beta,
+                c.as_mut_data().as_mut_ptr(),
+                m_i32,
+            );
+        }
     }
+    #[cfg(not(feature = "lapack"))]
+    crate::portable::mat_t_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
     Ok(())
 }
 

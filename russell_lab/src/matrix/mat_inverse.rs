@@ -1,6 +1,9 @@
 use super::{Matrix, mat_copy};
-use crate::{StrError, to_i32};
+use crate::StrError;
+#[cfg(feature = "lapack")]
+use crate::to_i32;
 
+#[cfg(feature = "lapack")]
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     /// <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
@@ -199,59 +202,71 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     // copy a into ai
     mat_copy(ai, a).unwrap();
 
-    // compute LU factorization
-    let m_i32 = to_i32(m);
-    let lda = m_i32;
-    let mut ipiv = vec![0; m];
-    let mut info = 0;
-    unsafe {
-        c_dgetrf(
-            &m_i32,
-            &m_i32,
-            ai.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            &mut info,
-        );
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dgetrf): An argument had an illegal value");
-    } else if info > 0 {
-        println!("LAPACK ERROR (dgetrf): U({},{}) is exactly zero", info - 1, info - 1);
-        return Err(
-            "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular",
-        );
+    // Portable path: LU decomposition with partial pivoting, then one
+    // back-substitution per column of the identity. Available without BLAS.
+    #[cfg(not(feature = "lapack"))]
+    {
+        let (det, ipiv) = crate::portable::lu_decompose(ai.as_mut_data(), m)?;
+        crate::portable::lu_invert(ai.as_mut_data(), m, &ipiv)?;
+        return Ok(det);
     }
 
-    // first, compute the determinant ai.data from dgetrf
-    let mut det = 1.0;
-    for i in 0..m_i32 {
-        let iu = i as usize;
-        // NOTE: ipiv are 1-based indices
-        if ipiv[iu] - 1 == i {
-            det *= ai.get(iu, iu);
-        } else {
-            det = -det * ai.get(iu, iu);
+    // Fast path through LAPACK.
+    #[cfg(feature = "lapack")]
+    {
+        // compute LU factorization
+        let m_i32 = to_i32(m);
+        let lda = m_i32;
+        let mut ipiv = vec![0; m];
+        let mut info = 0;
+        unsafe {
+            c_dgetrf(
+                &m_i32,
+                &m_i32,
+                ai.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                &mut info,
+            );
         }
-    }
-    // second, perform the inversion
-    let lwork = m_i32;
-    let mut work = vec![0.0; lwork as usize];
-    unsafe {
-        c_dgetri(
-            &m_i32,
-            ai.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
-    }
+        if info < 0 {
+            println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
+            return Err("LAPACK ERROR (dgetrf): An argument had an illegal value");
+        } else if info > 0 {
+            println!("LAPACK ERROR (dgetrf): U({},{}) is exactly zero", info - 1, info - 1);
+            return Err(
+                "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular",
+            );
+        }
 
-    // done
-    Ok(det)
+        // first, compute the determinant ai.data from dgetrf
+        let mut det = 1.0;
+        for i in 0..m_i32 {
+            let iu = i as usize;
+            // NOTE: ipiv are 1-based indices
+            if ipiv[iu] - 1 == i {
+                det *= ai.get(iu, iu);
+            } else {
+                det = -det * ai.get(iu, iu);
+            }
+        }
+        // second, perform the inversion
+        let lwork = m_i32;
+        let mut work = vec![0.0; lwork as usize];
+        unsafe {
+            c_dgetri(
+                &m_i32,
+                ai.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
+
+        Ok(det)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

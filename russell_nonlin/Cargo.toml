@@ -12,6 +12,10 @@ categories = ["mathematics", "science"]
 keywords = ["numerical", "solver", "continuation", "nonlinear"]
 
 [features]
+default = ["lapack"]
+# Links an external BLAS/LAPACK through `russell_lab`; off for targets
+# that have none, such as `wasm32-unknown-unknown`.
+lapack = ["russell_lab/lapack"]
 intel_mkl = [
   "russell_lab/intel_mkl",
   "russell_sparse/intel_mkl",
@@ -21,7 +25,7 @@ local_sparse = ["russell_sparse/local_sparse", "russell_ode/local_sparse"]
 cudss = ["russell_sparse/cudss"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "3" }
+russell_lab = { path = "../russell_lab", version = "3", features = ["lapack"] }
 russell_sparse = { path = "../russell_sparse", version = "3" }
 russell_stat = { path = "../russell_stat", version = "3" }
 serde = { version = "1.0", features = ["derive"] }

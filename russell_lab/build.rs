@@ -8,13 +8,23 @@
 //! * OpenBLAS (default) -- resolved via pkg-config when possible, with a
 //!   fallback to hardcoded paths (mainly for Homebrew, where the `.pc` files
 //!   are keg-only).
+//!
+//! The whole thing is skipped when the `lapack` feature is off. That is the
+//! configuration for targets with no BLAS available at all, chiefly
+//! `wasm32-unknown-unknown`: there is no wasm libc for the shim to compile
+//! against (`inttypes.h` is missing), and no OpenBLAS to link. With `lapack`
+//! off, the crate falls back to the portable Rust kernels in `src/portable.rs`.
+//!
+//! Note that the guard has to be here in `main` rather than inside
+//! `compile_blas`: the `#[cfg(feature = ...)]` blocks below then simply never
+//! apply, so no `cc`/`pkg-config` work is attempted at all.
 
 /// Default MKL version used when the `MKL_VERSION` environment variable is unset.
-#[cfg(feature = "intel_mkl")]
+#[cfg(all(feature = "lapack", feature = "intel_mkl"))]
 const MKL_VERSION: &str = "latest";
 
 /// Compiles and links against Intel oneAPI MKL.
-#[cfg(feature = "intel_mkl")]
+#[cfg(all(feature = "lapack", feature = "intel_mkl"))]
 fn compile_blas() {
     // Allow overriding the MKL/compiler version via the environment (e.g., "2024.2.0").
     let version = std::env::var("MKL_VERSION").unwrap_or_else(|_| MKL_VERSION.to_string());
@@ -41,7 +51,7 @@ fn compile_blas() {
 }
 
 /// Compiles and links against OpenBLAS (and LAPACK).
-#[cfg(not(feature = "intel_mkl"))]
+#[cfg(all(feature = "lapack", not(feature = "intel_mkl")))]
 fn compile_blas() {
     #[cfg(target_os = "windows")]
     {
@@ -106,7 +116,7 @@ fn compile_blas() {
 /// Keeps only the directories that actually exist, so the fallback does not
 /// emit `-I`/`-L` flags pointing at non-existent directories (e.g., on a Mac
 /// where Homebrew lives under `/opt/homebrew` rather than `/usr/local`).
-#[cfg(all(not(target_os = "windows"), not(feature = "intel_mkl")))]
+#[cfg(all(feature = "lapack", not(target_os = "windows"), not(feature = "intel_mkl")))]
 fn existing_dirs(dirs: &[&str]) -> Vec<String> {
     dirs.iter()
         .filter(|d| std::path::Path::new(d).is_dir())
@@ -115,7 +125,7 @@ fn existing_dirs(dirs: &[&str]) -> Vec<String> {
 }
 
 /// The include/link information needed to build and link `interface_blas.c`.
-#[cfg(all(not(target_os = "windows"), not(feature = "intel_mkl")))]
+#[cfg(all(feature = "lapack", not(target_os = "windows"), not(feature = "intel_mkl")))]
 struct BlasLapack {
     include_paths: Vec<std::path::PathBuf>,
     link_paths: Vec<std::path::PathBuf>,
@@ -133,7 +143,7 @@ struct BlasLapack {
 /// distros — on RHEL/Rocky it is netlib LAPACK, which registers `lapack.pc`
 /// but ships no `lapack.h`, so we would end up with no usable `-I` and fail
 /// to compile instead of falling back.
-#[cfg(all(not(target_os = "windows"), not(feature = "intel_mkl")))]
+#[cfg(all(feature = "lapack", not(target_os = "windows"), not(feature = "intel_mkl")))]
 fn probe_blas_lapack() -> Option<BlasLapack> {
     // Only emit the cargo directives once we know the answer is usable.
     let probe = |name: &str| pkg_config::Config::new().cargo_metadata(false).probe(name).ok();
@@ -163,7 +173,7 @@ fn probe_blas_lapack() -> Option<BlasLapack> {
 ///
 /// The default include dirs count too: Debian/Ubuntu put `lapack.h` directly
 /// in `/usr/include`, where no `-I` is needed.
-#[cfg(all(not(target_os = "windows"), not(feature = "intel_mkl")))]
+#[cfg(all(feature = "lapack", not(target_os = "windows"), not(feature = "intel_mkl")))]
 fn headers_available(include_paths: &[std::path::PathBuf]) -> bool {
     let implicit = [
         std::path::PathBuf::from("/usr/include"),
@@ -178,5 +188,14 @@ fn headers_available(include_paths: &[std::path::PathBuf]) -> bool {
 }
 
 fn main() {
+    // Without `lapack` there is no external BLAS/LAPACK to build or link, so
+    // nothing to do. This is the wasm path (see the module docs).
+    #[cfg(not(feature = "lapack"))]
+    {
+        println!("cargo:warning=russell_lab: `lapack` feature is off; using portable Rust kernels (no BLAS/LAPACK)");
+        return;
+    }
+
+    #[cfg(feature = "lapack")]
     compile_blas();
 }

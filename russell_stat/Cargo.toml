@@ -12,10 +12,14 @@ categories = ["mathematics", "science"]
 keywords = ["statistics", "probability", "random", "numerical"]
 
 [features]
+default = ["lapack"]
+# Links an external BLAS/LAPACK through `russell_lab`; off for targets
+# that have none, such as `wasm32-unknown-unknown`.
+lapack = ["russell_lab/lapack"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-russell_lab = { path = "../russell_lab", version = "3" }
+russell_lab = { path = "../russell_lab", version = "3", features = ["lapack"] }
 num-traits = "0.2"
 rand = "0.10"
 rand_distr = "0.6"

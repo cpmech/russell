@@ -34,9 +34,11 @@
 
 pub mod complex;
 pub mod eig;
+pub mod qz;
 pub mod svd;
 pub mod sym;
 pub mod zeig;
+pub mod zsvd;
 
 use super::blas;
 

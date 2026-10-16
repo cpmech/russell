@@ -12,6 +12,15 @@ categories = ["mathematics", "science"]
 keywords = ["tensor", "continuum", "mechanics"]
 
 [features]
+# `lapack` links an external BLAS, which does not exist on wasm. It is on by
+# default because every native build wants the fast paths; turn it off for a
+# target that has no BLAS:
+#
+# ```text
+# cargo build --target wasm32-unknown-unknown --no-default-features
+# ```
+default = ["lapack"]
+lapack = ["russell_lab/lapack"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]

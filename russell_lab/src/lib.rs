@@ -193,6 +193,7 @@ pub mod math;
 pub mod matrix;
 pub mod matvec;
 mod portable;
+mod portable_svd;
 pub mod small;
 pub mod vector;
 

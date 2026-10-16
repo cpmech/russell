@@ -639,3 +639,91 @@ fn dsyev_agrees_with_the_reference() {
         }
     }
 }
+
+/// Left eigenvectors, by their defining equation.
+///
+/// The existing `mat_eigen_lr_works` unit test checks the eigenvalues and the
+/// *right* eigenvectors but never the left ones, so a wrong `u` passes silently.
+/// This checks what was missing: `u^H A = lambda u^H`, equivalently
+/// `A^H u = conj(lambda) u`, which is the equation a left eigenvector satisfies.
+///
+/// `mat_eigen_lr` returns both sets, so this also checks that the two agree on
+/// the eigenvalue list -- a left eigenvector paired with the wrong eigenvalue is
+/// the specific mistake that a naive "run dgeev on A^T and hand back its vectors"
+/// would make, since two independent factorisations need not deflate in the same
+/// order.
+///
+/// Only real data is used here, so `A^H = A^T` and the conjugate is trivial; the
+/// complex case would need `complex_mat_eigen_lr`, which is not implemented.
+#[test]
+fn mat_eigen_lr_left_eigenvectors_satisfy_their_defining_equation() {
+    for n in [1usize, 2, 3, 5, 8] {
+        let a = sample(n);
+
+        let mut work = a.clone();
+        let mut l_real = Vector::new(n);
+        let mut l_imag = Vector::new(n);
+        let mut u_real = Matrix::new(n, n);
+        let mut u_imag = Matrix::new(n, n);
+        let mut v_real = Matrix::new(n, n);
+        let mut v_imag = Matrix::new(n, n);
+        crate::mat_eigen_lr(
+            &mut l_real,
+            &mut l_imag,
+            &mut u_real,
+            &mut u_imag,
+            &mut v_real,
+            &mut v_imag,
+            &mut work,
+        )
+        .expect("native mat_eigen_lr");
+
+        let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+        let mut j = 0usize;
+        while j < n {
+            if l_imag[j] != 0.0 {
+                // Complex pair: u = u_real[:,j] + i u_imag[:,j], lambda = lr + i li.
+                // The defining equation is A^H u = conj(lambda) u, i.e.
+                // A^T u = (lr - i li) u for real A.
+                let (lr, li) = (l_real[j], l_imag[j]);
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    // (A^T u)_i = sum_k A[k][i] * u_k
+                    let mut sr = 0.0;
+                    let mut si = 0.0;
+                    for k in 0..n {
+                        let ak = a.get(k, i);
+                        sr += ak * u_real.get(k, j);
+                        si += ak * u_imag.get(k, j);
+                    }
+                    // subtract conj(lambda) * u_i = (lr - i li)(ur + i ui)
+                    let ur = u_real.get(i, j);
+                    let ui = u_imag.get(i, j);
+                    let dr = sr - (lr * ur + li * ui);
+                    let di = si - (lr * ui - li * ur);
+                    worst = worst.max(dr.abs().max(di.abs()));
+                }
+                assert!(
+                    worst / scale < 1e-10,
+                    "n={n}: the complex left eigenvector for lambda = {lr}+{li}i has residual {worst} (scale {scale})"
+                );
+                j += 2;
+            } else {
+                let l = l_real[j];
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut s = 0.0;
+                    for k in 0..n {
+                        s += a.get(k, i) * u_real.get(k, j);
+                    }
+                    worst = worst.max((s - l * u_real.get(i, j)).abs());
+                }
+                assert!(
+                    worst / scale < 1e-10,
+                    "n={n}: the real left eigenvector for lambda = {l} has residual {worst} (scale {scale})"
+                );
+                j += 1;
+            }
+        }
+    }
+}

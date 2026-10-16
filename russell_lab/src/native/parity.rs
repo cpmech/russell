@@ -303,8 +303,15 @@ fn dhseqr_eigenvalues_agree_with_the_reference() {
                     t.get(i + 1, i) * t.get(i, i + 1) < 0.0,
                     "n={n}: the 2x2 block at {i} is not in standard form"
                 );
-                assert!(wi[i] > 0.0, "n={n}: the first of a pair must have wi > 0, got {}", wi[i]);
-                assert!((wi[i] + wi[i + 1]).abs() < 1e-10, "n={n}: the pair at {i} is not conjugate");
+                assert!(
+                    wi[i] > 0.0,
+                    "n={n}: the first of a pair must have wi > 0, got {}",
+                    wi[i]
+                );
+                assert!(
+                    (wi[i] + wi[i + 1]).abs() < 1e-10,
+                    "n={n}: the pair at {i} is not conjugate"
+                );
                 i += 2;
             } else {
                 assert_eq!(wi[i], 0.0, "n={n}: a real eigenvalue must have wi == 0");

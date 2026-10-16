@@ -430,6 +430,392 @@ pub fn dgehrd(a: &mut [f64], n: usize, q: Option<&mut [f64]>) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// `dlahqr` (LAPACK 3.12.1, `SRC/dlahqr.f`): the unblocked double-shift QR step
+/// that reduces a Hessenberg matrix to real Schur form.
+///
+/// This is a literal transcription of `dlahqr.f` with the indices shifted from
+/// 1-based to 0-based; the Fortran loop labels survive in the comments. It is
+/// called here with `WANTT = .TRUE.` and `WANTZ = .FALSE.`:
+///
+/// * `WANTT` true selects `I1 = 0, I2 = n - 1` (LAPACK's `I1 = 1, I2 = N`), so
+///   every transformation is applied to the whole matrix. `dhseqr` with
+///   `JOB = 'S'` needs that, because the caller gets the Schur form back in `h`
+///   and not just the eigenvalues. With `WANTT` false, `dlahqr.f` narrows `I1`
+///   and `I2` to the active block inside the main loop and leaves the rest of
+///   the matrix stale; that is the "eigenvalues only" path.
+/// * `WANTZ` false means no Schur vectors are accumulated (`COMPZ = 'N'`).
+///
+/// `ilo` and `ihi` delimit the Hessenberg submatrix to work on (`dhseqr` passes
+/// `0` and `n - 1`). The return value is LAPACK's `INFO`: zero on success, or the
+/// index at which the iteration gave up after `30 * max(10, nh)` sweeps. `h` is
+/// column-major with leading dimension `ldh`; `(wr, wi)` receives the
+/// eigenvalues in deflation order, a complex conjugate pair in two adjacent
+/// positions with `wi > 0` first.
+///
+/// The structure is `dlahqr.f`'s: the `K` scan looks for one negligible
+/// subdiagonal and leaves `K = L` when it runs off the top of the block (so `L`
+/// never drops below `ILO`); once `L >= I - 1` a 1x1 or 2x2 block deflates and
+/// the rotation is applied to the rest of `h`; otherwise one double-shift sweep
+/// runs from `M` to `I - 1`. `KDEFL` counts the sweeps since the last deflation
+/// and picks the two exceptional shifts at multiples of `KEXSH = 10` and
+/// `2 * KEXSH = 20`.
+fn dlahqr(n: usize, ilo: usize, ihi: usize, h: &mut [f64], ldh: usize, wr: &mut [f64], wi: &mut [f64]) -> usize {
+    // PARAMETER ( KEXSH = 10 ) and the exceptional-shift constants DAT1/DAT2.
+    const KEXSH: usize = 10;
+    const DAT1: f64 = 3.0 / 4.0;
+    const DAT2: f64 = -0.4375;
+
+    // Quick return if possible.
+    if n == 0 {
+        return 0;
+    }
+    if ilo == ihi {
+        wr[ilo] = h[ilo + ilo * ldh];
+        wi[ilo] = 0.0;
+        return 0;
+    }
+
+    // ==== clear out the trash ====
+    // DO 10 J = ILO, IHI - 3
+    let mut j = ilo;
+    while j + 3 <= ihi {
+        h[(j + 2) + j * ldh] = 0.0;
+        h[(j + 3) + j * ldh] = 0.0;
+        j += 1;
+    }
+    if ilo + 2 <= ihi {
+        h[ihi + (ihi - 2) * ldh] = 0.0;
+    }
+
+    let nh = ihi - ilo + 1;
+
+    // Set machine-dependent constants for the stopping criterion.
+    let safmin = f64::MIN_POSITIVE;
+    let ulp = f64::EPSILON;
+    let smlnum = safmin * (nh as f64 / ulp);
+
+    // I1 and I2 are the indices of the first row and last column of H to which
+    // transformations must be applied. With WANTT they are the whole matrix and
+    // are fixed; otherwise they are set inside the main loop.
+    let wantt = true;
+    let mut i1 = 0usize;
+    let mut i2 = n - 1;
+
+    // ITMAX is the total number of QR iterations allowed.
+    let itmax = 30 * nh.max(10);
+
+    // KDEFL counts the number of iterations since a deflation.
+    let mut kdefl: usize = 0;
+
+    // The main loop begins here. I is the loop index and decreases from IHI to
+    // ILO in steps of 1 or 2. Each iteration works with the active submatrix in
+    // rows and columns L to I. Eigenvalues I+1 to IHI have already converged.
+    // Either L = ILO or H(L,L-1) is negligible so that the matrix splits.
+    let mut i = ihi;
+    loop {
+        // 20 CONTINUE / IF ( I.LT.ILO ) GO TO 160
+        if i < ilo {
+            return 0;
+        }
+        let mut l = ilo;
+
+        // DO 140 ITS = 0, ITMAX. A completed loop falls through to INFO = I.
+        let mut split_off = false;
+        let mut iters = 0usize;
+        while iters <= itmax {
+            iters += 1;
+
+            // Look for a single small subdiagonal element.
+            // DO 30 K = I, L + 1, -1; running off the top leaves K = L.
+            let mut k = i;
+            while k >= l + 1 {
+                if h[k + (k - 1) * ldh].abs() <= smlnum {
+                    break;
+                }
+                let mut tst = h[(k - 1) + (k - 1) * ldh].abs() + h[k + k * ldh].abs();
+                if tst == 0.0 {
+                    if k >= ilo + 2 {
+                        tst += h[(k - 1) + (k - 2) * ldh].abs();
+                    }
+                    if k + 1 <= ihi {
+                        tst += h[(k + 1) + k * ldh].abs();
+                    }
+                }
+                // ==== The following is a conservative small subdiagonal
+                // .    deflation criterion due to Ahues & Tisseur (LAWN 122,
+                // .    1997). It has better mathematical foundation and
+                // .    improves accuracy in some cases. ====
+                if h[k + (k - 1) * ldh].abs() <= ulp * tst {
+                    let ab = h[k + (k - 1) * ldh].abs().max(h[(k - 1) + k * ldh].abs());
+                    let ba = h[k + (k - 1) * ldh].abs().min(h[(k - 1) + k * ldh].abs());
+                    let aa = h[k + k * ldh]
+                        .abs()
+                        .max((h[(k - 1) + (k - 1) * ldh] - h[k + k * ldh]).abs());
+                    let bb = h[k + k * ldh]
+                        .abs()
+                        .min((h[(k - 1) + (k - 1) * ldh] - h[k + k * ldh]).abs());
+                    let s = aa + ab;
+                    if ba * (ab / s) <= smlnum.max(ulp * (bb * (aa / s))) {
+                        break;
+                    }
+                }
+                k -= 1;
+            }
+            // 40 CONTINUE
+            l = k;
+            if l > ilo {
+                // H(L,L-1) is negligible.
+                h[l + (l - 1) * ldh] = 0.0;
+            }
+
+            // Exit from loop if a submatrix of order 1 or 2 has split off.
+            if l + 1 >= i {
+                split_off = true;
+                break;
+            }
+            kdefl += 1;
+
+            // Now the active submatrix is in rows and columns L to I. If
+            // eigenvalues only are being computed, only the active submatrix
+            // need be transformed.
+            if !wantt {
+                i1 = l;
+                i2 = i;
+            }
+
+            // Prepare the shift. The two exceptional shifts read a subdiagonal
+            // two rows in from an end of the block, which is safe here because
+            // L < I - 1 was checked above: the block always has at least 3 rows.
+            let (mut h11, mut h12, mut h21, mut h22);
+            if kdefl % (2 * KEXSH) == 0 {
+                // Exceptional shift (from the bottom).
+                let s = h[i + (i - 1) * ldh].abs() + h[(i - 1) + (i - 2) * ldh].abs();
+                h11 = DAT1 * s + h[i + i * ldh];
+                h12 = DAT2 * s;
+                h21 = s;
+                h22 = h11;
+            } else if kdefl % KEXSH == 0 {
+                // Exceptional shift (from the top).
+                let s = h[(l + 1) + l * ldh].abs() + h[(l + 2) + (l + 1) * ldh].abs();
+                h11 = DAT1 * s + h[l + l * ldh];
+                h12 = DAT2 * s;
+                h21 = s;
+                h22 = h11;
+            } else {
+                // Prepare to use Francis' double shift
+                // (i.e. 2nd degree generalized Rayleigh quotient).
+                h11 = h[(i - 1) + (i - 1) * ldh];
+                h21 = h[i + (i - 1) * ldh];
+                h12 = h[(i - 1) + i * ldh];
+                h22 = h[i + i * ldh];
+            }
+            let mut s = h11.abs() + h12.abs() + h21.abs() + h22.abs();
+            let mut rt1r = 0.0;
+            let mut rt1i = 0.0;
+            let mut rt2r = 0.0;
+            let mut rt2i = 0.0;
+            if s == 0.0 {
+                // All four entries are zero: the shifts are zero.
+            } else {
+                h11 /= s;
+                h21 /= s;
+                h12 /= s;
+                h22 /= s;
+                let tr = (h11 + h22) / 2.0;
+                let det = (h11 - tr) * (h22 - tr) - h12 * h21;
+                let rtdisc = det.abs().sqrt();
+                if det >= 0.0 {
+                    // ==== complex conjugate shifts ====
+                    rt1r = tr * s;
+                    rt2r = rt1r;
+                    rt1i = rtdisc * s;
+                    rt2i = -rt1i;
+                } else {
+                    // ==== real shifts (use only one of them) ====
+                    rt1r = tr + rtdisc;
+                    rt2r = tr - rtdisc;
+                    if (rt1r - h22).abs() <= (rt2r - h22).abs() {
+                        rt1r *= s;
+                        rt2r = rt1r;
+                    } else {
+                        rt2r *= s;
+                        rt1r = rt2r;
+                    }
+                    rt1i = 0.0;
+                    rt2i = 0.0;
+                }
+            }
+
+            // Look for two consecutive small subdiagonal elements.
+            // DO 50 M = I - 2, L, -1; the M = L case always breaks out at 60.
+            let mut m = i - 2;
+            let mut v = [0.0f64; 3];
+            loop {
+                // Determine the effect of starting the double-shift QR
+                // iteration at row M, and see if this would make H(M,M-1)
+                // negligible. (The following uses scaling to avoid overflows and
+                // most underflows.)
+                let mut h21s = h[(m + 1) + m * ldh];
+                let sv = (h[m + m * ldh] - rt2r).abs() + rt2i.abs() + h21s.abs();
+                h21s = h[(m + 1) + m * ldh] / sv;
+                v[0] = h21s * h[m + (m + 1) * ldh] + (h[m + m * ldh] - rt1r) * ((h[m + m * ldh] - rt2r) / sv)
+                    - rt1i * (rt2i / sv);
+                v[1] = h21s * (h[m + m * ldh] + h[(m + 1) + (m + 1) * ldh] - rt1r - rt2r);
+                v[2] = h21s * h[(m + 2) + (m + 1) * ldh];
+                let sv = v[0].abs() + v[1].abs() + v[2].abs();
+                v[0] /= sv;
+                v[1] /= sv;
+                v[2] /= sv;
+                if m == l {
+                    break;
+                }
+                if h[m + (m - 1) * ldh].abs() * (v[1].abs() + v[2].abs())
+                    <= ulp
+                        * v[0].abs()
+                        * (h[(m - 1) + (m - 1) * ldh].abs() + h[m + m * ldh].abs() + h[(m + 1) + (m + 1) * ldh].abs())
+                {
+                    break;
+                }
+                m -= 1;
+            }
+            // 60 CONTINUE
+
+            // Double-shift QR step.
+            // DO 130 K = M, I - 1
+            for k in m..=(i - 1) {
+                // NR is the order of the reflector G, at most 3.
+                let nr = 3.min(i - k + 1);
+                if k > m {
+                    // The subsequent iterations determine the reflector from
+                    // the bulge in column K-1.
+                    for t in 0..nr {
+                        v[t] = h[(k + t) + (k - 1) * ldh];
+                    }
+                }
+                let (beta, t1, vv) = dlarfg(v[0], &v[1..nr]);
+                v[..nr].copy_from_slice(&vv[..nr]);
+                if k > m {
+                    h[k + (k - 1) * ldh] = beta;
+                    h[(k + 1) + (k - 1) * ldh] = 0.0;
+                    if k < i - 1 {
+                        h[(k + 2) + (k - 1) * ldh] = 0.0;
+                    }
+                } else if m > l {
+                    // ==== Use the following instead of
+                    // .    H( K, K-1 ) = -H( K, K-1 ) to
+                    // .    avoid a bug when v(2) and v(3)
+                    // .    underflow. ====
+                    h[k + (k - 1) * ldh] *= 1.0 - t1;
+                }
+                let v2 = v[1];
+                let t2 = t1 * v2;
+                if nr == 3 {
+                    let v3 = v[2];
+                    let t3 = t1 * v3;
+
+                    // Apply G from the left to transform the rows of the matrix
+                    // in columns K to I2.
+                    for jj in k..=i2 {
+                        let sum = h[k + jj * ldh] + v2 * h[(k + 1) + jj * ldh] + v3 * h[(k + 2) + jj * ldh];
+                        h[k + jj * ldh] -= sum * t1;
+                        h[(k + 1) + jj * ldh] -= sum * t2;
+                        h[(k + 2) + jj * ldh] -= sum * t3;
+                    }
+
+                    // Apply G from the right to transform the columns of the
+                    // matrix in rows I1 to min(K+3,I).
+                    for jj in i1..=(k + 3).min(i) {
+                        let sum = h[jj + k * ldh] + v2 * h[jj + (k + 1) * ldh] + v3 * h[jj + (k + 2) * ldh];
+                        h[jj + k * ldh] -= sum * t1;
+                        h[jj + (k + 1) * ldh] -= sum * t2;
+                        h[jj + (k + 2) * ldh] -= sum * t3;
+                    }
+                } else if nr == 2 {
+                    // Apply G from the left to transform the rows of the matrix
+                    // in columns K to I2.
+                    for jj in k..=i2 {
+                        let sum = h[k + jj * ldh] + v2 * h[(k + 1) + jj * ldh];
+                        h[k + jj * ldh] -= sum * t1;
+                        h[(k + 1) + jj * ldh] -= sum * t2;
+                    }
+
+                    // Apply G from the right to transform the columns of the
+                    // matrix in rows I1 to I.
+                    for jj in i1..=i {
+                        let sum = h[jj + k * ldh] + v2 * h[jj + (k + 1) * ldh];
+                        h[jj + k * ldh] -= sum * t1;
+                        h[jj + (k + 1) * ldh] -= sum * t2;
+                    }
+                }
+            }
+        }
+
+        // Failure to converge in remaining number of iterations: INFO = I.
+        if !split_off {
+            return i;
+        }
+
+        // 150 CONTINUE
+        if l == i {
+            // H(I,I-1) is negligible: one eigenvalue has converged.
+            wr[i] = h[i + i * ldh];
+            wi[i] = 0.0;
+        } else if l + 1 == i {
+            // H(I-1,I-2) is negligible: a pair of eigenvalues have converged.
+            // Transform the 2-by-2 submatrix to standard Schur form, and compute
+            // and store the eigenvalues.
+            let (mut a, mut b, mut c, mut d) = (
+                h[(i - 1) + (i - 1) * ldh],
+                h[(i - 1) + i * ldh],
+                h[i + (i - 1) * ldh],
+                h[i + i * ldh],
+            );
+            let (mut cs, mut sn) = (0.0, 0.0);
+            let e = dlanv2(&mut a, &mut b, &mut c, &mut d, &mut cs, &mut sn);
+            h[(i - 1) + (i - 1) * ldh] = a;
+            h[(i - 1) + i * ldh] = b;
+            h[i + (i - 1) * ldh] = c;
+            h[i + i * ldh] = d;
+            wr[i - 1] = e.rt1r;
+            wi[i - 1] = e.rt1i;
+            wr[i] = e.rt2r;
+            wi[i] = e.rt2i;
+
+            if wantt {
+                // Apply the transformation to the rest of H.
+                //
+                // DROT( I2-I, H( I-1, I+1 ), LDH, H( I, I+1 ), LDH, CS, SN )
+                if i2 > i {
+                    for jj in (i + 1)..=i2 {
+                        let x = h[(i - 1) + jj * ldh];
+                        let y = h[i + jj * ldh];
+                        let temp = cs * x + sn * y;
+                        h[i + jj * ldh] = cs * y - sn * x;
+                        h[(i - 1) + jj * ldh] = temp;
+                    }
+                }
+                // DROT( I-I1-1, H( I1, I-1 ), 1, H( I1, I ), 1, CS, SN )
+                let count = i - i1 - 1;
+                for r in i1..(i1 + count) {
+                    let x = h[r + (i - 1) * ldh];
+                    let y = h[r + i * ldh];
+                    let temp = cs * x + sn * y;
+                    h[r + i * ldh] = cs * y - sn * x;
+                    h[r + (i - 1) * ldh] = temp;
+                }
+            }
+        }
+
+        // Reset the deflation counter and return to the start of the main loop
+        // with the new value of I.
+        kdefl = 0;
+        if l == 0 {
+            return 0;
+        }
+        i = l - 1;
+    }
+}
+
 /// `dhseqr` with `JOB = 'S'`, `COMPZ = 'N'`: reduce an upper Hessenberg matrix to
 /// real Schur form and return its eigenvalues.
 ///
@@ -438,17 +824,29 @@ pub fn dgehrd(a: &mut [f64], n: usize, q: Option<&mut [f64]>) {
 /// eigenvalues in deflation order. A complex conjugate pair occupies two
 /// adjacent positions with `wi > 0` for the first, matching the 2x2 block.
 ///
-/// **Not implemented yet.** The acceptance test is
-/// `parity::dhseqr_eigenvalues_agree_with_the_reference`, which checks the
-/// quasi-triangular structure, the standard form of each 2x2 block, and the
-/// eigenvalue multiset against the reference `dgeev`. The QR iteration itself is
-/// `dlahqr`; see `AGENTS-WIP.md` for the findings from a previous attempt.
+/// This calls [`dlahqr`] directly, which is what the reference `dhseqr` does for
+/// `n <= 75`; the blocked `dlaqr0`/`dlaqr5` path is not implemented. `JOB = 'S'`
+/// means `WANTT = .TRUE.` and `COMPZ = 'N'` means `WANTZ = .FALSE.`, and with
+/// `ILO = 1, IHI = N` the whole matrix is reduced.
+///
+/// `dlahqr` reports non-convergence through `INFO`, which this signature has no
+/// way to return; a matrix that exhausts the iteration limit is left partly
+/// reduced, as if `INFO > 0`.
+///
+/// The acceptance test is `parity::dhseqr_eigenvalues_agree_with_the_reference`,
+/// which checks the quasi-triangular structure, the standard form of each 2x2
+/// block, and the eigenvalue multiset against the reference `dgeev`.
 pub fn dhseqr(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], n: usize) {
     assert_eq!(t.len(), n * n, "dhseqr: t must be n*n");
     assert_eq!(wr.len(), n, "dhseqr: wr must have n entries");
     assert_eq!(wi.len(), n, "dhseqr: wi must have n entries");
-    let _ = (t, wr, wi, n);
-    unimplemented!("dhseqr: the QR iteration is not written yet")
+    if n == 0 {
+        return;
+    }
+    // JOB = 'S' -> WANTT = .TRUE.; COMPZ = 'N' -> WANTZ = .FALSE.; ILO = 1,
+    // IHI = N (0-based 0 and n - 1).
+    let info = dlahqr(n, 0, n - 1, t, n, wr, wi);
+    debug_assert_eq!(info, 0, "dhseqr: the QR iteration failed to converge");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

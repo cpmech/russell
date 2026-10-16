@@ -171,7 +171,23 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
     let mut info = 0;
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        return Err(crate::native::lapack::not_implemented("dgesvd"));
+        // The native routine validates its own shapes, so a BadShape here would be
+        // a programming error rather than a caller mistake. The two strings below
+        // are the ones the `info` branches further down report, so a native
+        // failure is indistinguishable to the caller from an accelerated one.
+        use crate::native::lapack::LapackError;
+        crate::native::lapack::svd::dgesvd(
+            a.as_mut_data(),
+            m,
+            n,
+            s.as_mut_data(),
+            u.as_mut_data(),
+            vt.as_mut_data(),
+        )
+        .map_err(|e| match e {
+            LapackError::Singular => "LAPACK ERROR (dgesvd): Algorithm did not converge",
+            _ => "LAPACK ERROR (dgesvd): An argument had an illegal value",
+        })?;
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

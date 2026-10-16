@@ -100,6 +100,20 @@ unsafe extern "C" {
     /// `zpotrf`: Hermitian positive-definite Cholesky.
     pub fn oracle_c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);
 
+    /// `zheev`: eigenvalues (and optionally eigenvectors) of a Hermitian matrix.
+    pub fn oracle_c_zheev(
+        calc_v: CcBool,
+        upper: CcBool,
+        n: *const i32,
+        a: *mut Complex64,
+        lda: *const i32,
+        w: *mut f64,
+        work: *mut Complex64,
+        lwork: *const i32,
+        rwork: *mut f64,
+        info: *mut i32,
+    );
+
     /// `dsyev`: eigenvalues (and optionally eigenvectors) of a symmetric matrix.
     pub fn oracle_c_dsyev(
         calc_v: CcBool,
@@ -279,6 +293,53 @@ pub mod query {
                 w.as_mut_ptr(),
                 work.as_mut_ptr(),
                 &lwork,
+                &mut info,
+            );
+        }
+        info
+    }
+
+    /// Runs `zheev` in the lower triangle, with a correctly sized workspace.
+    pub fn zheev(a: &mut [Complex64], n: usize, w: &mut [f64], want_v: bool) -> i32 {
+        let n_i32 = n as i32;
+        let ld = n_i32;
+        let mut info = 0i32;
+        let jobz = if want_v { C_TRUE } else { C_FALSE };
+
+        let mut work = vec![Complex64::new(0.0, 0.0); 1];
+        let mut rwork = vec![0.0f64; (3 * n).max(1)];
+        let mut lwork = -1i32;
+        unsafe {
+            oracle_c_zheev(
+                jobz,
+                C_FALSE,
+                &n_i32,
+                a.as_mut_ptr(),
+                &ld,
+                w.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
+        if info != 0 {
+            return info;
+        }
+        let need = work[0].re.max(1.0) as usize;
+        let mut work = vec![Complex64::new(0.0, 0.0); need];
+        lwork = need as i32;
+        unsafe {
+            oracle_c_zheev(
+                jobz,
+                C_FALSE,
+                &n_i32,
+                a.as_mut_ptr(),
+                &ld,
+                w.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
                 &mut info,
             );
         }

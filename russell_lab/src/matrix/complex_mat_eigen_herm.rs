@@ -121,6 +121,15 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 3 * m];
     let mut info = 0;
+    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    {
+        // The native routine has the same contract as `zheev(JOBZ='V', ...)`:
+        // `a` is destroyed and holds the eigenvectors as columns, `l` receives
+        // the eigenvalues in ascending order, and `upper` picks the triangle
+        // that is read.
+        return crate::native::lapack::zeig::zheev(a.as_mut_data(), l.as_mut_data(), m, upper)
+            .map_err(|_| "LAPACK ERROR (zheev): An argument had an illegal value");
+    }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
         unsafe {

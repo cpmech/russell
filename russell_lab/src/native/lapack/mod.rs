@@ -13,10 +13,12 @@
 //! | `dpotrf` Cholesky | done |
 //! | `zgetrf`, `zgetri`, `zgesv`, `zpotrf` | done, in [`complex`] |
 //! | `dlange` matrix norms | in [`super::blas::dlange`] |
-//! | `dsyev`, `dgeev`, `dggev`, `dgesvd` | **not implemented** |
-//! | the complex eigen/SVD drivers | **not implemented** |
+//! | `dsyev` symmetric eigen-decomposition | done, in [`sym`] |
+//! | `zheev` Hermitian eigen-decomposition | done, in [`zeig`] |
+//! | `dgeev`, `dggev`, `dgesvd` | **not implemented** |
+//! | `zgeev`, `zgesvd` | **not implemented** |
 //!
-//! The unimplemented ones are the eigenvalues and the SVD, real and complex.
+//! The unimplemented ones are the general eigenvalues and the SVD, real and complex.
 //! They are named here rather than silently absent so that a caller who needs one
 //! gets an honest answer. Until they exist, build with `--features oblas` (or
 //! `mkl`) for those routines; the geometric, linear-solver and complex
@@ -32,6 +34,9 @@
 
 pub mod complex;
 pub mod eig;
+pub mod svd;
+pub mod sym;
+pub mod zeig;
 
 use super::blas;
 
@@ -485,7 +490,7 @@ mod tests {
 /// not linked is deliberate: a runtime error names the feature to enable, whereas
 /// a link error names a mangled symbol and says nothing about what to do.
 ///
-/// Routines currently in this state: the eigenvalues (`dsyev`, `dgeev`,
+/// Routines currently in this state: the general real eigenvalues (`dgeev`,
 /// `dggev`), the SVD (`dgesvd`), and the complex eigen/SVD drivers.
 pub fn not_implemented(routine: &str) -> &'static str {
     // The message must be a `&'static str` to fit `StrError`, so the routine

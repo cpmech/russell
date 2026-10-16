@@ -881,3 +881,231 @@ fn check_svd(a: &Matrix, m: usize, n: usize, rank_deficient: bool) {
         "{label}: U S V^T does not reconstruct A (worst element error {worst}, scale {scale})"
     );
 }
+
+/// A deterministic, genuinely complex Hermitian matrix.
+///
+/// `H = (A + A^H) / 2` for the complex sample, so it is Hermitian by
+/// construction. The imaginary parts off the diagonal are non-zero -- that is the
+/// point: on real or real-symmetric data a missing conjugation in `zhetd2`,
+/// `zungtr` or `zsteqr` still produces a plausible answer, which is exactly how
+/// the earlier `zherk`/`zpotrf` bugs survived.
+fn hermitian_sample(n: usize) -> crate::ComplexMatrix {
+    let raw = complex_sample(n);
+    let mut h = crate::ComplexMatrix::new(n, n);
+    for i in 0..n {
+        for j in 0..n {
+            let s = raw.get(i, j) + raw.get(j, i).conj();
+            h.set(i, j, crate::cpx!(0.5 * s.re, 0.5 * s.im));
+        }
+    }
+    h
+}
+
+/// Complex Hermitian eigen-decomposition against the reference, on both
+/// triangles.
+///
+/// Four things are checked, mirroring the real `dsyev` test:
+///
+/// 1. **The eigenvalues are the reference's, in order.** The Hermitian problem,
+///    like the symmetric one, has a canonical order -- ascending -- so this is an
+///    in-order comparison and a wrong ordering is a failure, not a nuisance.
+/// 2. **The vectors are orthonormal in the complex sense**, `v_i^H v_j =
+///    delta_ij`. A conjugation mistake turns this into `v_i^T v_j`, which is not
+///    the identity on complex data.
+/// 3. **`A v = lambda v` for each pair**, against the original Hermitian matrix.
+///    (1) and (2) together are satisfiable by the eigenvectors of `conj(A)`.
+/// 4. **Both triangles agree.** `uplo` selects which triangle is *read*, so the
+///    same Hermitian matrix fed with `upper` false and true must give the same
+///    spectrum.
+///
+/// The eigenvector columns are not compared against the reference -- their phase
+/// is arbitrary -- so (2) and (3) are what pin them down.
+#[test]
+fn zheev_agrees_with_the_reference() {
+    let zero = crate::cpx!(0.0, 0.0);
+    for n in [1usize, 2, 3, 5, 8, 12] {
+        let a = hermitian_sample(n);
+        let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.norm())).max(1.0);
+
+        // The data must be genuinely complex, or a conjugation mistake hides.
+        let has_imag = (0..n).any(|j| (0..n).any(|i| i != j && a.get(i, j).im.abs() > 0.25));
+        assert!(
+            has_imag || n < 2,
+            "the zheev test data must be genuinely complex (n={n})"
+        );
+
+        let mut results = Vec::new();
+        for upper in [false, true] {
+            let mut work = a.clone();
+            let mut l = Vector::new(n);
+            crate::complex_mat_eigen_herm(&mut l, &mut work, upper).expect("native zheev");
+
+            // --- 1. eigenvalues in order against the reference.
+            let mut t_ref = a.clone();
+            let mut l_ref = vec![0.0; n];
+            let info = oracle::query::zheev(t_ref.as_mut_data(), n, &mut l_ref, true);
+            assert_eq!(info, 0, "reference zheev failed for n={n} upper={upper}");
+            for i in 0..n {
+                assert!(
+                    (l[i] - l_ref[i]).abs() / scale < TOL,
+                    "n={n} upper={upper}: eigenvalue {i} is {} but the reference says {}",
+                    l[i],
+                    l_ref[i]
+                );
+            }
+            for i in 1..n {
+                assert!(
+                    l[i] >= l[i - 1] - 1e-12 * scale,
+                    "n={n} upper={upper}: eigenvalues are not ascending: {} then {}",
+                    l[i - 1],
+                    l[i]
+                );
+            }
+
+            // --- 2. orthonormal columns, complex sense.
+            for i in 0..n {
+                for j in 0..n {
+                    let mut dot = zero;
+                    for k in 0..n {
+                        dot += work.get(k, i).conj() * work.get(k, j);
+                    }
+                    let want = if i == j { 1.0 } else { 0.0 };
+                    assert!(
+                        (dot - crate::cpx!(want, 0.0)).norm() < 1e-10,
+                        "n={n} upper={upper}: columns {i},{j} are not orthonormal (v_i^H v_j = {dot})"
+                    );
+                }
+            }
+
+            // --- 3. the defining equation against the original matrix.
+            for j in 0..n {
+                for i in 0..n {
+                    let mut av = zero;
+                    for k in 0..n {
+                        av += a.get(i, k) * work.get(k, j);
+                    }
+                    let resid = (av - work.get(i, j) * l[j]).norm();
+                    assert!(
+                        resid / scale < 1e-10,
+                        "n={n} upper={upper}: (A v - lambda v)[{i}] = {resid} for eigenvalue {j}"
+                    );
+                }
+            }
+
+            results.push((l, work));
+        }
+
+        // --- 4. the two triangles give the same spectrum.
+        let (l_lo, _) = &results[0];
+        let (l_up, _) = &results[1];
+        for i in 0..n {
+            assert!(
+                (l_lo[i] - l_up[i]).abs() / scale < 1e-12,
+                "n={n}: reading the lower triangle gives {} but the upper gives {}",
+                l_lo[i],
+                l_up[i]
+            );
+        }
+    }
+}
+
+/// The generalised eigenproblem `A v = lambda B v`, by its defining equation.
+///
+/// `dggev` returns `(alpha, beta)` with `lambda = alpha/beta`, so comparing
+/// eigenvalues against a reference means comparing ratios -- and a ratio is
+/// badly behaved exactly where `beta` is small. The reference itself reports
+/// `beta = 0` for infinite eigenvalues, and one of the crate's own tests asserts
+/// on a `beta` of exactly zero. Rather than cope with infinities, the data here
+/// is chosen so every eigenvalue is finite: `B = R^T R + n I` is symmetric
+/// positive definite, so no `lambda` is infinite and none is ill conditioned.
+///
+/// The check is `A v = lambda B v` for each right eigenvector, which needs no
+/// reference and is the definition. `lambda = alpha/beta` is formed in complex
+/// arithmetic, since `alpha` may be complex while `beta` is real.
+#[test]
+fn dggev_satisfies_its_defining_equation() {
+    for n in [1usize, 2, 3, 5, 8] {
+        let ra = sample(n);
+        let mut b = Matrix::new(n, n);
+        // B = ra^T ra + n I, symmetric positive definite by construction.
+        for i in 0..n {
+            for j in 0..n {
+                let mut sum = 0.0;
+                for k in 0..n {
+                    sum += ra.get(k, i) * ra.get(k, j);
+                }
+                b.set(i, j, if i == j { sum + n as f64 } else { sum });
+            }
+        }
+
+        let mut a = ra.clone();
+        let mut b_work = b.clone();
+        let mut alpha_r = Vector::new(n);
+        let mut alpha_i = Vector::new(n);
+        let mut beta = Vector::new(n);
+        let mut v = Matrix::new(n, n);
+        crate::mat_gen_eigen(&mut alpha_r, &mut alpha_i, &mut beta, &mut v, &mut a, &mut b_work).expect("native dggev");
+
+        let scale_b = b.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+
+        let mut j = 0usize;
+        while j < n {
+            // lambda = alpha / beta, in complex arithmetic.
+            assert!(
+                beta[j].abs() > 1e-12,
+                "beta[{j}] is {}; the data should give no infinite eigenvalue",
+                beta[j]
+            );
+            let lr = alpha_r[j] / beta[j];
+            let li = alpha_i[j] / beta[j];
+
+            if li != 0.0 {
+                // Eigenvector column j is (real, imaginary) in columns j and j+1.
+                // A u = lambda B u, checked in complex arithmetic.
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut av_r = 0.0;
+                    let mut av_i = 0.0;
+                    let mut bv_r = 0.0;
+                    let mut bv_i = 0.0;
+                    for k in 0..n {
+                        let u_r = v.get(k, j);
+                        let u_i = v.get(k, j + 1);
+                        av_r += a.get(i, k) * u_r;
+                        av_i += a.get(i, k) * u_i;
+                        bv_r += b.get(i, k) * u_r;
+                        bv_i += b.get(i, k) * u_i;
+                    }
+                    // right-hand side: lambda * (B u), complex multiply
+                    let u_r = v.get(i, j);
+                    let u_i = v.get(i, j + 1);
+                    let rhs_r = lr * bv_r - li * bv_i;
+                    let rhs_i = lr * bv_i + li * bv_r;
+                    worst = worst.max((av_r - rhs_r).abs().max((av_i - rhs_i).abs()));
+                    let _ = (u_r, u_i);
+                }
+                assert!(
+                    worst / scale_b < 1e-10,
+                    "n={n}: the complex generalised eigenvector for lambda = {lr}+{li}i has residual {worst}"
+                );
+                j += 2;
+            } else {
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut av = 0.0;
+                    let mut bv = 0.0;
+                    for k in 0..n {
+                        av += a.get(i, k) * v.get(k, j);
+                        bv += b.get(i, k) * v.get(k, j);
+                    }
+                    worst = worst.max((av - lr * bv).abs());
+                }
+                assert!(
+                    worst / scale_b < 1e-10,
+                    "n={n}: the real generalised eigenvector for lambda = {lr} has residual {worst}"
+                );
+                j += 1;
+            }
+        }
+    }
+}

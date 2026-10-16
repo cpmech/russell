@@ -115,7 +115,9 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
         crate::native::lapack::dgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
-            crate::native::lapack::LapackError::Singular => "LAPACK ERROR (dgesv): The factor U is singular",
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
+            }
             crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
             crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
         })?;

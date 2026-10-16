@@ -112,15 +112,22 @@ pub fn complex_mat_t_mat_mul(
     }
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        // C := alpha A^H B + beta C: conjugate and transpose A into a scratch buffer.
-        let kk = a.ncol();
-        let mut ah = vec![num_complex::Complex64::new(0.0, 0.0); m * kk];
+        // C := alpha A^T B + beta C, where A is (k, m).
+        //
+        // `zgemm` computes C = alpha * X * Y + beta * C with X of (m, p) and Y of
+        // (p, n). Here Y is `b` (k, n) so p = k, and X must be A^T, which is
+        // (m, k). Building A^T rather than passing `a` with a transposed flag
+        // keeps the kernel's indexing unchanged.
+        //
+        // Note this is the *plain* transpose: the shim passes CBLAS_TRANS, not
+        // CBLAS_CONJ_TRANS, so nothing is conjugated here.
+        let mut at = vec![num_complex::Complex64::new(0.0, 0.0); m * k];
         for i in 0..m {
-            for l in 0..kk {
-                ah[i + l * m] = a.get(l, i).conj();
+            for l in 0..k {
+                at[i + l * m] = a.get(l, i);
             }
         }
-        crate::native::blas::zgemm(alpha, &ah, b.as_data(), beta, c.as_mut_data(), m, n, kk);
+        crate::native::blas::zgemm(alpha, &at, b.as_data(), beta, c.as_mut_data(), m, n, k);
     }
     Ok(())
 }

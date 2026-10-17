@@ -62,9 +62,9 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1163 pass, 0 fail, 0 ignored
+cargo test -p russell_lab --lib                     # 1168 pass, 0 fail, 0 ignored
 RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features oracle # 1176 pass, 0 fail
+  cargo test -p russell_lab --lib --features oracle # 1181 pass, 0 fail
 ```
 
 Both configurations are known-good on the current tree of `native-lapack`, with
@@ -145,6 +145,22 @@ tests check the defining equation or a canonical order instead of comparing
 against the reference's output directly; where it is unique (singular values, an
 inverse, a Cholesky factor), they compare element-wise, because that is what
 catches a conjugation error, which an invariant-based check would miss.
+
+LAPACK's own suite (`TESTING/LIN`, `TESTING/EIG`) tests the routines we ported, not
+just the drivers, and its checks transfer directly: `dchkbl`/`dchkbk` for
+`dgebal`/`dgebak`, `dhst01` for `dgehrd`, `dsyt21` for `dsytrd` + `dorgtr`,
+`dstt21`/`dstt22` for `dsteqr`, `dbdt01`/`dbdt03` for `dgebd2`/`dorgbr`/`dbdsqr`.
+Each is a residual divided by the norms and by `n * eps` --
+`norm(A - Q H Q^T) / (norm(A) * n * eps)` -- with 20 as the pass threshold. Prefer
+that form to an absolute tolerance: it is a different assertion at n=1 and at
+n=20, and the measured values land between 0.1 and 12, so a wrong index (which
+shows up as `1e14`) cannot hide under a hand-set `1e-12`.
+
+Transcribe LAPACK's fixtures, but check them against the reference before trusting
+them: the fifth example of `TESTING/dbal.in` still states `dgebal`'s older
+permutation order (`(4,3,5)`, where 3.12.1 gives `(4,5,3)`), and `dchkbl` only
+*reports* its largest error instead of asserting it, so the drift has never been
+flagged -- its own run prints "example number having largest error = 5".
 
 Run the oracle tests in the same target directory as the default build. Mixing
 `--features oracle` with `--features oblas` will not link: both provide the BLAS

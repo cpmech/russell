@@ -1262,6 +1262,50 @@ mod tests {
         a
     }
 
+    /// The 1-norm of a dense column-major matrix: LAPACK's `DLANGE('1', ...)`.
+    fn norm_1(a: &[f64], m: usize, n: usize) -> f64 {
+        let mut best = 0.0f64;
+        for j in 0..n {
+            let mut sum = 0.0;
+            for i in 0..m {
+                sum += a[i + j * m].abs();
+            }
+            best = best.max(sum);
+        }
+        best
+    }
+
+    /// `C = A B` for dense column-major `m x k` and `k x n` factors.
+    fn mat_mul(a: &[f64], b: &[f64], m: usize, k: usize, n: usize) -> Vec<f64> {
+        let mut c = vec![0.0; m * n];
+        for j in 0..n {
+            for i in 0..m {
+                let mut sum = 0.0;
+                for l in 0..k {
+                    sum += a[i + l * m] * b[l + j * k];
+                }
+                c[i + j * m] = sum;
+            }
+        }
+        c
+    }
+
+    /// The ratio LAPACK's `dort01` uses for an orthonormal set of `n` columns:
+    /// `norm(I - Q^T Q) / (n * eps)`.
+    fn orthogonality_ratio(q: &[f64], m: usize, n: usize) -> f64 {
+        let mut diff = 0.0;
+        for j in 0..n {
+            for i in 0..n {
+                let mut dot = 0.0;
+                for k in 0..m {
+                    dot += q[k + i * m] * q[k + j * m];
+                }
+                diff += (dot - if i == j { 1.0 } else { 0.0 }).abs();
+            }
+        }
+        diff / (n as f64 * f64::EPSILON)
+    }
+
     /// Reconstruction and orthogonality for every shape the parity test uses.
     ///
     /// This is the oracle-free half of that test: it cannot check the singular
@@ -1458,6 +1502,194 @@ mod tests {
                 Err(LapackError::Convergence),
                 "dgesvd {m}x{n} must report non-convergence"
             );
+        }
+    }
+
+    /// LAPACK's `dbdt01` and `dort01`: `dgebd2` followed by the two `dorgbr` calls
+    /// must give `A = Q B P^T`, with `B` bidiagonal and `Q`, `P` orthogonal, for
+    /// tall, square and wide matrices.
+    ///
+    /// The existing `dgebd2`/`dorgbr` test only checks that `P^T` comes out
+    /// orthogonal, which a wrong pairing of reflectors and taus can satisfy. This
+    /// reconstructs the matrix, which is the property the reduction exists for,
+    /// and covers the wide (`m < n`, lower bidiagonal) branch that no test touched.
+    ///
+    /// The ratios are LAPACK's:
+    ///
+    ///   ratio 1 = norm(A - Q B P^T) / (max(m,n) * norm(A) * eps)
+    ///   ratio 2 = norm(I - Q^T Q)   / (m * eps)
+    ///   ratio 3 = norm(I - P P^T)   / (n * eps)
+    #[test]
+    fn dgebd2_and_dorgbr_reconstruct_the_bidiagonal_form() {
+        let eps = f64::EPSILON;
+        for (m, n) in [(2usize, 2usize), (3, 2), (3, 3), (4, 3), (6, 4), (2, 3), (3, 4), (4, 6)] {
+            let a0 = rect_sample(m, n);
+            let mut a = a0.clone();
+            let minmn = m.min(n);
+            let mut d = vec![0.0; minmn];
+            let mut e = vec![0.0; minmn];
+            let mut tauq = vec![0.0; minmn];
+            let mut taup = vec![0.0; minmn];
+            dgebd2(&mut a, m, m, n, &mut d, &mut e, &mut tauq, &mut taup);
+
+            // The reflectors for `Q` (m x m) and for `P^T` (n x n), copied out of
+            // `a` and generated exactly as `dgesvd` does it.
+            let mut q = vec![0.0; m * m];
+            if m >= n {
+                for j in 0..n {
+                    for i in j..m {
+                        q[i + j * m] = a[i + j * m];
+                    }
+                }
+            } else {
+                for j in 0..m {
+                    for i in j..m {
+                        q[i + j * m] = a[i + j * m];
+                    }
+                }
+            }
+            dorgbr(true, m, m, n, &mut q, m, &tauq);
+
+            let mut vt = vec![0.0; n * n];
+            if m >= n {
+                for j in 0..n {
+                    for i in 0..=j {
+                        vt[i + j * n] = a[i + j * m];
+                    }
+                }
+            } else {
+                for j in 0..n {
+                    for i in 0..=j.min(m - 1) {
+                        vt[i + j * n] = a[i + j * m];
+                    }
+                }
+            }
+            let kp = if m >= n { n } else { m };
+            dorgbr(false, n, n, kp, &mut vt, n, &taup);
+
+            // B, in the bidiagonal form `dgebd2` produces: upper for m >= n,
+            // lower otherwise.
+            let mut b = vec![0.0; m * n];
+            for i in 0..minmn {
+                b[i + i * m] = d[i];
+                if i + 1 < minmn {
+                    if m >= n {
+                        b[i + (i + 1) * m] = e[i];
+                    } else {
+                        b[(i + 1) + i * m] = e[i];
+                    }
+                }
+            }
+
+            let qb = mat_mul(&q, &b, m, m, n);
+            let mut rec = vec![0.0; m * n];
+            for j in 0..n {
+                for i in 0..m {
+                    let mut sum = 0.0;
+                    for k in 0..n {
+                        sum += qb[i + k * m] * vt[k + j * n];
+                    }
+                    rec[i + j * m] = sum;
+                }
+            }
+            let a_norm = norm_1(&a0, m, n).max(f64::MIN_POSITIVE);
+            let mut diff = 0.0;
+            for idx in 0..m * n {
+                diff += (a0[idx] - rec[idx]).abs();
+            }
+            let ratio1 = diff / (m.max(n) as f64 * a_norm * eps);
+            let ratio2 = orthogonality_ratio(&q, m, m);
+            let ratio3 = orthogonality_ratio(&vt, n, n);
+            assert!(ratio1 <= 20.0, "{m}x{n}: dbdt01 ratio = {ratio1} exceeds 20");
+            assert!(ratio2 <= 20.0, "{m}x{n}: Q orthogonality ratio = {ratio2} exceeds 20");
+            assert!(ratio3 <= 20.0, "{m}x{n}: P orthogonality ratio = {ratio3} exceeds 20");
+        }
+    }
+
+    /// LAPACK's `dbdt03`: `dbdsqr` on a bidiagonal matrix must produce
+    /// `S = U^T B V`, checked directly rather than through `dgesvd`.
+    ///
+    /// `dbdsqr` had no direct test: everything about it was inferred from
+    /// `dgesvd` reconstructing a dense matrix, two reductions away. Feeding it a
+    /// bidiagonal matrix and asking for the decomposition tests the routine on
+    /// the only input it ever sees.
+    #[test]
+    fn dbdsqr_reconstructs_the_singular_value_decomposition() {
+        let eps = f64::EPSILON;
+        let mut cases: Vec<(usize, Vec<f64>, Vec<f64>)> = Vec::new();
+        for n in [2usize, 3, 5, 8, 13] {
+            let d = (0..n).map(|i| 1.0 + 0.5 * (i as f64)).collect();
+            let mut e = vec![0.0; n];
+            for i in 0..n - 1 {
+                e[i] = 0.75 - 0.125 * ((i * 3) % 4) as f64;
+            }
+            cases.push((n, d, e));
+        }
+        // Rank deficient: a zero diagonal entry.
+        let mut d = vec![1.0, 0.0, 2.0, 3.0];
+        let mut e = vec![0.5, 0.25, 0.125, 0.0];
+        cases.push((4, d.clone(), e.clone()));
+        // Wide range of magnitudes in the same matrix.
+        d = vec![1e8, 1.0, 1e-8, 1.0];
+        e = vec![1.0, 1e-8, 1.0, 0.0];
+        cases.push((4, d, e));
+
+        for (n, d_in, mut e) in cases {
+            let mut d = d_in.clone();
+            // B, the bidiagonal matrix, before dbdsqr destroys it.
+            let mut b = vec![0.0; n * n];
+            for i in 0..n {
+                b[i + i * n] = d[i];
+                if i + 1 < n {
+                    b[i + (i + 1) * n] = e[i];
+                }
+            }
+            let b_norm = norm_1(&b, n, n).max(f64::MIN_POSITIVE);
+
+            let mut u = vec![0.0; n * n];
+            let mut vt = vec![0.0; n * n];
+            for i in 0..n {
+                u[i + i * n] = 1.0;
+                vt[i + i * n] = 1.0;
+            }
+            let mut c = vec![0.0; 1];
+            let info = dbdsqr(false, n, n, n, 0, &mut d, &mut e, &mut vt, n, &mut u, n, &mut c, 1);
+            assert_eq!(info, 0, "n={n}: dbdsqr did not converge");
+
+            // S = U^T B V, compared with the singular values it reported.
+            let mut ub = vec![0.0; n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = 0.0;
+                    for k in 0..n {
+                        sum += u[k + i * n] * b[k + j * n];
+                    }
+                    ub[i + j * n] = sum;
+                }
+            }
+            let mut s = vec![0.0; n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = 0.0;
+                    for k in 0..n {
+                        sum += ub[i + k * n] * vt[j + k * n];
+                    }
+                    s[i + j * n] = sum;
+                }
+            }
+            let mut diff = 0.0;
+            for j in 0..n {
+                for i in 0..n {
+                    let want = if i == j { d[i] } else { 0.0 };
+                    diff += (s[i + j * n] - want).abs();
+                }
+            }
+            let ratio1 = diff / (b_norm * n as f64 * eps);
+            let ratio2 = orthogonality_ratio(&u, n, n);
+            let ratio3 = orthogonality_ratio(&vt, n, n);
+            assert!(ratio1 <= 20.0, "n={n}: dbdt03 ratio = {ratio1} exceeds 20");
+            assert!(ratio2 <= 20.0, "n={n}: U orthogonality ratio = {ratio2} exceeds 20");
+            assert!(ratio3 <= 20.0, "n={n}: V orthogonality ratio = {ratio3} exceeds 20");
         }
     }
 }

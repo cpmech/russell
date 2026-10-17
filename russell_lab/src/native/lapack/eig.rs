@@ -2710,6 +2710,41 @@ mod tests {
         c
     }
 
+    /// Copies a matrix into column-major storage. The LAPACK fixture files write
+    /// matrices row by row, as Fortran reads them.
+    fn column_major(rows: &[f64], n: usize) -> Vec<f64> {
+        let mut a = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                a[i + j * n] = rows[i * n + j];
+            }
+        }
+        a
+    }
+
+    /// The 1-norm of a dense column-major matrix: LAPACK's `DLANGE('1', ...)`.
+    fn norm_1(a: &[f64], m: usize, n: usize) -> f64 {
+        let mut best = 0.0f64;
+        for j in 0..n {
+            let mut sum = 0.0;
+            for i in 0..m {
+                sum += a[i + j * m].abs();
+            }
+            best = best.max(sum);
+        }
+        best
+    }
+
+    fn transpose(a: &[f64], n: usize) -> Vec<f64> {
+        let mut t = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                t[i + j * n] = a[j + i * n];
+            }
+        }
+        t
+    }
+
     #[test]
     fn dlarfg_annihilates_the_tail() {
         // H x = beta e1 with H = I - tau v v^T.
@@ -2759,7 +2794,7 @@ mod tests {
 
     /// The reduction, checked against the definition rather than against an
     /// internal factorisation: `H` upper Hessenberg, `Q` orthogonal, and
-    /// `A = Q H Q^T`.
+    /// `A = Q H Q^T`, with the latter two in the form of LAPACK's `dhst01`.
     #[test]
     fn dgehrd_produces_hessenberg_and_an_orthogonal_q() {
         for n in [1usize, 2, 3, 5, 8, 20] {
@@ -2777,30 +2812,454 @@ mod tests {
                 }
             }
 
+            // The two residuals of LAPACK's `dhst01`, each divided by the norms
+            // and by `n * eps`:
+            //
+            //   ratio 1 = norm(A - Q H Q^T) / (norm(A) * n * eps)
+            //   ratio 2 = norm(I - Q^T Q)   / (n * eps)
+            //
+            // with the 1-norm, as the reference computes them, and LAPACK's own
+            // threshold of 20. This replaces a hand-set absolute tolerance
+            // (`1e-12`), which is a different assertion at n=1 and at n=20: the
+            // residual of a backward-stable reduction grows with `n`, so the
+            // absolute bound was silently tight at the small end and the only
+            // thing holding at the large end was the choice of test matrices.
+            let qh = mat_mul(&q, &h, n);
+            let qhqt = mat_mul(&qh, &transpose(&q, n), n);
+            let (mut diff, mut qtq_diff) = (0.0, 0.0);
+            for idx in 0..n * n {
+                diff += (orig[idx] - qhqt[idx]).abs();
+                let (i, j) = (idx % n, idx / n);
+                let mut dot = 0.0;
+                for l in 0..n {
+                    dot += q[l + i * n] * q[l + j * n];
+                }
+                qtq_diff += (dot - if i == j { 1.0 } else { 0.0 }).abs();
+            }
+            let eps = f64::EPSILON;
+            let ratio1 = diff / (norm_1(&orig, n, n).max(f64::MIN_POSITIVE) * n as f64 * eps);
+            let ratio2 = qtq_diff / (n as f64 * eps);
+            assert!(ratio1 <= 20.0, "n={n}: dhst01 ratio 1 = {ratio1} exceeds 20");
+            assert!(ratio2 <= 20.0, "n={n}: dhst01 ratio 2 = {ratio2} exceeds 20");
+        }
+    }
+
+    /// The thirteen examples of LAPACK's `dchkbl`: `(n, A, ILO, IHI, balanced A,
+    /// scale)`, the matrices row-major as the fixture files write them and
+    /// `ILO`/`IHI` 1-based.
+    ///
+    /// The inputs are those of `TESTING/dbal.in`. The expected outputs are what
+    /// LAPACK 3.12.1's own `dgebal` returns for them, not what `dbal.in` states:
+    /// the file's expectation for the fifth example is stale -- it lists the
+    /// permutation as `(4, 3, 5)` where the current `dgebal` gives `(4, 5, 3)`,
+    /// the column phase of the permutation having been restructured after those
+    /// examples were written down. `dchkbl` only *reports* its largest error
+    /// instead of asserting it, and its own run over this file prints "example
+    /// number having largest error = 5", which is how the drift went unnoticed.
+    /// The other twelve examples agree with the file exactly.
+    const DBAL_CASES: &[(usize, &[f64], usize, usize, &[f64], &[f64])] = &[
+        (
+            5,
+            &[
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 5.0,
+            ],
+            1,
+            1,
+            &[
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 5.0,
+            ],
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+        ),
+        (
+            5,
+            &[
+                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 0.0,
+                1.0, 2.0, 3.0, 4.0, 5.0,
+            ],
+            1,
+            1,
+            &[
+                5.0, 4.0, 3.0, 2.0, 1.0, 0.0, 4.0, 3.0, 2.0, 1.0, 0.0, 0.0, 3.0, 2.0, 1.0, 0.0, 0.0, 0.0, 2.0, 1.0,
+                0.0, 0.0, 0.0, 0.0, 1.0,
+            ],
+            &[1.0, 2.0, 3.0, 2.0, 1.0],
+        ),
+        (
+            5,
+            &[
+                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0, 1.0,
+            ],
+            1,
+            1,
+            &[
+                1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0,
+                0.0, 0.0, 0.0, 0.0, 1.0,
+            ],
+            &[1.0, 2.0, 3.0, 2.0, 1.0],
+        ),
+        (
+            4,
+            &[
+                0.0, 2.0, 0.1, 0.0, 2.0, 0.0, 0.0, 0.1, 100.0, 0.0, 0.0, 2.0, 0.0, 100.0, 2.0, 0.0,
+            ],
+            1,
+            4,
+            &[
+                0.0, 2.0, 3.2, 0.0, 2.0, 0.0, 0.0, 3.2, 3.125, 0.0, 0.0, 2.0, 0.0, 3.125, 2.0, 0.0,
+            ],
+            &[0.0625, 0.0625, 2.0, 2.0],
+        ),
+        (
+            6,
+            &[
+                2.0, 0.0, 0.0, 0.0, 0.0, 1024.0, 0.0, 0.0, 0.0, 0.0, 0.0, 128.0, 0.0, 2.0, 3000.0, 0.0, 0.0, 2.0,
+                128.0, 4.0, 0.004, 5.0, 600.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.002, 2.0, 8.0, 8192.0, 0.0, 0.0, 0.0, 2.0,
+            ],
+            4,
+            6,
+            &[
+                5.0, 600.0, 0.004, 1024.0, 0.5, 8.0, 0.0, 0.002, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 3000.0, 0.0, 0.25, 2.0,
+                0.0, 0.0, 0.0, 2.0, 0.0, 128.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1024.0, 0.0, 0.0, 0.0, 64.0, 1024.0, 2.0,
+            ],
+            &[4.0, 5.0, 3.0, 8.0, 0.125, 1.0],
+        ),
+        (
+            5,
+            &[
+                1.0, 0.0, 0.0, 0.0, 8.0, 0.0, 2.0, 8192.0, 2.0, 4.0, 0.00025, 0.000125, 4.0, 0.0, 64.0, 0.0, 2.0,
+                1024.0, 4.0, 8.0, 0.0, 8192.0, 0.0, 0.0, 8.0,
+            ],
+            1,
+            5,
+            &[
+                1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 2.0, 1024.0, 16.0, 16.0, 0.032, 0.001, 4.0, 0.0, 2048.0, 0.0, 0.25, 16.0,
+                4.0, 4.0, 0.0, 2048.0, 0.0, 0.0, 8.0,
+            ],
+            &[8.0, 0.5, 0.0625, 4.0, 2.0],
+        ),
+        (
+            4,
+            &[
+                1.0, 1000000.0, 1000000.0, 1000000.0, -2000000.0, 3.0, 2e-06, 3e-06, -3000000.0, 0.0, 1e-06, 2.0,
+                1000000.0, 0.0, 3e-06, 4000000.0,
+            ],
+            1,
+            4,
+            &[
+                1.0, 1000000.0, 2000000.0, 1000000.0, -2000000.0, 3.0, 4e-06, 3e-06, -1500000.0, 0.0, 1e-06, 1.0,
+                1000000.0, 0.0, 6e-06, 4000000.0,
+            ],
+            &[1.0, 1.0, 2.0, 1.0],
+        ),
+        (
+            4,
+            &[
+                1.0, 10000.0, 10000.0, 10000.0, -20000.0, 3.0, 0.002, 0.003, 0.0, 2.0, 0.0, -30000.0, 0.0, 0.0,
+                10000.0, 0.0,
+            ],
+            1,
+            4,
+            &[
+                1.0, 10000.0, 10000.0, 5000.0, -20000.0, 3.0, 0.002, 0.0015, 0.0, 2.0, 0.0, -15000.0, 0.0, 0.0,
+                20000.0, 0.0,
+            ],
+            &[1.0, 1.0, 1.0, 0.5],
+        ),
+        (
+            5,
+            &[
+                1.0, 512.0, 4096.0, 32768.0, 262144.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 8.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 8.0, 0.0,
+            ],
+            1,
+            5,
+            &[
+                1.0, 32.0, 32.0, 32.0, 32.0, 128.0, 0.0, 0.0, 0.0, 0.0, 0.0, 64.0, 0.0, 0.0, 0.0, 0.0, 0.0, 64.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 64.0, 0.0,
+            ],
+            &[256.0, 16.0, 2.0, 0.25, 0.03125],
+        ),
+        (
+            6,
+            &[
+                1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0,
+            ],
+            2,
+            5,
+            &[
+                1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
+                1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            ],
+            &[3.0, 1.0, 1.0, 1.0, 1.0, 4.0],
+        ),
+        (
+            7,
+            &[
+                6.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 4.0, 0.0, 0.00025, 0.0125, 0.02, 0.125, 1.0, 128.0, 64.0, 0.0,
+                0.0, -2.0, 16.0, 0.0, 16384.0, 0.0, 1.0, -400.0, 256.0, -4000.0, -2.0, -256.0, 0.0, 0.0125, 2.0, 2.0,
+                32.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 8.0, 0.0, 0.004, 0.125, -0.2, 3.0,
+            ],
+            2,
+            5,
+            &[
+                64.0, 1.0, 0.5, 0.0, 0.0, 1.0, -2.0, 0.0, 4.0, 0.5, 1.024, 0.8, 0.0, 2.56, 0.0, 2.0, 3.0, 4.096, 2.0,
+                0.0, -6.4, 0.0, 4.0, -3.90625, 1.0, -6.25, 0.0, 8.0, 0.0, -4.0, 2.0, 0.8, 2.0, -4.0, 4.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 6.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ],
+            &[3.0, 0.0078125, 0.03125, 32.0, 0.5, 1.0, 6.0],
+        ),
+        (
+            5,
+            &[
+                1000.0, 2.0, 3.0, 4.0, 500000.0, 9.0, 0.0, 0.0002, 1.0, 3.0, 0.0, -300.0, 2.0, 1.0, 1.0, 9.0, 0.002,
+                1.0, 1.0, -1000.0, 6.0, 200.0, 1.0, 600.0, 3.0,
+            ],
+            1,
+            5,
+            &[
+                1000.0, 0.03125, 0.375, 0.03125, 1953.125, 576.0, 0.0, 0.0016, 0.5, 0.75, 0.0, -37.5, 2.0, 0.0625,
+                0.03125, 1152.0, 0.004, 16.0, 1.0, -500.0, 1536.0, 800.0, 32.0, 1200.0, 3.0,
+            ],
+            &[32.0, 0.5, 4.0, 0.25, 0.125],
+        ),
+        (
+            6,
+            &[
+                1.0, 1e+120, 0.0, 0.0, 0.0, 0.0, 1e-120, 1.0, 1e+120, 0.0, 0.0, 0.0, 0.0, 1e-120, 1.0, 1e+120, 0.0,
+                0.0, 0.0, 0.0, 1e-120, 1.0, 1e+120, 0.0, 0.0, 0.0, 0.0, 1e-120, 1.0, 1e+120, 0.0, 0.0, 0.0, 0.0,
+                1e-120, 1.0,
+            ],
+            1,
+            6,
+            &[
+                1.0,
+                6344.854593289123,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0001576080247855779,
+                1.0,
+                6344.854593289123,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0001576080247855779,
+                1.0,
+                3172.4272966445615,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0003152160495711558,
+                1.0,
+                1586.2136483222807,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0006304320991423117,
+                1.0,
+                793.1068241611404,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0012608641982846233,
+                1.0,
+            ],
+            &[
+                2.4948003869184e+291,
+                1.582914569427869e+175,
+                1.004336277661869e+59,
+                3.1861838222649046e-58,
+                5.053968264940244e-175,
+                4.008336720017946e-292,
+            ],
+        ),
+    ];
+
+    /// The examples of LAPACK's `dchkbk`, transcribed from `TESTING/dbak.in`:
+    /// `(n, ILO, IHI, scale, V, V after dgebak)`. `dchkbk` exercises `SIDE = 'R'`
+    /// only, which is the side `dgeev` uses.
+    const DBAK_CASES: &[(usize, usize, usize, &[f64], &[f64], &[f64])] = &[
+        (
+            5,
+            1,
+            1,
+            &[1.0, 2.0, 3.0, 4.0, 5.0],
+            &[
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 1.0,
+            ],
+            &[
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 1.0,
+            ],
+        ),
+        (
+            5,
+            1,
+            1,
+            &[1.0, 2.0, 3.0, 2.0, 1.0],
+            &[
+                1.0, 1.0, 1.0, -0.6667, -0.04167, 0.0, -0.25, -0.6667, 1.0, 0.1667, 0.0, 0.0, 0.2222, -1.0, -0.5, 0.0,
+                0.0, 0.0, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0,
+            ],
+            &[
+                0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.5, 1.0, 0.0, 0.0, 0.2222, -1.0, -0.5, 0.0, -0.25, -0.6667,
+                1.0, 0.1667, 1.0, 1.0, 1.0, -0.6667, -0.04167,
+            ],
+        ),
+        (
+            5,
+            1,
+            1,
+            &[1.0, 2.0, 3.0, 2.0, 1.0],
+            &[
+                1.0, 1.0, 1.0, 1.0, 1.0, 0.0, -6e-18, -6e-18, -6e-18, -6e-18, 0.0, 0.0, 3.6e-35, 3.6e-35, 3.6e-35, 0.0,
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ],
+            &[
+                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.6e-35, 3.6e-35, 3.6e-35, 0.0, -6e-18,
+                -6e-18, -6e-18, -6e-18, 1.0, 1.0, 1.0, 1.0, 1.0,
+            ],
+        ),
+        (
+            6,
+            4,
+            6,
+            &[4.0, 3.0, 5.0, 100.0, 0.1, 1.0],
+            &[
+                1.0, 1.336e-06, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, -3.001e-11, -3.252e-05, 0.01305, 0.0, 0.0, -0.00833,
+                8.929e-10, -6.712e-05, 6.687e-05, 0.0, 0.0, 0.0, -4.455e-06, -0.003355, 0.003345, 0.0, 0.0, 0.0,
+                4.455e-07, -0.03356, 0.03344, 0.0, 0.0, 0.0, 4.411e-10, 0.1011, 0.1008,
+            ],
+            &[
+                0.0, 0.0, 0.0, -0.0004455, -0.3355, 0.3345, 0.0, 0.0, 0.0, 4.455e-08, -0.003356, 0.003344, 0.0, 1.0,
+                0.0, -3.001e-11, -3.252e-05, 0.01305, 1.0, 1.336e-06, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, -0.00833,
+                8.929e-10, -6.712e-05, 6.687e-05, 0.0, 0.0, 0.0, 4.411e-10, 0.1011, 0.1008,
+            ],
+        ),
+        (
+            5,
+            1,
+            5,
+            &[100.0, 0.1, 0.01, 1.0, 10.0],
+            &[
+                0.0001366, -6.829e-05, 0.0001252, 1.0, 1.95e-15, 1.0, 1.0, -2.776e-17, 3.601e-06, -6.073e-18, 0.2736,
+                -0.1363, 0.2503, -3.322e-06, -0.002, 0.006909, -0.003443, 0.006196, 0.01666, 1.0, 0.3899, -0.2033,
+                -0.342, -0.001, 6e-15,
+            ],
+            &[
+                0.01366, -0.006829, 0.01252, 100.0, 1.95e-13, 0.1, 0.1, -2.776e-18, 3.601e-07, -6.073e-19, 0.002736,
+                -0.001363, 0.002503, -3.322e-08, -2e-05, 0.006909, -0.003443, 0.006196, 0.01666, 1.0, 3.899, -2.033,
+                -3.42, -0.01, 6e-14,
+            ],
+        ),
+        (
+            6,
+            2,
+            5,
+            &[3.0, 1.0, 1.0, 1.0, 1.0, 4.0],
+            &[
+                1.0, 1.0, 2.776e-16, -2.405e-17, 0.0, 1.0, 0.0, 0.75, 1.0, 0.0852, 0.0, -1.52e-17, 0.0, 0.75, -0.8093,
+                1.0, 0.0, -1.52e-17, 0.0, 0.75, -0.09533, -0.5426, 1.0, -1.52e-17, 0.0, 0.75, -0.09533, -0.5426, -1.0,
+                -1.52e-17, 0.0, 0.0, 0.0, 0.0, 0.0, 4.559e-17,
+            ],
+            &[
+                0.0, 0.75, -0.8093, 1.0, 0.0, -1.52e-17, 0.0, 0.75, 1.0, 0.0852, 0.0, -1.52e-17, 1.0, 1.0, 2.776e-16,
+                -2.405e-17, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.559e-17, 0.0, 0.75, -0.09533, -0.5426, -1.0,
+                -1.52e-17, 0.0, 0.75, -0.09533, -0.5426, 1.0, -1.52e-17,
+            ],
+        ),
+        (
+            7,
+            2,
+            5,
+            &[3.0, 0.001, 0.01, 10.0, 0.1, 1.0, 6.0],
+            &[
+                1.0, -0.01105, 0.03794, -0.09378, -0.03481, 0.4465, -0.03602, 0.0, -0.4556, -0.4545, 1.0, 0.4639,
+                -0.6512, 0.4781, 0.0, -0.2734, -0.7946, 0.6303, 1.0, -0.6279, 1.0, 0.0, 1.0, -6.939e-18, 0.04259,
+                -0.6495, -0.5581, -0.6452, 0.0, -0.3904, -0.4029, -0.1685, -0.9429, 1.0, -0.9371, 0.0, 0.0, 0.0, 0.0,
+                0.0, -0.2558, 0.0003308, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.001985,
+            ],
+            &[
+                0.0, 0.0, 0.0, 0.0, 0.0, -0.2558, 0.0003308, 0.0, -0.0004556, -0.0004545, 0.001, 0.0004639, -0.0006512,
+                0.0004781, 1.0, -0.01105, 0.03794, -0.09378, -0.03481, 0.4465, -0.03602, 0.0, 10.0, -6.939e-17, 0.4259,
+                -6.495, -5.581, -6.452, 0.0, -0.03904, -0.04029, -0.01685, -0.09429, 0.1, -0.09371, 0.0, 0.0, 0.0, 0.0,
+                0.0, 0.0, -0.001985, 0.0, -0.002734, -0.007946, 0.006303, 0.01, -0.006279, 0.01,
+            ],
+        ),
+    ];
+
+    /// LAPACK's `dchkbl` examples: for each matrix, `dgebal` must return the
+    /// permutation (`ILO`, `IHI`), the balanced matrix and the scaling vector
+    /// that the reference does.
+    ///
+    /// `dgebal` had no test of its own before this one: it ran only inside
+    /// `dgeev`, where a wrong permutation or scale surfaces as a wrong
+    /// eigenvector several hundred lines away. Permuting and scaling are exact --
+    /// row/column interchanges and powers of two -- so the comparison is exact up
+    /// to the rounding of a dot product, hence the `1e-13` relative bound.
+    #[test]
+    fn dgebal_reproduces_the_reference_examples() {
+        for (k, &(n, a_in, ilo_in, ihi_in, a_ref_rows, scale_ref)) in DBAL_CASES.iter().enumerate() {
+            let case = k + 1;
+            let mut a = column_major(a_in, n);
+            let a_ref = column_major(a_ref_rows, n);
+            let (ilo, ihi, scale) = dgebal(&mut a, n);
+            assert_eq!(
+                (ilo + 1, ihi + 1),
+                (ilo_in, ihi_in),
+                "case {case} (n={n}): ILO/IHI disagree with dbal.in"
+            );
+            let norm = a_ref.iter().fold(0.0f64, |m, v| m.max(v.abs())).max(1.0);
             for j in 0..n {
-                for k in 0..n {
-                    let mut s = 0.0;
-                    for i in 0..n {
-                        s += q[i + j * n] * q[i + k * n];
-                    }
-                    let want = if j == k { 1.0 } else { 0.0 };
-                    assert!((s - want).abs() < 1e-12, "n={n}: Q^T Q ({j},{k}) = {s}");
+                for i in 0..n {
+                    let (got, want) = (a[i + j * n], a_ref[i + j * n]);
+                    assert!(
+                        (got - want).abs() <= 1e-13 * norm,
+                        "case {case} (n={n}): balanced A({i},{j}) = {got}, the reference gives {want}"
+                    );
                 }
             }
-
-            // A = Q H Q^T, checked as A Q = Q H so that no transpose has to be
-            // materialised (an earlier version built one with the indices the
-            // wrong way round and reported a failure in correct code).
-            let aq = mat_mul(&orig, &q, n);
-            let qh = mat_mul(&q, &h, n);
-            let scale = norm_max(&orig).max(1.0);
-            for idx in 0..n * n {
+            for i in 0..n {
+                let (got, want) = (scale[i], scale_ref[i]);
                 assert!(
-                    (aq[idx] - qh[idx]).abs() / scale < 1e-12,
-                    "n={n}: A Q and Q H differ at {idx}: {} vs {}",
-                    aq[idx],
-                    qh[idx]
+                    (got - want).abs() <= 1e-13 * want.abs().max(1.0),
+                    "case {case} (n={n}): scale[{i}] = {got}, the reference gives {want}"
                 );
+            }
+        }
+    }
+
+    /// LAPACK's `dchkbk` examples: `dgebak_right` must undo the balancing on the
+    /// eigenvectors held in `V`, recovering the vectors in `TESTING/dbak.in`.
+    ///
+    /// `dgebak_right` and `dgebak_left` likewise had no direct test; both are
+    /// applied to every eigenvector `dgeev` returns.
+    #[test]
+    fn dgebak_undoes_the_reference_balancing() {
+        for (k, &(n, ilo, ihi, scale, v_in, v_ref_rows)) in DBAK_CASES.iter().enumerate() {
+            let case = k + 1;
+            let mut v = column_major(v_in, n);
+            let v_ref = column_major(v_ref_rows, n);
+            dgebak_right(&mut v, n, ilo - 1, ihi - 1, scale);
+            let norm = v_ref.iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
+            for j in 0..n {
+                for i in 0..n {
+                    let (got, want) = (v[i + j * n], v_ref[i + j * n]);
+                    assert!(
+                        (got - want).abs() <= 1e-13 * norm,
+                        "case {case} (n={n}): V({i},{j}) = {got}, dbak.in has {want}"
+                    );
+                }
             }
         }
     }

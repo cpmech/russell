@@ -1449,6 +1449,51 @@ mod tests {
         a
     }
 
+    /// A symmetric tridiagonal matrix as dense column-major data, from its
+    /// diagonal `d` and off-diagonal `e` (which has one entry more than it uses,
+    /// LAPACK's `E(N)` being scratch).
+    fn tridiagonal_data(d: &[f64], e: &[f64], n: usize) -> Vec<f64> {
+        let mut a = vec![0.0; n * n];
+        for i in 0..n {
+            a[i + i * n] = d[i];
+            if i + 1 < n {
+                a[i + (i + 1) * n] = e[i];
+                a[(i + 1) + i * n] = e[i];
+            }
+        }
+        a
+    }
+
+    /// A deterministic symmetric tridiagonal matrix with distinct eigenvalues.
+    fn tridiagonal_sample(n: usize) -> (Vec<f64>, Vec<f64>) {
+        let d = (0..n)
+            .map(|i| 1.5 * (i as f64) - 3.0 + 0.25 * ((i * 7) % 5) as f64)
+            .collect();
+        let mut e = vec![0.0; n];
+        for i in 0..n.saturating_sub(1) {
+            e[i] = 0.5 + 0.125 * ((i * 3) % 4) as f64;
+        }
+        (d, e)
+    }
+
+    /// The 1-norm of a dense column-major matrix: LAPACK's `DLANGE('1', ...)`.
+    fn norm_1(a: &[f64], m: usize, n: usize) -> f64 {
+        let mut best = 0.0f64;
+        for j in 0..n {
+            let mut sum = 0.0;
+            for i in 0..m {
+                sum += a[i + j * m].abs();
+            }
+            best = best.max(sum);
+        }
+        best
+    }
+
+    /// Sum of the absolute entries of a dense matrix.
+    fn sum_abs(a: &[f64]) -> f64 {
+        a.iter().map(|x| x.abs()).sum()
+    }
+
     /// The blocked reduction must give the same eigen-decomposition as the
     /// unblocked one it replaces.
     ///
@@ -1537,6 +1582,157 @@ mod tests {
                 // coverage, since the oracle test is the stronger check.
                 let _ = &z_b;
             }
+        }
+    }
+
+    /// LAPACK's `dsyt21`: `dsytrd` followed by `dorgtr` must return the reduction
+    /// `A = Q T Q^T` with `Q` orthogonal and `T` the tridiagonal form, for both
+    /// stored triangles.
+    ///
+    /// The existing reduction test compares the blocked and unblocked reduction
+    /// against each other; this one checks each of them against the matrix it
+    /// started from, which is what catches a reflectors' convention that is
+    /// self-consistent but wrong.
+    #[test]
+    fn dsytrd_and_dorgtr_satisfy_dsyt21() {
+        let eps = f64::EPSILON;
+        for n in [2usize, 3, 5, 8, 13, 21, 34, 40] {
+            for upper in [false, true] {
+                let a0 = symmetric_data(n);
+                let a_norm = norm_1(&a0, n, n).max(f64::MIN_POSITIVE);
+                let mut q = a0.clone();
+                let mut d = vec![0.0; n];
+                let mut e = vec![0.0; n - 1];
+                let mut tau = vec![0.0; n - 1];
+                let info = dsytrd(upper, n, &mut q, &mut d, &mut e, &mut tau);
+                assert_eq!(info, 0, "n={n} upper={upper}: dsytrd reported info={info}");
+                dorgtr(upper, n, &mut q, n, &tau);
+
+                // ratio 1 = norm(A - Q T Q^T) / (norm(A) * n * eps)
+                let t = tridiagonal_data(&d, &e, n);
+                let mut prod = vec![0.0; n * n];
+                for j in 0..n {
+                    for i in 0..n {
+                        let mut sum = 0.0;
+                        for k in 0..n {
+                            sum += q[i + k * n] * t[k + j * n];
+                        }
+                        prod[i + j * n] = sum;
+                    }
+                }
+                // ... and then by Q^T, so that the product is Q T Q^T.
+                let mut rec = vec![0.0; n * n];
+                for j in 0..n {
+                    for i in 0..n {
+                        let mut sum = 0.0;
+                        for k in 0..n {
+                            sum += prod[i + k * n] * q[j + k * n];
+                        }
+                        rec[i + j * n] = sum;
+                    }
+                }
+                let mut diff = 0.0;
+                let mut orth = 0.0;
+                for j in 0..n {
+                    for i in 0..n {
+                        diff += (a0[i + j * n] - rec[i + j * n]).abs();
+                        let mut dot = 0.0;
+                        for k in 0..n {
+                            dot += q[k + i * n] * q[k + j * n];
+                        }
+                        orth += (dot - if i == j { 1.0 } else { 0.0 }).abs();
+                    }
+                }
+                let ratio1 = diff / (a_norm * n as f64 * eps);
+                let ratio2 = orth / (n as f64 * eps);
+                assert!(
+                    ratio1 <= 20.0,
+                    "n={n} upper={upper}: dsyt21 ratio 1 = {ratio1} exceeds 20"
+                );
+                assert!(
+                    ratio2 <= 20.0,
+                    "n={n} upper={upper}: dsyt21 ratio 2 = {ratio2} exceeds 20"
+                );
+            }
+        }
+    }
+
+    /// LAPACK's `dstt21` and `dstt22` on `dsteqr` itself: a symmetric tridiagonal
+    /// matrix must be split as `T = U S U^T` with `U` orthogonal, verified as
+    /// `T U = U S`, `U^T U = I` and `T = U S U^T`, each divided by the norms and
+    /// by `n * eps`, with LAPACK's threshold of 20.
+    ///
+    /// `dsteqr` had no test that fed it a tridiagonal matrix directly; it was
+    /// exercised only through `dsyev` and through the reduction test, so a defect
+    /// in its deflation logic was only visible through two layers.
+    #[test]
+    fn dsteqr_gives_the_eigendecomposition_of_a_tridiagonal_matrix() {
+        let eps = f64::EPSILON;
+        let mut cases: Vec<(usize, Vec<f64>, Vec<f64>)> = [1usize, 2, 3, 5, 8, 13, 21, 34]
+            .iter()
+            .map(|&n| {
+                let (d, e) = tridiagonal_sample(n);
+                (n, d, e)
+            })
+            .collect();
+        // Repeated eigenvalues: every off-diagonal is zero, so the whole spectrum
+        // comes out of the deflation branch rather than the QR sweep.
+        cases.push((6, vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0], vec![0.0; 6]));
+        // A nearly defective block: four equal diagonals joined by a tiny coupling.
+        cases.push((4, vec![2.0; 4], vec![1e-8, 1e-8, 1e-8, 0.0]));
+
+        for (n, mut d, mut e) in cases {
+            let t = tridiagonal_data(&d, &e, n);
+            let t_norm = norm_1(&t, n, n).max(f64::MIN_POSITIVE);
+            let mut z = vec![0.0; n * n];
+            let mut work = vec![0.0; 2 * n.max(1)];
+            let info = dsteqr(2, n, &mut d, &mut e, &mut z, n, &mut work);
+            assert_eq!(info, 0, "n={n}: dsteqr did not converge");
+            let w = d.clone();
+
+            // ratio 1 = norm(T U - U S) / (norm(T) * n * eps)
+            let mut tu = vec![0.0; n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = 0.0;
+                    for k in 0..n {
+                        sum += t[i + k * n] * z[k + j * n];
+                    }
+                    tu[i + j * n] = sum - w[j] * z[i + j * n];
+                }
+            }
+            // ratio 2 = norm(U^T U - I) / (n * eps)
+            let mut orth = 0.0;
+            for j in 0..n {
+                for i in 0..n {
+                    let mut dot = 0.0;
+                    for k in 0..n {
+                        dot += z[k + i * n] * z[k + j * n];
+                    }
+                    orth += (dot - if i == j { 1.0 } else { 0.0 }).abs();
+                }
+            }
+            // ratio 3 = norm(T - U S U^T) / (norm(T) * n * eps)
+            let mut rec = vec![0.0; n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = 0.0;
+                    for k in 0..n {
+                        sum += z[i + k * n] * w[k] * z[j + k * n];
+                    }
+                    rec[i + j * n] = sum;
+                }
+            }
+            let mut rec_diff = 0.0;
+            for idx in 0..n * n {
+                rec_diff += (t[idx] - rec[idx]).abs();
+            }
+            let ratio1 = sum_abs(&tu) / (t_norm * n as f64 * eps);
+            let ratio2 = orth / (n as f64 * eps);
+            let ratio3 = rec_diff / (t_norm * n as f64 * eps);
+            assert!(ratio1 <= 20.0, "n={n}: dstt22 ratio 1 = {ratio1} exceeds 20");
+            assert!(ratio2 <= 20.0, "n={n}: dstt22 ratio 2 = {ratio2} exceeds 20");
+            assert!(ratio3 <= 20.0, "n={n}: dstt21 ratio = {ratio3} exceeds 20");
         }
     }
 }

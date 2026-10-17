@@ -30,7 +30,9 @@
 //! workspace allocated internally.
 
 use super::LapackError;
+use super::aux::{dladiv2, dlapy2, dlapy3, dlascl_g, zladiv, zlarf_left, zlascl_g};
 use super::blas;
+use super::blas::dznrm2;
 use super::eig::{dlarfg, dlartg};
 use crate::Complex64;
 
@@ -45,32 +47,6 @@ const ULP: f64 = f64::EPSILON;
 
 /// `dlamch('E')` (Fortran's `DLAMCH('E')`): the relative machine precision.
 const DLAMCH_E: f64 = f64::EPSILON / 2.0;
-
-/// `dlapy2`: `sqrt(x^2 + y^2)` without spurious overflow.
-fn dlapy2(x: f64, y: f64) -> f64 {
-    let xabs = x.abs();
-    let yabs = y.abs();
-    let w = xabs.max(yabs);
-    let z = xabs.min(yabs);
-    if z == 0.0 {
-        w
-    } else {
-        w * (1.0 + (z / w) * (z / w)).sqrt()
-    }
-}
-
-/// `dlapy3`: `sqrt(x^2 + y^2 + z^2)` without spurious overflow.
-fn dlapy3(x: f64, y: f64, z: f64) -> f64 {
-    let xabs = x.abs();
-    let yabs = y.abs();
-    let zabs = z.abs();
-    let w = xabs.max(yabs).max(zabs);
-    if w == 0.0 || w > f64::MAX || !w.is_finite() {
-        xabs + yabs + zabs
-    } else {
-        w * ((xabs / w) * (xabs / w) + (yabs / w) * (yabs / w) + (zabs / w) * (zabs / w)).sqrt()
-    }
-}
 
 /// `dladiv`: `(a + i b) / (c + i d)`, robust against overflow and underflow.
 fn dladiv(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
@@ -125,64 +101,6 @@ fn dladiv1(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
     let p = dladiv2(a, b, c, d, r, t);
     let q = dladiv2(b, -a, c, d, r, t);
     (p, q)
-}
-
-fn dladiv2(a: f64, b: f64, c: f64, d: f64, r: f64, t: f64) -> f64 {
-    if r != 0.0 {
-        let br = b * r;
-        if br != 0.0 { (a + br) * t } else { a * t + (b * t) * r }
-    } else {
-        (a + d * (b / c)) * t
-    }
-}
-
-/// `dlascl` for `TYPE = 'G'`: scale a full `m x n` matrix by `cto / cfrom`,
-/// stepping through `safmin`/`bignum` so an extreme ratio cannot overflow.
-fn dlascl_g(cfrom: f64, cto: f64, m: usize, n: usize, a: &mut [f64], lda: usize) {
-    if m == 0 || n == 0 {
-        return;
-    }
-    let smlnum = SAFMIN;
-    let bignum = 1.0 / smlnum;
-    let mut cfromc = cfrom;
-    let mut ctoc = cto;
-    let mut mul;
-    loop {
-        let cfrom1 = cfromc * smlnum;
-        if cfrom1 == cfromc {
-            // cfromc is infinite.
-            mul = ctoc / cfromc;
-            break;
-        }
-        let cto1 = ctoc / bignum;
-        if cto1 == ctoc {
-            // ctoc is zero or infinite.
-            mul = ctoc;
-            break;
-        } else if cfrom1.abs() > ctoc.abs() && ctoc != 0.0 {
-            mul = smlnum;
-            cfromc = cfrom1;
-        } else if cto1.abs() > cfromc.abs() {
-            mul = bignum;
-            ctoc = cto1;
-        } else {
-            mul = ctoc / cfromc;
-            if mul == 1.0 {
-                return;
-            }
-            break;
-        }
-        for j in 0..n {
-            for i in 0..m {
-                a[i + j * lda] *= mul;
-            }
-        }
-    }
-    for j in 0..n {
-        for i in 0..m {
-            a[i + j * lda] *= mul;
-        }
-    }
 }
 
 /// `dlassq`-equivalent Frobenius norm `dlanhs('F')` of the upper Hessenberg part
@@ -2812,7 +2730,7 @@ pub fn dggev(
         ilascl = true;
     }
     if ilascl {
-        dlascl_g(anrm, anrmto, n, n, a, lda);
+        dlascl_g(anrm, anrmto, a, lda, n, n);
     }
 
     // Scale B likewise.
@@ -2827,7 +2745,7 @@ pub fn dggev(
         ilbscl = true;
     }
     if ilbscl {
-        dlascl_g(bnrm, bnrmto, n, n, b, ldb);
+        dlascl_g(bnrm, bnrmto, b, ldb, n, n);
     }
     let _ = bignum0;
 
@@ -2954,43 +2872,10 @@ fn zabs1(z: Complex64) -> f64 {
     z.re.abs() + z.im.abs()
 }
 
-/// `zladiv`: the complex quotient `x / y`, avoiding overflow in `y`'s products.
-fn zladiv(x: Complex64, y: Complex64) -> Complex64 {
-    if y.re.abs() >= y.im.abs() {
-        let r = y.im / y.re;
-        let den = y.re + r * y.im;
-        Complex64::new((x.re + r * x.im) / den, (x.im - r * x.re) / den)
-    } else {
-        let r = y.re / y.im;
-        let den = y.im + r * y.re;
-        Complex64::new((x.re * r + x.im) / den, (x.im * r - x.re) / den)
-    }
-}
-
 /// Fortran's `SIGN(a, b)`: `|a|` with `b`'s sign, where `b == 0` counts as positive.
 #[inline]
 fn zsign_f(a: f64, b: f64) -> f64 {
     if b < 0.0 { -a.abs() } else { a.abs() }
-}
-
-/// `DZNRM2`: the Euclidean norm of a complex vector, scaled.
-fn dznrm2(x: &[Complex64]) -> f64 {
-    let mut scale = 0.0f64;
-    let mut ssq = 1.0f64;
-    for c in x {
-        let a = c.norm();
-        if a != 0.0 {
-            if scale < a {
-                let r = scale / a;
-                ssq = 1.0 + ssq * r * r;
-                scale = a;
-            } else {
-                let r = a / scale;
-                ssq += r * r;
-            }
-        }
-    }
-    scale * ssq.sqrt()
 }
 
 /// `zlarfg`: an elementary reflector `H = I - tau * v * v^H` with `H x = beta e1`.
@@ -3039,38 +2924,6 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
     }
     *alpha = Complex64::new(beta, 0.0);
     tau
-}
-
-/// `ZLARF`, left: `C := (I - tau v v^H) C`, with `v[0] == 1` supplied by the caller.
-///
-/// `C` is the `m x ncols` block of `a` at `(r0, c0)` with leading dimension
-/// `lda`; `v` has length `m`. Copied from [`super::zsvd`].
-fn zlarf_left(
-    a: &mut [Complex64],
-    lda: usize,
-    r0: usize,
-    m: usize,
-    c0: usize,
-    ncols: usize,
-    v: &[Complex64],
-    tau: Complex64,
-) {
-    if tau == zzero() || m == 0 || ncols == 0 {
-        return;
-    }
-    let mut w = vec![zzero(); ncols];
-    for (j, wj) in w.iter_mut().enumerate() {
-        let mut s = zzero();
-        for i in 0..m {
-            s += a[(r0 + i) + (c0 + j) * lda] * v[i].conj();
-        }
-        *wj = s;
-    }
-    for (j, &wj) in w.iter().enumerate() {
-        for i in 0..m {
-            a[(r0 + i) + (c0 + j) * lda] -= tau * v[i] * wj;
-        }
-    }
 }
 
 /// `zlartg`: the complex Givens rotation. Returns `(c, s, r)` with `c` real and
@@ -3186,58 +3039,6 @@ fn zlartg(f: Complex64, g: Complex64) -> (f64, Complex64, Complex64) {
         }
     }
     (c, s, r)
-}
-
-/// `zlascl` with `TYPE = 'G'`: `a := (cto / cfrom) * a`, staging the factor
-/// through `safmin`/`bignum` so an extreme ratio cannot overflow.
-///
-/// Copied from [`super::zsvd`].
-fn zlascl_g(cfrom: f64, cto: f64, a: &mut [Complex64], lda: usize, m: usize, n: usize) {
-    if m == 0 || n == 0 {
-        return;
-    }
-    let smlnum = SAFMIN;
-    let bignum = 1.0 / smlnum;
-    let mut cfromc = cfrom;
-    let mut ctoc = cto;
-    loop {
-        let cfrom1 = cfromc * smlnum;
-        let mul;
-        let done;
-        if cfrom1 == cfromc {
-            mul = ctoc / cfromc;
-            done = true;
-        } else {
-            let cto1 = ctoc / bignum;
-            if cto1 == ctoc {
-                mul = ctoc;
-                done = true;
-                cfromc = 1.0;
-            } else if cfrom1.abs() > ctoc.abs() && ctoc != 0.0 {
-                mul = smlnum;
-                done = false;
-                cfromc = cfrom1;
-            } else if cto1.abs() > cfromc.abs() {
-                mul = bignum;
-                done = false;
-                ctoc = cto1;
-            } else {
-                mul = ctoc / cfromc;
-                done = true;
-                if mul == 1.0 {
-                    return;
-                }
-            }
-        }
-        for j in 0..n {
-            for i in 0..m {
-                a[i + j * lda] *= mul;
-            }
-        }
-        if done {
-            return;
-        }
-    }
 }
 
 /// `zlange('M')`: the largest complex modulus in the `m x n` matrix.

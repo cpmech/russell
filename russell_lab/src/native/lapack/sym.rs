@@ -21,7 +21,7 @@
 //! [`dsytrd`] is the blocked reduction the reference uses for `N > NB`: it walks
 //! the matrix a panel of `NB` columns at a time with `dlatrd` and applies the
 //! panel's rank-`2*NB` update through `dsyr2k`, which runs on the blocked
-//! `dgemm`. [`dsytd2`] is the unblocked form it falls back to (`N <= NB`) and the
+//! `dgemm`. `dsytd2` is the unblocked form it falls back to (`N <= NB`) and the
 //! one the tests compare against.
 //!
 //! The two are *not* bit-comparable, and that is a property of the algorithms,
@@ -38,10 +38,11 @@
 //! `dlarfg` returns `v` with `v[0] == 1` and the tail in the entries after it,
 //! and the *driver* decides where the `1` sits in the matrix. `dsytd2` stores the
 //! tail and puts the `1` at the end of the affected column (upper triangle) or
-//! the beginning (lower triangle), which is why [`dorg2l`] and [`dorg2r`] build
+//! the beginning (lower triangle), which is why `dorg2l` and `dorg2r` build
 //! their vectors differently.
 
 use super::LapackError;
+use super::aux::{dlae2, dlaev2, dlapy2};
 use super::eig::{dlarfg, dlartg};
 
 /// Which part of a matrix a scale applies to.
@@ -159,11 +160,11 @@ pub fn dsyev(a: &mut [f64], w: &mut [f64], n: usize, upper: bool) -> Result<(), 
 
 /// `dsytrd`: reduce a real symmetric matrix to tridiagonal form, blocked.
 ///
-/// Same contract as [`dsytd2`] -- `a` holds the tridiagonal form in the triangle
+/// Same contract as `dsytd2` -- `a` holds the tridiagonal form in the triangle
 /// named by `upper` and the reflector tails in the rest, `d` the diagonal, `e`
 /// the sub/super-diagonal, `tau` the reflector scalars -- but the columns are
 /// reduced a block of `NB` at a time and the update they imply is applied to the
-/// unreduced part as one rank-`2*NB` symmetric update ([`dsyr2k`], which runs on
+/// unreduced part as one rank-`2*NB` symmetric update (`dsyr2k`, which runs on
 /// the blocked `dgemm`), so the panel update is BLAS-3 rather than a `dgemv` per
 /// column. Returns the reference's `INFO`.
 ///
@@ -1313,112 +1314,6 @@ fn dsteqr(icompz: i32, n: usize, d: &mut [f64], e: &mut [f64], z: &mut [f64], ld
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// `dlae2`: the eigenvalues of the symmetric 2x2 block `[[a, b], [b, c]]`.
-fn dlae2(a: f64, b: f64, c: f64) -> (f64, f64) {
-    let sm = a + c;
-    let df = a - c;
-    let adf = df.abs();
-    let tb = b + b;
-    let ab = tb.abs();
-    let (acmx, acmn) = if a.abs() > c.abs() { (a, c) } else { (c, a) };
-    let rt = if adf > ab {
-        adf * (1.0 + (ab / adf) * (ab / adf)).sqrt()
-    } else if adf < ab {
-        ab * (1.0 + (adf / ab) * (adf / ab)).sqrt()
-    } else {
-        ab * 2.0f64.sqrt()
-    };
-    if sm < 0.0 {
-        let rt1 = 0.5 * (sm - rt);
-        // The order matters: the smaller eigenvalue is fully accurate only when
-        // computed from the larger one this way.
-        let rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-        (rt1, rt2)
-    } else if sm > 0.0 {
-        let rt1 = 0.5 * (sm + rt);
-        let rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-        (rt1, rt2)
-    } else {
-        (0.5 * rt, -0.5 * rt)
-    }
-}
-
-/// `dlaev2`: the eigenvalues and the eigenvector rotation of the symmetric 2x2
-/// block `[[a, b], [b, c]]`.
-///
-/// Returns `(rt1, rt2, cs1, sn1)`; the eigenvector is `(cs1, sn1)` and the signs
-/// are chosen exactly as the reference chooses them, which is what pins the
-/// eigenvector signs of the whole decomposition.
-fn dlaev2(a: f64, b: f64, c: f64) -> (f64, f64, f64, f64) {
-    let sm = a + c;
-    let df = a - c;
-    let adf = df.abs();
-    let tb = b + b;
-    let ab = tb.abs();
-    let (acmx, acmn) = if a.abs() > c.abs() { (a, c) } else { (c, a) };
-    let rt = if adf > ab {
-        adf * (1.0 + (ab / adf) * (ab / adf)).sqrt()
-    } else if adf < ab {
-        ab * (1.0 + (adf / ab) * (adf / ab)).sqrt()
-    } else {
-        ab * 2.0f64.sqrt()
-    };
-
-    let (rt1, rt2, sgn1);
-    if sm < 0.0 {
-        rt1 = 0.5 * (sm - rt);
-        sgn1 = -1;
-        rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-    } else if sm > 0.0 {
-        rt1 = 0.5 * (sm + rt);
-        sgn1 = 1;
-        rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-    } else {
-        rt1 = 0.5 * rt;
-        rt2 = -0.5 * rt;
-        sgn1 = 1;
-    }
-
-    let (cs, sgn2) = if df >= 0.0 { (df + rt, 1) } else { (df - rt, -1) };
-    let acs = cs.abs();
-    let (mut cs1, mut sn1) = if acs > ab {
-        let ct = -tb / cs;
-        let sn1 = 1.0 / (1.0 + ct * ct).sqrt();
-        (ct * sn1, sn1)
-    } else if ab == 0.0 {
-        (1.0, 0.0)
-    } else {
-        let tn = -cs / tb;
-        let cs1 = 1.0 / (1.0 + tn * tn).sqrt();
-        (cs1, tn * cs1)
-    };
-    if sgn1 == sgn2 {
-        let tn = cs1;
-        cs1 = -sn1;
-        sn1 = tn;
-    }
-    (rt1, rt2, cs1, sn1)
-}
-
-/// `dlapy2`: `sqrt(x^2 + y^2)` without unnecessary overflow or underflow.
-fn dlapy2(x: f64, y: f64) -> f64 {
-    if x.is_nan() {
-        return x;
-    }
-    if y.is_nan() {
-        return y;
-    }
-    let xabs = x.abs();
-    let yabs = y.abs();
-    let w = xabs.max(yabs);
-    let z = xabs.min(yabs);
-    if z == 0.0 || w > f64::MAX {
-        w
-    } else {
-        w * (1.0 + (z / w) * (z / w)).sqrt()
-    }
-}
 
 /// `dlasr` restricted to `SIDE='R'`, `PIVOT='V'`: applies a sequence of plane
 /// rotations to columns `col0:col0+ncols` of `a` on the right.

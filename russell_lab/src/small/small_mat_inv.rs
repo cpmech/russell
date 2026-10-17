@@ -214,6 +214,7 @@ where
 mod tests {
     use super::small_mat_inv;
     use crate::approx_eq;
+    use crate::small::testing::check_inverse;
 
     /// Checks that the two (N,N) matrices are approximately equal
     fn check_matrix<const N: usize>(a: &[[f64; N]; N], b: &[[f64; N]; N], tol: f64) {
@@ -225,20 +226,6 @@ mod tests {
                     a[i][j],
                     b[i][j]
                 );
-            }
-        }
-    }
-
-    /// Checks that `a * ai` is (approximately) the identity matrix
-    fn check_inverse<const N: usize>(a: &[[f64; N]; N], ai: &[[f64; N]; N], tol: f64) {
-        for i in 0..N {
-            for j in 0..N {
-                let mut sum = 0.0;
-                for k in 0..N {
-                    sum += a[i][k] * ai[k][j];
-                }
-                let correct = if i == j { 1.0 } else { 0.0 };
-                assert!((sum - correct).abs() <= tol, "a*ai[{i}][{j}] = {sum}");
             }
         }
     }

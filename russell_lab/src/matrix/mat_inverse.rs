@@ -202,8 +202,11 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     // copy a into ai
     mat_copy(ai, a).unwrap();
 
-    // Portable path: LU decomposition with partial pivoting, then one
-    // back-substitution per column of the identity. Available without BLAS.
+    // LU with partial pivoting, then one back-substitution per column of the
+    // identity. This runs `portable`'s LU rather than `native::lapack::dgetrf`,
+    // which is the same algorithm and is tested for parity against LAPACK; the
+    // two have not been unified yet, and they differ only in the message a
+    // singular matrix produces.
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
         let (det, ipiv) = crate::portable::lu_decompose(ai.as_mut_data(), m)?;
@@ -274,21 +277,8 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
 #[cfg(test)]
 mod tests {
     use super::{Matrix, ZERO_DETERMINANT, mat_inverse};
+    use crate::matrix::testing::get_a_times_ai;
     use crate::{approx_eq, mat_approx_eq};
-
-    /// Computes a⋅ai that should equal I for a square matrix
-    fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
-        let (m, n) = a.dims();
-        let mut a_ai = Matrix::new(m, m);
-        for i in 0..m {
-            for j in 0..m {
-                for k in 0..n {
-                    a_ai.add(i, j, a.get(i, k) * ai.get(k, j));
-                }
-            }
-        }
-        a_ai
-    }
 
     #[test]
     fn inverse_fails_on_wrong_dims() {

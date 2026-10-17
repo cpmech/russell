@@ -46,6 +46,7 @@ mod small_solve_lin_sys;
 mod small_vec_add;
 mod small_vec_update;
 mod small_vector;
+pub(crate) mod testing;
 
 pub use num_recipes_gaussj::*;
 pub use small_mat_add::*;

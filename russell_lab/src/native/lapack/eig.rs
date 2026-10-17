@@ -26,6 +26,7 @@
 //! step needs `dlaln2`-style solving rather than a plain triangular substitution.
 
 use super::LapackError;
+use super::aux::dladiv2;
 
 /// A 2x2 block's eigenvalues, as [`dlanv2`] returns them.
 ///
@@ -34,9 +35,13 @@ use super::LapackError;
 /// which is LAPACK's convention and is relied on by the 2x2-block handling.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Eigen2 {
+    /// Real part of the first eigenvalue
     pub rt1r: f64,
+    /// Imaginary part of the first eigenvalue (`> 0` for a conjugate pair)
     pub rt1i: f64,
+    /// Real part of the second eigenvalue
     pub rt2r: f64,
+    /// Imaginary part of the second eigenvalue (`-rt1i` for a pair)
     pub rt2i: f64,
 }
 
@@ -848,7 +853,7 @@ fn dlahqr(
 /// eigenvalues in deflation order. A complex conjugate pair occupies two
 /// adjacent positions with `wi > 0` for the first, matching the 2x2 block.
 ///
-/// This calls [`dlahqr`] directly, which is what the reference `dhseqr` does for
+/// This calls `dlahqr` directly, which is what the reference `dhseqr` does for
 /// `n <= 75`; the blocked `dlaqr0`/`dlaqr5` path is not implemented. `JOB = 'S'`
 /// means `WANTT = .TRUE.` and `COMPZ = 'N'` means `WANTZ = .FALSE.`, and with
 /// `ILO = 1, IHI = N` the whole matrix is reduced.
@@ -1012,14 +1017,6 @@ fn dladiv1(a: f64, b: f64, c: f64, d: f64) -> (f64, f64) {
     (p, q)
 }
 
-fn dladiv2(a: f64, b: f64, c: f64, d: f64, r: f64, t: f64) -> f64 {
-    if r != 0.0 {
-        let br = b * r;
-        if br != 0.0 { (a + br) * t } else { a * t + (b * t) * r }
-    } else {
-        (a + d * (b / c)) * t
-    }
-}
 /// The result of [`dlaln2`]: `x` is the `2 x 2` solution array (only the entries
 /// the requested shape uses are meaningful), `scale` the factor the caller must
 /// apply to its right-hand side, and `xnorm` the infinity norm of `x`.
@@ -1689,7 +1686,7 @@ fn column_norm2(v: &[f64], n: usize, j0: usize) -> f64 {
 ///
 /// The returned `scale` vector follows LAPACK: entries inside `ilo..=ihi` hold
 /// the scaling factors, entries outside hold the 1-based source index of the
-/// permutation (used by [`dgebak_right`] to undo it).
+/// permutation (used by `dgebak_right` to undo it).
 fn dgebal(a: &mut [f64], n: usize) -> (usize, usize, Vec<f64>) {
     // PARAMETER ( SCLFAC = 2.0 ) and PARAMETER ( FACTOR = 0.95D+0 ).
     const SCLFAC: f64 = 2.0;
@@ -1872,7 +1869,7 @@ fn dgebal(a: &mut [f64], n: usize) -> (usize, usize, Vec<f64>) {
 }
 
 /// `dgebak` with `JOB = 'B'`, `SIDE = 'R'` (LAPACK 3.12.1, `SRC/dgebak.f`):
-/// undo the balancing that [`dgebal`] recorded in `scale`.
+/// undo the balancing that `dgebal` recorded in `scale`.
 ///
 /// The right eigenvectors of the balanced matrix are those of the original
 /// matrix with row `i` multiplied by `scale(i)` (for `i` in `ilo..=ihi`) and the
@@ -1934,13 +1931,13 @@ fn dgebak_right(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) 
 /// `lwork = 4n + 1` selects):
 ///
 /// 1. scale `A` if its largest element is outside `[SMLNUM, BIGNUM]`;
-/// 2. [`dgebal`] (`JOB = 'B'`): permute and scale to improve conditioning;
+/// 2. `dgebal` (`JOB = 'B'`): permute and scale to improve conditioning;
 /// 3. [`dgehrd`]: `A = Q H Q^T`, with `Q` accumulated;
 /// 4. [`dhseqr_with_schur_vectors`] (`COMPZ = 'V'`): `A = Z T Z^T`, accumulating
 ///    the Schur vectors into `Q`, so that afterwards `Z` holds them;
 /// 5. `dtrevc_right` (`DTREVC3` with `SIDE = 'R'`, `HOWMNY = 'B'`):
 ///    eigenvectors of `T`, back-transformed by `Z`;
-/// 6. [`dgebak_right`] (`JOB = 'B'`, `SIDE = 'R'`): undo the balancing of the
+/// 6. `dgebak_right` (`JOB = 'B'`, `SIDE = 'R'`): undo the balancing of the
 ///    eigenvectors;
 /// 7. normalise the eigenvectors, then unscale the eigenvalues.
 ///
@@ -2459,7 +2456,7 @@ fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
     }
 }
 
-/// `dgebak` with `JOB = 'B'`, `SIDE = 'L'`: undo the balancing that [`dgebal`]
+/// `dgebak` with `JOB = 'B'`, `SIDE = 'L'`: undo the balancing that `dgebal`
 /// recorded in `scale`.
 ///
 /// The left eigenvectors of the balanced matrix are those of the original matrix
@@ -2566,10 +2563,10 @@ fn dgeev_unpack(raw: &[f64], wi: &[f64], re: &mut [f64], im: &mut [f64], n: usiz
 /// `dgeev` with `JOBVL = 'V'` and `JOBVR = 'V'`: the eigenvalues and the left and
 /// right eigenvectors of a general real square matrix.
 ///
-/// This is the same pipeline as [`dgeev`] -- scale, [`dgebal`], [`dgehrd`],
+/// This is the same pipeline as [`dgeev`] -- scale, `dgebal`, [`dgehrd`],
 /// [`dhseqr_with_schur_vectors`], the `dtrevc3` back-substitutions,
-/// [`dgebak_right`]/[`dgebak_left`], normalisation -- with the left eigenvectors
-/// taken from the *same* Schur factorisation by [`dtrevc_left`] rather than from
+/// `dgebak_right`/`dgebak_left`, normalisation -- with the left eigenvectors
+/// taken from the *same* Schur factorisation by `dtrevc_left` rather than from
 /// a second decomposition of `A^T`.
 ///
 /// `a` is `n x n` column-major and is destroyed. On exit the return value is

@@ -23,7 +23,7 @@
 //!
 //! `zhetd2`'s `uplo` selects which triangle of `a` is *read*; the other one may
 //! hold anything. The Hermitian matrix-vector product and the rank-2 update in
-//! [`zhetd2`] therefore use the stored triangle alone and reconstruct the
+//! `zhetd2` therefore use the stored triangle alone and reconstruct the
 //! missing half by conjugation, which is exactly what `zhemv` and `zher2` do.
 //! A routine that read the wrong half would still look plausible on a real
 //! matrix, which is why the parity test uses genuinely complex data.
@@ -33,10 +33,12 @@
 //! `zlarfg` returns `v` with `v[0] == 1` and the tail in the entries after it,
 //! and each driver decides where that `1` sits in the matrix. As in the real
 //! code, `zung2l` builds its vectors with the `1` last and `zung2r` with it
-//! first; the shared application is [`zlarf_left`], which the caller feeds the
+//! first; the shared application is `zlarf_left`, which the caller feeds the
 //! explicit vector.
 
 use super::LapackError;
+use super::aux::{dlae2, dlaev2, dlapy2, dlapy3, zladiv, zlarf_left, zlarf_right, zlascl_g};
+use super::blas::dznrm2;
 use super::eig::dlartg;
 use crate::Complex64;
 use num_complex::ComplexFloat;
@@ -372,40 +374,6 @@ fn zung2r(m: usize, ncols: usize, k: usize, a: &mut [Complex64], lda: usize, tau
     }
 }
 
-/// Applies `H = I - tau * v * v^H` to `C = A(r0:r0+m, c0:c0+ncols)` from the left.
-///
-/// This is `ZLARF`'s body for `SIDE='L'`. `ZLARF1F`/`ZLARF1L` differ only in
-/// where the implicit `1` of `v` sits; here the caller has already put it in `v`,
-/// and the last-nonzero-column scan those routines do is an optimisation that
-/// changes nothing but which entries are multiplied by zero. `v` has length `m`.
-fn zlarf_left(
-    a: &mut [Complex64],
-    lda: usize,
-    r0: usize,
-    m: usize,
-    c0: usize,
-    ncols: usize,
-    v: &[Complex64],
-    tau: Complex64,
-) {
-    if tau == zero() || m == 0 || ncols == 0 {
-        return;
-    }
-    let mut w = vec![zero(); ncols];
-    for (j, wj) in w.iter_mut().enumerate() {
-        let mut s = zero();
-        for i in 0..m {
-            s += a[(r0 + i) + (c0 + j) * lda] * v[i].conj();
-        }
-        *wj = s;
-    }
-    for (j, &wj) in w.iter().enumerate() {
-        for i in 0..m {
-            a[(r0 + i) + (c0 + j) * lda] -= tau * v[i] * wj;
-        }
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// `zhemv` for `y := alpha * A * x` with `y` zero on entry.
@@ -574,61 +542,6 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
 /// positive (so `-0.0` does not flip it).
 fn sign_f(a: f64, b: f64) -> f64 {
     if b < 0.0 { -a.abs() } else { a.abs() }
-}
-
-/// `DLAPY3`: `sqrt(x^2 + y^2 + z^2)`, scaled so it cannot overflow.
-fn dlapy3(x: f64, y: f64, z: f64) -> f64 {
-    let xabs = x.abs();
-    let yabs = y.abs();
-    let zabs = z.abs();
-    let w = xabs.max(yabs).max(zabs);
-    if w == 0.0 {
-        0.0
-    } else {
-        let d1 = xabs / w;
-        let d2 = yabs / w;
-        let d3 = zabs / w;
-        w * (d1 * d1 + d2 * d2 + d3 * d3).sqrt()
-    }
-}
-
-/// `DZNRM2`: the Euclidean norm of a complex vector, scaled so that neither the
-/// squares nor the sum can overflow.
-fn dznrm2(x: &[Complex64]) -> f64 {
-    let mut scale = 0.0f64;
-    let mut ssq = 1.0f64;
-    for c in x {
-        let a = c.norm();
-        if a != 0.0 {
-            if scale < a {
-                let r = scale / a;
-                ssq = 1.0 + ssq * r * r;
-                scale = a;
-            } else {
-                let r = a / scale;
-                ssq += r * r;
-            }
-        }
-    }
-    scale * ssq.sqrt()
-}
-
-/// `zladiv`: the complex quotient `x / y`, avoiding overflow in `y`'s products.
-///
-/// The reference routes this through `dladiv`; the two-branch form below is the
-/// same algorithm without the extreme-exponent rescaling, which `zlarfg`'s
-/// `1/(alpha - beta)` -- where `beta` is by construction comparable to `alpha`
-/// once the subnormal case has been scaled away -- does not reach.
-fn zladiv(x: Complex64, y: Complex64) -> Complex64 {
-    if y.re.abs() >= y.im.abs() {
-        let r = y.im / y.re;
-        let den = y.re + r * y.im;
-        cpx((x.re + r * x.im) / den, (x.im - r * x.re) / den)
-    } else {
-        let r = y.re / y.im;
-        let den = y.im + r * y.re;
-        cpx((x.re * r + x.im) / den, (x.im * r - x.re) / den)
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1195,112 +1108,6 @@ fn zlascl_tri(cfrom: f64, cto: f64, a: &mut [Complex64], n: usize, upper: bool) 
     }
 }
 
-/// `dlapy2`: `sqrt(x^2 + y^2)` without unnecessary overflow or underflow.
-fn dlapy2(x: f64, y: f64) -> f64 {
-    if x.is_nan() {
-        return x;
-    }
-    if y.is_nan() {
-        return y;
-    }
-    let xabs = x.abs();
-    let yabs = y.abs();
-    let w = xabs.max(yabs);
-    let z = xabs.min(yabs);
-    if z == 0.0 || w > f64::MAX {
-        w
-    } else {
-        w * (1.0 + (z / w) * (z / w)).sqrt()
-    }
-}
-
-/// `dlae2`: the eigenvalues of the symmetric 2x2 block `[[a, b], [b, c]]`.
-fn dlae2(a: f64, b: f64, c: f64) -> (f64, f64) {
-    let sm = a + c;
-    let df = a - c;
-    let adf = df.abs();
-    let tb = b + b;
-    let ab = tb.abs();
-    let (acmx, acmn) = if a.abs() > c.abs() { (a, c) } else { (c, a) };
-    let rt = if adf > ab {
-        adf * (1.0 + (ab / adf) * (ab / adf)).sqrt()
-    } else if adf < ab {
-        ab * (1.0 + (adf / ab) * (adf / ab)).sqrt()
-    } else {
-        ab * 2.0f64.sqrt()
-    };
-    if sm < 0.0 {
-        let rt1 = 0.5 * (sm - rt);
-        // The order matters: the smaller eigenvalue is fully accurate only when
-        // computed from the larger one this way.
-        let rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-        (rt1, rt2)
-    } else if sm > 0.0 {
-        let rt1 = 0.5 * (sm + rt);
-        let rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-        (rt1, rt2)
-    } else {
-        (0.5 * rt, -0.5 * rt)
-    }
-}
-
-/// `dlaev2`: the eigenvalues and the eigenvector rotation of the symmetric 2x2
-/// block `[[a, b], [b, c]]`.
-///
-/// Returns `(rt1, rt2, cs1, sn1)`; the eigenvector is `(cs1, sn1)` and the signs
-/// are chosen exactly as the reference chooses them, which is what pins the
-/// eigenvector signs of the whole decomposition.
-fn dlaev2(a: f64, b: f64, c: f64) -> (f64, f64, f64, f64) {
-    let sm = a + c;
-    let df = a - c;
-    let adf = df.abs();
-    let tb = b + b;
-    let ab = tb.abs();
-    let (acmx, acmn) = if a.abs() > c.abs() { (a, c) } else { (c, a) };
-    let rt = if adf > ab {
-        adf * (1.0 + (ab / adf) * (ab / adf)).sqrt()
-    } else if adf < ab {
-        ab * (1.0 + (adf / ab) * (adf / ab)).sqrt()
-    } else {
-        ab * 2.0f64.sqrt()
-    };
-
-    let (rt1, rt2, sgn1);
-    if sm < 0.0 {
-        rt1 = 0.5 * (sm - rt);
-        sgn1 = -1;
-        rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-    } else if sm > 0.0 {
-        rt1 = 0.5 * (sm + rt);
-        sgn1 = 1;
-        rt2 = (acmx / rt1) * acmn - (b / rt1) * b;
-    } else {
-        rt1 = 0.5 * rt;
-        rt2 = -0.5 * rt;
-        sgn1 = 1;
-    }
-
-    let (cs, sgn2) = if df >= 0.0 { (df + rt, 1) } else { (df - rt, -1) };
-    let acs = cs.abs();
-    let (mut cs1, mut sn1) = if acs > ab {
-        let ct = -tb / cs;
-        let sn1 = 1.0 / (1.0 + ct * ct).sqrt();
-        (ct * sn1, sn1)
-    } else if ab == 0.0 {
-        (1.0, 0.0)
-    } else {
-        let tn = -cs / tb;
-        let cs1 = 1.0 / (1.0 + tn * tn).sqrt();
-        (cs1, tn * cs1)
-    };
-    if sgn1 == sgn2 {
-        let tn = cs1;
-        cs1 = -sn1;
-        sn1 = tn;
-    }
-    (rt1, rt2, cs1, sn1)
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // zgeev: eigenvalues and eigenvectors of a complex general matrix
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1331,93 +1138,11 @@ fn dznrm2_strided(a: &[Complex64], start: usize, stride: usize, count: usize) ->
     scale * ssq.sqrt()
 }
 
-/// `zlascl` with `TYPE = 'G'`: multiply a whole `m x n` matrix by `cto / cfrom`,
-/// in stages so that a single factor which would overflow never appears.
-fn zlascl_g(cfrom: f64, cto: f64, a: &mut [Complex64], lda: usize, m: usize, n: usize) {
-    if m == 0 || n == 0 {
-        return;
-    }
-    let smlnum = f64::MIN_POSITIVE;
-    let bignum = 1.0 / smlnum;
-    let mut cfromc = cfrom;
-    let mut ctoc = cto;
-    loop {
-        let mul;
-        let done;
-        let cfrom1 = cfromc * smlnum;
-        if cfrom1 == cfromc {
-            mul = ctoc / cfromc;
-            done = true;
-        } else {
-            let cto1 = ctoc / bignum;
-            if cto1 == ctoc {
-                mul = ctoc;
-                done = true;
-                cfromc = 1.0;
-            } else if cfrom1.abs() > ctoc.abs() && ctoc != 0.0 {
-                mul = smlnum;
-                done = false;
-                cfromc = cfrom1;
-            } else if cto1.abs() > cfromc.abs() {
-                mul = bignum;
-                done = false;
-                ctoc = cto1;
-            } else {
-                mul = ctoc / cfromc;
-                done = true;
-                if mul == 1.0 {
-                    return;
-                }
-            }
-        }
-        for j in 0..n {
-            for i in 0..m {
-                a[i + j * lda] *= mul;
-            }
-        }
-        if done {
-            return;
-        }
-    }
-}
-
 /// `ZLACPY` with `UPLO = 'L'`: copy the lower triangle (diagonal included).
 fn zlacpy_lower(a: &[Complex64], n: usize, b: &mut [Complex64]) {
     for j in 0..n {
         for i in j..n {
             b[i + j * n] = a[i + j * n];
-        }
-    }
-}
-
-/// `ZLARF` with `SIDE = 'R'`: `C := C - tau * (C v) * v^H`.
-///
-/// `c` holds the `m x ncols` block whose `(r0, c0)` entry is its top-left corner.
-/// `v` has length `ncols`.
-fn zlarf_right(
-    a: &mut [Complex64],
-    lda: usize,
-    r0: usize,
-    m: usize,
-    c0: usize,
-    ncols: usize,
-    v: &[Complex64],
-    tau: Complex64,
-) {
-    if tau == zero() || m == 0 || ncols == 0 {
-        return;
-    }
-    let mut w = vec![zero(); m];
-    for (i, wi) in w.iter_mut().enumerate() {
-        let mut s = zero();
-        for j in 0..ncols {
-            s += a[(r0 + i) + (c0 + j) * lda] * v[j];
-        }
-        *wi = s;
-    }
-    for (i, &wi) in w.iter().enumerate() {
-        for j in 0..ncols {
-            a[(r0 + i) + (c0 + j) * lda] -= tau * wi * v[j].conj();
         }
     }
 }
@@ -1454,15 +1179,15 @@ fn znormalize_columns(v: &mut [Complex64], n: usize) {
 /// This is `zgeev.f`'s unblocked route, transcribed literally:
 ///
 /// 1. scale `a` when its largest entry lies outside `[SMLNUM, BIGNUM]`;
-/// 2. [`zgebal`] (`JOB = 'B'`): permute and scale to improve conditioning;
-/// 3. [`zgehrd`] (the unblocked `zgehd2`): reduce to upper Hessenberg form,
+/// 2. `zgebal` (`JOB = 'B'`): permute and scale to improve conditioning;
+/// 3. `zgehrd` (the unblocked `zgehd2`): reduce to upper Hessenberg form,
 ///    `a = Q H Q^H`, keeping the reflectors;
-/// 4. [`zunghr`] forms `Q`, then [`zhseqr`] (`JOB = 'S'`, `COMPZ = 'V'`) reduces
-///    `H` to the complex Schur form with the unblocked [`zlahqr`], accumulating
+/// 4. `zunghr` forms `Q`, then `zhseqr` (`JOB = 'S'`, `COMPZ = 'V'`) reduces
+///    `H` to the complex Schur form with the unblocked `zlahqr`, accumulating
 ///    the Schur vectors;
-/// 5. [`ztrevc3`] with `HOWMNY = 'B'`: the eigenvectors of the triangular `T`,
+/// 5. `ztrevc3` with `HOWMNY = 'B'`: the eigenvectors of the triangular `T`,
 ///    back-transformed by the Schur vectors;
-/// 6. [`zgebak`]: undo the balancing;
+/// 6. `zgebak`: undo the balancing;
 /// 7. normalize the eigenvectors and unscale the eigenvalues.
 ///
 /// `a` is `n x n` column-major and is destroyed. `w` receives the eigenvalues.
@@ -1478,7 +1203,7 @@ fn znormalize_columns(v: &mut [Complex64], n: usize) {
 ///
 /// The blocked `zlaqr0` fallback that `zhseqr`
 /// selects for large `n` is not implemented; every matrix goes through the
-/// single-shift [`zlahqr`], which is what the reference itself does for `n <= 15`.
+/// single-shift `zlahqr`, which is what the reference itself does for `n <= 15`.
 pub fn zgeev(
     w: &mut [Complex64],
     a: &mut [Complex64],
@@ -1624,7 +1349,7 @@ fn zhseqr(
 /// implicit QR iteration.
 ///
 /// `ilo`/`ihi` are 0-based and delimit the active block. `z`, when given, enters
-/// holding the unitary matrix from [`zgehrd`] and leaves holding the Schur
+/// holding the unitary matrix from `zgehrd` and leaves holding the Schur
 /// vectors. The return value is LAPACK's `INFO`: `0`, or the (1-based) index that
 /// failed to converge.
 fn zlahqr(
@@ -2265,7 +1990,7 @@ fn zlatrs_upper(
 /// Returns the 0-based `ilo`/`ihi` bounding the active block and the `scale`
 /// vector, whose entries inside `ilo..=ihi` are the scaling factors and whose
 /// entries outside hold the 1-based source index of the permutation (as
-/// [`zgebak`] expects).
+/// `zgebak` expects).
 fn zgebal(a: &mut [Complex64], n: usize) -> (usize, usize, Vec<f64>) {
     let mut scale = vec![1.0f64; n];
     if n == 0 {
@@ -2432,7 +2157,7 @@ fn zgebal(a: &mut [Complex64], n: usize) -> (usize, usize, Vec<f64>) {
     (k, l, scale)
 }
 
-/// `zgebak` with `JOB = 'B'`: undo the balancing that [`zgebal`] recorded.
+/// `zgebak` with `JOB = 'B'`: undo the balancing that `zgebal` recorded.
 ///
 /// `left` selects `SIDE = 'L'` (which divides each row by its scaling factor)
 /// instead of `SIDE = 'R'` (which multiplies). `ilo`/`ihi` are 0-based.
@@ -2509,7 +2234,7 @@ fn zgehrd(a: &mut [Complex64], n: usize, ilo: usize, ihi: usize, tau: &mut [Comp
     }
 }
 
-/// `zunghr`: form the unitary matrix `Q` from the reflectors [`zgehrd`] stored.
+/// `zunghr`: form the unitary matrix `Q` from the reflectors `zgehrd` stored.
 ///
 /// The reflectors are shifted one column to the right and the first `ilo` and
 /// last `n-ihi-1` rows and columns are set to those of the identity, then the

@@ -1,4 +1,5 @@
 use super::{ComplexMatrix, complex_mat_copy};
+use crate::native::lapack::ZERO_DETERMINANT;
 use crate::{Complex64, StrError, cpx, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
@@ -22,7 +23,6 @@ unsafe extern "C" {
 }
 
 // constants
-const ZERO_DETERMINANT_NORM: f64 = 1e-15;
 
 #[cfg_attr(
     not(any(feature = "oblas", feature = "mkl")),
@@ -110,7 +110,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     // handle small matrix
     if m == 1 {
         let det = a.get(0, 0);
-        if det.norm() <= ZERO_DETERMINANT_NORM {
+        if det.norm() <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
         ai.set(0, 0, 1.0 / det);
@@ -119,7 +119,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 
     if m == 2 {
         let det = a.get(0, 0) * a.get(1, 1) - a.get(0, 1) * a.get(1, 0);
-        if det.norm() <= ZERO_DETERMINANT_NORM {
+        if det.norm() <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
         ai.set(0, 0, a.get(1, 1) / det);
@@ -136,7 +136,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
             - a.get(0,1) * (a.get(1,0) * a.get(2,2) - a.get(1,2) * a.get(2,0))
             + a.get(0,2) * (a.get(1,0) * a.get(2,1) - a.get(1,1) * a.get(2,0));
 
-        if det.norm() <= ZERO_DETERMINANT_NORM {
+        if det.norm() <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
 
@@ -261,7 +261,8 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 
 #[cfg(test)]
 mod tests {
-    use super::{ComplexMatrix, ZERO_DETERMINANT_NORM, complex_mat_inverse};
+    use super::{ComplexMatrix, complex_mat_inverse};
+    use crate::native::lapack::ZERO_DETERMINANT;
     use crate::{complex_approx_eq, complex_mat_approx_eq, cpx};
 
     /// Computes a⋅ai that should equal I for a square matrix
@@ -319,7 +320,7 @@ mod tests {
 
     #[test]
     fn complex_inverse_1x1_fails_on_zero_det() {
-        let a = ComplexMatrix::from(&[[ZERO_DETERMINANT_NORM / 10.0]]);
+        let a = ComplexMatrix::from(&[[ZERO_DETERMINANT / 10.0]]);
         let mut ai = ComplexMatrix::new(1, 1);
         let res = complex_mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));

@@ -25,21 +25,10 @@
 //! | [`mat_vec_mul_data`] | `dgemv` |
 //! | [`mat_mat_mul_data`] | `dgemm` |
 //! | [`mat_t_mat_mul_data`] | `dgemm` (transposed) |
-//! | [`lu_decompose`], [`lu_invert`] | `dgetrf` + `dgetri` |
-//!
-//! `lu_decompose`/`lu_invert` are also what [`crate::matrix::mat_inverse`] runs in
-//! a native build today, even though [`crate::native::lapack::dgetrf`] exists --
-//! see the note in that function.
 
 #![cfg_attr(any(feature = "oblas", feature = "mkl"), allow(dead_code))]
 
-use crate::{Norm, StrError};
-
-/// Portable version of [`crate::matrix::Matrix`] inversion helper.
-///
-/// Mirrors the tolerance used by the LAPACK path so that behaviour does not
-/// change with the backend.
-pub const ZERO_DETERMINANT: f64 = 1e-15;
+use crate::Norm;
 
 /// `v := u`, replacing `cblas_dcopy`.
 ///
@@ -146,111 +135,6 @@ pub fn mat_t_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta:
     }
     mat_mat_mul_data(c, alpha, &at, b, beta, m, n, k);
 }
-
-/// In-place LU decomposition with partial pivoting, replacing `dgetrf`.
-///
-/// Returns `(det, ipiv)`, or an error if the matrix is singular. `ipiv` holds
-/// 0-based pivots, unlike LAPACK's 1-based convention.
-///
-/// The observable behaviour matches the LAPACK path used by
-/// [`crate::matrix::mat_inverse`]: the packed LU is written back into `a`, and
-/// the determinant is the product of the U diagonal with a sign flip per row
-/// interchange.
-pub fn lu_decompose(a: &mut [f64], m: usize) -> Result<(f64, Vec<usize>), StrError> {
-    let mut ipiv = vec![0usize; m];
-    let mut det = 1.0;
-
-    for k in 0..m {
-        // Partial pivoting: find the largest magnitude entry in column k below
-        // the diagonal.
-        let mut pivot = k;
-        let mut best = f64::abs(a[k * m + k]);
-        for i in (k + 1)..m {
-            let candidate = f64::abs(a[k * m + i]);
-            if candidate > best {
-                best = candidate;
-                pivot = i;
-            }
-        }
-
-        if best <= ZERO_DETERMINANT {
-            return Err("cannot compute inverse due to zero determinant");
-        }
-
-        // Swap rows k and pivot across all columns.
-        if pivot != k {
-            for j in 0..m {
-                a.swap(j * m + k, j * m + pivot);
-            }
-            det = -det;
-        }
-
-        ipiv[k] = pivot;
-        let diagonal = a[k * m + k];
-        det *= diagonal;
-
-        // Eliminate below the diagonal, storing the multipliers in place.
-        for i in (k + 1)..m {
-            let factor = a[k * m + i] / diagonal;
-            a[k * m + i] = factor;
-            for j in (k + 1)..m {
-                a[j * m + i] -= factor * a[j * m + k];
-            }
-        }
-    }
-
-    Ok((det, ipiv))
-}
-
-/// Solves `L⋅U⋅x = P⋅b` in place, given the packed LU factors and pivots from
-/// [`lu_decompose`], replacing `dgetri`.
-///
-/// `a` is the packed LU (column-major, `m×m`); on return `a` holds the inverse.
-pub fn lu_invert(a: &mut [f64], m: usize, ipiv: &[usize]) -> Result<(), StrError> {
-    let mut inverse = vec![0.0; m * m];
-
-    // One right-hand side per column of the identity.
-    let mut b = vec![0.0; m];
-    for column in 0..m {
-        b.fill(0.0);
-        b[column] = 1.0;
-
-        // Apply the row interchanges in the order they were made.
-        for k in 0..m {
-            b.swap(k, ipiv[k]);
-        }
-
-        // Forward substitution through the unit lower-triangular L.
-        for i in 0..m {
-            let mut sum = b[i];
-            for j in 0..i {
-                sum -= a[j * m + i] * b[j];
-            }
-            b[i] = sum;
-        }
-
-        // Back substitution through the upper-triangular U.
-        for i in (0..m).rev() {
-            let mut sum = b[i];
-            for j in (i + 1)..m {
-                sum -= a[j * m + i] * b[j];
-            }
-            let diagonal = a[i * m + i];
-            if diagonal == 0.0 {
-                return Err("cannot compute inverse due to zero determinant");
-            }
-            b[i] = sum / diagonal;
-        }
-
-        for i in 0..m {
-            inverse[column * m + i] = b[i];
-        }
-    }
-
-    a.copy_from_slice(&inverse);
-    Ok(())
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -385,36 +269,5 @@ mod tests {
         assert_eq!(c.get(0, 1), 98.0);
         assert_eq!(c.get(1, 0), 116.0);
         assert_eq!(c.get(1, 1), 128.0);
-    }
-
-    #[test]
-    fn lu_decompose_and_invert_work() {
-        // 4x4 so that the small-matrix shortcuts in `mat_inverse` do not apply.
-        let mut a = Matrix::from(&[
-            [4.0, 1.0, 2.0, 1.0],
-            [1.0, 3.0, 0.0, 1.0],
-            [2.0, 0.0, 5.0, 2.0],
-            [1.0, 1.0, 2.0, 6.0],
-        ]);
-        let original = a.as_data().clone();
-        let (det, ipiv) = lu_decompose(a.as_mut_data(), 4).unwrap();
-        assert!(det > 0.0);
-        lu_invert(a.as_mut_data(), 4, &ipiv).unwrap();
-
-        // a * a⁻¹ = I
-        let mut product = Matrix::new(4, 4);
-        mat_mat_mul_data(product.as_mut_data(), 1.0, &original, a.as_data(), 0.0, 4, 4, 4);
-        for i in 0..4 {
-            for j in 0..4 {
-                let expected = if i == j { 1.0 } else { 0.0 };
-                approx_eq(product.get(i, j), expected, 1e-12);
-            }
-        }
-    }
-
-    #[test]
-    fn lu_decompose_detects_singular_matrix() {
-        let mut a = Matrix::from(&[[1.0, 2.0, 3.0], [2.0, 4.0, 6.0], [1.0, 1.0, 1.0]]);
-        assert!(lu_decompose(a.as_mut_data(), 3).is_err());
     }
 }

@@ -1,5 +1,6 @@
 use super::{Matrix, mat_copy};
 use crate::StrError;
+use crate::native::lapack::ZERO_DETERMINANT;
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
@@ -23,7 +24,6 @@ unsafe extern "C" {
 }
 
 // constants
-const ZERO_DETERMINANT: f64 = 1e-15;
 
 /// (dgetrf, dgetri) Computes the inverse of a square matrix and returns its determinant
 ///
@@ -203,14 +203,24 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     mat_copy(ai, a).unwrap();
 
     // LU with partial pivoting, then one back-substitution per column of the
-    // identity. This runs `portable`'s LU rather than `native::lapack::dgetrf`,
-    // which is the same algorithm and is tested for parity against LAPACK; the
-    // two have not been unified yet, and they differ only in the message a
-    // singular matrix produces.
+    // identity: the native `dgetrf`/`dgetri`, which are tested for parity against
+    // the reference LAPACK. The strings below are the ones the shim reports, so a
+    // singular matrix is described the same way in both configurations.
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
-        let (det, ipiv) = crate::portable::lu_decompose(ai.as_mut_data(), m)?;
-        crate::portable::lu_invert(ai.as_mut_data(), m, &ipiv)?;
+        use crate::native::lapack::{LapackError, dgetrf, dgetri};
+        let (ipiv, det) = dgetrf(ai.as_mut_data(), m).map_err(|e| match e {
+            LapackError::Singular => {
+                "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
+            }
+            _ => "LAPACK ERROR (dgetrf): An argument had an illegal value",
+        })?;
+        dgetri(ai.as_mut_data(), m, &ipiv).map_err(|e| match e {
+            LapackError::Singular => {
+                "LAPACK ERROR (dgetri): U is exactly singular and the inverse could not be computed"
+            }
+            _ => "LAPACK ERROR (dgetri): An argument had an illegal value",
+        })?;
         Ok(det)
     }
 
@@ -474,5 +484,24 @@ mod tests {
         let a_copy = Matrix::from(&data);
         let a_ai = get_a_times_ai(&a_copy, &ai);
         mat_approx_eq(&a_ai, &identity, 1e-12);
+    }
+
+    #[test]
+    fn inverse_4x4_fails_on_zero_det() {
+        // The third column is the sum of the first two, so the matrix is singular.
+        // n >= 4 is the LU path, whose message is the one the C shim reports.
+        #[rustfmt::skip]
+        let a = Matrix::from(&[
+            [1.0, 2.0, 3.0, 0.5],
+            [0.0, 1.0, 1.0, 2.0],
+            [4.0, 0.0, 4.0, 1.0],
+            [1.0, 1.0, 2.0, 3.0],
+        ]);
+        let mut ai = Matrix::new(4, 4);
+        let res = mat_inverse(&mut ai, &a);
+        assert_eq!(
+            res,
+            Err("LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular")
+        );
     }
 }

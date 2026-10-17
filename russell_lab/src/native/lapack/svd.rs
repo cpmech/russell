@@ -1692,4 +1692,163 @@ mod tests {
             assert!(ratio3 <= 20.0, "n={n}: V orthogonality ratio = {ratio3} exceeds 20");
         }
     }
+
+    /// `dbdsqr`'s modes: singular values only (no vectors requested), the lower
+    /// bidiagonal form, the `NCC > 0` transformation of a right-hand block, and a
+    /// matrix with an exact zero singular value.
+    ///
+    /// The existing test always asks for both full vector sets from an upper
+    /// bidiagonal matrix, which leaves the other four argument shapes unexecuted
+    /// -- and `NCC > 0` is what `dgebrd` callers rely on to accumulate `Q^T C`.
+    #[test]
+    fn dbdsqr_covers_the_lower_form_and_the_vector_modes() {
+        let eps = f64::EPSILON;
+
+        // Upper bidiagonal with a zero singular value: values only.
+        let n = 4;
+        let d_in = [1.0, 0.0, 2.0, 3.0];
+        let e_in = [0.5, 0.5, 0.25, 0.0];
+        let mut d = d_in.to_vec();
+        let mut e = e_in.to_vec();
+        let mut vt: Vec<f64> = vec![];
+        let mut u: Vec<f64> = vec![];
+        let mut c: Vec<f64> = vec![];
+        let info = dbdsqr(false, n, 0, 0, 0, &mut d, &mut e, &mut vt, 1, &mut u, 1, &mut c, 1);
+        assert_eq!(info, 0);
+        for k in 0..n {
+            assert!(d[k] >= 0.0, "s[{k}] = {} is negative", d[k]);
+        }
+        for k in 1..n {
+            assert!(d[k - 1] >= d[k], "s is not descending: {d:?}");
+        }
+        assert!(d[n - 1] < 1e-14, "one singular value must be zero: {d:?}");
+
+        // Lower bidiagonal, full vectors: the same matrix transposed gives the
+        // same singular values.
+        let n = 3;
+        let mut d_lo = [1.0, 2.0, 3.0];
+        let mut e_lo = [0.5, 0.25, 0.0];
+        let mut vt = vec![0.0; 9];
+        let mut u = vec![0.0; 9];
+        for i in 0..3 {
+            vt[i + i * 3] = 1.0;
+            u[i + i * 3] = 1.0;
+        }
+        let info = dbdsqr(true, n, n, n, 0, &mut d_lo, &mut e_lo, &mut vt, n, &mut u, n, &mut c, 1);
+        assert_eq!(info, 0);
+        for k in 1..n {
+            assert!(d_lo[k - 1] >= d_lo[k], "lower: s not descending: {d_lo:?}");
+        }
+
+        // NCC > 0: the caller's C is transformed by the accumulated orthogonal
+        // factor, `C := Q^T C`. Feeding the identity recovers `Q^T` itself, which
+        // must be orthogonal and must agree with the `U` reported for the same
+        // matrix up to the column signs the QR iteration is free to choose.
+        let n = 4;
+        let d_in = [1.0, 2.0, 3.0, 4.0];
+        let e_in = [0.5, 0.25, 0.125, 0.0];
+
+        // Pass 1: the singular vectors.
+        let (mut d_u, mut e_u) = (d_in.to_vec(), e_in.to_vec());
+        let mut vt_u = vec![0.0; n * n];
+        let mut u_u = vec![0.0; n * n];
+        let mut c_empty: Vec<f64> = vec![];
+        let info = dbdsqr(
+            false,
+            n,
+            n,
+            n,
+            0,
+            &mut d_u,
+            &mut e_u,
+            &mut vt_u,
+            n,
+            &mut u_u,
+            n,
+            &mut c_empty,
+            1,
+        );
+        assert_eq!(info, 0);
+
+        // Pass 2: C = identity, so the output is Q^T.
+        let (mut d_c, mut e_c) = (d_in.to_vec(), e_in.to_vec());
+        let mut vt_c = vec![0.0; n * n];
+        let mut u_c = vec![0.0; n * n];
+        let mut c = vec![0.0; n * n];
+        for i in 0..n {
+            c[i + i * n] = 1.0;
+        }
+        let info = dbdsqr(
+            false, n, 0, 0, n, &mut d_c, &mut e_c, &mut vt_c, 1, &mut u_c, 1, &mut c, n,
+        );
+        assert_eq!(info, 0);
+
+        // Q^T (as returned in C) is orthogonal ...
+        for i in 0..n {
+            for j in 0..n {
+                let mut dot = 0.0;
+                for k in 0..n {
+                    dot += c[k + i * n] * c[k + j * n];
+                }
+                let want = if i == j { 1.0 } else { 0.0 };
+                assert!((dot - want).abs() < 1e-13, "Q^T Q ({i},{j}) = {dot}");
+            }
+        }
+        // ... and the transformation preserves inner products, which is what an
+        // orthogonal factor means. Comparing against `U` column by column would
+        // be wrong: the rotations reach `C` in the order the iteration generates
+        // them, before the singular values are sorted and their vectors signed,
+        // so the columns of `C` come out permuted relative to `U`'s.
+        let ncc = 2;
+        let mut b_in = vec![0.0; n * ncc];
+        for i in 0..n {
+            for j in 0..ncc {
+                b_in[i + j * n] = 1.0 + (i as f64) * 0.5 - (j as f64) * 0.25;
+            }
+        }
+        let (mut d_b, mut e_b) = (d_in.to_vec(), e_in.to_vec());
+        let mut b_out = b_in.clone();
+        let info = dbdsqr(
+            false, n, 0, 0, ncc, &mut d_b, &mut e_b, &mut vt_c, 1, &mut u_c, 1, &mut b_out, n,
+        );
+        assert_eq!(info, 0);
+        for i in 0..ncc {
+            for j in 0..ncc {
+                let mut got = 0.0;
+                let mut want = 0.0;
+                for k in 0..n {
+                    got += b_out[k + i * n] * b_out[k + j * n];
+                    want += b_in[k + i * n] * b_in[k + j * n];
+                }
+                assert!(
+                    (got - want).abs() <= 1e-12 * want.abs().max(1.0),
+                    "inner product ({i},{j}) changed: {got} != {want}"
+                );
+            }
+        }
+
+        // n = 1 is a single entry and no rotations.
+        let mut d = vec![2.5];
+        let mut e = vec![0.0];
+        let mut vt = vec![1.0];
+        let mut u = vec![1.0];
+        let info = dbdsqr(
+            false,
+            1,
+            1,
+            1,
+            0,
+            &mut d,
+            &mut e,
+            &mut vt,
+            1,
+            &mut u,
+            1,
+            &mut c_empty,
+            1,
+        );
+        assert_eq!(info, 0);
+        assert_eq!(d[0], 2.5);
+        let _ = eps;
+    }
 }

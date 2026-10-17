@@ -62,9 +62,9 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1168 pass, 0 fail, 0 ignored
+cargo test -p russell_lab --lib                     # 1193 pass, 0 fail, 0 ignored
 RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features oracle # 1181 pass, 0 fail
+  cargo test -p russell_lab --lib --features oracle # 1206 pass, 0 fail
 ```
 
 Both configurations are known-good on the current tree of `native-lapack`, with
@@ -124,6 +124,17 @@ an extent, or a length taken from the wrong axis**:
   `C := A^T A` was wrong for non-square `A`.
 - `complex_mat_t_mat_mul` transposed `A` as if it were `(m, k)` when it is
   `(k, m)`.
+- `zgebal` applied the row scaling as `a[t + k*n] *= ginv` over `t` -- column
+  `K`, rows `i..n` -- instead of row `i`, columns `K..n`. The complex twin of
+  `dgebal` then stopped being a similarity: the scaling loop diverged and
+  `scale` came out as `2e-292` instead of a power of two. Found by running the
+  complex routine over the real one's fixtures and comparing, which is the
+  cheapest way to test a twin.
+- `dlarfg`'s underflow branch scaled `X` and `ALPHA` *down* by `SAFMIN` and
+  returned `BETA = -0` for a subnormal tail. The reference multiplies by
+  `RSAFMN = 1/SAFMN` (`SAFMN = DLAMCH('S')/DLAMCH('E')` = 1e-292, not
+  `DLAMCH('S')`) and takes `BETA` back at the end by `SAFMN**KNT`, one
+  multiplication at a time because the power overflows.
 - `solve_lin_sys` reported a different singular error string from the shim's.
 - `mat_cholesky` with `upper = true` needed care twice: LAPACK's `'U'` *reads*
   only the upper triangle (so the other half may be zeros and must be mirrored),

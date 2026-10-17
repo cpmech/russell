@@ -1991,7 +1991,7 @@ fn zlatrs_upper(
 /// vector, whose entries inside `ilo..=ihi` are the scaling factors and whose
 /// entries outside hold the 1-based source index of the permutation (as
 /// `zgebak` expects).
-fn zgebal(a: &mut [Complex64], n: usize) -> (usize, usize, Vec<f64>) {
+pub(super) fn zgebal(a: &mut [Complex64], n: usize) -> (usize, usize, Vec<f64>) {
     let mut scale = vec![1.0f64; n];
     if n == 0 {
         return (0, 0, scale);
@@ -2145,11 +2145,18 @@ fn zgebal(a: &mut [Complex64], n: usize) -> (usize, usize, Vec<f64>) {
             let ginv = 1.0 / f;
             scale[i] *= f;
             noconv = true;
-            for t in i..n {
-                a[t + k * n] *= ginv;
+
+            // ZSCAL(N-K+1, GINV, A(I,K), LDA) then ZSCAL(L, F, A(1,I), 1): row I
+            // across columns K..N, then column I across rows 0..=L. Writing the
+            // first one as `a[t + k * n]` for `t in i..n` scales column K, not
+            // row I: it corrupts the matrix instead of applying a similarity, and
+            // the scaling loop then diverges to the underflow limit (seen as a
+            // `scale` entry of 2e-292 instead of a power of two).
+            for cc in k..n {
+                a[i + cc * n] *= ginv;
             }
-            for t in 0..=l {
-                a[t + i * n] *= f;
+            for rr in 0..=l {
+                a[rr + i * n] *= f;
             }
         }
     }
@@ -2473,5 +2480,238 @@ mod tests {
             zgeev(&mut w, &mut a, n, None, Some(&mut vr)).unwrap();
             check_right(&a_orig, &vr, &w, n, 1e-13 * factor);
         }
+    }
+
+    /// A real symmetric tridiagonal matrix as dense complex data, from its
+    /// diagonal `d` and off-diagonal `e` (`e[n-1]` is scratch, as in LAPACK).
+    fn tridiagonal_complex(d: &[f64], e: &[f64], n: usize) -> Vec<Complex64> {
+        let mut a = vec![zero(); n * n];
+        for i in 0..n {
+            a[i + i * n] = cpx(d[i], 0.0);
+            if i + 1 < n {
+                a[i + (i + 1) * n] = cpx(e[i], 0.0);
+                a[(i + 1) + i * n] = cpx(e[i], 0.0);
+            }
+        }
+        a
+    }
+
+    /// The 1-norm of dense complex data.
+    fn norm_1_complex(a: &[Complex64], n: usize) -> f64 {
+        let mut best = 0.0f64;
+        for j in 0..n {
+            let mut sum = 0.0;
+            for i in 0..n {
+                sum += a[i + j * n].norm();
+            }
+            best = best.max(sum);
+        }
+        best
+    }
+
+    /// `zsteqr` in its three modes: eigenvalues only, accumulating into a
+    /// caller's complex basis (`COMPZ = 'V'`), and starting from the identity.
+    ///
+    /// The complex eigen-solver reaches it only through `zheev`, with `icompz = 1`
+    /// and an identity basis, so the accumulation into a genuinely complex `Z`
+    /// and the eigenvalues-only path were never executed.
+    #[test]
+    fn zsteqr_covers_its_modes() {
+        let eps = f64::EPSILON;
+
+        // icompz = 2: identity start, real tridiagonal, complex Z on exit.
+        for n in [2usize, 3, 5, 8] {
+            let d0: Vec<f64> = (0..n).map(|i| 1.0 + 1.5 * (i as f64)).collect();
+            let mut e0 = vec![0.0; n];
+            for i in 0..n - 1 {
+                e0[i] = 0.5 + 0.125 * ((i * 3) % 4) as f64;
+            }
+            let t = tridiagonal_complex(&d0, &e0, n);
+            let mut d = d0.clone();
+            let mut e = e0.clone();
+            let mut z = vec![zero(); n * n];
+            let mut work = vec![0.0; 2 * n.max(1)];
+            let info = zsteqr(2, n, &mut d, &mut e, &mut z, n, &mut work);
+            assert_eq!(info, 0, "n={n}: zsteqr did not converge");
+            let w = d.clone();
+            // T Z = Z W
+            let mut tu = vec![zero(); n * n];
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = zero();
+                    for k in 0..n {
+                        sum += t[i + k * n] * z[k + j * n];
+                    }
+                    tu[i + j * n] = sum - cpx(w[j], 0.0) * z[i + j * n];
+                }
+            }
+            let resid: f64 = tu.iter().map(|v| v.norm()).sum::<f64>() / (norm_1_complex(&t, n) * n as f64 * eps);
+            assert!(resid <= 20.0, "n={n}: zsteqr residual = {resid} exceeds 20");
+            // Z^H Z = I
+            let mut orth = 0.0;
+            for j in 0..n {
+                for i in 0..n {
+                    let mut dot = zero();
+                    for k in 0..n {
+                        dot += z[k + i * n].conj() * z[k + j * n];
+                    }
+                    orth += (dot - cpx(if i == j { 1.0 } else { 0.0 }, 0.0)).norm();
+                }
+            }
+            assert!(orth / (n as f64 * eps) <= 20.0, "n={n}: Z is not unitary");
+        }
+
+        // icompz = 1 with a genuinely complex basis: Z enters unitary and leaves
+        // holding the eigenvectors of A = Z T Z^H.
+        let n = 4;
+        let d0 = vec![2.0, 3.0, 5.0, 7.0];
+        let e0 = vec![0.5, 0.25, 0.125, 0.0];
+        let t = tridiagonal_complex(&d0, &e0, n);
+        // Z_in = diag(exp(i theta_j))
+        let mut z_in = vec![zero(); n * n];
+        for j in 0..n {
+            let theta = 0.3 * (j as f64 + 1.0);
+            z_in[j + j * n] = cpx(theta.cos(), theta.sin());
+        }
+        // A = Z T Z^H
+        let mut a = vec![zero(); n * n];
+        for i in 0..n {
+            for j in 0..n {
+                a[i + j * n] = z_in[i + i * n] * t[i + j * n] * z_in[j + j * n].conj();
+            }
+        }
+        let mut d = d0.clone();
+        let mut e = e0.clone();
+        let mut z = z_in.clone();
+        let mut work = vec![0.0; 2 * n];
+        let info = zsteqr(1, n, &mut d, &mut e, &mut z, n, &mut work);
+        assert_eq!(info, 0);
+        let w = d.clone();
+        let mut resid = 0.0;
+        for j in 0..n {
+            for i in 0..n {
+                let mut sum = zero();
+                for k in 0..n {
+                    sum += a[i + k * n] * z[k + j * n];
+                }
+                resid += (sum - cpx(w[j], 0.0) * z[i + j * n]).norm();
+            }
+        }
+        let ratio = resid / (norm_1_complex(&a, n) * n as f64 * eps);
+        assert!(ratio <= 20.0, "icompz = 1: residual = {ratio} exceeds 20");
+
+        // icompz = 0: eigenvalues only, Z untouched, and the same spectrum as the
+        // run that computed the vectors.
+        let (mut d_ref, mut e_ref) = (d0.clone(), e0.clone());
+        let mut z_ref = vec![zero(); n * n];
+        let info = zsteqr(2, n, &mut d_ref, &mut e_ref, &mut z_ref, n, &mut work);
+        assert_eq!(info, 0);
+        let mut d = d0.clone();
+        let mut e = e0.clone();
+        let mut z = vec![cpx(7.0, 7.0); n * n];
+        let info = zsteqr(0, n, &mut d, &mut e, &mut z, n, &mut work);
+        assert_eq!(info, 0);
+        assert!(z.iter().all(|v| *v == cpx(7.0, 7.0)), "icompz = 0 must not touch Z");
+        let mut got = d.clone();
+        got.sort_by(|x, y| x.partial_cmp(y).unwrap());
+        for k in 0..n {
+            assert!(
+                (got[k] - d_ref[k]).abs() <= 1e-13 * d_ref[k].abs().max(1.0),
+                "icompz = 0 gave {got:?}, the vector run gave {d_ref:?}"
+            );
+        }
+
+        // n = 1: no iteration.
+        let mut d = vec![4.5];
+        let mut e = vec![0.0];
+        let mut z = vec![zero()];
+        let info = zsteqr(2, 1, &mut d, &mut e, &mut z, 1, &mut work);
+        assert_eq!(info, 0);
+        assert_eq!(d[0], 4.5);
+        assert_eq!(z[0], cpx(1.0, 0.0));
+    }
+
+    /// `zheev`, the complex Hermitian driver, has had no direct test: it was
+    /// exercised only through `ComplexMatrix::eigen_herm`.
+    ///
+    /// A 2x2 with a known spectrum, then a 4x4 checked by the defining equation
+    /// with LAPACK's eps-normalised residual, both stored triangles.
+    #[test]
+    fn zheev_solves_the_hermitian_eigenproblem() {
+        let eps = f64::EPSILON;
+
+        // [[2, 1-i], [1+i, 3]] has eigenvalues 1 and 4.
+        let mut a = vec![cpx(2.0, 0.0), cpx(1.0, 1.0), cpx(1.0, -1.0), cpx(3.0, 0.0)];
+        let mut w = vec![0.0; 2];
+        zheev(&mut a, &mut w, 2, false).expect("zheev");
+        assert!((w[0] - 1.0).abs() < 1e-14, "w = {w:?}");
+        assert!((w[1] - 4.0).abs() < 1e-14, "w = {w:?}");
+
+        // A 4x4 Hermitian built as B + B^H, so the spectrum is not symmetric and
+        // repeated eigenvalues are unlikely.
+        for upper in [false, true] {
+            let n = 4;
+            let mut b = vec![zero(); n * n];
+            for i in 0..n {
+                for j in 0..n {
+                    let re = (((i * 7 + j * 13 + 3) % 11) as f64) - 5.0;
+                    let im = (((i * 5 + j * 17 + 7) % 9) as f64) - 4.0;
+                    b[i + j * n] = cpx(re, im);
+                }
+            }
+            let mut a = vec![zero(); n * n];
+            for i in 0..n {
+                for j in 0..n {
+                    a[i + j * n] = b[i + j * n] + b[j + i * n].conj();
+                }
+            }
+            let a0 = a.clone();
+            let mut w = vec![0.0; n];
+            zheev(&mut a, &mut w, n, upper).expect("zheev");
+
+            // Eigenvalues ascending.
+            for k in 1..n {
+                assert!(w[k - 1] <= w[k], "upper = {upper}: w is not ascending: {w:?}");
+            }
+            // A Z = Z diag(w), eps-normalised.
+            let mut resid = 0.0;
+            for j in 0..n {
+                for i in 0..n {
+                    let mut sum = zero();
+                    for k in 0..n {
+                        sum += a0[i + k * n] * a[k + j * n];
+                    }
+                    resid += (sum - cpx(w[j], 0.0) * a[i + j * n]).norm();
+                }
+            }
+            let ratio = resid / (norm_1_complex(&a0, n) * n as f64 * eps);
+            assert!(ratio <= 20.0, "upper = {upper}: zheev residual = {ratio} exceeds 20");
+            // Z^H Z = I.
+            let mut orth = 0.0;
+            for j in 0..n {
+                for i in 0..n {
+                    let mut dot = zero();
+                    for k in 0..n {
+                        dot += a[k + i * n].conj() * a[k + j * n];
+                    }
+                    orth += (dot - cpx(if i == j { 1.0 } else { 0.0 }, 0.0)).norm();
+                }
+            }
+            assert!(orth / (n as f64 * eps) <= 20.0, "upper = {upper}: Z not unitary");
+        }
+
+        // Degenerate sizes and the argument check.
+        let mut none: Vec<Complex64> = vec![];
+        let mut w0: Vec<f64> = vec![];
+        zheev(&mut none, &mut w0, 0, false).expect("n = 0");
+        let mut one = vec![cpx(3.5, 0.0)];
+        let mut w1 = vec![0.0];
+        zheev(&mut one, &mut w1, 1, false).expect("n = 1");
+        assert_eq!(w1[0], 3.5);
+        let mut a = vec![zero(); 4];
+        let mut w = vec![0.0; 3];
+        assert_eq!(zheev(&mut a, &mut w, 2, false), Err(LapackError::BadShape));
+        let mut w = vec![0.0; 2];
+        assert_eq!(zheev(&mut a[0..3], &mut w, 2, false), Err(LapackError::BadShape));
     }
 }

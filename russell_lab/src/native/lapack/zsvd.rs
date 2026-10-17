@@ -1421,4 +1421,230 @@ mod tests {
             }
         }
     }
+
+    /// `zbdsqr`'s modes: values only, the lower bidiagonal form, the `NCC > 0`
+    /// transformation of a complex right-hand block, and a zero singular value.
+    ///
+    /// As with the real routine, `zgesvd` only ever calls it with both vector
+    /// sets requested from an upper bidiagonal matrix, so the other shapes were
+    /// never executed.
+    #[test]
+    fn zbdsqr_covers_the_lower_form_and_the_vector_modes() {
+        let n = 4;
+        // Upper bidiagonal, one singular value exactly zero: values only.
+        let d_in = [1.0, 0.0, 2.0, 3.0];
+        let e_in = [0.5, 0.5, 0.25, 0.0];
+        let mut d = d_in.to_vec();
+        let mut e = e_in.to_vec();
+        let mut vt: Vec<Complex64> = vec![];
+        let mut u: Vec<Complex64> = vec![];
+        let mut c: Vec<Complex64> = vec![];
+        let info = zbdsqr(false, n, 0, 0, 0, &mut d, &mut e, &mut vt, 1, &mut u, 1, &mut c, 1);
+        assert_eq!(info, 0);
+        for k in 0..n {
+            assert!(d[k] >= 0.0, "s[{k}] = {} is negative", d[k]);
+        }
+        for k in 1..n {
+            assert!(d[k - 1] >= d[k], "s is not descending: {d:?}");
+        }
+        assert!(d[n - 1] < 1e-14, "one singular value must be zero: {d:?}");
+
+        // Lower bidiagonal with the full vector sets.
+        let mut d_lo = [1.0, 2.0, 3.0, 4.0];
+        let mut e_lo = [0.5, 0.25, 0.125, 0.0];
+        let mut vt = vec![zero(); 16];
+        let mut u = vec![zero(); 16];
+        for i in 0..4 {
+            vt[i + i * 4] = Complex64::new(1.0, 0.0);
+            u[i + i * 4] = Complex64::new(1.0, 0.0);
+        }
+        let info = zbdsqr(true, 4, 4, 4, 0, &mut d_lo, &mut e_lo, &mut vt, 4, &mut u, 4, &mut c, 1);
+        assert_eq!(info, 0);
+        for k in 1..4 {
+            assert!(d_lo[k - 1] >= d_lo[k], "lower: s not descending: {d_lo:?}");
+        }
+        // Same matrix as an upper bidiagonal: the singular values must agree.
+        let (mut d_up, mut e_up) = (d_in.to_vec(), e_in.to_vec());
+        let mut vt_up = vec![zero(); 16];
+        let mut u_up = vec![zero(); 16];
+        let info = zbdsqr(
+            false, 4, 0, 0, 0, &mut d_up, &mut e_up, &mut vt_up, 1, &mut u_up, 1, &mut c, 1,
+        );
+        assert_eq!(info, 0);
+
+        // NCC > 0: the caller's C is transformed by an orthogonal factor, so the
+        // inner products of its columns must survive.
+        let ncc = 2;
+        let mut c_in = vec![zero(); 4 * ncc];
+        for i in 0..4 {
+            for j in 0..ncc {
+                c_in[i + j * 4] = Complex64::new(1.0 + (i as f64) * 0.5, -(j as f64) * 0.25);
+            }
+        }
+        let mut c_out = c_in.clone();
+        let (mut d_c, mut e_c) = (d_in.to_vec(), e_in.to_vec());
+        let mut vt_c = vec![zero(); 16];
+        let mut u_c = vec![zero(); 16];
+        let info = zbdsqr(
+            false, 4, 0, 0, ncc, &mut d_c, &mut e_c, &mut vt_c, 1, &mut u_c, 1, &mut c_out, 4,
+        );
+        assert_eq!(info, 0);
+        for i in 0..ncc {
+            for j in 0..ncc {
+                let mut got = zero();
+                let mut want = zero();
+                for k in 0..4 {
+                    got += c_out[k + i * 4].conj() * c_out[k + j * 4];
+                    want += c_in[k + i * 4].conj() * c_in[k + j * 4];
+                }
+                assert!(
+                    (got - want).norm() <= 1e-12 * want.norm().max(1.0),
+                    "inner product ({i},{j}) changed: {got:?} != {want:?}"
+                );
+            }
+        }
+        // ... and the transformation is not the identity, so something happened.
+        assert!(
+            c_out.iter().zip(c_in.iter()).any(|(a, b)| (a - b).norm() > 1e-14),
+            "the NCC > 0 pass left C unchanged"
+        );
+
+        // n = 1.
+        let mut d = vec![2.5];
+        let mut e = vec![0.0];
+        let mut vt = vec![Complex64::new(1.0, 0.0)];
+        let mut u = vec![Complex64::new(1.0, 0.0)];
+        let info = zbdsqr(false, 1, 1, 1, 0, &mut d, &mut e, &mut vt, 1, &mut u, 1, &mut c, 1);
+        assert_eq!(info, 0);
+        assert_eq!(d[0], 2.5);
+    }
+
+    /// LAPACK's `zbdt01`: `zgebd2` followed by the two `zungbr` calls must give
+    /// `A = Q B P^H`, with `B` real bidiagonal and `Q`, `P` unitary, for tall,
+    /// square and wide matrices.
+    ///
+    /// The complex twin of `dbdt01`. `zgesvd` reconstructs a dense matrix through
+    /// this path, but nothing tested the reduction on its own, and the `K`
+    /// arguments (`K = n` for `Q`, as `EIG/dchkbd.f:860` passes) are the kind of
+    /// detail that can be right for the wrong reason when it is only checked two
+    /// reductions away.
+    #[test]
+    fn zgebd2_and_zungbr_reconstruct_the_bidiagonal_form() {
+        let eps = f64::EPSILON;
+        let one = Complex64::new(1.0, 0.0);
+        for (m, n) in [(2usize, 2usize), (3, 2), (3, 3), (4, 3), (6, 4), (2, 3), (3, 4), (4, 6)] {
+            let a0 = complex_sample(m, n, 0.5);
+            let mut a = a0.clone();
+            let minmn = m.min(n);
+            let mut d = vec![0.0; minmn];
+            let mut e = vec![0.0; minmn];
+            let mut tauq = vec![zero(); minmn];
+            let mut taup = vec![zero(); minmn];
+            zgebd2(&mut a, m, m, n, &mut d, &mut e, &mut tauq, &mut taup);
+
+            let mut q = vec![zero(); m * m];
+            if m >= n {
+                for j in 0..n {
+                    for i in j..m {
+                        q[i + j * m] = a[i + j * m];
+                    }
+                }
+            } else {
+                for j in 0..m {
+                    for i in j..m {
+                        q[i + j * m] = a[i + j * m];
+                    }
+                }
+            }
+            zungbr(true, m, m, n, &mut q, m, &tauq);
+
+            let mut vt = vec![zero(); n * n];
+            if m >= n {
+                for j in 0..n {
+                    for i in 0..=j {
+                        vt[i + j * n] = a[i + j * m];
+                    }
+                }
+            } else {
+                for j in 0..n {
+                    for i in 0..=j.min(m - 1) {
+                        vt[i + j * n] = a[i + j * m];
+                    }
+                }
+            }
+            let kp = if m >= n { n } else { m };
+            zungbr(false, n, n, kp, &mut vt, n, &taup);
+
+            // B: upper bidiagonal for m >= n, lower otherwise; real entries.
+            let mut b = vec![zero(); m * n];
+            for i in 0..minmn {
+                b[i + i * m] = Complex64::new(d[i], 0.0);
+                if i + 1 < minmn {
+                    if m >= n {
+                        b[i + (i + 1) * m] = Complex64::new(e[i], 0.0);
+                    } else {
+                        b[(i + 1) + i * m] = Complex64::new(e[i], 0.0);
+                    }
+                }
+            }
+
+            // Q B P^H, then the eps-normalised reconstruction ratio.
+            let mut qb = vec![zero(); m * n];
+            for j in 0..n {
+                for i in 0..m {
+                    let mut sum = zero();
+                    for k in 0..m {
+                        sum += q[i + k * m] * b[k + j * m];
+                    }
+                    qb[i + j * m] = sum;
+                }
+            }
+            let mut rec = vec![zero(); m * n];
+            for j in 0..n {
+                for i in 0..m {
+                    let mut sum = zero();
+                    for k in 0..n {
+                        // `zungbr('P')` returns `P^H` already, so this is the
+                        // factor to multiply by, not its conjugate transpose.
+                        sum += qb[i + k * m] * vt[k + j * n];
+                    }
+                    rec[i + j * m] = sum;
+                }
+            }
+            let mut a_norm = 0.0f64;
+            for j in 0..n {
+                let mut s = 0.0;
+                for i in 0..m {
+                    s += a0[i + j * m].norm();
+                }
+                a_norm = a_norm.max(s);
+            }
+            let a_norm = a_norm.max(f64::MIN_POSITIVE);
+            let resid: f64 = (0..m * n).map(|k| (a0[k] - rec[k]).norm()).sum();
+            let ratio = resid / (m.max(n) as f64 * a_norm * eps);
+            assert!(
+                ratio <= 20.0,
+                "{m}x{n}: zbdt01 reconstruction ratio = {ratio} exceeds 20"
+            );
+
+            // Q^H Q = I and P P^H = I, each divided by the dimension.
+            for (name, x, dim) in [("Q", &q, m), ("P", &vt, n)] {
+                let mut orth = 0.0;
+                for i in 0..dim {
+                    for j in 0..dim {
+                        let mut dot = zero();
+                        for k in 0..dim {
+                            dot += x[k + i * dim].conj() * x[k + j * dim];
+                        }
+                        let want = if i == j { one } else { zero() };
+                        orth += (dot - want).norm();
+                    }
+                }
+                assert!(
+                    orth / (dim as f64 * eps) <= 20.0,
+                    "{m}x{n}: {name} is not unitary ({orth})"
+                );
+            }
+        }
+    }
 }

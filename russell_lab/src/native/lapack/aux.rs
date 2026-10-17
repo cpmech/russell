@@ -292,3 +292,314 @@ pub(super) fn zlarf_right(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cmplx(re: f64, im: f64) -> Complex64 {
+        Complex64::new(re, im)
+    }
+
+    /// `dlapy2` is `hypot`: exact on a Pythagorean triple, and it must not
+    /// overflow where squaring would.
+    #[test]
+    fn dlapy2_survives_the_squares() {
+        assert_eq!(dlapy2(3.0, 4.0), 5.0);
+        assert_eq!(dlapy2(-3.0, -4.0), 5.0);
+        assert_eq!(dlapy2(5.0, 0.0), 5.0);
+        assert_eq!(dlapy2(0.0, -5.0), 5.0);
+        assert_eq!(dlapy2(0.0, 0.0), 0.0);
+        // Squaring 1e200 overflows f64; the scaled form does not.
+        let big = dlapy2(1e200, 1e200);
+        assert!(big.is_finite(), "dlapy2(1e200, 1e200) = {big}");
+        assert!((big / (1e200 * 2.0f64.sqrt()) - 1.0).abs() < 1e-15);
+        // Squaring 1e-200 underflows to zero; the scaled form keeps the value.
+        let small = dlapy2(1e-200, 1e-200);
+        assert!(small > 0.0, "dlapy2(1e-200, 1e-200) underflowed");
+        assert!((small / (1e-200 * 2.0f64.sqrt()) - 1.0).abs() < 1e-15);
+    }
+
+    /// `dlapy3`: the same argument for three components.
+    #[test]
+    fn dlapy3_survives_the_squares() {
+        assert_eq!(dlapy3(1.0, 2.0, 2.0), 3.0);
+        assert_eq!(dlapy3(0.0, 0.0, 0.0), 0.0);
+        assert_eq!(dlapy3(-3.0, 4.0, 0.0), 5.0);
+        let big = dlapy3(1e200, 1e200, 1e200);
+        assert!(big.is_finite(), "dlapy3(1e200, ...) = {big}");
+        assert!((big / (1e200 * 3.0f64.sqrt()) - 1.0).abs() < 1e-15);
+        let small = dlapy3(1e-200, 1e-200, 1e-200);
+        assert!(small > 0.0);
+    }
+
+    /// `dlae2`: the eigenvalues of a symmetric 2x2 must satisfy the trace, the
+    /// determinant and their own characteristic polynomial, with the larger one
+    /// first.
+    #[test]
+    fn dlae2_gives_the_eigenvalues_of_a_symmetric_block() {
+        let cases = [
+            (2.0, 1.0, 2.0),
+            (1.0, 0.0, 3.0),
+            (0.0, 1.0, 0.0),   // (1, -1)
+            (-2.0, 0.5, -5.0), // both negative
+            (4.0, -3.0, 4.0),  // b < 0
+            (1.0, 0.0, 1.0),   // repeated, b == 0
+        ];
+        for (a, b, c) in cases {
+            let (rt1, rt2) = dlae2(a, b, c);
+            let scale = a.abs().max(b.abs()).max(c.abs()).max(1.0);
+            // LAPACK's `dlae2` returns the eigenvalue of *larger absolute value*
+            // first, which is not the same as the larger one for a negative
+            // block: (-2, 0.5, -5) gives rt1 = -5.08, rt2 = -1.92.
+            assert!(
+                rt1.abs() >= rt2.abs() - 1e-14 * scale,
+                "({a},{b},{c}): |rt1| = {} < |rt2| = {}, but rt1 is the larger in modulus",
+                rt1.abs(),
+                rt2.abs()
+            );
+            assert!(
+                ((rt1 + rt2) - (a + c)).abs() <= 1e-14 * scale,
+                "({a},{b},{c}): trace {} != {}",
+                rt1 + rt2,
+                a + c
+            );
+            assert!(
+                (rt1 * rt2 - (a * c - b * b)).abs() <= 1e-13 * scale * scale,
+                "({a},{b},{c}): determinant {} != {}",
+                rt1 * rt2,
+                a * c - b * b
+            );
+            for rt in [rt1, rt2] {
+                // (a - rt)(c - rt) - b^2 = 0
+                let p = (a - rt) * (c - rt) - b * b;
+                assert!(
+                    p.abs() <= 1e-13 * scale * scale,
+                    "({a},{b},{c}): rt = {rt} is not a root ({p})"
+                );
+            }
+        }
+    }
+
+    /// `dlaev2`: the returned rotation must diagonalise the block, with the
+    /// returned eigenvalues on the diagonal, and it must be a rotation.
+    #[test]
+    fn dlaev2_returns_a_diagonalising_rotation() {
+        let cases = [
+            (2.0, 1.0, 2.0),
+            (1.0, 0.0, 3.0),
+            (0.0, 1.0, 0.0),
+            (-2.0, 0.5, -5.0),
+            (4.0, -3.0, 4.0),
+            (1.0, 2.0, 1.0), // b dominant: the `ab == 0` and `acs > ab` branches
+            (0.0, 0.0, 0.0),
+        ];
+        for (a, b, c) in cases {
+            let (rt1, rt2, cs, sn) = dlaev2(a, b, c);
+            let scale = a.abs().max(b.abs()).max(c.abs()).max(1.0);
+            assert!(
+                (cs * cs + sn * sn - 1.0).abs() <= 1e-14,
+                "({a},{b},{c}): rotation is not unit ({cs},{sn})"
+            );
+            // R^T A R with R = [[cs, -sn], [sn, cs]] must be diag(rt1, rt2).
+            let r11 = cs;
+            let r21 = sn;
+            let r12 = -sn;
+            let r22 = cs;
+            let d11 = r11 * (a * r11 + b * r21) + r21 * (b * r11 + c * r21);
+            let d22 = r12 * (a * r12 + b * r22) + r22 * (b * r12 + c * r22);
+            let d12 = r11 * (a * r12 + b * r22) + r21 * (b * r12 + c * r22);
+            assert!(
+                (d11 - rt1).abs() <= 1e-13 * scale,
+                "({a},{b},{c}): R^T A R (1,1) = {d11} != rt1 = {rt1}"
+            );
+            assert!(
+                (d22 - rt2).abs() <= 1e-13 * scale,
+                "({a},{b},{c}): R^T A R (2,2) = {d22} != rt2 = {rt2}"
+            );
+            assert!(
+                d12.abs() <= 1e-13 * scale,
+                "({a},{b},{c}): R^T A R (1,2) = {d12} is not zero"
+            );
+        }
+    }
+
+    /// `dladiv2` computes the real part of `(a + i b) / (c + i d)` given
+    /// `r = d/c` and `t = 1/(c + d r)`; all three internal branches must agree
+    /// with the closed form.
+    #[test]
+    fn dladiv2_covers_its_three_branches() {
+        // (a + ib)/(c + id) = ((ac + bd) + i(bc - ad)) / (c^2 + d^2)
+        let cases = [
+            (1.0, 2.0, 3.0, 4.0), // r != 0, b*r != 0
+            (1.0, 0.0, 3.0, 4.0), // b == 0: the `br == 0` branch
+            (2.0, 5.0, 7.0, 0.0), // d == 0: the `r == 0` branch
+            (-1.5, 0.25, 2.0, -8.0),
+        ];
+        for (a, b, c, d) in cases {
+            let (r, t) = if d == 0.0 {
+                (0.0, 1.0 / c)
+            } else {
+                let r = d / c;
+                (r, 1.0 / (c + d * r))
+            };
+            let p = dladiv2(a, b, c, d, r, t);
+            let want = (a * c + b * d) / (c * c + d * d);
+            let scale = want.abs().max(1.0);
+            assert!(
+                (p - want).abs() <= 1e-13 * scale,
+                "({a},{b},{c},{d}): p = {p} != {want}"
+            );
+        }
+    }
+
+    /// `zladiv`: exact on a small quotient, and finite where the naive formula
+    /// overflows in `y`'s squares.
+    #[test]
+    fn zladiv_survives_a_huge_divisor() {
+        let q = zladiv(cmplx(1.0, 2.0), cmplx(3.0, 4.0));
+        assert!((q.re - 0.44).abs() < 1e-15, "re = {}", q.re);
+        assert!((q.im - 0.08).abs() < 1e-15, "im = {}", q.im);
+
+        // |re| < |im| takes the second branch.
+        let q = zladiv(cmplx(2.0, 1.0), cmplx(4.0, 3.0));
+        assert!((q.re - 0.44).abs() < 1e-15, "re = {}", q.re);
+        assert!((q.im + 0.08).abs() < 1e-15, "im = {}", q.im);
+
+        // (1e300 + 0i) / (1e300 + 1e300 i) = 0.5 - 0.5 i; the naive formula
+        // squares 1e300 and gives NaN.
+        let q = zladiv(cmplx(1e300, 0.0), cmplx(1e300, 1e300));
+        assert!(q.re.is_finite() && q.im.is_finite(), "q = {q:?}");
+        assert!((q.re - 0.5).abs() < 1e-14, "re = {}", q.re);
+        assert!((q.im + 0.5).abs() < 1e-14, "im = {}", q.im);
+    }
+
+    /// `lascl_g` scales by `cto/cfrom` exactly for representable ratios, and the
+    /// named wrappers are the real and complex spellings of the same thing.
+    #[test]
+    fn lascl_g_scales_by_the_ratio() {
+        for (cfrom, cto) in [(1.0, 2.0), (2.0, 1.0), (1.0, 1.0), (1e-5, 1.0), (1.0, 1e5)] {
+            let mut a = vec![1.0, -2.0, 3.0, -4.0];
+            dlascl_g(cfrom, cto, &mut a, 2, 2, 2);
+            let ratio = cto / cfrom;
+            for (k, v) in a.iter().enumerate() {
+                let want = [1.0, -2.0, 3.0, -4.0][k] * ratio;
+                assert!(
+                    (v - want).abs() <= 1e-13 * want.abs().max(1.0),
+                    "cfrom = {cfrom}, cto = {cto}: a[{k}] = {v} != {want}"
+                );
+            }
+        }
+        // A zero-length block is a no-op, as in the reference.
+        let mut empty: Vec<f64> = vec![];
+        dlascl_g(1.0, 2.0, &mut empty, 0, 0, 0);
+        // The complex wrapper scales both parts.
+        let mut z = vec![cmplx(1.0, -1.0), cmplx(2.0, 0.0)];
+        zlascl_g(1.0, 4.0, &mut z, 2, 2, 1);
+        assert_eq!(z[0], cmplx(4.0, -4.0));
+        assert_eq!(z[1], cmplx(8.0, 0.0));
+    }
+
+    /// `zlarf_left` must equal `C := (I - tau v v^H) C` and `zlarf_right` must
+    /// equal `C := C (I - tau v v^H)`, both applied to the block that starts at
+    /// `(r0, c0)` and to nothing else.
+    #[test]
+    fn zlarf_matches_the_explicit_reflector() {
+        let m = 3;
+        let n = 2;
+        let mut a = vec![
+            cmplx(1.0, 1.0),
+            cmplx(2.0, -1.0),
+            cmplx(-3.0, 0.5),
+            cmplx(0.5, 2.0),
+            cmplx(1.5, -0.5),
+            cmplx(2.5, 1.0),
+        ];
+        let a0 = a.clone();
+        let v = vec![cmplx(1.0, 0.0), cmplx(0.5, -1.5), cmplx(-0.5, 0.25)];
+        let tau = cmplx(1.75, 0.5);
+
+        // P = I - tau v v^H
+        let mut p = vec![cmplx(0.0, 0.0); m * m];
+        for i in 0..m {
+            for j in 0..m {
+                let delta = if i == j { 1.0 } else { 0.0 };
+                p[i + j * m] = cmplx(delta, 0.0) - tau * v[i] * v[j].conj();
+            }
+        }
+        // want = P * A
+        let mut want = vec![cmplx(0.0, 0.0); m * n];
+        for i in 0..m {
+            for j in 0..n {
+                let mut acc = cmplx(0.0, 0.0);
+                for k in 0..m {
+                    acc += p[i + k * m] * a0[k + j * m];
+                }
+                want[i + j * m] = acc;
+            }
+        }
+        zlarf_left(&mut a, m, 0, m, 0, n, &v, tau);
+        for k in 0..m * n {
+            assert!(
+                (a[k] - want[k]).norm() <= 1e-14 * want[k].norm().max(1.0),
+                "zlarf_left at {k}: {:?} != {:?}",
+                a[k],
+                want[k]
+            );
+        }
+
+        // Right variant on a fresh copy: want = A * P.
+        let mut a = a0.clone();
+        let mut want = vec![cmplx(0.0, 0.0); m * n];
+        for i in 0..m {
+            for j in 0..n {
+                let mut acc = cmplx(0.0, 0.0);
+                for k in 0..n {
+                    acc += a0[i + k * m] * p[k + j * m];
+                }
+                want[i + j * m] = acc;
+            }
+        }
+        let vn = v[0..n].to_vec();
+        zlarf_right(&mut a, m, 0, m, 0, n, &vn, tau);
+        for k in 0..m * n {
+            assert!(
+                (a[k] - want[k]).norm() <= 1e-14 * want[k].norm().max(1.0),
+                "zlarf_right at {k}: {:?} != {:?}",
+                a[k],
+                want[k]
+            );
+        }
+
+        // tau == 0 is the identity.
+        let mut a = a0.clone();
+        zlarf_left(&mut a, m, 0, m, 0, n, &v, cmplx(0.0, 0.0));
+        assert_eq!(a, a0);
+    }
+
+    /// The reflectors must leave the rest of the array alone: `(r0, c0)` and the
+    /// leading dimension select a block, and touching a neighbouring entry would
+    /// corrupt a caller's trailing matrix.
+    #[test]
+    fn zlarf_respects_the_block_bounds() {
+        let ld = 4;
+        let mut a = vec![cmplx(9.0, 9.0); ld * 3];
+        for i in 0..ld {
+            for j in 0..3 {
+                a[i + j * ld] = cmplx(i as f64 + 1.0, -(j as f64));
+            }
+        }
+        let a0 = a.clone();
+        let v = vec![cmplx(1.0, 0.0), cmplx(0.0, 1.0)];
+        zlarf_left(&mut a, ld, 1, 2, 1, 2, &v, cmplx(2.0, 0.0));
+        // Row 0 and column 0 are outside the block.
+        for j in 0..3 {
+            assert_eq!(a[0 + j * ld], a0[0 + j * ld], "row 0, column {j} changed");
+        }
+        for i in 0..ld {
+            assert_eq!(a[i], a0[i], "column 0, row {i} changed");
+        }
+        // ... and at least one entry inside the block did change.
+        assert!(a.iter().zip(a0.iter()).any(|(x, y)| x != y));
+    }
+}

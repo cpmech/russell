@@ -84,25 +84,29 @@ pub fn dlarfg(alpha: f64, x: &[f64]) -> (f64, f64, Vec<f64>) {
     let ss: f64 = x.iter().map(|&xi| (xi / xscale) * (xi / xscale)).sum();
     let mut xnorm = xscale * ss.sqrt();
 
-    let safmin = f64::MIN_POSITIVE;
+    // `SAFMIN = DLAMCH('S') / DLAMCH('E')`, not `DLAMCH('S')`: the reference
+    // divides by the relative precision, so the threshold is 1e-292 and not
+    // 2.2e-308.
+    let safmin = f64::MIN_POSITIVE / f64::EPSILON;
     let mut alpha = alpha;
     let mut beta = -alpha.signum() * f64::hypot(alpha, xnorm);
 
     if beta.abs() < safmin {
-        // Recompute in a rescaled frame until beta is normal.
-        let safmin_inv = 1.0 / safmin;
+        // `XNORM` and `BETA` may be inaccurate: scale `X` and `ALPHA` *up* by
+        // `RSAFMN = 1/SAFMN` and recompute, at most 20 times. Scaling them down
+        // instead -- which this used to do -- drives the tail to zero, so `BETA`
+        // ends up as `-0` and the reflector is lost.
+        let rsafmn = 1.0 / safmin;
         let mut knt = 0usize;
         let mut xw = x.to_vec();
         loop {
             knt += 1;
             for xi in xw.iter_mut() {
-                *xi *= safmin;
+                *xi *= rsafmn;
             }
-            alpha *= safmin;
-            // The reference multiplies XNORM by SAFMIN here and recomputes BETA
-            // from it; porting the multiplication of `beta` as well would be a
-            // dead store, since BETA is recomputed below.
-            let mut sc = 0.0;
+            alpha *= rsafmn;
+            // `XNORM = DNRM2(N-1, X, 1)`, rescaled so the squares cannot overflow.
+            let mut sc = 0.0f64;
             for &xi in xw.iter() {
                 let a = xi.abs();
                 if a > sc {
@@ -120,15 +124,20 @@ pub fn dlarfg(alpha: f64, x: &[f64]) -> (f64, f64, Vec<f64>) {
                 break;
             }
         }
-        // Scale everything back to the original frame.
-        let back = safmin_inv.powi(knt as i32);
-        beta /= back;
-        alpha /= back;
+
+        // TAU and V come out of the scaled frame, in which the frame factor
+        // cancels: `(x*R^k) / ((alpha-beta)*R^k) = x/(alpha-beta)`. Only `BETA`
+        // has to be taken back, by `SAFMN**KNT` -- multiplied in a loop, because
+        // `SAFMN**KNT` itself overflows for KNT > 2.
         let tau = (beta - alpha) / beta;
         let s = 1.0 / (alpha - beta);
         for (i, xi) in xw.iter().enumerate() {
-            v[i + 1] = (xi / back) * s;
+            v[i + 1] = xi * s;
         }
+        for _ in 0..knt {
+            beta *= safmin;
+        }
+        let _ = alpha;
         v[0] = 1.0;
         return (beta, tau, v);
     }
@@ -2674,7 +2683,7 @@ pub fn dgeev_lr(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Matrix;
+    use crate::{Complex64, Matrix};
 
     /// A deterministic, well-conditioned, non-symmetric, non-tridiagonal matrix,
     /// built from a fixed recurrence so the tests need no random generator.
@@ -2766,6 +2775,37 @@ mod tests {
         let (beta, tau, _v) = dlarfg(2.5, &[0.0, 0.0]);
         assert_eq!(beta, 2.5);
         assert_eq!(tau, 0.0);
+    }
+
+    /// The underflow branch of `dlarfg`: when the tail's norm is *below*
+    /// `SAFMIN` the reference rescales by it repeatedly, and that whole path --
+    /// 28 lines -- was unexecuted. `1e-300` is not enough to reach it (it is
+    /// larger than `SAFMIN`); `1e-310` is subnormal.
+    #[test]
+    fn dlarfg_rescales_a_subnormal_tail() {
+        let tiny = 1e-310f64;
+        let (beta, tau, v) = dlarfg(tiny, &[tiny, -tiny]);
+        assert!(beta.is_finite() && beta != 0.0, "beta = {beta:e}");
+        assert!(tau.is_finite() && tau != 0.0, "tau = {tau:e}");
+        assert_eq!(v[0], 1.0);
+        // H x = beta e1 with the tail annihilated, to the accuracy available at
+        // this magnitude: every operation is subnormal.
+        let x = [tiny, tiny, -tiny];
+        let mut hx = x;
+        let w: f64 = v.iter().zip(x.iter()).map(|(vi, xi)| vi * xi).sum::<f64>() * tau;
+        for i in 0..3 {
+            hx[i] -= w * v[i];
+        }
+        assert!(
+            (hx[0] - beta).abs() <= 4.0 * f64::MIN_POSITIVE,
+            "first component {} vs {beta:e}",
+            hx[0]
+        );
+        assert!(
+            hx[1].abs() <= 4.0 * f64::MIN_POSITIVE && hx[2].abs() <= 4.0 * f64::MIN_POSITIVE,
+            "tail not annihilated: {:?}",
+            &hx[1..]
+        );
     }
 
     #[test]
@@ -3239,6 +3279,132 @@ mod tests {
         }
     }
 
+    /// The complex twin must reproduce the real one. Balancing is a permutation
+    /// and powers of two, so for a real matrix stored as complex the two routines
+    /// have to agree entry for entry -- and `zgebal` had no test at all.
+    #[test]
+    fn zgebal_matches_dgebal_on_the_reference_examples() {
+        for (k, &(n, a_in, ilo_in, ihi_in, _, _)) in DBAL_CASES.iter().enumerate() {
+            let case = k + 1;
+            let a_real = column_major(a_in, n);
+            let mut a_complex: Vec<Complex64> = a_real.iter().map(|&v| Complex64::new(v, 0.0)).collect();
+            let mut a_work = a_real.clone();
+            let (ilo, ihi, scale) = dgebal(&mut a_work, n);
+            let (zilo, zihi, zscale) = crate::native::lapack::zeig::zgebal(&mut a_complex, n);
+            assert_eq!(
+                (zilo, zihi),
+                (ilo, ihi),
+                "case {case} (n={n}): zgebal disagrees with dgebal on ILO/IHI"
+            );
+            assert_eq!(
+                (zilo + 1, zihi + 1),
+                (ilo_in, ihi_in),
+                "case {case} (n={n}): both must agree with dbal.in"
+            );
+            let norm = a_work.iter().fold(0.0f64, |m, v| m.max(v.abs())).max(1.0);
+            for j in 0..n {
+                for i in 0..n {
+                    let want = a_work[i + j * n];
+                    let got = a_complex[i + j * n].re;
+                    assert!(
+                        (got - want).abs() <= 1e-13 * norm,
+                        "case {case} (n={n}): zgebal gives {got} at ({i},{j}), dgebal gives {want}"
+                    );
+                    assert_eq!(
+                        a_complex[i + j * n].im,
+                        0.0,
+                        "case {case}: a real matrix must stay real"
+                    );
+                }
+            }
+            assert_eq!(zscale, scale, "case {case} (n={n}): scale vectors differ");
+        }
+    }
+
+    /// `dgebak_left` (`SIDE = 'L'`) had no test: `dgeev` uses the right one, and
+    /// the left one is reached only through `dgeev_lr`.
+    ///
+    /// The left back-transformation scales *rows* by `1/scale` where the right one
+    /// scales columns by `scale`, and then applies the same permutation. The
+    /// expected matrix is built here from that definition, and also for a negative
+    /// scale factor, which LAPACK allows.
+    #[test]
+    fn dgebak_left_scales_rows_and_applies_the_permutation() {
+        // ILO = 0, IHI = 4 (0-based) for n = 6: inside the block the scale entries
+        // are factors, outside they are 1-based permutation indices.
+        let n = 6;
+        let (ilo, ihi) = (1usize, 4usize);
+        let scale = vec![3.0, 0.5, 2.0, 0.25, 8.0, 6.0];
+        let mut v = vec![0.0; n * n];
+        for i in 0..n {
+            for j in 0..n {
+                v[i + j * n] = (i as f64) + 0.5 * (j as f64) + 1.0;
+            }
+        }
+
+        // Reference definition: rows ILO..IHI are divided by SCALE(I), then rows
+        // are permuted, I = ILO-1 down to 1 first and I = IHI+1 up to N after.
+        let expected = |v: &[f64], scale: &[f64], ilo: usize, ihi: usize| -> Vec<f64> {
+            let mut w = v.to_vec();
+            // The reference guards the scaling with `ILO != IHI`.
+            if ilo != ihi {
+                for i in ilo..=ihi {
+                    for j in 0..n {
+                        w[i + j * n] /= scale[i];
+                    }
+                }
+            }
+            for i in (0..ilo).rev() {
+                let k = scale[i] as usize - 1;
+                for j in 0..n {
+                    w.swap(i + j * n, k + j * n);
+                }
+            }
+            for i in (ihi + 1)..n {
+                let k = scale[i] as usize - 1;
+                for j in 0..n {
+                    w.swap(i + j * n, k + j * n);
+                }
+            }
+            w
+        };
+
+        for case_scale in [scale.clone(), {
+            // A negative factor is legal and must be applied as given, not as
+            // its magnitude.
+            let mut s = scale.clone();
+            s[2] = -2.0;
+            s
+        }] {
+            let want = expected(&v, &case_scale, ilo, ihi);
+            let mut got = v.clone();
+            dgebak_left(&mut got, n, ilo, ihi, &case_scale);
+            for idx in 0..n * n {
+                assert!(
+                    (got[idx] - want[idx]).abs() <= 1e-13 * want[idx].abs().max(1.0),
+                    "scale = {case_scale:?}, index {idx}: dgebak_left gives {}, the definition gives {}",
+                    got[idx],
+                    want[idx]
+                );
+            }
+        }
+
+        // With ILO == IHI the scaling loop is skipped and only the permutation
+        // runs: the reference tests `ILO != IHI` for it.
+        let tight = vec![4.0, 3.0, 1.0, 1.0, 1.0, 6.0];
+        let mut got = v.clone();
+        dgebak_left(&mut got, n, 2, 2, &tight);
+        let want = expected(&v, &tight, 2, 2);
+        for idx in 0..n * n {
+            assert!(
+                (got[idx] - want[idx]).abs() <= 1e-13 * want[idx].abs().max(1.0),
+                "ILO == IHI, index {idx}: {} != {}",
+                got[idx],
+                want[idx]
+            );
+        }
+    }
+
     /// LAPACK's `dchkbk` examples: `dgebak_right` must undo the balancing on the
     /// eigenvectors held in `V`, recovering the vectors in `TESTING/dbak.in`.
     ///
@@ -3259,6 +3425,253 @@ mod tests {
                         (got - want).abs() <= 1e-13 * norm,
                         "case {case} (n={n}): V({i},{j}) = {got}, dbak.in has {want}"
                     );
+                }
+            }
+        }
+    }
+
+    /// `dlartg`: the plane rotation must satisfy `[c s; -s c] (f, g) = (r, 0)`,
+    /// for `f` and `g` in the normal range and in the scaled one.
+    #[test]
+    fn dlartg_rotates_a_vector_onto_the_first_axis() {
+        let cases = [
+            (3.0, 4.0),
+            (-3.0, 4.0),
+            (3.0, -4.0),
+            (0.0, 5.0),
+            (5.0, 0.0),
+            (0.0, -5.0),
+            (1e300, 1e300),   // above rtmax: the scaling branch
+            (1e-300, 1e-300), // below rtmin: the scaling branch
+            (1e300, 1.0),
+            (-2.5, 0.0),
+        ];
+        for (f, g) in cases {
+            let (c, s, r) = dlartg(f, g);
+            let scale = f.abs().max(g.abs()).max(f64::MIN_POSITIVE);
+            assert!(
+                (c * c + s * s - 1.0).abs() <= 1e-14,
+                "f = {f:e}, g = {g:e}: rotation not unit ({c},{s})"
+            );
+            let r1 = c * f + s * g;
+            let r2 = -s * f + c * g;
+            assert!(
+                (r1 - r).abs() <= 1e-13 * scale && r2.abs() <= 1e-13 * scale,
+                "f = {f:e}, g = {g:e}: rotation gives ({r1},{r2}) not ({r},0)"
+            );
+            // `f.hypot(g)` is the reference norm; squaring first underflows here.
+            assert!(
+                (r.abs() - f.hypot(g)).abs() <= 1e-12 * f.hypot(g) && r.is_finite(),
+                "f = {f:e}, g = {g:e}: |r| = {} is not the norm {}",
+                r.abs(),
+                f.hypot(g)
+            );
+        }
+        // g == 0 and f == 0 are the exact identities.
+        assert_eq!(dlartg(2.0, 0.0), (1.0, 0.0, 2.0));
+        assert_eq!(dlartg(0.0, -2.0), (0.0, -1.0, 2.0));
+    }
+
+    /// `dladiv`: `(a + ib) / (c + id)`, including a divisor whose squares
+    /// overflow.
+    #[test]
+    fn dladiv_divides_without_overflowing() {
+        let cases = [
+            (1.0, 2.0, 3.0, 4.0),
+            (-1.5, 0.25, 2.0, -8.0),
+            (1.0, 0.0, 3.0, 4.0),
+            (0.0, 1.0, 0.0, 2.0),
+            (5.0, 0.0, 0.0, 2.0), // c == 0: the `aa *= 0.5` branch
+        ];
+        for (a, b, c, d) in cases {
+            let (p, q) = dladiv(a, b, c, d);
+            let den = c * c + d * d;
+            let (want_p, want_q) = ((a * c + b * d) / den, (b * c - a * d) / den);
+            let scale = want_p.abs().max(want_q.abs()).max(1.0);
+            assert!(
+                (p - want_p).abs() <= 1e-13 * scale && (q - want_q).abs() <= 1e-13 * scale,
+                "({a},{b})/({c},{d}): ({p},{q}) != ({want_p},{want_q})"
+            );
+        }
+        // Both parts large: the naive formula overflows.
+        let (p, q) = dladiv(1e300, 0.0, 1e300, 1e300);
+        assert!(p.is_finite() && q.is_finite(), "({p},{q})");
+        assert!((p - 0.5).abs() < 1e-14 && (q + 0.5).abs() < 1e-14, "({p},{q})");
+    }
+
+    /// `dlaln2`: the four shapes it is called with. Each must solve
+    /// `(A - (wr + i wi) I) X = scale * B`, with `scale == 1` when the data is
+    /// well conditioned.
+    #[test]
+    fn dlaln2_solves_the_four_block_shapes() {
+        // (a11, b11) with a real eigenvalue: x = b11 / (a11 - wr).
+        let r = dlaln2(1, 1, 0.0, 4.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+        assert_eq!(r.scale, 1.0);
+        assert!((r.x11 - 2.0 / 3.0).abs() < 1e-15, "x11 = {}", r.x11);
+
+        // Complex 1x1: x = (b11 + i b12) / (a11 - wr - i wi).
+        let (a11, b11, b12, wr, wi) = (4.0, 1.0, 2.0, 1.0, 0.5);
+        let r = dlaln2(1, 2, 0.0, a11, 0.0, 0.0, 0.0, b11, 0.0, b12, 0.0, wr, wi);
+        assert_eq!(r.scale, 1.0);
+        // (1 + 2i) / (3 - 0.5i) = (1*3 + 2*(-0.5) + i(2*3 - 1*(-0.5)))/9.25
+        let den = (a11 - wr) * (a11 - wr) + wi * wi;
+        // (b11 + i b12) * ((a11 - wr) + i wi) / den
+        let want_re = (b11 * (a11 - wr) - b12 * wi) / den;
+        let want_im = (b12 * (a11 - wr) + b11 * wi) / den;
+        assert!((r.x11 - want_re).abs() < 1e-14, "x11 = {} want {want_re}", r.x11);
+        assert!((r.x12 - want_im).abs() < 1e-14, "x12 = {} want {want_im}", r.x12);
+
+        // Real 2x2: (A - wr I) x = (b11, b21).
+        let (a11, a21, a12, a22) = (4.0, 2.0, 1.0, 3.0);
+        let (b11, b21, wr) = (1.0, -2.0, 0.5);
+        let r = dlaln2(2, 1, 0.0, a11, a21, a12, a22, b11, b21, 0.0, 0.0, wr, 0.0);
+        assert_eq!(r.scale, 1.0);
+        let det = (a11 - wr) * (a22 - wr) - a12 * a21;
+        let want_x11 = ((a22 - wr) * b11 - a12 * b21) / det;
+        let want_x21 = (-a21 * b11 + (a11 - wr) * b21) / det;
+        assert!((r.x11 - want_x11).abs() < 1e-14, "x11 = {}", r.x11);
+        assert!((r.x21 - want_x21).abs() < 1e-14, "x21 = {}", r.x21);
+
+        // Complex 2x2: (A - wr I - i wi I) x = (b11 + i b12, b21 + i b22).
+        let (wr, wi) = (0.5, 1.5);
+        let (b11, b21, b12, b22) = (1.0, -1.0, 0.5, 2.0);
+        let r = dlaln2(2, 2, 0.0, a11, a21, a12, a22, b11, b21, b12, b22, wr, wi);
+        assert_eq!(r.scale, 1.0);
+        // Solve with Cramer's rule over the complex field.
+        let m11 = Complex64::new(a11 - wr, -wi);
+        let m12 = Complex64::new(a12, 0.0);
+        let m21 = Complex64::new(a21, 0.0);
+        let m22 = Complex64::new(a22 - wr, -wi);
+        let rhs1 = Complex64::new(b11, b12);
+        let rhs2 = Complex64::new(b21, b22);
+        let det = m11 * m22 - m12 * m21;
+        let want1 = (rhs1 * m22 - m12 * rhs2) / det;
+        let want2 = (m11 * rhs2 - rhs1 * m21) / det;
+        let got1 = Complex64::new(r.x11, r.x12);
+        let got2 = Complex64::new(r.x21, r.x22);
+        assert!((got1 - want1).norm() < 1e-13, "x1 = {got1:?} want {want1:?}");
+        assert!((got2 - want2).norm() < 1e-13, "x2 = {got2:?} want {want2:?}");
+    }
+
+    /// `dlaln2`'s rescaling: a denominator near the underflow limit and a large
+    /// right-hand side must come back with `scale < 1` rather than `inf`, and a
+    /// large `SMIN` must clamp the denominator. Both branches leave the defining
+    /// relation `(A - wr I) X = scale B` intact, so that is what is asserted.
+    #[test]
+    fn dlaln2_rescales_instead_of_overflowing() {
+        // 1x1 with a denominator 1e-300 and a right-hand side of 1e300: the exact
+        // solution would be 1e600, so the routine must return
+        // `x = 1e300` with `scale = 1e-300`.
+        let (a11, b11) = (1e-300, 1e300);
+        let r = dlaln2(1, 1, 0.0, a11, 0.0, 0.0, 0.0, b11, 0.0, 0.0, 0.0, 0.0, 0.0);
+        assert!(r.scale < 1.0, "scale = {} should be below one", r.scale);
+        assert!(r.x11.is_finite(), "x11 = {} overflowed", r.x11);
+        let lhs = r.x11 * a11;
+        let rhs = r.scale * b11;
+        assert!(
+            (lhs - rhs).abs() <= 1e-13 * rhs.abs().max(f64::MIN_POSITIVE),
+            "({lhs:e}) != scale * b ({rhs:e})"
+        );
+
+        // A large SMIN clamps the denominator, so the solution is bounded by
+        // b/smin rather than by the true (tiny) denominator.
+        let smin = 1e-3;
+        let r = dlaln2(1, 1, smin, 1e-8, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        assert!(
+            r.x11.abs() <= 1.0 / smin * 1.000001,
+            "x11 = {} exceeds b/smin = {}",
+            r.x11,
+            1.0 / smin
+        );
+        assert!(r.x11.is_finite());
+    }
+
+    /// A lower-triangular block must be swapped (`b == 0`), and a block whose
+    /// eigenvalues are real but nearly equal takes the equalisation branch.
+    #[test]
+    fn dlanv2_handles_the_triangular_and_nearly_equal_blocks() {
+        // [2 0; 3 1]: lower triangular, so the code exchanges a and d.
+        let (mut a, mut b, mut c, mut d) = (2.0, 0.0, 3.0, 1.0);
+        let (mut cs, mut sn) = (0.0, 0.0);
+        let e = dlanv2(&mut a, &mut b, &mut c, &mut d, &mut cs, &mut sn);
+        assert_eq!(c, 0.0, "the block must end up upper triangular");
+        assert_eq!((a, d), (1.0, 2.0), "the diagonal must be exchanged");
+        assert_eq!((cs, sn), (0.0, 1.0), "the rotation must be the exchange");
+        assert_eq!((e.rt1i, e.rt2i), (0.0, 0.0));
+        assert_eq!((e.rt1r, e.rt2r), (1.0, 2.0));
+
+        // Already upper triangular: the identity rotation.
+        let (mut a, mut b, mut c, mut d) = (1.0, 2.0, 0.0, 3.0);
+        let (mut cs, mut sn) = (0.0, 0.0);
+        let e = dlanv2(&mut a, &mut b, &mut c, &mut d, &mut cs, &mut sn);
+        assert_eq!((cs, sn), (1.0, 0.0));
+        assert_eq!((e.rt1r, e.rt2r), (1.0, 3.0));
+
+        // Real, nearly equal eigenvalues with b and c of the same sign: the
+        // equalisation loop runs and the block is reduced to triangular form.
+        let (mut a, mut b, mut c, mut d) = (1.0, 1e-9, 2e-9, 1.0);
+        let (mut cs, mut sn) = (0.0, 0.0);
+        let e = dlanv2(&mut a, &mut b, &mut c, &mut d, &mut cs, &mut sn);
+        assert_eq!(e.rt1i, 0.0, "the eigenvalues are real");
+        assert_eq!(e.rt2i, 0.0);
+        assert!((cs * cs + sn * sn - 1.0).abs() < 1e-14);
+
+        // Extreme magnitudes: the loop rescales instead of overflowing.
+        let (mut a, mut b, mut c, mut d) = (1e-200, 1e-200, -1e-200, 1e-200);
+        let (mut cs, mut sn) = (0.0, 0.0);
+        let e = dlanv2(&mut a, &mut b, &mut c, &mut d, &mut cs, &mut sn);
+        assert!((cs * cs + sn * sn - 1.0).abs() < 1e-14);
+        assert!(
+            e.rt1r.is_finite() && e.rt2r.is_finite() && e.rt1i.is_finite(),
+            "eigenvalues must stay finite: {e:?}"
+        );
+    }
+
+    /// `dgeev`'s eigenvectors are normalised the way LAPACK's `dget22` checks:
+    /// unit Euclidean norm, and for a conjugate pair the component of largest
+    /// modulus lies on the real axis.
+    #[test]
+    fn dgeev_returns_normalised_eigenvectors() {
+        for n in [2usize, 3, 5, 8] {
+            let orig = sample(n);
+            let mut a = orig.clone();
+            let (mut vr, mut vi) = (vec![0.0; n * n], vec![0.0; n * n]);
+            let (wr, wi) = dgeev(&mut vr, &mut vi, &mut a, n).expect("dgeev");
+            let mut j = 0;
+            while j < n {
+                if wi[j] == 0.0 {
+                    // Real eigenvector: norm 1, no imaginary part.
+                    let norm = (0..n).map(|i| vr[i + j * n] * vr[i + j * n]).sum::<f64>().sqrt();
+                    assert!((norm - 1.0).abs() < 1e-13, "n={n}, j={j}: norm = {norm}");
+                    for i in 0..n {
+                        assert_eq!(vi[i + j * n], 0.0, "n={n}: real column {j} has an imaginary part");
+                    }
+                    j += 1;
+                } else {
+                    // A pair: v = vr[:,j] + i vi[:,j] has norm 1, and the
+                    // component of largest modulus of v is real.
+                    let norm = (0..n)
+                        .map(|i| vr[i + j * n] * vr[i + j * n] + vi[i + j * n] * vi[i + j * n])
+                        .sum::<f64>()
+                        .sqrt();
+                    assert!((norm - 1.0).abs() < 1e-13, "n={n}, pair {j}: norm = {norm}");
+                    let (mut imax, mut best) = (0, 0.0);
+                    for i in 0..n {
+                        let m = vr[i + j * n].hypot(vi[i + j * n]);
+                        if m > best {
+                            best = m;
+                            imax = i;
+                        }
+                    }
+                    assert!(
+                        vi[imax + j * n].abs() < 1e-12 * best.max(1.0),
+                        "n={n}, pair {j}: the largest component (row {imax}) is not real \
+                         ({} + {}i)",
+                        vr[imax + j * n],
+                        vi[imax + j * n]
+                    );
+                    assert_eq!((wr.len(), wi.len()), (n, n));
+                    j += 2;
                 }
             }
         }

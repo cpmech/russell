@@ -1735,4 +1735,76 @@ mod tests {
             assert!(ratio3 <= 20.0, "n={n}: dstt21 ratio = {ratio3} exceeds 20");
         }
     }
+
+    /// `dsteqr`'s other modes and the rescaling branch: eigenvalues only
+    /// (`icompz = 0`), accumulation into a caller's basis (`icompz = 1`), splits
+    /// at an exact zero, and tridiagonals whose entries are near overflow or
+    /// underflow.
+    ///
+    /// The existing tests only ever call it with `icompz = 2` on a
+    /// well-scaled matrix, which leaves the rescaling and the "eigenvalues only"
+    /// paths unexecuted.
+    #[test]
+    fn dsteqr_covers_its_modes_and_scaling() {
+        // icompz = 0: eigenvalues only, and Z is left alone.
+        let (mut d, mut e) = (vec![2.0, 2.0], vec![1.0, 0.0]);
+        let mut z = vec![7.0; 4];
+        let mut work = vec![0.0; 4];
+        let info = dsteqr(0, 2, &mut d, &mut e, &mut z, 2, &mut work);
+        assert_eq!(info, 0);
+        assert_eq!(z, vec![7.0; 4], "icompz = 0 must not touch Z");
+        let mut w = d.clone();
+        w.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert!((w[0] - 1.0).abs() < 1e-14 && (w[1] - 3.0).abs() < 1e-14, "w = {w:?}");
+
+        // icompz = 1: Z enters as the basis and leaves as the eigenvectors.
+        let (mut d, mut e) = (vec![2.0, 2.0], vec![1.0, 0.0]);
+        let mut z = vec![0.0; 4];
+        for i in 0..2 {
+            z[i + i * 2] = 1.0;
+        }
+        let info = dsteqr(1, 2, &mut d, &mut e, &mut z, 2, &mut work);
+        assert_eq!(info, 0);
+        assert!((d[0] - 1.0).abs() < 1e-14 && (d[1] - 3.0).abs() < 1e-14, "d = {d:?}");
+        // The accumulated Z is still orthogonal.
+        let dot = z[0] * z[2] + z[1] * z[3];
+        let n0 = z[0] * z[0] + z[1] * z[1];
+        let n1 = z[2] * z[2] + z[3] * z[3];
+        assert!(dot.abs() < 1e-14 && (n0 - 1.0).abs() < 1e-14 && (n1 - 1.0).abs() < 1e-14);
+
+        // A split at an exact zero, and an already diagonal matrix.
+        let (mut d, mut e) = (vec![1.0, 2.0, 3.0], vec![0.0, 0.0, 0.0]);
+        let mut z = vec![0.0; 9];
+        let mut work = vec![0.0; 8];
+        let info = dsteqr(2, 3, &mut d, &mut e, &mut z, 3, &mut work);
+        assert_eq!(info, 0);
+        for k in 0..3 {
+            assert!((d[k] - (k as f64 + 1.0)).abs() < 1e-14, "d = {d:?}");
+        }
+
+        // n = 1: a single entry, no iteration.
+        let (mut d, mut e) = (vec![4.5], vec![0.0]);
+        let mut z = vec![0.0];
+        let info = dsteqr(2, 1, &mut d, &mut e, &mut z, 1, &mut work);
+        assert_eq!(info, 0);
+        assert_eq!(d[0], 4.5);
+        assert_eq!(z[0], 1.0);
+
+        // Near overflow and near underflow: the iteration rescales, and the
+        // eigenvalues must stay finite and correct.
+        for (d0, e0, want) in [(1e300, 1e300, [0.0, 2e300]), (1e-300, 1e-300, [0.0, 2e-300])] {
+            let (mut d, mut e) = (vec![d0, d0], vec![e0, 0.0]);
+            let mut z = vec![0.0; 4];
+            let mut work = vec![0.0; 8];
+            let info = dsteqr(2, 2, &mut d, &mut e, &mut z, 2, &mut work);
+            assert_eq!(info, 0, "d0 = {d0:e}: info = {info}");
+            assert!(
+                (d[0] - want[0]).abs() <= 1e-14 * want[1] && (d[1] - want[1]).abs() <= 1e-14 * want[1],
+                "d0 = {d0:e}: d = {d:?}, want {want:?}"
+            );
+            // The eigenvectors are still orthonormal.
+            let dot = z[0] * z[2] + z[1] * z[3];
+            assert!(dot.abs() < 1e-13, "d0 = {d0:e}: Z is not orthogonal ({dot})");
+        }
+    }
 }

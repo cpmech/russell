@@ -523,4 +523,54 @@ mod tests {
         assert_eq!(dgesv(&mut a, &mut b), Ok(()));
         assert_eq!(dpotrf(&mut a, 0), Ok(()));
     }
+
+    /// `norm_char` is the mapping the C shim's `interface_blas.c` also implements,
+    /// and `dlange_by_code` is the bridge the dispatch sites use. Both were
+    /// untested: a wrong discriminant would only show up as a wrong-normed
+    /// scaling decision inside `dgesvd` or `dsyev`.
+    #[test]
+    fn norm_char_matches_the_shim_mapping() {
+        use crate::internal::{NORM_EUC, NORM_FRO, NORM_INF, NORM_MAX, NORM_ONE};
+        assert_eq!(norm_char(NORM_EUC as i32), 'F');
+        assert_eq!(norm_char(NORM_FRO as i32), 'F');
+        assert_eq!(norm_char(NORM_INF as i32), 'I');
+        assert_eq!(norm_char(NORM_MAX as i32), 'M');
+        // 'O' is LAPACK's other spelling of the one-norm, and it is what the
+        // shim's `interface_blas.c` sends. See the note in AGENTS.md.
+        assert_eq!(norm_char(NORM_ONE as i32), 'O');
+        // Anything that is not Euc/Fro, Inf or Max is the one-norm: the funnel
+        // branch of the function is `'O'`, and `NORM_ONE` reaches it.
+        assert_eq!(norm_char(99), 'O');
+
+        // A 2x2 whose four norms are all different, so the codes are told apart:
+        // A = [1 2; 3 4], stored column-major.
+        //   Euc/Fro = sqrt(30)
+        //   Inf     = max *row* sum    = 7   (LAPACK's `'I'`)
+        //   Max     = max |a_ij|       = 4
+        //   One     = max *column* sum = 6   (LAPACK's `'1'`/`'O'`)
+        // Note the direction: LAPACK's `'I'` is the row sum and `'1'` the column
+        // sum, the opposite of what the names suggest on their own.
+        let a = [1.0, 3.0, 2.0, 4.0];
+        let fro = (30.0f64).sqrt();
+        let norms = [
+            (NORM_EUC as i32, fro),
+            (NORM_FRO as i32, fro),
+            (NORM_INF as i32, 7.0),
+            (NORM_MAX as i32, 4.0),
+            (NORM_ONE as i32, 6.0),
+        ];
+        for (code, want) in norms {
+            let got = dlange_by_code(code, &a, 2, 2);
+            assert!(
+                (got - want).abs() <= 1e-14,
+                "code {code} ('{}'): {got} != {want}",
+                norm_char(code)
+            );
+        }
+        // The two spellings of the one-norm agree ('1' and 'O' in LAPACK).
+        assert_eq!(
+            dlange_by_code(NORM_ONE as i32, &a, 2, 2),
+            super::super::blas::dlange('O', &a, 2, 2)
+        );
+    }
 }

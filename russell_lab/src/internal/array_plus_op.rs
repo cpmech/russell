@@ -9,7 +9,7 @@ use std::ops::Add;
 ///
 /// Generic over the element type: Add is the only operation involved, so the real
 /// and complex arrays share this one kernel. The unrolled head (n <= 8) and the
-/// four-at-a-time body are the original kernel's; they monomorphise to the same
+/// four-at-a-time body are the original kernel's; they monomorphize to the same
 /// code for `f64` and `Complex64`.
 #[inline]
 pub(crate) fn array_plus_op<T: Copy + Add<Output = T>>(w: &mut [T], u: &[T], v: &[T]) -> Result<(), StrError> {

@@ -372,7 +372,7 @@ pub fn mat_eigen_lr(
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
         // The native routine computes the left eigenvectors from the *same*
-        // Schur factorisation as the right ones (the `ztrevc`-style
+        // Schur factorization as the right ones (the `ztrevc`-style
         // back-substitution on `T`), not from a second decomposition of `A^T`.
         // It returns them already in real and imaginary parts.
         let (wr, wi) = crate::native::lapack::eig::dgeev_lr(

@@ -66,7 +66,7 @@ fn main() {
         let t = Instant::now();
         svd::dgesvd(&mut a, n, n, &mut s, &mut u, &mut vt).unwrap();
         let el = t.elapsed();
-        // the direct bidiagonalisation path is ~8n^3 because U and VT are formed
+        // the direct bidiagonalization path is ~8n^3 because U and VT are formed
         println!(
             "  n={n:<4} {:>10.1?}   ({:.1} ns/flop)",
             el,

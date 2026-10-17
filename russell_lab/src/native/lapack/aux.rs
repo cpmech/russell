@@ -381,7 +381,7 @@ mod tests {
         }
     }
 
-    /// `dlaev2`: the returned rotation must diagonalise the block, with the
+    /// `dlaev2`: the returned rotation must diagonalize the block, with the
     /// returned eigenvalues on the diagonal, and it must be a rotation.
     #[test]
     fn dlaev2_returns_a_diagonalising_rotation() {
@@ -578,7 +578,7 @@ mod tests {
     }
 
     /// The reflectors must leave the rest of the array alone: `(r0, c0)` and the
-    /// leading dimension select a block, and touching a neighbouring entry would
+    /// leading dimension select a block, and touching a neighboring entry would
     /// corrupt a caller's trailing matrix.
     #[test]
     fn zlarf_respects_the_block_bounds() {

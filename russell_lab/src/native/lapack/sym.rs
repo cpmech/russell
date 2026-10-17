@@ -902,7 +902,7 @@ fn hh_left(a: &mut [f64], lda: usize, r0: usize, m: usize, c0: usize, ncols: usi
 /// the implicit QL/QR method.
 ///
 /// `icompz` mirrors `COMPZ`: `0` for eigenvalues only, `1` when `z` enters
-/// holding the reduction matrix `Q`, `2` to initialise `z` to the identity. Only
+/// holding the reduction matrix `Q`, `2` to initialize `z` to the identity. Only
 /// `1` is used by `dsyev`, but all three are kept because the branches differ
 /// (the `1`/`2` cases use `dlaev2` and accumulate the rotations into `z`, the `0`
 /// case uses `dlae2`). Returns the reference's `INFO`: the number of off-diagonal
@@ -1290,7 +1290,7 @@ fn dsteqr(icompz: i32, n: usize, d: &mut [f64], e: &mut [f64], z: &mut [f64], ld
             }
         }
     } else {
-        // Selection sort, chosen by the reference to minimise swaps of the
+        // Selection sort, chosen by the reference to minimize swaps of the
         // eigenvector columns.
         for i in 0..n - 1 {
             let mut k = i;
@@ -1536,7 +1536,7 @@ mod tests {
                 assert_eq!(info, 0, "n={n} upper={upper}: dsytrd reported info={info}");
 
                 // (1) the two tridiagonal forms have the same spectrum.
-                // `icompz = 2` initialises `z` to the identity and accumulates the
+                // `icompz = 2` initializes `z` to the identity and accumulates the
                 // tridiagonal eigenvectors into it, so `z` is the full eigenvector
                 // matrix of the tridiagonal form. `icompz = 0` leaves `z`
                 // untouched, which is not what is wanted here.

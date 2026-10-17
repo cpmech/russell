@@ -286,7 +286,7 @@ pub fn complex_mat_eigen_lr(
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
         // `zgeev(JOBVL='V', JOBVR='V', ...)`: `u` and `v` receive the left and
-        // right eigenvectors, computed from the one Schur factorisation.
+        // right eigenvectors, computed from the one Schur factorization.
         crate::native::lapack::zeig::zgeev(
             l.as_mut_data(),
             a.as_mut_data(),

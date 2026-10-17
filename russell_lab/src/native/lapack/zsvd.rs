@@ -11,9 +11,9 @@
 //!
 //! This mirrors [`super::svd`] (the real `dgesvd`) and follows the same
 //! structure: `zgebrd` reduces to `zgebd2` for a single block, `zungbr` to
-//! `zung2r`/`zungl2`, and only the direct bidiagonalisation path of the driver
+//! `zung2r`/`zungl2`, and only the direct bidiagonalization path of the driver
 //! is implemented (the QR/LQ pre-reduction the reference uses when `m` is much
-//! larger than `n` is a performance optimisation that does not change the
+//! larger than `n` is a performance optimization that does not change the
 //! singular values).
 //!
 //! # What is genuinely complex here, and what is not
@@ -206,7 +206,7 @@ fn zlasr_right(
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bidiagonalisation
+// Bidiagonalization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// `ZGEBD2`: reduce an `m x n` matrix to bidiagonal form, unblocked.
@@ -1046,7 +1046,7 @@ pub fn zgesvd(
 
     let info;
     if m >= n {
-        // Bidiagonalise A directly: Q^H A P = B with B upper bidiagonal.
+        // Bidiagonalize A directly: Q^H A P = B with B upper bidiagonal.
         zgebd2(a, m, m, n, s, &mut e, &mut tauq, &mut taup);
 
         // ZLACPY('L', M, N, A, LDA, U, LDU) then form Q in U.
@@ -1067,7 +1067,7 @@ pub fn zgesvd(
 
         info = zbdsqr(false, n, n, m, 0, s, &mut e, vt, n, u, m, &mut [], 0);
     } else {
-        // Bidiagonalise A directly: Q^H A P = B with B lower bidiagonal.
+        // Bidiagonalize A directly: Q^H A P = B with B lower bidiagonal.
         zgebd2(a, m, m, n, s, &mut e, &mut tauq, &mut taup);
 
         // ZLACPY('L', M, M, A, LDA, U, LDU) then form Q in U.
@@ -1588,7 +1588,7 @@ mod tests {
                 }
             }
 
-            // Q B P^H, then the eps-normalised reconstruction ratio.
+            // Q B P^H, then the eps-normalized reconstruction ratio.
             let mut qb = vec![zero(); m * n];
             for j in 0..n {
                 for i in 0..m {

@@ -11,7 +11,7 @@
 //!   routines here index `data[i + j * nrow]` directly.
 //! * Indices are 0-based and lengths are `usize`, unlike the Fortran the routines
 //!   are derived from (`BLAS`/`LAPACK` are 1-based and take workspace arguments
-//!   that are an artefact of being written in Fortran, not part of the maths).
+//!   that are an artifact of being written in Fortran, not part of the math).
 //! * Nothing takes a workspace argument. The point of a Rust implementation is
 //!   that workspace can be allocated internally.
 //!

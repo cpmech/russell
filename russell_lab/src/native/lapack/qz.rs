@@ -1,4 +1,4 @@
-//! The generalised eigenproblem `A v = lambda B v` for real and complex
+//! The generalized eigenproblem `A v = lambda B v` for real and complex
 //! matrices: the QZ algorithm.
 //!
 //! This is a transcription of LAPACK 3.12.1's `dggev`/`zggev` drivers and the
@@ -13,7 +13,7 @@
 //! | `dgeqr2`, `dorm2r`, `dorg2r` | the QR of `B` and its application, from `dgeqrf`/`dormqr`/`dorgqr` |
 //! | `zgeqr2`, `zunm2r`, `zung2r` | the complex QR of `B` and its application, from `zgeqrf`/`zunmqr`/`zungqr` |
 //! | `dgghrd`, `zgghrd` | reduction to Hessenberg-triangular form |
-//! | `dhgeqz`, `zhgeqz` | the QZ iteration, producing the generalised Schur form |
+//! | `dhgeqz`, `zhgeqz` | the QZ iteration, producing the generalized Schur form |
 //! | `dtgevc`, `ztgevc` | left and right eigenvectors by back-substitution |
 //! | `dlag2`, `dlasv2`, `dlaln2`, `dladiv`, `zlartg` | the 2x2 eigenproblem and the Givens rotations |
 //!
@@ -23,7 +23,7 @@
 //! block size, which covers every matrix these routines are asked about here;
 //! the unblocked form is what is transcribed.
 //!
-//! The complex routines live in their own section, "The complex generalised
+//! The complex routines live in their own section, "The complex generalized
 //! eigenproblem (ZGGEV)", just above the tests.
 //!
 //! Conventions match the rest of [`super`]: column-major, 0-based indices, and
@@ -128,7 +128,7 @@ fn dlanhs_f(a: &[f64], ld: usize, n: usize) -> f64 {
     scale * sumsq.sqrt()
 }
 
-/// `dlag2`: the eigenvalues of the generalised 2x2 problem
+/// `dlag2`: the eigenvalues of the generalized 2x2 problem
 /// `A - w B` (upper triangular `B`), returning `(s1, s2, wr1, wr2, wi)`.
 ///
 /// `a11..a22` are the entries of `A`, `b11, b12, b22` those of `B`, and `safmin`
@@ -519,7 +519,7 @@ fn dorg2r(a: &mut [f64], lda: usize, r0: usize, c0: usize, m: usize, n: usize, k
     if n == 0 {
         return;
     }
-    // Initialise columns k..n to the corresponding columns of the unit matrix.
+    // Initialize columns k..n to the corresponding columns of the unit matrix.
     for j in k..n {
         for l in 0..m {
             a[(r0 + l) + (c0 + j) * lda] = 0.0;
@@ -567,7 +567,7 @@ fn rot_row_range(a: &mut [f64], ld: usize, i1: usize, i2: usize, j0: usize, coun
     }
 }
 
-/// `dgghrd`: reduce the pair `(a, b)` to generalised Hessenberg form
+/// `dgghrd`: reduce the pair `(a, b)` to generalized Hessenberg form
 /// (`a` upper Hessenberg, `b` upper triangular) using orthogonal transformations,
 /// accumulating them into `q` and `z` when asked. `ilo` and `ihi` (0-based) bound
 /// the active block.
@@ -909,9 +909,9 @@ fn zggbak_p(
 
 /// `dhgeqz` with `JOB = 'S'` or `'E'`: the QZ iteration.
 ///
-/// On entry `h` and `t` are in generalised Hessenberg form (`h` upper Hessenberg,
-/// `t` upper triangular); on exit they hold the generalised Schur form and the
-/// generalised eigenvalues are in `alphar`/`alphai`/`beta`. The orthogonal
+/// On entry `h` and `t` are in generalized Hessenberg form (`h` upper Hessenberg,
+/// `t` upper triangular); on exit they hold the generalized Schur form and the
+/// generalized eigenvalues are in `alphar`/`alphai`/`beta`. The orthogonal
 /// factors are accumulated into `q` and `z` when `ilq`/`ilz`. Returns the
 /// reference's `INFO` (0 on success, `1..=n` for non-convergence, `n+1` for the
 /// "impossible" drop-through).
@@ -1975,8 +1975,8 @@ fn dlaln2(
 }
 
 /// `dtgevc` with `HOWMNY = 'B'` and `SIDE = 'B'`, `'L'` or `'R'`: the left
-/// (`compl`) and right (`compr`) generalised eigenvectors of the pair `(s, p)`,
-/// which are on entry the generalised Schur form and the Schur vectors and on
+/// (`compl`) and right (`compr`) generalized eigenvectors of the pair `(s, p)`,
+/// which are on entry the generalized Schur form and the Schur vectors and on
 /// exit the eigenvectors.
 ///
 /// `HOWMNY = 'B'` means every eigenvector is computed and back-transformed with
@@ -2245,7 +2245,7 @@ fn dtgevc(
                 }
 
                 // A is S(J:J+1, J:J+1); for a 1x1 block only A(1,1) is read, and
-                // J can be N, so the neighbours must not be evaluated eagerly.
+                // J can be N, so the neighbors must not be evaluated eagerly.
                 let (sa11, sa21, sa12, sa22) = if na == 2 {
                     (
                         mget(s, lds, j, j),
@@ -2653,7 +2653,7 @@ fn dtgevc(
     0
 }
 
-/// Normalise the eigenvectors in the columns of `v`: for a real eigenvalue the
+/// Normalize the eigenvectors in the columns of `v`: for a real eigenvalue the
 /// largest `|v(i,j)|` is 1, for a complex pair the largest `|Re| + |Im|` is 1.
 /// Negative `alphai` marks the second half of a pair and is skipped.
 #[allow(clippy::too_many_arguments)]
@@ -2698,8 +2698,8 @@ fn dlaset_identity(a: &mut [f64], ld: usize, n: usize) {
     }
 }
 
-/// `dggev`: the generalised eigenvalues of the pair `(a, b)` and, optionally,
-/// the left and/or right generalised eigenvectors.
+/// `dggev`: the generalized eigenvalues of the pair `(a, b)` and, optionally,
+/// the left and/or right generalized eigenvectors.
 ///
 /// This follows LAPACK 3.12.1's `dggev` with `JOBVL`/`JOBVR` decoded into
 /// `calc_vl`/`calc_vr`. On exit `a` and `b` are overwritten, `alphar`, `alphai`
@@ -2838,7 +2838,7 @@ pub fn dggev(
         if ierr != 0 {
             return Err(LapackError::Convergence);
         }
-        // Undo balancing on VL and VR, and normalise.
+        // Undo balancing on VL and VR, and normalize.
         if calc_vl {
             // DGGBAK('P', 'L', ...) permutes with LSCALE.
             dggbak_p(false, n, ilo, ihi0, &lscale, &rscale, n, vl, n);
@@ -2868,7 +2868,7 @@ pub fn dggev(
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// The complex generalised eigenproblem (ZGGEV)
+// The complex generalized eigenproblem (ZGGEV)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // A literal transcription of LAPACK 3.12.1's `zggev` driver and the complex
@@ -3250,7 +3250,7 @@ fn zung2r_sub(a: &mut [Complex64], ld: usize, r0: usize, c0: usize, m: usize, n:
     }
 }
 
-/// `zgghrd`: reduce the pair `(a, b)` to generalised Hessenberg form (`a` upper
+/// `zgghrd`: reduce the pair `(a, b)` to generalized Hessenberg form (`a` upper
 /// Hessenberg, `b` upper triangular) using unitary transformations, accumulating
 /// them into `q` and `z` when asked. `ilo` and `ihi` (0-based, inclusive) bound
 /// the active block.
@@ -3496,7 +3496,7 @@ fn zggbal_p(
     (k - 1, l, lscale, rscale)
 }
 
-/// The standardisation of one diagonal element that ends a deflation in
+/// The standardization of one diagonal element that ends a deflation in
 /// `zhgeqz` (labels 10, 60 and 200 of the reference): make `t(j,j)` real and
 /// non-negative, scale the parts of the columns above it by the conjugate, and
 /// record `alpha`/`beta`.
@@ -3545,9 +3545,9 @@ fn zhgeqz_set_eigenvalue(
 
 /// `zhgeqz` with `JOB = 'S'` or `'E'`: the complex QZ iteration.
 ///
-/// On entry `h` and `t` are in generalised Hessenberg form (`h` upper Hessenberg,
-/// `t` upper triangular); on exit they hold the generalised Schur form and the
-/// generalised eigenvalues are in `alpha`/`beta` as `alpha / beta`. The unitary
+/// On entry `h` and `t` are in generalized Hessenberg form (`h` upper Hessenberg,
+/// `t` upper triangular); on exit they hold the generalized Schur form and the
+/// generalized eigenvalues are in `alpha`/`beta` as `alpha / beta`. The unitary
 /// factors are accumulated into `q` and `z` when `ilq`/`ilz`. Returns the
 /// reference's `INFO`: 0 on success, `1..=n` for non-convergence and `2*n + 1`
 /// for the "impossible" drop-through.
@@ -3745,7 +3745,7 @@ fn zhgeqz(
                         zrot_cols(z, ldz, ilast, ilast - 1, 0, n, c, s);
                     }
                 }
-                // Label 60: standardise B and record alpha/beta.
+                // Label 60: standardize B and record alpha/beta.
                 zhgeqz_set_eigenvalue(ilast, ilschr, ilz, ifrstm, h, ldh, t, ldt, z, ldz, n, alpha, beta);
                 if ilast == ilo {
                     // Label 190: set eigenvalues 1:ilo-1 and finish.
@@ -3969,7 +3969,7 @@ fn ztgevc_coeffs(
     }
 }
 
-/// `ztgevc` with `HOWMNY = 'B'`: all right (and/or left) generalised
+/// `ztgevc` with `HOWMNY = 'B'`: all right (and/or left) generalized
 /// eigenvectors of the triangular pair `(s, p)` by back-substitution,
 /// back-transformed with the Schur vectors left in `vl`/`vr`.
 ///
@@ -4206,7 +4206,7 @@ fn zlaset_identity(a: &mut [Complex64], n: usize) {
     }
 }
 
-/// Normalise the columns of `v` so that the largest `ABS1` entry is 1, as the
+/// Normalize the columns of `v` so that the largest `ABS1` entry is 1, as the
 /// reference's `zggev` does after undoing the balancing. Columns whose largest
 /// entry is below `smlnum` are left alone.
 fn zggev_normalize(n: usize, smlnum: f64, v: &mut [Complex64], ldv: usize) {
@@ -4225,8 +4225,8 @@ fn zggev_normalize(n: usize, smlnum: f64, v: &mut [Complex64], ldv: usize) {
     }
 }
 
-/// `zggev`: the generalised eigenvalues of the pair `(a, b)` and, optionally,
-/// the left and/or right generalised eigenvectors.
+/// `zggev`: the generalized eigenvalues of the pair `(a, b)` and, optionally,
+/// the left and/or right generalized eigenvectors.
 ///
 /// This follows LAPACK 3.12.1's `zggev` with `JOBVL`/`JOBVR` decoded into
 /// `calc_vl`/`calc_vr`. On exit `a` and `b` are overwritten, `alpha` and `beta`
@@ -4317,7 +4317,7 @@ pub fn zggev(
     // Apply the unitary transformation to A.
     zunm2r_left_conj(a, lda, ilo, ilo, irows, icols, b, ldb, ilo, ilo, irows, &tau);
 
-    // Initialise VL then generate Q in it.
+    // Initialize VL then generate Q in it.
     if calc_vl {
         zlaset_identity(vl, n);
         if irows > 1 {
@@ -4331,12 +4331,12 @@ pub fn zggev(
         zung2r_sub(vl, n, ilo, ilo, irows, irows, irows, &tau);
     }
 
-    // Initialise VR.
+    // Initialize VR.
     if calc_vr {
         zlaset_identity(vr, n);
     }
 
-    // Reduce to generalised Hessenberg form.
+    // Reduce to generalized Hessenberg form.
     zgghrd(calc_vl, calc_vr, n, ilo, ihi0, a, lda, b, ldb, vl, n, vr, n);
 
     // Perform the QZ algorithm.
@@ -4356,7 +4356,7 @@ pub fn zggev(
         if bad {
             return Err(LapackError::Convergence);
         }
-        // Undo the balancing on VL and VR, and normalise.
+        // Undo the balancing on VL and VR, and normalize.
         if calc_vl {
             zggbak_p(false, n, ilo, ihi0, &lscale, &rscale, n, vl, n);
             zggev_normalize(n, smlnum, vl, n);
@@ -4509,7 +4509,7 @@ mod tests {
         assert_eq!(ar, vec![1.0, 2.0, 3.0]);
         assert_eq!(ai, vec![0.0, 0.0, 0.0]);
         assert_eq!(be, vec![1.0, 1.0, 1.0]);
-        // The eigenvectors are the coordinate vectors, normalised to max abs 1.
+        // The eigenvectors are the coordinate vectors, normalized to max abs 1.
         for j in 0..3 {
             for i in 0..3 {
                 let want = if i == j { 1.0 } else { 0.0 };

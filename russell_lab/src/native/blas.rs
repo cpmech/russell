@@ -44,7 +44,7 @@ pub fn dcopy(x: &[f64], y: &mut [f64]) {
 ///
 /// BLAS's `ddot` returns 0 for mismatched lengths by reading the shorter one;
 /// this does the same rather than panicking, since that is the documented
-/// behaviour callers may rely on.
+/// behavior callers may rely on.
 pub fn ddot(x: &[f64], y: &[f64]) -> f64 {
     x.iter().zip(y.iter()).map(|(a, b)| a * b).sum()
 }
@@ -275,7 +275,7 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
 /// Whether this CPU has AVX2 and FMA, checked once.
 ///
 /// The micro-kernel is compiled with `#[target_feature(enable = "avx2,fma")]`,
-/// so calling it on a CPU without them is undefined behaviour. A build with
+/// so calling it on a CPU without them is undefined behavior. A build with
 /// `-C target-feature=+avx2` would make this redundant, but the crate cannot
 /// assume that -- it is built for whatever target the consumer chooses, and
 /// x86-64 baseline does not include AVX2.
@@ -460,7 +460,7 @@ pub fn dsyrk(alpha: f64, a: &[f64], beta: f64, c: &mut [f64], n: usize, k: usize
 ///
 /// # Panics
 ///
-/// Panics on an unrecognised norm character, which in Fortran would be an
+/// Panics on an unrecognized norm character, which in Fortran would be an
 /// argument error and here should be a compile-time-visible mistake.
 pub fn dlange(norm: char, a: &[f64], m: usize, n: usize) -> f64 {
     assert_eq!(a.len(), m * n, "dlange: a must be m*n");
@@ -481,7 +481,7 @@ pub fn dlange(norm: char, a: &[f64], m: usize, n: usize) -> f64 {
                 .fold(0.0f64, f64::max)
         }
         'F' | 'f' | 'E' | 'e' => dnrm2(a),
-        other => panic!("dlange: unrecognised norm '{other}'; expected one of 1, O, I, F, E, M"),
+        other => panic!("dlange: unrecognized norm '{other}'; expected one of 1, O, I, F, E, M"),
     }
 }
 
@@ -687,7 +687,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "unrecognised norm")]
+    #[should_panic(expected = "unrecognized norm")]
     fn dlange_rejects_an_unknown_norm() {
         dlange('X', &[1.0], 1, 1);
     }
@@ -894,7 +894,7 @@ pub fn zsyrk(alpha: Complex64, a: &[Complex64], beta: Complex64, c: &mut [Comple
 ///
 /// # Panics
 ///
-/// Panics on an unrecognised norm character.
+/// Panics on an unrecognized norm character.
 pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
     assert_eq!(a.len(), m * n, "zlange: a must be m*n");
     match norm {
@@ -917,7 +917,7 @@ pub fn zlange(norm: char, a: &[Complex64], m: usize, n: usize) -> f64 {
             let sum: f64 = a.iter().map(|v| v.norm_sqr()).sum();
             sum.sqrt()
         }
-        other => panic!("zlange: unrecognised norm '{other}'; expected one of 1, O, I, F, E, M"),
+        other => panic!("zlange: unrecognized norm '{other}'; expected one of 1, O, I, F, E, M"),
     }
 }
 

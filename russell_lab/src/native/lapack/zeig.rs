@@ -554,7 +554,7 @@ fn sign_f(a: f64, b: f64) -> f64 {
 /// are applied to it without conjugation.
 ///
 /// `icompz` mirrors `COMPZ`: `0` for eigenvalues only, `1` when `z` enters
-/// holding the reduction matrix `Q`, `2` to initialise `z` to the identity. Only
+/// holding the reduction matrix `Q`, `2` to initialize `z` to the identity. Only
 /// `1` is used by `zheev`, but all three are kept because the branches differ
 /// (the `1`/`2` cases use `dlaev2` and accumulate the rotations into `z`, the `0`
 /// case uses `dlae2`). Returns the reference's `INFO`: the number of off-diagonal
@@ -940,7 +940,7 @@ fn zsteqr(
             }
         }
     } else {
-        // Selection sort, chosen by the reference to minimise swaps of the
+        // Selection sort, chosen by the reference to minimize swaps of the
         // eigenvector columns.
         for i in 0..n - 1 {
             let mut k = i;
@@ -2635,7 +2635,7 @@ mod tests {
     /// exercised only through `ComplexMatrix::eigen_herm`.
     ///
     /// A 2x2 with a known spectrum, then a 4x4 checked by the defining equation
-    /// with LAPACK's eps-normalised residual, both stored triangles.
+    /// with LAPACK's eps-normalized residual, both stored triangles.
     #[test]
     fn zheev_solves_the_hermitian_eigenproblem() {
         let eps = f64::EPSILON;
@@ -2673,7 +2673,7 @@ mod tests {
             for k in 1..n {
                 assert!(w[k - 1] <= w[k], "upper = {upper}: w is not ascending: {w:?}");
             }
-            // A Z = Z diag(w), eps-normalised.
+            // A Z = Z diag(w), eps-normalized.
             let mut resid = 0.0;
             for j in 0..n {
                 for i in 0..n {

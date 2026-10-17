@@ -43,10 +43,10 @@ unsafe extern "C" {
         info: *mut i32,
     );
 
-    /// `dgetrf`: LU factorisation with partial pivoting, `m x n`.
+    /// `dgetrf`: LU factorization with partial pivoting, `m x n`.
     pub fn oracle_c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
 
-    /// `dgetri`: inverse from a `dgetrf` factorisation.
+    /// `dgetri`: inverse from a `dgetrf` factorization.
     pub fn oracle_c_dgetri(
         n: *const i32,
         a: *mut f64,
@@ -57,10 +57,10 @@ unsafe extern "C" {
         info: *mut i32,
     );
 
-    /// `dpotrf`: Cholesky factorisation. `upper` selects the triangle to write.
+    /// `dpotrf`: Cholesky factorization. `upper` selects the triangle to write.
     pub fn oracle_c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
 
-    /// `zgetrf`: LU factorisation of a complex matrix.
+    /// `zgetrf`: LU factorization of a complex matrix.
     ///
     /// `COMPLEX64` in the C shim is `lapack_complex_double`, which is two
     /// `double`s in sequence, so `Complex64` (which is `#[repr(C)] { re, im }`)
@@ -74,7 +74,7 @@ unsafe extern "C" {
         info: *mut i32,
     );
 
-    /// `zgetri`: complex inverse from a `zgetrf` factorisation.
+    /// `zgetri`: complex inverse from a `zgetrf` factorization.
     pub fn oracle_c_zgetri(
         n: *const i32,
         a: *mut Complex64,

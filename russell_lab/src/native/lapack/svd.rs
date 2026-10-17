@@ -15,11 +15,11 @@
 //!
 //! # Which path
 //!
-//! The reference has several paths. For `m >= n` it either bidiagonalises `A`
+//! The reference has several paths. For `m >= n` it either bidiagonalizes `A`
 //! directly or, when `m` is much larger than `n`, first reduces it with a QR
-//! factorisation; for `m < n` it does the transposed analogue with an LQ
-//! factorisation. Only the direct bidiagonalisation path is implemented here. The
-//! QR/LQ pre-reduction is a performance optimisation: it changes the rounding,
+//! factorization; for `m < n` it does the transposed analog with an LQ
+//! factorization. Only the direct bidiagonalization path is implemented here. The
+//! QR/LQ pre-reduction is a performance optimization: it changes the rounding,
 //! not the singular values, and the singular values are what the parity test
 //! compares. Both shapes are supported; the `m < n` case exercises `dbdsqr`'s
 //! lower-bidiagonal branch.
@@ -312,7 +312,7 @@ pub(crate) fn dlasv2(f: f64, g: f64, h: f64) -> (f64, f64, f64, f64, f64, f64) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bidiagonalisation
+// Bidiagonalization
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// `DGEBD2`: reduce an `m x n` matrix to bidiagonal form, unblocked.
@@ -733,7 +733,7 @@ pub fn dbdsqr(
         }
 
         // On a new submatrix, choose the shift direction (from the larger end
-        // diagonal element towards the smaller).
+        // diagonal element toward the smaller).
         if ll as isize > oldm || (m as isize) < oldll {
             idir = if d[ll - 1].abs() >= d[m - 1].abs() { 1 } else { 2 };
         }
@@ -1184,7 +1184,7 @@ pub fn dgesvd(
 
     let info;
     if m >= n {
-        // Bidiagonalise A directly: Q^T A P = B with B upper bidiagonal.
+        // Bidiagonalize A directly: Q^T A P = B with B upper bidiagonal.
         dgebd2(a, m, m, n, s, &mut e, &mut tauq, &mut taup);
 
         // Left singular vectors: copy the reflectors into U and generate Q.
@@ -1207,7 +1207,7 @@ pub fn dgesvd(
 
         info = dbdsqr(false, n, n, m, 0, s, &mut e, vt, n, u, m, &mut [], 0);
     } else {
-        // Bidiagonalise A directly: Q^T A P = B with B lower bidiagonal.
+        // Bidiagonalize A directly: Q^T A P = B with B lower bidiagonal.
         dgebd2(a, m, m, n, s, &mut e, &mut tauq, &mut taup);
 
         // Left singular vectors: the reflectors live in the m x m lower triangle.

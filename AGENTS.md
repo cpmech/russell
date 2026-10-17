@@ -192,7 +192,15 @@ symbols.
 - **Preserve the headline property:** `cargo check --workspace` must pass with no
   external BLAS present. Verify it after changes.
 - Keep the tree rustfmt-clean.
-- **Do not change the behaviour of the `oblas` / `mkl` accelerated paths.** They
+- **American English everywhere** -- comments, documentation, identifiers, test
+  names and commit messages. Use `behavior`, `normalize`, `factorization`,
+  `center`, `modeling`, `toward`: the British variants (`-our` for `-or`, `-ise`
+  for `-ize`, `-re` for `-er`, `-ce` for `-se`, doubled `l`) are not used. The
+  workspace was cleaned once (139 occurrences in 26 files);
+  `russell_lab/tests/american_english.rs` scans `.rs`/`.md`/`.py` and fails the
+  suite on a regression, so a new form belongs in that file's list -- or better,
+  not in the tree.
+- **Do not change the behavior of the `oblas` / `mkl` accelerated paths.** They
   must stay consistent with the native ones, including error strings.
 
 ### Reporting
@@ -217,7 +225,7 @@ Two lessons from this work are worth more than the rest, because both cost hours
 
 ### Performance: the blocking boundary
 
-Worth knowing before optimising, because the obvious move is the wrong one.
+Worth knowing before optimizing, because the obvious move is the wrong one.
 
 `mat_mat_mul`'s native branch routes to `native::blas::dgemm`, a Goto-style
 blocked kernel with a 4x4 AVX2+FMA micro-kernel (MC=128, KC=256, NC=256), and
@@ -265,7 +273,7 @@ this one. `dgesvd` remains unblocked. The rules of thumb:
 * `dlaqr0` has one benefit that is *not* about throughput: aggressive early
   deflation detects converged eigenvalues many sweeps earlier, cutting the
   iteration count independently of kernel speed. It is the only part with no
-  `dlahqr` analogue.
+  `dlahqr` analog.
 
 ### Loose ends
 
@@ -284,7 +292,7 @@ this one. `dgesvd` remains unblocked. The rules of thumb:
   `dhseqr`, `dgeev` and `dgesvd` are exercised through NaN-matrix tests;
   `dsyev`/`zheev` are not, because a NaN matrix reads as zero under the norm gate
   and takes the reference's `ANORM == 0` early return.
-- `dgesvd`/`zgesvd` use the direct bidiagonalisation path for both shapes, not
+- `dgesvd`/`zgesvd` use the direct bidiagonalization path for both shapes, not
   the QR/LQ pre-reduction the reference uses for very tall or wide inputs.
   Agreement with the reference is ~1e-15.
 - `cargo check --features oblas` cannot be compiled on this machine at all: it

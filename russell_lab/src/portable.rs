@@ -117,7 +117,7 @@ pub fn mat_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta: f
 ///
 /// Dimensions: `a` is `k×m`, `b` is `k×n`, `c` is `m×n`; all column-major.
 ///
-/// Implemented by materialising `aᵀ` as an `m×k` buffer and delegating to
+/// Implemented by materializing `aᵀ` as an `m×k` buffer and delegating to
 /// [`mat_mat_mul_data`], so there is a single tested multiplication. The scratch
 /// is `m*k` floats, negligible for the small matrices this portable path exists
 /// for, and it removes a whole class of stride mistake.

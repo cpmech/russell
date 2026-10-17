@@ -46,14 +46,14 @@ fn one() -> Complex64 {
 
 /// `IZAMAX`'s measure of a complex entry: `|Re| + |Im|`.
 ///
-/// This is what LAPACK's `izamax` maximises when choosing a pivot, so using the
+/// This is what LAPACK's `izamax` maximizes when choosing a pivot, so using the
 /// modulus here would pick a different row on some matrices and diverge from the
 /// reference for no benefit.
 fn abs1(z: Complex64) -> f64 {
     z.re.abs() + z.im.abs()
 }
 
-/// `zgetrf`/`zgetf2`: LU factorisation with partial pivoting, in place.
+/// `zgetrf`/`zgetf2`: LU factorization with partial pivoting, in place.
 ///
 /// Overwrites `a` with the packed unit-lower `L` (multipliers below the
 /// diagonal) and `U`, and returns LAPACK's pivot indices made 0-based: at step
@@ -157,7 +157,7 @@ fn ztrti2_upper(a: &mut [Complex64], n: usize) -> Result<(), LapackError> {
     Ok(())
 }
 
-/// `zgetri`: inverse of a matrix from its [`zgetrf`] factorisation, in place.
+/// `zgetri`: inverse of a matrix from its [`zgetrf`] factorization, in place.
 ///
 /// Follows the reference: invert `U`, solve `inv(A) * L = inv(U)` column by
 /// column (the unblocked branch), then undo the row interchanges as column
@@ -266,7 +266,7 @@ pub fn zgesv(a: &mut [Complex64], b: &mut [Complex64]) -> Result<(), LapackError
     Ok(())
 }
 
-/// `zpotrf`/`zpotf2`: Cholesky factorisation of a Hermitian positive-definite
+/// `zpotrf`/`zpotf2`: Cholesky factorization of a Hermitian positive-definite
 /// matrix, in place.
 ///
 /// With `upper == false` it finds the lower triangular `L` with `A = L Lᴴ`;
@@ -300,7 +300,7 @@ pub fn zpotrf(a: &mut [Complex64], n: usize, upper: bool) -> Result<(), LapackEr
     }
 
     if upper {
-        // Compute the Cholesky factorisation A = U**H * U.
+        // Compute the Cholesky factorization A = U**H * U.
         for j in 0..n {
             // AJJ = DBLE(A(J,J)) - DBLE(ZDOTC(J-1, A(1,J), 1, A(1,J), 1)); the
             // dot product is real and equals sum |A(i,j)|^2.
@@ -333,7 +333,7 @@ pub fn zpotrf(a: &mut [Complex64], n: usize, upper: bool) -> Result<(), LapackEr
             }
         }
     } else {
-        // Compute the Cholesky factorisation A = L*L**H.
+        // Compute the Cholesky factorization A = L*L**H.
         for j in 0..n {
             // AJJ = DBLE(A(J,J)) - sum |A(j,k)|^2 over the already-formed row.
             let mut ajj = a[j + j * n].re;
@@ -415,7 +415,7 @@ mod tests {
 
     /// `zgetrf` + `zgetri` must give the inverse: `A * A^-1 = I`.
     ///
-    /// The product is accumulated in a different order from the factorisation,
+    /// The product is accumulated in a different order from the factorization,
     /// so this is not the trivial identity a shared bug could fake.
     #[test]
     fn zgetrf_then_zgetri_inverts() {

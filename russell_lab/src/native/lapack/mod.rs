@@ -19,7 +19,7 @@
 //! | `dsyev` symmetric eigen-decomposition | [`sym`] |
 //! | `dgeev` general eigen-decomposition | [`eig`] |
 //! | `dgesvd` real SVD | [`svd`] |
-//! | `dggev` generalised eigen-decomposition (QZ) | [`qz`] |
+//! | `dggev` generalized eigen-decomposition (QZ) | [`qz`] |
 //! | `zgetrf`, `zgetri`, `zgesv`, `zpotrf` | [`complex`] |
 //! | `zheev`, `zgeev` | [`zeig`] |
 //! | `zgesvd` complex SVD | [`zsvd`] |
@@ -34,7 +34,7 @@
 //!
 //! * Column-major, `data[i + j * n]`, matching `crate::Matrix`.
 //! * 0-based indices and `usize` lengths. LAPACK's 1-based indices and its
-//!   `lda`/`lwork` arguments are Fortran artefacts, not part of the maths, so
+//!   `lda`/`lwork` arguments are Fortran artifacts, not part of the math, so
 //!   they do not appear here; the leading dimension of an `n x n` matrix is `n`.
 //! * Workspace is allocated inside each routine.
 //! * A driver returns `Result<(), LapackError>`, never LAPACK's integer `INFO`:
@@ -84,13 +84,13 @@ pub enum LapackError {
     NotImplemented(&'static str),
 }
 
-/// `dgetrf`: LU factorisation with partial pivoting, in place.
+/// `dgetrf`: LU factorization with partial pivoting, in place.
 ///
 /// Overwrites `a` with the packed `L` (unit diagonal, multipliers below it) and
 /// `U`. Returns the pivot indices (0-based, unlike LAPACK's 1-based) and the
 /// determinant.
 ///
-/// The determinant comes out of the factorisation for free as the product of `U`'s
+/// The determinant comes out of the factorization for free as the product of `U`'s
 /// diagonal with a sign flip per row interchange, which is why it is returned here
 /// rather than computed separately.
 ///
@@ -111,7 +111,7 @@ pub fn dgetrf(a: &mut [f64], n: usize) -> Result<(Vec<usize>, f64), LapackError>
 
     for k in 0..n {
         // Partial pivoting: the largest magnitude in this column at or below the
-        // diagonal. Without it the factorisation is unstable for any matrix with
+        // diagonal. Without it the factorization is unstable for any matrix with
         // a small leading pivot.
         let mut pivot = k;
         let mut best = a[k + k * n].abs();
@@ -152,7 +152,7 @@ pub fn dgetrf(a: &mut [f64], n: usize) -> Result<(Vec<usize>, f64), LapackError>
     Ok((ipiv, det))
 }
 
-/// `dgetri`: inverse of a matrix from its `dgetrf` factorisation, in place.
+/// `dgetri`: inverse of a matrix from its `dgetrf` factorization, in place.
 ///
 /// Solves `A X = I` column by column: apply the row interchanges, forward-solve
 /// with the unit lower triangle, then back-solve with the upper triangle.
@@ -231,7 +231,7 @@ pub fn dgesv(a: &mut [f64], b: &mut [f64]) -> Result<(), LapackError> {
     }
 
     // The determinant is not needed for a solve, but it comes back with the
-    // factorisation.
+    // factorization.
     let (ipiv, _det) = dgetrf(a, n)?;
 
     // Apply the interchanges to b, then forward- and back-substitute. b has a
@@ -257,7 +257,7 @@ pub fn dgesv(a: &mut [f64], b: &mut [f64]) -> Result<(), LapackError> {
     Ok(())
 }
 
-/// `dpotrf`: Cholesky factorisation `A = L L^T`, lower triangle, in place.
+/// `dpotrf`: Cholesky factorization `A = L L^T`, lower triangle, in place.
 ///
 /// Only the lower triangle of `a` is read, and only the lower triangle is
 /// written, as LAPACK specifies. The algorithm is the standard right-looking

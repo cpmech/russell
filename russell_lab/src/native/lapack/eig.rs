@@ -151,7 +151,7 @@ pub fn dlarfg(alpha: f64, x: &[f64]) -> (f64, f64, Vec<f64>) {
     (beta, tau, v)
 }
 
-/// `dlanv2`: the eigenvalues of a 2x2 block, plus the rotation that standardises it.
+/// `dlanv2`: the eigenvalues of a 2x2 block, plus the rotation that standardizes it.
 ///
 /// Follows LAPACK 3.12.1's `dlanv2`. On input `a, b, c, d` are
 ///
@@ -167,7 +167,7 @@ pub fn dlarfg(alpha: f64, x: &[f64]) -> (f64, f64, Vec<f64>) {
 #[allow(clippy::too_many_arguments)]
 pub fn dlanv2(a: &mut f64, b: &mut f64, c: &mut f64, d: &mut f64, cs: &mut f64, sn: &mut f64) -> Eigen2 {
     // LAPACK's MULTPL: below 4*eps the decision between real and complex
-    // eigenvalues is not trustworthy, so the "equalise the diagonal" branch is
+    // eigenvalues is not trustworthy, so the "equalize the diagonal" branch is
     // taken instead.
     const MULTPL: f64 = 4.0;
     let safmin = f64::MIN_POSITIVE;
@@ -213,7 +213,7 @@ pub fn dlanv2(a: &mut f64, b: &mut f64, c: &mut f64, d: &mut f64, cs: &mut f64, 
             *b -= *c;
             *c = 0.0;
         } else {
-            // Complex eigenvalues, or real (almost) equal ones: equalise the
+            // Complex eigenvalues, or real (almost) equal ones: equalize the
             // diagonal first.
             let mut count = 0;
             let mut sigma = *b + *c;
@@ -1038,7 +1038,7 @@ struct Laln2 {
     xnorm: f64,
 }
 
-/// `dlaln2` (LAPACK 3.12.1, `SRC/dlaln2.f`) specialised to `LTRANS = .FALSE.`,
+/// `dlaln2` (LAPACK 3.12.1, `SRC/dlaln2.f`) specialized to `LTRANS = .FALSE.`,
 /// `CA = ONE`, `D1 = D2 = ONE`.
 ///
 /// Solves `(A - (wr + i*wi) I) X = scale * B`, where `A` is the 1x1 or 2x2 block
@@ -1479,7 +1479,7 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
                     j -= 1;
                 }
 
-                // Back-transform with the Schur vectors and normalise so that
+                // Back-transform with the Schur vectors and normalize so that
                 // the largest component has magnitude one:
                 //     VR(:,KI) := Z * x.
                 if ki > 1 {
@@ -1630,7 +1630,7 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
                     j -= 1;
                 }
 
-                // Back-transform both columns and normalise so that the largest
+                // Back-transform both columns and normalize so that the largest
                 // (|re| + |im|) is one:
                 //     VR(:,KI-1) := Z * work1,  VR(:,KI) := Z * work2.
                 for i in 1..=n {
@@ -1929,7 +1929,7 @@ fn dgebak_right(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) 
 ///   compact `VR` layout, `crate::internal::dgeev_data`'s unpacking applied, so
 ///   either reading of the pair -- `v_real[:,j]`/`v_real[:,j+1]` as real and
 ///   imaginary parts, or `v_real`/`v_imag` as the parts of `v(j)` -- gives the
-///   same vectors. Eigenvectors are normalised as the reference does: Euclidean
+///   same vectors. Eigenvectors are normalized as the reference does: Euclidean
 ///   norm one, and for a pair the largest component is rotated onto the real
 ///   axis.
 ///
@@ -1948,11 +1948,11 @@ fn dgebak_right(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) 
 ///    eigenvectors of `T`, back-transformed by `Z`;
 /// 6. `dgebak_right` (`JOB = 'B'`, `SIDE = 'R'`): undo the balancing of the
 ///    eigenvectors;
-/// 7. normalise the eigenvectors, then unscale the eigenvalues.
+/// 7. normalize the eigenvectors, then unscale the eigenvalues.
 ///
 /// Balancing is what makes the eigenvalues of a defectively repeated eigenvalue
 /// come out exact: the permutation in step 2 isolates such an eigenvalue, so the
-/// QR iteration never has to separate it from its neighbours.
+/// QR iteration never has to separate it from its neighbors.
 ///
 /// # Errors
 ///
@@ -2018,7 +2018,7 @@ pub fn dgeev(
     // ---- DGEBAK('B','R'): undo the balancing of the eigenvectors ----
     dgebak_right(&mut vr, n, ilo, ihi, &bal_scale);
 
-    // ---- normalise: unit Euclidean norm, largest component real ----
+    // ---- normalize: unit Euclidean norm, largest component real ----
     // (dgeev.f, the WANTVR branch; `i0` is LAPACK's 1-based I minus one)
     let mut i0 = 0usize;
     while i0 < n {
@@ -2502,7 +2502,7 @@ fn dgebak_left(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) {
     }
 }
 
-/// Normalise a set of eigenvector columns the way `dgeev` does: unit Euclidean
+/// Normalize a set of eigenvector columns the way `dgeev` does: unit Euclidean
 /// norm, and for a conjugate pair the largest component is rotated onto the real
 /// axis with [`dlartg`].
 fn dgeev_normalize_columns(v: &mut [f64], n: usize, wi: &[f64]) {
@@ -2574,8 +2574,8 @@ fn dgeev_unpack(raw: &[f64], wi: &[f64], re: &mut [f64], im: &mut [f64], n: usiz
 ///
 /// This is the same pipeline as [`dgeev`] -- scale, `dgebal`, [`dgehrd`],
 /// [`dhseqr_with_schur_vectors`], the `dtrevc3` back-substitutions,
-/// `dgebak_right`/`dgebak_left`, normalisation -- with the left eigenvectors
-/// taken from the *same* Schur factorisation by `dtrevc_left` rather than from
+/// `dgebak_right`/`dgebak_left`, normalization -- with the left eigenvectors
+/// taken from the *same* Schur factorization by `dtrevc_left` rather than from
 /// a second decomposition of `A^T`.
 ///
 /// `a` is `n x n` column-major and is destroyed. On exit the return value is
@@ -2655,7 +2655,7 @@ pub fn dgeev_lr(
     dgebak_left(&mut vl, n, ilo, ihi, &bal_scale);
     dgebak_right(&mut vr, n, ilo, ihi, &bal_scale);
 
-    // ---- normalise: unit Euclidean norm, largest component real ----
+    // ---- normalize: unit Euclidean norm, largest component real ----
     dgeev_normalize_columns(&mut vl, n, &wi);
     dgeev_normalize_columns(&mut vr, n, &wi);
 
@@ -2833,7 +2833,7 @@ mod tests {
     }
 
     /// The reduction, checked against the definition rather than against an
-    /// internal factorisation: `H` upper Hessenberg, `Q` orthogonal, and
+    /// internal factorization: `H` upper Hessenberg, `Q` orthogonal, and
     /// `A = Q H Q^T`, with the latter two in the form of LAPACK's `dhst01`.
     #[test]
     fn dgehrd_produces_hessenberg_and_an_orthogonal_q() {
@@ -3587,7 +3587,7 @@ mod tests {
     }
 
     /// A lower-triangular block must be swapped (`b == 0`), and a block whose
-    /// eigenvalues are real but nearly equal takes the equalisation branch.
+    /// eigenvalues are real but nearly equal takes the equalization branch.
     #[test]
     fn dlanv2_handles_the_triangular_and_nearly_equal_blocks() {
         // [2 0; 3 1]: lower triangular, so the code exchanges a and d.
@@ -3608,7 +3608,7 @@ mod tests {
         assert_eq!((e.rt1r, e.rt2r), (1.0, 3.0));
 
         // Real, nearly equal eigenvalues with b and c of the same sign: the
-        // equalisation loop runs and the block is reduced to triangular form.
+        // equalization loop runs and the block is reduced to triangular form.
         let (mut a, mut b, mut c, mut d) = (1.0, 1e-9, 2e-9, 1.0);
         let (mut cs, mut sn) = (0.0, 0.0);
         let e = dlanv2(&mut a, &mut b, &mut c, &mut d, &mut cs, &mut sn);
@@ -3627,7 +3627,7 @@ mod tests {
         );
     }
 
-    /// `dgeev`'s eigenvectors are normalised the way LAPACK's `dget22` checks:
+    /// `dgeev`'s eigenvectors are normalized the way LAPACK's `dget22` checks:
     /// unit Euclidean norm, and for a conjugate pair the component of largest
     /// modulus lies on the real axis.
     #[test]

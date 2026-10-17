@@ -11,10 +11,10 @@
 //!
 //! # What is compared
 //!
-//! Not the internal factorisations, which are allowed to differ, but the
+//! Not the internal factorizations, which are allowed to differ, but the
 //! *observable results*: the solution of a system, the inverse, the eigenvalues
 //! and (later) the singular values. Those are what a caller sees, and comparing
-//! them leaves each implementation free to be organised differently.
+//! them leaves each implementation free to be organized differently.
 
 use super::lapack::{self, LapackError};
 use crate::internal::{C_FALSE, C_TRUE};
@@ -290,7 +290,7 @@ fn dhseqr_eigenvalues_agree_with_the_reference() {
             }
         }
 
-        // (2) each 2x2 block standardised, and the two columns of a pair
+        // (2) each 2x2 block standardized, and the two columns of a pair
         //     conjugate. A real eigenvalue has wi == 0.
         let mut i = 0;
         while i < n {
@@ -572,7 +572,7 @@ fn dsyev_agrees_with_the_reference() {
 
         for upper in [false, true] {
             // `mat_eigen_sym` is the public entry point, so this checks the
-            // observable result rather than an internal factorisation.
+            // observable result rather than an internal factorization.
             let mut work = a.clone();
             let mut l = Vector::new(n);
             crate::mat_eigen_sym(&mut l, &mut work, upper).expect("native dsyev");
@@ -650,7 +650,7 @@ fn dsyev_agrees_with_the_reference() {
 /// `mat_eigen_lr` returns both sets, so this also checks that the two agree on
 /// the eigenvalue list -- a left eigenvector paired with the wrong eigenvalue is
 /// the specific mistake that a naive "run dgeev on A^T and hand back its vectors"
-/// would make, since two independent factorisations need not deflate in the same
+/// would make, since two independent factorizations need not deflate in the same
 /// order.
 ///
 /// Only real data is used here, so `A^H = A^T` and the conjugate is trivial; the
@@ -736,7 +736,7 @@ fn mat_eigen_lr_left_eigenvectors_satisfy_their_defining_equation() {
 /// mistake as well as a value mistake.
 ///
 /// The rest of the test checks what the singular values alone cannot: that `U`
-/// and `V` are orthogonal (so the factorisation is a real SVD and not just the
+/// and `V` are orthogonal (so the factorization is a real SVD and not just the
 /// right spectrum), that `U S V^T` reconstructs `A`, and that `S` is
 /// non-negative. A routine that returned the right singular values with wrong
 /// vectors would pass a values-only check and fail these.
@@ -1009,7 +1009,7 @@ fn zheev_agrees_with_the_reference() {
     }
 }
 
-/// The generalised eigenproblem `A v = lambda B v`, by its defining equation.
+/// The generalized eigenproblem `A v = lambda B v`, by its defining equation.
 ///
 /// `dggev` returns `(alpha, beta)` with `lambda = alpha/beta`, so comparing
 /// eigenvalues against a reference means comparing ratios -- and a ratio is
@@ -1041,7 +1041,7 @@ fn dggev_satisfies_its_defining_equation() {
         // `dggev` overwrites both matrices in place, as LAPACK does, so the
         // defining equation has to be checked against copies of the original
         // problem -- an earlier version of this test read the overwritten
-        // matrices back and so compared against the factorisation output.
+        // matrices back and so compared against the factorization output.
         let (a_orig, b_orig) = (ra.clone(), b.clone());
 
         let mut a = ra.clone();
@@ -1092,7 +1092,7 @@ fn dggev_satisfies_its_defining_equation() {
                 }
                 assert!(
                     worst / scale_b < 1e-10,
-                    "n={n}: the complex generalised eigenvector for lambda = {lr}+{li}i has residual {worst}"
+                    "n={n}: the complex generalized eigenvector for lambda = {lr}+{li}i has residual {worst}"
                 );
                 j += 2;
             } else {
@@ -1108,7 +1108,7 @@ fn dggev_satisfies_its_defining_equation() {
                 }
                 assert!(
                     worst / scale_b < 1e-10,
-                    "n={n}: the real generalised eigenvector for lambda = {lr} has residual {worst}"
+                    "n={n}: the real generalized eigenvector for lambda = {lr} has residual {worst}"
                 );
                 j += 1;
             }

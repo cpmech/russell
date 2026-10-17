@@ -15,7 +15,6 @@ keywords = ["matrix", "sparse", "solver"]
 # Links an external BLAS/LAPACK through `russell_lab`; off for targets
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
-cudss = []
 intel_mkl = ["russell_lab/intel_mkl"]
 local_sparse = []
 

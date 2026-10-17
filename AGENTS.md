@@ -52,7 +52,7 @@ come from the native or accelerator path.
 
 Extra features:
 
-- `local_sparse` (and `cudss`) on `russell_sparse`, `russell_ode`,
+- `local_sparse` on `russell_sparse`, `russell_ode`,
   `russell_pde`, `russell_nonlin` — require locally compiled MUMPS/SuiteSparse
   (see `zscripts/*-compile-mumps.bash` and `zscripts/*-compile-suitesparse.bash`).
 

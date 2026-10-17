@@ -4,7 +4,7 @@
 
 The UMFPACK wrapper uses a two-layer C/Rust FFI pattern. The C layer (`interface_umfpack.c`) manages UMFPACK's symbolic/numeric handles and control/info arrays, while the Rust layer (`solver_umfpack.rs`) provides a safe, idiomatic interface via `LinSolTrait`, handling COO→CSC conversion, validation, ordering/scaling mapping, and timing.
 
-Unlike the cuDSS wrapper, UMFPACK operates entirely on the CPU and uses CSC (Compressed Sparse Column) format.
+UMFPACK operates entirely on the CPU and uses CSC (Compressed Sparse Column) format.
 
 ---
 
@@ -97,7 +97,7 @@ struct InterfaceUMFPACK {
 }
 ```
 
-Same zero-sized type + PhantomData pattern as cuDSS. Both `InterfaceUMFPACK` and `SolverUMFPACK` are `unsafe impl Send`.
+`InterfaceUMFPACK` and `SolverUMFPACK` use the zero-sized type + `PhantomData` pattern and are `unsafe impl Send`.
 
 ### Extern "C" Declarations
 
@@ -218,7 +218,7 @@ The functions `umfpack_ordering()` and `umfpack_scaling()` translate the generic
 
 ## Key Design Points
 
-1. **CSC format** — Unlike cuDSS (which uses CSR), UMFPACK uses Compressed Sparse Column. The Rust layer converts COO → CSC, not CSR.
+1. **CSC format** — UMFPACK uses Compressed Sparse Column. The Rust layer converts COO → CSC, not CSR.
 
 2. **Symmetric matrix handling** — UMFPACK requires `Sym::YesFull` (the full matrix, not just one triangle). If a symmetric matrix is provided with only the lower or upper triangle, Rust rejects it.
 

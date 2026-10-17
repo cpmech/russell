@@ -160,7 +160,7 @@ extern "C" {
 | `fortran_indices_i`          | `Vec<i32>`            | One-based row indices (converted from COO)      |
 | `fortran_indices_j`          | `Vec<i32>`            | One-based column indices (converted from COO)   |
 
-**Note**: Unlike cuDSS and UMFPACK, MUMPS does NOT store a CSR or CSC copy. It keeps the raw COO indices (converted to one-based Fortran indexing).
+**Note**: Unlike UMFPACK, MUMPS does NOT store a CSR or CSC copy. It keeps the raw COO indices (converted to one-based Fortran indexing).
 
 ### `Drop` Implementation
 
@@ -246,7 +246,7 @@ The number of OpenMP threads is passed via `ICNTL(16)`. The Rust code defaults t
 
 ## Key Design Points
 
-1. **COO format with one-based indices** — Unlike cuDSS (CSR) and UMFPACK (CSC), MUMPS accepts raw COO data. The Rust layer converts zero-based indices to Fortran-style one-based by adding 1.
+1. **COO format with one-based indices** — Unlike UMFPACK (CSC), MUMPS accepts raw COO data. The Rust layer converts zero-based indices to Fortran-style one-based by adding 1.
 
 2. **Job-based pipeline** — MUMPS uses a stateful job model: `-1` init → `1` analyze → `2` factorize → `3` solve → `-2` terminate. The C layer orchestrates these, setting ICNTL parameters before each phase and reading INFOG/RINFOG after.
 

@@ -23,7 +23,6 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 ## Introduction
 
 This library implements tools for handling sparse matrices and functions to solve large sparse systems using high-performant **direct** solvers:
-* [cuDSS](https://developer.nvidia.com/cudss) - GPU-accelerated direct solver. Note that cuDSS is in **Preview Mode** 🚧.
 * [MUMPS](https://mumps-solver.org) - For very large systems, supporting parallel execution
 * [UMFPACK](https://github.com/DrTimothyAldenDavis/SuiteSparse) - Highly recommended for general sequential use
 
@@ -80,7 +79,6 @@ The following (Rust) features are available:
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
-* `cudss`: Enable the NVIDIA cuDSS GPU solver (requires CUDA and cuDSS)
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

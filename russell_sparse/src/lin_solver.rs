@@ -1,6 +1,3 @@
-#[cfg(feature = "cudss")]
-use crate::SolverCUDSS;
-
 #[cfg(feature = "local_sparse")]
 use super::SolverMUMPS;
 
@@ -114,28 +111,14 @@ impl<'a> LinSolver<'a> {
     ///
     /// * `genie` -- the actual implementation that does all the magic
     pub fn new(genie: Genie) -> Result<Self, StrError> {
-        #[cfg(all(feature = "cudss", feature = "local_sparse"))]
+        // One match with `#[cfg]` on the arms: a solver that is compiled out says
+        // which feature to enable, instead of needing one whole copy of this match
+        // per combination of features.
         let actual: Box<dyn Send + LinSolTrait> = match genie {
-            Genie::Cudss => Box::new(SolverCUDSS::new()?),
+            #[cfg(feature = "local_sparse")]
             Genie::Mumps => Box::new(SolverMUMPS::new()?),
-            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
-        };
-        #[cfg(all(not(feature = "cudss"), feature = "local_sparse"))]
-        let actual: Box<dyn Send + LinSolTrait> = match genie {
-            Genie::Cudss => return Err("cuDSS solver is not available"),
-            Genie::Mumps => Box::new(SolverMUMPS::new()?),
-            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
-        };
-        #[cfg(all(feature = "cudss", not(feature = "local_sparse")))]
-        let actual: Box<dyn Send + LinSolTrait> = match genie {
-            Genie::Cudss => Box::new(SolverCUDSS::new()?),
-            Genie::Mumps => return Err("MUMPS solver is not available"),
-            Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
-        };
-        #[cfg(all(not(feature = "cudss"), not(feature = "local_sparse")))]
-        let actual: Box<dyn Send + LinSolTrait> = match genie {
-            Genie::Cudss => return Err("cuDSS solver is not available"),
-            Genie::Mumps => return Err("MUMPS solver is not available"),
+            #[cfg(not(feature = "local_sparse"))]
+            Genie::Mumps => return Err("MUMPS is not available; enable the `local_sparse` feature"),
             Genie::Umfpack => Box::new(SolverUMFPACK::new()?),
         };
         Ok(LinSolver { actual })
@@ -234,18 +217,6 @@ mod tests {
 
     #[cfg(feature = "local_sparse")]
     use serial_test::serial;
-
-    #[test]
-    #[serial]
-    #[cfg(feature = "cudss")]
-    fn lin_solver_compute_works_cudss() {
-        let (coo, _, _, _) = Samples::mkl_symmetric_5x5_lower(true, false);
-        let mut x = Vector::new(5);
-        let rhs = Vector::from(&[1.0, 2.0, 3.0, 4.0, 5.0]);
-        LinSolver::compute(Genie::Cudss, &mut x, &coo, &rhs, None).unwrap();
-        let x_correct = vec![-979.0 / 3.0, 983.0, 1961.0 / 12.0, 398.0, 123.0 / 2.0];
-        vec_approx_eq(&x, &x_correct, 1e-10);
-    }
 
     #[test]
     #[serial]

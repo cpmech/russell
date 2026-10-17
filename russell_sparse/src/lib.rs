@@ -386,20 +386,6 @@ pub use verify_lin_sys::*;
 mod util;
 pub use util::*;
 
-// ----- cudss
-
-#[cfg(feature = "cudss")]
-mod complex_solver_cudss;
-
-#[cfg(feature = "cudss")]
-mod solver_cudss;
-
-#[cfg(feature = "cudss")]
-pub use complex_solver_cudss::*;
-
-#[cfg(feature = "cudss")]
-pub use solver_cudss::*;
-
 // ----- MUMPS
 
 #[cfg(feature = "local_sparse")]

@@ -1,5 +1,5 @@
 use super::ComplexVector;
-use crate::{StrError, array_plus_op_complex};
+use crate::{StrError, array_plus_op};
 
 /// Performs the addition of two vectors (without coefficients)
 ///
@@ -28,7 +28,7 @@ use crate::{StrError, array_plus_op_complex};
 /// }
 /// ```
 pub fn complex_vec_plus(w: &mut ComplexVector, u: &ComplexVector, v: &ComplexVector) -> Result<(), StrError> {
-    array_plus_op_complex(w.as_mut_data(), u.as_data(), v.as_data())
+    array_plus_op(w.as_mut_data(), u.as_data(), v.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

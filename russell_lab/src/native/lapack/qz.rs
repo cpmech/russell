@@ -810,7 +810,7 @@ fn dggbal_p(n: usize, a: &mut [f64], lda: usize, b: &mut [f64], ldb: usize) -> (
 }
 
 /// Swap the `count` entries of rows `i` and `m` starting at column `j0`.
-fn swap_rows(a: &mut [f64], ld: usize, i: usize, m: usize, j0: usize, count: usize) {
+fn swap_rows<T: Copy>(a: &mut [T], ld: usize, i: usize, m: usize, j0: usize, count: usize) {
     if i == m {
         return;
     }
@@ -820,7 +820,7 @@ fn swap_rows(a: &mut [f64], ld: usize, i: usize, m: usize, j0: usize, count: usi
 }
 
 /// Swap the `count` entries of columns `j` and `m` starting at row `i0`.
-fn swap_cols(a: &mut [f64], ld: usize, j: usize, m: usize, i0: usize, count: usize) {
+fn swap_cols<T: Copy>(a: &mut [T], ld: usize, j: usize, m: usize, i0: usize, count: usize) {
     if j == m {
         return;
     }
@@ -829,11 +829,14 @@ fn swap_cols(a: &mut [f64], ld: usize, j: usize, m: usize, i0: usize, count: usi
     }
 }
 
-/// `dggbak` with `JOB = 'P'`: undo the permutation recorded in `lscale`/`rscale`
-/// on `m` eigenvectors stored in the columns of `v`. `right` selects the right
-/// (`rscale`) or left (`lscale`) permutation.
+/// `dggbak`/`zggbak` with `JOB = 'P'`: undo the permutation recorded in
+/// `lscale`/`rscale` on `m` eigenvectors stored in the columns of `v`. `right`
+/// selects the right (`rscale`) or left (`lscale`) permutation.
+///
+/// The reference has one routine per type; the body only swaps rows of `v`, so
+/// [`dggbak_p`] and [`zggbak_p`] are thin wrappers over this.
 #[allow(clippy::too_many_arguments)]
-fn dggbak_p(
+fn ggbak_p<T: Copy>(
     right: bool,
     n: usize,
     ilo: usize,
@@ -841,7 +844,7 @@ fn dggbak_p(
     lscale: &[f64],
     rscale: &[f64],
     m: usize,
-    v: &mut [f64],
+    v: &mut [T],
     ldv: usize,
 ) {
     if n == 0 || m == 0 {
@@ -870,6 +873,38 @@ fn dggbak_p(
         }
         swap_rows(v, ldv, i, k - 1, 0, m);
     }
+}
+
+/// `dggbak` with `JOB = 'P'`, for real eigenvectors: see [`ggbak_p`].
+#[allow(clippy::too_many_arguments)]
+fn dggbak_p(
+    right: bool,
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    lscale: &[f64],
+    rscale: &[f64],
+    m: usize,
+    v: &mut [f64],
+    ldv: usize,
+) {
+    ggbak_p(right, n, ilo, ihi, lscale, rscale, m, v, ldv)
+}
+
+/// `zggbak` with `JOB = 'P'`, for complex eigenvectors: see [`ggbak_p`].
+#[allow(clippy::too_many_arguments)]
+fn zggbak_p(
+    right: bool,
+    n: usize,
+    ilo: usize,
+    ihi: usize,
+    lscale: &[f64],
+    rscale: &[f64],
+    m: usize,
+    v: &mut [Complex64],
+    ldv: usize,
+) {
+    ggbak_p(right, n, ilo, ihi, lscale, rscale, m, v, ldv)
 }
 
 /// `dhgeqz` with `JOB = 'S'` or `'E'`: the QZ iteration.
@@ -3293,26 +3328,6 @@ fn zgghrd(
     }
 }
 
-/// Swap the `count` entries of rows `i` and `m` starting at column `j0`.
-fn zswap_rows(a: &mut [Complex64], ld: usize, i: usize, m: usize, j0: usize, count: usize) {
-    if i == m {
-        return;
-    }
-    for j in j0..(j0 + count) {
-        a.swap(i + j * ld, m + j * ld);
-    }
-}
-
-/// Swap the `count` entries of columns `j` and `m` starting at row `i0`.
-fn zswap_cols(a: &mut [Complex64], ld: usize, j: usize, m: usize, i0: usize, count: usize) {
-    if j == m {
-        return;
-    }
-    for i in i0..(i0 + count) {
-        a.swap(i + j * ld, i + m * ld);
-    }
-}
-
 /// `zggbal` with `JOB = 'P'`: permute the pair `(a, b)` to isolate eigenvalues
 /// and return `(ilo, ihi, lscale, rscale)` (0-based `ilo`, exclusive `ihi`).
 ///
@@ -3401,15 +3416,15 @@ fn zggbal_p(
             lscale[m - 1] = ifound as f64;
             if ifound != m {
                 // ZSWAP(N-K+1, A(I,K), LDA, A(M,K), LDA)
-                zswap_rows(a, lda, ifound - 1, m - 1, k - 1, n - k + 1);
-                zswap_rows(b, ldb, ifound - 1, m - 1, k - 1, n - k + 1);
+                swap_rows(a, lda, ifound - 1, m - 1, k - 1, n - k + 1);
+                swap_rows(b, ldb, ifound - 1, m - 1, k - 1, n - k + 1);
             }
             // label 170
             rscale[m - 1] = jfound as f64;
             if jfound != m {
                 // ZSWAP(L, A(1,J), 1, A(1,M), 1)
-                zswap_cols(a, lda, jfound - 1, m - 1, 0, l);
-                zswap_cols(b, ldb, jfound - 1, m - 1, 0, l);
+                swap_cols(a, lda, jfound - 1, m - 1, 0, l);
+                swap_cols(b, ldb, jfound - 1, m - 1, 0, l);
             }
             let _ = found_flow;
             flow = 1;
@@ -3461,13 +3476,13 @@ fn zggbal_p(
             // label 160 with IFLOW = 2
             lscale[m2 - 1] = ifound2 as f64;
             if ifound2 != m2 {
-                zswap_rows(a, lda, ifound2 - 1, m2 - 1, k - 1, n - k + 1);
-                zswap_rows(b, ldb, ifound2 - 1, m2 - 1, k - 1, n - k + 1);
+                swap_rows(a, lda, ifound2 - 1, m2 - 1, k - 1, n - k + 1);
+                swap_rows(b, ldb, ifound2 - 1, m2 - 1, k - 1, n - k + 1);
             }
             rscale[m2 - 1] = jfound2 as f64;
             if jfound2 != m2 {
-                zswap_cols(a, lda, jfound2 - 1, m2 - 1, 0, l);
-                zswap_cols(b, ldb, jfound2 - 1, m2 - 1, 0, l);
+                swap_cols(a, lda, jfound2 - 1, m2 - 1, 0, l);
+                swap_cols(b, ldb, jfound2 - 1, m2 - 1, 0, l);
             }
             // label 180 -> 90 -> 100
             k += 1;
@@ -3479,43 +3494,6 @@ fn zggbal_p(
         rscale[i] = 1.0;
     }
     (k - 1, l, lscale, rscale)
-}
-
-/// `zggbak` with `JOB = 'P'`: undo the permutation recorded in `lscale`/`rscale`
-/// on `m` eigenvectors stored in the columns of `v`. `right` selects the right
-/// (`rscale`) or left (`lscale`) permutation. Same port as [`dggbak_p`].
-#[allow(clippy::too_many_arguments)]
-fn zggbak_p(
-    right: bool,
-    n: usize,
-    ilo: usize,
-    ihi: usize,
-    lscale: &[f64],
-    rscale: &[f64],
-    m: usize,
-    v: &mut [Complex64],
-    ldv: usize,
-) {
-    if n == 0 || m == 0 {
-        return;
-    }
-    let scale = if right { rscale } else { lscale };
-    if ilo > 0 {
-        for i in (0..ilo).rev() {
-            let k = scale[i] as usize;
-            if k == i + 1 {
-                continue;
-            }
-            zswap_rows(v, ldv, i, k - 1, 0, m);
-        }
-    }
-    for i in (ihi + 1)..n {
-        let k = scale[i] as usize;
-        if k == i + 1 {
-            continue;
-        }
-        zswap_rows(v, ldv, i, k - 1, 0, m);
-    }
 }
 
 /// The standardisation of one diagonal element that ends a deflation in

@@ -12,8 +12,8 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [features]
-# Native Rust BLAS/LAPACK is the default, so this is deliberately empty. There is
-# no external library to find, nothing to link, and the crate builds anywhere --
+# Native Rust BLAS/LAPACK is the default, so no feature is enabled unless asked
+# for. There is no external library to find, nothing to link, and the crate builds anywhere --
 # including `wasm32-unknown-unknown`, which has no libc for the C shim and no BLAS
 # to link against.
 #
@@ -26,7 +26,6 @@ keywords = ["matrix", "vector", "linspace"]
 # They are mutually exclusive. Enabling neither (the default) uses `src/native`,
 # whose routines are plain Rust and are tested for numerical parity against the
 # reference LAPACK.
-default = []
 # Link the C shim against OpenBLAS.
 open_blas = []
 # Link the C shim against Intel oneAPI MKL.

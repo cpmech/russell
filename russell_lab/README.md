@@ -15,6 +15,7 @@ _This crate is part of [Russell - Rust Scientific Library](https://github.com/cp
 - [Installation](#installation)
   - [Setting Cargo.toml up](#setting-cargotoml-up)
   - [Optional features](#optional-features)
+  - [Performance of the backends](#performance-of-the-backends)
 - [🌟 Examples](#-examples)
   - [Running an example with Intel MKL](#running-an-example-with-intel-mkl)
   - [Sorting a few values in place](#sorting-a-few-values-in-place)
@@ -116,6 +117,44 @@ library to install, nothing to link. The following (Rust) features are available
 `open_blas` and `intel_mkl` are mutually exclusive. Note that the
 [main README file](https://github.com/cpmech/russell) presents the steps to
 compile the required libraries according to each feature.
+
+### Performance of the backends
+
+The native routines are the default because they need nothing installed, but an
+accelerator is faster for large problems. Measured with `--release` (this
+workspace's profile: `lto = true`, `codegen-units = 1`) on an Intel Core
+i9-13900KF, best of 5 to 20 runs, with OpenBLAS pinned to one thread so the
+kernels are compared like for like:
+
+| operation | size | native | `open_blas` | ratio |
+| --- | --- | --- | --- | --- |
+| `mat_mat_mul` (`dgemm`) | 256 × 256 | 0.85 ms (39 GFLOP/s) | 0.43 ms (79 GFLOP/s) | 2.0x |
+| `mat_mat_mul` (`dgemm`) | 512 × 512 | 6.76 ms (40 GFLOP/s) | 3.31 ms (81 GFLOP/s) | 2.0x |
+| `mat_mat_mul` (`dgemm`) | 1024 × 1024 | 51.04 ms (42 GFLOP/s) | 24.69 ms (87 GFLOP/s) | 2.1x |
+| `solve_lin_sys` (`dgesv`) | 128 | 0.94 ms | 0.05 ms | 19x |
+| `solve_lin_sys` (`dgesv`) | 512 | 98.02 ms | 1.60 ms | 61x |
+
+The matrix multiplication kernels reach about half the throughput of a tuned
+BLAS on one core, roughly 2x slower -- OpenBLAS uses a more developed micro-kernel
+and packing scheme than the AVX2 kernel here. The linear solver is further behind:
+`dgetrf` is not blocked, so the LU factorization misses the cache on larger
+matrices, and that is where most of the gap comes from.
+
+OpenBLAS also threads by default. With its own thread count on the same 32-core
+machine, `dgemm` at 1024 × 1024 takes 2.97 ms (723 GFLOP/s) and `dgesv` at 512
+takes 1.06 ms; the native routines run on one thread and have no threading of
+their own.
+
+Reproduce with the example, once per backend (run-to-run variation is about 5%):
+
+```bash
+cargo run --release --example backend_benchmark
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+    cargo run --release --example backend_benchmark --features open_blas
+```
+
+Both thread variables are needed because OpenMP builds of OpenBLAS read
+`OMP_NUM_THREADS` and ignore `OPENBLAS_NUM_THREADS`.
 
 
 

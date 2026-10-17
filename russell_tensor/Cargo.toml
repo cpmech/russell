@@ -17,17 +17,13 @@ keywords = ["tensor", "continuum", "mechanics"]
 # so the crate builds for any target, including `wasm32-unknown-unknown`.
 #
 # Enable `open_blas` (or `intel_mkl`) only to swap the native routines for a tuned library.
-default = []
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
 
 [dependencies]
-# `default-features = false` is required, not merely tidy: `russell_lab`'s
-# `default` is empty, but a consumer that disables this crate's defaults must not
-# have `russell_lab`'s defaults re-enabled underneath it. Cargo offers no way to
-# turn a dependency's default features off from the outside, so the declaration
-# here is the only place it can be done. The `open_blas` feature below re-enables
-# what this crate needs.
+# Opt out of `russell_lab`'s defaults. Today its default is empty, so this
+# changes nothing in the build; it is here so this crate cannot silently inherit
+# a default feature if `russell_lab` ever gains one.
 russell_lab = { path = "../russell_lab", version = "3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

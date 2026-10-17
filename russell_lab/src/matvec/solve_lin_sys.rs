@@ -36,7 +36,9 @@ unsafe extern "C" {
 /// b := a⁻¹⋅b == x
 /// ```
 ///
-/// The solution is obtained via LU decomposition using Lapack dgesv routine.
+/// The solution is obtained via LU decomposition with partial pivoting (`dgesv`:
+/// the native Rust implementation by default, LAPACK through the C shim with
+/// `oblas`/`mkl`).
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 ///

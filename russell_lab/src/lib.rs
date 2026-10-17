@@ -85,9 +85,9 @@
 //!
 //! All vector functions are prefixed with `vec_` and `complex_vec_`, whereas all matrix functions are prefixed with `mat_` and `complex_mat_`. The `matvec` functions have varied names, albeit descriptive.
 //!
-//! `russell_lab` implements several other interfaces to BLAS/LAPACK. However, some functions are complemented with native Rust code to provide a higher-level interface or improve the functionality. For instance, after calling the DGEEV function, `mat_eigen` post-processes the results via the `dgeev_data` function to extract the results from LAPACK's compact representation, generating a more convenient interface to the user.
+//! The eigen-decomposition and SVD interfaces are higher-level than the LAPACK drivers they follow. For instance, after the `dgeev` decomposition, `mat_eigen` post-processes the results via the `dgeev_data` function to unpack LAPACK's compact storage into one column per eigenvector, which is a more convenient interface.
 //!
-//! An example of added functionality is the `mat_pseudo_inverse` function, which computes the pseudo-inverse of a rectangular matrix using the singular-value decomposition. This function is based on the singular-value decomposition routine provided by LAPACK.
+//! An example of added functionality is the `mat_pseudo_inverse` function, which computes the pseudo-inverse of a rectangular matrix through the singular-value decomposition (`mat_svd`), on top of `dgesvd`.
 //!
 //! ## Complex numbers
 //!
@@ -146,31 +146,30 @@
 //! }
 //! ```
 //!
-//! # Building without BLAS/LAPACK
+//! # BLAS/LAPACK backends
 //!
-//! Native builds use the `lapack` feature (on by default), which compiles the C
-//! shim in `c_code/interface_blas.c` and links it against OpenBLAS or Intel MKL.
+//! The default backend is **native Rust** (`src/native/`): plain Rust code, no
+//! external library to find and nothing to link, so it builds for any target
+//! including `wasm32-unknown-unknown`. The eigen-decompositions, the SVD, the
+//! pseudo-inverse, Cholesky, the linear solvers and the complex routines all work
+//! in this configuration; their numerical parity with reference LAPACK is tested
+//! through the development-only `oracle` feature (see `build.rs`).
 //!
-//! Targets that have no BLAS — `wasm32-unknown-unknown` in particular — must
-//! turn it off:
+//! Two opt-in features replace the native routines with an external library,
+//! through the C shim in `c_code/interface_blas.c`:
 //!
-//! ```text
-//! cargo build --target wasm32-unknown-unknown --no-default-features
-//! ```
+//! * `oblas` -- OpenBLAS, resolved via `pkg-config` (also needs its development
+//!   headers, e.g. `lapack.h`);
+//! * `mkl` -- Intel oneAPI MKL, expected under `/opt/intel/oneapi/mkl/<version>`.
 //!
-//! With `lapack` off, the shim is neither compiled nor linked (there is no wasm
-//! libc for it to compile against, and no OpenBLAS to link), and the functions
-//! on the paths a browser build needs fall back to the portable Rust kernels in
-//! `portable`: vector copy/scale/update/norm, matrix-vector and matrix-matrix
-//! multiplication, and matrix inversion.
+//! They are mutually exclusive (`build.rs` refuses both), and neither is a
+//! requirement: enabling one is a performance choice, not what makes the crate
+//! work.
 //!
-//! **This is a reduced configuration, not a full substitute.** Without `lapack`
-//! the eigen-decompositions, SVD, pseudo-inverse, Cholesky, `solve_lin_sys` and
-//! the complex-valued routines still compile, but they have no implementation to
-//! link against, so any binary that actually calls one will fail to link with an
-//! undefined-symbol error. That is fine for a consumer such as a mesh viewer,
-//! which needs geometry and linear algebra only; it is not fine for a consumer
-//! that solves systems or factorises matrices.
+//! The `small::*` kernels for stack-allocated matrices and the level-1/2/3
+//! fallbacks in `portable` are plain Rust in every configuration; `portable` is
+//! what a target without the C shim would otherwise need for matrix
+//! multiplication and inversion.
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;

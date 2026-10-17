@@ -1,43 +1,36 @@
-//! Portable Rust kernels used when the `lapack` feature is off.
+//! Portable Rust kernels: the fallbacks used where the tuned paths do not exist.
 //!
 //! # Why this exists
 //!
-//! On a native target the functions below take their fast path through the C
-//! shim (`c_code/interface_blas.c`) into BLAS/LAPACK. Targets such as
-//! `wasm32-unknown-unknown` have neither: there is no wasm libc for the shim to
-//! compile against (`inttypes.h` does not exist) and no OpenBLAS to link. With
-//! the `lapack` feature off the shim is not built, and the functions here
-//! provide a dependency-free replacement.
+//! The vector, matrix-vector and matrix-matrix functions take a fast path when
+//! one is available: [`crate::native::blas`] (blocked AVX2 `dgemm` on x86_64) in
+//! the default build, or the C shim into OpenBLAS/MKL with `oblas`/`mkl`. A
+//! `wasm32` target has neither, and the call sites select these kernels there by
+//! `target_arch = "wasm32"` -- not by a feature. They are deliberately plain
+//! implementations, not tuned ones: correctness and portability for the browser
+//! workloads, where the matrices are small.
 //!
-//! These are deliberately plain implementations, not tuned ones. The goal is
-//! correctness and portability for the mesh and geometry workloads that need a
-//! browser build, where matrices are small and the dominant cost is elsewhere.
+//! Everything else -- the eigen-decompositions, the SVD, Cholesky, the linear
+//! solvers and the complex routines -- is native Rust on every target, so it does
+//! not need a portable twin here.
 //!
-//! # What is covered
+//! # The kernels
 //!
-//! A function lives here only if it is on a path that a `lapack`-less consumer
-//! actually needs. Everything else that calls into BLAS/LAPACK is compiled out
-//! entirely when `lapack` is off, so the crate still links.
-//!
-//! | Function | Fast path it replaces |
+//! | Function | Fast path it stands in for |
 //! |---|---|
-//! | [`vec_copy`] | `cblas_dcopy` |
-//! | [`vec_scale`] | `cblas_dscal` |
-//! | [`vec_update`] | `cblas_daxpy` |
-//! | [`vec_norm`] | `cblas_dnrm2`, `cblas_dasum`, `cblas_idamax` |
-//! | [`mat_vec_mul`] | `cblas_dgemv` |
-//! | [`mat_mat_mul`] | `cblas_dgemm` |
-//! | [`mat_t_mat_mul`] | `cblas_dgemm` (transposed) |
-//! | [`mat_inverse`] | `dgetrf` + `dgetri` |
+//! | [`vec_copy_data`] | `dcopy` |
+//! | [`vec_scale_data`] | `dscal` |
+//! | [`vec_update_data`] | `daxpy` |
+//! | [`vec_norm_data`] | `dnrm2`, `dasum`, `idamax` |
+//! | [`mat_vec_mul_data`] | `dgemv` |
+//! | [`mat_mat_mul_data`] | `dgemm` |
+//! | [`mat_t_mat_mul_data`] | `dgemm` (transposed) |
+//! | [`lu_decompose`], [`lu_invert`] | `dgetrf` + `dgetri` |
 //!
-//! Notably **not** covered, and therefore unavailable without `lapack`:
-//! eigen-decompositions, SVD, pseudo-inverse, Cholesky, `solve_lin_sys`, and
-//! the complex-valued routines. Each of those is gated at its definition.
+//! `lu_decompose`/`lu_invert` are also what [`crate::matrix::mat_inverse`] runs in
+//! a native build today, even though [`crate::native::lapack::dgetrf`] exists --
+//! see the note in that function.
 
-// With `lapack` on, the fast paths are used and none of these kernels are
-// called. They are still compiled, so that the feature combinations differ only
-// in which implementation runs, and so that the tests below always exercise the
-// portable code on a native target.
 #![cfg_attr(any(feature = "oblas", feature = "mkl"), allow(dead_code))]
 
 use crate::{Norm, StrError};
@@ -336,9 +329,9 @@ mod tests {
         }
     }
 
-    /// The portable kernels must agree with the BLAS path. `mat_t_mat_mul` and
-    /// `mat_mat_mul` are backed by `cblas_dgemm` (available because this test
-    /// only runs with `lapack` on), so they define the expected result.
+    /// The portable kernels must agree with the fast path. `mat_t_mat_mul` and
+    /// `mat_mat_mul` go through `native::blas::dgemm` in this configuration, so
+    /// they define the expected result.
     ///
     /// This replaces an earlier hand-derived element formula, which was wrong
     /// about the column-major strides while looking entirely plausible.

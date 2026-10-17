@@ -34,7 +34,8 @@ unsafe extern "C" {
 /// ```
 ///
 /// The input matrix `a` is stored row-major (as a Rust 2D array) and is copied
-/// into a column-major buffer before being passed to LAPACK (`dgesvd`).
+/// into a column-major buffer before `dgesvd` sees it (the native implementation
+/// by default, the C shim with `oblas`/`mkl`).
 ///
 /// See also: [`crate::mat_svd`] (the heap-allocated counterpart), the LAPACK
 /// reference <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>,
@@ -54,7 +55,8 @@ unsafe extern "C" {
 ///
 /// # Errors
 ///
-/// Returns an error if `M` or `N` is zero, if `s.len() != min(M,N)`, or if LAPACK fails.
+/// Returns an error if `M` or `N` is zero, if `s.len() != min(M,N)`, or if `dgesvd`
+/// fails (it reports only a failure to converge).
 ///
 /// # Examples
 ///

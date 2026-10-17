@@ -36,17 +36,17 @@ dependency declaration.
 it, so the native routines can be tested for numerical parity against the
 reference. This is the only practicable way to check an eigenvalue or an SVD.
 
-It requires `RUSSELL_ORACLE_ROOT` pointing at a CMake build directory of LAPACK
+It requires `RUSSELL_DEV_LAPACK_ROOT` pointing at a CMake build directory of LAPACK
 3.12.1 with `include/` and `lib/` holding `lapack.h`, `cblas.h`, `liblapack.so`
 and `libcblas.so`. There is **no default**, deliberately: hardcoding one would put
 a developer's directory layout into released source. `build.rs` checks for the
 files and fails with an explanation rather than a link error.
 
 ```bash
-RUSSELL_ORACLE_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
+RUSSELL_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
 ```
 
-Anything the oracle links is a reference for the *tests*; the crate's own symbols
+Anything the reference build links is a reference for the *tests*; the crate's own symbols
 come from the native or accelerator path.
 
 Extra features:
@@ -63,15 +63,15 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 
 ```bash
 cargo test -p russell_lab --lib                     # 1193 pass, 0 fail, 0 ignored
-RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
+RUSSELL_DEV_LAPACK_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
   cargo test -p russell_lab --lib --features dev_lapack # 1206 pass, 0 fail
 ```
 
 Both configurations are known-good on the current tree of `native-lapack`, with
-**zero** failures. The oracle run adds the parity tests and is otherwise the same
+**zero** failures. The `dev_lapack` run adds the parity tests and is otherwise the same
 native path.
 
-The `dev_lapack` feature needs `RUSSELL_ORACLE_ROOT` set to a valid CMake build
+The `dev_lapack` feature needs `RUSSELL_DEV_LAPACK_ROOT` set to a valid CMake build
 directory. The LAPACK *source* tree is not one -- it has no `include/` or `lib/`.
 For the tree on this machine that is
 `/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
@@ -173,9 +173,11 @@ permutation order (`(4,3,5)`, where 3.12.1 gives `(4,5,3)`), and `dchkbl` only
 *reports* its largest error instead of asserting it, so the drift has never been
 flagged -- its own run prints "example number having largest error = 5".
 
-Run the oracle tests in the same target directory as the default build. Mixing
-`--features dev_lapack` with `--features open_blas` will not link: both provide the BLAS
-symbols.
+Run the `dev_lapack` parity tests in the same target directory as the default build.
+Combining `--features dev_lapack` with an accelerator does link -- the reference
+copy's entry points are prefixed (`dev_lapack_c_*`) so they do not collide -- but
+the process then loads two BLAS implementations, which is a smoke test at best;
+run `dev_lapack` alone.
 
 ### Hard constraints
 
@@ -207,7 +209,7 @@ symbols.
 
 Report failures and uncertainty plainly. If you turn out to be wrong about
 something you said earlier, say so. Do not claim a verification you did not run
--- a previous session claimed the oracle was working when it had not compiled
+-- a previous session claimed the `dev_lapack` build worked when it had not compiled
 since a rename, and that had to be corrected.
 
 Two lessons from this work are worth more than the rest, because both cost hours:
@@ -316,7 +318,7 @@ cargo test -p russell_lab --features open_blas
 cargo test -p russell_lab --features intel_mkl
 
 # Numerical parity of the native routines against the reference LAPACK.
-RUSSELL_ORACLE_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
+RUSSELL_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
 
 # Whole workspace (sparse crates need the locally compiled libraries)
 cargo test --workspace --features local_sparse
@@ -445,7 +447,7 @@ Two things worth knowing before adding one:
    ```
 
    and the shim-only imports are `#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]`
-   (plus `feature = "dev_lapack"` for `CcBool`, which the oracle shim also uses).
+   (plus `feature = "dev_lapack"` for `CcBool`, which the reference shim also uses).
    Keep both when editing those files: an unconditional `#[allow]` would hide the
    same warning in the accelerated build, where it would be a real mistake. This
    is deliberately preferred over moving the declarations into the `cfg` block --

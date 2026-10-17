@@ -181,13 +181,13 @@ pub use num_complex::ComplexFloat;
 pub mod algo;
 pub mod base;
 pub mod check;
+#[cfg(feature = "dev_lapack")]
+pub mod dev_lapack;
 mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
 pub mod native;
-#[cfg(feature = "dev_lapack")]
-pub mod oracle;
 mod portable;
 pub mod small;
 pub mod vector;

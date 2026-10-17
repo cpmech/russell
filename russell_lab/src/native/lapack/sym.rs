@@ -1579,7 +1579,7 @@ mod tests {
                 // here: `dorgtr` forms `Q` from the reflectors in a fixed order,
                 // and there is a third way to get that comparison subtly wrong
                 // (as the two failed attempts at it here showed) for no extra
-                // coverage, since the oracle test is the stronger check.
+                // coverage, since the parity test is the stronger check.
                 let _ = &z_b;
             }
         }

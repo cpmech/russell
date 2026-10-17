@@ -1,17 +1,21 @@
 //! The reference LAPACK, for testing the native routines against.
 //!
-//! **Development only.** Enabled by the `dev_lapack` feature, which compiles
-//! `c_code/interface_blas.c` against a locally built LAPACK and links it. Not for
-//! release: it needs a LAPACK build on the machine (see `build.rs`, and
-//! `RUSSELL_ORACLE_ROOT` to point it elsewhere).
+//! **Development only.** Enabled by the `dev_lapack` feature, which compiles the
+//! crate's own `c_code/interface_blas.c` against a locally built LAPACK and links
+//! it -- the same shim the accelerators use, so the reference exercises exactly
+//! the argument marshaling the crate ships with. `build.rs` derives a copy with
+//! every entry point prefixed (`dev_lapack_c_*`) so it can be linked next to the
+//! normal shim without duplicate symbols. Not for release: it needs a LAPACK
+//! build on the machine (see `build.rs`, and `RUSSELL_DEV_LAPACK_ROOT` to point
+//! it elsewhere).
 //!
 //! # Declaration strategy: prefer the shim's wrappers
 //!
-//! The shim's `c_*` functions take `C_BOOL` instead of Fortran character
-//! arguments and supply the hidden string length themselves. Declaring those is
-//! much less error-prone than reproducing LAPACK's string ABI by hand, so this
-//! module uses them wherever they exist and only reaches for a raw `LAPACK_*`
-//! symbol when it does not.
+//! The shim's entry points take `C_BOOL` instead of Fortran character arguments
+//! and supply the hidden string length themselves. Declaring those is much less
+//! error-prone than reproducing LAPACK's string ABI by hand, so this module uses
+//! them wherever they exist and only reaches for a raw `LAPACK_*` symbol when it
+//! does not.
 //!
 //! # Column-major
 //!
@@ -32,7 +36,7 @@ use crate::internal::CcBool;
 unsafe extern "C" {
     /// `dgesv`: solve `A X = B`. Takes `nrhs` right-hand sides; the shim's
     /// signature is the general one even though `russell_lab` only uses one.
-    pub fn oracle_c_dgesv(
+    pub fn dev_lapack_c_dgesv(
         n: *const i32,
         nrhs: *const i32,
         a: *mut f64,
@@ -44,10 +48,17 @@ unsafe extern "C" {
     );
 
     /// `dgetrf`: LU factorization with partial pivoting, `m x n`.
-    pub fn oracle_c_dgetrf(m: *const i32, n: *const i32, a: *mut f64, lda: *const i32, ipiv: *mut i32, info: *mut i32);
+    pub fn dev_lapack_c_dgetrf(
+        m: *const i32,
+        n: *const i32,
+        a: *mut f64,
+        lda: *const i32,
+        ipiv: *mut i32,
+        info: *mut i32,
+    );
 
     /// `dgetri`: inverse from a `dgetrf` factorization.
-    pub fn oracle_c_dgetri(
+    pub fn dev_lapack_c_dgetri(
         n: *const i32,
         a: *mut f64,
         lda: *const i32,
@@ -58,14 +69,14 @@ unsafe extern "C" {
     );
 
     /// `dpotrf`: Cholesky factorization. `upper` selects the triangle to write.
-    pub fn oracle_c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
+    pub fn dev_lapack_c_dpotrf(upper: CcBool, n: *const i32, a: *mut f64, lda: *const i32, info: *mut i32);
 
     /// `zgetrf`: LU factorization of a complex matrix.
     ///
     /// `COMPLEX64` in the C shim is `lapack_complex_double`, which is two
     /// `double`s in sequence, so `Complex64` (which is `#[repr(C)] { re, im }`)
     /// is layout-compatible and can be passed directly.
-    pub fn oracle_c_zgetrf(
+    pub fn dev_lapack_c_zgetrf(
         m: *const i32,
         n: *const i32,
         a: *mut Complex64,
@@ -75,7 +86,7 @@ unsafe extern "C" {
     );
 
     /// `zgetri`: complex inverse from a `zgetrf` factorization.
-    pub fn oracle_c_zgetri(
+    pub fn dev_lapack_c_zgetri(
         n: *const i32,
         a: *mut Complex64,
         lda: *const i32,
@@ -86,7 +97,7 @@ unsafe extern "C" {
     );
 
     /// `zgesv`: complex solve `A X = B`.
-    pub fn oracle_c_zgesv(
+    pub fn dev_lapack_c_zgesv(
         n: *const i32,
         nrhs: *const i32,
         a: *mut Complex64,
@@ -98,10 +109,10 @@ unsafe extern "C" {
     );
 
     /// `zpotrf`: Hermitian positive-definite Cholesky.
-    pub fn oracle_c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);
+    pub fn dev_lapack_c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);
 
     /// `zheev`: eigenvalues (and optionally eigenvectors) of a Hermitian matrix.
-    pub fn oracle_c_zheev(
+    pub fn dev_lapack_c_zheev(
         calc_v: CcBool,
         upper: CcBool,
         n: *const i32,
@@ -115,7 +126,7 @@ unsafe extern "C" {
     );
 
     /// `dsyev`: eigenvalues (and optionally eigenvectors) of a symmetric matrix.
-    pub fn oracle_c_dsyev(
+    pub fn dev_lapack_c_dsyev(
         calc_v: CcBool,
         upper: CcBool,
         n: *const i32,
@@ -132,7 +143,7 @@ unsafe extern "C" {
     /// Eigenvalues come back as a real/imaginary pair because a real matrix can
     /// have complex conjugate pairs. Real eigenvectors are not returned for a
     /// complex pair, and `wi` must be inspected to know which case applies.
-    pub fn oracle_c_dgeev(
+    pub fn dev_lapack_c_dgeev(
         calc_vl: CcBool,
         calc_vr: CcBool,
         n: *const i32,
@@ -150,7 +161,7 @@ unsafe extern "C" {
     );
 
     /// `dgesvd`: singular value decomposition, `m x n`.
-    pub fn oracle_c_dgesvd(
+    pub fn dev_lapack_c_dgesvd(
         jobu_code: i32,
         jobvt_code: i32,
         m: *const i32,
@@ -211,7 +222,7 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            oracle_c_dgeev(
+            dev_lapack_c_dgeev(
                 C_FALSE,
                 want_vr,
                 &n_i32,
@@ -235,7 +246,7 @@ pub mod query {
         let mut work = vec![0.0f64; need];
         lwork = need as i32;
         unsafe {
-            oracle_c_dgeev(
+            dev_lapack_c_dgeev(
                 C_FALSE,
                 want_vr,
                 &n_i32,
@@ -265,7 +276,7 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            oracle_c_dsyev(
+            dev_lapack_c_dsyev(
                 jobz,
                 C_FALSE,
                 &n_i32,
@@ -284,7 +295,7 @@ pub mod query {
         let mut work = vec![0.0f64; need];
         lwork = need as i32;
         unsafe {
-            oracle_c_dsyev(
+            dev_lapack_c_dsyev(
                 jobz,
                 C_FALSE,
                 &n_i32,
@@ -310,7 +321,7 @@ pub mod query {
         let mut rwork = vec![0.0f64; (3 * n).max(1)];
         let mut lwork = -1i32;
         unsafe {
-            oracle_c_zheev(
+            dev_lapack_c_zheev(
                 jobz,
                 C_FALSE,
                 &n_i32,
@@ -330,7 +341,7 @@ pub mod query {
         let mut work = vec![Complex64::new(0.0, 0.0); need];
         lwork = need as i32;
         unsafe {
-            oracle_c_zheev(
+            dev_lapack_c_zheev(
                 jobz,
                 C_FALSE,
                 &n_i32,
@@ -356,7 +367,7 @@ pub mod query {
         let mut work = vec![0.0f64; 1];
         let mut lwork = -1i32;
         unsafe {
-            oracle_c_dgesvd(
+            dev_lapack_c_dgesvd(
                 svd_code::ALL,
                 svd_code::ALL,
                 &m_i32,
@@ -381,7 +392,7 @@ pub mod query {
         lwork = need as i32;
         let _ = min_mn;
         unsafe {
-            oracle_c_dgesvd(
+            dev_lapack_c_dgesvd(
                 svd_code::ALL,
                 svd_code::ALL,
                 &m_i32,

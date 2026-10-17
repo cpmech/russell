@@ -1251,7 +1251,7 @@ mod tests {
     use super::*;
 
     /// A deterministic rectangular matrix, the same construction the parity test
-    /// uses, so a failure here points at a shape the oracle test also covers.
+    /// uses, so a failure here points at a shape the parity test also covers.
     fn rect_sample(m: usize, n: usize) -> Vec<f64> {
         let mut a = vec![0.0; m * n];
         for i in 0..m {
@@ -1308,7 +1308,7 @@ mod tests {
 
     /// Reconstruction and orthogonality for every shape the parity test uses.
     ///
-    /// This is the oracle-free half of that test: it cannot check the singular
+    /// This is the reference-free half of that test: it cannot check the singular
     /// values against LAPACK, but it does catch wrong vectors, wrong pairing, and
     /// non-orthogonal factors.
     #[test]

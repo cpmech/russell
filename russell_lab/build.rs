@@ -17,7 +17,7 @@
 //!
 //! An optional third mode, `dev_lapack`, builds a prefixed copy of the same
 //! shim against a locally built reference LAPACK so the native routines can be
-//! checked for parity; see `compile_oracle` below.
+//! checked for parity; see `compile_dev_lapack` below.
 //!
 //! Note that the guard has to be here in `main` rather than inside
 //! `compile_blas`: the `#[cfg(feature = ...)]` blocks below then simply never
@@ -192,11 +192,11 @@ fn headers_available(include_paths: &[std::path::PathBuf]) -> bool {
 }
 
 fn main() {
-    // The oracle is independent of the accelerators: it exists so the *native*
+    // The reference build is independent of the accelerators: it exists so the *native*
     // routines can be tested against the reference implementation, so it is
     // handled before the accelerator branches below.
     #[cfg(feature = "dev_lapack")]
-    compile_oracle();
+    compile_dev_lapack();
 
     // Native Rust BLAS/LAPACK is the default: nothing to build, nothing to link,
     // and the crate compiles for any target. The two `cfg` blocks below then
@@ -224,24 +224,25 @@ fn main() {
 /// Compiles the C shim against a locally built LAPACK and links it, so the tests
 /// have a reference to compare the native routines against.
 ///
-/// Reuses `c_code/interface_blas.c` deliberately. That file is already known to
-/// drive the **column-major** `LAPACK_*` interface correctly -- `lapack.h` binds
+/// The shim itself is `c_code/interface_blas.c` -- already known to drive the
+/// **column-major** `LAPACK_*` interface correctly because `lapack.h` binds
 /// straight to the Fortran routines, unlike `LAPACKE_*`, which is row-major and
-/// would silently transpose every matrix. Writing a second shim would risk
-/// introducing exactly that mistake in the code whose whole purpose is to be
-/// trusted as the reference.
+/// would silently transpose every matrix. That one source is what keeps this
+/// reference trustworthy; the copy compiled here is derived from it mechanically
+/// (see [`prefixed_shim`]) so it cannot drift from the shim the crate actually
+/// ships with.
 ///
 /// # Layout expected
 ///
 /// A CMake build directory of LAPACK 3.12.1 that has `include/` and `lib/`
 /// containing `lapack.h`, `cblas.h`, `liblapack.so` and `libcblas.so`. Point
-/// `RUSSELL_ORACLE_ROOT` at it. There is deliberately no default: recording one
+/// `RUSSELL_DEV_LAPACK_ROOT` at it. There is deliberately no default: recording one
 /// would put a developer's directory layout into released source.
 #[cfg(feature = "dev_lapack")]
-fn compile_oracle() {
-    let root = std::env::var("RUSSELL_ORACLE_ROOT").unwrap_or_else(|_| {
+fn compile_dev_lapack() {
+    let root = std::env::var("RUSSELL_DEV_LAPACK_ROOT").unwrap_or_else(|_| {
         panic!(
-            "russell_lab: the `dev_lapack` feature needs RUSSELL_ORACLE_ROOT set to the CMake \
+            "russell_lab: the `dev_lapack` feature needs RUSSELL_DEV_LAPACK_ROOT set to the CMake \
              build directory of a LAPACK 3.12.1 build (the one containing include/ and lib/)"
         )
     });
@@ -253,7 +254,7 @@ fn compile_oracle() {
         panic!(
             "russell_lab: the `dev_lapack` feature needs a LAPACK build for its headers, \
              looked for {}/lapack.h and {}/cblas.h. \
-             Set RUSSELL_ORACLE_ROOT to the CMake build directory of a LAPACK 3.12.1 build.",
+             Set RUSSELL_DEV_LAPACK_ROOT to the CMake build directory of a LAPACK 3.12.1 build.",
             include.display(),
             include.display()
         );
@@ -261,25 +262,37 @@ fn compile_oracle() {
     if !lib.join("libcblas.so").is_file() {
         panic!(
             "russell_lab: the `dev_lapack` feature needs {}/libcblas.so for the `cblas_*` symbols; \
-             set RUSSELL_ORACLE_ROOT to the CMake build directory of a LAPACK 3.12.1 build",
+             set RUSSELL_DEV_LAPACK_ROOT to the CMake build directory of a LAPACK 3.12.1 build",
             lib.display()
         );
     }
     if !lib.join("liblapack.so").is_file() {
         panic!(
             "russell_lab: the `dev_lapack` feature needs {}/liblapack.so; \
-             set RUSSELL_ORACLE_ROOT to the CMake build directory of a LAPACK 3.12.1 build",
+             set RUSSELL_DEV_LAPACK_ROOT to the CMake build directory of a LAPACK 3.12.1 build",
             lib.display()
         );
     }
 
-    // The prefixed copy defines `oracle_c_*` rather than `c_*`, so it can be
-    // linked alongside the normal shim. Without that, `--features dev_lapack` would
-    // also need `open_blas`, and the parity tests could not run without OpenBLAS.
+    // A second copy of the shim can be linked alongside the normal one only if
+    // its entry points have different names, so this build derives one on the
+    // fly with each `c_*` renamed to `dev_lapack_c_*`. Deriving it mechanically
+    // (rather than keeping a copy in the tree) means the two can never drift:
+    // there is one `interface_blas.c`, and the prefixing is the only difference.
+    let out_dir =
+        std::path::PathBuf::from(std::env::var("OUT_DIR").expect("russell_lab: OUT_DIR must be set by cargo"));
+    let shim =
+        std::fs::read_to_string("c_code/interface_blas.c").expect("russell_lab: cannot read c_code/interface_blas.c");
+    let generated = prefixed_shim(&shim);
+    let prefixed_path = out_dir.join("interface_blas_dev_lapack.c");
+    std::fs::write(&prefixed_path, &generated).expect("russell_lab: cannot write the prefixed shim into OUT_DIR");
     cc::Build::new()
-        .file("c_code/interface_blas_oracle.c")
+        .file(&prefixed_path)
+        // The generated file sits in OUT_DIR, so the shim's own `constants.h`
+        // has to be found through an explicit include directory.
+        .include("c_code")
         .include(&include)
-        .compile("oracle_interface_blas");
+        .compile("dev_lapack_interface_blas");
 
     println!("cargo:rustc-link-search=native={}", lib.display());
     // Order matters for a static link and does no harm for a shared one: the
@@ -290,11 +303,45 @@ fn compile_oracle() {
     println!("cargo:rustc-link-lib=dylib=blas");
     // The reference is Fortran, so its runtime is needed.
     println!("cargo:rustc-link-lib=dylib=gfortran");
-    println!("cargo:rerun-if-env-changed=RUSSELL_ORACLE_ROOT");
-    // Both shims, so that editing the oracle wrapper re-runs the build. Watching
-    // only `interface_blas.c` meant a change to the oracle copy was silently
-    // ignored and surfaced later as an undefined `oracle_c_*` symbol.
+    println!("cargo:rerun-if-env-changed=RUSSELL_DEV_LAPACK_ROOT");
+    // The prefixed copy is derived from this file, so watching it is enough.
     println!("cargo:rerun-if-changed=c_code/interface_blas.c");
-    println!("cargo:rerun-if-changed=c_code/interface_blas_oracle.c");
     println!("cargo:warning=russell_lab: `dev_lapack` feature ON -- tests compare against {root}");
+}
+
+/// Returns `interface_blas.c` with every `c_*` entry point renamed to
+/// `dev_lapack_c_*`, so the two shims can be linked into the same binary.
+///
+/// The rename has to cover the identifiers only; it is applied to the whole
+/// source because the shim calls none of its own entry points (each wrapper
+/// goes straight to a `FN_*` macro), so every `c_` token in the file is a
+/// definition. Anything that is not an identifier character before the token
+/// guards against matching inside a longer name such as `cblas_*`.
+#[cfg(feature = "dev_lapack")]
+fn prefixed_shim(source: &str) -> String {
+    // The entry points are already `c_*`, so this yields `dev_lapack_c_*`.
+    const PREFIX: &str = "dev_lapack_";
+    let is_ident = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    let chars: Vec<char> = source.chars().collect();
+    let mut out = String::with_capacity(source.len() + 4096);
+    out.push_str("// Generated from interface_blas.c by build.rs -- do not edit.\n");
+    out.push_str("// Entry points carry the `dev_lapack_c_` prefix so this copy can be\n");
+    out.push_str("// linked alongside the normal shim without duplicate symbols.\n\n");
+    let mut i = 0;
+    while i < chars.len() {
+        let starts_entry_point =
+            chars[i] == 'c' && i + 1 < chars.len() && chars[i + 1] == '_' && (i == 0 || !is_ident(chars[i - 1]));
+        if starts_entry_point {
+            let start = i;
+            while i < chars.len() && is_ident(chars[i]) {
+                i += 1;
+            }
+            out.push_str(PREFIX);
+            out.extend(&chars[start..i]);
+        } else {
+            out.push(chars[i]);
+            i += 1;
+        }
+    }
+    out
 }

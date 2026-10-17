@@ -17,8 +17,8 @@
 //! them leaves each implementation free to be organized differently.
 
 use super::lapack::{self, LapackError};
+use crate::dev_lapack;
 use crate::internal::{C_FALSE, C_TRUE};
-use crate::oracle;
 use crate::{Matrix, Vector};
 
 /// Tolerance for a comparison that involves an elimination or an iteration.
@@ -90,7 +90,7 @@ fn dgesv_agrees_with_the_reference() {
         let mut info = 0i32;
         let n_i32 = n as i32;
         unsafe {
-            oracle::oracle_c_dgesv(
+            dev_lapack::dev_lapack_c_dgesv(
                 &n_i32,
                 &1i32,
                 a_ref.as_mut_data().as_mut_ptr(),
@@ -137,7 +137,7 @@ fn dgetrf_and_dgetri_agree_with_the_reference() {
         let mut work = vec![0.0f64; n.max(1)];
         let lwork = n_i32;
         unsafe {
-            oracle::oracle_c_dgetrf(
+            dev_lapack::dev_lapack_c_dgetrf(
                 &n_i32,
                 &n_i32,
                 lu_ref.as_mut_data().as_mut_ptr(),
@@ -146,7 +146,7 @@ fn dgetrf_and_dgetri_agree_with_the_reference() {
                 &mut info,
             );
             assert_eq!(info, 0, "reference dgetrf failed for n={n}");
-            oracle::oracle_c_dgetri(
+            dev_lapack::dev_lapack_c_dgetri(
                 &n_i32,
                 lu_ref.as_mut_data().as_mut_ptr(),
                 &n_i32,
@@ -192,7 +192,7 @@ fn dpotrf_agrees_with_the_reference() {
         let mut info = 0i32;
         let n_i32 = n as i32;
         unsafe {
-            oracle::oracle_c_dpotrf(C_FALSE, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
+            dev_lapack::dev_lapack_c_dpotrf(C_FALSE, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
         }
         assert_eq!(info, 0, "reference dpotrf failed for n={n}");
 
@@ -232,7 +232,7 @@ fn singular_detection_agrees_with_the_reference() {
         let mut info = 0i32;
         let n_i32 = n as i32;
         unsafe {
-            oracle::oracle_c_dgetrf(
+            dev_lapack::dev_lapack_c_dgetrf(
                 &n_i32,
                 &n_i32,
                 a_ref.as_mut_data().as_mut_ptr(),
@@ -323,7 +323,7 @@ fn dhseqr_eigenvalues_agree_with_the_reference() {
         let mut a_ref = a.clone();
         let mut wr_ref = vec![0.0; n];
         let mut wi_ref = vec![0.0; n];
-        let info = oracle::query::dgeev(a_ref.as_mut_data(), n, &mut wr_ref, &mut wi_ref, None);
+        let info = dev_lapack::query::dgeev(a_ref.as_mut_data(), n, &mut wr_ref, &mut wi_ref, None);
         assert_eq!(info, 0, "reference dgeev failed for n={n}");
 
         let mut got: Vec<(f64, f64)> = (0..n).map(|i| (wr[i], wi[i])).collect();
@@ -396,7 +396,7 @@ fn complex_cholesky_agrees_with_the_reference() {
             let n_i32 = n as i32;
             let c_upper = if upper { C_TRUE } else { C_FALSE };
             unsafe {
-                oracle::oracle_c_zpotrf(c_upper, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
+                dev_lapack::dev_lapack_c_zpotrf(c_upper, &n_i32, l_ref.as_mut_data().as_mut_ptr(), &n_i32, &mut info);
             }
             assert_eq!(info, 0, "reference zpotrf failed for n={n} upper={upper}");
             for j in 0..n {
@@ -433,7 +433,7 @@ fn complex_inverse_agrees_with_the_reference() {
         let mut ipiv = vec![0i32; n];
         let mut info = 0i32;
         unsafe {
-            oracle::oracle_c_zgetrf(
+            dev_lapack::dev_lapack_c_zgetrf(
                 &n_i32,
                 &n_i32,
                 lu.as_mut_data().as_mut_ptr(),
@@ -445,7 +445,7 @@ fn complex_inverse_agrees_with_the_reference() {
         assert_eq!(info, 0, "reference zgetrf failed for n={n}");
         let mut work = vec![crate::Complex64::new(0.0, 0.0); n.max(1)];
         unsafe {
-            oracle::oracle_c_zgetri(
+            dev_lapack::dev_lapack_c_zgetri(
                 &n_i32,
                 lu.as_mut_data().as_mut_ptr(),
                 &n_i32,
@@ -508,7 +508,7 @@ fn complex_solve_agrees_with_the_reference() {
         let mut ipiv = vec![0i32; n];
         let mut info = 0i32;
         unsafe {
-            oracle::oracle_c_zgesv(
+            dev_lapack::dev_lapack_c_zgesv(
                 &n_i32,
                 &1i32,
                 a_ref.as_mut_data().as_mut_ptr(),
@@ -580,7 +580,7 @@ fn dsyev_agrees_with_the_reference() {
             // --- 1. eigenvalues in order against the reference.
             let mut t_ref = a.clone();
             let mut l_ref = vec![0.0; n];
-            let info = oracle::query::dsyev(t_ref.as_mut_data(), n, &mut l_ref, true);
+            let info = dev_lapack::query::dsyev(t_ref.as_mut_data(), n, &mut l_ref, true);
             assert_eq!(info, 0, "reference dsyev failed for n={n} upper={upper}");
             let scale = l_ref.iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
             for i in 0..n {
@@ -808,7 +808,7 @@ fn check_svd(a: &Matrix, m: usize, n: usize, rank_deficient: bool) {
     let mut s_ref = vec![0.0; min_mn];
     let mut u_ref = vec![0.0; m * m];
     let mut vt_ref = vec![0.0; n * n];
-    let info = oracle::query::dgesvd(a_ref.as_mut_data(), m, n, &mut s_ref, &mut u_ref, &mut vt_ref);
+    let info = dev_lapack::query::dgesvd(a_ref.as_mut_data(), m, n, &mut s_ref, &mut u_ref, &mut vt_ref);
     assert_eq!(info, 0, "{label}: reference dgesvd failed");
     for i in 0..min_mn {
         let tol = if rank_deficient && i == min_mn - 1 { 1e-8 } else { TOL };
@@ -943,7 +943,7 @@ fn zheev_agrees_with_the_reference() {
             // --- 1. eigenvalues in order against the reference.
             let mut t_ref = a.clone();
             let mut l_ref = vec![0.0; n];
-            let info = oracle::query::zheev(t_ref.as_mut_data(), n, &mut l_ref, true);
+            let info = dev_lapack::query::zheev(t_ref.as_mut_data(), n, &mut l_ref, true);
             assert_eq!(info, 0, "reference zheev failed for n={n} upper={upper}");
             for i in 0..n {
                 assert!(

@@ -31,7 +31,7 @@ default = []
 open_blas = []
 # Link the C shim against Intel oneAPI MKL.
 intel_mkl = []
-# DEVELOPMENT ONLY -- a numerical oracle for the native routines' tests.
+# DEVELOPMENT ONLY -- a reference LAPACK for the native routines' parity tests.
 #
 # Compiles the same C shim against a locally built LAPACK 3.12.1 and links it, so
 # the tests can assert that the native Rust routines agree with the reference
@@ -40,7 +40,7 @@ intel_mkl = []
 # to check the eigenvalue and SVD routines.
 #
 # Not for release: it needs a LAPACK build on the machine. See `build.rs` for the
-# location, which `RUSSELL_ORACLE_ROOT` overrides.
+# location, which `RUSSELL_DEV_LAPACK_ROOT` overrides.
 #
 # `cargo test -p russell_lab --features dev_lapack`
 dev_lapack = []

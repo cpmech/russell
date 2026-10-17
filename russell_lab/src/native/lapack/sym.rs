@@ -42,7 +42,7 @@
 //! their vectors differently.
 
 use super::LapackError;
-use super::aux::{dlae2, dlaev2, dlapy2};
+use super::auxiliary::{dlae2, dlaev2, dlapy2};
 use super::eig::{dlarfg, dlartg};
 
 /// Which part of a matrix a scale applies to.

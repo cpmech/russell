@@ -37,7 +37,7 @@
 //! explicit vector.
 
 use super::LapackError;
-use super::aux::{dlae2, dlaev2, dlapy2, dlapy3, zladiv, zlarf_left, zlarf_right, zlascl_g};
+use super::auxiliary::{dlae2, dlaev2, dlapy2, dlapy3, zladiv, zlarf_left, zlarf_right, zlascl_g};
 use super::blas::dznrm2;
 use super::eig::dlartg;
 use crate::Complex64;

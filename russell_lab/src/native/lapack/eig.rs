@@ -26,7 +26,7 @@
 //! step needs `dlaln2`-style solving rather than a plain triangular substitution.
 
 use super::LapackError;
-use super::aux::dladiv2;
+use super::auxiliary::dladiv2;
 
 /// A 2x2 block's eigenvalues, as [`dlanv2`] returns them.
 ///

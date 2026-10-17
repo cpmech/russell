@@ -39,7 +39,7 @@
 //! against the reference line by line.
 
 use super::LapackError;
-use super::aux::dlascl_g;
+use super::auxiliary::dlascl_g;
 use super::eig::{dlarfg, dlartg};
 
 /// `DLAMCH('E')`: the relative machine precision, `eps/2` (LAPACK assumes

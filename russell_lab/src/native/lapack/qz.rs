@@ -30,7 +30,7 @@
 //! workspace allocated internally.
 
 use super::LapackError;
-use super::aux::{dladiv2, dlapy2, dlapy3, dlascl_g, zladiv, zlarf_left, zlascl_g};
+use super::auxiliary::{dladiv2, dlapy2, dlapy3, dlascl_g, zladiv, zlarf_left, zlascl_g};
 use super::blas;
 use super::blas::dznrm2;
 use super::eig::{dlarfg, dlartg};

@@ -41,7 +41,7 @@
 //! `d[i - 1]` is Fortran's `D(I)`.
 
 use super::LapackError;
-use super::aux::{dlapy3, dlascl_g, zladiv, zlarf_left, zlarf_right, zlascl_g};
+use super::auxiliary::{dlapy3, dlascl_g, zladiv, zlarf_left, zlarf_right, zlascl_g};
 use super::blas::dznrm2;
 use super::eig::dlartg;
 use super::svd::{dlas2, dlasv2};

@@ -44,7 +44,7 @@
 //!   because that is what the reference source says and what a diff against it
 //!   should show; the drivers translate it at the boundary.
 
-mod aux;
+mod auxiliary;
 pub mod complex;
 pub mod eig;
 pub mod qz;

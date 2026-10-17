@@ -17,7 +17,7 @@ pub struct StatsLinSolMain {
     pub platform: String,
     pub blas_lib: String,
     pub solver: String,
-    pub local_sparse: bool,
+    pub mumps: bool,
     pub out_of_memory: bool,
 }
 
@@ -122,7 +122,7 @@ impl StatsLinSol {
                     "OpenBLAS".to_string()
                 },
                 solver: unknown.clone(),
-                local_sparse: cfg!(feature = "local_sparse"),
+                mumps: cfg!(feature = "mumps"),
                 out_of_memory: false,
             },
             matrix: StatsLinSolMatrix {

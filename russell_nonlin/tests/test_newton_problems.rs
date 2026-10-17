@@ -1,10 +1,10 @@
 use russell_lab::vec_approx_eq;
 use russell_nonlin::{Config, DeltaLambda, IniDir, Samples, Solver, Status, Stop};
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use russell_sparse::Genie;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use serial_test::serial;
 
 #[test]
@@ -238,7 +238,7 @@ fn test_two_eq_nr_prob_1_singular() {
     assert_eq!(res.err(), Some("Error(1): Matrix is singular"));
 }
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 #[test]
 #[serial]
 fn _test_two_eq_nr_prob_1_singular_mumps() {

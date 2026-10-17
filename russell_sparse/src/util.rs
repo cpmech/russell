@@ -167,17 +167,23 @@ const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 
 /// Returns version information for the external sparse solver libraries.
 ///
-/// Reports the version of each backend library that the project's installation
-/// scripts download and compile:
+/// Reports where each backend came from, plus the version that the project's
+/// installation scripts download:
 ///
-/// - **MUMPS** — version downloaded by `zscripts/*-compile-mumps.bash`;
-///   annotated `[not compiled in]` when the `local_sparse` feature is disabled
+/// - **UMFPACK** — always present; the line says whether it is the package-manager
+///   library (`system`, found with pkg-config) or a local install selected by the
+///   `local_umfpack` feature, with the directory it was linked from
+/// - **MUMPS** — version downloaded by `zscripts/*-compile-mumps.bash`; annotated
+///   `[not compiled in]` when the `mumps` feature is disabled
 /// - **SuiteSparse** — cloned from head of the upstream GitHub repository
 pub fn get_library_versions() -> String {
     let mut info = String::new();
 
+    // UMFPACK (always compiled in; the build script records which one)
+    info.push_str(&format!("UMFPACK: {}\n", env!("RUSSELL_SPARSE_UMFPACK")));
+
     // MUMPS
-    if cfg!(feature = "local_sparse") {
+    if cfg!(feature = "mumps") {
         info.push_str(&format!("MUMPS: {}\n", MUMPS_SCRIPT_VERSION));
     } else {
         info.push_str(&format!("MUMPS: {} [not compiled in]\n", MUMPS_SCRIPT_VERSION));
@@ -272,5 +278,22 @@ mod tests {
         println!("{}", info);
         assert!(info.contains(MUMPS_SCRIPT_VERSION), "Should contain MUMPS version");
         assert!(info.contains(SUITESPARSE_VERSION), "Should contain SuiteSparse version");
+    }
+
+    /// Guards the build-script wiring: the UMFPACK line must name the source the
+    /// features selected, because two SuiteSparse installations can be present and
+    /// the wrong one is otherwise invisible.
+    #[test]
+    fn get_library_versions_reports_the_umfpack_source() {
+        let info = get_library_versions();
+        let line = info
+            .lines()
+            .find(|line| line.starts_with("UMFPACK: "))
+            .expect("the UMFPACK line");
+        if cfg!(feature = "local_umfpack") {
+            assert!(line.contains("local"), "expected a local UMFPACK, got: {line}");
+        } else {
+            assert!(line.contains("system"), "expected a system UMFPACK, got: {line}");
+        }
     }
 }

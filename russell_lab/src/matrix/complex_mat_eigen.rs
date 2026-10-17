@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{C_FALSE, C_TRUE, CcBool, Complex64, ComplexVector, StrError, cpx, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{C_FALSE, C_TRUE, CcBool, Complex64};
+use crate::{ComplexVector, StrError, cpx, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -23,6 +25,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgeev) Performs the eigen-decomposition of a square matrix
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
@@ -118,8 +124,14 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
         // JOBVR='V', ...)`: `a` is destroyed, `l` receives the eigenvalues and
         // `v` the right eigenvectors as columns. No left eigenvectors are asked
         // for, so no buffer is supplied for them.
-        info =
-            crate::native::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data())) as i32;
+        crate::native::lapack::zeig::zgeev(l.as_mut_data(), a.as_mut_data(), m, None, Some(v.as_mut_data()))
+            .map_err(|e| match e {
+                crate::native::lapack::LapackError::Convergence => {
+                    "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+                }
+                _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
+            })?;
+        return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {
@@ -157,6 +169,10 @@ pub fn complex_mat_eigen(l: &mut ComplexVector, v: &mut ComplexMatrix, a: &mut C
     Ok(())
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// Performs the eigen-decomposition of a square matrix (left and right)
 ///
 /// Computes the eigenvalues `l` and left eigenvectors `u`, such that:
@@ -271,13 +287,20 @@ pub fn complex_mat_eigen_lr(
     {
         // `zgeev(JOBVL='V', JOBVR='V', ...)`: `u` and `v` receive the left and
         // right eigenvectors, computed from the one Schur factorisation.
-        info = crate::native::lapack::zeig::zgeev(
+        crate::native::lapack::zeig::zgeev(
             l.as_mut_data(),
             a.as_mut_data(),
             m,
             Some(u.as_mut_data()),
             Some(v.as_mut_data()),
-        ) as i32;
+        )
+        .map_err(|e| match e {
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (zgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+            }
+            _ => "LAPACK ERROR (zgeev): An argument had an illegal value",
+        })?;
+        return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

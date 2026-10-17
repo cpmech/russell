@@ -1,5 +1,7 @@
 use super::Matrix;
-use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::CcBool;
+use crate::{C_FALSE, C_TRUE, StrError, Vector, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -18,6 +20,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dsyev) Calculates the eigenvalues and eigenvectors of a symmetric matrix
 ///
 /// Computes the eigenvalues `l` and eigenvectors `v`, such that:
@@ -103,8 +109,13 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
         // `a` is destroyed and holds the eigenvectors as columns, `l` receives
         // the eigenvalues in ascending order, and `upper` picks the triangle
         // that is read.
-        return crate::native::lapack::sym::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper)
-            .map_err(|_| "LAPACK ERROR (dsyev): An argument had an illegal value");
+        return crate::native::lapack::sym::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper).map_err(|e| match e {
+            // `dsteqr` exhausted its iteration limit. The shim's `info > 0`
+            // branch prints the off-diagonal count and returns this string,
+            // so both paths report a failure to converge the same way.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dsyev): The algorithm failed to converge",
+            _ => "LAPACK ERROR (dsyev): An argument had an illegal value",
+        });
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
     {

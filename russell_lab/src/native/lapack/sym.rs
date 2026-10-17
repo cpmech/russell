@@ -132,7 +132,18 @@ pub fn dsyev(a: &mut [f64], w: &mut [f64], n: usize, upper: bool) -> Result<(), 
     // eigenvectors of A.
     let mut work = vec![0.0; 2 * n - 2];
     let info = dsteqr(1, n, &mut d, &mut e, a, n, &mut work);
-    debug_assert_eq!(info, 0, "dsyev: dsteqr failed to converge");
+    // `INFO > 0` means the QL/QR iteration did not converge: what `a` and `d`
+    // hold is partly converged, so return an error rather than values that look
+    // like a decomposition. In a release build this used to be silent.
+    //
+    // No test reaches this branch. `dsteqr` takes the reference's `ANORM == 0`
+    // early return when the entries are NaN (`f64::max` ignores NaN), and no
+    // finite tridiagonal that fits a test refuses to converge. So this check is
+    // reasoned rather than exercised; the same check in `dhseqr` and `dgesvd` is
+    // exercised, because their NaN matrices do exhaust the iteration limit.
+    if info != 0 {
+        return Err(LapackError::Convergence);
+    }
 
     if iscale == 1 {
         let factor = 1.0 / sigma;
@@ -179,11 +190,11 @@ pub fn dsytrd(upper: bool, n: usize, a: &mut [f64], d: &mut [f64], e: &mut [f64]
     if upper {
         // Columns 0:KK are handled by the unblocked method (the last block is
         // always unblocked).
-        let kk = n - ((n - nx + nb - 1) / nb) * nb;
+        let kk = n - (n - nx).div_ceil(nb) * nb;
 
         // Fortran: DO I = N-NB+1, KK+1, -NB  (I is the 1-based panel start).
         let mut i_fortran = n - nb + 1;
-        while i_fortran >= kk + 1 {
+        while i_fortran > kk {
             let i0 = i_fortran - 1; // 0-based first column of the panel
 
             // Reduce columns i0:i0+NB-1 and form the `W` that the update needs.
@@ -227,7 +238,7 @@ pub fn dsytrd(upper: bool, n: usize, a: &mut [f64], d: &mut [f64], e: &mut [f64]
     } else {
         // Fortran: DO I = 1, N-NX, NB.
         let mut i0 = 0usize;
-        while i0 + 1 <= n - nx {
+        while i0 < n - nx {
             // Reduce columns i0:i0+NB-1 and form the `W` the update needs.
             dlatrd(false, n - i0, nb, a, n, i0 + i0 * n, e, i0, tau, i0, &mut w, n);
 
@@ -322,14 +333,14 @@ fn dsytd2(upper: bool, n: usize, a: &mut [f64], d: &mut [f64], e: &mut [f64], ta
                 for r in 0..len {
                     alpha2 += work[r] * vnat[r];
                 }
-                alpha2 = -0.5 * taui * alpha2;
+                alpha2 *= -0.5 * taui;
                 for r in 0..len {
                     work[r] += alpha2 * vnat[r];
                 }
                 // A := A - v*w^T - w*v^T, upper triangle only.
                 for c in 0..len {
                     for r in 0..=c {
-                        a[r + c * n] += -1.0 * (vnat[r] * work[c] + work[r] * vnat[c]);
+                        a[r + c * n] += -(vnat[r] * work[c] + work[r] * vnat[c]);
                     }
                 }
                 a[i + (i + 1) * n] = e[i];
@@ -380,14 +391,14 @@ fn dsytd2(upper: bool, n: usize, a: &mut [f64], d: &mut [f64], e: &mut [f64], ta
                 for r in 0..len {
                     alpha2 += work[r] * vnat[r];
                 }
-                alpha2 = -0.5 * taui * alpha2;
+                alpha2 *= -0.5 * taui;
                 for r in 0..len {
                     work[r] += alpha2 * vnat[r];
                 }
                 // A := A - v*w^T - w*v^T, lower triangle only.
                 for c in 0..len {
                     for r in c..len {
-                        a[(i + 1 + r) + (i + 1 + c) * n] += -1.0 * (vnat[r] * work[c] + work[r] * vnat[c]);
+                        a[(i + 1 + r) + (i + 1 + c) * n] += -(vnat[r] * work[c] + work[r] * vnat[c]);
                     }
                 }
                 a[(i + 1) + i * n] = e[i];
@@ -451,9 +462,9 @@ fn dlatrd(
                     x[r] = a[a_off + (i1 - 1) + (i1 + r) * lda];
                 }
                 gemv_n(-1.0, w, ldw, iw * ldw, &x, 1.0, &mut y, m, k);
-                for r in 0..m {
-                    a[y_col + r] = y[r];
-                }
+                // `y` is a separate buffer, so the two ranges cannot overlap and
+                // `copy_from_slice` is safe here.
+                a[y_col..y_col + m].copy_from_slice(&y[..m]);
             }
             if i1 > 1 {
                 let len = i1 - 1; // DLARFG( I-1, ... )
@@ -491,7 +502,7 @@ fn dlatrd(
                 for r in 0..len {
                     alpha += y[r] * x[r];
                 }
-                alpha = -0.5 * taui * alpha;
+                alpha *= -0.5 * taui;
                 for r in 0..len {
                     y[r] += alpha * x[r];
                 }
@@ -517,9 +528,9 @@ fn dlatrd(
                 let x: Vec<f64> = (0..k).map(|t| a[a_off + (i1 - 1) + t * lda]).collect();
                 gemv_n(-1.0, w, ldw, i1 - 1, &x, 1.0, &mut y, m, k);
             }
-            for r in 0..m {
-                a[y_col + r] = y[r];
-            }
+            // `y` is a separate buffer, so the two ranges cannot overlap and
+            // `copy_from_slice` is safe here.
+            a[y_col..y_col + m].copy_from_slice(&y[..m]);
             if i1 < n {
                 let len = n - i1; // DLARFG( N-i1, ... )
                 // Generate H(i1) to annihilate A(i1+2:n, i1).
@@ -555,7 +566,7 @@ fn dlatrd(
                 for r in 0..len {
                     alpha += y[r] * x[r];
                 }
-                alpha = -0.5 * taui * alpha;
+                alpha *= -0.5 * taui;
                 for r in 0..len {
                     y[r] += alpha * x[r];
                 }
@@ -939,7 +950,7 @@ fn dsteqr(icompz: i32, n: usize, d: &mut [f64], e: &mut [f64], z: &mut [f64], ld
 
         // Determine where the matrix splits.
         let mut m = n - 1;
-        if l1 + 1 <= nm1 {
+        if l1 < nm1 {
             // Fortran: DO M = L1, NM1
             for mm in l1..nm1 {
                 let tst = e[mm].abs();
@@ -1109,7 +1120,7 @@ fn dsteqr(icompz: i32, n: usize, d: &mut [f64], e: &mut [f64], z: &mut [f64], ld
                         true,
                     );
                 }
-                d[l] = d[l] - p;
+                d[l] -= p;
                 e[l] = g;
                 // Back to the top of the QL loop.
             }
@@ -1225,7 +1236,7 @@ fn dsteqr(icompz: i32, n: usize, d: &mut [f64], e: &mut [f64], z: &mut [f64], ld
                         false,
                     );
                 }
-                d[l] = d[l] - p;
+                d[l] -= p;
                 e[lm1] = g;
                 // Back to the top of the QR loop.
             }

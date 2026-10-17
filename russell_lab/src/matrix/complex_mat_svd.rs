@@ -1,6 +1,8 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::Vector;
-use crate::{Complex64, SVD_CODE_A, StrError, cpx, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{Complex64, SVD_CODE_A};
+use crate::{StrError, cpx, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -25,6 +27,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgesvd) Computes the singular value decomposition (SVD) of a matrix
 ///
 /// Finds `u`, `s`, and `v`, such that:
@@ -137,7 +143,7 @@ pub fn complex_mat_svd(
             vh.as_mut_data(),
         )
         .map_err(|e| match e {
-            LapackError::Singular => "LAPACK ERROR (zgesvd): Algorithm did not converge",
+            LapackError::Convergence => "LAPACK ERROR (zgesvd): Algorithm did not converge",
             _ => "LAPACK ERROR (zgesvd): An argument had an illegal value",
         })?;
     }

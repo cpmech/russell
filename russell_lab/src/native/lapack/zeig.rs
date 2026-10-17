@@ -132,7 +132,12 @@ pub fn zheev(a: &mut [Complex64], w: &mut [f64], n: usize, upper: bool) -> Resul
     // eigenvectors of A.
     let mut work = vec![0.0; 2 * n - 2];
     let info = zsteqr(1, n, &mut d, &mut e, a, n, &mut work);
-    debug_assert_eq!(info, 0, "zheev: zsteqr failed to converge");
+    // `INFO > 0`: the QL/QR iteration did not converge. As in `dsyev`, these are
+    // partly converged values, not a decomposition -- and as there, no test
+    // reaches the branch (a NaN matrix takes `zsteqr`'s norm-gated early return).
+    if info != 0 {
+        return Err(LapackError::Convergence);
+    }
 
     if iscale {
         let factor = 1.0 / sigma;
@@ -320,7 +325,7 @@ fn zung2l(m: usize, ncols: usize, k: usize, a: &mut [Complex64], lda: usize, tau
         v[mrows - 1] = one();
         zlarf_left(a, lda, 0, mrows, 0, ii, &v, tau[i]);
         for t in 0..mrows - 1 {
-            a[t + ii * lda] = a[t + ii * lda] * (-tau[i]);
+            a[t + ii * lda] *= -tau[i];
         }
         a[(mrows - 1) + ii * lda] = one() - tau[i];
         for l in mrows..m {
@@ -357,7 +362,7 @@ fn zung2r(m: usize, ncols: usize, k: usize, a: &mut [Complex64], lda: usize, tau
         }
         if i < m - 1 {
             for t in 1..m - i {
-                a[(r0 + i + t) + (c0 + i) * lda] = a[(r0 + i + t) + (c0 + i) * lda] * (-tau[i]);
+                a[(r0 + i + t) + (c0 + i) * lda] *= -tau[i];
             }
         }
         a[(r0 + i) + (c0 + i) * lda] = one() - tau[i];
@@ -539,7 +544,7 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
         loop {
             knt += 1;
             for xi in x.iter_mut() {
-                *xi = *xi * rsafmn;
+                *xi *= rsafmn;
             }
             beta *= rsafmn;
             alphi *= rsafmn;
@@ -556,7 +561,7 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
     let tau = cpx((beta - alphr) / beta, -alphi / beta);
     let al = zladiv(one(), cpx(alphr, alphi) - cpx(beta, 0.0));
     for xi in x.iter_mut() {
-        *xi = *xi * al;
+        *xi *= al;
     }
     for _ in 0..knt {
         beta *= safmin;
@@ -693,7 +698,7 @@ fn zsteqr(
 
         // Determine where the matrix splits.
         let mut m = n - 1;
-        if l1 + 1 <= nm1 {
+        if l1 < nm1 {
             // Fortran: DO M = L1, NM1
             for mm in l1..nm1 {
                 let tst = e[mm].abs();
@@ -858,7 +863,7 @@ fn zsteqr(
                         true,
                     );
                 }
-                d[l] = d[l] - p;
+                d[l] -= p;
                 e[l] = g;
                 // Back to the top of the QL loop.
             }
@@ -973,7 +978,7 @@ fn zsteqr(
                         false,
                     );
                 }
-                d[l] = d[l] - p;
+                d[l] -= p;
                 e[lm1] = g;
                 // Back to the top of the QR loop.
             }
@@ -1181,7 +1186,7 @@ fn zlascl_tri(cfrom: f64, cto: f64, a: &mut [Complex64], n: usize, upper: bool) 
         for j in 0..n {
             let (i0, i1) = if upper { (0, j + 1) } else { (j, n) };
             for i in i0..i1 {
-                a[i + j * n] = a[i + j * n] * mul;
+                a[i + j * n] *= mul;
             }
         }
         if done {
@@ -1465,8 +1470,13 @@ fn znormalize_columns(v: &mut [Complex64], n: usize) {
 /// eigenvectors as columns; the left eigenvector `u(j)` satisfies
 /// `u(j)^H a = lambda(j) u(j)^H`.
 ///
-/// The return value is LAPACK's `INFO`: `0` on success, or the (1-based) index at
-/// which the QR iteration failed. The blocked `zlaqr0` fallback that `zhseqr`
+/// # Errors
+///
+/// [`LapackError::Convergence`] if the QR iteration in step 4 does not converge;
+/// LAPACK reports that as `INFO > 0`, naming the 1-based index at which it gave
+/// up, and the outputs then hold partly converged values.
+///
+/// The blocked `zlaqr0` fallback that `zhseqr`
 /// selects for large `n` is not implemented; every matrix goes through the
 /// single-shift [`zlahqr`], which is what the reference itself does for `n <= 15`.
 pub fn zgeev(
@@ -1475,9 +1485,9 @@ pub fn zgeev(
     n: usize,
     mut vl: Option<&mut [Complex64]>,
     mut vr: Option<&mut [Complex64]>,
-) -> usize {
+) -> Result<(), LapackError> {
     if n == 0 {
-        return 0;
+        return Ok(());
     }
     let wantvl = vl.is_some();
     let wantvr = vr.is_some();
@@ -1542,12 +1552,12 @@ pub fn zgeev(
             ztrevc3(side, n, a, vl.as_deref_mut(), vr.as_deref_mut());
         }
         if wantvl {
-            let z = vl.as_deref_mut().unwrap();
+            let z = vl.unwrap();
             zgebak(z, n, ilo, ihi, &bal_scale, true);
             znormalize_columns(z, n);
         }
         if wantvr {
-            let z = vr.as_deref_mut().unwrap();
+            let z = vr.unwrap();
             zgebak(z, n, ilo, ihi, &bal_scale, false);
             znormalize_columns(z, n);
         }
@@ -1563,7 +1573,12 @@ pub fn zgeev(
             zlascl_g(cscale, anrm, &mut w[..ilo], ilo, ilo, 1);
         }
     }
-    info
+    // `INFO > 0` is zhseqr's non-convergence: `w` and the eigenvector buffers hold
+    // partly converged values, so this is an error rather than a result.
+    if info != 0 {
+        return Err(LapackError::Convergence);
+    }
+    Ok(())
 }
 
 /// `zhseqr` with `JOB = 'S'` and `COMPZ = 'N'` or `'V'`, restricted to the
@@ -1680,7 +1695,7 @@ fn zlahqr(
                             if k >= ilo + 2 {
                                 tst += h[(k - 1) + (k - 2) * n].re.abs();
                             }
-                            if k + 1 <= ihi {
+                            if k < ihi {
                                 tst += h[(k + 1) + k * n].re.abs();
                             }
                         }
@@ -1736,7 +1751,7 @@ fn zlahqr(
                     if sx > 0.0 && (x / sx).re * y.re + (x / sx).im * y.im < 0.0 {
                         y = -y;
                     }
-                    tt = tt - u * zladiv(u, x + y);
+                    tt -= u * zladiv(u, x + y);
                 }
                 t = tt;
             }
@@ -2203,7 +2218,7 @@ fn zlatrs_upper(
                 }
             }
             if uscal == cpx(tscal, 0.0) {
-                x[jj] = x[jj] - csumj;
+                x[jj] -= csumj;
                 xj = cabs1(x[jj]);
                 let tjjs = tjjs_here;
                 let tjj = cabs1(tjjs);
@@ -2445,7 +2460,7 @@ fn zgebak(v: &mut [Complex64], n: usize, ilo: usize, ihi: usize, scale: &[f64], 
     // Backward permutation: I walks down from ILO-1 to 1, then up from IHI+1 to N.
     for ii in 1..=n {
         let i1 = ii;
-        if i1 >= ilo + 1 && i1 <= ihi + 1 {
+        if i1 > ilo && i1 <= ihi + 1 {
             continue;
         }
         let i1 = if i1 < ilo + 1 { ilo + 1 - ii } else { i1 };
@@ -2506,7 +2521,7 @@ fn zunghr(n: usize, ilo: usize, ihi: usize, a: &mut [Complex64], tau: &[Complex6
     }
     let nh = ihi - ilo;
     // Shift the reflectors one column to the right.
-    if ihi >= ilo + 1 {
+    if ihi > ilo {
         for j in ((ilo + 1)..=ihi).rev() {
             for i in 0..j {
                 a[i + j * n] = zero();
@@ -2624,8 +2639,7 @@ mod tests {
         let n = 3;
         let mut w = vec![zero(); n];
         let mut vr = vec![zero(); n * n];
-        let info = zgeev(&mut w, &mut a, n, None, Some(&mut vr));
-        assert_eq!(info, 0);
+        zgeev(&mut w, &mut a, n, None, Some(&mut vr)).unwrap();
         let s3 = 3.0f64.sqrt();
         let expected = [cpx(-0.5, s3 / 2.0), cpx(-0.5, -s3 / 2.0), cpx(1.0, 0.0)];
         for j in 0..n {
@@ -2642,8 +2656,7 @@ mod tests {
         let mut w = vec![zero(); n];
         let mut vl = vec![zero(); n * n];
         let mut vr = vec![zero(); n * n];
-        let info = zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr));
-        assert_eq!(info, 0);
+        zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)).unwrap();
         check_right(&a_orig, &vr, &w, n, 1e-13);
         check_left(&a_orig, &vl, &w, n, 1e-13);
     }
@@ -2667,8 +2680,7 @@ mod tests {
         let mut a = a_orig.clone();
         let mut w = vec![zero(); n];
         let mut vr = vec![zero(); n * n];
-        let info = zgeev(&mut w, &mut a, n, None, Some(&mut vr));
-        assert_eq!(info, 0);
+        zgeev(&mut w, &mut a, n, None, Some(&mut vr)).unwrap();
         check_right(&a_orig, &vr, &w, n, 1e-14);
     }
 
@@ -2679,7 +2691,7 @@ mod tests {
         let mut w = vec![zero(); 1];
         let mut vr = vec![zero(); 1];
         let mut vl = vec![zero(); 1];
-        assert_eq!(zgeev(&mut w, &mut a, 1, Some(&mut vl), Some(&mut vr)), 0);
+        zgeev(&mut w, &mut a, 1, Some(&mut vl), Some(&mut vr)).unwrap();
         assert!((w[0] - cpx(3.0, -2.0)).norm() < 1e-15);
         assert!((vr[0] - one()).norm() < 1e-15);
         assert!((vl[0] - one()).norm() < 1e-15);
@@ -2691,7 +2703,7 @@ mod tests {
         let mut w = vec![zero(); n];
         let mut vr = vec![zero(); n * n];
         let mut vl = vec![zero(); n * n];
-        assert_eq!(zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)), 0);
+        zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)).unwrap();
         check_right(&a_orig, &vr, &w, n, 1e-14);
         check_left(&a_orig, &vl, &w, n, 1e-14);
     }
@@ -2718,7 +2730,7 @@ mod tests {
             let mut w = vec![zero(); n];
             let mut vr = vec![zero(); n * n];
             let mut vl = vec![zero(); n * n];
-            assert_eq!(zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)), 0);
+            zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)).unwrap();
             let scale = a_orig.iter().fold(0.0f64, |m, z| m.max(z.norm())).max(1.0);
             check_right(&a_orig, &vr, &w, n, 1e-12 * scale);
             check_left(&a_orig, &vl, &w, n, 1e-12 * scale);
@@ -2733,7 +2745,7 @@ mod tests {
             let mut a = a_orig.clone();
             let mut w = vec![zero(); n];
             let mut vr = vec![zero(); n * n];
-            assert_eq!(zgeev(&mut w, &mut a, n, None, Some(&mut vr)), 0);
+            zgeev(&mut w, &mut a, n, None, Some(&mut vr)).unwrap();
             check_right(&a_orig, &vr, &w, n, 1e-13 * factor);
         }
     }

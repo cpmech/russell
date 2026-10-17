@@ -1,5 +1,7 @@
 use super::Matrix;
-use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{C_FALSE, C_TRUE, CcBool};
+use crate::{StrError, Vector, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -26,6 +28,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dggev) Computes the generalized eigenvalues and right eigenvectors
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -138,7 +144,7 @@ pub fn mat_gen_eigen(
         // and `j + 1` are the real and imaginary parts of `v(j)`. `a` and `b` are
         // overwritten, as the reference does.
         let n = m;
-        let info = crate::native::lapack::qz::dggev(
+        crate::native::lapack::qz::dggev(
             false,
             true,
             n,
@@ -149,10 +155,8 @@ pub fn mat_gen_eigen(
             beta.as_mut_data(),
             &mut [],
             v.as_mut_data(),
-        );
-        if info > 0 {
-            return Err("LAPACK ERROR (dggev): Iterations failed ");
-        }
+        )
+        .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
         return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
@@ -188,6 +192,10 @@ pub fn mat_gen_eigen(
     Ok(())
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -325,7 +333,7 @@ pub fn mat_gen_eigen_lr(
         // columns `j` and `j + 1` are the real and imaginary parts. `a` and `b`
         // are overwritten, as the reference does.
         let n = m;
-        let info = crate::native::lapack::qz::dggev(
+        crate::native::lapack::qz::dggev(
             true,
             true,
             n,
@@ -336,10 +344,8 @@ pub fn mat_gen_eigen_lr(
             beta.as_mut_data(),
             u.as_mut_data(),
             v.as_mut_data(),
-        );
-        if info > 0 {
-            return Err("LAPACK ERROR (dggev): Iterations failed ");
-        }
+        )
+        .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
         return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]

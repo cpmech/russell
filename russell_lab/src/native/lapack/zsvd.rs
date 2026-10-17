@@ -119,7 +119,7 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
     let tau = Complex64::new((beta - alphr) / beta, -alphi / beta);
     let al = zladiv(one(), Complex64::new(alphr - beta, alphi));
     for xi in x.iter_mut() {
-        *xi = *xi * al;
+        *xi *= al;
     }
     for _ in 0..knt {
         beta *= safmin;
@@ -541,7 +541,7 @@ fn zung2r(m: usize, n: usize, k: usize, a: &mut [Complex64], lda: usize, tau: &[
         }
         if i < m - 1 {
             for t in (i + 1)..m {
-                a[t + i * lda] = a[t + i * lda] * (-tau[i]);
+                a[t + i * lda] *= -tau[i];
             }
         }
         a[i + i * lda] = one() - tau[i];
@@ -586,7 +586,7 @@ fn zungl2(m: usize, n: usize, k: usize, a: &mut [Complex64], lda: usize, tau: &[
             }
             // `ZSCAL(N-I, -TAU(I), A(I,I+1), LDA)` then undo the conjugation.
             for c in (i + 1)..n {
-                a[i + c * lda] = a[i + c * lda] * (-tau[i]);
+                a[i + c * lda] *= -tau[i];
             }
             for c in (i + 1)..n {
                 a[i + c * lda] = a[i + c * lda].conj();
@@ -707,7 +707,7 @@ pub fn zbdsqr(
             let (cs, sn, r) = dlartg(d[i - 1], e[i - 1]);
             d[i - 1] = r;
             e[i - 1] = sn * d[i];
-            d[i] = cs * d[i];
+            d[i] *= cs;
             work[i - 1] = cs;
             work[nm1 + i - 1] = sn;
         }
@@ -1022,14 +1022,14 @@ pub fn zbdsqr(
                 f = cosr * d[i - 1] + sinr * e[i - 1];
                 e[i - 1] = cosr * e[i - 1] - sinr * d[i - 1];
                 g = sinr * d[i];
-                d[i] = cosr * d[i];
+                d[i] *= cosr;
                 let (cosl, sinl, r) = dlartg(f, g);
                 d[i - 1] = r;
                 f = cosl * e[i - 1] + sinl * d[i];
                 d[i] = cosl * d[i] - sinl * e[i - 1];
                 if i < m - 1 {
                     g = sinl * e[i];
-                    e[i] = cosl * e[i];
+                    e[i] *= cosl;
                 }
                 work[i - ll] = cosr;
                 work[i - ll + nm1] = sinr;
@@ -1062,14 +1062,14 @@ pub fn zbdsqr(
                 f = cosr * d[i - 1] + sinr * e[i - 2];
                 e[i - 2] = cosr * e[i - 2] - sinr * d[i - 1];
                 g = sinr * d[i - 2];
-                d[i - 2] = cosr * d[i - 2];
+                d[i - 2] *= cosr;
                 let (cosl, sinl, r) = dlartg(f, g);
                 d[i - 1] = r;
                 f = cosl * e[i - 2] + sinl * d[i - 2];
                 d[i - 2] = cosl * d[i - 2] - sinl * e[i - 2];
                 if i > ll + 1 {
                     g = sinl * e[i - 3];
-                    e[i - 3] = cosl * e[i - 3];
+                    e[i - 3] *= cosl;
                 }
                 work[i - ll - 1] = cosr;
                 work[i - ll - 1 + nm1] = -sinr;
@@ -1112,7 +1112,7 @@ pub fn zbdsqr(
             d[i - 1] = -d[i - 1];
             if ncvt > 0 {
                 for k in 0..ncvt {
-                    vt[(i - 1) + k * ldvt] = vt[(i - 1) + k * ldvt] * Complex64::new(-1.0, 0.0);
+                    vt[(i - 1) + k * ldvt] *= Complex64::new(-1.0, 0.0);
                 }
             }
         }
@@ -1166,7 +1166,7 @@ pub fn zbdsqr(
 /// # Errors
 ///
 /// [`LapackError::BadShape`] if a buffer's length disagrees with `(m, n)`, and
-/// [`LapackError::Singular`] if `zbdsqr` fails to converge.
+/// [`LapackError::Convergence`] if `zbdsqr` fails to converge.
 pub fn zgesvd(
     a: &mut [Complex64],
     m: usize,
@@ -1260,7 +1260,7 @@ pub fn zgesvd(
     }
 
     if info != 0 {
-        return Err(LapackError::Singular);
+        return Err(LapackError::Convergence);
     }
     Ok(())
 }

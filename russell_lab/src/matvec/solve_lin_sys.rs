@@ -1,6 +1,8 @@
+use crate::StrError;
 use crate::matrix::Matrix;
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::to_i32;
 use crate::vector::Vector;
-use crate::{StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -119,6 +121,9 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
                 "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
             }
             crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            // Unreachable: a direct solve has no iteration. Listed for
+            // exhaustiveness.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dgesv): The algorithm failed to converge",
             crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
         })?;
     }

@@ -277,7 +277,7 @@ fn dhseqr_eigenvalues_agree_with_the_reference() {
         lapack::eig::dgehrd(t.as_mut_data(), n, None);
         let mut wr = vec![0.0; n];
         let mut wi = vec![0.0; n];
-        lapack::eig::dhseqr(t.as_mut_data(), &mut wr, &mut wi, n);
+        lapack::eig::dhseqr(t.as_mut_data(), &mut wr, &mut wi, n).unwrap();
 
         // (1) quasi-upper-triangular
         for j in 0..n {

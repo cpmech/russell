@@ -1,6 +1,8 @@
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::Complex64;
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-use crate::{Complex64, StrError, to_i32};
+use crate::{StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -18,6 +20,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgesv) Solves a general linear system
 ///
 /// For a general matrix `a` (square, symmetric, non-symmetric, dense,
@@ -127,6 +133,9 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
                 "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
             }
             crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            // Unreachable: a direct solve has no iteration. Listed for
+            // exhaustiveness.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dgesv): The algorithm failed to converge",
             crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
         })?;
     }

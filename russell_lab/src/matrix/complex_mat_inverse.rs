@@ -24,6 +24,10 @@ unsafe extern "C" {
 // constants
 const ZERO_DETERMINANT_NORM: f64 = 1e-15;
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgetrf, zgetri) Computes the inverse of a square matrix and returns its determinant
 ///
 /// ```text
@@ -182,6 +186,11 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
                 "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
             }
             crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgetrf): An argument had an illegal value",
+            // LU has no iteration to converge, so this is unreachable; listed so
+            // the match stays exhaustive if a variant is added.
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (dgetrf): The algorithm failed to converge"
+            }
             crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
         })?;
         for (slot, p) in ipiv.iter_mut().zip(pivots) {
@@ -235,6 +244,11 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
                 "LAPACK ERROR (zgetri): U is exactly singular and the inverse could not be computed"
             }
             crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (zgetri): An argument had an illegal value",
+            // Unreachable: the inverse from an LU has no iteration. Listed for
+            // exhaustiveness.
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (zgetri): The algorithm failed to converge"
+            }
             crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
         })?;
     }

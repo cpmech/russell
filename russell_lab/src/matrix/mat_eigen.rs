@@ -1,6 +1,8 @@
 use super::Matrix;
 use crate::internal::compact_right_eigenvectors;
-use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, dgeev_data, dgeev_data_lr, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{C_FALSE, C_TRUE, CcBool};
+use crate::{StrError, Vector, dgeev_data, dgeev_data_lr, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -24,6 +26,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dgeev) Performs the eigen-decomposition of a square matrix
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
@@ -160,7 +166,15 @@ pub fn mat_eigen(
         // error.
         let mut nvr = vec![0.0; n * n];
         let mut nvi = vec![0.0; n * n];
-        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut nvr, &mut nvi, a.as_mut_data(), n);
+        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut nvr, &mut nvi, a.as_mut_data(), n)
+            .map_err(|e| match e {
+                // dlahqr exhausted its iteration limit. The eigenvalues in `wr`/`wi`
+                // are partly converged, so this must not be reported as success.
+                crate::native::lapack::LapackError::Convergence => {
+                    "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+                }
+                _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
+            })?;
         l_real.as_mut_data().copy_from_slice(&wr);
         l_imag.as_mut_data().copy_from_slice(&wi);
         // Pack the native (unpacked) eigenvectors into LAPACK's compact layout so
@@ -204,6 +218,10 @@ pub fn mat_eigen(
     dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), l_imag.as_data(), &v)
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// Performs the eigen-decomposition of a square matrix (left and right)
 ///
 /// Computes the eigenvalues `l` and left eigenvectors `u`, such that:
@@ -364,7 +382,13 @@ pub fn mat_eigen_lr(
             v_imag.as_mut_data(),
             a.as_mut_data(),
             m,
-        );
+        )
+        .map_err(|e| match e {
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+            }
+            _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
+        })?;
         l_real.as_mut_data().copy_from_slice(&wr);
         l_imag.as_mut_data().copy_from_slice(&wi);
         return Ok(());

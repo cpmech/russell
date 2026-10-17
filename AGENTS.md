@@ -242,14 +242,21 @@ this one. `dgesvd` remains unblocked. The rules of thumb:
 
 ### Loose ends
 
-- ~190 compiler warnings, mostly unused imports and variables where the `oblas`
-  branches are compiled out. Cosmetic, but the project is meant to be
-  warning-free.
+- The crate is warning-free and clippy-clean (`cargo clippy --workspace
+  --all-targets` exits 0). Keeping it that way needs the pattern described under
+  "Dispatch between the native and external backends": the shim-only imports are
+  `cfg`-gated and the functions with a shim branch carry a `cfg_attr`'d allow.
+  Note that a warning count is not a pass/fail signal by itself -- clippy's
+  deny-by-default lints are *errors*, so read the exit code, not the count (a
+  `| grep -c warning` once reported "0 warnings" on a build that had failed).
 - `dhseqr`/`zhseqr` implement the unblocked (`dlahqr`/`zlahqr`) path only, which
   is what the reference uses for n <= 15; the blocked `dlaqr0`/`zlaqr0` fallback
-  for large matrices is not ported. `dsteqr`'s and `zlahqr`'s non-convergence
-  `INFO` is a `debug_assert` rather than an error, because `LapackError` has no
-  convergence variant.
+  for large matrices is not ported. Non-convergence `INFO` is *reported*, not
+  asserted: `dsyev`/`zheev` (via `dsteqr`/`zsteqr`), `dhseqr` (via `dlahqr`) and
+  `dgesvd`/`zgesvd` (via `dbdsqr`/`zbdsqr`) return `LapackError::Convergence`.
+  `dhseqr`, `dgeev` and `dgesvd` are exercised through NaN-matrix tests;
+  `dsyev`/`zheev` are not, because a NaN matrix reads as zero under the norm gate
+  and takes the reference's `ANORM == 0` early return.
 - `dgesvd`/`zgesvd` use the direct bidiagonalisation path for both shapes, not
   the QR/LQ pre-reduction the reference uses for very tall or wide inputs.
   Agreement with the reference is ~1e-15.
@@ -347,6 +354,14 @@ These are the rules the code depends on. Each one has been violated at least onc
   `native::blas::idamax` return 0-based indices; the first maximum wins.
 - **Scale before squaring.** A naive sum of squares overflows for entries around
   `1e200` and underflows around `1e-200`. `dnrm2` and `dznrm2` use Blue's scaling.
+- **Non-convergence is an error, not a debug assertion.** An `INFO > 0` from an
+  iterative routine -- `dsteqr`, `zsteqr`, `dlahqr`, `dbdsqr`, `zbdsqr`, and the
+  QZ iterations -- becomes `LapackError::Convergence`, never a `debug_assert`.
+  A debug assertion only fires in a debug build, so a release build handed back
+  partly converged eigenvalues and singular vectors as if they had converged.
+  `dhseqr`, `dgeev` and `dgesvd` are tested for this with a NaN matrix (the
+  iteration limit really is exhausted); `dsyev`/`zheev` cannot be, because the
+  norm gate reads NaN as zero and takes the zero-matrix early return.
 
 ## Dispatch between the native and external backends
 
@@ -372,6 +387,29 @@ Two things worth knowing before adding one:
    `LapackError::NotImplemented`** rather than being left to fail at link time. A
    runtime error can name the feature to enable; a link error about a mangled
    symbol cannot.
+
+3. **A native driver returns `Result<(), LapackError>`, never LAPACK's `INFO`.**
+   `INFO < 0` and `INFO > 0` both become an error at the driver boundary, so a
+   caller never has to remember which integer means what. Internal helpers
+   (`dlahqr`, `dhgeqz`, `dsteqr`, `dbdsqr`, `dtrevc3`, ...) keep returning `INFO`
+   because that is what the reference source says and what a diff against it
+   should show.
+
+4. **A native build does not need the shim's names, and must not warn about
+   them.** The shim's `lda`/`ldu`/`lwork`/`work`/`rwork`/`info` declarations sit
+   at function scope because the `oblas`/`mkl` branch uses them; in a native
+   build they are unused, so the enclosing function carries
+
+   ```rust
+   #[cfg_attr(not(any(feature = "oblas", feature = "mkl")), allow(unused_variables, unused_mut, unreachable_code, unused_assignments))]
+   ```
+
+   and the shim-only imports are `#[cfg(any(feature = "oblas", feature = "mkl"))]`
+   (plus `feature = "oracle"` for `CcBool`, which the oracle shim also uses).
+   Keep both when editing those files: an unconditional `#[allow]` would hide the
+   same warning in the accelerated build, where it would be a real mistake. This
+   is deliberately preferred over moving the declarations into the `cfg` block --
+   that would edit the one branch that cannot be compiled on this machine.
 
 
 ## Code intelligence (CodeGraph)

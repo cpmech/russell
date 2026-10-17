@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{C_FALSE, C_TRUE, CcBool, Complex64, ComplexVector, StrError, cpx, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{C_FALSE, C_TRUE, CcBool, Complex64};
+use crate::{ComplexVector, StrError, cpx, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -26,6 +28,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zggev) Computes the generalized eigenvalues and right eigenvectors
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -138,7 +144,7 @@ pub fn complex_mat_gen_eigen(
         let n = m;
         let mut a_work = a.clone();
         let mut b_work = b.clone();
-        let info = crate::native::lapack::qz::zggev(
+        crate::native::lapack::qz::zggev(
             false,
             true,
             n,
@@ -148,10 +154,8 @@ pub fn complex_mat_gen_eigen(
             beta.as_mut_data(),
             &mut [],
             v.as_mut_data(),
-        );
-        if info > 0 {
-            return Err("LAPACK ERROR (zggev): Iterations failed ");
-        }
+        )
+        .map_err(|_| "LAPACK ERROR (zggev): Iterations failed ")?;
         return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]
@@ -187,6 +191,10 @@ pub fn complex_mat_gen_eigen(
     Ok(())
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -317,7 +325,7 @@ pub fn complex_mat_gen_eigen_lr(
         let n = m;
         let mut a_work = a.clone();
         let mut b_work = b.clone();
-        let info = crate::native::lapack::qz::zggev(
+        crate::native::lapack::qz::zggev(
             true,
             true,
             n,
@@ -327,10 +335,8 @@ pub fn complex_mat_gen_eigen_lr(
             beta.as_mut_data(),
             u.as_mut_data(),
             v.as_mut_data(),
-        );
-        if info > 0 {
-            return Err("LAPACK ERROR (zggev): Iterations failed ");
-        }
+        )
+        .map_err(|_| "LAPACK ERROR (zggev): Iterations failed ")?;
         return Ok(());
     }
     #[cfg(any(feature = "oblas", feature = "mkl"))]

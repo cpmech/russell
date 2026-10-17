@@ -29,6 +29,7 @@
 //! Conventions match the rest of [`super`]: column-major, 0-based indices, and
 //! workspace allocated internally.
 
+use super::LapackError;
 use super::blas;
 use super::eig::{dlarfg, dlartg};
 use crate::Complex64;
@@ -596,7 +597,8 @@ fn dorm2r_left_trans(
 /// are stored there.
 #[allow(clippy::too_many_arguments)]
 fn dorg2r(a: &mut [f64], lda: usize, r0: usize, c0: usize, m: usize, n: usize, k: usize, tau: &[f64]) {
-    if n <= 0 {
+    // Fortran's IF( N.LE.0 ); for a `usize` that is exactly `n == 0`.
+    if n == 0 {
         return;
     }
     // Initialise columns k..n to the corresponding columns of the unit matrix.
@@ -985,7 +987,8 @@ fn dhgeqz(
     const ONE: f64 = 1.0;
     const ZERO: f64 = 0.0;
 
-    if n <= 0 {
+    // Fortran's IF( N.LE.0 ); for a `usize` that is exactly `n == 0`.
+    if n == 0 {
         return 0;
     }
 
@@ -1285,7 +1288,7 @@ fn dhgeqz(
                     // Check for two consecutive small subdiagonals.
                     let mut istart = ifirst;
                     let mut j = ilast - 1;
-                    while j >= ifirst + 1 {
+                    while j > ifirst {
                         let mut temp = (s1 * h[j + (j - 1) * ldh]).abs();
                         let mut temp2 = (s1 * h[j + j * ldh] - wr * t[j + j * ldt]).abs();
                         let tempr = temp.max(temp2);
@@ -1456,7 +1459,7 @@ fn dhgeqz(
                             let tempr = c22r / cz;
                             let tempi = c22i / cz;
                             let t1 = dlapy2(cz, c21);
-                            cz = cz / t1;
+                            cz /= t1;
                             szr = -c21 * tempr / t1;
                             szi = c21 * tempi / t1;
                         }
@@ -2146,12 +2149,12 @@ fn dtgevc(
                     if lsa {
                         a = ascale * (scale * sbeta);
                     } else {
-                        a = scale * a;
+                        a *= scale;
                     }
                     if lsb {
                         br = bscale * (scale * salfar);
                     } else {
-                        br = scale * br;
+                        br *= scale;
                     }
                 }
                 acoef = a;
@@ -2434,12 +2437,12 @@ fn dtgevc(
                     if lsa {
                         a = ascale * (scale * sbeta);
                     } else {
-                        a = scale * a;
+                        a *= scale;
                     }
                     if lsb {
                         br = bscale * (scale * salfar);
                     } else {
-                        br = scale * br;
+                        br *= scale;
                     }
                 }
                 acoef = a;
@@ -2751,8 +2754,11 @@ fn dlaset_identity(a: &mut [f64], ld: usize, n: usize) {
 /// hold the eigenvectors in LAPACK's compact storage: for a conjugate pair,
 /// columns `j` and `j + 1` are the real and imaginary parts of `v(j)`.
 ///
-/// The return value is the reference's `INFO`: 0 on success, `1..=n` when the QZ
-/// iteration did not converge, and `n + 2` when `dtgevc` failed.
+/// # Errors
+///
+/// [`LapackError::Convergence`] when the reference's `INFO` is non-zero: `1..=n`
+/// for QZ non-convergence, `n+1..=2n` for an argument it rejected, and `n + 2`
+/// when `dtgevc` failed to compute the eigenvectors.
 #[allow(clippy::too_many_arguments)]
 pub fn dggev(
     calc_vl: bool,
@@ -2765,7 +2771,7 @@ pub fn dggev(
     beta: &mut [f64],
     vl: &mut [f64],
     vr: &mut [f64],
-) -> usize {
+) -> Result<(), LapackError> {
     assert_eq!(a.len(), n * n, "dggev: a must be n*n");
     assert_eq!(b.len(), n * n, "dggev: b must be n*n");
     assert_eq!(alphar.len(), n, "dggev: alphar must have n entries");
@@ -2781,7 +2787,7 @@ pub fn dggev(
     }
 
     if n == 0 {
-        return 0;
+        return Ok(());
     }
     let ilv = calc_vl || calc_vr;
     let lda = n;
@@ -2866,20 +2872,18 @@ pub fn dggev(
     let ierr = dhgeqz(
         ilv, calc_vl, calc_vr, n, ilo, ihi0, a, lda, b, ldb, alphar, alphai, beta, vl, n, vr, n,
     );
+    // The QZ iteration's INFO is 1..=n for non-convergence and n+1..=2n for an
+    // argument it rejected; both are errors here.
     if ierr != 0 {
-        if ierr >= 1 && ierr <= n {
-            return ierr;
-        } else if ierr > n && ierr <= 2 * n {
-            return ierr - n;
-        }
-        return n + 1;
+        return Err(LapackError::Convergence);
     }
 
     // Compute eigenvectors.
     if ilv {
         let ierr = dtgevc(calc_vl, calc_vr, n, a, lda, b, ldb, vl, n, vr, n);
+        // The eigenvector back-substitution failed (LAPACK's INFO = N+2).
         if ierr != 0 {
-            return n + 2;
+            return Err(LapackError::Convergence);
         }
         // Undo balancing on VL and VR, and normalise.
         if calc_vl {
@@ -2907,7 +2911,7 @@ pub fn dggev(
         }
     }
 
-    0
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3012,7 +3016,7 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
         loop {
             knt += 1;
             for xi in x.iter_mut() {
-                *xi = *xi * rsafmn;
+                *xi *= rsafmn;
             }
             beta *= rsafmn;
             alphi *= rsafmn;
@@ -3028,7 +3032,7 @@ fn zlarfg(alpha: &mut Complex64, x: &mut [Complex64]) -> Complex64 {
     let tau = Complex64::new((beta - alphr) / beta, -alphi / beta);
     let al = zladiv(zone(), Complex64::new(alphr - beta, alphi));
     for xi in x.iter_mut() {
-        *xi = *xi * al;
+        *xi *= al;
     }
     for _ in 0..knt {
         beta *= safmin;
@@ -3178,7 +3182,7 @@ fn zlartg(f: Complex64, g: Complex64) -> (f64, Complex64, Complex64) {
                 s = gs.conj() * (fs / d);
             }
             c *= w;
-            r = r * u;
+            r *= u;
         }
     }
     (c, s, r)
@@ -3227,7 +3231,7 @@ fn zlascl_g(cfrom: f64, cto: f64, a: &mut [Complex64], lda: usize, m: usize, n: 
         }
         for j in 0..n {
             for i in 0..m {
-                a[i + j * lda] = a[i + j * lda] * mul;
+                a[i + j * lda] *= mul;
             }
         }
         if done {
@@ -3400,7 +3404,7 @@ fn zung2r_sub(a: &mut [Complex64], ld: usize, r0: usize, c0: usize, m: usize, n:
         }
         if i < m - 1 {
             for t in (i + 1)..m {
-                a[(r0 + t) + (c0 + i) * ld] = a[(r0 + t) + (c0 + i) * ld] * (-tau[i]);
+                a[(r0 + t) + (c0 + i) * ld] *= -tau[i];
             }
         }
         a[(r0 + i) + (c0 + i) * ld] = zone() - tau[i];
@@ -3787,7 +3791,8 @@ fn zhgeqz(
     z: &mut [Complex64],
     ldz: usize,
 ) -> usize {
-    if n <= 0 {
+    // Fortran's IF( N.LE.0 ); for a `usize` that is exactly `n == 0`.
+    if n == 0 {
         return 0;
     }
 
@@ -4011,7 +4016,7 @@ fn zhgeqz(
                         if temp2 > 0.0 && (x / temp2).re * y.re + (x / temp2).im * y.im < 0.0 {
                             y = -y;
                         }
-                        sh = sh - ctemp * zladiv(ctemp, x + y);
+                        sh -= ctemp * zladiv(ctemp, x + y);
                     }
                     shift = sh;
                 } else {
@@ -4030,7 +4035,7 @@ fn zhgeqz(
                 let mut ctemp = ascale * h[ifirst + ifirst * ldh] - shift * (bscale * t[ifirst + ifirst * ldt]);
                 let mut found = false;
                 let mut j = ilast - 1;
-                while j >= ifirst + 1 {
+                while j > ifirst {
                     istart = j;
                     ctemp = ascale * h[j + j * ldh] - shift * (bscale * t[j + j * ldt]);
                     let mut temp = zabs1(ctemp);
@@ -4165,7 +4170,7 @@ fn ztgevc_coeffs(
         if lsa {
             acoeff = ascale * (scale * sbeta);
         } else {
-            acoeff = scale * acoeff;
+            acoeff *= scale;
         }
         if lsb {
             bcoeff = bscale * (scale * salpha);
@@ -4277,7 +4282,7 @@ fn ztgevc(
                 let temp = 1.0 / xmax;
                 if acoefa * rwork[j] + bcoefa * rwork[n + j] > bignum * temp {
                     for jr in je..j {
-                        work[jr] = work[jr] * temp;
+                        work[jr] *= temp;
                     }
                     xmax = 1.0;
                 }
@@ -4295,10 +4300,10 @@ fn ztgevc(
                 if zabs1(d) < 1.0 && zabs1(sum) >= bignum * zabs1(d) {
                     let temp = 1.0 / zabs1(sum);
                     for jr in je..j {
-                        work[jr] = work[jr] * temp;
+                        work[jr] *= temp;
                     }
-                    xmax = temp * xmax;
-                    sum = sum * temp;
+                    xmax *= temp;
+                    sum *= temp;
                 }
                 work[j] = zladiv(-sum, d);
                 xmax = xmax.max(zabs1(work[j]));
@@ -4365,7 +4370,7 @@ fn ztgevc(
                 if zabs1(d) < 1.0 && zabs1(work[j]) >= bignum * zabs1(d) {
                     let temp = 1.0 / zabs1(work[j]);
                     for jr in 0..=je {
-                        work[jr] = work[jr] * temp;
+                        work[jr] *= temp;
                     }
                 }
                 work[j] = zladiv(-work[j], d);
@@ -4374,7 +4379,7 @@ fn ztgevc(
                         let temp = 1.0 / zabs1(work[j]);
                         if acoefa * rwork[j] + bcoefa * rwork[n + j] >= bignum * temp {
                             for jr in 0..=je {
-                                work[jr] = work[jr] * temp;
+                                work[jr] *= temp;
                             }
                         }
                     }
@@ -4436,7 +4441,7 @@ fn zggev_normalize(n: usize, smlnum: f64, v: &mut [Complex64], ldv: usize) {
         }
         let temp = 1.0 / temp;
         for jr in 0..n {
-            v[jr + jc * ldv] = v[jr + jc * ldv] * temp;
+            v[jr + jc * ldv] *= temp;
         }
     }
 }
@@ -4447,9 +4452,13 @@ fn zggev_normalize(n: usize, smlnum: f64, v: &mut [Complex64], ldv: usize) {
 /// This follows LAPACK 3.12.1's `zggev` with `JOBVL`/`JOBVR` decoded into
 /// `calc_vl`/`calc_vr`. On exit `a` and `b` are overwritten, `alpha` and `beta`
 /// hold the eigenvalues as `alpha / beta` (`beta` real and non-negative), and
-/// `vl`/`vr` hold the eigenvectors in columns. The return value is the
-/// reference's `INFO`: 0 on success, `1..=n` when the QZ iteration did not
-/// converge, and `n + 2` when `ztgevc` failed.
+/// `vl`/`vr` hold the eigenvectors in columns.
+///
+/// # Errors
+///
+/// [`LapackError::Convergence`] when the reference's `INFO` is non-zero: `1..=n`
+/// for QZ non-convergence, `n+1..=2n` for an argument it rejected, and `n + 2`
+/// when `ztgevc` failed to compute the eigenvectors.
 #[allow(clippy::too_many_arguments)]
 pub fn zggev(
     calc_vl: bool,
@@ -4461,7 +4470,7 @@ pub fn zggev(
     beta: &mut [Complex64],
     vl: &mut [Complex64],
     vr: &mut [Complex64],
-) -> usize {
+) -> Result<(), LapackError> {
     assert_eq!(a.len(), n * n, "zggev: a must be n*n");
     assert_eq!(b.len(), n * n, "zggev: b must be n*n");
     assert_eq!(alpha.len(), n, "zggev: alpha must have n entries");
@@ -4474,7 +4483,7 @@ pub fn zggev(
     }
 
     if n == 0 {
-        return 0;
+        return Ok(());
     }
     let ilv = calc_vl || calc_vr;
     let lda = n;
@@ -4555,20 +4564,18 @@ pub fn zggev(
     let ierr = zhgeqz(
         ilv, calc_vl, calc_vr, n, ilo, ihi0, a, lda, b, ldb, alpha, beta, vl, n, vr, n,
     );
+    // The QZ iteration's INFO is 1..=n for non-convergence and n+1..=2n for an
+    // argument it rejected; both are errors here.
     if ierr != 0 {
-        if ierr <= n {
-            return ierr;
-        } else if ierr <= 2 * n {
-            return ierr - n;
-        }
-        return n + 1;
+        return Err(LapackError::Convergence);
     }
 
     // Compute the eigenvectors.
     if ilv {
         let bad = ztgevc(calc_vl, calc_vr, n, a, lda, b, ldb, vl, n, vr, n);
+        // The eigenvector back-substitution failed (LAPACK's INFO = N+2).
         if bad {
-            return n + 2;
+            return Err(LapackError::Convergence);
         }
         // Undo the balancing on VL and VR, and normalise.
         if calc_vl {
@@ -4585,17 +4592,17 @@ pub fn zggev(
     if ilascl {
         let f = anrm / anrmto;
         for i in 0..n {
-            alpha[i] = alpha[i] * f;
+            alpha[i] *= f;
         }
     }
     if ilbscl {
         let f = bnrm / bnrmto;
         for i in 0..n {
-            beta[i] = beta[i] * f;
+            beta[i] *= f;
         }
     }
 
-    0
+    Ok(())
 }
 
 #[cfg(test)]
@@ -4611,10 +4618,10 @@ mod tests {
         let mut be = vec![0.0; n];
         let mut u = vec![0.0; n * n];
         let mut v = vec![0.0; n * n];
-        let info = dggev(
+        dggev(
             true, true, n, &mut aw, &mut bw, &mut ar, &mut ai, &mut be, &mut u, &mut v,
-        );
-        assert_eq!(info, 0, "dggev reported info = {info}");
+        )
+        .expect("dggev converged");
         (ar, ai, be, u, v)
     }
 
@@ -4970,8 +4977,7 @@ mod tests {
         let mut beta = vec![zzero(); n];
         let mut u = vec![zzero(); n * n];
         let mut v = vec![zzero(); n * n];
-        let info = zggev(true, true, n, &mut aw, &mut bw, &mut alpha, &mut beta, &mut u, &mut v);
-        assert_eq!(info, 0, "zggev reported info = {info}");
+        zggev(true, true, n, &mut aw, &mut bw, &mut alpha, &mut beta, &mut u, &mut v).expect("zggev converged");
         (alpha, beta, u, v)
     }
 
@@ -5164,5 +5170,45 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Non-convergence of the QZ iteration reaches the caller as an error.
+    ///
+    /// A NaN pair keeps `dhgeqz`/`zhgeqz`'s convergence test false, so the
+    /// iteration exhausts its limit and reports `INFO > 0`; the driver must turn
+    /// that into `LapackError::Convergence` rather than returning partly converged
+    /// alpha/beta. Reverting either `return Err(...)` to `return ierr` makes this
+    /// test fail.
+    #[test]
+    fn qz_non_convergence_is_reported_rather_than_returned_as_a_result() {
+        let n = 4;
+        let mut a = vec![f64::NAN; n * n];
+        let mut b = vec![f64::NAN; n * n];
+        let mut ar = vec![0.0; n];
+        let mut ai = vec![0.0; n];
+        let mut be = vec![0.0; n];
+        let mut vl = vec![0.0; n * n];
+        let mut v = vec![0.0; n * n];
+        assert_eq!(
+            dggev(
+                true, true, n, &mut a, &mut b, &mut ar, &mut ai, &mut be, &mut vl, &mut v
+            ),
+            Err(LapackError::Convergence),
+            "dggev must report non-convergence"
+        );
+
+        let mut ca = vec![Complex64::new(f64::NAN, 0.0); n * n];
+        let mut cb = vec![Complex64::new(f64::NAN, 0.0); n * n];
+        let mut alpha = vec![Complex64::new(0.0, 0.0); n];
+        let mut beta = vec![Complex64::new(0.0, 0.0); n];
+        let mut cvl = vec![Complex64::new(0.0, 0.0); n * n];
+        let mut cv = vec![Complex64::new(0.0, 0.0); n * n];
+        assert_eq!(
+            zggev(
+                true, true, n, &mut ca, &mut cb, &mut alpha, &mut beta, &mut cvl, &mut cv
+            ),
+            Err(LapackError::Convergence),
+            "zggev must report non-convergence"
+        );
     }
 }

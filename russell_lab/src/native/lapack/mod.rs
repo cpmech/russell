@@ -37,6 +37,12 @@
 //!   `lda`/`lwork` arguments are Fortran artefacts, not part of the maths, so
 //!   they do not appear here; the leading dimension of an `n x n` matrix is `n`.
 //! * Workspace is allocated inside each routine.
+//! * A driver returns `Result<(), LapackError>`, never LAPACK's integer `INFO`:
+//!   `INFO < 0` (an illegal argument) and `INFO > 0` (non-convergence, or a
+//!   back-substitution failure) both become [`LapackError`], so no caller has to
+//!   remember which integer means what. Internal helpers still return `INFO`,
+//!   because that is what the reference source says and what a diff against it
+//!   should show; the drivers translate it at the boundary.
 
 pub mod complex;
 pub mod eig;
@@ -61,10 +67,19 @@ pub enum LapackError {
     Singular,
     /// A shape or length was inconsistent with another.
     BadShape,
+    /// An iterative routine exhausted its iteration limit before converging.
+    ///
+    /// This is LAPACK's `INFO > 0`, and it means the output is *partly*
+    /// converged: the routine returns an error rather than values that look
+    /// plausible and are not. Every iterative routine here reports it --
+    /// `dsyev`/`zheev` (via `dsteqr`/`zsteqr`), `dhseqr` (via `dlahqr`), and
+    /// `dgesvd`/`zgesvd` (via `dbdsqr`/`zbdsqr`) -- so a caller cannot get
+    /// unconverged eigenvalues back as if they had converged.
+    Convergence,
     /// The routine exists in the interface but has no native implementation yet.
     ///
     /// Carries the routine's name so a message can point at it. See
-    /// [`not_implemented`].
+    /// [`not_implemented`]. No routine currently returns this.
     NotImplemented(&'static str),
 }
 
@@ -327,6 +342,23 @@ pub fn norm_char(norm_code: i32) -> char {
 #[allow(unused_imports)]
 use blas as _blas;
 
+/// Error used when a routine has no native implementation yet.
+///
+/// Returning this rather than leaving the call site pointed at a symbol that is
+/// not linked is deliberate: a runtime error names the feature to enable, whereas
+/// a link error names a mangled symbol and says nothing about what to do.
+///
+/// No routine currently returns it -- every routine the crate's public API needs
+/// is implemented natively -- but the mapping is kept so that the `NotImplemented`
+/// variant still has a message, and so a call site does not have to change if a
+/// routine is reverted.
+pub fn not_implemented(routine: &str) -> &'static str {
+    // The message must be a `&'static str` to fit `StrError`, so the routine
+    // names are listed literally rather than interpolated.
+    let _ = routine;
+    "this routine is not implemented in the native Rust LAPACK yet;      build with `--features oblas` (or `mkl`) to use an external LAPACK"
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
@@ -448,7 +480,7 @@ mod tests {
         // written -- LAPACK leaves the rest untouched -- so build L explicitly
         // rather than assuming the whole buffer holds L. A test that read the
         // upper triangle here would "fail" on correct code.
-        let mut l = vec![0.0; 4];
+        let mut l = [0.0; 4];
         for i in 0..2 {
             for j in 0..2 {
                 if i >= j {
@@ -456,7 +488,7 @@ mod tests {
                 }
             }
         }
-        let mut recon = vec![0.0; 4];
+        let mut recon = [0.0; 4];
         for i in 0..2 {
             for j in 0..2 {
                 let mut sum = 0.0;
@@ -490,19 +522,4 @@ mod tests {
         assert_eq!(dgesv(&mut a, &mut b), Ok(()));
         assert_eq!(dpotrf(&mut a, 0), Ok(()));
     }
-}
-
-/// Error used when a routine has no native implementation yet.
-///
-/// Returning this rather than leaving the call site pointed at a symbol that is
-/// not linked is deliberate: a runtime error names the feature to enable, whereas
-/// a link error names a mangled symbol and says nothing about what to do.
-///
-/// Routines currently in this state: the general real eigenvalues (`dgeev`,
-/// `dggev`), the SVD (`dgesvd`), and the complex eigen/SVD drivers.
-pub fn not_implemented(routine: &str) -> &'static str {
-    // The message must be a `&'static str` to fit `StrError`, so the routine
-    // names are listed literally rather than interpolated.
-    let _ = routine;
-    "this routine is not implemented in the native Rust LAPACK yet;      build with `--features oblas` (or `mkl`) to use an external LAPACK"
 }

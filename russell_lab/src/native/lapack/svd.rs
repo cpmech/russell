@@ -271,12 +271,8 @@ pub(crate) fn dlasv2(f: f64, g: f64, h: f64) -> (f64, f64, f64, f64, f64, f64) {
     let swap = ha > fa;
     if swap {
         pmax = 3;
-        let temp = ft;
-        ft = ht;
-        ht = temp;
-        let temp = fa;
-        fa = ha;
-        ha = temp;
+        std::mem::swap(&mut ft, &mut ht);
+        std::mem::swap(&mut fa, &mut ha);
     }
 
     let gt = g;
@@ -474,7 +470,8 @@ pub fn dgebd2(
 /// `DORG2R`: generate the first `n` columns of an `m x m` orthogonal matrix `Q`
 /// from the reflectors `dgebd2` stored below the diagonal of `a`.
 fn dorg2r(m: usize, n: usize, k: usize, a: &mut [f64], lda: usize, tau: &[f64]) {
-    if n <= 0 {
+    // Fortran's IF( N.LE.0 ); for a `usize` that is exactly `n == 0`.
+    if n == 0 {
         return;
     }
     // Set the columns after the first k to the identity.
@@ -506,7 +503,8 @@ fn dorg2r(m: usize, n: usize, k: usize, a: &mut [f64], lda: usize, tau: &[f64]) 
 /// `DORGL2`: generate the first `m` rows of an `m x n` matrix `Q` with orthogonal
 /// rows from the reflectors `dgebd2` stored above the diagonal of `a`.
 fn dorgl2(m: usize, n: usize, k: usize, a: &mut [f64], lda: usize, tau: &[f64]) {
-    if m <= 0 {
+    // Fortran's IF( M.LE.0 ); for a `usize` that is exactly `m == 0`.
+    if m == 0 {
         return;
     }
     if k < m {
@@ -648,7 +646,7 @@ pub fn dbdsqr(
             let (cs, sn, r) = dlartg(d[i - 1], e[i - 1]);
             d[i - 1] = r;
             e[i - 1] = sn * d[i];
-            d[i] = cs * d[i];
+            d[i] *= cs;
             work[i - 1] = cs;
             work[nm1 + i - 1] = sn;
         }
@@ -1009,14 +1007,14 @@ pub fn dbdsqr(
                 f = cosr * d[i - 1] + sinr * e[i - 1];
                 e[i - 1] = cosr * e[i - 1] - sinr * d[i - 1];
                 g = sinr * d[i];
-                d[i] = cosr * d[i];
+                d[i] *= cosr;
                 let (cosl, sinl, r) = dlartg(f, g);
                 d[i - 1] = r;
                 f = cosl * e[i - 1] + sinl * d[i];
                 d[i] = cosl * d[i] - sinl * e[i - 1];
                 if i < m - 1 {
                     g = sinl * e[i];
-                    e[i] = cosl * e[i];
+                    e[i] *= cosl;
                 }
                 work[i - ll] = cosr;
                 work[i - ll + nm1] = sinr;
@@ -1076,14 +1074,14 @@ pub fn dbdsqr(
                 f = cosr * d[i - 1] + sinr * e[i - 2];
                 e[i - 2] = cosr * e[i - 2] - sinr * d[i - 1];
                 g = sinr * d[i - 2];
-                d[i - 2] = cosr * d[i - 2];
+                d[i - 2] *= cosr;
                 let (cosl, sinl, r) = dlartg(f, g);
                 d[i - 1] = r;
                 f = cosl * e[i - 2] + sinl * d[i - 2];
                 d[i - 2] = cosl * d[i - 2] - sinl * e[i - 2];
                 if i > ll + 1 {
                     g = sinl * e[i - 3];
-                    e[i - 3] = cosl * e[i - 3];
+                    e[i - 3] *= cosl;
                 }
                 work[i - ll - 1] = cosr;
                 work[i - ll - 1 + nm1] = -sinr;
@@ -1198,7 +1196,7 @@ pub fn dbdsqr(
 /// # Errors
 ///
 /// [`LapackError::BadShape`] if a buffer's length disagrees with `(m, n)`, and
-/// [`LapackError::Singular`] if `dbdsqr` fails to converge (the driver's
+/// [`LapackError::Convergence`] if `dbdsqr` fails to converge (the driver's
 /// `INFO > 0`, which the caller reports as "algorithm did not converge").
 pub fn dgesvd(
     a: &mut [f64],
@@ -1295,7 +1293,7 @@ pub fn dgesvd(
     }
 
     if info != 0 {
-        return Err(LapackError::Singular);
+        return Err(LapackError::Convergence);
     }
     Ok(())
 }
@@ -1493,5 +1491,27 @@ mod tests {
         assert!((ssmax.abs() - 3.0).abs() < 1e-14);
         assert!((ssmin.abs() - 2.0).abs() < 1e-14);
         assert_eq!((snr, csr, snl, csl), (0.0, 1.0, 0.0, 1.0));
+    }
+
+    /// `dbdsqr`'s non-convergence reaches the caller as `Convergence`.
+    ///
+    /// A NaN matrix keeps the QR sweeps' convergence test false, so `dbdsqr`
+    /// runs out of iterations and sets `INFO > 0`. The driver must surface it:
+    /// `mat_svd` reports this variant as "Algorithm did not converge", so
+    /// returning `Singular` here -- which is what it used to do -- named the
+    /// wrong condition.
+    #[test]
+    fn dgesvd_reports_non_convergence() {
+        for (m, n) in [(4usize, 4usize), (6, 4), (4, 6)] {
+            let mut a = vec![f64::NAN; m * n];
+            let mut s = vec![0.0; m.min(n)];
+            let mut u = vec![0.0; m * m];
+            let mut vt = vec![0.0; n * n];
+            assert_eq!(
+                dgesvd(&mut a, m, n, &mut s, &mut u, &mut vt),
+                Err(LapackError::Convergence),
+                "dgesvd {m}x{n} must report non-convergence"
+            );
+        }
     }
 }

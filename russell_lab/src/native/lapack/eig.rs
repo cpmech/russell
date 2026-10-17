@@ -25,6 +25,8 @@
 //! blocks for complex conjugate pairs. Those 2x2 blocks are why the eigenvector
 //! step needs `dlaln2`-style solving rather than a plain triangular substitution.
 
+use super::LapackError;
+
 /// A 2x2 block's eigenvalues, as [`dlanv2`] returns them.
 ///
 /// `rt1r`/`rt1i` and `rt2r`/`rt2i` are the two eigenvalues. They are real when
@@ -92,7 +94,9 @@ pub fn dlarfg(alpha: f64, x: &[f64]) -> (f64, f64, Vec<f64>) {
                 *xi *= safmin;
             }
             alpha *= safmin;
-            beta *= safmin;
+            // The reference multiplies XNORM by SAFMIN here and recomputes BETA
+            // from it; porting the multiplication of `beta` as well would be a
+            // dead store, since BETA is recomputed below.
             let mut sc = 0.0;
             for &xi in xw.iter() {
                 let a = xi.abs();
@@ -188,11 +192,11 @@ pub fn dlanv2(a: &mut f64, b: &mut f64, c: &mut f64, d: &mut f64, cs: &mut f64, 
             // Real eigenvalues.
             z = p + z.sqrt() * scale.sqrt() * p.signum();
             *a = *d + z;
-            *d = *d - (bcmax / z) * bcmis;
+            *d -= (bcmax / z) * bcmis;
             let tau = f64::hypot(*c, z);
             *cs = z / tau;
             *sn = *c / tau;
-            *b = *b - *c;
+            *b -= *c;
             *c = 0.0;
         } else {
             // Complex eigenvalues, or real (almost) equal ones: equalise the
@@ -253,7 +257,7 @@ pub fn dlanv2(a: &mut f64, b: &mut f64, c: &mut f64, d: &mut f64, cs: &mut f64, 
                         let tau = 1.0 / (b.abs() + c.abs()).sqrt();
                         *a = temp + p;
                         *d = temp - p;
-                        *b = *b - *c;
+                        *b -= *c;
                         *c = 0.0;
                         let cs1 = sab * tau;
                         let sn1 = sac * tau;
@@ -517,7 +521,7 @@ fn dlahqr(
             // Look for a single small subdiagonal element.
             // DO 30 K = I, L + 1, -1; running off the top leaves K = L.
             let mut k = i;
-            while k >= l + 1 {
+            while k > l {
                 if h[k + (k - 1) * ldh].abs() <= smlnum {
                     break;
                 }
@@ -526,7 +530,7 @@ fn dlahqr(
                     if k >= ilo + 2 {
                         tst += h[(k - 1) + (k - 2) * ldh].abs();
                     }
-                    if k + 1 <= ihi {
+                    if k < ihi {
                         tst += h[(k + 1) + k * ldh].abs();
                     }
                 }
@@ -598,7 +602,7 @@ fn dlahqr(
                 h12 = h[(i - 1) + i * ldh];
                 h22 = h[i + i * ldh];
             }
-            let mut s = h11.abs() + h12.abs() + h21.abs() + h22.abs();
+            let s = h11.abs() + h12.abs() + h21.abs() + h22.abs();
             let mut rt1r = 0.0;
             let mut rt1i = 0.0;
             let mut rt2r = 0.0;
@@ -849,14 +853,15 @@ fn dlahqr(
 /// means `WANTT = .TRUE.` and `COMPZ = 'N'` means `WANTZ = .FALSE.`, and with
 /// `ILO = 1, IHI = N` the whole matrix is reduced.
 ///
-/// `dlahqr` reports non-convergence through `INFO`, which this signature has no
-/// way to return; a matrix that exhausts the iteration limit is left partly
-/// reduced, as if `INFO > 0`.
+/// `dlahqr` reports non-convergence through `INFO`, which is returned as
+/// [`LapackError::Convergence`]: a matrix that exhausts the iteration limit
+/// leaves `t` partly reduced, and the partly converged eigenvalues are not
+/// passed off as a Schur form.
 ///
 /// The acceptance test is `parity::dhseqr_eigenvalues_agree_with_the_reference`,
 /// which checks the quasi-triangular structure, the standard form of each 2x2
 /// block, and the eigenvalue multiset against the reference `dgeev`.
-pub fn dhseqr(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], n: usize) {
+pub fn dhseqr(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], n: usize) -> Result<(), LapackError> {
     dhseqr_impl(t, wr, wi, None, n)
 }
 
@@ -875,16 +880,28 @@ pub fn dhseqr(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], n: usize) {
 ///
 /// The test `dhseqr_with_schur_vectors_gives_the_schur_decomposition` checks
 /// `A = Z T Z^T` and that `Z` is orthogonal.
-pub fn dhseqr_with_schur_vectors(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], z: &mut [f64], n: usize) {
+pub fn dhseqr_with_schur_vectors(
+    t: &mut [f64],
+    wr: &mut [f64],
+    wi: &mut [f64],
+    z: &mut [f64],
+    n: usize,
+) -> Result<(), LapackError> {
     dhseqr_impl(t, wr, wi, Some(z), n)
 }
 
-fn dhseqr_impl(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], z: Option<&mut [f64]>, n: usize) {
+fn dhseqr_impl(
+    t: &mut [f64],
+    wr: &mut [f64],
+    wi: &mut [f64],
+    z: Option<&mut [f64]>,
+    n: usize,
+) -> Result<(), LapackError> {
     assert_eq!(t.len(), n * n, "dhseqr: t must be n*n");
     assert_eq!(wr.len(), n, "dhseqr: wr must have n entries");
     assert_eq!(wi.len(), n, "dhseqr: wi must have n entries");
     if n == 0 {
-        return;
+        return Ok(());
     }
     // JOB = 'S' -> WANTT = .TRUE.; ILO = 1, IHI = N (0-based 0 and n - 1).
     let info = match z {
@@ -894,7 +911,12 @@ fn dhseqr_impl(t: &mut [f64], wr: &mut [f64], wi: &mut [f64], z: Option<&mut [f6
         }
         None => dlahqr(n, 0, n - 1, t, n, wr, wi, false, &mut []),
     };
-    debug_assert_eq!(info, 0, "dhseqr: the QR iteration failed to converge");
+    // `INFO > 0` is dlahqr's non-convergence report. Returning it is the whole
+    // point of the Result: a release build used to drop it on the floor.
+    if info != 0 {
+        return Err(LapackError::Convergence);
+    }
+    Ok(())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1299,6 +1321,11 @@ fn vset(v: &mut [f64], n: usize, i: usize, j: usize, x: f64) {
 ///
 /// The BLAS-2 back-transformation is `dtrevc3`'s `NB = 1` branch, which is what
 /// `dgeev.f` selects for its `lwork = 4n + 1` workspace.
+/// `VCRIT = BIGNUM` is set again after each rescale, and the reference does the
+/// same even though the next statement overwrites it (`VCRIT = BIGNUM / VMAX`):
+/// the write is dead there too. Kept so a diff against `dtrevc3.f` still lines
+/// up; `unused_assignments` is the only lint it trips.
+#[allow(unused_assignments)]
 fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
     let unfl = f64::MIN_POSITIVE;
     let ulp = f64::EPSILON;
@@ -1328,9 +1355,10 @@ fn dtrevc_right(t: &[f64], vr: &mut [f64], n: usize) {
     while ki >= 1 {
         if ip != 1 {
             // ---- decide whether KI is real or the lower half of a pair ----
-            if ki == 1 {
-                ip = 0;
-            } else if tget(t, n, ki, ki - 1) == 0.0 {
+            // The reference spells the first two cases as separate branches
+            // (`KI == 1` and `T(KI,KI-1) == 0`), both setting `IP = 0`; merged
+            // here because the two are indistinguishable.
+            if ki == 1 || tget(t, n, ki, ki - 1) == 0.0 {
                 ip = 0;
             } else {
                 ip = -1;
@@ -1919,7 +1947,16 @@ fn dgebak_right(v: &mut [f64], n: usize, ilo: usize, ihi: usize, scale: &[f64]) 
 /// Balancing is what makes the eigenvalues of a defectively repeated eigenvalue
 /// come out exact: the permutation in step 2 isolates such an eigenvalue, so the
 /// QR iteration never has to separate it from its neighbours.
-pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) -> (Vec<f64>, Vec<f64>) {
+///
+/// # Errors
+///
+/// [`LapackError::Convergence`] if the QR iteration in step 4 fails to converge.
+pub fn dgeev(
+    v_real: &mut [f64],
+    v_imag: &mut [f64],
+    a: &mut [f64],
+    n: usize,
+) -> Result<(Vec<f64>, Vec<f64>), LapackError> {
     assert_eq!(a.len(), n * n, "dgeev: a must be n*n");
     assert_eq!(v_real.len(), n * n, "dgeev: v_real must be n*n");
     assert_eq!(v_imag.len(), n * n, "dgeev: v_imag must be n*n");
@@ -1927,7 +1964,7 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
     let mut wr = vec![0.0; n];
     let mut wi = vec![0.0; n];
     if n == 0 {
-        return (wr, wi);
+        return Ok((wr, wi));
     }
 
     // ---- machine constants (dgeev.f) ----
@@ -1966,7 +2003,7 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
     dgehrd(a, n, Some(&mut q));
 
     // ---- DHSEQR with COMPZ = 'V': A = Z T Z^T (Z accumulated into q) ----
-    dhseqr_with_schur_vectors(a, &mut wr, &mut wi, &mut q, n);
+    dhseqr_with_schur_vectors(a, &mut wr, &mut wi, &mut q, n)?;
 
     // ---- DTREVC3('R','B'): eigenvectors of T, back-transformed by Z ----
     let mut vr = q;
@@ -2046,7 +2083,7 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
         }
     }
 
-    (wr, wi)
+    Ok((wr, wi))
 }
 
 /// `dtrevc3` (`dtrevc3.f`, LAPACK 3.12.1) with `SIDE = 'L'`, `HOWMNY = 'B'` and
@@ -2062,6 +2099,11 @@ pub fn dgeev(v_real: &mut [f64], v_imag: &mut [f64], a: &mut [f64], n: usize) ->
 /// uses `LTRANS` for nothing but the off-diagonal swap in `CR`; passing the two
 /// off-diagonals in the opposite argument slots is therefore exactly the
 /// transposed system, and no second `dlaln2` is needed.
+/// `VCRIT = BIGNUM` is set again after each rescale, and the reference does the
+/// same even though the next statement overwrites it (`VCRIT = BIGNUM / VMAX`):
+/// the write is dead there too. Kept so a diff against `dtrevc3.f` still lines
+/// up; `unused_assignments` is the only lint it trips.
+#[allow(unused_assignments)]
 fn dtrevc_left(t: &[f64], vl: &mut [f64], n: usize) {
     let unfl = f64::MIN_POSITIVE;
     let ulp = f64::EPSILON;
@@ -2534,6 +2576,10 @@ fn dgeev_unpack(raw: &[f64], wi: &[f64], re: &mut [f64], im: &mut [f64], n: usiz
 /// `(wr, wi)`; `u_real`/`u_imag` and `v_real`/`v_imag` hold the left and right
 /// eigenvectors, with `u(j) = u_real[:, j] + i u_imag[:, j]` (and likewise for
 /// `v`), and the second member of a pair the conjugate of the first.
+///
+/// # Errors
+///
+/// [`LapackError::Convergence`] if the QR iteration fails to converge.
 #[allow(clippy::too_many_arguments)]
 pub fn dgeev_lr(
     u_real: &mut [f64],
@@ -2542,7 +2588,7 @@ pub fn dgeev_lr(
     v_imag: &mut [f64],
     a: &mut [f64],
     n: usize,
-) -> (Vec<f64>, Vec<f64>) {
+) -> Result<(Vec<f64>, Vec<f64>), LapackError> {
     assert_eq!(a.len(), n * n, "dgeev_lr: a must be n*n");
     assert_eq!(u_real.len(), n * n, "dgeev_lr: u_real must be n*n");
     assert_eq!(u_imag.len(), n * n, "dgeev_lr: u_imag must be n*n");
@@ -2552,7 +2598,7 @@ pub fn dgeev_lr(
     let mut wr = vec![0.0; n];
     let mut wi = vec![0.0; n];
     if n == 0 {
-        return (wr, wi);
+        return Ok((wr, wi));
     }
 
     // ---- machine constants (dgeev.f) ----
@@ -2591,7 +2637,7 @@ pub fn dgeev_lr(
     dgehrd(a, n, Some(&mut q));
 
     // ---- DHSEQR with COMPZ = 'V': A = Z T Z^T ----
-    dhseqr_with_schur_vectors(a, &mut wr, &mut wi, &mut q, n);
+    dhseqr_with_schur_vectors(a, &mut wr, &mut wi, &mut q, n)?;
 
     // ---- DTREVC3('B','B'): eigenvectors of T, back-transformed by Z ----
     let mut vl = q.clone();
@@ -2622,7 +2668,7 @@ pub fn dgeev_lr(
     dgeev_unpack(&vl, &wi, u_real, u_imag, n);
     dgeev_unpack(&vr, &wi, v_real, v_imag, n);
 
-    (wr, wi)
+    Ok((wr, wi))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2870,7 +2916,7 @@ mod tests {
             dgehrd(&mut h, n, Some(&mut z));
             let mut wr = vec![0.0; n];
             let mut wi = vec![0.0; n];
-            dhseqr_with_schur_vectors(&mut h, &mut wr, &mut wi, &mut z, n);
+            dhseqr_with_schur_vectors(&mut h, &mut wr, &mut wi, &mut z, n).unwrap();
 
             // Z is orthogonal.
             for j in 0..n {
@@ -2906,7 +2952,7 @@ mod tests {
             dgehrd(&mut h2, n, None);
             let mut wr2 = vec![0.0; n];
             let mut wi2 = vec![0.0; n];
-            dhseqr(&mut h2, &mut wr2, &mut wi2, n);
+            dhseqr(&mut h2, &mut wr2, &mut wi2, n).unwrap();
             for i in 0..n {
                 assert!((wr[i] - wr2[i]).abs() < 1e-13 && (wi[i] - wi2[i]).abs() < 1e-13);
             }
@@ -2944,7 +2990,7 @@ mod tests {
             av.as_mut_data().copy_from_slice(&data);
             let mut v_real = Matrix::new(n, n);
             let mut v_imag = Matrix::new(n, n);
-            let (wr_vec, wi_vec) = dgeev(v_real.as_mut_data(), v_imag.as_mut_data(), av.as_mut_data(), n);
+            let (wr_vec, wi_vec) = dgeev(v_real.as_mut_data(), v_imag.as_mut_data(), av.as_mut_data(), n).unwrap();
 
             // Use the eigenvalues `dgeev` itself returns, and its own eigenvector
             // layout. Recovering them from an independent `dgehrd` + `dhseqr`
@@ -3061,7 +3107,7 @@ mod tests {
             let mut av = Matrix::new(n, n);
             let mut v_real = Matrix::new(n, n);
             let mut v_imag = Matrix::new(n, n);
-            let (wr, wi) = dgeev(av.as_mut_data(), v_real.as_mut_data(), v_imag.as_mut_data(), n);
+            let (wr, wi) = dgeev(av.as_mut_data(), v_real.as_mut_data(), v_imag.as_mut_data(), n).unwrap();
 
             let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
             let mut j = 0usize;
@@ -3150,7 +3196,8 @@ mod tests {
                 v_imag.as_mut_data(),
                 av.as_mut_data(),
                 n,
-            );
+            )
+            .unwrap();
 
             let scale = a.as_data().iter().fold(0.0f64, |m, x| m.max(x.abs())).max(1.0);
             let mut j = 0usize;
@@ -3186,7 +3233,7 @@ mod tests {
             let mut vi = Matrix::new(n, n);
             let mut aw = Matrix::new(n, n);
             aw.as_mut_data().copy_from_slice(&data);
-            let (wr2, wi2) = dgeev(vr.as_mut_data(), vi.as_mut_data(), aw.as_mut_data(), n);
+            let (wr2, wi2) = dgeev(vr.as_mut_data(), vi.as_mut_data(), aw.as_mut_data(), n).unwrap();
             for i in 0..n {
                 assert!(wr[i] == wr2[i] && wi[i] == wi2[i], "n={n}: eigenvalue {i} differs");
                 for r in 0..n {
@@ -3197,6 +3244,65 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    /// Non-convergence must be reported, not dropped on the floor.
+    ///
+    /// A matrix of NaN makes the QR iteration's convergence test
+    /// (`|h(i+1,i)| <= threshold`) permanently false, so `dlahqr` exhausts its
+    /// iteration limit and returns `INFO > 0`. Before that `INFO` was plumbed
+    /// through it was a `debug_assert`, so a release build returned partly
+    /// converged eigenvalues as if they had converged. To check this test can
+    /// actually fail, put the `debug_assert` back and build in release: the
+    /// assertions below then see `Ok`.
+    ///
+    /// `n >= 4` on purpose: at `n == 2` the matrix is a single 2x2 block, which
+    /// `dlanv2` reduces algebraically without iterating, so there is no iteration
+    /// limit to exhaust -- reference `dhseqr` reports success there too.
+    #[test]
+    fn non_convergence_is_reported_rather_than_returned_as_a_result() {
+        for n in [4usize, 8] {
+            let mut wr = vec![0.0; n];
+            let mut wi = vec![0.0; n];
+
+            let mut t = vec![f64::NAN; n * n];
+            assert_eq!(
+                dhseqr(&mut t, &mut wr, &mut wi, n),
+                Err(LapackError::Convergence),
+                "dhseqr n={n} must report non-convergence"
+            );
+
+            let mut z = vec![0.0; n * n];
+            for i in 0..n {
+                z[i + i * n] = 1.0;
+            }
+            let mut t2 = vec![f64::NAN; n * n];
+            assert_eq!(
+                dhseqr_with_schur_vectors(&mut t2, &mut wr, &mut wi, &mut z, n),
+                Err(LapackError::Convergence),
+                "dhseqr_with_schur_vectors n={n} must report non-convergence"
+            );
+
+            let mut v_real = vec![0.0; n * n];
+            let mut v_imag = vec![0.0; n * n];
+            let mut a = vec![f64::NAN; n * n];
+            assert_eq!(
+                dgeev(&mut v_real, &mut v_imag, &mut a, n).map(|_| ()),
+                Err(LapackError::Convergence),
+                "dgeev n={n} must report non-convergence"
+            );
+
+            let mut u_real = vec![0.0; n * n];
+            let mut u_imag = vec![0.0; n * n];
+            let mut v_real2 = vec![0.0; n * n];
+            let mut v_imag2 = vec![0.0; n * n];
+            let mut a2 = vec![f64::NAN; n * n];
+            assert_eq!(
+                dgeev_lr(&mut u_real, &mut u_imag, &mut v_real2, &mut v_imag2, &mut a2, n).map(|_| ()),
+                Err(LapackError::Convergence),
+                "dgeev_lr n={n} must report non-convergence"
+            );
         }
     }
 }

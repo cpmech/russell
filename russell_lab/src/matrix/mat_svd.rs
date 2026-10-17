@@ -1,6 +1,8 @@
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::SVD_CODE_A;
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{SVD_CODE_A, StrError, to_i32};
+use crate::{StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -24,6 +26,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dgesvd) Computes the singular value decomposition (SVD) of a matrix
 ///
 /// Finds `u`, `s`, and `v`, such that:
@@ -185,7 +191,7 @@ pub fn mat_svd(s: &mut Vector, u: &mut Matrix, vt: &mut Matrix, a: &mut Matrix) 
             vt.as_mut_data(),
         )
         .map_err(|e| match e {
-            LapackError::Singular => "LAPACK ERROR (dgesvd): Algorithm did not converge",
+            LapackError::Convergence => "LAPACK ERROR (dgesvd): Algorithm did not converge",
             _ => "LAPACK ERROR (dgesvd): An argument had an illegal value",
         })?;
     }

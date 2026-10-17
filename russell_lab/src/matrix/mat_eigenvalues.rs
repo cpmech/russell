@@ -1,5 +1,7 @@
 use super::Matrix;
-use crate::{C_FALSE, CcBool, StrError, Vector, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{C_FALSE, CcBool};
+use crate::{StrError, Vector, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -23,6 +25,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dgeev) Computes the eigenvalues of a matrix
 ///
 /// Computes the eigenvalues `l`, such that:
@@ -110,7 +116,15 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
         let n = m;
         let mut v_real = vec![0.0; n * n];
         let mut v_imag = vec![0.0; n * n];
-        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut v_real, &mut v_imag, a.as_mut_data(), n);
+        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut v_real, &mut v_imag, a.as_mut_data(), n)
+            .map_err(|e| match e {
+                // dlahqr exhausted its iteration limit; the eigenvalues are only
+                // partly converged, so this is an error rather than a result.
+                crate::native::lapack::LapackError::Convergence => {
+                    "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+                }
+                _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
+            })?;
         l_real.as_mut_data().copy_from_slice(&wr);
         l_imag.as_mut_data().copy_from_slice(&wi);
         return Ok(());

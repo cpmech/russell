@@ -19,8 +19,9 @@ installed:
   - **`intel_mkl`** — Intel oneAPI MKL, expected under
     `/opt/intel/oneapi/mkl/<version>`; set `MKL_VERSION` to override `latest`.
 
-`open_blas` and `intel_mkl` are mutually exclusive; `build.rs` panics if both are on, rather
-than leaving the linker to report two providers of the same symbols. Enabling
+`open_blas` and `intel_mkl` are mutually exclusive; `build.rs` rejects the combination while
+it compiles (`compile_error!`, so the message is an ordinary error rather than a panic),
+instead of leaving the linker to report two providers of the same symbols. Enabling
 neither prints which path was taken, so a build log always records it.
 
 The `open_blas` and `intel_mkl` features are forwarded from every dependent crate

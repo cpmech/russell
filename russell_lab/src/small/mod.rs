@@ -18,8 +18,11 @@
 //!   [`num_recipes_gaussj_inv`], [`num_recipes_gaussj_sol`],
 //!   [`small_solve_lin_sys`]) are generic over `T: Float` and return a `Result`
 //!   because they can fail on a singular matrix.
-//! * The singular value decomposition ([`small_mat_svd`]) wraps the LAPACK
-//!   `dgesvd` routine and operates on `f64` data (rectangular `M×N` matrices).
+//! * The singular value decomposition ([`small_mat_svd`]) wraps `dgesvd` -- the
+//!   native Rust implementation by default, the C shim with `oblas`/`mkl` -- and
+//!   operates on `f64` data (rectangular `M×N` matrices). It is the one routine
+//!   here that allocates: `dgesvd` sizes its own workspace internally. The
+//!   inputs and outputs stay stack arrays.
 //! * The symmetric eigen-decomposition ([`small_mat_eigen_sym_jacobi`]) operates
 //!   on the full `N×N` matrix and returns the (unsorted) eigenvalues and
 //!   eigenvectors.
@@ -32,12 +35,10 @@ mod small_mat_approx_eq;
 mod small_mat_eigen_sym_jacobi;
 mod small_mat_inv;
 mod small_mat_mat_mul;
-// With `lapack`, this wraps the LAPACK `dgesvd` routine. Without it, the
-// portable implementation in `crate::portable` provides the same function.
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+// Wraps `dgesvd`: the native Rust implementation by default, or the C shim when
+// an accelerator is enabled. Both are the same algorithm, so this no longer has
+// a second, less accurate implementation behind a `cfg`.
 mod small_mat_svd;
-#[cfg(not(any(feature = "oblas", feature = "mkl")))]
-pub use crate::portable_svd::small_mat_svd_portable as small_mat_svd;
 mod small_mat_t_mat_mul;
 mod small_mat_update;
 mod small_matrix;
@@ -52,7 +53,6 @@ pub use small_mat_approx_eq::*;
 pub use small_mat_eigen_sym_jacobi::*;
 pub use small_mat_inv::*;
 pub use small_mat_mat_mul::*;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
 pub use small_mat_svd::*;
 pub use small_mat_t_mat_mul::*;
 pub use small_mat_update::*;

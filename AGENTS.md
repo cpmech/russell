@@ -62,9 +62,9 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1161 pass, 0 fail, 0 ignored
+cargo test -p russell_lab --lib                     # 1163 pass, 0 fail, 0 ignored
 RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features oracle # 1174 pass, 0 fail
+  cargo test -p russell_lab --lib --features oracle # 1176 pass, 0 fail
 ```
 
 Both configurations are known-good on the current tree of `native-lapack`, with
@@ -321,6 +321,11 @@ warning-free.
   `small_mat_eigen_sym_jacobi`, etc., which operate on stack `[[f64; N]; N]` / `[f64; N]`
   arrays and avoid heap allocation; get the stack matrix from a tensor with
   `Tensor2::to_std_matrix_slice` (or `to_std_matrix_slice`-style helpers).
+  `small_mat_svd` is the one exception to "no heap": it wraps `dgesvd` (native
+  Rust by default, the C shim with `oblas`/`mkl`) and `dgesvd` allocates its own
+  workspace. Do not reintroduce an `AᵀA`-based SVD for it — forming `AᵀA` squares
+  the condition number, and at κ = 1e8 that left `russell_tensor`'s polar
+  rotation non-orthogonal by 0.28.
 - **No developer paths in source.** Not in code, not in defaults, not in doc
   comments. An absolute path under someone's home directory ends up published the
   moment the crate is. Use an environment variable, and prefer *requiring* it over

@@ -190,7 +190,6 @@ pub mod native;
 #[cfg(feature = "oracle")]
 pub mod oracle;
 mod portable;
-mod portable_svd;
 pub mod small;
 pub mod vector;
 

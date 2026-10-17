@@ -394,10 +394,6 @@ mod tests {
         assert_eq!(c.get(1, 1), 128.0);
     }
 
-    /// The portable SVD must agree with LAPACK's on the singular values, which
-    /// are unique. (The singular *vectors* are not unique, so they are checked
-    /// by reconstruction in the test above instead.)
-
     #[test]
     fn lu_decompose_and_invert_work() {
         // 4x4 so that the small-matrix shortcuts in `mat_inverse` do not apply.

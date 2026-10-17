@@ -4,7 +4,7 @@ use russell_sparse::prelude::*;
 use structopt::StructOpt;
 
 // You may run this binary using cargo as follows:
-// cargo run --release --all-features --bin solve_matrix_market -- -g cudss ~/Downloads/matrix-market/dwg961a.mtx
+// cargo run --release --bin solve_matrix_market -- -g umfpack ~/Downloads/matrix-market/dwg961a.mtx
 
 /// Command line options
 #[derive(StructOpt, Debug)]
@@ -28,21 +28,9 @@ struct Options {
     #[structopt(short = "s", long, default_value = "Auto")]
     scaling: String,
 
-    /// Matching algorithm to solve symmetric matrices with cuDSS
-    #[structopt(long, default_value = "None")]
-    matching_sym: String,
-
-    /// Matching algorithm to solve general (possibly unsymmetric) matrices with cuDSS
-    #[structopt(long, default_value = "Auto")]
-    matching_gen: String,
-
     /// Indicates that the coefficient matrix is positive-definite (only considered if the matrix is symmetric)
     #[structopt(short = "p", long)]
     positive_definite: bool,
-
-    /// Hybrid memory usage factor for cuDSS (0.01 to 0.99 fraction of total device memory)
-    #[structopt(short = "h", long)]
-    hybrid_memory_factor: Option<f64>,
 
     /// Number of threads for MUMPS
     #[structopt(short = "m", long, default_value = "0")]
@@ -108,7 +96,6 @@ fn main() -> Result<(), StrError> {
 
     // select the symmetric handling option
     let handling = match genie {
-        Genie::Cudss => MMsym::LeaveAsLower,
         Genie::Mumps => MMsym::LeaveAsLower,
         Genie::Umfpack => MMsym::MakeItFull,
     };
@@ -129,14 +116,6 @@ fn main() -> Result<(), StrError> {
         println!("... WARNING: overriding the prevention of issue with OpenBLAS ...");
     }
 
-    // checks and sets the hybrid memory factor (enables hybrid memory mode)
-    if let Some(v) = opt.hybrid_memory_factor {
-        if v < 0.01 || v > 0.99 {
-            return Err("hybrid memory factor must be in [0.01, 0.99]");
-        }
-    }
-    params.hybrid_memory_factor = opt.hybrid_memory_factor;
-
     // allocate stats structure
     let mut stats = StatsLinSol::new();
     stats.main.solver = genie.to_string();
@@ -144,7 +123,6 @@ fn main() -> Result<(), StrError> {
     stats.requests.scaling = format!("{:?}", params.scaling);
     stats.requests.mumps_num_threads = params.mumps_num_threads;
     stats.requests.positive_definite = params.positive_definite;
-    stats.requests.hybrid_memory_factor = params.hybrid_memory_factor;
 
     // read the matrix
     let mut sw = Stopwatch::new();
@@ -160,19 +138,9 @@ fn main() -> Result<(), StrError> {
         }
 
         // save information about the matrix
-        let (nrow, _, _, sym) = coo.get_info();
+        let (nrow, _, _, _) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.set_matrix_info_from_coo(&coo);
-
-        // set cuDSS matching algorithm
-        if genie == Genie::Cudss {
-            if sym.no() {
-                params.matching = Matching::from(&opt.matching_gen);
-            } else {
-                params.matching = Matching::from(&opt.matching_sym);
-            }
-        }
-        stats.requests.matching = format!("{:?}", params.matching);
 
         // allocate vectors
         let mut x = Vector::new(nrow);
@@ -216,7 +184,6 @@ fn main() -> Result<(), StrError> {
             // check (debug)
             if stats.matrix.name == "bfwb62" {
                 let tolerance = match genie {
-                    Genie::Cudss => 1e-10,
                     Genie::Mumps => 1e-10,
                     Genie::Umfpack => 1e-10,
                 };
@@ -240,19 +207,9 @@ fn main() -> Result<(), StrError> {
         }
 
         // save information about the matrix
-        let (nrow, _, _, sym) = coo.get_info();
+        let (nrow, _, _, _) = coo.get_info();
         stats.set_matrix_name_from_path(&opt.matrix_market_file);
         stats.set_matrix_info_from_coo(&coo);
-
-        // set cuDSS matching algorithm
-        if genie == Genie::Cudss {
-            if sym.no() {
-                params.matching = Matching::from(&opt.matching_gen);
-            } else {
-                params.matching = Matching::from(&opt.matching_sym);
-            }
-        }
-        stats.requests.matching = format!("{:?}", params.matching);
 
         // allocate vectors
         let mut x = ComplexVector::new(nrow);

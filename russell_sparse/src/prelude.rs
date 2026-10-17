@@ -18,12 +18,6 @@ pub use crate::solver_umfpack::SolverUMFPACK;
 pub use crate::stats_lin_sol::StatsLinSol;
 pub use crate::verify_lin_sys::VerifyLinSys;
 
-#[cfg(feature = "cudss")]
-pub use crate::complex_solver_cudss::ComplexSolverCUDSS;
-
-#[cfg(feature = "cudss")]
-pub use crate::solver_cudss::SolverCUDSS;
-
 #[cfg(feature = "local_sparse")]
 pub use crate::complex_solver_mumps::ComplexSolverMUMPS;
 

@@ -97,7 +97,7 @@ This project is split into the following crates:
     - Operations & Calculus: Dot/ddot contractions, dyadic products, polar decompositions, principal/deviatoric/octahedral invariants, Lode invariant, first and second derivatives of invariants and tensor functions, linear elasticity / Hooke's law.
 3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and direct solvers:
     - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).
-    - Direct Solvers: UMFPACK (SuiteSparse), MUMPS (local_sparse), and NVIDIA cuDSS (cudss).
+    - Direct Solvers: UMFPACK (SuiteSparse) and MUMPS (local_sparse).
     - Utilities: Matrix Market I/O, vismatrix exporter, numerical Jacobian assembly, linear system verification.
 4. [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) — ODE and Index-1 DAE solvers:
     - Explicit Runge-Kutta (DoPri5, DoPri8, Forward Euler) with stiffness detection and dense output.
@@ -150,19 +150,17 @@ The default build needs no external BLAS: `russell_lab` ships its own Rust imple
 
 Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels reach about half the throughput of OpenBLAS per core (roughly 2x slower), while dense solves are tens of times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
 
-Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag. Note that cuDSS is in **Preview Mode** 🚧.
-
 The table below summarizes the features of each crate:
 
-|                  | `open_blas` | `intel_mkl` | `local_sparse` | `cudss` |
-| ---------------- | :---------: | :---------: | :------------: | :-----: |
-| `russell_lab`    |      ✓      |      ✓      |                |         |
-| `russell_nonlin` |      ✓      |      ✓      |       ✓        |    ✓    |
-| `russell_ode`    |      ✓      |      ✓      |       ✓        |    ✓    |
-| `russell_pde`    |      ✓      |      ✓      |       ✓        |    ✓    |
-| `russell_sparse` |      ✓      |      ✓      |       ✓        |    ✓    |
-| `russell_stat`   |      ✓      |      ✓      |                |         |
-| `russell_tensor` |      ✓      |      ✓      |                |         |
+|                  | `open_blas` | `intel_mkl` | `local_sparse` |
+| ---------------- | :---------: | :---------: | :------------: |
+| `russell_lab`    |      ✓      |      ✓      |                |
+| `russell_nonlin` |      ✓      |      ✓      |       ✓        |
+| `russell_ode`    |      ✓      |      ✓      |       ✓        |
+| `russell_pde`    |      ✓      |      ✓      |       ✓        |
+| `russell_sparse` |      ✓      |      ✓      |       ✓        |
+| `russell_stat`   |      ✓      |      ✓      |                |
+| `russell_tensor` |      ✓      |      ✓      |                |
 
 Below is an example of how to enable the `intel_mkl` and `local_sparse` features with the `russell_sparse` crate in the `Cargo.toml` file:
 
@@ -185,8 +183,6 @@ In addition to SuiteSparse (UMFPACK), the [MUMPS solver](https://mumps-solver.or
 It is important to highlight that, when MUMPS is enabled, SuiteSparse must also be compiled locally. This requirement is mostly for convenience and does not cause many problems since the build tools will be required for MUMPS anyway. Furthermore, there is an advantage of having consistency since the linear algebra library (OpenBLAS or Intel MKL) will be the same for both MUMPS and SuiteSparse. 
 
 Note that, while it is possible to use Intel MKL with `russell_lab` and OpenBLAS with `russell_sparse`, this is not advantageous since Intel MKL is slightly more performant than OpenBLAS [(see this article)](https://onlinelibrary.wiley.com/doi/full/10.1002/nme.7545). Thus, if you have already installed Intel MKL, it is easy to compile SuiteSparse and MUMPS (Option 3 below). Thus, we do not consider a fourth option with MKL for `russell_lab` and OpenBLAS for `russell_sparse`.
-
-The direct sparse solver based on NVIDIA's CUDA platform for GPUs is also available in `russell_sparse`. The solver, named [cuDSS](https://developer.nvidia.com/cudss), can be installed as explained in [nvidia-cudss.md](https://github.com/cpmech/russell/blob/main/nvidia-cudss.md) or by running the commands in [debian-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/debian-compile-cudss.bash) (Debian/Ubuntu) or [arch-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/arch-compile-cudss.bash) (Arch) or [UNTESTED-windows-compile-cudss.bash](https://github.com/cpmech/russell/blob/main/zscripts/UNTESTED-windows-compile-cudss.bash).
 
 ### Arch Linux
 
@@ -661,7 +657,6 @@ std_dev = 312.7131690782321
         - [x] Implement Legendre polynomials
         - [ ] Implement Fourier interpolation
 - [x] Improve `russell_sparse`
-    - [x] Wrap the cuDSS solver (NVIDIA GPUs)
     - [x] Implement support for complex numbers
     - [x] Implement the Compressed Sparse Column format (CSC)
     - [x] Implement the Compressed Sparse Row format (CSR)
@@ -728,13 +723,12 @@ Build-dependencies: `cc`, `pkg-config`.
 
 ### russell_sparse — sparse solvers
 
-`russell_sparse/build.rs` compiles the C (and CUDA) shims for the sparse solvers. The build is additive: UMFPACK is always compiled and linked, MUMPS when `local_sparse` is enabled, and cuDSS when `cudss` is enabled:
+`russell_sparse/build.rs` compiles the C shims for the sparse solvers. The build is additive: UMFPACK is always compiled and linked, MUMPS when `local_sparse` is enabled:
 
-- Windows: uses `MSYS2_PREFIX`; the `cudss` feature has no effect here (cuDSS is only built on non-Windows platforms). When `local_sparse` is enabled, the static MUMPS libraries are linked (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`).
+- Windows: uses `MSYS2_PREFIX`. When `local_sparse` is enabled, the static MUMPS libraries are linked (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`).
 - Other OS:
   - Computes fallback include/library directories with `existing_dirs` (drops nonexistent paths to avoid shadowing, e.g., a Nix devShell).
-  - The `cudss` paths use `detect_cuda_arch` (env `CUDSS_CUDA_ARCH` → `nvidia-smi` → default `sm_89`) and `detect_cxx` (env `GCC_VERSION` → `gcc -dumpversion` → `g++`, or `g++-15` when gcc > 15), compiling the `.cu` files with `cc::Build::cuda(true)` and linking `cudart` and `cudss`.
-  - The default path (no `cudss`, no `local_sparse`) probes `pkg-config` for UMFPACK (trying both `UMFPACK` and `umfpack` spellings) before falling back.
+  - The default path (no `local_sparse`) probes `pkg-config` for UMFPACK (trying both `UMFPACK` and `umfpack` spellings) before falling back.
 
 Build-dependencies: `cc`, `pkg-config`.
 

@@ -162,8 +162,6 @@ pub fn get_system_info() -> String {
 }
 
 // Versions of external sparse solver libraries installed via the project's bash scripts
-const CUDSS_SCRIPT_VERSION: &str = "0.8.0.10";
-const CUDA_SCRIPT_VERSION: &str = "13";
 const MUMPS_SCRIPT_VERSION: &str = "5.9.0";
 const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 
@@ -172,26 +170,11 @@ const SUITESPARSE_VERSION: &str = "latest (from GitHub)";
 /// Reports the version of each backend library that the project's installation
 /// scripts download and compile:
 ///
-/// - **cuDSS** — version downloaded by `zscripts/linux-compile-cudss.bash`;
-///   annotated `[not compiled in]` when the `cudss` feature is disabled
 /// - **MUMPS** — version downloaded by `zscripts/*-compile-mumps.bash`;
 ///   annotated `[not compiled in]` when the `local_sparse` feature is disabled
 /// - **SuiteSparse** — cloned from head of the upstream GitHub repository
 pub fn get_library_versions() -> String {
     let mut info = String::new();
-
-    // cuDSS
-    if cfg!(feature = "cudss") {
-        info.push_str(&format!(
-            "cuDSS: {} (CUDA {})\n",
-            CUDSS_SCRIPT_VERSION, CUDA_SCRIPT_VERSION
-        ));
-    } else {
-        info.push_str(&format!(
-            "cuDSS: {} (CUDA {}) [not compiled in]\n",
-            CUDSS_SCRIPT_VERSION, CUDA_SCRIPT_VERSION
-        ));
-    }
 
     // MUMPS
     if cfg!(feature = "local_sparse") {
@@ -279,7 +262,6 @@ mod tests {
     #[test]
     fn get_library_versions_contains_all_libraries() {
         let info = get_library_versions();
-        assert!(info.contains("cuDSS:"), "Should contain cuDSS version");
         assert!(info.contains("MUMPS:"), "Should contain MUMPS version");
         assert!(info.contains("SuiteSparse:"), "Should contain SuiteSparse version");
     }
@@ -288,7 +270,6 @@ mod tests {
     fn get_library_versions_contains_expected_version_numbers() {
         let info = get_library_versions();
         println!("{}", info);
-        assert!(info.contains(CUDSS_SCRIPT_VERSION), "Should contain cuDSS version");
         assert!(info.contains(MUMPS_SCRIPT_VERSION), "Should contain MUMPS version");
         assert!(info.contains(SUITESPARSE_VERSION), "Should contain SuiteSparse version");
     }

@@ -19,7 +19,7 @@
 /// Debian, Arch and upstream's own `make install` write `UMFPACK.pc`, while
 /// some setups use lowercase. Returns `None` if pkg-config is missing or does
 /// not know UMFPACK under either name.
-#[cfg(all(not(target_os = "windows"), not(feature = "local_sparse")))]
+#[cfg(not(target_os = "windows"))]
 fn probe_umfpack() -> Option<pkg_config::Library> {
     for name in ["UMFPACK", "umfpack"] {
         match pkg_config::Config::new().probe(name) {
@@ -27,8 +27,15 @@ fn probe_umfpack() -> Option<pkg_config::Library> {
             // The library isn't known under this name; try the other spelling.
             Err(pkg_config::Error::ProbeFailure { .. }) | Err(pkg_config::Error::Failure { .. }) => continue,
             // pkg-config is missing, or cross-compiling without a sysroot:
-            // retrying with a different name would not help.
-            Err(_) => break,
+            // retrying with a different name would not help, and silently
+            // falling back would hide a broken toolchain.
+            Err(error) => {
+                println!(
+                    "cargo:warning=russell_sparse: pkg-config failed ({error}); \
+                     falling back to the built-in directory list for UMFPACK"
+                );
+                break;
+            }
         }
     }
     None
@@ -129,14 +136,15 @@ fn compile_unix() {
     let inc_dirs = existing_dirs(INCLUDE_DIRS);
     let lib_dirs = existing_dirs(LIB_DIRS);
 
-    // In the default setup ("Option 1" in README.md: UMFPACK from the package
-    // manager), pkg-config is authoritative. With `local_sparse`, the libraries
-    // are compiled/installed outside pkg-config's view, so the fallback
-    // directories are always used.
-    #[cfg(not(feature = "local_sparse"))]
+    // pkg-config is authoritative when it resolves, because it reports the real
+    // include and link paths (distro packages, Homebrew, Nix devShells) instead of
+    // the list this script has to guess. A locally compiled SuiteSparse normally
+    // ships no `.pc` file, so the fallback takes over there.
+    //
+    // The answer depends only on what is installed. It used to be suppressed
+    // whenever another solver feature was enabled, which threw away a working
+    // pkg-config answer for an unrelated reason.
     let umfpack = probe_umfpack();
-    #[cfg(feature = "local_sparse")]
-    let umfpack: Option<pkg_config::Library> = None;
 
     let mut build = cc::Build::new();
 

@@ -144,9 +144,11 @@ The following crates are not part of `russell` but are associated with it and re
 
 ### Features
 
-This project employs [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) (or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html)) for linear algebra computations and [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. See the [Installation](#installation) section for instructions on how to install these libraries on different platforms.
+This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. Dense linear algebra comes from `russell_lab`'s own Rust implementation, and [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be selected as accelerators. See the [Installation](#installation) section for instructions on how to install these libraries on different platforms.
 
 The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); the two are mutually exclusive and the build fails if both are enabled. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
+
+Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels are within about 2x of OpenBLAS per core, while dense solves are several times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
 
 Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag. Note that cuDSS is in **Preview Mode** 🚧.
 

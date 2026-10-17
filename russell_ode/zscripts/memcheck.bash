@@ -4,7 +4,7 @@ INTEL_MKL=${1:-""} # 0 or 1 to use intel_mkl
 
 FEAT=""
 if [ "${INTEL_MKL}" = "1" ]; then
-    FEAT="--features intel_mkl,local_sparse"
+    FEAT="--features intel_mkl,local_umfpack,mumps"
 fi
 
 cargo build $FEAT

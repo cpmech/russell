@@ -52,9 +52,13 @@ come from the native or accelerator path.
 
 Extra features:
 
-- `local_sparse` on `russell_sparse`, `russell_ode`,
-  `russell_pde`, `russell_nonlin` — require locally compiled MUMPS/SuiteSparse
-  (see `zscripts/*-compile-mumps.bash` and `zscripts/*-compile-suitesparse.bash`).
+- `local_umfpack` and `mumps` on `russell_sparse`, `russell_ode`, `russell_pde`,
+  `russell_nonlin` — use the locally compiled SuiteSparse and MUMPS installed by
+  `zscripts/*-compile-suitesparse.bash` and `zscripts/*-compile-mumps.bash`. Both
+  read `RUSSELL_LOCAL_PREFIX` (`.../include/umfpack`, `.../lib/umfpack`,
+  `.../include/mumps`, `.../lib/mumps`) and fail the build if it is unset or wrong.
+  Without `local_umfpack` the UMFPACK comes from the package manager, found with
+  pkg-config; UMFPACK is required in every configuration, `mumps` is optional.
 
 ## Current state of the native backend
 
@@ -322,7 +326,7 @@ cargo test -p russell_lab --features intel_mkl
 RUSSELL_DEV_LAPACK_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
 
 # Whole workspace (sparse crates need the locally compiled libraries)
-cargo test --workspace --features local_sparse
+RUSSELL_LOCAL_PREFIX=/usr/local cargo test --workspace --features local_umfpack,mumps
 
 # Formatting (CI runs the check)
 cargo fmt --all
@@ -332,7 +336,7 @@ cargo fmt --all -- --check
 cargo clippy --all-targets
 
 # Coverage (nightly + llvm-tools-preview); project requires >95% lines
-cargo llvm-cov --workspace --features local_sparse \
+cargo llvm-cov --workspace --features local_umfpack,mumps \
   --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
   --fail-under-lines 95
 ```
@@ -482,5 +486,6 @@ stale lock file.
 
 Workflows live in `.github/workflows/` (`ubuntu.yml`, `macos.yml`, `rocky.yml`,
 `arch.yml`, `windows.yml`). The Ubuntu job compiles MUMPS/SuiteSparse via
-`zscripts/debian-compile-*.bash`, runs `cargo test --features local_sparse`, and
-on nightly enforces the coverage threshold shown above.
+`zscripts/debian-compile-*.bash` (into `/usr/local`, with `RUSSELL_LOCAL_PREFIX`
+set accordingly), runs `cargo test --features local_umfpack,mumps`, and on nightly
+enforces the coverage threshold shown above.

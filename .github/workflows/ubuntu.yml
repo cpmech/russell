@@ -5,6 +5,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUST_BACKTRACE: 1
+      # Where the locally compiled SuiteSparse and MUMPS are installed by the
+      # scripts below; the `local_umfpack` and `mumps` features read it.
+      RUSSELL_LOCAL_PREFIX: /usr/local
     strategy:
       matrix:
         rust: [stable, nightly-2026-07-01]
@@ -27,7 +30,7 @@ jobs:
           bash zscripts/debian-compile-suitesparse.bash
       - name: Run tests
         run: |
-          cargo test --features local_sparse
+          cargo test --features local_umfpack,mumps
       - name: Install cargo-llvm-cov
         if: startsWith(matrix.rust, 'nightly')
         run: |
@@ -35,6 +38,6 @@ jobs:
       - name: Generate code coverage
         if: startsWith(matrix.rust, 'nightly')
         run: |
-          cargo llvm-cov --workspace --features local_sparse \
+          cargo llvm-cov --workspace --features local_umfpack,mumps \
             --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
             --fail-under-lines 95

@@ -69,7 +69,9 @@ The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
-* `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `local_umfpack`: Use a locally compiled SuiteSparse (UMFPACK) instead of the
+  package-manager one; the install is found through `RUSSELL_LOCAL_PREFIX`.
+* `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

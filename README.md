@@ -97,7 +97,7 @@ This project is split into the following crates:
     - Operations & Calculus: Dot/ddot contractions, dyadic products, polar decompositions, principal/deviatoric/octahedral invariants, Lode invariant, first and second derivatives of invariants and tensor functions, linear elasticity / Hooke's law.
 3. [![Crates.io](https://img.shields.io/crates/v/russell_sparse.svg)](https://crates.io/crates/russell_sparse) [russell_sparse](https://github.com/cpmech/russell/tree/main/russell_sparse) — Sparse matrix structures and direct solvers:
     - Formats: CooMatrix, CscMatrix, CsrMatrix (both real f64 and Complex64).
-    - Direct Solvers: UMFPACK (SuiteSparse) and MUMPS (local_sparse).
+    - Direct Solvers: UMFPACK (SuiteSparse) and MUMPS (`mumps`).
     - Utilities: Matrix Market I/O, vismatrix exporter, numerical Jacobian assembly, linear system verification.
 4. [![Crates.io](https://img.shields.io/crates/v/russell_ode.svg)](https://crates.io/crates/russell_ode) [russell_ode](https://github.com/cpmech/russell/tree/main/russell_ode) — ODE and Index-1 DAE solvers:
     - Explicit Runge-Kutta (DoPri5, DoPri8, Forward Euler) with stiffness detection and dense output.
@@ -146,28 +146,36 @@ The following crates are not part of `russell` but are associated with it and re
 
 This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. Dense linear algebra comes from `russell_lab`'s own Rust implementation, and [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be selected as accelerators. See the [Installation](#installation) section for instructions on how to install these libraries on different platforms.
 
-The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); the two are mutually exclusive and the build fails if both are enabled. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
+The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); the two are mutually exclusive and the build fails if both are enabled.
+
+`russell_sparse` cannot work without UMFPACK: the crate always has a direct solver, and the features only choose where it comes from and whether MUMPS joins it:
+
+- (no feature) — UMFPACK from the package manager, located with `pkg-config`;
+- `local_umfpack` — UMFPACK from a local install under `RUSSELL_LOCAL_PREFIX`;
+- `mumps` — MUMPS from that same local prefix, in addition to either UMFPACK.
+
+The two UMFPACK sources exclude each other: the local install is never searched when the package-manager library is wanted, and `pkg-config` is never consulted when the local one is. This matters because the two SuiteSparse builds usually differ in version while sharing the `libumfpack.so.6` soname, so a mixture would not show up at run time. A locally compiled SuiteSparse is somewhat faster than the packaged one, at the cost of a long build.
 
 Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels reach about half the throughput of OpenBLAS per core (roughly 2x slower), while dense solves are tens of times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
 
 The table below summarizes the features of each crate:
 
-|                  | `open_blas` | `intel_mkl` | `local_sparse` |
-| ---------------- | :---------: | :---------: | :------------: |
-| `russell_lab`    |      ✓      |      ✓      |                |
-| `russell_nonlin` |      ✓      |      ✓      |       ✓        |
-| `russell_ode`    |      ✓      |      ✓      |       ✓        |
-| `russell_pde`    |      ✓      |      ✓      |       ✓        |
-| `russell_sparse` |      ✓      |      ✓      |       ✓        |
-| `russell_stat`   |      ✓      |      ✓      |                |
-| `russell_tensor` |      ✓      |      ✓      |                |
+|                  | `open_blas` | `intel_mkl` | `local_umfpack` | `mumps` |
+| ---------------- | :---------: | :---------: | :-------------: | :-----: |
+| `russell_lab`    |      ✓      |      ✓      |                 |         |
+| `russell_nonlin` |      ✓      |      ✓      |        ✓        |    ✓    |
+| `russell_ode`    |      ✓      |      ✓      |        ✓        |    ✓    |
+| `russell_pde`    |      ✓      |      ✓      |        ✓        |    ✓    |
+| `russell_sparse` |      ✓      |      ✓      |        ✓        |    ✓    |
+| `russell_stat`   |      ✓      |      ✓      |                 |         |
+| `russell_tensor` |      ✓      |      ✓      |                 |         |
 
-Below is an example of how to enable the `intel_mkl` and `local_sparse` features with the `russell_sparse` crate in the `Cargo.toml` file:
+Below is an example of how to enable the `intel_mkl`, `local_umfpack` and `mumps` features with the `russell_sparse` crate in the `Cargo.toml` file:
 
 ```toml
 [dependencies]
 russell_lab = { version = "*", features = ["intel_mkl"] }
-russell_sparse = { version = "*", features = ["intel_mkl", "local_sparse"] }
+russell_sparse = { version = "*", features = ["intel_mkl", "local_umfpack", "mumps"] }
 ```
 
 Replace "*" with the desired version. Note that `russell_sparse` (and all other crates in this project) require `russell_lab` as a dependency.
@@ -178,9 +186,16 @@ Replace "*" with the desired version. Note that `russell_sparse` (and all other 
 
 Russell requires some non-Rust libraries ([OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) and [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse)) to achieve the maximum performance. These libraries can be installed as explained in each subsection next. Alternatively, [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) may be used instead of OpenBLAS. In this case, the **feature** named `intel_mkl` must be enabled.
 
-In addition to SuiteSparse (UMFPACK), the [MUMPS solver](https://mumps-solver.org) may be used as an optional feature. In this case, MUMPS must be locally compiled and installed and the **feature** named `local_sparse` must be enabled. Note that we could possibly use MUMPS from the package manager of your Linux distribution, however, MUMPS is typically only available as an *extra* package and often outdated. Moreover, the distributions do not always provide the *sequential* version (without OpenMPI) of MUMPS which is leaner than the parallel version (not used in this project). Thus, we recommend compiling MUMPS locally. 
+In addition to SuiteSparse (UMFPACK), the [MUMPS solver](https://mumps-solver.org) may be used as an optional feature: compile MUMPS locally, enable the **feature** named `mumps`, and leave the UMFPACK source as it is. MUMPS could in principle come from the package manager, but it is typically an *extra* package, often outdated, and the distributions do not always provide the *sequential* build (without OpenMPI) that this project uses, which is also the leaner one. Thus, compile MUMPS locally.
 
-It is important to highlight that, when MUMPS is enabled, SuiteSparse must also be compiled locally. This requirement is mostly for convenience and does not cause many problems since the build tools will be required for MUMPS anyway. Furthermore, there is an advantage of having consistency since the linear algebra library (OpenBLAS or Intel MKL) will be the same for both MUMPS and SuiteSparse. 
+The local solvers are found through one environment variable, `RUSSELL_LOCAL_PREFIX`, which must be set (and exported) whenever `local_umfpack` or `mumps` is enabled. The layout is fixed:
+
+```text
+$RUSSELL_LOCAL_PREFIX/include/umfpack     $RUSSELL_LOCAL_PREFIX/lib/umfpack
+$RUSSELL_LOCAL_PREFIX/include/mumps       $RUSSELL_LOCAL_PREFIX/lib/mumps
+```
+
+The compilation scripts below install into exactly that layout, with `RUSSELL_LOCAL_PREFIX=/usr/local`. Two SuiteSparse builds share the `libumfpack.so.6` soname, so the directory of the selected one must also be reachable by the dynamic loader at run time (`ldconfig` on a system prefix, or `LD_LIBRARY_PATH`); the binaries built inside this workspace carry a run path instead. A wrong or missing prefix stops the build with the expected paths rather than falling back to another installation.
 
 Note that, while it is possible to use Intel MKL with `russell_lab` and OpenBLAS with `russell_sparse`, this is not advantageous since Intel MKL is slightly more performant than OpenBLAS [(see this article)](https://onlinelibrary.wiley.com/doi/full/10.1002/nme.7545). Thus, if you have already installed Intel MKL, it is easy to compile SuiteSparse and MUMPS (Option 3 below). Thus, we do not consider a fourth option with MKL for `russell_lab` and OpenBLAS for `russell_sparse`.
 
@@ -201,6 +216,7 @@ pacman -Syu rust blas-openblas suitesparse
 Run the following commands to compile and install SuiteSparse and MUMPS with OpenBLAS (*use these scripts at your own risk; carefully check the scripts before running them*):
 
 ```bash
+export RUSSELL_LOCAL_PREFIX=/usr/local   # where both scripts install
 bash zscripts/arch-compile-mumps.bash 
 bash zscripts/arch-compile-suitesparse.bash 
 ```
@@ -208,7 +224,7 @@ bash zscripts/arch-compile-suitesparse.bash
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["local_sparse"] }
+russell_sparse = { version = "*", features = ["local_umfpack", "mumps"] }
 ```
 
 #### Option 3: Locally compiled SuiteSparse and MUMPS with Intel MKL
@@ -217,6 +233,7 @@ Run the following commands to compile and install SuiteSparse and MUMPS with Int
 
 ```bash
 bash zscripts/arch-install-intel-toolkit.bash
+export RUSSELL_LOCAL_PREFIX=/usr/local   # where both scripts install
 bash zscripts/arch-compile-mumps.bash 1
 bash zscripts/arch-compile-suitesparse.bash 1
 ```
@@ -224,7 +241,7 @@ bash zscripts/arch-compile-suitesparse.bash 1
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["intel_mkl", "local_sparse"] }
+russell_sparse = { version = "*", features = ["intel_mkl", "local_umfpack", "mumps"] }
 ```
 
 
@@ -249,6 +266,7 @@ sudo apt-get install -y --no-install-recommends \
 Run the following commands to compile and install SuiteSparse and MUMPS with OpenBLAS (*use these scripts at your own risk; carefully check the scripts before running them*):
 
 ```bash
+export RUSSELL_LOCAL_PREFIX=/usr/local   # where both scripts install
 bash zscripts/debian-compile-mumps.bash 
 bash zscripts/debian-compile-suitesparse.bash 
 ```
@@ -256,7 +274,7 @@ bash zscripts/debian-compile-suitesparse.bash
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["local_sparse"] }
+russell_sparse = { version = "*", features = ["local_umfpack", "mumps"] }
 ```
 
 #### Option 3: Locally compiled SuiteSparse and MUMPS with Intel MKL
@@ -265,6 +283,7 @@ Run the following commands to compile and install SuiteSparse and MUMPS with Int
 
 ```bash
 bash zscripts/debian-install-intel-toolkit.bash
+export RUSSELL_LOCAL_PREFIX=/usr/local   # where both scripts install
 bash zscripts/debian-compile-mumps.bash 1
 bash zscripts/debian-compile-suitesparse.bash 1
 ```
@@ -272,7 +291,7 @@ bash zscripts/debian-compile-suitesparse.bash 1
 Set `Cargo.toml` as follows:
 
 ```toml
-russell_sparse = { version = "*", features = ["intel_mkl", "local_sparse"] }
+russell_sparse = { version = "*", features = ["intel_mkl", "local_umfpack", "mumps"] }
 ```
 
 
@@ -723,12 +742,13 @@ Build-dependencies: `cc`, `pkg-config`.
 
 ### russell_sparse — sparse solvers
 
-`russell_sparse/build.rs` compiles the C shims for the sparse solvers. The build is additive: UMFPACK is always compiled and linked, MUMPS when `local_sparse` is enabled:
+`russell_sparse/build.rs` compiles the C shims for the sparse solvers. UMFPACK is required in every configuration; MUMPS joins it when `mumps` is enabled. The features select the source of UMFPACK, never its presence:
 
-- Windows: uses `MSYS2_PREFIX`. When `local_sparse` is enabled, the static MUMPS libraries are linked (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`).
-- Other OS:
-  - Computes fallback include/library directories with `existing_dirs` (drops nonexistent paths to avoid shadowing, e.g., a Nix devShell).
-  - The default path (no `local_sparse`) probes `pkg-config` for UMFPACK (trying both `UMFPACK` and `umfpack` spellings) before falling back.
+- `local_umfpack` off: UMFPACK from the package manager. `pkg-config` is asked first (both `UMFPACK` and `umfpack` spellings), and the built-in directory list is the fallback; `$RUSSELL_LOCAL_PREFIX` is deliberately absent from that list, so the two installations cannot be mixed. If neither answers, the build stops naming the package to install.
+- `local_umfpack` on: UMFPACK from `$RUSSELL_LOCAL_PREFIX/include/umfpack` and `.../lib/umfpack`, with no `pkg-config` lookup at all.
+- `mumps` on: MUMPS from `$RUSSELL_LOCAL_PREFIX/include/mumps` and `.../lib/mumps`, shared on Unix and static on Windows (`dmumps_cpmech`, `zmumps_cpmech`, `mumps_common_cpmech`, `mpiseq_cpmech`, `pord_cpmech`, `metis`, `gfortran`, `gomp`).
+- `RUSSELL_LOCAL_PREFIX` is trimmed of trailing separators, and a missing directory fails the build naming the exact path it expected.
+- The selected UMFPACK is recorded with `cargo:rustc-env`, so `get_library_versions()` reports whether it is the `system` or the `local` one.
 
 Build-dependencies: `cc`, `pkg-config`.
 

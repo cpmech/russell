@@ -6,7 +6,7 @@
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SUPPRESSIONS="$PROJECT_DIR/zscripts/valgrind-mumps.supp"
 
-FEATURES="intel_mkl,local_sparse"
+FEATURES="intel_mkl,local_umfpack,mumps"
 BINARY="$HOME/rust_modules/debug/mem_check"
 
 cd "$PROJECT_DIR"

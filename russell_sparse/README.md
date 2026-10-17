@@ -78,7 +78,20 @@ The following (Rust) features are available:
 
 * `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
 * `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
-* `local_sparse`: Use locally compiled SuiteSparse and MUMPS
+* `local_umfpack`: Use a locally compiled SuiteSparse (UMFPACK) instead of the
+  package-manager one; the install is found through `RUSSELL_LOCAL_PREFIX`.
+* `mumps`: Use a locally compiled MUMPS, found through `RUSSELL_LOCAL_PREFIX`.
+
+UMFPACK is required in every configuration: without `local_umfpack` it comes from the package manager (found with `pkg-config`), and with the feature it comes from a local install. The two sources exclude each other, so a build never mixes a packaged SuiteSparse with a locally compiled one.
+
+The local installs are located through the `RUSSELL_LOCAL_PREFIX` environment variable, which must be set and exported whenever `local_umfpack` or `mumps` is enabled. The layout is fixed:
+
+```text
+$RUSSELL_LOCAL_PREFIX/include/umfpack     $RUSSELL_LOCAL_PREFIX/lib/umfpack
+$RUSSELL_LOCAL_PREFIX/include/mumps       $RUSSELL_LOCAL_PREFIX/lib/mumps
+```
+
+A missing or wrong prefix fails the build naming the path it expected. The directory of the selected UMFPACK must also be reachable by the dynamic loader at run time, since the two SuiteSparse builds share the `libumfpack.so.6` soname.
 
 Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
 

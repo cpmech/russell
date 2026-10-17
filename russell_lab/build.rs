@@ -254,9 +254,10 @@ fn compile_dev_lapack() {
         panic!(
             "russell_lab: the `dev_lapack` feature needs a LAPACK build for its headers, \
              looked for {}/lapack.h and {}/cblas.h. \
-             Set RUSSELL_DEV_LAPACK_ROOT to the CMake build directory of a LAPACK 3.12.1 build.",
+             Set RUSSELL_DEV_LAPACK_ROOT to the CMake build directory of a LAPACK 3.12.1 build{}",
             include.display(),
-            include.display()
+            include.display(),
+            build_dir_hint(&root)
         );
     }
     if !lib.join("libcblas.so").is_file() {
@@ -307,6 +308,32 @@ fn compile_dev_lapack() {
     // The prefixed copy is derived from this file, so watching it is enough.
     println!("cargo:rerun-if-changed=c_code/interface_blas.c");
     println!("cargo:warning=russell_lab: `dev_lapack` feature ON -- tests compare against {root}");
+}
+
+/// Lists the subdirectories of `root` that look like a LAPACK CMake build, so a
+/// `RUSSELL_DEV_LAPACK_ROOT` pointing one level too high gets a useful error
+/// instead of a bare "file not found".
+///
+/// The directories are only *reported*, never picked: a LAPACK source tree can
+/// hold several builds (`build-gfortran`, `-novec`, `-O0`, `build-ifx`) whose
+/// numerics differ, and choosing one would silently test against the wrong
+/// reference.
+#[cfg(feature = "dev_lapack")]
+fn build_dir_hint(root: &str) -> String {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return String::new();
+    };
+    let mut candidates: Vec<String> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.join("include/lapack.h").is_file() && path.join("lib/liblapack.so").is_file())
+        .map(|path| format!("\n  {}", path.display()))
+        .collect();
+    if candidates.is_empty() {
+        return String::new();
+    }
+    candidates.sort();
+    format!("\nBuild directories found under that path:{}", candidates.concat())
 }
 
 /// Returns `interface_blas.c` with every `c_*` entry point renamed to

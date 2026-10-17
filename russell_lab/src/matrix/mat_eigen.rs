@@ -1,4 +1,5 @@
 use super::Matrix;
+#[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
 use crate::internal::compact_right_eigenvectors;
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{C_FALSE, C_TRUE, CcBool};

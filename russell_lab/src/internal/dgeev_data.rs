@@ -14,6 +14,7 @@ use crate::StrError;
 /// # Panics
 ///
 /// Panics if the shapes are inconsistent.
+#[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
 pub(crate) fn compact_right_eigenvectors(v_real: &[f64], v_imag: &[f64], wi: &[f64], n: usize) -> Vec<f64> {
     assert_eq!(v_real.len(), n * n, "compact: v_real must be n*n");
     assert_eq!(v_imag.len(), n * n, "compact: v_imag must be n*n");

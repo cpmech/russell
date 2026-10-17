@@ -14,11 +14,13 @@
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+// `CcBool` and `C_TRUE` back `using_intel_mkl`, which only the MKL shim provides.
+#[cfg(feature = "intel_mkl")]
 use crate::internal::{C_TRUE, CcBool};
 
 #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
+    #[cfg(feature = "intel_mkl")]
     fn c_using_intel_mkl() -> CcBool;
     fn c_set_num_threads(n: i32);
     fn c_get_num_threads() -> i32;

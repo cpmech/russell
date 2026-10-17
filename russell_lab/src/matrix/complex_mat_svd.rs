@@ -1,10 +1,10 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::Vector;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{Complex64, SVD_CODE_A};
 use crate::{StrError, cpx, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d6/d42/zgesvd_8f.html>
@@ -28,7 +28,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zgesvd) Computes the singular value decomposition (SVD) of a matrix
@@ -127,7 +127,7 @@ pub fn complex_mat_svd(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 5 * min_mn];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native routine validates its own shapes, so a BadShape here would be
         // a programming error rather than a caller mistake. The two strings below
@@ -147,7 +147,7 @@ pub fn complex_mat_svd(
             _ => "LAPACK ERROR (zgesvd): An argument had an illegal value",
         })?;
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zgesvd(

@@ -19,7 +19,7 @@
 //!   [`small_solve_lin_sys`]) are generic over `T: Float` and return a `Result`
 //!   because they can fail on a singular matrix.
 //! * The singular value decomposition ([`small_mat_svd`]) wraps `dgesvd` -- the
-//!   native Rust implementation by default, the C shim with `oblas`/`mkl` -- and
+//!   native Rust implementation by default, the C shim with `open_blas`/`intel_mkl` -- and
 //!   operates on `f64` data (rectangular `M×N` matrices). It is the one routine
 //!   here that allocates: `dgesvd` sizes its own workspace internally. The
 //!   inputs and outputs stay stack arrays.

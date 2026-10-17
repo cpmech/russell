@@ -4,20 +4,20 @@
 //! *interface* rather than only in implementation, because thread control and
 //! "which library am I using" only mean something when a library is involved:
 //!
-//! * with `oblas` or `mkl`, the C shim answers all three questions;
+//! * with `open_blas` or `intel_mkl`, the C shim answers all three questions;
 //! * with the native routines there is no library, so `using_intel_mkl()` is a
 //!   compile-time `false`, the thread count is fixed at one, and setting it is a
 //!   no-op rather than an error — the native kernels are single-threaded, and
 //!   silently ignoring the request is friendlier than failing a program that set
 //!   it for the accelerated build.
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::internal::{C_TRUE, CcBool};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     fn c_using_intel_mkl() -> CcBool;
     fn c_set_num_threads(n: i32);
@@ -41,12 +41,12 @@ unsafe extern "C" {
 /// println!("{}", using_intel_mkl());
 /// ```
 pub fn using_intel_mkl() -> bool {
-    #[cfg(feature = "mkl")]
+    #[cfg(feature = "intel_mkl")]
     {
         // Safety: the shim is linked in this configuration.
         unsafe { c_using_intel_mkl() == C_TRUE }
     }
-    #[cfg(not(feature = "mkl"))]
+    #[cfg(not(feature = "intel_mkl"))]
     {
         false
     }
@@ -66,7 +66,7 @@ pub fn using_intel_mkl() -> bool {
 /// set_num_threads(2);
 /// ```
 pub fn set_num_threads(n: usize) {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n_i32 = to_i32(n);
         // Safety: the shim is linked in this configuration.
@@ -74,7 +74,7 @@ pub fn set_num_threads(n: usize) {
             c_set_num_threads(n_i32);
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         let _ = n;
     }
@@ -92,12 +92,12 @@ pub fn set_num_threads(n: usize) {
 /// println!("{}", get_num_threads());
 /// ```
 pub fn get_num_threads() -> usize {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         // Safety: the shim is linked in this configuration.
         unsafe { c_get_num_threads() as usize }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         1
     }
@@ -116,7 +116,7 @@ pub fn get_num_threads() -> usize {
 /// assert_eq!(find_index_abs_max(u), 1);
 /// ```
 pub fn find_index_abs_max(x: &[f64]) -> usize {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n = to_i32(x.len());
         // Safety: the shim is linked in this configuration.
@@ -126,7 +126,7 @@ pub fn find_index_abs_max(x: &[f64]) -> usize {
             i as usize
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The first maximum wins, matching `idamax`; an empty slice yields 0.
         let mut best = 0usize;
@@ -150,9 +150,9 @@ mod tests {
 
     #[test]
     fn using_intel_mkl_works() {
-        #[cfg(feature = "mkl")]
+        #[cfg(feature = "intel_mkl")]
         assert!(using_intel_mkl());
-        #[cfg(not(feature = "mkl"))]
+        #[cfg(not(feature = "intel_mkl"))]
         assert!(!using_intel_mkl());
     }
 

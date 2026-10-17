@@ -1,10 +1,10 @@
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::Complex64;
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
 use crate::{StrError, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
@@ -21,7 +21,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zgesv) Solves a general linear system
@@ -42,7 +42,7 @@ unsafe extern "C" {
 ///
 /// The solution is obtained via LU decomposition with partial pivoting (`zgesv`:
 /// the native Rust implementation by default, LAPACK through the C shim with
-/// `oblas`/`mkl`).
+/// `open_blas`/`intel_mkl`).
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
 ///
@@ -111,7 +111,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
     let lda = to_i32(m);
     let ldb = lda;
     let mut info = 0;
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zgesv(
@@ -126,7 +126,7 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
             )
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The singular message is the one the shim path produces below (its
         // info > 0 branch), so both backends are indistinguishable to a caller.

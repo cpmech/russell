@@ -1,6 +1,6 @@
 //! The reference LAPACK, for testing the native routines against.
 //!
-//! **Development only.** Enabled by the `oracle` feature, which compiles
+//! **Development only.** Enabled by the `dev_lapack` feature, which compiles
 //! `c_code/interface_blas.c` against a locally built LAPACK and links it. Not for
 //! release: it needs a LAPACK build on the machine (see `build.rs`, and
 //! `RUSSELL_ORACLE_ROOT` to point it elsewhere).
@@ -22,7 +22,7 @@
 //!
 //! # Who calls this
 //!
-//! Only `native::parity`, and only under `#[cfg(all(test, feature = "oracle"))]`.
+//! Only `native::parity`, and only under `#[cfg(all(test, feature = "dev_lapack"))]`.
 
 #![allow(dead_code)]
 

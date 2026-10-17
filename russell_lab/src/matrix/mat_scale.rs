@@ -1,8 +1,8 @@
 use super::Matrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
@@ -41,7 +41,7 @@ unsafe extern "C" {
 pub fn mat_scale(a: &mut Matrix, alpha: f64) {
     let (m, n) = a.dims();
 
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let mn_i32 = to_i32(m * n);
         // Safety: the shim is linked in this configuration.
@@ -49,7 +49,7 @@ pub fn mat_scale(a: &mut Matrix, alpha: f64) {
             cblas_dscal(mn_i32, alpha, a.as_mut_data().as_mut_ptr(), 1);
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         let _ = (m, n);
         crate::native::blas::dscal(alpha, a.as_mut_data());

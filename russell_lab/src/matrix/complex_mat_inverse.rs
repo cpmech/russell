@@ -2,7 +2,7 @@ use super::{ComplexMatrix, complex_mat_copy};
 use crate::native::lapack::ZERO_DETERMINANT;
 use crate::{Complex64, StrError, cpx, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     // <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
@@ -25,7 +25,7 @@ unsafe extern "C" {
 // constants
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zgetrf, zgetri) Computes the inverse of a square matrix and returns its determinant
@@ -163,7 +163,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     let lda = m_i32;
     let mut ipiv = vec![0; m];
     let mut info = 0;
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zgetrf(
@@ -176,7 +176,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
             );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native kernel reports 0-based pivots; the determinant loop below
         // and the shim's own convention are 1-based, so convert here. This keeps
@@ -221,7 +221,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     // second, perform the inversion
     let lwork = m_i32;
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zgetri(
@@ -235,7 +235,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
             );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // Back to 0-based for the native kernel.
         let pivots: Vec<usize> = ipiv.iter().map(|&p| (p - 1) as usize).collect();

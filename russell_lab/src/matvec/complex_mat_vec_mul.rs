@@ -1,10 +1,10 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
 use crate::{Complex64, StrError, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
     // <https://www.netlib.org/lapack/explore-html/db/d40/zgemv_8f.html>
@@ -25,7 +25,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zgemv) Performs the matrix-vector multiplication
@@ -91,7 +91,7 @@ pub fn complex_mat_vec_mul(
     let n_i32: i32 = to_i32(n);
     let incx = 1;
     let incy = 1;
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         // Safety: the shim is linked in this configuration.
         unsafe {
@@ -112,7 +112,7 @@ pub fn complex_mat_vec_mul(
         }
         let _ = (incx, incy, m_i32, n_i32);
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::zgemv(alpha, a.as_data(), u.as_data(), zero, v.as_mut_data(), m, n);
     Ok(())
 }

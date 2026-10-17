@@ -1,6 +1,6 @@
 //! Parity tests: the native routines against the reference LAPACK.
 //!
-//! Enabled by the `oracle` feature, which compiles the C shim against a locally
+//! Enabled by the `dev_lapack` feature, which compiles the C shim against a locally
 //! built LAPACK 3.12.1 and links it. The shim drives the **column-major**
 //! `LAPACK_*` interface, so both sides see the same data layout; using LAPACKE
 //! here would transpose every matrix and make the comparison meaningless.

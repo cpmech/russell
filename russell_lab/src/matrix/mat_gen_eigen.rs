@@ -1,9 +1,9 @@
 use super::Matrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{C_FALSE, C_TRUE, CcBool};
 use crate::{StrError, Vector, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
     // <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
@@ -29,7 +29,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (dggev) Computes the generalized eigenvalues and right eigenvectors
@@ -138,7 +138,7 @@ pub fn mat_gen_eigen(
     let mut u = vec![0.0; ldu as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // `v` is the compact LAPACK storage: for a conjugate pair, columns `j`
         // and `j + 1` are the real and imaginary parts of `v(j)`. `a` and `b` are
@@ -159,7 +159,7 @@ pub fn mat_gen_eigen(
         .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_dggev(
@@ -193,7 +193,7 @@ pub fn mat_gen_eigen(
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
@@ -327,7 +327,7 @@ pub fn mat_gen_eigen_lr(
     let lwork = 8 * m_i32 + EXTRA;
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // `u` and `v` are the compact LAPACK storage: for a conjugate pair,
         // columns `j` and `j + 1` are the real and imaginary parts. `a` and `b`
@@ -348,7 +348,7 @@ pub fn mat_gen_eigen_lr(
         .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_dggev(

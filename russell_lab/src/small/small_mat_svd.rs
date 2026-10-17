@@ -1,8 +1,8 @@
 use crate::StrError;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{SVD_CODE_A, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
@@ -35,7 +35,7 @@ unsafe extern "C" {
 ///
 /// The input matrix `a` is stored row-major (as a Rust 2D array) and is copied
 /// into a column-major buffer before `dgesvd` sees it (the native implementation
-/// by default, the C shim with `oblas`/`mkl`).
+/// by default, the C shim with `open_blas`/`intel_mkl`).
 ///
 /// See also: [`crate::mat_svd`] (the heap-allocated counterpart), the LAPACK
 /// reference <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>,
@@ -112,7 +112,7 @@ pub fn small_mat_svd<const M: usize, const N: usize>(
     let mut ucm = [[0.0f64; M]; M];
     let mut vtcm = [[0.0f64; N]; N];
 
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let m_i32: i32 = to_i32(M);
         let n_i32: i32 = to_i32(N);
@@ -169,7 +169,7 @@ pub fn small_mat_svd<const M: usize, const N: usize>(
         }
     }
 
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native `dgesvd`: pure Rust and parity-tested against the reference
         // LAPACK. It replaces the `AᵀA` portable algorithm this wrapper used to

@@ -1,9 +1,9 @@
 use super::Matrix;
 use crate::StrError;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{C_FALSE, C_TRUE, CcBool, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the Cholesky factorization of a real symmetric positive definite matrix
     // <https://www.netlib.org/lapack/explore-html/d0/d8a/dpotrf_8f.html>
@@ -98,7 +98,7 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
     if m != n {
         return Err("the matrix must be square");
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let c_upper = if upper { C_TRUE } else { C_FALSE };
         let m_i32 = to_i32(m);
@@ -117,7 +117,7 @@ pub fn mat_cholesky(a: &mut Matrix, upper: bool) -> Result<(), StrError> {
             return Err("LAPACK ERROR (dpotrf): Positive definite check failed");
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native kernel writes the lower triangle. For the upper factor the
         // result is the transpose of the lower one, computed on a mirrored copy

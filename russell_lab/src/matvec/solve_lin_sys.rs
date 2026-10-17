@@ -1,10 +1,10 @@
 use crate::StrError;
 use crate::matrix::Matrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 use crate::vector::Vector;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
@@ -38,7 +38,7 @@ unsafe extern "C" {
 ///
 /// The solution is obtained via LU decomposition with partial pivoting (`dgesv`:
 /// the native Rust implementation by default, LAPACK through the C shim with
-/// `oblas`/`mkl`).
+/// `open_blas`/`intel_mkl`).
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 ///
@@ -87,7 +87,7 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     if m == 0 {
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let mut ipiv = vec![0; m];
         let m_i32 = to_i32(m);
@@ -113,10 +113,17 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
             return Err("LAPACK ERROR (dgesv): An argument had an illegal value");
         } else if info > 0 {
             println!("LAPACK ERROR (dgesv): U({},{}) is exactly zero", info - 1, info - 1);
-            return Err("LAPACK ERROR (dgesv): The factor U is singular");
+            // LAPACK's own wording, matching the native branch below and the
+            // complex path: the same condition must read the same way whichever
+            // backend reports it. (This one used to be shortened here, which made
+            // `solve_lin_sys_singular_handles_error` fail in every accelerated
+            // configuration while passing natively.)
+            return Err(
+                "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular",
+            );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         crate::native::lapack::dgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
             crate::native::lapack::LapackError::Singular => {

@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{C_FALSE, C_TRUE, CcBool, Complex64};
 use crate::{ComplexVector, StrError, cpx, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
     // <https://www.netlib.org/lapack/explore-html/d3/d47/zggev_8f.html>
@@ -29,7 +29,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zggev) Computes the generalized eigenvalues and right eigenvectors
@@ -136,7 +136,7 @@ pub fn complex_mat_gen_eigen(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The reference is destructive, but the caller's matrices are left
         // intact here because the acceptance test checks the defining equation
@@ -158,7 +158,7 @@ pub fn complex_mat_gen_eigen(
         .map_err(|_| "LAPACK ERROR (zggev): Iterations failed ")?;
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zggev(
@@ -192,7 +192,7 @@ pub fn complex_mat_gen_eigen(
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
@@ -318,7 +318,7 @@ pub fn complex_mat_gen_eigen_lr(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 8 * m];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // As in `complex_mat_gen_eigen`, the caller's matrices are left intact
         // even though the reference overwrites them.
@@ -339,7 +339,7 @@ pub fn complex_mat_gen_eigen_lr(
         .map_err(|_| "LAPACK ERROR (zggev): Iterations failed ")?;
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zggev(

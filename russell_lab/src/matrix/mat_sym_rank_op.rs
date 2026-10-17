@@ -1,9 +1,9 @@
 use super::Matrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_UPPER, to_i32};
 use crate::{CBLAS_NO_TRANS, CBLAS_TRANS, StrError};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs one of the symmetric rank k operations
     // <https://www.netlib.org/lapack/explore-html/dc/d05/dsyrk_8f.html>
@@ -23,7 +23,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (dsyrk) Performs a symmetric rank k operation
@@ -122,7 +122,7 @@ pub fn mat_sym_rank_op(
         }
         (row, row, CBLAS_TRANS)
     };
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let uplo = if upper { CBLAS_UPPER } else { CBLAS_LOWER };
         let n_i32 = to_i32(n);
@@ -145,7 +145,7 @@ pub fn mat_sym_rank_op(
             );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The two cases contract over *different* lengths, so they are not the
         // same call with a flag:

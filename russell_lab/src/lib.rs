@@ -153,14 +153,14 @@
 //! including `wasm32-unknown-unknown`. The eigen-decompositions, the SVD, the
 //! pseudo-inverse, Cholesky, the linear solvers and the complex routines all work
 //! in this configuration; their numerical parity with reference LAPACK is tested
-//! through the development-only `oracle` feature (see `build.rs`).
+//! through the development-only `dev_lapack` feature (see `build.rs`).
 //!
 //! Two opt-in features replace the native routines with an external library,
 //! through the C shim in `c_code/interface_blas.c`:
 //!
-//! * `oblas` -- OpenBLAS, resolved via `pkg-config` (also needs its development
+//! * `open_blas` -- OpenBLAS, resolved via `pkg-config` (also needs its development
 //!   headers, e.g. `lapack.h`);
-//! * `mkl` -- Intel oneAPI MKL, expected under `/opt/intel/oneapi/mkl/<version>`.
+//! * `intel_mkl` -- Intel oneAPI MKL, expected under `/opt/intel/oneapi/mkl/<version>`.
 //!
 //! They are mutually exclusive (`build.rs` refuses both), and neither is a
 //! requirement: enabling one is a performance choice, not what makes the crate
@@ -186,7 +186,7 @@ pub mod math;
 pub mod matrix;
 pub mod matvec;
 pub mod native;
-#[cfg(feature = "oracle")]
+#[cfg(feature = "dev_lapack")]
 pub mod oracle;
 mod portable;
 pub mod small;

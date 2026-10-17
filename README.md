@@ -90,7 +90,7 @@ This project is split into the following crates:
     - Data structures: NumVector, NumMatrix (column-major layout for direct BLAS/LAPACK interoperability), and stack-allocated SmallVector/SmallMatrix.
     - Linear Algebra: BLAS 1/2/3 and LAPACK routines (dense solves, SVD, Cholesky, symmetric and general eigenvalues/eigenvectors for real and complex numbers).
     - Numerics & Special Functions: Bessel, modified Bessel, Beta, Gamma, Erf, Elliptic integrals, Chebyshev/Legendre polynomials, Lagrange interpolation, B-splines, quadrature, Brent's root-finding, Newton solver, cubic solver, and numerical derivatives/Jacobians.
-    - Backends: OpenBLAS / Netlib LAPACK or Intel oneAPI MKL (via intel_mkl feature).
+    - Backends: native Rust BLAS/LAPACK by default; OpenBLAS (`open_blas`) or Intel oneAPI MKL (`intel_mkl`) as opt-in accelerators.
 2. [![Crates.io](https://img.shields.io/crates/v/russell_tensor.svg)](https://crates.io/crates/russell_tensor) [russell_tensor](https://github.com/cpmech/russell/tree/main/russell_tensor) — Tensor calculus and continuum mechanics:
     - Tensor types: Tensor1 (3D vectors), Tensor2 (2nd-order), Tensor3 (3rd-order), Tensor4 (4th-order).
     - Kelvin-Mandel representation: Maps tensors to vector/matrix spaces preserving Euclidean norms.
@@ -146,21 +146,21 @@ The following crates are not part of `russell` but are associated with it and re
 
 This project employs [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS) (or [Intel MKL](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html)) for linear algebra computations and [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteSparse) (or [MUMPS](https://mumps-solver.org)) for the solution of large (sparse) linear systems of equations. See the [Installation](#installation) section for instructions on how to install these libraries on different platforms.
 
-To use Intel MKL, the `intel_mkl` feature must be selected. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
+The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); the two are mutually exclusive and the build fails if both are enabled. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
 
 Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag. Note that cuDSS is in **Preview Mode** 🚧.
 
 The table below summarizes the features of each crate:
 
-|                  | `intel_mkl` | `local_sparse` | `cudss` |
-| ---------------- | :---------: | :------------: | :-----: |
-| `russell_lab`    |      ✓      |                |         |
-| `russell_nonlin` |      ✓      |       ✓        |    ✓    |
-| `russell_ode`    |      ✓      |       ✓        |    ✓    |
-| `russell_pde`    |      ✓      |       ✓        |    ✓    |
-| `russell_sparse` |      ✓      |       ✓        |    ✓    |
-| `russell_stat`   |      ✓      |                |         |
-| `russell_tensor` |      ✓      |                |         |
+|                  | `open_blas` | `intel_mkl` | `local_sparse` | `cudss` |
+| ---------------- | :---------: | :---------: | :------------: | :-----: |
+| `russell_lab`    |      ✓      |      ✓      |                |         |
+| `russell_nonlin` |      ✓      |      ✓      |       ✓        |    ✓    |
+| `russell_ode`    |      ✓      |      ✓      |       ✓        |    ✓    |
+| `russell_pde`    |      ✓      |      ✓      |       ✓        |    ✓    |
+| `russell_sparse` |      ✓      |      ✓      |       ✓        |    ✓    |
+| `russell_stat`   |      ✓      |      ✓      |                |         |
+| `russell_tensor` |      ✓      |      ✓      |                |         |
 
 Below is an example of how to enable the `intel_mkl` and `local_sparse` features with the `russell_sparse` crate in the `Cargo.toml` file:
 

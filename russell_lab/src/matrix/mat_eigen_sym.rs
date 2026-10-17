@@ -1,9 +1,9 @@
 use super::Matrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::CcBool;
 use crate::{C_FALSE, C_TRUE, StrError, Vector, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a symmetric matrix
     // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
@@ -21,7 +21,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (dsyev) Calculates the eigenvalues and eigenvectors of a symmetric matrix
@@ -103,7 +103,7 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
     let lwork = 3 * n_i32 + EXTRA; // max(1,3*N-1), thus, 2 extra spaces effectively
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native routine has the same contract as `dsyev(JOBZ='V', ...)`:
         // `a` is destroyed and holds the eigenvectors as columns, `l` receives
@@ -117,7 +117,7 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
             _ => "LAPACK ERROR (dsyev): An argument had an illegal value",
         });
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_dsyev(

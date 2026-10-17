@@ -1,9 +1,9 @@
-// GENERATED for the `oracle` feature -- do not edit by hand.
+// GENERATED for the `dev_lapack` feature -- do not edit by hand.
 //
 // A copy of `interface_blas.c` with the shim's own entry points renamed to
 // `oracle_c_*`. The rename lets the oracle be linked alongside the normal shim
-// without both defining the same symbols: with the collision, `--features oracle`
-// also needed `oblas`, so the parity tests could not run without OpenBLAS.
+// without both defining the same symbols: with the collision, `--features dev_lapack`
+// also needed `open_blas`, so the parity tests could not run without OpenBLAS.
 //
 // Regenerated when `interface_blas.c` changes.
 #include <inttypes.h>

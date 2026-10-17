@@ -4,7 +4,7 @@
 //!
 //! The vector, matrix-vector and matrix-matrix functions take a fast path when
 //! one is available: [`crate::native::blas`] (blocked AVX2 `dgemm` on x86_64) in
-//! the default build, or the C shim into OpenBLAS/MKL with `oblas`/`mkl`. A
+//! the default build, or the C shim into OpenBLAS/MKL with `open_blas`/`intel_mkl`. A
 //! `wasm32` target has neither, and the call sites select these kernels there by
 //! `target_arch = "wasm32"` -- not by a feature. They are deliberately plain
 //! implementations, not tuned ones: correctness and portability for the browser
@@ -26,7 +26,7 @@
 //! | [`mat_mat_mul_data`] | `dgemm` |
 //! | [`mat_t_mat_mul_data`] | `dgemm` (transposed) |
 
-#![cfg_attr(any(feature = "oblas", feature = "mkl"), allow(dead_code))]
+#![cfg_attr(any(feature = "open_blas", feature = "intel_mkl"), allow(dead_code))]
 
 use crate::Norm;
 

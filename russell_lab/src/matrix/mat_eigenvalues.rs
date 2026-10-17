@@ -1,9 +1,9 @@
 use super::Matrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{C_FALSE, CcBool};
 use crate::{StrError, Vector, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
     // <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
@@ -26,7 +26,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (dgeev) Computes the eigenvalues of a matrix
@@ -110,7 +110,7 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
     let mut v = vec![0.0; ldv as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // Only the eigenvalues are wanted, so the eigenvectors are discarded.
         let n = m;
@@ -129,7 +129,7 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
         l_imag.as_mut_data().copy_from_slice(&wi);
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_dgeev(

@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS};
 use crate::{Complex64, StrError, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
@@ -26,7 +26,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zgemm) Performs the transpose(matrix)-matrix multiplication
@@ -95,7 +95,7 @@ pub fn complex_mat_t_mat_mul(
     let k_i32: i32 = to_i32(k);
     let lda = k_i32;
     let ldb = k_i32;
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             cblas_zgemm(
@@ -116,7 +116,7 @@ pub fn complex_mat_t_mat_mul(
             );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // C := alpha A^T B + beta C, where A is (k, m).
         //

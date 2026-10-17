@@ -1,9 +1,9 @@
 use super::Matrix;
 use crate::StrError;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d2b/dgemm_8f.html>
@@ -75,7 +75,7 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f
         c.fill(0.0);
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let m_i32: i32 = to_i32(m);
         let n_i32: i32 = to_i32(n);
@@ -101,7 +101,7 @@ pub fn mat_t_mat_mul(c: &mut Matrix, alpha: f64, a: &Matrix, b: &Matrix, beta: f
             );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::portable::mat_t_mat_mul_data(c.as_mut_data(), alpha, a.as_data(), b.as_data(), beta, m, n, k);
     Ok(())
 }

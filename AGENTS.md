@@ -13,26 +13,26 @@ installed:
   This is what `cargo build` and `cargo test` use with no extra flags.
 - **External library** — the C shim in `russell_lab/c_code/interface_blas.c`,
   selected by exactly one of:
-  - **`oblas`** — OpenBLAS, resolved via `pkg-config` with a Homebrew fallback.
+  - **`open_blas`** — OpenBLAS, resolved via `pkg-config` with a Homebrew fallback.
     Needs the development headers (e.g. `lapack.h`). Also the reference netlib
     BLAS/LAPACK.
-  - **`mkl`** — Intel oneAPI MKL, expected under
+  - **`intel_mkl`** — Intel oneAPI MKL, expected under
     `/opt/intel/oneapi/mkl/<version>`; set `MKL_VERSION` to override `latest`.
 
-`oblas` and `mkl` are mutually exclusive; `build.rs` panics if both are on, rather
+`open_blas` and `intel_mkl` are mutually exclusive; `build.rs` panics if both are on, rather
 than leaving the linker to report two providers of the same symbols. Enabling
 neither prints which path was taken, so a build log always records it.
 
-The `oblas` and `mkl` features are forwarded from every dependent crate
+The `open_blas` and `intel_mkl` features are forwarded from every dependent crate
 (`russell_tensor`, `russell_sparse`, `russell_stat`, `russell_ode`,
 `russell_pde`, `russell_nonlin`). Their own defaults are empty: they do **not**
 force an external library, and Cargo cannot disable a dependency's default
 features from the outside, so a crate that wants one has to say so in the
 dependency declaration.
 
-### The `oracle` feature (development only)
+### The `dev_lapack` feature (development only)
 
-`--features oracle` compiles the shim against a **locally built** LAPACK and links
+`--features dev_lapack` compiles the shim against a **locally built** LAPACK and links
 it, so the native routines can be tested for numerical parity against the
 reference. This is the only practicable way to check an eigenvalue or an SVD.
 
@@ -43,7 +43,7 @@ a developer's directory layout into released source. `build.rs` checks for the
 files and fails with an explanation rather than a link error.
 
 ```bash
-RUSSELL_ORACLE_ROOT=/path/to/lapack/build cargo test -p russell_lab --features oracle
+RUSSELL_ORACLE_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
 ```
 
 Anything the oracle links is a reference for the *tests*; the crate's own symbols
@@ -64,14 +64,14 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ```bash
 cargo test -p russell_lab --lib                     # 1193 pass, 0 fail, 0 ignored
 RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features oracle # 1206 pass, 0 fail
+  cargo test -p russell_lab --lib --features dev_lapack # 1206 pass, 0 fail
 ```
 
 Both configurations are known-good on the current tree of `native-lapack`, with
 **zero** failures. The oracle run adds the parity tests and is otherwise the same
 native path.
 
-The `oracle` feature needs `RUSSELL_ORACLE_ROOT` set to a valid CMake build
+The `dev_lapack` feature needs `RUSSELL_ORACLE_ROOT` set to a valid CMake build
 directory. The LAPACK *source* tree is not one -- it has no `include/` or `lib/`.
 For the tree on this machine that is
 `/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran`.
@@ -90,7 +90,7 @@ again:
 
 * The original 61 failures were not all `NotImplemented`. `mat_eigenvalues`,
   `mat_eigen`, `mat_eigen_sym`, `mat_gen_eigen` and `mat_svd` declared their
-  `extern "C"` call behind `#[cfg(any(feature = "oblas", feature = "mkl"))]`
+  `extern "C"` call behind `#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]`
   with no `#[cfg(not(...))]` counterpart, so a native build fell through to
   `Ok(())` with the outputs still zero -- 26 tests returning **silently wrong
   results** rather than an error. Commit `4cc08ae1` added the missing branches.
@@ -145,7 +145,7 @@ an extent, or a length taken from the wrong axis**:
 ### What is verified
 
 `native::blas` and `native::lapack` are tested for parity against the reference
-LAPACK through the `oracle` feature (see above): `dgesv`, `dgetrf`+`dgetri`,
+LAPACK through the `dev_lapack` feature (see above): `dgesv`, `dgetrf`+`dgetri`,
 `dpotrf`, `dhseqr`'s eigenvalues, `dsyev`+`zheev`, `dgesvd`, `dggev`, and the
 complex `zpotrf`/`zgetrf`+`zgetri`/`zgesv`, at 1e-10 relative. Extend those parity
 tests as routines are added — they are what caught the `dpotrf` triangle
@@ -174,7 +174,7 @@ permutation order (`(4,3,5)`, where 3.12.1 gives `(4,5,3)`), and `dchkbl` only
 flagged -- its own run prints "example number having largest error = 5".
 
 Run the oracle tests in the same target directory as the default build. Mixing
-`--features oracle` with `--features oblas` will not link: both provide the BLAS
+`--features dev_lapack` with `--features open_blas` will not link: both provide the BLAS
 symbols.
 
 ### Hard constraints
@@ -200,7 +200,7 @@ symbols.
   `russell_lab/tests/american_english.rs` scans `.rs`/`.md`/`.py` and fails the
   suite on a regression, so a new form belongs in that file's list -- or better,
   not in the tree.
-- **Do not change the behavior of the `oblas` / `mkl` accelerated paths.** They
+- **Do not change the behavior of the `open_blas` / `intel_mkl` accelerated paths.** They
   must stay consistent with the native ones, including error strings.
 
 ### Reporting
@@ -295,9 +295,9 @@ this one. `dgesvd` remains unblocked. The rules of thumb:
 - `dgesvd`/`zgesvd` use the direct bidiagonalization path for both shapes, not
   the QR/LQ pre-reduction the reference uses for very tall or wide inputs.
   Agreement with the reference is ~1e-15.
-- `cargo check --features oblas` cannot be compiled on this machine at all: it
+- `cargo check --features open_blas` cannot be compiled on this machine at all: it
   dies in `build.rs` at `c_code/interface_blas.c` with `lapack.h: No such file or
-  directory`, because the development headers are not installed. The `oblas`
+  directory`, because the development headers are not installed. The `open_blas`
   branches can only be reasoned about, not checked, so keep edits to them
   minimal.
 - The web/WASM consumer of this crate has not been re-checked since the native
@@ -312,11 +312,11 @@ cargo test -p russell_lab
 cargo test -p russell_tensor
 
 # Tests, external backend (needs OpenBLAS headers, or MKL installed).
-cargo test -p russell_lab --features oblas
-cargo test -p russell_lab --features mkl
+cargo test -p russell_lab --features open_blas
+cargo test -p russell_lab --features intel_mkl
 
 # Numerical parity of the native routines against the reference LAPACK.
-RUSSELL_ORACLE_ROOT=/path/to/lapack/build cargo test -p russell_lab --features oracle
+RUSSELL_ORACLE_ROOT=/path/to/lapack/build cargo test -p russell_lab --features dev_lapack
 
 # Whole workspace (sparse crates need the locally compiled libraries)
 cargo test --workspace --features local_sparse
@@ -357,7 +357,7 @@ warning-free.
   arrays and avoid heap allocation; get the stack matrix from a tensor with
   `Tensor2::to_std_matrix_slice` (or `to_std_matrix_slice`-style helpers).
   `small_mat_svd` is the one exception to "no heap": it wraps `dgesvd` (native
-  Rust by default, the C shim with `oblas`/`mkl`) and `dgesvd` allocates its own
+  Rust by default, the C shim with `open_blas`/`intel_mkl`) and `dgesvd` allocates its own
   workspace. Do not reintroduce an `AᵀA`-based SVD for it — forming `AᵀA` squares
   the condition number, and at κ = 1e8 that left `russell_tensor`'s polar
   rotation non-orthogonal by 0.28.
@@ -408,11 +408,11 @@ These are the rules the code depends on. Each one has been violated at least onc
 Every call site that needs BLAS follows the same shape:
 
 ```rust
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 {
     // the C call, with a comment naming the shim's symbol
 }
-#[cfg(not(any(feature = "oblas", feature = "mkl")))]
+#[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
 // the native call, which uses usize lengths and no workspace argument
 ```
 
@@ -437,15 +437,15 @@ Two things worth knowing before adding one:
 
 4. **A native build does not need the shim's names, and must not warn about
    them.** The shim's `lda`/`ldu`/`lwork`/`work`/`rwork`/`info` declarations sit
-   at function scope because the `oblas`/`mkl` branch uses them; in a native
+   at function scope because the `open_blas`/`intel_mkl` branch uses them; in a native
    build they are unused, so the enclosing function carries
 
    ```rust
-   #[cfg_attr(not(any(feature = "oblas", feature = "mkl")), allow(unused_variables, unused_mut, unreachable_code, unused_assignments))]
+   #[cfg_attr(not(any(feature = "open_blas", feature = "intel_mkl")), allow(unused_variables, unused_mut, unreachable_code, unused_assignments))]
    ```
 
-   and the shim-only imports are `#[cfg(any(feature = "oblas", feature = "mkl"))]`
-   (plus `feature = "oracle"` for `CcBool`, which the oracle shim also uses).
+   and the shim-only imports are `#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]`
+   (plus `feature = "dev_lapack"` for `CcBool`, which the oracle shim also uses).
    Keep both when editing those files: an unconditional `#[allow]` would hide the
    same warning in the accelerated build, where it would be a real mistake. This
    is deliberately preferred over moving the declarations into the `cfg` block --

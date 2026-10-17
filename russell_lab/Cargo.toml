@@ -20,17 +20,17 @@ keywords = ["matrix", "vector", "linspace"]
 # The two accelerator features below are opt-in. Each links the C shim in
 # `c_code/interface_blas.c` against a different external library:
 #
-# * `oblas` -- OpenBLAS (also the reference netlib BLAS/LAPACK)
-# * `mkl`   -- Intel oneAPI MKL
+# * `open_blas` -- OpenBLAS (also the reference netlib BLAS/LAPACK)
+# * `intel_mkl`   -- Intel oneAPI MKL
 #
 # They are mutually exclusive. Enabling neither (the default) uses `src/native`,
 # whose routines are plain Rust and are tested for numerical parity against the
 # reference LAPACK.
 default = []
 # Link the C shim against OpenBLAS.
-oblas = []
+open_blas = []
 # Link the C shim against Intel oneAPI MKL.
-mkl = []
+intel_mkl = []
 # DEVELOPMENT ONLY -- a numerical oracle for the native routines' tests.
 #
 # Compiles the same C shim against a locally built LAPACK 3.12.1 and links it, so
@@ -42,8 +42,8 @@ mkl = []
 # Not for release: it needs a LAPACK build on the machine. See `build.rs` for the
 # location, which `RUSSELL_ORACLE_ROOT` overrides.
 #
-# `cargo test -p russell_lab --features oracle`
-oracle = []
+# `cargo test -p russell_lab --features dev_lapack`
+dev_lapack = []
 
 [dependencies]
 num-complex = { version = "0.4", features = ["serde"] }

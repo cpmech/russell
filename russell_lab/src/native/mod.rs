@@ -1,8 +1,8 @@
 //! Native Rust BLAS and LAPACK.
 //!
 //! This is the default backend: no external library, nothing to link, and it
-//! builds for any target including `wasm32-unknown-unknown`. The `oblas` and
-//! `mkl` features exist to swap these routines for a tuned library, not to make
+//! builds for any target including `wasm32-unknown-unknown`. The `open_blas` and
+//! `intel_mkl` features exist to swap these routines for a tuned library, not to make
 //! the crate work in the first place.
 //!
 //! # Layout and conventions
@@ -24,5 +24,5 @@
 
 pub mod blas;
 pub mod lapack;
-#[cfg(all(test, feature = "oracle"))]
+#[cfg(all(test, feature = "dev_lapack"))]
 mod parity;

@@ -108,12 +108,12 @@ russell_lab = "*"
 The default build uses the native Rust BLAS/LAPACK in `src/native`: no external
 library to install, nothing to link. The following (Rust) features are available:
 
-* `oblas`: use OpenBLAS instead of the native routines (needs its development headers)
-* `mkl`: use Intel oneAPI MKL instead of the native routines
-* `oracle`: development only -- compiles the C shim against a locally built LAPACK
+* `open_blas`: use OpenBLAS instead of the native routines (needs its development headers)
+* `intel_mkl`: use Intel oneAPI MKL instead of the native routines
+* `dev_lapack`: development only -- compiles the C shim against a locally built LAPACK
   so the native routines can be tested for numerical parity against the reference
 
-`oblas` and `mkl` are mutually exclusive. Note that the
+`open_blas` and `intel_mkl` are mutually exclusive. Note that the
 [main README file](https://github.com/cpmech/russell) presents the steps to
 compile the required libraries according to each feature.
 
@@ -157,10 +157,10 @@ BLAS num threads = 1
 BLAS num threads = 1
 ```
 
-Second, run the code with the `mkl` feature (or `oblas` for OpenBLAS):
+Second, run the code with the `intel_mkl` feature (or `open_blas` for OpenBLAS):
 
 ```bash
-cargo run --example base_auxiliary_blas --features mkl
+cargo run --example base_auxiliary_blas --features intel_mkl
 ```
 
 Then, the output looks like this:
@@ -846,7 +846,7 @@ Comparison of the performances of `InterpChebyshev::eval` implementing the Clens
 
 Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus
 `mat_eigen_sym`, which runs the tridiagonal `dsyev` pipeline: the native Rust
-implementation by default, or LAPACK through the C shim with `oblas`/`mkl`.
+implementation by default, or LAPACK through the C shim with `open_blas`/`intel_mkl`.
 
 ![Jacobi Rotation versus LAPACK DSYEV (1-5)](data/figures/bench_mat_eigen_sym_1-5.svg)
 

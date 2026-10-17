@@ -1,10 +1,10 @@
 use super::Matrix;
 use crate::internal::compact_right_eigenvectors;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{C_FALSE, C_TRUE, CcBool};
 use crate::{StrError, Vector, dgeev_data, dgeev_data_lr, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
     // <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
@@ -27,7 +27,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (dgeev) Performs the eigen-decomposition of a square matrix
@@ -157,7 +157,7 @@ pub fn mat_eigen(
     let mut v = vec![0.0; m * m];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         let n = m;
         // Distinct names: `v_real`/`v_imag` are this function's output
@@ -182,7 +182,7 @@ pub fn mat_eigen(
         let raw = compact_right_eigenvectors(&nvr, &nvi, &wi, n);
         return dgeev_data(v_real.as_mut_data(), v_imag.as_mut_data(), &wi, &raw);
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_dgeev(
@@ -219,7 +219,7 @@ pub fn mat_eigen(
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// Performs the eigen-decomposition of a square matrix (left and right)
@@ -369,7 +369,7 @@ pub fn mat_eigen_lr(
     let mut v = vec![0.0; m * m];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native routine computes the left eigenvectors from the *same*
         // Schur factorization as the right ones (the `ztrevc`-style
@@ -393,7 +393,7 @@ pub fn mat_eigen_lr(
         l_imag.as_mut_data().copy_from_slice(&wi);
         return Ok(());
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_dgeev(

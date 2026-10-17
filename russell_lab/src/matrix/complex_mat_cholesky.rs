@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
 use crate::{C_FALSE, C_TRUE, StrError, to_i32};
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CcBool, Complex64};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
     // <https://www.netlib.org/lapack/explore-html/d1/db9/zpotrf_8f.html>
@@ -11,7 +11,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zpotrf) Performs the Cholesky factorization of a Hermitian positive-definite matrix
@@ -106,11 +106,11 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
     let m_i32 = to_i32(m);
     let lda = m_i32;
     let mut info = 0;
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe { c_zpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native kernel handles both triangles itself: it reads only the one
         // the flag selects and writes only that same triangle. No mirroring (as

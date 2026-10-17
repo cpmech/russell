@@ -1,9 +1,9 @@
 use super::Vector;
 use crate::Norm;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
     // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
@@ -63,20 +63,20 @@ pub fn vec_norm_chunk(v: &Vector, kind: Norm, start: usize, stop: usize) -> f64 
 
 /// Euclidean norm of a slice, through the accelerator when there is one.
 fn native_or_blas_dnrm2(x: &[f64]) -> f64 {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n = to_i32(x.len());
         // Safety: the shim is linked in this configuration.
         unsafe { cblas_dnrm2(n, x.as_ptr(), 1) }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::dnrm2(x)
 }
 
 /// Index of the first largest-magnitude entry, through the accelerator when
 /// there is one.
 fn native_or_blas_idamax(x: &[f64]) -> usize {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n = to_i32(x.len());
         // Safety: the shim is linked in this configuration.
@@ -84,19 +84,19 @@ fn native_or_blas_idamax(x: &[f64]) -> usize {
         assert!(i >= 0);
         i as usize
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::idamax(x)
 }
 
 /// Sum of absolute values of a slice, through the accelerator when there is one.
 fn native_or_blas_dasum(x: &[f64]) -> f64 {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n = to_i32(x.len());
         // Safety: the shim is linked in this configuration.
         unsafe { cblas_dasum(n, x.as_ptr(), 1) }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::dasum(x)
 }
 

@@ -1,9 +1,9 @@
 use super::Matrix;
 use crate::Norm;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the matrix norm
     // <https://www.netlib.org/lapack/explore-html/dc/d09/dlange_8f.html>
@@ -49,7 +49,7 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
     }
     let norm_code = kind as i32;
 
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let m_i32 = to_i32(m);
         let n_i32 = to_i32(n);
@@ -58,7 +58,7 @@ pub fn mat_norm(a: &Matrix, kind: Norm) -> f64 {
         // Safety: the shim is linked in this configuration.
         unsafe { c_dlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         crate::native::lapack::dlange_by_code(norm_code, a.as_data(), m, n)
     }

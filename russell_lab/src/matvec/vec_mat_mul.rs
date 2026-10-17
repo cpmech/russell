@@ -1,10 +1,10 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CBLAS_COL_MAJOR, CBLAS_TRANS};
 use crate::{StrError, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs one of the matrix-vector multiplication
     // <https://www.netlib.org/lapack/explore-html/dc/da8/dgemv_8f.html>
@@ -25,7 +25,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (dgemv) Performs the vector-matrix multiplication resulting in a vector
@@ -92,7 +92,7 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
     let incy = 1;
     let beta = 0.0;
 
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         // Safety: the shim is linked in this configuration.
         unsafe {
@@ -113,7 +113,7 @@ pub fn vec_mat_mul(v: &mut Vector, alpha: f64, u: &Vector, a: &Matrix) -> Result
         }
         let _ = (incx, incy, m_i32, n_i32);
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::dgemv_trans(alpha, a.as_data(), u.as_data(), beta, v.as_mut_data(), m, n);
     Ok(())
 }

@@ -1,9 +1,9 @@
 use super::ComplexVector;
 use crate::Norm;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{Complex64, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the Euclidean norm
     // <https://www.netlib.org/lapack/explore-html/d1/d5a/dznrm2_8f90.html>
@@ -53,7 +53,7 @@ pub fn complex_vec_norm(v: &ComplexVector, kind: Norm) -> f64 {
         return 0.0;
     }
 
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n = to_i32(v.dim());
         // Safety: the shim is linked in this configuration.
@@ -74,7 +74,7 @@ pub fn complex_vec_norm(v: &ComplexVector, kind: Norm) -> f64 {
             }
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // `dznrm2` is the Euclidean norm; the other kinds are combinatorial and
         // were already computed in Rust on the accelerated path too.

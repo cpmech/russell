@@ -1,10 +1,10 @@
 use super::{Matrix, mat_copy};
 use crate::StrError;
 use crate::native::lapack::ZERO_DETERMINANT;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     /// <https://www.netlib.org/lapack/explore-html/d3/d6a/dgetrf_8f.html>
@@ -206,7 +206,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     // identity: the native `dgetrf`/`dgetri`, which are tested for parity against
     // the reference LAPACK. The strings below are the ones the shim reports, so a
     // singular matrix is described the same way in both configurations.
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         use crate::native::lapack::{LapackError, dgetrf, dgetri};
         let (ipiv, det) = dgetrf(ai.as_mut_data(), m).map_err(|e| match e {
@@ -225,7 +225,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     }
 
     // Fast path through LAPACK.
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         // compute LU factorization
         let m_i32 = to_i32(m);

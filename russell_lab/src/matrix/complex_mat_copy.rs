@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
 use crate::StrError;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{Complex64, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/d6/d53/zcopy_8f.html>
@@ -46,7 +46,7 @@ pub fn complex_mat_copy(b: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<(), 
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n_i32: i32 = to_i32(m * n);
         // Safety: the shim is linked in this configuration.
@@ -54,7 +54,7 @@ pub fn complex_mat_copy(b: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<(), 
             cblas_zcopy(n_i32, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::zcopy(a.as_data(), b.as_mut_data());
     Ok(())
 }

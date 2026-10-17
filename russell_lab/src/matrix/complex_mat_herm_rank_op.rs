@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CBLAS_COL_MAJOR, Complex64};
 use crate::{CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER, StrError, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs one of the hermitian rank k operations
     // <https://www.netlib.org/lapack/explore-html/d1/db1/zherk_8f.html>
@@ -23,7 +23,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zherk) Performs a hermitian rank k operations
@@ -128,7 +128,7 @@ pub fn complex_mat_herm_rank_op(
     let n_i32 = to_i32(n);
     let k_i32 = to_i32(k);
     let ldc = n_i32;
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             cblas_zherk(
@@ -146,7 +146,7 @@ pub fn complex_mat_herm_rank_op(
             );
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         if trans == CBLAS_CONJ_TRANS {
             // C := alpha A^H A, contracting over A's k rows. A different

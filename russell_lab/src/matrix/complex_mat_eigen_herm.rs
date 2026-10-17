@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
 use crate::{C_FALSE, C_TRUE, StrError, Vector, cpx, to_i32};
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::{CcBool, Complex64};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for HE matrices
     // <https://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html>
@@ -22,7 +22,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zheev) Performs the eigen-decomposition of a hermitian matrix
@@ -127,7 +127,7 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 3 * m];
     let mut info = 0;
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     {
         // The native routine has the same contract as `zheev(JOBZ='V', ...)`:
         // `a` is destroyed and holds the eigenvectors as columns, `l` receives
@@ -140,7 +140,7 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
             _ => "LAPACK ERROR (zheev): An argument had an illegal value",
         });
     }
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         unsafe {
             c_zheev(

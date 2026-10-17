@@ -1,9 +1,9 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::Complex64;
 use crate::{Norm, to_i32};
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the matrix norm
     // <https://www.netlib.org/lapack/explore-html/d5/d8f/zlange_8f.html>
@@ -18,7 +18,7 @@ unsafe extern "C" {
 }
 
 #[cfg_attr(
-    not(any(feature = "oblas", feature = "mkl")),
+    not(any(feature = "open_blas", feature = "intel_mkl")),
     allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
 )]
 /// (zlange) Computes the matrix norm
@@ -62,7 +62,7 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
     let m_i32 = to_i32(m);
     let norm_code = kind as i32;
 
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n_i32 = to_i32(n);
         let lda = m_i32;
@@ -70,7 +70,7 @@ pub fn complex_mat_norm(a: &ComplexMatrix, kind: Norm) -> f64 {
         // Safety: the shim is linked in this configuration.
         unsafe { c_zlange(norm_code, &m_i32, &n_i32, a.as_data().as_ptr(), &lda, work.as_mut_ptr()) }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::zlange(crate::native::lapack::norm_char(norm_code), a.as_data(), m, n)
 }
 

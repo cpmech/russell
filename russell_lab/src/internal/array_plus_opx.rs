@@ -1,10 +1,10 @@
 use super::MAX_DIM_FOR_NATIVE_BLAS;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use super::to_i32;
 use crate::Complex64;
 use crate::StrError;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // real ------------------------------------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ pub(crate) fn array_plus_opx(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v:
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
-        #[cfg(any(feature = "oblas", feature = "mkl"))]
+        #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
         {
             let n_i32 = to_i32(n);
             // Safety: the shim is linked in this configuration.
@@ -63,7 +63,7 @@ pub(crate) fn array_plus_opx(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v:
                 cblas_daxpy(n_i32, alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
             }
         }
-        #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
         {
             use crate::native::blas::{daxpy, dcopy, dscal};
             dcopy(v, w);
@@ -152,7 +152,7 @@ pub(crate) fn array_plus_opx_complex(
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
-        #[cfg(any(feature = "oblas", feature = "mkl"))]
+        #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
         {
             let n_i32 = to_i32(n);
             // Safety: the shim is linked in this configuration.
@@ -165,7 +165,7 @@ pub(crate) fn array_plus_opx_complex(
                 cblas_zaxpy(n_i32, &alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
             }
         }
-        #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
         {
             use crate::native::blas::{zaxpy, zcopy, zscal};
             zcopy(v, w);

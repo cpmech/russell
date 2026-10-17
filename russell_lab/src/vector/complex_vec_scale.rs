@@ -1,9 +1,9 @@
 use super::ComplexVector;
 use crate::Complex64;
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
-#[cfg(any(feature = "oblas", feature = "mkl"))]
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>
@@ -36,7 +36,7 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn complex_vec_scale(v: &mut ComplexVector, alpha: Complex64) {
-    #[cfg(any(feature = "oblas", feature = "mkl"))]
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
     {
         let n_i32: i32 = to_i32(v.dim());
         // Safety: the shim is linked in this configuration.
@@ -44,7 +44,7 @@ pub fn complex_vec_scale(v: &mut ComplexVector, alpha: Complex64) {
             cblas_zscal(n_i32, &alpha, v.as_mut_data().as_mut_ptr(), 1);
         }
     }
-    #[cfg(not(any(feature = "oblas", feature = "mkl")))]
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
     crate::native::blas::zscal(alpha, v.as_mut_data());
 }
 

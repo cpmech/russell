@@ -357,7 +357,7 @@ pub fn not_implemented(routine: &str) -> &'static str {
     // The message must be a `&'static str` to fit `StrError`, so the routine
     // names are listed literally rather than interpolated.
     let _ = routine;
-    "this routine is not implemented in the native Rust LAPACK yet;      build with `--features oblas` (or `mkl`) to use an external LAPACK"
+    "this routine is not implemented in the native Rust LAPACK yet;      build with `--features open_blas` (or `intel_mkl`) to use an external LAPACK"
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

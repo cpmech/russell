@@ -148,7 +148,7 @@ This project employs [SuiteSparse](https://github.com/DrTimothyAldenDavis/SuiteS
 
 The default build needs no external BLAS: `russell_lab` ships its own Rust implementation. To use an external one instead, select `open_blas` (OpenBLAS) or `intel_mkl` (Intel oneAPI MKL); the two are mutually exclusive and the build fails if both are enabled. There is also an option to compile SuiteSparse and MUMPS locally, which may yield better performance. When local compilation is used, the `local_sparse` feature is selected.
 
-Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels are within about 2x of OpenBLAS per core, while dense solves are several times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
+Accelerators are worth it for large problems but not required: measured on a 13th-gen Intel i9, the native matrix multiplication kernels reach about half the throughput of OpenBLAS per core (roughly 2x slower), while dense solves are tens of times slower because `dgetrf` is not blocked yet. The [russell_lab README](russell_lab/README.md#performance-of-the-backends) has the table.
 
 Some crates in this project can also use [NVIDIA cuDSS](https://developer.nvidia.com/cudss), a direct sparse solver for NVIDIA GPUs. This feature can be enabled by the `cudss` flag. Note that cuDSS is in **Preview Mode** 🚧.
 

@@ -134,9 +134,11 @@ kernels are compared like for like:
 | `solve_lin_sys` (`dgesv`) | 128 | 0.94 ms | 0.05 ms | 19x |
 | `solve_lin_sys` (`dgesv`) | 512 | 98.02 ms | 1.60 ms | 61x |
 
-The matrix multiplication kernels are within about 2x of a tuned BLAS. The
-linear solver is not: `dgetrf` is not blocked, so the LU factorization misses the
-cache on larger matrices, and that is where most of that gap comes from.
+The matrix multiplication kernels reach about half the throughput of a tuned
+BLAS on one core, roughly 2x slower -- OpenBLAS uses a more developed micro-kernel
+and packing scheme than the AVX2 kernel here. The linear solver is further behind:
+`dgetrf` is not blocked, so the LU factorization misses the cache on larger
+matrices, and that is where most of the gap comes from.
 
 OpenBLAS also threads by default. With its own thread count on the same 32-core
 machine, `dgemm` at 1024 × 1024 takes 2.97 ms (723 GFLOP/s) and `dgesv` at 512

@@ -1,6 +1,8 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, Complex64, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+use crate::{Complex64, StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -22,6 +24,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgemv) Performs the matrix-vector multiplication
 ///
 /// ```text

@@ -1,6 +1,8 @@
+use crate::StrError;
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {

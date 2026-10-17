@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{Complex64, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::to_i32;
+use crate::{Complex64, StrError};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {

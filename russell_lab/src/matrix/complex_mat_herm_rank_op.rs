@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{CBLAS_COL_MAJOR, CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{CBLAS_COL_MAJOR, Complex64};
+use crate::{CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER, StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -20,6 +22,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zherk) Performs a hermitian rank k operations
 ///
 /// Performs one of the hermitian rank k operations

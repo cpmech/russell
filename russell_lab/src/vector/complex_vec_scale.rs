@@ -1,5 +1,7 @@
 use super::ComplexVector;
-use crate::{Complex64, to_i32};
+use crate::Complex64;
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::to_i32;
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {

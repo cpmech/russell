@@ -190,16 +190,16 @@ fn headers_available(include_paths: &[std::path::PathBuf]) -> bool {
 fn main() {
     // The oracle is independent of the accelerators: it exists so the *native*
     // routines can be tested against the reference implementation, so it is
-    // handled before the early return below.
+    // handled before the accelerator branches below.
     #[cfg(feature = "oracle")]
     compile_oracle();
 
     // Native Rust BLAS/LAPACK is the default: nothing to build, nothing to link,
-    // and the crate compiles for any target.
+    // and the crate compiles for any target. The two `cfg` blocks below then
+    // compile out, so a native build has no further work to do here.
     #[cfg(not(any(feature = "oblas", feature = "mkl")))]
     {
         println!("cargo:warning=russell_lab: using the native Rust BLAS/LAPACK (no external library)");
-        return;
     }
 
     // Enabling both would mean two different libraries providing the same

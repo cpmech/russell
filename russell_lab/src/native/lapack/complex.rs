@@ -362,3 +362,193 @@ pub fn zpotrf(a: &mut [Complex64], n: usize, upper: bool) -> Result<(), LapackEr
 
     Ok(())
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cpx;
+
+    /// A small Hermitian positive-definite matrix with non-zero imaginary parts,
+    /// so a conjugation mistake cannot cancel out. Column-major, `n = 3`.
+    fn spd3() -> Vec<Complex64> {
+        // Row-major: [[5, 1+i, 2i], [1-i, 6, 1-2i], [-2i, 1+2i, 7]]
+        vec![
+            cpx!(5.0, 0.0),
+            cpx!(1.0, -1.0),
+            cpx!(0.0, 2.0), // column 0
+            cpx!(1.0, 1.0),
+            cpx!(6.0, 0.0),
+            cpx!(1.0, 2.0), // column 1
+            cpx!(0.0, -2.0),
+            cpx!(1.0, -2.0),
+            cpx!(7.0, 0.0), // column 2
+        ]
+    }
+
+    /// A complex matrix that is neither Hermitian nor triangular.
+    fn general3() -> Vec<Complex64> {
+        // Row-major: [[4+1i, 1-2i, 2], [1+3i, 3, 0-1i], [2-1i, 1+1i, 5+2i]]
+        vec![
+            cpx!(4.0, 1.0),
+            cpx!(1.0, 3.0),
+            cpx!(2.0, -1.0), // column 0
+            cpx!(1.0, -2.0),
+            cpx!(3.0, 0.0),
+            cpx!(1.0, 1.0), // column 1
+            cpx!(2.0, 0.0),
+            cpx!(0.0, -1.0),
+            cpx!(5.0, 2.0), // column 2
+        ]
+    }
+
+    fn mat_vec(a: &[Complex64], x: &[Complex64], n: usize) -> Vec<Complex64> {
+        let mut y = vec![cpx!(0.0, 0.0); n];
+        for i in 0..n {
+            for j in 0..n {
+                y[i] += a[i + j * n] * x[j];
+            }
+        }
+        y
+    }
+
+    /// `zgetrf` + `zgetri` must give the inverse: `A * A^-1 = I`.
+    ///
+    /// The product is accumulated in a different order from the factorisation,
+    /// so this is not the trivial identity a shared bug could fake.
+    #[test]
+    fn zgetrf_then_zgetri_inverts() {
+        let a = general3();
+        let n = 3;
+        let mut lu = a.clone();
+        let piv = zgetrf(&mut lu, n).unwrap();
+        assert_eq!(piv.len(), n);
+        assert_eq!(piv[n - 1], n - 1, "the last pivot index is always n-1");
+        zgetri(&mut lu, n, &piv).unwrap();
+
+        // lu is now A^-1: check A * A^-1 = I column by column.
+        for j in 0..n {
+            let mut e = vec![cpx!(0.0, 0.0); n];
+            e[j] = cpx!(1.0, 0.0);
+            let inv_col = mat_vec(&lu, &e, n); // A^-1 e_j is column j of A^-1
+            let back = mat_vec(&a, &inv_col, n);
+            for i in 0..n {
+                let want = if i == j { cpx!(1.0, 0.0) } else { cpx!(0.0, 0.0) };
+                assert!(
+                    (back[i] - want).norm() < 1e-12,
+                    "A*A^-1 column {j} row {i} = {:?}",
+                    back[i]
+                );
+            }
+        }
+    }
+
+    /// `zgesv` recovers a known solution.
+    #[test]
+    fn zgesv_solves_a_system() {
+        let a = general3();
+        let n = 3;
+        let x_true = [cpx!(1.0, -2.0), cpx!(3.0, 0.5), cpx!(-1.0, 1.0)];
+        let mut b = mat_vec(&a, &x_true, n);
+        let mut a_work = a.clone();
+        zgesv(&mut a_work, &mut b).unwrap();
+        for i in 0..n {
+            assert!(
+                (b[i] - x_true[i]).norm() < 1e-12,
+                "x[{i}] = {:?} vs {:?}",
+                b[i],
+                x_true[i]
+            );
+        }
+    }
+
+    /// `zgetrf` reports an exactly singular matrix instead of dividing by a zero
+    /// pivot. Column 2 is `2 * column 0`, so the second column is dependent.
+    #[test]
+    fn zgetrf_detects_a_singular_matrix() {
+        let mut a = vec![
+            cpx!(1.0, 1.0),
+            cpx!(3.0, 0.0), // column 0
+            cpx!(2.0, 2.0),
+            cpx!(6.0, 0.0), // column 1 = 2 * column 0
+        ];
+        assert_eq!(zgetrf(&mut a, 2), Err(LapackError::Singular));
+    }
+
+    /// A shape mismatch is reported, not read out of bounds.
+    #[test]
+    fn bad_shapes_are_rejected() {
+        let mut a = vec![cpx!(1.0, 0.0); 3];
+        assert_eq!(zgetrf(&mut a, 2), Err(LapackError::BadShape));
+        let ipiv = [0usize; 1];
+        assert_eq!(zgetri(&mut a, 2, &ipiv), Err(LapackError::BadShape));
+        let mut b = vec![cpx!(1.0, 0.0); 2];
+        assert_eq!(zgesv(&mut a, &mut b), Err(LapackError::BadShape));
+        assert_eq!(zpotrf(&mut a, 2, false), Err(LapackError::BadShape));
+    }
+
+    /// `zpotrf` gives `A = L L^H` (lower) and `A = U^H U` (upper).
+    ///
+    /// Only the requested triangle is written, so the factor has to be extracted
+    /// from that triangle rather than read from the whole buffer.
+    #[test]
+    fn zpotrf_factorises_both_triangles() {
+        let a = spd3();
+        let n = 3;
+
+        let mut lower = a.clone();
+        zpotrf(&mut lower, n, false).unwrap();
+        for i in 0..n {
+            for j in 0..=i {
+                let mut sum = cpx!(0.0, 0.0);
+                for k in 0..=j {
+                    sum += lower[i + k * n] * lower[j + k * n].conj();
+                }
+                assert!(
+                    (sum - a[i + j * n]).norm() < 1e-12,
+                    "L L^H at ({i},{j}) = {:?} vs {:?}",
+                    sum,
+                    a[i + j * n]
+                );
+            }
+        }
+
+        let mut upper = a.clone();
+        zpotrf(&mut upper, n, true).unwrap();
+        for i in 0..n {
+            for j in i..n {
+                let mut sum = cpx!(0.0, 0.0);
+                for k in 0..=i {
+                    sum += upper[k + i * n].conj() * upper[k + j * n];
+                }
+                assert!(
+                    (sum - a[i + j * n]).norm() < 1e-12,
+                    "U^H U at ({i},{j}) = {:?} vs {:?}",
+                    sum,
+                    a[i + j * n]
+                );
+            }
+        }
+    }
+
+    /// A Hermitian matrix with a negative eigenvalue is not positive definite and
+    /// must be rejected rather than factored.
+    #[test]
+    fn zpotrf_rejects_a_non_positive_definite_matrix() {
+        // [[1, 2], [2, 1]] has eigenvalues 3 and -1.
+        let mut a = vec![cpx!(1.0, 0.0), cpx!(2.0, 0.0), cpx!(2.0, 0.0), cpx!(1.0, 0.0)];
+        assert_eq!(zpotrf(&mut a, 2, false), Err(LapackError::Singular));
+    }
+
+    /// `n == 0` is a no-op everywhere, not a panic or an error.
+    #[test]
+    fn empty_matrices_are_handled() {
+        let mut a: Vec<Complex64> = Vec::new();
+        assert!(zgetrf(&mut a, 0).unwrap().is_empty());
+        assert_eq!(zgetri(&mut a, 0, &[]), Ok(()));
+        let mut b: Vec<Complex64> = Vec::new();
+        assert_eq!(zgesv(&mut a, &mut b), Ok(()));
+        assert_eq!(zpotrf(&mut a, 0, false), Ok(()));
+    }
+}

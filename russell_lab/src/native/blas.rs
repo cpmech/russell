@@ -380,39 +380,44 @@ unsafe fn gemm_micro_4x4(ap: *const f64, lda: usize, bp: *const f64, ldb: usize,
         _mm256_add_pd, _mm256_broadcast_sd, _mm256_fmadd_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd,
     };
 
-    let mut c0 = _mm256_setzero_pd();
-    let mut c1 = _mm256_setzero_pd();
-    let mut c2 = _mm256_setzero_pd();
-    let mut c3 = _mm256_setzero_pd();
+    // The whole body is unsafe: raw-pointer reads on the packed panels and
+    // the AVX2/FMA intrinsics. Written as one block so the pre-2024 `unsafe
+    // fn` allowance does not hide which operations are actually unsafe.
+    unsafe {
+        let mut c0 = _mm256_setzero_pd();
+        let mut c1 = _mm256_setzero_pd();
+        let mut c2 = _mm256_setzero_pd();
+        let mut c3 = _mm256_setzero_pd();
 
-    // The four columns of B this block advances. `ldb` is the packed column
-    // stride, so column `j` occupies `bp[j*ldb .. j*ldb + kc]` and its p-th
-    // element is `bp[j*ldb + p]`. Getting this the wrong way round -- reading
-    // `bp[p*ldb + j]`, i.e. B's row p -- silently computes a different product,
-    // which is the same wrong-axis mistake this port has produced before.
-    let b0 = bp;
-    let b1 = bp.add(ldb);
-    let b2 = bp.add(2 * ldb);
-    let b3 = bp.add(3 * ldb);
-    for p in 0..kc {
-        let av = _mm256_loadu_pd(ap.add(p * lda));
-        c0 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b0.add(p)), c0);
-        c1 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b1.add(p)), c1);
-        c2 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b2.add(p)), c2);
-        c3 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b3.add(p)), c3);
+        // The four columns of B this block advances. `ldb` is the packed column
+        // stride, so column `j` occupies `bp[j*ldb .. j*ldb + kc]` and its p-th
+        // element is `bp[j*ldb + p]`. Getting this the wrong way round -- reading
+        // `bp[p*ldb + j]`, i.e. B's row p -- silently computes a different product,
+        // which is the same wrong-axis mistake this port has produced before.
+        let b0 = bp;
+        let b1 = bp.add(ldb);
+        let b2 = bp.add(2 * ldb);
+        let b3 = bp.add(3 * ldb);
+        for p in 0..kc {
+            let av = _mm256_loadu_pd(ap.add(p * lda));
+            c0 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b0.add(p)), c0);
+            c1 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b1.add(p)), c1);
+            c2 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b2.add(p)), c2);
+            c3 = _mm256_fmadd_pd(av, _mm256_broadcast_sd(&*b3.add(p)), c3);
+        }
+
+        // Fold the four accumulators into C. Read-modify-write, so that this kernel
+        // composes over splits of `k` without needing beta applied per panel.
+        let mut t = [0.0f64; 4];
+        _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c), c0));
+        core::ptr::copy_nonoverlapping(t.as_ptr(), c, 4);
+        _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(ldc)), c1));
+        core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(ldc), 4);
+        _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(2 * ldc)), c2));
+        core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(2 * ldc), 4);
+        _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(3 * ldc)), c3));
+        core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(3 * ldc), 4);
     }
-
-    // Fold the four accumulators into C. Read-modify-write, so that this kernel
-    // composes over splits of `k` without needing beta applied per panel.
-    let mut t = [0.0f64; 4];
-    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c), c0));
-    core::ptr::copy_nonoverlapping(t.as_ptr(), c, 4);
-    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(ldc)), c1));
-    core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(ldc), 4);
-    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(2 * ldc)), c2));
-    core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(2 * ldc), 4);
-    _mm256_storeu_pd(t.as_mut_ptr(), _mm256_add_pd(_mm256_loadu_pd(c.add(3 * ldc)), c3));
-    core::ptr::copy_nonoverlapping(t.as_ptr(), c.add(3 * ldc), 4);
 }
 
 /// `C := alpha * A * A^T + beta * C` (dsyrk, uplo = 'L' or 'U').
@@ -1140,11 +1145,9 @@ mod complex_tests {
         // Conjugating the second index instead would give the complex conjugate
         // of every off-diagonal entry; this is the assertion that fails if the
         // conjugation order is ever "fixed" back.
-        assert_eq!(
-            c[1 + 0 * n].im,
-            -1.0,
-            "the off-diagonal imaginary part must not be negated"
-        );
+        // (row 1, column 0) is `1 + 0 * n`; written out plainly because the
+        // `0 * n` term is what `erasing_op` (rightly) objects to.
+        assert_eq!(c[1].im, -1.0, "the off-diagonal imaginary part must not be negated");
     }
 
     /// The same product in the upper triangle, which writes the mirror image.
@@ -1156,8 +1159,8 @@ mod complex_tests {
         zherk_rank(1.0, &a, 0.0, &mut c, n, k, true);
         assert_close(c[0 + 1 * n], Complex64::new(5.0, 1.0), "(0,1)");
         assert_close(c[1 + 2 * n], Complex64::new(5.0, 0.0), "(1,2)");
-        // The lower triangle must be untouched.
-        assert_eq!(c[1 + 0 * n], Complex64::new(0.0, 0.0));
+        // The lower triangle must be untouched -- (row 1, column 0) is `c[1]`.
+        assert_eq!(c[1], Complex64::new(0.0, 0.0));
     }
 
     /// `beta` must scale the existing `c`, and the diagonal must come out exactly

@@ -1,4 +1,5 @@
 use super::Matrix;
+#[cfg(any(feature = "oblas", feature = "mkl"))]
 use crate::to_i32;
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]

@@ -27,7 +27,7 @@
 #![allow(dead_code)]
 
 use crate::Complex64;
-use crate::internal::{C_TRUE, CcBool};
+use crate::internal::CcBool;
 
 unsafe extern "C" {
     /// `dgesv`: solve `A X = B`. Takes `nrhs` right-hand sides; the shim's
@@ -199,7 +199,7 @@ pub mod query {
         let ld = n_i32;
         let mut info = 0i32;
         let (want_vr, ldvr) = match &vr {
-            Some(v) => (C_TRUE, n_i32),
+            Some(_) => (C_TRUE, n_i32),
             None => (C_FALSE, 1),
         };
         let vr_ptr = match vr {

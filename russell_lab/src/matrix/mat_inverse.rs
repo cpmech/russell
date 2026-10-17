@@ -208,7 +208,7 @@ pub fn mat_inverse(ai: &mut Matrix, a: &Matrix) -> Result<f64, StrError> {
     {
         let (det, ipiv) = crate::portable::lu_decompose(ai.as_mut_data(), m)?;
         crate::portable::lu_invert(ai.as_mut_data(), m, &ipiv)?;
-        return Ok(det);
+        Ok(det)
     }
 
     // Fast path through LAPACK.

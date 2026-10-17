@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{C_FALSE, C_TRUE, CcBool, Complex64, StrError, to_i32};
+use crate::{C_FALSE, C_TRUE, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{CcBool, Complex64};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -8,6 +10,10 @@ unsafe extern "C" {
     fn c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zpotrf) Performs the Cholesky factorization of a Hermitian positive-definite matrix
 ///
 /// Finds `L` or `U` such that:

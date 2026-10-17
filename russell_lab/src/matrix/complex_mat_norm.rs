@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{Complex64, Norm, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::Complex64;
+use crate::{Norm, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -15,6 +17,10 @@ unsafe extern "C" {
     ) -> f64;
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zlange) Computes the matrix norm
 ///
 /// Computes one of:

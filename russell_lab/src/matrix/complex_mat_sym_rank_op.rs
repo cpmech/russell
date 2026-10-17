@@ -1,5 +1,7 @@
 use super::ComplexMatrix;
-use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::CBLAS_COL_MAJOR;
+use crate::{CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -20,6 +22,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zsyrk) Performs a symmetric rank k operation
 ///
 /// Performs one of the symmetric rank k operations:

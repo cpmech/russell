@@ -1,5 +1,7 @@
 use super::Matrix;
-use crate::{C_FALSE, C_TRUE, CcBool, StrError, to_i32};
+use crate::StrError;
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{C_FALSE, C_TRUE, CcBool, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {

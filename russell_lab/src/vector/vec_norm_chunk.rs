@@ -1,5 +1,7 @@
 use super::Vector;
-use crate::{Norm, to_i32};
+use crate::Norm;
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::to_i32;
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {

@@ -1,6 +1,8 @@
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-use crate::{CBLAS_COL_MAJOR, CBLAS_TRANS, StrError, to_i32};
+#[cfg(any(feature = "oblas", feature = "mkl"))]
+use crate::{CBLAS_COL_MAJOR, CBLAS_TRANS};
+use crate::{StrError, to_i32};
 
 #[cfg(any(feature = "oblas", feature = "mkl"))]
 unsafe extern "C" {
@@ -22,6 +24,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "oblas", feature = "mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dgemv) Performs the vector-matrix multiplication resulting in a vector
 ///
 /// ```text

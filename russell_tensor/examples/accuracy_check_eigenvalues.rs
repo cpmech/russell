@@ -3,7 +3,7 @@
 //!
 //! The benchmark paths are:
 //!
-//! * `D1 = diag(1, 1, 1 + δ)` — a double eigenvalue moving towards a triple
+//! * `D1 = diag(1, 1, 1 + δ)` — a double eigenvalue moving toward a triple
 //!   eigenvalue (`J2 → 0` and `J3 → 0`)
 //! * `D2 = diag(-1, 1, 1 + δ)` — a double eigenvalue (the discriminant `Δ → 0`
 //!   while `J2` and `J3` stay finite)

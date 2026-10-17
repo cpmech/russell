@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::CcBool;
+use crate::{C_FALSE, C_TRUE, StrError, Vector, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a symmetric matrix
     // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
@@ -17,6 +20,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dsyev) Calculates the eigenvalues and eigenvectors of a symmetric matrix
 ///
 /// Computes the eigenvalues `l` and eigenvectors `v`, such that:
@@ -96,18 +103,35 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
     let lwork = 3 * n_i32 + EXTRA; // max(1,3*N-1), thus, 2 extra spaces effectively
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    unsafe {
-        c_dsyev(
-            C_TRUE,
-            c_upper,
-            &n_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            l.as_mut_data().as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The native routine has the same contract as `dsyev(JOBZ='V', ...)`:
+        // `a` is destroyed and holds the eigenvectors as columns, `l` receives
+        // the eigenvalues in ascending order, and `upper` picks the triangle
+        // that is read.
+        return crate::native::lapack::sym::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper).map_err(|e| match e {
+            // `dsteqr` exhausted its iteration limit. The shim's `info > 0`
+            // branch prints the off-diagonal count and returns this string,
+            // so both paths report a failure to converge the same way.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dsyev): The algorithm failed to converge",
+            _ => "LAPACK ERROR (dsyev): An argument had an illegal value",
+        });
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_dsyev(
+                C_TRUE,
+                c_upper,
+                &n_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                l.as_mut_data().as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dsyev): Argument #{} had an illegal value", -info);

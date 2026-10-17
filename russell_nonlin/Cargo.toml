@@ -12,6 +12,10 @@ categories = ["mathematics", "science"]
 keywords = ["numerical", "solver", "continuation", "nonlinear"]
 
 [features]
+default = []
+# Links an external BLAS/LAPACK through `russell_lab`; off for targets
+# that have none, such as `wasm32-unknown-unknown`.
+open_blas = ["russell_lab/open_blas"]
 intel_mkl = [
   "russell_lab/intel_mkl",
   "russell_sparse/intel_mkl",

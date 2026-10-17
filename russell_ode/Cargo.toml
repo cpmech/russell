@@ -12,6 +12,10 @@ categories = ["mathematics", "science"]
 keywords = ["differential", "numerical", "solver"]
 
 [features]
+default = []
+# Links an external BLAS/LAPACK through `russell_lab`; off for targets
+# that have none, such as `wasm32-unknown-unknown`.
+open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
 local_sparse = ["russell_sparse/local_sparse"]
 cudss = ["russell_sparse/cudss"]

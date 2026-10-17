@@ -77,7 +77,8 @@ russell_pde = "*"
 
 The following (Rust) features are available:
 
-* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
+* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
 * `cudss`: Enable the NVIDIA cuDSS GPU solver
 

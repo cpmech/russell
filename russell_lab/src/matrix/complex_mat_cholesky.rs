@@ -1,12 +1,19 @@
 use super::ComplexMatrix;
-use crate::{C_FALSE, C_TRUE, CcBool, Complex64, StrError, to_i32};
+use crate::{C_FALSE, C_TRUE, StrError, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{CcBool, Complex64};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the Cholesky factorization of a complex Hermitian positive definite matrix A.
     // <https://www.netlib.org/lapack/explore-html/d1/db9/zpotrf_8f.html>
     fn c_zpotrf(upper: CcBool, n: *const i32, a: *mut Complex64, lda: *const i32, info: *mut i32);
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zpotrf) Performs the Cholesky factorization of a Hermitian positive-definite matrix
 ///
 /// Finds `L` or `U` such that:
@@ -99,7 +106,20 @@ pub fn complex_mat_cholesky(a: &mut ComplexMatrix, upper: bool) -> Result<(), St
     let m_i32 = to_i32(m);
     let lda = m_i32;
     let mut info = 0;
-    unsafe { c_zpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe { c_zpotrf(c_upper, &m_i32, a.as_mut_data().as_mut_ptr(), &lda, &mut info) }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The native kernel handles both triangles itself: it reads only the one
+        // the flag selects and writes only that same triangle. No mirroring (as
+        // mat_cholesky does for the real dpotrf, which is lower-only) is needed,
+        // and none is wanted: for `upper` the strict lower triangle must survive
+        // untouched.
+        crate::native::lapack::complex::zpotrf(a.as_mut_data(), m, upper)
+            .map_err(|_| "LAPACK ERROR (zpotrf): Positive definite check failed")?;
+    }
     if info < 0 {
         println!("LAPACK ERROR (zpotrf): Argument #{} had an illegal value", -info);
         return Err("LAPACK ERROR (zpotrf): An argument had an illegal value");

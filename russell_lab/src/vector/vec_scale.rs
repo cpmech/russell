@@ -1,6 +1,8 @@
 use super::Vector;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 use crate::to_i32;
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d4/dd0/dscal_8f.html>
@@ -32,10 +34,15 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn vec_scale(v: &mut Vector, alpha: f64) {
-    let n_i32: i32 = to_i32(v.dim());
-    unsafe {
-        cblas_dscal(n_i32, alpha, v.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32: i32 = to_i32(v.dim());
+        unsafe {
+            cblas_dscal(n_i32, alpha, v.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::portable::vec_scale_data(v.as_mut_data(), alpha);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

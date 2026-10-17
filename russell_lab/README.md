@@ -105,11 +105,17 @@ russell_lab = "*"
 
 ### Optional features
 
-The following (Rust) features are available:
+The default build uses the native Rust BLAS/LAPACK in `src/native`: no external
+library to install, nothing to link. The following (Rust) features are available:
 
-* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `open_blas`: use OpenBLAS instead of the native routines (needs its development headers)
+* `intel_mkl`: use Intel oneAPI MKL instead of the native routines
+* `dev_lapack`: development only -- compiles the C shim against a locally built LAPACK
+  so the native routines can be tested for numerical parity against the reference
 
-Note that the [main README file](https://github.com/cpmech/russell) presents the steps to compile the required libraries according to each feature.
+`open_blas` and `intel_mkl` are mutually exclusive. Note that the
+[main README file](https://github.com/cpmech/russell) presents the steps to
+compile the required libraries according to each feature.
 
 
 
@@ -138,21 +144,20 @@ fn main() -> Result<(), StrError> {
 }
 ```
 
-First, run the example without Intel MKL (default):
+First, run the example with the native routines (default). There is no BLAS
+library, so the thread count is one and setting it is a no-op:
 
 ```bash
 cargo run --example base_auxiliary_blas
 ```
 
-The output looks like this:
-
 ```text
 Using Intel MKL  = false
-BLAS num threads = 24
-BLAS num threads = 2
+BLAS num threads = 1
+BLAS num threads = 1
 ```
 
-Second, run the code with the `intel_mkl` feature:
+Second, run the code with the `intel_mkl` feature (or `open_blas` for OpenBLAS):
 
 ```bash
 cargo run --example base_auxiliary_blas --features intel_mkl
@@ -837,9 +842,11 @@ Comparison of the performances of `InterpChebyshev::eval` implementing the Clens
 ![Chebyshev evaluation (large)](data/figures/bench_chebyshev_eval_large.svg)
 
 
-### Jacobi Rotation versus LAPACK DSYEV
+### Jacobi rotation versus DSYEV
 
-Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus `mat_eigen_sym` (calling LAPACK DSYEV).
+Comparison of the performances of `mat_eigen_sym_jacobi` (Jacobi rotation) versus
+`mat_eigen_sym`, which runs the tridiagonal `dsyev` pipeline: the native Rust
+implementation by default, or LAPACK through the C shim with `open_blas`/`intel_mkl`.
 
 ![Jacobi Rotation versus LAPACK DSYEV (1-5)](data/figures/bench_mat_eigen_sym_1-5.svg)
 

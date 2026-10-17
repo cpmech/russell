@@ -85,9 +85,9 @@
 //!
 //! All vector functions are prefixed with `vec_` and `complex_vec_`, whereas all matrix functions are prefixed with `mat_` and `complex_mat_`. The `matvec` functions have varied names, albeit descriptive.
 //!
-//! `russell_lab` implements several other interfaces to BLAS/LAPACK. However, some functions are complemented with native Rust code to provide a higher-level interface or improve the functionality. For instance, after calling the DGEEV function, `mat_eigen` post-processes the results via the `dgeev_data` function to extract the results from LAPACK's compact representation, generating a more convenient interface to the user.
+//! The eigen-decomposition and SVD interfaces are higher-level than the LAPACK drivers they follow. For instance, after the `dgeev` decomposition, `mat_eigen` post-processes the results via the `dgeev_data` function to unpack LAPACK's compact storage into one column per eigenvector, which is a more convenient interface.
 //!
-//! An example of added functionality is the `mat_pseudo_inverse` function, which computes the pseudo-inverse of a rectangular matrix using the singular-value decomposition. This function is based on the singular-value decomposition routine provided by LAPACK.
+//! An example of added functionality is the `mat_pseudo_inverse` function, which computes the pseudo-inverse of a rectangular matrix through the singular-value decomposition (`mat_svd`), on top of `dgesvd`.
 //!
 //! ## Complex numbers
 //!
@@ -145,6 +145,31 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! # BLAS/LAPACK backends
+//!
+//! The default backend is **native Rust** (`src/native/`): plain Rust code, no
+//! external library to find and nothing to link, so it builds for any target
+//! including `wasm32-unknown-unknown`. The eigen-decompositions, the SVD, the
+//! pseudo-inverse, Cholesky, the linear solvers and the complex routines all work
+//! in this configuration; their numerical parity with reference LAPACK is tested
+//! through the development-only `dev_lapack` feature (see `build.rs`).
+//!
+//! Two opt-in features replace the native routines with an external library,
+//! through the C shim in `c_code/interface_blas.c`:
+//!
+//! * `open_blas` -- OpenBLAS, resolved via `pkg-config` (also needs its development
+//!   headers, e.g. `lapack.h`);
+//! * `intel_mkl` -- Intel oneAPI MKL, expected under `/opt/intel/oneapi/mkl/<version>`.
+//!
+//! They are mutually exclusive (`build.rs` refuses both), and neither is a
+//! requirement: enabling one is a performance choice, not what makes the crate
+//! work.
+//!
+//! The `small::*` kernels for stack-allocated matrices and the level-1/2/3
+//! fallbacks in `portable` are plain Rust in every configuration; `portable` is
+//! what a target without the C shim would otherwise need for matrix
+//! multiplication and inversion.
 
 /// Defines the error output as a static string
 pub type StrError = &'static str;
@@ -156,10 +181,14 @@ pub use num_complex::ComplexFloat;
 pub mod algo;
 pub mod base;
 pub mod check;
+#[cfg(feature = "dev_lapack")]
+pub mod dev_lapack;
 mod internal;
 pub mod math;
 pub mod matrix;
 pub mod matvec;
+pub mod native;
+mod portable;
 pub mod small;
 pub mod vector;
 

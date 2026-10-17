@@ -1,6 +1,9 @@
 use super::Vector;
-use crate::{Norm, to_i32};
+use crate::Norm;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::to_i32;
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the sum of the absolute values (1-norm or taxicab norm)
     // <https://www.netlib.org/lapack/explore-html/de/d05/dasum_8f.html>
@@ -34,20 +37,25 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn vec_norm(v: &Vector, kind: Norm) -> f64 {
-    let n = to_i32(v.dim());
-    if n == 0 {
-        return 0.0;
-    }
-    unsafe {
-        match kind {
-            Norm::Euc | Norm::Fro => cblas_dnrm2(n, v.as_data().as_ptr(), 1),
-            Norm::Inf | Norm::Max => {
-                let idx = cblas_idamax(n, v.as_data().as_ptr(), 1);
-                f64::abs(v.get(idx as usize))
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n = to_i32(v.dim());
+        if n == 0 {
+            return 0.0;
+        }
+        unsafe {
+            match kind {
+                Norm::Euc | Norm::Fro => cblas_dnrm2(n, v.as_data().as_ptr(), 1),
+                Norm::Inf | Norm::Max => {
+                    let idx = cblas_idamax(n, v.as_data().as_ptr(), 1);
+                    f64::abs(v.get(idx as usize))
+                }
+                Norm::One => cblas_dasum(n, v.as_data().as_ptr(), 1),
             }
-            Norm::One => cblas_dasum(n, v.as_data().as_ptr(), 1),
         }
     }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::portable::vec_norm_data(v.as_data(), kind)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

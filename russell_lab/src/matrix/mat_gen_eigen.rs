@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::{C_FALSE, C_TRUE, CcBool, StrError, Vector, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{C_FALSE, C_TRUE, CcBool};
+use crate::{StrError, Vector, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for GE matrices
     // <https://www.netlib.org/lapack/explore-html/d9/d52/dggev_8f.html>
@@ -25,6 +28,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dggev) Computes the generalized eigenvalues and right eigenvectors
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -131,26 +138,50 @@ pub fn mat_gen_eigen(
     let mut u = vec![0.0; ldu as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    unsafe {
-        c_dggev(
-            C_FALSE,
-            C_TRUE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            alpha_real.as_mut_data().as_mut_ptr(),
-            alpha_imag.as_mut_data().as_mut_ptr(),
-            beta.as_mut_data().as_mut_ptr(),
-            u.as_mut_ptr(),
-            &ldu,
-            v.as_mut_data().as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // `v` is the compact LAPACK storage: for a conjugate pair, columns `j`
+        // and `j + 1` are the real and imaginary parts of `v(j)`. `a` and `b` are
+        // overwritten, as the reference does.
+        let n = m;
+        crate::native::lapack::qz::dggev(
+            false,
+            true,
+            n,
+            a.as_mut_data(),
+            b.as_mut_data(),
+            alpha_real.as_mut_data(),
+            alpha_imag.as_mut_data(),
+            beta.as_mut_data(),
+            &mut [],
+            v.as_mut_data(),
+        )
+        .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
+        return Ok(());
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_dggev(
+                C_FALSE,
+                C_TRUE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                alpha_real.as_mut_data().as_mut_ptr(),
+                alpha_imag.as_mut_data().as_mut_ptr(),
+                beta.as_mut_data().as_mut_ptr(),
+                u.as_mut_ptr(),
+                &ldu,
+                v.as_mut_data().as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dggev): Argument #{} had an illegal value", -info);
@@ -161,6 +192,10 @@ pub fn mat_gen_eigen(
     Ok(())
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// Computes the generalized eigenvalues and eigenvectors (left and right)
 ///
 /// A generalized eigenvalue for a pair of matrices (A,B) is a scalar lambda
@@ -292,26 +327,50 @@ pub fn mat_gen_eigen_lr(
     let lwork = 8 * m_i32 + EXTRA;
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    unsafe {
-        c_dggev(
-            C_TRUE,
-            C_TRUE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            alpha_real.as_mut_data().as_mut_ptr(),
-            alpha_imag.as_mut_data().as_mut_ptr(),
-            beta.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            v.as_mut_data().as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // `u` and `v` are the compact LAPACK storage: for a conjugate pair,
+        // columns `j` and `j + 1` are the real and imaginary parts. `a` and `b`
+        // are overwritten, as the reference does.
+        let n = m;
+        crate::native::lapack::qz::dggev(
+            true,
+            true,
+            n,
+            a.as_mut_data(),
+            b.as_mut_data(),
+            alpha_real.as_mut_data(),
+            alpha_imag.as_mut_data(),
+            beta.as_mut_data(),
+            u.as_mut_data(),
+            v.as_mut_data(),
+        )
+        .map_err(|_| "LAPACK ERROR (dggev): Iterations failed ")?;
+        return Ok(());
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_dggev(
+                C_TRUE,
+                C_TRUE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                alpha_real.as_mut_data().as_mut_ptr(),
+                alpha_imag.as_mut_data().as_mut_ptr(),
+                beta.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                v.as_mut_data().as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dggev): Argument #{} had an illegal value", -info);

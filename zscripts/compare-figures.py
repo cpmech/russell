@@ -11,12 +11,12 @@ Two comparison modes are available:
 1) Text mode (default)
    Matplotlib embeds a timestamp and its own version in every SVG (`<metadata>`),
    and different matplotlib releases render slightly different coordinates. This
-   mode *normalises* the SVGs before comparing — it drops the DOCTYPE, comments
+   mode *normalizes* the SVGs before comparing — it drops the DOCTYPE, comments
    and the `<metadata>` block, and (by default) rounds floating-point numbers —
    so it reports real **content** differences instead of noise.
 
 2) Raster mode (`--raster`)
-   Rasterises both SVGs to PNG at the same pixel width (using `rsvg-convert`,
+   Rasterizes both SVGs to PNG at the same pixel width (using `rsvg-convert`,
    `inkscape` or ImageMagick — whichever is installed) and compares pixels.
    This is tolerant to text/coordinate noise and anti-aliasing; it reports the
    mean absolute error, the percentage of differing pixels and the max delta.
@@ -68,7 +68,7 @@ MISSING = "MISSING"
 ENGINE_BIN = {"rsvg": "rsvg-convert", "inkscape": "inkscape", "magick": "magick"}
 
 # ---------------------------------------------------------------------------
-# SVG normalisation (text mode)
+# SVG normalization (text mode)
 # ---------------------------------------------------------------------------
 
 # matches signed decimals with a fractional part and/or an exponent, but not
@@ -126,7 +126,7 @@ def diff_lines(text: str, decimals: int) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# rasterisation (raster mode)
+# rasterization (raster mode)
 # ---------------------------------------------------------------------------
 
 
@@ -136,7 +136,7 @@ def detect_engine(preferred: str) -> str:
         if shutil.which(ENGINE_BIN[engine]):
             return engine
     raise RuntimeError(
-        "no SVG rasteriser found; install one of: "
+        "no SVG rasterizer found; install one of: "
         + ", ".join(ENGINE_BIN.values())
     )
 
@@ -171,7 +171,7 @@ def raster_metrics(
     pixel_tol: int,
     diff_dir: Path | None,
 ) -> dict:
-    """Rasterise both SVGs and return pixel-difference metrics."""
+    """Rasterize both SVGs and return pixel-difference metrics."""
     try:
         import numpy as np  # type: ignore
         from PIL import Image  # type: ignore
@@ -329,9 +329,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--decimals", type=int, default=6,
                    help="text mode: round floats to N decimals; -1 disables (default: 6)")
     p.add_argument("--raster", action="store_true",
-                   help="pixel-compare rasterised SVGs instead of comparing text")
+                   help="pixel-compare rasterized SVGs instead of comparing text")
     p.add_argument("--raster-engine", choices=["auto", "rsvg", "inkscape", "magick"],
-                   default="auto", help="SVG rasteriser (default: auto)")
+                   default="auto", help="SVG rasterizer (default: auto)")
     p.add_argument("--raster-width", type=int, default=800,
                    help="raster mode: output pixel width (default: 800)")
     p.add_argument("--pixel-tol", type=int, default=16,

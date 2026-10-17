@@ -1,7 +1,10 @@
+use crate::StrError;
 use crate::matrix::Matrix;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::to_i32;
 use crate::vector::Vector;
-use crate::{StrError, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
@@ -33,7 +36,9 @@ unsafe extern "C" {
 /// b := a⁻¹⋅b == x
 /// ```
 ///
-/// The solution is obtained via LU decomposition using Lapack dgesv routine.
+/// The solution is obtained via LU decomposition with partial pivoting (`dgesv`:
+/// the native Rust implementation by default, LAPACK through the C shim with
+/// `open_blas`/`intel_mkl`).
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d8/d72/dgesv_8f.html>
 ///
@@ -82,30 +87,54 @@ pub fn solve_lin_sys(b: &mut Vector, a: &mut Matrix) -> Result<(), StrError> {
     if m == 0 {
         return Ok(());
     }
-    let mut ipiv = vec![0; m];
-    let m_i32 = to_i32(m);
-    let nrhs = 1;
-    let lda = to_i32(m);
-    let ldb = lda;
-    let mut info = 0;
-    unsafe {
-        c_dgesv(
-            &m_i32,
-            &nrhs,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            &mut info,
-        )
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let mut ipiv = vec![0; m];
+        let m_i32 = to_i32(m);
+        let nrhs = 1;
+        let lda = to_i32(m);
+        let ldb = lda;
+        let mut info = 0;
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            c_dgesv(
+                &m_i32,
+                &nrhs,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                &mut info,
+            );
+        }
+        if info < 0 {
+            println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);
+            return Err("LAPACK ERROR (dgesv): An argument had an illegal value");
+        } else if info > 0 {
+            println!("LAPACK ERROR (dgesv): U({},{}) is exactly zero", info - 1, info - 1);
+            // LAPACK's own wording, matching the native branch below and the
+            // complex path: the same condition must read the same way whichever
+            // backend reports it. (This one used to be shortened here, which made
+            // `solve_lin_sys_singular_handles_error` fail in every accelerated
+            // configuration while passing natively.)
+            return Err(
+                "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular",
+            );
+        }
     }
-    if info < 0 {
-        println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dgesv): An argument had an illegal value");
-    } else if info > 0 {
-        println!("LAPACK ERROR (dgesv): U({},{}) is exactly zero", info - 1, info - 1);
-        return Err("LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular");
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        crate::native::lapack::dgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            // Unreachable: a direct solve has no iteration. Listed for
+            // exhaustiveness.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dgesv): The algorithm failed to converge",
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
     }
     Ok(())
 }

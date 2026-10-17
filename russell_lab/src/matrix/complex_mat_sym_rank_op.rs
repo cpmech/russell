@@ -1,6 +1,9 @@
 use super::ComplexMatrix;
-use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::CBLAS_COL_MAJOR;
+use crate::{CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_TRANS, CBLAS_UPPER, Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs one of the symmetric rank k operations
     // <https://www.netlib.org/lapack/explore-html/de/d54/zsyrk_8f.html>
@@ -19,6 +22,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zsyrk) Performs a symmetric rank k operation
 ///
 /// Performs one of the symmetric rank k operations:
@@ -123,20 +130,32 @@ pub fn complex_mat_sym_rank_op(
     let n_i32 = to_i32(n);
     let k_i32 = to_i32(k);
     let ldc = n_i32;
-    unsafe {
-        cblas_zsyrk(
-            CBLAS_COL_MAJOR,
-            uplo,
-            trans,
-            n_i32,
-            k_i32,
-            &alpha,
-            a.as_data().as_ptr(),
-            to_i32(lda),
-            &beta,
-            c.as_mut_data().as_mut_ptr(),
-            ldc,
-        );
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            cblas_zsyrk(
+                CBLAS_COL_MAJOR,
+                uplo,
+                trans,
+                n_i32,
+                k_i32,
+                &alpha,
+                a.as_data().as_ptr(),
+                to_i32(lda),
+                &beta,
+                c.as_mut_data().as_mut_ptr(),
+                ldc,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        if trans == CBLAS_TRANS {
+            // C := alpha A^T A, contraction over A's k rows.
+            crate::native::blas::zsyrk_rank(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
+        } else {
+            crate::native::blas::zsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
+        }
     }
     Ok(())
 }

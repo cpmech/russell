@@ -1,5 +1,5 @@
 use super::ComplexMatrix;
-use crate::{StrError, array_plus_op_complex};
+use crate::{StrError, array_plus_op};
 
 /// Performs the addition of two matrices
 ///
@@ -36,7 +36,7 @@ pub fn complex_mat_plus(c: &mut ComplexMatrix, a: &ComplexMatrix, b: &ComplexMat
     if a.nrow() != m || a.ncol() != n || b.nrow() != m || b.ncol() != n {
         return Err("matrices are incompatible");
     }
-    array_plus_op_complex(c.as_mut_data(), a.as_data(), b.as_data())
+    array_plus_op(c.as_mut_data(), a.as_data(), b.as_data())
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

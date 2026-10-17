@@ -85,7 +85,8 @@ russell_ode = "*"
 
 The following (Rust) features are available:
 
-* `intel_mkl`: Use Intel MKL instead of OpenBLAS
+* `open_blas`: Use OpenBLAS instead of the native Rust BLAS/LAPACK
+* `intel_mkl`: Use Intel oneAPI MKL instead of OpenBLAS (mutually exclusive with `open_blas`)
 * `local_sparse`: Use locally compiled SuiteSparse and MUMPS
 * `cudss`: Enable the NVIDIA cuDSS GPU solver
 
@@ -897,7 +898,7 @@ The results are show below:
 
 This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of Reference #2. The problem is defined in Eq (1.14) on page 377 of Reference #2.
 
-This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
+This is a differential-algebraic problem modeling the nodal voltages of a one-transistor amplifier.
 
 The DAE is expressed in the so-called *mass-matrix* form (ndim = 5):
 

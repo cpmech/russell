@@ -3,6 +3,26 @@ use crate::format_scientific;
 use std::cmp;
 use std::fmt::Write;
 
+/// Formats a vector with `precision` digits after the decimal point, in a box
+///
+/// Each entry is written in scientific notation with a two-digit exponent
+/// (`1.012E+00`), right-aligned in a column wide enough for the widest exponent
+/// in the vector, and the entries are framed by box-drawing characters. Entries
+/// are separated by a blank line, so the output is one entry per row. An empty
+/// vector formats as `[]`.
+///
+/// # Example
+///
+/// ```
+/// use russell_lab::{Vector, vec_fmt_scientific};
+///
+/// let u = Vector::from(&[1.012444, 200.034123, 1e-8]);
+/// let s = vec_fmt_scientific(&u, 3);
+/// assert!(s.contains("1.012E+00"));
+/// assert!(s.contains("2.000E+02"));
+/// assert!(s.contains("1.000E-08"));
+/// assert_eq!(vec_fmt_scientific(&Vector::new(0), 3), "[]");
+/// ```
 pub fn vec_fmt_scientific(u: &Vector, precision: usize) -> String {
     let mut result = String::new();
     let f = &mut result;

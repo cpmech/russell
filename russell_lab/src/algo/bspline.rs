@@ -1410,8 +1410,8 @@ mod tests {
             let mut text = Text::new();
             canvas
                 .set_arrow_scale(10.0)
-                .set_face_color("grey")
-                .set_edge_color("grey");
+                .set_face_color("gray")
+                .set_edge_color("gray");
             text.set_fontsize(12.0)
                 .set_align_horizontal("left")
                 .set_align_vertical("center");

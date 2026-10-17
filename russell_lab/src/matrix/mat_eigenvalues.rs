@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::{C_FALSE, CcBool, StrError, Vector, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{C_FALSE, CcBool};
+use crate::{StrError, Vector, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and eigenvectors of a general matrix
     // <https://www.netlib.org/lapack/explore-html/d9/d28/dgeev_8f.html>
@@ -22,6 +25,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (dgeev) Computes the eigenvalues of a matrix
 ///
 /// Computes the eigenvalues `l`, such that:
@@ -103,23 +110,45 @@ pub fn mat_eigenvalues(l_real: &mut Vector, l_imag: &mut Vector, a: &mut Matrix)
     let mut v = vec![0.0; ldv as usize];
     let mut work = vec![0.0; lwork as usize];
     let mut info = 0;
-    unsafe {
-        c_dgeev(
-            C_FALSE,
-            C_FALSE,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            l_real.as_mut_data().as_mut_ptr(),
-            l_imag.as_mut_data().as_mut_ptr(),
-            u.as_mut_ptr(),
-            &ldu,
-            v.as_mut_ptr(),
-            &ldv,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // Only the eigenvalues are wanted, so the eigenvectors are discarded.
+        let n = m;
+        let mut v_real = vec![0.0; n * n];
+        let mut v_imag = vec![0.0; n * n];
+        let (wr, wi) = crate::native::lapack::eig::dgeev(&mut v_real, &mut v_imag, a.as_mut_data(), n)
+            .map_err(|e| match e {
+                // dlahqr exhausted its iteration limit; the eigenvalues are only
+                // partly converged, so this is an error rather than a result.
+                crate::native::lapack::LapackError::Convergence => {
+                    "LAPACK ERROR (dgeev): The QR algorithm failed to compute all the eigenvalues, and no eigenvectors have been computed"
+                }
+                _ => "LAPACK ERROR (dgeev): An argument had an illegal value",
+            })?;
+        l_real.as_mut_data().copy_from_slice(&wr);
+        l_imag.as_mut_data().copy_from_slice(&wi);
+        return Ok(());
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_dgeev(
+                C_FALSE,
+                C_FALSE,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                l_real.as_mut_data().as_mut_ptr(),
+                l_imag.as_mut_data().as_mut_ptr(),
+                u.as_mut_ptr(),
+                &ldu,
+                v.as_mut_ptr(),
+                &ldv,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dgeev): Argument #{} had an illegal value", -info);

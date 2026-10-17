@@ -1,6 +1,8 @@
 use super::{ComplexMatrix, complex_mat_copy};
+use crate::native::lapack::ZERO_DETERMINANT;
 use crate::{Complex64, StrError, cpx, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the LU factorization of a general (m,n) matrix
     // <https://www.netlib.org/lapack/explore-html/dd/dd1/zgetrf_8f.html>
@@ -21,8 +23,11 @@ unsafe extern "C" {
 }
 
 // constants
-const ZERO_DETERMINANT_NORM: f64 = 1e-15;
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgetrf, zgetri) Computes the inverse of a square matrix and returns its determinant
 ///
 /// ```text
@@ -105,7 +110,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     // handle small matrix
     if m == 1 {
         let det = a.get(0, 0);
-        if det.norm() <= ZERO_DETERMINANT_NORM {
+        if det.norm() <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
         ai.set(0, 0, 1.0 / det);
@@ -114,7 +119,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 
     if m == 2 {
         let det = a.get(0, 0) * a.get(1, 1) - a.get(0, 1) * a.get(1, 0);
-        if det.norm() <= ZERO_DETERMINANT_NORM {
+        if det.norm() <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
         ai.set(0, 0, a.get(1, 1) / det);
@@ -131,7 +136,7 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
             - a.get(0,1) * (a.get(1,0) * a.get(2,2) - a.get(1,2) * a.get(2,0))
             + a.get(0,2) * (a.get(1,0) * a.get(2,1) - a.get(1,1) * a.get(2,0));
 
-        if det.norm() <= ZERO_DETERMINANT_NORM {
+        if det.norm() <= ZERO_DETERMINANT {
             return Err("cannot compute inverse due to zero determinant");
         }
 
@@ -158,15 +163,39 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     let lda = m_i32;
     let mut ipiv = vec![0; m];
     let mut info = 0;
-    unsafe {
-        c_zgetrf(
-            &m_i32,
-            &m_i32,
-            ai.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            &mut info,
-        );
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_zgetrf(
+                &m_i32,
+                &m_i32,
+                ai.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                &mut info,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The native kernel reports 0-based pivots; the determinant loop below
+        // and the shim's own convention are 1-based, so convert here. This keeps
+        // the two paths' outputs in exactly the same representation.
+        let pivots = crate::native::lapack::complex::zgetrf(ai.as_mut_data(), m).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (dgetrf): The factorization has been completed, but the factor U is exactly singular"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgetrf): An argument had an illegal value",
+            // LU has no iteration to converge, so this is unreachable; listed so
+            // the match stays exhaustive if a variant is added.
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (dgetrf): The algorithm failed to converge"
+            }
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
+        for (slot, p) in ipiv.iter_mut().zip(pivots) {
+            *slot = p as i32 + 1;
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (dgetrf): Argument #{} had an illegal value", -info);
@@ -192,16 +221,36 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
     // second, perform the inversion
     let lwork = m_i32;
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
-    unsafe {
-        c_zgetri(
-            &m_i32,
-            ai.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_zgetri(
+                &m_i32,
+                ai.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // Back to 0-based for the native kernel.
+        let pivots: Vec<usize> = ipiv.iter().map(|&p| (p - 1) as usize).collect();
+        crate::native::lapack::complex::zgetri(ai.as_mut_data(), m, &pivots).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (zgetri): U is exactly singular and the inverse could not be computed"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (zgetri): An argument had an illegal value",
+            // Unreachable: the inverse from an LU has no iteration. Listed for
+            // exhaustiveness.
+            crate::native::lapack::LapackError::Convergence => {
+                "LAPACK ERROR (zgetri): The algorithm failed to converge"
+            }
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
     }
 
     // done
@@ -212,7 +261,8 @@ pub fn complex_mat_inverse(ai: &mut ComplexMatrix, a: &ComplexMatrix) -> Result<
 
 #[cfg(test)]
 mod tests {
-    use super::{ComplexMatrix, ZERO_DETERMINANT_NORM, complex_mat_inverse};
+    use super::{ComplexMatrix, complex_mat_inverse};
+    use crate::native::lapack::ZERO_DETERMINANT;
     use crate::{complex_approx_eq, complex_mat_approx_eq, cpx};
 
     /// Computes a⋅ai that should equal I for a square matrix
@@ -270,7 +320,7 @@ mod tests {
 
     #[test]
     fn complex_inverse_1x1_fails_on_zero_det() {
-        let a = ComplexMatrix::from(&[[ZERO_DETERMINANT_NORM / 10.0]]);
+        let a = ComplexMatrix::from(&[[ZERO_DETERMINANT / 10.0]]);
         let mut ai = ComplexMatrix::new(1, 1);
         let res = complex_mat_inverse(&mut ai, &a);
         assert_eq!(res, Err("cannot compute inverse due to zero determinant"));

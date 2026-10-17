@@ -1,7 +1,10 @@
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::Complex64;
 use crate::matrix::ComplexMatrix;
 use crate::vector::ComplexVector;
-use crate::{Complex64, StrError, to_i32};
+use crate::{StrError, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the solution to a system of linear equations
     // <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
@@ -17,6 +20,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgesv) Solves a general linear system
 ///
 /// For a general matrix `a` (square, symmetric, non-symmetric, dense,
@@ -33,7 +40,9 @@ unsafe extern "C" {
 /// b := a⁻¹⋅b == x
 /// ```
 ///
-/// The solution is obtained via LU decomposition using Lapack dgesv routine.
+/// The solution is obtained via LU decomposition with partial pivoting (`zgesv`:
+/// the native Rust implementation by default, LAPACK through the C shim with
+/// `open_blas`/`intel_mkl`).
 ///
 /// See also: <https://www.netlib.org/lapack/explore-html/d1/ddc/zgesv_8f.html>
 ///
@@ -102,17 +111,35 @@ pub fn complex_solve_lin_sys(b: &mut ComplexVector, a: &mut ComplexMatrix) -> Re
     let lda = to_i32(m);
     let ldb = lda;
     let mut info = 0;
-    unsafe {
-        c_zgesv(
-            &m_i32,
-            &nrhs,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            ipiv.as_mut_ptr(),
-            b.as_mut_data().as_mut_ptr(),
-            &ldb,
-            &mut info,
-        )
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_zgesv(
+                &m_i32,
+                &nrhs,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                ipiv.as_mut_ptr(),
+                b.as_mut_data().as_mut_ptr(),
+                &ldb,
+                &mut info,
+            )
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The singular message is the one the shim path produces below (its
+        // info > 0 branch), so both backends are indistinguishable to a caller.
+        crate::native::lapack::complex::zgesv(a.as_mut_data(), b.as_mut_data()).map_err(|e| match e {
+            crate::native::lapack::LapackError::Singular => {
+                "LAPACK ERROR (dgesv): The factorization has been completed, but the factor U is exactly singular"
+            }
+            crate::native::lapack::LapackError::BadShape => "LAPACK ERROR (dgesv): An argument had an illegal value",
+            // Unreachable: a direct solve has no iteration. Listed for
+            // exhaustiveness.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dgesv): The algorithm failed to converge",
+            crate::native::lapack::LapackError::NotImplemented(r) => crate::native::lapack::not_implemented(r),
+        })?;
     }
     if info < 0 {
         println!("LAPACK ERROR (dgesv): Argument #{} had an illegal value", -info);

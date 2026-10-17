@@ -1,7 +1,10 @@
 use crate::matrix::ComplexMatrix;
 use crate::vector::Vector;
-use crate::{Complex64, SVD_CODE_A, StrError, cpx, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{Complex64, SVD_CODE_A};
+use crate::{StrError, cpx, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d6/d42/zgesvd_8f.html>
@@ -24,6 +27,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgesvd) Computes the singular value decomposition (SVD) of a matrix
 ///
 /// Finds `u`, `s`, and `v`, such that:
@@ -120,24 +127,47 @@ pub fn complex_mat_svd(
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 5 * min_mn];
     let mut info = 0;
-    unsafe {
-        c_zgesvd(
-            SVD_CODE_A,
-            SVD_CODE_A,
-            &m_i32,
-            &n_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            s.as_mut_data().as_mut_ptr(),
-            u.as_mut_data().as_mut_ptr(),
-            &ldu,
-            vh.as_mut_data().as_mut_ptr(),
-            &ldvt,
-            work.as_mut_ptr(),
-            &lwork,
-            rwork.as_mut_ptr(),
-            &mut info,
-        );
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The native routine validates its own shapes, so a BadShape here would be
+        // a programming error rather than a caller mistake. The two strings below
+        // are the ones the `info` branches further down report, so a native
+        // failure is indistinguishable to the caller from an accelerated one.
+        use crate::native::lapack::LapackError;
+        crate::native::lapack::zsvd::zgesvd(
+            a.as_mut_data(),
+            m,
+            n,
+            s.as_mut_data(),
+            u.as_mut_data(),
+            vh.as_mut_data(),
+        )
+        .map_err(|e| match e {
+            LapackError::Convergence => "LAPACK ERROR (zgesvd): Algorithm did not converge",
+            _ => "LAPACK ERROR (zgesvd): An argument had an illegal value",
+        })?;
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_zgesvd(
+                SVD_CODE_A,
+                SVD_CODE_A,
+                &m_i32,
+                &n_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                s.as_mut_data().as_mut_ptr(),
+                u.as_mut_data().as_mut_ptr(),
+                &ldu,
+                vh.as_mut_data().as_mut_ptr(),
+                &ldvt,
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (zgesvd): Argument #{} had an illegal value", -info);

@@ -1,6 +1,9 @@
 use super::ComplexVector;
-use crate::{Complex64, Norm, to_i32};
+use crate::Norm;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{Complex64, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the Euclidean norm
     // <https://www.netlib.org/lapack/explore-html/d1/d5a/dznrm2_8f90.html>
@@ -46,24 +49,39 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn complex_vec_norm(v: &ComplexVector, kind: Norm) -> f64 {
-    let n = to_i32(v.dim());
-    if n == 0 {
+    if v.dim() == 0 {
         return 0.0;
     }
-    unsafe {
-        match kind {
-            Norm::Euc | Norm::Fro => cblas_dznrm2(n, v.as_data().as_ptr(), 1),
-            Norm::Inf | Norm::Max => {
-                let mut max = 0.0;
-                for i in 0..v.dim() {
-                    let abs = v[i].norm();
-                    if abs > max {
-                        max = abs;
+
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n = to_i32(v.dim());
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            match kind {
+                Norm::Euc | Norm::Fro => cblas_dznrm2(n, v.as_data().as_ptr(), 1),
+                Norm::Inf | Norm::Max => {
+                    let mut max = 0.0;
+                    for i in 0..v.dim() {
+                        let abs = v[i].norm();
+                        if abs > max {
+                            max = abs;
+                        }
                     }
+                    max
                 }
-                max
+                Norm::One => v.as_data().iter().fold(0.0, |acc, z| acc + z.norm()),
             }
-            Norm::One => v.as_data().iter().fold(0.0, |acc, z| acc + z.norm()),
+        }
+    }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // `dznrm2` is the Euclidean norm; the other kinds are combinatorial and
+        // were already computed in Rust on the accelerated path too.
+        match kind {
+            Norm::Euc | Norm::Fro => crate::native::blas::dznrm2(v.as_data()),
+            Norm::Inf | Norm::Max => v.as_data().iter().fold(0.0f64, |acc, z| acc.max(z.norm())),
+            Norm::One => v.as_data().iter().fold(0.0f64, |acc, z| acc + z.norm()),
         }
     }
 }

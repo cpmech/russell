@@ -1,6 +1,9 @@
 use super::ComplexMatrix;
-use crate::{C_FALSE, C_TRUE, CcBool, Complex64, StrError, Vector, cpx, to_i32};
+use crate::{C_FALSE, C_TRUE, StrError, Vector, cpx, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{CcBool, Complex64};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the eigenvalues and, optionally, the left and/or right eigenvectors for HE matrices
     // <https://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html>
@@ -18,6 +21,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zheev) Performs the eigen-decomposition of a hermitian matrix
 ///
 /// Computes the eigenvalues `l` and right eigenvectors `v`, such that:
@@ -120,19 +127,35 @@ pub fn complex_mat_eigen_herm(l: &mut Vector, a: &mut ComplexMatrix, upper: bool
     let mut work = vec![cpx!(0.0, 0.0); lwork as usize];
     let mut rwork = vec![0.0; 3 * m];
     let mut info = 0;
-    unsafe {
-        c_zheev(
-            C_TRUE,
-            c_upper,
-            &m_i32,
-            a.as_mut_data().as_mut_ptr(),
-            &lda,
-            l.as_mut_data().as_mut_ptr(),
-            work.as_mut_ptr(),
-            &lwork,
-            rwork.as_mut_ptr(),
-            &mut info,
-        );
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The native routine has the same contract as `zheev(JOBZ='V', ...)`:
+        // `a` is destroyed and holds the eigenvectors as columns, `l` receives
+        // the eigenvalues in ascending order, and `upper` picks the triangle
+        // that is read.
+        return crate::native::lapack::zeig::zheev(a.as_mut_data(), l.as_mut_data(), m, upper).map_err(|e| match e {
+            // `zsteqr` exhausted its iteration limit; same string as the
+            // shim's `info > 0` branch returns.
+            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (zheev): The algorithm failed to converge",
+            _ => "LAPACK ERROR (zheev): An argument had an illegal value",
+        });
+    }
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        unsafe {
+            c_zheev(
+                C_TRUE,
+                c_upper,
+                &m_i32,
+                a.as_mut_data().as_mut_ptr(),
+                &lda,
+                l.as_mut_data().as_mut_ptr(),
+                work.as_mut_ptr(),
+                &lwork,
+                rwork.as_mut_ptr(),
+                &mut info,
+            );
+        }
     }
     if info < 0 {
         println!("LAPACK ERROR (zheev): Argument #{} had an illegal value", -info);

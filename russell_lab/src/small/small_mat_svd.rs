@@ -1,5 +1,8 @@
-use crate::{SVD_CODE_A, StrError, to_i32};
+use crate::StrError;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{SVD_CODE_A, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Computes the singular value decomposition (SVD)
     // <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>
@@ -31,7 +34,8 @@ unsafe extern "C" {
 /// ```
 ///
 /// The input matrix `a` is stored row-major (as a Rust 2D array) and is copied
-/// into a column-major buffer before being passed to LAPACK (`dgesvd`).
+/// into a column-major buffer before `dgesvd` sees it (the native implementation
+/// by default, the C shim with `open_blas`/`intel_mkl`).
 ///
 /// See also: [`crate::mat_svd`] (the heap-allocated counterpart), the LAPACK
 /// reference <https://www.netlib.org/lapack/explore-html/d8/d2d/dgesvd_8f.html>,
@@ -51,7 +55,8 @@ unsafe extern "C" {
 ///
 /// # Errors
 ///
-/// Returns an error if `M` or `N` is zero, if `s.len() != min(M,N)`, or if LAPACK fails.
+/// Returns an error if `M` or `N` is zero, if `s.len() != min(M,N)`, or if `dgesvd`
+/// fails (it reports only a failure to converge).
 ///
 /// # Examples
 ///
@@ -96,71 +101,90 @@ pub fn small_mat_svd<const M: usize, const N: usize>(
     if s.len() != min_mn {
         return Err("[s] must be a min(m,n) vector");
     }
-    let m_i32: i32 = to_i32(M);
-    let n_i32: i32 = to_i32(N);
-    let lda = m_i32;
-    let ldu = m_i32;
-    let ldvt = n_i32;
-
-    // copy the row-major input into a column-major buffer (i.e. store the transpose)
-    let mut acm = [[0.0; M]; N];
+    // Column-major working buffers. `as_flattened_mut` hands them to the native
+    // routine as slices; the C shim takes the same buffers as a pointer.
+    let mut acm = [[0.0f64; M]; N];
     for i in 0..M {
         for j in 0..N {
-            acm[j][i] = a[i][j];
+            acm[j][i] = a[i][j]; // store the transpose: column-major
+        }
+    }
+    let mut ucm = [[0.0f64; M]; M];
+    let mut vtcm = [[0.0f64; N]; N];
+
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let m_i32: i32 = to_i32(M);
+        let n_i32: i32 = to_i32(N);
+        let lda = m_i32;
+        let ldu = m_i32;
+        let ldvt = n_i32;
+        let mut info: i32 = 0;
+        unsafe {
+            // first: perform the workspace query
+            let lwork_query: i32 = -1;
+            let mut work = [0.0f64];
+            c_dgesvd(
+                SVD_CODE_A,
+                SVD_CODE_A,
+                &m_i32,
+                &n_i32,
+                acm[0].as_mut_ptr(),
+                &lda,
+                s.as_mut_ptr(),
+                ucm[0].as_mut_ptr(),
+                &ldu,
+                vtcm[0].as_mut_ptr(),
+                &ldvt,
+                work.as_mut_ptr(),
+                &lwork_query,
+                &mut info,
+            );
+            if info != 0 {
+                return Err("dgesvd workspace query failed");
+            }
+
+            // second: perform the SVD
+            let lwork = work[0] as i32;
+            let mut work = vec![0.0; lwork as usize];
+            c_dgesvd(
+                SVD_CODE_A,
+                SVD_CODE_A,
+                &m_i32,
+                &n_i32,
+                acm[0].as_mut_ptr(),
+                &lda,
+                s.as_mut_ptr(),
+                ucm[0].as_mut_ptr(),
+                &ldu,
+                vtcm[0].as_mut_ptr(),
+                &ldvt,
+                work.as_mut_ptr(),
+                &lwork,
+                &mut info,
+            );
+            if info != 0 {
+                return Err("dgesvd failed");
+            }
         }
     }
 
-    // column-major output buffers
-    let mut ucm = [[0.0; M]; M];
-    let mut vtcm = [[0.0; N]; N];
-
-    let mut info: i32 = 0;
-    unsafe {
-        // first: perform the workspace query
-        let lwork_query: i32 = -1;
-        let mut work = [0.0f64];
-        c_dgesvd(
-            SVD_CODE_A,
-            SVD_CODE_A,
-            &m_i32,
-            &n_i32,
-            acm[0].as_mut_ptr(),
-            &lda,
-            s.as_mut_ptr(),
-            ucm[0].as_mut_ptr(),
-            &ldu,
-            vtcm[0].as_mut_ptr(),
-            &ldvt,
-            work.as_mut_ptr(),
-            &lwork_query,
-            &mut info,
-        );
-        if info != 0 {
-            return Err("dgesvd workspace query failed");
-        }
-
-        // second: perform the SVD
-        let lwork = work[0] as i32;
-        let mut work = vec![0.0; lwork as usize];
-        c_dgesvd(
-            SVD_CODE_A,
-            SVD_CODE_A,
-            &m_i32,
-            &n_i32,
-            acm[0].as_mut_ptr(),
-            &lda,
-            s.as_mut_ptr(),
-            ucm[0].as_mut_ptr(),
-            &ldu,
-            vtcm[0].as_mut_ptr(),
-            &ldvt,
-            work.as_mut_ptr(),
-            &lwork,
-            &mut info,
-        );
-        if info != 0 {
-            return Err("dgesvd failed");
-        }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    {
+        // The native `dgesvd`: pure Rust and parity-tested against the reference
+        // LAPACK. It replaces the `AᵀA` portable algorithm this wrapper used to
+        // call, which squared the condition number -- at κ = 1e6 that left the
+        // polar rotation factor in `russell_tensor` non-orthogonal by 1.7e-5,
+        // and at κ = 1e8 by 2.8e-1.
+        crate::native::lapack::svd::dgesvd(
+            acm.as_flattened_mut(),
+            M,
+            N,
+            s,
+            ucm.as_flattened_mut(),
+            vtcm.as_flattened_mut(),
+        )
+        .map_err(|_| "dgesvd failed")?;
     }
 
     // copy the column-major outputs back into row-major arrays

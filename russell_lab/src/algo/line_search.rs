@@ -67,7 +67,7 @@ const DEFAULT_MAX_ITERATIONS: usize = 20;
 ///     // At x = 0: f(0) = 2, gradient = 4*(-1)^3 + 2*(-1) = -6
 ///     let x = 0.0;
 ///     let fx = 2.0;
-///     let p = 1.0; // direction towards the minimum (positive direction)
+///     let p = 1.0; // direction toward the minimum (positive direction)
 ///     let slope = -6.0; // grad_f(0) * p
 ///
 ///     let searcher = LineSearcher::new();

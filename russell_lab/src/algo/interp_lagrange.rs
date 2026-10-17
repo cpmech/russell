@@ -8,8 +8,11 @@ const DX_EPSILON: f64 = 10.0 * f64::EPSILON;
 /// Defines the type of the interpolation grid in 1D
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InterpGrid {
+    /// Equally spaced points
     Uniform,
+    /// Chebyshev-Gauss points, `xᵢ = cos((2i-1)π / 2n)`, which cluster at the ends
     ChebyshevGauss,
+    /// Chebyshev-Gauss-Lobatto points, `xᵢ = cos(iπ / n)`, which include both ends
     ChebyshevGaussLobatto,
 }
 

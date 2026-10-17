@@ -264,6 +264,37 @@ pub(crate) fn complex_check_gen_eigen<'a, T>(
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// `a · ai`, for checking that an inverse (or pseudo-inverse) really is one.
+#[cfg(test)]
+pub(crate) fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
+    let (m, n) = a.dims();
+    let mut a_ai = Matrix::new(m, m);
+    for i in 0..m {
+        for j in 0..m {
+            for k in 0..n {
+                a_ai.add(i, j, a.get(i, k) * ai.get(k, j));
+            }
+        }
+    }
+    a_ai
+}
+
+/// `a · ai · a`, which equals `a` for a pseudo-inverse.
+#[cfg(test)]
+pub(crate) fn get_a_times_ai_times_a(a: &Matrix, ai: &Matrix) -> Matrix {
+    let a_ai = get_a_times_ai(a, ai);
+    let (m, n) = a.dims();
+    let mut a_ai_a = Matrix::new(m, n);
+    for i in 0..m {
+        for j in 0..n {
+            for k in 0..m {
+                a_ai_a.add(i, j, a_ai.get(i, k) * a.get(k, j));
+            }
+        }
+    }
+    a_ai_a
+}
+
 #[cfg(test)]
 mod tests {
     use super::{check_eigen, check_eigen_sym, complex_check_eigen, small_check_eigen_sym};

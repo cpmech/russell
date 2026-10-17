@@ -126,38 +126,8 @@ pub fn mat_pseudo_inverse(ai: &mut Matrix, a: &mut Matrix) -> Result<(), StrErro
 #[cfg(test)]
 mod tests {
     use super::{Matrix, mat_pseudo_inverse};
+    use crate::matrix::testing::get_a_times_ai_times_a;
     use crate::{mat_approx_eq, mat_inverse, mat_mat_mul};
-
-    /// Computes a⋅ai that should equal I for a square matrix
-    fn get_a_times_ai(a: &Matrix, ai: &Matrix) -> Matrix {
-        let (m, n) = a.dims();
-        let mut a_ai = Matrix::new(m, m);
-        for i in 0..m {
-            for j in 0..m {
-                for k in 0..n {
-                    a_ai.add(i, j, a.get(i, k) * ai.get(k, j));
-                }
-            }
-        }
-        a_ai
-    }
-
-    /// Computes a⋅ai⋅a that should equal a
-    fn get_a_times_ai_times_a(a: &Matrix, ai: &Matrix) -> Matrix {
-        // compute a⋅ai
-        let a_ai = get_a_times_ai(a, ai);
-        // compute a⋅ai⋅a == a
-        let (m, n) = a.dims();
-        let mut a_ai_a = Matrix::new(m, n);
-        for i in 0..m {
-            for j in 0..n {
-                for k in 0..m {
-                    a_ai_a.add(i, j, a_ai.get(i, k) * a.get(k, j));
-                }
-            }
-        }
-        a_ai_a
-    }
 
     #[test]
     fn mat_pseudo_inverse_fails_on_wrong_dims() {

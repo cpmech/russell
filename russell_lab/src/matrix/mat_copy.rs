@@ -1,6 +1,9 @@
 use super::Matrix;
-use crate::{StrError, to_i32};
+use crate::StrError;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::to_i32;
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Copies a vector into another
     // <https://www.netlib.org/lapack/explore-html/da/d6c/dcopy_8f.html>
@@ -43,10 +46,16 @@ pub fn mat_copy(b: &mut Matrix, a: &Matrix) -> Result<(), StrError> {
     if a.nrow() != m || a.ncol() != n {
         return Err("matrices are incompatible");
     }
-    let n_i32: i32 = to_i32(m * n);
-    unsafe {
-        cblas_dcopy(n_i32, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let n_i32: i32 = to_i32(m * n);
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_dcopy(n_i32, a.as_data().as_ptr(), 1, b.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::dcopy(a.as_data(), b.as_mut_data());
     Ok(())
 }
 

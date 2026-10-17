@@ -1,6 +1,9 @@
 use super::ComplexMatrix;
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, Complex64, StrError, to_i32};
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS};
+use crate::{Complex64, StrError, to_i32};
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Performs the matrix-matrix multiplication
     // <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
@@ -22,6 +25,10 @@ unsafe extern "C" {
     );
 }
 
+#[cfg_attr(
+    not(any(feature = "open_blas", feature = "intel_mkl")),
+    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
+)]
 /// (zgemm) Performs the matrix-matrix multiplication resulting in a matrix
 ///
 /// ```text
@@ -88,24 +95,38 @@ pub fn complex_mat_mat_mul(
     let k_i32: i32 = to_i32(k);
     let lda = m_i32;
     let ldb = k_i32;
-    unsafe {
-        cblas_zgemm(
-            CBLAS_COL_MAJOR,
-            CBLAS_NO_TRANS,
-            CBLAS_NO_TRANS,
-            m_i32,
-            n_i32,
-            k_i32,
-            &alpha,
-            a.as_data().as_ptr(),
-            lda,
-            b.as_data().as_ptr(),
-            ldb,
-            &beta,
-            c.as_mut_data().as_mut_ptr(),
-            m_i32,
-        );
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        // Safety: the shim is linked in this configuration.
+        #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+        {
+            unsafe {
+                cblas_zgemm(
+                    CBLAS_COL_MAJOR,
+                    CBLAS_NO_TRANS,
+                    CBLAS_NO_TRANS,
+                    m_i32,
+                    n_i32,
+                    k_i32,
+                    &alpha,
+                    a.as_data().as_ptr(),
+                    lda,
+                    b.as_data().as_ptr(),
+                    ldb,
+                    &beta,
+                    c.as_mut_data().as_mut_ptr(),
+                    m_i32,
+                );
+            }
+        }
+        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+        {
+            crate::native::blas::zgemm(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
+        }
+        let _ = (lda, ldb, m_i32, n_i32, k_i32);
     }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::zgemm(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
     Ok(())
 }
 

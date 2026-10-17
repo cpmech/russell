@@ -1,7 +1,10 @@
-use super::{MAX_DIM_FOR_NATIVE_BLAS, to_i32};
+use super::MAX_DIM_FOR_NATIVE_BLAS;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use super::to_i32;
 use crate::Complex64;
 use crate::StrError;
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // real ------------------------------------------------------------------------------------------------------
 
@@ -47,14 +50,25 @@ pub(crate) fn array_plus_opx(w: &mut [f64], alpha: f64, u: &[f64], beta: f64, v:
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
-        let n_i32 = to_i32(n);
-        unsafe {
-            // w := v
-            cblas_dcopy(n_i32, v.as_ptr(), 1, w.as_mut_ptr(), 1);
-            // w := beta * v
-            cblas_dscal(n_i32, beta, w.as_mut_ptr(), 1);
-            // w := alpha*u + w
-            cblas_daxpy(n_i32, alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
+        #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+        {
+            let n_i32 = to_i32(n);
+            // Safety: the shim is linked in this configuration.
+            unsafe {
+                // w := v
+                cblas_dcopy(n_i32, v.as_ptr(), 1, w.as_mut_ptr(), 1);
+                // w := beta * v
+                cblas_dscal(n_i32, beta, w.as_mut_ptr(), 1);
+                // w := alpha*u + w
+                cblas_daxpy(n_i32, alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
+            }
+        }
+        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+        {
+            use crate::native::blas::{daxpy, dcopy, dscal};
+            dcopy(v, w);
+            dscal(beta, w);
+            daxpy(alpha, u, w);
         }
     } else {
         if n == 1 {
@@ -138,14 +152,25 @@ pub(crate) fn array_plus_opx_complex(
         return Ok(());
     }
     if n > MAX_DIM_FOR_NATIVE_BLAS {
-        let n_i32 = to_i32(n);
-        unsafe {
-            // w := v
-            cblas_zcopy(n_i32, v.as_ptr(), 1, w.as_mut_ptr(), 1);
-            // w := beta * v
-            cblas_zscal(n_i32, &beta, w.as_mut_ptr(), 1);
-            // w := alpha*u + w
-            cblas_zaxpy(n_i32, &alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
+        #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+        {
+            let n_i32 = to_i32(n);
+            // Safety: the shim is linked in this configuration.
+            unsafe {
+                // w := v
+                cblas_zcopy(n_i32, v.as_ptr(), 1, w.as_mut_ptr(), 1);
+                // w := beta * v
+                cblas_zscal(n_i32, &beta, w.as_mut_ptr(), 1);
+                // w := alpha*u + w
+                cblas_zaxpy(n_i32, &alpha, u.as_ptr(), 1, w.as_mut_ptr(), 1);
+            }
+        }
+        #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+        {
+            use crate::native::blas::{zaxpy, zcopy, zscal};
+            zcopy(v, w);
+            zscal(beta, w);
+            zaxpy(alpha, u, w);
         }
     } else {
         if n == 1 {

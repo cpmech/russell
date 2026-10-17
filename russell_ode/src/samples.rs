@@ -980,7 +980,7 @@ impl Samples {
     /// This example corresponds to Fig 1.3 on page 377 and Fig 1.4 on page 379 of the reference.
     /// The problem is defined in Eq (1.14) on page 377 of the reference.
     ///
-    /// This is a differential-algebraic problem modelling the nodal voltages of a one-transistor amplifier.
+    /// This is a differential-algebraic problem modeling the nodal voltages of a one-transistor amplifier.
     ///
     /// The DAE is expressed in the so-called *mass-matrix* form (ndim = 5):
     ///

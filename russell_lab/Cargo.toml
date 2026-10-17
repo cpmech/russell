@@ -12,7 +12,38 @@ categories = ["mathematics", "science"]
 keywords = ["matrix", "vector", "linspace"]
 
 [features]
+# Native Rust BLAS/LAPACK is the default, so this is deliberately empty. There is
+# no external library to find, nothing to link, and the crate builds anywhere --
+# including `wasm32-unknown-unknown`, which has no libc for the C shim and no BLAS
+# to link against.
+#
+# The two accelerator features below are opt-in. Each links the C shim in
+# `c_code/interface_blas.c` against a different external library:
+#
+# * `open_blas` -- OpenBLAS (also the reference netlib BLAS/LAPACK)
+# * `intel_mkl`   -- Intel oneAPI MKL
+#
+# They are mutually exclusive. Enabling neither (the default) uses `src/native`,
+# whose routines are plain Rust and are tested for numerical parity against the
+# reference LAPACK.
+default = []
+# Link the C shim against OpenBLAS.
+open_blas = []
+# Link the C shim against Intel oneAPI MKL.
 intel_mkl = []
+# DEVELOPMENT ONLY -- a reference LAPACK for the native routines' parity tests.
+#
+# Compiles the same C shim against a locally built LAPACK 3.12.1 and links it, so
+# the tests can assert that the native Rust routines agree with the reference
+# implementation to a tight tolerance. That is the difference between "the answer
+# looks plausible" and "the answer is right", and it is the only practicable way
+# to check the eigenvalue and SVD routines.
+#
+# Not for release: it needs a LAPACK build on the machine. See `build.rs` for the
+# location, which `RUSSELL_DEV_LAPACK_ROOT` overrides.
+#
+# `cargo test -p russell_lab --features dev_lapack`
+dev_lapack = []
 
 [dependencies]
 num-complex = { version = "0.4", features = ["serde"] }
@@ -33,6 +64,16 @@ pkg-config = "0.3"
 name = "algo_chebyshev"
 harness = false
 path = "benchmarks/algo_chebyshev.rs"
+
+[[bench]]
+name = "decomp_benchmark"
+harness = false
+path = "benchmarks/decomp_benchmark.rs"
+
+[[bench]]
+name = "matmul_benchmark"
+harness = false
+path = "benchmarks/matmul_benchmark.rs"
 
 [[bench]]
 name = "matvec_benchmark"

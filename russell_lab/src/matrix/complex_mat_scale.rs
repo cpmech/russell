@@ -1,6 +1,9 @@
 use super::ComplexMatrix;
-use crate::{Complex64, to_i32};
+use crate::Complex64;
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+use crate::to_i32;
 
+#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
 unsafe extern "C" {
     // Scales a vector by a constant
     // <https://www.netlib.org/lapack/explore-html/d2/d74/zscal_8f.html>
@@ -41,11 +44,17 @@ unsafe extern "C" {
 /// }
 /// ```
 pub fn complex_mat_scale(a: &mut ComplexMatrix, alpha: Complex64) {
-    let (m, n) = a.dims();
-    let mn_i32 = to_i32(m * n);
-    unsafe {
-        cblas_zscal(mn_i32, &alpha, a.as_mut_data().as_mut_ptr(), 1);
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
+    {
+        let (m, n) = a.dims();
+        let mn_i32 = to_i32(m * n);
+        // Safety: the shim is linked in this configuration.
+        unsafe {
+            cblas_zscal(mn_i32, &alpha, a.as_mut_data().as_mut_ptr(), 1);
+        }
     }
+    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
+    crate::native::blas::zscal(alpha, a.as_mut_data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

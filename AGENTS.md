@@ -62,14 +62,14 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1148 pass, 0 fail, 0 ignored
+cargo test -p russell_lab --lib                     # 1161 pass, 0 fail, 0 ignored
 RUSSELL_ORACLE_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features oracle # 1161 pass, 0 fail
+  cargo test -p russell_lab --lib --features oracle # 1174 pass, 0 fail
 ```
 
-Both configurations are known-good as of commit `08c251f6`, with **zero**
-failures. The oracle run adds the parity tests and is otherwise the same native
-path.
+Both configurations are known-good on the current tree of `native-lapack`, with
+**zero** failures. The oracle run adds the parity tests and is otherwise the same
+native path.
 
 The `oracle` feature needs `RUSSELL_ORACLE_ROOT` set to a valid CMake build
 directory. The LAPACK *source* tree is not one -- it has no `include/` or `lib/`.

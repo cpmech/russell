@@ -3,26 +3,32 @@
 //! Each function names the LAPACK routine it follows, so it can be checked against
 //! the reference source of the same name (LAPACK 3.12.1's `SRC/` and `BLAS/SRC/`).
 //!
-//! # What is here, and what is not yet
+//! # What is here
 //!
-//! | Routine | Status |
+//! Every routine the crate's public API needs has a native implementation. This
+//! table says where each one lives; the module's own doc comment gives its
+//! pipeline.
+//!
+//! | Routine | Where |
 //! |---|---|
-//! | `dgetrf` LU with partial pivoting | done |
-//! | `dgetri` inverse from LU | done |
-//! | `dgesv` solve `A X = B` | done |
-//! | `dpotrf` Cholesky | done |
-//! | `zgetrf`, `zgetri`, `zgesv`, `zpotrf` | done, in [`complex`] |
-//! | `dlange` matrix norms | in [`super::blas::dlange`] |
-//! | `dsyev` symmetric eigen-decomposition | done, in [`sym`] |
-//! | `zheev` Hermitian eigen-decomposition | done, in [`zeig`] |
-//! | `dgeev`, `dggev`, `dgesvd` | **not implemented** |
-//! | `zgeev`, `zgesvd` | **not implemented** |
+//! | `dgetrf` LU with partial pivoting | [`dgetrf`] |
+//! | `dgetri` inverse from LU | [`dgetri`] |
+//! | `dgesv` solve `A X = B` | [`dgesv`] |
+//! | `dpotrf` Cholesky | [`dpotrf`] |
+//! | `dlange` matrix norms | [`super::blas::dlange`] |
+//! | `dsyev` symmetric eigen-decomposition | [`sym`] |
+//! | `dgeev` general eigen-decomposition | [`eig`] |
+//! | `dgesvd` real SVD | [`svd`] |
+//! | `dggev` generalised eigen-decomposition (QZ) | [`qz`] |
+//! | `zgetrf`, `zgetri`, `zgesv`, `zpotrf` | [`complex`] |
+//! | `zheev`, `zgeev` | [`zeig`] |
+//! | `zgesvd` complex SVD | [`zsvd`] |
+//! | `zggev` complex QZ | [`qz`] |
 //!
-//! The unimplemented ones are the general eigenvalues and the SVD, real and complex.
-//! They are named here rather than silently absent so that a caller who needs one
-//! gets an honest answer. Until they exist, build with `--features oblas` (or
-//! `mkl`) for those routines; the geometric, linear-solver and complex
-//! Cholesky/inverse/solve paths work natively.
+//! `LapackError::NotImplemented` is retained, and no routine returns it: a
+//! caller that reaches a routine with no native path still gets a runtime error
+//! naming the feature to enable rather than a link error, and a routine that is
+//! reverted keeps its error handling.
 //!
 //! # Conventions
 //!

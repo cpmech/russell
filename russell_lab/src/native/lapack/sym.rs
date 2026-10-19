@@ -1807,4 +1807,61 @@ mod tests {
             assert!(dot.abs() < 1e-13, "d0 = {d0:e}: Z is not orthogonal ({dot})");
         }
     }
+    /// `dsyev` clamps the matrix into the reference's `[rmin, rmax]` before reducing
+    /// it (`dlascl` with `ssfmin`/`ssfmax`), and nothing exercised that path. An
+    /// absolute tolerance says nothing at 1e300, so the residual is the reference's
+    /// eps-normalized ratio, `||A v - lambda v|| / (n ||A|| eps) <= 20`, with the
+    /// orthogonality checked separately.
+    #[test]
+    fn dsyev_handles_matrices_at_the_edges_of_the_range() {
+        let n = 5usize;
+        let eps = f64::EPSILON;
+        for s in [1e300f64, 1e-300, 1e250, 1e-250, 1.0] {
+            let mut a0 = vec![0.0; n * n];
+            for i in 0..n {
+                a0[i + i * n] = s * (i as f64 + 1.0);
+                for j in (i + 1)..n {
+                    let v = s * 0.25 / (j - i) as f64;
+                    a0[i + j * n] = v;
+                    a0[j + i * n] = v;
+                }
+            }
+            let mut a = a0.clone();
+            let mut w = vec![0.0; n];
+            dsyev(&mut a, &mut w, n, true).expect("dsyev");
+
+            let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+            for k in 0..n {
+                assert!(w[k].is_finite(), "s = {s}: eigenvalue {k} is not finite");
+            }
+            for k in 1..n {
+                assert!(w[k - 1] <= w[k], "s = {s}: eigenvalues are not ordered");
+            }
+            for k in 0..n {
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut row = 0.0;
+                    for j in 0..n {
+                        row += a0[i + j * n] * a[j + k * n];
+                    }
+                    worst = worst.max((row - w[k] * a[i + k * n]).abs());
+                }
+                let ratio = worst / (n as f64 * anorm * eps);
+                assert!(ratio <= 20.0, "s = {s}, k = {k}: residual ratio = {ratio:e}");
+            }
+            let mut orth = 0.0f64;
+            for i in 0..n {
+                for j in 0..n {
+                    let mut dot = 0.0;
+                    for k in 0..n {
+                        dot += a[k + i * n] * a[k + j * n];
+                    }
+                    let want = if i == j { 1.0 } else { 0.0 };
+                    orth = orth.max((dot - want).abs());
+                }
+            }
+            let ratio = orth / (n as f64 * eps);
+            assert!(ratio <= 20.0, "s = {s}: orthogonality ratio = {ratio:e}");
+        }
+    }
 }

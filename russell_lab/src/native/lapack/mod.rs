@@ -53,6 +53,9 @@ pub mod sym;
 pub mod zeig;
 pub mod zsvd;
 
+#[cfg(test)]
+mod families;
+
 use super::blas;
 
 /// Tolerance below which a pivot counts as zero.

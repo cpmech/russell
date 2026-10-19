@@ -16,7 +16,11 @@ keywords = ["matrix", "sparse", "solver"]
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl"]
-local_sparse = []
+# UMFPACK from a local install under RUSSELL_LOCAL_PREFIX, instead of the
+# package-manager one found with pkg-config.
+local_umfpack = []
+# MUMPS from a local install under RUSSELL_LOCAL_PREFIX, alongside UMFPACK.
+mumps = []
 
 [dependencies]
 num-traits = "0.2"

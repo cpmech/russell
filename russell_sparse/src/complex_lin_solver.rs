@@ -1,4 +1,4 @@
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use super::ComplexSolverMUMPS;
 
 use super::{ComplexCooMatrix, ComplexSolverUMFPACK, Genie, LinSolParams, StatsLinSol};
@@ -77,10 +77,10 @@ impl<'a> ComplexLinSolver<'a> {
         // which feature to enable, instead of needing one whole copy of this match
         // per combination of features.
         let actual: Box<dyn Send + ComplexLinSolTrait> = match genie {
-            #[cfg(feature = "local_sparse")]
+            #[cfg(feature = "mumps")]
             Genie::Mumps => Box::new(ComplexSolverMUMPS::new()?),
-            #[cfg(not(feature = "local_sparse"))]
-            Genie::Mumps => return Err("MUMPS is not available; enable the `local_sparse` feature"),
+            #[cfg(not(feature = "mumps"))]
+            Genie::Mumps => return Err("MUMPS is not available; enable the `mumps` feature"),
             Genie::Umfpack => Box::new(ComplexSolverUMFPACK::new()?),
         };
         Ok(ComplexLinSolver { actual })
@@ -173,12 +173,12 @@ mod tests {
     use crate::{Genie, Samples};
     use russell_lab::{ComplexVector, complex_vec_approx_eq, cpx};
 
-    #[cfg(feature = "local_sparse")]
+    #[cfg(feature = "mumps")]
     use serial_test::serial;
 
     #[test]
     #[serial]
-    #[cfg(feature = "local_sparse")]
+    #[cfg(feature = "mumps")]
     fn complex_lin_solver_compute_works_mumps() {
         let (coo, _, _, _) = Samples::complex_symmetric_3x3_lower();
         let mut x = ComplexVector::new(3);

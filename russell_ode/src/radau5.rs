@@ -733,7 +733,7 @@ mod tests {
     use russell_lab::{Vector, format_fortran, format_scientific};
     use russell_sparse::{Genie, Sym};
 
-    #[cfg(feature = "local_sparse")]
+    #[cfg(feature = "mumps")]
     use serial_test::serial;
 
     // IMPORTANT:
@@ -984,7 +984,7 @@ mod tests {
 
     #[test]
     #[serial]
-    #[cfg(feature = "local_sparse")]
+    #[cfg(feature = "mumps")]
     fn radau5_works_mass_matrix_mumps() {
         let genie = Genie::Mumps;
         for symmetric in [true, false] {

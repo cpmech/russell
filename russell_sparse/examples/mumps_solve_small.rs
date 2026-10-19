@@ -1,13 +1,13 @@
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use russell_lab::*;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use russell_sparse::prelude::*;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use russell_sparse::StrError;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 fn main() -> Result<(), StrError> {
     // constants
     let ndim = 5; // number of rows = number of columns
@@ -85,18 +85,18 @@ fn main() -> Result<(), StrError> {
     println!("          max_abs_ax = {:?}", verify.max_abs_ax);
     println!("        max_abs_diff = {:?}", verify.max_abs_diff);
     println!("      relative_error = {:?}", verify.relative_error);
-    println!("              norm_a = {:?}", &s.inf_norm_a);
-    println!("              norm_x = {:?}", &s.inf_norm_x);
-    println!("            residual = {:?}", &s.scaled_residual);
-    println!("              omega1 = {:?}", &s.backward_error_omega1);
-    println!("              omega2 = {:?}", &s.backward_error_omega2);
-    println!("               delta = {:?}", &s.normalized_delta_x);
-    println!("               cond1 = {:?}", &s.condition_number1);
-    println!("               cond2 = {:?}", &s.condition_number2);
+    println!("              norm_a = {:?}", s.inf_norm_a);
+    println!("              norm_x = {:?}", s.inf_norm_x);
+    println!("            residual = {:?}", s.scaled_residual);
+    println!("              omega1 = {:?}", s.backward_error_omega1);
+    println!("              omega2 = {:?}", s.backward_error_omega2);
+    println!("               delta = {:?}", s.normalized_delta_x);
+    println!("               cond1 = {:?}", s.condition_number1);
+    println!("               cond2 = {:?}", s.condition_number2);
     Ok(())
 }
 
-#[cfg(not(feature = "local_sparse"))]
+#[cfg(not(feature = "mumps"))]
 fn main() {
     println!("MUMPS is not available");
 }

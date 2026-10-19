@@ -65,5 +65,7 @@ bash ./zscripts/windows-compile-mumps.bash
 You may now test the code with MUMPS by running:
 
 ```bash
-cargo test --features local_sparse
+# the locally compiled solvers, installed under RUSSELL_LOCAL_PREFIX
+$env:RUSSELL_LOCAL_PREFIX = 'C:\local'
+cargo test --features local_umfpack,mumps
 ```

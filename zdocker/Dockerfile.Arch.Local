@@ -43,4 +43,5 @@ USER user
 
 # Test the code
 ENV RUST_BACKTRACE=1
-RUN cargo test --features local_sparse
+ENV RUSSELL_LOCAL_PREFIX=/usr/local
+RUN cargo test --features local_umfpack,mumps

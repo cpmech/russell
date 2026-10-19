@@ -388,16 +388,16 @@ pub use util::*;
 
 // ----- MUMPS
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 mod complex_solver_mumps;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 mod solver_mumps;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 pub use complex_solver_mumps::*;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 pub use solver_mumps::*;
 
 // ------ README file

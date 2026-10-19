@@ -833,17 +833,17 @@ mod tests {
         let default = "Error: unknown error returned by c-code (MUMPS)";
         for c in 1..57 {
             let res = handle_mumps_error_code(-c);
-            assert!(res.len() > 0);
+            assert!(!res.is_empty());
             assert_ne!(res, default);
         }
         for c in 70..80 {
             let res = handle_mumps_error_code(-c);
-            assert!(res.len() > 0);
+            assert!(!res.is_empty());
             assert_ne!(res, default);
         }
         for c in &[-90, -800, 1, 2, 4, 8] {
             let res = handle_mumps_error_code(*c);
-            assert!(res.len() > 0);
+            assert!(!res.is_empty());
             assert_ne!(res, default);
         }
         assert_eq!(

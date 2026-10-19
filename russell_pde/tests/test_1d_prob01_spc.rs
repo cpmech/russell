@@ -2,7 +2,7 @@ use russell_lab::approx_eq;
 use russell_pde::{ProblemSamples, Spc1d, StrError};
 use russell_sparse::Genie;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use serial_test::serial;
 
 #[test]
@@ -14,7 +14,7 @@ fn test_1d_prob01_spc() -> Result<(), StrError> {
     Ok(())
 }
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 #[test]
 #[serial]
 fn test_1d_prob01_spc_mumps() -> Result<(), StrError> {

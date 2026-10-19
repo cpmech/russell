@@ -1,4 +1,4 @@
-#![cfg(feature = "local_sparse")]
+#![cfg(feature = "mumps")]
 
 use russell_lab::*;
 use russell_sparse::prelude::*;

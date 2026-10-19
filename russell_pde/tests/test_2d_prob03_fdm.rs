@@ -3,7 +3,7 @@ use russell_lab::approx_eq;
 use russell_pde::{Fdm2d, Grid2d, ProblemSamples, StrError};
 use russell_sparse::Genie;
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 use serial_test::serial;
 
 const SAVE_FIGURE: bool = false;
@@ -29,7 +29,7 @@ fn test_2d_prob03_fdm() -> Result<(), StrError> {
     Ok(())
 }
 
-#[cfg(feature = "local_sparse")]
+#[cfg(feature = "mumps")]
 #[test]
 #[serial]
 fn test_2d_prob03_fdm_mumps_sym() -> Result<(), StrError> {

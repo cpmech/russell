@@ -18,8 +18,9 @@ USE_INTEL_MKL=${1:-0}
 
 # Installation paths
 PREFIX="/usr/local"
-INCDIR=$PREFIX/include/suitesparse
-LIBDIR=$PREFIX/lib/suitesparse
+# The layout the `local_umfpack` feature expects: $PREFIX/{include,lib}/umfpack
+INCDIR=$PREFIX/include/umfpack
+LIBDIR=$PREFIX/lib/umfpack
 
 # Install build tools and BLAS/LAPACK dependencies
 sudo apt-get update -y
@@ -80,5 +81,5 @@ sudo mkdir -p $LIBDIR/
 sudo cp -av lib/* $LIBDIR/
 
 # update ldconfig
-echo "${LIBDIR}" | sudo tee /etc/ld.so.conf.d/suitesparse.conf >/dev/null
+echo "${LIBDIR}" | sudo tee /etc/ld.so.conf.d/umfpack.conf >/dev/null
 sudo ldconfig 2> >(grep -v 'is not an ELF file\|is not a symbolic link' >&2)

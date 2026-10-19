@@ -16,7 +16,8 @@ keywords = ["partial", "differential", "tools"]
 # that have none, such as `wasm32-unknown-unknown`.
 open_blas = ["russell_lab/open_blas"]
 intel_mkl = ["russell_lab/intel_mkl", "russell_sparse/intel_mkl"]
-local_sparse = ["russell_sparse/local_sparse"]
+local_umfpack = ["russell_sparse/local_umfpack"]
+mumps = ["russell_sparse/mumps"]
 
 [dependencies]
 russell_lab = { path = "../russell_lab", version = "3" }

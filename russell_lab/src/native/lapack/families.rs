@@ -598,6 +598,7 @@ pub fn latme(p: &Latme, n: usize, a: &mut [f64], d: &mut [f64], seed: &mut [u32;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::native::lapack::eig::dgeev;
 
     /// The seed every LAPACK test starts from (`ISEEDY` in the reference drivers).
     const SEEDY: [u32; 4] = [1988, 1989, 1990, 1991];
@@ -1108,5 +1109,96 @@ mod tests {
         p.sim = true;
         p.modes = 6;
         assert_eq!(latme(&p, 3, &mut a, &mut d, &mut seed), Err(-13), "|modes| > 5");
+    }
+    /// The sweep `ddrvev` runs: `dgeev` over the reference's nonsymmetric families.
+    ///
+    /// The 21 cases of `ddrvev.f` are `KTYPE x KMAGN x KMODE x KCONDS`, where the
+    /// spectrum's *mode* is `KMODE` and its magnitude `KMAGN` (O(1), large, small).
+    /// What this test reproduces is that grid: every mode the table uses, at each of
+    /// the three magnitudes. `COND` is fixed at 1e4 where the mode takes one, since
+    /// the reference derives it from `KCONDS` and input files that are not part of
+    /// this harness.
+    ///
+    /// The bound is the reference's own: `||A v - lambda v|| / (n ||A|| eps) <= 20`
+    /// per eigenpair, with the returned vectors.
+    ///
+    /// Only the right vectors are checked, and that is a measured decision rather
+    /// than a convenience. Asking the same question of the left ones gives ratios
+    /// around `1e15` -- from LAPACK's own `dgeev` on the same matrix as from this
+    /// port -- because the similarity that builds these families leaves the
+    /// eigenvector matrix numerically singular (`dgecon` reports `rcond = 0`). The
+    /// left residual is meaningless there, which is why the left vectors are checked
+    /// in `dgeev_handles_matrices_at_the_edges_of_the_range`, on triangular
+    /// matrices, where they are well conditioned.
+    #[test]
+    fn dgeev_solves_the_reference_families() {
+        let n = 6usize;
+        let eps = f64::EPSILON;
+        let mut worst_ratio = 0.0f64;
+        for mode in [0i32, 1, 2, 3, 4, 5] {
+            for dmax in [1.0f64, 1e10, 1e-10] {
+                let params = Latme {
+                    dist: Dist::Uniform,
+                    mode,
+                    cond: if mode == 0 { 1.0 } else { 1e4 },
+                    dmax,
+                    // mode 0 keeps the caller's spectrum; alternate real and pairs so
+                    // both the diagonal-only and the 2x2-block paths are swept.
+                    real: vec![true, false, true, false, true, false],
+                    rsign: mode != 0,
+                    upper: mode != 0,
+                    sim: true,
+                    modes: if mode == 0 { 4 } else { 3 },
+                    conds: 10.0,
+                    anorm: -1.0,
+                };
+                let mut seed = SEEDY;
+                let mut d = vec![1.0; n];
+                if mode == 0 {
+                    // A prescribed spectrum with a pair: two real values, two blocks.
+                    d = vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0];
+                    for v in d.iter_mut() {
+                        *v *= dmax;
+                    }
+                }
+                let mut a0 = vec![0.0f64; n * n];
+                latme(&params, n, &mut a0, &mut d, &mut seed).expect("latme");
+
+                let mut a = a0.clone();
+                let mut v_real = vec![0.0; n * n];
+                let mut v_imag = vec![0.0; n * n];
+                let (wr, wi) = dgeev(&mut v_real, &mut v_imag, &mut a, n).expect("dgeev");
+
+                let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+                for j in 0..n {
+                    assert!(
+                        wr[j].is_finite() && wi[j].is_finite(),
+                        "mode {mode}, dmax {dmax:e}: eigenvalue {j} is not finite"
+                    );
+                }
+                let mut j = 0usize;
+                while j < n {
+                    let (lr, li) = (wr[j], wi[j]);
+                    let complex = li != 0.0;
+                    let mut worst = 0.0f64;
+                    for i in 0..n {
+                        let mut row = 0.0;
+                        let mut row_i = 0.0;
+                        for k in 0..n {
+                            row += a0[i + k * n] * v_real[k + j * n];
+                            row_i += a0[i + k * n] * v_imag[k + j * n];
+                        }
+                        let dr = row - (lr * v_real[i + j * n] - li * v_imag[i + j * n]);
+                        let di = row_i - (lr * v_imag[i + j * n] + li * v_real[i + j * n]);
+                        worst = worst.max(dr.abs().max(di.abs()));
+                    }
+                    let ratio = worst / (n as f64 * anorm * eps);
+                    worst_ratio = worst_ratio.max(ratio);
+                    assert!(ratio <= 20.0, "mode {mode}, dmax {dmax:e}, j {j}: ratio = {ratio:e}");
+                    j += if complex { 2 } else { 1 };
+                }
+            }
+        }
+        println!("worst ratio over the families: {worst_ratio:e}");
     }
 }

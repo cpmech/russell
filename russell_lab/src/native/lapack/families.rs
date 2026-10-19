@@ -355,6 +355,90 @@ pub fn latm1(mode: i32, cond: f64, irsign: i32, dist: Dist, seed: &mut [u32; 4],
     Ok(())
 }
 
+/// `DNRM2` as the reference BLAS computes it: the accumulation is rescaled by the
+/// largest entry seen so far, so `ssq` is a running quantity. The crate's own
+/// `dnrm2` divides by the global maximum instead, which is a different rounding --
+/// fine for solving, but the harness exists to reproduce the reference's matrices,
+/// and a difference of one bit in the norm moves every entry downstream of it.
+fn dnrm2_reference(x: &[f64]) -> f64 {
+    let mut scale = 0.0f64;
+    let mut ssq = 1.0f64;
+    for &v in x {
+        let absxi = v.abs();
+        if absxi > 0.0 {
+            if scale < absxi {
+                let r = scale / absxi;
+                ssq = 1.0 + ssq * r * r;
+                scale = absxi;
+            } else {
+                let r = absxi / scale;
+                ssq += r * r;
+            }
+        }
+    }
+    scale * ssq.sqrt()
+}
+
+/// Port of `DLARGE`: pre- and post-multiply `a` (column-major, `n x n`) by a random
+/// orthogonal matrix, one Householder reflection at a time, drawn from the normal
+/// distribution.
+///
+/// The reference builds each reflector from `DLARNV(3, ...)` and applies it as
+/// `DLGEMV` + `DLGER` on both sides; the same two rank-one updates are written out
+/// here, in the same order, so the arithmetic is identical.
+pub fn large(n: usize, a: &mut [f64], seed: &mut [u32; 4]) {
+    assert_eq!(a.len(), n * n, "large: a must be n*n");
+    let mut w = vec![0.0f64; n];
+    for i in (0..n).rev() {
+        let len = n - i;
+        let refl = &mut w[..len];
+        larnv(Dist::Normal, seed, len, refl);
+        let wn = dnrm2_reference(refl);
+        // SIGN(WN, WORK(1)): the sign of the first entry, and + when it is zero.
+        let wa = if refl[0] < 0.0 { -wn } else { wn };
+        let tau = if wn == 0.0 {
+            0.0
+        } else {
+            let wb = refl[0] + wa;
+            if len > 1 {
+                let inv = 1.0 / wb;
+                for v in refl[1..].iter_mut() {
+                    *v *= inv;
+                }
+            }
+            refl[0] = 1.0;
+            wb / wa
+        };
+        if tau == 0.0 {
+            continue;
+        }
+        // A(i:n, 1:n) -= tau * w * (w^T A(i:n, 1:n)), column by column.
+        for j in 0..n {
+            let mut dot = 0.0;
+            for k in 0..len {
+                dot += w[k] * a[i + k + j * n];
+            }
+            if dot != 0.0 {
+                for k in 0..len {
+                    a[i + k + j * n] -= tau * w[k] * dot;
+                }
+            }
+        }
+        // A(1:n, i:n) -= tau * (A(1:n, i:n) w) * w^T, row by row.
+        for r in 0..n {
+            let mut dot = 0.0;
+            for k in 0..len {
+                dot += a[r + (i + k) * n] * w[k];
+            }
+            if dot != 0.0 {
+                for k in 0..len {
+                    a[r + (i + k) * n] -= tau * dot * w[k];
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -600,5 +684,59 @@ mod tests {
         assert_eq!(d, [0.0; 4]);
         let mut empty: [f64; 0] = [];
         assert_eq!(latm1(3, 1e3, 0, Dist::Uniform, &mut seed, &mut empty), Ok(()));
+    }
+    /// `DLARGE` pinned against the reference build: a 4x4 matrix of small integers
+    /// through the random orthogonal similarity, entry for entry, seed included.
+    ///
+    /// The comparison is at `1e-13` relative, not bit for bit: the reference applies
+    /// each reflector with DGEMV+DGER from *its* BLAS, and the last bits of a dot
+    /// product depend on that build's summation order (`DNRM2` alone took a running
+    /// rescale to match). A transcription error moves these entries by O(1), so the
+    /// tolerance still catches what this fixture exists to catch; the seed, which
+    /// depends only on the draws, is compared exactly.
+    #[test]
+    fn large_matches_the_reference_orthogonal_similarity() {
+        let n = 4usize;
+        let mut a = [0.0f64; 16];
+        for j in 0..n {
+            for i in 0..n {
+                a[i + j * n] = (10 * (i + 1) + (j + 1)) as f64;
+            }
+        }
+        let mut seed = SEEDY;
+        large(n, &mut a, &mut seed);
+
+        let want: [f64; 16] = [
+            2.3024147769153203e-1,
+            -3.8619896079084226e-1,
+            1.0582228391185904,
+            -2.7512034544488131,
+            -4.9125076648019270,
+            -2.7454305584670942,
+            -8.6945327915188884,
+            2.9222577418995357e1,
+            6.7788124210788379,
+            2.5135150445843757,
+            1.3608984701968311e1,
+            -4.3745578309755906e1,
+            -1.4896900680174987e1,
+            -4.4904640952740786,
+            -3.1212425521549907e1,
+            9.8906204378807260e1,
+        ];
+        for j in 0..n {
+            for i in 0..n {
+                let got = a[i + j * n];
+                let w = want[i + j * n];
+                let tol = 1e-13 * w.abs().max(1.0);
+                assert!(
+                    (got - w).abs() <= tol,
+                    "a({}, {}) = {got:e}, reference {w:e}",
+                    i + 1,
+                    j + 1
+                );
+            }
+        }
+        assert_eq!(seed, [523, 2892, 2970, 2903], "seed after the similarity");
     }
 }

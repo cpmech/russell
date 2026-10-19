@@ -2714,4 +2714,128 @@ mod tests {
         let mut w = vec![0.0; 2];
         assert_eq!(zheev(&mut a[0..3], &mut w, 2, false), Err(LapackError::BadShape));
     }
+    /// The Hermitian twin: `zheev` scales the matrix with `zlascl_tri` when its norm
+    /// leaves `[rmin, rmax]`, and the tridiagonal iteration then rescales again with
+    /// `dlascl_vec`. Neither ran before, and both are the paths where a wrong scale
+    /// factor overflows silently. Residual and orthogonality are eps-normalized.
+    #[test]
+    fn zheev_handles_matrices_at_the_edges_of_the_range() {
+        let n = 4usize;
+        let eps = f64::EPSILON;
+        for s in [1e300f64, 1e-300, 1e250, 1e-250, 1.0] {
+            let mut b = vec![zero(); n * n];
+            for i in 0..n {
+                for j in 0..n {
+                    let re = (((i * 7 + j * 13 + 3) % 11) as f64) - 5.0;
+                    let im = (((i * 5 + j * 17 + 7) % 9) as f64) - 4.0;
+                    b[i + j * n] = cpx(re, im);
+                }
+            }
+            let mut a0 = vec![zero(); n * n];
+            for i in 0..n {
+                for j in 0..n {
+                    a0[i + j * n] = (b[i + j * n] + b[j + i * n].conj()) * s;
+                }
+            }
+            let mut a = a0.clone();
+            let mut w = vec![0.0; n];
+            zheev(&mut a, &mut w, n, false).expect("zheev");
+
+            let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.norm()));
+            for k in 0..n {
+                assert!(w[k].is_finite(), "s = {s}: eigenvalue {k} is not finite");
+            }
+            for k in 1..n {
+                assert!(w[k - 1] <= w[k], "s = {s}: eigenvalues are not ordered");
+            }
+            for k in 0..n {
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut row = zero();
+                    for j in 0..n {
+                        row += a0[i + j * n] * a[j + k * n];
+                    }
+                    worst = worst.max((row - a[i + k * n] * w[k]).norm());
+                }
+                let ratio = worst / (n as f64 * anorm * eps);
+                assert!(ratio <= 20.0, "s = {s}, k = {k}: residual ratio = {ratio:e}");
+            }
+            let mut orth = 0.0f64;
+            for i in 0..n {
+                for j in 0..n {
+                    let mut dot = zero();
+                    for k in 0..n {
+                        dot += a[k + i * n].conj() * a[k + j * n];
+                    }
+                    let want = if i == j { 1.0 } else { 0.0 };
+                    orth = orth.max((dot - cpx(want, 0.0)).norm());
+                }
+            }
+            let ratio = orth / (n as f64 * eps);
+            assert!(ratio <= 20.0, "s = {s}: orthogonality ratio = {ratio:e}");
+        }
+    }
+    /// The complex twin: `zgeev` on entries at the edges of the range, where the
+    /// eigenvector back-substitution has to rescale the triangular solve
+    /// (`zlatrs_upper`) instead of overflowing. Residual eps-normalized.
+    #[test]
+    fn zgeev_handles_matrices_at_the_edges_of_the_range() {
+        let n = 4usize;
+        let eps = f64::EPSILON;
+        // (diagonal, super-diagonal) magnitudes: uniform extremes, then the growth
+        // cases where the triangular solve has to rescale instead of overflowing.
+        let cases = [
+            (1e300f64, 1e300f64),
+            (1e-300, 1e-300),
+            (1e250, 1e250),
+            (1e-250, 1e-250),
+            (1.0, 1.0),
+            (1.0, 1e200),
+            (1e-200, 1e200),
+            (1e-100, 1e150),
+        ];
+        for (s, o) in cases {
+            let mut a0 = vec![zero(); n * n];
+            for i in 0..n {
+                a0[i + i * n] = cpx(s * (i as f64 + 1.0), s * 0.1 * i as f64);
+                for j in (i + 1)..n {
+                    a0[i + j * n] = cpx(o * 0.3 / (j - i) as f64, -o * 0.2 / (j - i) as f64);
+                }
+            }
+            let mut a = a0.clone();
+            let mut w = vec![zero(); n];
+            let mut vl = vec![zero(); n * n];
+            let mut vr = vec![zero(); n * n];
+            zgeev(&mut w, &mut a, n, Some(&mut vl), Some(&mut vr)).expect("zgeev");
+
+            let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.norm()));
+            for j in 0..n {
+                assert!(w[j].norm().is_finite(), "s = {s}: eigenvalue {j} is not finite");
+            }
+            for j in 0..n {
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut row = zero();
+                    for k in 0..n {
+                        row += a0[i + k * n] * vr[k + j * n];
+                    }
+                    worst = worst.max((row - vr[i + j * n] * w[j]).norm());
+                }
+                let ratio = worst / (n as f64 * anorm * eps);
+                assert!(ratio <= 20.0, "s = {s}, j = {j}: residual ratio = {ratio:e}");
+
+                // left eigenvectors: A^H u = conj(lambda) u
+                let mut worst = 0.0f64;
+                for i in 0..n {
+                    let mut row = zero();
+                    for k in 0..n {
+                        row += a0[k + i * n].conj() * vl[k + j * n];
+                    }
+                    worst = worst.max((row - vl[i + j * n] * w[j].conj()).norm());
+                }
+                let ratio = worst / (n as f64 * anorm * eps);
+                assert!(ratio <= 20.0, "s = {s}, j = {j}: left ratio = {ratio:e}");
+            }
+        }
+    }
 }

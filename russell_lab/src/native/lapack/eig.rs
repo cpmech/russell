@@ -3631,7 +3631,7 @@ mod tests {
     /// unit Euclidean norm, and for a conjugate pair the component of largest
     /// modulus lies on the real axis.
     #[test]
-    fn dgeev_returns_normalised_eigenvectors() {
+    fn dgeev_returns_normalized_eigenvectors() {
         for n in [2usize, 3, 5, 8] {
             let orig = sample(n);
             let mut a = orig.clone();
@@ -4172,6 +4172,83 @@ mod tests {
                 Err(LapackError::Convergence),
                 "dgeev_lr n={n} must report non-convergence"
             );
+        }
+    }
+    /// `dgeev_lr` on matrices whose entries span the representable range: balancing,
+    /// the Hessenberg reduction and the eigenvector back-substitution all have to
+    /// rescale or the products overflow. Uniform extremes and the growth cases (a tiny
+    /// diagonal with large off-diagonals, where the triangular solve passes `bignum`)
+    /// are both covered, and both sides are checked. An absolute tolerance says
+    /// nothing at 1e300, so the residual is the reference's eps-normalized ratio,
+    /// `||A v - lambda v|| / (n ||A|| eps) <= 20`, and the same for the left side.
+    #[test]
+    fn dgeev_handles_matrices_at_the_edges_of_the_range() {
+        let n = 4usize;
+        let eps = f64::EPSILON;
+        let cases = [
+            (1e300f64, 1e300f64),
+            (1e-300, 1e-300),
+            (1e250, 1e250),
+            (1e-250, 1e-250),
+            (1.0, 1.0),
+            (1.0, 1e200),
+            (1e-200, 1e200),
+            (1e-100, 1e150),
+        ];
+        for (d, o) in cases {
+            let mut a0 = vec![0.0; n * n];
+            for i in 0..n {
+                a0[i + i * n] = d * (i as f64 + 1.0);
+                for j in (i + 1)..n {
+                    a0[i + j * n] = o * 0.3 / (j - i) as f64;
+                }
+            }
+            let mut a = a0.clone();
+            let mut u_real = vec![0.0; n * n];
+            let mut u_imag = vec![0.0; n * n];
+            let mut v_real = vec![0.0; n * n];
+            let mut v_imag = vec![0.0; n * n];
+            let (wr, wi) = dgeev_lr(&mut u_real, &mut u_imag, &mut v_real, &mut v_imag, &mut a, n).expect("dgeev_lr");
+
+            let anorm = a0.iter().fold(0.0f64, |m, x| m.max(x.abs()));
+            let bound = n as f64 * anorm * eps;
+            for j in 0..n {
+                assert!(
+                    wr[j].is_finite() && wi[j].is_finite(),
+                    "d = {d}, o = {o}: eigenvalue {j} is not finite"
+                );
+            }
+            let mut j = 0usize;
+            while j < n {
+                let (lr, li) = (wr[j], wi[j]);
+                let complex = li != 0.0;
+                for (v_re, v_im, left) in [(&v_real, &v_imag, false), (&u_real, &u_imag, true)] {
+                    let mut worst = 0.0f64;
+                    for i in 0..n {
+                        let mut row = 0.0;
+                        let mut row_i = 0.0;
+                        for k in 0..n {
+                            // left eigenvectors satisfy u^T A = lambda u^T
+                            let (a_ik, a_ki) = if left {
+                                (a0[k + i * n], 0.0)
+                            } else {
+                                (a0[i + k * n], 0.0)
+                            };
+                            row += a_ik * v_re[k + j * n] - a_ki * v_im[k + j * n];
+                            row_i += a_ik * v_im[k + j * n] + a_ki * v_re[k + j * n];
+                        }
+                        let dr = row - (lr * v_re[i + j * n] - li * v_im[i + j * n]);
+                        let di = row_i - (lr * v_im[i + j * n] + li * v_re[i + j * n]);
+                        worst = worst.max(dr.abs().max(di.abs()));
+                    }
+                    let ratio = worst / bound;
+                    assert!(
+                        ratio <= 20.0,
+                        "d = {d}, o = {o}, j = {j}, left = {left}: ratio = {ratio:e}"
+                    );
+                }
+                j += if complex { 2 } else { 1 };
+            }
         }
     }
 }

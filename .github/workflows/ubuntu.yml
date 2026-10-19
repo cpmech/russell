@@ -40,4 +40,12 @@ jobs:
         run: |
           cargo llvm-cov --workspace --features local_umfpack,mumps \
             --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
-            --fail-under-lines 95
+            --lcov --output-path lcov.info
+      # The 95% threshold is applied to the DA records of the lcov file, not with
+      # `--fail-under-lines`: llvm-cov's own summary counts a line once per
+      # monomorphization, which reports const-generic dimension dispatch as two
+      # thirds uncovered. See zscripts/check-coverage.bash.
+      - name: Check line coverage
+        if: startsWith(matrix.rust, 'nightly')
+        run: |
+          bash zscripts/check-coverage.bash lcov.info 95

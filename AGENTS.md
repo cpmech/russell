@@ -335,10 +335,14 @@ cargo fmt --all -- --check
 # Lint
 cargo clippy --all-targets
 
-# Coverage (nightly + llvm-tools-preview); project requires >95% lines
+# Coverage (nightly + llvm-tools-preview); project requires >95% lines, counted once
+# per source line (llvm-cov's `--fail-under-lines` counts a line once per
+# monomorphization, so const-generic dimension dispatch reads as uncovered; the
+# `DA:` records of the lcov export are merged per line and are what the gate uses)
 cargo llvm-cov --workspace --features local_umfpack,mumps \
   --ignore-filename-regex 'build.rs|mem_check.rs|mem_check_lab.rs|solve_matrix_market.rs|amplifier1t.rs|brusselator_pde.rs' \
-  --fail-under-lines 95
+  --lcov --output-path lcov.info
+bash zscripts/check-coverage.bash lcov.info 95
 ```
 
 

@@ -207,6 +207,25 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
+    fn material_info_reports_formula_id_system_and_space_group() {
+        let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let db = PiezoDatabase::from_file(root.join("data/piezo_data.json")).expect("database");
+        let mat = db.materials.get("mp-3731").expect("LiNbO3 entry");
+        let info = mat.info();
+        assert!(info.contains(&mat.formula), "info: {info}");
+        assert!(info.contains(&mat.material_id), "info: {info}");
+        assert!(info.contains(&mat.crystal_system), "info: {info}");
+        assert!(info.contains(&mat.space_group_symbol), "info: {info}");
+        assert_eq!(
+            info,
+            format!(
+                "{} ({}) : Crystal System {} : Space Group {}",
+                mat.formula, mat.material_id, mat.crystal_system, mat.space_group_symbol
+            )
+        );
+    }
+
+    #[test]
     fn test_parse_piezo_data_json() {
         // get the asset's full path (the JSON file is in the crate's data/ directory)
         let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());

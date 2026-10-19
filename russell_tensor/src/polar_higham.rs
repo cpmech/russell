@@ -818,6 +818,28 @@ mod tests {
         check_polar(&a, &q, &h, 1e-13);
     }
 
+    /// Higham & Noferini's algorithm has a special case when the reduced 2×2 block
+    /// is singular, and that happens exactly when two singular values of A coincide
+    /// -- an isotropic stretch does it. The branch computes a null vector of a
+    /// symmetric 2×2 matrix and back-substitutes through Lᵀ; a wrong null vector
+    /// still yields an orthogonal Q for a generic A, so only a degenerate spectrum
+    /// exercises it.
+    #[test]
+    fn polar_quaternion_higham_on_repeated_singular_values() {
+        for (s1, s2, s3) in [(2.0, 2.0, 1.0), (1.0, 3.0, 3.0), (5.0, 5.0, 0.5), (2.0, 2.0, 2.0)] {
+            #[rustfmt::skip]
+            let a = Tensor2::<9>::from_std_matrix(&[
+                [s1, 0.0, 0.0],
+                [0.0, s2, 0.0],
+                [0.0, 0.0, s3],
+            ]).unwrap();
+            let mut q = Tensor2::<9>::new();
+            let mut h = Tensor2::<6>::new();
+            polar_quaternion_higham(&mut q, &mut h, &a).unwrap();
+            check_polar(&a, &q, &h, 1e-13);
+        }
+    }
+
     #[test]
     fn polar_quaternion_higham_works_case52() {
         // Higham & Noferini test (5.2) over a range of condition numbers

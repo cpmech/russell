@@ -708,4 +708,27 @@ mod tests {
         let a_gen = Tensor2::<9>::new();
         deriv1_invariant_lode(&mut d1_gen, &a_gen);
     }
+    #[test]
+    #[should_panic(expected = "the tensor must be symmetric with N = 4 or N = 6")]
+    fn deriv1_invariant_d_panics_on_non_gen() {
+        let mut d1_gen = Tensor2::<9>::new();
+        let a_gen = Tensor2::<9>::new();
+        deriv1_invariant_d(&mut d1_gen, &a_gen);
+    }
+
+    #[test]
+    #[should_panic(expected = "the tensor must be symmetric with N = 4 or N = 6")]
+    fn deriv1_invariant_p_panics_on_non_gen() {
+        let mut d1_gen = Tensor2::<9>::new();
+        let a_gen = Tensor2::<9>::new();
+        deriv1_invariant_p(&mut d1_gen, &a_gen);
+    }
+
+    #[test]
+    #[should_panic(expected = "the tensor must be symmetric with N = 4 or N = 6")]
+    fn deriv1_invariant_r_panics_on_non_gen() {
+        let mut d1_gen = Tensor2::<9>::new();
+        let a_gen = Tensor2::<9>::new();
+        let _ = deriv1_invariant_r(&mut d1_gen, &a_gen);
+    }
 }

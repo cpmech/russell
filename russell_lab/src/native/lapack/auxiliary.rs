@@ -500,6 +500,47 @@ mod tests {
         assert_eq!(z[1], cmplx(8.0, 0.0));
     }
 
+    /// `lascl_g` must survive ratios that are not representable, by scaling in
+    /// steps: the loop exists so that `a := (cto/cfrom) a` never forms an
+    /// overflowing or vanishing intermediate. The bench above only exercises
+    /// benign ratios, where the first `ctoc / cfromc` is already the answer.
+    ///
+    /// The expected value is formed as `(a cto) / cfrom`, an order that stays in
+    /// range for these inputs, with `a` chosen so the result is representable.
+    #[test]
+    fn lascl_g_survives_ratios_that_overflow_or_underflow() {
+        // (a, cfrom, cto, expected) -- expected = (a * cto) / cfrom
+        let cases = [
+            // cto/cfrom = 1e600 overflows: the loop must reach it by scaling up in
+            // steps (mul = bignum), not by forming the ratio
+            (1e-300, 1e-300, 1e300, 1e300),
+            // cto/cfrom = 1e-600 underflows: scale down in steps (mul = smlnum)
+            (1e300, 1e300, 1e-300, 1e-300),
+            // cto = 0 cannot be reached by scaling down: the loop takes the
+            // ctoc-underflowed branch and multiplies by ctoc itself
+            (5.0, 1.0, 0.0, 0.0),
+            // both factors large, ratio 1: no scaling should be applied at all
+            (1e-100, 1e300, 1e300, 1e-100),
+        ];
+        for (a_in, cfrom, cto, expected) in cases {
+            let mut a = vec![a_in, -a_in];
+            dlascl_g(cfrom, cto, &mut a, 1, 1, 2); // 1x2 block, column-major with lda = 1
+            assert!(
+                a[0].is_finite(),
+                "cfrom = {cfrom}, cto = {cto}: a[0] = {} is not finite",
+                a[0]
+            );
+            for (k, v) in a.iter().enumerate() {
+                let sign = if k == 0 { 1.0 } else { -1.0 };
+                let want = sign * expected;
+                assert!(
+                    (v - want).abs() <= 1e-13 * want.abs().max(f64::MIN_POSITIVE),
+                    "cfrom = {cfrom}, cto = {cto}: a[{k}] = {v} != {want}"
+                );
+            }
+        }
+    }
+
     /// `zlarf_left` must equal `C := (I - tau v v^H) C` and `zlarf_right` must
     /// equal `C := C (I - tau v v^H)`, both applied to the block that starts at
     /// `(r0, c0)` and to nothing else.

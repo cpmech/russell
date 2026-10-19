@@ -1,3 +1,4 @@
+use super::SsdDim;
 use crate::{ADD, SQRT_2};
 use crate::{Tensor2, Tensor4};
 
@@ -29,229 +30,257 @@ use crate::{Tensor2, Tensor4};
 ///
 /// * `op` -- operation: ADD or SET
 /// * `aa` -- Second-order tensor, symmetric or not.
-pub fn ssd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<N>) {
+#[allow(private_bounds)]
+pub fn ssd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<N>)
+where
+    Tensor4<N>: SsdDim,
+{
     ssd_fn_vec::<N>(dd, op, s, aa.as_vec());
 }
 
 /// Internal (unrolled) self-sum-dyadic operation on raw Kelvin-Mandel vectors.
+///
+/// The dimension dispatch is static: [`SsdDim`] is implemented once per
+/// supported dimension, so every kernel is monomorphic and fully reachable by the
+/// tests. Keeping the three bodies in one const-generic function leaves two thirds
+/// of each instantiation unreachable -- `N` is a const parameter, so the other
+/// dimensions' branches can never execute.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn ssd_fn_vec<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64; N]) {
-    if op == ADD {
-        if N == 4 {
-            dd.add(0, 0, s*(2.0*a[0]*a[0]));
-            dd.add(0, 1, s*(a[3]*a[3]));
-            dd.add(0, 2, 0.0);
-            dd.add(0, 3, s*(2.0*a[0]*a[3]));
+#[allow(private_bounds)]
+pub(crate) fn ssd_fn_vec<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64])
+where
+    Tensor4<N>: SsdDim,
+{
+    dd.ssd(op, s, a);
+}
 
-            dd.add(1, 0, s*(a[3]*a[3]));
-            dd.add(1, 1, s*(2.0*a[1]*a[1]));
-            dd.add(1, 2, 0.0);
-            dd.add(1, 3, s*(2.0*a[1]*a[3]));
+impl SsdDim for Tensor4<4> {
+    #[rustfmt::skip]
+    fn ssd(&mut self, op: u8, s: f64, a: &[f64]) {
+        if op == ADD {
+            self.add(0, 0, s*(2.0*a[0]*a[0]));
+            self.add(0, 1, s*(a[3]*a[3]));
+            self.add(0, 2, 0.0);
+            self.add(0, 3, s*(2.0*a[0]*a[3]));
 
-            dd.add(2, 0, 0.0);
-            dd.add(2, 1, 0.0);
-            dd.add(2, 2, s*(2.0*a[2]*a[2]));
-            dd.add(2, 3, 0.0);
+            self.add(1, 0, s*(a[3]*a[3]));
+            self.add(1, 1, s*(2.0*a[1]*a[1]));
+            self.add(1, 2, 0.0);
+            self.add(1, 3, s*(2.0*a[1]*a[3]));
 
-            dd.add(3, 0, s*(2.0*a[0]*a[3]));
-            dd.add(3, 1, s*(2.0*a[1]*a[3]));
-            dd.add(3, 2, 0.0);
-            dd.add(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
-        } else if N == 6 {
-            dd.add(0, 0, s*(2.0*a[0]*a[0]));
-            dd.add(0, 1, s*(a[3]*a[3]));
-            dd.add(0, 2, s*(a[5]*a[5]));
-            dd.add(0, 3, s*(2.0*a[0]*a[3]));
-            dd.add(0, 4, s*(SQRT_2*a[3]*a[5]));
-            dd.add(0, 5, s*(2.0*a[ 0]*a[5]));
+            self.add(2, 0, 0.0);
+            self.add(2, 1, 0.0);
+            self.add(2, 2, s*(2.0*a[2]*a[2]));
+            self.add(2, 3, 0.0);
 
-            dd.add(1, 0, s*(a[3]*a[3]));
-            dd.add(1, 1, s*(2.0*a[1]*a[1]));
-            dd.add(1, 2, s*(a[4]*a[4]));
-            dd.add(1, 3, s*(2.0*a[1]*a[3]));
-            dd.add(1, 4, s*(2.0*a[1]*a[4]));
-            dd.add(1, 5, s*(SQRT_2*a[3]*a[4]));
-
-            dd.add(2, 0, s*(a[5]*a[5]));
-            dd.add(2, 1, s*(a[4]*a[4]));
-            dd.add(2, 2, s*(2.0*a[2]*a[2]));
-            dd.add(2, 3, s*(SQRT_2*a[4]*a[ 5]));
-            dd.add(2, 4, s*(2.0*a[2]*a[4]));
-            dd.add(2, 5, s*(2.0*a[2]*a[5]));
-
-            dd.add(3, 0, s*(2.0*a[0]*a[3]));
-            dd.add(3, 1, s*(2.0*a[1]*a[3]));
-            dd.add(3, 2, s*(SQRT_2*a[4]* a[5]));
-            dd.add(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
-            dd.add(3, 4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
-            dd.add(3, 5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5]));
-
-            dd.add(4, 0, s*(SQRT_2*a[3]*a[5]));
-            dd.add(4, 1, s*(2.0*a[1]*a[4]));
-            dd.add(4, 2, s*(2.0*a[2]*a[4]));
-            dd.add(4, 3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
-            dd.add(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4]));
-            dd.add(4, 5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
-
-            dd.add(5, 0, s*(2.0*a[0]*a[5]));
-            dd.add(5, 1, s*(SQRT_2*a[3]*a[4]));
-            dd.add(5, 2, s*(2.0*a[2]*a[5]));
-            dd.add(5, 3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5]));
-            dd.add(5, 4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
-            dd.add(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
+            self.add(3, 0, s*(2.0*a[0]*a[3]));
+            self.add(3, 1, s*(2.0*a[1]*a[3]));
+            self.add(3, 2, 0.0);
+            self.add(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
         } else {
-            debug_assert!(N == 9);
+            self.set(0, 0, s*(2.0*a[0]*a[0]));
+            self.set(0, 1, s*(a[3]*a[3]));
+            self.set(0, 2, 0.0);
+            self.set(0, 3, s*(2.0*a[0]*a[3]));
 
-            dd.add(0, 0, s*(2.0*a[0]*a[0]));
-            dd.add(0, 1, s*((a[3] + a[6])*(a[3] + a[6])));
-            dd.add(0, 2, s*((a[5] + a[8])*(a[5] + a[8])));
-            dd.add(0, 3, s*(2.0*a[0]*(a[3] + a[6])));
-            dd.add(0, 4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8])));
-            dd.add(0, 5, s*(2.0*a[0]*(a[5] + a[8])));
+            self.set(1, 0, s*(a[3]*a[3]));
+            self.set(1, 1, s*(2.0*a[1]*a[1]));
+            self.set(1, 2, 0.0);
+            self.set(1, 3, s*(2.0*a[1]*a[3]));
 
-            dd.add(1, 0, s*((a[3] - a[6])*(a[3] - a[6])));
-            dd.add(1, 1, s*(2.0*a[1]*a[1]));
-            dd.add(1, 2, s*((a[4] + a[7])*(a[4] + a[7])));
-            dd.add(1, 3, s*(2.0*a[1]*(a[3] - a[6])));
-            dd.add(1, 4, s*(2.0*a[1]*(a[4] + a[7])));
-            dd.add(1, 5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7])));
+            self.set(2, 0, 0.0);
+            self.set(2, 1, 0.0);
+            self.set(2, 2, s*(2.0*a[2]*a[2]));
+            self.set(2, 3, 0.0);
 
-            dd.add(2, 0, s*((a[5] - a[8])*(a[5] - a[8])));
-            dd.add(2, 1, s*((a[4] - a[7])*(a[4] - a[7])));
-            dd.add(2, 2, s*(2.0*a[2]*a[2]));
-            dd.add(2, 3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8])));
-            dd.add(2, 4, s*(2.0*a[2]*(a[4] - a[7])));
-            dd.add(2, 5, s*(2.0*a[2]*(a[5] - a[8])));
-
-            dd.add(3, 0, s*(2.0*a[0]*(a[3] - a[6])));
-            dd.add(3, 1, s*(2.0*a[1]*(a[3] + a[6])));
-            dd.add(3, 2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8])));
-            dd.add(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6]));
-            dd.add(3, 4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8])));
-            dd.add(3, 5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8])));
-
-            dd.add(4, 0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8])));
-            dd.add(4, 1, s*(2.0*a[1]*(a[4] - a[7])));
-            dd.add(4, 2, s*(2.0*a[2]*(a[4] + a[7])));
-            dd.add(4, 3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8])));
-            dd.add(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7]));
-            dd.add(4, 5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8])));
-
-            dd.add(5, 0, s*(2.0*a[0]*(a[5] - a[8])));
-            dd.add(5, 1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7])));
-            dd.add(5, 2, s*(2.0*a[2]*(a[5] + a[8])));
-            dd.add(5, 3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8])));
-            dd.add(5, 4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8])));
-            dd.add(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8]));
+            self.set(3, 0, s*(2.0*a[0]*a[3]));
+            self.set(3, 1, s*(2.0*a[1]*a[3]));
+            self.set(3, 2, 0.0);
+            self.set(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
         }
-    } else {
-        if N == 4 {
-            dd.set(0, 0, s*(2.0*a[0]*a[0]));
-            dd.set(0, 1, s*(a[3]*a[3]));
-            dd.set(0, 2, 0.0);
-            dd.set(0, 3, s*(2.0*a[0]*a[3]));
+    }
+}
 
-            dd.set(1, 0, s*(a[3]*a[3]));
-            dd.set(1, 1, s*(2.0*a[1]*a[1]));
-            dd.set(1, 2, 0.0);
-            dd.set(1, 3, s*(2.0*a[1]*a[3]));
+impl SsdDim for Tensor4<6> {
+    #[rustfmt::skip]
+    fn ssd(&mut self, op: u8, s: f64, a: &[f64]) {
+        if op == ADD {
+            self.add(0, 0, s*(2.0*a[0]*a[0]));
+            self.add(0, 1, s*(a[3]*a[3]));
+            self.add(0, 2, s*(a[5]*a[5]));
+            self.add(0, 3, s*(2.0*a[0]*a[3]));
+            self.add(0, 4, s*(SQRT_2*a[3]*a[5]));
+            self.add(0, 5, s*(2.0*a[ 0]*a[5]));
 
-            dd.set(2, 0, 0.0);
-            dd.set(2, 1, 0.0);
-            dd.set(2, 2, s*(2.0*a[2]*a[2]));
-            dd.set(2, 3, 0.0);
+            self.add(1, 0, s*(a[3]*a[3]));
+            self.add(1, 1, s*(2.0*a[1]*a[1]));
+            self.add(1, 2, s*(a[4]*a[4]));
+            self.add(1, 3, s*(2.0*a[1]*a[3]));
+            self.add(1, 4, s*(2.0*a[1]*a[4]));
+            self.add(1, 5, s*(SQRT_2*a[3]*a[4]));
 
-            dd.set(3, 0, s*(2.0*a[0]*a[3]));
-            dd.set(3, 1, s*(2.0*a[1]*a[3]));
-            dd.set(3, 2, 0.0);
-            dd.set(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
-        } else if N == 6 {
-            dd.set(0, 0, s*(2.0*a[0]*a[0]));
-            dd.set(0, 1, s*(a[3]*a[3]));
-            dd.set(0, 2, s*(a[5]*a[5]));
-            dd.set(0, 3, s*(2.0*a[0]*a[3]));
-            dd.set(0, 4, s*(SQRT_2*a[3]*a[5]));
-            dd.set(0, 5, s*(2.0*a[ 0]*a[5]));
+            self.add(2, 0, s*(a[5]*a[5]));
+            self.add(2, 1, s*(a[4]*a[4]));
+            self.add(2, 2, s*(2.0*a[2]*a[2]));
+            self.add(2, 3, s*(SQRT_2*a[4]*a[ 5]));
+            self.add(2, 4, s*(2.0*a[2]*a[4]));
+            self.add(2, 5, s*(2.0*a[2]*a[5]));
 
-            dd.set(1, 0, s*(a[3]*a[3]));
-            dd.set(1, 1, s*(2.0*a[1]*a[1]));
-            dd.set(1, 2, s*(a[4]*a[4]));
-            dd.set(1, 3, s*(2.0*a[1]*a[3]));
-            dd.set(1, 4, s*(2.0*a[1]*a[4]));
-            dd.set(1, 5, s*(SQRT_2*a[3]*a[4]));
+            self.add(3, 0, s*(2.0*a[0]*a[3]));
+            self.add(3, 1, s*(2.0*a[1]*a[3]));
+            self.add(3, 2, s*(SQRT_2*a[4]* a[5]));
+            self.add(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
+            self.add(3, 4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
+            self.add(3, 5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5]));
 
-            dd.set(2, 0, s*(a[5]*a[5]));
-            dd.set(2, 1, s*(a[4]*a[4]));
-            dd.set(2, 2, s*(2.0*a[2]*a[2]));
-            dd.set(2, 3, s*(SQRT_2*a[4]*a[ 5]));
-            dd.set(2, 4, s*(2.0*a[2]*a[4]));
-            dd.set(2, 5, s*(2.0*a[2]*a[5]));
+            self.add(4, 0, s*(SQRT_2*a[3]*a[5]));
+            self.add(4, 1, s*(2.0*a[1]*a[4]));
+            self.add(4, 2, s*(2.0*a[2]*a[4]));
+            self.add(4, 3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
+            self.add(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4]));
+            self.add(4, 5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
 
-            dd.set(3, 0, s*(2.0*a[0]*a[3]));
-            dd.set(3, 1, s*(2.0*a[1]*a[3]));
-            dd.set(3, 2, s*(SQRT_2*a[4]* a[5]));
-            dd.set(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
-            dd.set(3, 4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
-            dd.set(3, 5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5]));
-
-            dd.set(4, 0, s*(SQRT_2*a[3]*a[5]));
-            dd.set(4, 1, s*(2.0*a[1]*a[4]));
-            dd.set(4, 2, s*(2.0*a[2]*a[4]));
-            dd.set(4, 3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
-            dd.set(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4]));
-            dd.set(4, 5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
-
-            dd.set(5, 0, s*(2.0*a[0]*a[5]));
-            dd.set(5, 1, s*(SQRT_2*a[3]*a[4]));
-            dd.set(5, 2, s*(2.0*a[2]*a[5]));
-            dd.set(5, 3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5]));
-            dd.set(5, 4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
-            dd.set(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
+            self.add(5, 0, s*(2.0*a[0]*a[5]));
+            self.add(5, 1, s*(SQRT_2*a[3]*a[4]));
+            self.add(5, 2, s*(2.0*a[2]*a[5]));
+            self.add(5, 3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5]));
+            self.add(5, 4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
+            self.add(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
         } else {
-            debug_assert!(N == 9);
+            self.set(0, 0, s*(2.0*a[0]*a[0]));
+            self.set(0, 1, s*(a[3]*a[3]));
+            self.set(0, 2, s*(a[5]*a[5]));
+            self.set(0, 3, s*(2.0*a[0]*a[3]));
+            self.set(0, 4, s*(SQRT_2*a[3]*a[5]));
+            self.set(0, 5, s*(2.0*a[ 0]*a[5]));
 
-            dd.set(0, 0, s*(2.0*a[0]*a[0]));
-            dd.set(0, 1, s*((a[3] + a[6])*(a[3] + a[6])));
-            dd.set(0, 2, s*((a[5] + a[8])*(a[5] + a[8])));
-            dd.set(0, 3, s*(2.0*a[0]*(a[3] + a[6])));
-            dd.set(0, 4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8])));
-            dd.set(0, 5, s*(2.0*a[0]*(a[5] + a[8])));
+            self.set(1, 0, s*(a[3]*a[3]));
+            self.set(1, 1, s*(2.0*a[1]*a[1]));
+            self.set(1, 2, s*(a[4]*a[4]));
+            self.set(1, 3, s*(2.0*a[1]*a[3]));
+            self.set(1, 4, s*(2.0*a[1]*a[4]));
+            self.set(1, 5, s*(SQRT_2*a[3]*a[4]));
 
-            dd.set(1, 0, s*((a[3] - a[6])*(a[3] - a[6])));
-            dd.set(1, 1, s*(2.0*a[1]*a[1]));
-            dd.set(1, 2, s*((a[4] + a[7])*(a[4] + a[7])));
-            dd.set(1, 3, s*(2.0*a[1]*(a[3] - a[6])));
-            dd.set(1, 4, s*(2.0*a[1]*(a[4] + a[7])));
-            dd.set(1, 5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7])));
+            self.set(2, 0, s*(a[5]*a[5]));
+            self.set(2, 1, s*(a[4]*a[4]));
+            self.set(2, 2, s*(2.0*a[2]*a[2]));
+            self.set(2, 3, s*(SQRT_2*a[4]*a[ 5]));
+            self.set(2, 4, s*(2.0*a[2]*a[4]));
+            self.set(2, 5, s*(2.0*a[2]*a[5]));
 
-            dd.set(2, 0, s*((a[5] - a[8])*(a[5] - a[8])));
-            dd.set(2, 1, s*((a[4] - a[7])*(a[4] - a[7])));
-            dd.set(2, 2, s*(2.0*a[2]*a[2]));
-            dd.set(2, 3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8])));
-            dd.set(2, 4, s*(2.0*a[2]*(a[4] - a[7])));
-            dd.set(2, 5, s*(2.0*a[2]*(a[5] - a[8])));
+            self.set(3, 0, s*(2.0*a[0]*a[3]));
+            self.set(3, 1, s*(2.0*a[1]*a[3]));
+            self.set(3, 2, s*(SQRT_2*a[4]* a[5]));
+            self.set(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3]));
+            self.set(3, 4, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
+            self.set(3, 5, s*(SQRT_2*a[0]*a[4] + a[3]*a[5]));
 
-            dd.set(3, 0, s*(2.0*a[0]*(a[3] - a[6])));
-            dd.set(3, 1, s*(2.0*a[1]*(a[3] + a[6])));
-            dd.set(3, 2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8])));
-            dd.set(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6]));
-            dd.set(3, 4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8])));
-            dd.set(3, 5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8])));
+            self.set(4, 0, s*(SQRT_2*a[3]*a[5]));
+            self.set(4, 1, s*(2.0*a[1]*a[4]));
+            self.set(4, 2, s*(2.0*a[2]*a[4]));
+            self.set(4, 3, s*(a[3]*a[4] + SQRT_2*a[1]*a[5]));
+            self.set(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4]));
+            self.set(4, 5, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
 
-            dd.set(4, 0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8])));
-            dd.set(4, 1, s*(2.0*a[1]*(a[4] - a[7])));
-            dd.set(4, 2, s*(2.0*a[2]*(a[4] + a[7])));
-            dd.set(4, 3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8])));
-            dd.set(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7]));
-            dd.set(4, 5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8])));
+            self.set(5, 0, s*(2.0*a[0]*a[5]));
+            self.set(5, 1, s*(SQRT_2*a[3]*a[4]));
+            self.set(5, 2, s*(2.0*a[2]*a[5]));
+            self.set(5, 3, s*(SQRT_2*a[0]* a[4] + a[3]*a[5]));
+            self.set(5, 4, s*(SQRT_2*a[2]*a[3] + a[4]*a[5]));
+            self.set(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5]));
+        }
+    }
+}
 
-            dd.set(5, 0, s*(2.0*a[0]*(a[5] - a[8])));
-            dd.set(5, 1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7])));
-            dd.set(5, 2, s*(2.0*a[2]*(a[5] + a[8])));
-            dd.set(5, 3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8])));
-            dd.set(5, 4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8])));
-            dd.set(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8]));
+impl SsdDim for Tensor4<9> {
+    #[rustfmt::skip]
+    fn ssd(&mut self, op: u8, s: f64, a: &[f64]) {
+        if op == ADD {
+
+            self.add(0, 0, s*(2.0*a[0]*a[0]));
+            self.add(0, 1, s*((a[3] + a[6])*(a[3] + a[6])));
+            self.add(0, 2, s*((a[5] + a[8])*(a[5] + a[8])));
+            self.add(0, 3, s*(2.0*a[0]*(a[3] + a[6])));
+            self.add(0, 4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8])));
+            self.add(0, 5, s*(2.0*a[0]*(a[5] + a[8])));
+
+            self.add(1, 0, s*((a[3] - a[6])*(a[3] - a[6])));
+            self.add(1, 1, s*(2.0*a[1]*a[1]));
+            self.add(1, 2, s*((a[4] + a[7])*(a[4] + a[7])));
+            self.add(1, 3, s*(2.0*a[1]*(a[3] - a[6])));
+            self.add(1, 4, s*(2.0*a[1]*(a[4] + a[7])));
+            self.add(1, 5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7])));
+
+            self.add(2, 0, s*((a[5] - a[8])*(a[5] - a[8])));
+            self.add(2, 1, s*((a[4] - a[7])*(a[4] - a[7])));
+            self.add(2, 2, s*(2.0*a[2]*a[2]));
+            self.add(2, 3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8])));
+            self.add(2, 4, s*(2.0*a[2]*(a[4] - a[7])));
+            self.add(2, 5, s*(2.0*a[2]*(a[5] - a[8])));
+
+            self.add(3, 0, s*(2.0*a[0]*(a[3] - a[6])));
+            self.add(3, 1, s*(2.0*a[1]*(a[3] + a[6])));
+            self.add(3, 2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8])));
+            self.add(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6]));
+            self.add(3, 4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8])));
+            self.add(3, 5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8])));
+
+            self.add(4, 0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8])));
+            self.add(4, 1, s*(2.0*a[1]*(a[4] - a[7])));
+            self.add(4, 2, s*(2.0*a[2]*(a[4] + a[7])));
+            self.add(4, 3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8])));
+            self.add(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7]));
+            self.add(4, 5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8])));
+
+            self.add(5, 0, s*(2.0*a[0]*(a[5] - a[8])));
+            self.add(5, 1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7])));
+            self.add(5, 2, s*(2.0*a[2]*(a[5] + a[8])));
+            self.add(5, 3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8])));
+            self.add(5, 4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8])));
+            self.add(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8]));
+        } else {
+            self.set(0, 0, s*(2.0*a[0]*a[0]));
+            self.set(0, 1, s*((a[3] + a[6])*(a[3] + a[6])));
+            self.set(0, 2, s*((a[5] + a[8])*(a[5] + a[8])));
+            self.set(0, 3, s*(2.0*a[0]*(a[3] + a[6])));
+            self.set(0, 4, s*(SQRT_2*(a[3] + a[6])*(a[5] + a[8])));
+            self.set(0, 5, s*(2.0*a[0]*(a[5] + a[8])));
+
+            self.set(1, 0, s*((a[3] - a[6])*(a[3] - a[6])));
+            self.set(1, 1, s*(2.0*a[1]*a[1]));
+            self.set(1, 2, s*((a[4] + a[7])*(a[4] + a[7])));
+            self.set(1, 3, s*(2.0*a[1]*(a[3] - a[6])));
+            self.set(1, 4, s*(2.0*a[1]*(a[4] + a[7])));
+            self.set(1, 5, s*(SQRT_2*(a[3] - a[6])*(a[4] + a[7])));
+
+            self.set(2, 0, s*((a[5] - a[8])*(a[5] - a[8])));
+            self.set(2, 1, s*((a[4] - a[7])*(a[4] - a[7])));
+            self.set(2, 2, s*(2.0*a[2]*a[2]));
+            self.set(2, 3, s*(SQRT_2*(a[4] - a[7])*(a[5] - a[8])));
+            self.set(2, 4, s*(2.0*a[2]*(a[4] - a[7])));
+            self.set(2, 5, s*(2.0*a[2]*(a[5] - a[8])));
+
+            self.set(3, 0, s*(2.0*a[0]*(a[3] - a[6])));
+            self.set(3, 1, s*(2.0*a[1]*(a[3] + a[6])));
+            self.set(3, 2, s*(SQRT_2*(a[4] + a[7])*(a[5] + a[8])));
+            self.set(3, 3, s*(2.0*a[0]*a[1] + a[3]*a[3] - a[6]*a[6]));
+            self.set(3, 4, s*((a[3] + a[6])*(a[4] + a[7]) + SQRT_2*a[1]*(a[5] + a[8])));
+            self.set(3, 5, s*(SQRT_2*a[0]*(a[4] + a[7]) + (a[3] - a[6])*(a[5] + a[8])));
+
+            self.set(4, 0, s*(SQRT_2*(a[3] - a[6])*(a[5] - a[8])));
+            self.set(4, 1, s*(2.0*a[1]*(a[4] - a[7])));
+            self.set(4, 2, s*(2.0*a[2]*(a[4] + a[7])));
+            self.set(4, 3, s*((a[3] - a[6])*(a[4] - a[7]) + SQRT_2*a[1]*(a[5] - a[8])));
+            self.set(4, 4, s*(2.0*a[1]*a[2] + a[4]*a[4] - a[7]*a[7]));
+            self.set(4, 5, s*(SQRT_2*a[2]*(a[3] - a[6]) + (a[4] + a[7])*(a[5] - a[8])));
+
+            self.set(5, 0, s*(2.0*a[0]*(a[5] - a[8])));
+            self.set(5, 1, s*(SQRT_2*(a[3] + a[6])*(a[4] - a[7])));
+            self.set(5, 2, s*(2.0*a[2]*(a[5] + a[8])));
+            self.set(5, 3, s*(SQRT_2*a[0]*(a[4] - a[7]) + (a[3] + a[6])*(a[5] - a[8])));
+            self.set(5, 4, s*(SQRT_2*a[2]*(a[3] + a[6]) + (a[4] - a[7])*(a[5] + a[8])));
+            self.set(5, 5, s*(2.0*a[0]*a[2] + a[5]*a[5] - a[8]*a[8]));
         }
     }
 }

@@ -60,7 +60,11 @@ pub fn deriv_inverse_tensor<const N: usize>(dai_da: &mut Tensor4<9>, ai: &Tensor
 /// # Panics
 ///
 /// A panic will occur if `ai` is not symmetric, i.e., N = 9.
-pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<N>, ai: &Tensor2<N>) {
+#[allow(private_bounds)]
+pub fn deriv_inverse_tensor_sym<const N: usize>(dai_da: &mut Tensor4<N>, ai: &Tensor2<N>)
+where
+    Tensor4<N>: crate::operators::SsdDim,
+{
     assert!(N != 9, "the inverse tensor must be symmetric with N = 4 or N = 6");
     ssd_fn_vec::<N>(dai_da, SET, -0.5, ai.as_vec());
 }
@@ -129,7 +133,11 @@ pub fn deriv_squared_tensor<const N: usize>(da2_da: &mut Tensor4<9>, a: &Tensor2
 /// # Panics
 ///
 /// A panic will occur if `a` is not symmetric, i.e., N = 9.
-pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Tensor2<N>) {
+#[allow(private_bounds)]
+pub fn deriv_squared_tensor_sym<const N: usize>(da2_da: &mut Tensor4<N>, a: &Tensor2<N>)
+where
+    Tensor4<N>: crate::operators::QsdDim,
+{
     assert!(N != 9, "the tensor must be symmetric with N = 4 or N = 6");
     qsd_fn_slice::<N>(da2_da, SET, 0.5, a.as_vec(), &IDENTITY2);
 }
@@ -980,7 +988,10 @@ mod tests {
         mat_approx_eq(&ana, &num_kel, tol);
     }
 
-    fn check_deriv_inverse_sym<const N: usize>(a: &Tensor2<N>, tol: f64) {
+    fn check_deriv_inverse_sym<const N: usize>(a: &Tensor2<N>, tol: f64)
+    where
+        Tensor4<N>: crate::operators::SsdDim,
+    {
         // compute inverse tensor
         let mut ai = Tensor2::<N>::new();
         a.inverse(&mut ai, 1e-10).unwrap();
@@ -1178,7 +1189,10 @@ mod tests {
         mat_approx_eq(&ana, &num_kel, tol);
     }
 
-    fn check_deriv_squared_sym<const N: usize>(a: &Tensor2<N>, tol: f64) {
+    fn check_deriv_squared_sym<const N: usize>(a: &Tensor2<N>, tol: f64)
+    where
+        Tensor4<N>: crate::operators::QsdDim,
+    {
         // compute analytical derivative
         let mut dd_ana = Tensor4::<N>::new();
         deriv_squared_tensor_sym(&mut dd_ana, a);

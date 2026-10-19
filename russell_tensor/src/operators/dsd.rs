@@ -1,3 +1,4 @@
+use super::DsdDim;
 use crate::ADD;
 use crate::{Tensor2, Tensor4};
 
@@ -26,325 +27,353 @@ use crate::{Tensor2, Tensor4};
 ///
 /// * `op` -- operation: ADD or SET
 /// * `aa` -- Second-order tensor, symmetric or not.
-pub fn dsd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>) {
+#[allow(private_bounds)]
+pub fn dsd_fn<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, aa: &Tensor2<N>, bb: &Tensor2<N>)
+where
+    Tensor4<N>: DsdDim,
+{
     dsd_fn_vec::<N>(dd, op, s, aa.as_vec(), bb.as_vec());
 }
 
 /// Internal (unrolled) duo-sum-dyadic operation on raw Kelvin-Mandel vectors.
+///
+/// The dimension dispatch is static: [`DsdDim`] is implemented once per
+/// supported dimension, so every kernel is monomorphic and fully reachable by the
+/// tests. Keeping the three bodies in one const-generic function leaves two thirds
+/// of each instantiation unreachable -- `N` is a const parameter, so the other
+/// dimensions' branches can never execute.
 #[rustfmt::skip]
 #[inline]
-pub(crate) fn dsd_fn_vec<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64; N], b: &[f64; N]) {
-    if op == ADD {
-        if N == 4 {
-            dd.add(0, 0, s*(2.0*a[0]*b[0]));
-            dd.add(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
-            dd.add(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
-            dd.add(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
+#[allow(private_bounds)]
+pub(crate) fn dsd_fn_vec<const N: usize>(dd: &mut Tensor4<N>, op: u8, s: f64, a: &[f64], b: &[f64])
+where
+    Tensor4<N>: DsdDim,
+{
+    dd.dsd(op, s, a, b);
+}
 
-            dd.add(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
-            dd.add(1, 1, s*(2.0*a[1]*b[1]));
-            dd.add(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
-            dd.add(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
+impl DsdDim for Tensor4<4> {
+    #[rustfmt::skip]
+    fn dsd(&mut self, op: u8, s: f64, a: &[f64], b: &[f64]) {
+        if op == ADD {
+            self.add(0, 0, s*(2.0*a[0]*b[0]));
+            self.add(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
+            self.add(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
+            self.add(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
 
-            dd.add(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
-            dd.add(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
-            dd.add(2, 2, s*(2.0*a[2]*b[2]));
-            dd.add(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
+            self.add(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
+            self.add(1, 1, s*(2.0*a[1]*b[1]));
+            self.add(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
+            self.add(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
 
-            dd.add(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
-            dd.add(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
-            dd.add(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
-            dd.add(3, 3, s*(2.0*a[3]*b[3]));
-        } else if N == 6 {
-            dd.add(0, 0, s*(2.0*a[0]*b[0]));
-            dd.add(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
-            dd.add(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
-            dd.add(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
-            dd.add(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
-            dd.add(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
+            self.add(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
+            self.add(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
+            self.add(2, 2, s*(2.0*a[2]*b[2]));
+            self.add(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
 
-            dd.add(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
-            dd.add(1, 1, s*(2.0*a[1]*b[1]));
-            dd.add(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
-            dd.add(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
-            dd.add(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
-            dd.add(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
-
-            dd.add(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
-            dd.add(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
-            dd.add(2, 2, s*(2.0*a[2]*b[2]));
-            dd.add(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
-            dd.add(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
-            dd.add(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
-
-            dd.add(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
-            dd.add(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
-            dd.add(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
-            dd.add(3, 3, s*(2.0*a[3]*b[3]));
-            dd.add(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
-            dd.add(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
-
-            dd.add(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
-            dd.add(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
-            dd.add(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
-            dd.add(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
-            dd.add(4, 4, s*(2.0*a[4]*b[4]));
-            dd.add(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
-
-            dd.add(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
-            dd.add(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
-            dd.add(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
-            dd.add(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
-            dd.add(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
-            dd.add(5, 5, s*(2.0*a[5]*b[5]));
+            self.add(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
+            self.add(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
+            self.add(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
+            self.add(3, 3, s*(2.0*a[3]*b[3]));
         } else {
-            debug_assert!(N == 9);
+            self.set(0, 0, s*(2.0*a[0]*b[0]));
+            self.set(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
+            self.set(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
+            self.set(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
 
-            dd.add(0, 0, s*(2.0*a[0]*b[0]));
-            dd.add(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
-            dd.add(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
-            dd.add(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
-            dd.add(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
-            dd.add(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
-            dd.add(0, 6, s*(a[0]*b[6] + a[6]*b[0]));
-            dd.add(0, 7, s*(a[0]*b[7] + a[7]*b[0]));
-            dd.add(0, 8, s*(a[0]*b[8] + a[8]*b[0]));
+            self.set(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
+            self.set(1, 1, s*(2.0*a[1]*b[1]));
+            self.set(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
+            self.set(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
 
-            dd.add(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
-            dd.add(1, 1, s*(2.0*a[1]*b[1]));
-            dd.add(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
-            dd.add(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
-            dd.add(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
-            dd.add(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
-            dd.add(1, 6, s*(a[1]*b[6] + a[6]*b[1]));
-            dd.add(1, 7, s*(a[1]*b[7] + a[7]*b[1]));
-            dd.add(1, 8, s*(a[1]*b[8] + a[8]*b[1]));
+            self.set(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
+            self.set(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
+            self.set(2, 2, s*(2.0*a[2]*b[2]));
+            self.set(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
 
-            dd.add(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
-            dd.add(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
-            dd.add(2, 2, s*(2.0*a[2]*b[2]));
-            dd.add(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
-            dd.add(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
-            dd.add(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
-            dd.add(2, 6, s*(a[2]*b[6] + a[6]*b[2]));
-            dd.add(2, 7, s*(a[2]*b[7] + a[7]*b[2]));
-            dd.add(2, 8, s*(a[2]*b[8] + a[8]*b[2]));
-
-            dd.add(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
-            dd.add(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
-            dd.add(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
-            dd.add(3, 3, s*(2.0*a[3]*b[3]));
-            dd.add(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
-            dd.add(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
-            dd.add(3, 6, s*(a[3]*b[6] + a[6]*b[3]));
-            dd.add(3, 7, s*(a[3]*b[7] + a[7]*b[3]));
-            dd.add(3, 8, s*(a[3]*b[8] + a[8]*b[3]));
-
-            dd.add(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
-            dd.add(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
-            dd.add(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
-            dd.add(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
-            dd.add(4, 4, s*(2.0*a[4]*b[4]));
-            dd.add(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
-            dd.add(4, 6, s*(a[4]*b[6] + a[6]*b[4]));
-            dd.add(4, 7, s*(a[4]*b[7] + a[7]*b[4]));
-            dd.add(4, 8, s*(a[4]*b[8] + a[8]*b[4]));
-
-            dd.add(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
-            dd.add(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
-            dd.add(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
-            dd.add(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
-            dd.add(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
-            dd.add(5, 5, s*(2.0*a[5]*b[5]));
-            dd.add(5, 6, s*(a[5]*b[6] + a[6]*b[5]));
-            dd.add(5, 7, s*(a[5]*b[7] + a[7]*b[5]));
-            dd.add(5, 8, s*(a[5]*b[8] + a[8]*b[5]));
-
-            dd.add(6, 0, s*(a[6]*b[0] + a[0]*b[6]));
-            dd.add(6, 1, s*(a[6]*b[1] + a[1]*b[6]));
-            dd.add(6, 2, s*(a[6]*b[2] + a[2]*b[6]));
-            dd.add(6, 3, s*(a[6]*b[3] + a[3]*b[6]));
-            dd.add(6, 4, s*(a[6]*b[4] + a[4]*b[6]));
-            dd.add(6, 5, s*(a[6]*b[5] + a[5]*b[6]));
-            dd.add(6, 6, s*(2.0*a[6]*b[6]));
-            dd.add(6, 7, s*(a[6]*b[7] + a[7]*b[6]));
-            dd.add(6, 8, s*(a[6]*b[8] + a[8]*b[6]));
-
-            dd.add(7, 0, s*(a[7]*b[0] + a[0]*b[7]));
-            dd.add(7, 1, s*(a[7]*b[1] + a[1]*b[7]));
-            dd.add(7, 2, s*(a[7]*b[2] + a[2]*b[7]));
-            dd.add(7, 3, s*(a[7]*b[3] + a[3]*b[7]));
-            dd.add(7, 4, s*(a[7]*b[4] + a[4]*b[7]));
-            dd.add(7, 5, s*(a[7]*b[5] + a[5]*b[7]));
-            dd.add(7, 6, s*(a[7]*b[6] + a[6]*b[7]));
-            dd.add(7, 7, s*(2.0*a[7]*b[7]));
-            dd.add(7, 8, s*(a[7]*b[8] + a[8]*b[7]));
-
-            dd.add(8, 0, s*(a[8]*b[0] + a[0]*b[8]));
-            dd.add(8, 1, s*(a[8]*b[1] + a[1]*b[8]));
-            dd.add(8, 2, s*(a[8]*b[2] + a[2]*b[8]));
-            dd.add(8, 3, s*(a[8]*b[3] + a[3]*b[8]));
-            dd.add(8, 4, s*(a[8]*b[4] + a[4]*b[8]));
-            dd.add(8, 5, s*(a[8]*b[5] + a[5]*b[8]));
-            dd.add(8, 6, s*(a[8]*b[6] + a[6]*b[8]));
-            dd.add(8, 7, s*(a[8]*b[7] + a[7]*b[8]));
-            dd.add(8, 8, s*(2.0*a[8]*b[8]));
+            self.set(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
+            self.set(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
+            self.set(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
+            self.set(3, 3, s*(2.0*a[3]*b[3]));
         }
-    } else {
-        if N == 4 {
-            dd.set(0, 0, s*(2.0*a[0]*b[0]));
-            dd.set(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
-            dd.set(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
-            dd.set(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
+    }
+}
 
-            dd.set(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
-            dd.set(1, 1, s*(2.0*a[1]*b[1]));
-            dd.set(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
-            dd.set(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
+impl DsdDim for Tensor4<6> {
+    #[rustfmt::skip]
+    fn dsd(&mut self, op: u8, s: f64, a: &[f64], b: &[f64]) {
+        if op == ADD {
+            self.add(0, 0, s*(2.0*a[0]*b[0]));
+            self.add(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
+            self.add(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
+            self.add(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
+            self.add(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
+            self.add(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
 
-            dd.set(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
-            dd.set(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
-            dd.set(2, 2, s*(2.0*a[2]*b[2]));
-            dd.set(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
+            self.add(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
+            self.add(1, 1, s*(2.0*a[1]*b[1]));
+            self.add(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
+            self.add(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
+            self.add(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
+            self.add(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
 
-            dd.set(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
-            dd.set(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
-            dd.set(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
-            dd.set(3, 3, s*(2.0*a[3]*b[3]));
-        } else if N == 6 {
-            dd.set(0, 0, s*(2.0*a[0]*b[0]));
-            dd.set(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
-            dd.set(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
-            dd.set(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
-            dd.set(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
-            dd.set(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
+            self.add(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
+            self.add(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
+            self.add(2, 2, s*(2.0*a[2]*b[2]));
+            self.add(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
+            self.add(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
+            self.add(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
 
-            dd.set(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
-            dd.set(1, 1, s*(2.0*a[1]*b[1]));
-            dd.set(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
-            dd.set(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
-            dd.set(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
-            dd.set(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
+            self.add(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
+            self.add(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
+            self.add(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
+            self.add(3, 3, s*(2.0*a[3]*b[3]));
+            self.add(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
+            self.add(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
 
-            dd.set(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
-            dd.set(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
-            dd.set(2, 2, s*(2.0*a[2]*b[2]));
-            dd.set(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
-            dd.set(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
-            dd.set(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
+            self.add(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
+            self.add(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
+            self.add(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
+            self.add(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
+            self.add(4, 4, s*(2.0*a[4]*b[4]));
+            self.add(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
 
-            dd.set(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
-            dd.set(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
-            dd.set(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
-            dd.set(3, 3, s*(2.0*a[3]*b[3]));
-            dd.set(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
-            dd.set(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
-
-            dd.set(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
-            dd.set(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
-            dd.set(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
-            dd.set(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
-            dd.set(4, 4, s*(2.0*a[4]*b[4]));
-            dd.set(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
-
-            dd.set(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
-            dd.set(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
-            dd.set(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
-            dd.set(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
-            dd.set(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
-            dd.set(5, 5, s*(2.0*a[5]*b[5]));
+            self.add(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
+            self.add(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
+            self.add(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
+            self.add(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
+            self.add(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
+            self.add(5, 5, s*(2.0*a[5]*b[5]));
         } else {
-            debug_assert!(N == 9);
+            self.set(0, 0, s*(2.0*a[0]*b[0]));
+            self.set(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
+            self.set(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
+            self.set(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
+            self.set(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
+            self.set(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
 
-            dd.set(0, 0, s*(2.0*a[0]*b[0]));
-            dd.set(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
-            dd.set(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
-            dd.set(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
-            dd.set(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
-            dd.set(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
-            dd.set(0, 6, s*(a[0]*b[6] + a[6]*b[0]));
-            dd.set(0, 7, s*(a[0]*b[7] + a[7]*b[0]));
-            dd.set(0, 8, s*(a[0]*b[8] + a[8]*b[0]));
+            self.set(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
+            self.set(1, 1, s*(2.0*a[1]*b[1]));
+            self.set(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
+            self.set(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
+            self.set(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
+            self.set(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
 
-            dd.set(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
-            dd.set(1, 1, s*(2.0*a[1]*b[1]));
-            dd.set(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
-            dd.set(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
-            dd.set(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
-            dd.set(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
-            dd.set(1, 6, s*(a[1]*b[6] + a[6]*b[1]));
-            dd.set(1, 7, s*(a[1]*b[7] + a[7]*b[1]));
-            dd.set(1, 8, s*(a[1]*b[8] + a[8]*b[1]));
+            self.set(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
+            self.set(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
+            self.set(2, 2, s*(2.0*a[2]*b[2]));
+            self.set(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
+            self.set(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
+            self.set(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
 
-            dd.set(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
-            dd.set(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
-            dd.set(2, 2, s*(2.0*a[2]*b[2]));
-            dd.set(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
-            dd.set(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
-            dd.set(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
-            dd.set(2, 6, s*(a[2]*b[6] + a[6]*b[2]));
-            dd.set(2, 7, s*(a[2]*b[7] + a[7]*b[2]));
-            dd.set(2, 8, s*(a[2]*b[8] + a[8]*b[2]));
+            self.set(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
+            self.set(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
+            self.set(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
+            self.set(3, 3, s*(2.0*a[3]*b[3]));
+            self.set(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
+            self.set(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
 
-            dd.set(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
-            dd.set(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
-            dd.set(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
-            dd.set(3, 3, s*(2.0*a[3]*b[3]));
-            dd.set(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
-            dd.set(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
-            dd.set(3, 6, s*(a[3]*b[6] + a[6]*b[3]));
-            dd.set(3, 7, s*(a[3]*b[7] + a[7]*b[3]));
-            dd.set(3, 8, s*(a[3]*b[8] + a[8]*b[3]));
+            self.set(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
+            self.set(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
+            self.set(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
+            self.set(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
+            self.set(4, 4, s*(2.0*a[4]*b[4]));
+            self.set(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
 
-            dd.set(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
-            dd.set(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
-            dd.set(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
-            dd.set(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
-            dd.set(4, 4, s*(2.0*a[4]*b[4]));
-            dd.set(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
-            dd.set(4, 6, s*(a[4]*b[6] + a[6]*b[4]));
-            dd.set(4, 7, s*(a[4]*b[7] + a[7]*b[4]));
-            dd.set(4, 8, s*(a[4]*b[8] + a[8]*b[4]));
+            self.set(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
+            self.set(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
+            self.set(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
+            self.set(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
+            self.set(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
+            self.set(5, 5, s*(2.0*a[5]*b[5]));
+        }
+    }
+}
 
-            dd.set(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
-            dd.set(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
-            dd.set(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
-            dd.set(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
-            dd.set(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
-            dd.set(5, 5, s*(2.0*a[5]*b[5]));
-            dd.set(5, 6, s*(a[5]*b[6] + a[6]*b[5]));
-            dd.set(5, 7, s*(a[5]*b[7] + a[7]*b[5]));
-            dd.set(5, 8, s*(a[5]*b[8] + a[8]*b[5]));
+impl DsdDim for Tensor4<9> {
+    #[rustfmt::skip]
+    fn dsd(&mut self, op: u8, s: f64, a: &[f64], b: &[f64]) {
+        if op == ADD {
 
-            dd.set(6, 0, s*(a[6]*b[0] + a[0]*b[6]));
-            dd.set(6, 1, s*(a[6]*b[1] + a[1]*b[6]));
-            dd.set(6, 2, s*(a[6]*b[2] + a[2]*b[6]));
-            dd.set(6, 3, s*(a[6]*b[3] + a[3]*b[6]));
-            dd.set(6, 4, s*(a[6]*b[4] + a[4]*b[6]));
-            dd.set(6, 5, s*(a[6]*b[5] + a[5]*b[6]));
-            dd.set(6, 6, s*(2.0*a[6]*b[6]));
-            dd.set(6, 7, s*(a[6]*b[7] + a[7]*b[6]));
-            dd.set(6, 8, s*(a[6]*b[8] + a[8]*b[6]));
+            self.add(0, 0, s*(2.0*a[0]*b[0]));
+            self.add(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
+            self.add(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
+            self.add(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
+            self.add(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
+            self.add(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
+            self.add(0, 6, s*(a[0]*b[6] + a[6]*b[0]));
+            self.add(0, 7, s*(a[0]*b[7] + a[7]*b[0]));
+            self.add(0, 8, s*(a[0]*b[8] + a[8]*b[0]));
 
-            dd.set(7, 0, s*(a[7]*b[0] + a[0]*b[7]));
-            dd.set(7, 1, s*(a[7]*b[1] + a[1]*b[7]));
-            dd.set(7, 2, s*(a[7]*b[2] + a[2]*b[7]));
-            dd.set(7, 3, s*(a[7]*b[3] + a[3]*b[7]));
-            dd.set(7, 4, s*(a[7]*b[4] + a[4]*b[7]));
-            dd.set(7, 5, s*(a[7]*b[5] + a[5]*b[7]));
-            dd.set(7, 6, s*(a[7]*b[6] + a[6]*b[7]));
-            dd.set(7, 7, s*(2.0*a[7]*b[7]));
-            dd.set(7, 8, s*(a[7]*b[8] + a[8]*b[7]));
+            self.add(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
+            self.add(1, 1, s*(2.0*a[1]*b[1]));
+            self.add(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
+            self.add(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
+            self.add(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
+            self.add(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
+            self.add(1, 6, s*(a[1]*b[6] + a[6]*b[1]));
+            self.add(1, 7, s*(a[1]*b[7] + a[7]*b[1]));
+            self.add(1, 8, s*(a[1]*b[8] + a[8]*b[1]));
 
-            dd.set(8, 0, s*(a[8]*b[0] + a[0]*b[8]));
-            dd.set(8, 1, s*(a[8]*b[1] + a[1]*b[8]));
-            dd.set(8, 2, s*(a[8]*b[2] + a[2]*b[8]));
-            dd.set(8, 3, s*(a[8]*b[3] + a[3]*b[8]));
-            dd.set(8, 4, s*(a[8]*b[4] + a[4]*b[8]));
-            dd.set(8, 5, s*(a[8]*b[5] + a[5]*b[8]));
-            dd.set(8, 6, s*(a[8]*b[6] + a[6]*b[8]));
-            dd.set(8, 7, s*(a[8]*b[7] + a[7]*b[8]));
-            dd.set(8, 8, s*(2.0*a[8]*b[8]));
+            self.add(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
+            self.add(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
+            self.add(2, 2, s*(2.0*a[2]*b[2]));
+            self.add(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
+            self.add(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
+            self.add(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
+            self.add(2, 6, s*(a[2]*b[6] + a[6]*b[2]));
+            self.add(2, 7, s*(a[2]*b[7] + a[7]*b[2]));
+            self.add(2, 8, s*(a[2]*b[8] + a[8]*b[2]));
+
+            self.add(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
+            self.add(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
+            self.add(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
+            self.add(3, 3, s*(2.0*a[3]*b[3]));
+            self.add(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
+            self.add(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
+            self.add(3, 6, s*(a[3]*b[6] + a[6]*b[3]));
+            self.add(3, 7, s*(a[3]*b[7] + a[7]*b[3]));
+            self.add(3, 8, s*(a[3]*b[8] + a[8]*b[3]));
+
+            self.add(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
+            self.add(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
+            self.add(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
+            self.add(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
+            self.add(4, 4, s*(2.0*a[4]*b[4]));
+            self.add(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
+            self.add(4, 6, s*(a[4]*b[6] + a[6]*b[4]));
+            self.add(4, 7, s*(a[4]*b[7] + a[7]*b[4]));
+            self.add(4, 8, s*(a[4]*b[8] + a[8]*b[4]));
+
+            self.add(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
+            self.add(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
+            self.add(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
+            self.add(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
+            self.add(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
+            self.add(5, 5, s*(2.0*a[5]*b[5]));
+            self.add(5, 6, s*(a[5]*b[6] + a[6]*b[5]));
+            self.add(5, 7, s*(a[5]*b[7] + a[7]*b[5]));
+            self.add(5, 8, s*(a[5]*b[8] + a[8]*b[5]));
+
+            self.add(6, 0, s*(a[6]*b[0] + a[0]*b[6]));
+            self.add(6, 1, s*(a[6]*b[1] + a[1]*b[6]));
+            self.add(6, 2, s*(a[6]*b[2] + a[2]*b[6]));
+            self.add(6, 3, s*(a[6]*b[3] + a[3]*b[6]));
+            self.add(6, 4, s*(a[6]*b[4] + a[4]*b[6]));
+            self.add(6, 5, s*(a[6]*b[5] + a[5]*b[6]));
+            self.add(6, 6, s*(2.0*a[6]*b[6]));
+            self.add(6, 7, s*(a[6]*b[7] + a[7]*b[6]));
+            self.add(6, 8, s*(a[6]*b[8] + a[8]*b[6]));
+
+            self.add(7, 0, s*(a[7]*b[0] + a[0]*b[7]));
+            self.add(7, 1, s*(a[7]*b[1] + a[1]*b[7]));
+            self.add(7, 2, s*(a[7]*b[2] + a[2]*b[7]));
+            self.add(7, 3, s*(a[7]*b[3] + a[3]*b[7]));
+            self.add(7, 4, s*(a[7]*b[4] + a[4]*b[7]));
+            self.add(7, 5, s*(a[7]*b[5] + a[5]*b[7]));
+            self.add(7, 6, s*(a[7]*b[6] + a[6]*b[7]));
+            self.add(7, 7, s*(2.0*a[7]*b[7]));
+            self.add(7, 8, s*(a[7]*b[8] + a[8]*b[7]));
+
+            self.add(8, 0, s*(a[8]*b[0] + a[0]*b[8]));
+            self.add(8, 1, s*(a[8]*b[1] + a[1]*b[8]));
+            self.add(8, 2, s*(a[8]*b[2] + a[2]*b[8]));
+            self.add(8, 3, s*(a[8]*b[3] + a[3]*b[8]));
+            self.add(8, 4, s*(a[8]*b[4] + a[4]*b[8]));
+            self.add(8, 5, s*(a[8]*b[5] + a[5]*b[8]));
+            self.add(8, 6, s*(a[8]*b[6] + a[6]*b[8]));
+            self.add(8, 7, s*(a[8]*b[7] + a[7]*b[8]));
+            self.add(8, 8, s*(2.0*a[8]*b[8]));
+        } else {
+            self.set(0, 0, s*(2.0*a[0]*b[0]));
+            self.set(0, 1, s*(a[0]*b[1] + a[1]*b[0]));
+            self.set(0, 2, s*(a[0]*b[2] + a[2]*b[0]));
+            self.set(0, 3, s*(a[0]*b[3] + a[3]*b[0]));
+            self.set(0, 4, s*(a[0]*b[4] + a[4]*b[0]));
+            self.set(0, 5, s*(a[0]*b[5] + a[5]*b[0]));
+            self.set(0, 6, s*(a[0]*b[6] + a[6]*b[0]));
+            self.set(0, 7, s*(a[0]*b[7] + a[7]*b[0]));
+            self.set(0, 8, s*(a[0]*b[8] + a[8]*b[0]));
+
+            self.set(1, 0, s*(a[1]*b[0] + a[0]*b[1]));
+            self.set(1, 1, s*(2.0*a[1]*b[1]));
+            self.set(1, 2, s*(a[1]*b[2] + a[2]*b[1]));
+            self.set(1, 3, s*(a[1]*b[3] + a[3]*b[1]));
+            self.set(1, 4, s*(a[1]*b[4] + a[4]*b[1]));
+            self.set(1, 5, s*(a[1]*b[5] + a[5]*b[1]));
+            self.set(1, 6, s*(a[1]*b[6] + a[6]*b[1]));
+            self.set(1, 7, s*(a[1]*b[7] + a[7]*b[1]));
+            self.set(1, 8, s*(a[1]*b[8] + a[8]*b[1]));
+
+            self.set(2, 0, s*(a[2]*b[0] + a[0]*b[2]));
+            self.set(2, 1, s*(a[2]*b[1] + a[1]*b[2]));
+            self.set(2, 2, s*(2.0*a[2]*b[2]));
+            self.set(2, 3, s*(a[2]*b[3] + a[3]*b[2]));
+            self.set(2, 4, s*(a[2]*b[4] + a[4]*b[2]));
+            self.set(2, 5, s*(a[2]*b[5] + a[5]*b[2]));
+            self.set(2, 6, s*(a[2]*b[6] + a[6]*b[2]));
+            self.set(2, 7, s*(a[2]*b[7] + a[7]*b[2]));
+            self.set(2, 8, s*(a[2]*b[8] + a[8]*b[2]));
+
+            self.set(3, 0, s*(a[3]*b[0] + a[0]*b[3]));
+            self.set(3, 1, s*(a[3]*b[1] + a[1]*b[3]));
+            self.set(3, 2, s*(a[3]*b[2] + a[2]*b[3]));
+            self.set(3, 3, s*(2.0*a[3]*b[3]));
+            self.set(3, 4, s*(a[3]*b[4] + a[4]*b[3]));
+            self.set(3, 5, s*(a[3]*b[5] + a[5]*b[3]));
+            self.set(3, 6, s*(a[3]*b[6] + a[6]*b[3]));
+            self.set(3, 7, s*(a[3]*b[7] + a[7]*b[3]));
+            self.set(3, 8, s*(a[3]*b[8] + a[8]*b[3]));
+
+            self.set(4, 0, s*(a[4]*b[0] + a[0]*b[4]));
+            self.set(4, 1, s*(a[4]*b[1] + a[1]*b[4]));
+            self.set(4, 2, s*(a[4]*b[2] + a[2]*b[4]));
+            self.set(4, 3, s*(a[4]*b[3] + a[3]*b[4]));
+            self.set(4, 4, s*(2.0*a[4]*b[4]));
+            self.set(4, 5, s*(a[4]*b[5] + a[5]*b[4]));
+            self.set(4, 6, s*(a[4]*b[6] + a[6]*b[4]));
+            self.set(4, 7, s*(a[4]*b[7] + a[7]*b[4]));
+            self.set(4, 8, s*(a[4]*b[8] + a[8]*b[4]));
+
+            self.set(5, 0, s*(a[5]*b[0] + a[0]*b[5]));
+            self.set(5, 1, s*(a[5]*b[1] + a[1]*b[5]));
+            self.set(5, 2, s*(a[5]*b[2] + a[2]*b[5]));
+            self.set(5, 3, s*(a[5]*b[3] + a[3]*b[5]));
+            self.set(5, 4, s*(a[5]*b[4] + a[4]*b[5]));
+            self.set(5, 5, s*(2.0*a[5]*b[5]));
+            self.set(5, 6, s*(a[5]*b[6] + a[6]*b[5]));
+            self.set(5, 7, s*(a[5]*b[7] + a[7]*b[5]));
+            self.set(5, 8, s*(a[5]*b[8] + a[8]*b[5]));
+
+            self.set(6, 0, s*(a[6]*b[0] + a[0]*b[6]));
+            self.set(6, 1, s*(a[6]*b[1] + a[1]*b[6]));
+            self.set(6, 2, s*(a[6]*b[2] + a[2]*b[6]));
+            self.set(6, 3, s*(a[6]*b[3] + a[3]*b[6]));
+            self.set(6, 4, s*(a[6]*b[4] + a[4]*b[6]));
+            self.set(6, 5, s*(a[6]*b[5] + a[5]*b[6]));
+            self.set(6, 6, s*(2.0*a[6]*b[6]));
+            self.set(6, 7, s*(a[6]*b[7] + a[7]*b[6]));
+            self.set(6, 8, s*(a[6]*b[8] + a[8]*b[6]));
+
+            self.set(7, 0, s*(a[7]*b[0] + a[0]*b[7]));
+            self.set(7, 1, s*(a[7]*b[1] + a[1]*b[7]));
+            self.set(7, 2, s*(a[7]*b[2] + a[2]*b[7]));
+            self.set(7, 3, s*(a[7]*b[3] + a[3]*b[7]));
+            self.set(7, 4, s*(a[7]*b[4] + a[4]*b[7]));
+            self.set(7, 5, s*(a[7]*b[5] + a[5]*b[7]));
+            self.set(7, 6, s*(a[7]*b[6] + a[6]*b[7]));
+            self.set(7, 7, s*(2.0*a[7]*b[7]));
+            self.set(7, 8, s*(a[7]*b[8] + a[8]*b[7]));
+
+            self.set(8, 0, s*(a[8]*b[0] + a[0]*b[8]));
+            self.set(8, 1, s*(a[8]*b[1] + a[1]*b[8]));
+            self.set(8, 2, s*(a[8]*b[2] + a[2]*b[8]));
+            self.set(8, 3, s*(a[8]*b[3] + a[3]*b[8]));
+            self.set(8, 4, s*(a[8]*b[4] + a[4]*b[8]));
+            self.set(8, 5, s*(a[8]*b[5] + a[5]*b[8]));
+            self.set(8, 6, s*(a[8]*b[6] + a[6]*b[8]));
+            self.set(8, 7, s*(a[8]*b[7] + a[7]*b[8]));
+            self.set(8, 8, s*(2.0*a[8]*b[8]));
         }
     }
 }

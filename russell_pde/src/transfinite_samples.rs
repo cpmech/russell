@@ -940,13 +940,16 @@ mod tests {
 
     #[test]
     fn test_draw_functions_work() {
+        // np = 1 would leave every inner loop (`for i in 1..np`) empty, so the
+        // polycurve construction -- the part that can index a bad parametric map --
+        // would never run
         let mut canvas_2d = Canvas::new();
         let mut map_2d = TransfiniteSamples::quadrilateral_2d(&[0.0, 0.0], &[1.0, 0.0], &[1.0, 1.0], &[0.0, 1.0]);
-        draw_lines_2d(&mut canvas_2d, &mut map_2d, 1, 0.02);
+        draw_lines_2d(&mut canvas_2d, &mut map_2d, 5, 0.02);
 
         let mut canvas_3d = Canvas::new();
         let mut map_3d = TransfiniteSamples::brick_3d(1.0, 1.0, 1.0);
-        draw_surface_lines_3d(&mut canvas_3d, &mut map_3d, 1);
+        draw_surface_lines_3d(&mut canvas_3d, &mut map_3d, 5);
     }
 
     #[test]

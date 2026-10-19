@@ -439,6 +439,162 @@ pub fn large(n: usize, a: &mut [f64], seed: &mut [u32; 4]) {
     }
 }
 
+/// The arguments of `DLATME`, with the character switches as bools.
+///
+/// `kl` and `ku` are absent on purpose: the reference's bandwidth reduction only
+/// runs when `kl < n-1` or `ku < n-1`, and the family sweeps want dense matrices,
+/// where it is skipped. Passing `kl = ku = n-1` is what the wrapper does, so that
+/// branch is not part of this port.
+pub struct Latme {
+    /// Distribution of the entries: `DIST`.
+    pub dist: Dist,
+    /// `MODE`: the spectrum's shape, as in [`latm1`]. `0` keeps the `d` given by the
+    /// caller and is the mode a `.in` file exercises (the reference reads those
+    /// eigenvalues from its input).
+    pub mode: i32,
+    /// `COND`: condition number of the spectrum.
+    pub cond: f64,
+    /// `DMAX`: target magnitude of the largest eigenvalue.
+    pub dmax: f64,
+    /// `EI`: only read when `mode == 0`. `true` marks a real eigenvalue; a `false`
+    /// pairs with the entry before it to form a 2x2 block, exactly as LAPACK's `'I'`.
+    pub real: Vec<bool>,
+    /// `RSIGN`: random signs on the spectrum.
+    pub rsign: bool,
+    /// `UPPER`: fill the upper triangle with random numbers.
+    pub upper: bool,
+    /// `SIM`: apply the random orthogonal similarity.
+    pub sim: bool,
+    /// `MODES`: the shape of the eigenvector matrix's singular values.
+    pub modes: i32,
+    /// `CONDS`: condition number of those singular values.
+    pub conds: f64,
+    /// `ANORM`: target max-norm of the matrix; negative leaves it unscaled.
+    pub anorm: f64,
+}
+
+/// Port of `DLATME`: the nonsymmetric matrix with a prescribed spectrum that
+/// `ddrvev` feeds to `dgeev`.
+///
+/// The steps follow the reference's numbered comments: the spectrum from [`latm1`]
+/// scaled by `dmax`, the diagonal of `a`, 2x2 blocks for complex pairs, the random
+/// upper triangle, the two applications of [`large`] with the singular values of the
+/// eigenvector matrix in between, and the final scaling to `anorm`.
+///
+/// Returns the reference's `INFO` on failure: `2` when the spectrum is all zeros
+/// with a nonzero `dmax`, `3`/`4` when the similarity's own spectrum fails, `5` for a
+/// zero singular value.
+pub fn latme(p: &Latme, n: usize, a: &mut [f64], d: &mut [f64], seed: &mut [u32; 4]) -> Result<(), i32> {
+    assert_eq!(a.len(), n * n, "latme: a must be n*n");
+    assert_eq!(d.len(), n, "latme: d must be n");
+
+    // 1) Decode and test the input parameters.
+    if p.mode.abs() > 6 {
+        return Err(-5);
+    }
+    if p.mode != 0 && p.mode.abs() != 6 && p.cond < 1.0 {
+        return Err(-6);
+    }
+    if p.sim && p.modes.abs() > 5 {
+        return Err(-13);
+    }
+    if p.sim && p.modes != 0 && p.conds < 1.0 {
+        return Err(-14);
+    }
+
+    // The seed is normalized the reference's way: four 12-bit words, the last odd.
+    for s in seed.iter_mut() {
+        *s %= 4096;
+    }
+    if seed[3] % 2 != 1 {
+        seed[3] += 1;
+    }
+
+    // 2) Set up the diagonal of A.
+    latm1(p.mode, p.cond, p.rsign as i32, p.dist, seed, d).map_err(|_| 1)?;
+    if p.mode != 0 && p.mode.abs() != 6 {
+        let temp = d.iter().fold(0.0f64, |m, v| m.max(v.abs()));
+        let alpha = if temp > 0.0 {
+            p.dmax / temp
+        } else if p.dmax != 0.0 {
+            return Err(2);
+        } else {
+            0.0
+        };
+        for v in d.iter_mut() {
+            *v *= alpha;
+        }
+    }
+    a.fill(0.0);
+    for i in 0..n {
+        a[i + i * n] = d[i];
+    }
+
+    // Complex conjugate pairs.
+    let pair = |a: &mut [f64], j: usize| {
+        a[(j - 1) + j * n] = a[j + j * n];
+        a[j + (j - 1) * n] = -a[j + j * n];
+        a[j + j * n] = a[(j - 1) + (j - 1) * n];
+    };
+    if p.mode == 0 {
+        for j in 1..n {
+            if !p.real[j] {
+                pair(a, j);
+            }
+        }
+    } else if p.mode.abs() == 5 {
+        for j in (1..n).step_by(2) {
+            if laran(seed) > 0.5 {
+                pair(a, j);
+            }
+        }
+    }
+
+    // 3) Random upper triangle, leaving the corners of a 2x2 block alone.
+    if p.upper {
+        for col in 1..n {
+            let rows = if a[(col - 1) + col * n] != 0.0 { col - 1 } else { col };
+            if rows > 0 {
+                let start = col * n;
+                larnv(p.dist, seed, rows, &mut a[start..start + rows]);
+            }
+        }
+    }
+
+    // 4) Similarity: X A X^-1 with X = U S V.
+    if p.sim {
+        let mut ds = vec![0.0f64; n];
+        latm1(p.modes, p.conds, 0, Dist::Uniform, seed, &mut ds).map_err(|_| 3)?;
+        large(n, a, seed);
+        for j in 0..n {
+            // Row j by DS(j), then column j by 1/DS(j).
+            for k in 0..n {
+                a[j + k * n] *= ds[j];
+            }
+            if ds[j] == 0.0 {
+                return Err(5);
+            }
+            let inv = 1.0 / ds[j];
+            for i in 0..n {
+                a[i + j * n] *= inv;
+            }
+        }
+        large(n, a, seed);
+    }
+
+    // 5) Scale the matrix to have max-norm ANORM.
+    if p.anorm >= 0.0 {
+        let temp = crate::native::blas::dlange('M', a, n, n);
+        if temp > 0.0 {
+            let alpha = p.anorm / temp;
+            for v in a.iter_mut() {
+                *v *= alpha;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -738,5 +894,219 @@ mod tests {
             }
         }
         assert_eq!(seed, [523, 2892, 2970, 2903], "seed after the similarity");
+    }
+    /// `DLATME` pinned against the reference build, one case per mechanism.
+    ///
+    /// * case 1 — `MODE = 0` with `EI = "RIRI"`: the caller's spectrum, two 2x2
+    ///   blocks, and the similarity with `MODES = 3`;
+    /// * case 2 — `MODE = 3`, `DMAX = 10`, random signs, random upper triangle, all
+    ///   of it conjugated (`MODES = 1`, `CONDS = 1e2`);
+    /// * case 3 — `MODE = 5` with no similarity and `ANORM = 2`, which is the scaling
+    ///   path on its own.
+    ///
+    /// Compared at 1e-13 relative for the same reason as [`large`]: the last bits
+    /// belong to the reference's BLAS. The seed is compared exactly.
+    #[test]
+    fn latme_matches_the_reference_matrices() {
+        let cases: [(Latme, usize, Option<[f64; 6]>, [[f64; 6]; 6], usize, [u32; 4]); 3] = [
+            (
+                Latme {
+                    dist: Dist::Uniform,
+                    mode: 0,
+                    cond: 1.0,
+                    dmax: 1.0,
+                    real: vec![true, false, true, false, true, true],
+                    rsign: false,
+                    upper: false,
+                    sim: true,
+                    modes: 3,
+                    conds: 1e2,
+                    anorm: -1.0,
+                },
+                4,
+                Some([1.0, 1.0, 2.0, 2.0, 0.0, 0.0]),
+                [
+                    [
+                        -3.4358299714570606e1,
+                        -3.1232682606951830e1,
+                        2.1857744820860411e1,
+                        -1.7318002903932477e1,
+                        0.0,
+                        0.0,
+                    ],
+                    [
+                        5.9886570090465767e1,
+                        5.2675038415048995e1,
+                        -3.5490796756505702e1,
+                        2.7429326504012714e1,
+                        0.0,
+                        0.0,
+                    ],
+                    [
+                        -8.7771794030392680,
+                        -9.1634094461913378,
+                        8.4129308675480221,
+                        -7.1512258361176526,
+                        0.0,
+                        0.0,
+                    ],
+                    [
+                        -4.2671376152242544e1,
+                        -3.7814331530471605e1,
+                        2.6923357163109905e1,
+                        -2.0729669568026424e1,
+                        0.0,
+                        0.0,
+                    ],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                ],
+                4,
+                [3593, 2527, 3691, 1511],
+            ),
+            (
+                Latme {
+                    dist: Dist::Normal,
+                    mode: 3,
+                    cond: 1e3,
+                    dmax: 10.0,
+                    real: vec![true; 6],
+                    rsign: true,
+                    upper: true,
+                    sim: true,
+                    modes: 1,
+                    conds: 1e2,
+                    anorm: -1.0,
+                },
+                5,
+                None,
+                [
+                    [
+                        5.6818210826746565e1,
+                        -1.2134452942258655e2,
+                        7.0519304671240931e1,
+                        2.3632111706016047e1,
+                        -4.1501650066956316e1,
+                        0.0,
+                    ],
+                    [
+                        8.4625331783111903,
+                        -1.7432470350849172e1,
+                        9.8448507684683619,
+                        3.0823716027616168,
+                        -6.3561113226763801,
+                        0.0,
+                    ],
+                    [
+                        -1.4232958818183391e1,
+                        2.9281440449711781e1,
+                        -1.7690873786772720e1,
+                        -6.0494189969748078,
+                        9.8446755299916031,
+                        0.0,
+                    ],
+                    [
+                        1.4031453497192246e2,
+                        -3.1220418686955975e2,
+                        1.7479405622543953e2,
+                        5.9505795852977720e1,
+                        -1.0583721240354244e2,
+                        0.0,
+                    ],
+                    [
+                        9.1993945868447184e1,
+                        -2.0618932806558507e2,
+                        1.1637572936338884e2,
+                        3.9916755411187836e1,
+                        -6.9152389498565654e1,
+                        0.0,
+                    ],
+                    [0.0; 6],
+                ],
+                5,
+                [500, 161, 2574, 2627],
+            ),
+            (
+                Latme {
+                    dist: Dist::Uniform,
+                    mode: 5,
+                    cond: 1e2,
+                    dmax: 1.0,
+                    real: vec![true; 6],
+                    rsign: false,
+                    upper: false,
+                    sim: false,
+                    modes: 0,
+                    conds: 0.0,
+                    anorm: 2.0,
+                },
+                6,
+                None,
+                [
+                    [1.1944710891888788, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 4.3249687215530030e-1, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0483141521287667, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 3.0229504007241859e-1, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 2.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 6.3080215764373837e-1],
+                ],
+                6,
+                [1773, 3932, 3380, 3219],
+            ),
+        ];
+        for (k, (params, n, d_in, want, _, want_seed)) in cases.into_iter().enumerate() {
+            let mut seed = SEEDY;
+            let mut d = vec![0.0f64; n];
+            if let Some(dv) = d_in {
+                d[..n].copy_from_slice(&dv[..n]);
+            }
+            let mut a = vec![0.0f64; n * n];
+            latme(&params, n, &mut a, &mut d, &mut seed).unwrap_or_else(|e| panic!("case {k}: INFO = {e}"));
+            for i in 0..n {
+                for j in 0..n {
+                    let got = a[i + j * n];
+                    let w = want[j][i];
+                    let tol = 1e-13 * w.abs().max(1.0);
+                    assert!(
+                        (got - w).abs() <= tol,
+                        "case {k}: a({}, {}) = {got:e}, reference {w:e}",
+                        i + 1,
+                        j + 1
+                    );
+                }
+            }
+            assert_eq!(seed, want_seed, "case {k}: seed after the call");
+        }
+    }
+
+    /// The two failures the reference reports from the outside: a spectrum of zeros
+    /// with a nonzero `DMAX`, and the argument checks.
+    #[test]
+    fn latme_reports_what_the_reference_reports() {
+        let mut seed = SEEDY;
+        let mut a = vec![0.0; 9];
+        let mut d = vec![0.0; 3];
+        let mut p = Latme {
+            dist: Dist::Uniform,
+            mode: 3,
+            cond: 1e3,
+            dmax: 1.0,
+            real: vec![true; 3],
+            rsign: false,
+            upper: false,
+            sim: false,
+            modes: 0,
+            conds: 0.0,
+            anorm: -1.0,
+        };
+        p.cond = 0.5;
+        assert_eq!(latme(&p, 3, &mut a, &mut d, &mut seed), Err(-6), "cond < 1");
+        p.cond = 1e3;
+        p.mode = 7;
+        assert_eq!(latme(&p, 3, &mut a, &mut d, &mut seed), Err(-5), "|mode| > 6");
+        p.mode = 3;
+        p.sim = true;
+        p.modes = 6;
+        assert_eq!(latme(&p, 3, &mut a, &mut d, &mut seed), Err(-13), "|modes| > 5");
     }
 }

@@ -429,6 +429,41 @@ mod tests {
         }
     }
 
+    /// Drives the two public entry points, not only the internal paths: `calculate`
+    /// selects the characteristic-polynomial route and `calculate_mx` with
+    /// `use_inverse` the inverse-based one, and both are verified by numerical
+    /// differentiation like the tests above. A wrapper that dispatches to the wrong
+    /// route is invisible to tests that call the routes directly.
+    #[test]
+    fn calculate_and_calculate_mx_work_with_samples() {
+        const VERBOSE: bool = false;
+        const TOL_DPP: f64 = 1e-10;
+        let method = EigenValMethod::AnalyticalHZ;
+        let mut ll = [0.0; 3];
+        let mut calc = EigenProjDerivsT2::new();
+        let mut projs = [Tensor2::<6>::new(), Tensor2::<6>::new(), Tensor2::<6>::new()];
+        let mut ddp = [Tensor4::<6>::new(), Tensor4::<6>::new(), Tensor4::<6>::new()];
+        for sample in [SamplesTensor2::TENSOR_Y, SamplesTensor2::TENSOR_U] {
+            let aa = Tensor2::<6>::from_std_matrix(&sample.matrix).unwrap();
+            if VERBOSE {
+                println!("\n{}\nA = \n{}", sample.desc, aa.as_std_matrix());
+            }
+
+            // public default entry point (no inverse)
+            calc.calculate(&mut ll, &mut projs, &mut ddp, &aa).unwrap();
+            let mut tol_dpp = TOL_DPP;
+            if sample.desc.contains("Tensor U") {
+                tol_dpp = 1e-9;
+            }
+            compare_with_numerical(method, aa.clone(), &ddp, tol_dpp);
+
+            // public entry point selecting the inverse-based route
+            calc.calculate_mx(&mut ll, &mut projs, &mut ddp, &aa, method, true)
+                .unwrap();
+            compare_with_numerical(method, aa.clone(), &ddp, tol_dpp);
+        }
+    }
+
     #[test]
     fn calc_with_char_poly_works_with_samples() {
         const VERBOSE: bool = false;

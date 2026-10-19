@@ -248,6 +248,113 @@ pub fn larnv(dist: Dist, seed: &mut [u32; 4], n: usize, x: &mut [f64]) {
     }
 }
 
+/// Port of `DLARAN`: one number from the uniform (0,1) distribution, the seed
+/// advanced in place.
+///
+/// The reference is `DLARUV` with `n = 1`; naming it separately keeps `DLATM1`'s
+/// transcription readable where it draws a sign or a log-uniform magnitude.
+pub fn laran(seed: &mut [u32; 4]) -> f64 {
+    let mut x = [0.0f64];
+    laruv(seed, 1, &mut x);
+    x[0]
+}
+
+/// Port of `DLATM1`: the eigenvalue vector of the reference's spectra.
+///
+/// `mode` selects the distribution of `|d|` and `cond` its condition number
+/// `max|d| / min|d|`; a negative `mode` reverses the vector, `irsign = 1` gives the
+/// entries random signs, and `mode = +-6` draws them straight from `dist` instead.
+/// The modes, as in the reference:
+///
+/// | `|mode|` | spectrum |
+/// |---|---|
+/// | 0 | all ones, `cond` ignored |
+/// | 1 | one large value, the rest `1/cond` |
+/// | 2 | one small value `1/cond`, the rest one |
+/// | 3 | geometric: `cond**(-(i-1)/(n-1))` |
+/// | 4 | arithmetic from 1 down to `1/cond` |
+/// | 5 | log-uniform on `[1/cond, 1]` |
+/// | 6 | `n` draws from `dist` |
+///
+/// Returns the reference's `INFO`: negative if an argument is out of range.
+pub fn latm1(mode: i32, cond: f64, irsign: i32, dist: Dist, seed: &mut [u32; 4], d: &mut [f64]) -> Result<(), i32> {
+    let n = d.len();
+    // Decode and test the input parameters.
+    let ordinary = mode != -6 && mode != 0 && mode != 6;
+    let info = if !(-6..=6).contains(&mode) {
+        -1
+    } else if ordinary && irsign != 0 && irsign != 1 {
+        -2
+    } else if ordinary && cond < 1.0 {
+        -3
+    } else {
+        // The reference's remaining check is `IDIST < 1 || IDIST > 3` for modes
+        // +-6; `Dist` cannot hold a value outside that range, so it cannot fail.
+        0
+    };
+    if info != 0 {
+        return Err(info);
+    }
+    if n == 0 || mode == 0 {
+        return Ok(());
+    }
+
+    // Compute D according to COND and MODE.
+    match mode.abs() {
+        1 => {
+            d.fill(1.0 / cond);
+            d[0] = 1.0;
+        }
+        2 => {
+            d.fill(1.0);
+            d[n - 1] = 1.0 / cond;
+        }
+        3 => {
+            d[0] = 1.0;
+            if n > 1 {
+                let alpha = cond.powf(-1.0 / (n - 1) as f64);
+                for i in 1..n {
+                    d[i] = alpha.powi(i as i32);
+                }
+            }
+        }
+        4 => {
+            d[0] = 1.0;
+            if n > 1 {
+                let temp = 1.0 / cond;
+                let alpha = (1.0 - temp) / (n - 1) as f64;
+                for i in 1..n {
+                    // The reference reads D(I) = (N-I)*alpha + temp for I = 2..N,
+                    // so the zero-based index sees one more.
+                    d[i] = (n - i - 1) as f64 * alpha + temp;
+                }
+            }
+        }
+        5 => {
+            let alpha = (1.0 / cond).ln();
+            for v in d.iter_mut() {
+                *v = (alpha * laran(seed)).exp();
+            }
+        }
+        _ => larnv(dist, seed, n, d),
+    }
+
+    // Random signs, for the modes that build magnitudes.
+    if ordinary && irsign == 1 {
+        for v in d.iter_mut() {
+            if laran(seed) > 0.5 {
+                *v = -*v;
+            }
+        }
+    }
+
+    // Reverse for a negative MODE.
+    if mode < 0 {
+        d.reverse();
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -360,5 +467,138 @@ mod tests {
             assert_eq!(all, one, "n = {n}");
             assert_eq!(a, b, "n = {n}: seed");
         }
+    }
+    /// `DLATM1` pinned against the reference build, one case per mode.
+    ///
+    /// Values captured from LAPACK 3.12.1's `dlatm1_` with `n = 6` and `ISEEDY`; the
+    /// cases cover the one-large and one-small spectra, the geometric and arithmetic
+    /// ones, the log-uniform draw (`DLARAN`), the direct `DLARNV` draw, and a
+    /// reversed spectrum with random signs. Modes 3 and 4 are where an off-by-one in
+    /// the exponent or in the `n - i` factor shows up.
+    #[test]
+    fn latm1_matches_the_reference_spectra() {
+        // (mode, cond, irsign, dist, |d|)
+        let cases: [(i32, f64, i32, Dist, [f64; 6]); 7] = [
+            (
+                1,
+                1e3,
+                0,
+                Dist::Uniform,
+                [
+                    1.0,
+                    1e-3,
+                    1.0000000000000000208e-3,
+                    1.0000000000000000208e-3,
+                    1.0000000000000000208e-3,
+                    1.0000000000000000208e-3,
+                ],
+            ),
+            (
+                2,
+                1e3,
+                0,
+                Dist::Uniform,
+                [1.0, 1.0, 1.0, 1.0, 1.0, 1.0000000000000000208e-3],
+            ),
+            (
+                3,
+                1e6,
+                0,
+                Dist::Uniform,
+                [
+                    1.0,
+                    6.30957344480193166e-2,
+                    3.98107170553497168e-3,
+                    2.51188643150957900e-4,
+                    1.58489319246111277e-5,
+                    9.99999999999999319e-7,
+                ],
+            ),
+            (
+                4,
+                1e6,
+                0,
+                Dist::Uniform,
+                [
+                    1.0,
+                    8.00000200000000050e-1,
+                    6.00000399999999989e-1,
+                    4.00000599999999984e-1,
+                    2.00000800000000006e-1,
+                    9.99999999999999955e-7,
+                ],
+            ),
+            (
+                5,
+                1e4,
+                0,
+                Dist::Uniform,
+                [
+                    1.10551733715540487e-1,
+                    1.44937315939409010e-2,
+                    8.51524543305676590e-2,
+                    7.08070197722824018e-3,
+                    3.09937598639208056e-1,
+                    3.08319230092024485e-2,
+                ],
+            ),
+            (
+                6,
+                1.0,
+                0,
+                Dist::Normal,
+                [
+                    -1.63771955772052569,
+                    -1.57925322198978191,
+                    -1.46061114264331215,
+                    -4.58389536009067289e-1,
+                    1.22486082197039781,
+                    -1.87946296057196677e-1,
+                ],
+            ),
+            (
+                -3,
+                1e6,
+                1,
+                Dist::Uniform,
+                [
+                    9.99999999999999319e-7,
+                    1.58489319246111277e-5,
+                    -2.51188643150957900e-4,
+                    3.98107170553497168e-3,
+                    6.30957344480193166e-2,
+                    1.0,
+                ],
+            ),
+        ];
+        for (mode, cond, irsign, dist, want) in cases {
+            let mut seed = SEEDY;
+            let mut d = [0.0f64; 6];
+            latm1(mode, cond, irsign, dist, &mut seed, &mut d).expect("latm1");
+            for (i, w) in want.iter().enumerate() {
+                assert_eq!(
+                    d[i].to_bits(),
+                    w.to_bits(),
+                    "mode {mode}, cond {cond:e}, irsign {irsign}, {dist:?}: d[{i}] = {:e}, reference {w:e}",
+                    d[i]
+                );
+            }
+        }
+    }
+
+    /// The argument checks the reference makes, and mode 0 with a zero length.
+    #[test]
+    fn latm1_rejects_what_the_reference_rejects() {
+        let mut seed = SEEDY;
+        let mut d = [0.0; 4];
+        assert_eq!(latm1(7, 1.0, 0, Dist::Uniform, &mut seed, &mut d), Err(-1));
+        assert_eq!(latm1(-7, 1.0, 0, Dist::Uniform, &mut seed, &mut d), Err(-1));
+        assert_eq!(latm1(3, 1.0, 2, Dist::Uniform, &mut seed, &mut d), Err(-2));
+        assert_eq!(latm1(3, 0.5, 0, Dist::Uniform, &mut seed, &mut d), Err(-3));
+        // mode 0 and a negative mode ignore cond and irsign.
+        assert_eq!(latm1(0, 0.5, 2, Dist::Uniform, &mut seed, &mut d), Ok(()));
+        assert_eq!(d, [0.0; 4]);
+        let mut empty: [f64; 0] = [];
+        assert_eq!(latm1(3, 1e3, 0, Dist::Uniform, &mut seed, &mut empty), Ok(()));
     }
 }

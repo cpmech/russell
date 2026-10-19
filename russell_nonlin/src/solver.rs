@@ -421,8 +421,9 @@ impl<'a, A> Solver<'a, A> {
 #[cfg(test)]
 mod tests {
     use super::Solver;
-    use crate::{Config, DeltaLambda, IniDir, Method, Samples, Status, Stop};
+    use crate::{Config, DeltaLambda, IniDir, Method, Output, Samples, Status, Stop};
     use russell_lab::{Vector, vec_approx_eq};
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn new_captures_errors() {
@@ -509,6 +510,81 @@ mod tests {
                 .unwrap(),
             Status::Success
         );
+    }
+
+    /// The callback runs on the initial point as well, and returning `true` there must
+    /// end the computation with success before any step is taken.
+    #[test]
+    fn solve_stops_gracefully_at_the_first_output() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let config = Config::new();
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        let mut out = Output::new();
+        out.set_callback(|_stats, _u, _l, _h, _args| Ok(true));
+        let status = solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(3),
+                &DeltaLambda::constant(1.0),
+                Some(&mut out),
+            )
+            .unwrap();
+        assert_eq!(status, Status::Success);
+        assert_eq!(solver.get_stats().n_steps, 0);
+    }
+
+    /// Returning `true` from the accepted-step callback must end the computation with
+    /// success after that step, rather than continuing to the stop criterion.
+    #[test]
+    fn solve_stops_gracefully_after_an_accepted_step() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let config = Config::new();
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        let calls = AtomicUsize::new(0);
+        let mut out = Output::new();
+        out.set_callback(|_stats, _u, _l, _h, _args| {
+            let n = calls.fetch_add(1, Ordering::SeqCst);
+            Ok(n > 0) // false on the initial output, true after the first step
+        });
+        let status = solver
+            .solve(
+                &mut args,
+                &mut u,
+                &mut l,
+                IniDir::Pos,
+                Stop::Steps(5),
+                &DeltaLambda::constant(1.0),
+                Some(&mut out),
+            )
+            .unwrap();
+        assert_eq!(status, Status::Success);
+        assert_eq!(solver.get_stats().n_steps, 1);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+
+    /// A listed Δλ below the solver's minimum must be refused instead of producing a
+    /// step the solver cannot take.
+    #[test]
+    fn solve_rejects_a_listed_step_below_the_minimum() {
+        let (system, mut u, _u_ref, mut args) = Samples::two_eq_ref();
+        let config = Config::new();
+        let mut solver = Solver::new(&config, system).unwrap();
+        let mut l = 0.0;
+        let res = solver.solve(
+            &mut args,
+            &mut u,
+            &mut l,
+            IniDir::Pos,
+            Stop::Steps(3),
+            &DeltaLambda::list(&[1.0, 1e-12]),
+            None,
+        );
+        assert_eq!(res.err(), Some("requirement: ddl > 1e-10"));
     }
 
     #[test]

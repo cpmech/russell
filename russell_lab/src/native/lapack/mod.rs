@@ -585,3 +585,27 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod zero_determinant_tests {
+    use super::*;
+
+    /// LAPACK's `DGETRF` tests the pivot against zero exactly, so a factorization
+    /// with a tiny but non-zero pivot is not singular. The native path used to
+    /// treat anything below `1e-15` as zero and refused matrices the linked
+    /// library factorizes; this pins both halves of that boundary.
+    #[test]
+    fn pivot_threshold_matches_lapack() {
+        // column-major 2x2 = [[1e-16, 0], [0, 1]]: a pivot far below the old
+        // threshold, and not singular.
+        let mut a = vec![1e-16, 0.0, 0.0, 1.0];
+        let (ipiv, det) = dgetrf(&mut a, 2).expect("a non-zero pivot is not singular");
+        assert_eq!(ipiv.len(), 2);
+        assert!(det.abs() < 1e-15, "det = {det}");
+
+        // column-major 2x2 = [[1, 2], [2, 4]]: exactly singular, and it must
+        // still say so.
+        let mut b = vec![1.0, 2.0, 2.0, 4.0];
+        assert_eq!(dgetrf(&mut b, 2), Err(LapackError::Singular));
+    }
+}

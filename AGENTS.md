@@ -67,9 +67,9 @@ Work in progress on the `native-lapack` branch. Read this before adding to it.
 ### Measured state
 
 ```bash
-cargo test -p russell_lab --lib                     # 1193 pass, 0 fail, 0 ignored
+cargo test -p russell_lab --lib                     # 1253 pass, 0 fail, 0 ignored
 RUSSELL_DEV_LAPACK_ROOT=/home/dorival/01-Code/fortran/lapack-3.12.1/build-gfortran \
-  cargo test -p russell_lab --lib --features dev_lapack # 1206 pass, 0 fail
+  cargo test -p russell_lab --lib --features dev_lapack # 1266 pass, 0 fail
 ```
 
 Both configurations are known-good on the current tree of `native-lapack`, with

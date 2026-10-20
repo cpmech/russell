@@ -13,16 +13,37 @@ jobs:
         rust: [stable, nightly-2026-07-01]
     steps:
       - uses: actions/checkout@v4
-      - name: Check out algebra_linear (the kernels this workspace depends on)
-        uses: actions/checkout@v4
-        with:
-          repository: cpmech/algebra_linear
-          path: algebra_linear
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
           components: llvm-tools-preview
+      # The kernels come from crates.io, so there is no sibling checkout: the
+      # standalone check below downloads the published crate instead. It runs after
+      # the toolchain is installed because it asks cargo which version it resolved
+      # (this workspace commits no `Cargo.lock`).
+      - name: algebra_linear must stay standalone
+        run: |
+          # The kernels' repository may not know about this one. The rule lives here
+          # because this is the side where the name may legitimately appear.
+          #
+          # The check runs on the *published crate* -- the version cargo resolves and
+          # links -- rather than on a sibling checkout of the other repository. That is
+          # the artifact a user receives, it cannot drift under an unrelated commit
+          # there, and it needs no tag or branch to exist. Its absence from the package
+          # is also why a process file naming this repository is not a failure here: it
+          # never reaches a build.
+          version=$(cargo metadata --format-version 1 2>/dev/null \
+            | jq -r '.packages[] | select(.name == "algebra_linear") | .version')
+          test -n "$version" || { echo "::error::algebra_linear is not a dependency any more"; exit 1; }
+          echo "checking algebra_linear ${version}, the version cargo resolves"
+          mkdir -p algebra_linear_crate
+          curl -sSfL "https://crates.io/api/v1/crates/algebra_linear/${version}/download" \
+            | tar xz -C algebra_linear_crate --strip-components=1
+          if grep -rni 'russell' algebra_linear_crate; then
+            echo "::error::algebra_linear now references this repository; it must stay standalone"
+            exit 1
+          fi
       - name: Information
         run: |
           lsb_release -d
@@ -33,14 +54,6 @@ jobs:
       - name: Compile SuiteSparse
         run: |
           bash zscripts/debian-compile-suitesparse.bash
-      - name: algebra_linear must stay standalone
-        run: |
-          # The kernels' repository may not know about this one. The rule lives
-          # here because this is the side where the name is allowed to appear.
-          if grep -rni --exclude-dir=.git --exclude-dir=target 'russell' algebra_linear; then
-            echo "::error::algebra_linear now references this repository; it must stay standalone"
-            exit 1
-          fi
       - name: Run tests
         run: |
           cargo test --features local_umfpack,mumps

@@ -56,6 +56,8 @@ pub mod zsvd;
 #[cfg(test)]
 mod checkers;
 #[cfg(test)]
+mod examples;
+#[cfg(test)]
 mod families;
 
 use super::blas;

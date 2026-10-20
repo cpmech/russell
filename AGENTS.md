@@ -368,6 +368,7 @@ row is unchanged from the workspace measurement.
 | `russell_tensor/src/polar_higham.rs` | 67 | the `dd2 == 0` branch, which needs an isotropic spectrum, and the ill-conditioned fallbacks |
 | `russell_nonlin/src/solver.rs`, `solver_arclength.rs` | 33, 27 | scenario code: the `dlambda/ds` guard needs a turning point reached while the listed step is still legal, the precise-stop redo needs `Stop::UComp`, and the failure limits need a deliberately failing system |
 | `russell_sparse/src/util.rs` | 31 | the `nvidia-smi` probe without a GPU, the `/proc/cpuinfo` fallback that `lscpu` pre-empts, and the false arms of `cfg!(feature = ...)` in a build that has the feature |
+| `native/lapack/examples.rs` | 1 | the structural-violation penalty in `DGET33`: a correct `dlanv2` cannot leave a nonzero (2,1) entry with unequal diagonal or same-sign off-diagonals, and LAPACK's own run of the grid reports `NINFO = 0` too |
 | `native/lapack/families.rs` | 43 | harness argument checks the tests do not exercise, the `wn == 0` arm of a reflector built from a zero random vector in `dlagge`/`dlagsy` (probability zero), `dlatms`'s `INFO = 2` guard for an all-zero spectrum (unreachable: `latm1` always scales the maximum to one), and the assertion-failure lines of the fixture tests |
 | `russell_tensor/src/eigen_projectors.rs` | 26 | `if VERBOSE { ... }` diagnostics |
 

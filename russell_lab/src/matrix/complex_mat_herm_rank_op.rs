@@ -1,31 +1,6 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, Complex64};
-use crate::{CBLAS_CONJ_TRANS, CBLAS_LOWER, CBLAS_NO_TRANS, CBLAS_UPPER, StrError, to_i32};
+use crate::StrError;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs one of the hermitian rank k operations
-    // <https://www.netlib.org/lapack/explore-html/d1/db1/zherk_8f.html>
-    fn cblas_zherk(
-        layout: i32,
-        uplo: i32,
-        trans: i32,
-        n: i32,
-        k: i32,
-        alpha: f64,
-        a: *const Complex64,
-        lda: i32,
-        beta: f64,
-        c: *mut Complex64,
-        ldc: i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (zherk) Performs a hermitian rank k operations
 ///
 /// Performs one of the hermitian rank k operations
@@ -108,62 +83,31 @@ pub fn complex_mat_herm_rank_op(
     if m != n {
         return Err("[c] matrix must be square");
     }
+    // The two cases contract over *different* lengths, and the transpose in the
+    // second one is *conjugated*:
+    //
+    //   case 1, trans = 'N': c := a aᴴ, a is (n, k), contraction over a's columns
+    //   case 2, trans = 'C': c := aᴴ a, a is (k, n), contraction over a's rows
+    //
+    // a's length is n*k either way, so the caller's `second_case` is what says
+    // which, and `blas_dispatch::zherk` takes it as the `conj_transposed` flag.
     let (row, col) = a.dims();
-    let (lda, k, trans) = if !second_case {
+    let k = if !second_case {
         //   c   := α ⋅ a   ⋅  aᴴ + β ⋅ c
         // (n,n)      (n,k)  (k,n)    (n,n)
         if row != n {
             return Err("[a] matrix is incompatible");
         }
-        (row, col, CBLAS_NO_TRANS)
+        col
     } else {
         //   c   := α ⋅  aᴴ  ⋅  a + β ⋅ c
         // (n,n)       (n,k)  (k,n)   (n,n)
         if col != n {
             return Err("[a] matrix is incompatible");
         }
-        (row, row, CBLAS_CONJ_TRANS)
+        row
     };
-    let uplo = if upper { CBLAS_UPPER } else { CBLAS_LOWER };
-    let n_i32 = to_i32(n);
-    let k_i32 = to_i32(k);
-    let ldc = n_i32;
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            cblas_zherk(
-                CBLAS_COL_MAJOR,
-                uplo,
-                trans,
-                n_i32,
-                k_i32,
-                alpha,
-                a.as_data().as_ptr(),
-                to_i32(lda),
-                beta,
-                c.as_mut_data().as_mut_ptr(),
-                ldc,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        if trans == CBLAS_CONJ_TRANS {
-            // C := alpha A^H A, contracting over A's k rows. A different
-            // contraction length from the `'N'` case below -- `k` is A's *row*
-            // count here and its column count there -- so it is a different
-            // kernel, not the same one with the operands swapped.
-            //
-            // `zherk_rank` conjugates the second index (see its doc comment).
-            // Conjugating the first instead gives the complex conjugate of every
-            // off-diagonal entry, which is a different Hermitian matrix: for the
-            // test data it yields 15+5j where the reference says 15-1j. Only the
-            // imaginary parts differ, which is why it survived inspection.
-            crate::native::blas::zherk_rank(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
-        } else {
-            crate::native::blas::zherk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper);
-        }
-    }
+    crate::base::blas_dispatch::zherk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper, second_case);
     Ok(())
 }
 

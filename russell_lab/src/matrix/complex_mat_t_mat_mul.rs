@@ -1,34 +1,6 @@
 use super::ComplexMatrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, CBLAS_NO_TRANS, CBLAS_TRANS};
-use crate::{Complex64, StrError, to_i32};
+use crate::{Complex64, StrError};
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs the matrix-matrix multiplication
-    // <https://www.netlib.org/lapack/explore-html/d7/d76/zgemm_8f.html>
-    fn cblas_zgemm(
-        layout: i32,
-        transa: i32,
-        transb: i32,
-        m: i32,
-        n: i32,
-        k: i32,
-        alpha: *const Complex64,
-        a: *const Complex64,
-        lda: i32,
-        b: *const Complex64,
-        ldb: i32,
-        beta: *const Complex64,
-        c: *mut Complex64,
-        ldc: i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (zgemm) Performs the transpose(matrix)-matrix multiplication
 ///
 /// ```text
@@ -90,51 +62,10 @@ pub fn complex_mat_t_mat_mul(
         c.fill(zero);
         return Ok(());
     }
-    let m_i32: i32 = to_i32(m);
-    let n_i32: i32 = to_i32(n);
-    let k_i32: i32 = to_i32(k);
-    let lda = k_i32;
-    let ldb = k_i32;
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            cblas_zgemm(
-                CBLAS_COL_MAJOR,
-                CBLAS_TRANS,
-                CBLAS_NO_TRANS,
-                m_i32,
-                n_i32,
-                k_i32,
-                &alpha,
-                a.as_data().as_ptr(),
-                lda,
-                b.as_data().as_ptr(),
-                ldb,
-                &beta,
-                c.as_mut_data().as_mut_ptr(),
-                m_i32,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // C := alpha A^T B + beta C, where A is (k, m).
-        //
-        // `zgemm` computes C = alpha * X * Y + beta * C with X of (m, p) and Y of
-        // (p, n). Here Y is `b` (k, n) so p = k, and X must be A^T, which is
-        // (m, k). Building A^T rather than passing `a` with a transposed flag
-        // keeps the kernel's indexing unchanged.
-        //
-        // Note this is the *plain* transpose: the shim passes CBLAS_TRANS, not
-        // CBLAS_CONJ_TRANS, so nothing is conjugated here.
-        let mut at = vec![num_complex::Complex64::new(0.0, 0.0); m * k];
-        for i in 0..m {
-            for l in 0..k {
-                at[i + l * m] = a.get(l, i);
-            }
-        }
-        crate::native::blas::zgemm(alpha, &at, b.as_data(), beta, c.as_mut_data(), m, n, k);
-    }
+    // One dispatch for both backends. The transpose here is the *plain* one:
+    // `zgemm('T','N')`, not `'C'`, so nothing is conjugated -- see
+    // `blas_dispatch::zgemm_tn`.
+    crate::base::blas_dispatch::zgemm_tn(alpha, a.as_data(), b.as_data(), beta, c.as_mut_data(), m, n, k);
     Ok(())
 }
 

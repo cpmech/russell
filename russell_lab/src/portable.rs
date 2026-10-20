@@ -63,6 +63,13 @@ pub fn vec_update_data(v: &mut [f64], alpha: f64, u: &[f64]) {
 /// The indexing is written out explicitly rather than with slices: with all
 /// three dimensions distinct, an off-by-one stride is easy to introduce and
 /// hard to see, and this is not a hot path for the workloads that need it.
+///
+/// `mat_mat_mul` reaches this only on wasm32, and [`mat_t_mat_mul_data`] -- which
+/// delegates here -- has no caller on any target since `mat_t_mat_mul` was routed
+/// to `blas_dispatch::dgemm_tn`. A host build therefore sees a function with no
+/// caller, which is what the `allow` records: the situation is known, not
+/// overlooked.
+#[allow(dead_code)]
 pub fn mat_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta: f64, m: usize, n: usize, k: usize) {
     for i in 0..m {
         for j in 0..n {
@@ -90,6 +97,13 @@ pub fn mat_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta: f
 /// [`mat_mat_mul_data`], so there is a single tested multiplication. The scratch
 /// is `m*k` floats, negligible for the small matrices this portable path exists
 /// for, and it removes a whole class of stride mistake.
+///
+/// **No caller since `mat_t_mat_mul` was routed to `blas_dispatch::dgemm_tn`**,
+/// which reaches the native transposed kernel on wasm32 too -- that path needs no
+/// portable twin. Kept with its tests because it is the plainest statement of the
+/// operation, which is what made it useful to read while writing the blocked
+/// kernel; the `allow` records that the absence of callers is deliberate.
+#[allow(dead_code)]
 pub fn mat_t_mat_mul_data(c: &mut [f64], alpha: f64, a: &[f64], b: &[f64], beta: f64, m: usize, n: usize, k: usize) {
     // `a` is k×m column-major: element (row, col) is at col*k + row, i.e.
     // a[row][col] = a[col*k + row].

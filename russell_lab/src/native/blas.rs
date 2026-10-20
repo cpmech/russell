@@ -186,6 +186,18 @@ pub fn dger(alpha: f64, x: &[f64], y: &[f64], a: &mut [f64], m: usize, n: usize)
     }
 }
 
+/// Whether an operand is used as stored or transposed.
+///
+/// BLAS spells this with a character argument. Taking it as a type here keeps the
+/// decision out of the packing loops' inner bodies (each variant's branch is
+/// taken once per block) and makes a mistyped flag a compile error rather than a
+/// silently different product.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Trans {
+    No,
+    Yes,
+}
+
 /// `C := alpha * A * B + beta * C` (dgemm, both trans = 'N').
 ///
 /// `a` is `m x k`, `b` is `k x n`, `c` is `m x n`, all column-major.
@@ -197,6 +209,102 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
     assert_eq!(a.len(), m * k, "dgemm: a must be m*k");
     assert_eq!(b.len(), k * n, "dgemm: b must be k*n");
     assert_eq!(c.len(), m * n, "dgemm: c must be m*n");
+    gemm_core(alpha, a, b, beta, c, m, n, k, Trans::No, Trans::No);
+}
+
+/// `C := alpha * A^T * B + beta * C` (dgemm, transa = 'T', transb = 'N').
+///
+/// `a` is `k x m`, `b` is `k x n`, `c` is `m x n`, all column-major. This is the
+/// operation `mat_t_mat_mul` performs, and it is a kernel of its own rather than
+/// a transpose into a temporary because transposing an `m x k` operand costs
+/// memory traffic proportional to `m*k` for a product that does `m*n*k` flops:
+/// harmless when `n` is large and dominant when it is not. See [`gemm_core`] for
+/// where the packing differs.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn dgemm_tn(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usize, n: usize, k: usize) {
+    assert_eq!(a.len(), k * m, "dgemm_tn: a must be k*m");
+    assert_eq!(b.len(), k * n, "dgemm_tn: b must be k*n");
+    assert_eq!(c.len(), m * n, "dgemm_tn: c must be m*n");
+    gemm_core(alpha, a, b, beta, c, m, n, k, Trans::Yes, Trans::No);
+}
+
+/// `C := alpha * A * B^T + beta * C` (dgemm, transa = 'N', transb = 'T').
+///
+/// `a` is `m x k`, `b` is `n x k`, `c` is `m x n`, all column-major. Note the
+/// asymmetry with [`dgemm_tn`]: there the contracted dimension is the *row* count
+/// of both operands, here it is the *column* count. Handing `dgemm_tn` shapes to
+/// this one is silently a different product, not an error.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn dgemm_nt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usize, n: usize, k: usize) {
+    assert_eq!(a.len(), m * k, "dgemm_nt: a must be m*k");
+    assert_eq!(b.len(), n * k, "dgemm_nt: b must be n*k");
+    assert_eq!(c.len(), m * n, "dgemm_nt: c must be m*n");
+    gemm_core(alpha, a, b, beta, c, m, n, k, Trans::No, Trans::Yes);
+}
+
+/// `C := alpha * A^T * B^T + beta * C` (dgemm, transa = 'T', transb = 'T').
+///
+/// `a` is `k x m`, `b` is `n x k`, `c` is `m x n`, all column-major, so the
+/// product is `(m x k) * (k x n)` and both operands are read transposed.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn dgemm_tt(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usize, n: usize, k: usize) {
+    assert_eq!(a.len(), k * m, "dgemm_tt: a must be k*m");
+    assert_eq!(b.len(), n * k, "dgemm_tt: b must be n*k");
+    assert_eq!(c.len(), m * n, "dgemm_tt: c must be m*n");
+    gemm_core(alpha, a, b, beta, c, m, n, k, Trans::Yes, Trans::Yes);
+}
+
+/// The blocked kernel behind the four real `dgemm` variants.
+///
+/// `trans_a` and `trans_b` change only *where a packed element is read from*: the
+/// panels, the block sizes and the micro-kernel are the same, which is what makes
+/// one kernel worth carrying instead of a temporary transpose plus [`dgemm`].
+///
+/// The published shape is always `C` `m x n` computed as `A_op (m x k) * B_op
+/// (k x n)`. What transposition changes is the shape *as stored*: `A` is `k x m`
+/// when transposed and `m x k` otherwise, and likewise `B`. So the packed element
+/// `ap[i + p*MC]` is
+///
+/// ```text
+///   not transposed:  a[ic + i + (pc + p) * m]    -- a column of A, contiguous in i
+///   transposed:      a[pc + p + (ic + i) * k]    -- a row of A, contiguous in p
+/// ```
+///
+/// and that is the whole difference; the second form reads the *transpose* of the
+/// block, which is exactly what is wanted. Both orientations are packed into the
+/// same layout, so the inner loop keeps its contiguous vector load.
+///
+/// # Panics
+///
+/// Panics if a slice does not match the shape implied by `m`, `n`, `k`.
+#[allow(clippy::too_many_arguments)]
+fn gemm_core(
+    alpha: f64,
+    a: &[f64],
+    b: &[f64],
+    beta: f64,
+    c: &mut [f64],
+    m: usize,
+    n: usize,
+    k: usize,
+    trans_a: Trans,
+    trans_b: Trans,
+) {
+    // The stored shape is `m x k` or `k x m` depending on `trans_a`, but the
+    // *length* is `m*k` either way -- the same reason the flag cannot be inferred
+    // from the shapes at the call site.
+    assert!(a.len() >= m * k, "gemm: a is too short");
+    assert!(b.len() >= k * n, "gemm: b is too short");
+    assert!(c.len() >= m * n, "gemm: c is too short");
 
     if m == 0 || n == 0 {
         return;
@@ -216,6 +324,11 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
     if k == 0 || alpha == 0.0 {
         return;
     }
+
+    // Row counts of the operands as they are *stored*, which is also their
+    // column-major leading dimension.
+    let ada = if trans_a == Trans::No { m } else { k };
+    let adb = if trans_b == Trans::No { k } else { n };
 
     // Block sizes. The packed panels are the only large allocation; everything
     // inside them is reused across the whole inner loop, which is the point --
@@ -238,31 +351,66 @@ pub fn dgemm(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usiz
         for pc in (0..k).step_by(KC) {
             let kc = KC.min(k - pc);
 
-            // Pack B's panel column-major: bp[p + j*kc] = b[pc+p][jc+j].
-            // Contiguous in p, which is the inner-loop direction.
-            for j in 0..nc {
-                let b_col = &b[(pc) + (jc + j) * k..(pc + kc) + (jc + j) * k];
-                let dst = &mut bp[j * kc..j * kc + kc];
-                dst.copy_from_slice(b_col);
+            // Pack B's panel: bp[p + j*kc] = B_op[p][j] of the block at (pc, jc).
+            match trans_b {
+                // Not transposed, B's column jc+j is contiguous in p, so this is
+                // a straight copy -- the inner-loop direction is already the
+                // memory direction.
+                Trans::No => {
+                    for j in 0..nc {
+                        let b_col = &b[pc + (jc + j) * adb..pc + kc + (jc + j) * adb];
+                        let dst = &mut bp[j * kc..j * kc + kc];
+                        dst.copy_from_slice(b_col);
+                    }
+                }
+                // Transposed, B is `n x k`, so row `p` of `B^T` is row jc+j's
+                // *column* p read down B -- contiguous in j, not in p. The loop
+                // therefore runs p outer and reads B's row in one run, writing
+                // bp with stride kc. Reads are the expensive direction, so this
+                // keeps them sequential and pays the stride on the store.
+                Trans::Yes => {
+                    for p in 0..kc {
+                        for j in 0..nc {
+                            bp[j * kc + p] = b[jc + j + (pc + p) * adb];
+                        }
+                    }
+                }
             }
 
             for ic in (0..m).step_by(MC) {
                 let mc = MC.min(m - ic);
-                // Pack A's panel: ap[i + p*MC] = a[ic+i][pc+p], contiguous in i
-                // so the micro-kernel's vector load is a straight 32-byte read.
+                // Pack A's panel: ap[i + p*MC] = A_op[i][p] of the block at
+                // (ic, pc), contiguous in i so the micro-kernel's vector load is
+                // a straight 32-byte read.
+                //
                 // `alpha` is folded in here rather than in the kernels: the
                 // micro-kernel keeps C in registers and accumulates, so applying
                 // a scale per element there would defeat the point. Scaling the
                 // packed panel costs one multiply per element of A per block and
                 // leaves both kernels as pure accumulators.
-                for p in 0..kc {
-                    let a_col = &a[(ic) + (pc + p) * m..(ic + mc) + (pc + p) * m];
-                    let dst = &mut ap[p * MC..p * MC + mc];
-                    if alpha == 1.0 {
-                        dst.copy_from_slice(a_col);
-                    } else {
-                        for (d, s) in dst.iter_mut().zip(a_col) {
-                            *d = alpha * s;
+                match trans_a {
+                    Trans::No => {
+                        for p in 0..kc {
+                            let a_col = &a[ic + (pc + p) * ada..ic + mc + (pc + p) * ada];
+                            let dst = &mut ap[p * MC..p * MC + mc];
+                            if alpha == 1.0 {
+                                dst.copy_from_slice(a_col);
+                            } else {
+                                for (d, s) in dst.iter_mut().zip(a_col) {
+                                    *d = alpha * s;
+                                }
+                            }
+                        }
+                    }
+                    Trans::Yes => {
+                        // A is `k x m`: `A^T[i][p]` is A's row ic+i, entry pc+p,
+                        // so a fixed i reads contiguously in p. Same trade as
+                        // B's: sequential reads, strided stores into the panel.
+                        for i in 0..mc {
+                            for p in 0..kc {
+                                let v = a[pc + p + (ic + i) * ada];
+                                ap[p * MC + i] = if alpha == 1.0 { v } else { alpha * v };
+                            }
                         }
                     }
                 }
@@ -761,6 +909,32 @@ pub fn dznrm2(x: &[Complex64]) -> f64 {
     scale * ss.sqrt()
 }
 
+/// `A := alpha * x * y^T + A` for complex vectors (zger, i.e. CBLAS's `zgeru`).
+///
+/// `A` is `m x n` column-major. **Not conjugated**: BLAS's `zger` is the
+/// unconjugated rank-1 update (`zgeru`), while `zgerc` conjugates `y`, and the C
+/// shim routes this to `cblas_zgeru` accordingly.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zger(alpha: Complex64, x: &[Complex64], y: &[Complex64], a: &mut [Complex64], m: usize, n: usize) {
+    assert_eq!(a.len(), m * n, "zger: a must be m*n");
+    assert_eq!(x.len(), m, "zger: x must have m entries");
+    assert_eq!(y.len(), n, "zger: y must have n entries");
+
+    for j in 0..n {
+        let c = alpha * y[j];
+        if c == Complex64::new(0.0, 0.0) {
+            continue;
+        }
+        let col = &mut a[j * m..(j + 1) * m];
+        for i in 0..m {
+            col[i] += c * x[i];
+        }
+    }
+}
+
 /// `y := alpha * A * x + beta * y` for complex data (zgemv, trans = 'N').
 ///
 /// `a` is `m x n` column-major.
@@ -816,12 +990,120 @@ pub fn zgemm(
     assert_eq!(a.len(), m * k, "zgemm: a must be m*k");
     assert_eq!(b.len(), k * n, "zgemm: b must be k*n");
     assert_eq!(c.len(), m * n, "zgemm: c must be m*n");
+    zgemm_core(alpha, a, b, beta, c, m, n, k, Trans::No, Trans::No);
+}
 
+/// `C := alpha * A^T * B + beta * C` for complex data (zgemm, transa = 'T', transb = 'N').
+///
+/// `a` is `k x m`, `b` is `k x n`, `c` is `m x n`, all column-major.
+///
+/// **Not conjugated.** BLAS spells the conjugated operation `'C'` and it is a
+/// different product; `complex_mat_t_mat_mul` passes `CblasTrans`, so this is the
+/// twin it needs, not [`zherk`]'s conjugation.
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemm_tn(
+    alpha: Complex64,
+    a: &[Complex64],
+    b: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    m: usize,
+    n: usize,
+    k: usize,
+) {
+    assert_eq!(a.len(), k * m, "zgemm_tn: a must be k*m");
+    assert_eq!(b.len(), k * n, "zgemm_tn: b must be k*n");
+    assert_eq!(c.len(), m * n, "zgemm_tn: c must be m*n");
+    zgemm_core(alpha, a, b, beta, c, m, n, k, Trans::Yes, Trans::No);
+}
+
+/// `C := alpha * A * B^T + beta * C` for complex data (zgemm, transa = 'N', transb = 'T').
+///
+/// `a` is `m x k`, `b` is `n x k`, `c` is `m x n`, all column-major. Not
+/// conjugated, as in [`zgemm_tn`].
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemm_nt(
+    alpha: Complex64,
+    a: &[Complex64],
+    b: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    m: usize,
+    n: usize,
+    k: usize,
+) {
+    assert_eq!(a.len(), m * k, "zgemm_nt: a must be m*k");
+    assert_eq!(b.len(), n * k, "zgemm_nt: b must be n*k");
+    assert_eq!(c.len(), m * n, "zgemm_nt: c must be m*n");
+    zgemm_core(alpha, a, b, beta, c, m, n, k, Trans::No, Trans::Yes);
+}
+
+/// `C := alpha * A^T * B^T + beta * C` for complex data (zgemm, transa = 'T', transb = 'T').
+///
+/// `a` is `k x m`, `b` is `n x k`, `c` is `m x n`, all column-major. Not
+/// conjugated, as in [`zgemm_tn`].
+///
+/// # Panics
+///
+/// Panics if the shapes are inconsistent.
+pub fn zgemm_tt(
+    alpha: Complex64,
+    a: &[Complex64],
+    b: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    m: usize,
+    n: usize,
+    k: usize,
+) {
+    assert_eq!(a.len(), k * m, "zgemm_tt: a must be k*m");
+    assert_eq!(b.len(), n * k, "zgemm_tt: b must be n*k");
+    assert_eq!(c.len(), m * n, "zgemm_tt: c must be m*n");
+    zgemm_core(alpha, a, b, beta, c, m, n, k, Trans::Yes, Trans::Yes);
+}
+
+/// The kernel behind the four complex `zgemm` variants.
+///
+/// Same index algebra as [`gemm_core`], without the blocking: this is the
+/// straightforward triple loop, and its transposed arms read `a[l + i*k]` (A
+/// stored `k x m`) instead of `a[i + l*m]`. The complex entry point is not on a
+/// hot path in this crate -- `complex_mat_t_mat_mul` is the only caller -- so it
+/// is left unblocked deliberately rather than by omission.
+#[allow(clippy::too_many_arguments)]
+fn zgemm_core(
+    alpha: Complex64,
+    a: &[Complex64],
+    b: &[Complex64],
+    beta: Complex64,
+    c: &mut [Complex64],
+    m: usize,
+    n: usize,
+    k: usize,
+    trans_a: Trans,
+    trans_b: Trans,
+) {
+    // Row counts as stored, i.e. the leading dimensions.
+    let ada = if trans_a == Trans::No { m } else { k };
+    let adb = if trans_b == Trans::No { k } else { n };
     for j in 0..n {
         for i in 0..m {
             let mut sum = Complex64::new(0.0, 0.0);
             for l in 0..k {
-                sum += a[i + l * m] * b[l + j * k];
+                let av = match trans_a {
+                    Trans::No => a[i + l * ada],
+                    Trans::Yes => a[l + i * ada],
+                };
+                let bv = match trans_b {
+                    Trans::No => b[l + j * adb],
+                    Trans::Yes => b[j + l * adb],
+                };
+                sum += av * bv;
             }
             let idx = i + j * m;
             c[idx] = alpha * sum + beta * c[idx];
@@ -1178,5 +1460,756 @@ mod complex_tests {
         assert_close(c[0], Complex64::new(27.0, 0.0), "(0,0)");
         // C(1,0) = 2*(5-1j) + 3*(1+1j) = 13 + 1j.
         assert_close(c[1], Complex64::new(13.0, 1.0), "(1,0)");
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// The transposed `dgemm`/`zgemm` kernels against values captured from CBLAS.
+///
+/// # Why these are not compared against the other kernels in this file
+///
+/// The tests above compare a kernel with a reference this crate wrote, which
+/// catches a kernel that drifted but not a mistake shared by both. These compare
+/// with an *external* implementation.
+///
+/// # Provenance
+///
+/// A throwaway C driver (its source and full output are in the commit message
+/// that added these kernels) built these same deterministic, non-repeating input
+/// matrices and called `cblas_dgemm` in each of the three transposed
+/// combinations, and `cblas_zgemm` likewise, with `alpha = 2.5, beta = -1.5` and
+/// with the complex pair `alpha = 2 - i, beta = 0.5 + 0.25i`. Every matrix is
+/// column-major. The driver printed its *inputs* as well as its outputs, so what
+/// is embedded below is a transcription of output rather than of source.
+///
+/// ```text
+/// gcc -O2 -o ref_openblas ref.c -I/usr/include/openblas -fopenmp -lopenblas
+/// source /opt/intel/oneapi/setvars.sh
+/// gcc -O2 -o ref_mkl ref.c -I$MKLROOT/include -L$MKLROOT/lib/intel64 \
+///     -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm
+/// ```
+///
+/// OpenBLAS and MKL 2026.0 agree on this data: of the 50 printed arrays, 37 are
+/// bit-for-bit identical, and the worst disagreement in the remaining 13 is
+/// 1.5e-14 relative (in `dgemm_tt`, 473.55555555555287 against 473.5555555555456).
+/// *That measured spread is the reason the comparison below is 1e-13 relative
+/// and not exact*: it is a real, bounded library-to-library difference, while an
+/// index or leading-dimension mistake is wrong by O(1) and cannot hide under it.
+/// The small-integer case is exact in both libraries and is asserted exactly.
+#[cfg(test)]
+mod reference_tests {
+    use super::*;
+    use crate::cpx;
+
+    /// 1e-13 relative, scaled by the magnitude of the reference value. The
+    /// reference libraries themselves disagree by up to 1.5e-14 on this data (see
+    /// the module comment), so this is tight enough to fail on a wrong matrix and
+    /// loose enough not to fail on a different summation order.
+    fn assert_close(got: f64, want: f64, what: &str) {
+        let scale = want.abs().max(1.0);
+        assert!(
+            (got - want).abs() / scale < 1e-13,
+            "{what}: got {got} but the reference says {want}"
+        );
+    }
+
+    /// The complex twin, comparing the modulus of the difference.
+    fn assert_close_cpx(got: Complex64, want: Complex64, what: &str) {
+        let scale = want.norm().max(1.0);
+        assert!(
+            (got - want).norm() / scale < 1e-13,
+            "{what}: got {got} but the reference says {want}"
+        );
+    }
+
+    /// `C := alpha A^T B + beta C`, A is `5 x 3`, B is `5 x 4`, C is `3 x 4`.
+    ///
+    /// The shapes are all distinct in magnitude, so a leading dimension taken from
+    /// the wrong axis reads a different matrix rather than the same one shifted.
+    #[test]
+    fn dgemm_tn_matches_cblas() {
+        let a: &[f64] = &[
+            -266.66666666666669,
+            298.33333333333331,
+            -21.0,
+            286.66666666666669,
+            -39.666666666666664,
+            104.66666666666667,
+            -117.33333333333333,
+            -180.33333333333334,
+            -221.66666666666666,
+            100.0,
+            243.33333333333334,
+            103.33333333333333,
+            -14.0,
+            4.333333333333333,
+            188.66666666666666,
+        ];
+
+        let b: &[f64] = &[
+            39.666666666666664,
+            -154.33333333333334,
+            -316.66666666666669,
+            -141.33333333333334,
+            -16.666666666666668,
+            252.66666666666666,
+            272.0,
+            -70.666666666666671,
+            -96.666666666666671,
+            -67.666666666666671,
+            -315.66666666666669,
+            -222.0,
+            -9.0,
+            -296.0,
+            -27.0,
+            -152.33333333333334,
+            -323.33333333333331,
+            -23.333333333333332,
+            219.0,
+            -93.666666666666671,
+        ];
+
+        let c0: &[f64] = &[
+            188.0,
+            -183.33333333333334,
+            -303.66666666666669,
+            -45.333333333333336,
+            69.0,
+            190.0,
+            -173.0,
+            20.666666666666668,
+            162.0,
+            -106.33333333333333,
+            198.0,
+            -211.0,
+        ];
+
+        let want: &[f64] = &[
+            -89825.0,
+            109028.0,
+            -5619.1111111111113,
+            -9774.111111111124,
+            21935.777777777781,
+            77392.888888888891,
+            -65645.555555555533,
+            57544.555555555547,
+            -106002.88888888891,
+            11146.555555555573,
+            -31710.333333333336,
+            -86875.0,
+        ];
+
+        let want_ab: &[f64] = &[
+            -224844.5,
+            272845.0,
+            -13592.277777777777,
+            -24367.27777777781,
+            54735.944444444453,
+            193197.22222222222,
+            -163854.38888888882,
+            143830.38888888888,
+            -265250.22222222225,
+            28025.888888888934,
+            -79572.833333333343,
+            -216871.0,
+        ];
+
+        let (m, n, k) = (3usize, 4usize, 5usize);
+
+        let mut c = c0.to_vec();
+        dgemm_tn(1.0, a, b, 0.0, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close(c[i], want[i], &format!("dgemm_tn [{i}]"));
+        }
+
+        let mut c = c0.to_vec();
+        dgemm_tn(2.5, a, b, -1.5, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close(c[i], want_ab[i], &format!("dgemm_tn alpha/beta [{i}]"));
+        }
+    }
+
+    /// `C := alpha A B^T + beta C`, A is `3 x 5`, B is `4 x 5`, C is `3 x 4`.
+    #[test]
+    fn dgemm_nt_matches_cblas() {
+        let a: &[f64] = &[
+            242.66666666666666,
+            55.0,
+            287.66666666666669,
+            144.0,
+            -254.33333333333334,
+            284.0,
+            105.0,
+            78.666666666666671,
+            -87.666666666666671,
+            -48.333333333333336,
+            -295.33333333333331,
+            -227.33333333333334,
+            80.0,
+            -188.33333333333334,
+            -198.0,
+        ];
+
+        let b: &[f64] = &[
+            113.66666666666667,
+            26.0,
+            23.333333333333332,
+            240.33333333333334,
+            221.0,
+            221.33333333333334,
+            49.333333333333336,
+            -219.66666666666666,
+            171.33333333333334,
+            -87.0,
+            -59.0,
+            -216.33333333333334,
+            179.0,
+            -14.0,
+            -133.33333333333334,
+            -96.666666666666671,
+            289.66666666666669,
+            -286.0,
+            114.33333333333333,
+            -228.0,
+        ];
+
+        let c0: &[f64] = &[
+            -15.333333333333334,
+            -3.0,
+            -241.0,
+            -330.66666666666669,
+            306.66666666666669,
+            -118.66666666666667,
+            271.33333333333331,
+            -128.33333333333334,
+            -237.0,
+            -126.0,
+            -212.0,
+            72.0,
+        ];
+
+        let want: &[f64] = &[
+            91918.777777777766,
+            -143896.33333333334,
+            -17604.777777777785,
+            6843.0000000000036,
+            -3708.4444444444521,
+            137775.66666666669,
+            22162.333333333336,
+            1939.8888888888862,
+            33568.333333333336,
+            -9593.8888888888869,
+            123557.55555555555,
+            92835.333333333343,
+        ];
+
+        let want_ab: &[f64] = &[
+            229819.94444444441,
+            -359736.33333333337,
+            -43650.44444444446,
+            17603.500000000007,
+            -9731.1111111111295,
+            344617.16666666674,
+            54998.833333333343,
+            5042.2222222222154,
+            84276.333333333343,
+            -23795.722222222219,
+            309211.88888888888,
+            231980.33333333337,
+        ];
+
+        let (m, n, k) = (3usize, 4usize, 5usize);
+
+        let mut c = c0.to_vec();
+        dgemm_nt(1.0, a, b, 0.0, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close(c[i], want[i], &format!("dgemm_nt [{i}]"));
+        }
+
+        let mut c = c0.to_vec();
+        dgemm_nt(2.5, a, b, -1.5, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close(c[i], want_ab[i], &format!("dgemm_nt alpha/beta [{i}]"));
+        }
+    }
+
+    /// `C := alpha A^T B^T + beta C`, A is `5 x 3`, B is `4 x 5`, C is `3 x 4`.
+    #[test]
+    fn dgemm_tt_matches_cblas() {
+        let a: &[f64] = &[
+            -192.33333333333334,
+            -188.33333333333334,
+            319.0,
+            1.3333333333333333,
+            198.0,
+            73.333333333333329,
+            327.0,
+            -329.66666666666669,
+            -231.0,
+            80.666666666666671,
+            -167.0,
+            109.0,
+            -103.33333333333333,
+            286.33333333333331,
+            82.333333333333329,
+        ];
+
+        let b: &[f64] = &[
+            -321.33333333333331,
+            -217.33333333333334,
+            54.666666666666664,
+            97.666666666666671,
+            6.333333333333333,
+            -266.66666666666669,
+            271.66666666666669,
+            39.333333333333336,
+            28.0,
+            -235.33333333333334,
+            69.666666666666671,
+            120.0,
+            -4.0,
+            70.666666666666671,
+            147.0,
+            -207.33333333333334,
+            -71.0,
+            -222.33333333333334,
+            200.66666666666666,
+            233.0,
+        ];
+
+        let c0: &[f64] = &[
+            59.0,
+            177.66666666666666,
+            99.0,
+            51.0,
+            -122.66666666666667,
+            -150.33333333333334,
+            -228.66666666666666,
+            -277.33333333333331,
+            -246.0,
+            -145.33333333333334,
+            45.0,
+            77.333333333333329,
+        ];
+
+        let want: &[f64] = &[
+            55479.0,
+            -35527.444444444445,
+            44468.666666666664,
+            -26976.444444444445,
+            -59815.111111111109,
+            33474.555555555555,
+            473.55555555555287,
+            52107.222222222219,
+            71896.0,
+            57945.222222222219,
+            47153.555555555555,
+            -64605.777777777774,
+        ];
+
+        let want_ab: &[f64] = &[
+            138609.0,
+            -89085.111111111109,
+            111023.16666666666,
+            -67517.611111111109,
+            -149353.77777777778,
+            83911.888888888891,
+            1526.8888888888821,
+            130684.05555555555,
+            180109.0,
+            145081.05555555556,
+            117816.38888888889,
+            -161630.44444444444,
+        ];
+
+        let (m, n, k) = (3usize, 4usize, 5usize);
+
+        let mut c = c0.to_vec();
+        dgemm_tt(1.0, a, b, 0.0, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close(c[i], want[i], &format!("dgemm_tt [{i}]"));
+        }
+
+        let mut c = c0.to_vec();
+        dgemm_tt(2.5, a, b, -1.5, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close(c[i], want_ab[i], &format!("dgemm_tt alpha/beta [{i}]"));
+        }
+    }
+
+    /// The one case that must match **exactly**: small integer data, `alpha = 1`,
+    /// `beta = 0`, so every partial sum is an integer below 2^53 and no rounding
+    /// order can change the result. Both reference libraries print these values
+    /// bit for bit, and so must the kernel.
+    ///
+    /// It is worth having both this and the tolerant comparison: an exact case
+    /// catches a kernel that is "close but subtly reordered" and, more to the
+    /// point, it is the only kind of assertion that would notice a kernel dropping
+    /// a term from an integer-magnitude sum.
+    #[test]
+    fn dgemm_tn_matches_cblas_exactly_on_integers() {
+        let a: &[f64] = &[
+            -3.0, 0.0, 3.0, -1.0, 2.0, -2.0, 1.0, -3.0, 0.0, 3.0, -1.0, 2.0, -2.0, 1.0, -3.0,
+        ];
+
+        let b: &[f64] = &[
+            -4.0, 1.0, -3.0, 2.0, -2.0, 3.0, -1.0, 4.0, 0.0, -4.0, 1.0, -3.0, 2.0, -2.0, 3.0, -1.0, 4.0, 0.0, -4.0, 1.0,
+        ];
+
+        let want: &[f64] = &[-3.0, 12.0, 20.0, -5.0, -31.0, -1.0, 11.0, -2.0, -22.0, 9.0, 9.0, 2.0];
+
+        let (m, n, k) = (3usize, 4usize, 5usize);
+        let mut c = vec![0.0; m * n];
+        dgemm_tn(1.0, a, b, 0.0, &mut c, m, n, k);
+        assert_eq!(c.as_slice(), want, "dgemm_tn must be exact on integer data");
+    }
+
+    /// `C := alpha A^T B + beta C` for complex data, A is `4 x 2`, B is `4 x 3`.
+    ///
+    /// Genuinely complex everywhere, since with real data the transpose and the
+    /// conjugate transpose are the same matrix and nothing distinguishes them.
+    #[test]
+    fn zgemm_tn_matches_cblas() {
+        let a: &[Complex64] = &[
+            cpx!(-266.66666666666669, -59.166666666666664),
+            cpx!(298.33333333333331, 134.66666666666666),
+            cpx!(-21.0, -4.0),
+            cpx!(286.66666666666669, -142.0),
+            cpx!(-39.666666666666664, -115.66666666666667),
+            cpx!(104.66666666666667, 21.0),
+            cpx!(-117.33333333333333, -86.333333333333329),
+            cpx!(-180.33333333333334, 94.166666666666671),
+        ];
+
+        let b: &[Complex64] = &[
+            cpx!(-192.33333333333334, -123.66666666666667),
+            cpx!(-188.33333333333334, 120.16666666666667),
+            cpx!(319.0, -136.16666666666666),
+            cpx!(1.3333333333333333, -94.0),
+            cpx!(198.0, -72.833333333333329),
+            cpx!(73.333333333333329, -149.0),
+            cpx!(327.0, 24.5),
+            cpx!(-329.66666666666669, 139.83333333333334),
+            cpx!(-231.0, 148.0),
+            cpx!(80.666666666666671, -127.5),
+            cpx!(-167.0, 163.16666666666666),
+            cpx!(109.0, -132.16666666666666),
+        ];
+
+        let c0: &[Complex64] = &[
+            cpx!(-160.66666666666666, 60.666666666666664),
+            cpx!(-108.66666666666667, 13.75),
+            cpx!(27.333333333333332, 71.916666666666671),
+            cpx!(48.833333333333336, 36.0),
+            cpx!(3.1666666666666665, -63.583333333333336),
+            cpx!(-133.33333333333334, 71.0),
+        ];
+
+        let want: &[Complex64] = &[
+            cpx!(-68015.111111111095, 107181.2222222222),
+            cpx!(-97738.770833333314, 152039.93055555556),
+            cpx!(-134964.09027777781, 213039.76388888893),
+            cpx!(-112307.58333333333, -247393.70833333334),
+            cpx!(147381.42361111112, -346457.55555555562),
+            cpx!(166229.97222222222, 13265.805555555547),
+        ];
+
+        let (m, n, k) = (2usize, 3usize, 4usize);
+        let alpha = cpx!(2.0, -1.0);
+        let beta = cpx!(0.5, 0.25);
+        let mut c = c0.to_vec();
+        zgemm_tn(alpha, a, b, beta, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close_cpx(c[i], want[i], &format!("zgemm_tn [{i}]"));
+        }
+    }
+
+    /// `C := alpha A B^T + beta C` for complex data, A is `2 x 4`, B is `3 x 4`.
+    #[test]
+    fn zgemm_nt_matches_cblas() {
+        let a: &[Complex64] = &[
+            cpx!(39.666666666666664, 94.0),
+            cpx!(-154.33333333333334, -91.666666666666671),
+            cpx!(-316.66666666666669, -151.83333333333334),
+            cpx!(-141.33333333333334, -22.666666666666668),
+            cpx!(-16.666666666666668, 34.5),
+            cpx!(252.66666666666666, 95.0),
+            cpx!(272.0, -86.5),
+            cpx!(-70.666666666666671, 10.333333333333334),
+        ];
+
+        let b: &[Complex64] = &[
+            cpx!(113.66666666666667, -7.666666666666667),
+            cpx!(26.0, -1.5),
+            cpx!(23.333333333333332, -120.5),
+            cpx!(240.33333333333334, -165.33333333333334),
+            cpx!(221.0, 153.33333333333334),
+            cpx!(221.33333333333334, -59.333333333333336),
+            cpx!(49.333333333333336, 135.66666666666666),
+            cpx!(-219.66666666666666, -64.166666666666671),
+            cpx!(171.33333333333334, -118.5),
+            cpx!(-87.0, -63.0),
+            cpx!(-59.0, -106.0),
+            cpx!(-216.33333333333334, 36.0),
+        ];
+
+        let c0: &[Complex64] = &[
+            cpx!(-160.66666666666666, 60.666666666666664),
+            cpx!(-108.66666666666667, 13.75),
+            cpx!(27.333333333333332, 71.916666666666671),
+            cpx!(48.833333333333336, 36.0),
+            cpx!(3.1666666666666665, -63.583333333333336),
+            cpx!(-133.33333333333334, 71.0),
+        ];
+
+        let want: &[Complex64] = &[
+            cpx!(-245210.5, 162737.38888888891),
+            cpx!(-48025.215277777796, 151967.04166666666),
+            cpx!(-239712.14583333334, -155012.73611111112),
+            cpx!(-211119.41666666669, -41983.347222222219),
+            cpx!(-223677.24305555562, 159284.97222222225),
+            cpx!(45678.305555555562, -19420.722222222219),
+        ];
+
+        let (m, n, k) = (2usize, 3usize, 4usize);
+        let alpha = cpx!(2.0, -1.0);
+        let beta = cpx!(0.5, 0.25);
+        let mut c = c0.to_vec();
+        zgemm_nt(alpha, a, b, beta, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close_cpx(c[i], want[i], &format!("zgemm_nt [{i}]"));
+        }
+    }
+
+    /// `C := alpha A^T B^T + beta C` for complex data, A is `4 x 2`, B is `3 x 4`.
+    #[test]
+    fn zgemm_tt_matches_cblas() {
+        let a: &[Complex64] = &[
+            cpx!(-173.0, -96.166666666666671),
+            cpx!(-246.0, -94.166666666666671),
+            cpx!(-209.66666666666666, 159.5),
+            cpx!(193.66666666666666, 0.66666666666666663),
+            cpx!(92.0, 99.0),
+            cpx!(-329.33333333333331, 36.666666666666664),
+            cpx!(216.33333333333334, 163.5),
+            cpx!(130.66666666666666, -164.83333333333334),
+        ];
+
+        let b: &[Complex64] = &[
+            cpx!(59.0, -160.66666666666666),
+            cpx!(177.66666666666666, -108.66666666666667),
+            cpx!(99.0, 27.333333333333332),
+            cpx!(51.0, 48.833333333333336),
+            cpx!(-122.66666666666667, 3.1666666666666665),
+            cpx!(-150.33333333333334, -133.33333333333334),
+            cpx!(-228.66666666666666, 135.83333333333334),
+            cpx!(-277.33333333333331, 19.666666666666668),
+            cpx!(-246.0, 14.0),
+            cpx!(-145.33333333333334, -117.66666666666667),
+            cpx!(45.0, 34.833333333333336),
+            cpx!(77.333333333333329, 60.0),
+        ];
+
+        let c0: &[Complex64] = &[
+            cpx!(-160.66666666666666, 60.666666666666664),
+            cpx!(-108.66666666666667, 13.75),
+            cpx!(27.333333333333332, 71.916666666666671),
+            cpx!(48.833333333333336, 36.0),
+            cpx!(3.1666666666666665, -63.583333333333336),
+            cpx!(-133.33333333333334, 71.0),
+        ];
+
+        let want: &[Complex64] = &[
+            cpx!(-153416.0, -129677.22222222225),
+            cpx!(-237261.88194444444, 62147.180555555577),
+            cpx!(76879.965277777781, -111139.90277777778),
+            cpx!(-10298.583333333325, -99573.763888888876),
+            cpx!(150643.70138888888, -69828.0),
+            cpx!(59107.805555555562, -8056.1666666666533),
+        ];
+
+        let (m, n, k) = (2usize, 3usize, 4usize);
+        let alpha = cpx!(2.0, -1.0);
+        let beta = cpx!(0.5, 0.25);
+        let mut c = c0.to_vec();
+        zgemm_tt(alpha, a, b, beta, &mut c, m, n, k);
+        for i in 0..m * n {
+            assert_close_cpx(c[i], want[i], &format!("zgemm_tt [{i}]"));
+        }
+    }
+
+    /// Column-major transpose of a `rows x cols` matrix, into a `cols x rows` one.
+    fn transpose(src: &[f64], rows: usize, cols: usize) -> Vec<f64> {
+        let mut dst = vec![0.0; rows * cols];
+        for j in 0..cols {
+            for i in 0..rows {
+                dst[j + i * cols] = src[i + j * rows];
+            }
+        }
+        dst
+    }
+
+    /// The complex twin of [`transpose`].
+    fn transpose_cpx(src: &[Complex64], rows: usize, cols: usize) -> Vec<Complex64> {
+        let mut dst = vec![Complex64::new(0.0, 0.0); rows * cols];
+        for j in 0..cols {
+            for i in 0..rows {
+                dst[j + i * cols] = src[i + j * rows];
+            }
+        }
+        dst
+    }
+
+    /// `C := alpha A B + beta C` from the definition, with `A` `m x k` and `B`
+    /// `k x n`: the plain triple loop, over the already-transposed operands.
+    fn naive_mat_mul(alpha: f64, a: &[f64], b: &[f64], beta: f64, c: &mut [f64], m: usize, n: usize, k: usize) {
+        for j in 0..n {
+            for i in 0..m {
+                let mut sum = 0.0;
+                for l in 0..k {
+                    sum += a[i + l * m] * b[l + j * k];
+                }
+                let idx = i + j * m;
+                c[idx] = if beta == 0.0 {
+                    alpha * sum
+                } else {
+                    alpha * sum + beta * c[idx]
+                };
+            }
+        }
+    }
+
+    /// The complex twin of [`naive_mat_mul`].
+    fn naive_zmat_mul(
+        alpha: Complex64,
+        a: &[Complex64],
+        b: &[Complex64],
+        beta: Complex64,
+        c: &mut [Complex64],
+        m: usize,
+        n: usize,
+        k: usize,
+    ) {
+        for j in 0..n {
+            for i in 0..m {
+                let mut sum = Complex64::new(0.0, 0.0);
+                for l in 0..k {
+                    sum += a[i + l * m] * b[l + j * k];
+                }
+                let idx = i + j * m;
+                c[idx] = alpha * sum + beta * c[idx];
+            }
+        }
+    }
+
+    type RealGemm = fn(f64, &[f64], &[f64], f64, &mut [f64], usize, usize, usize);
+    type ComplexGemm = fn(Complex64, &[Complex64], &[Complex64], Complex64, &mut [Complex64], usize, usize, usize);
+
+    /// Every real transposed variant over shapes that reach each branch of the
+    /// blocking: the 4x4 micro-kernel needs `mc, nc >= 4`, the scalar remainders
+    /// need `mc % 4 != 0` and `nc % 4 != 0`, and MC=128, KC=256, NC=256 are the
+    /// block boundaries, so `m > 128`, `k > 256` or `n > 256` makes the block loop
+    /// repeat.
+    ///
+    /// This is the shape coverage the fixtures above cannot give: they are a single
+    /// 3x4x5 case, which never enters the blocking at all. The reference here
+    /// applies the orientation by *actually transposing* the stored operand and
+    /// then calling the plain product, so it shares no index algebra with the
+    /// kernel under test -- which matters, because a mis-derived reference that did
+    /// share it would pass while the kernel was wrong.
+    #[test]
+    fn transposed_dgemm_matches_the_definition_on_every_branch() {
+        let shapes = [
+            // tiny / degenerate
+            (1, 1, 1),
+            (1, 5, 1),
+            (5, 1, 1),
+            (1, 1, 5),
+            (2, 3, 4),
+            // micro-kernel boundaries and remainders
+            (3, 3, 3),
+            (4, 4, 4),
+            (5, 5, 5),
+            (7, 9, 11),
+            (8, 8, 8),
+            (13, 6, 17),
+            // block boundaries: MC=128, KC=256, NC=256
+            (128, 8, 8),
+            (129, 8, 8),
+            (8, 128, 8),
+            (8, 129, 8),
+            (8, 8, 256),
+            (8, 8, 257),
+            (200, 300, 260),
+            (260, 130, 300),
+        ];
+        let variants: [(bool, bool, RealGemm); 3] =
+            [(true, false, dgemm_tn), (false, true, dgemm_nt), (true, true, dgemm_tt)];
+        for (m, n, k) in shapes {
+            // The operands as the *product* sees them; each variant gets them in
+            // the orientation it expects.
+            let a_op: Vec<f64> = (0..m * k).map(|i| ((i * 7 % 19) as f64) - 9.0).collect();
+            let b_op: Vec<f64> = (0..k * n).map(|i| ((i * 11 % 23) as f64) - 11.0).collect();
+            let a_t = transpose(&a_op, m, k);
+            let b_t = transpose(&b_op, k, n);
+            for (ta, tb, kernel) in variants {
+                let a_stored = if ta { &a_t } else { &a_op };
+                let b_stored = if tb { &b_t } else { &b_op };
+                let c0: Vec<f64> = (0..m * n).map(|i| ((i % 5) as f64) * 0.25).collect();
+                for (alpha, beta) in [(1.0, 1.0), (1.0, 0.0), (2.5, -1.5), (0.0, 3.0)] {
+                    let mut want = c0.clone();
+                    naive_mat_mul(alpha, &a_op, &b_op, beta, &mut want, m, n, k);
+                    let mut got = c0.clone();
+                    kernel(alpha, a_stored, b_stored, beta, &mut got, m, n, k);
+                    for idx in 0..m * n {
+                        let scale = want[idx].abs().max(1.0);
+                        assert!(
+                            (got[idx] - want[idx]).abs() / scale < 1e-11,
+                            "ta={ta} tb={tb} m={m} n={n} k={k} alpha={alpha} beta={beta}: element {idx} is {} not {}",
+                            got[idx],
+                            want[idx]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The same sweep for the complex twins, at the sizes where the naive kernel's
+    /// index arithmetic branches (it has no blocking to reach).
+    #[test]
+    fn transposed_zgemm_matches_the_definition_on_every_shape() {
+        let shapes = [(1, 1, 1), (1, 4, 1), (3, 2, 5), (2, 3, 4), (5, 5, 5), (7, 11, 13)];
+        let variants: [(bool, bool, ComplexGemm); 3] =
+            [(true, false, zgemm_tn), (false, true, zgemm_nt), (true, true, zgemm_tt)];
+        let alpha = cpx!(0.5, -1.5);
+        let beta = cpx!(2.0, 0.25);
+        for (m, n, k) in shapes {
+            let a_op: Vec<Complex64> = (0..m * k)
+                .map(|i| cpx!((i % 3) as f64 - 1.0, (i % 5) as f64 - 2.0))
+                .collect();
+            let b_op: Vec<Complex64> = (0..k * n)
+                .map(|i| cpx!((i % 4) as f64 - 1.5, (i % 7) as f64 - 3.0))
+                .collect();
+            let a_t = transpose_cpx(&a_op, m, k);
+            let b_t = transpose_cpx(&b_op, k, n);
+            for (ta, tb, kernel) in variants {
+                let a_stored = if ta { &a_t } else { &a_op };
+                let b_stored = if tb { &b_t } else { &b_op };
+                let c0: Vec<Complex64> = (0..m * n).map(|i| cpx!((i % 2) as f64, 0.5)).collect();
+                let mut want = c0.clone();
+                naive_zmat_mul(alpha, &a_op, &b_op, beta, &mut want, m, n, k);
+                let mut got = c0.clone();
+                kernel(alpha, a_stored, b_stored, beta, &mut got, m, n, k);
+                for idx in 0..m * n {
+                    assert_close_cpx(
+                        got[idx],
+                        want[idx],
+                        &format!("ta={ta} tb={tb} m={m} n={n} k={k} [{idx}]"),
+                    );
+                }
+            }
+        }
     }
 }

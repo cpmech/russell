@@ -1,26 +1,6 @@
 use crate::StrError;
 use crate::matrix::Matrix;
 use crate::vector::Vector;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, to_i32};
-
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs the rank 1 operation (tensor product)
-    // <https://www.netlib.org/lapack/explore-html/dc/da8/dger_8f.html>
-    fn cblas_dger(
-        layout: i32,
-        m: i32,
-        n: i32,
-        alpha: f64,
-        x: *const f64,
-        incx: i32,
-        y: *const f64,
-        incy: i32,
-        a: *mut f64,
-        lda: i32,
-    );
-}
 
 /// (dger) Performs the outer (tensor) product between two vectors resulting in a matrix
 ///
@@ -62,29 +42,11 @@ pub fn vec_outer(a: &mut Matrix, alpha: f64, u: &Vector, v: &Vector) -> Result<(
         return Err("matrix and vectors are incompatible");
     }
     a.fill(0.0);
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let m_i32: i32 = to_i32(m);
-        let n_i32: i32 = to_i32(n);
-        let lda = m_i32;
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            cblas_dger(
-                CBLAS_COL_MAJOR,
-                m_i32,
-                n_i32,
-                alpha,
-                u.as_data().as_ptr(),
-                1,
-                v.as_data().as_ptr(),
-                1,
-                a.as_mut_data().as_mut_ptr(),
-                lda,
-            )
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    crate::native::blas::dger(alpha, u.as_data(), v.as_data(), a.as_mut_data(), m, n);
+    // One dispatch for both backends: `dger` in the default build, the linked
+    // library's through the shim otherwise. CBLAS's `dger` is the unconjugated
+    // rank-1 update, which is what BLAS's own `dger` is and what the native
+    // kernel computes.
+    crate::base::blas_dispatch::dger(alpha, u.as_data(), v.as_data(), a.as_mut_data(), m, n);
     Ok(())
 }
 

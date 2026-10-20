@@ -1,31 +1,6 @@
 use super::Matrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::{CBLAS_COL_MAJOR, CBLAS_LOWER, CBLAS_UPPER, to_i32};
-use crate::{CBLAS_NO_TRANS, CBLAS_TRANS, StrError};
+use crate::StrError;
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Performs one of the symmetric rank k operations
-    // <https://www.netlib.org/lapack/explore-html/dc/d05/dsyrk_8f.html>
-    fn cblas_dsyrk(
-        layout: i32,
-        uplo: i32,
-        trans: i32,
-        n: i32,
-        k: i32,
-        alpha: f64,
-        a: *const f64,
-        lda: i32,
-        beta: f64,
-        c: *mut f64,
-        ldc: i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (dsyrk) Performs a symmetric rank k operation
 ///
 /// Performs one of the symmetric rank k operations:
@@ -106,83 +81,33 @@ pub fn mat_sym_rank_op(
     if m != n {
         return Err("[c] matrix must be square");
     }
+    // The two cases contract over *different* lengths, so they are not the same
+    // call with a flag on the shapes alone:
+    //
+    //   case 1, trans = 'N': c := a aᵀ, a is (n, k), contraction over a's columns
+    //   case 2, trans = 'T': c := aᵀ a, a is (k, n), contraction over a's rows
+    //
+    // `k` is a's column count in case 1 and its row count in case 2, and it is
+    // the caller's `second_case` that says which -- a's length is n*k either way,
+    // so the flag cannot be inferred from the shape. See
+    // `blas_dispatch::dsyrk`, which asserts exactly that.
     let (row, col) = a.dims();
-    let (lda, k, trans) = if !second_case {
+    let k = if !second_case {
         //   c   := α ⋅ a   ⋅  aᵀ + β ⋅ c
         // (n,n)      (n,k)  (k,n)    (n,n)
         if row != n {
             return Err("[a] matrix is incompatible");
         }
-        (row, col, CBLAS_NO_TRANS)
+        col
     } else {
         //   c   := α ⋅  aᵀ  ⋅  a + β ⋅ c
         // (n,n)       (n,k)  (k,n)   (n,n)
         if col != n {
             return Err("[a] matrix is incompatible");
         }
-        (row, row, CBLAS_TRANS)
+        row
     };
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        let uplo = if upper { CBLAS_UPPER } else { CBLAS_LOWER };
-        let n_i32 = to_i32(n);
-        let k_i32 = to_i32(k);
-        let ldc = n_i32;
-        // Safety: the shim is linked in this configuration.
-        unsafe {
-            cblas_dsyrk(
-                CBLAS_COL_MAJOR,
-                uplo,
-                trans,
-                n_i32,
-                k_i32,
-                alpha,
-                a.as_data().as_ptr(),
-                to_i32(lda),
-                beta,
-                c.as_mut_data().as_mut_ptr(),
-                ldc,
-            );
-        }
-    }
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // The two cases contract over *different* lengths, so they are not the
-        // same call with a flag:
-        //
-        //   case 1, `trans` = 'N': c := a aᵀ, a is (n, k), contraction over k
-        //   case 2, `trans` = 'T': c := aᵀ a, a is (k, n), contraction over k
-        //
-        // `k` is bound to `col` in case 1 and to `row` in case 2 above, so the
-        // same expression is right in both -- but `a` has to be handed to the
-        // kernel in the orientation that matches. `dgemm` computes
-        // C := alpha A B + beta C, so case 1 is A = a, B = aᵀ and case 2 is
-        // A = aᵀ, B = a, and the second operand is the same matrix either way.
-        //
-        // Only the requested triangle is written, which `dgemm` does not do, so
-        // the unrequested triangle is saved and restored around the call.
-        let saved = c.as_data().clone();
-        crate::native::blas::dsyrk_rank(
-            alpha,
-            a.as_data(),
-            beta,
-            c.as_mut_data(),
-            n,
-            k,
-            upper,
-            trans == CBLAS_TRANS,
-        );
-        // Entries outside the requested triangle keep whatever they held before
-        // the call, which is what BLAS leaves there.
-        for j in 0..n {
-            for i in 0..n {
-                let in_triangle = if upper { i <= j } else { i >= j };
-                if !in_triangle {
-                    c.set(i, j, saved[i + j * n]);
-                }
-            }
-        }
-    }
+    crate::base::blas_dispatch::dsyrk(alpha, a.as_data(), beta, c.as_mut_data(), n, k, upper, second_case);
     Ok(())
 }
 

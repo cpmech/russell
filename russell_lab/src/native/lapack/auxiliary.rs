@@ -989,4 +989,47 @@ mod tests {
         // ... and at least one entry inside the block did change.
         assert!(a.iter().zip(a0.iter()).any(|(x, y)| x != y));
     }
+
+    /// `dladiv` on the inputs that reach its rescale arms, pinned against the
+    /// reference.
+    ///
+    /// Values captured from `SRC/dladiv.f` compiled against LAPACK 3.12.1's
+    /// `liblapack`. The eight cases are chosen for the branches rather than for
+    /// the arithmetic: overflowing operands (`1e308`), underflowing ones
+    /// (`1e-308`), a subnormal quotient, mixed magnitudes, and one where the
+    /// result underflows to zero. They also pin the `DLAMCH('E')` this routine
+    /// takes: the copy that used to live in `eig.rs` took `EPSILON` instead of
+    /// `EPSILON/2`, which enters `be = 2/(eps*eps)`, and these cases are where
+    /// that difference would show.
+    #[test]
+    fn dladiv_matches_the_reference_on_the_rescale_arms() {
+        // (a, b, c, d) and the reference's (p, q).
+        let cases: [([f64; 4], [f64; 2]); 12] = [
+            ([1e308, 1e308, 1e308, 1e308], [9.99999999999999889e-01, 0.0]),
+            ([1e-308, 1e-308, 1e-308, 1e-308], [9.99999999999999889e-01, 0.0]),
+            ([4e-320, 0.0, 1e-320, 0.0], [3.99999999999999956e0, 0.0]),
+            ([1e300, 1e300, 1e300, 1e300], [1.0, 0.0]),
+            ([3.0, 2.0, 1.0, 1.0], [2.5, -0.5]),
+            (
+                [1.0, 0.0, 2.0, 1.0],
+                [4.00000000000000022e-01, -2.00000000000000011e-01],
+            ),
+            ([1e-300, 1e-300, 1e300, -1e300], [0.0, 0.0]),
+            ([1e200, -1e200, 1e-200, 1e200], [-1.0, -1.0]),
+            // The arms the eight above do not reach: an overflowing denominator,
+            // a negligible numerator, a negligible denominator, and |d| > |c|
+            // (the branch that swaps the operands before dividing).
+            ([1.0, 1.0, 1e308, 1e308], [9.99999999999999909e-309, 0.0]),
+            (
+                [1e-300, 0.0, 1.0, 1.0],
+                [5.00000000000000013e-301, -5.00000000000000013e-301],
+            ),
+            ([1.0, 1.0, 1e-300, 1e-300], [9.99999999999999904e299, 0.0]),
+            ([2.0, 1.0, 1.0, 3.0], [4.99999999999999944e-01, -0.5]),
+        ];
+        for (k, ([a, b, c, d], want)) in cases.iter().enumerate() {
+            let (p, q) = dladiv(*a, *b, *c, *d);
+            assert_eq!([p, q], *want, "case {k}");
+        }
+    }
 }

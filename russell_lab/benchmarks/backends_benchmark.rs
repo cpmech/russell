@@ -24,10 +24,26 @@
 //! The third configuration (`--all-features`, which is MKL) is the one the
 //! level-1 decisions recorded in `src/base/blas_dispatch.rs` were made on.
 //!
+//! The `lapack_*` groups are the same question for the five LAPACK drivers
+//! `src/base/lapack_dispatch.rs` routes. They cannot call the dispatch module --
+//! it is `pub(crate)` -- so each row is the public entry point a user calls
+//! (`solve_lin_sys`, `mat_cholesky`, `mat_eigen_sym`, `mat_svd`, `mat_eigen`,
+//! `mat_eigenvalues`), and the `native` row beside it is the Rust driver the
+//! same call reaches in a default build. Read the `native` row as the control
+//! (it is identical in both runs) and the `public` row as what the dispatch
+//! actually delivers; the plain-vs-`--all-features` comparison is the `public`
+//! row across the two runs.
+//!
+//! Only the decomposition is timed: `iter_batched` takes a fresh copy of the
+//! input per iteration and leaves the copy out of the measurement, so an
+//! allocation or a `memcpy` cannot leak into the number -- which matters at
+//! n = 128, where the copy would be a tenth of `dgesv`'s cost.
+//!
 //! Threads are pinned to one before anything is measured, because the native
 //! kernels are single-threaded and a multi-threaded comparison would answer a
 //! different question (with a different answer at 512²).
 
+use criterion::BatchSize;
 use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::Throughput;
@@ -486,6 +502,256 @@ fn bench_public(c: &mut Criterion) {
     group.finish();
 }
 
+/// A well-conditioned, diagonally dominant matrix: the solves and the LU-based
+/// drivers want something that is nowhere near singular.
+fn dominant(n: usize) -> Vec<f64> {
+    let mut a = vec![0.0; n * n];
+    for j in 0..n {
+        for i in 0..n {
+            a[i + j * n] = if i == j {
+                (n as f64) + 5.0
+            } else {
+                (((i * 7 + j * 13) % 11) as f64) * 0.1
+            };
+        }
+    }
+    a
+}
+
+/// Its symmetric twin, for `dpotrf` and `dsyev`.
+fn symmetric_dominant(n: usize) -> Vec<f64> {
+    let mut a = dominant(n);
+    for j in 0..n {
+        for i in 0..j {
+            a[i + j * n] = a[j + i * n];
+        }
+    }
+    a
+}
+
+/// A non-symmetric matrix with a real, well-separated spectrum (a diagonal plus a
+/// bounded perturbation), so `dgeev` pays for the QR iteration and not for
+/// deflation failures on a defective matrix.
+fn general(n: usize) -> Vec<f64> {
+    let mut a = vec![0.0; n * n];
+    for j in 0..n {
+        for i in 0..n {
+            a[i + j * n] = if i == j {
+                (n as f64) + 1.0 + (i as f64) * 0.25
+            } else {
+                (((i * 7 + j * 13) % 11) as f64) - 5.0
+            };
+        }
+    }
+    a
+}
+
+/// The five LAPACK drivers, at the sizes the call sites see them.
+///
+/// Each pair is one operation on the same data: `native` is the Rust driver, and
+/// `public` is the crate function that reaches it through
+/// `base::lapack_dispatch` -- so in a default build the two rows are the same
+/// code, and in an accelerated build the second one is the library. The
+/// `native` row is the control: if it moves between the two runs, the machine
+/// did.
+fn bench_lapack(c: &mut Criterion) {
+    use russell_lab::{Matrix, Vector, mat_cholesky, mat_eigen, mat_eigen_sym, mat_svd, solve_lin_sys};
+
+    // These are O(n^3) in the native kernels and take hundreds of milliseconds at
+    // n = 512, so ten samples is what fits: criterion still reports a mean and an
+    // interval, and the "control did not move" check is what catches a bad run.
+    for n in [128usize, 512] {
+        // dgesv: solve A x = b.
+        let mut group = c.benchmark_group("lapack_dgesv");
+        group.sample_size(10);
+        let (a_base, b_base) = (dominant(n), data(n));
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let (a, b) = (a_base.clone(), b_base.clone());
+            bench.iter_batched(
+                || (a.clone(), b.clone()),
+                |(mut a, mut b)| native::lapack::dgesv(&mut a, &mut b).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let (a, b) = (a_base.clone(), b_base.clone());
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    let mut vb = Vector::new(n);
+                    vb.as_mut_data().copy_from_slice(&b);
+                    (ma, vb)
+                },
+                |(mut ma, mut vb)| solve_lin_sys(&mut vb, &mut ma).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // dpotrf: the Cholesky factorization, lower triangle.
+        let mut group = c.benchmark_group("lapack_dpotrf");
+        group.sample_size(10);
+        let a_base = symmetric_dominant(n);
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || a.clone(),
+                |mut a| native::lapack::dpotrf(&mut a, n).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    ma
+                },
+                |mut ma| mat_cholesky(&mut ma, false).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // dsyev: eigenvalues and eigenvectors of a symmetric matrix.
+        let mut group = c.benchmark_group("lapack_dsyev");
+        group.sample_size(10);
+        let a_base = symmetric_dominant(n);
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || (a.clone(), vec![0.0; n]),
+                |(mut a, mut w)| native::lapack::sym::dsyev(&mut a, &mut w, n, false).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    (ma, Vector::new(n))
+                },
+                |(mut ma, mut l)| mat_eigen_sym(&mut l, &mut ma, false).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // dgesvd: both sets of singular vectors, 'A' on both sides.
+        let mut group = c.benchmark_group("lapack_dgesvd");
+        group.sample_size(10);
+        let a_base = general(n);
+        group.bench_with_input(BenchmarkId::new("native", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || (a.clone(), vec![0.0; n], vec![0.0; n * n], vec![0.0; n * n]),
+                |(mut a, mut s, mut u, mut vt)| {
+                    native::lapack::svd::dgesvd(&mut a, n, n, &mut s, &mut u, &mut vt).unwrap()
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("public", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    (ma, Vector::new(n), Matrix::new(n, n), Matrix::new(n, n))
+                },
+                |(mut ma, mut s, mut u, mut vt)| mat_svd(&mut s, &mut u, &mut vt, &mut ma).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+
+        // dgeev: eigenvalues with the right eigenvectors, and the eigenvalues-only
+        // entry (`JOBVR = 'N'`), which is a much cheaper job of the same driver.
+        let mut group = c.benchmark_group("lapack_dgeev");
+        group.sample_size(10);
+        let a_base = general(n);
+        group.bench_with_input(BenchmarkId::new("vectors/native", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || (a.clone(), vec![0.0; n * n], vec![0.0; n * n]),
+                |(mut a, mut vr, mut vi)| native::lapack::eig::dgeev(&mut vr, &mut vi, &mut a, n).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("vectors/public", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    (ma, Vector::new(n), Vector::new(n), Matrix::new(n, n), Matrix::new(n, n))
+                },
+                |(mut ma, mut lr, mut li, mut vr, mut vi)| {
+                    mat_eigen(&mut lr, &mut li, &mut vr, &mut vi, &mut ma).unwrap()
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("values/native", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || (a.clone(), vec![0.0; n * n], vec![0.0; n * n]),
+                |(mut a, mut vr, mut vi)| {
+                    let (wr, wi) = native::lapack::eig::dgeev(&mut vr, &mut vi, &mut a, n).unwrap();
+                    (wr, wi)
+                },
+                BatchSize::SmallInput,
+            );
+        });
+        group.bench_with_input(BenchmarkId::new("values/public", n), &n, |bench, _| {
+            let a = a_base.clone();
+            bench.iter_batched(
+                || {
+                    let mut ma = Matrix::new(n, n);
+                    ma.as_mut_data().copy_from_slice(&a);
+                    (ma, Vector::new(n), Vector::new(n))
+                },
+                |(mut ma, mut lr, mut li)| russell_lab::mat_eigenvalues(&mut lr, &mut li, &mut ma).unwrap(),
+                BatchSize::SmallInput,
+            );
+        });
+        group.finish();
+    }
+
+    // The rectangular SVD: `m > n`, so the bidiagonalization and the generation of
+    // `U` see a different shape from the square case, and a dispatch that passed
+    // `n` as the leading dimension would still agree on a square matrix.
+    let mut group = c.benchmark_group("lapack_dgesvd_rect");
+    group.sample_size(10);
+    let (m, n) = (512usize, 256usize);
+    let a_base: Vec<f64> = (0..m * n).map(|i| ((i * 7 % 19) as f64) - 9.0).collect();
+    group.bench_with_input(BenchmarkId::new("native", format!("{m}x{n}")), &n, |bench, _| {
+        let a = a_base.clone();
+        bench.iter_batched(
+            || (a.clone(), vec![0.0; n], vec![0.0; m * m], vec![0.0; n * n]),
+            |(mut a, mut s, mut u, mut vt)| native::lapack::svd::dgesvd(&mut a, m, n, &mut s, &mut u, &mut vt).unwrap(),
+            BatchSize::SmallInput,
+        );
+    });
+    group.bench_with_input(BenchmarkId::new("public", format!("{m}x{n}")), &n, |bench, _| {
+        let a = a_base.clone();
+        bench.iter_batched(
+            || {
+                let mut ma = Matrix::new(m, n);
+                ma.as_mut_data().copy_from_slice(&a);
+                (ma, Vector::new(n), Matrix::new(m, m), Matrix::new(n, n))
+            },
+            |(mut ma, mut s, mut u, mut vt)| mat_svd(&mut s, &mut u, &mut vt, &mut ma).unwrap(),
+            BatchSize::SmallInput,
+        );
+    });
+    group.finish();
+}
+
 fn benches(c: &mut Criterion) {
     // One thread, to match the native kernels: both libraries default to one per
     // core, which would make the comparison meaningless at these sizes. The
@@ -498,6 +764,7 @@ fn benches(c: &mut Criterion) {
     bench_level1(c);
     bench_zgemv(c);
     bench_public(c);
+    bench_lapack(c);
 }
 
 criterion_group!(group, benches);

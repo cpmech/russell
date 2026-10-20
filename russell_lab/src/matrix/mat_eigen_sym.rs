@@ -1,29 +1,7 @@
 use super::Matrix;
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-use crate::CcBool;
-use crate::{C_FALSE, C_TRUE, StrError, Vector, to_i32};
+use crate::base::lapack_dispatch;
+use crate::{StrError, Vector};
 
-#[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-unsafe extern "C" {
-    // Computes the eigenvalues and eigenvectors of a symmetric matrix
-    // <https://netlib.org/lapack/explore-html/dd/d4c/dsyev_8f.html>
-    fn c_dsyev(
-        calc_v: CcBool,
-        upper: CcBool,
-        n: *const i32,
-        a: *mut f64,
-        lda: *const i32,
-        w: *mut f64,
-        work: *mut f64,
-        lwork: *const i32,
-        info: *mut i32,
-    );
-}
-
-#[cfg_attr(
-    not(any(feature = "open_blas", feature = "intel_mkl")),
-    allow(unused_variables, unused_mut, unreachable_code, unused_assignments)
-)]
 /// (dsyev) Calculates the eigenvalues and eigenvectors of a symmetric matrix
 ///
 /// Computes the eigenvalues `l` and eigenvectors `v`, such that:
@@ -96,54 +74,16 @@ pub fn mat_eigen_sym(l: &mut Vector, a: &mut Matrix, upper: bool) -> Result<(), 
     if l.dim() != n {
         return Err("l vector has incompatible dimension");
     }
-    let c_upper = if upper { C_TRUE } else { C_FALSE };
-    let n_i32 = to_i32(n);
-    let lda = n_i32;
-    const EXTRA: i32 = 1;
-    let lwork = 3 * n_i32 + EXTRA; // max(1,3*N-1), thus, 2 extra spaces effectively
-    let mut work = vec![0.0; lwork as usize];
-    let mut info = 0;
-    #[cfg(not(any(feature = "open_blas", feature = "intel_mkl")))]
-    {
-        // The native routine has the same contract as `dsyev(JOBZ='V', ...)`:
-        // `a` is destroyed and holds the eigenvectors as columns, `l` receives
-        // the eigenvalues in ascending order, and `upper` picks the triangle
-        // that is read.
-        return crate::native::lapack::sym::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper).map_err(|e| match e {
-            // `dsteqr` exhausted its iteration limit. The shim's `info > 0`
-            // branch prints the off-diagonal count and returns this string,
-            // so both paths report a failure to converge the same way.
-            crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dsyev): The algorithm failed to converge",
-            _ => "LAPACK ERROR (dsyev): An argument had an illegal value",
-        });
-    }
-    #[cfg(any(feature = "open_blas", feature = "intel_mkl"))]
-    {
-        unsafe {
-            c_dsyev(
-                C_TRUE,
-                c_upper,
-                &n_i32,
-                a.as_mut_data().as_mut_ptr(),
-                &lda,
-                l.as_mut_data().as_mut_ptr(),
-                work.as_mut_ptr(),
-                &lwork,
-                &mut info,
-            );
-        }
-    }
-    if info < 0 {
-        println!("LAPACK ERROR (dsyev): Argument #{} had an illegal value", -info);
-        return Err("LAPACK ERROR (dsyev): An argument had an illegal value");
-    } else if info > 0 {
-        println!(
-            "LAPACK ERROR (dsyev): {} off-diagonal elements of an intermediate tri-diagonal form did not converge to zero",
-            info - 1
-        );
-        return Err("LAPACK ERROR (dsyev): The algorithm failed to converge");
-    }
-    Ok(())
+    // The driver has the native routine's contract, which is also
+    // `dsyev(JOBZ='V', ...)`'s: `a` is destroyed and holds the eigenvectors as
+    // columns, `l` receives the eigenvalues in ascending order, and `upper` picks
+    // the triangle that is read.
+    lapack_dispatch::dsyev(a.as_mut_data(), l.as_mut_data(), n, upper).map_err(|e| match e {
+        // `dsteqr` exhausted its iteration limit; the accelerated path reports
+        // the same variant for LAPACK's `info > 0`.
+        crate::native::lapack::LapackError::Convergence => "LAPACK ERROR (dsyev): The algorithm failed to converge",
+        _ => "LAPACK ERROR (dsyev): An argument had an illegal value",
+    })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

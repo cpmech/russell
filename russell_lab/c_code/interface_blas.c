@@ -1,9 +1,12 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+// The vendor headers, the `COMPLEX64` type and the prototypes of every entry
+// point in this file live in `interface.h`. Including it here is what makes a
+// definition that drifts from the declaration a compile error.
+#include "interface.h"
+
 #ifdef USE_INTEL_MKL
-#include "mkl.h"
-#define COMPLEX64 MKL_Complex16
 #define FN_DGESV dgesv_
 #define FN_ZGESV zgesv_
 #define FN_DLANGE dlange_
@@ -23,9 +26,6 @@
 #define FN_ZGETRF zgetrf_
 #define FN_ZGETRI zgetri_
 #else
-#include "cblas.h"
-#include "lapack.h"
-#define COMPLEX64 lapack_complex_double
 #define FN_DGESV LAPACK_dgesv
 #define FN_ZGESV LAPACK_zgesv
 #define FN_DLANGE LAPACK_dlange
@@ -69,7 +69,7 @@
 // 1. /opt/intel/oneapi/mkl/latest/include/mkl_cblas.h
 // 2. /opt/intel/oneapi/mkl/latest/include/mkl_lapack.h
 
-int32_t c_using_intel_mkl() {
+int32_t c_using_intel_mkl(void) {
 #ifdef USE_INTEL_MKL
     return 1;
 #else

@@ -31,6 +31,14 @@
 const SHIM: &str = "c_code/interface_blas.c";
 
 fn main() {
+    // The shim's prototypes and the vendor includes live in `c_code/interface.h`,
+    // which `cc` does not track on its own: without this line an edit to the
+    // header leaves a stale object behind and the change only shows up after a
+    // `touch` of the source. (The build script has no `include_bytes!`, so this is
+    // the only way cargo can know.)
+    #[cfg(any(feature = "open_blas", feature = "intel_mkl", feature = "dev_lapack"))]
+    println!("cargo:rerun-if-changed=c_code/interface.h");
+
     // Both accelerators define the same `c_*` entry points, so exactly one is
     // compiled: MKL when `intel_mkl` is on, OpenBLAS only when it is the only
     // accelerator. Saying so in the log is worthwhile, because a build with both

@@ -62,11 +62,15 @@ mod families;
 
 use super::blas;
 
-/// Tolerance below which a pivot counts as zero.
+/// Value below which a pivot counts as zero.
 ///
-/// Matches the `ZERO_DETERMINANT` used elsewhere in the crate so that the native
-/// and accelerated paths agree on when a matrix is singular.
-pub const ZERO_DETERMINANT: f64 = 1e-15;
+/// Zero, exactly, because that is what LAPACK's `DGETRF` tests: the reference
+/// declares a factorization singular only when the pivot is zero, not when it is
+/// merely small. The native path used to treat anything below `1e-15` as zero,
+/// which made it call a matrix singular that the linked library factorizes
+/// happily -- a divergence on near-singular input that no test covered until the
+/// two paths were compared side by side.
+pub const ZERO_DETERMINANT: f64 = 0.0;
 
 /// Error kinds these routines can report.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
